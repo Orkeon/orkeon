@@ -222,3 +222,41 @@ Orkeon.Infrastructure.Agent.StreamingAgentExecutionService.StreamingAgentExecuti
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions.ClientAuthScheme.set -> void
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions.ClientCredentialSecretName.get -> string?
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions.ClientCredentialSecretName.set -> void
+*REMOVED*static Orkeon.Infrastructure.DependencyInjection.LlmLoggingExtensions.AddLlmExchangeFileLogging(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! logDirectory) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+*REMOVED*override Orkeon.Infrastructure.LLMs.AnthropicLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.AnthropicLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.GrokLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.GrokLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.HuggingFaceLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.HuggingFaceLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.KimiLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.KimiLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.MistralLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.MistralLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.OpenAIProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.OpenAIProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.QwenLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.QwenLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.CanCarryGrammar.get -> bool
+override Orkeon.Infrastructure.LLMs.AnthropicLlmProvider.CanCarryGrammar.get -> bool

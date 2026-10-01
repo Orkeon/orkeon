@@ -287,3 +287,9 @@ static Orkeon.Application.Services.Security.ToolInvocationPipeline.Unguarded.get
 *REMOVED*Orkeon.Application.Services.Security.ToolAccessPolicyExtensions
 *REMOVED*static Orkeon.Application.Services.Security.ToolAccessPolicyExtensions.CheckToolAccess(this Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy? policy, string! toolName) -> Orkeon.Application.Interfaces.Security.GuardResult!
 *REMOVED*static Orkeon.Application.Services.Security.ToolAccessPolicyExtensions.GetEffectivePolicy(this Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy! agentPolicy, Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy? crewOverride) -> Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy!
+*REMOVED*Orkeon.Application.Validation.MultiModalOptions.AutoResizeImages.get -> bool
+*REMOVED*Orkeon.Application.Validation.MultiModalOptions.AutoResizeImages.set -> void
+*REMOVED*Orkeon.Application.Validation.MultiModalOptions.MaxImageDimension.get -> int
+*REMOVED*Orkeon.Application.Validation.MultiModalOptions.MaxImageDimension.set -> void
+const Orkeon.Application.Common.DTOs.LlmChatOptionsKeys.GrammarGbnf = "orkeon:grammar_gbnf" -> string!
+const Orkeon.Application.Common.DTOs.LlmChatOptionsKeys.StructuredOutput = "orkeon:structured_output" -> string!

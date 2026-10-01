@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `grammar` reaches only an endpoint configured for it, and Ollama refuses audio **[breaking]**
+
+A `structured_output` deliverable put a GBNF `grammar` field on every request to the
+OpenAI-compatible providers — a field no vendor API documents — without a word, while Ollama
+sent it on `/api/generate` and silently left it off `/api/chat`. On a cloud provider nothing
+constrained the output: the only guard was the JSON parse after the fact. Ollama also dropped
+audio and file parts and sent the text alone, where OpenAI and Anthropic refuse them (GAP-14):
+
+- **`grammar` is a capability the configuration switches on.** `LlmProviderCapabilities.GbnfGrammar`
+  is declared by no provider; `Llm:Grammar: true` (`LlmConfig.GrammarEnabled`, read by the runner
+  host and the REPL) turns it on for a llama.cpp-compatible server — Docker Model Runner,
+  `llama-server` — behind the OpenAI-compatible providers or Ollama. Without it, both payload
+  builders of `OpenAICompatibleProviderBase`, both Ollama endpoints and Anthropic drop the grammar
+  with a structured warning (event id 110) naming the key. Anthropic never takes it.
+- **`structured_output` uses `json_schema` on a provider that declares it.** The deliverable's
+  schema now also travels as a non-strict `json_schema` response format
+  (`LlmChatOptionsKeys.StructuredOutput`); the chat-client adapter sends the grammar to an endpoint
+  configured for it, the schema to a provider whose `ResponseFormat` is `JsonSchema`, never both,
+  and a response format the crew set itself still wins. `StructuredOutputResolver` keeps parsing
+  the answer.
+- **Ollama refuses audio and file parts.** `ContentConverter.ToOllamaMessage` throws
+  `NotSupportedException`, like the OpenAI and Anthropic converters, and any non-text part routes
+  the conversation to `/api/chat` (buffered or streamed), so nothing is flattened away on
+  `/api/generate` first.
+- Removed: `MultiModalOptions.AutoResizeImages` and `MaxImageDimension` (nothing resized an image)
+  and `LlmLoggingExtensions.AddLlmExchangeFileLogging` (no caller, and it registered neither
+  `LlmLoggingOptions` nor the options singleton the RaggableTree embedding client reads).
+- A provider declares its capabilities by overriding `HttpLlmProviderBase.DeclaredCapabilities`;
+  `Capabilities` is no longer virtual — it is the declaration plus the configured grammar switch.
+
+Migration: a setup that relied on `grammar` against a llama.cpp server sets `"Llm": { "Grammar":
+true }`. A message with an audio or file part sent to Ollama now fails: send text and images
+only. Delete `Orkeon:MultiModal:AutoResizeImages` and `MaxImageDimension` from configuration;
+replace `AddLlmExchangeFileLogging(dir)` with `AddLlmExchangeLogging(dir, options)`. A custom
+provider deriving from `HttpLlmProviderBase` renames its `Capabilities` override to
+`protected override LlmProviderCapabilities DeclaredCapabilities`.
+
 ### Fixed — an A2A task runs the agent it names, and the server starts with the host **[breaking]**
 
 An A2A task submitted to an Orkeon server came back `Completed` with

@@ -36,7 +36,7 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
     /// GLM-5.2+, ignored by older models) and caches prompt prefixes implicitly — nothing to
     /// declare on the wire, unlike Anthropic's explicit breakpoints.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Toggle,

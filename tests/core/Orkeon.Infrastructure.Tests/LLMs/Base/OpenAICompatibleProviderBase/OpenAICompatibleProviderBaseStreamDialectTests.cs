@@ -24,7 +24,7 @@ public sealed class ReasoningFieldRenamingProvider : OpenAICompatibleProviderBas
     protected override string ProviderDisplayName => "Renamed";
     protected override string ReasoningFieldName => "reasoning";
 
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         Thinking = ThinkingSupport.EffortOnly,
     };

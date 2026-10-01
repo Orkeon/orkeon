@@ -69,6 +69,10 @@ orkeon-example run 1
   (`docker.io/ai/granite-4.0-h-tiny:latest`). Orkeon's settings can use the
   short form (`ai/granite-4.0-h-tiny`) — the container preflight matches by
   substring and the server accepts both.
+- **Grammar**: the DMR profiles set `"Llm": { "Grammar": true }`, so a
+  `structured_output` deliverable reaches the llama.cpp engine as a GBNF
+  `grammar`. A settings file of your own pointed at DMR (or `llama-server`)
+  sets it too; without it the grammar is dropped with a warning naming the key.
 
 ### Switching models
 

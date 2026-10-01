@@ -78,10 +78,13 @@ public static class ContentConverter
     /// <c>content</c> string plus an <c>images</c> array of bare base64 strings — no
     /// <c>data:</c> prefix, no media type. Remote image URLs therefore cannot be forwarded:
     /// the server never fetches them, so an image the caller only referenced by URL is
-    /// reported as skipped rather than silently dropped.
+    /// reported as skipped rather than silently dropped. Ollama takes no audio or file input:
+    /// such a part is refused, as <see cref="ToOpenAIContentParts"/> and
+    /// <see cref="ToAnthropicContentBlocks"/> refuse it, instead of being dropped from the text.
     /// </remarks>
     /// <param name="content">The multi-modal content to split.</param>
     /// <returns>The concatenated text and the base64 images, in order.</returns>
+    /// <exception cref="NotSupportedException">Thrown for audio/file parts.</exception>
     public static (string Text, IReadOnlyList<string> Images) ToOllamaMessage(MultiModalContent content)
     {
         ArgumentNullException.ThrowIfNull(content);
@@ -89,8 +92,19 @@ public static class ContentConverter
         var images = new List<string>();
         foreach (var part in content.Parts)
         {
-            if (part is ImageContentPart { Data.Count: > 0 } image)
-                images.Add(Convert.ToBase64String([.. image.Data]));
+            switch (part)
+            {
+                case TextContentPart:
+                    break;
+                case ImageContentPart { Data.Count: > 0 } image:
+                    images.Add(Convert.ToBase64String([.. image.Data]));
+                    break;
+                case ImageContentPart:
+                    // URL-only: skipped, and reported by the provider (WarnOnUrlOnlyImages).
+                    break;
+                default:
+                    throw UnsupportedPart(part, "Ollama chat API");
+            }
         }
 
         return (content.ToTextOnly(), images);

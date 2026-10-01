@@ -301,6 +301,111 @@ public class OllamaChatEndpointTests
         Assert.DoesNotContain(_logger.LoggedMessages, m => m.Contains("URL", StringComparison.Ordinal));
     }
 
+    // ── GBNF grammar: one rule on both endpoints (GAP-14) ───────────────────
+
+    /// <summary>
+    /// <c>/api/generate</c> used to send the grammar and <c>/api/chat</c> to ignore it without a
+    /// word, so whether it reached the server depended on whether the agent had tools. Both
+    /// endpoints now follow <c>Llm:Grammar</c>.
+    /// </summary>
+    [Fact]
+    public async Task ShouldSendTheGrammarOnChat_WhenTheConfigurationEnablesIt()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        using var provider = CreateProvider(WithTools(BaseConfig()) with { GrammarEnabled = true }, handler);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("weather?")],
+            WithTools(BaseConfig()) with { GrammarGbnf = "root ::= \"ok\"" },
+            TestContext.Current.CancellationToken);
+
+        var request = handler.CapturedRequests.Single();
+        Assert.EndsWith("/api/chat", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        Assert.Equal("root ::= \"ok\"", (await ReadRequestAsync(request)).GetProperty("grammar").GetString());
+    }
+
+    [Fact]
+    public async Task ShouldDropTheGrammarOnChatAndSaySo_WhenTheConfigurationDoesNotEnableIt()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        using var provider = CreateProvider(WithTools(BaseConfig()), handler);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("weather?")],
+            WithTools(BaseConfig()) with { GrammarGbnf = "root ::= \"ok\"" },
+            TestContext.Current.CancellationToken);
+
+        Assert.False((await ReadRequestAsync(handler.CapturedRequests.Single())).TryGetProperty("grammar", out _));
+        Assert.Contains(_logger.LoggedMessages, m => m.Contains("Llm:Grammar", StringComparison.Ordinal));
+    }
+
+    // ── Audio and files: refused, as on OpenAI and Anthropic (GAP-14) ────────
+
+    /// <summary>
+    /// Ollama has no audio or file input. The part used to be dropped and the text sent on
+    /// its own, while the same message failed on OpenAI and Anthropic. It now fails the same
+    /// way, before anything is sent.
+    /// </summary>
+    [Fact]
+    public async Task ShouldRefuseAnAudioPart_LikeTheOtherConverters()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"response":"ok","done":true}""");
+        using var provider = CreateProvider(BaseConfig(), handler);
+
+        var content = MultiModalContent.Empty()
+            .AddText("Transcribe this")
+            .AddAudio(AudioContentPart.FromBytes([0x52, 0x49, 0x46, 0x46]));
+
+        var ex = await Assert.ThrowsAsync<NotSupportedException>(() => provider.ChatAsync(
+            [LlmMessage.User(content)], cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("audio", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(handler.CapturedRequests);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAFilePart_LikeTheOtherConverters()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"response":"ok","done":true}""");
+        using var provider = CreateProvider(BaseConfig(), handler);
+
+        var content = MultiModalContent.Empty()
+            .AddText("Summarise this")
+            .AddFile(new FileContentPart { FileName = "report.pdf", Data = [0x25, 0x50, 0x44, 0x46] });
+
+        await Assert.ThrowsAsync<NotSupportedException>(() => provider.ChatAsync(
+            [LlmMessage.User(content)], cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Empty(handler.CapturedRequests);
+    }
+
+    /// <summary>The streaming path picks its endpoint with the same predicate, so it refuses too.</summary>
+    [Fact]
+    public async Task ShouldRefuseAnAudioPart_OnTheStreamingPathToo()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"response":"ok","done":true}""");
+        using var provider = CreateProvider(BaseConfig(), handler);
+
+        var content = MultiModalContent.Empty()
+            .AddText("Transcribe this")
+            .AddAudio(AudioContentPart.FromBytes([0x52, 0x49, 0x46, 0x46]));
+
+        await Assert.ThrowsAsync<NotSupportedException>(async () =>
+        {
+            await foreach (var _ in provider.ChatStreamingAsync(
+                [LlmMessage.User(content)], cancellationToken: TestContext.Current.CancellationToken))
+            {
+            }
+        });
+
+        Assert.Empty(handler.CapturedRequests);
+    }
+
     // ── System message on the structured path ───────────────────────────────
 
     /// <summary>

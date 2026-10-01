@@ -56,18 +56,6 @@ public class LlmLoggingExtensionsTests
     }
 
     [Fact]
-    public void AddLlmExchangeFileLogging_RegistersTheJsonLoggerAlone()
-    {
-        var services = NewServices();
-
-        services.AddLlmExchangeFileLogging("/logs");
-
-        using var provider = services.BuildServiceProvider();
-        Assert.IsType<LlmExchangeJsonLogger>(provider.GetRequiredService<ILlmExchangeLogger>());
-        Assert.NotNull(provider.GetRequiredService<LlmLoggingDelegatingHandler>());
-    }
-
-    [Fact]
     public void TheHttpClientBuilderOverload_ChainsOnTheBuilder()
     {
         var services = NewServices();
@@ -90,9 +78,6 @@ public class LlmLoggingExtensionsTests
         Assert.Throws<ArgumentNullException>(() =>
             LlmLoggingExtensions.AddLlmExchangeLogging(null!, "/logs"));
         Assert.Throws<ArgumentException>(() => services.AddLlmExchangeLogging(" "));
-        Assert.Throws<ArgumentNullException>(() =>
-            LlmLoggingExtensions.AddLlmExchangeFileLogging(null!, "/logs"));
-        Assert.Throws<ArgumentException>(() => services.AddLlmExchangeFileLogging(""));
         Assert.Throws<ArgumentNullException>(() =>
             LlmLoggingExtensions.AddLlmExchangeLogging((IHttpClientBuilder)null!));
     }

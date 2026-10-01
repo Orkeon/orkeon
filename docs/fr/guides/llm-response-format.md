@@ -12,8 +12,8 @@ La plupart des API LLM savent contraindre la forme d'une réponse au niveau de l
 Demandez `response_format: {"type": "json_object"}` à DeepSeek et l'API **garantit** du JSON
 valide — pas d'accolades `{`/`}` cassées, pas de prose en préambule ; demandez un JSON Schema à
 OpenAI, Gemini ou Anthropic et le vendeur valide la réponse contre ce schéma côté serveur.
-C'est une seconde barrière qui complète la grammaire GBNF (llama.cpp / Ollama) et le
-`StructuredOutputResolver` en aval.
+C'est une seconde barrière qui complète la grammaire GBNF (serveurs compatibles llama.cpp, derrière
+`Llm:Grammar`) et le `StructuredOutputResolver` en aval.
 
 Pour Orkeon, cela compte surtout pour :
 
@@ -215,6 +215,24 @@ raison.
 | **Mammouth AI** † | `None` | Non documenté sur le proxy (2026-09-18, non campagné) ; un format déclaré produit l'avertissement structuré de capacité tant qu'une campagne ne l'a pas mesuré. |
 
 † pas encore campagné.
+
+## Livrables `structured_output`
+
+Une tâche dont le livrable est `source: structured_output` porte son schéma (`schema_inline` ou
+`schema_path`) sous deux formes, et l'adaptateur du client de chat envoie celle que le fournisseur
+honore — jamais les deux, ce que `llama-server` refuse :
+
+- une **grammaire GBNF**, sur un point d'accès que les réglages déclarent capable de la prendre
+  (`"Llm": { "Grammar": true }` — Docker Model Runner, `llama-server`) ;
+- sinon un **format de réponse `json_schema`** (nom `structured_output`, `strict: false`, car le
+  mode strict d'OpenAI refuse un schéma qui laisse un objet ouvert ou une propriété optionnelle),
+  sur un fournisseur qui déclare `JsonSchema` dans la matrice ci-dessus ;
+- sinon rien ne contraint : la grammaire atteint le fournisseur, qui l'abandonne avec un
+  avertissement structuré nommant `Llm:Grammar`.
+
+Un format de réponse que la crew pose elle-même (`llm:` / `llm_override:`) l'emporte toujours sur
+le schéma du livrable. Dans tous les cas, `StructuredOutputResolver` vérifie encore la réponse
+au parsing JSON avant d'écrire le fichier.
 
 ## Comment ça circule dans l'orchestrateur
 

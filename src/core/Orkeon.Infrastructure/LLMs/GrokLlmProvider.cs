@@ -41,7 +41,7 @@ public class GrokLlmProvider : OpenAICompatibleProviderBase
     /// <c>prompt_tokens_details.cached_tokens</c> (M10), which the base reads generically —
     /// nothing to declare.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.EffortOnly,

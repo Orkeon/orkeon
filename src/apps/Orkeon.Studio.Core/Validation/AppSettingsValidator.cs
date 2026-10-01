@@ -80,6 +80,7 @@ public sealed class AppSettingsValidator
     private static readonly string[] BooleanFields =
     [
         "Llm:Thinking:Enabled",
+        "Llm:Grammar",
         "LlmLogging:FullEmbeddingLog",
         "LlmLogging:LogStreamingExchanges",
         "Orkeon:Rag:Retrieval:Hybrid:Enabled",

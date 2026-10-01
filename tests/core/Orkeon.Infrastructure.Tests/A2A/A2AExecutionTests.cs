@@ -100,7 +100,9 @@ public class A2AExecutionTests
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
             using var body = TaskBody("long-1", agent.Id.ToString(), "A long job");
+#pragma warning disable CA2025 // `sending` is awaited below, inside the scope of `http` and `body`.
             var sending = http.PostAsync($"http://localhost:{port}/a2a/tasks/send", body, Ct);
+#pragma warning restore CA2025
 
             // The agent is working: the record says so, and the server still takes requests.
             await execution.Started.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);

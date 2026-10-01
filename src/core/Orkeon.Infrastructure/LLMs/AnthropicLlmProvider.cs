@@ -36,13 +36,19 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// an adaptive thinking block with an effort level, sees images, and is the one provider
     /// whose prompt cache must be requested explicitly with <c>cache_control</c> breakpoints.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.Toggle,
         Vision = true,
         ExplicitPromptCaching = true,
     };
+
+    /// <summary>
+    /// The Messages API is Anthropic's own wire format: no llama.cpp server stands in for it,
+    /// so <c>Llm:Grammar</c> cannot give it a <c>grammar</c> field.
+    /// </summary>
+    protected override bool CanCarryGrammar => false;
 
     /// <summary>Initializes a new instance of <see cref="AnthropicLlmProvider"/>.</summary>
     /// <param name="config">The LLM configuration.</param>
@@ -503,6 +509,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         ApplyThinking(payload, config.Thinking);
         ApplyResponseFormat(payload, config.ResponseFormat);
+        // The Messages API has no grammar field, whatever Llm:Grammar says (CanCarryGrammar).
+        if (!string.IsNullOrWhiteSpace(config.GrammarGbnf))
+            LogUnsupportedOption("grammar", GrammarRemedy);
         ApplyCacheBreakpoints(payload, config.Cache);
 
         return payload;

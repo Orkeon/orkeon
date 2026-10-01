@@ -962,6 +962,8 @@ public static partial class RunnerHost
             MaxTokens = int.TryParse(llmSection["MaxTokens"], out var m) ? m : null,
             TimeoutSeconds = int.TryParse(llmSection["TimeoutSeconds"], out var ts) ? ts : 30,
             Thinking = ReadThinkingConfig(llmSection),
+            // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
+            GrammarEnabled = bool.TryParse(llmSection[ConfigurationKeys.LlmGrammar], out var grammar) && grammar,
         };
         if (int.TryParse(llmSection["MaxRetries"], out var maxRetries))
             llmConfig = llmConfig with { MaxRetries = Math.Max(0, maxRetries) };

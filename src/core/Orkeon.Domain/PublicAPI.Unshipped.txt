@@ -112,3 +112,7 @@ static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRo
 *REMOVED*static Orkeon.Domain.Security.AuditEventBuilders.LlmCall(string! correlationId, string! provider, string! model, int promptTokens, int completionTokens, decimal estimatedCost, long durationMs, Orkeon.Domain.Security.AuditOutcome outcome, string? agentRole = null, string? crewId = null) -> Orkeon.Domain.Security.AuditEvent!
 *REMOVED*static Orkeon.Domain.Security.SanitizationResult.Stripped(string! text, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Security.ThreatDetection!>! threats) -> Orkeon.Domain.Security.SanitizationResult!
 Orkeon.Domain.Security.SanitizationPolicy.Block = 2 -> Orkeon.Domain.Security.SanitizationPolicy
+Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.GbnfGrammar.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.GbnfGrammar.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarEnabled.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarEnabled.init -> void

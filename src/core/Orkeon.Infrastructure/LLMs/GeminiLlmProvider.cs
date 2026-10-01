@@ -38,7 +38,7 @@ public class GeminiLlmProvider : OpenAICompatibleProviderBase
     /// (<c>additionalProperties</c> included), so the declaration follows the
     /// measurement — the warning it used to emit was refusing something that works.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.EffortOnly,

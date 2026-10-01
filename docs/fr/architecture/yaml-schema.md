@@ -109,7 +109,7 @@ tasks:
     tools: [string]       # Noms d'outils propres à la tâche — PARSÉS (TaskConfiguration.RequiredTools) mais pas encore attachés par CrewFactory : donner l'outil à l'agent
     deliverable:          # Contrat de fichier de sortie (ignoré sans path)
       path: string        # Chemin virtuel, p. ex. "/output/report.md"
-      source: string      # "tool_call" (défaut — l'agent reçoit la consigne d'écrire le chemin avec file_write) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON contraint par schéma, écrit par le framework) | "none" — toute autre valeur fait échouer le chargement
+      source: string      # "tool_call" (défaut — l'agent reçoit la consigne d'écrire le chemin avec file_write) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON écrit par le framework, contraint par le schéma en json_schema là où le fournisseur le déclare, en grammaire GBNF là où Llm:Grammar est allumé, et toujours vérifié au parsing) | "none" — toute autre valeur fait échouer le chargement
       format: string      # "markdown" (défaut) | "json" | "text"
       sanitize: bool      # default: true — retire les tokens de template en fin de texte (final_message)
       schema_path: string # Chemin virtuel d'un fichier JSON Schema (structured_output exige lui ou schema_inline)

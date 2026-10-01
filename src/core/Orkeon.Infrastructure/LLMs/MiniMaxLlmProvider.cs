@@ -52,7 +52,7 @@ public partial class MiniMaxLlmProvider : OpenAICompatibleProviderBase
     /// <see cref="EnrichAssistantMessage"/> puts it back in history as the vendor
     /// documents.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.None,
         Thinking = ThinkingSupport.None,

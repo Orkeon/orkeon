@@ -479,7 +479,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         // If we have a base config, merge sampling + tools into it (preserves ApiKey, BaseUrl, etc.)
         if (_baseLlmConfig != null)
         {
-            return ApplyOptionsOverrides(_baseLlmConfig, options, tools, toolMode);
+            return ApplyOptionsOverrides(_baseLlmConfig, options, tools, toolMode, ResolveStructuredOutput(options));
         }
 
         // No base config: build a fresh LlmConfig only when ChatOptions has meaningful overrides.
@@ -487,7 +487,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             return null;
 
         var baseConfig = LlmConfig.Create(options.ModelId ?? LlmDefaults.DefaultModelName);
-        return ApplyOptionsOverrides(baseConfig, options, tools, toolMode);
+        return ApplyOptionsOverrides(baseConfig, options, tools, toolMode, ResolveStructuredOutput(options));
     }
 
     /// <summary>
@@ -525,9 +525,38 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     private static string? ExtractGrammarFromOptions(ChatOptions options)
     {
         if (options.AdditionalProperties == null) return null;
-        if (options.AdditionalProperties.TryGetValue("orkeon:grammar_gbnf", out var g) && g is string gs && !string.IsNullOrWhiteSpace(gs))
+        if (options.AdditionalProperties.TryGetValue(LlmChatOptionsKeys.GrammarGbnf, out var g) && g is string gs && !string.IsNullOrWhiteSpace(gs))
             return gs;
         return null;
+    }
+
+    /// <summary>
+    /// Picks the form a <c>structured_output</c> deliverable's schema travels in, by what the
+    /// provider honours (GAP-14): the grammar on an endpoint configured for one
+    /// (<see cref="LlmProviderCapabilities.GbnfGrammar"/>); otherwise <c>json_schema</c> on a
+    /// provider that declares it — never both, which <c>llama-server</c> refuses. A response
+    /// format the caller set explicitly always wins; failing everything, the grammar goes to the
+    /// provider, which drops it with a warning naming <c>Llm:Grammar</c>.
+    /// </summary>
+    private (string? Grammar, LlmResponseFormat? SchemaFormat) ResolveStructuredOutput(ChatOptions options)
+    {
+        var grammar = ExtractGrammarFromOptions(options);
+        if (options.AdditionalProperties is null
+            || !options.AdditionalProperties.TryGetValue(LlmChatOptionsKeys.StructuredOutput, out var raw)
+            || raw is not LlmResponseFormat schemaFormat)
+        {
+            return (grammar, null);
+        }
+
+        var capabilities = _provider.Capabilities;
+        if (ExtractResponseFormatFromOptions(options) is not null
+            || (grammar is not null && capabilities.GbnfGrammar)
+            || capabilities.ResponseFormat < ResponseFormatSupport.JsonSchema)
+        {
+            return (grammar, null);
+        }
+
+        return (null, schemaFormat);
     }
 
     /// <summary>
@@ -559,7 +588,8 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         LlmConfig baseConfig,
         ChatOptions options,
         IReadOnlyList<ToolSchema>? tools,
-        ToolCallMode toolMode)
+        ToolCallMode toolMode,
+        (string? Grammar, LlmResponseFormat? SchemaFormat) structuredOutput)
     {
         return baseConfig with
         {
@@ -575,9 +605,9 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             Seed = options.Seed.HasValue ? (int)options.Seed.Value : baseConfig.Seed,
             Tools = tools ?? baseConfig.Tools,
             ToolMode = toolMode,
-            GrammarGbnf = ExtractGrammarFromOptions(options) ?? baseConfig.GrammarGbnf,
+            GrammarGbnf = structuredOutput.Grammar ?? (structuredOutput.SchemaFormat is null ? baseConfig.GrammarGbnf : null),
             Thinking = ExtractThinkingFromOptions(options) ?? baseConfig.Thinking,
-            ResponseFormat = ExtractResponseFormatFromOptions(options) ?? baseConfig.ResponseFormat,
+            ResponseFormat = ExtractResponseFormatFromOptions(options) ?? structuredOutput.SchemaFormat ?? baseConfig.ResponseFormat,
             Cache = ExtractCacheFromOptions(options) ?? baseConfig.Cache
         };
     }

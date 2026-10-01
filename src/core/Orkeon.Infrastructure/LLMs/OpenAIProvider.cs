@@ -42,7 +42,7 @@ public class OpenAIProvider : OpenAICompatibleProviderBase
     /// image parts are sent as structured <c>text</c> + <c>image_url</c> content parts
     /// (http(s) URL or base64 <c>data:</c> URL).
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.EffortOnly,

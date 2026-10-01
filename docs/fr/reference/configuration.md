@@ -66,7 +66,12 @@ forme de la clé API ; défaut `openai`. Clés : `Model`, `BaseUrl`, `ApiKey` (p
 `ORKEON_Llm__ApiKey` — la variable où vit conventionnellement la clé de chaque fournisseur, et
 les trois noms qu'on confond avec elle, sont dans le
 [comparatif des fournisseurs](llm-providers-comparison.md#clés-dapi--la-variable-par-fournisseur)), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (défaut 10), et
-`Thinking:{Enabled,Effort}` pour les providers à raisonnement. `TimeoutSeconds` vaut 30 s par
+`Thinking:{Enabled,Effort}` pour les providers à raisonnement, et `Grammar` (défaut `false`) :
+ne le passez à `true` que lorsque `BaseUrl` désigne un serveur compatible llama.cpp (Docker
+Model Runner, `llama-server`) — le seul genre de point d'accès qui honore le champ GBNF
+`grammar` que produit un livrable `structured_output` ; ailleurs la grammaire est abandonnée avec
+un avertissement qui nomme la clé ([comparatif des fournisseurs](llm-providers-comparison.md)).
+`TimeoutSeconds` vaut 30 s par
 défaut, trop court pour un modèle qui réfléchit avant de répondre (Kimi K2.6, DeepSeek V4 et GLM
 le font par défaut) : mettez 600 s, ou coupez la réflexion avec `Thinking:Enabled = false`. Un
 appel qui atteint le délai est réessayé une fois, puis fait échouer sa tâche avec un message qui
@@ -223,7 +228,7 @@ variables d'environnement qui les contiennent. Parcours par fournisseur et table
 
 | Section | Configure | Opt-in |
 |---|---|---|
-| `Orkeon:MultiModal` | Validation vision/contenu (`Enabled`, `MaxImageSizeBytes` 20 Mo, `MaxImageDimension` 2048, `AutoResizeImages`, `SupportedImageFormats`, `SupportedAudioFormats`, `MaxAudioDurationSeconds`) | `AddOrkeonMultiModal(configuration)` |
+| `Orkeon:MultiModal` | Validation vision/contenu (`Enabled`, `MaxImageSizeBytes` 20 Mo, `SupportedImageFormats`, `SupportedAudioFormats`, `MaxAudioDurationSeconds`) — aucune image n'est redimensionnée | `AddOrkeonMultiModal(configuration)` |
 
 ---
 

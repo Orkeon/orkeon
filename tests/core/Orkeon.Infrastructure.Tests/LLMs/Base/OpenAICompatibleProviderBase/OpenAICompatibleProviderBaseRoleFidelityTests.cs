@@ -127,12 +127,13 @@ public class OpenAICompatibleProviderBaseRoleFidelityTests
     {
         // The two builders emitted slightly different option sets, so routing more
         // callers through the chat builder could have dropped one silently. `grammar`
-        // was the only gap and is now written by both.
+        // was the only gap and is now written by both — on an endpoint configured to take it.
         var config = PlainConfig() with
         {
             TopP = 0.5,
             StopSequences = ["STOP"],
             GrammarGbnf = "root ::= \"ok\"",
+            GrammarEnabled = true,
         };
 
         var payload = await CapturePayloadAsync(config, [
@@ -148,7 +149,7 @@ public class OpenAICompatibleProviderBaseRoleFidelityTests
     [Fact]
     public async Task ShouldStillCarrySamplingOptions_OnTheSinglePromptPath()
     {
-        var config = PlainConfig() with { GrammarGbnf = "root ::= \"ok\"" };
+        var config = PlainConfig() with { GrammarGbnf = "root ::= \"ok\"", GrammarEnabled = true };
 
         var payload = await CapturePayloadAsync(config, [LlmMessage.User("Hello.")]);
 

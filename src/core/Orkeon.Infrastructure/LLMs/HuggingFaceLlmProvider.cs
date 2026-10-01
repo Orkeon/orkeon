@@ -35,7 +35,7 @@ public partial class HuggingFaceLlmProvider : OpenAICompatibleProviderBase
     /// VLM models most partners serve, image input. Reasoning control is model- and
     /// partner-specific and is therefore not declared.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Vision = true,

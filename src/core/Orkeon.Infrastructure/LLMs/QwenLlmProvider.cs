@@ -32,7 +32,7 @@ public class QwenLlmProvider : OpenAICompatibleProviderBase
     /// <see cref="ApplyProviderSpecificOptions"/> override below. It is the only provider that
     /// accepts an explicit reasoning token budget. Vision lives on the VL / omni models.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Budget,

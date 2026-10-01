@@ -62,6 +62,8 @@ public class ProviderCapabilityPayloadTests
                 capabilities.ReplaysReasoningContent);
             Assert.Equal(providerTypeName == nameof(AnthropicLlmProvider), capabilities.ExplicitPromptCaching);
             Assert.Equal(providerTypeName == nameof(DeepSeekLlmProvider), capabilities.RequiresJsonKeywordInPrompt);
+            // No vendor API documents a GBNF `grammar` field: only the configuration turns it on.
+            Assert.False(capabilities.GbnfGrammar);
         }
         finally
         {
@@ -361,6 +363,72 @@ public class ProviderCapabilityPayloadTests
         Assert.Contains(probe.Warnings, w => w.Contains("budgetTokens", StringComparison.OrdinalIgnoreCase));
     }
 
+    // ── GBNF grammar: only where the configuration says the endpoint takes it (GAP-14) ──
+
+    private const string SampleGrammar = "root ::= \"ok\"";
+
+    /// <summary>
+    /// A <c>structured_output</c> deliverable used to put a <c>grammar</c> field on every
+    /// OpenAI-compatible request, a field none of these APIs documents, without a word. The
+    /// field is now dropped unless <c>Llm:Grammar</c> says the endpoint takes it, and the drop
+    /// names the option and the key to set.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(MistralLlmProvider))]
+    [InlineData(nameof(DeepSeekLlmProvider))]
+    [InlineData(nameof(AnthropicLlmProvider))]
+    [InlineData(nameof(OllamaLlmProvider))]
+    public async Task ShouldDropTheGrammarAndSaySo_WhenTheConfigurationDoesNotEnableIt(string providerTypeName)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(providerTypeName, config => config with
+        {
+            GrammarGbnf = SampleGrammar,
+        });
+
+        Assert.False(probe.Body.TryGetProperty("grammar", out _), "no `grammar` field may reach this API");
+        Assert.Contains(probe.Warnings, w =>
+            w.Contains("grammar", StringComparison.Ordinal)
+            && w.Contains("Llm:Grammar", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Docker Model Runner and <c>llama-server</c> sit behind the OpenAI provider with another
+    /// <c>BaseUrl</c>: the one real use of the field. <c>Llm:Grammar: true</c> keeps it working.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(MistralLlmProvider))]
+    [InlineData(nameof(OllamaLlmProvider))]
+    public async Task ShouldSendTheGrammar_WhenTheConfigurationEnablesIt(string providerTypeName)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(
+            providerTypeName,
+            config => config with { GrammarGbnf = SampleGrammar },
+            construct: config => config with { GrammarEnabled = true });
+
+        Assert.Equal(SampleGrammar, probe.Body.GetProperty("grammar").GetString());
+        Assert.DoesNotContain(probe.Warnings, w => w.Contains("grammar", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(nameof(OpenAIProvider), true)]
+    [InlineData(nameof(OllamaLlmProvider), true)]
+    [InlineData(nameof(AnthropicLlmProvider), false)]
+    public void ShouldDeclareTheGrammarCapability_FromTheConfiguration(string providerTypeName, bool expected)
+    {
+        var provider = ProviderProbe.Create(providerTypeName, construct: config => config with { GrammarEnabled = true });
+        try
+        {
+            // Anthropic's Messages API has nowhere to put the field, whatever the key says.
+            Assert.Equal(expected, provider.Capabilities.GbnfGrammar);
+        }
+        finally
+        {
+            (provider as IDisposable)?.Dispose();
+        }
+    }
+
     /// <summary>Test harness: builds a provider, captures the request body and its warnings.</summary>
     private static class ProviderProbe
     {
@@ -375,7 +443,8 @@ public class ProviderCapabilityPayloadTests
         });
 
         internal static ILlmProvider Create(
-            string providerTypeName, IHttpClientFactory? factory = null, WarningSink? sink = null)
+            string providerTypeName, IHttpClientFactory? factory = null, WarningSink? sink = null,
+            Func<LlmConfig, LlmConfig>? construct = null)
         {
             var type = typeof(OpenAIProvider).Assembly.GetType(
                 $"Orkeon.Infrastructure.LLMs.{providerTypeName}", throwOnError: true)!;
@@ -397,7 +466,7 @@ public class ProviderCapabilityPayloadTests
 
             var parameters = ctor.GetParameters();
             var args = new object?[parameters.Length];
-            args[0] = BaseConfig();
+            args[0] = construct is null ? BaseConfig() : construct(BaseConfig());
             args[1] = factory ?? new TestHttpClientFactory();
             // The logger parameter is ILogger<TProvider>, so the sink is wrapped in a
             // closed generic built from the provider type itself.
@@ -412,14 +481,15 @@ public class ProviderCapabilityPayloadTests
             (await CapturePayloadWithLogAsync(providerTypeName, configure)).Body;
 
         internal static async Task<Capture> CapturePayloadWithLogAsync(
-            string providerTypeName, Func<LlmConfig, LlmConfig> configure)
+            string providerTypeName, Func<LlmConfig, LlmConfig> configure,
+            Func<LlmConfig, LlmConfig>? construct = null)
         {
             using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, OkBody);
             var factory = new TestHttpClientFactory();
             factory.RegisterClient(providerTypeName, new HttpClient(handler));
 
             var sink = new WarningSink();
-            var provider = Create(providerTypeName, factory, sink);
+            var provider = Create(providerTypeName, factory, sink, construct);
             try
             {
                 await provider.GenerateAsync(

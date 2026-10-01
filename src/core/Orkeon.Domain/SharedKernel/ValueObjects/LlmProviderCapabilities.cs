@@ -105,6 +105,15 @@ public sealed record LlmProviderCapabilities
     public bool ReplaysReasoningContent { get; init; }
 
     /// <summary>
+    /// Whether the endpoint honours a top-level GBNF <c>grammar</c> field (llama.cpp's
+    /// <c>llama-server</c>, Docker Model Runner, behind the OpenAI or Ollama provider). No
+    /// vendor API documents that field, so no provider declares it: it is switched on by the
+    /// configuration (<c>Llm:Grammar: true</c>, <see cref="LlmConfig.GrammarEnabled"/>) for the
+    /// endpoint the provider was built for. Without it, a grammar is dropped and reported.
+    /// </summary>
+    public bool GbnfGrammar { get; init; }
+
+    /// <summary>
     /// The conservative default for a provider that has not declared anything: no capability
     /// is assumed, so nothing is written to the wire on its behalf.
     /// </summary>

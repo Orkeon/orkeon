@@ -64,16 +64,6 @@ public class MultiModalOptions
     [
         "audio/wav", "audio/mp3", "audio/ogg"
     ];
-
-    /// <summary>
-    /// Whether to automatically resize oversized images.
-    /// </summary>
-    public bool AutoResizeImages { get; set; } = true;
-
-    /// <summary>
-    /// Maximum image dimension (width or height) in pixels for auto-resize.
-    /// </summary>
-    public int MaxImageDimension { get; set; } = 2048;
 }
 
 /// <summary>

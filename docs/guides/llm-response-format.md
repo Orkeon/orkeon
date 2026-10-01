@@ -12,8 +12,8 @@ Most LLM APIs can constrain the shape of a response at the API layer. Ask for
 `response_format: {"type": "json_object"}` on DeepSeek and the API **guarantees** valid JSON
 — no broken `{`/`}` brackets, no leading prose; ask OpenAI, Gemini or Anthropic for a JSON
 Schema and the vendor validates the answer against it server-side. This is a second barrier
-complementing the GBNF grammar (llama.cpp / Ollama) and the downstream
-`StructuredOutputResolver`.
+complementing the GBNF grammar (llama.cpp-compatible servers, behind `Llm:Grammar`) and the
+downstream `StructuredOutputResolver`.
 
 For Orkeon, this matters most for:
 
@@ -212,6 +212,24 @@ own error, which surfaces as `LlmResponse.Error` and fails the task with that re
 | **Mammouth AI** † | `None` | Undocumented on the proxy (2026-09-18, not campaigned); a declared format produces the structured capability warning until a campaign measures it. |
 
 † not campaigned yet.
+
+## `structured_output` deliverables
+
+A task whose deliverable is `source: structured_output` carries its schema (`schema_inline` or
+`schema_path`) in two forms, and the chat-client adapter sends the one the provider honours —
+never both, which `llama-server` refuses:
+
+- a **GBNF grammar**, on an endpoint the settings declare able to take one
+  (`"Llm": { "Grammar": true }` — Docker Model Runner, `llama-server`);
+- otherwise a **`json_schema` response format** (name `structured_output`, `strict: false`, since
+  OpenAI's strict mode refuses a schema that leaves an object open or a property optional), on a
+  provider that declares `JsonSchema` in the matrix above;
+- otherwise nothing binds: the grammar reaches the provider, which drops it with a structured
+  warning naming `Llm:Grammar`.
+
+A response format the crew sets itself (`llm:` / `llm_override:`) always wins over the
+deliverable's schema. In every case `StructuredOutputResolver` still parses the answer as JSON
+before writing the file.
 
 ## How it travels through the orchestrator
 

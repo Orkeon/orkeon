@@ -107,11 +107,21 @@ public sealed record LlmConfig
     public ToolCallMode ToolMode { get; init; } = ToolCallMode.Auto;
 
     /// <summary>
-    /// Optional GBNF grammar string to constrain generation. When set and the provider supports it
-    /// (llama.cpp via Ollama), the grammar is forwarded in the HTTP payload (<c>grammar</c> field
-    /// on <c>/api/generate</c>). Used by StructuredOutputResolver to guarantee schema-valid JSON.
+    /// Optional GBNF grammar string to constrain generation, set by a <c>structured_output</c>
+    /// deliverable. Forwarded as the top-level <c>grammar</c> field only when the endpoint takes
+    /// one (<see cref="GrammarEnabled"/>, a llama.cpp-compatible server); any other provider
+    /// drops it with a warning that names <c>Llm:Grammar</c>.
     /// </summary>
     public string? GrammarGbnf { get; init; }
+
+    /// <summary>
+    /// Whether the endpoint this configuration points at honours a GBNF <c>grammar</c> field —
+    /// <c>llama-server</c> or Docker Model Runner behind the OpenAI provider, a llama.cpp build
+    /// behind Ollama. Bound from <c>Llm:Grammar</c>, <see langword="false"/> by default: no vendor
+    /// API documents the field. Read once, from the configuration a provider is built with, into
+    /// <see cref="LlmProviderCapabilities.GbnfGrammar"/>.
+    /// </summary>
+    public bool GrammarEnabled { get; init; }
 
     /// <summary>
     /// Optional thinking-mode toggle and reasoning-effort hint. Honored by providers that

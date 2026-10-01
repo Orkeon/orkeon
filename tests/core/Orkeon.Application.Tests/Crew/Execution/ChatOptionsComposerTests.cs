@@ -270,8 +270,37 @@ public class ChatOptionsComposerTests
 
         var (options, _) = await composer.BuildChatOptionsAsync(BuildAgent(), task, TestContext.Current.CancellationToken);
 
-        var grammar = Assert.IsType<string>(options.AdditionalProperties!["orkeon:grammar_gbnf"]);
+        var grammar = Assert.IsType<string>(options.AdditionalProperties![LlmChatOptionsKeys.GrammarGbnf]);
         Assert.Contains("root", grammar, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The grammar only binds on a llama.cpp-compatible endpoint. The same schema travels as a
+    /// <c>json_schema</c> response format, which the adapter sends to a provider that declares
+    /// one (GAP-14). Not strict: OpenAI's strict mode refuses a schema that does not close every
+    /// object and require every property, and a deliverable schema need not.
+    /// </summary>
+    [Fact]
+    public async System.Threading.Tasks.Task AttachesTheSchemaAsAJsonSchemaFormat_ForAnInlineSchema()
+    {
+        const string schema = """{"type":"object","properties":{"name":{"type":"string"}}}""";
+        var composer = BuildComposer();
+        var task = BuildTask();
+        task.SetDeliverable(new TaskDeliverable
+        {
+            Path = "/output/result.json",
+            Source = DeliverableSource.StructuredOutput,
+            SchemaInline = schema,
+        });
+
+        var (options, _) = await composer.BuildChatOptionsAsync(BuildAgent(), task, TestContext.Current.CancellationToken);
+
+        var format = Assert.IsType<LlmResponseFormat>(options.AdditionalProperties![LlmChatOptionsKeys.StructuredOutput]);
+        Assert.Equal("json_schema", format.Type);
+        Assert.Equal(schema, format.Schema!.Schema);
+        Assert.False(format.Schema.Strict);
+        // A structured-output schema never overrides a response format the crew set itself.
+        Assert.False(options.AdditionalProperties.ContainsKey(LlmChatOptionsKeys.ResponseFormat));
     }
 
     [Fact]
@@ -290,7 +319,7 @@ public class ChatOptionsComposerTests
 
         var (options, _) = await composer.BuildChatOptionsAsync(BuildAgent(), task, TestContext.Current.CancellationToken);
 
-        Assert.True(options.AdditionalProperties!.ContainsKey("orkeon:grammar_gbnf"));
+        Assert.True(options.AdditionalProperties!.ContainsKey(LlmChatOptionsKeys.GrammarGbnf));
     }
 
     [Fact]
@@ -308,7 +337,9 @@ public class ChatOptionsComposerTests
         var (options, _) = await composer.BuildChatOptionsAsync(BuildAgent(), task, TestContext.Current.CancellationToken);
 
         Assert.True(options.AdditionalProperties is null
-            || !options.AdditionalProperties.ContainsKey("orkeon:grammar_gbnf"));
+            || !options.AdditionalProperties.ContainsKey(LlmChatOptionsKeys.GrammarGbnf));
+        Assert.True(options.AdditionalProperties is null
+            || !options.AdditionalProperties.ContainsKey(LlmChatOptionsKeys.StructuredOutput));
     }
 
     [Fact]
@@ -325,6 +356,6 @@ public class ChatOptionsComposerTests
         var (options, _) = await composer.BuildChatOptionsAsync(BuildAgent(), task, TestContext.Current.CancellationToken);
 
         Assert.True(options.AdditionalProperties is null
-            || !options.AdditionalProperties.ContainsKey("orkeon:grammar_gbnf"));
+            || !options.AdditionalProperties.ContainsKey(LlmChatOptionsKeys.GrammarGbnf));
     }
 }

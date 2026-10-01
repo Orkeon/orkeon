@@ -10,11 +10,12 @@ namespace Orkeon.Application.Crew.DeliverableResolvers;
 
 /// <summary>
 /// Persists a JSON deliverable produced by an agent whose final message is expected
-/// to satisfy a JSON Schema. Relies on an upstream GBNF grammar injection (see
-/// <c>ExecutionOrchestrator</c>) to constrain generation; the resolver itself always
-/// re-validates with <see cref="JsonDocument.Parse(string, JsonDocumentOptions)"/>
-/// as a safety net, so providers that silently ignore the grammar fail loudly
-/// instead of writing garbage.
+/// to satisfy a JSON Schema. Generation is constrained upstream (see
+/// <c>ChatOptionsComposer</c>): a GBNF grammar on an endpoint configured for one
+/// (<c>Llm:Grammar</c>), a <c>json_schema</c> response format on a provider that declares
+/// it. The resolver itself always re-validates with
+/// <see cref="JsonDocument.Parse(string, JsonDocumentOptions)"/> as a safety net, so a provider
+/// that honours neither fails loudly instead of writing garbage.
 /// </summary>
 public sealed partial class StructuredOutputResolver : IDeliverableResolver
 {

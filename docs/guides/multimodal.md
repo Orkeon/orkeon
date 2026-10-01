@@ -113,10 +113,11 @@ the images travel as bare base64 strings (no `data:` prefix, no media type):
 { "role": "user", "content": "Describe this chart", "images": ["iVBOR..."] }
 ```
 
-A message carrying an image switches Ollama from `/api/generate` to `/api/chat`. Ollama never
-fetches remote URLs: an image referenced only by URL is skipped with a structured warning
-(`… image(s) referenced by URL`) — load the bytes instead. Only the text and the inline images
-are forwarded.
+A message carrying any non-text part switches Ollama from `/api/generate` to `/api/chat`. Ollama
+never fetches remote URLs: an image referenced only by URL is skipped with a structured warning
+(`… image(s) referenced by URL`) — load the bytes instead. Ollama takes no audio or file input:
+such a part raises `NotSupportedException` before anything is sent, as on Anthropic and the
+OpenAI-compatible providers.
 
 ## Activation (opt-in)
 
@@ -131,9 +132,8 @@ services.AddOrkeonMultiModal(configuration);   // binds Orkeon:MultiModal
 
 Options (`Orkeon:MultiModal`, `MultiModalOptions`): `Enabled` (true), `MaxImageSizeBytes`
 (20 MB by default), `SupportedImageFormats` (png, jpeg, gif, webp by default),
-`MaxAudioDurationSeconds` (300), `SupportedAudioFormats` (wav, mp3, ogg). `AutoResizeImages`
-and `MaxImageDimension` also exist on the options class, but nothing reads them yet: no image
-is resized.
+`MaxAudioDurationSeconds` (300), `SupportedAudioFormats` (wav, mp3, ogg). No image is resized:
+an image over the size limit fails validation.
 
 > Sending vision payloads from the providers does **not** depend on the DI activation:
 > an `LlmMessage` carrying a `MultiModalContent` with images is composed into a
@@ -151,11 +151,12 @@ is resized.
 | Provider without the capability (a third-party `ILlmProvider` declaring nothing) | Degradation to the `LlmMessage.Content` text fallback, with a structured warning naming the dropped parts |
 | Image MIME types | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
 | Image sources | Raw bytes (base64), http(s) URL, base64 data URL |
-| Audio / files to the providers | Not supported — explicit `NotSupportedException` on Anthropic and the OpenAI-compatible providers; Ollama forwards only the text and the inline images |
+| Audio / files to the providers | Not supported — explicit `NotSupportedException` on Anthropic, the OpenAI-compatible providers and Ollama |
 
 On Anthropic and the OpenAI-compatible providers, an unsupported MIME type (e.g.
 `image/bmp`), an unsupported URI scheme (e.g. `ftp://`) or an audio/file part in a vision
-payload raise an explicit exception — no silent degradation to text.
+payload raise an explicit exception — no silent degradation to text. Ollama refuses an
+audio/file part the same way.
 
 ## Microsoft.Extensions.AI interop
 

@@ -29,6 +29,11 @@ Model Runner) → OpenAI-compatible, etc. The two aggregators are the case where
 matters most: Mammouth serves the vendors' own model names, so a `Model` copied from
 another profile without its `BaseUrl` talks to that vendor, not to Mammouth.
 
+The Docker Model Runner profiles (`appsettings.json`, `appsettings.docker-model-runner.local.json.example`)
+set `"Grammar": true`: its llama.cpp engine honours the GBNF `grammar` a `structured_output`
+deliverable produces. Leave the key out for any other endpoint — no vendor API takes the field,
+and a grammar sent there is dropped with a warning.
+
 ## Inside the `orkeon-runners` container image
 
 The image bakes a **container-appropriate default** over its copy of

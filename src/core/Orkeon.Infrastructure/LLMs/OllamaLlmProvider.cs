@@ -60,7 +60,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     /// <c>/api/chat</c>, which takes a base64 <c>images</c> array rather than OpenAI-style
     /// content parts.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.Toggle,
@@ -202,7 +202,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     /// hence the historical text-fallback protocol documented in
     /// <c>docs/reference/limitations.md</c>. This override takes <c>/api/chat</c> only when it
     /// is actually needed (the message list carries tool metadata, the config declares tools,
-    /// or a message carries an image); everything else keeps the previous path, so no existing
+    /// or a message carries a non-text part); everything else keeps the previous path, so no existing
     /// behaviour moves.
     /// </para>
     /// <para>
@@ -258,13 +258,19 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     /// True when the conversation needs a capability only <c>/api/chat</c> offers. Anything
     /// else stays on the historical prompt-completion path.
     /// </summary>
+    /// <remarks>
+    /// Any non-text part counts, not only images: <c>/api/generate</c> flattens a message to
+    /// its text, so an audio or file part sent there vanished without a word. On the chat path
+    /// <see cref="ContentConverter.ToOllamaMessage"/> refuses it, as the OpenAI and Anthropic
+    /// converters do.
+    /// </remarks>
     private static bool RequiresChatEndpoint(LlmMessage[] messages, LlmConfig config) =>
         config.Tools is { Count: > 0 }
         || messages.Any(m => m.ToolCallId != null || m.RawToolCalls != null)
-        || messages.Any(HasImages);
+        || messages.Any(HasNonTextParts);
 
-    private static bool HasImages(LlmMessage message) =>
-        message.MultiModalContent is { } content && content.HasImages;
+    private static bool HasNonTextParts(LlmMessage message) =>
+        message.MultiModalContent is { } content && content.Parts.Any(p => p is not TextContentPart);
 
     private Dictionary<string, object> BuildChatPayload(LlmMessage[] messages, LlmConfig config)
     {
@@ -283,11 +289,33 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             ["options"] = options.ToDictionary(),
         };
 
+        if (ShouldSendGrammar(config.GrammarGbnf))
+            payload["grammar"] = config.GrammarGbnf!;
+
         ApplyChatResponseFormat(payload, config.ResponseFormat);
         ApplyChatThinking(payload, config.Thinking);
         ApplyChatTools(payload, config);
 
         return payload;
+    }
+
+    /// <summary>
+    /// One rule for <c>/api/generate</c> and <c>/api/chat</c>: Ollama's documented API takes
+    /// <c>format</c>, not <c>grammar</c>, so a GBNF grammar is sent only when <c>Llm:Grammar</c>
+    /// says the server behind <c>BaseUrl</c> honours one, and is otherwise dropped and reported.
+    /// Before, the generate path sent it and the chat path ignored it without a word, so whether
+    /// it reached the server depended on whether the agent had tools.
+    /// </summary>
+    private bool ShouldSendGrammar(string? grammar)
+    {
+        if (string.IsNullOrWhiteSpace(grammar))
+            return false;
+
+        if (Capabilities.GbnfGrammar)
+            return true;
+
+        LogUnsupportedOption("grammar", GrammarRemedy);
+        return false;
     }
 
     /// <summary>
@@ -852,8 +880,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             .AddStream(false)
             .AddOptions(options);
 
-        if (!string.IsNullOrWhiteSpace(config.GrammarGbnf))
-            builder.AddGrammar(config.GrammarGbnf);
+        if (ShouldSendGrammar(config.GrammarGbnf))
+            builder.AddGrammar(config.GrammarGbnf!);
 
         ApplyResponseFormat(builder, config.ResponseFormat);
         ApplyThinking(builder, config.Thinking);

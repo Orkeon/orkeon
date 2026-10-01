@@ -108,7 +108,7 @@ tasks:
     tools: [string]       # Task-scoped tool names — PARSED (TaskConfiguration.RequiredTools) but not attached by CrewFactory yet: give the tool to the agent
     deliverable:          # Output-file contract (ignored without a path)
       path: string        # Virtual path, e.g. "/output/report.md"
-      source: string      # "tool_call" (default — the agent is told to write the path with file_write) | "final_message" (the framework writes the final answer) | "structured_output" (schema-constrained JSON, written by the framework) | "none" — any other value fails the load
+      source: string      # "tool_call" (default — the agent is told to write the path with file_write) | "final_message" (the framework writes the final answer) | "structured_output" (JSON written by the framework, constrained by the schema as json_schema where the provider declares it, as a GBNF grammar where Llm:Grammar is on, and always parse-checked) | "none" — any other value fails the load
       format: string      # "markdown" (default) | "json" | "text"
       sanitize: bool      # default: true — strips trailing template tokens (final_message)
       schema_path: string # Virtual path of a JSON Schema file (structured_output needs it or schema_inline)

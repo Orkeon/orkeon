@@ -40,7 +40,7 @@ public class DeepSeekLlmProvider : OpenAICompatibleProviderBase
     /// while reality is per model (D-03): <c>deepseek-v4-pro</c> is text-only and answers an
     /// image with the vendor's own error, not a silent downgrade.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Toggle,

@@ -72,9 +72,15 @@ Chaque provider construit par la fabrique est enveloppé dans `MeteredLlmProvide
 ## Capacités déclarées
 
 Chaque provider déclare un value object `LlmProviderCapabilities` (Domain, exposé sur
-`ILlmProvider` ; la base vaut `LlmProviderCapabilities.Unknown` par défaut) : `ResponseFormat`
+`ILlmProvider` ; un provider surcharge `HttpLlmProviderBase.DeclaredCapabilities`, qui vaut
+`LlmProviderCapabilities.Unknown` par défaut) : `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`),
 `Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`.
+Une capacité n'est pas au vendeur de la déclarer : `GbnfGrammar`, qu'aucune API de vendeur ne
+documente, est allumée par la configuration avec laquelle le provider est construit
+(`Llm:Grammar`, `LlmConfig.GrammarEnabled`) pour un serveur compatible llama.cpp derrière les
+providers compatibles OpenAI ou Ollama — `ILlmProvider.Capabilities` est la déclaration plus cet
+interrupteur.
 `OpenAICompatibleProviderBase` traduit la déclaration en dialecte OpenAI une seule fois
 (payloads vision, `response_format`, thinking, les diagnostics `CapabilityMismatchHint`) ;
 Anthropic et Ollama écrivent leur propre dialecte, et Qwen surcharge le hook pour les champs
@@ -144,8 +150,7 @@ pas par des copies du constructeur de payload :
   par `LogSanitizer` : en-têtes d'authentification masqués par nom, secrets des corps par
   motif) en JSON Lines, plus un résumé en log structuré.
   `services.AddLlmExchangeLogging(logDirectory, options)` l'injecte dans tous les clients
-  `IHttpClientFactory` ; la surcharge `IHttpClientBuilder` cible un seul client nommé, et
-  `AddLlmExchangeFileLogging(logDirectory)` garde la capture JSONL sans le résumé console.
+  `IHttpClientFactory` ; la surcharge `IHttpClientBuilder` cible un seul client nommé.
   `LlmLoggingOptions` : `MaxBodyLengthChars` (0 = pas de troncature), `LogStreamingExchanges`
   (true ; un flux est capturé par sa seule requête), `FullEmbeddingLog` (true ; false réduit
   les tableaux d'embeddings à un aperçu). Les runners l'activent avec `--llm-log` /

@@ -31,7 +31,7 @@ public partial class TogetherAiLlmProvider : OpenAICompatibleProviderBase
     /// Together AI is fully OpenAI-compatible: JSON mode with a schema, and vision on its VLM
     /// models. It exposes no cross-model reasoning switch.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Vision = true,

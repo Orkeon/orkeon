@@ -9,22 +9,22 @@
 
 | Provider | Base class | SSE streaming | Native tool calling | Multi-turn chat (tool roles) | System message | top_p / stop | GBNF grammar | response_format | thinking | Vision | reasoning_content round-trip | Prompt cache | Timing metrics | Polly resilience | API key sanitization |
 |---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| **OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Azure OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Azure OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Anthropic** | HttpLlmProviderBase | ✓ native | ✓ | ✓ | ✓ (native, separate) | ✓ | ✗ | ✓ schema | ✓ toggle | ✓ | ✗ | ✓ explicit | ✗ | ✓ | ✓ |
-| **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✓ | ✓ metrics | ✗ | ✓ | ✓ |
-| **Z.AI (GLM)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Mistral AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ budget | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **MiniMax** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (accepted but non-binding — measured) | ✗ (always-on inline, split out) | ✓ | ✓ | ◐ auto | ✗ | ✓ | ✓ |
-| **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **OpenRouter** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema (per endpoint) | ✓ budget (`reasoning` object) | ✓ (per model) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposed) | ✓ | ✓ |
-| **Mammouth AI** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (undocumented) | ✗ (undocumented) | ✓ (per model) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` on `/api/generate`) | ✓ | ✓ |
+| **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ toggle | ✓ | ✓ | ✓ metrics | ✗ | ✓ | ✓ |
+| **Z.AI (GLM)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Mistral AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ budget | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **MiniMax** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (accepted but non-binding — measured) | ✗ (always-on inline, split out) | ✓ | ✓ | ◐ auto | ✗ | ✓ | ✓ |
+| **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **OpenRouter** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema (per endpoint) | ✓ budget (`reasoning` object) | ✓ (per model) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposed) | ✓ | ✓ |
+| **Mammouth AI** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (undocumented) | ✗ (undocumented) | ✓ (per model) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ◐ `Llm:Grammar` | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` on `/api/generate`) | ✓ | ✓ |
 
 ## How to read the capability columns
 
@@ -59,18 +59,24 @@ details the `response_format` surfaces.
 - **Anthropic SSE**: `ChatStreamingAsync` parses the Messages API event stream natively since
   LLM-05; it used to fall back to a buffered emulation, so no token arrived early.
 - **Ollama tool calling**: goes through `/api/chat` when the conversation declares tools, replays
-  tool calls, or carries an image; everything else keeps `/api/generate` (NDJSON streaming, GBNF).
-  The text-fallback protocol remains in charge for models without tool support.
+  tool calls, or carries a non-text part; everything else keeps `/api/generate`. An audio or file
+  part is refused there with `NotSupportedException`, as on OpenAI and Anthropic. The
+  text-fallback protocol remains in charge for models without tool support.
 - **Azure OpenAI**: two API shapes — the dated deployment URL (default) and the v1 GA surface
   (`api_version: v1`), which is the only path to the Responses API and to the non-OpenAI models
   Azure resells.
 - **HuggingFace**: model identifiers accept a routing suffix (`:fastest` / `:cheapest` /
   `:preferred` / `:<partner>`) — the only cost and latency lever on Inference Providers.
 - **top_p / stop**: Ollama only exposes `temperature` + `num_predict` (= max_tokens).
-- **GBNF grammar**: the OpenAI-compatible base writes a top-level `grammar` field whenever
-  `LlmConfig.GrammarGbnf` is set, and Ollama sends its own `grammar`. Only llama.cpp-family
-  servers (Docker Model Runner, `llama-server`) honour it; a cloud API that ignores it returns
-  free-form output, which `StructuredOutputResolver` catches downstream.
+- **GBNF grammar**: no vendor API documents a `grammar` field, so no provider declares the
+  capability (`LlmProviderCapabilities.GbnfGrammar`). **◐ `Llm:Grammar`** means the field is
+  written — on both of Ollama's endpoints, and by both payload builders of the OpenAI-compatible
+  base — only when the settings say the endpoint behind `Llm:BaseUrl` takes it
+  (`"Llm": { "Grammar": true }`, a llama.cpp-compatible server such as Docker Model Runner or
+  `llama-server`). Otherwise a grammar is dropped with a structured warning naming that key.
+  Anthropic's Messages API has no such field, whatever the key says. A `structured_output`
+  deliverable sends its schema as a non-strict `json_schema` response format to a provider that
+  declares **✓ schema** (see [LLM response format](../guides/llm-response-format.md)).
 - **OpenAI `max_completion_tokens`**: OpenAI retired `max_tokens` on its current models (the
   2026-08-30 campaign failed ten modes on that one field), so the OpenAI dialect writes
   `max_completion_tokens` — accepted by the older generations too (verified on `gpt-4o-mini`

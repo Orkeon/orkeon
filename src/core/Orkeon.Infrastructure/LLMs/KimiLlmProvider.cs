@@ -34,7 +34,7 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
     /// K3), and the K2.6/K3 generation accepts image input. JSON mode guarantees well-formed
     /// output without validating a schema.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Toggle,

@@ -1016,9 +1016,29 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         // the two builders now serve overlapping cases (see ChatAsync's routing),
         // so an option present in one and absent from the other would appear or
         // vanish depending on how many messages the caller happened to send.
-        if (!string.IsNullOrWhiteSpace(effectiveConfig.GrammarGbnf))
-            payload["grammar"] = effectiveConfig.GrammarGbnf;
+        ApplyGrammarOption(payload, effectiveConfig.GrammarGbnf);
         ApplyProviderSpecificOptions(payload, effectiveConfig);
+    }
+
+    /// <summary>
+    /// Writes the top-level <c>grammar</c> field only when the endpoint takes one
+    /// (<see cref="LlmProviderCapabilities.GbnfGrammar"/>, switched on by <c>Llm:Grammar</c>):
+    /// llama.cpp-compatible servers — <c>llama-server</c>, Docker Model Runner — behind this
+    /// provider's <c>BaseUrl</c>. No vendor API documents the field, so anywhere else it is
+    /// dropped and reported. One writer for both payload builders, so the rule cannot drift.
+    /// </summary>
+    private void ApplyGrammarOption(Dictionary<string, object> payload, string? grammar)
+    {
+        if (string.IsNullOrWhiteSpace(grammar))
+            return;
+
+        if (!Capabilities.GbnfGrammar)
+        {
+            LogUnsupportedOption("grammar", ProviderDisplayName, GrammarRemedy);
+            return;
+        }
+
+        payload["grammar"] = grammar;
     }
 
     /// <summary>
@@ -1349,15 +1369,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             payload["stop"] = config.StopSequences;
         }
 
-        if (!string.IsNullOrWhiteSpace(config.GrammarGbnf))
-        {
-            // llama.cpp-compatible backends (llama-server, vLLM with grammar plugin,
-            // Ollama on /v1/chat/completions with grammar field) honour a top-level
-            // `grammar` string. Providers that ignore it return free-form output,
-            // which is caught by StructuredOutputResolver's JsonDocument.Parse safety check.
-            payload["grammar"] = config.GrammarGbnf;
-        }
-
+        ApplyGrammarOption(payload, config.GrammarGbnf);
         ApplyProviderSpecificOptions(payload, config);
 
         // Inject tools if available and strategy supports it

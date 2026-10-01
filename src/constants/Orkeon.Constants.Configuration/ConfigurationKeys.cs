@@ -66,6 +66,13 @@ public static class ConfigurationKeys
     public const string ThinkingSection = "Thinking";
 
     /// <summary>
+    /// The <c>Llm:Grammar</c> switch: <see langword="true"/> when the endpoint behind
+    /// <c>Llm:BaseUrl</c> honours a GBNF <c>grammar</c> field (a llama.cpp-compatible server).
+    /// Read by the REPL's bootstrapper and by the shared runner host; absent means false.
+    /// </summary>
+    public const string LlmGrammar = "Grammar";
+
+    /// <summary>
     /// The MCP section, at the configuration ROOT like <see cref="LlmSection"/>: the servers a
     /// machine declares (<c>MCP:Servers:&lt;id&gt;</c>), the switch (<c>MCP:Enabled</c>) and the
     /// optional outbound server (<c>MCP:Server</c>). Bound by the infrastructure, honoured by the

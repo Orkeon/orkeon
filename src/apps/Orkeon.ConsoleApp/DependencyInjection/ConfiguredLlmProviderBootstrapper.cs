@@ -72,6 +72,8 @@ internal static class ConfiguredLlmProviderBootstrapper
             TimeoutSeconds = section.GetValue("TimeoutSeconds", defaults.TimeoutSeconds),
             MaxRetries = Math.Max(0, section.GetValue("MaxRetries", defaults.MaxRetries)),
             Thinking = ReadThinkingConfig(section),
+            // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
+            GrammarEnabled = section.GetValue(ConfigurationKeys.LlmGrammar, defaults.GrammarEnabled),
         };
 #pragma warning restore CS0618
 

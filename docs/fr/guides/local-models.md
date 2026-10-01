@@ -69,6 +69,11 @@ orkeon-example run 1
   complet (`docker.io/ai/granite-4.0-h-tiny:latest`). Les settings Orkeon
   peuvent utiliser la forme courte (`ai/granite-4.0-h-tiny`) — le préflight du
   conteneur matche par sous-chaîne et le serveur accepte les deux.
+- **Grammaire** : les profils DMR posent `"Llm": { "Grammar": true }`, si bien
+  qu'un livrable `structured_output` atteint le moteur llama.cpp sous forme de
+  `grammar` GBNF. Un fichier de réglages à vous pointé sur DMR (ou
+  `llama-server`) la pose aussi ; sans elle la grammaire est abandonnée avec un
+  avertissement qui nomme la clé.
 
 ### Changer de modèle
 

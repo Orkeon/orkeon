@@ -11,12 +11,15 @@ namespace Orkeon.Application.Crew.Execution;
 /// <summary>
 /// Builds the per-call <see cref="ChatOptions"/> for the IChatClient path: resolves the
 /// agent's toolbelt (registry + agent-owned + auto-injected <c>human_input</c>), wires
-/// native function calling, attaches the structured-output GBNF grammar, and applies the
+/// native function calling, attaches the structured-output grammar and JSON schema, and applies the
 /// agent-level then task-level LLM overrides. Extracted verbatim from
 /// <see cref="ExecutionOrchestrator"/> (R4.1).
 /// </summary>
 internal sealed class ChatOptionsComposer
 {
+    /// <summary>The <c>json_schema.name</c> a deliverable schema travels under.</summary>
+    private const string StructuredOutputSchemaName = "structured_output";
+
     private readonly ILogger _logger;
     private readonly IEnumerable<Domain.Tools.IBaseTool>? _registeredTools;
     private readonly Domain.FileSystem.IFileSystemService _fileSystem;
@@ -199,11 +202,13 @@ internal sealed class ChatOptionsComposer
 
     /// <summary>
     /// When the task declares a <c>structured_output</c> deliverable with an inline or file-based
-    /// JSON schema, convert the schema to a GBNF grammar and stash it on
-    /// <see cref="ChatOptions.AdditionalProperties"/> under <c>orkeon:grammar_gbnf</c> so that the
-    /// adapter (Infrastructure) can forward it to the llama.cpp backend. Failures are logged and
-    /// swallowed — the LLM call still proceeds, and the resolver's JSON safety check catches any
-    /// drift.
+    /// JSON schema, stash two forms of it on <see cref="ChatOptions.AdditionalProperties"/>: a GBNF
+    /// grammar under <see cref="Common.DTOs.LlmChatOptionsKeys.GrammarGbnf"/>, for an endpoint
+    /// configured to take one (<c>Llm:Grammar</c>), and a <c>json_schema</c> response format under
+    /// <see cref="Common.DTOs.LlmChatOptionsKeys.StructuredOutput"/>, for a provider that declares
+    /// JSON Schema support. The adapter (Infrastructure) picks the one the provider honours.
+    /// Failures are logged and swallowed — the LLM call still proceeds, and the resolver's JSON
+    /// safety check catches any drift.
     /// </summary>
     private async System.Threading.Tasks.Task TryAttachStructuredOutputGrammarAsync(
         ChatOptions options, CrewTask task, CancellationToken cancellationToken)
@@ -218,7 +223,12 @@ internal sealed class ChatOptionsComposer
         {
             var grammar = JsonSchemaToGbnfConverter.Convert(schemaText!);
             options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
-            options.AdditionalProperties["orkeon:grammar_gbnf"] = grammar;
+            options.AdditionalProperties[Common.DTOs.LlmChatOptionsKeys.GrammarGbnf] = grammar;
+            // Not strict: OpenAI's strict mode refuses a schema that leaves an object open or a
+            // property optional, and a deliverable schema is the author's, not shaped for it.
+            options.AdditionalProperties[Common.DTOs.LlmChatOptionsKeys.StructuredOutput] =
+                Domain.SharedKernel.ValueObjects.LlmResponseFormat.JsonSchema(
+                    StructuredOutputSchemaName, schemaText!, strict: false);
         }
         catch (Exception ex) when (ex is ArgumentException or System.Text.Json.JsonException or InvalidOperationException)
         {

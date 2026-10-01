@@ -56,7 +56,7 @@ public class MammouthLlmProvider : OpenAICompatibleProviderBase
     /// <c>text, image</c> input for several models; per provider here, per model in reality
     /// (D-03 of the test matrix).
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.None,
         Thinking = ThinkingSupport.None,

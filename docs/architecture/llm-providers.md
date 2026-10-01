@@ -71,9 +71,14 @@ Every provider the factory builds is wrapped in `MeteredLlmProvider` (see
 ## Declared capabilities
 
 Every provider declares a `LlmProviderCapabilities` value object (Domain, exposed on
-`ILlmProvider`; the base defaults to `LlmProviderCapabilities.Unknown`): `ResponseFormat`
+`ILlmProvider`; a provider overrides `HttpLlmProviderBase.DeclaredCapabilities`, which defaults
+to `LlmProviderCapabilities.Unknown`): `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`),
 `Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`.
+One capability is not the vendor's to declare: `GbnfGrammar`, which no vendor API documents, is
+switched on by the configuration the provider is built with (`Llm:Grammar`,
+`LlmConfig.GrammarEnabled`) for a llama.cpp-compatible server behind the OpenAI-compatible
+providers or Ollama — `ILlmProvider.Capabilities` is the declaration plus that switch.
 `OpenAICompatibleProviderBase` translates the declaration into the OpenAI dialect once
 (vision payloads, `response_format`, thinking, the `CapabilityMismatchHint` diagnostics);
 Anthropic and Ollama write their own dialects, and Qwen overrides the hook for DashScope's
@@ -141,9 +146,8 @@ members, not through copies of the payload builder:
   captures every HTTP exchange (headers and payload, sanitized by `LogSanitizer`: credential
   headers redacted by name, secrets in bodies by pattern) as JSON Lines plus a structured
   log summary. `services.AddLlmExchangeLogging(logDirectory, options)` injects it into every
-  `IHttpClientFactory` client; the `IHttpClientBuilder` overload targets one named client,
-  and `AddLlmExchangeFileLogging(logDirectory)` keeps the JSONL capture without the console
-  summary. `LlmLoggingOptions`: `MaxBodyLengthChars` (0 = no truncation),
+  `IHttpClientFactory` client; the `IHttpClientBuilder` overload targets one named client.
+  `LlmLoggingOptions`: `MaxBodyLengthChars` (0 = no truncation),
   `LogStreamingExchanges` (true; a stream is captured as its request only),
   `FullEmbeddingLog` (true; false shortens embedding arrays to a preview). The runners switch
   it on with `--llm-log` / `--llm-log-path` and read the options from the `LlmLogging`

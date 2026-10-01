@@ -38,7 +38,7 @@ public class MistralLlmProvider : OpenAICompatibleProviderBase
     /// output schema, <c>reasoning_effort</c> on the reasoning models, and vision on the
     /// multimodal ones.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.EffortOnly,

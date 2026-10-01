@@ -56,7 +56,7 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
     /// Azure serves the OpenAI models through the OpenAI dialect, so it offers the same
     /// surface: Structured Outputs, a reasoning effort hint, and vision.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.EffortOnly,

@@ -10,7 +10,8 @@
     "ApiKey": "not-needed",
     "Temperature": 0.7,
     "MaxTokens": 4096,
-    "TimeoutSeconds": 120
+    "TimeoutSeconds": 120,
+    "Grammar": true
   },
   "RateLimiting": {
     "MaxConcurrentRequests": 1,

@@ -59,7 +59,11 @@ API-key shape; default `openai`. Keys: `Model`, `BaseUrl`, `ApiKey` (prefer
 `ORKEON_Llm__ApiKey` — the variable each provider's key conventionally lives in, and the three
 names confused with it, are in the
 [provider comparison](llm-providers-comparison.md#api-keys-the-variable-per-provider)), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (default 10), and
-`Thinking:{Enabled,Effort}` for thinking-capable providers. `TimeoutSeconds` defaults to 30 s,
+`Thinking:{Enabled,Effort}` for thinking-capable providers, and `Grammar` (default `false`):
+set it to `true` only when `BaseUrl` points at a llama.cpp-compatible server (Docker Model
+Runner, `llama-server`) — the one kind of endpoint that honours the GBNF `grammar` field a
+`structured_output` deliverable produces; elsewhere the grammar is dropped with a warning naming
+the key ([provider comparison](llm-providers-comparison.md)). `TimeoutSeconds` defaults to 30 s,
 too short for a model that thinks before it answers (Kimi K2.6, DeepSeek V4 and GLM do so by
 default): set 600 s, or turn thinking off with `Thinking:Enabled = false`. A call that hits the
 timeout is retried once, then fails its task with a message naming the setting — it is never
@@ -214,7 +218,7 @@ key-by-key table: [E-mail tools](../guides/email.md).
 
 | Section | Configures | Opt-in |
 |---|---|---|
-| `Orkeon:MultiModal` | Vision/content validation (`Enabled`, `MaxImageSizeBytes` 20 MB, `MaxImageDimension` 2048, `AutoResizeImages`, `SupportedImageFormats`, `SupportedAudioFormats`, `MaxAudioDurationSeconds`) | `AddOrkeonMultiModal(configuration)` |
+| `Orkeon:MultiModal` | Vision/content validation (`Enabled`, `MaxImageSizeBytes` 20 MB, `SupportedImageFormats`, `SupportedAudioFormats`, `MaxAudioDurationSeconds`) — no image is resized | `AddOrkeonMultiModal(configuration)` |
 
 ---
 

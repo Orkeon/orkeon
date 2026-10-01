@@ -99,39 +99,4 @@ public static class LlmLoggingExtensions
         ArgumentNullException.ThrowIfNull(builder);
         return builder.AddHttpMessageHandler<LlmLoggingDelegatingHandler>();
     }
-
-    /// <summary>
-    /// Registers only the JSON file logger (no structured console logging).
-    /// Useful when you want full capture without console noise.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="logDirectory">Directory for .jsonl exchange logs.</param>
-    /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddLlmExchangeFileLogging(
-        this IServiceCollection services,
-        string logDirectory)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentException.ThrowIfNullOrWhiteSpace(logDirectory);
-
-        services.TryAddSingleton<ILlmExchangeLogger>(sp =>
-            // The privileged view: /llm-logs is an Internal mount and the plain
-            // IFileSystemService no longer resolves it — that is the whole point.
-            new LlmExchangeJsonLogger(
-                sp.GetService<PrivilegedFileSystemAccess>()?.FileSystem ?? sp.GetRequiredService<IFileSystemService>(),
-                logDirectory,
-                sp.GetRequiredService<ILogger<LlmExchangeJsonLogger>>()));
-
-        services.AddTransient<LlmLoggingDelegatingHandler>(sp =>
-            new LlmLoggingDelegatingHandler(
-                sp.GetRequiredService<ILlmExchangeLogger>(),
-                sp.GetRequiredService<ILogger<LlmLoggingDelegatingHandler>>()));
-
-        services.ConfigureHttpClientDefaults(builder =>
-        {
-            builder.AddHttpMessageHandler<LlmLoggingDelegatingHandler>();
-        });
-
-        return services;
-    }
 }

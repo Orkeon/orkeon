@@ -61,11 +61,37 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     public abstract string Name { get; }
 
     /// <summary>
-    /// What this provider's API supports. Overridden by each concrete provider; a provider
-    /// that declares nothing is assumed to support nothing, so no cross-cutting option is
-    /// written to the wire on its behalf.
+    /// What this provider's API supports: its <see cref="DeclaredCapabilities"/>, plus
+    /// <see cref="LlmProviderCapabilities.GbnfGrammar"/>, which no vendor declares and the
+    /// configuration the provider was built with switches on (<c>Llm:Grammar</c>,
+    /// <see cref="LlmConfig.GrammarEnabled"/>) where <see cref="CanCarryGrammar"/> allows it.
     /// </summary>
-    public virtual LlmProviderCapabilities Capabilities => LlmProviderCapabilities.Unknown;
+    public LlmProviderCapabilities Capabilities =>
+        _capabilities ??= DeclaredCapabilities with { GbnfGrammar = CanCarryGrammar && Config.GrammarEnabled };
+
+    private LlmProviderCapabilities? _capabilities;
+
+    /// <summary>
+    /// What this provider's API supports, as the vendor documents it. Overridden by each
+    /// concrete provider; a provider that declares nothing is assumed to support nothing, so no
+    /// cross-cutting option is written to the wire on its behalf.
+    /// </summary>
+    protected virtual LlmProviderCapabilities DeclaredCapabilities => LlmProviderCapabilities.Unknown;
+
+    /// <summary>
+    /// Whether this provider's request body has room for a top-level <c>grammar</c> field, so
+    /// that <c>Llm:Grammar</c> can turn the capability on. True for the OpenAI-compatible family
+    /// and Ollama, whose endpoints a llama.cpp server can stand in for; a provider whose wire
+    /// format is the vendor's own (Anthropic) returns <see langword="false"/>.
+    /// </summary>
+    protected virtual bool CanCarryGrammar => true;
+
+    /// <summary>
+    /// The remedy every provider gives when it drops a GBNF grammar: the key to set when the
+    /// endpoint does take one, and the guarantee that remains when it does not.
+    /// </summary>
+    internal const string GrammarRemedy =
+        "No vendor API documents a GBNF grammar field; set Llm:Grammar to true only when the endpoint is a llama.cpp-compatible server (llama-server, Docker Model Runner). A structured_output deliverable is still checked as JSON";
 
     /// <summary>Initializes a new instance of <see cref="HttpLlmProviderBase"/>.</summary>
     /// <param name="config">The LLM configuration.</param>

@@ -63,7 +63,7 @@ public class OpenRouterLlmProvider : OpenAICompatibleProviderBase
     /// per-provider declaration (D-03 of the test matrix). The trace is not replayed and no
     /// explicit cache breakpoint exists on this dialect.
     /// </summary>
-    public override LlmProviderCapabilities Capabilities { get; } = new()
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.Budget,

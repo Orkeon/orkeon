@@ -74,9 +74,109 @@ public class AdapterResponseFormatTests
         Assert.Equal("json_object", capturingProvider.LastConfig!.ResponseFormat!.Type);
     }
 
+    // ── structured_output: grammar or json_schema, by capability (GAP-14) ──
+
+    private const string DeliverableSchema = """{"type":"object","properties":{"name":{"type":"string"}}}""";
+    private const string DeliverableGrammar = "root ::= \"{}\"";
+
+    private static ChatOptions StructuredOutputOptions() => new()
+    {
+        AdditionalProperties = new AdditionalPropertiesDictionary
+        {
+            [LlmChatOptionsKeys.GrammarGbnf] = DeliverableGrammar,
+            [LlmChatOptionsKeys.StructuredOutput] = LlmResponseFormat.JsonSchema("structured_output", DeliverableSchema, strict: false),
+        },
+    };
+
+    /// <summary>
+    /// A cloud provider that takes a JSON Schema gets the deliverable's schema as
+    /// <c>response_format: json_schema</c> instead of a grammar it cannot honour.
+    /// </summary>
+    [Fact]
+    public async Task StructuredOutput_TravelsAsJsonSchema_OnAProviderThatDeclaresIt()
+    {
+        var provider = new CapturingLlmProvider
+        {
+            Capabilities = new LlmProviderCapabilities { ResponseFormat = ResponseFormatSupport.JsonSchema },
+        };
+        using var adapter = new LlmProviderToChatClientAdapter(provider, LlmConfig.Create("gpt-test"));
+
+        await adapter.GetResponseAsync(
+            new[] { new ChatMessage(ChatRole.User, "hello") }, StructuredOutputOptions(), CancellationToken.None);
+
+        var format = provider.LastConfig!.ResponseFormat!;
+        Assert.Equal("json_schema", format.Type);
+        Assert.Equal(DeliverableSchema, format.Schema!.Schema);
+        Assert.Null(provider.LastConfig.GrammarGbnf);
+    }
+
+    /// <summary>
+    /// <c>llama-server</c> refuses a request carrying both a grammar and a JSON Schema: an
+    /// endpoint configured for the grammar gets the grammar alone.
+    /// </summary>
+    [Fact]
+    public async Task StructuredOutput_TravelsAsGrammar_WhenTheEndpointTakesOne()
+    {
+        var provider = new CapturingLlmProvider
+        {
+            Capabilities = new LlmProviderCapabilities
+            {
+                ResponseFormat = ResponseFormatSupport.JsonSchema,
+                GbnfGrammar = true,
+            },
+        };
+        using var adapter = new LlmProviderToChatClientAdapter(provider, LlmConfig.Create("local-model"));
+
+        await adapter.GetResponseAsync(
+            new[] { new ChatMessage(ChatRole.User, "hello") }, StructuredOutputOptions(), CancellationToken.None);
+
+        Assert.Equal(DeliverableGrammar, provider.LastConfig!.GrammarGbnf);
+        Assert.Null(provider.LastConfig.ResponseFormat);
+    }
+
+    /// <summary>
+    /// Without a schema format to fall back on, the grammar is handed to the provider, whose
+    /// payload builder drops it with a warning naming <c>Llm:Grammar</c>.
+    /// </summary>
+    [Fact]
+    public async Task StructuredOutput_KeepsTheGrammar_WhenNoSchemaFormatIsDeclared()
+    {
+        var provider = new CapturingLlmProvider
+        {
+            Capabilities = new LlmProviderCapabilities { ResponseFormat = ResponseFormatSupport.JsonObject },
+        };
+        using var adapter = new LlmProviderToChatClientAdapter(provider, LlmConfig.Create("json-object-only"));
+
+        await adapter.GetResponseAsync(
+            new[] { new ChatMessage(ChatRole.User, "hello") }, StructuredOutputOptions(), CancellationToken.None);
+
+        Assert.Equal(DeliverableGrammar, provider.LastConfig!.GrammarGbnf);
+        Assert.Null(provider.LastConfig.ResponseFormat);
+    }
+
+    /// <summary>A response format the crew set itself wins over the deliverable's schema.</summary>
+    [Fact]
+    public async Task StructuredOutput_NeverOverridesAnExplicitResponseFormat()
+    {
+        var provider = new CapturingLlmProvider
+        {
+            Capabilities = new LlmProviderCapabilities { ResponseFormat = ResponseFormatSupport.JsonSchema },
+        };
+        using var adapter = new LlmProviderToChatClientAdapter(provider, LlmConfig.Create("gpt-test"));
+        var options = StructuredOutputOptions();
+        options.AdditionalProperties![LlmChatOptionsKeys.ResponseFormat] = LlmResponseFormat.JsonObject();
+
+        await adapter.GetResponseAsync(
+            new[] { new ChatMessage(ChatRole.User, "hello") }, options, CancellationToken.None);
+
+        Assert.Equal("json_object", provider.LastConfig!.ResponseFormat!.Type);
+    }
+
     private sealed class CapturingLlmProvider : ILlmProvider
     {
         public LlmConfig? LastConfig { get; private set; }
+
+        public LlmProviderCapabilities Capabilities { get; init; } = LlmProviderCapabilities.Unknown;
 
         public string Name => "capturing";
 

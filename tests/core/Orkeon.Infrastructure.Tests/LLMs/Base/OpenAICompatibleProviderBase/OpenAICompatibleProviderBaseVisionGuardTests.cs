@@ -18,7 +18,7 @@ public sealed class TextOnlyProvider : OpenAICompatibleProviderBase
     protected override string DefaultModel => TestModelName;
     protected override string ProviderDisplayName => "TextOnly";
 
-    public override LlmProviderCapabilities Capabilities { get; } = new() { Vision = false };
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new() { Vision = false };
 
     public TextOnlyProvider(
         LlmConfig config, IHttpClientFactory httpClientFactory,
@@ -36,7 +36,7 @@ public sealed class VisionClaimingProvider : OpenAICompatibleProviderBase
     protected override string DefaultModel => TestModelName;
     protected override string ProviderDisplayName => "VisionClaiming";
 
-    public override LlmProviderCapabilities Capabilities { get; } = new() { Vision = true };
+    protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new() { Vision = true };
 
     public VisionClaimingProvider(
         LlmConfig config, IHttpClientFactory httpClientFactory,
