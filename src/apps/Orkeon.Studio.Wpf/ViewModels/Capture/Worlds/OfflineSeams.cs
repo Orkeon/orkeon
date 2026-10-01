@@ -76,8 +76,15 @@ internal sealed class EphemeralApiKeyStore : IApiKeyStore
     public string? Peek(string envName) =>
         _keys.TryGetValue(envName, out var value) ? value : null;
 
+    /// <summary>Seeds a key of the campaign's world.</summary>
+    public void Put(string envName, string value) => _keys[envName] = value;
+
     /// <inheritdoc />
-    public void Save(string envName, string value) => _keys[envName] = value;
+    public Task SaveAsync(string envName, string value)
+    {
+        Put(envName, value.Trim());
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>

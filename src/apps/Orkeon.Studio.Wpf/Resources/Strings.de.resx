@@ -1167,6 +1167,9 @@
   <data name="Studio.Settings.KeyStatusMissing" xml:space="preserve">
     <value>kein Schlüssel erkannt</value>
   </data>
+  <data name="Studio.Settings.KeyPersistFailed" xml:space="preserve">
+    <value>Der Schlüssel gilt für diese Sitzung, aber Windows hat ihn für die nächsten nicht gespeichert: {0}</value>
+  </data>
   <data name="Studio.Settings.KeyNoKeyYet" xml:space="preserve">
     <value>Noch kein Schlüssel?</value>
   </data>

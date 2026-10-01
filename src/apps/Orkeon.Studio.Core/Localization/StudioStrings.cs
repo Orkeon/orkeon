@@ -1123,6 +1123,9 @@ public static class StudioStringKeys
     /// <summary>"no key detected"</summary>
     public const string ProfileKeyStatusMissing = "Studio.Settings.KeyStatusMissing";
 
+    /// <summary>"The key is in place for this session, but Windows did not keep it for the next ones: {0}" (STUDIO-44)</summary>
+    public const string ProfileKeyPersistFailed = "Studio.Settings.KeyPersistFailed";
+
     /// <summary>"unlimited" — the watermark of a budget whose engine default is 0, meaning no bound (STUDIO-22).</summary>
     public const string SettingsUnlimited = "Studio.Settings.Unlimited";
 
@@ -2338,6 +2341,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileKeyStore] = "Remember the key",
         [StudioStringKeys.ProfileKeyStatusSet] = "key remembered",
         [StudioStringKeys.ProfileKeyStatusMissing] = "no key detected",
+        [StudioStringKeys.ProfileKeyPersistFailed] = "The key is in place for this session, but Windows did not keep it for the next ones: {0}",
         [StudioStringKeys.SettingsUnlimited] = "unlimited",
         [StudioStringKeys.ToolFamilyWeb] = "Web",
         [StudioStringKeys.ToolFamilySearch] = "Search and knowledge",

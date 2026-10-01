@@ -419,6 +419,7 @@
   <data name="Studio.Settings.KeyStore" xml:space="preserve"><value>Remember the key</value></data>
   <data name="Studio.Settings.KeyStatusSet" xml:space="preserve"><value>key remembered</value></data>
   <data name="Studio.Settings.KeyStatusMissing" xml:space="preserve"><value>no key detected</value></data>
+  <data name="Studio.Settings.KeyPersistFailed" xml:space="preserve"><value>The key is in place for this session, but Windows did not keep it for the next ones: {0}</value></data>
   <data name="Studio.Settings.KeyNoKeyYet" xml:space="preserve"><value>No key yet?</value></data>
   <data name="Studio.Settings.KeyOnVendorSite" xml:space="preserve"><value>on the provider's site</value></data>
   <data name="Studio.Settings.KeyExpertHint" xml:space="preserve"><value>setx ORKEON_Llm__ApiKey &quot;sk-…&quot; — read natively by the runtime, wins over any file</value></data>

@@ -907,6 +907,11 @@
                                ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
                                views:PasswordBinding.Text="{Binding ApiKeyInput}"/>
                 </DockPanel>
+                <!-- STUDIO-44: the key is in place for the session even when the user scope refused
+                     it; the line says so, and why, instead of a click that seems to do nothing. -->
+                <TextBlock FontSize="11.5" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                           Margin="0,7,0,0" Text="{Binding KeyStoreError}"
+                           Visibility="{Binding KeyStoreError, Converter={StaticResource StringPresentToVisibility}}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                   <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}"
                              Text="{Binding [Studio.Settings.KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>

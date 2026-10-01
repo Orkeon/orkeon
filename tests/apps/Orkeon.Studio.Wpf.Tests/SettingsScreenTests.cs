@@ -22,7 +22,7 @@ public sealed class SettingsScreenTests
         Build(new FakeApiKeyStore(), new FakeLlmEndpointProbe());
 
     private static (ModelProfilesViewModel Profiles, LlmSectionViewModel Llm, InMemoryModelProfileStore Store, AppSettingsDocument Document) Build(
-        FakeApiKeyStore keyStore, FakeLlmEndpointProbe probe)
+        IApiKeyStore keyStore, FakeLlmEndpointProbe probe)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
@@ -157,7 +157,7 @@ public sealed class SettingsScreenTests
     public async Task The_connection_test_carries_the_profiles_model_thinking_and_a_bounded_deadline()
     {
         var keyStore = new FakeApiKeyStore();
-        keyStore.Save("ZAI_API_KEY", "sk-zai");
+        keyStore.Stage("ZAI_API_KEY", "sk-zai");
         var probe = new FakeLlmEndpointProbe();
         var (profiles, _, _, _) = Build(keyStore, probe);
         profiles.BeginEdit(Zai(thinking: false));
@@ -205,7 +205,7 @@ public sealed class SettingsScreenTests
     public async Task Going_back_from_disabled_to_the_providers_default_shows_without_reopening_the_editor()
     {
         var keyStore = new FakeApiKeyStore();
-        keyStore.Save("ZAI_API_KEY", "sk-zai");
+        keyStore.Stage("ZAI_API_KEY", "sk-zai");
         var (profiles, _, _, _) = Build(keyStore, new FakeLlmEndpointProbe());
         profiles.BeginEdit(Zai(thinking: false));
         var editor = profiles.Editor!;
@@ -664,7 +664,7 @@ public sealed class SettingsScreenTests
         Assert.False(string.IsNullOrEmpty(editor.ConnectionTestResult));
 
         editor.ApiKeyInput = "sk-now";
-        editor.StoreKeyCommand.Execute(null);
+        await editor.StoreKeyCommand.ExecuteAsync();
         await editor.TestConnectionAsync(CancellationToken.None);
         Assert.Equal("sk-now", probe.LastRequest.ApiKey);
     }
@@ -692,6 +692,115 @@ public sealed class SettingsScreenTests
         Assert.False(editor.RequiresApiKey);
         Assert.False(editor.ShowTestRow);
         Assert.True(editor.CanSave);
+    }
+
+    // ── STUDIO-44: a remembered key is recognised, and a failed write shows ──
+
+    /// <summary>The Z.AI profile as its card saves it: the provider named by the card's title.</summary>
+    private static ModelProfile ZaiCard() => Zai(thinking: null) with { Provider = "Z.AI (GLM)" };
+
+    [Fact]
+    public async Task A_key_remembered_once_is_recognised_after_saving_and_reopening_even_from_an_older_parent()
+    {
+        var environment = new FakeEnvironmentVariables();
+        var (profiles, _, _, _) = Build(new EnvironmentApiKeyStore(environment), new FakeLlmEndpointProbe());
+        profiles.BeginEdit(ZaiCard());
+        var editor = profiles.Editor!;
+        Assert.False(editor.HasStoredKey);
+
+        // Remember the key, save the setting, close the editor.
+        editor.ApiKeyInput = "sk-zai";
+        await editor.StoreKeyAsync();
+        Assert.True(editor.HasStoredKey);
+        editor.SaveCommand.Execute(null);
+        Assert.Null(profiles.Editor);
+
+        // Studio relaunched from a terminal opened before the key: only the user scope holds it.
+        environment.Process.Clear();
+        profiles.BeginEdit(profiles.Set.Profiles.Single(p => p.Name == "Z.AI"));
+
+        Assert.True(profiles.Editor!.HasStoredKey);
+        Assert.Equal("key remembered", profiles.Editor.KeyStatusText);
+        Assert.Equal("sk-zai", environment.Process["ZAI_API_KEY"]);
+    }
+
+    [Fact]
+    public async Task A_failed_persistent_write_keeps_the_key_for_the_session_and_says_so()
+    {
+        var keyStore = new FakeApiKeyStore { PersistFailure = new UnauthorizedAccessException("HKCU is read-only") };
+        var (profiles, _, _, _) = Build(keyStore, new FakeLlmEndpointProbe());
+        profiles.BeginEdit(ZaiCard());
+        var editor = profiles.Editor!;
+        var changed = new List<string?>();
+        editor.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        editor.ApiKeyInput = "sk-zai";
+        await editor.StoreKeyAsync();
+
+        Assert.True(editor.HasStoredKey);
+        Assert.Equal("key remembered", editor.KeyStatusText);
+        Assert.Equal("", editor.ApiKeyInput);
+        Assert.NotNull(editor.KeyStoreError);
+        Assert.Contains("this session", editor.KeyStoreError, StringComparison.Ordinal);
+        Assert.Contains("HKCU is read-only", editor.KeyStoreError, StringComparison.Ordinal);
+        Assert.Contains(nameof(ModelProfileEditorViewModel.HasStoredKey), changed);
+        Assert.Contains(nameof(ModelProfileEditorViewModel.KeyStatusText), changed);
+        Assert.Contains(nameof(ModelProfileEditorViewModel.KeyStoreError), changed);
+    }
+
+    [Fact]
+    public async Task A_successful_remember_clears_the_previous_failure()
+    {
+        var keyStore = new FakeApiKeyStore { PersistFailure = new InvalidOperationException("broadcast failed") };
+        var (profiles, _, _, _) = Build(keyStore, new FakeLlmEndpointProbe());
+        profiles.BeginEdit(ZaiCard());
+        var editor = profiles.Editor!;
+        editor.ApiKeyInput = "sk-1";
+        await editor.StoreKeyAsync();
+        Assert.NotNull(editor.KeyStoreError);
+
+        keyStore.PersistFailure = null;
+        editor.ApiKeyInput = "sk-2";
+        await editor.StoreKeyAsync();
+
+        Assert.Null(editor.KeyStoreError);
+        Assert.Equal("sk-2", keyStore.Saved["ZAI_API_KEY"]);
+    }
+
+    [Fact]
+    public void A_key_pasted_and_saved_with_the_profile_that_is_not_kept_is_said_on_the_list()
+    {
+        var keyStore = new FakeApiKeyStore { PersistFailure = new UnauthorizedAccessException("HKCU is read-only") };
+        var (profiles, _, _, _) = Build(keyStore, new FakeLlmEndpointProbe());
+        profiles.BeginEdit(ZaiCard());
+        profiles.Editor!.ApiKeyInput = "sk-zai";
+
+        profiles.Editor.SaveCommand.Execute(null);
+
+        Assert.Null(profiles.Editor);
+        Assert.Equal("sk-zai", keyStore.Saved["ZAI_API_KEY"]);
+        Assert.True(profiles.HasKeyStoreError);
+        Assert.Contains("HKCU is read-only", profiles.KeyStoreError, StringComparison.Ordinal);
+
+        // Opening an editor again starts from a clean slate.
+        profiles.BeginEdit(profiles.Set.Profiles.Single(p => p.Name == "Z.AI"));
+        Assert.False(profiles.HasKeyStoreError);
+    }
+
+    [Fact]
+    public void A_launch_under_a_profile_carries_the_key_held_only_in_the_user_scope()
+    {
+        // The run launcher and the assistant lay the profile over the child as ORKEON_Llm__*:
+        // the key is resolved through the store, so a key only HKCU holds still reaches the child.
+        var environment = new FakeEnvironmentVariables();
+        environment.User["ZAI_API_KEY"] = "sk-zai";
+        var (profiles, _, _, _) = Build(new EnvironmentApiKeyStore(environment), new FakeLlmEndpointProbe());
+
+        var overrides = profiles.LaunchEnvironmentOf(Zai(thinking: null));
+
+        Assert.Equal("sk-zai", overrides["ORKEON_Llm__ApiKey"]);
+        Assert.Equal("glm-5.2", overrides["ORKEON_Llm__Model"]);
+        Assert.Equal("sk-zai", environment.Process["ZAI_API_KEY"]);
     }
 
 }
@@ -769,13 +878,6 @@ public sealed class SettingsRemediationTests
 /// <summary>The settings screen's API-keys card: env-var rows, remember flow, no file ever.</summary>
 public sealed class SecretsCardTests
 {
-    private sealed class RecordingKeyStore : IApiKeyStore
-    {
-        public Dictionary<string, string> Saved { get; } = new(StringComparer.Ordinal);
-        public string? Peek(string envName) => Saved.TryGetValue(envName, out var v) ? v : null;
-        public void Save(string envName, string value) => Saved[envName] = value;
-    }
-
     [Fact]
     public async Task One_row_per_distinct_key_variable_and_storing_wipes_the_field()
     {
@@ -791,7 +893,7 @@ public sealed class SecretsCardTests
             DefaultProfile = "Local",
         }, TestContext.Current.CancellationToken);
 
-        var keys = new RecordingKeyStore();
+        var keys = new FakeApiKeyStore();
         var config = new ConfigTabViewModel(new StudioServices
         {
             SettingsStore = new FakeAppSettingsStore(),
@@ -808,11 +910,30 @@ public sealed class SecretsCardTests
 
         row.KeyInput = "  sk-test-123  ";
         Assert.True(row.StoreCommand.CanExecute(null));
-        row.StoreCommand.Execute(null);
+        await row.StoreCommand.ExecuteAsync();
 
         Assert.Equal("sk-test-123", keys.Saved["DEEPSEEK_API_KEY"]);
         Assert.Equal("", row.KeyInput);   // the pasted key does not linger on screen
         Assert.True(row.HasKey);
+    }
+
+    [Fact]
+    public async Task A_row_whose_persistent_write_fails_keeps_the_key_and_says_so()
+    {
+        var keys = new FakeApiKeyStore { PersistFailure = new UnauthorizedAccessException("HKCU is read-only") };
+        var row = new SecretRowViewModel("DEEPSEEK_API_KEY", "DeepSeek", keys, Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance);
+        var changed = new List<string?>();
+        row.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        row.KeyInput = "sk-test";
+        await row.StoreAsync();
+
+        Assert.True(row.HasKey);
+        Assert.Equal("", row.KeyInput);
+        Assert.NotNull(row.StoreError);
+        Assert.Contains("HKCU is read-only", row.StoreError, StringComparison.Ordinal);
+        Assert.Contains(nameof(SecretRowViewModel.StoreError), changed);
+        Assert.Contains(nameof(SecretRowViewModel.HasKey), changed);
     }
 }
 

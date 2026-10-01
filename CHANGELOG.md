@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a remembered API key is recognised by Studio the first time, and a failed write shows
+
+« Remember the key », then « Save », then back to the profile: the screen said « no key detected »
+and the gesture had to be repeated (STUDIO-44). The key was in the user scope (`HKCU\Environment`),
+but Studio read only its own process environment — stale whenever Studio was started by a
+terminal, an IDE or a launcher older than the key; and a user-scope write that threw left the
+process unwritten, with the error swallowed.
+
+- **Read: the process, then the user scope.** `EnvironmentApiKeyStore.Peek` falls back to the user
+  scope and copies a key found there into the process, so every child Studio spawns inherits it.
+- **Write: the process first, the user scope off the interface thread.** `IApiKeyStore.Save` is now
+  `SaveAsync`: the key is in place for the session when it returns, and the task faults if the
+  user scope refuses it. The editor, the key row and the profile list say so, in the five
+  languages (`Studio.Settings.KeyPersistFailed`); the session keeps its key.
+- **Launches resolve the key through the store.** A team run and the creation assistant lay
+  `ORKEON_Llm__ApiKey` from `ModelProfilesViewModel.LaunchEnvironmentOf`, no longer from Studio's
+  process block alone.
+- The scope access sits behind a new port, `IEnvironmentVariables` (`SystemEnvironmentVariables`).
+
 ### Fixed — Studio's connection test waits 30 s, exercises the profile, and says why it failed
 
 The « Test connection » button of a model profile gave up after 5 s with « no answer within 5s »,

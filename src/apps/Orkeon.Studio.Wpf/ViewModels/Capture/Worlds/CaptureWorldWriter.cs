@@ -117,7 +117,7 @@ internal static class CaptureWorldWriter
         };
 
         foreach (var (variable, key) in plan.ApiKeys)
-            world.KeyStore.Save(variable, key);
+            world.KeyStore.Put(variable, key);
 
         return world;
     }

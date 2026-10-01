@@ -1167,6 +1167,9 @@
   <data name="Studio.Settings.KeyStatusMissing" xml:space="preserve">
     <value>未检测到密钥</value>
   </data>
+  <data name="Studio.Settings.KeyPersistFailed" xml:space="preserve">
+    <value>密钥已在本次会话中生效，但 Windows 未能为之后的会话保存它：{0}</value>
+  </data>
   <data name="Studio.Settings.KeyNoKeyYet" xml:space="preserve">
     <value>还没有密钥？</value>
   </data>

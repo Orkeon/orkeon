@@ -2795,8 +2795,9 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     private IReadOnlyDictionary<string, string> AssistantEnvironment() =>
-        Profiles.Set.Studio?.EnvironmentOverrides(Environment.GetEnvironmentVariable)
-        ?? new Dictionary<string, string>(StringComparer.Ordinal);
+        Profiles.Set.Studio is { } studio
+            ? Profiles.LaunchEnvironmentOf(studio)
+            : new Dictionary<string, string>(StringComparer.Ordinal);
 
     [SuppressMessage("Design", "CA1031",
         Justification = "The launch's own fault barrier (STUDIO-13): an exception here used to reach " +

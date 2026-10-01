@@ -11,6 +11,13 @@ public sealed class FakeApiKeyStore : IApiKeyStore
     /// <inheritdoc />
     public string? Peek(string envName) => Values.GetValueOrDefault(envName);
 
+    /// <summary>Stages a key, as a test's arrange step.</summary>
+    public void Stage(string envName, string value) => Values[envName] = value;
+
     /// <inheritdoc />
-    public void Save(string envName, string value) => Values[envName] = value;
+    public Task SaveAsync(string envName, string value)
+    {
+        Stage(envName, value);
+        return Task.CompletedTask;
+    }
 }

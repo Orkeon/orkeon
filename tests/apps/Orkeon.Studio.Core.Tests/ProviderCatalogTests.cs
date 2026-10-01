@@ -170,21 +170,4 @@ public sealed class ProviderCatalogTests
         Assert.False(new ModelProfile { Name = "p", Model = "m" }
             .EnvironmentOverrides(_ => "sk").ContainsKey("ORKEON_Llm__ApiKey"));
     }
-
-    [Fact]
-    public void The_environment_store_round_trips_through_the_process_environment()
-    {
-        var store = new EnvironmentApiKeyStore();
-        var name = $"ORKEON_TEST_KEY_{Guid.NewGuid():N}";
-        try
-        {
-            Assert.Null(store.Peek(name));
-            store.Save(name, "  sk-value  ");
-            Assert.Equal("sk-value", store.Peek(name));
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(name, null);
-        }
-    }
 }

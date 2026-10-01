@@ -1167,6 +1167,9 @@
   <data name="Studio.Settings.KeyStatusMissing" xml:space="preserve">
     <value>ninguna clave detectada</value>
   </data>
+  <data name="Studio.Settings.KeyPersistFailed" xml:space="preserve">
+    <value>La clave está disponible en esta sesión, pero Windows no la ha guardado para las siguientes: {0}</value>
+  </data>
   <data name="Studio.Settings.KeyNoKeyYet" xml:space="preserve">
     <value>¿Aún sin clave?</value>
   </data>

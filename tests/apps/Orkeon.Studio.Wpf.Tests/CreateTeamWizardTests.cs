@@ -1,6 +1,7 @@
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
@@ -31,15 +32,22 @@ public partial class CreateTeamWizardTests
         bool cliInstalled = true,
         Orkeon.Studio.Wpf.ViewModels.Mvvm.IShellOpener? shellOpener = null,
         Orkeon.Studio.Wpf.ViewModels.Mvvm.IUiDispatcher? dispatcher = null,
-        string? workspace = null)
+        string? workspace = null,
+        IApiKeyStore? keyStore = null,
+        string? assistantKeyEnvName = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
-        var profiles = new ModelProfilesViewModel(new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe());
+        var profiles = new ModelProfilesViewModel(
+            new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe(), keyStore: keyStore);
         if (withAssistant)
         {
             profiles.CommitEdit(
-                new ModelProfile { Name = "Local", Provider = "Ollama", Model = "qwen2.5:14b", BaseUrl = "http://localhost:11434/v1" },
+                new ModelProfile
+                {
+                    Name = "Local", Provider = "Ollama", Model = "qwen2.5:14b", BaseUrl = "http://localhost:11434/v1",
+                    KeyEnvName = assistantKeyEnvName,
+                },
                 previousName: null);
             profiles.StudioProfileName = "Local";
         }
@@ -79,6 +87,23 @@ public partial class CreateTeamWizardTests
         vm.FrequencyChoices[1].SelectCommand.Execute(null);   // every day
         vm.SourceChoices[0].SelectCommand.Execute(null);      // a folder
         vm.OutputChoices[0].SelectCommand.Execute(null);      // a document
+    }
+
+    [Fact]
+    public async Task The_assistant_runs_with_the_key_its_profile_names_as_the_key_store_resolves_it()
+    {
+        // STUDIO-44: the key is resolved through the store (process, then user scope), not from
+        // Studio's own process block alone — a key only HKCU holds still reaches the child.
+        var keys = new FakeApiKeyStore();
+        keys.Stage("ASSISTANT_TEST_API_KEY", "sk-assistant");
+        var (vm, processes, _) = Build(keyStore: keys, assistantKeyEnvName: "ASSISTANT_TEST_API_KEY");
+        processes.OutputToEmit.Add(
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
+
+        FillStepOne(vm);
+        await Compose(vm);
+
+        Assert.Equal("sk-assistant", processes.LastRequest!.Environment["ORKEON_Llm__ApiKey"]);
     }
 
     [Fact]

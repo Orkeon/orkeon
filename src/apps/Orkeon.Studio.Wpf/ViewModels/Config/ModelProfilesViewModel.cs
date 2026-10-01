@@ -141,6 +141,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string? _apiKeyEnv;
     private string _apiKeyInput = "";
     private string? _connectionTestResult;
+    private string? _keyStoreError;
     private bool _isTestingConnection;
     private int _settingsGeneration;
     private string _temperatureText = "";
@@ -196,7 +197,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         SelectProviderCommand = new RelayCommand(p => SelectedProvider = p as LlmPresetInfo);
         TestConnectionCommand = new AsyncRelayCommand(
             () => TestConnectionAsync(CancellationToken.None), () => !_isTestingConnection);
-        StoreKeyCommand = new RelayCommand(StoreKey, () => _apiKeyInput.Trim().Length > 0);
+        StoreKeyCommand = new AsyncRelayCommand(StoreKeyAsync, () => _apiKeyInput.Trim().Length > 0);
         ReadBalanceCommand = new AsyncRelayCommand(() => ReadBalanceAsync(CancellationToken.None));
         OpenBalanceConsoleCommand = new RelayCommand(
             () => _opener?.Open(_balanceReading!.ConsoleUrl!.AbsoluteUri),
@@ -380,6 +381,16 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>True when a key is already in place under the profile's variable.</summary>
     public bool HasStoredKey => _keyStore.Peek(ApiKeyEnvName) is not null;
 
+    /// <summary>
+    /// Why the last remembered key was not kept for the next sessions (STUDIO-44): the key is in
+    /// place for this one all the same. Null when the last write went through.
+    /// </summary>
+    public string? KeyStoreError
+    {
+        get => _keyStoreError;
+        private set => SetProperty(ref _keyStoreError, value);
+    }
+
     /// <summary>Status chip of the key block: remembered, or not detected yet.</summary>
     public string KeyStatusText =>
         _strings[HasStoredKey ? StudioStringKeys.ProfileKeyStatusSet : StudioStringKeys.ProfileKeyStatusMissing];
@@ -459,7 +470,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     public AsyncRelayCommand TestConnectionCommand { get; }
 
     /// <summary>The remember-the-key action — stores the draft under the profile's variable, now.</summary>
-    public RelayCommand StoreKeyCommand { get; }
+    public AsyncRelayCommand StoreKeyCommand { get; }
 
     /// <summary>Reads the balance of the account behind the endpoint and the key (STUDIO-35 D-04).</summary>
     public AsyncRelayCommand ReadBalanceCommand { get; }
@@ -467,16 +478,45 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>Opens the vendor's console, where a balance no inference key reads is shown.</summary>
     public RelayCommand OpenBalanceConsoleCommand { get; }
 
-    private void StoreKey()
+    /// <summary>
+    /// Remembers the pasted key under the profile's variable (STUDIO-44): in place for the
+    /// session as soon as this starts, kept for the next sessions off the interface thread, and
+    /// a failure of that second half shown in the editor. Public so tests can await it.
+    /// </summary>
+    public Task StoreKeyAsync() => StoreKeyCoreAsync(editorClosing: false);
+
+    [SuppressMessage("Design", "CA1031",
+        Justification = "Whatever the user scope throws (access denied, a failed broadcast), the key is " +
+                        "already in place for the session: the reason belongs on a line of the screen, " +
+                        "not in the command's fault handler.")]
+    private async Task StoreKeyCoreAsync(bool editorClosing)
     {
         if (_apiKeyInput.Trim() is not { Length: > 0 } pastedKey)
             return;
 
-        // The key goes into the user environment under the profile's variable —
-        // never into the profile store nor any settings file.
-        _keyStore.Save(ApiKeyEnvName, pastedKey);
+        // The key goes into the environment under the profile's variable — never into the
+        // profile store nor any settings file. The process half is written before this returns.
+        var persisted = _keyStore.SaveAsync(ApiKeyEnvName, pastedKey);
         ApiKeyInput = "";
         ConnectionTestResult = null;
+        KeyStoreError = null;
+        OnPropertyChanged(nameof(HasStoredKey));
+        OnPropertyChanged(nameof(KeyStatusText));
+
+        try
+        {
+            await persisted.ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            var message = string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], ex.Message);
+            if (editorClosing || !ReferenceEquals(_owner.Editor, this))
+                _owner.ReportKeyStoreError(message);
+            else
+                KeyStoreError = message;
+        }
+
         OnPropertyChanged(nameof(HasStoredKey));
         OnPropertyChanged(nameof(KeyStatusText));
     }
@@ -640,7 +680,9 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             return;
 
         if (RequiresApiKey && _apiKeyInput.Trim().Length > 0)
-            StoreKey(); // a pasted-but-not-yet-remembered key must not be lost on save
+            // A pasted-but-not-yet-remembered key must not be lost on save; the editor closes,
+            // so a failure to keep it for the next sessions is said on the profile list.
+            _ = StoreKeyCoreAsync(editorClosing: true);
 
         _owner.CommitEdit(new ModelProfile
         {
@@ -771,6 +813,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private readonly Func<IReadOnlyList<TeamSummary>>? _loadTeams;
     private ModelProfileEditorViewModel? _editor;
     private string? _loadError;
+    private string? _keyStoreError;
 
     /// <summary>
     /// Builds the tab over its seams. <paramref name="balances"/> are the provider balances read
@@ -827,6 +870,17 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// <summary>The current set, for consumers outside this tab (the wizard's gate).</summary>
     public ModelProfileSet Set => _set;
 
+    /// <summary>
+    /// The <c>ORKEON_Llm__*</c> overrides a launch under <paramref name="profile"/> lays over its
+    /// child process — the key resolved through the key store (STUDIO-44), so a key held only in
+    /// the user scope reaches the child as well as one in Studio's own environment.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> LaunchEnvironmentOf(ModelProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        return profile.EnvironmentOverrides(_keyStore.Peek);
+    }
+
     /// <summary>Name of the assistant's profile; null while unconfigured.</summary>
     public string? StudioProfileName
     {
@@ -868,6 +922,26 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// <summary>Whether the unreadable-file line shows.</summary>
     public bool HasLoadError => _loadError is not null;
 
+    /// <summary>
+    /// Why a key remembered by an editor that has closed since — a key pasted and saved with the
+    /// profile — was not kept for the next sessions (STUDIO-44). It is in place for this one.
+    /// Cleared when an editor opens.
+    /// </summary>
+    public string? KeyStoreError
+    {
+        get => _keyStoreError;
+        private set
+        {
+            if (SetProperty(ref _keyStoreError, value))
+                OnPropertyChanged(nameof(HasKeyStoreError));
+        }
+    }
+
+    /// <summary>Whether the key-not-kept line shows on the profile list.</summary>
+    public bool HasKeyStoreError => _keyStoreError is not null;
+
+    internal void ReportKeyStoreError(string message) => KeyStoreError = message;
+
     /// <summary>Deleting is allowed only while more than one profile remains.</summary>
     public bool CanDelete => _set.Profiles.Count > 1;
 
@@ -877,8 +951,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
         get => _editor;
         private set
         {
-            if (SetProperty(ref _editor, value))
-                OnPropertyChanged(nameof(IsEditorOpen));
+            if (!SetProperty(ref _editor, value))
+                return;
+
+            OnPropertyChanged(nameof(IsEditorOpen));
+            if (value is not null)
+                KeyStoreError = null;
         }
     }
 

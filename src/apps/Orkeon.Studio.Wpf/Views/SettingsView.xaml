@@ -169,6 +169,13 @@
                      Text="{Binding Profiles.LoadError}"
                      Visibility="{Binding Profiles.HasLoadError, Converter={StaticResource BooleanToVisibility}}"/>
 
+          <!-- STUDIO-44: a key pasted and saved with its profile is in place for the session, but
+               the user scope refused it; the editor has closed, so the list says so. -->
+          <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" TextWrapping="Wrap"
+                     Foreground="{DynamicResource WarningBrush}"
+                     Text="{Binding Profiles.KeyStoreError}"
+                     Visibility="{Binding Profiles.HasKeyStoreError, Converter={StaticResource BooleanToVisibility}}"/>
+
           <ItemsControl ItemsSource="{Binding Profiles.Profiles}" Margin="0,10,0,0">
             <ItemsControl.ItemTemplate>
               <DataTemplate>

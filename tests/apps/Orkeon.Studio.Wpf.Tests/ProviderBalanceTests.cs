@@ -130,8 +130,8 @@ public sealed class ProviderBalanceTests
 
             var probe = new FakeProviderBalanceProbe();
             var keys = new FakeApiKeyStore();
-            keys.Save(DeepSeekKeyVariable, Key);
-            keys.Save("OPENROUTER_API_KEY", "sk-or-key");
+            keys.Stage(DeepSeekKeyVariable, Key);
+            keys.Stage("OPENROUTER_API_KEY", "sk-or-key");
             var window = new MainWindowViewModel(
                 new StudioServices
                 {
@@ -521,7 +521,7 @@ public sealed class ProviderBalanceTests
     {
         public Rig()
         {
-            Keys.Save(DeepSeekKeyVariable, Key);
+            Keys.Stage(DeepSeekKeyVariable, Key);
             Balances = new BalanceReadings(Probe, Keys);
             var document = AppSettingsDocument.CreateEmpty();
             var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());

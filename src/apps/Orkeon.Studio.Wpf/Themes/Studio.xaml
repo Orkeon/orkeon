@@ -1028,6 +1028,20 @@
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5"
                        Foreground="{DynamicResource AccentBrush}" Margin="7,0,0,0" Text="{Binding ConsoleUrl}"/>
           </StackPanel>
+          <!-- STUDIO-44: a key the user scope refused is still in place for the session; say why. -->
+          <TextBlock FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"
+                     Foreground="{DynamicResource WarningBrush}" Text="{Binding StoreError}">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasStoreError}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
         </StackPanel>
       </DockPanel>
     </Border>

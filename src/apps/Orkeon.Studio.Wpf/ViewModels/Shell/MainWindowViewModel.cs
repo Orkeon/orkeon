@@ -693,5 +693,7 @@ public sealed class MainWindowViewModel : ObservableObject
     /// on the settings file, like any other.
     /// </summary>
     private IReadOnlyDictionary<string, string>? TeamEnvironment(string targetPath) =>
-        Settings.Profiles.Set.Find(TeamCatalog.ProfileFor(targetPath))?.EnvironmentOverrides(Environment.GetEnvironmentVariable);
+        Settings.Profiles.Set.Find(TeamCatalog.ProfileFor(targetPath)) is { } profile
+            ? Settings.Profiles.LaunchEnvironmentOf(profile)
+            : null;
 }
