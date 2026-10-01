@@ -58,3 +58,23 @@ bridged. The agent layer was not: nothing turned a crew into an `AIAgent`, nothi
   (CONTRIBUTING): interop lowers the cost of trying Orkeon, it does not widen its surface.
 - Streaming from a crew is the final answer as one update: a crew has no token stream to
   forward. A streaming caller works; it does not see intermediate agent output.
+
+## Amendment — 2026-10-01 (GAP-25): one scope per turn
+
+`AddOrkeonAgentFramework()` registered a **singleton** `ICrewAgentFactory` that captured the
+host's **scoped** `ICrewOrchestrationService`: every `CrewAgent` of a host shared one
+orchestrator, and its scoped repositories, for the life of the process, and a host validating
+scopes (the default in Development) refused to resolve the factory. The orchestrator stays
+scoped — its repositories are scoped by design — and the factory now holds the host's
+`IServiceScopeFactory` only.
+
+- `ICrewAgentFactory.Create(loadCrew, name, description?)` replaces `Create(crewId, …)` and
+  `Create(crew)`. Every turn of the agent it returns opens a scope, calls `loadCrew` with the
+  scope's provider — it registers the crew there (adds its agents, tasks and crew to the
+  scope's repositories, or loads it through the scope's `ICrewFactory`) and returns its id —
+  kicks that crew off through the scope's orchestrator, and disposes the scope. A crew
+  registered once in a root-resolved repository was the old contract; a scope never sees it.
+- The same form is public as `new CrewAgent(IServiceScopeFactory, loadCrew, name, description?)`;
+  its agent id is `orkeon-crew-<name>` and its `CrewId` is `null` (a fresh crew every turn).
+  `new CrewAgent(orchestrator, crewId|crew)` stays, for a caller that owns the orchestrator and
+  its scope.

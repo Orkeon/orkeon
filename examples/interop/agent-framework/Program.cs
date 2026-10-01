@@ -35,30 +35,30 @@ internal static class Program
             new RunnerMountPlan { CliMounts = [$"{output}:/output:rw"], AllowExternalMounts = true },
             configureServices: (_, services) => services.AddOrkeonAgentFramework());
 
-        var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
-        var provider = host.Services.GetRequiredService<ILlmProvider>();
-        var agents = host.Services.GetRequiredService<IAgentRepository>();
-        var tasks = host.Services.GetRequiredService<ITaskRepository>();
-        var crews = host.Services.GetRequiredService<ICrewRepository>();
-
         // ── 1. Orkeon -> MAF ────────────────────────────────────────────────────────────
-        var summariser = new AgentBuilder()
-            .Role("Summariser")
-            .Goal("Summarise any text in exactly two sentences")
-            .Build();
-        var summarise = new CrewTaskBuilder()
-            .Description("Summarise the text given as initial context in exactly two sentences.")
-            .ExpectedOutput("Two sentences.")
-            .AssignTo(summariser)
-            .Build();
-        var summaryCrew = new CrewBuilder().Goal("Summarise text").Sequential()
-            .WithAgent(summariser).WithTask(summarise).Build();
-        await agents.AddAsync(summariser);
-        await tasks.AddAsync(summarise);
-        await crews.AddAsync(summaryCrew);
-
-        AIAgent crewAsMafAgent = host.Services.GetRequiredService<ICrewAgentFactory>()
-            .Create(summaryCrew.Id, "orkeon-summariser", "Summarises text in two sentences");
+        // The crew agent runs every turn in a scope of its own: the loader registers the crew
+        // in that scope's repositories (they are scoped), the scope's orchestrator runs it.
+        AIAgent crewAsMafAgent = host.Services.GetRequiredService<ICrewAgentFactory>().Create(
+            async (services, ct) =>
+            {
+                var summariser = new AgentBuilder()
+                    .Role("Summariser")
+                    .Goal("Summarise any text in exactly two sentences")
+                    .Build();
+                var summarise = new CrewTaskBuilder()
+                    .Description("Summarise the text given as initial context in exactly two sentences.")
+                    .ExpectedOutput("Two sentences.")
+                    .AssignTo(summariser)
+                    .Build();
+                var summaryCrew = new CrewBuilder().Goal("Summarise text").Sequential()
+                    .WithAgent(summariser).WithTask(summarise).Build();
+                await services.GetRequiredService<IAgentRepository>().AddAsync(summariser, ct);
+                await services.GetRequiredService<ITaskRepository>().AddAsync(summarise, ct);
+                await services.GetRequiredService<ICrewRepository>().AddAsync(summaryCrew, ct);
+                return summaryCrew.Id;
+            },
+            "orkeon-summariser",
+            "Summarises text in two sentences");
 
         Console.WriteLine("── 1. An Orkeon crew called from MAF (AIAgent.RunAsync) ──");
         var mafSide = await crewAsMafAgent.RunAsync(
@@ -71,7 +71,15 @@ internal static class Program
         Console.WriteLine();
 
         // ── 2. MAF -> Orkeon ────────────────────────────────────────────────────────────
-        // A MAF agent over Orkeon's configured model, given to an Orkeon agent as a tool.
+        // A MAF agent over Orkeon's configured model, given to an Orkeon agent as a tool. The
+        // crew is registered and run in one scope: the orchestrator and its repositories are
+        // scoped services.
+        var provider = host.Services.GetRequiredService<ILlmProvider>();
+        await using var scope = host.Services.CreateAsyncScope();
+        var agents = scope.ServiceProvider.GetRequiredService<IAgentRepository>();
+        var tasks = scope.ServiceProvider.GetRequiredService<ITaskRepository>();
+        var crews = scope.ServiceProvider.GetRequiredService<ICrewRepository>();
+        var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
         using IChatClient chatClient = new LlmProviderToChatClientAdapter(provider);
         AIAgent reviewer = chatClient.AsAIAgent(
             name: "Reviewer",

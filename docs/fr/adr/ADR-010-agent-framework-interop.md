@@ -61,3 +61,23 @@ un agent Orkeon ni être appelé par lui.
 - Le streaming depuis un crew est la réponse finale en une seule mise à jour : un crew n'a
   pas de flux de tokens à transmettre. Un appelant en streaming fonctionne ; il ne voit pas
   la sortie intermédiaire des agents.
+
+## Amendement — 2026-10-01 (GAP-25) : un scope par tour
+
+`AddOrkeonAgentFramework()` enregistrait un `ICrewAgentFactory` **singleton** qui capturait
+l'`ICrewOrchestrationService` **scopé** de l'hôte : tous les `CrewAgent` d'un hôte partageaient
+un orchestrateur, et ses dépôts scopés, pour la vie du processus, et un hôte qui valide les
+scopes (le défaut en Development) refusait de résoudre la fabrique. L'orchestrateur reste scopé
+— ses dépôts le sont par conception — et la fabrique ne tient plus que l'`IServiceScopeFactory`
+de l'hôte.
+
+- `ICrewAgentFactory.Create(loadCrew, name, description?)` remplace `Create(crewId, …)` et
+  `Create(crew)`. Chaque tour de l'agent qu'elle rend ouvre un scope, appelle `loadCrew` avec le
+  fournisseur du scope — il y enregistre la crew (ajoute ses agents, ses tâches et la crew aux
+  dépôts du scope, ou la charge par l'`ICrewFactory` du scope) et rend son identifiant —, lance
+  cette crew par l'orchestrateur du scope, puis libère le scope. Une crew enregistrée une fois
+  dans un dépôt résolu à la racine était l'ancien contrat ; un scope ne la voit jamais.
+- La même forme est publique : `new CrewAgent(IServiceScopeFactory, loadCrew, name, description?)` ;
+  son identifiant d'agent est `orkeon-crew-<name>` et son `CrewId` vaut `null` (une crew neuve à
+  chaque tour). `new CrewAgent(orchestrator, crewId|crew)` reste, pour l'appelant qui possède
+  l'orchestrateur et son scope.

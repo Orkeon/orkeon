@@ -18,7 +18,11 @@ The bridge to **Microsoft Agent Framework** (`Microsoft.Agents.AI`), in both dir
 ```csharp
 // Orkeon -> MAF
 services.AddOrkeonAgentFramework();
-var crewAgent = host.Services.GetRequiredService<ICrewAgentFactory>().Create(crew);
+// every turn runs in a scope of its own: register the crew there and return its id
+var crewAgent = host.Services.GetRequiredService<ICrewAgentFactory>().Create(
+    async (services, ct) => (await services.GetRequiredService<ICrewFactory>()
+        .CreateFromFileAsync("/crew/crew.yaml", ct)).Id,
+    "summariser");
 var answer = await crewAgent.RunAsync("Summarise last week's incidents");
 
 // MAF -> Orkeon

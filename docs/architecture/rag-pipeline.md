@@ -54,8 +54,8 @@ namespaces were removed without shims (migration table in `CHANGELOG.md`).
 
 The subsystem is opt-in — nothing is wired by `AddOrkeonInfrastructure()` alone. Every
 runner host built on `RunnerHost` (`orkeon run` in all its forms, `orkeon-host`) makes
-the two calls below itself, and the `orkeon` CLI adds the ONNX reranker; a host that
-builds its own container makes them:
+the two calls below itself, and each shipped binary — `orkeon`, `orkeon-host`, the
+`orkeon-repl` REPL — adds the ONNX reranker; a host that builds its own container makes them:
 
 ```csharp
 services.AddOrkeonLocalEmbeddings();      // or any IEmbeddingProvider (local BGE: no API key)
@@ -469,7 +469,7 @@ YAML keys:
 | `rag.defaults.profile` | The retrieval profile of every attachment that names none (copied onto it at crew creation) |
 | `knowledge:` short form (`[product-kb]`) | Attaches the collection with the defaults below |
 | `knowledge:` long form (`collection`, `top_k` default 5, `min_score`, `max_context_tokens` default 2000) | `top_k` is the query's TopN; `min_score` filters on the score the profile reports (vector similarity under `fast`, the cross-encoder's score under a reranking profile); `max_context_tokens` caps the attachment's excerpts (×4 characters) |
-| `knowledge:` long form `profile` | The retrieval pipeline: the attachment's `profile`, else `rag.defaults.profile`, else `Orkeon:Rag:Profile` (`fast` when unset). `fast`, `balanced` and `quality` retrieve alone; `corrective` and `adaptive` cannot (their graphs generate as they go) and fail the task with a message saying so; an unknown name fails as the resolver does. `balanced`/`quality` also need the ONNX reranker, which the `orkeon` CLI registers and `orkeon-host` does not |
+| `knowledge:` long form `profile` | The retrieval pipeline: the attachment's `profile`, else `rag.defaults.profile`, else `Orkeon:Rag:Profile` (`fast` when unset). `fast`, `balanced` and `quality` retrieve alone; `corrective` and `adaptive` cannot (their graphs generate as they go) and fail the task with a message saying so; an unknown name fails as the resolver does. `balanced`/`quality` also need the ONNX reranker, which `orkeon`, `orkeon-host` and `orkeon-repl` register |
 
 The document store is the host's choice (`Orkeon:Rag:Provider`), not the crew's:
 the former `rag.provider` key is gone, and a crew that still writes it gets a

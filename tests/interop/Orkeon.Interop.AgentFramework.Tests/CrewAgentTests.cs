@@ -1,5 +1,6 @@
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Common;
 using Orkeon.Interop.AgentFramework.Tests.Doubles;
@@ -93,19 +94,69 @@ public sealed class CrewAgentTests
         Assert.Equal("crew output", response.Text);
     }
 
+    /// <summary>
+    /// GAP-25: the orchestrator and the repositories it reads are scoped. The factory used to be
+    /// a singleton holding the orchestrator it resolved from the root, so every crew agent of a
+    /// host shared one orchestrator for the life of the process, and a host validating scopes
+    /// (the default in Development) refused to resolve the factory at all.
+    /// </summary>
     [Fact]
-    public void The_factory_registered_by_AddOrkeonAgentFramework_builds_agents_for_registered_crews()
+    public async Task The_factory_resolves_under_scope_validation_and_each_run_gets_its_own_scope()
     {
-        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<ICrewOrchestrationService>(services, new FakeCrewOrchestrationService());
+        var services = new ServiceCollection();
+        services.AddScoped<ICrewOrchestrationService>(_ => new FakeCrewOrchestrationService());
         DependencyInjection.ServiceCollectionExtensions.AddOrkeonAgentFramework(services);
-        using var provider = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services);
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
-        var factory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DependencyInjection.ICrewAgentFactory>(provider);
+        var factory = provider.GetRequiredService<DependencyInjection.ICrewAgentFactory>();
+        var loaded = new List<ICrewOrchestrationService>();
+        Task<CrewId> Load(IServiceProvider scope, CancellationToken _)
+        {
+            // The loader registers the crew in the run's own scope: the orchestrator it sees
+            // there is the one the run kicks off with.
+            loaded.Add(scope.GetRequiredService<ICrewOrchestrationService>());
+            return Task.FromResult(CrewId.Create());
+        }
+
+        var first = factory.Create(Load, "first", "the first crew");
+        var second = factory.Create(Load, "second");
+        var ct = TestContext.Current.CancellationToken;
+        await first.RunAsync("one", cancellationToken: ct);
+        await second.RunAsync("two", cancellationToken: ct);
+        await first.RunAsync("three", cancellationToken: ct);
+
+        Assert.Equal(3, loaded.Count);
+        Assert.Equal(3, loaded.Distinct().Count());
+        Assert.All(loaded, o => Assert.Single(((FakeCrewOrchestrationService)o).Kickoffs));
+        Assert.Equal("first", first.Name);
+        Assert.Equal("the first crew", first.Description);
+        Assert.Equal("orkeon-crew-first", first.Id);
+        Assert.Null(first.CrewId);
+    }
+
+    [Fact]
+    public async Task A_scoped_crew_agent_kicks_off_the_crew_its_loader_registered()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<ICrewOrchestrationService>(_ => new FakeCrewOrchestrationService { FinalOutput = "scoped answer" });
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         var crewId = CrewId.Create();
-        var agent = factory.Create(crewId, "named");
+        FakeCrewOrchestrationService? used = null;
 
-        Assert.Equal(crewId, agent.CrewId);
-        Assert.Equal("named", agent.Name);
+        var agent = new CrewAgent(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            (scope, _) =>
+            {
+                used = (FakeCrewOrchestrationService)scope.GetRequiredService<ICrewOrchestrationService>();
+                return Task.FromResult(crewId);
+            },
+            "scoped");
+
+        var response = await agent.RunAsync("go", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("scoped answer", response.Text);
+        var kickoff = Assert.Single(used!.Kickoffs);
+        Assert.Equal(crewId, kickoff.CrewId);
+        Assert.Equal("go", kickoff.Input.InitialContext);
     }
 }

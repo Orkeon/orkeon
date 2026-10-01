@@ -1,1 +1,7 @@
 #nullable enable
+*REMOVED*Orkeon.Interop.AgentFramework.CrewAgent.CrewId.get -> Orkeon.Domain.Common.CrewId!
+*REMOVED*Orkeon.Interop.AgentFramework.DependencyInjection.ICrewAgentFactory.Create(Orkeon.Domain.Common.CrewId! crewId, string? name = null, string? description = null) -> Orkeon.Interop.AgentFramework.CrewAgent!
+*REMOVED*Orkeon.Interop.AgentFramework.DependencyInjection.ICrewAgentFactory.Create(Orkeon.Domain.Crew.Crew! crew) -> Orkeon.Interop.AgentFramework.CrewAgent!
+Orkeon.Interop.AgentFramework.CrewAgent.CrewAgent(Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopes, System.Func<System.IServiceProvider!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Domain.Common.CrewId!>!>! loadCrew, string! name, string? description = null) -> void
+Orkeon.Interop.AgentFramework.CrewAgent.CrewId.get -> Orkeon.Domain.Common.CrewId?
+Orkeon.Interop.AgentFramework.DependencyInjection.ICrewAgentFactory.Create(System.Func<System.IServiceProvider!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Domain.Common.CrewId!>!>! loadCrew, string! name, string? description = null) -> Orkeon.Interop.AgentFramework.CrewAgent!

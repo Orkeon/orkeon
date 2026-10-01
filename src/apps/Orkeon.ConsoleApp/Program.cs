@@ -21,6 +21,7 @@ using Orkeon.ConsoleApp.Services;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.Abstractions.DependencyInjection;
 using Orkeon.Tools.FileSystem.DependencyInjection;
@@ -157,7 +158,7 @@ static class Program
             source.ReloadOnChange = false;
     }
 
-    static void ConfigureServices(
+    internal static void ConfigureServices(
         HostBuilderContext context,
         IServiceCollection services,
         UiMode effectiveUi,
@@ -211,6 +212,9 @@ static class Program
         // hybrid BM25+RRF search and the lazy freshness pass.
         services.AddOrkeonRag(context.Configuration);
         services.AddOrkeonRagTools();
+        // The ONNX cross-encoder the balanced and quality profiles rerank with (GAP-25), as
+        // orkeon and orkeon-host register it. Embedded weights, loaded on first use.
+        services.AddOrkeonOnnxReranker();
         services.AddRaggableTree(new RaggableTreeOptions
         {
             Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.LocalSmartComponents },

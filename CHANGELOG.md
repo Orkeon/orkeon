@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `balanced` and `quality` work in `orkeon-host` and the REPL; runs resolve scoped services in their own scope
+
+The `balanced` and `quality` RAG profiles (and `adaptive`, whose `SingleShot` route delegates to
+`balanced`) rerank with the ONNX cross-encoder, and only the `orkeon` CLI registered it: a hosted
+crew whose `knowledge:` asked for either profile, or `rag_search` in `orkeon-repl`, failed its first
+retrieval with "Unknown reranker 'onnx'" (GAP-25). `orkeon-host` and `orkeon-repl` now reference
+`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` and call `AddOrkeonOnnxReranker()`, as the CLI does;
+`Orkeon.Hosting` (a NuGet package) stays free of ONNX. The daemon gains about 24 MB (the embedded
+int8 weights; ONNX Runtime was already there for the local embeddings). Its own registrations moved
+from `Program.cs` to `HostServiceRegistration.AddHostServices`, so a test builds the very host it runs.
+
+`orkeon run` (and `--validate`) resolved the crew factory, the orchestrator and the agent repository
+— all scoped — from the root provider; the load and the kickoff now run in one scope, as
+`orkeon-host` does per run. The Agent Framework bridge had the same defect, in its public API:
+
+- **Breaking** — `ICrewAgentFactory` was a singleton holding the root-resolved orchestrator, so
+  every `CrewAgent` of a host shared it (and its repositories) for the life of the process, and a
+  host validating scopes refused to resolve it. It now holds the `IServiceScopeFactory`, and
+  `Create(loadCrew, name, description?)` replaces `Create(crewId, name?, description?)` and
+  `Create(crew)`: each turn opens a scope, `loadCrew` registers the crew in it and returns its id,
+  the scope's orchestrator runs it. `new CrewAgent(scopeFactory, loadCrew, name, description?)` is
+  the same form without the factory; `CrewAgent.CrewId` is now `CrewId?` (`null` for that form).
+  Migration: move the code that adds the crew's agents, tasks and crew to the repositories (or
+  loads it through `ICrewFactory`) into the loader, resolving the repositories from the provider it
+  receives, and return the crew's id — see `examples/interop/agent-framework/` and ADR-010's
+  amendment. `new CrewAgent(orchestrator, crewId|crew)` is unchanged.
+
 ### Fixed — `check-doc-claims.py` reads what git publishes, not the ignored trees of a working clone
 
 The documentation-claims gate walked the file system, so on a working clone it also read the

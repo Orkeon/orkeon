@@ -54,8 +54,9 @@ supprimés sans shims (table de migration dans `CHANGELOG.md`).
 
 Le sous-système est opt-in — `AddOrkeonInfrastructure()` seul ne câble rien. Tout hôte
 runner bâti sur `RunnerHost` (`orkeon run` sous toutes ses formes, `orkeon-host`) fait
-lui-même les deux appels ci-dessous, et la CLI `orkeon` ajoute le reranker ONNX ; un hôte
-qui construit son propre conteneur les fait :
+lui-même les deux appels ci-dessous, et chaque binaire livré — `orkeon`, `orkeon-host`, le
+REPL `orkeon-repl` — ajoute le reranker ONNX ; un hôte qui construit son propre conteneur
+les fait :
 
 ```csharp
 services.AddOrkeonLocalEmbeddings();      // or any IEmbeddingProvider (local BGE: no API key)
@@ -472,7 +473,7 @@ Clés YAML :
 | `rag.defaults.profile` | Le profil de retrieval de toute pièce jointe qui n'en nomme pas (recopié sur elle à la création de la crew) |
 | `knowledge:` forme courte (`[product-kb]`) | Attache la collection avec les défauts ci-dessous |
 | `knowledge:` forme longue (`collection`, `top_k` défaut 5, `min_score`, `max_context_tokens` défaut 2000) | `top_k` est le TopN de la requête ; `min_score` filtre sur le score que rend le profil (similarité vectorielle sous `fast`, score du cross-encoder sous un profil qui reranke) ; `max_context_tokens` borne les extraits de la pièce jointe (×4 caractères) |
-| `knowledge:` forme longue `profile` | Le pipeline de retrieval : le `profile` de la pièce jointe, sinon `rag.defaults.profile`, sinon `Orkeon:Rag:Profile` (`fast` s'il n'est pas défini). `fast`, `balanced` et `quality` savent récupérer seuls ; `corrective` et `adaptive` non (leurs graphes génèrent en chemin) et font échouer la tâche avec un message qui le dit ; un nom inconnu échoue comme le résolveur. `balanced`/`quality` exigent aussi le reranker ONNX, que la CLI `orkeon` enregistre et `orkeon-host` non |
+| `knowledge:` forme longue `profile` | Le pipeline de retrieval : le `profile` de la pièce jointe, sinon `rag.defaults.profile`, sinon `Orkeon:Rag:Profile` (`fast` s'il n'est pas défini). `fast`, `balanced` et `quality` savent récupérer seuls ; `corrective` et `adaptive` non (leurs graphes génèrent en chemin) et font échouer la tâche avec un message qui le dit ; un nom inconnu échoue comme le résolveur. `balanced`/`quality` exigent aussi le reranker ONNX, qu'`orkeon`, `orkeon-host` et `orkeon-repl` enregistrent |
 
 Le document store relève de l'hôte (`Orkeon:Rag:Provider`), pas de la crew : l'ancienne
 clé `rag.provider` a disparu, et une crew qui l'écrit encore reçoit un avertissement au

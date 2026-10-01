@@ -42,8 +42,8 @@ services.AddOrkeonAgentFramework();   // Orkeon -> MAF seulement ; MAF -> Orkeon
 
 ## Une crew Orkeon comme agent MAF — `CrewAgent`
 
-`CrewAgent : AIAgent` enveloppe une crew que l'hôte a enregistrée. Chaque `RunAsync` est **un
-kickoff de crew** (`ICrewOrchestrationService.KickoffAsync`) :
+`CrewAgent : AIAgent` enveloppe une crew Orkeon. Chaque `RunAsync` est **un kickoff de crew**
+(`ICrewOrchestrationService.KickoffAsync`) :
 
 - **Entrée** — la conversation devient le contexte initial de la crew : un message seul tel quel ;
   plusieurs messages sous la forme `Conversation so far:` (les tours précédents, une ligne
@@ -57,24 +57,40 @@ kickoff de crew** (`ICrewOrchestrationService.KickoffAsync`) :
   (la mémoire, quand elle est activée, est l'affaire de la crew) ; la session se sérialise en objet
   vide et se désérialise depuis n'importe quoi, si bien que les appelants qui persistent leurs
   sessions continuent de fonctionner.
-- **Identité** — l'identifiant de l'agent est `orkeon-crew-<crewId>`, qui est aussi son nom par
-  défaut. Les `AgentRunOptions` ne sont pas lues.
+- **Identité** — l'identifiant de l'agent est `orkeon-crew-<name>` pour un agent construit par la
+  fabrique, et `orkeon-crew-<crewId>` (aussi son nom par défaut) pour un agent construit sur un
+  orchestrateur. Les `AgentRunOptions` ne sont pas lues.
+- **Scope** — un agent construit par la fabrique exécute **chaque tour dans un scope à lui** :
+  l'orchestrateur et les dépôts de crews, d'agents et de tâches sont des services scopés, si bien
+  que deux tours, ou deux agents, ne les partagent jamais, et la fabrique se résout sur un hôte qui
+  valide les scopes.
 
 ```csharp
 services.AddOrkeonAgentFramework();   // enregistre ICrewAgentFactory
 
 var factory = host.Services.GetRequiredService<ICrewAgentFactory>();
-AIAgent crewAgent = factory.Create(crew.Id, "orkeon-summariser", "Summarises text in two sentences");
-// ou factory.Create(crew) — décrite par l'objectif de la crew
+AIAgent crewAgent = factory.Create(
+    async (services, ct) =>           // le scope du tour : y enregistrer la crew, rendre son id
+    {
+        await services.GetRequiredService<IAgentRepository>().AddAsync(summariser, ct);
+        await services.GetRequiredService<ITaskRepository>().AddAsync(summarise, ct);
+        await services.GetRequiredService<ICrewRepository>().AddAsync(crew, ct);
+        return crew.Id;
+    },
+    "orkeon-summariser",
+    "Summarises text in two sentences");
 
 var answer = await crewAgent.RunAsync("Summarise last week's incidents");
 ```
 
-`AddOrkeonAgentFramework()` n'enregistre que le singleton `ICrewAgentFactory` (`TryAdd`), sur
-l'`ICrewOrchestrationService` de l'hôte ; la crew doit déjà figurer dans les dépôts de
-l'orchestrateur. `new CrewAgent(orchestrator, crewId, name?, description?)` et
-`new CrewAgent(orchestrator, crew)` font de même sans DI. Le résultat s'insère dans n'importe quel
-workflow, orchestration ou chaîne `AsAIFunction()` de MAF.
+Le chargeur peut aussi bien charger un fichier de crew par l'`ICrewFactory` du scope
+(`CreateFromFileAsync`) et rendre l'identifiant de ce qu'il a chargé. `AddOrkeonAgentFramework()`
+n'enregistre que le singleton `ICrewAgentFactory` (`TryAdd`), sur l'`IServiceScopeFactory` de
+l'hôte ; `new CrewAgent(scopeFactory, loadCrew, name, description?)` fait de même sans la fabrique,
+et `new CrewAgent(orchestrator, crewId, name?, description?)` / `new CrewAgent(orchestrator, crew)`
+exécutent une crew enregistrée par un orchestrateur **que l'appelant possède**, avec le scope où il
+vit. Le résultat s'insère dans n'importe quel workflow, orchestration ou chaîne `AsAIFunction()` de
+MAF.
 
 ## Un agent MAF à l'intérieur d'une crew Orkeon
 

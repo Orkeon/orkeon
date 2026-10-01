@@ -89,46 +89,9 @@ using var host = RunnerHost.Build(
         AllowExternalMounts = crewPlan.Mounts.Count > 0 || args.Contains("--allow-external-mounts", StringComparer.Ordinal),
     },
     configureLogging: null,
-    configureServices: (context, services) =>
-    {
-        services.Configure<OrkeonHostOptions>(context.Configuration.GetSection(OrkeonHostOptions.SectionName));
-
-        // The crew→virtual-path map travels with the mounts that made it true: CrewRunner
-        // loads a hosted crew by its virtual spelling, never by the operator's disk path.
-        services.AddSingleton(crewPlan);
-
-        // The generic host caps the WHOLE stop sequence at HostOptions.ShutdownTimeout
-        // (default 30 s). Left alone, an operator raising ShutdownGracePeriod past ~25 s
-        // silently truncated their own drain — the docs tell them to scale TimeoutStopSec,
-        // and the framework then cut them off underneath it. Budget: the grace, the drain's
-        // 5 s teardown wait, and 5 s for the channel to disconnect.
-        var hostSection = context.Configuration.GetSection(OrkeonHostOptions.SectionName).Get<OrkeonHostOptions>() ?? new OrkeonHostOptions();
-        services.Configure<Microsoft.Extensions.Hosting.HostOptions>(
-            o => o.ShutdownTimeout = hostSection.ShutdownGracePeriod + TimeSpan.FromSeconds(10));
-
-        // The allow-list of LLM profiles hosted crews may name (GAP-17): third-party crews
-        // pick a profile by name, and the operator decides which names answer.
-        services.Configure<Orkeon.Infrastructure.LLMs.Profiles.LlmProfileAccessOptions>(
-            o => o.AllowedProfiles = hostSection.LlmProfiles);
-
-        services.AddSingleton<CrewHostRegistry>();
-        services.AddSingleton<CrewRunner>();
-        services.AddSingleton<ICrewRunner>(sp => sp.GetRequiredService<CrewRunner>());
-
-        // One progress hook per run scope: the strategies dispatch task completions into it,
-        // and CrewRunner wires its callback to the conversation watching the run. This is
-        // what makes "reports progress as tasks finish" true rather than documented.
-        services.AddScoped<RunProgressHook>();
-        services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
-            sp => sp.GetRequiredService<RunProgressHook>());
-
-        services.Configure<Orkeon.Host.Gateway.DiscordChannelOptions>(
-            context.Configuration.GetSection(Orkeon.Host.Gateway.DiscordChannelOptions.SectionName));
-
-        // The MCP connection, the chat channel, the crew host — in that order, which is both
-        // start order and stop order reversed (see HostServiceRegistration).
-        services.AddHostLifetimeServices();
-    },
+    // Everything the daemon adds to the runner host lives in HostServiceRegistration, so a
+    // test builds the very host this binary runs.
+    configureServices: (context, services) => services.AddHostServices(context.Configuration, crewPlan),
     configureBuilder: builder => builder
         .UseSystemd()
         .UseWindowsService(options => options.ServiceName = "Orkeon"));

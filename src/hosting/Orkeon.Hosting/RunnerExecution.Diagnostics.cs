@@ -70,14 +70,17 @@ public static partial class RunnerExecution
                 // resolves its own, so --validate judges the crew a run would actually get.
                 await McpStartup.ConnectConfiguredServersAsync(host, cts.Token).ConfigureAwait(false);
 
-                var factory = host.Services.GetRequiredService<ICrewFactory>();
+                // The factory and the repositories it fills are scoped (GAP-25).
+                var scope = host.Services.CreateAsyncScope();
+                await using var _ = scope.ConfigureAwait(false);
+                var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
                 var crew = await LoadCrewAsync(
                     host, factory, virtualConfigPath, logger, cts.Token, bootstrap.IsCrewDirectory)
                     .ConfigureAwait(false);
 
                 // Tools live on the agents, not the crew aggregate (which holds only ids).
                 // Re-hydrate the agents and count the distinct tool names actually resolved.
-                var agentRepository = host.Services.GetRequiredService<Domain.Agent.IAgentRepository>();
+                var agentRepository = scope.ServiceProvider.GetRequiredService<Domain.Agent.IAgentRepository>();
                 var agents = await agentRepository.GetByIdsAsync(crew.Agents, cts.Token).ConfigureAwait(false);
                 var toolsResolved = agents
                     .SelectMany(a => a.Tools)

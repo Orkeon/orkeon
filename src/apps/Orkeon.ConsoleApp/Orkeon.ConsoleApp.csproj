@@ -31,7 +31,8 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
     <!-- This tool package redistributes the BGE-micro-v2 embeddings weights (MIT)
          under tools/net10.0/any/LocalEmbeddingsModel/, which come in with
-         Orkeon.Tools.Embeddings.Local. Their attribution obligations attach to the
+         Orkeon.Tools.Embeddings.Local, and the ms-marco-MiniLM-L-6-v2 cross-encoder
+         (Apache-2.0) embedded in Orkeon.Rag.Onnx.Model.dll. Their attribution obligations attach to the
          artifact, not to the repository, so the notices ship inside the nupkg. -->
     <None Include="..\..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
@@ -52,6 +53,10 @@
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Rag\Orkeon.Tools.Rag.csproj" />
+    <!-- GAP-25: the ONNX cross-encoder of the balanced and quality RAG profiles, as the orkeon
+         CLI and orkeon-host carry it; the .Model companion embeds the int8 weights (offline). -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx\Orkeon.Rag.Onnx.csproj" />
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx.Model\Orkeon.Rag.Onnx.Model.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" />
     <!-- RaggableTree semantic-codebase tools + on-device embeddings (for codebase_search) -->
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" />

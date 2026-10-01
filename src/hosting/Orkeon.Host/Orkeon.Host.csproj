@@ -24,6 +24,12 @@
     <ProjectReference Include="..\Orkeon.Hosting\Orkeon.Hosting.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <!-- GAP-25: the ONNX cross-encoder the balanced and quality RAG profiles rerank with, as
+         the orkeon CLI and the REPL carry it. The daemon is a composition root, so it opts in
+         here; Orkeon.Hosting (a NuGet package) stays free of ONNX (PUB-25). The .Model
+         companion embeds the int8 weights: offline, nothing to download. -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx\Orkeon.Rag.Onnx.csproj" />
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx.Model\Orkeon.Rag.Onnx.Model.csproj" />
   </ItemGroup>
 
   <ItemGroup>

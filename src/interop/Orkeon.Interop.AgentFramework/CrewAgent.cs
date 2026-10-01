@@ -1,5 +1,6 @@
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Crew;
@@ -17,6 +18,14 @@ namespace Orkeon.Interop.AgentFramework;
 /// budget, its orchestration mode -- the MAF side sees an agent that answers.
 /// </para>
 /// <para>
+/// Two ways to build one. Over an <see cref="ICrewOrchestrationService"/> the caller owns
+/// (and the scope it lives in): every turn kicks the same registered crew off through it.
+/// Over an <see cref="IServiceScopeFactory"/> and a crew loader -- what
+/// <c>ICrewAgentFactory</c> builds: every turn opens a scope of its own, the loader registers
+/// the crew in that scope's (scoped) repositories, the scope's orchestrator runs it, and the
+/// scope ends with the turn. Two turns, or two agents, never share an orchestrator.
+/// </para>
+/// <para>
 /// A session holds nothing: a crew has no conversation state of its own between kickoffs
 /// (memory, when enabled, is the crew's business). The session serialises to an empty
 /// object and deserialises from anything, so callers that persist sessions keep working.
@@ -24,8 +33,8 @@ namespace Orkeon.Interop.AgentFramework;
 /// </summary>
 public sealed class CrewAgent : AIAgent
 {
-    private readonly ICrewOrchestrationService _orchestrator;
-    private readonly CrewId _crewId;
+    private readonly Func<Application.Interfaces.Services.CrewInput, CancellationToken, Task<Application.Interfaces.Services.CrewOutput>> _kickoff;
+    private readonly CrewId? _crewId;
     private readonly string _id;
     private readonly string _name;
     private readonly string? _description;
@@ -39,10 +48,48 @@ public sealed class CrewAgent : AIAgent
     {
         ArgumentNullException.ThrowIfNull(orchestrator);
         ArgumentNullException.ThrowIfNull(crewId);
-        _orchestrator = orchestrator;
+        _kickoff = (input, ct) => orchestrator.KickoffAsync(crewId, input, ct);
         _crewId = crewId;
         _id = "orkeon-crew-" + crewId;
         _name = string.IsNullOrWhiteSpace(name) ? "orkeon-crew-" + crewId : name;
+        _description = description;
+    }
+
+    /// <summary>
+    /// Runs every turn in a scope of its own (GAP-25): <paramref name="loadCrew"/> registers
+    /// the crew in that scope and returns its id, the scope's
+    /// <see cref="ICrewOrchestrationService"/> kicks it off, and the scope -- the orchestrator,
+    /// its repositories, the crew -- is disposed when the turn ends.
+    /// </summary>
+    /// <param name="scopes">The host's scope factory.</param>
+    /// <param name="loadCrew">
+    /// Registers the crew in the run's scope (adds its agents, tasks and crew to the scope's
+    /// repositories, or loads it through the scope's <c>ICrewFactory</c>) and returns its id.
+    /// </param>
+    /// <param name="name">The agent name MAF displays; the agent id is <c>orkeon-crew-&lt;name&gt;</c>.</param>
+    /// <param name="description">What the agent does, for MAF orchestrators that route by description.</param>
+    public CrewAgent(
+        IServiceScopeFactory scopes,
+        Func<IServiceProvider, CancellationToken, Task<CrewId>> loadCrew,
+        string name,
+        string? description = null)
+    {
+        ArgumentNullException.ThrowIfNull(scopes);
+        ArgumentNullException.ThrowIfNull(loadCrew);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        _kickoff = async (input, ct) =>
+        {
+            var scope = scopes.CreateAsyncScope();
+            await using (scope.ConfigureAwait(false))
+            {
+                var crewId = await loadCrew(scope.ServiceProvider, ct).ConfigureAwait(false);
+                return await scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>()
+                    .KickoffAsync(crewId, input, ct).ConfigureAwait(false);
+            }
+        };
+        _crewId = null;
+        _id = "orkeon-crew-" + name;
+        _name = name;
         _description = description;
     }
 
@@ -52,8 +99,11 @@ public sealed class CrewAgent : AIAgent
     {
     }
 
-    /// <summary>The Orkeon crew this agent runs.</summary>
-    public CrewId CrewId => _crewId;
+    /// <summary>
+    /// The Orkeon crew this agent runs; <see langword="null"/> for an agent that loads its crew
+    /// in each turn's scope (a fresh crew, with a fresh id, every turn).
+    /// </summary>
+    public CrewId? CrewId => _crewId;
 
     /// <inheritdoc />
     protected override string? IdCore => _id;
@@ -106,7 +156,7 @@ public sealed class CrewAgent : AIAgent
     {
         ArgumentNullException.ThrowIfNull(messages);
         var input = Application.Interfaces.Services.CrewInput.Empty(ConversationToContext(messages));
-        var output = await _orchestrator.KickoffAsync(_crewId, input, cancellationToken).ConfigureAwait(false);
+        var output = await _kickoff(input, cancellationToken).ConfigureAwait(false);
 
         var reply = new ChatMessage(ChatRole.Assistant, output.FinalOutput) { AuthorName = _name };
         var response = new AgentResponse(reply)

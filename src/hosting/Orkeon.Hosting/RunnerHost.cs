@@ -724,8 +724,9 @@ public static partial class RunnerHost
         // crew's rag: collections are ingested when it loads, its agents' knowledge: reaches
         // their prompts, and rag_search/rag_ingest/rag_eval can be listed in tools:. Nothing
         // is resolved until a crew uses it: the store, its provider and the embeddings wait
-        // for the first ingestion or retrieval. The ONNX reranker (balanced/quality) is the
-        // CLI's to add — a host without it fails those two profiles at their first use.
+        // for the first ingestion or retrieval. The ONNX reranker (balanced/quality) is each
+        // binary's to add — orkeon, orkeon-host and orkeon-repl do (GAP-25) — so this package
+        // stays free of ONNX; a C# host without it fails those two profiles at their first use.
         services.AddOrkeonRag(context.Configuration);
         services.AddOrkeonRagTools();
 

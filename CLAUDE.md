@@ -167,7 +167,7 @@ The project follows Clean Architecture with clear separation of concerns:
   in `Orkeon.Tools.Rag`. Opt-in for a hand-built container: `AddOrkeonRag(configuration)`
   (`Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` — called by every `RunnerHost` host
   (`orkeon run` on YAML, crew directories and `.ork.ts`; `orkeon-host`; `orkeon rag`) and by the
-  REPL; the CLI adds `AddOrkeonOnnxReranker()`. Crew `rag:` collections are ingested at load,
+  REPL; the three binaries (CLI, `orkeon-host`, REPL) add `AddOrkeonOnnxReranker()`. Crew `rag:` collections are ingested at load,
   `knowledge:` attachments retrieve through their profile (`profile` → `rag.defaults.profile` →
   `Orkeon:Rag:Profile`, retrieval half only), `rag_search`/`rag_eval` fall back to
   `Orkeon:Rag:Collection`; nothing is resolved until a crew uses it (deferred proxies). A crew

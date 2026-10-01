@@ -759,7 +759,13 @@ public static partial class RunnerExecution
         // of its tools fails at load, under StrictTools, with the usual "unknown tool" line.
         await McpStartup.ConnectConfiguredServersAsync(host, ct).ConfigureAwait(false);
 
-        var factory = host.Services.GetRequiredService<ICrewFactory>();
+        // One scope for the load and the kickoff, as orkeon-host's CrewRunner opens per run
+        // (GAP-25): the crew factory, the orchestrator and the repositories the crew is loaded
+        // into are scoped, and resolving them from the root kept them for the life of the
+        // process — or failed outright on a host validating scopes.
+        var scope = host.Services.CreateAsyncScope();
+        await using var _ = scope.ConfigureAwait(false);
+        var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
 
         Domain.Crew.Crew crew;
         try
@@ -779,7 +785,7 @@ public static partial class RunnerExecution
             return (2, null);
         }
 
-        var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
+        var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
 
         var input = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
         if (input is null)
