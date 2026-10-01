@@ -130,7 +130,13 @@ partial (flagged case by case below).
   // Or by delegate, without IConfiguration
   services.AddOrkeonA2A(options => options.EnableServer = true);
   ```
-  `IA2AServer` is only registered when `EnableServer` is true.
+  `IA2AServer` is only registered when `EnableServer` is true, together with a hosted
+  service: a generic host starts the server with itself and stops it on shutdown — no
+  host code resolves `IA2AServer` or calls `StartAsync`. A process that never runs the
+  host never starts it.
+- **Execution**: the router runs the agent whose id equals the request's `skillId` (the
+  `id` the agent card publishes) through `IAgentExecutionService`, so the host also calls
+  `AddOrkeonApplication()`; without it, a task answers `Failed` and says so.
 - **Dependencies**: the extension itself registers (TryAdd) `IHttpClientFactory`,
   `IDomainEventDispatcher`, `IUnitOfWork`, as well as the A2A agent directory
   (`IAgentRegistrationStore` singleton + `IAgentRepository` scoped, see below)
@@ -155,10 +161,8 @@ partial (flagged case by case below).
     `AddOrkeonInfrastructure()` and after any custom repository (recommended order,
     see [Principle](#principle)); a custom repository registered *after* `AddOrkeonA2A(...)`
     wins (last registration).
-- **What the shipped pieces do not do**: the default `IA2ATaskRouter` matches a task to an
-  agent but does **not** execute it — it answers `Completed` with a routing acknowledgement —
-  and no shipped host (`orkeon run`, `orkeon-host`, the REPL) calls `AddOrkeonA2A` or starts
-  `IA2AServer`. See [A2A conformance — Task execution](./a2a-conformance.md#task-execution)
+- **What the shipped binaries do not do**: no shipped host (`orkeon run`, `orkeon-host`,
+  the REPL) calls `AddOrkeonA2A` yet. See [A2A conformance — Task execution](./a2a-conformance.md#task-execution)
   and [Activation](./a2a-conformance.md#activation).
 - **Known limits**: the in-memory store is local to the process — for a multi-instance
   agent directory, provide a custom `IAgentRepository` backed by external shared

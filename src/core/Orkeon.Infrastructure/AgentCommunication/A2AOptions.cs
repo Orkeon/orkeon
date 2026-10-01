@@ -4,18 +4,16 @@ using System.Diagnostics.CodeAnalysis;
 namespace Orkeon.Infrastructure.AgentCommunication;
 
 /// <summary>
-/// Top-level A2A protocol configuration options.
+/// Top-level A2A protocol configuration options (section <c>A2A</c>). Calling
+/// <c>AddOrkeonA2A</c> is what turns the protocol on; <see cref="EnableServer"/> adds the
+/// hosted server on top of the client stack.
 /// </summary>
 [Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class A2AOptions
 {
     /// <summary>
-    /// Whether A2A protocol support is enabled at all.
-    /// </summary>
-    public bool Enabled { get; set; } = true;
-
-    /// <summary>
-    /// Whether to run an A2A server exposing local agents for remote task submission.
+    /// Whether to run an A2A server exposing local agents for remote task submission:
+    /// registers <c>IA2AServer</c> and a hosted service that starts it with the host.
     /// </summary>
     public bool EnableServer { get; set; }
 
@@ -58,10 +56,4 @@ public class A2AOptions
     /// Timeout in seconds for outbound HTTP requests to remote agents.
     /// </summary>
     public int TimeoutSeconds { get; set; } = 30;
-
-    /// <summary>
-    /// Known remote A2A agent endpoints to connect to.
-    /// Key is the agent identifier, value is the base URL.
-    /// </summary>
-    public Dictionary<string, string> RemoteAgents { get; } = [];
 }

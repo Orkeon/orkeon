@@ -1,5 +1,11 @@
+using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces.AgentCommunication;
+using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Agent;
+using Orkeon.Domain.Common;
+using Orkeon.Domain.Task;
+using Orkeon.Domain.Task.ValueObjects;
+using Orkeon.Infrastructure.Stubs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,24 +14,31 @@ using System.Diagnostics.CodeAnalysis;
 namespace Orkeon.Infrastructure.AgentCommunication;
 
 /// <summary>
-/// Routes incoming A2A task requests to matching local agents based on skill matching.
-/// Matches the requested skill ID/name against agent roles.
+/// Runs an incoming A2A task with the local agent it names (GAP-10). The request's
+/// <c>skillId</c> must equal, exactly, a skill <c>id</c> of the agent card — the agent's id
+/// (<c>GET /.well-known/agent.json</c> lists one skill per available agent). The task is an
+/// ad hoc <see cref="CrewTask"/> whose description is the request's <c>input</c>; the agent runs
+/// it through <see cref="IAgentExecutionService"/>, and the response carries what it produced:
+/// <c>Completed</c> with its output, <c>Failed</c> with its error, <c>Cancelled</c> when the
+/// request's token fires. Nothing answers <c>Completed</c> without the agent having run.
 /// <para>
 /// R4.6 / ANT-001: this router is a singleton, so it never captures the scoped
-/// <see cref="IAgentRepository"/>. Instead it opens a DI scope per routed task via
-/// <see cref="IServiceScopeFactory"/> and resolves the repository inside that scope.
-/// The repository hydrates from the shared <c>IAgentRegistrationStore</c> singleton,
-/// so agents registered by other scopes (e.g. the execution pipeline) are visible here.
+/// <see cref="IAgentRepository"/> or <see cref="IAgentExecutionService"/>. It opens a DI scope
+/// per routed task via <see cref="IServiceScopeFactory"/> and resolves both inside it. The
+/// repository hydrates from the shared <c>IAgentRegistrationStore</c> singleton, so agents
+/// registered by other scopes (e.g. the execution pipeline) are visible here.
 /// </para>
 /// </summary>
 [Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class A2ATaskRouter : IA2ATaskRouter
 {
+    private const string AdHocExpectedOutput = "A complete answer to the request, as text.";
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
 
     /// <summary>Initializes a new instance of <see cref="A2ATaskRouter"/>.</summary>
-    /// <param name="scopeFactory">Factory used to open one DI scope per routed task (the scoped <see cref="IAgentRepository"/> is resolved inside it).</param>
+    /// <param name="scopeFactory">Factory used to open one DI scope per routed task (the scoped <see cref="IAgentRepository"/> and <see cref="IAgentExecutionService"/> are resolved inside it).</param>
     /// <param name="logger">Optional logger.</param>
     public A2ATaskRouter(
         IServiceScopeFactory scopeFactory,
@@ -52,65 +65,109 @@ public partial class A2ATaskRouter : IA2ATaskRouter
 
         try
         {
-            // ANT-001: resolve the scoped repository in a dedicated scope per request —
+            // ANT-001: resolve the scoped services in a dedicated scope per request —
             // a singleton must never hold on to a scoped service (captive dependency).
-            // Get all available agents and match by role (skill mapping).
-            IReadOnlyList<Orkeon.Domain.Agent.Agent> agents;
             var scope = _scopeFactory.CreateAsyncScope();
             await using (scope.ConfigureAwait(false))
             {
                 var agentRepository = scope.ServiceProvider.GetRequiredService<IAgentRepository>();
-                agents = await agentRepository.GetAvailableAgentsAsync(ct).ConfigureAwait(false);
-            }
+                var agents = await agentRepository.GetAvailableAgentsAsync(ct).ConfigureAwait(false);
 
-            var matchingAgent = agents.FirstOrDefault(a =>
-                string.Equals(a.Role.Value, request.SkillId, StringComparison.OrdinalIgnoreCase) ||
-                a.Role.Value.Contains(request.SkillId, StringComparison.OrdinalIgnoreCase));
-
-            if (matchingAgent == null)
-            {
-                LogNoAgentFoundForSkill(request.SkillId, string.Join(", ", agents.Select(a => a.Role.Value)));
-
-                return new A2ATaskResponse
+                // Exact match on the id the agent card publishes as the skill id — never on the
+                // role, never on a substring ("writer" must not select "Ghostwriter").
+                var agent = agents.FirstOrDefault(a =>
+                    string.Equals(a.Id.ToString(), request.SkillId, StringComparison.Ordinal));
+                if (agent is null)
                 {
-                    TaskId = request.Id,
-                    Status = A2ATaskStatus.Failed,
-                    Error = $"No agent found with skill matching '{request.SkillId}'",
-                    Timestamp = DateTime.UtcNow
-                };
+                    LogNoAgentFoundForSkill(request.SkillId, agents.Count);
+                    return Failed(request,
+                        $"No agent publishes the skill id '{request.SkillId}': use the 'id' of a skill " +
+                        "listed by GET /.well-known/agent.json.");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.Input))
+                    return Failed(request, "The task input is empty: there is nothing for the agent to do.");
+
+                var executionService = scope.ServiceProvider.GetService<IAgentExecutionService>();
+                if (executionService is null or NullAgentExecutionService)
+                {
+                    return Failed(request,
+                        "No agent execution service is registered, so the agent cannot run: call " +
+                        "AddOrkeonApplication() in the host that serves A2A.");
+                }
+
+                LogMatchedA2ATask(request.Id, agent.Role.Value);
+                return await ExecuteAsync(executionService, agent, request, ct).ConfigureAwait(false);
             }
-
-            LogMatchedA2ATask(request.Id, matchingAgent.Role.Value);
-
-            // Execute the task by returning a response indicating the match was found.
-            // In a full implementation, this would invoke the agent's execution pipeline.
-            return new A2ATaskResponse
-            {
-                TaskId = request.Id,
-                Status = A2ATaskStatus.Completed,
-                Output = $"Task routed to agent '{matchingAgent.Role.Value}' with input: {request.Input}",
-                Timestamp = DateTime.UtcNow
-            };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return Cancelled(request);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogErrorRoutingA2ATask(ex, request.Id);
+            return Failed(request, ex.Message);
+        }
+    }
 
+    private static async Task<A2ATaskResponse> ExecuteAsync(
+        IAgentExecutionService executionService,
+        Orkeon.Domain.Agent.Agent agent,
+        A2ATaskRequest request,
+        CancellationToken ct)
+    {
+        var task = CrewTask.Create(
+            TaskDescription.From(request.Input),
+            ExpectedOutput.From(AdHocExpectedOutput));
+
+        var variables = request.Metadata is { } metadata
+            ? new Dictionary<string, string>(metadata)
+            : [];
+
+        var context = new SimpleExecutionContext(
+            CrewId.Create(), variables, NullMemoryScope.Instance, [], ct);
+
+        var result = await executionService.ExecuteTaskAsync(agent, task, context, ct).ConfigureAwait(false);
+
+        if (result.Success)
+        {
             return new A2ATaskResponse
             {
                 TaskId = request.Id,
-                Status = A2ATaskStatus.Failed,
-                Error = ex.Message,
+                Status = A2ATaskStatus.Completed,
+                Output = result.Output,
                 Timestamp = DateTime.UtcNow
             };
         }
+
+        if (ct.IsCancellationRequested || result.ExitReason == AgentExitReason.Cancelled)
+            return Cancelled(request);
+
+        return Failed(request, result.Error ?? result.LastError ?? "The agent execution failed without an error message.");
     }
+
+    private static A2ATaskResponse Failed(A2ATaskRequest request, string error) => new()
+    {
+        TaskId = request.Id,
+        Status = A2ATaskStatus.Failed,
+        Error = error,
+        Timestamp = DateTime.UtcNow
+    };
+
+    private static A2ATaskResponse Cancelled(A2ATaskRequest request) => new()
+    {
+        TaskId = request.Id,
+        Status = A2ATaskStatus.Cancelled,
+        Error = "The task was cancelled before the agent finished.",
+        Timestamp = DateTime.UtcNow
+    };
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Routing A2A task {TaskId} for skill {SkillId}")]
     private partial void LogRoutingA2ATask(string taskId, string skillId);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "No agent found for skill {SkillId}. Available roles: {Roles}")]
-    private partial void LogNoAgentFoundForSkill(string skillId, string roles);
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "No agent publishes skill id {SkillId} ({AgentCount} available agents)")]
+    private partial void LogNoAgentFoundForSkill(string skillId, int agentCount);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Matched A2A task {TaskId} to agent {AgentRole}")]
     private partial void LogMatchedA2ATask(string taskId, string agentRole);

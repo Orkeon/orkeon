@@ -140,18 +140,22 @@ public class A2ALifecycleValidationTests
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task Router_ShouldFindAgent_RegisteredInAnotherScope()
+    public async Task Router_ShouldFindAndRunAgent_RegisteredInAnotherScope()
     {
         // Arrange — end-to-end over the real container: the pipeline registers an agent
-        // in its own scope; the singleton router must find it in its per-request scope.
+        // in its own scope; the singleton router must find it in its per-request scope
+        // and run it through the scoped IAgentExecutionService (GAP-10).
         var services = NewServices();
         services.AddOrkeonA2A();
+        services.AddScoped<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(
+            _ => FakeAgentExecutionService.Answering("three papers found"));
         using var provider = services.BuildServiceProvider(s_validateScopes);
 
+        var agent = new AgentBuilder().Role("Researcher").Goal("Research topics").Build();
         using (var pipelineScope = provider.CreateScope())
         {
             var repo = pipelineScope.ServiceProvider.GetRequiredService<IAgentRepository>();
-            await repo.AddAsync(new AgentBuilder().Role("Researcher").Goal("Research topics").Build(), Ct);
+            await repo.AddAsync(agent, Ct);
         }
 
         var router = provider.GetRequiredService<IA2ATaskRouter>();
@@ -160,14 +164,15 @@ public class A2ALifecycleValidationTests
         var response = await router.RouteTaskAsync(new A2ATaskRequest
         {
             Id = "cross-scope-1",
-            SkillId = "Researcher",
+            SkillId = agent.Id.ToString(),
             Input = "Find the latest AI papers",
         }, Ct);
 
         // Assert — before R4.6, a fresh per-request scope held an EMPTY instance store
-        // and the router could never find pipeline agents.
+        // and the router could never find pipeline agents; before GAP-10 it answered a
+        // routing acknowledgement without running the agent.
         Assert.Equal(A2ATaskStatus.Completed, response.Status);
-        Assert.Contains("Researcher", response.Output!);
+        Assert.Equal("three papers found", response.Output);
     }
 
     [Fact]

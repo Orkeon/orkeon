@@ -98,7 +98,6 @@ public class A2ASecurityTests
         var options = new A2AOptions();
 
         // Assert
-        Assert.True(options.Enabled);
         Assert.False(options.EnableServer);
         Assert.Equal(5002, options.Port);
         Assert.Equal("http://localhost", options.Host);
@@ -108,16 +107,14 @@ public class A2ASecurityTests
         Assert.Null(options.Organization);
         Assert.Null(options.ContactUrl);
         Assert.Equal(30, options.TimeoutSeconds);
-        Assert.Empty(options.RemoteAgents);
     }
 
     [Fact]
-    public void A2AOptions_ShouldAcceptRemoteAgentConfiguration()
+    public void A2AOptions_ShouldAcceptServerConfiguration()
     {
         // Arrange & Act
         var options = new A2AOptions
         {
-            Enabled = true,
             EnableServer = true,
             Port = 8080,
             Host = "https://myagent.example.com",
@@ -126,12 +123,7 @@ public class A2ASecurityTests
             AgentVersion = "2.0.0",
             Organization = "MyOrg",
             ContactUrl = new Uri("https://myorg.com"),
-            TimeoutSeconds = 60,
-            RemoteAgents =
-            {
-                ["agent1"] = "http://agent1:5002",
-                ["agent2"] = "http://agent2:5002"
-            }
+            TimeoutSeconds = 60
         };
 
         // Assert
@@ -139,8 +131,7 @@ public class A2ASecurityTests
         Assert.Equal(8080, options.Port);
         Assert.Equal("https://myagent.example.com", options.Host);
         Assert.Equal("MyAgent", options.AgentName);
-        Assert.Equal(2, options.RemoteAgents.Count);
-        Assert.Equal("http://agent1:5002", options.RemoteAgents["agent1"]);
+        Assert.Equal(60, options.TimeoutSeconds);
     }
 
     // --- R3.4: mTLS client wiring ---------------------------------------------------------

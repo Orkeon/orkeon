@@ -149,7 +149,7 @@ public class A2ATaskPersistenceTests
     }
 
     [Fact]
-    public async Task CancelTask_Returns404_ForUnknownId_WhenStoreRegistered_AndRecordsCancellation()
+    public async Task CancelTask_Returns404_ForUnknownId_And409_ForAFinishedTask_WhenStoreRegistered()
     {
         var port = GetFreePort();
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
@@ -166,7 +166,8 @@ public class A2ATaskPersistenceTests
                 $"http://localhost:{port}/a2a/tasks/ghost", TestContext.Current.CancellationToken);
             Assert.Equal(System.Net.HttpStatusCode.NotFound, unknown.StatusCode);
 
-            // Known id → 200, and the stored record flips to Cancelled.
+            // A task that already finished cannot be cancelled (GAP-10): 409, and its record
+            // keeps the state the execution left — it is never rewritten to Cancelled.
             var taskId = Guid.NewGuid().ToString();
             var body = JsonSerializer.Serialize(new { id = taskId, skillId = "researcher", input = "hello" });
             using var content = new StringContent(body, Encoding.UTF8, "application/json");
@@ -175,11 +176,11 @@ public class A2ATaskPersistenceTests
 
             var cancel = await httpClient.DeleteAsync(
                 $"http://localhost:{port}/a2a/tasks/{taskId}", TestContext.Current.CancellationToken);
-            Assert.Equal(System.Net.HttpStatusCode.OK, cancel.StatusCode);
+            Assert.Equal(System.Net.HttpStatusCode.Conflict, cancel.StatusCode);
 
             var record = await store.GetAsync(taskId, TestContext.Current.CancellationToken);
             Assert.NotNull(record);
-            Assert.Equal(A2ATaskStatus.Cancelled, record!.Status);
+            Assert.Equal(A2ATaskStatus.Completed, record!.Status);
         }
         finally
         {

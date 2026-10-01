@@ -15,11 +15,11 @@ for what interoperates and what does not.
 
 | v1.0 operation | Orkeon endpoint | Status | Notes |
 |---|---|---|---|
-| Send Message | `POST /a2a/tasks/send` | 🟡 Partial | 0.x-era shape (`A2ATaskRequest`: id/skillId/input/inputMode/metadata), not the v1.0 `Message`/`Part` data model. The shipped router **does not run the agent** — see [Task execution](#task-execution). |
+| Send Message | `POST /a2a/tasks/send` | 🟡 Partial | 0.x-era shape (`A2ATaskRequest`: id/skillId/input/inputMode/metadata), not the v1.0 `Message`/`Part` data model. The `skillId` is the `id` of a skill on the agent card; the agent runs and the response carries its output — see [Task execution](#task-execution). |
 | Send Streaming Message | `POST /a2a/tasks/sendSubscribe` (SSE) | 🟡 Partial | Working → final update → `[DONE]`; no `TaskStatusUpdateEvent`/`TaskArtifactUpdateEvent` typed events. |
 | Get Task | `GET /a2a/tasks/{id}` | 🟡 Partial | **Real since PUB-08** when task persistence is enabled (`AddOrkeonA2ATaskPersistence()` over a checkpointing `IStateStore`): 200 with the recorded state, 404 for unknown ids. Without the opt-in: explicit `501` (never fabricated state). |
 | List Tasks | — | 🔴 Absent | |
-| Cancel Task | `DELETE /a2a/tasks/{id}` | 🟡 Partial | With persistence: 404 for unknown ids and the record flips to `Cancelled`. **Advisory only**: in-flight work is not interrupted. Without persistence: legacy acknowledgement. |
+| Cancel Task | `DELETE /a2a/tasks/{id}` | 🟡 Partial | A task the agent is still working on is **interrupted**: its execution token is cancelled and the submitting request answers `Cancelled`. With persistence, a record left `Working` by a stopped server flips to `Cancelled`; a finished task answers 409 and keeps its state. Unknown ids (or, without persistence, any task not running) answer 404. |
 | Subscribe to (existing) Task | — | 🔴 Absent | Streaming exists only at submission time. |
 | Push Notification Configs (create/get/list/delete) | — | 🔴 Absent | No webhook delivery. |
 | Get Extended Agent Card | — | 🔴 Absent | Single public card only. |
@@ -47,7 +47,7 @@ step when this surface is promoted.
 
 | Requirement | Orkeon | Status |
 |---|---|---|
-| Client identity verification | mTLS (fail-closed: `RequireMutualTls` refuses to start without a trust anchor; CA chain or pinned thumbprints; 403 on failure) + `AllowedAuthSchemes` (401): a `Bearer` token validated by an `IAuthenticationProvider` (Azure AD, OIDC, or the host's), an `ApiKey` compared in constant time with the secrets named by `ApiKeySecretNames`; a scheme declared without a validator refuses to start | 🟢 Both credentials are validated, not just matched. The client side sends no `Authorization` header yet. |
+| Client identity verification | mTLS (fail-closed: `RequireMutualTls` refuses to start without a trust anchor; CA chain or pinned thumbprints; 403 on failure) + `AllowedAuthSchemes` (401): a `Bearer` token validated by an `IAuthenticationProvider` (Azure AD, OIDC, or the host's), an `ApiKey` compared in constant time with the secrets named by `ApiKeySecretNames`; a scheme declared without a validator refuses to start | 🟢 Both credentials are validated, not just matched. `A2AClient` sends its own (`ClientAuthScheme` + `ClientCredentialSecretName`, below). |
 | Agent card access | `GET /.well-known/agent.json` | 🟢 Public by design: the security checks apply to the task endpoints only. |
 | `securitySchemes` declaration in the AgentCard | — | 🔴 Schemes are enforced but not advertised. |
 | Certificate revocation | Not checked | 🟡 **Decision (PUB-08 T3): prefer short-lived certificates over CRL/OCSP.** The A2A mTLS trust model targets private CAs, where CRL/OCSP endpoints rarely exist and OCSP adds an availability dependency; a 24–72 h certificate lifetime bounds the exposure window with no new runtime dependency, and rotation already fits the existing options (a new client instance picks up the new PFX). CRL support stays out of scope until a deployment proves the need. |
@@ -55,44 +55,67 @@ step when this surface is promoted.
 
 ## Task execution
 
-`A2ATaskRouter`, the `IA2ATaskRouter` the opt-in registers, picks the agent whose
-role equals or contains the request's `skillId` (the card lists one skill per
-available agent: id → `id`, role → `name`, goal → `description`, `text/plain` in
-and out). It then answers `Completed` with a routing acknowledgement
-(`Task routed to agent '<role>' with input: …`) — **it does not execute the
-agent**. A host that wants the matched agent to work registers its own
-`IA2ATaskRouter` before calling `AddOrkeonA2A` (the default is registered with
-`TryAdd`, so the host's wins).
+`A2ATaskRouter`, the `IA2ATaskRouter` the opt-in registers, runs the agent the
+request names. The card lists one skill per available agent (id → `id`, role →
+`name`, goal → `description`, `text/plain` in and out), and the request's
+`skillId` must equal one of those ids **exactly** — the role is not a key, and
+`writer` never selects `Ghostwriter`. The agent then works on an ad hoc task whose
+description is the request's `input` (its `metadata` become the task variables),
+through the host's `IAgentExecutionService`, resolved in the request's own DI
+scope:
+
+- the agent succeeds → `Completed`, `output` is what it produced;
+- it fails or throws → `Failed`, `error` is its error;
+- the request's token fires (`DELETE /a2a/tasks/{id}`, or the server stopping) →
+  `Cancelled`;
+- no agent publishes that id, the input is empty, or the host registered no
+  execution service (`AddOrkeonApplication()` does) → `Failed`, saying which.
+
+Nothing answers `Completed` without the agent having run. A host that routes
+differently registers its own `IA2ATaskRouter` before calling `AddOrkeonA2A` (the
+default is registered with `TryAdd`, so the host's wins). Requests are served
+concurrently, so a `DELETE` reaches a task the agent is still working on.
 
 ## Activation
 
-Nothing in the shipped binaries turns A2A on: no `orkeon` command, `orkeon-host`
-or the REPL calls it. An embedding host opts in with `AddOrkeonA2A(configuration)`
-(sections `A2A` and `A2A:Security`) or `AddOrkeonA2A(configure, configureSecurity)`,
-plus `AddOrkeonA2ATaskPersistence()` for durable task records, then resolves
-`IA2AServer` and calls `StartAsync` itself — see
-[Opt-in subsystems](./opt-in-subsystems.md).
+No shipped binary turns A2A on yet: `orkeon run`, `orkeon-host` and the REPL do
+not call `AddOrkeonA2A` (exposing it in `orkeon-host` waits on per-crew routing).
+An embedding host opts in with `AddOrkeonA2A(configuration)` (sections `A2A` and
+`A2A:Security`) or `AddOrkeonA2A(configure, configureSecurity)`, plus
+`AddOrkeonA2ATaskPersistence()` for durable task records. With `EnableServer`,
+the extension also registers a hosted service: a generic host starts the server
+with itself and stops it on shutdown, with no start-up code of its own; a start
+failure (a declared scheme without a validator, mutual TLS without a trust
+anchor) fails the host's start. See [Opt-in subsystems](./opt-in-subsystems.md).
 
 | `A2A` key | Default | Effect |
 |---|---|---|
-| `EnableServer` | `false` | Registers `IA2AServer` (an `HttpListener` on `Host:Port`). |
+| `EnableServer` | `false` | Registers `IA2AServer` (an `HttpListener` on `Host:Port`) and the hosted service that runs it. |
 | `Host`, `Port` | `http://localhost`, `5002` | The listener prefix. |
 | `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl` | `Orkeon`, `Orkeon A2A Agent`, `1.0.0`, —, — | The agent card. |
 | `TimeoutSeconds` | `30` | Client request timeout. |
-| `Enabled`, `RemoteAgents` | `true`, empty | Bound but read by nothing yet. |
 
 `A2A:Security` carries `ClientCertificatePath`/`ClientCertificatePassword` (the
 client's own certificate), `TrustedCertificateAuthorities`,
 `TrustedClientCertificateThumbprints`, `RequireMutualTls`, `AllowedAuthSchemes` and
 `ApiKeySecretNames`, plus the bearer validators `A2A:Security:AzureAD` and
 `A2A:Security:Oidc` (registered by `AddOrkeonA2A(configuration)` when filled in).
+Client side, `ClientAuthScheme` (`Bearer` or `ApiKey`) and
+`ClientCredentialSecretName` make `A2AClient` send `Authorization: <scheme> <secret>`
+on every task call, the secret read through `ISecretProvider` each time; a call
+whose credential cannot be read fails before anything is sent. Card discovery
+(`IA2AAgentDiscovery`) stays anonymous.
+
+`IA2AClient` and `IA2AAgentDiscovery` serve a C# host that calls a peer; no
+shipped agent tool calls one.
 
 ## Where this leaves consumers
 
 - **Orkeon ↔ Orkeon** across processes/hosts: the wire works end to end — card,
-  send, stream, status, cancel, mTLS — now including durable task status with
-  the persistence opt-in; the work itself needs the host's own
-  `IA2ATaskRouter` ([Task execution](#task-execution)).
+  send (the agent runs), stream, status, cancel (in-flight work stops), mTLS and
+  bearer/API-key credentials on both sides — with durable task status under the
+  persistence opt-in. What remains is hosting: a C# host enables it; no shipped
+  binary does yet.
 - **Orkeon ↔ third-party v1.0 agents**: not yet — wait for (or contribute to)
   the HTTP+JSON binding alignment tracked by the PUB-08 follow-up.
 

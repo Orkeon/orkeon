@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
@@ -28,6 +29,11 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 ///   <item><c>DELETE /a2a/tasks/{id}</c> — Cancel a task</item>
 /// </list>
 /// <para>
+/// Requests are served concurrently: a task the agent is still working on does not hold up
+/// the listener, so <c>DELETE /a2a/tasks/{id}</c> reaches it and cancels the token its
+/// execution runs under (GAP-10).
+/// </para>
+/// <para>
 /// R4.6 / ANT-001: this server is a singleton, so it never captures the scoped
 /// <see cref="IAgentRepository"/> (captive dependency). It opens a DI scope per
 /// incoming request via <see cref="IServiceScopeFactory"/> and resolves the
@@ -49,6 +55,11 @@ public partial class A2AServer : IA2AServer, IDisposable
     private HttpListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
+
+    // Requests being served (the listen loop no longer awaits each one), and the tasks the
+    // agent is still working on, by id — DELETE cancels the token of the matching entry.
+    private readonly ConcurrentDictionary<int, Task> _requestsInFlight = new();
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _tasksInFlight = new(StringComparer.Ordinal);
 
     // mTLS client trust, materialized once per StartAsync (SEC-012).
     private HashSet<string>? _trustedClientThumbprints;
@@ -164,6 +175,10 @@ public partial class A2AServer : IA2AServer, IDisposable
             }
         }
 
+        // The requests still being served saw the shutdown token; each one is its own fault
+        // barrier (ProcessContextAsync), so waiting for them cannot throw.
+        await Task.WhenAll(_requestsInFlight.Values).ConfigureAwait(false);
+
         _listener?.Close();
         _listener = null;
         _cts?.Dispose();
@@ -210,7 +225,7 @@ public partial class A2AServer : IA2AServer, IDisposable
             try
             {
                 var context = await _listener.GetContextAsync().WaitAsync(ct).ConfigureAwait(false);
-                await ProcessContextAsync(context, ct).ConfigureAwait(false);
+                TrackRequest(Task.Run(() => ProcessContextAsync(context, ct), CancellationToken.None));
             }
             catch (OperationCanceledException) { break; }
             catch (HttpListenerException) { break; }
@@ -227,6 +242,17 @@ public partial class A2AServer : IA2AServer, IDisposable
                 LogErrorAcceptingA2ARequest(ex);
             }
         }
+    }
+
+    private void TrackRequest(Task request)
+    {
+        _requestsInFlight[request.Id] = request;
+        _ = request.ContinueWith(
+            static (done, state) => ((ConcurrentDictionary<int, Task>)state!).TryRemove(done.Id, out _),
+            _requestsInFlight,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     [SuppressMessage("Design", "CA1031", Justification = "Per-request fault barrier: any handler failure is logged and converted into a 500 response so one request cannot crash the listen loop.")]
@@ -512,13 +538,55 @@ public partial class A2AServer : IA2AServer, IDisposable
             return;
         }
 
-        await PersistTaskAsync(request, A2ATaskStatus.Working, null, null, ct).ConfigureAwait(false);
+        using var execution = BeginTask(request.Id, ct);
+        if (execution is null)
+        {
+            await WriteTaskAlreadyRunningAsync(context, request.Id, ct).ConfigureAwait(false);
+            return;
+        }
 
-        var response = await _taskRouter.RouteTaskAsync(request, ct).ConfigureAwait(false);
+        A2ATaskResponse response;
+        try
+        {
+            await PersistTaskAsync(request, A2ATaskStatus.Working, null, null, ct).ConfigureAwait(false);
+            response = await _taskRouter.RouteTaskAsync(request, execution.Token).ConfigureAwait(false);
 
-        await PersistTaskAsync(request, response.Status, response.Output, response.Error, ct).ConfigureAwait(false);
+            // Recorded before the task leaves the in-flight registry: a DELETE never finds it
+            // gone from the registry yet still Working in the store.
+            await PersistTaskAsync(request, response.Status, response.Output, response.Error, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            EndTask(request.Id, execution);
+        }
+
         await WriteJsonResponse(context.Response, 200, response, ct).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Registers a task the agent is about to work on, under a token that both the server's
+    /// shutdown and <c>DELETE /a2a/tasks/{id}</c> cancel. Returns <see langword="null"/> when a
+    /// task with that id is already running.
+    /// </summary>
+    private CancellationTokenSource? BeginTask(string taskId, CancellationToken serverToken)
+    {
+        var execution = CancellationTokenSource.CreateLinkedTokenSource(serverToken);
+        if (_tasksInFlight.TryAdd(taskId, execution))
+            return execution;
+
+        execution.Dispose();
+        return null;
+    }
+
+    private void EndTask(string taskId, CancellationTokenSource execution)
+        => _tasksInFlight.TryRemove(new KeyValuePair<string, CancellationTokenSource>(taskId, execution));
+
+    private static Task WriteTaskAlreadyRunningAsync(HttpListenerContext context, string taskId, CancellationToken ct)
+        => WriteJsonResponse(context.Response, 409, new
+        {
+            error = "A task with this id is already running.",
+            taskId
+        }, ct);
 
     private async Task HandleSendSubscribeAsync(HttpListenerContext context, CancellationToken ct)
     {
@@ -530,6 +598,26 @@ public partial class A2AServer : IA2AServer, IDisposable
             return;
         }
 
+        using var execution = BeginTask(request.Id, ct);
+        if (execution is null)
+        {
+            await WriteTaskAlreadyRunningAsync(context, request.Id, ct).ConfigureAwait(false);
+            return;
+        }
+
+        try
+        {
+            await StreamTaskAsync(context, request, execution.Token, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            EndTask(request.Id, execution);
+        }
+    }
+
+    private async Task StreamTaskAsync(
+        HttpListenerContext context, A2ATaskRequest request, CancellationToken executionToken, CancellationToken ct)
+    {
         // Set SSE headers
         context.Response.ContentType = HttpDefaults.SseContentType;
         context.Response.Headers.Add("Cache-Control", "no-cache");
@@ -551,8 +639,8 @@ public partial class A2AServer : IA2AServer, IDisposable
             await WriteSseEvent(writer, workingUpdate).ConfigureAwait(false);
             await PersistTaskAsync(request, A2ATaskStatus.Working, null, null, ct).ConfigureAwait(false);
 
-            // Route the task
-            var response = await _taskRouter.RouteTaskAsync(request, ct).ConfigureAwait(false);
+            // Route the task: the agent runs under the token DELETE /a2a/tasks/{id} cancels.
+            var response = await _taskRouter.RouteTaskAsync(request, executionToken).ConfigureAwait(false);
             await PersistTaskAsync(request, response.Status, response.Output, response.Error, ct).ConfigureAwait(false);
 
             // Send final update
@@ -620,36 +708,67 @@ public partial class A2AServer : IA2AServer, IDisposable
     {
         var taskId = Uri.UnescapeDataString(path["/a2a/tasks/".Length..]);
 
-        // With a store: 404 for unknown ids, and the cancellation is recorded.
-        // Without one, the legacy acknowledgement shape is kept (documented limit:
-        // in-flight work is not interrupted either way — cancellation is advisory).
-        if (_taskStore != null)
+        // A task the agent is still working on: cancel the token its execution runs under.
+        // The send request that started it answers Cancelled and records it (GAP-10).
+        if (_tasksInFlight.TryGetValue(taskId, out var execution) && await TryCancelAsync(execution).ConfigureAwait(false))
         {
-            var record = await _taskStore.GetAsync(taskId, ct).ConfigureAwait(false);
-            if (record == null)
-            {
-                await WriteJsonResponse(context.Response, 404, new
-                {
-                    error = "Unknown task id.",
-                    taskId
-                }, ct).ConfigureAwait(false);
-                return;
-            }
-
-            await _taskStore.SaveAsync(record with
-            {
-                Status = A2ATaskStatus.Cancelled,
-                UpdatedAt = DateTime.UtcNow
-            }, ct).ConfigureAwait(false);
+            await WriteCancelledAsync(context, taskId, ct).ConfigureAwait(false);
+            return;
         }
 
-        await WriteJsonResponse(context.Response, 200, new A2ATaskResponse
+        var record = _taskStore is null ? null : await _taskStore.GetAsync(taskId, ct).ConfigureAwait(false);
+        if (record is null)
+        {
+            // Not running here, and no record of it (or no store to hold one).
+            await WriteJsonResponse(context.Response, 404, new
+            {
+                error = "Unknown task id, or a task that is no longer running.",
+                taskId
+            }, ct).ConfigureAwait(false);
+            return;
+        }
+
+        if (record.Status is A2ATaskStatus.Completed or A2ATaskStatus.Failed or A2ATaskStatus.Cancelled)
+        {
+            // A finished task keeps the state its execution left.
+            await WriteJsonResponse(context.Response, 409, new
+            {
+                error = $"The task already finished ({record.Status}) and cannot be cancelled.",
+                taskId
+            }, ct).ConfigureAwait(false);
+            return;
+        }
+
+        // A record left Working/Pending by a server that stopped mid-task: nothing runs it any more.
+        await _taskStore!.SaveAsync(record with
+        {
+            Status = A2ATaskStatus.Cancelled,
+            UpdatedAt = DateTime.UtcNow
+        }, ct).ConfigureAwait(false);
+        await WriteCancelledAsync(context, taskId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Cancels a running task; false when it finished (and released its token) meanwhile.</summary>
+    private static async Task<bool> TryCancelAsync(CancellationTokenSource execution)
+    {
+        try
+        {
+            await execution.CancelAsync().ConfigureAwait(false);
+            return true;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
+    private static Task WriteCancelledAsync(HttpListenerContext context, string taskId, CancellationToken ct)
+        => WriteJsonResponse(context.Response, 200, new A2ATaskResponse
         {
             TaskId = taskId,
             Status = A2ATaskStatus.Cancelled,
             Timestamp = DateTime.UtcNow
-        }, ct).ConfigureAwait(false);
-    }
+        }, ct);
 
     /// <summary>
     /// Best-effort persistence of a task lifecycle transition: storage failures are

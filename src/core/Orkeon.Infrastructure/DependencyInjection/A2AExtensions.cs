@@ -133,7 +133,10 @@ public static class A2AExtensions
 
         if (enableServer)
         {
-            services.AddSingleton<IA2AServer, A2AServer>();
+            // The server starts and stops with the host (GAP-10): no host code resolves it
+            // and calls StartAsync. TryAdd: calling AddOrkeonA2A twice hosts one server.
+            services.TryAddSingleton<IA2AServer, A2AServer>();
+            services.AddHostedService<A2AServerHostedService>();
         }
 
         return services;

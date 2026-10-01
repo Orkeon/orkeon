@@ -63,4 +63,20 @@ public class A2ASecurityOptions
     /// chain — so keys never sit in the configuration file and rotate without a restart.
     /// </summary>
     public Collection<string> ApiKeySecretNames { get; } = [];
+
+    /// <summary>
+    /// Client side: the scheme of the credential the client sends on every task call
+    /// (<c>Authorization: &lt;scheme&gt; &lt;credential&gt;</c>) — <c>Bearer</c> or <c>ApiKey</c>,
+    /// matching what the peer declares in its <see cref="AllowedAuthSchemes"/>. Empty means the
+    /// client sends no <c>Authorization</c> header. Agent-card discovery never carries it.
+    /// </summary>
+    public string? ClientAuthScheme { get; set; }
+
+    /// <summary>
+    /// Client side: name of the secret holding the credential sent with
+    /// <see cref="ClientAuthScheme"/>, read through the <c>ISecretProvider</c> on every call
+    /// (<c>ORKEON_&lt;NAME&gt;</c> with the default chain) so it never sits in the configuration
+    /// file and rotates without a restart. A call fails before any request when it cannot be read.
+    /// </summary>
+    public string? ClientCredentialSecretName { get; set; }
 }

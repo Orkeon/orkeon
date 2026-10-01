@@ -12,6 +12,9 @@ internal class FakeHttpMessageHandler : HttpMessageHandler
 {
     private readonly Dictionary<string, (HttpStatusCode StatusCode, string Content)> _responses = [];
 
+    /// <summary>The <c>Authorization</c> header of every request, in order (null when absent).</summary>
+    public List<string?> AuthorizationHeaders { get; } = [];
+
     public void SetResponse(string url, HttpStatusCode statusCode, string content)
     {
         _responses[url] = (statusCode, content);
@@ -20,6 +23,7 @@ internal class FakeHttpMessageHandler : HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        AuthorizationHeaders.Add(request.Headers.Authorization?.ToString());
         var url = request.RequestUri?.ToString() ?? "";
 
         if (_responses.TryGetValue(url, out var response))

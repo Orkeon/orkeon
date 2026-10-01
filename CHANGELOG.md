@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — an A2A task runs the agent it names, and the server starts with the host **[breaking]**
+
+An A2A task submitted to an Orkeon server came back `Completed` with
+`Task routed to agent 'Researcher' with input: …` — no model call, no tool. The router
+matched the request's `skillId` against agent **roles**, substring included (`writer` picked
+`Ghostwriter`), while the agent card publishes the agent **id** as the skill id, so a peer that
+followed the card got `Failed`. Nothing started the server either: a host had to resolve
+`IA2AServer` and call `StartAsync` itself. `A2A:Enabled` and `A2A:RemoteAgents` were bound and
+read by nothing (GAP-10):
+
+- **The router runs the agent.** `A2ATaskRouter` picks the agent whose id equals the `skillId`
+  exactly — the `id` of a skill on `/.well-known/agent.json` — and runs an ad hoc task built
+  from `input` (its `metadata` become the task variables) through `IAgentExecutionService`,
+  resolved in the request's scope. `Completed` carries the agent's output, `Failed` its error;
+  a host without `AddOrkeonApplication()` gets `Failed` saying so, never a pretend success.
+- **Cancellation reaches the agent.** The server serves requests concurrently and runs each task
+  under its own token: `DELETE /a2a/tasks/{id}` cancels a task the agent is still working on
+  (the submitting request answers `Cancelled`, the record ends `Cancelled`), answers 409 for a
+  finished task — whose record keeps its state — and 404 for an unknown one, store or not.
+- **The server is hosted.** `AddOrkeonA2A` with `EnableServer` registers a hosted service: a
+  generic host starts the server with itself and stops it on shutdown. A start failure (a
+  declared scheme without a validator, mutual TLS without a trust anchor) fails the host's
+  start. Calling `AddOrkeonA2A` twice registers one server.
+- **The client authenticates.** `A2A:Security:ClientAuthScheme` (`Bearer` or `ApiKey`) and
+  `ClientCredentialSecretName` make `A2AClient` send `Authorization` on every task call, the
+  secret read through `ISecretProvider` (new optional `secretProvider` constructor parameter);
+  a credential that cannot be read fails the call before anything is sent.
+- Removed: `A2AOptions.Enabled` (calling `AddOrkeonA2A` is the switch) and
+  `A2AOptions.RemoteAgents` (no agent tool calls a peer; `IA2AClient` and `IA2AAgentDiscovery`
+  remain for C# hosts).
+
+No shipped binary enables A2A yet; exposing it in `orkeon-host` is a follow-up.
+
+Migration: a peer sends the agent's id (the skill `id` from the agent card) as `skillId`, not its
+role. A host serving A2A also calls `AddOrkeonApplication()`, and drops its own
+`IA2AServer.StartAsync`/`StopAsync` calls when it runs the generic host. Delete `A2A:Enabled`
+and `A2A:RemoteAgents` from configuration. A client calling a server that declares
+`AllowedAuthSchemes` sets `ClientAuthScheme` and `ClientCredentialSecretName`.
+
 ### Security — every agent turn runs through the Guardian, A2A tokens are validated, and no tool takes a key as an argument **[breaking]**
 
 Six security surfaces were registered, configured — and called by nothing. Setting

@@ -4,6 +4,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using Orkeon.Application.Interfaces.AgentCommunication;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.Constants.Llm;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,12 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// is built once and cached for the client's lifetime — dispose the client to release
 /// them. Certificate rotation requires a new instance: the options snapshot is taken
 /// at construction.
+/// <para>
+/// Task calls (send, stream, status, cancel) carry the credential configured by
+/// <see cref="A2ASecurityOptions.ClientAuthScheme"/> and
+/// <see cref="A2ASecurityOptions.ClientCredentialSecretName"/>, read through the
+/// <see cref="ISecretProvider"/> on every call (GAP-10).
+/// </para>
 /// </summary>
 [Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class A2AClient : IA2AClient, IDisposable
@@ -28,6 +35,7 @@ public partial class A2AClient : IA2AClient, IDisposable
     private readonly A2AOptions _options;
     private readonly A2ASecurityOptions? _security;
     private readonly IFileSystemService _fileSystem;
+    private readonly ISecretProvider? _secretProvider;
     private readonly ILogger _logger;
 
     // ANT-018: the mTLS handler is built once (lazy, thread-safe) and shared across
@@ -49,15 +57,10 @@ public partial class A2AClient : IA2AClient, IDisposable
         IOptions<A2AOptions> options,
         IFileSystemService fileSystem,
         IOptions<A2ASecurityOptions>? security = null,
-        ILogger<A2AClient>? logger = null)
+        ILogger<A2AClient>? logger = null,
+        ISecretProvider? secretProvider = null)
+        : this(httpClientFactory, options?.Value ?? new A2AOptions(), fileSystem, security?.Value, logger, secretProvider)
     {
-        ArgumentNullException.ThrowIfNull(httpClientFactory);
-        ArgumentNullException.ThrowIfNull(fileSystem);
-        _httpClientFactory = httpClientFactory;
-        _options = options?.Value ?? new A2AOptions();
-        _security = security?.Value;
-        _fileSystem = fileSystem;
-        _logger = logger ?? NullLogger<A2AClient>.Instance;
     }
 
     /// <summary>Initializes a new instance of <see cref="A2AClient"/> with direct options (useful for testing).</summary>
@@ -66,7 +69,8 @@ public partial class A2AClient : IA2AClient, IDisposable
         A2AOptions options,
         IFileSystemService fileSystem,
         A2ASecurityOptions? security = null,
-        ILogger<A2AClient>? logger = null)
+        ILogger<A2AClient>? logger = null,
+        ISecretProvider? secretProvider = null)
     {
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(fileSystem);
@@ -74,6 +78,7 @@ public partial class A2AClient : IA2AClient, IDisposable
         _options = options ?? new A2AOptions();
         _security = security;
         _fileSystem = fileSystem;
+        _secretProvider = secretProvider;
         _logger = logger ?? NullLogger<A2AClient>.Instance;
     }
 
@@ -106,7 +111,9 @@ public partial class A2AClient : IA2AClient, IDisposable
 
         using var client = await CreateClientAsync(ct).ConfigureAwait(false);
         using var content = JsonContent.Create(request, options: JsonOptions);
-        using var response = await client.PostAsync(requestUri, content, ct).ConfigureAwait(false);
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri) { Content = content };
+        await AuthorizeAsync(httpRequest, ct).ConfigureAwait(false);
+        using var response = await client.SendAsync(httpRequest, ct).ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
 
@@ -142,6 +149,7 @@ public partial class A2AClient : IA2AClient, IDisposable
         using var httpContent = JsonContent.Create(request, options: JsonOptions);
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url) { Content = httpContent };
         httpRequest.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue(HttpDefaults.SseContentType));
+        await AuthorizeAsync(httpRequest, ct).ConfigureAwait(false);
 
         using var response = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
@@ -208,7 +216,9 @@ public partial class A2AClient : IA2AClient, IDisposable
             LogCancellingA2ATask(taskId, url);
 
             using var client = await CreateClientAsync(ct).ConfigureAwait(false);
-            using var response = await client.DeleteAsync(requestUri, ct).ConfigureAwait(false);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Delete, requestUri);
+            await AuthorizeAsync(httpRequest, ct).ConfigureAwait(false);
+            using var response = await client.SendAsync(httpRequest, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
         }
     }
@@ -230,7 +240,9 @@ public partial class A2AClient : IA2AClient, IDisposable
             LogGettingA2ATaskStatus(taskId, url);
 
             using var client = await CreateClientAsync(ct).ConfigureAwait(false);
-            using var response = await client.GetAsync(requestUri, ct).ConfigureAwait(false);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            await AuthorizeAsync(httpRequest, ct).ConfigureAwait(false);
+            using var response = await client.SendAsync(httpRequest, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<A2ATaskResponse>(JsonOptions, ct).ConfigureAwait(false);
@@ -241,6 +253,62 @@ public partial class A2AClient : IA2AClient, IDisposable
                 Error = "Empty response from remote agent"
             };
         }
+    }
+
+    /// <summary>
+    /// Sets the <c>Authorization</c> header of a task call from
+    /// <see cref="A2ASecurityOptions.ClientAuthScheme"/> and the secret named by
+    /// <see cref="A2ASecurityOptions.ClientCredentialSecretName"/>. No scheme: no header. A scheme
+    /// whose credential cannot be read throws before anything is sent — a call that silently goes
+    /// out anonymous would only come back as a 401 with no hint of the cause.
+    /// </summary>
+    private async Task AuthorizeAsync(HttpRequestMessage httpRequest, CancellationToken ct)
+    {
+        var scheme = _security?.ClientAuthScheme?.Trim();
+        if (string.IsNullOrEmpty(scheme))
+            return;
+
+        if (!string.Equals(scheme, A2ACredentialValidator.BearerScheme, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(scheme, A2ACredentialValidator.ApiKeyScheme, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"A2A:Security:ClientAuthScheme '{scheme}' is not supported: only " +
+                $"'{A2ACredentialValidator.BearerScheme}' and '{A2ACredentialValidator.ApiKeyScheme}' are.");
+        }
+
+        var secretName = _security!.ClientCredentialSecretName;
+        if (string.IsNullOrWhiteSpace(secretName) || _secretProvider is null)
+        {
+            throw new InvalidOperationException(
+                $"A2A:Security:ClientAuthScheme is '{scheme}' but no credential can be read: set " +
+                "A2A:Security:ClientCredentialSecretName to the name of a secret the secret provider resolves " +
+                "(ORKEON_<NAME> with the default chain).");
+        }
+
+        string credential;
+        try
+        {
+            using var secret = await _secretProvider.GetSecretAsync(secretName, ct).ConfigureAwait(false);
+            credential = secret.Value;
+        }
+        catch (KeyNotFoundException ex)
+        {
+            throw new InvalidOperationException(
+                $"A2A:Security:ClientCredentialSecretName names the secret '{secretName}', which the secret provider does not hold.",
+                ex);
+        }
+
+        if (string.IsNullOrWhiteSpace(credential))
+        {
+            throw new InvalidOperationException(
+                $"The A2A client credential secret '{secretName}' is empty.");
+        }
+
+        httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            string.Equals(scheme, A2ACredentialValidator.BearerScheme, StringComparison.OrdinalIgnoreCase)
+                ? A2ACredentialValidator.BearerScheme
+                : A2ACredentialValidator.ApiKeyScheme,
+            credential);
     }
 
     /// <summary>

@@ -134,7 +134,13 @@ partiel (signalé au cas par cas ci-dessous).
   // Ou par délégué, sans IConfiguration
   services.AddOrkeonA2A(options => options.EnableServer = true);
   ```
-  `IA2AServer` n'est enregistré que si `EnableServer` est vrai.
+  `IA2AServer` n'est enregistré que si `EnableServer` est vrai, avec un service hébergé :
+  un hôte générique démarre le serveur avec lui et l'arrête à l'extinction — aucun code
+  de l'hôte ne résout `IA2AServer` ni n'appelle `StartAsync`. Un processus qui ne fait
+  jamais tourner l'hôte ne le démarre jamais.
+- **Exécution** : le routeur exécute l'agent dont l'id égale le `skillId` de la requête
+  (l'`id` que publie la carte d'agent) via `IAgentExecutionService` ; l'hôte appelle donc
+  aussi `AddOrkeonApplication()` — sans lui, une tâche répond `Failed` et le dit.
 - **Dépendances** : l'extension enregistre elle-même (TryAdd) `IHttpClientFactory`,
   `IDomainEventDispatcher`, `IUnitOfWork`, ainsi que l'annuaire d'agents A2A
   (`IAgentRegistrationStore` singleton + `IAgentRepository` scoped, voir ci-dessous)
@@ -159,10 +165,8 @@ partiel (signalé au cas par cas ci-dessous).
     `AddOrkeonInfrastructure()` et après un éventuel dépôt custom (ordre recommandé,
     cf. [Principe](#principe)) ; un dépôt custom enregistré *après* `AddOrkeonA2A(...)`
     gagne (dernier enregistrement).
-- **Ce que les pièces livrées ne font pas** : l'`IA2ATaskRouter` par défaut associe une tâche à
-  un agent mais ne l'**exécute pas** — il répond `Completed` avec un accusé de routage — et
-  aucun hôte livré (`orkeon run`, `orkeon-host`, le REPL) n'appelle `AddOrkeonA2A` ni ne démarre
-  `IA2AServer`. Voir [Conformité A2A — Exécution des tâches](./a2a-conformance.md#exécution-des-tâches)
+- **Ce que les binaires livrés ne font pas** : aucun hôte livré (`orkeon run`, `orkeon-host`,
+  le REPL) n'appelle encore `AddOrkeonA2A`. Voir [Conformité A2A — Exécution des tâches](./a2a-conformance.md#exécution-des-tâches)
   et [Activation](./a2a-conformance.md#activation).
 - **Limites connues** : le store in-memory est local au processus — pour un annuaire
   d'agents multi-instances, fournir un `IAgentRepository` custom adossé à un stockage
