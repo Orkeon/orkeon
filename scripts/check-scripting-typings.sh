@@ -21,8 +21,8 @@
 # typechecker, pointed at code that is known to run, can. That is what this does -- the
 # examples are executed by the suite, so if they also typecheck, the two surfaces agree.
 #
-# The examples are copied to a scratch tree first: each becomes its own program (a shared
-# one would collide on every `const crew`), and the `/// <reference orkeon-script="1.0" />`
+# The examples are copied to a scratch tree first: each .ork.ts becomes its own program (a
+# shared one would collide on every `const crew`), and the `/// <reference orkeon-script="1.0" />`
 # pragma, which tsc does not know, is stripped.
 set -euo pipefail
 
@@ -43,43 +43,36 @@ if [ ! -x "$TSC" ]; then
 fi
 
 trap 'rm -rf "$WORK"' EXIT
-mkdir -p "$WORK/typings" "$WORK/scripts"
+mkdir -p "$WORK/typings" "$WORK/tree"
 cp "$TYPINGS"/*.d.ts "$WORK/typings/"
 
 # Both pragma spellings go: the `orkeon-script` version is not a form tsc knows, and the
 # `path=` one points at a per-project .orkeon/ folder that does not exist in this scratch
 # tree -- the typings are supplied as explicit files instead.
-strip_pragma() { sed -E 's|^/// <reference (orkeon-script\|path)=?.*$||' "$1" > "$2"; }
+strip_pragma() { mkdir -p "$(dirname "$2")"; sed -E 's|^/// <reference (orkeon-script\|path)=?.*$||' "$1" > "$2"; }
 
-for f in "$ROOT"/examples/scripting/*.ork.ts; do
-    strip_pragma "$f" "$WORK/scripts/$(basename "$f" .ork.ts).ts"
-done
-
-# The REPL-bridge crews are the same DSL against the same typings, and live outside
-# examples/scripting/. Left uncovered, one of them drifted; they are flattened in too.
-for f in "$ROOT"/examples/cli-ts-commands/crews/*/crew.ork.ts; do
-    [ -e "$f" ] || continue
-    strip_pragma "$f" "$WORK/scripts/cli-crew-$(basename "$(dirname "$f")").ts"
-done
-
-# The declarative crew lives in its own folder and imports a sibling module; flatten both,
-# rewriting the import so the pair still resolves.
-if [ -f "$ROOT/examples/scripting/crew-review-desk/main.ork.ts" ]; then
-    sed 's|^/// <reference orkeon-script.*$||; s|"./tools/index.ts"|"./_crew-review-desk-tools"|' \
-        "$ROOT/examples/scripting/crew-review-desk/main.ork.ts" > "$WORK/scripts/crew-review-desk.ts"
-    cp "$ROOT/examples/scripting/crew-review-desk/tools/index.ts" \
-       "$WORK/scripts/_crew-review-desk-tools.ts"
-fi
+# EVERY .ork.ts under examples/, wherever it lives (GAP-12). This loop used to cover
+# examples/scripting/ alone, plus two hand-picked folders; an example outside them
+# (09-experimental/llm-response-format) drifted -- it handed `.llm()` a plain object the
+# runtime throws away -- and no gate saw it. The tree is mirrored rather than flattened,
+# so a script's relative imports (`../_tools/index.ts`) still resolve. `examples/others/`
+# holds third-party checkouts and is not ours to check. `.cmd.ts` commands are typed by
+# the CLI typings, not these.
+while IFS= read -r -d '' f; do
+    rel="${f#"$ROOT"/}"
+    strip_pragma "$f" "$WORK/tree/$rel"
+done < <(find "$ROOT/examples" \( -path "$ROOT/examples/others" -o -name node_modules \) -prune \
+            -o -type f -name '*.ts' ! -name '*.cmd.ts' ! -path '*/sample-files/*' -print0)
 
 failed=0
 checked=0
-for f in "$WORK"/scripts/*.ts; do
-    case "$(basename "$f")" in _*) continue ;; esac   # imported modules, checked with their importer
+while IFS= read -r -d '' f; do
     checked=$((checked + 1))
+    rel="${f#"$WORK"/tree/}"
     # tsc refuses --project alongside file arguments, so each script gets a generated
     # project that extends the shared base. The base stays the one copyable source of the
     # recommended options.
-    cfg="$WORK/$(basename "$f" .ts).tsconfig.json"
+    cfg="$WORK/cfg-$checked.tsconfig.json"
     {
         printf '{ "extends": "%s", "files": [' "$TOOLDIR/tsconfig.base.json"
         first=1
@@ -90,12 +83,13 @@ for f in "$WORK"/scripts/*.ts; do
         done
         printf ', "%s"] }' "$f"
     } > "$cfg"
-    if ! out=$("$TSC" --project "$cfg" 2>&1); then
-        echo "FAIL $(basename "$f")"
-        echo "$out" | sed "s|$WORK/scripts/|  |"
+    # Run from the tree root so tsc reports paths as `examples/...`.
+    if ! out=$(cd "$WORK/tree" && "$TSC" --project "$cfg" 2>&1); then
+        echo "FAIL $rel"
+        echo "$out" | sed 's|^|  |'
         failed=$((failed + 1))
     fi
-done
+done < <(find "$WORK/tree" -type f -name '*.ork.ts' -print0 | sort -z)
 
 if [ "$checked" -eq 0 ]; then
     echo "check-scripting-typings: no examples found -- refusing to report success." >&2

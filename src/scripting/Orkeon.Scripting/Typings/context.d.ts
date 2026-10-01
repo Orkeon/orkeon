@@ -32,7 +32,8 @@ declare global {
         store(key: string, value: unknown): Promise<void>;
         get<T = unknown>(key: string): Promise<T | undefined>;
         search<T = unknown>(query: string, k?: number): Promise<readonly MemoryHit<T>[]>;
-        delete(key: string): Promise<void>;
+        /** Resolves to whether the key existed. */
+        delete(key: string): Promise<boolean>;
     }
 
     interface LlmFacade {
@@ -56,19 +57,24 @@ declare global {
         extract<T>(prompt: string, schema: JsonSchema, opts?: LlmCallOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
         embed(text: string | readonly string[], opts?: LlmCallOptions): Promise<readonly number[][]>;
-        act<T = unknown>(prompt: string, opts?: ActOptions): Promise<T>;
+        /** The LLM ⇄ tool-call loop over the agent's tools: `.tools([...])` built-ins and `withAutonomousTool` instances. */
+        act(prompt: string, opts?: ActOptions): Promise<ActResult>;
         /** Cancels the in-flight and future llm calls of this context; a running `act()` resolves with `{ interrupted: true }`. */
         interrupt(): void;
         /** Whether `interrupt()` was requested (or the host cancelled the run). */
         readonly isInterrupted: boolean;
     }
 
+    /**
+     * The per-call options every `ctx.llm` method reads. Two settings, both PATCHING the host
+     * provider's configuration for this call only: the response format, and the model. There is
+     * no per-call provider, temperature or token cap (GAP-12: they were declared here and never
+     * read), and no `signal` — the call already observes the context's.
+     */
     interface LlmCallOptions {
-        provider?: string;
-        model?: string;
-        temperature?: number;
-        maxTokens?: number;
-        signal?: CancellationSignal;
+        responseFormat?: ResponseFormatType;
+        /** The per-call model: the host's provider keeps its credentials and endpoint. */
+        llm?: { model?: string };
     }
 
     /**
@@ -134,20 +140,29 @@ declare global {
         onDelta?: (delta: string) => void;
     }
 
+    /** What `act(...)` resolves to. */
+    interface ActResult {
+        /** The model's final answer — or a marker when the loop stopped first. */
+        readonly output: string;
+        /** The turns the loop ran. */
+        readonly iterations: number;
+        /** Set when `interrupt()` stopped the loop; `output` is then `"(interrupted)"`. */
+        readonly interrupted?: true;
+        /** Set when `maxIterations` was reached without a final answer. */
+        readonly exhausted?: true;
+    }
+
     interface Message {
         readonly role: "system" | "user" | "assistant" | "tool";
         readonly content: string;
         readonly name?: string;
     }
 
+    /** What `chat(...)` resolves to. A tool call is `act(...)`'s business: `chat` offers no tools. */
     interface ChatResponse {
         readonly content: string;
-        readonly toolCalls?: readonly ToolCall[];
-    }
-
-    interface ToolCall {
-        readonly name: string;
-        readonly arguments: Record<string, unknown>;
+        readonly tokensUsed: number;
+        readonly model: string;
     }
 
     interface JsonSchema {
@@ -165,10 +180,31 @@ declare global {
          */
         readonly signal: CancellationSignal;
         readonly log: Logger;
+        /** A read-only view of the crew this context's agent belongs to. */
+        readonly crew: CrewView;
+        /**
+         * Runs another agent of the crew, by object or by name, exactly as `crew.runAgent` does:
+         * under its own context, its semaphore and its `onError` policy. An unknown name throws
+         * `AgentNotInThisCrewError`; the calling agent itself, `RecursiveAgentInvocationError`.
+         */
         delegate<T = unknown>(agent: string | Agent<unknown, T>, input: unknown): Promise<T>;
-        send(agent: string, message: unknown): Promise<void>;
-        receive<T = unknown>(): Promise<T>;
-        broadcast(message: unknown): Promise<void>;
+        /** Queues `message` for an agent of the crew, by object or by name. Synchronous. */
+        send(agent: string | Agent, message: unknown): void;
+        /** The next message for this agent. `timeout` (ms or "2s") rejects with `ReceiveTimeoutError`. */
+        receive<T = unknown>(options?: { timeout?: number | string }): Promise<T>;
+        /** Queues `message` for every other agent of the crew. Synchronous. */
+        broadcast(message: unknown): void;
+    }
+
+    /** `ctx.crew`: the crew as a context sees it — lookups and the crew-wide named lock. */
+    interface CrewView {
+        readonly name: string;
+        findByName(name: string): Agent | undefined;
+        findById(id: string): Agent | undefined;
+        findByRole(role: string): readonly Agent[];
+        has(agent: Agent | string): boolean;
+        /** A named lock shared by every agent of the crew. */
+        lock<T>(name: string, fn: () => Promise<T>): Promise<T>;
     }
 
     /**
@@ -193,10 +229,16 @@ declare global {
     interface AgentContext<TState = unknown> extends ExecutionContext {
         readonly state: AgentState<TState>;
         readonly memory: { readonly agent: MemoryScope; readonly crew: MemoryScope };
+        /**
+         * The state mutator, reachable when `state` is `undefined` or `null` and therefore has no
+         * `with` to call: `ctx.stateWith(prev => …)` is `ctx.state.with(prev => …)`.
+         */
+        stateWith(mutate: (prev: Readonly<TState>) => TState | Promise<TState>): Promise<Readonly<TState>>;
         lock<T>(name: string, fn: () => Promise<T>): Promise<T>;
         spawn<TIn, TOut>(builder: AgentBuilder<TIn, TOut, unknown>): Agent<TIn, TOut>;
     }
 
+    /** `ctx.log`: extra arguments are joined to the message by a space, objects as JSON. */
     interface Logger {
         debug(message: string, ...args: unknown[]): void;
         info(message: string, ...args: unknown[]): void;

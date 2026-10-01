@@ -108,7 +108,7 @@ two script shapes actually honours each method**.
 | Lifecycle hooks (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — answer dispatched CLI commands by name | [cli-ts-commands.md](./cli-ts-commands.md#the-agent-side--oncommand) |
 | Built-in `tools.X(...)` namespace | `tools.d.ts` |
-| LLM providers (`llm.openai`, `llm.default`, etc.) | `llm.d.ts` |
+| The agent's model settings (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
 ## Coexistence with YAML

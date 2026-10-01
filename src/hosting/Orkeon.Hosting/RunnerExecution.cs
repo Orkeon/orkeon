@@ -1325,7 +1325,6 @@ public static partial class RunnerExecution
         var engineFactory = new JsEngineFactory(
             limits: scriptLimits,
             loggerFactory: loggerFactory,
-            configuration: configuration,
             builtInTools: tools,
             llmProvider: llmProvider,
             hostPorts: new ScriptingHostPorts

@@ -99,8 +99,9 @@ An agent reaches tools three ways, and they are not interchangeable:
    engine, which cannot be validated, skips an unknown name silently.)
 2. **TypeScript tools as instances** — `.withAutonomousTools([...])`, built with
    `toolBuilder()`. They travel with the script, so they need no host registration. In the
-   procedural shape they are called directly from a body (`diffStats.execute({ diff })`) —
-   `ctx.llm.act` does not offer them to the model.
+   procedural shape a body calls them directly (`diffStats.execute({ diff })`), and
+   `ctx.llm.act` offers them to the model next to the built-ins — when the model calls one,
+   its `execute` runs in the script.
 3. **Imperatively, from a body** — `tools.fileRead({ path })`, camelCased, procedural shape
    only.
 
@@ -203,17 +204,18 @@ await crewBuilder().withAgent(calculator).build().run();
 
 ### `ctx.llm.act` — an agent loop in nine lines
 
-`act` runs the LLM ⇄ tool-call cycle over the built-ins the agent selected with
-`.tools([...])` until the model stops asking for tools or `maxIterations` (default 10) is
-reached:
+`act` runs the LLM ⇄ tool-call cycle over the agent's tools — the built-ins it selected with
+`.tools([...])` and its `withAutonomousTool` instances — until the model stops asking for
+tools or `maxIterations` (default 10) is reached. It resolves to `{ output, iterations }`:
 
 ```ts
 .body(async (input, ctx) => {
-    return await ctx.llm.act("Summarise the release note in /script/notes.md", {
+    const run = await ctx.llm.act("Summarise the release note in /script/notes.md", {
         system: "You are terse. Two sentences, no preamble.",
         maxIterations: 5,
         onDelta: (d) => ctx.log.info(d),
     });
+    return run.output;
 })
 ```
 
@@ -307,7 +309,9 @@ knowing before you are surprised by them:
 | `stateGraph has no path from START to END` | No static route; add one or use a conditional edge. |
 | `StateMutationOutsideWithException` | `ctx.state.x = …` instead of `ctx.state.with(...)`. |
 | `.concurrency must be positive` / `V1 supports .concurrency(1) only` | The N-holder semaphore is V1.5. |
-| `RecursiveAgentInvocationException` | `ctx.spawn` of an agent with the caller's own name. |
+| `RecursiveAgentInvocationException` | `ctx.spawn` of an agent with the caller's own name, or `ctx.delegate` / `crew.runAgent` of the calling agent itself. |
+| `.llm(...) takes an LlmConfig` | A model name or a `{ provider, model }` literal handed to `.llm(...)`. Write `.llm(llm.model("…"))`; the provider is the host's. |
+| `.withAutonomousTool(tool) takes what toolBuilder()…build() returns` | A name or a plain object. Built-ins go in `.tools([...])`. |
 | A retry that never happens | `onError` returning a string instead of `ErrorAction.retry({...})`. |
 
 ## Deliberately out of scope
@@ -316,7 +320,7 @@ knowing before you are surprised by them:
 there either. There is no conditional-inclusion method — guard the `withAgent`/`withTask`
 call with an `if` instead. `ctx.llm.embed` returns a stub vector. The full list, with what
 each one actually does, is in
-[Known gaps between the typings and the runtime](../reference/scripting-dsl.md#known-gaps-between-the-typings-and-the-runtime).
+[Design limits](../reference/scripting-dsl.md#design-limits).
 
 ## Where to go next
 

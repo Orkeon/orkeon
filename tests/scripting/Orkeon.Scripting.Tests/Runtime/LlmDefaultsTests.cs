@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -9,28 +8,17 @@ namespace Orkeon.Scripting.Tests.Runtime;
 
 public sealed class LlmDefaultsTests
 {
-    private static IConfiguration Cfg(params (string Key, string Value)[] entries)
-        => new ConfigurationBuilder()
-            .AddInMemoryCollection(entries.Select(e => new KeyValuePair<string, string?>(e.Key, e.Value)))
-            .Build();
-
-    private static T Eval<T>(IConfiguration? cfg, ILoggerFactory? lf, string js)
+    private static T EvalWithProvider<T>(ILoggerFactory? lf, ILlmProvider? provider, string js)
     {
-        var engine = new JsEngineFactory(loggerFactory: lf, configuration: cfg).Create();
-        return (T)engine.Evaluate(js).ToObject()!;
-    }
-
-    private static T EvalWithProvider<T>(IConfiguration? cfg, ILoggerFactory? lf, ILlmProvider? provider, string js)
-    {
-        var engine = new JsEngineFactory(
-            loggerFactory: lf, configuration: cfg, llmProvider: provider).Create();
+        var engine = new JsEngineFactory(loggerFactory: lf, llmProvider: provider).Create();
         return (T)engine.Evaluate(js).ToObject()!;
     }
 
     private sealed class StubLlmProvider : ILlmProvider
     {
-        public StubLlmProvider(string name) { Name = name; }
+        public StubLlmProvider(string name, string? model = null) { Name = name; BaseConfig = model is null ? null : LlmConfig.Create(model); }
         public string Name { get; }
+        public LlmConfig? BaseConfig { get; }
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
             => Task.FromResult(new LlmResponse { Content = string.Empty });
         public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
@@ -38,152 +26,29 @@ public sealed class LlmDefaultsTests
     }
 
     [Fact]
-    public void llm_openai_returns_provider_named_openai_with_supplied_model()
+    public void llm_default_is_the_host_provider_on_its_configured_model()
     {
-        var built = Eval<JsLlmConfig>(null, null, """llm.openai({ model: "gpt-4o", temperature: 0.2 });""");
+        // GAP-12: llm.default_ says what an agent will really use — the host's provider, and the
+        // model that provider is configured with. It used to report the platform default model
+        // for a provider bound through DI, which `.llm(llm.default_)` then forced onto the host.
+        using var lf = new RecordingLoggerFactory();
+        var def = EvalWithProvider<JsLlmConfig>(lf, new StubLlmProvider("deepseek", "deepseek-v4-flash"), "llm.default_");
 
-        Assert.Equal("openai", built.provider);
-        Assert.Equal("gpt-4o", built.model);
-        Assert.Equal(0.2, built.temperature);
+        Assert.Equal("deepseek", def.provider);
+        Assert.Equal("deepseek-v4-flash", def.model);
+        Assert.DoesNotContain(lf.Logger.Entries, e => e.Level == LogLevel.Warning);
     }
 
     [Fact]
-    public void llm_grok_returns_provider_named_grok_with_its_default_model()
-    {
-        var built = Eval<JsLlmConfig>(null, null, """llm.grok({});""");
-
-        Assert.Equal("grok", built.provider);
-        Assert.Equal("grok-4.6", built.model);
-    }
-
-    [Fact]
-    public void llm_minimax_returns_provider_named_minimax_with_its_default_model()
-    {
-        var built = Eval<JsLlmConfig>(null, null, """llm.minimax({});""");
-
-        Assert.Equal("minimax", built.provider);
-        Assert.Equal("MiniMax-M2", built.model);
-    }
-
-    [Fact]
-    public void llm_openrouter_returns_provider_named_openrouter_with_its_marketplace_default_model()
-    {
-        var built = Eval<JsLlmConfig>(null, null, """llm.openrouter({});""");
-
-        // LLM-09: the fleet's Gemini default under the marketplace's mandatory vendor prefix.
-        Assert.Equal("openrouter", built.provider);
-        Assert.Equal("google/gemini-3.7-flash", built.model);
-    }
-
-    [Fact]
-    public void llm_mammouth_returns_provider_named_mammouth_with_its_bare_default_model()
-    {
-        var built = Eval<JsLlmConfig>(null, null, """llm.mammouth({});""");
-
-        // LLM-09: the same model, under the bare identifier the proxy serves it as.
-        Assert.Equal("mammouth", built.provider);
-        Assert.Equal("gemini-3.7-flash", built.model);
-    }
-
-    [Theory]
-    [InlineData("openrouter", "google/gemini-3.7-flash")]
-    [InlineData("mammouth", "gemini-3.7-flash")]
-    public void llm_default_resolves_an_aggregator_with_its_own_model_not_the_platform_default(
-        string providerKey, string expectedModel)
-    {
-        // Without a switch case the fallback is LlmConfig.Default(): gpt-5.6-sol, which
-        // OpenRouter refuses outright (no vendor prefix).
-        var cfg = Cfg(("Orkeon:DefaultLlmProvider", providerKey));
-        var def = Eval<JsLlmConfig>(cfg, null, "llm.default");
-
-        Assert.Equal(providerKey, def.provider);
-        Assert.Equal(expectedModel, def.model);
-    }
-
-    [Fact]
-    public void llm_default_resolves_OpenAI_when_configured()
-    {
-        var cfg = Cfg(("Orkeon:DefaultLlmProvider", "openai"));
-        var def = Eval<JsLlmConfig>(cfg, null, "llm.default");
-
-        Assert.Equal("openai", def.provider);
-    }
-
-    [Fact]
-    public void llm_default_resolves_Anthropic_when_configured()
-    {
-        var cfg = Cfg(("Orkeon:DefaultLlmProvider", "anthropic"));
-        var def = Eval<JsLlmConfig>(cfg, null, "llm.default");
-
-        Assert.Equal("anthropic", def.provider);
-    }
-
-    [Fact]
-    public void llm_default_with_no_config_falls_back_to_undefined_and_logs_warning()
+    public void llm_default_without_a_host_provider_is_the_undefined_echo_and_warns()
     {
         using var lf = new RecordingLoggerFactory();
 
-        var def = Eval<JsLlmConfig>(null, lf, "llm.default");
+        var def = EvalWithProvider<JsLlmConfig>(lf, null, "llm.default_");
 
         Assert.Equal("undefined", def.provider);
         Assert.True(lf.Logger.HasEntry(e =>
-            e.Level == LogLevel.Warning && e.Message.Contains("DefaultLlmProvider")));
-    }
-
-    [Fact]
-    public void llm_default_underscore_alias_resolves_same_value_as_llm_default()
-    {
-        // `orkeon-script` typings ship `llm.default_` because the conventional twin in
-        // .ork.ts authoring avoids the `default` keyword. The runtime must accept both
-        // names so transpiled scripts that read `llm.default_` (as the experiment-07
-        // fixtures do) don't crash with "Cannot read property 'with' of undefined".
-        var cfg = Cfg(("Orkeon:DefaultLlmProvider", "anthropic"));
-        var viaAlias = Eval<JsLlmConfig>(cfg, null, "llm.default_");
-        var viaCanonical = Eval<JsLlmConfig>(cfg, null, "llm.default");
-
-        Assert.Equal(viaCanonical.provider, viaAlias.provider);
-        Assert.Equal(viaCanonical.model, viaAlias.model);
-    }
-
-    [Fact]
-    public void llm_default_with_overrides_keeps_provider_and_swaps_temperature()
-    {
-        var cfg = Cfg(("Orkeon:DefaultLlmProvider", "openai"));
-        var tweaked = Eval<JsLlmConfig>(cfg, null, "llm.default.with({ temperature: 0.0, maxTokens: 1000 });");
-
-        Assert.Equal("openai", tweaked.provider);
-        Assert.Equal(0.0, tweaked.temperature);
-        Assert.Equal(1000, tweaked.maxTokens);
-    }
-
-    [Fact]
-    public void llm_default_resolves_from_DI_provider_when_no_config_key()
-    {
-        // Friction #9c: when the host's DI binds an ILlmProvider (the same one the
-        // orchestrator uses), `llm.default_` in a .ork.ts script must report that
-        // provider — no UndefinedLlm echo, no warning.
-        using var lf = new RecordingLoggerFactory();
-        var provider = new StubLlmProvider("deepseek-v4-flash");
-
-        var def = EvalWithProvider<JsLlmConfig>(null, lf, provider, "llm.default_");
-
-        Assert.Equal("deepseek-v4-flash", def.provider);
-        Assert.DoesNotContain(lf.Logger.Entries,
-            e => e.Level == LogLevel.Warning && e.Message.Contains("DefaultLlmProvider"));
-    }
-
-    [Fact]
-    public void llm_default_DI_provider_loses_to_explicit_config_key()
-    {
-        // Operator override: `Orkeon:DefaultLlmProvider` pins the logical provider
-        // name independently of which ILlmProvider DI happens to bind. Useful for
-        // testing or for environments where multiple providers are registered.
-        var cfg = Cfg(("Orkeon:DefaultLlmProvider", "anthropic"));
-        var provider = new StubLlmProvider("deepseek-v4-flash");
-
-        var def = EvalWithProvider<JsLlmConfig>(cfg, null, provider, "llm.default_");
-
-        Assert.Equal("anthropic", def.provider);
+            e.Level == LogLevel.Warning && e.Message.Contains("llm.default_", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -193,13 +58,47 @@ public sealed class LlmDefaultsTests
         // without API key). That's not a real default — fall back to the warning
         // so the operator notices.
         using var lf = new RecordingLoggerFactory();
-        var provider = new UndefinedLlmProvider();
 
-        var def = EvalWithProvider<JsLlmConfig>(null, lf, provider, "llm.default_");
+        var def = EvalWithProvider<JsLlmConfig>(lf, new UndefinedLlmProvider(), "llm.default_");
 
         Assert.Equal("undefined", def.provider);
-        Assert.True(lf.Logger.HasEntry(e =>
-            e.Level == LogLevel.Warning && e.Message.Contains("DefaultLlmProvider")));
+        Assert.True(lf.Logger.HasEntry(e => e.Level == LogLevel.Warning));
+    }
+
+    [Fact]
+    public void llm_default_with_overrides_keeps_provider_and_swaps_settings()
+    {
+        var tweaked = EvalWithProvider<JsLlmConfig>(null, new StubLlmProvider("openai", "gpt-4o-mini"),
+            "llm.default_.with({ model: 'gpt-4o', temperature: 0.0, maxTokens: 1000 });");
+
+        Assert.Equal("openai", tweaked.provider);
+        Assert.Equal("gpt-4o", tweaked.model);
+        Assert.Equal(0.0, tweaked.temperature);
+        Assert.Equal(1000, tweaked.maxTokens);
+    }
+
+    [Fact]
+    public void llm_model_is_the_default_on_another_model()
+    {
+        var cfg = EvalWithProvider<JsLlmConfig>(null, new StubLlmProvider("openai", "gpt-4o-mini"),
+            "llm.model('gpt-4o', { maxTokens: 200 });");
+
+        Assert.Equal("openai", cfg.provider);
+        Assert.Equal("gpt-4o", cfg.model);
+        Assert.Equal(200, cfg.maxTokens);
+    }
+
+    [Theory]
+    [InlineData("llm.default_.with({ baseUrl: 'http://elsewhere' })", "baseUrl")]
+    [InlineData("llm.default_.with({ provider: 'anthropic' })", "provider")]
+    [InlineData("llm.model('gpt-4o', { apiKey: 'k' })", "apiKey")]
+    [InlineData("llm.model(42)", "llm.model(name)")]
+    [InlineData("llm.default_.with({ model: '' })", "model name")]
+    public void An_llm_setting_the_runtime_does_not_apply_is_refused(string js, string named)
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => EvalWithProvider<JsLlmConfig>(null, new StubLlmProvider("openai", "gpt-4o-mini"), js));
+
+        Assert.Contains(named, ex.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

@@ -7,7 +7,7 @@ namespace Orkeon.Scripting.Runtime;
 /// <summary>
 /// Wrapper exposed to JS for a task built by <see cref="JsTaskBuilder"/>. Holds the
 /// underlying <c>Orkeon.Domain.Task.CrewTask</c> aggregate plus DSL-only metadata
-/// (assigned agent, JSON-schema expectations, task-scoped tool, dependency tasks).
+/// (assigned agent, JSON-schema expectations, task-level tools, dependency tasks).
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of Task in Typings/task.d.ts; that declaration is the contract scripts read.
@@ -22,7 +22,6 @@ public sealed class JsTask
     internal JsAgent? AssignedAgent { get; }
     internal IReadOnlyList<JsTask> Context { get; }
     internal JsValue? ExpectSchema { get; }
-    internal JsValue? TaskTool { get; }
     /// <summary>Raw object captured by <c>taskBuilder().deliverable({...})</c>; parsed
     /// into a domain <c>TaskDeliverable</c> by <c>JsCrewConfigurationAdapter</c>.</summary>
     internal JsValue? DeliverableSpec { get; }
@@ -64,7 +63,6 @@ public sealed class JsTask
         AssignedAgent = metadata.AssignedAgent;
         Context = metadata.Context;
         ExpectSchema = metadata.ExpectSchema;
-        TaskTool = metadata.TaskTool;
         DeliverableSpec = metadata.DeliverableSpec;
         ResponseFormatValue = metadata.ResponseFormat;
         ResponseSchemaName = metadata.ResponseSchemaName;

@@ -82,24 +82,32 @@ public class JsExecutionContext
     }
 
     /// <summary>
-    /// Resolves the IBaseTool instances this agent may use in <c>ctx.llm.act</c>: the built-in
-    /// tools selected via <c>agentBuilder().tools([...])</c>, matched by name. Empty when the
-    /// agent declares no built-in tools (act then behaves like a tool-less completion loop).
+    /// Resolves the tools this agent may use in <c>ctx.llm.act</c>: the built-in tools selected
+    /// via <c>agentBuilder().tools([...])</c>, matched by name, then the <c>toolBuilder()</c>
+    /// instances of <c>withAutonomousTool(s)</c> — the same two sets the declarative shape offers
+    /// (GAP-12: act used to see the first only). Empty when the agent declares neither, and act
+    /// then behaves like a tool-less completion loop.
     /// </summary>
     private static Orkeon.Domain.Tools.IBaseTool[] ResolveAgentTools(JsExecutionEnvironment environment)
     {
-        var all = environment.BuiltInTools;
-        if (all is null || all.Count == 0) return System.Array.Empty<Orkeon.Domain.Tools.IBaseTool>();
         var selected = environment.Self.Builder.BuiltInToolNames;
-        if (selected is null || selected.Count == 0) return System.Array.Empty<Orkeon.Domain.Tools.IBaseTool>();
-        var wanted = new HashSet<string>(selected, System.StringComparer.OrdinalIgnoreCase);
-        return all.Where(t => wanted.Contains(t.Name)).ToArray();
+        var builtIns = environment.BuiltInTools is { Count: > 0 } all && selected.Count > 0
+            ? all.Where(t => selected.Contains(t.Name, System.StringComparer.OrdinalIgnoreCase))
+            : [];
+        return builtIns.Concat(environment.Self.Builder.AutonomousTools).ToArray();
     }
 
-    // Returns the delegated body's result — a *promise* for an async body —
-    // straight back to JS, instead of unwrapping it in C#. The caller's
-    // `await ctx.delegate(...)` then settles it under the SAME single pump
-    // that already drives the run, never a nested blocking pump.
+    // `ctx.delegate(agentOrName, input)` IS `crew.runAgent(agentOrName, input)` (GAP-12): the
+    // target runs under its instance semaphore, with its own AgentContext — its state, its
+    // memory, its log — and its own onError policy. It used to invoke the body directly with
+    // `undefined` as its context, so a delegated body that read `ctx` threw, and its onError
+    // never ran. runAgent resolves a name the way crew.d.ts promises and refuses the agent
+    // whose body is calling (RecursiveAgentInvocationException) instead of deadlocking on the
+    // semaphore that body holds.
+    //
+    // What follows still holds: the promise runAgent returns goes straight back to JS, so the
+    // caller's `await ctx.delegate(...)` settles it under the SAME single pump that already
+    // drives the run, never a nested blocking pump.
     //
     // Why this matters: the Jint engine is single-threaded and non-reentrant.
     // The previous implementation awaited the body via
@@ -119,26 +127,44 @@ public class JsExecutionContext
     // JavaScript throw its catch and finally run for — and a JS `await` on the
     // returned promise does the waiting. A delegated body that rejects surfaces
     // through the pump as a normal promise rejection.
-    public Func<JsAgent, JsValue, JsValue> @delegate => (target, input) => JsHostError.Guard(_engine, () =>
+    public Func<JsValue, JsValue, JsValue> @delegate => (target, input) => JsHostError.Guard(_engine, () =>
     {
-        ArgumentNullException.ThrowIfNull(target);
         EnsureSelfInCrew();
-        if (!_crew.has(target))
-            throw new AgentNotInThisCrewException(target.name, _crew.name);
-        if (target.Builder.BodyFunction is null || target.Builder.BodyFunction.IsUndefined()) return JsValue.Null;
         _ct.ThrowIfCancellationRequested();
-        var inputJs = input ?? JsValue.Undefined;
-        return _engine.Invoke(target.Builder.BodyFunction, [inputJs, JsValue.Undefined]);
+        var agent = ResolveMember(target, "ctx.delegate(agent, input)");
+        // Linked to this context's token: cancelling the delegating body cancels the delegated one.
+        var options = new Jint.Native.JsObject(_engine);
+        options.Set("signal", JsValue.FromObject(_engine, _ct));
+        return _engine.Invoke(_crew.runAgent, [JsValue.FromObject(_engine, agent), input ?? JsValue.Undefined, options]);
     });
 
-    public Action<JsAgent, JsValue> send => (target, message) => JsHostError.Guard(_engine, () =>
+    public Action<JsValue, JsValue> send => (target, message) => JsHostError.Guard(_engine, () =>
     {
-        ArgumentNullException.ThrowIfNull(target);
         EnsureSelfInCrew();
-        _channel.Send(target.name, message);
+        _channel.Send(ResolveMember(target, "ctx.send(agent, message)").name, message);
     });
 
-    public Func<JsValue?, Task<object?>> receive => async options =>
+    /// <summary>An <see cref="JsAgent"/> or an agent name, either way a member of this crew.</summary>
+    private JsAgent ResolveMember(JsValue? target, string where)
+    {
+        if (target is not null && target.IsString())
+            return _crew.Resolve(target.AsString());
+        if (target?.ToObject() is not JsAgent agent)
+            throw new InvalidScriptException($"{where} expects an Agent or an agent name.");
+        if (!_crew.has(agent))
+            throw new AgentNotInThisCrewException(agent.name, _crew.name);
+        return agent;
+    }
+
+    private JsValue? _receiveJs;
+
+    /// <summary>
+    /// JS <c>async (options?) =&gt; message</c>: an expired <c>{ timeout }</c> rejects with a
+    /// <c>ReceiveTimeoutError</c> (<see cref="JsHostError.BridgeAsync"/>).
+    /// </summary>
+    public JsValue receive => _receiveJs ??= JsHostError.BridgeAsync(_engine, ReceiveAsync);
+
+    private Func<JsValue?, Task<object?>> ReceiveAsync => async options =>
     {
         EnsureSelfInCrew();
         TimeSpan? timeout = null;
@@ -212,6 +238,7 @@ public sealed class JsCrewProxy
     public JsAgent? findById(string id) => _crew.findById(id);
     public IReadOnlyList<JsAgent> findByRole(string role) => _crew.findByRole(role);
     public bool has(JsAgent agent) => _crew.has(agent);
+    public bool has(string agentName) => _crew.has(agentName);
     public string name => _crew.name;
 
     /// <summary>JS <c>async (name, fn) =&gt; result</c>: the shared named-lock trampoline (<see cref="JsTrampolineFactories.Lock"/>) over the crew's lock table, acquired with the context's token — a waiter is released when its run is cancelled, as with <c>ctx.lock</c> and a published event's <c>lock</c>.</summary>
@@ -235,11 +262,44 @@ public sealed partial class JsLogger
 {
     private readonly ILogger _logger;
     internal JsLogger(ILogger logger) { _logger = logger ?? NullLogger.Instance; }
-    public void debug(string message) => LogDebugMessage(message);
 
-    public void info(string message) => LogInfoMessage(message);
-    public void warn(string message) => LogWarnMessage(message);
-    public void error(string message) => LogErrorMessage(message);
+    // `ctx.log.info("a", 1, { b: 2 })` writes `a 1 {"b":2}`, the way console.log joins its
+    // arguments. The extra arguments used to fall on the floor: one parameter, the rest dropped.
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1873", Justification = "Format runs only behind the IsEnabled guard on the same line; the analyzer does not see through it.")]
+    public void debug(string message, params JsValue[] args) { if (_logger.IsEnabled(LogLevel.Debug)) LogDebugMessage(Format(message, args)); }
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1873", Justification = "Format runs only behind the IsEnabled guard on the same line; the analyzer does not see through it.")]
+    public void info(string message, params JsValue[] args) { if (_logger.IsEnabled(LogLevel.Information)) LogInfoMessage(Format(message, args)); }
+    public void warn(string message, params JsValue[] args) { if (_logger.IsEnabled(LogLevel.Warning)) LogWarnMessage(Format(message, args)); }
+    public void error(string message, params JsValue[] args) { if (_logger.IsEnabled(LogLevel.Error)) LogErrorMessage(Format(message, args)); }
+
+    private static string Format(string message, JsValue[]? args)
+    {
+        if (args is null || args.Length == 0) return message;
+        var parts = new string[args.Length + 1];
+        parts[0] = message;
+        for (var i = 0; i < args.Length; i++)
+            parts[i + 1] = Render(args[i]);
+        return string.Join(' ', parts);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A log argument that cannot be serialised (a cycle, a host object) falls back to its JavaScript string form; logging must never throw into the script.")]
+    private static string Render(JsValue value)
+    {
+        if (value is null || value.IsUndefined()) return "undefined";
+        if (value.IsString()) return value.AsString();
+        if (!value.IsObject() || value is Jint.Native.Function.Function)
+            return value.ToString();
+        if (value is JsError)
+            return value.AsObject().Get("message").ToString();
+        try
+        {
+            return System.Text.Json.JsonSerializer.Serialize(value.ToObject());
+        }
+        catch (Exception)
+        {
+            return value.ToString();
+        }
+    }
 
     // --- source-generated logging ---
 

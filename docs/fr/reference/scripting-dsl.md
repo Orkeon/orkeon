@@ -56,11 +56,11 @@ déduit.
 |---|---|---|
 | `name` | ✅ | ✅ |
 | `role` `goal` `backstory` | conservés, pas envoyés : `ctx.llm` envoie votre seul prompt ; `role` ne sert qu'à `crew.findByRole` | ✅ **le prompt de l'agent** — `build()` exige `role` |
-| `llm` | ❌ `ctx.llm` utilise le fournisseur configuré de l'hôte | ✅ une valeur `llm.<fournisseur>({...})` / `llm.default` ; une chaîne ou un objet simple est ignoré |
+| `llm` | ❌ `ctx.llm` utilise le fournisseur de l'hôte sur son modèle configuré (par appel : `{ llm: { model } }`) | ✅ un `LlmConfig` — `llm.default_`, `llm.model("…")`, `.with({...})` — règle le modèle, la température et le plafond de jetons de l'agent ; le fournisseur est toujours celui de l'hôte. Une chaîne ou un objet simple est refusé par `.llm(...)` |
 | `tools([...])` intégrés par nom | ✅ ce que `ctx.llm.act` peut appeler — un nom inconnu est sauté sans bruit | ✅ strict : un nom inconnu fait échouer le run |
-| `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) ; **pas** proposées à `ctx.llm.act` | ✅ enregistrées et résolues par nom |
+| `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) et proposées à `ctx.llm.act`, qui exécute le `execute` de l'outil dans le script | ✅ enregistrées et résolues par nom |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ |
-| `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ | ✅ — runtime seulement, absentes des typings |
+| `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (par appel : `{ responseFormat }`) | ✅ |
 | `body` | ✅ **tout l'intérêt** | ❌ jamais invoqué |
 | `withState` → `ctx.state` | ✅ | ❌ |
 | `onError` | ✅ | ❌ |
@@ -74,8 +74,8 @@ déduit.
 |---|---|---|
 | `name` | ✅ | ✅ |
 | `goal` `verbose` | ❌ conservés, jamais lus | ✅ |
-| `withAgent(s)` — un agent construit | ✅ | ✅ |
-| `withTask(s)` — une tâche construite | ❌ ignoré | ✅ **tout l'intérêt** |
+| `withAgent(s)` — un agent construit ; tout le reste est refusé | ✅ | ✅ |
+| `withTask(s)` — une tâche construite ; tout le reste est refusé | ❌ ignoré | ✅ **tout l'intérêt** |
 | `process` | ❌ tag de télémétrie seulement | ✅ (`"graph"` choisit la stratégie de reprise-et-routage du domaine, pas une topologie dessinée par le script — voir plus bas) |
 | `manager` | ❌ | ✅ |
 | `memory` | ❌ | ✅ |
@@ -103,13 +103,12 @@ La méthode a disparu ; `process("graph")` se construit maintenant seul.
 ### `taskBuilder()`
 
 Déclaratif uniquement — le moteur procédural ne lit jamais les tâches. Transmis à la crew :
-`description`, `agent` (un agent construit — la forme chaîne que les typings autorisent n'est
-pas acceptée), `expectedOutput`, `withContext(s)` (c'est ce qui construit le DAG), `tools`,
-`humanInput`, `asyncExecution`, `deliverable`, et les méthodes propres au runtime
-`withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)`. Acceptés mais sans
-effet : `name` (une configuration de tâche n'a pas de nom), `expect` (consigné dans le
-contexte de la tâche en l'absence de `deliverable`, jamais validé) et `withTaskTool`
-(**abandonné sans avertissement**).
+`description`, `agent` (un agent construit), `expectedOutput`, `withContext(s)` (c'est ce qui
+construit le DAG), `tools`, `humanInput`, `asyncExecution`, `deliverable`,
+`withResponseFormat(type)` et `withResponseSchema(name, schema, strict?)`. Acceptés mais sans
+effet : `name` (une configuration de tâche n'a pas de nom) et `expect` (consigné dans le
+contexte de la tâche en l'absence de `deliverable`, jamais validé). `withTaskTool` a disparu :
+rien ne le lisait, et `tools` le couvre.
 
 ### `toolBuilder()`
 
@@ -161,29 +160,47 @@ Transmettez-le (`crew.run({ signal: ctx.signal })`) plutôt que de l'interroger.
 `usage` et `reasoningChunks` se lisent après la boucle), `extract(prompt, schema)`,
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, et `interrupt()` /
 `isInterrupted`. Chaque appel part vers le fournisseur configuré de l'hôte ; sans fournisseur,
-un écho `<undefined-llm:…>` répond, ce qui permet aux exemples de tourner sans clé. Parmi les
-options d'appel, le runtime lit `responseFormat` (`"json_object"`, `"text"`…) et
-`llm: { model }` (une surcharge de modèle par appel) ; les `provider`, `model`, `temperature`,
-`maxTokens` et `signal` déclarés ne sont pas lus.
+un écho `<undefined-llm:…>` répond, ce qui permet aux exemples de tourner sans clé. Un appel
+prend deux options, qui corrigent toutes deux la configuration du fournisseur de l'hôte pour
+cet appel seulement : `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`) et
+`llm: { model }` (un modèle par appel). Il n'y a ni fournisseur, ni température, ni plafond de
+jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte.
 
 `act` est la boucle LLM ⇄ appels d'outils : elle propose au modèle les outils intégrés que
-l'agent a choisis avec `.tools([...])` — pas ses instances `withAutonomousTool` — jusqu'à ce
-que le modèle cesse de demander ou que `maxIterations` (défaut 10, `0` = illimité) soit
-atteint. `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
+l'agent a choisis avec `.tools([...])` et ses instances `withAutonomousTool` — dont le
+`execute` s'exécute dans le script, sur le fil du moteur — jusqu'à ce que le modèle cesse de
+demander ou que `maxIterations` (défaut 10, `0` = illimité) soit atteint. Elle se résout en
+`{ output, iterations }` (plus `interrupted` ou `exhausted` quand la boucle s'est arrêtée
+avant). `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
 itération ; sans lui, `act()` envoie un seul message utilisateur. `permissionMode`
 (`default`, `acceptEdits`, `bypassPermissions`, `plan`) est vérifié auprès de la porte de
-permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une ; `onDelta`
-reçoit le texte streamé de chaque tour de l'assistant.
+permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une — déclarez
+`.access("read")` sur un outil de script pour qu'il passe `plan` ; `onDelta` reçoit le texte
+streamé de chaque tour de l'assistant.
 
-`ctx.memory` (`crew`, et `agent` dans un `body` d'agent), `ctx.events`, `ctx.lock(name, fn)`,
-`ctx.spawn`, `ctx.delegate`, `ctx.send`/`receive`/`broadcast`, `ctx.log`. Voir
+`ctx.delegate(agentOuNom, input)` est `crew.runAgent` : la cible s'exécute avec son propre
+contexte, sous son sémaphore et sa politique `onError`. `ctx.send(agentOuNom, message)`,
+`receive({ timeout })` et `broadcast(message)` échangent des messages ; `send` et `broadcast`
+sont synchrones. `ctx.crew` est une vue en lecture seule de la crew (`name`, `findByName`,
+`findById`, `findByRole`, `has`, `lock(name, fn)`). `ctx.log.info(message, ...args)` joint les
+arguments supplémentaires par une espace, les objets en JSON. Et aussi `ctx.memory` (`crew`, et
+`agent` dans un `body` d'agent), `ctx.events`, `ctx.lock(name, fn)`, `ctx.spawn`. Voir
 `context.d.ts`.
+
+Un échec côté hôte parvient au script comme une instance de la classe que déclare
+`errors.d.ts` —
+`try { await q.pop({ timeout: 100 }) } catch (e) { if (e instanceof ReceiveTimeoutError) … }`
+— avec les champs de cette classe (`agentName`, `timeoutMs`…), plus `clrType` (le nom du type
+.NET) et `clr` (l'exception). Un échec sans classe déclarée est un simple `Error` qui porte ces
+deux mêmes propriétés. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
+agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `timeout`,
+`receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation` ou `unknown`.
 
 ## Les espaces de noms
 
 | Globale | Ce qu'elle contient |
 |---|---|
-| `llm` | Des configurations de fournisseur pour `agentBuilder().llm(...)` (forme déclarative) : `llm.openai`, `anthropic`, `ollama`, `azureOpenai`, `grok`, `minimax`, `openrouter`, `mammouth` — chacune `(opts?) => LlmConfig`, avec `with(overrides)` — et `llm.default` (typé `llm.default_`) — une valeur, pas une fonction : le fournisseur nommé par `Orkeon:DefaultLlmProvider`, sinon celui configuré par l'hôte, sinon l'écho `<undefined-llm>`. |
+| `llm` | Les réglages de modèle que prend `agentBuilder().llm(...)` (forme déclarative). `llm.default_` — une valeur, pas une fonction — est le fournisseur de l'hôte sur son modèle configuré, ou l'écho `<undefined-llm>` quand l'hôte n'en a pas ; `llm.model(name, overrides?)` est le même fournisseur sur un autre modèle. `with({ model, temperature, maxTokens, responseFormat })` rend une copie et refuse toute autre clé. Il n'y a pas de fabrique par vendeur : chaque agent d'un script parle au fournisseur de l'hôte. |
 | `tools` | Les outils intégrés de l'hôte, appelés depuis un `body` : `tools.fileRead({ path })`, le nom snake_case passé en camelCase. `tools.d.ts` déclare `fileRead`, `fileWrite`, `directoryRead`, `webScrape`, `httpApi`, `searchTool`, `databaseQuery`, `delegateWork`, `askQuestion` et les treize outils `email*` ; tout autre outil enregistré s'atteint de la même façon. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex? })`, `rag.query(question, { collection, profile?, topN? })` (une réponse ancrée avec citations) et `rag.retrieve(...)` (les mêmes passages, sans génération). Demande un hôte qui a enregistré le sous-système RAG (`AddOrkeonRag`). |
 | `ErrorAction` | Les fabriques qu'un gestionnaire `onError` retourne : `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Tout le reste vaut `fail()`. |
@@ -239,30 +256,21 @@ pour un `for await`.
 l'inférence est donc circulaire — et retombe sur `Record<string, unknown>`. Annotez l'appel
 (`stateGraph<OrderState>({...})`) pour qu'un nœud rendant la mauvaise forme soit signalé.
 
-## Écarts connus entre les typings et le runtime
+## Limites de conception
 
-Les déclarations et le runtime C# sont écrits dans deux langages et rien ne les reliait
-jusqu'à ce que
-[`scripts/check-scripting-typings.sh`](https://github.com/Orkeon/orkeon/blob/main/scripts/check-scripting-typings.sh) le fasse.
-Voici ce qui reste une fois ce garde-fou au vert.
+Les déclarations et le runtime C# sont écrits dans deux langages. Deux garde-fous les relient :
+[`scripts/check-scripting-typings.sh`](https://github.com/Orkeon/orkeon/blob/main/scripts/check-scripting-typings.sh)
+vérifie le typage de chaque `.ork.ts` de `examples/` contre les typings, et un test de parité
+(`TypingsRuntimeParityTests`) compare, membre par membre, chaque interface déclarée au type
+du runtime qui la porte. Il ne reste aucun écart entre les deux ; ce qui suit, ce sont des
+limites de conception, chacune dite plutôt que silencieuse.
 
-| Écart | Comportement |
+| Limite | Comportement |
 |---|---|
 | `budget()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. Le budget ne borne que la forme procédurale (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). |
 | `.body()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme l'agent. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
-| `globalThis.inputs` en forme déclarative | Jamais planté. Passer `--inputs`, `--inputs-file` ou `--memory-limit-mb` à un script déclaratif affiche désormais un avertissement sur stderr au lieu de perdre l'option en silence. |
-| Un objet `{ provider, model }` simple ou une chaîne passés à `llm()` | Jetés. `ExtractLlmConfig` rend `null` pour tout ce qui n'est pas un `JsLlmConfig` : construisez-en un avec `llm.openai({...})`, `llm.default`, etc. — `llm.default` est une valeur ; `llm.default()` lève une erreur. |
-| `withTaskTool` | Accepté puis abandonné par les deux formes, sans avertissement. |
-| Les classes d'`errors.d.ts` | Déclarées, pas enregistrées : `err instanceof ReceiveTimeoutError` passe le typage et lève une `ReferenceError`. Un échec côté hôte parvient au script comme un simple `Error` qui porte l'exception CLR sur `clr` et le nom de son type sur `clrType`. |
-| `ErrorContext` (l'argument d'`onError`) | Le runtime passe `{ code, message, exception, attempt, agent: { id, name } }` (et le contexte en second argument) ; les `error` et `agentName` déclarés valent `undefined`. `code` vaut `rate_limit`, `network`, `timeout`, `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation` ou `unknown` — jamais les `auth`, `budget` ou `tool` déclarés. |
-| `ctx.delegate(agent, input)`, `ctx.send(agent, msg)`, `crew.remove(agent)`, `crew.has(agent)` | Prennent l'objet agent ; la chaîne de nom que les typings autorisent est refusée. `delegate` exécute le `body` de la cible sans `ctx`. |
-| `withAgent(b => …)`, `withTask(b => …)` | Les formes à callback de builder ne sont pas prises en charge : passez un agent ou une tâche construits. |
-| `Agent.role` | `undefined` à l'exécution : un agent expose `name` et `id`. |
-| `crew.runStream()` | Ne produit que `agent.start` et `agent.stop`, sur les sept types d'événements déclarés ; `CrewRunOptions.inputs` n'est pas lu. |
-| `ChatResponse.toolCalls` | Jamais renseigné : `chat()` se résout en `{ content, tokensUsed, model }`. |
-| Les événements | `PublishedEvent.publisher` vaut `undefined` ; `EventTopicOptions.maxHandlers` n'est pas lu (le nombre d'abonnés est utilisé). |
-| `ctx.log.info(message, ...args)` | Les arguments supplémentaires sont perdus. |
-| Membres propres au runtime | Non déclarés, mais présents : `crew.findById(id)`, `crew.agents`, `ctx.crew` (`name`, `findByName`, `findById`, `findByRole`, `has`, `lock(name, fn)`), `ctx.receive({ timeout })`. |
+| `globalThis.inputs` en forme déclarative | Jamais planté. Passer `--inputs`, `--inputs-file` ou `--memory-limit-mb` à un script déclaratif affiche un avertissement sur stderr au lieu de perdre l'option en silence. |
+| Un fournisseur par hôte | Chaque agent d'un script parle au fournisseur que l'hôte a enregistré ; `.llm(...)` règle le modèle, pas le fournisseur. Le choix du fournisseur par agent est une fonctionnalité prévue. |
 | `ctx.llm.embed` | Rend un vecteur bidon. Les vrais embedders sont une suite. |
 | `concurrency(n)` avec `n > 1` | Rejeté au build avec un message clair — V1 est un mutex, le sémaphore à N détenteurs est V1.5. Bruyant, pas silencieux. |
 | Les locks n'ont pas de timeout | `LockTimeoutError` est V1.5. |

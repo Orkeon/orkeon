@@ -109,7 +109,7 @@ concaténées au build dans le `orkeon.d.ts` que la CLI émet.
 | Hooks de cycle de vie (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — répondre par nom aux commandes CLI dispatchées | [cli-ts-commands.md](../architecture/cli-ts-commands.md#côté-agent--oncommand) |
 | Namespace intégré `tools.X(...)` | `tools.d.ts` |
-| Providers LLM (`llm.openai`, `llm.default`, etc.) | `llm.d.ts` |
+| Les réglages de modèle de l'agent (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
 ## Coexistence avec YAML

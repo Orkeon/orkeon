@@ -53,15 +53,30 @@ public sealed class AgentBuilderTests
     {
         var agent = Eval<JsAgent>(
             """
+            const tool = n => toolBuilder().name(n).description("d").execute(() => n).build();
             const a = agentBuilder()
               .name("A").role("R").goal("G")
-              .withAutonomousTool({ name: "tool1" })
-              .withAutonomousTool({ name: "tool2" })
+              .withAutonomousTool(tool("tool1"))
+              .withAutonomousTool(tool("tool2"))
               .build();
             a;
             """);
 
-        Assert.Equal(2, agent.Builder.AutonomousTools.Count);
+        Assert.Equal(["tool1", "tool2"], agent.Builder.AutonomousTools.Select(t => t.Name));
+    }
+
+    [Theory]
+    [InlineData("""agentBuilder().withAutonomousTool({ name: "tool1" })""")]
+    [InlineData("""agentBuilder().withAutonomousTool("file_read")""")]
+    [InlineData("""agentBuilder().withAutonomousTools([{ name: "t1" }])""")]
+    [InlineData("""agentBuilder().withAutonomousTools({ name: "t1" })""")]
+    public void AgentBuilder_withAutonomousTool_refuses_what_is_not_a_built_tool(string js)
+    {
+        // A plain object used to be stored and read by nothing: the declarative adapter took
+        // names and tool instances only, so it vanished without a word (GAP-12).
+        var ex = Assert.ThrowsAny<Exception>(() => new JsEngineFactory().Create().Evaluate(js));
+
+        Assert.Contains("toolBuilder()", ex.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -71,7 +86,7 @@ public sealed class AgentBuilderTests
             """
             const a = agentBuilder()
               .name("A").role("R").goal("G")
-              .withAutonomousTools([{ name: "t1" }, { name: "t2" }, { name: "t3" }])
+              .withAutonomousTools(["t1", "t2", "t3"].map(n => toolBuilder().name(n).description("d").execute(() => n).build()))
               .build();
             a;
             """);

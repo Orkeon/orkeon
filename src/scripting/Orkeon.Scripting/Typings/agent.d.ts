@@ -13,7 +13,22 @@ declare global {
         role(value: string): this;
         goal(value: string): this;
         backstory(value: string): this;
-        llm(config: LlmConfig | string): this;
+        /**
+         * The model this agent runs on: `llm.default_`, `llm.model("…")` or `.with(...)` on
+         * either. The provider is the host's — an agent cannot pick another one. A model name or
+         * a `{ provider, model }` literal is refused: the runtime used to drop it without a word.
+         */
+        llm(config: LlmConfig): this;
+        /**
+         * Forces this agent's output format on the providers that support it. Declarative shape.
+         * `"text"` keeps the provider default.
+         */
+        withResponseFormat(type: ResponseFormatType): this;
+        /**
+         * Constrains this agent's output to a JSON Schema, on the providers whose API validates
+         * one server-side. Implies `json_schema`. `strict` defaults to true. Declarative shape.
+         */
+        withResponseSchema(name: string, schema: JsonSchema | string, strict?: boolean): this;
         allowDelegation(value: boolean): this;
         maxIterations(value: number): this;
         verbose(value?: boolean): this;
@@ -28,10 +43,15 @@ declare global {
          * agentBuilder().tools(["file_read", "count_pattern"])
          */
         tools(names: string | readonly string[]): this;
+        /**
+         * A `toolBuilder()` tool this agent may call: offered to the model by the declarative
+         * shape and by `ctx.llm.act` alike, where its `execute` runs in the script. Built-in tools
+         * are named with `tools([...])`; anything that is not a built tool is refused.
+         */
         withAutonomousTool(tool: Tool<unknown, unknown>): this;
         withAutonomousTools(tools: readonly Tool<unknown, unknown>[]): this;
         body(fn: (input: TIn, ctx: AgentContext<TState>) => Promise<TOut> | TOut): this;
-        onError(handler: (err: ErrorContext) => Promise<ErrorAction> | ErrorAction): this;
+        onError(handler: (err: ErrorContext, ctx: AgentContext<TState>) => Promise<ErrorAction> | ErrorAction): this;
         onAgentStart(hook: (ctx: AgentContext<TState>) => Promise<void> | void): this;
         onAgentStop(hook: (ctx: AgentContext<TState>) => Promise<void> | void): this;
         /**
@@ -67,11 +87,18 @@ declare global {
     // not a JsLlmConfig, so a hand-written `{ provider: "openai", model: "x" }` literal was
     // silently ignored while this declaration promised it worked.
 
+    /** What an `onError` handler receives first; the failed attempt's context comes second. */
     interface ErrorContext {
-        readonly error: Error;
+        /** The normalized code of the failure. */
         readonly code: ErrorCode;
+        /** The failure's message (the innermost .NET message for a host error). */
+        readonly message: string;
+        /** The .NET exception behind the failure; a script's own `throw` arrives wrapped in one. */
+        readonly exception: unknown;
+        /** 1-based number of the attempt that just failed. */
         readonly attempt: number;
-        readonly agentName: string;
+        /** The agent whose body failed. */
+        readonly agent: { readonly id: string; readonly name: string };
     }
 
     // ErrorAction was declared here as a union of plain object literals

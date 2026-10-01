@@ -20,7 +20,7 @@ public sealed class RollupDtsTests
         Assert.Contains("EventTopic", content);
         Assert.Contains("StateMachine", content);
         Assert.Contains("StateGraph", content);
-        Assert.Contains("LlmProvider", content);
+        Assert.Contains("LlmConfigOverrides", content);
         Assert.Contains("ExecutionContext", content);
         Assert.Contains("AgentContext", content);
         // Not "namespace tools": a namespace cannot carry the index signature the tools object

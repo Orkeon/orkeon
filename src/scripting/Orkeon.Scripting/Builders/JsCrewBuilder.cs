@@ -32,7 +32,7 @@ public sealed partial class JsCrewBuilder
     private string? _goal;
     private string _process = "sequential";
     private readonly List<JsAgent> _agents = new();
-    private readonly List<object> _tasks = new();
+    private readonly List<JsTask> _tasks = new();
     private JsAgent? _manager;
     private readonly Dictionary<string, object?> _budget = new();
     private bool _verbose;
@@ -69,43 +69,47 @@ public sealed partial class JsCrewBuilder
         return this;
     }
 
-    public JsCrewBuilder withAgent(JsAgent agent)
+    // withAgent / withTask take BUILT values. The typings used to offer a builder callback
+    // (`withTask(b => b.description(...))`): withAgent threw a conversion error on it and
+    // withTask stored the function, which the adapter then filtered out — the task vanished
+    // without a word (GAP-12). Anything that is not an agent or a task is refused here.
+    public JsCrewBuilder withAgent(JsValue agent)
     {
-        ArgumentNullException.ThrowIfNull(agent);
-        _agents.Add(agent);
+        _agents.Add(RequireBuilt<JsAgent>(agent, ".withAgent(agent)", "agentBuilder()…build()"));
         return this;
     }
 
     public JsCrewBuilder withAgents(JsValue agents)
     {
-        if (agents is Jint.Native.Array.ArrayInstance arr)
-        {
-            var len = (uint)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
-            for (uint i = 0; i < len; i++)
-            {
-                var a = arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToObject();
-                if (a is JsAgent ja) _agents.Add(ja);
-            }
-        }
+        foreach (var entry in RequireArray(agents, ".withAgents(agents)"))
+            _agents.Add(RequireBuilt<JsAgent>(entry, ".withAgents(agents)", "agentBuilder()…build()"));
         return this;
     }
 
     public JsCrewBuilder withTask(JsValue task)
     {
-        ArgumentNullException.ThrowIfNull(task);
-        _tasks.Add(task.ToObject() ?? task);
+        _tasks.Add(RequireBuilt<JsTask>(task, ".withTask(task)", "taskBuilder()…build()"));
         return this;
     }
 
     public JsCrewBuilder withTasks(JsValue tasks)
     {
-        if (tasks is Jint.Native.Array.ArrayInstance arr)
-        {
-            var len = (uint)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
-            for (uint i = 0; i < len; i++)
-                _tasks.Add(arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToObject() ?? arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-        }
+        foreach (var entry in RequireArray(tasks, ".withTasks(tasks)"))
+            _tasks.Add(RequireBuilt<JsTask>(entry, ".withTasks(tasks)", "taskBuilder()…build()"));
         return this;
+    }
+
+    private static T RequireBuilt<T>(JsValue? value, string where, string how) where T : class
+        => value?.ToObject() as T
+           ?? throw new InvalidScriptException($"{where} expects what {how} returns; a builder callback or a plain object is not accepted.");
+
+    private static IEnumerable<JsValue> RequireArray(JsValue? value, string where)
+    {
+        if (value is not Jint.Native.Array.ArrayInstance arr)
+            throw new InvalidScriptException($"{where} expects an array.");
+        var len = (uint)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
+        for (uint i = 0; i < len; i++)
+            yield return arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     public JsCrewBuilder manager(JsAgent agent) { _manager = agent; return this; }
@@ -166,9 +170,9 @@ public sealed partial class JsCrewBuilder
     {
         foreach (var agent in _agents)
         {
-            foreach (var raw in agent.Builder.AutonomousTools)
+            foreach (var tool in agent.Builder.AutonomousTools)
             {
-                if (raw.ToObject() is JsTool tool && !tool.HasExplicitSchema)
+                if (!tool.HasExplicitSchema)
                 {
                     LogAutonomousToolWithoutSchema(tool.Name, agent.name);
                 }

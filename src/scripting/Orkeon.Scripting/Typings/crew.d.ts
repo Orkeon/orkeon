@@ -17,7 +17,8 @@ declare global {
          */
         signal?: CancellationSignal;
         timeout?: number | string;
-        inputs?: Record<string, unknown>;
+        // No `inputs` (GAP-12): it was declared and never read. A procedural script reads the
+        // `inputs` global the runner plants from --inputs.
     }
 
     interface CrewResult<TOut = unknown> {
@@ -34,6 +35,8 @@ declare global {
 
     interface Crew {
         readonly name: string;
+        /** The members, in the order they joined. */
+        readonly agents: readonly Agent<unknown, unknown>[];
         run<TOut = unknown>(opts?: CrewRunOptions): Promise<CrewResult<TOut>>;
         runAgent<TIn, TOut>(agent: string | Agent<TIn, TOut>, input: TIn, opts?: CrewRunOptions): Promise<TOut>;
         runStream(opts?: CrewRunOptions): AsyncIterable<CrewStreamEvent>;
@@ -41,12 +44,18 @@ declare global {
         remove(agent: Agent<unknown, unknown> | string): void;
         has(agent: Agent<unknown, unknown> | string): boolean;
         findByName(name: string): Agent<unknown, unknown> | undefined;
+        findById(id: string): Agent<unknown, unknown> | undefined;
         findByRole(role: string): readonly Agent<unknown, unknown>[];
     }
 
+    /**
+     * One step of `crew.runStream()`: the procedural shape runs agents, not tasks or a graph,
+     * so these are the only two events it emits. `payload` is `{ name }` on start and
+     * `{ name, output }` on stop; `at` is epoch milliseconds.
+     */
     interface CrewStreamEvent {
-        readonly type: "agent.start" | "agent.stop" | "task.start" | "task.complete" | "task.error" | "graph.node" | "graph.edge";
-        readonly payload: unknown;
+        readonly type: "agent.start" | "agent.stop";
+        readonly payload: { readonly name: string; readonly output?: unknown };
         readonly at: number;
     }
 
@@ -61,9 +70,11 @@ declare global {
          * `stateGraph({...})` and call `.run()` on it from an agent `.body()`.
          */
         process(value: Process): this;
-        withAgent(agent: Agent<unknown, unknown> | ((b: AgentBuilder) => AgentBuilder)): this;
+        /** A built agent (`agentBuilder()…build()`); a builder callback is refused. */
+        withAgent(agent: Agent<unknown, unknown>): this;
         withAgents(agents: readonly Agent<unknown, unknown>[]): this;
-        withTask(task: Task<unknown, unknown> | ((b: TaskBuilder) => TaskBuilder)): this;
+        /** A built task (`taskBuilder()…build()`); a builder callback is refused. */
+        withTask(task: Task<unknown, unknown>): this;
         withTasks(tasks: readonly Task<unknown, unknown>[]): this;
         manager(agent: Agent<unknown, unknown>): this;
         budget(opts: ExecutionBudget): this;

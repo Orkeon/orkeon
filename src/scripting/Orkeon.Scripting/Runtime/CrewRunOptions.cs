@@ -4,8 +4,9 @@ using Jint.Native;
 namespace Orkeon.Scripting.Runtime;
 
 /// <summary>
-/// Parses the <c>{ signal, timeout, inputs }</c> options object passed to
-/// <c>crew.run(opts)</c>.
+/// Parses the <c>{ signal, timeout }</c> options object passed to <c>crew.run(opts)</c>,
+/// <c>crew.runStream(opts)</c> and <c>crew.runAgent(agent, input, opts)</c>. Those two keys are
+/// all it reads: a procedural run takes its inputs from the <c>inputs</c> global.
 /// </summary>
 internal static class CrewRunOptions
 {

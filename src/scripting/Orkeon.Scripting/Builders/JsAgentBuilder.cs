@@ -30,8 +30,11 @@ public sealed class JsAgentBuilder
     /// <summary>Tool names resolved by <c>IToolRegistry</c> at runtime — the YAML-parity
     /// surface populated by <c>agentBuilder().tools(["file_read", ...])</c>.</summary>
     internal List<string> BuiltInToolNames { get; } = new();
-    internal List<JsValue> AutonomousTools { get; } = new();
-    internal JsValue? LlmConfig { get; private set; }
+    /// <summary>The <c>toolBuilder()</c> instances of <c>withAutonomousTool(s)</c>: offered to the
+    /// model by the declarative shape and by <c>ctx.llm.act</c> alike.</summary>
+    internal List<Orkeon.Scripting.Runtime.JsTool> AutonomousTools { get; } = new();
+    /// <summary>The configuration <c>.llm(...)</c> received; <c>null</c> keeps the host provider's own.</summary>
+    internal Orkeon.Scripting.Runtime.JsLlmConfig? LlmConfig { get; private set; }
     /// <summary>Captured <c>response_format</c> hint (e.g. <c>"json_object"</c>); merged onto LlmConfig by the adapter.</summary>
     internal string? ResponseFormatValue { get; private set; }
 
@@ -102,30 +105,51 @@ public sealed class JsAgentBuilder
             ".tools(...) expects a string or a string[] (built-in tool names).");
     }
 
+    // Tool INSTANCES only. A name belongs to `.tools([...])`; a plain object was stored here
+    // and then read by nothing — the declarative adapter took names and JsTool instances, so
+    // `{ name: "t" }` vanished without a word (GAP-12).
     public JsAgentBuilder withAutonomousTool(JsValue tool)
     {
-        ArgumentNullException.ThrowIfNull(tool);
-        AutonomousTools.Add(tool);
+        AutonomousTools.Add(RequireTool(tool, ".withAutonomousTool(tool)"));
         return this;
     }
 
     public JsAgentBuilder withAutonomousTools(JsValue tools)
     {
-        ArgumentNullException.ThrowIfNull(tools);
-        if (tools is Jint.Native.Array.ArrayInstance arr)
-        {
-            var len = (uint)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
-            for (uint i = 0; i < len; i++)
-                AutonomousTools.Add(arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-        }
-        else
-        {
-            AutonomousTools.Add(tools);
-        }
+        if (tools is not Jint.Native.Array.ArrayInstance arr)
+            throw new InvalidScriptException(".withAutonomousTools(tools) expects an array of toolBuilder()…build() values.");
+        var len = (uint)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
+        for (uint i = 0; i < len; i++)
+            AutonomousTools.Add(RequireTool(arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)), ".withAutonomousTools(tools)"));
         return this;
     }
 
-    public JsAgentBuilder llm(JsValue config) { LlmConfig = config; return this; }
+    private static Orkeon.Scripting.Runtime.JsTool RequireTool(JsValue? value, string where)
+        => value?.ToObject() as Orkeon.Scripting.Runtime.JsTool
+           ?? throw new InvalidScriptException(
+               $"{where} takes what toolBuilder()…build() returns. Built-in tools are named with .tools([...]).");
+
+    /// <summary>
+    /// The model settings of this agent: an <c>LlmConfig</c> from <c>llm.default_</c>,
+    /// <c>llm.model(...)</c> or <c>.with(...)</c> on either. Anything else — a model name, a
+    /// <c>{ provider, model }</c> literal — is refused here: the runtime used to drop it without
+    /// a word, and the agent ran on the host's model while the script said otherwise (GAP-12).
+    /// </summary>
+    public JsAgentBuilder llm(JsValue config)
+    {
+        if (config?.ToObject() is not Orkeon.Scripting.Runtime.JsLlmConfig resolved)
+        {
+            var got = config is null || config.IsUndefined() ? "undefined"
+                : config.IsString() ? $"the string \"{config.AsString()}\""
+                : config.IsNull() ? "null"
+                : "a plain object";
+            throw new InvalidScriptException(
+                $".llm(...) takes an LlmConfig, not {got}. The provider is the host's; set the model with " +
+                "llm.default_.with({ model: \"...\" }) or llm.model(\"...\").");
+        }
+        LlmConfig = resolved;
+        return this;
+    }
     public JsAgentBuilder withResponseFormat(string type)
     {
         if (string.IsNullOrWhiteSpace(type))

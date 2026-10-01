@@ -30,7 +30,7 @@ public sealed class JsAgentBuilderResponseFormatTests
                 .name('extractor')
                 .role('Invoice extractor')
                 .goal('extract')
-                .llm({ provider: 'openai', model: 'gpt-4o-mini' })
+                .llm(llm.model('gpt-4o-mini'))
                 .withResponseFormat('json_object')
                 .build();
 

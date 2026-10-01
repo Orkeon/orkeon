@@ -114,7 +114,6 @@ public static class ScriptingCliServiceCollectionExtensions
             return new JsEngineFactory(
                 Options.Create(cliLimits.ToScriptingLimits()),
                 sp.GetService<ILoggerFactory>(),
-                sp.GetService<IConfiguration>(),
                 sp.GetServices<Orkeon.Domain.Tools.IBaseTool>().ToArray(),
                 sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>(),
                 new ScriptingHostPorts

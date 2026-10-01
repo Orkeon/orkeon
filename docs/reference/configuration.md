@@ -198,7 +198,6 @@ key-by-key table: [E-mail tools](../guides/email.md).
 
 | Section | Configures | Consumer |
 |---|---|---|
-| `Orkeon:DefaultLlmProvider` | Default provider name for the scripting `ctx.llm` namespace | `Orkeon.Scripting` |
 | `Orkeon:Scripting:Limits` | Jint sandbox: `MemoryLimitBytes` (default 100 MB), `RecursionLimit` (64), `ExecutionTimeout` (30 s) | `Orkeon.Scripting` |
 | `Orkeon:Scripting:Toolchain` | esbuild toolchain resolution (`EsbuildPath`, `EsbuildTimeout` 30 s) | `Orkeon.Scripting` |
 | `Orkeon:Cli:ScriptCommands` (+ `:Limits`) | TypeScript CLI command discovery (`Enabled`, `Directories`, `FailFastOnInvalidScript`, `EsbuildTranspile`, `MaxScripts` 50, `ContinueOnConflict`, `FallbackCommandName` `assistant`) + tighter CLI sandbox profile | `Orkeon.Cli.Commands.Scripting` |

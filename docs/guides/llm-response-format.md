@@ -136,8 +136,9 @@ const res = await ctx.llm.complete(
 );
 ```
 
-`.llm(...)` takes what the `llm` factories return (`llm.openai(...)`, `llm.default_`, …) — a
-plain object literal is ignored. `withResponseSchema(name, schema, strict?)` takes an object
+`.llm(...)` takes an `LlmConfig` — `llm.default_`, `llm.model("…")` or `.with({...})` on
+either — and refuses a string or a plain object literal. The provider is always the host's;
+`.llm(...)` sets the model. `withResponseSchema(name, schema, strict?)` takes an object
 literal or a JSON string and implies `json_schema`. `ctx.llm.extract(prompt, schema)` asks
 for `json_object` by default unless the call passes `{ responseFormat: "text" }`.
 

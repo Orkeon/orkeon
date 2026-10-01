@@ -1,6 +1,10 @@
+using System.Globalization;
 using Jint;
 using Jint.Native;
 using Jint.Runtime;
+using Orkeon.Domain.Autonomous;
+using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Versioning;
 
 namespace Orkeon.Scripting.Internal;
 
@@ -28,15 +32,95 @@ namespace Orkeon.Scripting.Internal;
 /// <para>The policy, one for every trampoline: every synchronous helper handed to JavaScript goes
 /// through <see cref="Guard"/>, uniformly — the ones with no failure path of their own included,
 /// so that a failure path added later is bridged by construction and a reader never has to
-/// decide which helper was left raw on purpose. Only the awaited <see cref="Task"/>s stay raw.</para>
+/// decide which helper was left raw on purpose. Only the awaited <see cref="Task"/>s stay raw —
+/// except the ones a script is told to catch by type (<see cref="BridgeAsync"/>).</para>
+/// <para>The Error is an instance of the class <c>errors.d.ts</c> declares for the exception —
+/// <c>ReceiveTimeoutError</c> for a <see cref="ReceiveTimeoutException"/> — with that class's
+/// fields set (GAP-12). The classes are planted as globals by <see cref="PlantErrorClasses"/>, so
+/// <c>err instanceof ReceiveTimeoutError</c> is the idiom it reads as. They used to be declared
+/// and never planted: the check compiled and threw a <c>ReferenceError</c>.</para>
 /// </remarks>
 internal static class JsHostError
 {
     private const string ClrProperty = "clr";
 
-    /// <summary>The Error factory; evaluated per engine by <see cref="JsTrampolineFactories.HostError"/>.</summary>
-    internal const string FactorySource =
-        "(message, clr, clrType) => { const err = new Error(message); err.clr = clr; err.clrType = clrType; return err; }";
+    /// <summary>The error classes <c>errors.d.ts</c> declares, in its order.</summary>
+    internal static readonly string[] ErrorClassNames =
+    [
+        "ScriptVersionMismatchError", "AgentAlreadyInCrewError", "AgentNotInCrewError",
+        "AgentNotInThisCrewError", "DuplicateAgentNameError", "RecursiveAgentInvocationError",
+        "WaiterKickedError", "ReceiveTimeoutError", "StateMutationOutsideWithError", "BudgetExhaustedError",
+    ];
+
+    private static readonly string ErrorClassNamesJson = System.Text.Json.JsonSerializer.Serialize(ErrorClassNames);
+
+    /// <summary>
+    /// The Error factory; evaluated per engine by <see cref="JsTrampolineFactories.HostError"/>. It
+    /// builds the declared classes once per engine — each an <c>Error</c> subclass whose
+    /// <c>name</c> is its own — and returns <c>make</c>, carrying them on <c>make.classes</c>.
+    /// </summary>
+    internal static readonly string FactorySource = $$"""
+        (() => {
+            const classes = {};
+            for (const name of {{ErrorClassNamesJson}}) {
+                const C = ({ [name]: class extends Error {} })[name];
+                Object.defineProperty(C.prototype, "name", { value: name, writable: true, configurable: true });
+                classes[name] = C;
+            }
+            const make = (message, clr, clrType, className, fields) => {
+                const C = (className && classes[className]) || Error;
+                const err = new C(message);
+                err.clr = clr;
+                err.clrType = clrType;
+                if (fields) Object.assign(err, fields);
+                return err;
+            };
+            make.classes = classes;
+            return make;
+        })()
+        """;
+
+    /// <summary>The async bridge; evaluated per engine by <see cref="JsTrampolineFactories.HostAsync"/>.</summary>
+    internal const string AsyncFactorySource = """
+        (raw, convert) => async function (...args) {
+            try { return await raw(...args); }
+            catch (e) { throw convert(e); }
+        }
+        """;
+
+    /// <summary>
+    /// Plants the declared error classes as globals on <paramref name="engine"/>. Called by
+    /// <see cref="JsEngineFactory.Create"/> right after the factories are prepared.
+    /// </summary>
+    public static void PlantErrorClasses(Engine engine)
+    {
+        ArgumentNullException.ThrowIfNull(engine);
+        var classes = JsTrampolineFactories.HostError.For(engine).AsObject().Get("classes").AsObject();
+        foreach (var name in ErrorClassNames)
+            engine.SetValue(name, classes.Get(name));
+    }
+
+    /// <summary>
+    /// The declared class an exception surfaces as, with its fields; <see langword="null"/> for an
+    /// exception <c>errors.d.ts</c> declares no class for (a plain <c>Error</c> then).
+    /// </summary>
+    private static (string ClassName, (string Key, object Value)[] Fields)? Describe(Exception exception) => exception switch
+    {
+        ScriptVersionMismatchError v => ("ScriptVersionMismatchError", [("declaredVersion", v.DeclaredVersion), ("supportedVersion", v.SupportedVersion)]),
+        AgentAlreadyInCrewException a => ("AgentAlreadyInCrewError", [("agentName", a.AgentName), ("crewName", a.CrewName)]),
+        AgentNotInCrewException a => ("AgentNotInCrewError", [("agentName", a.AgentName)]),
+        AgentNotInThisCrewException a => ("AgentNotInThisCrewError", [("agentName", a.AgentName), ("crewName", a.CrewName)]),
+        DuplicateAgentNameException d => ("DuplicateAgentNameError", [("agentName", d.AgentName), ("crewName", d.CrewName)]),
+        RecursiveAgentInvocationException r => ("RecursiveAgentInvocationError", [("agentName", r.AgentName)]),
+        WaiterKickedException w => ("WaiterKickedError", [("queueName", w.QueueName)]),
+        ReceiveTimeoutException r => ("ReceiveTimeoutError", [("timeoutMs", r.Timeout.TotalMilliseconds)]),
+        StateMutationOutsideWithException s => ("StateMutationOutsideWithError", [("propertyName", s.PropertyName)]),
+        BudgetExhaustedException b => ("BudgetExhaustedError", [("dimension", CamelCase(b.Dimension.ToString()))]),
+        _ => null,
+    };
+
+    private static string CamelCase(string name)
+        => name.Length == 0 ? name : char.ToLower(name[0], CultureInfo.InvariantCulture) + name[1..];
 
     /// <summary>
     /// A JavaScript throw of <paramref name="exception"/>: an <c>Error</c> with the CLR message,
@@ -51,8 +135,47 @@ internal static class JsHostError
             return already;
 
         var factory = JsTrampolineFactories.HostError.For(engine);
-        var error = engine.Invoke(factory, exception.Message, exception, exception.GetType().Name);
+        JsValue className = JsValue.Undefined;
+        JsValue fields = JsValue.Undefined;
+        if (Describe(exception) is { } described)
+        {
+            className = described.ClassName;
+            var bag = new JsObject(engine);
+            foreach (var (key, value) in described.Fields)
+                bag.Set(key, JsValue.FromObject(engine, value));
+            fields = bag;
+        }
+        var error = engine.Invoke(factory, exception.Message, exception, exception.GetType().Name, className, fields);
         return new JavaScriptException(error);
+    }
+
+    /// <summary>
+    /// <paramref name="raw"/> — a CLR delegate returning a <see cref="Task"/> — as a JS async function
+    /// whose rejection is the declared error class: a faulted task otherwise reaches the script as the
+    /// wrapped <see cref="AggregateException"/>, never an <c>Error</c>, so <c>err instanceof
+    /// ReceiveTimeoutError</c> could not hold. The conversion runs in the function's own <c>catch</c>,
+    /// a promise reaction on the thread draining the engine — never on the pool thread that faulted
+    /// the task. A rejection with no declared class (a cancellation) passes through unchanged.
+    /// </summary>
+    public static JsValue BridgeAsync(Engine engine, Delegate raw)
+    {
+        ArgumentNullException.ThrowIfNull(engine);
+        ArgumentNullException.ThrowIfNull(raw);
+        Func<JsValue, JsValue> convert = rejected => Guard(engine, () => ToDeclaredError(engine, rejected));
+        return engine.Invoke(JsTrampolineFactories.HostAsync.For(engine), JsValue.FromObject(engine, raw), JsValue.FromObject(engine, convert));
+    }
+
+    /// <summary>
+    /// A rejection value as the declared error class when it carries an exception that has one —
+    /// a wrapped CLR exception from a faulted task becomes the bridged Error — else unchanged.
+    /// Call on the engine thread.
+    /// </summary>
+    internal static JsValue ToDeclaredError(Engine engine, JsValue rejected)
+    {
+        if (rejected is JsError || Unwrap(rejected) is not { } clr)
+            return rejected;
+        var innermost = JsExceptionUnwrap.UnwrapToInnermost(clr);
+        return Describe(innermost) is null ? rejected : Wrap(engine, innermost).Error;
     }
 
     /// <summary>

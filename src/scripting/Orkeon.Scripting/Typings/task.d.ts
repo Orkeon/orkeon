@@ -4,18 +4,27 @@
 declare global {
     interface Task<TIn = unknown, TOut = unknown> {
         readonly name: string;
+        readonly id: string;
         readonly description: string;
+        readonly expectedOutput: string;
     }
 
     interface TaskBuilder<TIn = unknown, TOut = unknown> {
         name(value: string): this;
         description(value: string): this;
-        agent(agent: string | Agent<TIn, TOut>): this;
+        /** The built agent that performs this task. */
+        agent(agent: Agent<TIn, TOut>): this;
         expectedOutput(value: string): this;
         withContext(task: Task<unknown, unknown>): this;
         withContexts(tasks: readonly Task<unknown, unknown>[]): this;
         expect(schema: JsonSchema): this;
-        withTaskTool(tool: Tool<unknown, unknown>): this;
+        /** Forces this task's output format (overrides the agent's). `"text"` keeps the provider default. */
+        withResponseFormat(type: ResponseFormatType): this;
+        /**
+         * Constrains this task's output to a JSON Schema, on the providers whose API validates
+         * one server-side. Implies `json_schema`. `strict` defaults to true.
+         */
+        withResponseSchema(name: string, schema: JsonSchema | string, strict?: boolean): this;
         /** YAML parity `humanInput: true` — the task pauses for the human-input provider. */
         humanInput(value?: boolean): this;
         /** YAML parity `asyncExecution: true` — the task may run concurrently with its siblings. */

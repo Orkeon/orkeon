@@ -8,7 +8,8 @@ const extractor = agentBuilder()
     .role("Invoice extractor")
     .goal("Read a pasted invoice and emit one JSON object with the fields.")
     .backstory("Tireless accountant who never adds prose.")
-    .llm({ provider: "deepseek", model: "deepseek-flash" })
+    // The model only: the provider is the host's (configure DeepSeek with `orkeon init`).
+    .llm(llm.default_.with({ model: "deepseek-flash" }))
     .withResponseFormat("json_object")
     .build();
 

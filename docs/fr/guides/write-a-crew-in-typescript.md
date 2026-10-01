@@ -101,8 +101,9 @@ Un agent atteint les outils de trois façons, et elles ne sont pas interchangeab
    moins. (Le moteur procédural, qu'on ne peut pas valider, saute un nom inconnu sans bruit.)
 2. **Outils TypeScript en instances** — `.withAutonomousTools([...])`, construits avec
    `toolBuilder()`. Ils voyagent avec le script : aucun enregistrement côté hôte. En forme
-   procédurale, ils s'appellent directement depuis un `body` (`diffStats.execute({ diff })`) —
-   `ctx.llm.act` ne les propose pas au modèle.
+   procédurale, un `body` les appelle directement (`diffStats.execute({ diff })`), et
+   `ctx.llm.act` les propose au modèle à côté des outils intégrés — quand le modèle en appelle
+   un, son `execute` s'exécute dans le script.
 3. **Impérativement, depuis un corps** — `tools.fileRead({ path })`, en camelCase, forme
    procédurale uniquement.
 
@@ -205,17 +206,19 @@ await crewBuilder().withAgent(calculator).build().run();
 
 ### `ctx.llm.act` — une boucle d'agent en neuf lignes
 
-`act` déroule le cycle LLM ⇄ appels d'outils sur les outils intégrés que l'agent a choisis
-avec `.tools([...])`, jusqu'à ce que le modèle cesse de demander des outils ou que
-`maxIterations` (défaut 10) soit atteint :
+`act` déroule le cycle LLM ⇄ appels d'outils sur les outils de l'agent — les intégrés qu'il a
+choisis avec `.tools([...])` et ses instances `withAutonomousTool` — jusqu'à ce que le modèle
+cesse de demander des outils ou que `maxIterations` (défaut 10) soit atteint. Elle se résout
+en `{ output, iterations }` :
 
 ```ts
 .body(async (input, ctx) => {
-    return await ctx.llm.act("Summarise the release note in /script/notes.md", {
+    const run = await ctx.llm.act("Summarise the release note in /script/notes.md", {
         system: "You are terse. Two sentences, no preamble.",
         maxIterations: 5,
         onDelta: (d) => ctx.log.info(d),
     });
+    return run.output;
 })
 ```
 
@@ -316,7 +319,9 @@ vaut mieux connaître avant d'en être surpris :
 | `stateGraph has no path from START to END` | Aucune route statique ; ajoutez-en une ou passez par une arête conditionnelle. |
 | `StateMutationOutsideWithException` | `ctx.state.x = …` au lieu de `ctx.state.with(...)`. |
 | `.concurrency must be positive` / `V1 supports .concurrency(1) only` | Le sémaphore à N détenteurs est en V1.5. |
-| `RecursiveAgentInvocationException` | `ctx.spawn` d'un agent portant le nom de l'appelant. |
+| `RecursiveAgentInvocationException` | `ctx.spawn` d'un agent portant le nom de l'appelant, ou `ctx.delegate` / `crew.runAgent` de l'agent appelant lui-même. |
+| `.llm(...) takes an LlmConfig` | Un nom de modèle ou un littéral `{ provider, model }` passé à `.llm(...)`. Écrivez `.llm(llm.model("…"))` ; le fournisseur est celui de l'hôte. |
+| `.withAutonomousTool(tool) takes what toolBuilder()…build() returns` | Un nom ou un objet simple. Les outils intégrés vont dans `.tools([...])`. |
 | Un retry qui n'arrive jamais | `onError` rendant une chaîne au lieu de `ErrorAction.retry({...})`. |
 
 ## Hors périmètre, volontairement
@@ -325,7 +330,7 @@ vaut mieux connaître avant d'en être surpris :
 Il n'existe pas de méthode d'inclusion conditionnelle — gardez l'appel `withAgent`/`withTask`
 avec un `if` à la place. `ctx.llm.embed` rend un vecteur bidon. La liste complète, avec ce que chacun
 fait réellement, est dans
-[Écarts connus entre les typings et le runtime](../reference/scripting-dsl.md#écarts-connus-entre-les-typings-et-le-runtime).
+[Limites de conception](../reference/scripting-dsl.md#limites-de-conception).
 
 ## Où aller ensuite
 

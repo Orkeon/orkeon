@@ -208,7 +208,6 @@ variables d'environnement qui les contiennent. Parcours par fournisseur et table
 
 | Section | Configure | Consommateur |
 |---|---|---|
-| `Orkeon:DefaultLlmProvider` | Nom du provider par défaut de l'espace `ctx.llm` du scripting | `Orkeon.Scripting` |
 | `Orkeon:Scripting:Limits` | Sandbox Jint : `MemoryLimitBytes` (défaut 100 Mo), `RecursionLimit` (64), `ExecutionTimeout` (30 s) | `Orkeon.Scripting` |
 | `Orkeon:Scripting:Toolchain` | Résolution de la toolchain esbuild (`EsbuildPath`, `EsbuildTimeout` 30 s) | `Orkeon.Scripting` |
 | `Orkeon:Cli:ScriptCommands` (+ `:Limits`) | Découverte des commandes CLI TypeScript (`Enabled`, `Directories`, `FailFastOnInvalidScript`, `EsbuildTranspile`, `MaxScripts` 50, `ContinueOnConflict`, `FallbackCommandName` `assistant`) + profil sandbox CLI plus strict | `Orkeon.Cli.Commands.Scripting` |

@@ -1,55 +1,47 @@
 // Orkeon Scripting DSL — Llm provider namespace
-// Declares LlmConfig, the provider factories under the `llm` namespace, and the resolved `llm.default_`.
+// Declares LlmConfig and the `llm` namespace: `llm.default_` and `llm.model(...)`.
+//
+// There is no per-vendor factory (GAP-12). Every agent of a script talks to the provider the
+// host registered; `llm.openai()`, `llm.anthropic()` and their six siblings only renamed it —
+// `llm.anthropic()` on an OpenAI host sent `claude-haiku-4-5` to OpenAI. What a script sets is
+// the MODEL, and the settings below.
 
 declare global {
+    /** A provider response format, for `withResponseFormat` and the `responseFormat` options. */
+    type ResponseFormatType = "text" | "json_object" | "json_schema";
+
     /**
-     * A resolved LLM configuration — what `llm.openai(...)` and friends return.
-     *
-     * These used to be declared as non-callable `LlmProvider` objects carrying a `name`
-     * property. The runtime exposes them as FACTORIES returning this shape, whose provider
-     * field is `provider`, not `name`: every script typed against the old declarations got
-     * an error on the correct code and completion on code that cannot run.
+     * The model settings an agent runs with — what `llm.default_`, `llm.model(...)` and
+     * `with(...)` return, and the only value `agentBuilder().llm(...)` accepts.
      */
     interface LlmConfig {
+        /** The host's provider, which every agent talks to. Informational: a script cannot change it. */
         readonly provider: string;
         readonly model: string;
-        readonly apiKey?: string;
         readonly temperature?: number;
         readonly maxTokens?: number;
-        readonly baseUrl?: string;
 
-        /** Returns a copy with the given fields overridden. */
-        with(overrides: Partial<Pick<LlmConfig, "model" | "temperature" | "maxTokens" | "baseUrl">>): LlmConfig;
+        /** Returns a copy with the given fields overridden. Any other key is refused. */
+        with(overrides: LlmConfigOverrides): LlmConfig;
     }
 
-    /** What a call to one of the `llm` factories accepts. */
-    interface LlmProviderOptions {
+    /** What `LlmConfig.with(...)` and `llm.model(name, ...)` apply. */
+    interface LlmConfigOverrides {
         model?: string;
         temperature?: number;
         maxTokens?: number;
-        baseUrl?: string;
+        responseFormat?: ResponseFormatType;
     }
 
-    /** A provider factory: called with no argument, it uses that provider's default model. */
-    type LlmProvider = (options?: LlmProviderOptions) => LlmConfig;
-
     namespace llm {
-        const openai: LlmProvider;
-        const anthropic: LlmProvider;
-        const ollama: LlmProvider;
-        const azureOpenai: LlmProvider;
-        const grok: LlmProvider;
-        const minimax: LlmProvider;
-        /** OpenRouter (marketplace): `vendor/model` identifiers; default `google/gemini-3.7-flash`. */
-        const openrouter: LlmProvider;
-        /** Mammouth AI (subscription proxy): the vendors' bare identifiers; default `gemini-3.7-flash`. */
-        const mammouth: LlmProvider;
-
         /**
-         * The configured provider, already resolved — a value, not a factory. Comes from
-         * `Orkeon:DefaultLlmProvider`; the `UndefinedLlm` echo when nothing is configured.
+         * The host's provider on its own configured model — a value, not a factory. The
+         * `<undefined-llm>` echo (provider `"undefined"`) when the host has no provider.
          */
         const default_: LlmConfig;
+
+        /** `llm.default_` on another model: `llm.default_.with({ model: name, ...overrides })`. */
+        function model(name: string, overrides?: Omit<LlmConfigOverrides, "model">): LlmConfig;
     }
 }
 

@@ -45,19 +45,21 @@ public sealed class EventsTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var ex = await ThrowsContainingAcrossChainAsync(
-            () => crew.RunAsync(null, CancellationToken.None),
-            nameof(ReceiveTimeoutException));
+        // The rejection is the declared ReceiveTimeoutError (GAP-12), carrying the CLR exception.
+        var ex = await Assert.ThrowsAsync<Jint.Runtime.PromiseRejectedException>(
+            () => crew.RunAsync(null, CancellationToken.None));
 
-        Assert.NotNull(ex);
+        Assert.IsType<ReceiveTimeoutException>(Orkeon.Scripting.Internal.JsHostError.Unwrap(ex.RejectedValue));
+        Assert.Equal("ReceiveTimeoutError", ex.RejectedValue.AsObject().Get("name").AsString());
     }
 
     [Fact]
     public async Task Queue_kick_wakes_pending_waiters_with_WaiterKickedException()
     {
-        var queue = new JsEventQueue("test");
+        using var engine = new Jint.Engine();
+        var queue = new JsEventQueue(engine, "test");
 
-        var popTask = queue.pop(null);
+        var popTask = queue.PopAsync(null);
         // R5.6: deterministic wait — kick() only wakes waiters already registered, so
         // poll the queue's observable waiter count instead of sleeping a fixed 20 ms.
         await Polling.WaitUntilAsync(() =>
@@ -370,13 +372,13 @@ public sealed class EventsTests
         // Direct C# stress test: 10 producers + 10 consumers running in parallel against
         // the same JsEventQueue. Every pushed value must be popped exactly once.
         using var engine = new Jint.Engine();
-        var queue = new JsEventQueue("stress");
+        var queue = new JsEventQueue(engine, "stress");
         const int n = 10;
 
         var consumed = new System.Collections.Concurrent.ConcurrentBag<int>();
         var consumers = Enumerable.Range(0, n).Select(_ => Task.Run(async () =>
         {
-            var v = await queue.pop(null).ConfigureAwait(false);
+            var v = await queue.PopAsync(null).ConfigureAwait(false);
             consumed.Add((int)v.AsNumber());
         })).ToArray();
 

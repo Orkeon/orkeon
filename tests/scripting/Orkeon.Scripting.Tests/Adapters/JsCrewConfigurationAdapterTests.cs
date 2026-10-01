@@ -135,7 +135,7 @@ public sealed class JsCrewConfigurationAdapterTests
     {
         var engine = NewEngine();
         var crew = BuildCrew(engine, """
-            const tunedLlm = llm.openai({ model: "gpt-4o" }).with({
+            const tunedLlm = llm.model("gpt-4o").with({
                 temperature: 0.3,
                 maxTokens: 5000,
             });

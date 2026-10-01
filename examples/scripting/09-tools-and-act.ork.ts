@@ -20,6 +20,8 @@ const wordCount = toolBuilder<{ text: string }, { words: number }>()
         properties: { text: { type: "string", description: "Text to measure" } },
         required: ["text"]
     })
+    // Read-only: a permission gate in "plan" mode lets it through (undeclared counts as a write).
+    .access("read")
     .execute((input, ctx) => ({ words: String(input.text).trim().split(/\s+/).length }))
     .build();
 
@@ -30,8 +32,8 @@ const analyst = agentBuilder()
     // Surface 1 — a built-in, by name, resolved from the host catalogue.
     .tools(["file_read"])
     // Surface 2 — the instance authored above: callable from a body (`wordCount.execute`),
-    // resolved by name in the declarative shape. Known gap: `act` below offers only the
-    // `.tools([...])` built-ins, not this instance (docs/reference/scripting-dsl.md).
+    // offered to the model by `act` below, and by name in the declarative shape. When the
+    // model calls it, its `execute` runs here, in the script.
     .withAutonomousTool(wordCount)
     .body(async (input, ctx) => {
         // Surface 3 — calling a tool imperatively, outside any LLM loop. `/script` is the
@@ -40,9 +42,9 @@ const analyst = agentBuilder()
             { path: "/script/data/09-tools-and-act/release-notes.md" }, ctx);
         ctx.log.info(`read ${String(notes.content).length} characters`);
 
-        // `act` runs the LLM ⇄ tool-call cycle over the agent's catalogue until the model
-        // stops asking for tools, or maxIterations is reached.
-        return await ctx.llm.act<string>(
+        // `act` runs the LLM ⇄ tool-call cycle over the agent's catalogue — `file_read` and
+        // `word_count` — until the model stops asking for tools, or maxIterations is reached.
+        const run = await ctx.llm.act(
             `Summarise these release notes in one sentence, then call word_count on your
              summary and report the number.\n\n${notes.content}`,
             {
@@ -55,6 +57,7 @@ const analyst = agentBuilder()
                 // Called with each streamed content delta. Keep it cheap — it runs inline.
                 onDelta: (d) => ctx.log.debug(d),
             });
+        return run.output;
     })
     .build();
 

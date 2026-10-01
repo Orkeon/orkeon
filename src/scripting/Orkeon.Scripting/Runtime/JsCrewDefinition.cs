@@ -16,7 +16,7 @@ internal sealed record JsCrewDefinition
     public required string Name { get; init; }
     public required string Process { get; init; }
     public required IEnumerable<JsAgent> Agents { get; init; }
-    public required IEnumerable<object> Tasks { get; init; }
+    public required IEnumerable<JsTask> Tasks { get; init; }
     public JsAgent? Manager { get; init; }
     public required IReadOnlyDictionary<string, object?> Budget { get; init; }
     public bool Verbose { get; init; }

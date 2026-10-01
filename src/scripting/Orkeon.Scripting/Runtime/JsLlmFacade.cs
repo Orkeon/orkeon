@@ -599,6 +599,12 @@ public sealed partial class JsLlmFacade
     // observed at the next delta or iteration) instead of letting the loop pay for turns nobody
     // consumes; the run's cancellation is then superseded by the callback's own error, which
     // `await pump` rethrows from the finally.
+    // The agent's toolBuilder() tools (withAutonomousTool) run the same way (GAP-12): the loop,
+    // on a pool thread, posts each call to `s.toolRequests` and awaits its settlement; the
+    // second pump runs the tool's `execute` here, on the thread draining the engine, and hands
+    // the result — or the failure — back through `s.settleTool`, which never throws. A tool
+    // instance cannot run from the loop itself: JsTool.CallAsync is a root pump and needs the
+    // engine at rest, and the engine is busy running the body that awaits `act`.
     internal const string ActFactorySource = """
         (beginAct) => async function act(prompt, options) {
             const cb = options ? options.onDelta : undefined;
@@ -610,8 +616,20 @@ public sealed partial class JsLlmFacade
                     catch (e) { s.abort(); throw e; }
                 })()
                 : null;
+            const tools = s.hasScriptTools
+                ? (async () => {
+                    for await (const id of s.toolRequests) {
+                        try { s.settleTool(id, true, await s.toolOf(id).execute(JSON.parse(s.argumentsOf(id)))); }
+                        catch (e) { s.settleTool(id, false, e); }
+                    }
+                })()
+                : null;
             try { return await s.run(); }
-            finally { if (pump) await pump; }
+            catch (e) { throw s.declared(e); }
+            finally {
+                if (pump) await pump;
+                if (tools) await tools;
+            }
         }
         """;
 
@@ -643,7 +661,14 @@ public sealed partial class JsLlmFacade
             MaxIterations = ResolveMaxIterations(options);
             PermissionMode = ResolvePermissionMode(options);
             Config = facade.ConfigFrom(options) ?? facade._provider?.BaseConfig ?? LlmConfig.Default();
-            ToolSchemas = facade._tools.Count > 0 ? facade._tools.Select(t => t.Schema).ToList() : null;
+            // A script tool instance is offered through a proxy bound to this session: its calls
+            // cross over to the JS tool pump instead of running on the loop's thread.
+            Tools = facade._tools
+                .Select(t => t is JsTool script ? new ScriptToolProxy(script, this) : t)
+                .ToList();
+            ToolSchemas = Tools.Count > 0 ? Tools.Select(t => t.Schema).ToList() : null;
+            if (Tools.Any(t => t is ScriptToolProxy))
+                _toolRequests = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
             // A conversation-level system message wins over any LlmConfig.SystemMessage fallback
             // (OpenAICompatibleProviderBase.PrependConfiguredSystemMessage / Anthropic
@@ -666,6 +691,9 @@ public sealed partial class JsLlmFacade
         internal string PermissionMode { get; }
         internal LlmConfig Config { get; }
         internal IReadOnlyList<Orkeon.Domain.Tools.Protocol.ToolSchema>? ToolSchemas { get; }
+
+        /// <summary>The tools this call offers: the built-ins as they are, the script tools behind a <see cref="ScriptToolProxy"/>.</summary>
+        internal List<IBaseTool> Tools { get; }
         internal List<LlmMessage> Messages { get; } = new(capacity: 2);
         internal bool StreamsDeltas => _deltas is not null;
 
@@ -697,7 +725,144 @@ public sealed partial class JsLlmFacade
 
         internal void OfferDelta(string delta) => _deltas?.Writer.TryWrite(delta);
 
-        internal void CompleteDeltas() => _deltas?.Writer.TryComplete();
+        /// <summary>
+        /// The loop's rejection as the class <c>errors.d.ts</c> declares — a spent budget is a
+        /// <c>BudgetExhaustedError</c> — instead of the wrapped CLR exception of a faulted task.
+        /// Runs in the trampoline's catch, on the engine thread; returns the value unchanged when
+        /// it has no declared class.
+        /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
+        public JsValue declared(JsValue rejected) => JsHostError.ToDeclaredError(_facade._engine, rejected);
+
+        internal void CompleteDeltas()
+        {
+            _deltas?.Writer.TryComplete();
+            _toolRequests?.Writer.TryComplete();
+        }
+
+        // ---- script tools: the loop posts, the JS tool pump runs and settles ----
+
+        private readonly Channel<string>? _toolRequests;
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, PendingScriptToolCall> _pending = new(StringComparer.Ordinal);
+        private JsValue? _toolRequestsJs;
+
+        /// <summary>Whether the trampoline must start the tool pump.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Read by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
+        public bool hasScriptTools => _toolRequests is not null;
+
+        /// <summary>The ids of the script-tool calls the loop posted, as a JS async iterable; ends with the run.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Read by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
+        public JsValue toolRequests => _toolRequestsJs ??= _facade.AsAsyncIterable(
+            _toolRequests?.Reader.ReadAllAsync() ?? AsyncEnumerable.Empty<string>(), CancellationToken.None);
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
+        public JsTool toolOf(string id) => _pending[id].Tool;
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
+        public string argumentsOf(string id) => _pending[id].ArgumentsJson;
+
+        /// <summary>
+        /// Settles one call, on the engine thread: the result is converted here, where a JsValue may
+        /// be read, and handed to the loop as CLR data. Never throws — the pump has no one to throw to.
+        /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-boundary fault barrier: a result that cannot be converted becomes a failed tool call fed back to the model, never an exception on the JS pump.")]
+        public void settleTool(string id, bool ok, JsValue value)
+        {
+            if (!_pending.TryRemove(id, out var call)) return;
+            try
+            {
+                call.Completion.TrySetResult(ok
+                    ? new Orkeon.Domain.Tools.Protocol.ToolCallResponse(true, value.ToObject(), null)
+                    : new Orkeon.Domain.Tools.Protocol.ToolCallResponse(false, null, FailureMessage(value)));
+            }
+            catch (Exception ex)
+            {
+                call.Completion.TrySetResult(new Orkeon.Domain.Tools.Protocol.ToolCallResponse(false, null, ex.Message));
+            }
+        }
+
+        private static string FailureMessage(JsValue error)
+        {
+            if (JsHostError.Unwrap(error) is { } clr)
+                return JsExceptionUnwrap.UnwrapToInnermost(clr).Message;
+            if (error.IsObject() && error.AsObject().Get("message") is { } message && message.IsString())
+                return message.AsString();
+            return error.ToString();
+        }
+
+        /// <summary>Posts one call of <paramref name="tool"/> to the JS tool pump and awaits its settlement.</summary>
+        internal async Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallScriptToolAsync(
+            JsTool tool, IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+        {
+            var id = Guid.NewGuid().ToString("N");
+            var call = new PendingScriptToolCall(tool, JsonSerializer.Serialize(arguments));
+            _pending[id] = call;
+            using var registration = cancellationToken.Register(() =>
+            {
+                _pending.TryRemove(id, out _);
+                call.Completion.TrySetCanceled(cancellationToken);
+            });
+            if (!_toolRequests!.Writer.TryWrite(id))
+            {
+                _pending.TryRemove(id, out _);
+                return new Orkeon.Domain.Tools.Protocol.ToolCallResponse(false, null, "the act call has ended");
+            }
+            return await call.Completion.Task.ConfigureAwait(false);
+        }
+    }
+
+    private sealed record PendingScriptToolCall(JsTool Tool, string ArgumentsJson)
+    {
+        public TaskCompletionSource<Orkeon.Domain.Tools.Protocol.ToolCallResponse> Completion { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    /// <summary>
+    /// A script tool as the act loop sees it: the tool's name, schema and access class, and a
+    /// <see cref="CallAsync"/> that crosses over to the session's JS tool pump. Goes through the
+    /// permission gate and the host's tool-invocation pipeline like any other tool.
+    /// </summary>
+    private sealed class ScriptToolProxy : IBaseTool
+    {
+        private readonly JsTool _tool;
+        private readonly ActSession _session;
+
+        public ScriptToolProxy(JsTool tool, ActSession session)
+        {
+            _tool = tool;
+            _session = session;
+        }
+
+        public string Name => _tool.Name;
+        public string Description => _tool.Description;
+        public Orkeon.Domain.Tools.Protocol.ToolSchema Schema => _tool.Schema;
+        public ToolAccess Access => _tool.Access;
+
+        public Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallAsync(ProtocolToolCallRequest request, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            return _session.CallScriptToolAsync(_tool, request.Parameters, cancellationToken);
+        }
+
+        public async Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
+        {
+            var arguments = string.IsNullOrWhiteSpace(input)
+                ? new Dictionary<string, object?>()
+                : JsonSerializer.Deserialize<Dictionary<string, object?>>(input) ?? new Dictionary<string, object?>();
+            var response = await CallAsync(new ProtocolToolCallRequest(Name, arguments), cancellationToken).ConfigureAwait(false);
+            return response.Success
+                ? ToolResult.CreateSuccess(JsonSerializer.Serialize(response.Result))
+                : ToolResult.CreateError(response.Error ?? "Tool execution failed.");
+        }
+
+        public bool ValidateInput(string input) => _tool.ValidateInput(input);
     }
 
     /// <summary>
@@ -742,7 +907,7 @@ public sealed partial class JsLlmFacade
                 var (toolName, toolArgs) = call.Value;
                 activity?.SetTag("orkeon.llm.act.tool", toolName);
 
-                var resultText = await ResolveToolResultAsync(toolName, toolArgs, session.PermissionMode, activity).ConfigureAwait(false);
+                var resultText = await ResolveToolResultAsync(session, toolName, toolArgs, activity).ConfigureAwait(false);
 
                 // Omit the assistant tool-call turn (empty content) to avoid the strict tool-role
                 // protocol; feed the result back as a plain user turn. The tool schemas stay in
@@ -802,13 +967,14 @@ public sealed partial class JsLlmFacade
     /// the tool's result string.
     /// </summary>
     private async Task<string> ResolveToolResultAsync(
-        string toolName, Dictionary<string, object?> toolArgs, string permissionMode,
+        ActSession session, string toolName, Dictionary<string, object?> toolArgs,
         System.Diagnostics.Activity? activity)
     {
+        var permissionMode = session.PermissionMode;
         // Resolved before the gate so the tool's self-declared access class
         // (IBaseTool.Access) informs the verdict; unresolved tools stay
         // Unspecified and the gate classifies them fail-closed.
-        var tool = FindTool(toolName);
+        var tool = session.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
         var verdict = _permissionGate is null
             ? null
             : await _permissionGate.CheckAsync(
@@ -828,9 +994,6 @@ public sealed partial class JsLlmFacade
         _budget?.RecordToolCall();
         return await ExecuteToolAsync(tool, toolName, toolArgs).ConfigureAwait(false);
     }
-
-    private IBaseTool? FindTool(string name)
-        => _tools.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-boundary fault barrier: any tool failure is converted to an 'ERROR: ...' string fed back to the model as the tool result, so one faulty tool cannot crash the scripted LLM tool-call loop.")]
     private async Task<string> ExecuteToolAsync(IBaseTool? tool, string name, Dictionary<string, object?> arguments)

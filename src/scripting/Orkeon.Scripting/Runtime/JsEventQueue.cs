@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Jint;
 using Jint.Native;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -14,14 +15,16 @@ namespace Orkeon.Scripting.Runtime;
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The type is the JS-surface point-to-point queue exposed to scripts as ctx.events.queue(name); the 'Queue' suffix mirrors the JS API name and accurately describes its FIFO semantics.")]
 public sealed class JsEventQueue
 {
+    private readonly Engine _engine;
     private readonly string _name;
+    private JsValue? _popJs;
     private readonly ConcurrentQueue<JsValue> _items = new();
     private readonly object _lock = new();
     private readonly List<TaskCompletionSource<JsValue>> _waiters = new();
 
     public string name => _name;
 
-    internal JsEventQueue(string name) { _name = name; }
+    internal JsEventQueue(Engine engine, string name) { _engine = engine; _name = name; }
 
     public void push(JsValue item)
     {
@@ -41,7 +44,15 @@ public sealed class JsEventQueue
         winner?.TrySetResult(item);
     }
 
-    public Func<JsValue?, Task<JsValue>> pop => async options =>
+    /// <summary>
+    /// JS <c>async (options?) =&gt; value</c>: <see cref="PopAsync"/> through the host-error bridge, so
+    /// an expired <c>{ timeout }</c> rejects with a <c>ReceiveTimeoutError</c> and a kick with a
+    /// <c>WaiterKickedError</c> — the classes <c>errors.d.ts</c> declares — instead of a wrapped CLR
+    /// <see cref="AggregateException"/>.
+    /// </summary>
+    public JsValue pop => _popJs ??= JsHostError.BridgeAsync(_engine, PopAsync);
+
+    internal Func<JsValue?, Task<JsValue>> PopAsync => async options =>
     {
         TimeSpan? timeout = null;
         if (options is not null && options.IsObject())

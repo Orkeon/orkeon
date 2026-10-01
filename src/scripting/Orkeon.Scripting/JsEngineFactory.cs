@@ -1,5 +1,4 @@
 using Jint;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.Tools;
@@ -17,7 +16,6 @@ public sealed class JsEngineFactory
 {
     private readonly ScriptingLimitsOptions _limits;
     private readonly ILogger? _scriptLogger;
-    private readonly IConfiguration? _configuration;
     private readonly IEnumerable<IBaseTool>? _builtInTools;
     private readonly Orkeon.Domain.SharedKernel.ILlmProvider? _llmProvider;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
@@ -30,7 +28,6 @@ public sealed class JsEngineFactory
     /// </summary>
     /// <param name="limits">Sandbox limits applied to every engine this factory builds.</param>
     /// <param name="loggerFactory">Source of the script-facing logger; null silences it.</param>
-    /// <param name="configuration">Configuration the <c>llm</c> namespace reads its defaults from.</param>
     /// <param name="builtInTools">Built-in tools exposed to scripts through the <c>tools</c> namespace.</param>
     /// <param name="llmProvider">
     /// Provider backing <c>ctx.llm</c>; null keeps the undefined-LLM echo behaviour. The host
@@ -42,7 +39,6 @@ public sealed class JsEngineFactory
     public JsEngineFactory(
         IOptions<ScriptingLimitsOptions> limits,
         ILoggerFactory? loggerFactory = null,
-        IConfiguration? configuration = null,
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null,
         ScriptingHostPorts? hostPorts = null,
@@ -51,7 +47,6 @@ public sealed class JsEngineFactory
         ArgumentNullException.ThrowIfNull(limits);
         _limits = limits.Value;
         _scriptLogger = loggerFactory?.CreateLogger("Orkeon.Scripting");
-        _configuration = configuration;
         _builtInTools = builtInTools;
         _llmProvider = llmProvider;
         _permissionGate = hostPorts?.PermissionGate;
@@ -66,7 +61,6 @@ public sealed class JsEngineFactory
     /// </summary>
     /// <param name="limits">Sandbox limits; null applies the untrusted-script defaults.</param>
     /// <param name="loggerFactory">Source of the script-facing logger; null silences it.</param>
-    /// <param name="configuration">Configuration the <c>llm</c> namespace reads its defaults from.</param>
     /// <param name="builtInTools">Built-in tools exposed to scripts through the <c>tools</c> namespace.</param>
     /// <param name="llmProvider">Provider backing <c>ctx.llm</c>; null keeps the undefined-LLM echo behaviour.</param>
     /// <param name="hostPorts">Permission gate and delta sink the host wired, if any.</param>
@@ -74,12 +68,11 @@ public sealed class JsEngineFactory
     public JsEngineFactory(
         ScriptingLimitsOptions? limits = null,
         ILoggerFactory? loggerFactory = null,
-        IConfiguration? configuration = null,
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null,
         ScriptingHostPorts? hostPorts = null,
         Bindings.RagScriptingBackend? ragBackend = null)
-        : this(Microsoft.Extensions.Options.Options.Create(limits ?? new ScriptingLimitsOptions()), loggerFactory, configuration, builtInTools, llmProvider, hostPorts, ragBackend)
+        : this(Microsoft.Extensions.Options.Options.Create(limits ?? new ScriptingLimitsOptions()), loggerFactory, builtInTools, llmProvider, hostPorts, ragBackend)
     {
     }
 
@@ -132,13 +125,17 @@ public sealed class JsEngineFactory
         // script's synchronous prefix must not do (SCR-25 T7, JsTrampolineFactories).
         Internal.JsTrampolineFactories.Prepare(engine);
 
+        // The error classes errors.d.ts declares (`err instanceof ReceiveTimeoutError`), built by
+        // the host-error factory just prepared (GAP-12).
+        Internal.JsHostError.PlantErrorClasses(engine);
+
         // Register globals exposed to every script. Bindings are added incrementally as
         // builders land (SCR-03..SCR-06).
         AgentBuilderBinding.Register(engine);
         CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink, _toolInvocation);
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
-        LlmNamespaceBinding.Register(engine, _configuration, _scriptLogger, _llmProvider);
+        LlmNamespaceBinding.Register(engine, _scriptLogger, _llmProvider);
         ToolsNamespaceBinding.Register(engine, _builtInTools ?? Array.Empty<IBaseTool>(), _scriptLogger);
         RagNamespaceBinding.Register(engine, _ragBackend, _scriptLogger);
         ErrorActionBinding.Register(engine);

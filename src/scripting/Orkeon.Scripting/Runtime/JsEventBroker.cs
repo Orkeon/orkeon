@@ -41,7 +41,7 @@ public sealed class JsEventBroker
     internal CancellationToken CurrentCt { get; set; } = CancellationToken.None;
 
     public JsEventQueue queue(string name)
-        => _queues.GetOrAdd(name, n => new JsEventQueue(n));
+        => _queues.GetOrAdd(name, n => new JsEventQueue(_engine, n));
 
     public JsEventTopic topic(string name)
         => _topics.GetOrAdd(name, n => new JsEventTopic(_engine, n, parallel: false) { Broker = this });

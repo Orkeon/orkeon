@@ -7,3 +7,48 @@ Orkeon.Scripting.Builders.JsCrewBuilder.JsCrewBuilder(Jint.Engine! engine, Micro
 Orkeon.Scripting.ScriptingHostPorts.ToolInvocation.get -> Orkeon.Application.Interfaces.Security.IToolInvocationPipeline?
 Orkeon.Scripting.ScriptingHostPorts.ToolInvocation.init -> void
 static Orkeon.Scripting.Bindings.CrewBuilderBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? toolInvocation = null) -> void
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.anthropic.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.azureOpenai.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.default.get -> Orkeon.Scripting.Runtime.JsLlmConfig!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.grok.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.mammouth.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.minimax.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.ollama.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.openai.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.openrouter.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+*REMOVED*Orkeon.Scripting.Builders.JsCrewBuilder.withAgent(Orkeon.Scripting.Builders.JsAgent! agent) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+*REMOVED*Orkeon.Scripting.Builders.JsTaskBuilder.withTaskTool(Jint.Native.JsValue! tool) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+*REMOVED*Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingLimitsOptions!>! limits, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Scripting.ScriptingHostPorts? hostPorts = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null) -> void
+*REMOVED*Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Orkeon.Scripting.Configuration.ScriptingLimitsOptions? limits = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Scripting.ScriptingHostPorts? hostPorts = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null) -> void
+*REMOVED*Orkeon.Scripting.Runtime.JsEventQueue.pop.get -> System.Func<Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+*REMOVED*Orkeon.Scripting.Runtime.JsExecutionContext.delegate.get -> System.Func<Orkeon.Scripting.Builders.JsAgent!, Jint.Native.JsValue!, Jint.Native.JsValue!>!
+*REMOVED*Orkeon.Scripting.Runtime.JsExecutionContext.receive.get -> System.Func<Jint.Native.JsValue?, System.Threading.Tasks.Task<object?>!>!
+*REMOVED*Orkeon.Scripting.Runtime.JsExecutionContext.send.get -> System.Action<Orkeon.Scripting.Builders.JsAgent!, Jint.Native.JsValue!>!
+*REMOVED*Orkeon.Scripting.Runtime.JsLlmConfig.apiKey.get -> string?
+*REMOVED*Orkeon.Scripting.Runtime.JsLlmConfig.baseUrl.get -> System.Uri?
+*REMOVED*Orkeon.Scripting.Runtime.JsLogger.debug(string! message) -> void
+*REMOVED*Orkeon.Scripting.Runtime.JsLogger.error(string! message) -> void
+*REMOVED*Orkeon.Scripting.Runtime.JsLogger.info(string! message) -> void
+*REMOVED*Orkeon.Scripting.Runtime.JsLogger.warn(string! message) -> void
+*REMOVED*const Orkeon.Scripting.Bindings.LlmNamespaceBinding.DefaultProviderConfigKey = "Orkeon:DefaultLlmProvider" -> string!
+*REMOVED*static Orkeon.Scripting.Bindings.LlmNamespaceBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Configuration.IConfiguration? config = null, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? defaultProvider = null) -> void
+Orkeon.Scripting.Bindings.JsLlmNamespace.model(Jint.Native.JsValue! name, Jint.Native.JsValue? overrides = null) -> Orkeon.Scripting.Runtime.JsLlmConfig!
+Orkeon.Scripting.Builders.JsAgent.role.get -> string!
+Orkeon.Scripting.Builders.JsCrewBuilder.withAgent(Jint.Native.JsValue! agent) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingLimitsOptions!>! limits, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Scripting.ScriptingHostPorts? hostPorts = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null) -> void
+Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Orkeon.Scripting.Configuration.ScriptingLimitsOptions? limits = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Scripting.ScriptingHostPorts? hostPorts = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null) -> void
+Orkeon.Scripting.Runtime.JsCrew.has(string! agentName) -> bool
+Orkeon.Scripting.Runtime.JsCrew.remove(string! agentName) -> void
+Orkeon.Scripting.Runtime.JsCrewProxy.has(string! agentName) -> bool
+Orkeon.Scripting.Runtime.JsEventQueue.pop.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsExecutionContext.delegate.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue!, Jint.Native.JsValue!>!
+Orkeon.Scripting.Runtime.JsExecutionContext.receive.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsExecutionContext.send.get -> System.Action<Jint.Native.JsValue!, Jint.Native.JsValue!>!
+Orkeon.Scripting.Runtime.JsLogger.debug(string! message, params Jint.Native.JsValue![]! args) -> void
+Orkeon.Scripting.Runtime.JsLogger.error(string! message, params Jint.Native.JsValue![]! args) -> void
+Orkeon.Scripting.Runtime.JsLogger.info(string! message, params Jint.Native.JsValue![]! args) -> void
+Orkeon.Scripting.Runtime.JsLogger.warn(string! message, params Jint.Native.JsValue![]! args) -> void
+static Orkeon.Scripting.Bindings.LlmNamespaceBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? defaultProvider = null) -> void
+*REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeLlmError = "llm_error" -> string!
+*REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeLockTimeout = "lock_timeout" -> string!
+*REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeToolError = "tool_error" -> string!

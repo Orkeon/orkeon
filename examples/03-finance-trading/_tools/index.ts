@@ -36,14 +36,14 @@ export const allTradingTools = [
     varCalculation, cvarCalculation, stressTesting, factorExposure,
 ];
 
-const byName: Record<string, unknown> = {};
-for (const tool of allTradingTools) byName[(tool as any).name] = tool;
+const byName: Record<string, Tool<unknown, unknown>> = {};
+for (const tool of allTradingTools) byName[tool.name] = tool;
 
 /**
  * The tools an example declares, by their snake_case names — a loud error on a
  * typo, so a migration cannot silently drop a tool the YAML used to carry.
  */
-export function pickTools(...names: string[]) {
+export function pickTools(...names: string[]): Tool<unknown, unknown>[] {
     return names.map(n => {
         const tool = byName[n];
         if (!tool) throw new Error(`Unknown trading tool '${n}'. Known: ${Object.keys(byName).sort().join(", ")}`);

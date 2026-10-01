@@ -144,9 +144,9 @@ public sealed class ErrorPolicyExtraTests
     {
         var inner = new InvalidOperationException("boom");
         var agent = new JsAgentRef("id-1", "Alice");
-        var ctx = new JsErrorContext("tool_error", "failed", inner, 2, agent);
+        var ctx = new JsErrorContext("network", "failed", inner, 2, agent);
 
-        Assert.Equal("tool_error", ctx.code);
+        Assert.Equal("network", ctx.code);
         Assert.Equal("failed", ctx.message);
         Assert.Same(inner, ctx.exception);
         Assert.Equal(2, ctx.attempt);

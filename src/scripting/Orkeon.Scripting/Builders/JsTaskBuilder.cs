@@ -22,7 +22,6 @@ public sealed class JsTaskBuilder
     private string? _expectedOutput;
     private readonly List<JsTask> _context = new();
     private JsValue? _expectSchema;
-    private JsValue? _taskTool;
     private JsValue? _deliverableSpec;
     private bool _humanInput;
     private bool _asyncExecution;
@@ -92,7 +91,6 @@ public sealed class JsTaskBuilder
     }
 
     public JsTaskBuilder expect(JsValue schema) { _expectSchema = schema; return this; }
-    public JsTaskBuilder withTaskTool(JsValue tool) { _taskTool = tool; return this; }
 
     /// <summary>
     /// Forces the LLM output format on this task only (e.g. <c>"json_object"</c>).
@@ -169,7 +167,6 @@ public sealed class JsTaskBuilder
             AssignedAgent = _agent,
             Context = _context,
             ExpectSchema = _expectSchema,
-            TaskTool = _taskTool,
             DeliverableSpec = _deliverableSpec,
             ResponseFormat = _responseFormat,
             ResponseSchemaName = _responseSchemaName,

@@ -5,7 +5,9 @@ namespace Orkeon.Scripting.ErrorPolicy;
 
 /// <summary>
 /// Maps a thrown <see cref="Exception"/> to one of the normalized DSL error codes
-/// surfaced to <c>onError</c> handlers (cf. chapter 13 of the spec).
+/// surfaced to <c>onError</c> handlers (cf. chapter 13 of the spec). The constants below are
+/// exactly the codes <see cref="MapToCode"/> produces, and <c>ErrorCode</c> in
+/// <c>Typings/errors.d.ts</c> is the same list (GAP-12 removed three that nothing produced).
 /// </summary>
 public static class ErrorCodeMapper
 {
@@ -18,17 +20,8 @@ public static class ErrorCodeMapper
     /// <summary>Transport failure reaching a remote endpoint.</summary>
     public const string CodeNetwork = "network";
 
-    /// <summary>A tool invocation failed inside its own body.</summary>
-    public const string CodeToolError = "tool_error";
-
-    /// <summary>The LLM provider returned an error response.</summary>
-    public const string CodeLlmError = "llm_error";
-
     /// <summary>Agent state was mutated outside a <c>state.with(...)</c> block.</summary>
     public const string CodeStateMutation = "state_mutation";
-
-    /// <summary>A named lock could not be acquired within its deadline.</summary>
-    public const string CodeLockTimeout = "lock_timeout";
 
     /// <summary>Arguments handed to the DSL failed validation.</summary>
     public const string CodeValidation = "validation";

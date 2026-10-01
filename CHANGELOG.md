@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the `.ork.ts` typings and the runtime describe one DSL **[breaking]**
+
+The declarations in `Typings/*.d.ts` and the Jint runtime had drifted apart in three ways
+(GAP-12): code typed correctly failed (`err instanceof ReceiveTimeoutError` threw a
+`ReferenceError`, `ctx.send("writer", m)` was refused, `agent.role` was `undefined`), code
+typed correctly was ignored without a word (`.llm("gpt-4o")`, `{ temperature: 0 }` on a
+`ctx.llm` call, `crew.run({ inputs })`, `withTask(b => …)`, `withTaskTool`), and code that
+worked was refused by the typechecker (`withResponseFormat`, `withResponseSchema`,
+`crew.findById`, `ctx.crew`). `ctx.llm.act` did not offer the agent's `withAutonomousTool`
+instances to the model, which example 09 and the guide asked it to call.
+
+- **One honest `llm` surface.** `llm.default_` is the host's provider on its configured model;
+  `llm.model(name, overrides?)` is the same provider on another model. The eight per-vendor
+  factories (`llm.openai()` … `llm.mammouth()`) are removed: an agent always talks to the host's
+  provider, and `llm.anthropic()` on an OpenAI host sent `claude-haiku-4-5` to OpenAI.
+  `Orkeon:DefaultLlmProvider`, which only renamed that provider, is removed with them, and so is
+  the `llm.default` alias. `LlmConfig.with(...)` applies `model`, `temperature`, `maxTokens` and
+  `responseFormat` and refuses any other key (`baseUrl`, which nothing applied, included).
+- **Nothing a script passes is dropped any more: it is applied or refused at the call.**
+  `.llm(...)` refuses anything but an `LlmConfig`; `withAgent(s)` / `withTask(s)` refuse a
+  builder callback or a plain object; `withAutonomousTool(s)` refuses anything but a
+  `toolBuilder()` tool.
+- **`act` runs the agent's tool instances.** `ctx.llm.act` offers the `withAutonomousTool`
+  instances next to the `.tools([...])` built-ins; the loop posts each call to a JS pump in the
+  `act` trampoline, which runs the tool's `execute` on the engine's thread and hands the result
+  back — through the permission gate and the host's tool-invocation pipeline like any tool.
+- **The error classes are real.** `errors.d.ts`'s classes are planted as globals and a host
+  error is an instance of its class, with its fields (`agentName`, `timeoutMs`, `dimension`…),
+  plus `clrType` and `clr` — including a rejection from `queue.pop`, `ctx.receive` and `act`.
+  `BudgetExhaustedException` is declared as `BudgetExhaustedError`.
+- **By name.** `ctx.send`, `ctx.delegate`, `crew.remove` and `crew.has` take an agent or its
+  name. `ctx.delegate` now runs exactly as `crew.runAgent`: the delegated body gets its own
+  context, its semaphore and its `onError` policy (it used to receive no `ctx`).
+- **Smaller fixes.** `agent.role`; `ctx.log.info(message, ...args)` writes every argument;
+  `withTaskTool` is removed (nothing read it).
+- **The typings say what the runtime does**: `ErrorCode` lists the codes the mapper produces
+  (`ErrorCodeMapper.CodeToolError`, `CodeLlmError` and `CodeLockTimeout`, never produced, are
+  removed), `ErrorContext` is `{ code, message, exception, attempt, agent }`, `LlmCallOptions` is
+  `{ responseFormat, llm: { model } }`, `ChatResponse` is `{ content, tokensUsed, model }`,
+  `act` resolves to `{ output, iterations }`, `runStream` emits `agent.start` / `agent.stop`,
+  `CrewRunOptions` has no `inputs`, `PublishedEvent` has no `publisher` and
+  `EventTopicOptions` no `maxHandlers`; `withResponseFormat`, `withResponseSchema`,
+  `crew.agents`, `crew.findById`, `ctx.crew`, `ctx.stateWith` and `receive({ timeout })` are
+  declared.
+- **Two gates.** `TypingsRuntimeParityTests` compares each declared interface with its runtime
+  type, member by member; `scripts/check-scripting-typings.sh` now typechecks every `.ork.ts`
+  under `examples/`, not only `examples/scripting/`.
+- C#: `JsEngineFactory` and `LlmNamespaceBinding.Register` lose their `IConfiguration`
+  parameter; `JsCrewBuilder.withAgent`, `JsExecutionContext.delegate`/`send`/`receive` and
+  `JsEventQueue.pop` change shape (JS-facing).
+
+Migration: replace `llm.openai({ model: "x" })` (and its siblings) with `llm.model("x")`, and
+`llm.default` with `llm.default_`; delete `Orkeon:DefaultLlmProvider` from configuration —
+choose the provider with the host's `Llm` section. Replace `.llm("x")` and `.llm({ provider, model })`
+with `.llm(llm.model("x"))`. Build agents and tasks before `withAgent` / `withTask`; pass
+`withAutonomousTool` a `toolBuilder()` tool and built-in names to `.tools([...])`. Replace
+`withTaskTool(t)` with `.tools([t])`. Read `act`'s answer on `.output`; an `onError` handler
+reads `err.message` and `err.agent.name` (not `err.error` / `err.agentName`). Catch
+`BudgetExhaustedError`, not `BudgetExhaustedException`. A C# host drops the `configuration`
+argument of `new JsEngineFactory(...)`.
+
 ### Changed — `grammar` reaches only an endpoint configured for it, and Ollama refuses audio **[breaking]**
 
 A `structured_output` deliverable put a GBNF `grammar` field on every request to the

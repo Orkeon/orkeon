@@ -157,7 +157,6 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
         var loggerFactory = _services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
         var engineFactory = new Orkeon.Scripting.JsEngineFactory(
             loggerFactory: loggerFactory,
-            configuration: _services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(),
             builtInTools: _services.GetServices<Orkeon.Domain.Tools.IBaseTool>().ToList(),
             llmProvider: _services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>(),
             hostPorts: new Orkeon.Scripting.ScriptingHostPorts

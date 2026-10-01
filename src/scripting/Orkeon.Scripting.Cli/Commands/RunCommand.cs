@@ -728,7 +728,6 @@ internal static partial class RunCommand
         var engineFactory = new JsEngineFactory(
             limits: cliLimits,
             loggerFactory: loggerFactory,
-            configuration: configuration,
             builtInTools: tools,
             llmProvider: llmProvider,
             hostPorts: new ScriptingHostPorts

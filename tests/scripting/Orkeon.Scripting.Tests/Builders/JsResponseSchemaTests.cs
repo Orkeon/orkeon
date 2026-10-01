@@ -22,7 +22,7 @@ public sealed class JsResponseSchemaTests
                 .name('extractor')
                 .role('Invoice extractor')
                 .goal('extract')
-                .llm({ provider: 'openai', model: 'gpt-5.6-sol' })
+                .llm(llm.model('gpt-5.6-sol'))
                 .withResponseSchema('invoice', {
                     type: 'object',
                     properties: { total: { type: 'number' } },

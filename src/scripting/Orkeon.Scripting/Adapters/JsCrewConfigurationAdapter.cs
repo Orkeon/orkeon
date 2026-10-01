@@ -286,13 +286,12 @@ public static class JsCrewConfigurationAdapter
         }
     }
 
-    private static LlmConfig? ExtractLlmConfig(JsValue? llmValue)
+    // `.llm(...)` refuses anything but a JsLlmConfig at the call (JsAgentBuilder.llm), so there is
+    // nothing left to drop here: a string or a plain object used to reach this method and come
+    // out as null, the agent running on the host's model while the script named another (GAP-12).
+    private static LlmConfig? ExtractLlmConfig(JsLlmConfig? jsLlm)
     {
-        if (llmValue is null || llmValue.IsUndefined() || llmValue.IsNull())
-            return null;
-
-        var clr = llmValue.ToObject();
-        if (clr is not JsLlmConfig jsLlm)
+        if (jsLlm is null)
             return null;
 
         return jsLlm.Domain with
@@ -302,7 +301,6 @@ public static class JsCrewConfigurationAdapter
             // orchestrator sees the values the script set.
             Temperature = jsLlm.temperature ?? jsLlm.Domain.Temperature,
             MaxTokens = jsLlm.maxTokens ?? jsLlm.Domain.MaxTokens,
-            BaseUrl = jsLlm.baseUrl ?? jsLlm.Domain.BaseUrl,
         };
     }
 
@@ -316,10 +314,15 @@ public static class JsCrewConfigurationAdapter
                 names.Add(name);
         }
 
-        // 2. Tool values from .withAutonomousTool*: strings (back-compat) and JsTool
-        //    instances alike contribute their name — the instances themselves are
-        //    registered by the loader (CollectScriptTools) before resolution runs.
-        return CollectToolNames(builder.AutonomousTools, seed: names);
+        // 2. The JsTool instances of .withAutonomousTool* contribute their names — the
+        //    instances themselves are registered by the loader (CollectScriptTools) before
+        //    resolution runs.
+        foreach (var tool in builder.AutonomousTools)
+        {
+            if (!names.Contains(tool.Name, StringComparer.Ordinal))
+                names.Add(tool.Name);
+        }
+        return names.Count > 0 ? names : Array.Empty<string>();
     }
 
     private static IReadOnlyList<string> CollectToolNames(IReadOnlyList<JsValue> values, List<string>? seed)
@@ -358,8 +361,9 @@ public static class JsCrewConfigurationAdapter
         }
 
         foreach (var agent in crew.agents)
-            foreach (var raw in agent.Builder.AutonomousTools)
-                AddValue(raw);
+            foreach (var tool in agent.Builder.AutonomousTools)
+                if (!tools.Any(t => ReferenceEquals(t, tool)))
+                    tools.Add(tool);
 
         foreach (var jsTask in crew.Tasks.OfType<JsTask>())
             foreach (var raw in jsTask.Tools)

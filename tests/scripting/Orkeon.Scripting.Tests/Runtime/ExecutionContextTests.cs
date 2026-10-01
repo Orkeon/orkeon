@@ -143,11 +143,12 @@ public sealed class ExecutionContextTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var ex = await ThrowsContainingAcrossChainAsync(
-            () => crew.RunAsync(null, CancellationToken.None),
-            nameof(ReceiveTimeoutException));
+        // The rejection is the declared ReceiveTimeoutError (GAP-12), carrying the CLR exception.
+        var ex = await Assert.ThrowsAsync<Jint.Runtime.PromiseRejectedException>(
+            () => crew.RunAsync(null, CancellationToken.None));
 
-        Assert.NotNull(ex);
+        Assert.IsType<ReceiveTimeoutException>(Orkeon.Scripting.Internal.JsHostError.Unwrap(ex.RejectedValue));
+        Assert.Equal("ReceiveTimeoutError", ex.RejectedValue.AsObject().Get("name").AsString());
     }
 
     [Fact]
@@ -205,7 +206,7 @@ public sealed class ExecutionContextTests
 
         // delegate is synchronous and bridged (JsHostError): the detached-self guard throws a JavaScript Error
         // carrying the typed CLR exception, so an async body's catch/finally run.
-        var js = Assert.Throws<Jint.Runtime.JavaScriptException>(() => ctx.@delegate(target, null!));
+        var js = Assert.Throws<Jint.Runtime.JavaScriptException>(() => ctx.@delegate(Jint.Native.JsValue.FromObject(engine, target), null!));
         Assert.IsType<AgentNotInCrewException>(JsHostError.Unwrap(js.Error));
     }
 

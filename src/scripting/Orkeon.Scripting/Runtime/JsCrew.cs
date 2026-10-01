@@ -38,7 +38,7 @@ public sealed partial class JsCrew
 {
     private readonly Engine _engine;
     private readonly List<JsAgent> _agents;
-    private readonly List<object> _tasks;
+    private readonly List<JsTask> _tasks;
     private readonly JsAgentChannel _channel = new();
     private readonly JsMemoryScope _crewMemory = new();
     private readonly ILogger _logger;
@@ -58,8 +58,8 @@ public sealed partial class JsCrew
     internal bool Verbose { get; }
     internal bool Memory { get; }
     /// <summary>Tasks captured by <c>crewBuilder().withTask(...)</c>. Exposed for the
-    /// JS→orchestrator adapter; each entry is normally a <see cref="JsTask"/>.</summary>
-    internal IReadOnlyList<object> Tasks => _tasks;
+    /// JS→orchestrator adapter.</summary>
+    internal IReadOnlyList<JsTask> Tasks => _tasks;
 
     internal JsCrew(Engine engine, JsCrewDefinition definition)
     {
@@ -79,7 +79,7 @@ public sealed partial class JsCrew
         _deltaSink = definition.DeltaSink;
         _toolInvocation = definition.ToolInvocation;
         _agents = new List<JsAgent>();
-        _tasks = new List<object>(definition.Tasks);
+        _tasks = new List<JsTask>(definition.Tasks);
 
         foreach (var a in definition.Agents) Add(a);
         if (definition.Manager is not null && definition.Manager.CurrentCrew is null) Add(definition.Manager);
@@ -163,6 +163,9 @@ public sealed partial class JsCrew
 
     public void remove(JsAgent agent) => JsHostError.Guard(_engine, () => Remove(agent));
 
+    /// <summary>By name, as crew.d.ts declares: an unknown name throws <see cref="AgentNotInThisCrewException"/>.</summary>
+    public void remove(string agentName) => JsHostError.Guard(_engine, () => Remove(Resolve(agentName)));
+
     internal void Remove(JsAgent agent)
     {
         ArgumentNullException.ThrowIfNull(agent);
@@ -210,6 +213,17 @@ public sealed partial class JsCrew
     internal JsValue? _onCrewError;
 
     public bool has(JsAgent agent) => _agents.Contains(agent);
+
+    /// <summary>By name, as crew.d.ts declares: whether an agent of that name is a member.</summary>
+    public bool has(string agentName) => findByName(agentName) is not null;
+
+    /// <summary>
+    /// The member named <paramref name="agentName"/>, or <see cref="AgentNotInThisCrewException"/>:
+    /// the one name resolution behind <c>crew.remove(name)</c>, <c>ctx.send(name, …)</c> and
+    /// <c>ctx.delegate(name, …)</c> (<c>crew.runAgent</c> resolves the same way).
+    /// </summary>
+    internal JsAgent Resolve(string agentName)
+        => findByName(agentName) ?? throw new AgentNotInThisCrewException(agentName, name);
 
     public JsAgent? findByName(string name)
         => _agents.FirstOrDefault(a => string.Equals(a.name, name, StringComparison.Ordinal));

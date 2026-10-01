@@ -2,29 +2,30 @@
 // Declares the event broker surface: queues, topics, published events and subscriptions.
 
 declare global {
-    interface ChannelParticipant {
-        readonly name: string;
-        readonly id: string;
-    }
-
     interface EventQueueInfo {
         readonly length: number;
         readonly waiters: number;
     }
 
     interface EventQueue<T = unknown> {
-        push(value: T): Promise<void>;
-        pop(): Promise<T>;
-        peek(): Promise<T | undefined>;
-        kick(): Promise<void>;
+        readonly name: string;
+        /** Synchronous: hands the value to the oldest waiter, or queues it. */
+        push(value: T): void;
+        /** The next value. `timeout` (ms) rejects with `ReceiveTimeoutError`; a `kick()` with `WaiterKickedError`. */
+        pop(options?: { timeout?: number }): Promise<T>;
+        /** Synchronous: the next value without removing it. */
+        peek(): T | undefined;
+        /** Synchronous: rejects every waiter with `WaiterKickedError`. */
+        kick(): void;
         readonly length: number;
         info(): EventQueueInfo;
     }
 
     interface PublishedEvent<T = unknown> {
         readonly value: T;
-        readonly publisher: ChannelParticipant;
+        /** How many handlers have received this event so far. */
         readonly handlerCount: number;
+        /** How many handlers this event is delivered to: the topic's subscribers when it was published. */
         readonly maxHandlers: number;
         markHandled(): void;
         stopPropagation(): void;
@@ -37,10 +38,11 @@ declare global {
 
     interface EventTopicOptions {
         mode?: "parallel" | "sequential";
-        maxHandlers?: number;
     }
 
     interface EventTopic<T = unknown> {
+        readonly name: string;
+        readonly mode: "parallel" | "sequential";
         publish(value: T): Promise<void>;
         subscribe(handler: (event: PublishedEvent<T>) => Promise<void> | void): Subscription;
     }

@@ -52,11 +52,11 @@ inferred.
 |---|---|---|
 | `name` | ✅ | ✅ |
 | `role` `goal` `backstory` | stored, not sent: `ctx.llm` sends your prompt alone; `role` only serves `crew.findByRole` | ✅ **the agent's prompt** — `build()` requires `role` |
-| `llm` | ❌ `ctx.llm` uses the host's configured provider | ✅ an `llm.<provider>({...})` / `llm.default` value; a plain string or object is dropped |
+| `llm` | ❌ `ctx.llm` uses the host's provider on its configured model (per call: `{ llm: { model } }`) | ✅ an `LlmConfig` — `llm.default_`, `llm.model("…")`, `.with({...})` — sets the agent's model, temperature and token cap; the provider is always the host's. A string or a plain object is refused by `.llm(...)` |
 | `tools([...])` built-ins by name | ✅ what `ctx.llm.act` may call — an unknown name is skipped silently | ✅ strict: an unknown name fails the run |
-| `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`); **not** offered to `ctx.llm.act` | ✅ registered and resolved by name |
+| `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`) and offered to `ctx.llm.act`, which runs the tool's `execute` in the script | ✅ registered and resolved by name |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ |
-| `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ | ✅ — runtime only, not in the typings |
+| `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (per call: `{ responseFormat }`) | ✅ |
 | `body` | ✅ **the whole point** | ❌ never invoked |
 | `withState` → `ctx.state` | ✅ | ❌ |
 | `onError` | ✅ | ❌ |
@@ -70,8 +70,8 @@ inferred.
 |---|---|---|
 | `name` | ✅ | ✅ |
 | `goal` `verbose` | ❌ stored, never read | ✅ |
-| `withAgent(s)` — a built agent | ✅ | ✅ |
-| `withTask(s)` — a built task | ❌ ignored | ✅ **the whole point** |
+| `withAgent(s)` — a built agent; anything else is refused | ✅ | ✅ |
+| `withTask(s)` — a built task; anything else is refused | ❌ ignored | ✅ **the whole point** |
 | `process` | ❌ telemetry tag only | ✅ (`"graph"` selects the domain's retry-and-route strategy, not a script-drawn topology — see below) |
 | `manager` | ❌ | ✅ |
 | `memory` | ❌ | ✅ |
@@ -98,12 +98,12 @@ now builds on its own.
 ### `taskBuilder()`
 
 Declarative only — the procedural engine never reads tasks. Carried to the crew:
-`description`, `agent` (a built agent — the string form the typings allow is not accepted),
-`expectedOutput`, `withContext(s)` (this is what builds the DAG), `tools`, `humanInput`,
-`asyncExecution`, `deliverable`, and the runtime-only `withResponseFormat(type)` /
+`description`, `agent` (a built agent), `expectedOutput`, `withContext(s)` (this is what builds
+the DAG), `tools`, `humanInput`, `asyncExecution`, `deliverable`, `withResponseFormat(type)` and
 `withResponseSchema(name, schema, strict?)`. Accepted but not acted on: `name` (a task
-configuration has no name), `expect` (recorded in the task context when there is no
-`deliverable`, never validated) and `withTaskTool` (**dropped without a warning**).
+configuration has no name) and `expect` (recorded in the task context when there is no
+`deliverable`, never validated). `withTaskTool` is gone: nothing ever read it, and `tools`
+covers it.
 
 ### `toolBuilder()`
 
@@ -154,27 +154,44 @@ state is a JS `Proxy` whose `set` trap exists to make that loud rather than lost
 and `reasoningChunks` are read after the loop), `extract(prompt, schema)`,
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, and `interrupt()` /
 `isInterrupted`. Every call goes to the host's configured provider; without one, a
-`<undefined-llm:…>` echo answers, which is what lets the examples run keyless. Of the
-per-call options, the runtime reads `responseFormat` (`"json_object"`, `"text"`…) and
-`llm: { model }` (a per-call model override); the declared `provider`, `model`, `temperature`,
-`maxTokens` and `signal` are not read.
+`<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes two
+options, both patching the host provider's configuration for that call only:
+`responseFormat` (`"json_object"`, `"json_schema"`, `"text"`) and `llm: { model }` (a per-call
+model). There is no per-call provider, temperature or token cap, and no `signal` — the call
+already observes the context's.
 
 `act` is the LLM ⇄ tool-call loop: it offers the model the built-ins the agent selected with
-`.tools([...])` — not its `withAutonomousTool` instances — until the model stops asking or
-`maxIterations` (default 10, `0` = unlimited) is reached. `ActOptions.system` seeds a real
-`role:"system"` message that persists across every iteration; without it `act()` sends a
-single user message. `permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`)
-is checked against the host's permission gate on each tool call, when the host registered one;
-`onDelta` receives the streamed text of each assistant turn.
+`.tools([...])` and its `withAutonomousTool` instances — whose `execute` runs in the script,
+on the engine's own thread — until the model stops asking or `maxIterations` (default 10,
+`0` = unlimited) is reached. It resolves to `{ output, iterations }` (plus `interrupted` or
+`exhausted` when the loop stopped early). `ActOptions.system` seeds a real `role:"system"`
+message that persists across every iteration; without it `act()` sends a single user message.
+`permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`) is checked against the
+host's permission gate on each tool call, when the host registered one — declare a script
+tool's `.access("read")` for it to pass `plan`; `onDelta` receives the streamed text of each
+assistant turn.
 
-`ctx.memory` (`crew`, and `agent` in an agent body), `ctx.events`, `ctx.lock(name, fn)`,
-`ctx.spawn`, `ctx.delegate`, `ctx.send`/`receive`/`broadcast`, `ctx.log`. See `context.d.ts`.
+`ctx.delegate(agentOrName, input)` is `crew.runAgent`: the target runs with its own context,
+under its semaphore and its `onError` policy. `ctx.send(agentOrName, message)`, `receive({
+timeout })` and `broadcast(message)` exchange messages; `send` and `broadcast` are synchronous.
+`ctx.crew` is a read-only view of the crew (`name`, `findByName`, `findById`, `findByRole`,
+`has`, `lock(name, fn)`). `ctx.log.info(message, ...args)` joins the extra arguments with a
+space, objects as JSON. Also `ctx.memory` (`crew`, and `agent` in an agent body),
+`ctx.events`, `ctx.lock(name, fn)`, `ctx.spawn`. See `context.d.ts`.
+
+A host failure reaches the script as an instance of the class `errors.d.ts` declares —
+`try { await q.pop({ timeout: 100 }) } catch (e) { if (e instanceof ReceiveTimeoutError) … }`
+— with that class's fields (`agentName`, `timeoutMs`…), plus `clrType` (the .NET type name) and
+`clr` (the exception). A failure with no declared class is a plain `Error` with the same two
+properties. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
+name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
+`receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `unknown`.
 
 ## The namespaces
 
 | Global | What it holds |
 |---|---|
-| `llm` | Provider configurations for `agentBuilder().llm(...)` (declarative shape): `llm.openai`, `anthropic`, `ollama`, `azureOpenai`, `grok`, `minimax`, `openrouter`, `mammouth` — each `(opts?) => LlmConfig`, with `with(overrides)` — and `llm.default` (typed `llm.default_`) — a value, not a function: the provider named by `Orkeon:DefaultLlmProvider`, else the host's configured one, else the `<undefined-llm>` echo. |
+| `llm` | The model settings `agentBuilder().llm(...)` takes (declarative shape). `llm.default_` — a value, not a function — is the host's provider on its configured model, or the `<undefined-llm>` echo when the host has none; `llm.model(name, overrides?)` is the same provider on another model. `with({ model, temperature, maxTokens, responseFormat })` returns a copy, and refuses any other key. There is no per-vendor factory: every agent of a script talks to the host's provider. |
 | `tools` | The host's built-in tools, called from a body: `tools.fileRead({ path })`, the snake_case name camelCased. `tools.d.ts` declares `fileRead`, `fileWrite`, `directoryRead`, `webScrape`, `httpApi`, `searchTool`, `databaseQuery`, `delegateWork`, `askQuestion` and the thirteen `email*` tools; any other registered tool is reachable the same way. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex? })`, `rag.query(question, { collection, profile?, topN? })` (a grounded answer with citations) and `rag.retrieve(...)` (the same passages, no generation). Needs a host that registered the RAG subsystem (`AddOrkeonRag`). |
 | `ErrorAction` | The factories an `onError` handler returns: `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Anything else is treated as `fail()`. |
@@ -228,29 +245,21 @@ An edge is a node name, `END`, or a function of the state returning one (a condi
 so inference is circular — and falls back to `Record<string, unknown>`. Annotate the call
 (`stateGraph<OrderState>({...})`) to get a node that returns the wrong shape reported.
 
-## Known gaps between the typings and the runtime
+## Design limits
 
-The declarations and the C# runtime are written in two languages and nothing tied them
-together until [`scripts/check-scripting-typings.sh`](https://github.com/Orkeon/orkeon/blob/main/scripts/check-scripting-typings.sh)
-did. What follows is what remains after that gate went green.
+The declarations and the C# runtime are written in two languages. Two gates tie them together:
+[`scripts/check-scripting-typings.sh`](https://github.com/Orkeon/orkeon/blob/main/scripts/check-scripting-typings.sh)
+typechecks every `.ork.ts` under `examples/` against the typings, and a parity test
+(`TypingsRuntimeParityTests`) compares, member by member, each declared interface with the
+runtime type behind it. No gap between the two remains; what follows are limits of the design,
+each of them stated rather than silent.
 
-| Gap | Behaviour |
+| Limit | Behaviour |
 |---|---|
 | `budget()` in the declarative shape | Ignored, and said so: the run logs a warning naming the method. The budget bounds the procedural shape only (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). |
 | `.body()` in the declarative shape | Ignored, and said so: the run logs a warning naming the agent. The most expensive confusion in the DSL, and the reason for the shape table above. |
-| `globalThis.inputs` in the declarative shape | Never planted. Passing `--inputs`, `--inputs-file` or `--memory-limit-mb` to a declarative script now prints a warning on stderr instead of dropping the flag in silence. |
-| A plain `{ provider, model }` object or a string passed to `llm()` | Dropped. `ExtractLlmConfig` returns `null` for anything that is not a `JsLlmConfig`, so build one with `llm.openai({...})`, `llm.default`, etc. — `llm.default` is a value; `llm.default()` throws. |
-| `withTaskTool` | Accepted and dropped by both shapes, without a warning. |
-| The classes of `errors.d.ts` | Declared, not registered: `err instanceof ReceiveTimeoutError` type-checks and throws a `ReferenceError`. A host failure reaches the script as a plain `Error` carrying the CLR exception on `clr` and its type name on `clrType`. |
-| `ErrorContext` (the `onError` argument) | The runtime passes `{ code, message, exception, attempt, agent: { id, name } }` (and the context as a second argument); the declared `error` and `agentName` are `undefined`. `code` is one of `rate_limit`, `network`, `timeout`, `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `unknown` — never the declared `auth`, `budget` or `tool`. |
-| `ctx.delegate(agent, input)`, `ctx.send(agent, msg)`, `crew.remove(agent)`, `crew.has(agent)` | Take the agent object; the agent-name string the typings allow is refused. `delegate` runs the target's body with no `ctx`. |
-| `withAgent(b => …)`, `withTask(b => …)` | The builder-callback forms are not supported: pass a built agent or task. |
-| `Agent.role` | `undefined` at run time: an agent exposes `name` and `id`. |
-| `crew.runStream()` | Yields `agent.start` and `agent.stop` only, of the seven declared event types; `CrewRunOptions.inputs` is not read. |
-| `ChatResponse.toolCalls` | Never set: `chat()` resolves to `{ content, tokensUsed, model }`. |
-| Events | `PublishedEvent.publisher` is `undefined`; `EventTopicOptions.maxHandlers` is not read (the subscriber count is used). |
-| `ctx.log.info(message, ...args)` | The extra arguments are dropped. |
-| Runtime-only members | Not declared, but there: `crew.findById(id)`, `crew.agents`, `ctx.crew` (`name`, `findByName`, `findById`, `findByRole`, `has`, `lock(name, fn)`), `ctx.receive({ timeout })`. |
+| `globalThis.inputs` in the declarative shape | Never planted. Passing `--inputs`, `--inputs-file` or `--memory-limit-mb` to a declarative script prints a warning on stderr instead of dropping the flag in silence. |
+| One provider per host | Every agent of a script talks to the provider the host registered; `.llm(...)` sets the model, not the provider. Choosing a provider per agent is a planned feature. |
 | `ctx.llm.embed` | Returns a stub vector. Real embedders are a follow-up. |
 | `concurrency(n)` with `n > 1` | Rejected at build with a clear message — V1 is a mutex, the N-holder semaphore is V1.5. Loud, not silent. |
 | Locks have no timeout | `LockTimeoutError` is V1.5. |

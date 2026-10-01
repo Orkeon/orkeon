@@ -29,6 +29,7 @@ namespace Orkeon.Scripting.Internal;
 internal static class JsTrampolineFactories
 {
     public static readonly Factory HostError = new(JsHostError.FactorySource);
+    public static readonly Factory HostAsync = new(JsHostError.AsyncFactorySource);
     public static readonly Factory Lock = new(LockFactorySource);
     public static readonly Factory StateWith = new(JsAgentContext.StateWithFactorySource);
     public static readonly Factory StateProxy = new(JsAgentContext.StateProxyFactorySource);
@@ -43,7 +44,7 @@ internal static class JsTrampolineFactories
     /// <summary>Every factory, the set <see cref="Prepare"/> evaluates.</summary>
     internal static IReadOnlyList<Factory> All { get; } =
     [
-        HostError, Lock, StateWith, StateProxy, Publish, Graph, FsmSend, Act, StreamIterable, AsyncIterable, CrewRunModule,
+        HostError, HostAsync, Lock, StateWith, StateProxy, Publish, Graph, FsmSend, Act, StreamIterable, AsyncIterable, CrewRunModule,
     ];
 
     /// <summary>

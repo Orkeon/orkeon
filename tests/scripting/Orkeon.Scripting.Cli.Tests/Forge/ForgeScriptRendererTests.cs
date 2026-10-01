@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Infrastructure.Configuration;
 using Orkeon.Scripting;
@@ -39,7 +38,6 @@ public sealed class ForgeScriptRendererTests : IDisposable
     {
         var engineFactory = new JsEngineFactory(
             loggerFactory: NullLoggerFactory.Instance,
-            configuration: new ConfigurationBuilder().Build(),
             builtInTools: []);
         var scriptHost = new ScriptHost(
             new DiskBackedFileSystemService(_sessionDirectory, "/forge"),

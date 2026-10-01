@@ -124,7 +124,6 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         var engineFactory = new JsEngineFactory(
             limits: ResolveLimits(configuration),
             loggerFactory: loggerFactory,
-            configuration: configuration,
             builtInTools: tools,
             llmProvider: services.GetService<ILlmProvider>(),
             hostPorts: new ScriptingHostPorts
