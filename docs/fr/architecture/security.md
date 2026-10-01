@@ -128,12 +128,12 @@ tourne sous le même utilisateur du système.
 
 ## Résilience
 
-`ResiliencePolicies` (`Orkeon.Infrastructure.Resilience`) expose les politiques Polly. Deux sont sur le chemin d'exécution :
+`ResiliencePolicies` (`Orkeon.Infrastructure.Resilience`) porte les deux politiques Polly du chemin d'exécution :
 
 - `GetLlmApiPolicy` — construite par `HttpLlmProviderBase` pour chaque provider LLM : relance les échecs HTTP transitoires (5xx, 408, erreurs réseau) et les 429, en respectant un en-tête `Retry-After` plafonné à 30 s ; le budget de relances est `Llm:MaxRetries` (défaut 10), sur une échelle linéaire pour les deux premières relances puis ×3, chaque attente plafonnée à 30 s. Un appel qui atteint le timeout HTTP est relancé **une fois**, puis échoue en nommant le réglage (LLM-11).
 - `GetRedisRetryPolicy` — backoff exponentiel (2^n s, 3 tentatives) sur les erreurs Redis (connexion et timeout compris), utilisée par `RedisMemoryProvider`.
 
-`GetRetryPolicy`, `GetCircuitBreakerPolicy`, `GetTimeoutPolicy`, `GetCombinedPolicy` et `GetDatabaseRetryPolicy` sont des utilitaires pour le code hôte ; aucun composant du framework ne s'en sert. La section de configuration `Resilience` (`ResilienceOptions` : `LlmMaxRetries`, `LlmTimeoutSeconds`, `CircuitBreakerThreshold`, `CircuitBreakerDurationSeconds`, `DatabaseMaxRetries`, `RedisMaxRetries`) est liée par `AddOrkeonInfrastructure()` mais **lue par rien** aujourd'hui — réglez plutôt `Llm:MaxRetries` et `Llm:TimeoutSeconds`.
+Le budget et le timeout LLM se règlent par `Llm:MaxRetries` et `Llm:TimeoutSeconds` ; le budget Redis est fixe. L'ancienne section de configuration `Resilience` et les utilitaires HTTP, disjoncteur, timeout et base de données inutilisés ont été supprimés (GAP-15).
 
 ## Checkpointing
 

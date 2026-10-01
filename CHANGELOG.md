@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `Evaluation:EnableLlmJudge` is read; the `Resilience` section and the dead `RaggableTree` keys are gone **[breaking]**
+
+Three configuration sections were bound, sometimes documented, and acted on nothing (GAP-15).
+`"Resilience": { "LlmMaxRetries": 1 }` left LLM calls retrying ten times; `"Evaluation":
+{ "EnableLlmJudge": true }` with `AddOrkeonInfrastructure(configuration)` left the judges out of
+the suite — and calling `AddOrkeonEvaluation(configuration)` as the docs advised did not help
+either (the unconfigured call had already registered a closed `IOptions`) while it registered
+every evaluator a second time; `"RaggableTree": { "Exclude": ["vendor"] }` still indexed
+`vendor/`, because every `index_codebase` call sets its own exclusions.
+
+- **`Evaluation` is wired.** `AddOrkeonInfrastructure(configuration)` binds the section, and
+  `EnableLlmJudge = true` puts the coherence, fluency and groundedness judges in the default
+  `IEvaluationSuite`, over the registered `IChatClient` (none registered: resolving the suite
+  fails, naming the setting, instead of leaving the judges out). `AddOrkeonEvaluation` is
+  idempotent — a second call binds the configuration and registers no evaluator twice. The judges
+  no longer appear as `IEvaluator` registrations; the placeholder evaluators that stood in for
+  them when disabled are gone. **Removed:** `EvaluationOptions.DefaultRunsPerCase` and
+  `RegressionThreshold`, which nothing read.
+- **`Resilience` is removed.** `ResilienceOptions` and its binding are gone, with the
+  `ResiliencePolicies` helpers no component called — `GetRetryPolicy`, `GetCircuitBreakerPolicy`,
+  `GetTimeoutPolicy`, `GetCombinedPolicy`, `GetDatabaseRetryPolicy`. The LLM policy
+  (`GetLlmApiPolicy`, budget `Llm:MaxRetries`, timeout `Llm:TimeoutSeconds`) and the Redis policy
+  (`GetRedisRetryPolicy`, three attempts) stay.
+- **`RaggableTree` carries `Enabled` and `Embedding`, nothing else.** The runner refuses to start
+  on any other key of the section, naming it. **Removed** from `RaggableTreeOptions`:
+  `Languages`, `Exclude`, `RootAlias`, `IndexMode`, `EnrichWithLlm`, `IncludeStatements`,
+  `VectorStore`, `Cache`, with the types `RaggableTreeIndexMode`, `VectorStoreKind`,
+  `VectorStoreOptions` and `CacheOptions`. A `Summarizer.Provider` other than `None` now registers
+  the LLM summarizer on its own; each call still chooses with `enrich_with_llm`.
+- **`index_codebase` declares what the build reads.** `include_statements`, `summarizer_model`,
+  `summarizer_max_tokens` and `summarizer_concurrency` are removed from `IndexCodebaseRequest`:
+  statements were always extracted, and the summarizer settings were never read. An agent that
+  still sends one is not refused — the argument is ignored.
+- **Docs:** the configuration reference, the security page's Resilience section, the RaggableTree
+  architecture page, the opt-in catalog (EN and FR) and the RaggableTree crew-YAML example say what
+  is read; the limitations bullet about the `Resilience` section is gone.
+
+Migration: replace `Resilience:LlmMaxRetries`/`LlmTimeoutSeconds` with `Llm:MaxRetries`/
+`Llm:TimeoutSeconds`, and delete the other `Resilience` keys; a host that used the removed
+`ResiliencePolicies` helpers builds the same Polly policies itself. Delete
+`Evaluation:DefaultRunsPerCase`/`RegressionThreshold`. Move `RaggableTree:Exclude`/`RootAlias`
+into the agent's `index_codebase` arguments (`exclude`, `root_alias`) and delete `IndexMode`,
+`EnrichWithLlm` and `IncludeStatements` from the section; C# hosts drop the removed
+`RaggableTreeOptions` members and set `Summarizer` alone to enable enrichment.
+
 ### Removed — the Flows subsystem (`FlowEngine`, flow steps, flow YAML) **[breaking]**
 
 Nothing ran a flow: `orkeon run` treats every YAML file as a crew, and no host, CLI or `.ork.ts`

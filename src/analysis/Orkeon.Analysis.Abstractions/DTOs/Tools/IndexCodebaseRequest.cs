@@ -2,6 +2,10 @@ using System.Collections.Immutable;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
 
+/// <summary>
+/// The settings of one <c>index_codebase</c> call — exactly what the build reads. Statements are
+/// always extracted. An argument this record does not declare is ignored, not refused.
+/// </summary>
 public sealed record IndexCodebaseRequest
 {
     public string RootPath { get; init; } = "";
@@ -9,7 +13,6 @@ public sealed record IndexCodebaseRequest
     public ImmutableArray<string> Exclude { get; init; } =
         ["node_modules", "dist", ".git", "bin", "obj"];
     public bool EnrichWithLlm { get; init; }
-    public bool IncludeStatements { get; init; }
 
     /// <summary>
     /// Embedding model identifier. Default is the OpenAI <c>text-embedding-3-small</c>
@@ -20,9 +23,6 @@ public sealed record IndexCodebaseRequest
     /// hint only and is not used to size buffers.
     /// </summary>
     public string EmbeddingModel { get; init; } = "text-embedding-3-small";
-    public string? SummarizerModel { get; init; } = "claude-haiku-4-5";
-    public int SummarizerMaxTokens { get; init; } = 120;
-    public int SummarizerConcurrency { get; init; } = 5;
 
     /// <summary>
     /// Optional alias substituted for the virtual root prefix in every FQN.

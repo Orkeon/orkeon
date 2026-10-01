@@ -1,1 +1,52 @@
 #nullable enable
+*REMOVED*Orkeon.Analysis.DependencyInjection.CacheOptions
+*REMOVED*Orkeon.Analysis.DependencyInjection.CacheOptions.<Clone>$() -> Orkeon.Analysis.DependencyInjection.CacheOptions!
+*REMOVED*Orkeon.Analysis.DependencyInjection.CacheOptions.CacheOptions() -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.CacheOptions.Enabled.get -> bool
+*REMOVED*Orkeon.Analysis.DependencyInjection.CacheOptions.Enabled.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.CacheOptions.Equals(Orkeon.Analysis.DependencyInjection.CacheOptions? other) -> bool
+*REMOVED*Orkeon.Analysis.DependencyInjection.CacheOptions.Path.get -> string!
+*REMOVED*Orkeon.Analysis.DependencyInjection.CacheOptions.Path.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode.BreakOnChange = 2 -> Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode.Frozen = 0 -> Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode.Live = 1 -> Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Cache.get -> Orkeon.Analysis.DependencyInjection.CacheOptions!
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Cache.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.EnrichWithLlm.get -> bool
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.EnrichWithLlm.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Exclude.get -> System.Collections.Immutable.ImmutableArray<string!>
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Exclude.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.IncludeStatements.get -> bool
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.IncludeStatements.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.IndexMode.get -> Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.IndexMode.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Languages.get -> System.Collections.Immutable.ImmutableArray<string!>
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Languages.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.RootAlias.get -> string!
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.RootAlias.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.VectorStore.get -> Orkeon.Analysis.DependencyInjection.VectorStoreOptions!
+*REMOVED*Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.VectorStore.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreKind
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreKind.ChromaDb = 2 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreKind.InMemory = 0 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreKind.LanceDb = 4 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreKind.Pinecone = 3 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreKind.Redis = 1 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreKind.Sqlite = 5 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreOptions
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreOptions.<Clone>$() -> Orkeon.Analysis.DependencyInjection.VectorStoreOptions!
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreOptions.Equals(Orkeon.Analysis.DependencyInjection.VectorStoreOptions? other) -> bool
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreOptions.Provider.get -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreOptions.Provider.init -> void
+*REMOVED*Orkeon.Analysis.DependencyInjection.VectorStoreOptions.VectorStoreOptions() -> void
+*REMOVED*override Orkeon.Analysis.DependencyInjection.CacheOptions.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Analysis.DependencyInjection.CacheOptions.GetHashCode() -> int
+*REMOVED*override Orkeon.Analysis.DependencyInjection.CacheOptions.ToString() -> string!
+*REMOVED*override Orkeon.Analysis.DependencyInjection.VectorStoreOptions.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Analysis.DependencyInjection.VectorStoreOptions.GetHashCode() -> int
+*REMOVED*override Orkeon.Analysis.DependencyInjection.VectorStoreOptions.ToString() -> string!
+*REMOVED*static Orkeon.Analysis.DependencyInjection.CacheOptions.operator !=(Orkeon.Analysis.DependencyInjection.CacheOptions? left, Orkeon.Analysis.DependencyInjection.CacheOptions? right) -> bool
+*REMOVED*static Orkeon.Analysis.DependencyInjection.CacheOptions.operator ==(Orkeon.Analysis.DependencyInjection.CacheOptions? left, Orkeon.Analysis.DependencyInjection.CacheOptions? right) -> bool
+*REMOVED*static Orkeon.Analysis.DependencyInjection.VectorStoreOptions.operator !=(Orkeon.Analysis.DependencyInjection.VectorStoreOptions? left, Orkeon.Analysis.DependencyInjection.VectorStoreOptions? right) -> bool
+*REMOVED*static Orkeon.Analysis.DependencyInjection.VectorStoreOptions.operator ==(Orkeon.Analysis.DependencyInjection.VectorStoreOptions? left, Orkeon.Analysis.DependencyInjection.VectorStoreOptions? right) -> bool

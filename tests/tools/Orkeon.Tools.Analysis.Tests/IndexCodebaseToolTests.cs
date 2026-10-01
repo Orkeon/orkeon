@@ -46,4 +46,19 @@ public class IndexCodebaseToolTests
         Assert.NotEmpty(resp.Errors);
         Assert.Equal(TimeSpan.Zero, resp.Elapsed);
     }
+
+    // GAP-15: include_statements and the summarizer_* settings were accepted and never read.
+    // An agent that still sends them is not refused: JsonComponentSerializer ignores an
+    // unknown field (see IndexCodebaseRequestToleranceTests in Orkeon.Infrastructure.Tests,
+    // which holds the production serializer this project does not reference).
+    [Fact]
+    public void Request_exposes_only_the_settings_the_build_reads()
+    {
+        var names = typeof(IndexCodebaseRequest).GetProperties().Select(p => p.Name).ToHashSet();
+
+        Assert.DoesNotContain("IncludeStatements", names);
+        Assert.DoesNotContain("SummarizerModel", names);
+        Assert.DoesNotContain("SummarizerMaxTokens", names);
+        Assert.DoesNotContain("SummarizerConcurrency", names);
+    }
 }

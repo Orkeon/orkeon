@@ -34,13 +34,15 @@ From a source checkout, replace `orkeon` with
 
 ## Tuning the index
 
-The crew file carries only the crew; infrastructure knobs (embedding backend,
-index mode, exclude globs) live in the optional `RaggableTree` section of
-`--settings`, e.g.:
+The crew file carries only the crew. The optional `RaggableTree` section of
+`--settings` chooses the embedding backend, and nothing else:
 
 ```json
-{ "RaggableTree": { "IndexMode": "Frozen", "Exclude": ["node_modules", "bin", "obj"] } }
+{ "RaggableTree": { "Embedding": { "Provider": "Ollama", "Model": "nomic-embed-text" } } }
 ```
+
+What the index covers — exclude globs, root alias, languages — is an argument of
+each `index_codebase` call the agent makes (`exclude`, `root_alias`, `languages`).
 
 Opt out entirely with `"RaggableTree": { "Enabled": false }`.
 

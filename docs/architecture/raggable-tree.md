@@ -81,25 +81,21 @@ nothing. RaggableTree is **on by default** in both:
 }
 ```
 
-The runner host also reads `Exclude`, `RootAlias`, `IncludeStatements`,
-`IndexMode` and `EnrichWithLlm` into `RaggableTreeOptions`, but **the index
-never sees them**: the build takes those knobs from each `index_codebase` call
-(`exclude`, `root_alias`, `include_statements`, `enrich_with_llm`,
-`respect_gitignore`, `languages` — see the [tool catalogue](#tool-catalogue)).
-`IndexMode` is consumed by nothing (see the historical note below), and
-`EnrichWithLlm` only matters together with a `Summarizer.Provider` other than
-`None`, which the runner host never sets — so no shipped host generates LLM
-summaries.
+The section carries those two keys and nothing else: the runner refuses to start
+on any other key under `RaggableTree`, naming it. What an index covers is set by
+each `index_codebase` call (`exclude`, `root_alias`, `enrich_with_llm`,
+`respect_gitignore`, `languages` — see the [tool catalogue](#tool-catalogue)),
+never by the host. Languages in particular are **never configured**: they are
+auto-detected from the codebase and scoped per call.
 
-Languages are **never configured**: they are auto-detected from the codebase and
-scoped per `index_codebase` call (`RaggableTreeOptions.Languages` is read by
-nothing). The rest of `RaggableTreeOptions` is reachable from C# via
+The rest of `RaggableTreeOptions` is reachable from C# via
 `AddRaggableTree(options)`: `Summarizer` (`Provider` = `None` | `Anthropic` —
-the latter registers `LlmNodeSummarizer` over the host's `ILlmProvider` — plus
+the latter registers `LlmNodeSummarizer` over the host's `ILlmProvider`, and an
+`index_codebase` call with `enrich_with_llm` then summarizes every node; plus
 `Model`, default `claude-haiku-4-5`, and `Concurrency`, default 5) and
 `ValidateCitations` (default `true`, registers the `ICitationBlockValidator` /
-`IInlineFqnValidator` citation validators). The `VectorStore`/`Cache` option
-groups exist on the record but are consumed by nothing. Note the C# default of
+`IInlineFqnValidator` citation validators). The runner host never sets a
+summarizer, so no shipped host generates LLM summaries. Note the C# default of
 `Embedding.Provider` is `None`; only the runner host defaults to
 `LocalSmartComponents`.
 
@@ -108,7 +104,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 ## Six-phase pipeline
 
 1. **Discovery** (`IFileSystemDiscoverer`) — recursive traversal, package detection via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`), exclusion via patterns and `.gitignore`.
-2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application of the adapter's queries → L2 (module) and L3 (symbol) nodes with `Fqn`, `Signature`, `SourceSnippet`, `Sha256`; L4 statements (`StatementExtractor`) only when the call sets `include_statements`.
+2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application of the adapter's queries → L2 (module) and L3 (symbol) nodes with `Fqn`, `Signature`, `SourceSnippet`, `Sha256`; L4 statements (`StatementExtractor`), extracted on every build.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.
 5. **Enrichment** — optionally an LLM summary (`INodeSummarizer`, when the call sets `enrich_with_llm` and a summarizer is registered), composition of the `EmbeddingText` (`IEmbeddingTextComposer`), then batch embedding (`IEmbeddingProvider`, skipped when none is registered).
@@ -136,17 +132,19 @@ Incremental reindexing (`IncrementalReindexEngine`) restarts from phase 2 for th
 | `flow_trace` | Call paths between two FQNs | `{ "from": "A", "to": "B", "max_paths": 5 }` |
 | `impact_analysis` | Transitive impacts of a change | `{ "target": "...", "direction": "Backward" }` |
 | `complexity_report` | Top-N by metric (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
-| `statement_query` | L4 structural queries (if, try, return...) — needs an index built with `include_statements` | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
+| `statement_query` | L4 structural queries (if, try, return...) — every index carries the statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
 
 The 15 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` carries the build knobs per call (`IndexCodebaseRequest`):
 `root_path` (required, a virtual path), `languages` (empty = auto-detect),
 `exclude` (default `node_modules`, `dist`, `.git`, `bin`, `obj`),
-`respect_gitignore` (default `true`), `include_statements` (default `false`),
-`enrich_with_llm` (default `false`), `root_alias` (replaces the virtual-root prefix
-of every FQN) and `embedding_model`. `incremental_reindex` accepts the same
-`root_path`, `languages` and `enrich_with_llm`.
+`respect_gitignore` (default `true`), `enrich_with_llm` (default `false`; needs
+a registered summarizer), `root_alias` (replaces the virtual-root prefix of every
+FQN) and `embedding_model` — exactly what the build reads. Statements are always
+extracted, and an argument the request does not declare is ignored.
+`incremental_reindex` accepts the same `root_path`, `languages` and
+`enrich_with_llm`.
 
 ## Agent strategies
 
@@ -188,7 +186,8 @@ lazy-reindex** design:
 
 Historical note: an earlier version of this document described three watcher-driven
 synchronization modes (`frozen`/`live`/`breakOnChange` via `RaggableTreeIndexMode`).
-Those modes were never consumed by any code — the enum existed, nothing read it. The
+Those modes were never consumed by any code — the enum existed, nothing read it, and it
+was removed with the `IndexMode` key (GAP-15). The
 freshness design above replaces that fiction; `ICodebaseWatcher`
 (`FileSystemWatcherCodebaseWatcher`, which no shipped host registers) remains available for
 hosts that want push-based invalidation on top of the lazy pass.

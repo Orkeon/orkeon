@@ -121,12 +121,12 @@ as the same operating-system user.
 
 ## Resilience
 
-`ResiliencePolicies` (`Orkeon.Infrastructure.Resilience`) exposes the Polly-based policies. Two are on the execution path:
+`ResiliencePolicies` (`Orkeon.Infrastructure.Resilience`) holds the two Polly policies on the execution path:
 
 - `GetLlmApiPolicy` — built by `HttpLlmProviderBase` for every LLM provider: retries transient HTTP failures (5xx, 408, network errors) and 429, honouring a `Retry-After` header capped at 30 s; the retry budget is `Llm:MaxRetries` (default 10) on a ladder that is linear for the first two retries then ×3, every wait capped at 30 s. A call that hits the HTTP timeout is retried **once**, then fails naming the setting (LLM-11).
 - `GetRedisRetryPolicy` — exponential backoff (2^n s, 3 attempts) on Redis errors (connection and timeout included), used by `RedisMemoryProvider`.
 
-`GetRetryPolicy`, `GetCircuitBreakerPolicy`, `GetTimeoutPolicy`, `GetCombinedPolicy` and `GetDatabaseRetryPolicy` are helpers for host code; no framework component uses them. The `Resilience` configuration section (`ResilienceOptions`: `LlmMaxRetries`, `LlmTimeoutSeconds`, `CircuitBreakerThreshold`, `CircuitBreakerDurationSeconds`, `DatabaseMaxRetries`, `RedisMaxRetries`) is bound by `AddOrkeonInfrastructure()` but **read by nothing** today — set `Llm:MaxRetries` and `Llm:TimeoutSeconds` instead.
+The LLM budget and timeout are set by `Llm:MaxRetries` and `Llm:TimeoutSeconds`; the Redis budget is fixed. The former `Resilience` configuration section and the unused HTTP, circuit-breaker, timeout and database helpers were removed (GAP-15).
 
 ## Checkpointing
 

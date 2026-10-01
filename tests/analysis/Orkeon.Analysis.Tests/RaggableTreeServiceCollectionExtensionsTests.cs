@@ -70,11 +70,11 @@ public class RaggableTreeServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddRaggableTree_uses_NullNodeSummarizer_when_enrichment_disabled()
+    public void AddRaggableTree_uses_NullNodeSummarizer_when_no_summarizer_provider()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
-        services.AddRaggableTree(new RaggableTreeOptions { EnrichWithLlm = false });
+        services.AddRaggableTree(new RaggableTreeOptions());
 
         using var provider = services.BuildServiceProvider();
         var summarizer = provider.GetRequiredService<INodeSummarizer>();
@@ -83,14 +83,15 @@ public class RaggableTreeServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddRaggableTree_uses_LlmNodeSummarizer_when_enrichment_enabled()
+    public void AddRaggableTree_uses_LlmNodeSummarizer_when_a_summarizer_provider_is_set()
     {
         var services = new ServiceCollection();
         services.AddSingleton<ILlmProvider, StubLlm>();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        // The provider alone registers the summarizer; each index_codebase call then
+        // chooses with enrich_with_llm (GAP-15 — the options-level switch is gone).
         services.AddRaggableTree(new RaggableTreeOptions
         {
-            EnrichWithLlm = true,
             Summarizer = new SummarizerOptions
             {
                 Provider = SummarizerProviderKind.Anthropic,
@@ -284,16 +285,16 @@ public class RaggableTreeServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddRaggableTree_default_options_has_frozen_index_mode()
+    public void RaggableTreeOptions_carries_only_host_settings()
     {
-        var services = new ServiceCollection();
-        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
-        services.AddRaggableTree();
+        // GAP-15: Languages, Exclude, RootAlias, IndexMode, EnrichWithLlm, IncludeStatements,
+        // VectorStore and Cache had no reader; what an index covers is set per index_codebase call.
+        var names = typeof(RaggableTreeOptions).GetProperties()
+            .Select(p => p.Name)
+            .Where(n => n != "EqualityContract")
+            .Order(StringComparer.Ordinal);
 
-        using var provider = services.BuildServiceProvider();
-        var options = provider.GetRequiredService<RaggableTreeOptions>();
-
-        Assert.Equal(RaggableTreeIndexMode.Frozen, options.IndexMode);
+        Assert.Equal(["Embedding", "Enabled", "Summarizer", "ValidateCitations"], names);
     }
 
     [Fact]

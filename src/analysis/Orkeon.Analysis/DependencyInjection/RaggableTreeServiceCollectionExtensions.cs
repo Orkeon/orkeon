@@ -75,7 +75,7 @@ public static class RaggableTreeServiceCollectionExtensions
 
     private static void RegisterSummarizer(IServiceCollection services, RaggableTreeOptions options)
     {
-        if (options.EnrichWithLlm && options.Summarizer.Provider != SummarizerProviderKind.None)
+        if (options.Summarizer.Provider != SummarizerProviderKind.None)
         {
             services.TryAddSingleton<INodeSummarizer>(sp =>
             {

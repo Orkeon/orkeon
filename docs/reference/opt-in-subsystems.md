@@ -300,7 +300,9 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
 - **Role**: repeated execution of an evaluation suite per test case with
   mean/stddev statistics (`IBenchmarkRunner`).
 - **Activation**: `services.AddOrkeonBenchmarking();` — to be paired with
-  `AddOrkeonEvaluation()` (included in the core) to build the suites.
+  `AddOrkeonEvaluation()` (included in the core) to build the suites. The
+  default `IEvaluationSuite` carries the LLM judges when `Evaluation:EnableLlmJudge`
+  is `true` — bound by `AddOrkeonInfrastructure(configuration)`.
 - **Dependencies**: none (the evaluation suite is provided via `BenchmarkConfig`
   at call time).
 

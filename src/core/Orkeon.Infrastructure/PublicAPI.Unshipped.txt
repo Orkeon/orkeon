@@ -553,3 +553,26 @@ Orkeon.Infrastructure.EventHub.InMemoryEventHub.PublishAsync(string! topic, obje
 *REMOVED*static Orkeon.Infrastructure.Flows.Visualization.GraphNode.operator ==(Orkeon.Infrastructure.Flows.Visualization.GraphNode? left, Orkeon.Infrastructure.Flows.Visualization.GraphNode? right) -> bool
 *REMOVED*virtual Orkeon.Infrastructure.Flows.Base.FlowStepBase<TInput, TOutput>.Dependencies.get -> System.Collections.Generic.IReadOnlyList<string!>!
 *REMOVED*virtual Orkeon.Infrastructure.Flows.Base.FlowStepBase<TInput, TOutput>.ExecuteAsync(Orkeon.Domain.Flows.ValueObjects.FlowState! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowStepResult!>!
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.CircuitBreakerDurationSeconds.get -> int
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.CircuitBreakerDurationSeconds.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.CircuitBreakerThreshold.get -> int
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.CircuitBreakerThreshold.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.DatabaseMaxRetries.get -> int
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.DatabaseMaxRetries.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.LlmMaxRetries.get -> int
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.LlmMaxRetries.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.LlmTimeoutSeconds.get -> int
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.LlmTimeoutSeconds.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.RedisMaxRetries.get -> int
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.RedisMaxRetries.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.ResilienceOptions.ResilienceOptions() -> void
+*REMOVED*Orkeon.Infrastructure.Evaluation.EvaluationOptions.DefaultRunsPerCase.get -> int
+*REMOVED*Orkeon.Infrastructure.Evaluation.EvaluationOptions.DefaultRunsPerCase.set -> void
+*REMOVED*Orkeon.Infrastructure.Evaluation.EvaluationOptions.RegressionThreshold.get -> double
+*REMOVED*Orkeon.Infrastructure.Evaluation.EvaluationOptions.RegressionThreshold.set -> void
+*REMOVED*static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetCircuitBreakerPolicy(Microsoft.Extensions.Logging.ILogger? logger = null, int handledEventsAllowedBeforeBreaking = 3, System.TimeSpan durationOfBreak = default(System.TimeSpan)) -> Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>!
+*REMOVED*static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetCombinedPolicy(Microsoft.Extensions.Logging.ILogger? logger = null, int maxRetryAttempts = 3, int circuitBreakerThreshold = 5, System.TimeSpan? circuitBreakerDuration = null, System.TimeSpan? timeout = null) -> Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>!
+*REMOVED*static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetDatabaseRetryPolicy(Microsoft.Extensions.Logging.ILogger? logger = null, int maxRetryAttempts = 3) -> Polly.IAsyncPolicy!
+*REMOVED*static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetRetryPolicy(Microsoft.Extensions.Logging.ILogger? logger = null, int maxRetryAttempts = 3) -> Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>!
+*REMOVED*static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetTimeoutPolicy(System.TimeSpan timeout = default(System.TimeSpan), Microsoft.Extensions.Logging.ILogger? logger = null) -> Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>!

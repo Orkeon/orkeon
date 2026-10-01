@@ -1,37 +1,25 @@
-using System.Collections.Immutable;
 using Orkeon.Analysis.Abstractions.DependencyInjection;
 
 namespace Orkeon.Analysis.DependencyInjection;
 
+/// <summary>
+/// Host-level settings of the RaggableTree subsystem. A host binds only <see cref="Enabled"/> and
+/// <see cref="Embedding"/> from configuration (the <c>RaggableTree</c> section of <c>orkeon run</c>);
+/// what an index covers — languages, exclusions, root alias, LLM enrichment — is set per
+/// <c>index_codebase</c> call, never here.
+/// </summary>
 public sealed record RaggableTreeOptions
 {
     public bool Enabled { get; init; } = true;
 
-    public ImmutableArray<string> Languages { get; init; } = [];
-
-    public ImmutableArray<string> Exclude { get; init; } =
-        ["node_modules", "dist", ".git", "bin", "obj"];
-
-    /// <summary>
-    /// Optional alias used to shorten FQN: when set, the absolute disk root path
-    /// is replaced with this alias in every node FQN. Example: "inngest-js" →
-    /// FQN "inngest-js::pkg::Module" instead of "/workspace/.../inngest-js::pkg::Module".
-    /// </summary>
-    public string RootAlias { get; init; } = "";
-
-    public RaggableTreeIndexMode IndexMode { get; init; } = RaggableTreeIndexMode.Frozen;
-
-    public bool EnrichWithLlm { get; init; }
-
-    public bool IncludeStatements { get; init; }
-
     public EmbeddingOptions Embedding { get; init; } = new();
 
+    /// <summary>
+    /// The LLM node summarizer. When <see cref="SummarizerOptions.Provider"/> is not
+    /// <see cref="SummarizerProviderKind.None"/>, an <c>index_codebase</c> call with
+    /// <c>enrich_with_llm</c> summarizes every node through it; otherwise enrichment is a no-op.
+    /// </summary>
     public SummarizerOptions Summarizer { get; init; } = new();
-
-    public VectorStoreOptions VectorStore { get; init; } = new();
-
-    public CacheOptions Cache { get; init; } = new();
 
     /// <summary>
     /// When <see langword="true"/> (default), <c>ICitationBlockValidator</c> is registered
@@ -39,13 +27,6 @@ public sealed record RaggableTreeOptions
     /// Set to <see langword="false"/> to disable if you encounter performance issues or false positives.
     /// </summary>
     public bool ValidateCitations { get; init; } = true;
-}
-
-public enum RaggableTreeIndexMode
-{
-    Frozen,
-    Live,
-    BreakOnChange,
 }
 
 public enum EmbeddingProviderKind
@@ -61,16 +42,6 @@ public enum SummarizerProviderKind
 {
     None,
     Anthropic,
-}
-
-public enum VectorStoreKind
-{
-    InMemory,
-    Redis,
-    ChromaDb,
-    Pinecone,
-    LanceDb,
-    Sqlite,
 }
 
 public sealed record EmbeddingOptions
@@ -115,16 +86,4 @@ public sealed record SummarizerOptions
     public string Model { get; init; } = "claude-haiku-4-5";
 
     public int Concurrency { get; init; } = 5;
-}
-
-public sealed record VectorStoreOptions
-{
-    public VectorStoreKind Provider { get; init; } = VectorStoreKind.InMemory;
-}
-
-public sealed record CacheOptions
-{
-    public bool Enabled { get; init; } = true;
-
-    public string Path { get; init; } = ".orkeon/raggable-tree.json";
 }

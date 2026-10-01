@@ -308,6 +308,8 @@ tâche, le coût estimé.
   statistiques mean/stddev (`IBenchmarkRunner`).
 - **Activation** : `services.AddOrkeonBenchmarking();` — à coupler avec
   `AddOrkeonEvaluation()` (inclus dans le socle) pour construire les suites.
+  L'`IEvaluationSuite` par défaut porte les juges LLM quand `Evaluation:EnableLlmJudge`
+  vaut `true` — lié par `AddOrkeonInfrastructure(configuration)`.
 - **Dépendances** : aucune (la suite d'évaluation est fournie via `BenchmarkConfig`
   à l'appel).
 

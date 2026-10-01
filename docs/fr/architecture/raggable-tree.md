@@ -80,32 +80,29 @@ ne lie rien. Le RaggableTree est **actif par défaut** dans les deux :
 }
 ```
 
-Le runner host lit aussi `Exclude`, `RootAlias`, `IncludeStatements`, `IndexMode` et
-`EnrichWithLlm` dans `RaggableTreeOptions`, mais **l'index ne les voit jamais** : la
-construction prend ces réglages dans chaque appel `index_codebase` (`exclude`,
-`root_alias`, `include_statements`, `enrich_with_llm`, `respect_gitignore`,
-`languages` — voir le [catalogue de tools](#catalogue-de-tools)). `IndexMode` n'est
-consommé par rien (voir la note historique plus bas), et `EnrichWithLlm` n'a d'effet
-qu'accompagné d'un `Summarizer.Provider` autre que `None`, que le runner host ne
-positionne jamais — aucun hôte livré ne génère donc de résumés LLM.
+La section porte ces deux clés et rien d'autre : le runner refuse de démarrer sur
+toute autre clé sous `RaggableTree`, en la nommant. Ce que couvre un index se règle à
+chaque appel `index_codebase` (`exclude`, `root_alias`, `enrich_with_llm`,
+`respect_gitignore`, `languages` — voir le [catalogue de tools](#catalogue-de-tools)),
+jamais par l'hôte. Les langages en particulier ne se configurent **jamais** : ils sont
+auto-détectés depuis la codebase et scellés par appel.
 
-Les langages ne se configurent **jamais** : ils sont auto-détectés depuis la codebase
-et scellés par appel `index_codebase` (`RaggableTreeOptions.Languages` n'est lu par
-rien). Le reste de `RaggableTreeOptions` est accessible en C# via
-`AddRaggableTree(options)` : `Summarizer` (`Provider` = `None` | `Anthropic` — ce
-dernier enregistre `LlmNodeSummarizer` sur l'`ILlmProvider` de l'hôte — plus `Model`,
-défaut `claude-haiku-4-5`, et `Concurrency`, défaut 5) et `ValidateCitations` (défaut
-`true`, enregistre les validateurs de citations `ICitationBlockValidator` /
-`IInlineFqnValidator`). Les groupes d'options `VectorStore`/`Cache` existent sur le
-record mais ne sont consommés par rien. À noter : le défaut C# de `Embedding.Provider`
-est `None` ; seul le runner host prend `LocalSmartComponents` par défaut.
+Le reste de `RaggableTreeOptions` est accessible en C# via `AddRaggableTree(options)` :
+`Summarizer` (`Provider` = `None` | `Anthropic` — ce dernier enregistre
+`LlmNodeSummarizer` sur l'`ILlmProvider` de l'hôte, et un appel `index_codebase` avec
+`enrich_with_llm` résume alors chaque nœud ; plus `Model`, défaut `claude-haiku-4-5`, et
+`Concurrency`, défaut 5) et `ValidateCitations` (défaut `true`, enregistre les
+validateurs de citations `ICitationBlockValidator` / `IInlineFqnValidator`). Le runner
+host ne positionne jamais de résumeur : aucun hôte livré ne génère donc de résumés LLM.
+À noter : le défaut C# de `Embedding.Provider` est `None` ; seul le runner host prend
+`LocalSmartComponents` par défaut.
 
 Tous les champs sont des `record` immuables dans `Orkeon.Analysis.DependencyInjection.RaggableTreeOptions`.
 
 ## Pipeline en six phases
 
 1. **Discovery** (`IFileSystemDiscoverer`) — parcours récursif, détection de packages via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`), exclusion via patterns et `.gitignore`.
-2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application des queries de l'adaptateur → nœuds L2 (module) et L3 (symbole) avec `Fqn`, `Signature`, `SourceSnippet`, `Sha256` ; statements L4 (`StatementExtractor`) uniquement quand l'appel positionne `include_statements`.
+2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application des queries de l'adaptateur → nœuds L2 (module) et L3 (symbole) avec `Fqn`, `Signature`, `SourceSnippet`, `Sha256` ; statements L4 (`StatementExtractor`), extraits à chaque construction.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — résolution des imports, appels, héritage, implémentations en arêtes (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Les FQN non résolus deviennent des `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application des règles par décorateur/annotation (NestJS, Angular, ASP.NET, Flask, FastAPI) : pose de tags comme `http-endpoint`, `guard`, `service` sur les nœuds concernés.
 5. **Enrichissement** — optionnellement un résumé LLM (`INodeSummarizer`, quand l'appel positionne `enrich_with_llm` et qu'un summarizer est enregistré), composition du `EmbeddingText` (`IEmbeddingTextComposer`), puis embedding batch (`IEmbeddingProvider`, sauté quand aucun n'est enregistré).
@@ -133,17 +130,18 @@ La réindexation incrémentale (`IncrementalReindexEngine`) repart de la phase 2
 | `flow_trace` | Chemins d'appel entre deux FQN | `{ "from": "A", "to": "B", "max_paths": 5 }` |
 | `impact_analysis` | Impacts transitifs d'un changement | `{ "target": "...", "direction": "Backward" }` |
 | `complexity_report` | Top-N par métrique (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
-| `statement_query` | Requêtes structurelles L4 (if, try, return...) — exige un index construit avec `include_statements` | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
+| `statement_query` | Requêtes structurelles L4 (if, try, return...) — chaque index porte les statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
 
 Les 15 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` porte les réglages de construction à chaque appel
 (`IndexCodebaseRequest`) : `root_path` (obligatoire, un chemin virtuel), `languages`
 (vide = auto-détection), `exclude` (défaut `node_modules`, `dist`, `.git`, `bin`,
-`obj`), `respect_gitignore` (défaut `true`), `include_statements` (défaut `false`),
-`enrich_with_llm` (défaut `false`), `root_alias` (remplace le préfixe de racine
-virtuelle de chaque FQN) et `embedding_model`. `incremental_reindex` accepte les mêmes
-`root_path`, `languages` et `enrich_with_llm`.
+`obj`), `respect_gitignore` (défaut `true`), `enrich_with_llm` (défaut `false` ; exige
+un résumeur enregistré), `root_alias` (remplace le préfixe de racine virtuelle de chaque
+FQN) et `embedding_model` — exactement ce que lit la construction. Les statements sont
+toujours extraits, et un argument que la requête ne déclare pas est ignoré.
+`incremental_reindex` accepte les mêmes `root_path`, `languages` et `enrich_with_llm`.
 
 ## Stratégies d'agents
 
@@ -190,7 +188,7 @@ L'index reste fidèle à un workspace en cours d'édition grâce à une concepti
 Note historique : une version antérieure de ce document décrivait trois modes de
 synchronisation pilotés par le watcher (`frozen`/`live`/`breakOnChange` via
 `RaggableTreeIndexMode`). Ces modes n'ont jamais été consommés par aucun code — l'enum
-existait, rien ne la lisait. La conception de fraîcheur ci-dessus remplace cette fiction ;
+existait, rien ne la lisait, et elle a été supprimée avec la clé `IndexMode` (GAP-15). La conception de fraîcheur ci-dessus remplace cette fiction ;
 `ICodebaseWatcher` (`FileSystemWatcherCodebaseWatcher`, qu'aucun hôte livré n'enregistre)
 reste disponible pour les hôtes qui veulent une invalidation en push
 par-dessus la passe paresseuse.

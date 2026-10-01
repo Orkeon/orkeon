@@ -1,1 +1,9 @@
 #nullable enable
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.IncludeStatements.get -> bool
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.IncludeStatements.init -> void
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerConcurrency.get -> int
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerConcurrency.init -> void
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerMaxTokens.get -> int
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerMaxTokens.init -> void
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerModel.get -> string?
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerModel.init -> void

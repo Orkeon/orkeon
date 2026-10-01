@@ -95,6 +95,10 @@ public static class InfrastructureExtensions
         services.AddOrkeonInfrastructure();
         services.AddOrkeonTelemetry(configuration);
 
+        // The evaluation suite is registered by the overload above; this call binds the
+        // "Evaluation" section (EnableLlmJudge) and registers nothing twice (GAP-15).
+        services.AddOrkeonEvaluation(configuration);
+
         // === Phase 4: Standards & Interoperability ===
         services.AddOrkeonMcp(configuration);
         services.AddOrkeonVectorSearch(configuration);
@@ -150,10 +154,6 @@ public static class InfrastructureExtensions
         // AddOrkeonInfrastructure() is respected regardless of registration order.
         // Orkeon's own default is still registered when the host provides none.
         services.TryAddSingleton<IPathValidator, PathValidator>();
-
-        // Add resilience options (configurable via appsettings.json "Resilience" section)
-        services.AddOptions<Orkeon.Infrastructure.Configuration.ResilienceOptions>()
-            .BindConfiguration("Resilience");
 
         // Domain event dispatcher — scoped, so the IDomainEventHandler<T> it resolves (registered
         // scoped by AddOrkeonApplication) come from the caller's scope, never the root provider.

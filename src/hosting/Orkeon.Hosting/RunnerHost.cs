@@ -1,6 +1,5 @@
 using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
-using System.Collections.Immutable;
 using System.Globalization;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -864,15 +863,27 @@ public static partial class RunnerHost
         }
     }
 
-    private static void RegisterRaggableTree(
+    /// <summary>The only keys of the <c>RaggableTree</c> section (GAP-15).</summary>
+    private static readonly string[] s_raggableTreeKeys = ["Enabled", "Embedding"];
+
+    internal static void RegisterRaggableTree(
         HostBuilderContext context,
         IServiceCollection services)
     {
         // Available by default; a host opts out with "RaggableTree:Enabled": false. The section
-        // is OPTIONAL and only carries infra knobs (embedding backend, index mode, exclude globs).
-        // Crucially, the analysed languages are NOT read from config: they are auto-detected from
-        // the codebase and scoped per index_codebase call by the crew/agent, never pinned a priori.
+        // is OPTIONAL and carries two keys: Enabled and Embedding. What an index covers —
+        // languages, exclusions, root alias, LLM enrichment — is set per index_codebase call by
+        // the crew/agent, never pinned a priori by the host.
         var section = context.Configuration.GetSection("RaggableTree");
+        var retired = section.GetChildren()
+            .Select(c => c.Key)
+            .FirstOrDefault(k => !s_raggableTreeKeys.Contains(k, StringComparer.OrdinalIgnoreCase));
+        if (retired is not null)
+            throw new InvalidOperationException(
+                $"RaggableTree:{retired} is not a setting: the RaggableTree section carries only " +
+                "Enabled and Embedding. What an index covers (exclude, root_alias, enrich_with_llm, " +
+                "languages) is an argument of each index_codebase call. Remove the key.");
+
         if (section.Exists() && !section.GetValue("Enabled", defaultValue: true))
             return;
 
@@ -883,13 +894,6 @@ public static partial class RunnerHost
         var options = new RaggableTreeOptions
         {
             Enabled = true,
-            // Languages intentionally omitted — auto-detected, crew-scoped per call.
-            Exclude = ReadStringArray(section.GetSection("Exclude"), fallback:
-                ["node_modules", "dist", ".git", "bin", "obj"]),
-            RootAlias = section["RootAlias"] ?? "",
-            IndexMode = ParseEnum(section["IndexMode"], RaggableTreeIndexMode.Frozen),
-            EnrichWithLlm = section.GetValue("EnrichWithLlm", defaultValue: false),
-            IncludeStatements = section.GetValue("IncludeStatements", defaultValue: false),
             Embedding = new EmbeddingOptions
             {
                 Provider = provider,
@@ -909,19 +913,6 @@ public static partial class RunnerHost
 
         services.AddRaggableTreeWithLogging(options);
         services.AddRaggableTreeTools();
-    }
-
-    private static ImmutableArray<string> ReadStringArray(
-        IConfigurationSection section,
-        ImmutableArray<string>? fallback = null)
-    {
-        if (!section.Exists()) return fallback ?? [];
-        var items = section.GetChildren()
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Select(v => v!)
-            .ToImmutableArray();
-        return items.Length > 0 ? items : (fallback ?? []);
     }
 
     private static TEnum ParseEnum<TEnum>(string? value, TEnum fallback) where TEnum : struct, Enum
