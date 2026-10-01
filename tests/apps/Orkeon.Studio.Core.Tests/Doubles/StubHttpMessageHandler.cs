@@ -7,7 +7,14 @@ namespace Orkeon.Studio.Core.Tests.Doubles;
 /// <param name="Uri">Absolute request URI.</param>
 /// <param name="Authorization">Value of the <c>Authorization</c> header, or null.</param>
 /// <param name="ApiKeyHeader">Value of Anthropic's <c>x-api-key</c> header, or null.</param>
-public sealed record RecordedHttpRequest(string Method, Uri? Uri, string? Authorization, string? ApiKeyHeader);
+/// <param name="Body">The request body, or null when the request carried none.</param>
+public sealed record RecordedHttpRequest(
+    string Method, Uri? Uri, string? Authorization, string? ApiKeyHeader, string? Body = null);
+
+/// <summary>One scripted answer: a status and a body.</summary>
+/// <param name="StatusCode">Status of the answer.</param>
+/// <param name="Body">Body of the answer.</param>
+public sealed record StubHttpAnswer(HttpStatusCode StatusCode, string Body);
 
 /// <summary>
 /// An <see cref="HttpMessageHandler"/> that answers from a script instead of the network, so
@@ -25,11 +32,23 @@ public sealed class StubHttpMessageHandler : HttpMessageHandler
     /// <summary>Body of the scripted answer.</summary>
     public string Body { get; set; } = "{}";
 
+    /// <summary>
+    /// When set, answers each request in place of <see cref="StatusCode"/>/<see cref="Body"/> —
+    /// so the catalogue and the test completion of one probe can be answered differently.
+    /// </summary>
+    public Func<RecordedHttpRequest, StubHttpAnswer>? Answer { get; set; }
+
     /// <summary>When set, thrown instead of answering — a transport failure.</summary>
     public Exception? FailWith { get; set; }
 
     /// <summary>How long the handler waits before answering, to exercise the probe's deadline.</summary>
     public TimeSpan Delay { get; set; }
+
+    /// <summary>
+    /// Runs before the answer, with the request and the probe's token — the hook through which a
+    /// test moves a manual clock, or waits on the probe's deadline.
+    /// </summary>
+    public Func<RecordedHttpRequest, CancellationToken, Task>? OnSend { get; set; }
 
     /// <summary>The single request, when exactly one was sent.</summary>
     public RecordedHttpRequest LastRequest => Requests[^1];
@@ -41,11 +60,19 @@ public sealed class StubHttpMessageHandler : HttpMessageHandler
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        Requests.Add(new RecordedHttpRequest(
+        var body = request.Content is null
+            ? null
+            : await request.Content.ReadAsStringAsync(cancellationToken);
+        var recorded = new RecordedHttpRequest(
             request.Method.Method,
             request.RequestUri,
             request.Headers.Authorization?.ToString(),
-            request.Headers.TryGetValues("x-api-key", out var apiKey) ? string.Join(",", apiKey) : null));
+            request.Headers.TryGetValues("x-api-key", out var apiKey) ? string.Join(",", apiKey) : null,
+            body);
+        Requests.Add(recorded);
+
+        if (OnSend is not null)
+            await OnSend(recorded, cancellationToken);
 
         if (Delay > TimeSpan.Zero)
             await Task.Delay(Delay, cancellationToken);
@@ -53,6 +80,7 @@ public sealed class StubHttpMessageHandler : HttpMessageHandler
         if (FailWith is not null)
             throw FailWith;
 
-        return new HttpResponseMessage(StatusCode) { Content = new StringContent(Body) };
+        var answer = Answer?.Invoke(recorded) ?? new StubHttpAnswer(StatusCode, Body);
+        return new HttpResponseMessage(answer.StatusCode) { Content = new StringContent(answer.Body) };
     }
 }

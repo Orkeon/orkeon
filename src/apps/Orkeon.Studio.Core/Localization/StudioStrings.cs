@@ -24,10 +24,12 @@ public interface IStudioStrings
 /// <para>
 /// Deliberately absent (kept English by policy, like the <c>VALIDATION OK/FAILED</c>
 /// verdicts): the bodies of diagnostics that carry a stable code and a remediation —
-/// <c>orkeon doctor</c> check names/details, target-detector errors, LLM probe results,
+/// <c>orkeon doctor</c> check names/details, target-detector errors,
 /// and the exit-code descriptions mirroring the CLI table. They are CLI-grade output;
 /// translating Studio's copy would desynchronize it from the CLI the user sees in a
-/// terminal. Validator message texts follow a revised split (T-08): the raw English
+/// terminal. The LLM connection probe left that list with STUDIO-43: its verdict is a
+/// structured result worded through the <c>Probe*</c> keys, only the cause's raw evidence (an
+/// error body, an exception chain) staying as written. Validator message texts follow a revised split (T-08): the raw English
 /// line keeps its role as the expert detail, and a per-code plain-language overlay
 /// (<c>Vm_ValMsg_&lt;code&gt;</c> keys, resolved by <c>ValidationMessageViewModel</c>)
 /// is what the lists show first.
@@ -806,6 +808,47 @@ public static class StudioStringKeys
 
     /// <summary>"Testing the connection…"</summary>
     public const string LlmTesting = "Studio.Settings.Testing";
+
+    // ---- LLM connection probe (STUDIO-43) ---------------------------------
+
+    /// <summary>"Endpoint reachable — {0} model(s)."</summary>
+    public const string ProbeReachable = "Studio.Settings.ProbeReachable";
+
+    /// <summary>"Endpoint reachable."</summary>
+    public const string ProbeReachableNoCount = "Studio.Settings.ProbeReachableNoCount";
+
+    /// <summary>"Endpoint reachable, and {0} answered a test request in {1} s."</summary>
+    public const string ProbeCompletionPassed = "Studio.Settings.ProbeCompletionPassed";
+
+    /// <summary>"Connection failed: {0}"</summary>
+    public const string ProbeFailed = "Studio.Settings.ProbeFailed";
+
+    /// <summary>"Connection failed at the {0} step ({1}, after {2} s): {3}"</summary>
+    public const string ProbeFailedAtStage = "Studio.Settings.ProbeFailedAtStage";
+
+    /// <summary>"model list"</summary>
+    public const string ProbeStageModels = "Studio.Settings.ProbeStageModels";
+
+    /// <summary>"test request"</summary>
+    public const string ProbeStageCompletion = "Studio.Settings.ProbeStageCompletion";
+
+    /// <summary>"no base URL is configured, so there is nothing to reach."</summary>
+    public const string ProbeNoBaseUrl = "Studio.Settings.ProbeNoBaseUrl";
+
+    /// <summary>"'{0}' is not an absolute URL."</summary>
+    public const string ProbeNotAbsoluteUrl = "Studio.Settings.ProbeNotAbsoluteUrl";
+
+    /// <summary>"'{0}' is not an http:// or https:// URL."</summary>
+    public const string ProbeNotHttpUrl = "Studio.Settings.ProbeNotHttpUrl";
+
+    /// <summary>"Azure OpenAI serves named deployments rather than a model catalogue, so there is no endpoint to probe."</summary>
+    public const string ProbeNoCatalogue = "Studio.Settings.ProbeNoCatalogue";
+
+    /// <summary>"no answer within {0} s."</summary>
+    public const string ProbeTimeout = "Studio.Settings.ProbeTimeout";
+
+    /// <summary>"the endpoint answered {0}. {1}"</summary>
+    public const string ProbeHttpStatus = "Studio.Settings.ProbeHttpStatus";
 
     // ---- Diagnostic panel (WPF ViewModel) ---------------------------------
 
@@ -2195,6 +2238,20 @@ public sealed class EnglishStudioStrings : IStudioStrings
             "Prefer the {0} environment variable: the runtime reads it with " +
             "precedence over this file, so the key never has to be stored in clear text.",
         [StudioStringKeys.LlmTesting] = "Testing the connection…",
+
+        [StudioStringKeys.ProbeReachable] = "Endpoint reachable — {0} model(s).",
+        [StudioStringKeys.ProbeReachableNoCount] = "Endpoint reachable.",
+        [StudioStringKeys.ProbeCompletionPassed] = "Endpoint reachable, and {0} answered a test request in {1} s.",
+        [StudioStringKeys.ProbeFailed] = "Connection failed: {0}",
+        [StudioStringKeys.ProbeFailedAtStage] = "Connection failed at the {0} step ({1}, after {2} s): {3}",
+        [StudioStringKeys.ProbeStageModels] = "model list",
+        [StudioStringKeys.ProbeStageCompletion] = "test request",
+        [StudioStringKeys.ProbeNoBaseUrl] = "no base URL is configured, so there is nothing to reach.",
+        [StudioStringKeys.ProbeNotAbsoluteUrl] = "'{0}' is not an absolute URL.",
+        [StudioStringKeys.ProbeNotHttpUrl] = "'{0}' is not an http:// or https:// URL.",
+        [StudioStringKeys.ProbeNoCatalogue] = "Azure OpenAI serves named deployments rather than a model catalogue, so there is no endpoint to probe.",
+        [StudioStringKeys.ProbeTimeout] = "no answer within {0} s.",
+        [StudioStringKeys.ProbeHttpStatus] = "the endpoint answered {0}. {1}",
 
         [StudioStringKeys.DiagNoCheck] = "orkeon doctor reported no check.",
         [StudioStringKeys.DiagAllGreen] = "{0} check(s), all green.",

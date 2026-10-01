@@ -278,6 +278,19 @@
   <data name="Studio.Settings.CustomProvider" xml:space="preserve"><value>custom (host not in the known-endpoint table)</value></data>
   <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve"><value>Prefer the {0} environment variable: the runtime reads it with precedence over this file, so the key never has to be stored in clear text.</value></data>
   <data name="Studio.Settings.Testing" xml:space="preserve"><value>Testing the connection…</value></data>
+  <data name="Studio.Settings.ProbeReachable" xml:space="preserve"><value>Endpoint reachable — {0} model(s).</value></data>
+  <data name="Studio.Settings.ProbeReachableNoCount" xml:space="preserve"><value>Endpoint reachable.</value></data>
+  <data name="Studio.Settings.ProbeCompletionPassed" xml:space="preserve"><value>Endpoint reachable, and {0} answered a test request in {1} s.</value></data>
+  <data name="Studio.Settings.ProbeFailed" xml:space="preserve"><value>Connection failed: {0}</value></data>
+  <data name="Studio.Settings.ProbeFailedAtStage" xml:space="preserve"><value>Connection failed at the {0} step ({1}, after {2} s): {3}</value></data>
+  <data name="Studio.Settings.ProbeStageModels" xml:space="preserve"><value>model list</value></data>
+  <data name="Studio.Settings.ProbeStageCompletion" xml:space="preserve"><value>test request</value></data>
+  <data name="Studio.Settings.ProbeNoBaseUrl" xml:space="preserve"><value>no base URL is configured, so there is nothing to reach.</value></data>
+  <data name="Studio.Settings.ProbeNotAbsoluteUrl" xml:space="preserve"><value>'{0}' is not an absolute URL.</value></data>
+  <data name="Studio.Settings.ProbeNotHttpUrl" xml:space="preserve"><value>'{0}' is not an http:// or https:// URL.</value></data>
+  <data name="Studio.Settings.ProbeNoCatalogue" xml:space="preserve"><value>Azure OpenAI serves named deployments rather than a model catalogue, so there is no endpoint to probe.</value></data>
+  <data name="Studio.Settings.ProbeTimeout" xml:space="preserve"><value>no answer within {0} s.</value></data>
+  <data name="Studio.Settings.ProbeHttpStatus" xml:space="preserve"><value>the endpoint answered {0}. {1}</value></data>
   <data name="Studio.Diagnostics.NoCheck" xml:space="preserve"><value>orkeon doctor reported no check.</value></data>
   <data name="Studio.Diagnostics.AllGreen" xml:space="preserve"><value>{0} check(s), all green.</value></data>
   <data name="Studio.Diagnostics.Findings" xml:space="preserve"><value>{0} check(s): {1} failure(s), {2} warning(s).</value></data>

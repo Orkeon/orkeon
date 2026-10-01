@@ -115,4 +115,24 @@ public sealed class LlmConnectionTestTests
 
         Assert.Equal("sk-from-file", request.ApiKey);
     }
+
+    [Fact]
+    public void The_probe_exercises_the_typed_model_and_thinking_switch()
+    {
+        // STUDIO-43: the same two steps as Studio's profile editor.
+        var form = new LlmForm
+        {
+            BaseUrl = LlmProviderEndpoints.Zai,
+            Model = " glm-5.2 ",
+            ThinkingEnabled = "false",
+            TimeoutSeconds = "600",
+        };
+
+        var request = form.ToProbeRequest(_ => "sk-zai");
+
+        Assert.Equal("glm-5.2", request.Model);
+        Assert.False(request.ThinkingEnabled);
+        Assert.True(request.CheckCompletion);
+        Assert.Equal(TimeSpan.FromSeconds(30), request.Timeout);
+    }
 }

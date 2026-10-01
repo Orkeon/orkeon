@@ -746,6 +746,45 @@
   <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>Probando la conexión…</value>
   </data>
+  <data name="Studio.Settings.ProbeReachable" xml:space="preserve">
+    <value>Endpoint accesible — {0} modelo(s).</value>
+  </data>
+  <data name="Studio.Settings.ProbeReachableNoCount" xml:space="preserve">
+    <value>Endpoint accesible.</value>
+  </data>
+  <data name="Studio.Settings.ProbeCompletionPassed" xml:space="preserve">
+    <value>Endpoint accesible, y {0} respondió a una solicitud de prueba en {1} s.</value>
+  </data>
+  <data name="Studio.Settings.ProbeFailed" xml:space="preserve">
+    <value>Error de conexión: {0}</value>
+  </data>
+  <data name="Studio.Settings.ProbeFailedAtStage" xml:space="preserve">
+    <value>Error de conexión en el paso «{0}» ({1}, tras {2} s): {3}</value>
+  </data>
+  <data name="Studio.Settings.ProbeStageModels" xml:space="preserve">
+    <value>lista de modelos</value>
+  </data>
+  <data name="Studio.Settings.ProbeStageCompletion" xml:space="preserve">
+    <value>solicitud de prueba</value>
+  </data>
+  <data name="Studio.Settings.ProbeNoBaseUrl" xml:space="preserve">
+    <value>no hay ninguna URL base configurada, así que no hay nada que alcanzar.</value>
+  </data>
+  <data name="Studio.Settings.ProbeNotAbsoluteUrl" xml:space="preserve">
+    <value>«{0}» no es una URL absoluta.</value>
+  </data>
+  <data name="Studio.Settings.ProbeNotHttpUrl" xml:space="preserve">
+    <value>«{0}» no es una URL http:// o https://.</value>
+  </data>
+  <data name="Studio.Settings.ProbeNoCatalogue" xml:space="preserve">
+    <value>Azure OpenAI sirve implementaciones con nombre en lugar de un catálogo de modelos, así que no hay endpoint que probar.</value>
+  </data>
+  <data name="Studio.Settings.ProbeTimeout" xml:space="preserve">
+    <value>sin respuesta en {0} s.</value>
+  </data>
+  <data name="Studio.Settings.ProbeHttpStatus" xml:space="preserve">
+    <value>el endpoint respondió {0}. {1}</value>
+  </data>
   <data name="Studio.Diagnostics.NoCheck" xml:space="preserve">
     <value>orkeon doctor no reportó ninguna comprobación.</value>
   </data>

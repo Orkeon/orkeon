@@ -141,6 +141,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string? _apiKeyEnv;
     private string _apiKeyInput = "";
     private string? _connectionTestResult;
+    private bool _isTestingConnection;
+    private int _settingsGeneration;
     private string _temperatureText = "";
     private string _timeoutText = "";
     private string _maxTokensText = "";
@@ -192,7 +194,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         SaveCommand = new RelayCommand(Save, () => CanSave);
         CancelCommand = new RelayCommand(() => _owner.CancelEdit());
         SelectProviderCommand = new RelayCommand(p => SelectedProvider = p as LlmPresetInfo);
-        TestConnectionCommand = new AsyncRelayCommand(() => TestConnectionAsync(CancellationToken.None));
+        TestConnectionCommand = new AsyncRelayCommand(
+            () => TestConnectionAsync(CancellationToken.None), () => !_isTestingConnection);
         StoreKeyCommand = new RelayCommand(StoreKey, () => _apiKeyInput.Trim().Length > 0);
         ReadBalanceCommand = new AsyncRelayCommand(() => ReadBalanceAsync(CancellationToken.None));
         OpenBalanceConsoleCommand = new RelayCommand(
@@ -275,8 +278,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         {
             // The catch-all provider gates Save on this field: the button must wake up
             // as the URL is typed, not on the next unrelated notification.
-            if (SetProperty(ref _baseUrl, value))
-                SaveCommand.RaiseCanExecuteChanged();
+            if (!SetProperty(ref _baseUrl, value))
+                return;
+
+            SaveCommand.RaiseCanExecuteChanged();
+            ClearConnectionTestResult();   // the verdict was about the previous endpoint
         }
     }
 
@@ -291,6 +297,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
             OnPropertyChanged(nameof(MaxTokensHint));   // the hint follows the model, not the provider
             SaveCommand.RaiseCanExecuteChanged();
+            ClearConnectionTestResult();   // the test completion ran on the previous model
         }
     }
 
@@ -361,7 +368,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         private set => SetProperty(ref _balanceResult, value);
     }
 
-    /// <summary>The probe's own line on hover, in English like the connection test's (STUDIO-33).</summary>
+    /// <summary>The probe's own line on hover, in English: it is the raw evidence (STUDIO-33), like the cause quoted in the connection test's line.</summary>
     public string? BalanceDetail => _balanceReading?.Detail;
 
     /// <summary>Whether the balance read is under its provider's alert threshold (D-03).</summary>
@@ -410,11 +417,33 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>True while the typed name already belongs to another profile.</summary>
     public bool NameCollision => _owner.IsNameTaken(_name.Trim(), PreviousName);
 
-    /// <summary>Outcome line of the last connection probe.</summary>
+    /// <summary>
+    /// Outcome line of the last connection probe, in the interface's language: the step that
+    /// failed, the URL, the time waited and the cause (STUDIO-43). Cleared whenever the endpoint,
+    /// the model or the thinking switch changes, since the verdict was about the previous ones.
+    /// </summary>
     public string? ConnectionTestResult
     {
         get => _connectionTestResult;
         private set => SetProperty(ref _connectionTestResult, value);
+    }
+
+    /// <summary>True while a connection test runs: the button is disabled and the line says so.</summary>
+    public bool IsTestingConnection
+    {
+        get => _isTestingConnection;
+        private set
+        {
+            if (SetProperty(ref _isTestingConnection, value))
+                TestConnectionCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>Forgets the shown verdict, and any verdict still in flight for the old settings.</summary>
+    private void ClearConnectionTestResult()
+    {
+        _settingsGeneration++;
+        ConnectionTestResult = null;
     }
 
     /// <summary>Commits the profile to the set.</summary>
@@ -527,6 +556,9 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
             _thinkingEnabled = value.Value;
             OnPropertyChanged();
+            // STUDIO-43: the verdict shown was earned under the previous switch — the test
+            // completion carries it — so it must not stay under the new one.
+            ClearConnectionTestResult();
         }
     }
 
@@ -625,9 +657,19 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         }, PreviousName);
     }
 
-    /// <summary>Probes the endpoint; public so tests can await it with a token.</summary>
+    /// <summary>
+    /// Probes the endpoint, then runs a minimal completion on the profile's model with its
+    /// thinking switch (STUDIO-43), under a deadline of 30 s or the profile's own when shorter.
+    /// Public so tests can await it with a token.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031",
+        Justification = "The test is a convenience that must never fault the command: any unexpected " +
+                        "failure is reported in the result line like every other unreachable endpoint.")]
     public async Task TestConnectionAsync(CancellationToken cancellationToken)
     {
+        if (_isTestingConnection)
+            return;
+
         var apiKey = _apiKeyInput.Trim() is { Length: > 0 } typed
             ? typed
             : _keyStore.Peek(ApiKeyEnvName) ?? LlmApiKeyResolver.Resolve(null);
@@ -639,11 +681,39 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             return;
         }
 
-        var result = await _probe.ProbeAsync(
-            new LlmProbeRequest { BaseUrl = BaseUrl, ApiKey = apiKey },
-            cancellationToken).ConfigureAwait(true);
+        var request = new LlmProbeRequest
+        {
+            BaseUrl = BaseUrl,
+            ApiKey = apiKey,
+            Model = _model,
+            ThinkingEnabled = _thinkingEnabled,
+            CheckCompletion = true,
+            Timeout = LlmProbeRequest.TimeoutFor(ParsedTimeoutSeconds),
+        };
 
-        ConnectionTestResult = result.Message;
+        IsTestingConnection = true;
+        ConnectionTestResult = _strings[StudioStringKeys.LlmTesting];
+        var generation = _settingsGeneration;
+        LlmProbeResult result;
+        try
+        {
+            result = await _probe.ProbeAsync(request, cancellationToken).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            IsTestingConnection = false;
+            ConnectionTestResult = null;
+            throw;
+        }
+        catch (Exception ex)
+        {
+            result = LlmProbeResult.Unreachable(ex.Message);
+        }
+
+        IsTestingConnection = false;
+        // A setting changed while the probe ran: its verdict is about settings no longer shown.
+        if (generation == _settingsGeneration)
+            ConnectionTestResult = LlmProbeText.Describe(result, _strings);
     }
 
     /// <summary>

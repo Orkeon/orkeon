@@ -39,6 +39,25 @@ public sealed class LlmConnectionTestTests
     }
 
     [Fact]
+    public async Task Should_ExerciseTheConfiguredModelAndThinking_When_TheCommandRuns()
+    {
+        // STUDIO-43: the section's test is the profile editor's — same probe, same two steps.
+        var probe = new FakeLlmEndpointProbe();
+        var (section, _) = Build(probe, """
+            { "Llm": { "Model": "glm-5.2", "BaseUrl": "https://api.z.ai/api/paas/v4",
+                       "TimeoutSeconds": 12, "Thinking": { "Enabled": false } } }
+            """);
+
+        await section.TestConnectionAsync(TestContext.Current.CancellationToken);
+
+        var request = probe.LastRequest;
+        Assert.Equal("glm-5.2", request.Model);
+        Assert.False(request.ThinkingEnabled);
+        Assert.True(request.CheckCompletion);
+        Assert.Equal(TimeSpan.FromSeconds(12), request.Timeout);
+    }
+
+    [Fact]
     public async Task Should_PresentTheInlineKey_When_TheFileCarriesOne()
     {
         var probe = new FakeLlmEndpointProbe();

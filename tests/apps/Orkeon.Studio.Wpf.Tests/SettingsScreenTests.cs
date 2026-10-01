@@ -140,6 +140,140 @@ public sealed class SettingsScreenTests
         Assert.NotNull(profiles.Editor.ConnectionTestResult);
     }
 
+    // ── STUDIO-43: the connection test exercises the profile and the screen follows it ──
+
+    private static ModelProfile Zai(bool? thinking) => new()
+    {
+        Name = "Z.AI",
+        Provider = "Z.AI",
+        Model = "glm-5.2",
+        BaseUrl = "https://api.z.ai/api/paas/v4",
+        TimeoutSeconds = 600,
+        ThinkingEnabled = thinking,
+        KeyEnvName = "ZAI_API_KEY",
+    };
+
+    [Fact]
+    public async Task The_connection_test_carries_the_profiles_model_thinking_and_a_bounded_deadline()
+    {
+        var keyStore = new FakeApiKeyStore();
+        keyStore.Save("ZAI_API_KEY", "sk-zai");
+        var probe = new FakeLlmEndpointProbe();
+        var (profiles, _, _, _) = Build(keyStore, probe);
+        profiles.BeginEdit(Zai(thinking: false));
+
+        await profiles.Editor!.TestConnectionAsync(TestContext.Current.CancellationToken);
+
+        var request = probe.LastRequest;
+        Assert.Equal("glm-5.2", request.Model);
+        Assert.False(request.ThinkingEnabled);
+        Assert.True(request.CheckCompletion);
+        Assert.Equal(TimeSpan.FromSeconds(30), request.Timeout);   // not the profile's 600 s
+    }
+
+    [Fact]
+    public async Task Changing_the_thinking_switch_clears_the_previous_test_result()
+    {
+        var (profiles, _, _, _) = Build();
+        profiles.BeginEdit(Ollama("Local") with { ThinkingEnabled = false });
+        var editor = profiles.Editor!;
+        await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
+        Assert.NotNull(editor.ConnectionTestResult);
+
+        editor.SelectedThinking = editor.ThinkingChoices.Single(c => c.Value is null);
+
+        Assert.Null(editor.ConnectionTestResult);
+    }
+
+    [Fact]
+    public async Task Changing_the_model_or_the_url_clears_the_previous_test_result()
+    {
+        var (profiles, _, _, _) = Build();
+        profiles.BeginEdit(Ollama("Local"));
+        var editor = profiles.Editor!;
+
+        await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
+        editor.Model = "llama3.2";
+        Assert.Null(editor.ConnectionTestResult);
+
+        await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
+        editor.BaseUrl = "http://localhost:11435/v1";
+        Assert.Null(editor.ConnectionTestResult);
+    }
+
+    [Fact]
+    public async Task Going_back_from_disabled_to_the_providers_default_shows_without_reopening_the_editor()
+    {
+        var keyStore = new FakeApiKeyStore();
+        keyStore.Save("ZAI_API_KEY", "sk-zai");
+        var (profiles, _, _, _) = Build(keyStore, new FakeLlmEndpointProbe());
+        profiles.BeginEdit(Zai(thinking: false));
+        var editor = profiles.Editor!;
+        await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
+        Assert.NotNull(editor.ConnectionTestResult);
+        var changed = new List<string?>();
+        editor.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        editor.SelectedThinking = editor.ThinkingChoices.Single(c => c.Value is null);
+
+        Assert.Same(editor, profiles.Editor);
+        Assert.Null(editor.SelectedThinking.Value);
+        Assert.Contains(nameof(ModelProfileEditorViewModel.SelectedThinking), changed);
+        Assert.Contains(nameof(ModelProfileEditorViewModel.ConnectionTestResult), changed);
+        Assert.Null(editor.ConnectionTestResult);
+    }
+
+    [Fact]
+    public async Task The_testing_state_shows_while_the_probe_runs()
+    {
+        var probe = new FakeLlmEndpointProbe { Gate = new TaskCompletionSource() };
+        var (profiles, _, _, _) = Build(new FakeApiKeyStore(), probe);
+        profiles.BeginEdit(Ollama("Local"));
+        var editor = profiles.Editor!;
+
+        var running = editor.TestConnectionAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(editor.IsTestingConnection);
+        Assert.False(editor.TestConnectionCommand.CanExecute(null));
+        Assert.Equal("Testing the connection…", editor.ConnectionTestResult);
+
+        probe.Gate.SetResult();
+        await running;
+
+        Assert.False(editor.IsTestingConnection);
+        Assert.True(editor.TestConnectionCommand.CanExecute(null));
+        Assert.Equal("Endpoint reachable — 2 model(s).", editor.ConnectionTestResult);
+    }
+
+    [Fact]
+    public async Task A_failed_test_is_worded_with_its_step_url_and_cause()
+    {
+        var probe = new FakeLlmEndpointProbe
+        {
+            Result = new LlmProbeResult
+            {
+                Succeeded = false,
+                Stage = LlmProbeStage.Completion,
+                Failure = LlmProbeFailure.HttpStatus,
+                Url = "http://localhost:11434/api/chat",
+                Elapsed = TimeSpan.FromSeconds(1.5),
+                StatusCode = 404,
+                ReasonPhrase = "Not Found",
+                Detail = "model 'qwen2.5:14b' not found",
+            },
+        };
+        var (profiles, _, _, _) = Build(new FakeApiKeyStore(), probe);
+        profiles.BeginEdit(Ollama("Local"));
+
+        await profiles.Editor!.TestConnectionAsync(TestContext.Current.CancellationToken);
+
+        var line = profiles.Editor.ConnectionTestResult!;
+        Assert.Contains("test request", line, StringComparison.Ordinal);
+        Assert.Contains("http://localhost:11434/api/chat", line, StringComparison.Ordinal);
+        Assert.Contains("404", line, StringComparison.Ordinal);
+        Assert.Contains("not found", line, StringComparison.Ordinal);
+    }
+
     // ── the tab gating ──
 
     private static SettingsScreenViewModel Screen(UiModeViewModel mode)

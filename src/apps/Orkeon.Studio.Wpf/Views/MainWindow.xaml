@@ -945,7 +945,11 @@
                   <TextBlock Text="{Binding [Studio.Settings.TestConnection], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
+              <!-- STUDIO-43: the button is disabled while the test runs (its command refuses a
+                   second run) and the line says « Testing the connection… »; the verdict names
+                   the step, the URL, the time waited and the cause, and wraps when long. -->
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="12,0,0,0"
+                         MaxWidth="460"
                          Text="{Binding ConnectionTestResult}"
                          Visibility="{Binding ConnectionTestResult, Converter={StaticResource StringPresentToVisibility}}"/>
             </StackPanel>
@@ -953,7 +957,7 @@
             <!-- STUDIO-35 (D-04): the balance line beside « Test » — what the account behind the
                  endpoint and the key has left, read on the click, never the key; where only the
                  vendor's console shows it, a link to that console. The probe's own line, in
-                 English like the connection test's, on hover. -->
+                 English (raw evidence), on hover. -->
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
                         Visibility="{Binding ShowBalanceRow, Converter={StaticResource BooleanToVisibility}}">
               <Button Style="{StaticResource BtnGhost}" Command="{Binding ReadBalanceCommand}">

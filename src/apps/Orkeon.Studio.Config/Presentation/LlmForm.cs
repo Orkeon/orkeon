@@ -54,13 +54,28 @@ internal sealed class LlmForm : ISettingsForm
     /// <param name="environment">
     /// Reads an environment variable by name; defaults to the process environment.
     /// </param>
-    public LlmProbeRequest ToProbeRequest(Func<string, string?>? environment = null) => new()
+    /// <remarks>
+    /// Like Studio's profile editor (STUDIO-43), the probe then runs a minimal completion on the
+    /// typed model with the typed thinking switch, under 30 s or the typed timeout when shorter.
+    /// A field that does not parse is left out: the validator reports it, the probe does not.
+    /// </remarks>
+    public LlmProbeRequest ToProbeRequest(Func<string, string?>? environment = null)
     {
-        BaseUrl = FieldText.ToStringOrNull(BaseUrl),
-        ApiKey = environment is null
-            ? LlmApiKeyResolver.Resolve(ApiKey)
-            : LlmApiKeyResolver.Resolve(ApiKey, environment),
-    };
+        FieldText.TryReadBoolean(ThinkingEnabled, "Thinking:Enabled", out var thinking, out _);
+        FieldText.TryReadInt32(TimeoutSeconds, "TimeoutSeconds", out var timeout, out _);
+
+        return new LlmProbeRequest
+        {
+            BaseUrl = FieldText.ToStringOrNull(BaseUrl),
+            ApiKey = environment is null
+                ? LlmApiKeyResolver.Resolve(ApiKey)
+                : LlmApiKeyResolver.Resolve(ApiKey, environment),
+            Model = FieldText.ToStringOrNull(Model),
+            ThinkingEnabled = thinking,
+            CheckCompletion = true,
+            Timeout = LlmProbeRequest.TimeoutFor(timeout),
+        };
+    }
 
     /// <summary>The label shown under the API key field.</summary>
     public static string ApiKeyRecommendation { get; } = string.Create(

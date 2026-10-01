@@ -278,6 +278,19 @@
   <data name="Studio.Settings.CustomProvider" xml:space="preserve"><value>custom (hôte absent de la table des endpoints connus)</value></data>
   <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve"><value>Préférez la variable d'environnement {0} : le runtime la lit avec priorité sur ce fichier, la clé n'a donc jamais à être stockée en clair.</value></data>
   <data name="Studio.Settings.Testing" xml:space="preserve"><value>Test de la connexion…</value></data>
+  <data name="Studio.Settings.ProbeReachable" xml:space="preserve"><value>Point d'accès joignable — {0} modèle(s).</value></data>
+  <data name="Studio.Settings.ProbeReachableNoCount" xml:space="preserve"><value>Point d'accès joignable.</value></data>
+  <data name="Studio.Settings.ProbeCompletionPassed" xml:space="preserve"><value>Point d'accès joignable, et {0} a répondu à une requête d'essai en {1} s.</value></data>
+  <data name="Studio.Settings.ProbeFailed" xml:space="preserve"><value>Échec de la connexion : {0}</value></data>
+  <data name="Studio.Settings.ProbeFailedAtStage" xml:space="preserve"><value>Échec de la connexion à l'étape « {0} » ({1}, après {2} s) : {3}</value></data>
+  <data name="Studio.Settings.ProbeStageModels" xml:space="preserve"><value>liste des modèles</value></data>
+  <data name="Studio.Settings.ProbeStageCompletion" xml:space="preserve"><value>requête d'essai</value></data>
+  <data name="Studio.Settings.ProbeNoBaseUrl" xml:space="preserve"><value>aucune URL de base n'est configurée, il n'y a donc rien à joindre.</value></data>
+  <data name="Studio.Settings.ProbeNotAbsoluteUrl" xml:space="preserve"><value>« {0} » n'est pas une URL absolue.</value></data>
+  <data name="Studio.Settings.ProbeNotHttpUrl" xml:space="preserve"><value>« {0} » n'est pas une URL http:// ou https://.</value></data>
+  <data name="Studio.Settings.ProbeNoCatalogue" xml:space="preserve"><value>Azure OpenAI sert des déploiements nommés plutôt qu'un catalogue de modèles : il n'y a pas de point d'accès à tester.</value></data>
+  <data name="Studio.Settings.ProbeTimeout" xml:space="preserve"><value>pas de réponse en {0} s.</value></data>
+  <data name="Studio.Settings.ProbeHttpStatus" xml:space="preserve"><value>le point d'accès a répondu {0}. {1}</value></data>
   <data name="Studio.Diagnostics.NoCheck" xml:space="preserve"><value>orkeon doctor n'a rapporté aucun check.</value></data>
   <data name="Studio.Diagnostics.AllGreen" xml:space="preserve"><value>{0} check(s), tous au vert.</value></data>
   <data name="Studio.Diagnostics.Findings" xml:space="preserve"><value>{0} check(s) : {1} échec(s), {2} avertissement(s).</value></data>

@@ -746,6 +746,45 @@
   <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>Verbindung wird getestet…</value>
   </data>
+  <data name="Studio.Settings.ProbeReachable" xml:space="preserve">
+    <value>Endpunkt erreichbar — {0} Modell(e).</value>
+  </data>
+  <data name="Studio.Settings.ProbeReachableNoCount" xml:space="preserve">
+    <value>Endpunkt erreichbar.</value>
+  </data>
+  <data name="Studio.Settings.ProbeCompletionPassed" xml:space="preserve">
+    <value>Endpunkt erreichbar, und {0} hat eine Testanfrage in {1} s beantwortet.</value>
+  </data>
+  <data name="Studio.Settings.ProbeFailed" xml:space="preserve">
+    <value>Verbindung fehlgeschlagen: {0}</value>
+  </data>
+  <data name="Studio.Settings.ProbeFailedAtStage" xml:space="preserve">
+    <value>Verbindung im Schritt „{0}“ fehlgeschlagen ({1}, nach {2} s): {3}</value>
+  </data>
+  <data name="Studio.Settings.ProbeStageModels" xml:space="preserve">
+    <value>Modellliste</value>
+  </data>
+  <data name="Studio.Settings.ProbeStageCompletion" xml:space="preserve">
+    <value>Testanfrage</value>
+  </data>
+  <data name="Studio.Settings.ProbeNoBaseUrl" xml:space="preserve">
+    <value>keine Basis-URL konfiguriert, es gibt also nichts zu erreichen.</value>
+  </data>
+  <data name="Studio.Settings.ProbeNotAbsoluteUrl" xml:space="preserve">
+    <value>„{0}“ ist keine absolute URL.</value>
+  </data>
+  <data name="Studio.Settings.ProbeNotHttpUrl" xml:space="preserve">
+    <value>„{0}“ ist keine http://- oder https://-URL.</value>
+  </data>
+  <data name="Studio.Settings.ProbeNoCatalogue" xml:space="preserve">
+    <value>Azure OpenAI stellt benannte Deployments statt eines Modellkatalogs bereit, daher gibt es keinen Endpunkt zum Prüfen.</value>
+  </data>
+  <data name="Studio.Settings.ProbeTimeout" xml:space="preserve">
+    <value>keine Antwort innerhalb von {0} s.</value>
+  </data>
+  <data name="Studio.Settings.ProbeHttpStatus" xml:space="preserve">
+    <value>der Endpunkt antwortete mit {0}. {1}</value>
+  </data>
   <data name="Studio.Diagnostics.NoCheck" xml:space="preserve">
     <value>orkeon doctor hat keine Prüfung gemeldet.</value>
   </data>

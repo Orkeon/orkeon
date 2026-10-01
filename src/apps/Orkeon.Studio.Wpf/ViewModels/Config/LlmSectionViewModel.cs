@@ -158,8 +158,18 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
         LlmProbeResult result;
         try
         {
+            // STUDIO-43: the same two steps as the profile editor — the catalogue, then a
+            // minimal completion on the configured model with its thinking switch.
             result = await _probe.ProbeAsync(
-                new LlmProbeRequest { BaseUrl = BaseUrl, ApiKey = LlmApiKeyResolver.Resolve(ApiKey) },
+                new LlmProbeRequest
+                {
+                    BaseUrl = BaseUrl,
+                    ApiKey = LlmApiKeyResolver.Resolve(ApiKey),
+                    Model = Model,
+                    ThinkingEnabled = Section.ThinkingEnabled,
+                    CheckCompletion = true,
+                    Timeout = LlmProbeRequest.TimeoutFor(TimeoutSeconds),
+                },
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -169,7 +179,7 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
 
         _dispatcher.Post(() =>
         {
-            ConnectionTestResult = result.Message;
+            ConnectionTestResult = LlmProbeText.Describe(result, _strings);
             OnPropertyChanged(nameof(IsTestingConnection));
         });
 

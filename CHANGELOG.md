@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Studio's connection test waits 30 s, exercises the profile, and says why it failed
+
+The « Test connection » button of a model profile gave up after 5 s with « no answer within 5s »,
+and only asked the host for its model list: a Z.AI profile failed on a slow first request, and
+looked as if « Thinking: off » were to blame when the setting never reached the request (STUDIO-43).
+
+- **30 s**, or the profile's timeout when it is shorter (`LlmProbeRequest.TimeoutFor`).
+- **Two steps.** After `GET /models`, a minimal completion (`max_tokens` 16, one « ping ») on the
+  profile's model with its thinking switch, written per dialect from each provider's declared
+  thinking level (`LlmProbeDialect`, pinned against the real providers). A model that does not
+  exist, or refuses « Thinking: off », now fails the test at that step. It costs a few tokens.
+- **A diagnostic.** The verdict is a structured `LlmProbeResult` (`Stage`, `Url`, `Elapsed`,
+  `StatusCode`, `Detail`, `Failure`) worded in the interface's five languages by `LlmProbeText`:
+  the step, the URL called, the time waited, the HTTP status and the start of the body, or the
+  exception down to its innermost cause. The key never appears, not even in the URL.
+- **The screen follows.** « Testing the connection… » and a disabled button while it runs;
+  changing the thinking switch, the model or the URL clears the previous verdict instead of
+  leaving it under the new setting until the editor is reopened. The Llm section and the
+  `orkeon-studio-config` TUI run the same two steps.
+
 ### Added — one LLM provider per agent: named profiles in the host configuration **[breaking]**
 
 A host talked to one provider, the one its `Llm` section described; every agent of every crew
