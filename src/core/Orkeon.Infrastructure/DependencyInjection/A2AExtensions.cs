@@ -116,7 +116,7 @@ public static class A2AExtensions
         // External dependencies of the subsystem (no-ops when the host already
         // called AddOrkeonInfrastructure(), which registers all of them).
         services.AddHttpClient();
-        services.TryAddSingleton<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher, DomainEventDispatcher>();
+        services.TryAddScoped<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher, DomainEventDispatcher>();
         services.TryAddScoped<IUnitOfWork, InMemoryUnitOfWork>();
 
         // R4.6 / ANT-001 — A2A agent directory lifecycle (decision: "scoped per request"):

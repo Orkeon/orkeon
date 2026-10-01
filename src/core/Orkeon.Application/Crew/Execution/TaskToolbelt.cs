@@ -14,7 +14,7 @@ namespace Orkeon.Application.Crew.Execution;
 /// The belt is the agent's tools, then the task's own <c>tools:</c> (they <b>add to</b> the
 /// agent's for this task only, never replace them), then <c>human_input</c> when the task asks for
 /// human input and the host registered that tool. A name appears once: the first holder wins,
-/// compared case-insensitively. When <paramref name="registeredTools"/> holds a tool of the
+/// compared case-insensitively. When the host's registered tools hold a tool of the
 /// same name, that registered instance is used — the agent's own instance otherwise (delegation
 /// tools, script tools added at run time).
 /// </remarks>

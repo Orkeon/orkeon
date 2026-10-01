@@ -12,7 +12,7 @@
 - **Agents**: 4 — Hypothesis Formulator, Fault Injector, Impact Measurer, Results Analyst
 - **Tools**: `http_api`, `json_tool`, `file_write`
 - **Memory**: `Redis`
-- **Key features**: HumanInputContext (approval before each injection), ObserverAgent, TaskCallbacks (threshold alerts), ICheckpointManager (rollback)
+- **Key features**: HumanInputContext (approval before each injection), ObserverAgent, ICheckpointManager (rollback)
 - **Runner**: `standard`
 
 ## Prerequisites

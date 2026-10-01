@@ -12,7 +12,7 @@
 - **Agents**: 4 — Source Researcher, Scriptwriter, Sound Design Brief Writer, Final Editor
 - **Tools**: `web_scrape`, `http_api`, `json_tool`, `file_read`, `file_write`
 - **Memory**: `InMemory`
-- **Key features**: ToolBase<TReq, TRes> (typed contracts), Task dependencies, output validation per stage, TaskCallbacks
+- **Key features**: ToolBase<TReq, TRes> (typed contracts), Task dependencies, output validation per stage
 - **Runner**: `standard`
 
 ## Prerequisites

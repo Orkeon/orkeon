@@ -12,7 +12,7 @@
 - **Agents**: 8 -- CIO (manager), Data Orchestrator, Technical Analyst, Quant Forecaster, Risk Officer, Portfolio Manager, Trader, Compliance Officer
 - **Tools**: `http_api`, `json_tool`, `csv_reader`, `code_interpreter`, `database_query`, `file_write`
 - **Memory**: `Redis` (real-time) + `SQLite` (historical)
-- **Key features**: Full delegation with DelegationEvents, CrewHooks, TaskCallbacks, LlmRateLimiter, EvaluationSuite, streaming
+- **Key features**: Full delegation, CrewHooks, LlmRateLimiter, EvaluationSuite, streaming
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites

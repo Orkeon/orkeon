@@ -12,7 +12,7 @@
 - **Agents**: 4 — Schema Cartographer, Correspondence Mapper, Script Transformer, Integrity Validator
 - **Tools**: `database_query`, `file_read`, `file_write`, `json_tool`
 - **Memory**: `SQLite`
-- **Key features**: ICheckpointManager + IResumeEngine + IStateStore, TaskCallbacks, output validation (referential integrity)
+- **Key features**: ICheckpointManager + IResumeEngine + IStateStore, output validation (referential integrity)
 - **Runner**: `standard`
 
 ## Prerequisites

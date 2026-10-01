@@ -298,67 +298,6 @@ public class TaskEventsTests
     }
 
     [Fact]
-    public void ShouldInitializeProperties_WhenUsingTaskBlockedEventUsingConstructor()
-    {
-        // Arrange
-        var blockingTasks = new[] { TaskId.From(Guid.NewGuid()), TaskId.From(Guid.NewGuid()) };
-
-        // Act
-        var @event = new TaskBlockedEvent { TaskId = _taskId, BlockingTasks = blockingTasks, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal(_taskId, @event.TaskId);
-        Assert.Equal(blockingTasks, @event.BlockingTasks);
-        Assert.Equal(_occurredAt, @event.OccurredAt);
-        Assert.NotEqual(Guid.Empty, @event.Id);
-    }
-
-    [Fact]
-    public void ShouldInitializeCorrectly_WhenUsingTaskBlockedEventWithEmptyBlockingTasks()
-    {
-        // Arrange
-        var blockingTasks = Array.Empty<TaskId>();
-
-        // Act
-        var @event = new TaskBlockedEvent { TaskId = _taskId, BlockingTasks = blockingTasks, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Empty(@event.BlockingTasks);
-    }
-
-    [Fact]
-    public void ShouldReturnCorrectName_WhenUsingTaskBlockedEventUsingEventName()
-    {
-        // Act
-        var @event = new TaskBlockedEvent { TaskId = _taskId, BlockingTasks = [], OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal("TaskBlockedEvent", @event.EventName);
-    }
-
-    [Fact]
-    public void ShouldInitializeProperties_WhenUsingTaskUnblockedEventUsingConstructor()
-    {
-        // Act
-        var @event = new TaskUnblockedEvent { TaskId = _taskId, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal(_taskId, @event.TaskId);
-        Assert.Equal(_occurredAt, @event.OccurredAt);
-        Assert.NotEqual(Guid.Empty, @event.Id);
-    }
-
-    [Fact]
-    public void ShouldReturnCorrectName_WhenUsingTaskUnblockedEventUsingEventName()
-    {
-        // Act
-        var @event = new TaskUnblockedEvent { TaskId = _taskId, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal("TaskUnblockedEvent", @event.EventName);
-    }
-
-    [Fact]
     public void ShouldSupportEquality_WhenUsingTaskEventsAsRecords()
     {
         // Arrange
@@ -441,17 +380,6 @@ public class TaskEventsTests
         // Assert
         Assert.Null(@event.AddedDependencies);
         Assert.Null(@event.RemovedDependencies);
-        Assert.Equal(_taskId, @event.TaskId);
-    }
-
-    [Fact]
-    public void ShouldHandleGracefully_WhenUsingTaskBlockedEventWithNullBlockingTasks()
-    {
-        // Act
-        var @event = new TaskBlockedEvent { TaskId = _taskId, BlockingTasks = null!, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Null(@event.BlockingTasks);
         Assert.Equal(_taskId, @event.TaskId);
     }
 

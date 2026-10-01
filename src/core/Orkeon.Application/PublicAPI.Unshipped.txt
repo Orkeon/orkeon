@@ -592,3 +592,180 @@ Orkeon.Application.Crew.Execution.TaskToolbelt
 const Orkeon.Application.Crew.Execution.TaskToolbelt.HumanInputToolName = "human_input" -> string!
 static Orkeon.Application.Crew.Execution.GuardrailsPromptRenderer.AppendAgentAndTaskGuardrails(System.Text.StringBuilder! prompt, Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>! toolbelt) -> void
 static Orkeon.Application.Crew.Execution.TaskToolbelt.Compose(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? registeredTools = null) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
+*REMOVED*Orkeon.Application.Callback.CallbackExamples
+*REMOVED*Orkeon.Application.Callback.CompositeCallbackHandler.OnFlowStepCompletedAsync(Orkeon.Application.Callback.FlowStepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Callback.CompositeCallbackHandler.OnFlowStepStartedAsync(Orkeon.Application.Callback.FlowStepStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Callback.CompositeCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Callback.CustomWorkflowCallbackHandler
+*REMOVED*Orkeon.Application.Callback.CustomWorkflowCallbackHandler.CustomWorkflowCallbackHandler(string! workflowId, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+*REMOVED*Orkeon.Application.Callback.CustomWorkflowCallbackHandler.GetWorkflowSteps() -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Deconstruct(out Orkeon.Application.Callback.FlowStepIdentity! FlowStep, out bool Success, out object? Output, out string? Error, out System.TimeSpan Duration, out System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Duration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Duration.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Error.get -> string?
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Error.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.FlowExecutionId.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.FlowName.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.FlowStep.get -> Orkeon.Application.Callback.FlowStepIdentity!
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.FlowStep.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.FlowStepCompletedContext(Orkeon.Application.Callback.FlowStepCompletedContext! original) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.FlowStepCompletedContext(Orkeon.Application.Callback.FlowStepIdentity! FlowStep, bool Success, object? Output, string? Error, System.TimeSpan Duration, System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Output.get -> object?
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Output.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.StepId.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.StepName.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Success.get -> bool
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Success.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Timestamp.get -> System.DateTime
+*REMOVED*Orkeon.Application.Callback.FlowStepCompletedContext.Timestamp.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.Deconstruct(out string! FlowExecutionId, out string! FlowName, out string! StepId, out string! StepName) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.FlowExecutionId.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.FlowExecutionId.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.FlowName.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.FlowName.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.FlowStepIdentity(Orkeon.Application.Callback.FlowStepIdentity! original) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.FlowStepIdentity(string! FlowExecutionId, string! FlowName, string! StepId, string! StepName) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.StepId.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.StepId.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.StepName.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepIdentity.StepName.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.Deconstruct(out string! FlowExecutionId, out string! FlowName, out string! StepId, out string! StepName, out System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.FlowExecutionId.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.FlowExecutionId.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.FlowName.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.FlowName.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.FlowStepStartedContext(Orkeon.Application.Callback.FlowStepStartedContext! original) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.FlowStepStartedContext(string! FlowExecutionId, string! FlowName, string! StepId, string! StepName, System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.StepId.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.StepId.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.StepName.get -> string!
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.StepName.init -> void
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.Timestamp.get -> System.DateTime
+*REMOVED*Orkeon.Application.Callback.FlowStepStartedContext.Timestamp.init -> void
+*REMOVED*Orkeon.Application.Callback.ICallbackHandler.OnFlowStepCompletedAsync(Orkeon.Application.Callback.FlowStepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Callback.ICallbackHandler.OnFlowStepStartedAsync(Orkeon.Application.Callback.FlowStepStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Callback.ICallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnCompleted.get -> System.Func<Orkeon.Application.Callback.TaskCompletedContext!, System.Threading.Tasks.Task!>?
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnCompleted.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnFailed.get -> System.Func<Orkeon.Application.Callback.TaskCompletedContext!, System.Threading.Tasks.Task!>?
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnFailed.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnFinally.get -> System.Func<Orkeon.Application.Callback.TaskCompletedContext!, System.Threading.Tasks.Task!>?
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnFinally.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnProgress.get -> System.Func<Orkeon.Application.Callback.TaskProgressContext!, System.Threading.Tasks.Task!>?
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnProgress.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnStarted.get -> System.Func<Orkeon.Application.Callback.TaskStartedContext!, System.Threading.Tasks.Task!>?
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.OnStarted.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskCallbacks.TaskCallbacks() -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.AgentId.get -> string?
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.AgentId.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.CurrentAction.get -> string!
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.CurrentAction.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.Deconstruct(out string! TaskId, out string? AgentId, out int StepNumber, out int TotalSteps, out double ProgressPercentage, out string! CurrentAction, out System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.ProgressPercentage.get -> double
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.ProgressPercentage.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.StepNumber.get -> int
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.StepNumber.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.TaskId.get -> string!
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.TaskId.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.TaskProgressContext(Orkeon.Application.Callback.TaskProgressContext! original) -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.TaskProgressContext(string! TaskId, string? AgentId, int StepNumber, int TotalSteps, double ProgressPercentage, string! CurrentAction, System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.Timestamp.get -> System.DateTime
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.Timestamp.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.TotalSteps.get -> int
+*REMOVED*Orkeon.Application.Callback.TaskProgressContext.TotalSteps.init -> void
+*REMOVED*Orkeon.Application.Execution.CallbackOrchestrator.NotifyDelegationAsync(Orkeon.Domain.Agent.Agent! fromAgent, Orkeon.Domain.Agent.Agent! toAgent, Orkeon.Domain.Task.CrewTask! task, string! reason, Orkeon.Application.Callback.ICallbackHandler? agentCallbackHandler = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Execution.CallbackOrchestrator.NotifyStepProgressAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Services.StepProgressInfo! progressInfo, Orkeon.Application.Interfaces.Services.CallbackHandlers? handlers = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Execution.CallbackOrchestrator.NotifyTaskCompletedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Services.TaskCompletionInfo! completionInfo, Orkeon.Application.Interfaces.Services.CallbackHandlers? handlers = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Execution.CallbackOrchestrator.NotifyTaskStartedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.DateTime startTime, Orkeon.Application.Interfaces.Services.CallbackHandlers? handlers = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Execution.CallbackOrchestrator.NotifyToolUsedAsync(Orkeon.Domain.Agent.Agent! agent, string! toolName, object! input, object! output, System.TimeSpan duration, Orkeon.Application.Callback.ICallbackHandler? agentCallbackHandler = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Interfaces.Services.CallbackHandlers
+*REMOVED*Orkeon.Application.Interfaces.Services.CallbackHandlers.AgentCallbackHandler.get -> Orkeon.Application.Callback.ICallbackHandler?
+*REMOVED*Orkeon.Application.Interfaces.Services.CallbackHandlers.AgentCallbackHandler.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CallbackHandlers.CallbackHandlers() -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CallbackHandlers.TaskCallbackHandler.get -> Orkeon.Application.Callback.ICallbackHandler?
+*REMOVED*Orkeon.Application.Interfaces.Services.CallbackHandlers.TaskCallbackHandler.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CallbackHandlers.TaskCallbacks.get -> Orkeon.Application.Callback.TaskCallbacks?
+*REMOVED*Orkeon.Application.Interfaces.Services.CallbackHandlers.TaskCallbacks.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyStepProgressAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Services.StepProgressInfo! progressInfo, Orkeon.Application.Interfaces.Services.CallbackHandlers? handlers = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyTaskCompletedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Services.TaskCompletionInfo! completionInfo, Orkeon.Application.Interfaces.Services.CallbackHandlers? handlers = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyTaskStartedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.DateTime startTime, Orkeon.Application.Interfaces.Services.CallbackHandlers? handlers = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Interfaces.Services.StepProgressInfo
+*REMOVED*Orkeon.Application.Interfaces.Services.StepProgressInfo.CurrentStep.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Services.StepProgressInfo.CurrentStep.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.StepProgressInfo.StepDescription.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Services.StepProgressInfo.StepDescription.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.StepProgressInfo.StepProgressInfo() -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.StepProgressInfo.TotalSteps.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Services.StepProgressInfo.TotalSteps.init -> void
+*REMOVED*override Orkeon.Application.Callback.CustomWorkflowCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.CustomWorkflowCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.FlowStepCompletedContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Callback.FlowStepCompletedContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Callback.FlowStepCompletedContext.ToString() -> string!
+*REMOVED*override Orkeon.Application.Callback.FlowStepIdentity.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Callback.FlowStepIdentity.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Callback.FlowStepIdentity.ToString() -> string!
+*REMOVED*override Orkeon.Application.Callback.FlowStepStartedContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Callback.FlowStepStartedContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Callback.FlowStepStartedContext.ToString() -> string!
+*REMOVED*override Orkeon.Application.Callback.LoggingCallbackHandler.OnFlowStepCompletedAsync(Orkeon.Application.Callback.FlowStepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.LoggingCallbackHandler.OnFlowStepStartedAsync(Orkeon.Application.Callback.FlowStepStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.LoggingCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.TaskProgressContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Callback.TaskProgressContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Callback.TaskProgressContext.ToString() -> string!
+*REMOVED*static Orkeon.Application.Callback.CallbackExamples.CreateAgent() -> Orkeon.Domain.Agent.Agent!
+*REMOVED*static Orkeon.Application.Callback.CallbackExamples.CreateAgentForCallbacks() -> Orkeon.Domain.Agent.Agent!
+*REMOVED*static Orkeon.Application.Callback.CallbackExamples.CreateAnalysisTask() -> Orkeon.Domain.Task.CrewTask!
+*REMOVED*static Orkeon.Application.Callback.CallbackExamples.CreateAsyncTaskCallbacks(Microsoft.Extensions.Logging.ILogger! logger) -> Orkeon.Application.Callback.TaskCallbacks!
+*REMOVED*static Orkeon.Application.Callback.CallbackExamples.CreateCompositeCallbackHandler(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Callback.LoggingCallbackHandler!>! logger) -> Orkeon.Application.Callback.ICallbackHandler!
+*REMOVED*static Orkeon.Application.Callback.CallbackExamples.CreateSimpleTaskCallbacks(Microsoft.Extensions.Logging.ILogger! logger) -> Orkeon.Application.Callback.TaskCallbacks!
+*REMOVED*static Orkeon.Application.Callback.CallbackExamples.CreateTask() -> Orkeon.Domain.Task.CrewTask!
+*REMOVED*static Orkeon.Application.Callback.FlowStepCompletedContext.operator !=(Orkeon.Application.Callback.FlowStepCompletedContext? left, Orkeon.Application.Callback.FlowStepCompletedContext? right) -> bool
+*REMOVED*static Orkeon.Application.Callback.FlowStepCompletedContext.operator ==(Orkeon.Application.Callback.FlowStepCompletedContext? left, Orkeon.Application.Callback.FlowStepCompletedContext? right) -> bool
+*REMOVED*static Orkeon.Application.Callback.FlowStepIdentity.operator !=(Orkeon.Application.Callback.FlowStepIdentity? left, Orkeon.Application.Callback.FlowStepIdentity? right) -> bool
+*REMOVED*static Orkeon.Application.Callback.FlowStepIdentity.operator ==(Orkeon.Application.Callback.FlowStepIdentity? left, Orkeon.Application.Callback.FlowStepIdentity? right) -> bool
+*REMOVED*static Orkeon.Application.Callback.FlowStepStartedContext.operator !=(Orkeon.Application.Callback.FlowStepStartedContext? left, Orkeon.Application.Callback.FlowStepStartedContext? right) -> bool
+*REMOVED*static Orkeon.Application.Callback.FlowStepStartedContext.operator ==(Orkeon.Application.Callback.FlowStepStartedContext? left, Orkeon.Application.Callback.FlowStepStartedContext? right) -> bool
+*REMOVED*static Orkeon.Application.Callback.TaskCallbacks.Create(System.Func<Orkeon.Application.Callback.TaskStartedContext!, System.Threading.Tasks.Task!>? onStarted = null, System.Func<Orkeon.Application.Callback.TaskProgressContext!, System.Threading.Tasks.Task!>? onProgress = null, System.Func<Orkeon.Application.Callback.TaskCompletedContext!, System.Threading.Tasks.Task!>? onCompleted = null, System.Func<Orkeon.Application.Callback.TaskCompletedContext!, System.Threading.Tasks.Task!>? onFailed = null, System.Func<Orkeon.Application.Callback.TaskCompletedContext!, System.Threading.Tasks.Task!>? onFinally = null) -> Orkeon.Application.Callback.TaskCallbacks!
+*REMOVED*static Orkeon.Application.Callback.TaskCallbacks.CreateActions(System.Action<Orkeon.Application.Callback.TaskStartedContext!>? onStarted = null, System.Action<Orkeon.Application.Callback.TaskProgressContext!>? onProgress = null, System.Action<Orkeon.Application.Callback.TaskCompletedContext!>? onCompleted = null, System.Action<Orkeon.Application.Callback.TaskCompletedContext!>? onFailed = null, System.Action<Orkeon.Application.Callback.TaskCompletedContext!>? onFinally = null) -> Orkeon.Application.Callback.TaskCallbacks!
+*REMOVED*static Orkeon.Application.Callback.TaskProgressContext.operator !=(Orkeon.Application.Callback.TaskProgressContext? left, Orkeon.Application.Callback.TaskProgressContext? right) -> bool
+*REMOVED*static Orkeon.Application.Callback.TaskProgressContext.operator ==(Orkeon.Application.Callback.TaskProgressContext? left, Orkeon.Application.Callback.TaskProgressContext? right) -> bool
+*REMOVED*static readonly Orkeon.Application.Interfaces.Services.CallbackHandlers.None -> Orkeon.Application.Interfaces.Services.CallbackHandlers!
+*REMOVED*virtual Orkeon.Application.Callback.BaseCallbackHandler.OnFlowStepCompletedAsync(Orkeon.Application.Callback.FlowStepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*virtual Orkeon.Application.Callback.BaseCallbackHandler.OnFlowStepStartedAsync(Orkeon.Application.Callback.FlowStepStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*virtual Orkeon.Application.Callback.BaseCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepCompletedContext.<Clone>$() -> Orkeon.Application.Callback.FlowStepCompletedContext!
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepCompletedContext.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepCompletedContext.Equals(Orkeon.Application.Callback.FlowStepCompletedContext? other) -> bool
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepCompletedContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepIdentity.<Clone>$() -> Orkeon.Application.Callback.FlowStepIdentity!
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepIdentity.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepIdentity.Equals(Orkeon.Application.Callback.FlowStepIdentity? other) -> bool
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepIdentity.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepStartedContext.<Clone>$() -> Orkeon.Application.Callback.FlowStepStartedContext!
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepStartedContext.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepStartedContext.Equals(Orkeon.Application.Callback.FlowStepStartedContext? other) -> bool
+*REMOVED*virtual Orkeon.Application.Callback.FlowStepStartedContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Callback.TaskProgressContext.<Clone>$() -> Orkeon.Application.Callback.TaskProgressContext!
+*REMOVED*virtual Orkeon.Application.Callback.TaskProgressContext.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Callback.TaskProgressContext.Equals(Orkeon.Application.Callback.TaskProgressContext? other) -> bool
+*REMOVED*virtual Orkeon.Application.Callback.TaskProgressContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Crew.ExecutionOrchestrator.Callbacks.get -> Orkeon.Application.Interfaces.Services.ICallbackOrchestrator?
+Orkeon.Application.Crew.ExecutionOrchestrator.Callbacks.set -> void
+Orkeon.Application.Execution.CallbackOrchestrator.NotifyStepCompletedAsync(Orkeon.Application.Callback.StepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Execution.CallbackOrchestrator.NotifyStepStartedAsync(Orkeon.Application.Callback.StepStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Execution.CallbackOrchestrator.NotifyTaskCompletedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Services.TaskCompletionInfo! completionInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Execution.CallbackOrchestrator.NotifyTaskStartedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.DateTime startTime, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline
+Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.InvokeAsync(Orkeon.Application.Interfaces.Security.ToolInvocation! invocation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolInvocationResult!>!
+Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyStepCompletedAsync(Orkeon.Application.Callback.StepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyStepStartedAsync(Orkeon.Application.Callback.StepStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyTaskCompletedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Services.TaskCompletionInfo! completionInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyTaskStartedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.DateTime startTime, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.Wrap(Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! inner, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator? callbacks) -> Orkeon.Application.Interfaces.Security.IToolInvocationPipeline!

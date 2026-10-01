@@ -9,6 +9,7 @@ using Orkeon.Domain.Agent;
 using Orkeon.Domain.Crew;
 using Orkeon.Domain.Crew.Interfaces;
 using Orkeon.Domain.Task;
+using Orkeon.Domain.SharedKernel.Events;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Application.Interfaces;
 // Resolve ambiguous references
@@ -35,6 +36,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly IAgentRepository? _agentRepository;
     private readonly ICheckpointManager? _checkpointManager;
     private readonly IExecutionPlanParser _executionPlanParser;
+    private readonly IDomainEventDispatcher _domainEventDispatcher;
     private readonly Orkeon.Application.Memory.CrewMemoryProviderRegistry? _memoryProviderRegistry;
     private readonly Orkeon.Application.EventHub.IEventHubCallerContext? _hubCallerContext;
 
@@ -49,6 +51,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         ICrewExecutionStateManager stateManager,
         IProcessStrategyFactory processStrategyFactory,
         IExecutionPlanParser executionPlanParser,
+        IDomainEventDispatcher domainEventDispatcher,
         IStreamingAgentExecutionService? streamingService = null,
         IAgentRepository? agentRepository = null,
         ICheckpointManager? checkpointManager = null,
@@ -66,6 +69,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _processStrategyFactory = processStrategyFactory;
         ArgumentNullException.ThrowIfNull(executionPlanParser);
         _executionPlanParser = executionPlanParser;
+        ArgumentNullException.ThrowIfNull(domainEventDispatcher);
+        _domainEventDispatcher = domainEventDispatcher;
         _streamingService = streamingService;
         _agentRepository = agentRepository;
         _checkpointManager = checkpointManager;
@@ -104,11 +109,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         LogOrchestratingCrewExecution(crewId);
 
         string? sessionId = null;
+        Orkeon.Domain.Crew.Crew? crew = null;
 
         try
         {
             // Load crew from repository
-            var crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
+            crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Crew {crewId} not found");
 
             // Record the crew's declared memory provider so the memory subsystem resolves it to a
@@ -185,6 +191,44 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 TokensUsed: null) // failed before telemetry could be collected
             { Succeeded = false, Error = ex.Message };
         }
+        finally
+        {
+            // Success, failure and cancellation all end here: the crew's queued events
+            // (construction events, then Started and Completed/Failed) go to the
+            // IDomainEventHandler<T> registrations once, and the aggregate is emptied.
+            if (crew is not null)
+                await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
+        }
+        }
+    }
+
+    /// <summary>
+    /// Hands the crew's queued domain events to <see cref="IDomainEventDispatcher"/> and empties
+    /// the aggregate. Dispatched directly rather than through <c>IUnitOfWork</c>, which tracks a
+    /// single aggregate per scope. A handler that throws is logged and skipped: an observer never
+    /// changes the run's output nor replaces its exception, and the events after it still go out.
+    /// The run's token is not passed — a cancelled run still reports its failure.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Observer fault barrier: a failing domain-event handler must not alter the crew run's result, like CrewHookDispatcher.")]
+    private async System.Threading.Tasks.Task DispatchCrewEventsAsync(Orkeon.Domain.Crew.Crew crew)
+    {
+        DomainEvent[] pending;
+        lock (crew)
+        {
+            pending = [.. crew.DomainEvents];
+            crew.ClearDomainEvents();
+        }
+
+        foreach (var domainEvent in pending)
+        {
+            try
+            {
+                await _domainEventDispatcher.DispatchAsync(domainEvent, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                LogDomainEventHandlerFailed(ex, domainEvent.GetType().Name, crew.Id);
+            }
         }
     }
 
@@ -495,6 +539,23 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         var crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Crew {crewId.ToString()} not found");
 
+        try
+        {
+            await foreach (var ev in StreamCrewTasksAsync(crew, input, cancellationToken).ConfigureAwait(false))
+                yield return ev;
+        }
+        finally
+        {
+            await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
+        }
+    }
+
+    private async IAsyncEnumerable<CrewExecutionEvent> StreamCrewTasksAsync(
+        Orkeon.Domain.Crew.Crew crew,
+        CrewInput input,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var crewId = crew.Id;
         var agents = await LoadAgentsAsync(crew, cancellationToken).ConfigureAwait(false);
 
         if (agents.Count == 0)
@@ -609,6 +670,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "KickoffStreamingAsync is degrading to per-task replay — tool-call granularity is lost. No IStreamingAgentExecutionService (and/or IAgentRepository) is registered: call AddOrkeonInfrastructure() (which registers StreamingAgentExecutionService) with an IChatClient/LLM provider configured to stream AgentThought-level events.")]
     private partial void LogStreamingDegraded();
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A handler of domain event {EventName} raised by crew {CrewId} failed; the run's result is unchanged")]
+    private partial void LogDomainEventHandlerFailed(Exception ex, string eventName, CrewId crewId);
     [LoggerMessage(Level = LogLevel.Error, Message = "Cannot execute crew: CrewId is null")]
     private partial void LogCrewIdNull();
     [LoggerMessage(Level = LogLevel.Information, Message = "Orchestrating crew execution for {CrewId}")]

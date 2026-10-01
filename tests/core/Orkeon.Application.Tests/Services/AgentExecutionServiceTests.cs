@@ -8,6 +8,7 @@ using Orkeon.Application.Agent;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
+using Orkeon.Application.Callback;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using TaskExecutionPlan = Orkeon.Application.Interfaces.Services.TaskExecutionPlan;
 using PlannedStep = Orkeon.Application.Interfaces.Services.PlannedStep;
@@ -635,7 +636,7 @@ internal class TestCallbackOrchestrator : ICallbackOrchestrator
 
     public System.Threading.Tasks.Task NotifyTaskStartedAsync(
         DomainAgent agent, DomainTask task, DateTime startTime,
-        CallbackHandlers? handlers = null, CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         TaskStartedCalled = true;
         LastAgent = agent;
@@ -645,7 +646,7 @@ internal class TestCallbackOrchestrator : ICallbackOrchestrator
 
     public System.Threading.Tasks.Task NotifyTaskCompletedAsync(
         DomainAgent agent, DomainTask task, TaskCompletionInfo completionInfo,
-        CallbackHandlers? handlers = null, CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         TaskCompletedCalled = true;
         LastAgent = agent;
@@ -654,12 +655,13 @@ internal class TestCallbackOrchestrator : ICallbackOrchestrator
         return System.Threading.Tasks.Task.CompletedTask;
     }
 
-    public System.Threading.Tasks.Task NotifyStepProgressAsync(
-        DomainAgent agent, DomainTask task, StepProgressInfo progressInfo,
-        CallbackHandlers? handlers = null, CancellationToken cancellationToken = default)
-    {
-        return System.Threading.Tasks.Task.CompletedTask;
-    }
+    public System.Threading.Tasks.Task NotifyStepStartedAsync(
+        StepStartedContext context, CancellationToken cancellationToken = default)
+        => System.Threading.Tasks.Task.CompletedTask;
+
+    public System.Threading.Tasks.Task NotifyStepCompletedAsync(
+        StepCompletedContext context, CancellationToken cancellationToken = default)
+        => System.Threading.Tasks.Task.CompletedTask;
 }
 
 internal class TestMemoryCoordinator : IMemoryCoordinator

@@ -33,29 +33,12 @@ public class BaseCallbackHandlerTests
             await System.Threading.Tasks.Task.CompletedTask;
         }
 
-        public override async System.Threading.Tasks.Task OnTaskProgressAsync(TaskProgressContext context, CancellationToken cancellationToken = default)
-        {
-            CallLog.Add($"TaskProgress:{context.TaskId}:{context.ProgressPercentage.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
-            await System.Threading.Tasks.Task.CompletedTask;
-        }
-
         public override async System.Threading.Tasks.Task OnTaskCompletedAsync(TaskCompletedContext context, CancellationToken cancellationToken = default)
         {
             CallLog.Add($"TaskCompleted:{context.TaskId}:{context.Success}");
             await System.Threading.Tasks.Task.CompletedTask;
         }
 
-        public override async System.Threading.Tasks.Task OnFlowStepStartedAsync(FlowStepStartedContext context, CancellationToken cancellationToken = default)
-        {
-            CallLog.Add($"FlowStepStarted:{context.StepId}");
-            await System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public override async System.Threading.Tasks.Task OnFlowStepCompletedAsync(FlowStepCompletedContext context, CancellationToken cancellationToken = default)
-        {
-            CallLog.Add($"FlowStepCompleted:{context.StepId}:{context.Success}");
-            await System.Threading.Tasks.Task.CompletedTask;
-        }
     }
 
     private class MinimalCallbackHandler : BaseCallbackHandler
@@ -138,16 +121,10 @@ public class BaseCallbackHandlerTests
 
         // All default implementations should return completed tasks
         var task1 = handler.OnTaskStartedAsync(new TaskStartedContext(TaskId1, "desc", "output", AgentId1, "role", DateTime.UtcNow), TestContext.Current.CancellationToken);
-        var task2 = handler.OnTaskProgressAsync(new TaskProgressContext(TaskId1, AgentId1, 1, 5, 20.0, "action", DateTime.UtcNow), TestContext.Current.CancellationToken);
         var task3 = handler.OnTaskCompletedAsync(new TaskCompletedContext(TaskId1, AgentId1, new TaskExecutionOutcome(true, "output", null, null), TimeSpan.FromMinutes(1), 3, DateTime.UtcNow), TestContext.Current.CancellationToken);
-        var task4 = handler.OnFlowStepStartedAsync(new FlowStepStartedContext(FlowId1, "TestFlow", StepId1, "TestStep", DateTime.UtcNow), TestContext.Current.CancellationToken);
-        var task5 = handler.OnFlowStepCompletedAsync(new FlowStepCompletedContext(new FlowStepIdentity(FlowId1, "TestFlow", StepId1, "TestStep"), true, "result", null, TimeSpan.FromSeconds(2), DateTime.UtcNow), TestContext.Current.CancellationToken);
 
         Assert.True(task1.IsCompletedSuccessfully);
-        Assert.True(task2.IsCompletedSuccessfully);
         Assert.True(task3.IsCompletedSuccessfully);
-        Assert.True(task4.IsCompletedSuccessfully);
-        Assert.True(task5.IsCompletedSuccessfully);
     }
 
     [Fact]
@@ -202,29 +179,20 @@ public class BaseCallbackHandlerTests
         var stepStartedContext = new StepStartedContext(AgentId1, "analyst", TaskId1, "analyze", "thinking", timestamp);
         var stepCompletedContext = new StepCompletedContext(new StepIdentity(AgentId1, "analyst", TaskId1), "analyze", "thinking", "result", true, TimeSpan.FromSeconds(5), timestamp);
         var taskStartedContext = new TaskStartedContext(TaskId1, "Test task", "Expected output", AgentId1, "analyst", timestamp);
-        var taskProgressContext = new TaskProgressContext(TaskId1, AgentId1, 2, 5, 40.0, "current action", timestamp);
         var taskCompletedContext = new TaskCompletedContext(TaskId1, AgentId1, new TaskExecutionOutcome(true, "final output", new { result = "success" }, null), TimeSpan.FromMinutes(2), 5, timestamp);
-        var flowStepStartedContext = new FlowStepStartedContext(FlowId1, "TestFlow", StepId1, "AnalysisStep", timestamp);
-        var flowStepCompletedContext = new FlowStepCompletedContext(new FlowStepIdentity(FlowId1, "TestFlow", StepId1, "AnalysisStep"), true, "step result", null, TimeSpan.FromSeconds(10), timestamp);
 
         // Act
         await handler.OnStepStartedAsync(stepStartedContext, TestContext.Current.CancellationToken);
         await handler.OnStepCompletedAsync(stepCompletedContext, TestContext.Current.CancellationToken);
         await handler.OnTaskStartedAsync(taskStartedContext, TestContext.Current.CancellationToken);
-        await handler.OnTaskProgressAsync(taskProgressContext, TestContext.Current.CancellationToken);
         await handler.OnTaskCompletedAsync(taskCompletedContext, TestContext.Current.CancellationToken);
-        await handler.OnFlowStepStartedAsync(flowStepStartedContext, TestContext.Current.CancellationToken);
-        await handler.OnFlowStepCompletedAsync(flowStepCompletedContext, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(7, handler.CallLog.Count);
+        Assert.Equal(4, handler.CallLog.Count);
         Assert.Contains("StepStarted:agent-1:analyze", handler.CallLog);
         Assert.Contains("StepCompleted:agent-1:True", handler.CallLog);
         Assert.Contains("TaskStarted:task-1", handler.CallLog);
-        Assert.Contains("TaskProgress:task-1:40", handler.CallLog);
         Assert.Contains("TaskCompleted:task-1:True", handler.CallLog);
-        Assert.Contains("FlowStepStarted:step-1", handler.CallLog);
-        Assert.Contains("FlowStepCompleted:step-1:True", handler.CallLog);
     }
 
     [Fact]
@@ -352,14 +320,11 @@ public class BaseCallbackHandlerTests
         await compositeHandler.OnStepStartedAsync(new StepStartedContext(AgentId1, "analyst", TaskId1, "analyze", "thinking", timestamp), TestContext.Current.CancellationToken);
         await compositeHandler.OnStepCompletedAsync(new StepCompletedContext(new StepIdentity(AgentId1, "analyst", TaskId1), "analyze", "thinking", "result", true, TimeSpan.FromSeconds(5), timestamp), TestContext.Current.CancellationToken);
         await compositeHandler.OnTaskStartedAsync(new TaskStartedContext(TaskId1, "Test task", "Expected output", AgentId1, "analyst", timestamp), TestContext.Current.CancellationToken);
-        await compositeHandler.OnTaskProgressAsync(new TaskProgressContext(TaskId1, AgentId1, 1, 3, 33.33, "action", timestamp), TestContext.Current.CancellationToken);
         await compositeHandler.OnTaskCompletedAsync(new TaskCompletedContext(TaskId1, AgentId1, new TaskExecutionOutcome(true, "output", null, null), TimeSpan.FromMinutes(1), 3, timestamp), TestContext.Current.CancellationToken);
-        await compositeHandler.OnFlowStepStartedAsync(new FlowStepStartedContext(FlowId1, "TestFlow", StepId1, "TestStep", timestamp), TestContext.Current.CancellationToken);
-        await compositeHandler.OnFlowStepCompletedAsync(new FlowStepCompletedContext(new FlowStepIdentity(FlowId1, "TestFlow", StepId1, "TestStep"), true, "result", null, TimeSpan.FromSeconds(2), timestamp), TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(7, handler1.CallLog.Count);
-        Assert.Equal(7, handler2.CallLog.Count);
+        Assert.Equal(4, handler1.CallLog.Count);
+        Assert.Equal(4, handler2.CallLog.Count);
 
         // Verify both handlers received all events
         var expectedCalls = new[]
@@ -367,10 +332,7 @@ public class BaseCallbackHandlerTests
             "StepStarted:agent-1:analyze",
             "StepCompleted:agent-1:True",
             "TaskStarted:task-1",
-            "TaskProgress:task-1:33.33",
             "TaskCompleted:task-1:True",
-            "FlowStepStarted:step-1",
-            "FlowStepCompleted:step-1:True"
         };
 
         foreach (var expectedCall in expectedCalls)
@@ -393,10 +355,7 @@ public class BaseCallbackHandlerTests
             await compositeHandler.OnStepStartedAsync(stepStartedContext, TestContext.Current.CancellationToken);
             await compositeHandler.OnStepCompletedAsync(new StepCompletedContext(new StepIdentity(AgentId1, "analyst", TaskId1), "analyze", "thinking", "result", true, TimeSpan.FromSeconds(5), DateTime.UtcNow), TestContext.Current.CancellationToken);
             await compositeHandler.OnTaskStartedAsync(new TaskStartedContext(TaskId1, "desc", "output", AgentId1, "role", DateTime.UtcNow), TestContext.Current.CancellationToken);
-            await compositeHandler.OnTaskProgressAsync(new TaskProgressContext(TaskId1, AgentId1, 1, 5, 20.0, "action", DateTime.UtcNow), TestContext.Current.CancellationToken);
             await compositeHandler.OnTaskCompletedAsync(new TaskCompletedContext(TaskId1, AgentId1, new TaskExecutionOutcome(true, "output", null, null), TimeSpan.FromMinutes(1), 3, DateTime.UtcNow), TestContext.Current.CancellationToken);
-            await compositeHandler.OnFlowStepStartedAsync(new FlowStepStartedContext(FlowId1, "TestFlow", StepId1, "TestStep", DateTime.UtcNow), TestContext.Current.CancellationToken);
-            await compositeHandler.OnFlowStepCompletedAsync(new FlowStepCompletedContext(new FlowStepIdentity(FlowId1, "TestFlow", StepId1, "TestStep"), true, "result", null, TimeSpan.FromSeconds(2), DateTime.UtcNow), TestContext.Current.CancellationToken);
         });
         Assert.Null(exception);
     }
@@ -499,10 +458,7 @@ public class BaseCallbackHandlerTests
             await handler.OnStepStartedAsync(null!, TestContext.Current.CancellationToken);
             await handler.OnStepCompletedAsync(null!, TestContext.Current.CancellationToken);
             await handler.OnTaskStartedAsync(null!, TestContext.Current.CancellationToken);
-            await handler.OnTaskProgressAsync(null!, TestContext.Current.CancellationToken);
             await handler.OnTaskCompletedAsync(null!, TestContext.Current.CancellationToken);
-            await handler.OnFlowStepStartedAsync(null!, TestContext.Current.CancellationToken);
-            await handler.OnFlowStepCompletedAsync(null!, TestContext.Current.CancellationToken);
         });
         Assert.Null(exception);
     }

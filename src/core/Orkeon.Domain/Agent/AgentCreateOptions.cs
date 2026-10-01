@@ -95,11 +95,6 @@ public sealed class AgentCreateOptions
     public IEnumerable<KnowledgeAttachment>? KnowledgeAttachments { get; init; }
 
     /// <summary>
-    /// Optional step callback handler.
-    /// </summary>
-    public IStepCallback? StepCallback { get; init; }
-
-    /// <summary>
     /// Optional tool access control policy for the agent.
     /// If not specified, defaults to unrestricted access.
     /// </summary>

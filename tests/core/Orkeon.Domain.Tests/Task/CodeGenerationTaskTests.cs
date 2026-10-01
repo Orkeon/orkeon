@@ -10,30 +10,6 @@ public class CodeGenerationTaskTests
     private static readonly string[] AdapterPatternArray = ["Adapter Pattern"];
     private static readonly string[] MvcRepositoryPatterns = ["MVC", "Repository"];
 
-    // Test doubles
-    private class TestTaskCallback : ITaskCallback
-    {
-        public List<string> CallbackEvents { get; } = [];
-
-        public System.Threading.Tasks.Task OnTaskStartAsync(ICrewTask task)
-        {
-            CallbackEvents.Add($"Started: {task.TaskId}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public System.Threading.Tasks.Task OnTaskCompletedAsync(ICrewTask task, TaskOutput output)
-        {
-            CallbackEvents.Add($"Completed: {task.TaskId}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public System.Threading.Tasks.Task OnTaskFailedAsync(ICrewTask task, string error)
-        {
-            CallbackEvents.Add($"Failed: {task.TaskId} - {error}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-    }
-
     private class TestCodeTemplate
     {
         public string Language { get; set; } = "csharp";
@@ -83,7 +59,6 @@ public class CodeGenerationTaskTests
         var outputJson = JsonSchema.From("{\"type\":\"object\",\"properties\":{\"files\":{\"type\":\"array\"}}}");
         var outputPydantic = typeof(TestCodeTemplate);
         var outputFile = "generated_code.zip";
-        var callback = new TestTaskCallback();
         var humanInput = true;
 
         // Act
@@ -100,7 +75,6 @@ public class CodeGenerationTaskTests
                 OutputJson = outputJson,
                 OutputPydantic = outputPydantic,
                 OutputFile = outputFile,
-                Callback = callback,
                 HumanInput = humanInput
             });
 
@@ -110,7 +84,6 @@ public class CodeGenerationTaskTests
         Assert.Equal(outputJson, task.OutputJson);
         Assert.Equal(outputPydantic, task.OutputPydantic);
         Assert.Equal(outputFile, task.OutputFile);
-        Assert.Equal(callback, task.Callback);
         Assert.Equal(humanInput, task.HumanInput);
         var context = task.TypedContext;
         Assert.Equal(language, context.Language);

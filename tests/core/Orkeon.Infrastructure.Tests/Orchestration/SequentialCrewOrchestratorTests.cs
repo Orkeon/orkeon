@@ -224,7 +224,7 @@ public class SequentialCrewOrchestratorTests
         var strategyFactory = new TestProcessStrategyFactory();
         var registry = new CrewMemoryProviderRegistry();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(),
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
             memoryProviderRegistry: registry);
 
         var crew = DomainCrew.Create(new CrewCreateOptions
@@ -253,7 +253,7 @@ public class SequentialCrewOrchestratorTests
         var strategyFactory = new TestProcessStrategyFactory();
         var registry = new CrewMemoryProviderRegistry();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(),
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
             memoryProviderRegistry: registry);
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
@@ -285,7 +285,7 @@ public class SequentialCrewOrchestratorTests
         await agentRepository.AddAsync(agent, TestContext.Current.CancellationToken);
 
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(),
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
             new FakeStreamingAgentExecutionService(), agentRepository);
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
@@ -317,7 +317,7 @@ public class SequentialCrewOrchestratorTests
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
         crew.AddAgent(AgentId.Create());
@@ -352,7 +352,7 @@ public class SequentialCrewOrchestratorTests
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
         crew.AddAgent(AgentId.Create());
@@ -380,7 +380,7 @@ public class SequentialCrewOrchestratorTests
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
 
         var crewId = CrewId.Create();
         var input = new CrewInput("Test", new Dictionary<string, object>());
@@ -405,7 +405,7 @@ public class SequentialCrewOrchestratorTests
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
 
         var input = new CrewInput("Test", new Dictionary<string, object>());
 
@@ -579,7 +579,7 @@ public class SequentialCrewOrchestratorTests
         var stateManager = new TestStateManager();
         strategyFactory = new TestProcessStrategyFactory();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
 
         crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
         crew.AddAgent(AgentId.Create());
@@ -623,7 +623,7 @@ public class SequentialCrewOrchestratorTests
         var strategyFactory = new TestProcessStrategyFactory();
         var callerContext = new Orkeon.Infrastructure.EventHub.DefaultEventHubCallerContext();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, new TestLogger(), stateManager, strategyFactory, new ExecutionPlanParser(),
+            repository, new TestLogger(), stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
             hubCallerContext: callerContext);
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
@@ -654,7 +654,7 @@ public class SequentialCrewOrchestratorTests
         var strategyFactory = new TestProcessStrategyFactory();
         var callerContext = new Orkeon.Infrastructure.EventHub.DefaultEventHubCallerContext();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, new TestLogger(), stateManager, strategyFactory, new ExecutionPlanParser(),
+            repository, new TestLogger(), stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
             hubCallerContext: callerContext);
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
@@ -676,7 +676,7 @@ public class SequentialCrewOrchestratorTests
     {
         var repository = new TestCrewRepository();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser());
+            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
         var agentId = AgentId.Create();
         var taskId = TaskId.Create();
         var provider = new MockLlmProvider();
@@ -714,7 +714,7 @@ public class SequentialCrewOrchestratorTests
         var repository = new TestCrewRepository();
         var strategyFactory = new TestProcessStrategyFactory();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, new TestLogger(), new TestStateManager(), strategyFactory, new ExecutionPlanParser());
+            repository, new TestLogger(), new TestStateManager(), strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
         var provider = new MockLlmProvider();
         provider.SetGenerateResult(new LlmResponse { Content = "orphan", PromptTokens = 1, CompletionTokens = 1, TokensUsed = 2 });
         var sink = new MockLlmUsageSink();
@@ -730,6 +730,201 @@ public class SequentialCrewOrchestratorTests
         var usage = Assert.Single(sink.Recorded);
         Assert.Equal(Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Unattributed, usage.OperationType);
         Assert.Equal(crew.Id.ToString(), usage.CrewId);
+    }
+
+    #endregion
+    #region Domain events of the run (GAP-06)
+
+    private static (SequentialCrewOrchestrator Orchestrator, TestCrewRepository Repository, TestProcessStrategyFactory Strategies, RecordingDomainEventDispatcher Dispatcher) BuildWithRecordingDispatcher()
+    {
+        var repository = new TestCrewRepository();
+        var strategies = new TestProcessStrategyFactory();
+        var dispatcher = new RecordingDomainEventDispatcher();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), strategies, new ExecutionPlanParser(), dispatcher);
+        return (orchestrator, repository, strategies, dispatcher);
+    }
+
+    private static DomainCrew RunnableCrew(TestCrewRepository repository)
+    {
+        var crew = DomainCrew.Create("Event crew", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+        return crew;
+    }
+
+    private static List<Type> RunEventTypes(RecordingDomainEventDispatcher dispatcher)
+        => dispatcher.Dispatched
+            .Where(e => e is Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent
+                or Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent
+                or Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent)
+            .Select(e => e.GetType())
+            .ToList();
+
+    private static CrewInput EventInput() => new("ctx", new Dictionary<string, object>());
+
+    [Fact]
+    public async Task A_successful_kickoff_dispatches_started_then_completed_and_empties_the_crew()
+    {
+        var (orchestrator, repository, _, dispatcher) = BuildWithRecordingDispatcher();
+        var crew = RunnableCrew(repository);
+
+        var output = await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.True(output.Succeeded);
+        Assert.Equal(
+            [typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent), typeof(Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent)],
+            RunEventTypes(dispatcher));
+        Assert.Empty(crew.DomainEvents);
+    }
+
+    [Fact]
+    public async Task A_failed_kickoff_dispatches_started_then_failed_and_empties_the_crew()
+    {
+        var (orchestrator, repository, strategies, dispatcher) = BuildWithRecordingDispatcher();
+        strategies.Strategy.ShouldFail = true;
+        var crew = RunnableCrew(repository);
+
+        var output = await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.False(output.Succeeded);
+        Assert.Equal(
+            [typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent), typeof(Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent)],
+            RunEventTypes(dispatcher));
+        Assert.Empty(crew.DomainEvents);
+    }
+
+    [Fact]
+    public async Task A_cancelled_kickoff_still_dispatches_the_failure()
+    {
+        var (orchestrator, repository, strategies, dispatcher) = BuildWithRecordingDispatcher();
+        strategies.Strategy.OnExecuteAsync = () => throw new OperationCanceledException();
+        var crew = RunnableCrew(repository);
+
+        await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent), typeof(Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent)],
+            RunEventTypes(dispatcher));
+        Assert.Empty(crew.DomainEvents);
+    }
+
+    [Fact]
+    public async Task Two_kickoffs_dispatch_each_event_once()
+    {
+        var (orchestrator, repository, _, dispatcher) = BuildWithRecordingDispatcher();
+        var crew = RunnableCrew(repository);
+
+        await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+        await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, RunEventTypes(dispatcher).Count(t => t == typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent)));
+        Assert.Equal(2, RunEventTypes(dispatcher).Count(t => t == typeof(Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent)));
+        // Events raised while the crew was built are queued before the run and go out with
+        // the first kickoff, once.
+        Assert.Equal(dispatcher.Dispatched.Count, dispatcher.Dispatched.Distinct().Count());
+        Assert.Single(dispatcher.Dispatched.OfType<Orkeon.Domain.Crew.Events.CrewCreatedEvent>());
+    }
+
+    [Fact]
+    public async Task A_throwing_handler_changes_neither_a_successful_output_nor_a_failed_one()
+    {
+        var (orchestrator, repository, _, dispatcher) = BuildWithRecordingDispatcher();
+        dispatcher.ThrowOn = typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent);
+        var crew = RunnableCrew(repository);
+
+        var success = await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.True(success.Succeeded);
+        Assert.Contains("Completed crew goal", success.FinalOutput);
+        // The failing handler does not stop the events after it.
+        Assert.Contains(dispatcher.Dispatched, e => e is Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent);
+
+        var (failingOrchestrator, failingRepository, failingStrategies, failingDispatcher) = BuildWithRecordingDispatcher();
+        failingDispatcher.ThrowOn = typeof(Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent);
+        failingStrategies.Strategy.ShouldFail = true;
+        var failingCrew = RunnableCrew(failingRepository);
+
+        var failure = await failingOrchestrator.KickoffAsync(failingCrew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.False(failure.Succeeded);
+        Assert.Equal("Process strategy failed", failure.Error);
+    }
+
+    [Fact]
+    public async Task The_streaming_fallback_dispatches_through_the_same_point()
+    {
+        var (orchestrator, repository, _, dispatcher) = BuildWithRecordingDispatcher();
+        var crew = RunnableCrew(repository);
+
+        await foreach (var _ in orchestrator.KickoffStreamingAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken))
+        {
+            // drain
+        }
+
+        Assert.Equal(
+            [typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent), typeof(Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent)],
+            RunEventTypes(dispatcher));
+    }
+
+    [Fact]
+    public async Task The_granular_streaming_path_dispatches_the_queued_events_too()
+    {
+        var repository = new TestCrewRepository();
+        var dispatcher = new RecordingDomainEventDispatcher();
+        var agent = new AgentBuilder().Role("Researcher").Goal("Find data").Build();
+        var agentRepository = new InMemoryAgentRepository(new NullUnitOfWork());
+        await agentRepository.AddAsync(agent, TestContext.Current.CancellationToken);
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), dispatcher,
+            new FakeStreamingAgentExecutionService(), agentRepository);
+        var crew = DomainCrew.Create("Streamed crew", ProcessType.Sequential);
+        crew.AddAgent(agent.Id);
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        await foreach (var _ in orchestrator.KickoffStreamingAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken))
+        {
+            // drain
+        }
+
+        Assert.Contains(dispatcher.Dispatched, e => e is Orkeon.Domain.Crew.Events.CrewCreatedEvent);
+        Assert.Empty(crew.DomainEvents);
+    }
+
+    private sealed class CountingCompletedHandler : Orkeon.Domain.SharedKernel.Events.IDomainEventHandler<Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent>
+    {
+        public int Calls { get; private set; }
+
+        public System.Threading.Tasks.Task HandleAsync(Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent domainEvent, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task A_handler_registered_in_DI_is_called_once_per_successful_kickoff()
+    {
+        var handler = new CountingCompletedHandler();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddScoped<
+            Orkeon.Domain.SharedKernel.Events.IDomainEventHandler<Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent>>(services, _ => handler);
+        await using var provider = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(
+            services, new Microsoft.Extensions.DependencyInjection.ServiceProviderOptions { ValidateScopes = true });
+        await using var scope = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.CreateAsyncScope(provider);
+        var dispatcher = new Orkeon.Infrastructure.DomainEvents.DomainEventDispatcher(
+            scope.ServiceProvider, Microsoft.Extensions.Logging.Abstractions.NullLogger<Orkeon.Infrastructure.DomainEvents.DomainEventDispatcher>.Instance);
+        var repository = new TestCrewRepository();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), dispatcher);
+        var crew = RunnableCrew(repository);
+
+        await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+        await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, handler.Calls);
     }
 
     #endregion

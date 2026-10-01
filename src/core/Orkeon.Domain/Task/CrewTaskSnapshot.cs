@@ -53,9 +53,6 @@ public sealed record CrewTaskSnapshot
     /// <summary>The optional output file path.</summary>
     public string? OutputFile { get; init; }
 
-    /// <summary>The optional task callback.</summary>
-    public ITaskCallback? Callback { get; init; }
-
     /// <summary>Whether human input is required.</summary>
     public bool HumanInput { get; init; }
 

@@ -10,36 +10,34 @@ Les agrégats (`AggregateRoot<TEntityId>`, qui implémente `IHasDomainEvents`) m
 
 ### Dispatch
 
-Le dispatch passe par `IDomainEventDispatcher` (Domain), implémenté par `DomainEventDispatcher` (`Orkeon.Infrastructure.DomainEvents`, singleton enregistré par `AddOrkeonInfrastructure()`) : pour chaque événement, il résout chaque `IDomainEventHandler<TEvent>` enregistré dans la DI et attend son `HandleAsync`, dans l'ordre (`DispatchAsync`, `DispatchManyAsync`) ; un événement sans handler est journalisé au niveau Debug.
+Le dispatch passe par `IDomainEventDispatcher` (Domain), implémenté par `DomainEventDispatcher` (`Orkeon.Infrastructure.DomainEvents`, scoped, enregistré par `AddOrkeonInfrastructure()`) : pour chaque événement, il résout chaque `IDomainEventHandler<TEvent>` enregistré dans la DI, depuis le scope de l'appelant, et attend son `HandleAsync`, dans l'ordre (`DispatchAsync`, `DispatchManyAsync`) ; un événement sans handler est journalisé au niveau Debug.
 
-Les événements sont dispatchés **quand une unité de travail est sauvegardée** :
+Les événements sont dispatchés à deux moments.
+
+**À la fin d'un kickoff de crew.** `SequentialCrewOrchestrator` (l'`ICrewOrchestrationService`) dispatche les événements en file de la crew une fois le run terminé — en cas de succès, d'échec comme d'annulation — puis vide l'agrégat : un second kickoff ne les redispatche jamais. `KickoffForEachAsync`, `KickoffAsyncNoWait` et `KickoffStreamingAsync` passent par le même point. Un kickoff livre donc, dans l'ordre, les événements mis en file pendant la construction de la crew (`CrewCreatedEvent`, `AgentJoinedCrewEvent`, `TaskAddedToCrewEvent`, au premier run), puis `CrewExecutionStartedEvent`, puis `CrewExecutionCompletedEvent` ou `CrewExecutionFailedEvent`. Un handler qui lève une exception est journalisé et ignoré : il ne change ni le `CrewOutput` du run ni l'erreur qu'il rapporte, et les événements suivants sont quand même livrés. L'orchestrateur appelle le dispatcher directement plutôt qu'une unité de travail, dont l'agrégat suivi unique perdrait la crew.
+
+**Quand une unité de travail est sauvegardée** (les commandes CQRS) :
 
 1. Les repositories en mémoire appellent `IUnitOfWork.Track(aggregate)` à chaque ajout/mise à jour. `InMemoryUnitOfWork` garde **un agrégat par scope** (le dernier suivi — une commande, un agrégat).
 2. `IUnitOfWork.SaveChangesAsync()` exécute l'étape de persistance (vide pour l'adaptateur en mémoire), dispatche les événements en attente de l'agrégat suivi, puis les efface — même quand un handler lève une exception.
 3. `SaveChangesAsync()` est appelé par `UnitOfWorkCommandHandler`, le décorateur placé autour de **chaque handler de commande CQRS** (voir plus bas).
 
-Une crew exécutée via `ICrewOrchestrationService` ne sauvegarde pas d'unité de travail : les événements que les agrégats lèvent pendant un kickoff (`CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, …) restent en file sur l'agrégat et ne sont pas dispatchés. Pour observer un run, utilisez `ICrewExecutionHook` ([Callbacks et observabilité](#callbacks-et-observabilité)).
+Pendant un run, seul l'agrégat `Crew` change d'état : aucune stratégie n'appelle les méthodes de cycle de vie de tâche et d'agent (`CrewTask.Start/Complete/Fail`, `Agent.StartTask/CompleteTask/FailTask`), donc `TaskStartedEvent`, `AgentCompletedTaskEvent` et leurs voisins ne sont pas levés par un kickoff, et les handlers livrés `AgentCompletedTaskHandler` / `AgentFailedTaskHandler` restent muets pendant un run. Pour suivre les tâches, utilisez `ICrewExecutionHook` ou `ICallbackHandler` ([Callbacks et observabilité](#callbacks-et-observabilité)).
 
 ### Handlers
 
 `AddOrkeonApplication()` parcourt l'assembly `Orkeon.Application` et enregistre chaque `IDomainEventHandler<T>` qu'il y trouve (scoped). Quatre sont livrés, tous des handlers de journalisation structurée : `AgentCompletedTaskHandler`, `AgentFailedTaskHandler`, `CrewExecutionCompletedHandler`, `CrewExecutionFailedHandler`. Un handler situé dans une autre assembly s'enregistre explicitement : `services.AddScoped<IDomainEventHandler<TaskCompletedEvent>, MyHandler>()`.
 
-### Les 44 événements de domaine
+### Les 33 événements de domaine
 
 | Famille | Événements | Levés par |
 |--------|--------|-----------|
-| Agent (10) | `AgentCreatedEvent`, `AgentAssignedToTaskEvent`, `AgentStartedTaskEvent`, `AgentCompletedTaskEvent`, `AgentFailedTaskEvent`, `AgentCapabilitiesUpdatedEvent`, `AgentCollaborationStartedEvent`, `AgentMemoryUpdatedEvent`, `AgentKilledEvent` | agrégat `Agent` |
-| | `AgentSpawnedEvent` | déclaré, pas encore levé |
-| Crew (11) | `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `AgentLeftCrewEvent`, `TaskAddedToCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent`, `CrewProcessTypeChangedEvent`, `CrewGoalUpdatedEvent` | agrégat `Crew` |
-| | `CrewCompletedEvent` | déclaré (avec une factory `FromOutput`), pas encore levé |
-| Task (11) | `TaskCreatedEvent`, `TaskAssignedEvent`, `TaskStatusChangedEvent`, `TaskStartedEvent`, `TaskCompletedEvent`, `TaskFailedEvent`, `TaskCancelledEvent`, `TaskDependenciesUpdatedEvent` | agrégat `CrewTaskBase<TContext>` (`CrewTask`) |
-| | `TaskContextUpdatedEvent` | collecté par `TypedTaskContext<T>` dans sa propre liste (`GetEvents()` / `ClearEvents()`), hors du chemin de dispatch |
-| | `TaskBlockedEvent`, `TaskUnblockedEvent` | déclarés, pas encore levés |
+| Agent (9) | `AgentCreatedEvent`, `AgentAssignedToTaskEvent`, `AgentStartedTaskEvent`, `AgentCompletedTaskEvent`, `AgentFailedTaskEvent`, `AgentCapabilitiesUpdatedEvent`, `AgentCollaborationStartedEvent`, `AgentMemoryUpdatedEvent`, `AgentKilledEvent` | agrégat `Agent` |
+| Crew (10) | `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `AgentLeftCrewEvent`, `TaskAddedToCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent`, `CrewProcessTypeChangedEvent`, `CrewGoalUpdatedEvent` | agrégat `Crew` |
+| Task (8) | `TaskCreatedEvent`, `TaskAssignedEvent`, `TaskStatusChangedEvent`, `TaskStartedEvent`, `TaskCompletedEvent`, `TaskFailedEvent`, `TaskCancelledEvent`, `TaskDependenciesUpdatedEvent` | agrégat `CrewTaskBase<TContext>` (`CrewTask`) |
 | Memory (6) | `MemoryStoreCreatedEvent`, `MemoryAddedEvent`, `MemoryPromotedEvent`, `EntityMemoryUpdatedEvent`, `EpisodicMemoryAddedEvent`, `MemoryClearedEvent` | agrégat `AgentMemoryStore` |
-| Delegation (5) | `TaskDelegatedEvent`, `DelegationCompletedEvent`, `DelegationQueuedEvent`, `AgentRegisteredForDelegationEvent`, `AgentUnregisteredFromDelegationEvent` | déclarés, pas encore levés |
-| Human input (1) | `HumanInputRequestedEvent` | déclaré, pas encore levé |
 
-Total : 44 événements de domaine — 34 levés par le modèle de domaine, 10 déclarés pour le cycle de vie qu'ils décrivent mais levés par aucun chemin de code pour l'instant. Les records d'événements vivent à côté de leur agrégat (`Agent/Events/`, `Crew/Events/`, `Task/Events/`, `Memory/Events/`, `Delegation/Events/`, `HumanInput/Events/`).
+Total : 33 événements de domaine, chacun levé par une méthode de son agrégat. Les records d'événements vivent à côté de leur agrégat (`Agent/Events/`, `Crew/Events/`, `Task/Events/`, `Memory/Events/`).
 
 ## CQRS et pipeline
 
@@ -63,13 +61,11 @@ Les handlers de requête sont enregistrés tels quels (pas d'unité de travail).
 
 ## Callbacks et observabilité
 
-Trois surfaces d'observation existent, à des niveaux différents :
+Deux surfaces d'observation existent, à des niveaux différents :
 
 **`ICrewExecutionHook`** (`Orkeon.Application.Crew`) — le hook de niveau run que chaque stratégie de process appelle, sur toutes les sorties (succès, échec, annulation) : `OnTaskStartedAsync`, `OnTaskCompletedAsync`, `OnCrewCompletedAsync`, `OnCrewFailedAsync`, avec des instantanés de tâche et de crew (statut, durée, tokens, ventilation du cache, tâches sautées). C'est un service DI unique ; une exception qu'il lève est journalisée et absorbée. Implémentations livrées : `AutoSummaryWriter` (`AUTO_SUMMARY.md`), l'observateur de `orkeon run --events` (voir [le bus d'événements du run](./run-event-bus.md)) et le hook de progression d'`orkeon-host`.
 
-**`ICallbackHandler`** (`Orkeon.Application.Callback`) — notifications au niveau tâche et étape : `OnStepStartedAsync`, `OnStepCompletedAsync`, `OnTaskStartedAsync`, `OnTaskProgressAsync`, `OnTaskCompletedAsync`, `OnFlowStepStartedAsync`, `OnFlowStepCompletedAsync`. `CallbackOrchestrator` (`Orkeon.Application.Execution`, l'`ICallbackOrchestrator` scoped) diffuse chaque notification à chaque `ICallbackHandler` enregistré dans la DI ainsi qu'aux `CallbackHandlers` passés à l'appel ; `AgentExecutionService` appelle `NotifyTaskStartedAsync` et `NotifyTaskCompletedAsync` autour de chaque tâche. L'interface a aussi `NotifyStepProgressAsync`, et la classe `NotifyToolUsedAsync` / `NotifyDelegationAsync`. `BaseCallbackHandler` est la base dont dériver ; `LoggingCallbackHandler` journalise chaque notification mais n'est pas enregistré par défaut.
-
-**`IStepCallback`** (`Orkeon.Domain.Agent` : `OnStepStartAsync`, `OnStepCompletedAsync`, `OnStepFailedAsync`) et **`ITaskCallback`** (`Orkeon.Domain.Task` : `OnTaskStartAsync`, `OnTaskCompletedAsync`, `OnTaskFailedAsync`) — callbacks de niveau domaine portés par les agrégats (`AgentBuilder.WithStepCallback`, `Crew.StepCallback` / `Crew.TaskCallback` ; défauts DI `NullStepCallback` / `NullTaskCallback`). Le moteur d'exécution ne les invoque pas aujourd'hui : préférez `ICrewExecutionHook` ou `ICallbackHandler`.
+**`ICallbackHandler`** (`Orkeon.Application.Callback`) — notifications au niveau tâche et étape : `OnTaskStartedAsync` / `OnTaskCompletedAsync` autour de chaque exécution d'agent (`AgentExecutionService`), et `OnStepStartedAsync` / `OnStepCompletedAsync` autour de **chaque appel d'outil** des boucles d'agent — boucle chat-client, native, texte et streaming. L'`Action` d'une étape vaut `tool:<nom>` ; sa fin porte le résultat brut de l'outil dans `Observation`, et `Success = false` quand l'outil a échoué, levé une exception ou été bloqué par le guardian. `CallbackOrchestrator` (`Orkeon.Application.Execution`, l'`ICallbackOrchestrator` scoped) diffuse chaque notification à chaque `ICallbackHandler` enregistré dans la DI ; un handler qui lève une exception est journalisé et ignoré. Les notifications d'étape viennent de `StepNotifyingToolInvocationPipeline`, qui enveloppe le point d'invocation d'outils de l'`ExecutionOrchestrator` (sa propriété `Callbacks`, posée par `AddOrkeonApplication()`) et de `StreamingAgentExecutionService`. `BaseCallbackHandler` est la base dont dériver ; `CompositeCallbackHandler` diffuse à plusieurs handlers ; `LoggingCallbackHandler` journalise chaque notification mais n'est pas enregistré par défaut.
 
 ---
 

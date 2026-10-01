@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — a run dispatches the crew's domain events, and `ICallbackHandler` sees every tool call **[breaking]**
+
+An `IDomainEventHandler<CrewExecutionCompletedEvent>` registered in DI was never called by a
+kickoff, the domain callbacks were never invoked, and `ICallbackHandler` received task
+notifications only (GAP-06).
+
+- **The end of a kickoff dispatches the crew's domain events** through `IDomainEventDispatcher`
+  — on success, failure and cancellation — then empties the aggregate, so a second kickoff never
+  dispatches them again. `KickoffForEachAsync`, `KickoffAsyncNoWait` and both paths of
+  `KickoffStreamingAsync` go through the same point. A run delivers the construction events still
+  queued (`CrewCreatedEvent`, …), then `CrewExecutionStartedEvent`, then
+  `CrewExecutionCompletedEvent` or `CrewExecutionFailedEvent`. A handler that throws is logged and
+  skipped: the `CrewOutput` and the run's error are unchanged. `SequentialCrewOrchestrator` takes an
+  `IDomainEventDispatcher` after its `IExecutionPlanParser`. `DomainEventDispatcher` is now scoped,
+  so the scoped handlers resolve from the run's scope rather than the root provider.
+- **`ICallbackHandler` receives a step per tool call.** `OnStepStartedAsync` before each call of
+  the agent loops (chat-client, native, text, streaming), `OnStepCompletedAsync` after it, with the
+  tool's raw result and `Success = false` when the tool failed, threw or was blocked by the
+  guardian. `StepNotifyingToolInvocationPipeline` wraps the tool-invocation point;
+  `ExecutionOrchestrator.Callbacks` (set by `AddOrkeonApplication()`) and an optional
+  `ICallbackOrchestrator` on `StreamingAgentExecutionService` feed it. `ICallbackOrchestrator`
+  gains `NotifyStepStartedAsync` / `NotifyStepCompletedAsync`.
+- **Removed, never raised:** `AgentSpawnedEvent`, `CrewCompletedEvent`, `TaskBlockedEvent`,
+  `TaskUnblockedEvent`, `TaskDelegatedEvent`, `DelegationCompletedEvent` (with its
+  `Orkeon.Domain.Delegation.Events.DelegationOutcome`), `DelegationQueuedEvent`,
+  `AgentRegisteredForDelegationEvent`, `AgentUnregisteredFromDelegationEvent`,
+  `HumanInputRequestedEvent`, and `TaskContextUpdatedEvent` with `TypedTaskContext<T>.GetEvents()` /
+  `ClearEvents()`. 33 domain events remain, each raised by its aggregate.
+- **Removed, never invoked:** `IStepCallback`, `ITaskCallback`, `IStepProgressHandler` and
+  `StepProgressContext`; `Agent.StepCallback`, `Crew.StepCallback`/`TaskCallback`,
+  `CrewTaskBase.Callback`, their `*CreateOptions`/`*Snapshot`/`TaskOutputOptions` members and the
+  matching parameters of `Agent.Create`, `Crew.Create` and `CrewTask.Create`;
+  `AgentBuilder.WithStepCallback`, `CrewBuilder.WithStepCallback`/`WithTaskCallback`,
+  `CrewTaskBuilder.WithCallback`; `NullStepCallback`, `NullStepProgressHandler`,
+  `NullTaskCallback`. From `ICallbackHandler`: `OnTaskProgressAsync`, `OnFlowStepStartedAsync`,
+  `OnFlowStepCompletedAsync` and their `TaskProgressContext`, `FlowStepStartedContext`,
+  `FlowStepIdentity`, `FlowStepCompletedContext`. From `ICallbackOrchestrator`: the
+  `CallbackHandlers` parameter (always null) and class, `NotifyStepProgressAsync` with
+  `StepProgressInfo`; `CallbackOrchestrator.NotifyToolUsedAsync`/`NotifyDelegationAsync`;
+  `TaskCallbacks` and `CallbackExamples` (with `CustomWorkflowCallbackHandler`).
+
+Migration: an `IStepCallback` or `ITaskCallback` becomes an `ICallbackHandler` (derive from
+`BaseCallbackHandler`) registered in DI — `OnStepStartedAsync`/`OnStepCompletedAsync` per tool
+call, `OnTaskStartedAsync`/`OnTaskCompletedAsync` per task — or an `ICrewExecutionHook` for task
+and crew outcomes; drop the `With*Callback` builder calls. Code constructing
+`SequentialCrewOrchestrator` by hand passes an `IDomainEventDispatcher`. A handler of a removed
+event has nothing to handle and is deleted.
+
 ### Changed — a task's `tools:` reach its agent; the task state machine and `circuitBreaker:` are gone **[breaking]**
 
 Three task YAML fields were read, validated and dropped, and two families of types had no

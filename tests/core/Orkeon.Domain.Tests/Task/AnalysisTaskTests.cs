@@ -8,30 +8,6 @@ namespace Orkeon.Domain.Tests.Task;
 
 public class AnalysisTaskTests
 {
-    // Test doubles
-    private class TestTaskCallback : ITaskCallback
-    {
-        public List<string> ReceivedEvents { get; } = [];
-
-        public System.Threading.Tasks.Task OnTaskStartAsync(DomainTask.ICrewTask task)
-        {
-            ReceivedEvents.Add($"Started:{task.TaskId}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public System.Threading.Tasks.Task OnTaskCompletedAsync(DomainTask.ICrewTask task, TaskOutput output)
-        {
-            ReceivedEvents.Add($"Completed:{task.TaskId}:{output.RawOutput}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public System.Threading.Tasks.Task OnTaskFailedAsync(DomainTask.ICrewTask task, string error)
-        {
-            ReceivedEvents.Add($"Failed:{task.TaskId}:{error}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-    }
-
     [Fact]
     public void ShouldCreateAnalysisTask_WhenConstructingWithValidParameters()
     {
@@ -72,7 +48,6 @@ public class AnalysisTaskTests
         var outputJson = JsonSchema.From("{\"type\":\"object\"}");
         var outputPydantic = typeof(AnalysisResult);
         var outputFile = "analysis_output.json";
-        var callback = new TestTaskCallback();
         var humanInput = true;
 
         // Act
@@ -89,7 +64,6 @@ public class AnalysisTaskTests
                 OutputJson = outputJson,
                 OutputPydantic = outputPydantic,
                 OutputFile = outputFile,
-                Callback = callback,
                 HumanInput = humanInput
             });
 
@@ -99,7 +73,6 @@ public class AnalysisTaskTests
         Assert.Equal(outputJson, task.OutputJson);
         Assert.Equal(outputPydantic, task.OutputPydantic);
         Assert.Equal(outputFile, task.OutputFile);
-        Assert.Equal(callback, task.Callback);
         Assert.Equal(humanInput, task.HumanInput);
     }
 

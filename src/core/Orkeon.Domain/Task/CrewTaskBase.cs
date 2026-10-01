@@ -106,11 +106,6 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     public TaskDeliverable? Deliverable { get; private set; }
 
     /// <summary>
-    /// Gets the task callback.
-    /// </summary>
-    public ITaskCallback? Callback { get; private set; }
-
-    /// <summary>
     /// Optional per-task LLM override. Overrides the agent's LlmConfig on the scope of this
     /// task alone (e.g. <c>response_format: json_object</c>, or <c>temperature: 0.0</c> for
     /// a strict extraction). Applied by <c>LlmConfigResolver</c> before every provider
@@ -180,7 +175,6 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         OutputPydantic = opts.OutputPydantic;
         OutputFile = opts.OutputFile;
         Deliverable = opts.Deliverable;
-        Callback = opts.Callback;
         HumanInput = opts.HumanInput;
 
         var metadata = new TaskContextMetadata(Id, AgentId.Create(), typeof(TContext).Name);
@@ -212,7 +206,6 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         JsonSchema? outputJson,
         Type? outputPydantic,
         string? outputFile,
-        ITaskCallback? callback,
         bool humanInput,
         IEnumerable<TaskId>? dependencies,
         IEnumerable<IBaseTool>? tools,
@@ -240,7 +233,6 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         OutputPydantic = outputPydantic;
         OutputFile = outputFile;
         Deliverable = deliverable;
-        Callback = callback;
         HumanInput = humanInput;
 
         var metadata = new TaskContextMetadata(Id, AgentId.Create(), typeof(TContext).Name);

@@ -38,13 +38,16 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
     /// <param name="toolInvocation">The single tool-invocation point (guardian, sanitizer, audit — GAP-09);
     /// null falls back to <see cref="ToolInvocationPipeline.Unguarded"/>.</param>
     /// <param name="guardian">The guardian whose input phase screens the user prompt; null runs no input check.</param>
+    /// <param name="callbacks">The run's callback orchestrator: each tool call is reported to the
+    /// <c>ICallbackHandler</c> registrations as a step (GAP-06); null reports none.</param>
     public StreamingAgentExecutionService(
         IChatClient chatClient,
         IEnumerable<IBaseTool> tools,
         ILogger<StreamingAgentExecutionService> logger,
         IFileSystemService fileSystemService,
         IToolInvocationPipeline? toolInvocation = null,
-        IGuardianPipeline? guardian = null)
+        IGuardianPipeline? guardian = null,
+        Orkeon.Application.Interfaces.Services.ICallbackOrchestrator? callbacks = null)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
         _chatClient = chatClient;
@@ -53,7 +56,8 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         _logger = logger;
         ArgumentNullException.ThrowIfNull(fileSystemService);
         _fileSystemService = fileSystemService;
-        _toolInvocation = toolInvocation ?? ToolInvocationPipeline.Unguarded;
+        _toolInvocation = Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.Wrap(
+            toolInvocation ?? ToolInvocationPipeline.Unguarded, callbacks);
         _guardian = guardian;
     }
 

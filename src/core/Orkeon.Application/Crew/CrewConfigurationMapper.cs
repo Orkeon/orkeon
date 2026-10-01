@@ -325,7 +325,7 @@ public static class CrewConfigurationMapper
 
 /// <summary>
 /// Source-generated log messages for <see cref="CrewConfigurationMapper"/> (static class,
-/// so the messages live in this satellite the way <c>CallbackExamplesLog</c> does).
+/// so the messages live in this satellite).
 /// </summary>
 internal static partial class CrewConfigurationMapperLog
 {

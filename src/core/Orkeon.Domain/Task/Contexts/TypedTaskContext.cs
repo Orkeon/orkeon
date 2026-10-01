@@ -1,7 +1,4 @@
-using System.Text.Json;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.SharedKernel.Events;
-using Orkeon.Domain.Task.Events;
 
 namespace Orkeon.Domain.Task.Contexts;
 
@@ -39,7 +36,6 @@ public class TypedTaskContext<T> : ITaskContext<T> where T : class, new()
 {
     private readonly T _data;
     private readonly object _lock = new();
-    private readonly List<DomainEvent> _events = [];
 
     /// <inheritdoc />
     public T Data
@@ -71,23 +67,7 @@ public class TypedTaskContext<T> : ITaskContext<T> where T : class, new()
         ArgumentNullException.ThrowIfNull(updateAction);
 
         lock (_lock)
-        {
-            var before = JsonSerializer.Serialize(_data);
             updateAction(_data);
-            var after = JsonSerializer.Serialize(_data);
-
-            if (before != after)
-            {
-                _events.Add(new TaskContextUpdatedEvent
-                {
-                    TaskId = Metadata.TaskId,
-                    AgentId = Metadata.AgentId,
-                    ContextType = typeof(T).Name,
-                    BeforeState = before,
-                    AfterState = after
-                });
-            }
-        }
     }
 
     /// <inheritdoc />
@@ -99,28 +79,6 @@ public class TypedTaskContext<T> : ITaskContext<T> where T : class, new()
         {
             var newData = transformer(_data);
             return new TypedTaskContext<TNew>(newData, Metadata);
-        }
-    }
-
-    /// <summary>
-    /// Gets the events raised by this context.
-    /// </summary>
-    public IReadOnlyList<DomainEvent> GetEvents()
-    {
-        lock (_lock)
-        {
-            return _events.AsReadOnly();
-        }
-    }
-
-    /// <summary>
-    /// Clears the events.
-    /// </summary>
-    public void ClearEvents()
-    {
-        lock (_lock)
-        {
-            _events.Clear();
         }
     }
 }

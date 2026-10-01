@@ -22,7 +22,6 @@ public sealed class CrewTaskBuilder
     private JsonSchema? _outputJson;
     private Type? _outputPydantic;
     private string? _outputFile;
-    private ITaskCallback? _callback;
     private bool _humanInput;
     private LlmConfigOverride? _llmOverride;
     private Orkeon.Domain.Agent.GuardrailsConfig? _guardrails;
@@ -150,13 +149,6 @@ public sealed class CrewTaskBuilder
         return this;
     }
 
-    /// <summary>Sets the task callback.</summary>
-    public CrewTaskBuilder WithCallback(ITaskCallback callback)
-    {
-        _callback = callback;
-        return this;
-    }
-
     /// <summary>Assigns the task to an agent.</summary>
     public CrewTaskBuilder AssignTo(DomainAgent agent)
     {
@@ -228,7 +220,6 @@ public sealed class CrewTaskBuilder
             OutputJson = _outputJson,
             OutputPydantic = _outputPydantic,
             OutputFile = _outputFile,
-            Callback = _callback,
             HumanInput = _humanInput
         };
 

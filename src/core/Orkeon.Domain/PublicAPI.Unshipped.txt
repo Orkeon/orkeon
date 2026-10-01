@@ -55,7 +55,6 @@ Orkeon.Domain.Agent.AgentSpawnRequestBuilder.WithTools(params Orkeon.Domain.Tool
 *REMOVED*Orkeon.Domain.Common.ITool
 *REMOVED*Orkeon.Domain.Tools.IToolRegistry.GetToolsAsync(System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>! tools) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
 *REMOVED*static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 15, int maxRpm = 10, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, string? systemTemplate = null, string? promptTemplate = null, string? responseTemplate = null, int maxRetryLimit = 3, Orkeon.Domain.SharedKernel.ILlmProvider? functionCallingLlm = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>? tools = null, Orkeon.Domain.Agent.IStepCallback? stepCallback = null, Orkeon.Domain.Agent.GuardrailsConfig? guardrails = null) -> Orkeon.Domain.Agent.Agent!
-static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 15, int maxRpm = 10, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, string? systemTemplate = null, string? promptTemplate = null, string? responseTemplate = null, int maxRetryLimit = 3, Orkeon.Domain.SharedKernel.ILlmProvider? functionCallingLlm = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools = null, Orkeon.Domain.Agent.IStepCallback? stepCallback = null, Orkeon.Domain.Agent.GuardrailsConfig? guardrails = null) -> Orkeon.Domain.Agent.Agent!
 *REMOVED*Orkeon.Domain.Configuration.RagCrewConfig.Provider.get -> string?
 *REMOVED*Orkeon.Domain.Configuration.RagCrewConfig.Provider.init -> void
 *REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig
@@ -224,9 +223,276 @@ Orkeon.Domain.Agent.AgentMemory.Type.get -> Orkeon.Domain.Memory.MemoryType
 Orkeon.Domain.Configuration.TaskConfiguration.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Configuration.TaskConfiguration.Tools.init -> void
 Orkeon.Domain.Task.CrewTaskBase<TContext>.AddTool(Orkeon.Domain.Tools.IBaseTool! tool) -> void
-Orkeon.Domain.Task.CrewTaskBase<TContext>.CrewTaskBase(Orkeon.Domain.Common.TaskId! id, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, Orkeon.Domain.Task.ValueObjects.TaskStatus! status, Orkeon.Domain.Common.AgentId? assignedAgent, Orkeon.Domain.Task.ValueObjects.TaskOutput? output, Orkeon.Domain.Task.ValueObjects.TaskPriority! priority, System.DateTime createdAt, System.DateTime? startedAt, System.DateTime? completedAt, bool asyncExecution, Orkeon.Domain.Task.JsonSchema? outputJson, System.Type? outputPydantic, string? outputFile, Orkeon.Domain.Task.ITaskCallback? callback, bool humanInput, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>? dependencies, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools, TContext? contextData, Orkeon.Domain.Task.ValueObjects.TaskDeliverable? deliverable = null) -> void
 Orkeon.Domain.Task.CrewTaskBase<TContext>.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
 Orkeon.Domain.Task.CrewTaskBuilder.WithTool(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Task.CrewTaskBuilder!
 Orkeon.Domain.Task.CrewTaskBuilder.WithTools(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> Orkeon.Domain.Task.CrewTaskBuilder!
 Orkeon.Domain.Task.CrewTaskSnapshot.Tools.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>?
 Orkeon.Domain.Task.CrewTaskSnapshot.Tools.init -> void
+*REMOVED*Orkeon.Domain.Agent.Agent.StepCallback.get -> Orkeon.Domain.Agent.IStepCallback?
+*REMOVED*Orkeon.Domain.Agent.AgentBuilder.WithStepCallback(Orkeon.Domain.Agent.IStepCallback! stepCallback) -> Orkeon.Domain.Agent.AgentBuilder!
+*REMOVED*Orkeon.Domain.Agent.AgentCreateOptions.StepCallback.get -> Orkeon.Domain.Agent.IStepCallback?
+*REMOVED*Orkeon.Domain.Agent.AgentCreateOptions.StepCallback.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentSnapshot.StepCallback.get -> Orkeon.Domain.Agent.IStepCallback?
+*REMOVED*Orkeon.Domain.Agent.AgentSnapshot.StepCallback.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.AgentSpawnedEvent() -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.Equals(Orkeon.Domain.Agent.Events.AgentSpawnedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.Goal.get -> Orkeon.Domain.Agent.ValueObjects.AgentGoal!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.Goal.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.ParentCrewId.get -> Orkeon.Domain.Common.CrewId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.ParentCrewId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.RequestingAgentId.get -> Orkeon.Domain.Common.AgentId?
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.RequestingAgentId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.Role.get -> Orkeon.Domain.Agent.ValueObjects.AgentRole!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.Role.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.SpawnTime.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.SpawnTime.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.SpawnedAgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentSpawnedEvent.SpawnedAgentId.init -> void
+*REMOVED*Orkeon.Domain.Agent.IStepCallback
+*REMOVED*Orkeon.Domain.Agent.IStepCallback.OnStepCompletedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, int iteration, Orkeon.Domain.Agent.AgentStep! agentStep) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Agent.IStepCallback.OnStepFailedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, int iteration, string! errorMessage) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Agent.IStepCallback.OnStepStartAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, int iteration) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Agent.IStepProgressHandler
+*REMOVED*Orkeon.Domain.Agent.IStepProgressHandler.OnStepProgressAsync(Orkeon.Domain.Agent.StepProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.AgentId.get -> string!
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.AgentId.init -> void
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.CurrentStep.get -> int
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.CurrentStep.init -> void
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.Deconstruct(out string! TaskId, out string! AgentId, out string! StepDescription, out int CurrentStep, out int TotalSteps, out System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.StepDescription.get -> string!
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.StepDescription.init -> void
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.StepProgressContext(Orkeon.Domain.Agent.StepProgressContext! original) -> void
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.StepProgressContext(string! TaskId, string! AgentId, string! StepDescription, int CurrentStep, int TotalSteps, System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.TaskId.get -> string!
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.Timestamp.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.Timestamp.init -> void
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.TotalSteps.get -> int
+*REMOVED*Orkeon.Domain.Agent.StepProgressContext.TotalSteps.init -> void
+*REMOVED*Orkeon.Domain.Crew.Crew.StepCallback.get -> Orkeon.Domain.Agent.IStepCallback?
+*REMOVED*Orkeon.Domain.Crew.Crew.TaskCallback.get -> Orkeon.Domain.Task.ITaskCallback?
+*REMOVED*Orkeon.Domain.Crew.CrewBuilder.WithStepCallback(Orkeon.Domain.Agent.IStepCallback! stepCallback) -> Orkeon.Domain.Crew.CrewBuilder!
+*REMOVED*Orkeon.Domain.Crew.CrewBuilder.WithTaskCallback(Orkeon.Domain.Task.ITaskCallback! taskCallback) -> Orkeon.Domain.Crew.CrewBuilder!
+*REMOVED*Orkeon.Domain.Crew.CrewCreateOptions.StepCallback.get -> Orkeon.Domain.Agent.IStepCallback?
+*REMOVED*Orkeon.Domain.Crew.CrewCreateOptions.StepCallback.init -> void
+*REMOVED*Orkeon.Domain.Crew.CrewCreateOptions.TaskCallback.get -> Orkeon.Domain.Task.ITaskCallback?
+*REMOVED*Orkeon.Domain.Crew.CrewCreateOptions.TaskCallback.init -> void
+*REMOVED*Orkeon.Domain.Crew.Events.CrewCompletedEvent
+*REMOVED*Orkeon.Domain.Crew.Events.CrewCompletedEvent.CrewCompletedEvent() -> void
+*REMOVED*Orkeon.Domain.Crew.Events.CrewCompletedEvent.CrewId.get -> Orkeon.Domain.Common.CrewId!
+*REMOVED*Orkeon.Domain.Crew.Events.CrewCompletedEvent.CrewId.init -> void
+*REMOVED*Orkeon.Domain.Crew.Events.CrewCompletedEvent.Equals(Orkeon.Domain.Crew.Events.CrewCompletedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Crew.Events.CrewCompletedEvent.Result.get -> Orkeon.Domain.Crew.ValueObjects.CrewCompletionResult!
+*REMOVED*Orkeon.Domain.Crew.Events.CrewCompletedEvent.Result.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.AgentId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.AgentRegisteredForDelegationEvent() -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.Equals(Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.Role.get -> string!
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.Role.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.AgentId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.AgentUnregisteredFromDelegationEvent() -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.Equals(Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.DelegationCompletedEvent() -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.Equals(Orkeon.Domain.Delegation.Events.DelegationCompletedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.Error.get -> string?
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.ExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.FromAgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.FromAgentId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.Outcome.get -> Orkeon.Domain.Delegation.Events.DelegationOutcome!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.Outcome.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.Output.get -> string!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.Success.get -> bool
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.TaskId.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.ToAgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.ToAgentId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.<Clone>$() -> Orkeon.Domain.Delegation.Events.DelegationOutcome!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.Deconstruct(out bool Success, out string! Output, out System.TimeSpan ExecutionTime, out string? Error) -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.DelegationOutcome(bool Success, string! Output, System.TimeSpan ExecutionTime, string? Error = null) -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.Equals(Orkeon.Domain.Delegation.Events.DelegationOutcome? other) -> bool
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.Error.get -> string?
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.Error.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.ExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.ExecutionTime.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.Output.get -> string!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.Output.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.Success.get -> bool
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationOutcome.Success.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.DelegationQueuedEvent() -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.Equals(Orkeon.Domain.Delegation.Events.DelegationQueuedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.FromAgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.FromAgentId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.QueuedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.QueuedAt.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.TaskId.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.ToAgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.ToAgentId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.Context.get -> string!
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.Context.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.Equals(Orkeon.Domain.Delegation.Events.TaskDelegatedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.FromAgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.FromAgentId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.TaskDelegatedEvent() -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.TaskId.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.ToAgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.ToAgentId.init -> void
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.AgentId.init -> void
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Context.get -> Orkeon.Domain.HumanInput.ValueObjects.HumanInputEventContext!
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Context.init -> void
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Equals(Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.HumanInputRequestedEvent() -> void
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.InputType.get -> string!
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.InputType.init -> void
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Prompt.get -> string!
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Prompt.init -> void
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.TaskId.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.TaskId.init -> void
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Timeout.get -> System.TimeSpan?
+*REMOVED*Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Timeout.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.TypedTaskContext<T>.ClearEvents() -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.TypedTaskContext<T>.GetEvents() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.Events.DomainEvent!>!
+*REMOVED*Orkeon.Domain.Task.CrewTaskBase<TContext>.Callback.get -> Orkeon.Domain.Task.ITaskCallback?
+*REMOVED*Orkeon.Domain.Task.CrewTaskBuilder.WithCallback(Orkeon.Domain.Task.ITaskCallback! callback) -> Orkeon.Domain.Task.CrewTaskBuilder!
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Callback.get -> Orkeon.Domain.Task.ITaskCallback?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Callback.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskBlockedEvent
+*REMOVED*Orkeon.Domain.Task.Events.TaskBlockedEvent.BlockingTasks.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>!
+*REMOVED*Orkeon.Domain.Task.Events.TaskBlockedEvent.BlockingTasks.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskBlockedEvent.Equals(Orkeon.Domain.Task.Events.TaskBlockedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Task.Events.TaskBlockedEvent.TaskBlockedEvent() -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskBlockedEvent.TaskId.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.Task.Events.TaskBlockedEvent.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.AfterState.get -> string!
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.AfterState.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.AgentId.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.BeforeState.get -> string!
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.BeforeState.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.ContextType.get -> string!
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.ContextType.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.Equals(Orkeon.Domain.Task.Events.TaskContextUpdatedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.TaskContextUpdatedEvent() -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.TaskId.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskUnblockedEvent
+*REMOVED*Orkeon.Domain.Task.Events.TaskUnblockedEvent.Equals(Orkeon.Domain.Task.Events.TaskUnblockedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Task.Events.TaskUnblockedEvent.TaskId.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.Task.Events.TaskUnblockedEvent.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskUnblockedEvent.TaskUnblockedEvent() -> void
+*REMOVED*Orkeon.Domain.Task.ITaskCallback
+*REMOVED*Orkeon.Domain.Task.ITaskCallback.OnTaskCompletedAsync(Orkeon.Domain.Task.ICrewTask! task, Orkeon.Domain.Task.ValueObjects.TaskOutput! output) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Task.ITaskCallback.OnTaskFailedAsync(Orkeon.Domain.Task.ICrewTask! task, string! errorMessage) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Task.ITaskCallback.OnTaskStartAsync(Orkeon.Domain.Task.ICrewTask! task) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Task.TaskOutputOptions.Callback.get -> Orkeon.Domain.Task.ITaskCallback?
+*REMOVED*Orkeon.Domain.Task.TaskOutputOptions.Callback.init -> void
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentSpawnedEvent.<Clone>$() -> Orkeon.Domain.Agent.Events.AgentSpawnedEvent!
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentSpawnedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentSpawnedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentSpawnedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Agent.StepProgressContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.StepProgressContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.StepProgressContext.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Crew.Events.CrewCompletedEvent.<Clone>$() -> Orkeon.Domain.Crew.Events.CrewCompletedEvent!
+*REMOVED*override Orkeon.Domain.Crew.Events.CrewCompletedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Crew.Events.CrewCompletedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Crew.Events.CrewCompletedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.<Clone>$() -> Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent!
+*REMOVED*override Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.<Clone>$() -> Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent!
+*REMOVED*override Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.<Clone>$() -> Orkeon.Domain.Delegation.Events.DelegationCompletedEvent!
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationOutcome.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationOutcome.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationOutcome.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.<Clone>$() -> Orkeon.Domain.Delegation.Events.DelegationQueuedEvent!
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.<Clone>$() -> Orkeon.Domain.Delegation.Events.TaskDelegatedEvent!
+*REMOVED*override Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.<Clone>$() -> Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent!
+*REMOVED*override Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.Events.TaskBlockedEvent.<Clone>$() -> Orkeon.Domain.Task.Events.TaskBlockedEvent!
+*REMOVED*override Orkeon.Domain.Task.Events.TaskBlockedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.Events.TaskBlockedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.Events.TaskBlockedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.<Clone>$() -> Orkeon.Domain.Task.Events.TaskContextUpdatedEvent!
+*REMOVED*override Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.Events.TaskUnblockedEvent.<Clone>$() -> Orkeon.Domain.Task.Events.TaskUnblockedEvent!
+*REMOVED*override Orkeon.Domain.Task.Events.TaskUnblockedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.Events.TaskUnblockedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.Events.TaskUnblockedEvent.ToString() -> string!
+*REMOVED*override sealed Orkeon.Domain.Agent.Events.AgentSpawnedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Crew.Events.CrewCompletedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Task.Events.TaskBlockedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Task.Events.TaskUnblockedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Events.AgentSpawnedEvent.operator !=(Orkeon.Domain.Agent.Events.AgentSpawnedEvent? left, Orkeon.Domain.Agent.Events.AgentSpawnedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Events.AgentSpawnedEvent.operator ==(Orkeon.Domain.Agent.Events.AgentSpawnedEvent? left, Orkeon.Domain.Agent.Events.AgentSpawnedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.StepProgressContext.operator !=(Orkeon.Domain.Agent.StepProgressContext? left, Orkeon.Domain.Agent.StepProgressContext? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.StepProgressContext.operator ==(Orkeon.Domain.Agent.StepProgressContext? left, Orkeon.Domain.Agent.StepProgressContext? right) -> bool
+*REMOVED*static Orkeon.Domain.Crew.Crew.Create(string! goal, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType? processType = null, bool verbose = false, bool planning = false, int maxRpm = 100, bool shareCrew = true, string? outputLogFile = null, Orkeon.Domain.SharedKernel.ILlmProvider? managerLlm = null, Orkeon.Domain.Common.AgentId? managerAgentId = null, string! language = "en", bool fullOutput = false, Orkeon.Domain.Agent.IStepCallback? stepCallback = null, Orkeon.Domain.Task.ITaskCallback? taskCallback = null, Orkeon.Domain.SharedKernel.ILlmProvider? planningLlm = null, bool memoryEnabled = false) -> Orkeon.Domain.Crew.Crew!
+*REMOVED*static Orkeon.Domain.Crew.Events.CrewCompletedEvent.FromOutput(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Domain.Crew.CrewOutput! output) -> Orkeon.Domain.Crew.Events.CrewCompletedEvent!
+*REMOVED*static Orkeon.Domain.Crew.Events.CrewCompletedEvent.operator !=(Orkeon.Domain.Crew.Events.CrewCompletedEvent? left, Orkeon.Domain.Crew.Events.CrewCompletedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Crew.Events.CrewCompletedEvent.operator ==(Orkeon.Domain.Crew.Events.CrewCompletedEvent? left, Orkeon.Domain.Crew.Events.CrewCompletedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.operator !=(Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent? left, Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent.operator ==(Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent? left, Orkeon.Domain.Delegation.Events.AgentRegisteredForDelegationEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.operator !=(Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent? left, Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent.operator ==(Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent? left, Orkeon.Domain.Delegation.Events.AgentUnregisteredFromDelegationEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.operator !=(Orkeon.Domain.Delegation.Events.DelegationCompletedEvent? left, Orkeon.Domain.Delegation.Events.DelegationCompletedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.DelegationCompletedEvent.operator ==(Orkeon.Domain.Delegation.Events.DelegationCompletedEvent? left, Orkeon.Domain.Delegation.Events.DelegationCompletedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.DelegationOutcome.operator !=(Orkeon.Domain.Delegation.Events.DelegationOutcome? left, Orkeon.Domain.Delegation.Events.DelegationOutcome? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.DelegationOutcome.operator ==(Orkeon.Domain.Delegation.Events.DelegationOutcome? left, Orkeon.Domain.Delegation.Events.DelegationOutcome? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.operator !=(Orkeon.Domain.Delegation.Events.DelegationQueuedEvent? left, Orkeon.Domain.Delegation.Events.DelegationQueuedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.DelegationQueuedEvent.operator ==(Orkeon.Domain.Delegation.Events.DelegationQueuedEvent? left, Orkeon.Domain.Delegation.Events.DelegationQueuedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.operator !=(Orkeon.Domain.Delegation.Events.TaskDelegatedEvent? left, Orkeon.Domain.Delegation.Events.TaskDelegatedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Delegation.Events.TaskDelegatedEvent.operator ==(Orkeon.Domain.Delegation.Events.TaskDelegatedEvent? left, Orkeon.Domain.Delegation.Events.TaskDelegatedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.operator !=(Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent? left, Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent.operator ==(Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent? left, Orkeon.Domain.HumanInput.Events.HumanInputRequestedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Events.TaskBlockedEvent.operator !=(Orkeon.Domain.Task.Events.TaskBlockedEvent? left, Orkeon.Domain.Task.Events.TaskBlockedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Events.TaskBlockedEvent.operator ==(Orkeon.Domain.Task.Events.TaskBlockedEvent? left, Orkeon.Domain.Task.Events.TaskBlockedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.operator !=(Orkeon.Domain.Task.Events.TaskContextUpdatedEvent? left, Orkeon.Domain.Task.Events.TaskContextUpdatedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Events.TaskContextUpdatedEvent.operator ==(Orkeon.Domain.Task.Events.TaskContextUpdatedEvent? left, Orkeon.Domain.Task.Events.TaskContextUpdatedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Events.TaskUnblockedEvent.operator !=(Orkeon.Domain.Task.Events.TaskUnblockedEvent? left, Orkeon.Domain.Task.Events.TaskUnblockedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Events.TaskUnblockedEvent.operator ==(Orkeon.Domain.Task.Events.TaskUnblockedEvent? left, Orkeon.Domain.Task.Events.TaskUnblockedEvent? right) -> bool
+*REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.<Clone>$() -> Orkeon.Domain.Agent.StepProgressContext!
+*REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.Equals(Orkeon.Domain.Agent.StepProgressContext? other) -> bool
+*REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Domain.Task.CrewTaskBase<TContext>.CrewTaskBase(Orkeon.Domain.Common.TaskId! id, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, Orkeon.Domain.Task.ValueObjects.TaskStatus! status, Orkeon.Domain.Common.AgentId? assignedAgent, Orkeon.Domain.Task.ValueObjects.TaskOutput? output, Orkeon.Domain.Task.ValueObjects.TaskPriority! priority, System.DateTime createdAt, System.DateTime? startedAt, System.DateTime? completedAt, bool asyncExecution, Orkeon.Domain.Task.JsonSchema? outputJson, System.Type? outputPydantic, string? outputFile, bool humanInput, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>? dependencies, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools, TContext? contextData, Orkeon.Domain.Task.ValueObjects.TaskDeliverable? deliverable = null) -> void
+static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 15, int maxRpm = 10, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, string? systemTemplate = null, string? promptTemplate = null, string? responseTemplate = null, int maxRetryLimit = 3, Orkeon.Domain.SharedKernel.ILlmProvider? functionCallingLlm = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools = null, Orkeon.Domain.Agent.GuardrailsConfig? guardrails = null) -> Orkeon.Domain.Agent.Agent!
+static Orkeon.Domain.Crew.Crew.Create(string! goal, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType? processType = null, bool verbose = false, bool planning = false, int maxRpm = 100, bool shareCrew = true, string? outputLogFile = null, Orkeon.Domain.SharedKernel.ILlmProvider? managerLlm = null, Orkeon.Domain.Common.AgentId? managerAgentId = null, string! language = "en", bool fullOutput = false, Orkeon.Domain.SharedKernel.ILlmProvider? planningLlm = null, bool memoryEnabled = false) -> Orkeon.Domain.Crew.Crew!

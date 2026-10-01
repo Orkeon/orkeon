@@ -190,7 +190,7 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
             NullLogger<SequentialCrewOrchestrator>.Instance,
             state,
             factory,
-            new ExecutionPlanParser(),
+            new ExecutionPlanParser(), new Orkeon.Infrastructure.Tests.Doubles.RecordingDomainEventDispatcher(),
             streamingService: null,
             agentRepository: null,
             checkpointManager: cp);
@@ -219,13 +219,13 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
     public void Constructor_NullCrewRepository_Throws()
         => Assert.Throws<ArgumentNullException>(() => new SequentialCrewOrchestrator(
             null!, NullLogger<SequentialCrewOrchestrator>.Instance, new FakeStateManager(),
-            new FakeFactory(), new ExecutionPlanParser()));
+            new FakeFactory(), new ExecutionPlanParser(), new Orkeon.Infrastructure.Tests.Doubles.RecordingDomainEventDispatcher()));
 
     [Fact]
     public void Constructor_NullExecutionPlanParser_Throws()
         => Assert.Throws<ArgumentNullException>(() => new SequentialCrewOrchestrator(
             new FakeCrewRepository(), NullLogger<SequentialCrewOrchestrator>.Instance,
-            new FakeStateManager(), new FakeFactory(), null!));
+            new FakeStateManager(), new FakeFactory(), null!, new Orkeon.Infrastructure.Tests.Doubles.RecordingDomainEventDispatcher()));
 
     // ── Process-type dispatch ────────────────────────────────────────────────
 

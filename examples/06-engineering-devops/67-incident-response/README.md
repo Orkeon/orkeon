@@ -12,7 +12,7 @@
 - **Agents**: 4 — Incident Detector, Root Cause Diagnostician, Remediator, Post-Mortem Communicator
 - **Tools**: `http_api`, `database_query`, `json_tool`, `file_write`
 - **Memory**: `Redis`
-- **Key features**: HumanInputContext (validation actions prod), streaming, TaskCallbacks (alerts), CrewHooks
+- **Key features**: HumanInputContext (validation actions prod), streaming, CrewHooks
 - **Runner**: `standard`
 
 ## Prerequisites

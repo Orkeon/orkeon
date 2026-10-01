@@ -366,7 +366,6 @@ public class AgentToolAccessPolicyTests
             null,
             3,
             null,
-            null,
             policy
         );
 
@@ -399,7 +398,6 @@ public class AgentToolAccessPolicyTests
             null,
             null,
             3,
-            null,
             null,
             null  // No policy
         );

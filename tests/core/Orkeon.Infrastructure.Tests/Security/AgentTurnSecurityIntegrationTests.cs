@@ -141,6 +141,18 @@ public sealed class AgentTurnSecurityIntegrationTests
         Assert.Same(host.GetRequiredService<IToolInvocationPipeline>(), orchestrator.ToolInvocation);
     }
 
+    [Fact]
+    public void TheHostOrchestrator_ReportsToolCallsAsSteps_ToTheScopesHandlers()
+    {
+        // GAP-06: the agent loops' tool calls reach the ICallbackHandler registrations.
+        using var host = BuildHost();
+        using var scope = host.CreateScope();
+
+        var orchestrator = Assert.IsType<ExecutionOrchestrator>(scope.ServiceProvider.GetRequiredService<IExecutionOrchestrator>());
+
+        Assert.Same(scope.ServiceProvider.GetRequiredService<Orkeon.Application.Interfaces.Services.ICallbackOrchestrator>(), orchestrator.Callbacks);
+    }
+
     // ── The streaming loop ────────────────────────────────────────────────
 
     private static async IAsyncEnumerable<ChatResponseUpdate> Stream(

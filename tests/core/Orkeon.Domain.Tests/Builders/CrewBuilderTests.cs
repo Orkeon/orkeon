@@ -152,8 +152,6 @@ public class CrewBuilderTests
         var manager = CreateAgent(RoleManager, "Manage");
         var planningLlm = new StubLlmProvider();
         var managerLlm = new StubLlmProvider();
-        var stepCallback = new StubStepCallback();
-        var taskCallback = new StubTaskCallback();
 
         // Act
         var crew = new CrewBuilder()
@@ -169,8 +167,6 @@ public class CrewBuilderTests
             .OutputLogFile("/tmp/crew.log")
             .WithManagerLlm(managerLlm)
             .WithPlanningLlm(planningLlm)
-            .WithStepCallback(stepCallback)
-            .WithTaskCallback(taskCallback)
             .Build();
 
         // Assert
@@ -187,8 +183,6 @@ public class CrewBuilderTests
         Assert.Same(managerLlm, crew.ManagerLlm);
         Assert.Equal(manager.Id, crew.ManagerAgentId);
         Assert.Same(planningLlm, crew.PlanningLlm);
-        Assert.Same(stepCallback, crew.StepCallback);
-        Assert.Same(taskCallback, crew.TaskCallback);
     }
 
     [Fact]
@@ -248,30 +242,6 @@ public class CrewBuilderTests
 
         public System.Threading.Tasks.Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
             => System.Threading.Tasks.Task.FromResult(new LlmResponse { Content = "stub" });
-    }
-
-    private sealed class StubStepCallback : IStepCallback
-    {
-        public System.Threading.Tasks.Task OnStepStartAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, int iteration)
-            => System.Threading.Tasks.Task.CompletedTask;
-
-        public System.Threading.Tasks.Task OnStepCompletedAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, int iteration, Orkeon.Domain.Agent.AgentStep step)
-            => System.Threading.Tasks.Task.CompletedTask;
-
-        public System.Threading.Tasks.Task OnStepFailedAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, int iteration, string error)
-            => System.Threading.Tasks.Task.CompletedTask;
-    }
-
-    private sealed class StubTaskCallback : ITaskCallback
-    {
-        public System.Threading.Tasks.Task OnTaskStartAsync(Orkeon.Domain.Task.ICrewTask task)
-            => System.Threading.Tasks.Task.CompletedTask;
-
-        public System.Threading.Tasks.Task OnTaskCompletedAsync(Orkeon.Domain.Task.ICrewTask task, TaskOutput output)
-            => System.Threading.Tasks.Task.CompletedTask;
-
-        public System.Threading.Tasks.Task OnTaskFailedAsync(Orkeon.Domain.Task.ICrewTask task, string error)
-            => System.Threading.Tasks.Task.CompletedTask;
     }
 
     #endregion

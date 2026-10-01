@@ -106,23 +106,3 @@ public sealed record TaskDependenciesUpdatedEvent : DomainEvent
     /// <summary>Gets the removed dependencies.</summary>
     public required IReadOnlyList<TaskId> RemovedDependencies { get; init; }
 }
-
-/// <summary>
-/// Event raised when a task is blocked by dependencies.
-/// </summary>
-public sealed record TaskBlockedEvent : DomainEvent
-{
-    /// <summary>Gets the task identifier.</summary>
-    public required TaskId TaskId { get; init; }
-    /// <summary>Gets the blocking task identifiers.</summary>
-    public required IReadOnlyList<TaskId> BlockingTasks { get; init; }
-}
-
-/// <summary>
-/// Event raised when a task is unblocked.
-/// </summary>
-public sealed record TaskUnblockedEvent : DomainEvent
-{
-    /// <summary>Gets the task identifier.</summary>
-    public required TaskId TaskId { get; init; }
-}

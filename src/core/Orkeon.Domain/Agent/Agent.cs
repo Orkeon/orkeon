@@ -110,11 +110,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     public SharedKernel.ValueObjects.LlmConfig? LlmConfig { get; private set; }
 
     /// <summary>
-    /// Gets the step callback for execution progress.
-    /// </summary>
-    public IStepCallback? StepCallback { get; private set; }
-
-    /// <summary>
     /// Gets the tool access control policy for this agent.
     /// </summary>
     public ToolAccessPolicy ToolAccessPolicy { get; private set; }
@@ -195,7 +190,6 @@ public sealed class Agent : AggregateRoot<AgentId>
             ResponseTemplate = options.ResponseTemplate,
             MaxRetryLimit = options.MaxRetryLimit > 0 ? options.MaxRetryLimit : throw new ArgumentException("options.MaxRetryLimit must be positive.", nameof(options)),
             FunctionCallingLlm = options.FunctionCallingLlm,
-            StepCallback = options.StepCallback,
             ToolAccessPolicy = options.ToolAccessPolicy ?? ToolAccessPolicy.CreateUnrestricted(),
             Guardrails = options.Guardrails,
             LlmConfig = options.LlmConfig
@@ -250,7 +244,6 @@ public sealed class Agent : AggregateRoot<AgentId>
         int maxRetryLimit = AgentDefaults.MaxRetryLimit,
         ILlmProvider? functionCallingLlm = null,
         IEnumerable<IBaseTool>? tools = null,
-        IStepCallback? stepCallback = null,
         GuardrailsConfig? guardrails = null)
     {
         return Create(new AgentCreateOptions
@@ -270,7 +263,6 @@ public sealed class Agent : AggregateRoot<AgentId>
             MaxRetryLimit = maxRetryLimit,
             FunctionCallingLlm = functionCallingLlm,
             Tools = tools,
-            StepCallback = stepCallback,
             Guardrails = guardrails
         });
     }
@@ -298,7 +290,6 @@ public sealed class Agent : AggregateRoot<AgentId>
         string? responseTemplate,
         int maxRetryLimit,
         ILlmProvider? functionCallingLlm,
-        IStepCallback? stepCallback,
         ToolAccessPolicy? toolAccessPolicy = null,
         IEnumerable<IBaseTool>? tools = null,
         IEnumerable<TaskId>? assignedTasks = null,
@@ -323,7 +314,6 @@ public sealed class Agent : AggregateRoot<AgentId>
             ResponseTemplate = responseTemplate,
             MaxRetryLimit = maxRetryLimit,
             FunctionCallingLlm = functionCallingLlm,
-            StepCallback = stepCallback,
             ToolAccessPolicy = toolAccessPolicy,
             Tools = tools,
             AssignedTasks = assignedTasks,
@@ -362,7 +352,6 @@ public sealed class Agent : AggregateRoot<AgentId>
             ResponseTemplate = snapshot.ResponseTemplate,
             MaxRetryLimit = snapshot.MaxRetryLimit,
             FunctionCallingLlm = snapshot.FunctionCallingLlm,
-            StepCallback = snapshot.StepCallback,
             ToolAccessPolicy = snapshot.ToolAccessPolicy ?? ToolAccessPolicy.CreateUnrestricted(),
             Guardrails = snapshot.Guardrails
         };

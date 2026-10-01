@@ -12,7 +12,7 @@
 - **Agents**: 5 — Review Lead (Manager), Revieweur Securite (Worker), Revieweur Performance (Worker), Revieweur Tests (Worker), Revieweur Style (Worker)
 - **Tools**: `file_read`, `directory_read`
 - **Memory**: `InMemory`
-- **Key features**: Delegation with `DelegationEvents`, `EvaluationSuite` + `LlmJudgeEvaluator` for review scoring, output validation JSON schema
+- **Key features**: Delegation, `EvaluationSuite` + `LlmJudgeEvaluator` for review scoring, output validation JSON schema
 - **Runner**: `standard`
 
 ## Prerequisites

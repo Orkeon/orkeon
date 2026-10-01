@@ -12,7 +12,7 @@
 - **Agents**: 4 — PR Analyst, Test Selector, Security Reviewer, Deployer
 - **Tools**: `github`, `file_read`, `http_api`, `json_tool`, `file_write`
 - **Memory**: `Redis`
-- **Key features**: ICheckpointManager + IResumeEngine (rollback), CrewHooks (OnStageCompleted, OnPipelineFailed), TaskCallbacks, ICodeSecurityAnalyzer
+- **Key features**: ICheckpointManager + IResumeEngine (rollback), CrewHooks (OnStageCompleted, OnPipelineFailed), ICodeSecurityAnalyzer
 - **Runner**: `standard`
 
 ## Prerequisites

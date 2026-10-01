@@ -405,25 +405,6 @@ public class CrewAggregateRootTests
     }
 
     [Fact]
-    public void ShouldCreateCrewWithCallbacks_WhenProvided()
-    {
-        // Arrange
-        var options = new CrewCreateOptions
-        {
-            Goal = "Callback crew",
-            StepCallback = new StubStepCallback(),
-            TaskCallback = new StubTaskCallback()
-        };
-
-        // Act
-        var crew = DomainCrew.Create(options);
-
-        // Assert
-        Assert.NotNull(crew.StepCallback);
-        Assert.NotNull(crew.TaskCallback);
-    }
-
-    [Fact]
     public void ShouldReturnUniqueIds_WhenCreatingMultipleCrews()
     {
         // Arrange & Act
@@ -435,24 +416,6 @@ public class CrewAggregateRootTests
         Assert.NotEqual(crew1.Id, crew2.Id);
         Assert.NotEqual(crew2.Id, crew3.Id);
         Assert.NotEqual(crew1.Id, crew3.Id);
-    }
-
-    #endregion
-
-    #region Callback Stubs
-
-    private sealed class StubStepCallback : Domain.Agent.IStepCallback
-    {
-        public System.Threading.Tasks.Task OnStepStartAsync(Domain.Agent.Agent agent, Domain.Task.ICrewTask task, int iteration) => System.Threading.Tasks.Task.CompletedTask;
-        public System.Threading.Tasks.Task OnStepCompletedAsync(Domain.Agent.Agent agent, Domain.Task.ICrewTask task, int iteration, Domain.Agent.AgentStep step) => System.Threading.Tasks.Task.CompletedTask;
-        public System.Threading.Tasks.Task OnStepFailedAsync(Domain.Agent.Agent agent, Domain.Task.ICrewTask task, int iteration, string error) => System.Threading.Tasks.Task.CompletedTask;
-    }
-
-    private sealed class StubTaskCallback : Domain.Task.ITaskCallback
-    {
-        public System.Threading.Tasks.Task OnTaskStartAsync(Domain.Task.ICrewTask task) => System.Threading.Tasks.Task.CompletedTask;
-        public System.Threading.Tasks.Task OnTaskCompletedAsync(Domain.Task.ICrewTask task, Domain.Task.ValueObjects.TaskOutput output) => System.Threading.Tasks.Task.CompletedTask;
-        public System.Threading.Tasks.Task OnTaskFailedAsync(Domain.Task.ICrewTask task, string error) => System.Threading.Tasks.Task.CompletedTask;
     }
 
     #endregion

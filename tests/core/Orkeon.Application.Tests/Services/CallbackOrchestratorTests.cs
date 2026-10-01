@@ -92,30 +92,9 @@ public class CallbackOrchestratorTests
             return System.Threading.Tasks.Task.CompletedTask;
         }
 
-        public System.Threading.Tasks.Task OnTaskProgressAsync(TaskProgressContext context, CancellationToken cancellationToken = default)
-        {
-            lock (_lock) { RecordedEvents.Add($"TaskProgress:{context.TaskId}:{context.ProgressPercentage}"); }
-            if (ThrowOnCallback) throw new InvalidOperationException("Test exception");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
         public System.Threading.Tasks.Task OnTaskCompletedAsync(TaskCompletedContext context, CancellationToken cancellationToken = default)
         {
             lock (_lock) { RecordedEvents.Add($"TaskCompleted:{context.TaskId}:{context.Success}"); }
-            if (ThrowOnCallback) throw new InvalidOperationException("Test exception");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public System.Threading.Tasks.Task OnFlowStepStartedAsync(FlowStepStartedContext context, CancellationToken cancellationToken = default)
-        {
-            lock (_lock) { RecordedEvents.Add($"FlowStepStarted:{context.FlowExecutionId}:{context.StepId}"); }
-            if (ThrowOnCallback) throw new InvalidOperationException("Test exception");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public System.Threading.Tasks.Task OnFlowStepCompletedAsync(FlowStepCompletedContext context, CancellationToken cancellationToken = default)
-        {
-            lock (_lock) { RecordedEvents.Add($"FlowStepCompleted:{context.FlowExecutionId}:{context.Success}"); }
             if (ThrowOnCallback) throw new InvalidOperationException("Test exception");
             return System.Threading.Tasks.Task.CompletedTask;
         }
@@ -223,29 +202,6 @@ public class CallbackOrchestratorTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatchToHandlers_WhenNotifyingTaskStartedAsyncWithCallbackHandlers()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var startTime = DateTime.UtcNow;
-
-        var agentHandler = new TestCallbackHandler();
-        var taskHandler = new TestCallbackHandler();
-
-        // Act
-        await orchestrator.NotifyTaskStartedAsync(
-            agent, task, startTime,
-            new CallbackHandlers { AgentCallbackHandler = agentHandler, TaskCallbackHandler = taskHandler }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains(agentHandler.RecordedEvents, e => e.StartsWith("TaskStarted:"));
-        Assert.Contains(taskHandler.RecordedEvents, e => e.StartsWith("TaskStarted:"));
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldDispatchToAll_WhenNotifyingTaskStartedAsyncWithRegisteredHandlers()
     {
         // Arrange
@@ -264,30 +220,6 @@ public class CallbackOrchestratorTests
         Assert.Contains(handler1.RecordedEvents, e => e.StartsWith("TaskStarted:"));
         Assert.Single(handler2.RecordedEvents);
         Assert.Contains(handler2.RecordedEvents, e => e.StartsWith("TaskStarted:"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldInvokeOnStarted_WhenNotifyingTaskStartedAsyncWithTaskCallbacks()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        TaskStartedContext? capturedContext = null;
-
-        var taskCallbacks = TaskCallbacks.Create(
-            onStarted: ctx => { capturedContext = ctx; return System.Threading.Tasks.Task.CompletedTask; });
-
-        // Act
-        await orchestrator.NotifyTaskStartedAsync(
-            agent, task, DateTime.UtcNow,
-            new CallbackHandlers { TaskCallbacks = taskCallbacks }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.NotNull(capturedContext);
-        Assert.Equal(task.Id.Value.ToString(), capturedContext!.TaskId);
-        Assert.Equal(agent.Id, capturedContext.AgentId);
     }
 
     [Fact]
@@ -389,350 +321,6 @@ public class CallbackOrchestratorTests
         Assert.Contains(handler2.RecordedEvents, e => e.Contains("TaskCompleted:") && e.Contains(":True"));
     }
 
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatchToAll_WhenNotifyingTaskCompletedAsyncWithOptionalHandlers()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var result = CreateTestResult(true);
-        var agentHandler = new TestCallbackHandler();
-        var taskHandler = new TestCallbackHandler();
-
-        // Act
-        await orchestrator.NotifyTaskCompletedAsync(
-            agent, task,
-            new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = DateTime.UtcNow },
-            new CallbackHandlers { AgentCallbackHandler = agentHandler, TaskCallbackHandler = taskHandler }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains(agentHandler.RecordedEvents, e => e.StartsWith("TaskCompleted:"));
-        Assert.Contains(taskHandler.RecordedEvents, e => e.StartsWith("TaskCompleted:"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldInvokeOnCompletedAndOnFinally_WhenNotifyingTaskCompletedAsyncWithTaskCallbacksSuccess()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var result = CreateTestResult(true);
-        var completedCalled = false;
-        var failedCalled = false;
-        var finallyCalled = false;
-
-        var taskCallbacks = TaskCallbacks.Create(
-            onCompleted: ctx => { completedCalled = true; return System.Threading.Tasks.Task.CompletedTask; },
-            onFailed: ctx => { failedCalled = true; return System.Threading.Tasks.Task.CompletedTask; },
-            onFinally: ctx => { finallyCalled = true; return System.Threading.Tasks.Task.CompletedTask; });
-
-        // Act
-        await orchestrator.NotifyTaskCompletedAsync(
-            agent, task,
-            new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = DateTime.UtcNow },
-            new CallbackHandlers { TaskCallbacks = taskCallbacks }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(completedCalled);
-        Assert.False(failedCalled);
-        Assert.True(finallyCalled);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldInvokeOnFailedAndOnFinally_WhenNotifyingTaskCompletedAsyncWithTaskCallbacksFailure()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var result = CreateTestResult(false);
-        var completedCalled = false;
-        var failedCalled = false;
-        var finallyCalled = false;
-
-        var taskCallbacks = TaskCallbacks.Create(
-            onCompleted: ctx => { completedCalled = true; return System.Threading.Tasks.Task.CompletedTask; },
-            onFailed: ctx => { failedCalled = true; return System.Threading.Tasks.Task.CompletedTask; },
-            onFinally: ctx => { finallyCalled = true; return System.Threading.Tasks.Task.CompletedTask; });
-
-        // Act
-        await orchestrator.NotifyTaskCompletedAsync(
-            agent, task,
-            new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = DateTime.UtcNow },
-            new CallbackHandlers { TaskCallbacks = taskCallbacks }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.False(completedCalled);
-        Assert.True(failedCalled);
-        Assert.True(finallyCalled);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldComplete_WhenNotifyingTaskCompletedAsyncWithTaskCallbacksOldStyle()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var result = CreateTestResult(true);
-
-        var taskCallbacks = new TaskCallbacks
-        {
-            OnStarted = (ctx) => System.Threading.Tasks.Task.CompletedTask,
-            OnCompleted = (ctx) => System.Threading.Tasks.Task.CompletedTask
-        };
-
-        // Act
-        await orchestrator.NotifyTaskCompletedAsync(
-            agent, task,
-            new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = DateTime.UtcNow },
-            new CallbackHandlers { TaskCallbacks = taskCallbacks }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedDebug($"Task {task.Id.Value} completed by agent {agent.Id} with result: True"));
-    }
-
-    #endregion
-
-    #region NotifyStepProgressAsync Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldLogStepProgress_WhenNotifyingStepProgressAsync()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var stepDescription = "Processing data";
-        var currentStep = 3;
-        var totalSteps = 10;
-
-        // Act
-        await orchestrator.NotifyStepProgressAsync(
-            agent, task, new StepProgressInfo { StepDescription = stepDescription, CurrentStep = currentStep, TotalSteps = totalSteps }, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedDebug($"Task {task.Id.Value} step {currentStep}/{totalSteps}: {stepDescription}"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatchToHandlers_WhenNotifyingStepProgressAsyncWithHandlers()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-
-        var agentHandler = new TestCallbackHandler();
-        var taskHandler = new TestCallbackHandler();
-
-        // Act
-        await orchestrator.NotifyStepProgressAsync(
-            agent, task,
-            new StepProgressInfo { StepDescription = "Step 1", CurrentStep = 1, TotalSteps = 5 },
-            new CallbackHandlers { AgentCallbackHandler = agentHandler, TaskCallbackHandler = taskHandler }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedDebug("step 1/5"));
-        Assert.Contains(agentHandler.RecordedEvents, e => e.StartsWith("TaskProgress:"));
-        Assert.Contains(taskHandler.RecordedEvents, e => e.StartsWith("TaskProgress:"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatch_WhenNotifyingStepProgressAsyncWithRegisteredHandlers()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var handler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger, [handler]);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-
-        // Act
-        await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = "Processing", CurrentStep = 2, TotalSteps = 4 }, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Single(handler.RecordedEvents);
-        Assert.Contains(handler.RecordedEvents, e => e.Contains("TaskProgress:") && e.Contains("50"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldNotDivideByZero_WhenNotifyingStepProgressAsyncWithZeroTotalSteps()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var handler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger, [handler]);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-
-        // Act (should not throw)
-        await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = "Processing", CurrentStep = 0, TotalSteps = 0 }, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Single(handler.RecordedEvents);
-        Assert.Contains(handler.RecordedEvents, e => e.Contains("TaskProgress:") && e.Contains('0'));
-    }
-
-    #endregion
-
-    #region NotifyToolUsedAsync Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldLogToolUsage_WhenNotifyingToolUsedAsync()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var toolName = ToolSearch;
-        var input = new { query = "test" };
-        var output = new { results = new[] { "result1", "result2" } };
-        var duration = TimeSpan.FromMilliseconds(250);
-
-        // Act
-        await orchestrator.NotifyToolUsedAsync(
-            agent, toolName, input, output, duration, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedDebug($"Agent {agent.Id} used tool {toolName} for {duration.TotalMilliseconds}ms"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldStillLog_WhenNotifyingToolUsedAsyncWithZeroDuration()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-
-        // Act
-        await orchestrator.NotifyToolUsedAsync(
-            agent, "TestTool", "input", "output", TimeSpan.Zero, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedDebug("used tool TestTool for 0ms"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatchStepCompleted_WhenNotifyingToolUsedAsyncWithRegisteredHandlers()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var handler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger, [handler]);
-        var agent = CreateTestAgent();
-
-        // Act
-        await orchestrator.NotifyToolUsedAsync(agent, ToolSearch, ParamQuery, "results", TimeSpan.FromSeconds(1), cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains(handler.RecordedEvents, e => e.Contains("StepCompleted:") && e.Contains("tool:SearchTool"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatch_WhenNotifyingToolUsedAsyncWithOptionalHandler()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var handler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-
-        // Act
-        await orchestrator.NotifyToolUsedAsync(agent, ToolWebScrape, ParamUrl, "content", TimeSpan.FromSeconds(2),
-            agentCallbackHandler: handler, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains(handler.RecordedEvents, e => e.Contains("StepCompleted:") && e.Contains("tool:WebScrape"));
-    }
-
-    #endregion
-
-    #region NotifyDelegationAsync Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldLogDelegationInfo_WhenNotifyingDelegationAsync()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var fromAgent = CreateTestAgent("agent1", RoleDeveloper);
-        var toAgent = CreateTestAgent("agent2", "Reviewer");
-        var task = CreateTestTask();
-        var reason = "Agent lacks required skills";
-
-        // Act
-        await orchestrator.NotifyDelegationAsync(
-            fromAgent, toAgent, task, reason, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedInfo($"Task {task.Id.Value} delegated from {fromAgent.Role} to {toAgent.Role}: {reason}"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldStillLog_WhenNotifyingDelegationAsyncWithEmptyReason()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var fromAgent = CreateTestAgent();
-        var toAgent = CreateTestAgent("agent2");
-        var task = CreateTestTask();
-
-        // Act
-        await orchestrator.NotifyDelegationAsync(
-            fromAgent, toAgent, task, string.Empty, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedInfo("delegated from"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatchStepCompleted_WhenNotifyingDelegationAsyncWithRegisteredHandlers()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var handler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger, [handler]);
-        var fromAgent = CreateTestAgent(role: RoleDeveloper);
-        var toAgent = CreateTestAgent(role: "Reviewer");
-        var task = CreateTestTask();
-
-        // Act
-        await orchestrator.NotifyDelegationAsync(fromAgent, toAgent, task, "Needs review", cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains(handler.RecordedEvents, e => e.Contains("StepCompleted:") && e.Contains("delegate_to:Reviewer"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatch_WhenNotifyingDelegationAsyncWithOptionalHandler()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var handler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var fromAgent = CreateTestAgent(role: RoleWorker);
-        var toAgent = CreateTestAgent(role: RoleManager);
-        var task = CreateTestTask();
-
-        // Act
-        await orchestrator.NotifyDelegationAsync(fromAgent, toAgent, task, "Escalation",
-            agentCallbackHandler: handler, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains(handler.RecordedEvents, e => e.Contains("StepCompleted:") && e.Contains("delegate_to:Manager"));
-    }
-
     #endregion
 
     #region Error Resilience Tests
@@ -779,262 +367,55 @@ public class CallbackOrchestratorTests
         Assert.True(logger.HasLoggedWarning("threw an exception"));
     }
 
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldContinueExecution_WhenNotifyingStepProgressAsyncHandlerThrows()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var failingHandler = new TestCallbackHandler { ThrowOnCallback = true };
-        var successHandler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger, [failingHandler, successHandler]);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-
-        // Act (should not throw)
-        await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = "step", CurrentStep = 1, TotalSteps = 2 }, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains(successHandler.RecordedEvents, e => e.StartsWith("TaskProgress:"));
-        Assert.True(logger.HasLoggedWarning("threw an exception"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldContinueExecution_WhenNotifyingTaskStartedAsyncOptionalHandlerThrows()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var failingAgentHandler = new TestCallbackHandler { ThrowOnCallback = true };
-        var taskHandler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-
-        // Act (should not throw)
-        await orchestrator.NotifyTaskStartedAsync(
-            agent, task, DateTime.UtcNow,
-            new CallbackHandlers { AgentCallbackHandler = failingAgentHandler, TaskCallbackHandler = taskHandler }, TestContext.Current.CancellationToken);
-
-        // Assert - taskHandler still got called after agentHandler failed
-        Assert.Contains(taskHandler.RecordedEvents, e => e.StartsWith("TaskStarted:"));
-        Assert.True(logger.HasLoggedWarning("threw an exception"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldContinueToOnFinally_WhenNotifyingTaskCompletedAsyncTaskCallbackOnCompletedThrows()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var result = CreateTestResult(true);
-        var finallyCalled = false;
-
-        var taskCallbacks = TaskCallbacks.Create(
-            onCompleted: ctx => throw new InvalidOperationException("OnCompleted failed"),
-            onFinally: ctx => { finallyCalled = true; return System.Threading.Tasks.Task.CompletedTask; });
-
-        // Act (should not throw)
-        await orchestrator.NotifyTaskCompletedAsync(
-            agent, task,
-            new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = DateTime.UtcNow },
-            new CallbackHandlers { TaskCallbacks = taskCallbacks }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(finallyCalled);
-        Assert.True(logger.HasLoggedWarning("threw an exception"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldContinueExecution_WhenNotifyingToolUsedAsyncHandlerThrows()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var failingHandler = new TestCallbackHandler { ThrowOnCallback = true };
-        var orchestrator = new CallbackOrchestrator(logger, [failingHandler]);
-        var agent = CreateTestAgent();
-
-        // Act (should not throw)
-        await orchestrator.NotifyToolUsedAsync(agent, "Tool", "in", "out", TimeSpan.FromSeconds(1), cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedWarning("threw an exception"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldContinueExecution_WhenNotifyingDelegationAsyncHandlerThrows()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var failingHandler = new TestCallbackHandler { ThrowOnCallback = true };
-        var orchestrator = new CallbackOrchestrator(logger, [failingHandler]);
-        var fromAgent = CreateTestAgent(role: "A");
-        var toAgent = CreateTestAgent(role: "B");
-        var task = CreateTestTask();
-
-        // Act (should not throw)
-        await orchestrator.NotifyDelegationAsync(fromAgent, toAgent, task, "reason", cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(logger.HasLoggedWarning("threw an exception"));
-    }
-
     #endregion
 
-    #region Combined Registered + Optional Handlers Tests
+
+    #region Step notifications (GAP-06)
+
+    private static StepStartedContext StepStarted() =>
+        new("agent-1", "Analyst", "task-1", "tool:search", "Using tool search", DateTime.UtcNow);
+
+    private static StepCompletedContext StepCompleted(bool success) =>
+        new(new StepIdentity("agent-1", "Analyst", "task-1"), "tool:search", "Using tool search",
+            success ? "3 rows" : "Error: boom", success, TimeSpan.FromMilliseconds(5), DateTime.UtcNow);
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatchToAll_WhenNotifyingTaskStartedAsyncRegisteredAndOptionalHandlers()
+    public async System.Threading.Tasks.Task NotifyStepStartedAsync_reaches_every_registered_handler()
     {
-        // Arrange
-        var logger = new TestLogger();
-        var registeredHandler = new TestCallbackHandler();
-        var agentHandler = new TestCallbackHandler();
-        var taskHandler = new TestCallbackHandler();
-        TaskStartedContext? callbacksContext = null;
+        var first = new TestCallbackHandler();
+        var second = new TestCallbackHandler();
+        var orchestrator = new CallbackOrchestrator(new TestLogger(), [first, second]);
 
-        var orchestrator = new CallbackOrchestrator(logger, [registeredHandler]);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
+        await orchestrator.NotifyStepStartedAsync(StepStarted(), TestContext.Current.CancellationToken);
 
-        var taskCallbacks = TaskCallbacks.Create(
-            onStarted: ctx => { callbacksContext = ctx; return System.Threading.Tasks.Task.CompletedTask; });
-
-        // Act
-        await orchestrator.NotifyTaskStartedAsync(
-            agent, task, DateTime.UtcNow,
-            new CallbackHandlers { AgentCallbackHandler = agentHandler, TaskCallbackHandler = taskHandler, TaskCallbacks = taskCallbacks }, TestContext.Current.CancellationToken);
-
-        // Assert - all 4 dispatch targets were called
-        Assert.Single(registeredHandler.RecordedEvents);
-        Assert.Single(agentHandler.RecordedEvents);
-        Assert.Single(taskHandler.RecordedEvents);
-        Assert.NotNull(callbacksContext);
+        Assert.Equal(["StepStarted:agent-1:tool:search"], first.RecordedEvents);
+        Assert.Equal(first.RecordedEvents, second.RecordedEvents);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatchToAll_WhenNotifyingTaskCompletedAsyncRegisteredAndOptionalHandlers()
+    public async System.Threading.Tasks.Task NotifyStepCompletedAsync_reaches_every_registered_handler_with_the_outcome()
     {
-        // Arrange
-        var logger = new TestLogger();
-        var registeredHandler = new TestCallbackHandler();
-        var agentHandler = new TestCallbackHandler();
-        var taskHandler = new TestCallbackHandler();
-        var completedCalled = false;
-        var finallyCalled = false;
-
-        var orchestrator = new CallbackOrchestrator(logger, [registeredHandler]);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var result = CreateTestResult(true);
-
-        var taskCallbacks = TaskCallbacks.Create(
-            onCompleted: ctx => { completedCalled = true; return System.Threading.Tasks.Task.CompletedTask; },
-            onFinally: ctx => { finallyCalled = true; return System.Threading.Tasks.Task.CompletedTask; });
-
-        // Act
-        await orchestrator.NotifyTaskCompletedAsync(
-            agent, task,
-            new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = DateTime.UtcNow },
-            new CallbackHandlers { AgentCallbackHandler = agentHandler, TaskCallbackHandler = taskHandler, TaskCallbacks = taskCallbacks }, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains(registeredHandler.RecordedEvents, e => e.StartsWith("TaskCompleted:"));
-        Assert.Contains(agentHandler.RecordedEvents, e => e.StartsWith("TaskCompleted:"));
-        Assert.Contains(taskHandler.RecordedEvents, e => e.StartsWith("TaskCompleted:"));
-        Assert.True(completedCalled);
-        Assert.True(finallyCalled);
-    }
-
-    #endregion
-
-    #region Integration Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldAllBeLogged_WhenUsingMultipleNotifications()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var orchestrator = new CallbackOrchestrator(logger);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var startTime = DateTime.UtcNow;
-
-        // Act
-        await orchestrator.NotifyTaskStartedAsync(agent, task, startTime, cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = "Step 1", CurrentStep = 1, TotalSteps = 3 }, cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyToolUsedAsync(agent, "Tool1", "input", "output", TimeSpan.FromSeconds(1), cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = "Step 2", CurrentStep = 2, TotalSteps = 3 }, cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = "Step 3", CurrentStep = 3, TotalSteps = 3 }, cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyTaskCompletedAsync(agent, task, new TaskCompletionInfo { Result = CreateTestResult(true), StepsExecuted = 3, StartTime = startTime }, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(6, logger.LoggedMessages.Count);
-        Assert.Contains(logger.LoggedMessages, m => m.Contains("started"));
-        Assert.Contains(logger.LoggedMessages, m => m.Contains("step 1/3"));
-        Assert.Contains(logger.LoggedMessages, m => m.Contains("used tool"));
-        Assert.Contains(logger.LoggedMessages, m => m.Contains("completed"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldDispatchAll_WhenUsingMultipleNotificationsWithRegisteredHandler()
-    {
-        // Arrange
-        var logger = new TestLogger();
         var handler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger, [handler]);
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var startTime = DateTime.UtcNow;
+        var orchestrator = new CallbackOrchestrator(new TestLogger(), [handler]);
 
-        // Act
-        await orchestrator.NotifyTaskStartedAsync(agent, task, startTime, cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = "Step 1", CurrentStep = 1, TotalSteps = 2 }, cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyToolUsedAsync(agent, "Tool1", "input", "output", TimeSpan.FromSeconds(1), cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = "Step 2", CurrentStep = 2, TotalSteps = 2 }, cancellationToken: TestContext.Current.CancellationToken);
-        await orchestrator.NotifyTaskCompletedAsync(agent, task, new TaskCompletionInfo { Result = CreateTestResult(true), StepsExecuted = 2, StartTime = startTime }, cancellationToken: TestContext.Current.CancellationToken);
+        await orchestrator.NotifyStepCompletedAsync(StepCompleted(success: false), TestContext.Current.CancellationToken);
 
-        // Assert - handler should have received 5 events
-        Assert.Equal(5, handler.RecordedEvents.Count);
-        Assert.Contains(handler.RecordedEvents, e => e.StartsWith("TaskStarted:"));
-        Assert.Equal(2, handler.RecordedEvents.Count(e => e.StartsWith("TaskProgress:")));
-        Assert.Contains(handler.RecordedEvents, e => e.StartsWith("StepCompleted:") && e.Contains("tool:Tool1"));
-        Assert.Contains(handler.RecordedEvents, e => e.StartsWith("TaskCompleted:"));
+        Assert.Equal(["StepCompleted:agent-1:tool:search:False"], handler.RecordedEvents);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldHandleCorrectly_WhenUsingConcurrentNotifications()
+    public async System.Threading.Tasks.Task A_throwing_step_handler_is_logged_and_the_next_one_still_runs()
     {
-        // Arrange
         var logger = new TestLogger();
-        var handler = new TestCallbackHandler();
-        var orchestrator = new CallbackOrchestrator(logger, [handler]);
-        var tasks = new List<System.Threading.Tasks.Task>();
+        var failing = new TestCallbackHandler { ThrowOnCallback = true };
+        var healthy = new TestCallbackHandler();
+        var orchestrator = new CallbackOrchestrator(logger, [failing, healthy]);
 
-        // Act
-        for (int i = 0; i < 10; i++)
-        {
-            var agent = CreateTestAgent($"agent{i}");
-            var task = CreateTestTask($"task{i}");
-            var index = i;
+        await orchestrator.NotifyStepStartedAsync(StepStarted(), TestContext.Current.CancellationToken);
+        await orchestrator.NotifyStepCompletedAsync(StepCompleted(success: true), TestContext.Current.CancellationToken);
 
-            tasks.Add(System.Threading.Tasks.Task.Run(async () =>
-            {
-                await orchestrator.NotifyTaskStartedAsync(agent, task, DateTime.UtcNow);
-                await orchestrator.NotifyStepProgressAsync(agent, task, new StepProgressInfo { StepDescription = $"Step {index}", CurrentStep = 1, TotalSteps = 1 });
-                await orchestrator.NotifyTaskCompletedAsync(
-                    agent, task, new TaskCompletionInfo { Result = CreateTestResult(true, task.Id.Value.ToString(), agent.Id), StepsExecuted = 1, StartTime = DateTime.UtcNow });
-            }, TestContext.Current.CancellationToken));
-        }
-
-        await System.Threading.Tasks.Task.WhenAll(tasks);
-
-        // Assert
-        // Deterministic wait (R5.6): poll until all logging/dispatch is complete instead of a fixed delay
-        await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(
-            () => logger.LoggedMessages.Count >= 30 && handler.RecordedEvents.Count >= 30);
-        Assert.True(logger.LoggedMessages.Count >= 30); // At least 3 logs per iteration * 10 iterations
-        Assert.True(handler.RecordedEvents.Count >= 30); // Handler also dispatched for all
+        Assert.Equal(2, healthy.RecordedEvents.Count);
+        Assert.True(logger.HasLoggedWarning("threw an exception"));
     }
 
     #endregion

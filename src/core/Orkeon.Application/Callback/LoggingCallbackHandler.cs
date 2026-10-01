@@ -54,18 +54,6 @@ public partial class LoggingCallbackHandler : BaseCallbackHandler
     }
 
     /// <summary>
-    /// On Task Progress Async.
-    /// </summary>
-    public override System.Threading.Tasks.Task OnTaskProgressAsync(TaskProgressContext context, CancellationToken cancellationToken = default)
-    {
-        if (context == null)
-            return System.Threading.Tasks.Task.CompletedTask;
-
-        LogTaskProgress(context.TaskId, context.StepNumber, context.TotalSteps, context.ProgressPercentage, context.CurrentAction);
-        return System.Threading.Tasks.Task.CompletedTask;
-    }
-
-    /// <summary>
     /// On Task Completed Async.
     /// </summary>
     public override System.Threading.Tasks.Task OnTaskCompletedAsync(TaskCompletedContext context, CancellationToken cancellationToken = default)
@@ -82,51 +70,14 @@ public partial class LoggingCallbackHandler : BaseCallbackHandler
         return System.Threading.Tasks.Task.CompletedTask;
     }
 
-    /// <summary>
-    /// On Flow Step Started Async.
-    /// </summary>
-    public override System.Threading.Tasks.Task OnFlowStepStartedAsync(FlowStepStartedContext context, CancellationToken cancellationToken = default)
-    {
-        if (context == null)
-            return System.Threading.Tasks.Task.CompletedTask;
-
-        LogFlowStepStarted(context.FlowName, context.StepName, context.StepId);
-        return System.Threading.Tasks.Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// On Flow Step Completed Async.
-    /// </summary>
-    public override System.Threading.Tasks.Task OnFlowStepCompletedAsync(FlowStepCompletedContext context, CancellationToken cancellationToken = default)
-    {
-        if (context == null)
-            return System.Threading.Tasks.Task.CompletedTask;
-
-        LogFlowStepCompleted(context.FlowName, context.StepName, context.Success, context.Duration.TotalMilliseconds);
-
-        if (!context.Success && context.Error != null)
-        {
-            LogFlowStepError(context.Error);
-        }
-        return System.Threading.Tasks.Task.CompletedTask;
-    }
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Step Started: DomainAgent {AgentRole} performing {Action} with thought: {Thought}")]
     private partial void LogStepStarted(string agentRole, string action, string thought);
     [LoggerMessage(Level = LogLevel.Information, Message = "Step Completed: DomainAgent {AgentRole} action {Action} resulted in: {Observation} (Success: {Success}, Duration: {Duration}ms)")]
     private partial void LogStepCompleted(string agentRole, string action, string observation, bool success, double duration);
     [LoggerMessage(Level = LogLevel.Information, Message = "Task Started: {Description} assigned to {AgentRole}")]
     private partial void LogTaskStarted(string description, string agentRole);
-    [LoggerMessage(Level = LogLevel.Information, Message = "Task Progress: {TaskId} - Step {StepNumber}/{TotalSteps} ({ProgressPercentage}%) - {CurrentAction}")]
-    private partial void LogTaskProgress(string taskId, int stepNumber, int totalSteps, double progressPercentage, string currentAction);
     [LoggerMessage(Level = LogLevel.Information, Message = "Task Completed: {TaskId} (Success: {Success}, Duration: {Duration}ms, Steps: {StepsExecuted})")]
     private partial void LogTaskCompleted(string taskId, bool success, double duration, int stepsExecuted);
     [LoggerMessage(Level = LogLevel.Error, Message = "Task Error: {Error}")]
     private partial void LogTaskError(string error);
-    [LoggerMessage(Level = LogLevel.Information, Message = "Flow Step Started: {FlowName} - {StepName} ({StepId})")]
-    private partial void LogFlowStepStarted(string flowName, string stepName, string stepId);
-    [LoggerMessage(Level = LogLevel.Information, Message = "Flow Step Completed: {FlowName} - {StepName} (Success: {Success}, Duration: {Duration}ms)")]
-    private partial void LogFlowStepCompleted(string flowName, string stepName, bool success, double duration);
-    [LoggerMessage(Level = LogLevel.Error, Message = "Flow Step Error: {Error}")]
-    private partial void LogFlowStepError(string error);
 }

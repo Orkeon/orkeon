@@ -62,7 +62,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private LlmCallGate LlmGate =>
         _llmGate ??= new LlmCallGate(_logger, _llmProvider, _rateLimiter);
 
-    private IToolInvocationPipeline Tools => ToolInvocation ?? ToolInvocationPipeline.Unguarded;
+    private IToolInvocationPipeline Tools => Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.Wrap(
+        ToolInvocation ?? ToolInvocationPipeline.Unguarded, Callbacks);
 
     private ChatToolDispatcher ToolDispatcher =>
         _toolDispatcher ??= new ChatToolDispatcher(_logger, Tools);
@@ -118,6 +119,14 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// first built, so set it before the first execution.
     /// </summary>
     public IToolInvocationPipeline? ToolInvocation { get; set; }
+
+    /// <summary>
+    /// The run's callback orchestrator: every tool call of the agent loops is reported to the
+    /// registered <see cref="Callback.ICallbackHandler"/>s as a step, started then completed
+    /// (GAP-06). Set by <c>AddOrkeonApplication</c>; null — an orchestrator built by hand —
+    /// reports no step. Read when the loops are first built, like <see cref="ToolInvocation"/>.
+    /// </summary>
+    public Interfaces.Services.ICallbackOrchestrator? Callbacks { get; set; }
 
     /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.

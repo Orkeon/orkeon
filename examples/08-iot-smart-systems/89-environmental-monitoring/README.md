@@ -1,6 +1,6 @@
 # 89. Monitoring Environnemental — ObserverAgent + Broadcast Alertes
 
-> Four parallel agents monitor environmental dimensions (air, water, biodiversity, soil). An ObserverAgent triggers alerts via TaskCallbacks. Broadcast ensures universal alert diffusion.
+> Four parallel agents monitor environmental dimensions (air, water, biodiversity, soil). An ObserverAgent triggers the alerts. Broadcast ensures universal alert diffusion.
 
 ## Quality
 
@@ -12,7 +12,7 @@
 - **Agents**: 6 — Air Monitor, Water Monitor, Biodiversity Monitor, Soil Monitor, Score Integrator, Alert Observer
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `Redis` (real-time state)
-- **Key features**: Batch execution, ObserverAgent, TaskCallbacks (alerts), Broadcast communication, MemoryEvents, EvaluationScore
+- **Key features**: Batch execution, ObserverAgent, Broadcast communication, MemoryEvents, EvaluationScore
 - **Runner**: `standard`
 
 ## Prerequisites

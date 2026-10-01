@@ -1,7 +1,5 @@
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Task.Contexts;
-using Orkeon.Domain.SharedKernel.Events;
-using Orkeon.Domain.Task.Events;
 using Orkeon.Domain.Tests.Fixtures;
 
 namespace Orkeon.Domain.Tests.Contexts;
@@ -158,76 +156,6 @@ public class TaskContextTests
         Assert.Equal("updateAction", exception.ParamName);
     }
 
-    [Fact]
-    public void ShouldCreateEvent_WhenUpdatingWithDataChange()
-    {
-        // Arrange
-        var taskId = TaskId.Create();
-        var agentId = AgentId.Create();
-        var data = new TestTaskData { Name = "Initial", Count = 5 };
-        var metadata = new TaskContextMetadata(taskId, agentId, "TestContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Act
-        context.Update(d => d.Name = "Changed");
-
-        // Assert
-        var events = context.GetEvents();
-        Assert.Single(events);
-        var updateEvent = Assert.IsType<TaskContextUpdatedEvent>(events[0]);
-        Assert.Equal(taskId, updateEvent.TaskId);
-        Assert.Equal(agentId, updateEvent.AgentId);
-        Assert.Equal("TestTaskData", updateEvent.ContextType);
-        Assert.Contains("Initial", updateEvent.BeforeState);
-        Assert.Contains("Changed", updateEvent.AfterState);
-    }
-
-    [Fact]
-    public void ShouldNotCreateEvent_WhenUpdatingWithNoDataChange()
-    {
-        // Arrange
-        var data = new TestTaskData { Name = "Same", Count = 5 };
-        var metadata = new TaskContextMetadata(
-            TaskId.Create(),
-            AgentId.Create(),
-            "TestContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Act
-        context.Update(d =>
-        {
-            // No actual changes
-            d.Name = "Same";
-            d.Count = 5;
-        });
-
-        // Assert
-        var events = context.GetEvents();
-        Assert.Empty(events);
-    }
-
-    [Fact]
-    public void ShouldCreateMultipleEvents_WhenUpdatingWithMultipleUpdates()
-    {
-        // Arrange
-        var data = new TestTaskData { Name = "Initial", Count = 0 };
-        var metadata = new TaskContextMetadata(
-            TaskId.Create(),
-            AgentId.Create(),
-            "TestContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Act
-        context.Update(d => d.Count = 1);
-        context.Update(d => d.Count = 2);
-        context.Update(d => d.Name = "Updated");
-
-        // Assert
-        var events = context.GetEvents();
-        Assert.Equal(3, events.Count);
-        Assert.All(events, e => Assert.IsType<TaskContextUpdatedEvent>(e));
-    }
-
     #endregion
 
     #region Transform Method Tests
@@ -304,73 +232,6 @@ public class TaskContextTests
         Assert.Equal("Original", context.Data.Name);
         Assert.Equal(10, context.Data.Count);
         Assert.Equal("Modified", transformedContext.Data.Summary);
-    }
-
-    #endregion
-
-    #region Events Management Tests
-
-    [Fact]
-    public void ShouldReturnEmptyList_WhenGettingEventsInitiallyEmpty()
-    {
-        // Arrange
-        var data = new TestTaskData();
-        var metadata = new TaskContextMetadata(
-            TaskId.Create(),
-            AgentId.Create(),
-            "TestContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Act
-        var events = context.GetEvents();
-
-        // Assert
-        Assert.NotNull(events);
-        Assert.Empty(events);
-    }
-
-    [Fact]
-    public void ShouldReturnReadOnlyList_WhenGettingEvents()
-    {
-        // Arrange
-        var data = new TestTaskData { Name = "Test" };
-        var metadata = new TaskContextMetadata(
-            TaskId.Create(),
-            AgentId.Create(),
-            "TestContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Act
-        context.Update(d => d.Name = "Changed");
-        var events = context.GetEvents();
-
-        // Assert
-        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<DomainEvent>>(events);
-        Assert.Single(events);
-    }
-
-    [Fact]
-    public void ShouldRemoveAllEvents_WhenClearingEvents()
-    {
-        // Arrange
-        var data = new TestTaskData { Count = 0 };
-        var metadata = new TaskContextMetadata(
-            TaskId.Create(),
-            AgentId.Create(),
-            "TestContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Create some events
-        context.Update(d => d.Count = 1);
-        context.Update(d => d.Count = 2);
-        context.Update(d => d.Count = 3);
-
-        // Act
-        Assert.Equal(3, context.GetEvents().Count);
-        context.ClearEvents();
-
-        // Assert
-        Assert.Empty(context.GetEvents());
     }
 
     #endregion
@@ -473,7 +334,6 @@ public class TaskContextTests
 
         // Assert
         Assert.Equal(threadCount * incrementsPerThread, context.Data.Count);
-        Assert.Equal(threadCount * incrementsPerThread, context.GetEvents().Count);
     }
 
     [Fact]
@@ -521,7 +381,6 @@ public class TaskContextTests
         // Assert
         Assert.Equal(50, readValues.Count);
         Assert.All(readValues, value => Assert.Matches(@"^(Initial|Thread\d):\d+$", value));
-        Assert.Equal(5, context.GetEvents().Count);
     }
 
     #endregion
@@ -572,110 +431,13 @@ public class TaskContextTests
 
         // Assert
         Assert.Equal(3, context.Data.Items.Count);
-        Assert.Equal(2, context.GetEvents().Count); // Two updates on original
         Assert.Equal("Processed 3 items from Research Task - Complete", summaryContext.Data.Summary);
         Assert.Equal(300, summaryContext.Data.Total);
-        // GetEvents not available on ITaskContext interface, only on TaskContext concrete class
-    }
-
-    [Fact]
-    public void ShouldEventAuditTrail_WhenUsingTaskContext()
-    {
-        // Arrange
-        var taskId = TaskId.Create();
-        var agentId = AgentId.Create();
-        var data = new TestTaskData { Name = "Audit Test", Count = 0 };
-        var metadata = new TaskContextMetadata(taskId, agentId, "AuditContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Act - Create audit trail
-        context.Update(d => d.Name = "Step 1");
-        context.Update(d => d.Name = "Step 2");
-        context.Update(d => d.Name = "Step 3");
-
-        var events = context.GetEvents();
-
-        // Assert - Verify audit trail
-        Assert.Equal(3, events.Count);
-
-        var firstEvent = events[0] as TaskContextUpdatedEvent;
-        Assert.NotNull(firstEvent);
-        Assert.Contains("Audit Test", firstEvent!.BeforeState);
-        Assert.Contains("Step 1", firstEvent.AfterState);
-
-        var lastEvent = events[2] as TaskContextUpdatedEvent;
-        Assert.NotNull(lastEvent);
-        Assert.Contains("Step 2", lastEvent!.BeforeState);
-        Assert.Contains("Step 3", lastEvent.AfterState);
-
-        // All events should have same task and agent IDs
-        Assert.All(events, e =>
-        {
-            var updateEvent = e as TaskContextUpdatedEvent;
-            Assert.Equal(taskId, updateEvent!.TaskId);
-            Assert.Equal(agentId, updateEvent.AgentId);
-        });
     }
 
     #endregion
 
     #region Edge Cases and Validation Tests
-
-    [Fact]
-    public void ShouldHandleCorrectly_WhenUsingTaskContextWithComplexNestedData()
-    {
-        // Arrange
-        var complexData = new TestTaskData
-        {
-            Name = "Complex",
-            Items = ["A", "B", "C"],
-            Count = 3
-        };
-        var metadata = new TaskContextMetadata(
-            TaskId.Create(),
-            AgentId.Create(),
-            "ComplexContext");
-        var context = new TypedTaskContext<TestTaskData>(complexData, metadata);
-
-        // Act
-        context.Update(d =>
-        {
-            d.Items.Clear();
-            d.Items.AddRange(s_itemsXYZ);
-            d.Count = d.Items.Count;
-        });
-
-        // Assert
-        Assert.Equal(3, context.Data.Items.Count);
-        Assert.Equal(s_itemsXYZ, context.Data.Items);
-        Assert.Single(context.GetEvents());
-    }
-
-    [Fact]
-    public void ShouldHandleCorrectly_WhenUsingTaskContextWithUnicodeData()
-    {
-        // Arrange
-        var data = new TestTaskData
-        {
-            Name = "测试数据 🔬",
-            Items = ["データ1", "Данные2", "🎯"]
-        };
-        var metadata = new TaskContextMetadata(
-            TaskId.Create(),
-            AgentId.Create(),
-            "UnicodeContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Act
-        context.Update(d => d.Name = "Updated 更新 ✅");
-
-        // Assert
-        Assert.Contains("✅", context.Data.Name);
-        Assert.Contains("🎯", context.Data.Items);
-        var updateEvent = context.GetEvents()[0] as TaskContextUpdatedEvent;
-        Assert.Contains("\\uD83D\\uDD2C", updateEvent!.BeforeState); // 🔬 escaped
-        Assert.Contains("\\u2705", updateEvent.AfterState); // ✅ escaped in JSON
-    }
 
     [Fact]
     public void ShouldPropagateException_WhenTransformingWithExceptionInTransformer()
@@ -691,32 +453,6 @@ public class TaskContextTests
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() =>
             context.Transform<TransformedData>(d => throw new InvalidOperationException("Transform failed")));
-    }
-
-    [Fact]
-    public void ShouldNotModifyData_WhenUpdatingWithExceptionInAction()
-    {
-        // Arrange
-        var data = new TestTaskData { Name = "Original", Count = 5 };
-        var metadata = new TaskContextMetadata(
-            TaskId.Create(),
-            AgentId.Create(),
-            "TestContext");
-        var context = new TypedTaskContext<TestTaskData>(data, metadata);
-
-        // Act & Assert
-        Assert.Throws<InvalidOperationException>(() =>
-            context.Update(d =>
-            {
-                d.Name = "Modified";
-                throw new InvalidOperationException("Update failed");
-            }));
-
-        // Note: Current implementation modifies data before exception is thrown
-        // This is a design limitation - data is modified in-place before validation
-        Assert.Equal("Modified", context.Data.Name);
-        Assert.Equal(5, context.Data.Count);
-        Assert.Empty(context.GetEvents());
     }
 
     [Fact]

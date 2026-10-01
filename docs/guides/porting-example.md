@@ -684,7 +684,7 @@ The port is mainly configuration work (agents, tasks, prompts) since all the req
 
 - RabbitMQ queue consumption (external trigger → calls `KickoffAsync`)
 - SMTP sending (post-crew action → triggered by the calling system)
-- Operational monitoring and alerting (use the `IStepCallback` / `ITaskCallback` callbacks to integrate)
+- Operational monitoring and alerting (register an `ICrewExecutionHook` for task and crew outcomes, or an `ICallbackHandler` for each task and tool call — see [Events, CQRS and observability](../architecture/domain-events.md#callbacks-and-observability))
 
 ### Expected gains from the port
 

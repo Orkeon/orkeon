@@ -9,30 +9,6 @@ namespace Orkeon.Domain.Tests.Task;
 
 public class ResearchTaskTests
 {
-    // Test doubles
-    private class TestTaskCallback : ITaskCallback
-    {
-        public List<string> CallbackEvents { get; } = [];
-
-        public System.Threading.Tasks.Task OnTaskStartAsync(ICrewTask task)
-        {
-            CallbackEvents.Add($"Started: {task.TaskId}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public System.Threading.Tasks.Task OnTaskCompletedAsync(ICrewTask task, TaskOutput output)
-        {
-            CallbackEvents.Add($"Completed: {task.TaskId}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        public System.Threading.Tasks.Task OnTaskFailedAsync(ICrewTask task, string error)
-        {
-            CallbackEvents.Add($"Failed: {task.TaskId} - {error}");
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-    }
-
     [Fact]
     public void ShouldInitializeTask_WhenConstructingWithValidParameters()
     {
@@ -75,7 +51,6 @@ public class ResearchTaskTests
         var outputJson = JsonSchema.From("{\"type\":\"object\",\"properties\":{\"findings\":{\"type\":\"array\"}}}");
         var outputPydantic = typeof(ResearchTaskContext);
         var outputFile = "research_report.md";
-        var callback = new TestTaskCallback();
         var humanInput = true;
 
         // Act
@@ -91,7 +66,6 @@ public class ResearchTaskTests
                 OutputJson = outputJson,
                 OutputPydantic = outputPydantic,
                 OutputFile = outputFile,
-                Callback = callback,
                 HumanInput = humanInput
             });
 
@@ -101,7 +75,6 @@ public class ResearchTaskTests
         Assert.Equal(outputJson, task.OutputJson);
         Assert.Equal(outputPydantic, task.OutputPydantic);
         Assert.Equal(outputFile, task.OutputFile);
-        Assert.Equal(callback, task.Callback);
         Assert.Equal(humanInput, task.HumanInput);
         Assert.Equal(researchTopic, task.TypedContext.Topic);
     }

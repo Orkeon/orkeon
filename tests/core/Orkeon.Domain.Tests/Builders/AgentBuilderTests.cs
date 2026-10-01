@@ -58,7 +58,6 @@ public class AgentBuilderTests
     {
         // Arrange
         var llm = new StubLlmProvider();
-        var stepCallback = new StubStepCallback();
 
         // Act
         var agent = new AgentBuilder()
@@ -76,7 +75,6 @@ public class AgentBuilderTests
             .ResponseTemplate("Result: {result}")
             .MaxRetryLimit(3)
             .WithLlm(llm)
-            .WithStepCallback(stepCallback)
             .Build();
 
         // Assert
@@ -94,7 +92,6 @@ public class AgentBuilderTests
         Assert.Equal("Result: {result}", agent.ResponseTemplate);
         Assert.Equal(3, agent.MaxRetryLimit);
         Assert.Same(llm, agent.FunctionCallingLlm);
-        Assert.Same(stepCallback, agent.StepCallback);
     }
 
     [Fact]
@@ -243,18 +240,6 @@ public class AgentBuilderTests
 
         public System.Threading.Tasks.Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
             => System.Threading.Tasks.Task.FromResult(new LlmResponse { Content = "stub response" });
-    }
-
-    private sealed class StubStepCallback : IStepCallback
-    {
-        public System.Threading.Tasks.Task OnStepStartAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, int iteration)
-            => System.Threading.Tasks.Task.CompletedTask;
-
-        public System.Threading.Tasks.Task OnStepCompletedAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, int iteration, Orkeon.Domain.Agent.AgentStep step)
-            => System.Threading.Tasks.Task.CompletedTask;
-
-        public System.Threading.Tasks.Task OnStepFailedAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, int iteration, string error)
-            => System.Threading.Tasks.Task.CompletedTask;
     }
 
     #endregion

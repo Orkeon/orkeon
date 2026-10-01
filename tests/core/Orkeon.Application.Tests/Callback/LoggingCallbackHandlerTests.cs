@@ -94,33 +94,6 @@ public class LoggingCallbackHandlerTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldLogInformation_WhenUsingOnTaskProgressAsync()
-    {
-        // Arrange
-        var context = new TaskProgressContext(
-            TaskId: "task-400",
-            AgentId: AgentId1,
-            StepNumber: 3,
-            TotalSteps: 5,
-            ProgressPercentage: 60.0,
-            CurrentAction: "Processing customer data",
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnTaskProgressAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(logMessages);
-        var message = logMessages.First();
-        Assert.Contains("Task Progress", message);
-        Assert.Contains("task-400", message);
-        Assert.Contains("Step 3/5", message);
-        Assert.Contains("60%", message);
-        Assert.Contains("Processing customer data", message);
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldLogInformation_WhenUsingOnTaskCompletedAsyncWithSuccess()
     {
         // Arrange
@@ -177,143 +150,6 @@ public class LoggingCallbackHandlerTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldLogInformation_WhenUsingOnFlowStepStartedAsync()
-    {
-        // Arrange
-        var context = new FlowStepStartedContext(
-            FlowExecutionId: "flow-exec-100",
-            FlowName: "CustomerOnboarding",
-            StepId: StepId1,
-            StepName: "ValidateCustomerData",
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnFlowStepStartedAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(logMessages);
-        var message = logMessages.First();
-        Assert.Contains("Flow Step Started", message);
-        Assert.Contains("CustomerOnboarding", message);
-        Assert.Contains("ValidateCustomerData", message);
-        Assert.Contains(StepId1, message);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldLogInformation_WhenUsingOnFlowStepCompletedAsyncWithSuccess()
-    {
-        // Arrange
-        var context = new FlowStepCompletedContext(
-            FlowStep: new FlowStepIdentity("flow-exec-200", "OrderProcessing", "step-2", "CalculateShipping"),
-            Success: true,
-            Output: new { shippingCost = 15.99 },
-            Error: null,
-            Duration: TimeSpan.FromMilliseconds(250),
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnFlowStepCompletedAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(logMessages);
-        var message = logMessages.First();
-        Assert.Contains("Flow Step Completed", message);
-        Assert.Contains("OrderProcessing", message);
-        Assert.Contains("CalculateShipping", message);
-        Assert.Contains("Success: True", message);
-        Assert.Contains("250", message); // Duration
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldLogInformationAndError_WhenUsingOnFlowStepCompletedAsyncWithFailure()
-    {
-        // Arrange
-        var context = new FlowStepCompletedContext(
-            FlowStep: new FlowStepIdentity("flow-exec-300", "PaymentProcessing", "step-3", "ChargeCard"),
-            Success: false,
-            Output: null,
-            Error: "Insufficient funds",
-            Duration: TimeSpan.FromMilliseconds(1200),
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnFlowStepCompletedAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var infoMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(infoMessages);
-        var infoMessage = infoMessages.First();
-        Assert.Contains("Flow Step Completed", infoMessage);
-        Assert.Contains("PaymentProcessing", infoMessage);
-        Assert.Contains("ChargeCard", infoMessage);
-        Assert.Contains("Success: False", infoMessage);
-
-        var errorMessages = _logger.GetLogMessages(LogLevel.Error);
-        Assert.Single(errorMessages);
-        var errorMessage = errorMessages.First();
-        Assert.Contains("Flow Step Error", errorMessage);
-        Assert.Contains("Insufficient funds", errorMessage);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldRespectToken_WhenCallingAllMethodsWithCancellation()
-    {
-        // Arrange
-        using var cts = new CancellationTokenSource();
-
-        // Create various contexts
-        var stepStartContext = new StepStartedContext(AgentId1, RoleWorker, TaskId1, "Action", "Thought", DateTime.UtcNow);
-        var stepCompleteContext = new StepCompletedContext(new StepIdentity(AgentId1, RoleWorker, TaskId1), "Action", "Thought", "Observation", true, TimeSpan.FromSeconds(1), DateTime.UtcNow);
-        var taskStartContext = new TaskStartedContext(TaskId1, "Description", "Output", AgentId1, RoleWorker, DateTime.UtcNow);
-        var taskProgressContext = new TaskProgressContext(TaskId1, AgentId1, 1, 10, 10.0, "Working", DateTime.UtcNow);
-        var taskCompleteContext = new TaskCompletedContext(TaskId1, AgentId1, new TaskExecutionOutcome(true, "Done", null, null), TimeSpan.FromSeconds(5), 10, DateTime.UtcNow);
-        var flowStartContext = new FlowStepStartedContext(FlowId1, "Flow", StepId1, "Step", DateTime.UtcNow);
-        var flowCompleteContext = new FlowStepCompletedContext(new FlowStepIdentity(FlowId1, "Flow", StepId1, "Step"), true, null, null, TimeSpan.FromSeconds(2), DateTime.UtcNow);
-
-        // Act & Assert - All should complete without throwing even if token is cancelled
-        await cts.CancelAsync();
-
-        await _handler.OnStepStartedAsync(stepStartContext, cts.Token);
-        await _handler.OnStepCompletedAsync(stepCompleteContext, cts.Token);
-        await _handler.OnTaskStartedAsync(taskStartContext, cts.Token);
-        await _handler.OnTaskProgressAsync(taskProgressContext, cts.Token);
-        await _handler.OnTaskCompletedAsync(taskCompleteContext, cts.Token);
-        await _handler.OnFlowStepStartedAsync(flowStartContext, cts.Token);
-        await _handler.OnFlowStepCompletedAsync(flowCompleteContext, cts.Token);
-
-        // Verify logs were still created despite cancellation
-        var allLogs = _logger.GetAllLogMessages();
-        Assert.Equal(7, allLogs.Count); // One log per method
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldUseStructuredLogging_WhenLoggingMessages()
-    {
-        // Arrange
-        var context = new TaskProgressContext(
-            TaskId: "structured-task",
-            AgentId: "agent-structured",
-            StepNumber: 7,
-            TotalSteps: 10,
-            ProgressPercentage: 70.5,
-            CurrentAction: "Validating results",
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnTaskProgressAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logEntry = _logger.GetStructuredLogs().First();
-        Assert.Equal("structured-task", logEntry.Parameters!["TaskId"]);
-        Assert.Equal(7, logEntry.Parameters["StepNumber"]);
-        Assert.Equal(10, logEntry.Parameters["TotalSteps"]);
-        Assert.Equal(70.5, logEntry.Parameters["ProgressPercentage"]);
-        Assert.Equal("Validating results", logEntry.Parameters["CurrentAction"]);
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldNotThrow_WhenUsingOnStepStartedAsyncWithNullContext()
     {
         // Act & Assert - Should handle null gracefully
@@ -347,43 +183,10 @@ public class LoggingCallbackHandlerTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldNotThrow_WhenUsingOnTaskProgressAsyncWithNullContext()
-    {
-        // Act & Assert - Should handle null gracefully
-        await _handler.OnTaskProgressAsync(null!, TestContext.Current.CancellationToken);
-
-        // Verify no logs were created
-        var logs = _logger.GetAllLogMessages();
-        Assert.Empty(logs);
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldNotThrow_WhenUsingOnTaskCompletedAsyncWithNullContext()
     {
         // Act & Assert - Should handle null gracefully
         await _handler.OnTaskCompletedAsync(null!, TestContext.Current.CancellationToken);
-
-        // Verify no logs were created
-        var logs = _logger.GetAllLogMessages();
-        Assert.Empty(logs);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldNotThrow_WhenUsingOnFlowStepStartedAsyncWithNullContext()
-    {
-        // Act & Assert - Should handle null gracefully
-        await _handler.OnFlowStepStartedAsync(null!, TestContext.Current.CancellationToken);
-
-        // Verify no logs were created
-        var logs = _logger.GetAllLogMessages();
-        Assert.Empty(logs);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldNotThrow_WhenUsingOnFlowStepCompletedAsyncWithNullContext()
-    {
-        // Act & Assert - Should handle null gracefully
-        await _handler.OnFlowStepCompletedAsync(null!, TestContext.Current.CancellationToken);
 
         // Verify no logs were created
         var logs = _logger.GetAllLogMessages();
@@ -435,54 +238,6 @@ public class LoggingCallbackHandlerTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldLog_WhenUsingOnTaskProgressAsyncWith100PercentProgress()
-    {
-        // Arrange
-        var context = new TaskProgressContext(
-            TaskId: "task-complete",
-            AgentId: AgentId1,
-            StepNumber: 10,
-            TotalSteps: 10,
-            ProgressPercentage: 100.0,
-            CurrentAction: "Finalizing",
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnTaskProgressAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(logMessages);
-        var message = logMessages.First();
-        Assert.Contains("100%", message);
-        Assert.Contains("Step 10/10", message);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldLog_WhenUsingOnTaskProgressAsyncWithZeroProgress()
-    {
-        // Arrange
-        var context = new TaskProgressContext(
-            TaskId: "task-start",
-            AgentId: AgentId1,
-            StepNumber: 0,
-            TotalSteps: 10,
-            ProgressPercentage: 0.0,
-            CurrentAction: "Initializing",
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnTaskProgressAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(logMessages);
-        var message = logMessages.First();
-        Assert.Contains("0%", message);
-        Assert.Contains("Step 0/10", message);
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldLogInformation_WhenUsingOnTaskCompletedAsyncWithStructuredOutput()
     {
         // Arrange
@@ -529,58 +284,6 @@ public class LoggingCallbackHandlerTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldLogCorrectly_WhenUsingOnFlowStepStartedAsyncWithSpecialCharacters()
-    {
-        // Arrange
-        var context = new FlowStepStartedContext(
-            FlowExecutionId: "flow-<>&\"'",
-            FlowName: "Flow with 特殊 characters",
-            StepId: "step-@#$%",
-            StepName: "Step\nWith\tSpecial\rChars",
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnFlowStepStartedAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(logMessages);
-        var message = logMessages.First();
-        Assert.Contains("Flow Step Started", message);
-        Assert.Contains("Flow with 特殊 characters", message);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldLog_WhenUsingOnFlowStepCompletedAsyncWithComplexOutput()
-    {
-        // Arrange
-        var complexOutput = new
-        {
-            nested = new { level1 = new { level2 = "deep" } },
-            array = new[] { 1, 2, 3 },
-            dictionary = new Dictionary<string, object> { ["key"] = "value" }
-        };
-
-        var context = new FlowStepCompletedContext(
-            FlowStep: new FlowStepIdentity("flow-complex", "ComplexFlow", "step-complex", "ProcessComplexData"),
-            Success: true,
-            Output: complexOutput,
-            Error: null,
-            Duration: TimeSpan.FromMilliseconds(456),
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnFlowStepCompletedAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(logMessages);
-        var message = logMessages.First();
-        Assert.Contains("Flow Step Completed", message);
-        Assert.Contains("Success: True", message);
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldLogWithoutObservation_WhenUsingOnStepCompletedAsyncWithNullObservation()
     {
         // Arrange
@@ -605,33 +308,6 @@ public class LoggingCallbackHandlerTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldLogAllCorrectly_WhenUsingMultipleCallbacksInSequence()
-    {
-        // Arrange
-        var taskStart = new TaskStartedContext(TaskId1, "Description", "Output", AgentId1, RoleWorker, DateTime.UtcNow);
-        var stepStart = new StepStartedContext(AgentId1, RoleWorker, TaskId1, "Action1", "Thought1", DateTime.UtcNow);
-        var stepComplete = new StepCompletedContext(new StepIdentity(AgentId1, RoleWorker, TaskId1), "Action1", "Thought1", "Observation1", true, TimeSpan.FromSeconds(1), DateTime.UtcNow);
-        var taskProgress = new TaskProgressContext(TaskId1, AgentId1, 1, 2, 50.0, "Halfway", DateTime.UtcNow);
-        var taskComplete = new TaskCompletedContext(TaskId1, AgentId1, new TaskExecutionOutcome(true, "Done", null, null), TimeSpan.FromSeconds(5), 2, DateTime.UtcNow);
-
-        // Act
-        await _handler.OnTaskStartedAsync(taskStart, TestContext.Current.CancellationToken);
-        await _handler.OnStepStartedAsync(stepStart, TestContext.Current.CancellationToken);
-        await _handler.OnStepCompletedAsync(stepComplete, TestContext.Current.CancellationToken);
-        await _handler.OnTaskProgressAsync(taskProgress, TestContext.Current.CancellationToken);
-        await _handler.OnTaskCompletedAsync(taskComplete, TestContext.Current.CancellationToken);
-
-        // Assert
-        var allLogs = _logger.GetAllLogMessages();
-        Assert.Equal(5, allLogs.Count);
-        Assert.Contains("Task Started", allLogs[0]);
-        Assert.Contains("Step Started", allLogs[1]);
-        Assert.Contains("Step Completed", allLogs[2]);
-        Assert.Contains("Task Progress", allLogs[3]);
-        Assert.Contains("Task Completed", allLogs[4]);
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldLogFullError_WhenUsingOnTaskCompletedAsyncWithVeryLongError()
     {
         // Arrange
@@ -652,30 +328,6 @@ public class LoggingCallbackHandlerTests
         Assert.Single(errorMessages);
         var errorMessage = errorMessages.First();
         Assert.Contains(longError.Substring(0, 100), errorMessage); // At least part of the error
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldStillLog_WhenUsingOnTaskProgressAsyncWithNegativeProgress()
-    {
-        // Arrange (invalid but should handle gracefully)
-        var context = new TaskProgressContext(
-            TaskId: "task-negative",
-            AgentId: AgentId1,
-            StepNumber: -1,
-            TotalSteps: -10,
-            ProgressPercentage: -50.0,
-            CurrentAction: "Invalid state",
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await _handler.OnTaskProgressAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        var logMessages = _logger.GetLogMessages(LogLevel.Information);
-        Assert.Single(logMessages);
-        var message = logMessages.First();
-        Assert.Contains("Task Progress", message);
-        Assert.Contains("-50%", message);
     }
 
     #region Test Logger Implementation

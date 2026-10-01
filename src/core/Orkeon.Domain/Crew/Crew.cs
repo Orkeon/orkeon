@@ -100,16 +100,6 @@ public sealed class Crew : AggregateRoot<CrewId>
     public bool FullOutput { get; private set; }
 
     /// <summary>
-    /// Gets the step callback for execution progress.
-    /// </summary>
-    public IStepCallback? StepCallback { get; private set; }
-
-    /// <summary>
-    /// Gets the task callback for task completion.
-    /// </summary>
-    public ITaskCallback? TaskCallback { get; private set; }
-
-    /// <summary>
     /// Gets the planning LLM provider.
     /// </summary>
     public ILlmProvider? PlanningLlm { get; private set; }
@@ -194,8 +184,6 @@ public sealed class Crew : AggregateRoot<CrewId>
             ManagerAgentId = options.ManagerAgentId,
             Language = !string.IsNullOrWhiteSpace(options.Language) ? LanguageCode.From(options.Language) : LanguageCode.Default,
             FullOutput = options.FullOutput,
-            StepCallback = options.StepCallback,
-            TaskCallback = options.TaskCallback,
             PlanningLlm = options.PlanningLlm,
             MemoryEnabled = options.MemoryEnabled,
             MemoryProvider = options.MemoryProvider,
@@ -237,8 +225,6 @@ public sealed class Crew : AggregateRoot<CrewId>
         AgentId? managerAgentId = null,
         string language = "en",
         bool fullOutput = false,
-        IStepCallback? stepCallback = null,
-        ITaskCallback? taskCallback = null,
         ILlmProvider? planningLlm = null,
         bool memoryEnabled = false)
     {
@@ -255,8 +241,6 @@ public sealed class Crew : AggregateRoot<CrewId>
             ManagerAgentId = managerAgentId,
             Language = language,
             FullOutput = fullOutput,
-            StepCallback = stepCallback,
-            TaskCallback = taskCallback,
             PlanningLlm = planningLlm,
             MemoryEnabled = memoryEnabled
         });

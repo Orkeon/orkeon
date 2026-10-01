@@ -6,32 +6,6 @@ using Orkeon.Application.Callback;
 namespace Orkeon.Application.Interfaces.Services;
 
 /// <summary>
-/// Groups optional callback handlers for notification methods.
-/// </summary>
-public sealed class CallbackHandlers
-{
-    /// <summary>
-    /// Optional agent-level callback handler.
-    /// </summary>
-    public ICallbackHandler? AgentCallbackHandler { get; init; }
-
-    /// <summary>
-    /// Optional task-level callback handler.
-    /// </summary>
-    public ICallbackHandler? TaskCallbackHandler { get; init; }
-
-    /// <summary>
-    /// Optional task lifecycle callbacks.
-    /// </summary>
-    public TaskCallbacks? TaskCallbacks { get; init; }
-
-    /// <summary>
-    /// Empty instance with no handlers.
-    /// </summary>
-    public static readonly CallbackHandlers None = new();
-}
-
-/// <summary>
 /// Information about a completed task for callback notification.
 /// </summary>
 public sealed class TaskCompletionInfo
@@ -53,59 +27,42 @@ public sealed class TaskCompletionInfo
 }
 
 /// <summary>
-/// Information about step progress for callback notification.
-/// </summary>
-public sealed class StepProgressInfo
-{
-    /// <summary>
-    /// Description of the current step.
-    /// </summary>
-    public string StepDescription { get; init; } = null!;
-
-    /// <summary>
-    /// Current step number.
-    /// </summary>
-    public int CurrentStep { get; init; }
-
-    /// <summary>
-    /// Total number of steps.
-    /// </summary>
-    public int TotalSteps { get; init; }
-}
-
-/// <summary>
-/// Orchestrates callback notifications during task execution.
-/// Separates callback handling from execution logic.
+/// Calls every registered <see cref="ICallbackHandler"/> during a crew run: task start and end
+/// around each agent execution (<c>AgentExecutionService</c>), step start and end around each
+/// tool call of the agent loops (<see cref="Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline"/>).
+/// A handler that throws is logged and skipped.
 /// </summary>
 public interface ICallbackOrchestrator
 {
     /// <summary>
-    /// Notifies all relevant handlers that a task has started.
+    /// Notifies all registered handlers that a task has started.
     /// </summary>
     System.Threading.Tasks.Task NotifyTaskStartedAsync(
         DomainAgent agent,
         CrewTask task,
         DateTime startTime,
-        CallbackHandlers? handlers = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Notifies all relevant handlers that a task has completed.
+    /// Notifies all registered handlers that a task has completed, successfully or not.
     /// </summary>
     System.Threading.Tasks.Task NotifyTaskCompletedAsync(
         DomainAgent agent,
         CrewTask task,
         TaskCompletionInfo completionInfo,
-        CallbackHandlers? handlers = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Notifies handlers of step progression during task execution.
+    /// Notifies all registered handlers that an agent step — one tool call — is starting.
     /// </summary>
-    System.Threading.Tasks.Task NotifyStepProgressAsync(
-        DomainAgent agent,
-        CrewTask task,
-        StepProgressInfo progressInfo,
-        CallbackHandlers? handlers = null,
+    System.Threading.Tasks.Task NotifyStepStartedAsync(
+        StepStartedContext context,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies all registered handlers that an agent step — one tool call — has ended.
+    /// </summary>
+    System.Threading.Tasks.Task NotifyStepCompletedAsync(
+        StepCompletedContext context,
         CancellationToken cancellationToken = default);
 }

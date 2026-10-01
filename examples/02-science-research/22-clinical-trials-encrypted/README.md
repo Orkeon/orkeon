@@ -12,7 +12,7 @@
 - **Agents**: 4 — Observateur Monitoring Continu (Observer), Analyste Safety (Worker), Statisticien Essais (Worker), Compliance Officer (Worker)
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `EncryptedSQLite`
-- **Key features**: `INistComplianceReporter`, `AuditEventTypes`, `LlmCallAudit`, `ObserverAgent` alerts via `TaskCallbacks`, `EncryptedSqliteMemoryProvider`
+- **Key features**: `INistComplianceReporter`, `AuditEventTypes`, `LlmCallAudit`, `EncryptedSqliteMemoryProvider`
 - **Runner**: `standard`
 
 ## Prerequisites

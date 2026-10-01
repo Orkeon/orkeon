@@ -12,7 +12,7 @@
 - **Agents**: 5 -- Official Report Monitor, Literature Monitor, Social Monitor, Signal Detector, Risk Evaluator
 - **Tools**: `http_api`, `web_scrape`, `pdf_reader`, `json_tool`, `semantic_search`, `file_write`
 - **Memory**: `Redis` (semantic vector deduplication)
-- **Key features**: Batch execution, LlmRateLimiter, vector search (deduplication), TaskCallbacks (alerts), MemoryEvents
+- **Key features**: Batch execution, LlmRateLimiter, vector search (deduplication), MemoryEvents
 - **Runner**: `standard`
 
 ## Prerequisites

@@ -12,7 +12,7 @@
 - **Agents**: 4 — Sensor Data Collector, Agronomist Analyst, Action Planner, Farmer (Human Validator)
 - **Tools**: `http_api`, `json_tool`, `csv_reader`, `file_write`
 - **Memory**: `SQLite` (parcel history)
-- **Key features**: HumanInputContext (physical action validation), LlmRateLimiter, TaskCallbacks (threshold alerts), AgentMemory.Episodic
+- **Key features**: HumanInputContext (physical action validation), LlmRateLimiter, AgentMemory.Episodic
 - **Runner**: `standard`
 
 ## Prerequisites

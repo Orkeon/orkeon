@@ -63,9 +63,6 @@ public sealed record AgentSnapshot
     /// <summary>The optional function-calling LLM provider.</summary>
     public ILlmProvider? FunctionCallingLlm { get; init; }
 
-    /// <summary>The optional step callback.</summary>
-    public IStepCallback? StepCallback { get; init; }
-
     /// <summary>The optional tool access policy (defaults to unrestricted).</summary>
     public ToolAccessPolicy? ToolAccessPolicy { get; init; }
 

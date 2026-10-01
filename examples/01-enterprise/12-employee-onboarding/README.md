@@ -12,7 +12,7 @@
 - **Agents**: 4 — Documentaliste (Worker), Formateur (Worker), Matcher Mentor (Worker), Planificateur (Worker)
 - **Tools**: `file_write`, `http_api`, `json_tool`
 - **Memory**: `InMemory`
-- **Key features**: `CrewConfiguration` full YAML, `TaskCallbacks` for step tracking, semantic selection by embeddings for mentor matching, `AgentConfiguration`
+- **Key features**: `CrewConfiguration` full YAML, semantic selection by embeddings for mentor matching, `AgentConfiguration`
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -39,4 +39,4 @@ orkeon run examples/01-enterprise/12-employee-onboarding/config.yaml \
 
 - Fully declarative YAML-driven onboarding pipeline with zero custom code
 - Semantic embedding-based mentor matching using skill profiles
-- Step-by-step onboarding with TaskCallbacks for progress tracking
+- Step-by-step onboarding, each task's progress visible through the run's events

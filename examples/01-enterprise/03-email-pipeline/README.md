@@ -12,7 +12,7 @@
 - **Agents**: 4 — Trieur d'Emails (Worker), Extracteur d'Actions (Worker), Redacteur de Reponses (Worker), Validateur Humain (Human)
 - **Tools**: `email_parser`, `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: `HumanInputContext` (type: confirmation), `TaskCallbacks` for notification, `TaskPriority` for triage
+- **Key features**: `HumanInputContext` (type: confirmation), `TaskPriority` for triage
 - **Runner**: `standard`
 
 ## Prerequisites

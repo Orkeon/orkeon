@@ -31,16 +31,6 @@ public class MetricsCallbackHandler : BaseCallbackHandler
     }
 
     /// <summary>
-    /// On Task Progress Async.
-    /// </summary>
-    public override SystemTask OnTaskProgressAsync(TaskProgressContext context, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        _taskStepCounts[context.TaskId] = context.StepNumber;
-        return SystemTask.CompletedTask;
-    }
-
-    /// <summary>
     /// On Task Completed Async.
     /// </summary>
     public override SystemTask OnTaskCompletedAsync(TaskCompletedContext context, CancellationToken cancellationToken = default)
@@ -229,16 +219,6 @@ public class ConsoleCallbackHandler : BaseCallbackHandler
     {
         ArgumentNullException.ThrowIfNull(context);
         Console.WriteLine($"🚀 Task Started: {context.Description}");
-        return SystemTask.CompletedTask;
-    }
-
-    /// <summary>
-    /// On Task Progress Async.
-    /// </summary>
-    public override SystemTask OnTaskProgressAsync(TaskProgressContext context, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        Console.WriteLine(Inv.Format($"⚡ Progress: {context.ProgressPercentage:F0}% - {context.CurrentAction}"));
         return SystemTask.CompletedTask;
     }
 

@@ -33,38 +33,6 @@ public class ExampleCallbacksTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldUpdateStepNumber_WhenUsingMetricsCallbackHandlerOnTaskProgressAsync()
-    {
-        // Arrange
-        var handler = new MetricsCallbackHandler();
-        var startContext = new TaskStartedContext(
-            TaskId: "task-002",
-            Description: "Test task",
-            ExpectedOutput: "Test output",
-            AgentId: AgentId1,
-            AgentRole: RoleWorker,
-            Timestamp: DateTime.UtcNow);
-
-        var progressContext = new TaskProgressContext(
-            TaskId: "task-002",
-            AgentId: AgentId1,
-            StepNumber: 5,
-            TotalSteps: 10,
-            ProgressPercentage: 50.0,
-            CurrentAction: "Processing",
-            Timestamp: DateTime.UtcNow);
-
-        // Act
-        await handler.OnTaskStartedAsync(startContext, TestContext.Current.CancellationToken);
-        await handler.OnTaskProgressAsync(progressContext, TestContext.Current.CancellationToken);
-
-        // Assert
-        // Progress tracking is internal, but we verify no exceptions
-        var metrics = handler.GetMetrics();
-        Assert.Empty(metrics); // Still no metrics until completion
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldCreateMetric_WhenUsingMetricsCallbackHandlerOnTaskCompletedAsync()
     {
         // Arrange
@@ -387,41 +355,6 @@ public class ExampleCallbacksTests
 
             // Assert
             Assert.Contains("🚀 Task Started: Test console output", output);
-        }
-        finally
-        {
-            Console.SetOut(originalConsoleOut);
-        }
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldWriteProgressToConsole_WhenUsingConsoleCallbackHandlerOnTaskProgressAsync()
-    {
-        // Arrange
-        var handler = new ConsoleCallbackHandler();
-        var originalConsoleOut = Console.Out;
-        using var consoleOutput = new StringWriter();
-        Console.SetOut(consoleOutput);
-
-        try
-        {
-            var context = new TaskProgressContext(
-                TaskId: "console-task-2",
-                AgentId: AgentId1,
-                StepNumber: 7,
-                TotalSteps: 10,
-                ProgressPercentage: 70.0,
-                CurrentAction: "Analyzing data",
-                Timestamp: DateTime.UtcNow);
-
-            // Act
-            await handler.OnTaskProgressAsync(context, TestContext.Current.CancellationToken);
-
-            var output = consoleOutput.ToString();
-
-            // Assert
-            Assert.Contains("⚡ Progress: 70%", output);
-            Assert.Contains("Analyzing data", output);
         }
         finally
         {

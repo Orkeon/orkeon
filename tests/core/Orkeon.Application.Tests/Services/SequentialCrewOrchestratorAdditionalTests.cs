@@ -320,7 +320,7 @@ public class SequentialCrewOrchestratorAdditionalTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new SequentialCrewOrchestrator(repository, logger, null!, strategyFactory, new ExecutionPlanParser()));
+            new SequentialCrewOrchestrator(repository, logger, null!, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher()));
     }
 
     [Fact]
@@ -333,7 +333,7 @@ public class SequentialCrewOrchestratorAdditionalTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new SequentialCrewOrchestrator(repository, logger, stateManager, null!, new ExecutionPlanParser()));
+            new SequentialCrewOrchestrator(repository, logger, stateManager, null!, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher()));
     }
 
     #endregion
@@ -348,7 +348,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -374,7 +374,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -403,7 +403,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -438,7 +438,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -474,7 +474,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Concurrent test crew", ProcessType.Sequential);
 
@@ -509,7 +509,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crews = new List<DomainCrew>();
         for (int i = 0; i < 5; i++)
@@ -553,7 +553,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crewId = CrewId.Create();
         var input = new CrewInput("Test", new Dictionary<string, object>());
@@ -574,7 +574,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var stateManager = new TestStateManager();
         stateManager.ShouldThrowOnSave = true;
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -604,7 +604,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
         strategyFactory.ShouldThrowOnCreate = true;
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -634,7 +634,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
         strategyFactory.Strategy.ShouldThrow = true;
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -667,7 +667,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Performance test crew", ProcessType.Sequential);
 
@@ -705,7 +705,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var input = new CrewInput("Test", new Dictionary<string, object>());
 
@@ -724,7 +724,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -753,7 +753,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
 
@@ -786,7 +786,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Just created crew", ProcessType.Sequential);
 
@@ -816,7 +816,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Repeated execution crew", ProcessType.Sequential);
 
@@ -855,7 +855,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Verbose logging test", ProcessType.Sequential);
 
@@ -891,7 +891,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var strategyFactory = new TestProcessStrategyFactory();
         strategyFactory.Strategy.ShouldFail = true;
 
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crew = DomainCrew.Create("Sync fail test", ProcessType.Sequential);
 
@@ -921,7 +921,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var logger = new TestLogger();
         var stateManager = new TestStateManager();
         var strategyFactory = new TestProcessStrategyFactory();
-        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+        var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
         var crewId = CrewId.Create();
         var input = new CrewInput("Test", new Dictionary<string, object>());

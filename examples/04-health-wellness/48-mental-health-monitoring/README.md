@@ -12,7 +12,7 @@
 - **Agents**: 4 -- Well-being Observer, Trend Analyst, Exercise Coach, Supervising Psychologist (human at every step)
 - **Tools**: `json_tool`, `file_write`
 - **Memory**: `EncryptedSQLite`
-- **Key features**: EncryptedSqliteMemoryProvider, HumanInputContext systematic, PromptSecurityTypes, TaskCallbacks (threshold alerts), ObserverAgent
+- **Key features**: EncryptedSqliteMemoryProvider, HumanInputContext systematic, PromptSecurityTypes, ObserverAgent
 - **Runner**: `standard`
 
 ## Prerequisites

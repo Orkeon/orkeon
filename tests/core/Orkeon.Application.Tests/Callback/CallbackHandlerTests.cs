@@ -21,20 +21,10 @@ public class CallbackHandlerTests
     private static TaskStartedContext TaskStarted() =>
         new("task-1", "Describe", "Output", "agent-1", "Analyst", Stamp);
 
-    private static TaskProgressContext TaskProgress() =>
-        new("task-1", "agent-1", 2, 5, 40.0, "reading", Stamp);
-
     private static TaskCompletedContext TaskCompleted() =>
         new("task-1", "agent-1",
             new TaskExecutionOutcome(Success: true, "final", StructuredOutput: null, Error: null),
             TimeSpan.FromSeconds(2), StepsExecuted: 3, Stamp);
-
-    private static FlowStepStartedContext FlowStepStarted() =>
-        new("flow-1", "pipeline", "step-1", "extract", Stamp);
-
-    private static FlowStepCompletedContext FlowStepCompleted() =>
-        new(new FlowStepIdentity("flow-1", "pipeline", "step-1", "extract"),
-            Success: false, Output: null, Error: "boom", TimeSpan.FromSeconds(1), Stamp);
 
     /// <summary>Records the hook names it receives, in order.</summary>
     private sealed class RecordingHandler : BaseCallbackHandler
@@ -70,10 +60,7 @@ public class CallbackHandlerTests
             handler.OnStepStartedAsync(StepStarted(), ct),
             handler.OnStepCompletedAsync(StepCompleted(), ct),
             handler.OnTaskStartedAsync(TaskStarted(), ct),
-            handler.OnTaskProgressAsync(TaskProgress(), ct),
             handler.OnTaskCompletedAsync(TaskCompleted(), ct),
-            handler.OnFlowStepStartedAsync(FlowStepStarted(), ct),
-            handler.OnFlowStepCompletedAsync(FlowStepCompleted(), ct),
         ];
 
         // Every un-overridden hook hands back an already completed task: none is left
@@ -92,10 +79,7 @@ public class CallbackHandlerTests
         await composite.OnStepStartedAsync(StepStarted(), ct);
         await composite.OnStepCompletedAsync(StepCompleted(), ct);
         await composite.OnTaskStartedAsync(TaskStarted(), ct);
-        await composite.OnTaskProgressAsync(TaskProgress(), ct);
         await composite.OnTaskCompletedAsync(TaskCompleted(), ct);
-        await composite.OnFlowStepStartedAsync(FlowStepStarted(), ct);
-        await composite.OnFlowStepCompletedAsync(FlowStepCompleted(), ct);
 
         Assert.Equal([nameof(BaseCallbackHandler.OnStepStartedAsync), nameof(BaseCallbackHandler.OnTaskCompletedAsync)], first.Hooks);
         Assert.Equal(first.Hooks, second.Hooks);
@@ -128,11 +112,5 @@ public class CallbackHandlerTests
         Assert.Equal("final", task.Output);
         Assert.Null(task.StructuredOutput);
         Assert.Null(task.Error);
-
-        var flow = FlowStepCompleted();
-        Assert.Equal("flow-1", flow.FlowExecutionId);
-        Assert.Equal("pipeline", flow.FlowName);
-        Assert.Equal("step-1", flow.StepId);
-        Assert.Equal("extract", flow.StepName);
     }
 }

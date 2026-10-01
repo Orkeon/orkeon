@@ -684,7 +684,7 @@ Le portage est principalement un travail de configuration (agents, tasks, prompt
 
 - Consommation de la file RabbitMQ (déclencheur externe → appelle `KickoffAsync`)
 - Envoi SMTP (action post-crew → déclenché par le système appelant)
-- Monitoring et alerting opérationnel (utiliser les callbacks `IStepCallback` / `ITaskCallback` pour intégrer)
+- Monitoring et alerting opérationnel (enregistrer un `ICrewExecutionHook` pour l'issue des tâches et de la crew, ou un `ICallbackHandler` pour chaque tâche et chaque appel d'outil — voir [Événements, CQRS et observabilité](../architecture/domain-events.md#callbacks-et-observabilité))
 
 ### Gains attendus du portage
 

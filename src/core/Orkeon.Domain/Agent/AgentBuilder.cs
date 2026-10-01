@@ -30,7 +30,6 @@ public sealed class AgentBuilder
     private int _maxRetryLimit = AgentDefaults.MaxRetryLimit;
     private ILlmProvider? _functionCallingLlm;
     private readonly List<IBaseTool> _tools = [];
-    private IStepCallback? _stepCallback;
     private ToolAccessPolicy? _toolAccessPolicy;
     private GuardrailsConfig? _guardrails;
     private LlmConfig? _llmConfig;
@@ -263,13 +262,6 @@ public sealed class AgentBuilder
         return this;
     }
 
-    /// <summary>Sets the step callback for execution progress.</summary>
-    public AgentBuilder WithStepCallback(IStepCallback stepCallback)
-    {
-        _stepCallback = stepCallback;
-        return this;
-    }
-
     /// <summary>
     /// Sets a whitelist policy that only allows the specified tools.
     /// </summary>
@@ -390,7 +382,6 @@ public sealed class AgentBuilder
             MaxRetryLimit = _maxRetryLimit,
             FunctionCallingLlm = _functionCallingLlm,
             Tools = _tools,
-            StepCallback = _stepCallback,
             ToolAccessPolicy = _toolAccessPolicy,
             Guardrails = _guardrails,
             LlmConfig = _llmConfig,

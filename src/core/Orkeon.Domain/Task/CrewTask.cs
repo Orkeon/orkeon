@@ -49,14 +49,13 @@ public sealed class CrewTask : CrewTaskBase<DefaultTaskContext>
         JsonSchema? outputJson,
         Type? outputPydantic,
         string? outputFile,
-        ITaskCallback? callback,
         bool humanInput,
         IEnumerable<TaskId>? dependencies,
         IEnumerable<Orkeon.Domain.Tools.IBaseTool>? tools,
         DefaultTaskContext? contextData)
         : base(id, description, expectedOutput, status, assignedAgent, output, priority,
                createdAt, startedAt, completedAt, asyncExecution, outputJson, outputPydantic,
-               outputFile, callback, humanInput, dependencies, tools, contextData)
+               outputFile, humanInput, dependencies, tools, contextData)
     {
     }
 #pragma warning restore S107
@@ -95,7 +94,6 @@ public sealed class CrewTask : CrewTaskBase<DefaultTaskContext>
         JsonSchema? outputJson,
         Type? outputPydantic,
         string? outputFile,
-        ITaskCallback? callback,
         bool humanInput,
         IEnumerable<TaskId>? dependencies = null,
         IEnumerable<Orkeon.Domain.Tools.IBaseTool>? tools = null,
@@ -116,7 +114,6 @@ public sealed class CrewTask : CrewTaskBase<DefaultTaskContext>
             OutputJson = outputJson,
             OutputPydantic = outputPydantic,
             OutputFile = outputFile,
-            Callback = callback,
             HumanInput = humanInput,
             Dependencies = dependencies,
             Tools = tools,
@@ -157,7 +154,6 @@ public sealed class CrewTask : CrewTaskBase<DefaultTaskContext>
             snapshot.OutputJson,
             snapshot.OutputPydantic,
             snapshot.OutputFile,
-            snapshot.Callback,
             snapshot.HumanInput,
             snapshot.Dependencies,
             snapshot.Tools,

@@ -12,7 +12,7 @@
 - **Agents**: 5 -- Care Coordinator (manager), Treating Physician, Specialist, Physiotherapist, Nurse
 - **Tools**: `json_tool`, `http_api`, `file_write`
 - **Memory**: `EncryptedRedis` (shared care plan)
-- **Key features**: Communication Broadcast, DelegationEvents, EncryptedRedisMemoryProvider, CrewHooks (OnPlanUpdated), AgentStatus
+- **Key features**: Communication Broadcast, EncryptedRedisMemoryProvider, CrewHooks (OnPlanUpdated), AgentStatus
 - **Runner**: `standard`
 
 ## Prerequisites

@@ -26,8 +26,6 @@ public sealed class CrewBuilder
     private AgentId? _managerAgentId;
     private string _language = CrewDefaults.DefaultLanguage;
     private bool _fullOutput;
-    private IStepCallback? _stepCallback;
-    private ITaskCallback? _taskCallback;
     private ILlmProvider? _planningLlm;
     private bool _memoryEnabled;
     private string? _memoryProvider;
@@ -222,20 +220,6 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Sets the step callback for execution progress.</summary>
-    public CrewBuilder WithStepCallback(IStepCallback stepCallback)
-    {
-        _stepCallback = stepCallback;
-        return this;
-    }
-
-    /// <summary>Sets the task callback for task completion.</summary>
-    public CrewBuilder WithTaskCallback(ITaskCallback taskCallback)
-    {
-        _taskCallback = taskCallback;
-        return this;
-    }
-
     /// <summary>Sets the output log file path.</summary>
     public CrewBuilder OutputLogFile(string outputLogFile)
     {
@@ -306,8 +290,6 @@ public sealed class CrewBuilder
             ManagerAgentId = _managerAgentId,
             Language = _language,
             FullOutput = _fullOutput,
-            StepCallback = _stepCallback,
-            TaskCallback = _taskCallback,
             PlanningLlm = _planningLlm,
             MemoryEnabled = _memoryEnabled,
             MemoryProvider = _memoryProvider,

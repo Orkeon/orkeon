@@ -117,22 +117,3 @@ public sealed record AgentKilledEvent : DomainEvent
     /// <summary>Gets the kill reason.</summary>
     public required string Reason { get; init; }
 }
-
-/// <summary>
-/// Event raised when an agent is spawned dynamically at runtime.
-/// </summary>
-public sealed record AgentSpawnedEvent : DomainEvent
-{
-    /// <summary>Gets the spawned agent identifier.</summary>
-    public required AgentId SpawnedAgentId { get; init; }
-    /// <summary>Gets the parent crew identifier.</summary>
-    public required CrewId ParentCrewId { get; init; }
-    /// <summary>Gets the requesting agent identifier (if applicable).</summary>
-    public AgentId? RequestingAgentId { get; init; }
-    /// <summary>Gets the spawned agent role.</summary>
-    public required AgentRole Role { get; init; }
-    /// <summary>Gets the spawned agent goal.</summary>
-    public required AgentGoal Goal { get; init; }
-    /// <summary>Gets the timestamp when the agent was spawned.</summary>
-    public required DateTime SpawnTime { get; init; }
-}

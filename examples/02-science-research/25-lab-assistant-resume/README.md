@@ -12,7 +12,7 @@
 - **Agents**: 4 — Planificateur Experiences (Worker), Moniteur IoT (Worker), Enregistreur Resultats (Worker), Comparateur Litterature (Worker)
 - **Tools**: `http_api`, `csv_reader`, `web_scrape`, `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: `ICheckpointManager` + `IResumeEngine`, `AgentMemory.Episodic`, `TaskCallbacks` (instrument alerts)
+- **Key features**: `ICheckpointManager` + `IResumeEngine`, `AgentMemory.Episodic`
 - **Runner**: `standard`
 
 ## Prerequisites

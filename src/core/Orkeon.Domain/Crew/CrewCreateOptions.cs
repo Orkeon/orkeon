@@ -69,16 +69,6 @@ public sealed class CrewCreateOptions
     public bool FullOutput { get; init; }
 
     /// <summary>
-    /// Optional step callback handler.
-    /// </summary>
-    public IStepCallback? StepCallback { get; init; }
-
-    /// <summary>
-    /// Optional task callback handler.
-    /// </summary>
-    public ITaskCallback? TaskCallback { get; init; }
-
-    /// <summary>
     /// Optional LLM provider for planning.
     /// </summary>
     public ILlmProvider? PlanningLlm { get; init; }

@@ -3,7 +3,7 @@ using Orkeon.Domain.Task.ValueObjects;
 namespace Orkeon.Domain.Task;
 
 /// <summary>
-/// Groups optional output and callback parameters for task creation.
+/// Groups optional output parameters for task creation.
 /// Reduces parameter count in Task constructors and factory methods.
 /// </summary>
 public sealed record TaskOutputOptions
@@ -27,11 +27,6 @@ public sealed record TaskOutputOptions
     /// Gets the output file path.
     /// </summary>
     public string? OutputFile { get; init; }
-
-    /// <summary>
-    /// Gets the task callback.
-    /// </summary>
-    public ITaskCallback? Callback { get; init; }
 
     /// <summary>
     /// Gets whether human input is required.

@@ -101,7 +101,7 @@ agents:
       all incoming data streams for threshold exceedances, sudden changes,
       or dangerous trends. When a critical event is detected, you trigger
       immediate broadcast alerts to all agents and external notification
-      systems via TaskCallbacks.
+      systems.
     tools:
       - "json_tool"
       - "http_api"

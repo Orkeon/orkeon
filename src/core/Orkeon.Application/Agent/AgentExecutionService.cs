@@ -126,7 +126,6 @@ namespace Orkeon.Application.Agent
             await _callbackOrchestrator.NotifyTaskStartedAsync(
                 agent, CastToDomainTask(task),
                 startTime,
-                handlers: null,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             try
@@ -157,7 +156,6 @@ namespace Orkeon.Application.Agent
                     agent,
                     CastToDomainTask(task),
                     new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = startTime },
-                    handlers: null,
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 return result;
@@ -179,7 +177,6 @@ namespace Orkeon.Application.Agent
                     agent,
                     CastToDomainTask(task),
                     new TaskCompletionInfo { Result = errorResult, StepsExecuted = 0, StartTime = startTime },
-                    handlers: null,
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 return errorResult;

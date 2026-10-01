@@ -157,7 +157,6 @@ public class BuilderIntegrationTests
             ["WithLlm"] = "FunctionCallingLlm",
             ["WithTool"] = "Tools",
             ["WithTools"] = "Tools",
-            ["WithStepCallback"] = "StepCallback",
             ["WithToolAccessPolicy"] = "ToolAccessPolicy",
             ["WithGuardrails"] = "Guardrails",
             ["WithLlmConfig"] = "LlmConfig",

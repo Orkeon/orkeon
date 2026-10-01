@@ -12,7 +12,7 @@
 - **Agents**: 4 -- Surveillance Observer, Pattern Detector, Investigator, Alerter
 - **Tools**: `http_api`, `json_tool`, `database_query`, `semantic_search`, `file_write`
 - **Memory**: `EncryptedRedis`
-- **Key features**: ObserverAgent, EncryptedRedisMemoryProvider, LlmRateLimiter, AuditEventTypes, vector search pattern matching, TaskCallbacks alerts
+- **Key features**: ObserverAgent, EncryptedRedisMemoryProvider, LlmRateLimiter, AuditEventTypes, vector search pattern matching
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites

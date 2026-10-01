@@ -9,7 +9,7 @@ namespace Orkeon.Application.Execution;
 
 /// <summary>
 /// Orchestrates callbacks for agent and task execution.
-/// Dispatches to all registered ICallbackHandler instances and optional per-call handlers.
+/// Dispatches to all registered ICallbackHandler instances.
 /// Individual handler failures are logged but do not block execution.
 /// </summary>
 public partial class CallbackOrchestrator : ICallbackOrchestrator
@@ -36,7 +36,6 @@ public partial class CallbackOrchestrator : ICallbackOrchestrator
         DomainAgent agent,
         CrewTask task,
         DateTime startTime,
-        CallbackHandlers? handlers = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agent);
@@ -63,29 +62,6 @@ public partial class CallbackOrchestrator : ICallbackOrchestrator
                     handler, h => h.OnTaskStartedAsync(context, cancellationToken),
                     nameof(ICallbackHandler.OnTaskStartedAsync), cancellationToken).ConfigureAwait(false);
             }
-
-            // Dispatch to optional per-call handlers
-            if (handlers?.AgentCallbackHandler != null)
-            {
-                await InvokeHandlerSafelyAsync(
-                    handlers.AgentCallbackHandler, h => h.OnTaskStartedAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnTaskStartedAsync), cancellationToken).ConfigureAwait(false);
-            }
-
-            if (handlers?.TaskCallbackHandler != null)
-            {
-                await InvokeHandlerSafelyAsync(
-                    handlers.TaskCallbackHandler, h => h.OnTaskStartedAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnTaskStartedAsync), cancellationToken).ConfigureAwait(false);
-            }
-
-            // Dispatch to TaskCallbacks
-            if (handlers?.TaskCallbacks?.OnStarted != null)
-            {
-                await InvokeDelegateSafelyAsync(
-                    () => handlers.TaskCallbacks.OnStarted(context),
-                    "TaskCallbacks.OnStarted", cancellationToken).ConfigureAwait(false);
-            }
         }
     }
 
@@ -96,7 +72,6 @@ public partial class CallbackOrchestrator : ICallbackOrchestrator
         DomainAgent agent,
         CrewTask task,
         TaskCompletionInfo completionInfo,
-        CallbackHandlers? handlers = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agent);
@@ -125,205 +100,46 @@ public partial class CallbackOrchestrator : ICallbackOrchestrator
                     handler, h => h.OnTaskCompletedAsync(context, cancellationToken),
                     nameof(ICallbackHandler.OnTaskCompletedAsync), cancellationToken).ConfigureAwait(false);
             }
-
-            // Dispatch to optional per-call handlers
-            if (handlers?.AgentCallbackHandler != null)
-            {
-                await InvokeHandlerSafelyAsync(
-                    handlers.AgentCallbackHandler, h => h.OnTaskCompletedAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnTaskCompletedAsync), cancellationToken).ConfigureAwait(false);
-            }
-
-            if (handlers?.TaskCallbackHandler != null)
-            {
-                await InvokeHandlerSafelyAsync(
-                    handlers.TaskCallbackHandler, h => h.OnTaskCompletedAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnTaskCompletedAsync), cancellationToken).ConfigureAwait(false);
-            }
-
-            // Dispatch to TaskCallbacks
-            if (handlers?.TaskCallbacks != null)
-            {
-                await DispatchTaskCompletedCallbacksAsync(
-                    handlers.TaskCallbacks, context, completionInfo.Result.Success, cancellationToken).ConfigureAwait(false);
-            }
         }
     }
 
-    private async System.Threading.Tasks.Task DispatchTaskCompletedCallbacksAsync(
-        TaskCallbacks callbacks,
-        TaskCompletedContext context,
-        bool success,
-        CancellationToken cancellationToken)
-    {
-        if (success && callbacks.OnCompleted != null)
-        {
-            await InvokeDelegateSafelyAsync(
-                () => callbacks.OnCompleted(context),
-                "TaskCallbacks.OnCompleted", cancellationToken).ConfigureAwait(false);
-        }
-        else if (!success && callbacks.OnFailed != null)
-        {
-            await InvokeDelegateSafelyAsync(
-                () => callbacks.OnFailed(context),
-                "TaskCallbacks.OnFailed", cancellationToken).ConfigureAwait(false);
-        }
-
-        if (callbacks.OnFinally != null)
-        {
-            await InvokeDelegateSafelyAsync(
-                () => callbacks.OnFinally(context),
-                "TaskCallbacks.OnFinally", cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>
-    /// Notify Step Progress Async.
-    /// </summary>
-    public System.Threading.Tasks.Task NotifyStepProgressAsync(
-        DomainAgent agent,
-        CrewTask task,
-        StepProgressInfo progressInfo,
-        CallbackHandlers? handlers = null,
+    /// <inheritdoc />
+    public System.Threading.Tasks.Task NotifyStepStartedAsync(
+        StepStartedContext context,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(agent);
-        ArgumentNullException.ThrowIfNull(task);
-        ArgumentNullException.ThrowIfNull(progressInfo);
+        ArgumentNullException.ThrowIfNull(context);
 
-        return NotifyStepProgressCoreAsync();
+        return NotifyStepStartedCoreAsync();
 
-        async System.Threading.Tasks.Task NotifyStepProgressCoreAsync()
+        async System.Threading.Tasks.Task NotifyStepStartedCoreAsync()
         {
-            LogStepProgress(task.Id, progressInfo.CurrentStep, progressInfo.TotalSteps, progressInfo.StepDescription);
-
-            var progressPercentage = progressInfo.TotalSteps > 0 ? (double)progressInfo.CurrentStep / progressInfo.TotalSteps * 100.0 : 0.0;
-            var context = new TaskProgressContext(
-                TaskId: task.Id.ToString(),
-                AgentId: agent.Id.ToString(),
-                StepNumber: progressInfo.CurrentStep,
-                TotalSteps: progressInfo.TotalSteps,
-                ProgressPercentage: progressPercentage,
-                CurrentAction: progressInfo.StepDescription,
-                Timestamp: DateTime.UtcNow);
-
-            // Dispatch to all registered handlers
             foreach (var handler in _handlers)
             {
                 await InvokeHandlerSafelyAsync(
-                    handler, h => h.OnTaskProgressAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnTaskProgressAsync), cancellationToken).ConfigureAwait(false);
-            }
-
-            // Dispatch to optional per-call handlers
-            if (handlers?.AgentCallbackHandler != null)
-            {
-                await InvokeHandlerSafelyAsync(
-                    handlers.AgentCallbackHandler, h => h.OnTaskProgressAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnTaskProgressAsync), cancellationToken).ConfigureAwait(false);
-            }
-
-            if (handlers?.TaskCallbackHandler != null)
-            {
-                await InvokeHandlerSafelyAsync(
-                    handlers.TaskCallbackHandler, h => h.OnTaskProgressAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnTaskProgressAsync), cancellationToken).ConfigureAwait(false);
+                    handler, h => h.OnStepStartedAsync(context, cancellationToken),
+                    nameof(ICallbackHandler.OnStepStartedAsync), cancellationToken).ConfigureAwait(false);
             }
         }
     }
 
-    /// <summary>
-    /// Notify Tool Used Async.
-    /// </summary>
-    public System.Threading.Tasks.Task NotifyToolUsedAsync(
-        DomainAgent agent,
-        string toolName,
-        object input,
-        object output,
-        TimeSpan duration,
-        ICallbackHandler? agentCallbackHandler = null,
+    /// <inheritdoc />
+    public System.Threading.Tasks.Task NotifyStepCompletedAsync(
+        StepCompletedContext context,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(agent);
+        ArgumentNullException.ThrowIfNull(context);
 
-        return NotifyToolUsedCoreAsync();
+        return NotifyStepCompletedCoreAsync();
 
-        async System.Threading.Tasks.Task NotifyToolUsedCoreAsync()
+        async System.Threading.Tasks.Task NotifyStepCompletedCoreAsync()
         {
-            LogToolUsed(agent.Id, toolName, duration.TotalMilliseconds);
+            LogStepCompleted(context.AgentId, context.Action, context.Duration.TotalMilliseconds, context.Success);
 
-            // Tool usage maps to a step completed event
-            var context = new StepCompletedContext(
-                Step: new StepIdentity(agent.Id.ToString(), agent.Role.ToString(), string.Empty),
-                Action: $"tool:{toolName}",
-                Thought: $"Using tool {toolName}",
-                Observation: output?.ToString() ?? string.Empty,
-                Success: true,
-                Duration: duration,
-                Timestamp: DateTime.UtcNow);
-
-            // Dispatch to all registered handlers
             foreach (var handler in _handlers)
             {
                 await InvokeHandlerSafelyAsync(
                     handler, h => h.OnStepCompletedAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnStepCompletedAsync), cancellationToken).ConfigureAwait(false);
-            }
-
-            // Dispatch to optional handler
-            if (agentCallbackHandler != null)
-            {
-                await InvokeHandlerSafelyAsync(
-                    agentCallbackHandler, h => h.OnStepCompletedAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnStepCompletedAsync), cancellationToken).ConfigureAwait(false);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Notify Delegation Async.
-    /// </summary>
-    public System.Threading.Tasks.Task NotifyDelegationAsync(
-        DomainAgent fromAgent,
-        DomainAgent toAgent,
-        CrewTask task,
-        string reason,
-        ICallbackHandler? agentCallbackHandler = null,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(fromAgent);
-        ArgumentNullException.ThrowIfNull(toAgent);
-        ArgumentNullException.ThrowIfNull(task);
-
-        return NotifyDelegationCoreAsync();
-
-        async System.Threading.Tasks.Task NotifyDelegationCoreAsync()
-        {
-            LogDelegation(task.Id, fromAgent.Role, toAgent.Role, reason);
-
-            // Delegation maps to a step completed event on the delegating agent
-            var context = new StepCompletedContext(
-                Step: new StepIdentity(fromAgent.Id.ToString(), fromAgent.Role.ToString(), task.Id.ToString()),
-                Action: $"delegate_to:{toAgent.Role}",
-                Thought: reason,
-                Observation: $"Task delegated to {toAgent.Role}",
-                Success: true,
-                Duration: TimeSpan.Zero,
-                Timestamp: DateTime.UtcNow);
-
-            // Dispatch to all registered handlers
-            foreach (var handler in _handlers)
-            {
-                await InvokeHandlerSafelyAsync(
-                    handler, h => h.OnStepCompletedAsync(context, cancellationToken),
-                    nameof(ICallbackHandler.OnStepCompletedAsync), cancellationToken).ConfigureAwait(false);
-            }
-
-            // Dispatch to optional handler
-            if (agentCallbackHandler != null)
-            {
-                await InvokeHandlerSafelyAsync(
-                    agentCallbackHandler, h => h.OnStepCompletedAsync(context, cancellationToken),
                     nameof(ICallbackHandler.OnStepCompletedAsync), cancellationToken).ConfigureAwait(false);
             }
         }
@@ -356,50 +172,16 @@ public partial class CallbackOrchestrator : ICallbackOrchestrator
         }
     }
 
-    /// <summary>
-    /// Safely invokes a delegate callback, catching and logging any exceptions.
-    /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Callback fault barrier: a faulty user callback delegate is logged (cancellation handled separately) so one bad delegate cannot break the execution callback dispatch.")]
-    private async System.Threading.Tasks.Task InvokeDelegateSafelyAsync(
-        Func<System.Threading.Tasks.Task> action,
-        string callbackName,
-        CancellationToken cancellationToken)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return;
-
-        try
-        {
-            await action().ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            // Cancellation is expected, don't log as error
-        }
-        catch (Exception ex)
-        {
-            LogCallbackDelegateException(ex, callbackName);
-        }
-    }
-
     [LoggerMessage(Level = LogLevel.Debug, Message = "Task {TaskId} started by agent {AgentId} at {StartTime}")]
     private partial void LogTaskStartedByAgent(object taskId, object agentId, DateTime startTime);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Task {TaskId} completed by agent {AgentId} with result: {Success}")]
     private partial void LogTaskCompletedByAgent(object taskId, object agentId, bool success);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Task {TaskId} step {CurrentStep}/{TotalSteps}: {Description}")]
-    private partial void LogStepProgress(object taskId, int currentStep, int totalSteps, string description);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Agent {AgentId} used tool {ToolName} for {Duration}ms")]
-    private partial void LogToolUsed(object agentId, string toolName, double duration);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Task {TaskId} delegated from {FromAgent} to {ToAgent}: {Reason}")]
-    private partial void LogDelegation(object taskId, object fromAgent, object toAgent, string reason);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Agent {AgentId} step {Action} ended after {Duration}ms (success: {Success})")]
+    private partial void LogStepCompleted(string agentId, string action, double duration, bool success);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Callback handler {HandlerType}.{Method} threw an exception. Continuing execution.")]
     private partial void LogCallbackHandlerException(Exception ex, string handlerType, string method);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Callback delegate {CallbackName} threw an exception. Continuing execution.")]
-    private partial void LogCallbackDelegateException(Exception ex, string callbackName);
 }

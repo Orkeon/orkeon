@@ -12,7 +12,7 @@
 - **Agents**: 4 — Stratege d'Angle (Worker), Redacteur (Worker), Editeur SEO (Worker), Fact-Checker (Worker)
 - **Tools**: `web_scrape`, `file_write`, `json_tool`
 - **Memory**: `InMemory`
-- **Key features**: Linear task dependencies, `TaskCallbacks` (OnStepCompleted), output validation for publication format
+- **Key features**: Linear task dependencies, output validation for publication format
 - **Runner**: `standard`
 
 ## Prerequisites

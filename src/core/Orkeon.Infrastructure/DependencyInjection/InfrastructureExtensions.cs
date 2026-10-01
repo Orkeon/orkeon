@@ -156,8 +156,9 @@ public static class InfrastructureExtensions
         services.AddOptions<Orkeon.Infrastructure.Configuration.ResilienceOptions>()
             .BindConfiguration("Resilience");
 
-        // Add domain event dispatcher
-        services.AddSingleton<Domain.SharedKernel.Events.IDomainEventDispatcher, DomainEventDispatcher>();
+        // Domain event dispatcher — scoped, so the IDomainEventHandler<T> it resolves (registered
+        // scoped by AddOrkeonApplication) come from the caller's scope, never the root provider.
+        services.AddScoped<Domain.SharedKernel.Events.IDomainEventDispatcher, DomainEventDispatcher>();
 
         // Orchestration services (moved from Application — R16)
         services.AddScoped<SequentialCrewOrchestrator>();
@@ -330,11 +331,6 @@ public static class InfrastructureExtensions
                         sp.GetRequiredService<ILogger<Stubs.SimpleAgentSelectionService>>());
             }
         });
-
-        // Callback interfaces — no-op stubs that log at Debug level
-        services.TryAddSingleton<Domain.Agent.IStepCallback, Stubs.NullStepCallback>();
-        services.TryAddSingleton<Domain.Agent.IStepProgressHandler, Stubs.NullStepProgressHandler>();
-        services.TryAddSingleton<Domain.Task.ITaskCallback, Stubs.NullTaskCallback>();
 
         // ITaskDelegator — stub that denies all delegation requests
         services.TryAddSingleton<Domain.Delegation.ITaskDelegator, Stubs.NullTaskDelegator>();
