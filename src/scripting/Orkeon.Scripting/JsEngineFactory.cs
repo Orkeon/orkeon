@@ -22,6 +22,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Bindings.RagScriptingBackend? _ragBackend;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
 
     /// <summary>
     /// Creates a factory that builds engines respecting <paramref name="limits"/>.
@@ -34,7 +35,9 @@ public sealed class JsEngineFactory
     /// hands it metered (the provider factory, <c>AddOrkeonLlmProvider</c>) when it listens to
     /// usage: every <c>ctx.llm.*</c> call is counted there, never again by the engine.
     /// </param>
-    /// <param name="hostPorts">Permission gate and delta sink the host wired, if any.</param>
+    /// <param name="hostPorts">
+    /// Permission gate, delta sink, tool-invocation pipeline and LLM profiles the host wired, if any.
+    /// </param>
     /// <param name="ragBackend">Pipelines + VFS backing the <c>rag</c> namespace; null makes its calls fail loudly.</param>
     public JsEngineFactory(
         IOptions<ScriptingLimitsOptions> limits,
@@ -52,6 +55,7 @@ public sealed class JsEngineFactory
         _permissionGate = hostPorts?.PermissionGate;
         _deltaSink = hostPorts?.DeltaSink;
         _toolInvocation = hostPorts?.ToolInvocation;
+        _llmProfiles = hostPorts?.LlmProfiles;
         _ragBackend = ragBackend;
     }
 
@@ -135,7 +139,7 @@ public sealed class JsEngineFactory
         CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink, _toolInvocation);
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
-        LlmNamespaceBinding.Register(engine, _scriptLogger, _llmProvider);
+        LlmNamespaceBinding.Register(engine, _scriptLogger, _llmProvider, _llmProfiles);
         ToolsNamespaceBinding.Register(engine, _builtInTools ?? Array.Empty<IBaseTool>(), _scriptLogger);
         RagNamespaceBinding.Register(engine, _ragBackend, _scriptLogger);
         ErrorActionBinding.Register(engine);

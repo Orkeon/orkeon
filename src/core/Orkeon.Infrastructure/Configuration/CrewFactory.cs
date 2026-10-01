@@ -32,6 +32,7 @@ public partial class CrewFactory : ICrewFactory
     private readonly bool _prepareRagCollections;
     private readonly Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? _ragBootstrapper;
     private readonly ICrewLinkRegistry? _linkRegistry;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -54,6 +55,11 @@ public partial class CrewFactory : ICrewFactory
     /// <c>links:</c> block is read from YAML long before the crew has an identity, so the
     /// authorizations are handed over here, once the <see cref="CrewId"/> exists.
     /// </param>
+    /// <param name="llmProfiles">
+    /// The host's named LLM profiles (registered by <c>AddOrkeonInfrastructure</c>): an agent or a
+    /// task naming a profile the host does not offer fails the load with the list of known ones
+    /// (GAP-17). Null offers the default profile alone.
+    /// </param>
 #pragma warning disable S107 // DI-composed factory: one optional collaborator per opt-in subsystem
     public CrewFactory(
         ICrewDefinitionLoader loader,
@@ -64,7 +70,8 @@ public partial class CrewFactory : ICrewFactory
         ITaskRepository taskRepository,
         IOptions<CrewFactoryOptions>? options = null,
         Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null,
-        ICrewLinkRegistry? linkRegistry = null)
+        ICrewLinkRegistry? linkRegistry = null,
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(loader);
@@ -83,6 +90,7 @@ public partial class CrewFactory : ICrewFactory
         _prepareRagCollections = options?.Value.PrepareRagCollections ?? true;
         _ragBootstrapper = ragBootstrapper;
         _linkRegistry = linkRegistry;
+        _llmProfiles = llmProfiles;
     }
 
     /// <inheritdoc />
@@ -99,6 +107,7 @@ public partial class CrewFactory : ICrewFactory
         CancellationToken ct)
     {
         ValidateConfiguration(config);
+        ValidateLlmProfiles(config);
 
         await PrepareRagCollectionsAsync(config, ct).ConfigureAwait(false);
         WarnOnKnowledgeWithoutSubsystem(config);
@@ -196,6 +205,25 @@ public partial class CrewFactory : ICrewFactory
     [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}': agent '{AgentRole}' declares knowledge: ({Collections}) but the RAG subsystem is not registered — call AddOrkeonRag(configuration); no knowledge context will be injected into its prompts.")]
     private partial void LogKnowledgeDeclaredButSubsystemMissing(string crewName, string agentRole, string collections);
 
+    /// <summary>
+    /// Every profile the crew names — an agent's <c>llm.profile</c>, a task's
+    /// <c>llm_override.profile</c> — must be one the host offers, checked before anything is
+    /// built or ingested (GAP-17). Like an unknown tool, a typo fails the load and the message
+    /// lists what exists; a crew never silently falls back to another vendor.
+    /// </summary>
+    private void ValidateLlmProfiles(CrewConfiguration config)
+    {
+        foreach (var agent in config.Agents)
+            Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(
+                _llmProfiles, agent.LlmConfig?.Profile, $"Crew '{config.Name}': agent '{agent.Role}'");
+
+        foreach (var task in config.Tasks)
+            Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(
+                _llmProfiles, task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
+    }
+
+    private static string Shorten(string text) => text.Length <= 60 ? text : string.Concat(text.AsSpan(0, 57), "...");
+
     private void ValidateConfiguration(CrewConfiguration config)
     {
         var validation = _loader.Validate(config);
@@ -239,6 +267,12 @@ public partial class CrewFactory : ICrewFactory
                 builder.Backstory(agentConfig.Backstory);
             if (resolvedTools.Count > 0)
                 builder.WithTools(resolvedTools);
+            // The agent's llm block — profile, model, sampling, thinking, response format, cache.
+            // It stopped here until GAP-17: parsed from YAML and .ork.ts, mapped onto the
+            // configuration, and never set on the agent, so every agent of a loaded crew ran on
+            // the host's settings whatever its llm block said.
+            if (agentConfig.LlmConfig is not null)
+                builder.WithLlmConfig(agentConfig.LlmConfig);
             foreach (var attachment in agentConfig.KnowledgeAttachments)
             {
                 builder.WithKnowledge(attachment.Profile is null && defaultKnowledgeProfile is not null

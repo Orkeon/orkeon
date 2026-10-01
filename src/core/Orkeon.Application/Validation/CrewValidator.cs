@@ -134,7 +134,7 @@ public partial class CrewValidator
     }
 
     /// <summary>
-    /// Validates an LLM configuration: non-empty model and sane numeric parameter bounds
+    /// Validates an LLM configuration: sane numeric parameter bounds
     /// (mirroring the canonical bounds enforced by <see cref="LlmConfig.CreateValidated"/>).
     /// </summary>
     /// <remarks>
@@ -156,8 +156,8 @@ public partial class CrewValidator
             return errors;
         }
 
-        if (string.IsNullOrWhiteSpace(llmConfig.Model))
-            errors.Add($"DomainAgent {agentRole} has an LLM config without a model");
+        // No model is not an error: the agent runs on the model of its profile (GAP-17,
+        // LlmConfig.OnProfile).
 
         if (llmConfig.Temperature is < 0.0 or > 2.0)
             errors.Add(Inv.Format($"DomainAgent {agentRole} has an invalid LLM temperature {llmConfig.Temperature} (expected 0.0 to 2.0)"));

@@ -102,7 +102,9 @@ public sealed partial class JsCrew
         CrewMemory = _crewMemory,
         Logger = _logger,
         Ct = ct,
-        LlmProvider = _llmProvider,
+        // An agent configured with llm.profile(...) asks its profile's provider through
+        // ctx.llm, as its declarative turns do (GAP-17); every other agent asks the host's.
+        LlmProvider = agent.Builder.LlmConfig?.ProfileProvider ?? _llmProvider,
         BuiltInTools = _builtInTools,
         Budget = budget,
         PermissionGate = _permissionGate,

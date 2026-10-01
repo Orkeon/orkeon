@@ -305,6 +305,17 @@ public sealed class RunProgressModel
     /// <summary>What has been spent, or null while the meter has not moved.</summary>
     public RunCost? Cost { get; private set; }
 
+    /// <summary>
+    /// What each provider has been spent on, in tokens — a crew whose agents run on different
+    /// host profiles talks to several (GAP-17). Each <c>cost.updated</c> reading carries the
+    /// run's standing total and names the provider of its own call, so the growth of the total
+    /// since the previous reading is that provider's. A reading naming no provider is counted
+    /// under the empty name.
+    /// </summary>
+    public IReadOnlyDictionary<string, long> TokensByProvider => _tokensByProvider;
+
+    private readonly Dictionary<string, long> _tokensByProvider = new(StringComparer.Ordinal);
+
     /// <summary>The question waiting for an answer, or null when nothing is being asked.</summary>
     public RunQuestion? PendingQuestion => _questions.Count > 0 ? _questions[0] : null;
 
@@ -441,6 +452,14 @@ public sealed class RunProgressModel
                 // pipeline's, the manager's: their readings move the figures and leave the model
                 // named, which is the one the agents work on.
                 var agentWork = RunCostOperations.IsAgentWork(orkeonEvent.GetString("operation"));
+                var standing = orkeonEvent.GetInt64("tokens") ?? 0;
+                var spent = standing - (Cost?.Tokens ?? 0);
+                if (spent > 0)
+                {
+                    var spentOn = orkeonEvent.GetString("provider") ?? string.Empty;
+                    _tokensByProvider[spentOn] = _tokensByProvider.GetValueOrDefault(spentOn) + spent;
+                }
+
                 Cost = new RunCost(
                     orkeonEvent.GetInt64("tokens") ?? 0,
                     agentWork ? orkeonEvent.GetString("model") : Cost?.Model,

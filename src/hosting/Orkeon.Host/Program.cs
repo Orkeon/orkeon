@@ -106,6 +106,11 @@ using var host = RunnerHost.Build(
         services.Configure<Microsoft.Extensions.Hosting.HostOptions>(
             o => o.ShutdownTimeout = hostSection.ShutdownGracePeriod + TimeSpan.FromSeconds(10));
 
+        // The allow-list of LLM profiles hosted crews may name (GAP-17): third-party crews
+        // pick a profile by name, and the operator decides which names answer.
+        services.Configure<Orkeon.Infrastructure.LLMs.Profiles.LlmProfileAccessOptions>(
+            o => o.AllowedProfiles = hostSection.LlmProfiles);
+
         services.AddSingleton<CrewHostRegistry>();
         services.AddSingleton<CrewRunner>();
         services.AddSingleton<ICrewRunner>(sp => sp.GetRequiredService<CrewRunner>());

@@ -137,9 +137,10 @@ const res = await ctx.llm.complete(
 );
 ```
 
-`.llm(...)` prend un `LlmConfig` — `llm.default_`, `llm.model("…")` ou `.with({...})` sur
-l'un d'eux — et refuse une chaîne ou un objet littéral. Le fournisseur est toujours celui de
-l'hôte ; `.llm(...)` règle le modèle. `withResponseSchema(name, schema, strict?)` prend un objet
+`.llm(...)` prend un `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")` ou
+`.with({...})` sur l'un d'eux — et refuse une chaîne ou un objet littéral. Le fournisseur est
+celui de l'hôte, ou celui du profil de l'hôte que nomme `llm.profile(...)` ; `.llm(...)` règle le
+modèle. Un format de réponse est vérifié contre le fournisseur sur lequel l'agent tourne vraiment. `withResponseSchema(name, schema, strict?)` prend un objet
 littéral ou une chaîne JSON et implique `json_schema`. `ctx.llm.extract(prompt, schema)` demande
 `json_object` par défaut, sauf si l'appel passe `{ responseFormat: "text" }`.
 

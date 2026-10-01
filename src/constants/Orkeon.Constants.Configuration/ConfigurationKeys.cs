@@ -73,6 +73,14 @@ public static class ConfigurationKeys
     public const string LlmGrammar = "Grammar";
 
     /// <summary>
+    /// The named profiles sub-section of <see cref="LlmSection"/> (<c>Llm:Profiles:&lt;name&gt;</c>,
+    /// GAP-17): each child has the shape of the <c>Llm</c> section and is a provider a crew may
+    /// name with <c>llm: { profile: &lt;name&gt; }</c>. The <c>Llm</c> section itself stays the
+    /// default profile.
+    /// </summary>
+    public const string LlmProfiles = "Profiles";
+
+    /// <summary>
     /// The MCP section, at the configuration ROOT like <see cref="LlmSection"/>: the servers a
     /// machine declares (<c>MCP:Servers:&lt;id&gt;</c>), the switch (<c>MCP:Enabled</c>) and the
     /// optional outbound server (<c>MCP:Server</c>). Bound by the infrastructure, honoured by the

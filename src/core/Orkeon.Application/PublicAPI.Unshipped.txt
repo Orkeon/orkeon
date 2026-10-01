@@ -894,3 +894,26 @@ Orkeon.Application.EventHub.IEventHub.PublishAsync(string! topic, object! payloa
 *REMOVED*virtual Orkeon.Application.Configuration.ConfigurationVersionMetadata.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Application.Configuration.ConfigurationVersionMetadata.Equals(Orkeon.Application.Configuration.ConfigurationVersionMetadata? other) -> bool
 *REMOVED*virtual Orkeon.Application.Configuration.ConfigurationVersionMetadata.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*static Orkeon.Application.Crew.CrewConfigurationMapper.ToDomainCrew(this Orkeon.Domain.Configuration.CrewConfiguration! configuration, System.Func<string!, Orkeon.Domain.Tools.IBaseTool!>! toolResolver, Orkeon.Application.Interfaces.Ports.ILlmProviderFactory! llmProviderFactory, System.Action<Orkeon.Domain.Agent.Agent!>? agentPostProcessor = null, System.Action<Orkeon.Domain.Task.CrewTask!>? taskPostProcessor = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> Orkeon.Domain.Crew.Crew!
+static Orkeon.Application.Crew.CrewConfigurationMapper.ToDomainCrew(this Orkeon.Domain.Configuration.CrewConfiguration! configuration, System.Func<string!, Orkeon.Domain.Tools.IBaseTool!>! toolResolver, Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles, System.Action<Orkeon.Domain.Agent.Agent!>? agentPostProcessor = null, System.Action<Orkeon.Domain.Task.CrewTask!>? taskPostProcessor = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> Orkeon.Domain.Crew.Crew!
+Orkeon.Application.Crew.ExecutionOrchestrator.LlmProfiles.get -> Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry?
+Orkeon.Application.Crew.ExecutionOrchestrator.LlmProfiles.set -> void
+Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry
+Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry.Resolve(string? name) -> Orkeon.Application.Interfaces.Ports.LlmProfile!
+Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry.IsKnown(string! name) -> bool
+Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Interfaces.Ports.LlmProfile
+Orkeon.Application.Interfaces.Ports.LlmProfile.BasicProvider.get -> Orkeon.Application.Interfaces.Ports.IBasicLlmProvider!
+Orkeon.Application.Interfaces.Ports.LlmProfile.BasicProvider.init -> void
+Orkeon.Application.Interfaces.Ports.LlmProfile.ChatClient.get -> Microsoft.Extensions.AI.IChatClient!
+Orkeon.Application.Interfaces.Ports.LlmProfile.ChatClient.init -> void
+Orkeon.Application.Interfaces.Ports.LlmProfile.LlmProfile() -> void
+Orkeon.Application.Interfaces.Ports.LlmProfile.Name.get -> string!
+Orkeon.Application.Interfaces.Ports.LlmProfile.Name.init -> void
+Orkeon.Application.Interfaces.Ports.LlmProfile.Provider.get -> Orkeon.Domain.SharedKernel.ILlmProvider!
+Orkeon.Application.Interfaces.Ports.LlmProfile.Provider.init -> void
+Orkeon.Application.Interfaces.Ports.LlmProfiles
+const Orkeon.Application.Interfaces.Ports.LlmProfiles.Default = "default" -> string!
+static Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? registry, string? name, string! where) -> void
+static Orkeon.Application.Interfaces.Ports.LlmProfiles.IsDefault(string? name) -> bool
+static Orkeon.Application.Interfaces.Ports.LlmProfiles.UnknownMessage(string! name, string! where, System.Collections.Generic.IEnumerable<string!>! known) -> string!

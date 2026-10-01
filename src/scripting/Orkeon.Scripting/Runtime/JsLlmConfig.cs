@@ -11,9 +11,11 @@ namespace Orkeon.Scripting.Runtime;
 /// accepts.
 /// </summary>
 /// <remarks>
-/// <c>provider</c> is informational — the name of the host's provider, which every agent talks
-/// to. A script cannot choose another one (GAP-12): the per-vendor factories that pretended to
-/// were removed. <c>with(...)</c> refuses a key it does not apply, so a setting never vanishes.
+/// <c>provider</c> is informational — the name of the provider the configuration talks to: the
+/// host's default one, or the one of the host profile <c>llm.profile(name)</c> picked (GAP-17).
+/// A script never names a vendor, a key or an endpoint: the per-vendor factories were removed
+/// (GAP-12), and a profile is what the host configured. <c>with(...)</c> refuses a key it does
+/// not apply, so a setting never vanishes.
 /// </remarks>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of LlmConfig in Typings/llm.d.ts; that declaration is the contract scripts read.
@@ -23,15 +25,28 @@ public sealed class JsLlmConfig
 
     public string provider { get; }
     public string model { get; }
+    public string? profile => Domain.Profile;
     public double? temperature { get; }
     public int? maxTokens { get; }
 
     internal LlmConfig Domain { get; }
 
-    internal JsLlmConfig(string provider, LlmConfig domain, double? temperature = null, int? maxTokens = null)
+    /// <summary>
+    /// The provider of the profile this configuration runs on, for <c>ctx.llm</c> of a procedural
+    /// agent configured with it; null on the host's default profile.
+    /// </summary>
+    internal Orkeon.Domain.SharedKernel.ILlmProvider? ProfileProvider { get; }
+
+    internal JsLlmConfig(
+        string provider,
+        LlmConfig domain,
+        double? temperature = null,
+        int? maxTokens = null,
+        Orkeon.Domain.SharedKernel.ILlmProvider? profileProvider = null)
     {
         this.provider = provider;
         Domain = domain;
+        ProfileProvider = profileProvider;
         model = domain.Model;
         this.temperature = temperature;
         this.maxTokens = maxTokens;
@@ -74,7 +89,8 @@ public sealed class JsLlmConfig
             provider,
             domain,
             newTemp.IsNumber() ? newTemp.AsNumber() : temperature,
-            newMax.IsNumber() ? (int)newMax.AsNumber() : maxTokens);
+            newMax.IsNumber() ? (int)newMax.AsNumber() : maxTokens,
+            ProfileProvider);
     }
 
     internal static string RequireModel(string? value)

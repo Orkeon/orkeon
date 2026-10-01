@@ -1,3 +1,4 @@
 #nullable enable
 const Orkeon.Constants.Configuration.ConfigurationKeys.ToolsEmail = "Orkeon:Tools:Email" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.LlmGrammar = "Grammar" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.LlmProfiles = "Profiles" -> string!

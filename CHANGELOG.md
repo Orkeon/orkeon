@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — one LLM provider per agent: named profiles in the host configuration **[breaking]**
+
+A host talked to one provider, the one its `Llm` section described; every agent of every crew
+went through it, and a crew mixing a Claude planner and DeepSeek writers needed two hosts or an
+aggregator (GAP-17).
+
+- **Named profiles.** Each child of `Llm:Profiles:<name>` is a provider described with the keys
+  of the `Llm` section (`BaseUrl`, `ApiKey`, `Model`, `Temperature`, `MaxTokens`,
+  `TimeoutSeconds`, `MaxRetries`, `Thinking`, `Grammar`); the `Llm` section stays the default
+  profile. `orkeon run`, `orkeon-host` and the REPL read them (`AddOrkeonLlmProfiles(configuration)`;
+  `AddOrkeonLlmProfile(name, provider, baseConfig)` registers one over a provider the factory does
+  not build). Each profile's provider is built once, on first use, metered like the default one.
+  The profiles are validated at startup: `default` is reserved, an invalid `BaseUrl` or a value
+  that is not a number fails the start naming the key.
+- **A crew names a profile, never a key or an endpoint.** YAML: `llm: { profile: claude, model: … }`
+  at crew level, on an agent, or in a task's `llm_override` (that task only; `profile: default`
+  returns to the default). `.ork.ts`: `agentBuilder().llm(llm.profile("claude", overrides?))`;
+  a procedural agent configured with it has `ctx.llm` talk to that profile's provider. A
+  `response_format` or a thinking block is checked against the agent's own provider.
+- **An unknown profile fails the crew load**, like an unknown tool, and the message lists the
+  profiles the host offers. `orkeon-host` decides which profiles its third-party crews may name:
+  `Orkeon:Host:LlmProfiles` is an allow-list (unset offers them all, `["default"]` the default
+  alone; an entry naming an undefined profile refuses the start with exit code 78).
+- **The meter follows the provider.** Each `cost.updated` reading already named its call's
+  provider; Studio's status bar now breaks the run's tokens down per provider when there are
+  several. The hierarchical manager, the planner, the Guardian, the RAG pipelines and the LLM judges
+  stay on the default profile.
+- **Fixed: an agent's `llm:` block reaches the agent.** `CrewFactory` built every agent without the
+  `LlmConfig` the YAML or `.ork.ts` mapping had produced, so a per-agent model, temperature, token
+  cap, thinking block, response format or cache request never reached the wire under `orkeon run`
+  — every agent ran on the host's settings. A block that names no model now runs on its
+  profile's own model (`LlmConfig.OnProfile`, empty `Model`) instead of pinning the framework's
+  default model on whatever vendor the host runs; `CrewValidator` accepts an empty model.
+- **Removed:** the provider pre-validation of `CrewConfigurationMapper.ToDomainCrew`, which built a
+  provider per agent and threw it away; its `ILlmProviderFactory` parameter is now
+  `ILlmProfileRegistry? llmProfiles`, and the mapper checks the profile names instead.
+
+Migration: a caller of `CrewConfigurationMapper.ToDomainCrew(toolResolver, llmProviderFactory, …)`
+passes the host's `ILlmProfileRegistry` (or null) in place of the factory. A crew whose agents
+declared an `llm:` block now runs with it: check the models those blocks name — they reach the
+provider for the first time. A crew that mixed providers by running one host per provider moves
+the providers into `Llm:Profiles` and names them per agent.
+
 ### Fixed — small corrections: the planner warning, `ORKVFS005`, `WithOrkeonSetting`, the Sonar scripts; three dead surfaces removed **[breaking]**
 
 A handful of messages, comments, scripts and tests taught something the code does not do

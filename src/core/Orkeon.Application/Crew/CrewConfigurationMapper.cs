@@ -26,29 +26,30 @@ public static class CrewConfigurationMapper
     /// </summary>
     /// <param name="configuration">The crew configuration to materialize.</param>
     /// <param name="toolResolver">Resolves tool names to tool instances.</param>
-    /// <param name="llmProviderFactory">Factory used to validate agent LLM configurations.</param>
+    /// <param name="llmProfiles">
+    /// The host's named LLM profiles: an agent or a task naming a profile it does not offer fails
+    /// the mapping with the list of known ones (GAP-17). Null offers the default profile alone.
+    /// </param>
     /// <param name="agentPostProcessor">Optional hook invoked with each materialized agent entity.</param>
     /// <param name="taskPostProcessor">Optional hook invoked with each materialized task entity.</param>
     /// <param name="logger">
-    /// Optional logger for best-effort mapping warnings (unresolvable tools, failing LLM
-    /// provider pre-validation). Defaults to <see cref="NullLogger"/> — the mapper is an
+    /// Optional logger for best-effort mapping warnings (unresolvable tools). Defaults to <see cref="NullLogger"/> — the mapper is an
     /// extension method, so DI callers pass their own logger explicitly.
     /// </param>
     public static DomainCrew ToDomainCrew(this CrewConfiguration configuration,
         Func<string, IBaseTool> toolResolver,
-        ILlmProviderFactory llmProviderFactory,
+        ILlmProfileRegistry? llmProfiles,
         Action<DomainAgent>? agentPostProcessor = null,
         Action<CrewTask>? taskPostProcessor = null,
         ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(toolResolver);
-        ArgumentNullException.ThrowIfNull(llmProviderFactory);
 
         logger ??= NullLogger.Instance;
         var crew = CreateCrew(configuration);
-        MapAgents(configuration, crew, toolResolver, llmProviderFactory, agentPostProcessor, logger);
-        MapTasks(configuration, crew, toolResolver, taskPostProcessor, logger);
+        MapAgents(configuration, crew, toolResolver, llmProfiles, agentPostProcessor, logger);
+        MapTasks(configuration, crew, toolResolver, llmProfiles, taskPostProcessor, logger);
 
         return crew;
     }
@@ -74,16 +75,19 @@ public static class CrewConfigurationMapper
         CrewConfiguration configuration,
         DomainCrew crew,
         Func<string, IBaseTool> toolResolver,
-        ILlmProviderFactory llmProviderFactory,
+        ILlmProfileRegistry? llmProfiles,
         Action<DomainAgent>? agentPostProcessor,
         ILogger logger)
     {
         foreach (var agentConfig in configuration.Agents)
         {
+            // A profile the host does not offer fails here, like an unknown tool under
+            // StrictTools: the crew would otherwise fail at its first task, or not at all.
+            LlmProfiles.EnsureKnown(llmProfiles, agentConfig.LlmConfig?.Profile, $"Agent '{agentConfig.Role}'");
+
             var resolvedTools = ResolveTools(agentConfig.Tools, toolResolver, logger);
             var agent = BuildAgent(agentConfig, resolvedTools);
 
-            TryCreateLlmProvider(agent, agentConfig.LlmConfig, llmProviderFactory, logger);
             agentPostProcessor?.Invoke(agent);
             crew.AddAgent(agent.Id);
         }
@@ -149,30 +153,15 @@ public static class CrewConfigurationMapper
         return tools;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort provider pre-validation: a factory failure (missing key/unknown provider) is logged as a warning so configuration mapping still completes; the provider is created for real later.")]
-    private static void TryCreateLlmProvider(
-        DomainAgent agent, LlmConfig? llmConfig,
-        ILlmProviderFactory llmProviderFactory, ILogger logger)
-    {
-        if (llmConfig == null)
-            return;
-
-        try
-        {
-            _ = llmProviderFactory.Create(llmConfig);
-        }
-        catch (Exception ex)
-        {
-            CrewConfigurationMapperLog.LogLlmProviderPreValidationFailed(logger, ex, agent.Id);
-        }
-    }
-
     private static void MapTasks(
         CrewConfiguration configuration, DomainCrew crew,
-        Func<string, IBaseTool> toolResolver, Action<CrewTask>? taskPostProcessor, ILogger logger)
+        Func<string, IBaseTool> toolResolver, ILlmProfileRegistry? llmProfiles,
+        Action<CrewTask>? taskPostProcessor, ILogger logger)
     {
         foreach (var taskConfig in configuration.Tasks)
         {
+            LlmProfiles.EnsureKnown(llmProfiles, taskConfig.LlmOverride?.Profile, $"Task '{(taskConfig.Description.Length <= 60 ? taskConfig.Description : string.Concat(taskConfig.Description.AsSpan(0, 57), "..."))}'");
+
             var builder = new CrewTaskBuilder()
                 .Description(TaskDescription.From(taskConfig.Description))
                 .ExpectedOutput(taskConfig.ExpectedOutput)
@@ -184,6 +173,8 @@ public static class CrewConfigurationMapper
                 builder.WithGuardrails(taskConfig.Guardrails);
 
             var task = builder.Build();
+            if (taskConfig.LlmOverride is not null)
+                task.SetLlmOverride(taskConfig.LlmOverride);
 
             taskPostProcessor?.Invoke(task);
             crew.AddTask(task.Id);
@@ -331,7 +322,4 @@ internal static partial class CrewConfigurationMapperLog
 {
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not resolve tool '{ToolName}'; the tool is skipped and crew mapping continues")]
     public static partial void LogToolResolutionFailed(ILogger logger, Exception ex, string toolName);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not create LLM provider for agent '{AgentId}'; mapping continues and the provider will be created for real at execution time")]
-    public static partial void LogLlmProviderPreValidationFailed(ILogger logger, Exception ex, AgentId agentId);
 }

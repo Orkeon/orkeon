@@ -93,11 +93,48 @@ runtime dégrade vers le provider écho et avertit une fois. Voir
 [Providers LLM](../architecture/llm-providers.md) ; des gabarits vivent dans
 `examples/appsettings/*.json.example`.
 
+### Profils nommés (`Llm:Profiles`)
+
+Un hôte peut offrir plusieurs fournisseurs. Chaque enfant de `Llm:Profiles` est un **profil** :
+un nom, et un fournisseur décrit avec exactement les clés de la section `Llm` (`BaseUrl`,
+`ApiKey`, `Model`, `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, `Thinking`,
+`Grammar`). La section `Llm` elle-même reste le profil **par défaut** — celui de tout agent qui
+n'en nomme pas d'autre. Une crew choisit un profil **par son nom**, jamais par une clé ou une URL :
+`llm: { profile: claude }` sur la crew, un agent ou le `llm_override` d'une tâche en YAML,
+`llm.profile("claude")` en `.ork.ts` ([YAML et builders](../getting-started/yaml-and-builders.md#un-fournisseur-par-agent-profils)).
+
+```json
+{
+  "Llm": {
+    "BaseUrl": "https://api.deepseek.com/v1", "Model": "deepseek-v4-flash",
+    "Profiles": {
+      "claude": { "BaseUrl": "https://api.anthropic.com/v1", "Model": "claude-sonnet-5" },
+      "local":  { "BaseUrl": "http://localhost:11434", "Model": "qwen3" }
+    }
+  }
+}
+```
+
+Les clés restent hors des fichiers de la même façon : `ORKEON_Llm__Profiles__claude__ApiKey`. Le
+fournisseur de chaque profil est construit une fois, au premier usage, compté comme celui par
+défaut — les relevés `cost.updated` d'un run nomment le fournisseur de chaque appel, et la barre
+d'état de Studio ventile les jetons par fournisseur. Les profils sont validés au démarrage de
+l'hôte : `default` est un nom réservé (il désigne la section `Llm`, et une crew peut le nommer pour
+ramener un agent au défaut), et une `BaseUrl` invalide ou une valeur qui n'est pas un nombre fait
+échouer le démarrage en nommant la clé à corriger. Une crew qui nomme un profil que l'hôte ne
+définit pas **échoue au chargement**, et le message liste les profils offerts. Seuls les tours des
+agents changent de fournisseur : le manager hiérarchique, le planificateur, le Guardian, les
+pipelines RAG et les juges LLM restent sur le profil par défaut. Une section qui ne contient que
+`Profiles` ne configure aucun fournisseur par défaut — le défaut est alors le provider écho, avec
+l'avertissement habituel. `orkeon-host` peut restreindre les profils que ses crews peuvent nommer
+(`Orkeon:Host:LlmProfiles`, plus bas).
+
 ## Sections hors préfixe `Orkeon:`
 
 | Section | Configure | Consommateur / opt-in |
 |---|---|---|
-| `Llm` | Provider LLM actif (voir ci-dessus) | `RunnerHost` |
+| `Llm` | Provider LLM actif — le profil par défaut (voir ci-dessus) | `RunnerHost` |
+| `Llm:Profiles:<nom>` | Profils LLM nommés qu'une crew choisit par agent ou par tâche, mêmes clés que `Llm` (voir ci-dessus) | `RunnerHost`, le REPL (`AddOrkeonLlmProfiles(configuration)`) |
 | `Llm:AvailableModels` | La liste de modèles qu'une commande REPL scriptée `/model` peut proposer (tableau de chaînes, ou une chaîne séparée par des virgules) | `AddOrkeonSessionTools(configuration)` |
 | `Memory:Provider` | TYPE du provider mémoire de l'application (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb` ; absent → in-memory). Sa connexion est la section propre de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, … plus bas) — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration) | `AddOrkeonInfrastructure()` |
 | `RateLimiting` | Limitation des requêtes LLM : `GlobalRequestsPerMinute`, `ProviderRequestsPerMinute`, `AgentRequestsPerMinute`, `MaxConcurrentRequests`, `QueueLimit` | `AddOrkeonInfrastructure()` (`ILlmRateLimiter`) |
@@ -219,7 +256,7 @@ variables d'environnement qui les contiennent. Parcours par fournisseur et table
 
 | Section | Configure | Consommateur |
 |---|---|---|
-| `Orkeon:Host` | Le démon : `Crews` (chacune `Name` — unique, sans tenir compte de la casse — `Path`, `Profile:MaxConcurrentRuns` défaut 4, `Mounts` — l'espace de montages propre à la crew), `RunTimeout` (30 min), `ShutdownGracePeriod` (20 s) | `Orkeon.Host` — voir [Hôte de service](../architecture/service-host.md) |
+| `Orkeon:Host` | Le démon : `Crews` (chacune `Name` — unique, sans tenir compte de la casse — `Path`, `Profile:MaxConcurrentRuns` défaut 4, `Mounts` — l'espace de montages propre à la crew), `RunTimeout` (30 min), `ShutdownGracePeriod` (20 s), `LlmProfiles` (la liste blanche des `Llm:Profiles` que les crews hébergées peuvent nommer ; absente, tous sont offerts, `["default"]` n'offre que le défaut ; une entrée qui nomme un profil non défini refuse le démarrage) | `Orkeon.Host` — voir [Hôte de service](../architecture/service-host.md) |
 | `Orkeon:Host:Discord` | Canal Discord : `Enabled`, `TokenEnvironmentVariable` (`ORKEON_DISCORD_TOKEN`), `AllowedUserIds`, `GuildIds`, `ProgressInterval` (2 s), `Routes` (identifiant de salon Discord → nom de crew : un fil ouvert dans ce salon démarre cette crew), `DefaultCrew` (la crew qu'atteint un salon sans route ; la première crew déclarée si absent). Une route vers une crew non déclarée, une clé de route qui n'est pas un identifiant de salon ou un `DefaultCrew` inconnu refusent le démarrage | idem |
 
 ### Multi-modal

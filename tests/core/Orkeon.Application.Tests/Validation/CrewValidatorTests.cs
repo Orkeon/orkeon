@@ -486,17 +486,16 @@ public class CrewValidatorTests
     }
 
     [Fact]
-    public void ShouldReturnError_WhenUsingValidateLlmConfigWithEmptyModel()
+    public void ShouldAcceptAConfigOnItsProfilesModel_WhenUsingValidateLlmConfigWithoutAModel()
     {
-        // Arrange — the with-expression bypasses factory validation on purpose
-        var config = LlmConfig.Default() with { Model = "   " };
+        // Arrange — no model is the profile's own model (GAP-17), not a mistake
+        var config = LlmConfig.OnProfile("claude");
 
         // Act
         var errors = CrewValidator.ValidateLlmConfig(config, RoleDeveloper);
 
         // Assert
-        Assert.Single(errors);
-        Assert.Contains("without a model", errors[0]);
+        Assert.Empty(errors);
     }
 
     [Theory]
@@ -550,7 +549,8 @@ public class CrewValidatorTests
     [Fact]
     public void ShouldReturnAllErrors_WhenUsingValidateLlmConfigWithMultipleInvalidParameters()
     {
-        // Arrange — every validated parameter is out of range
+        // Arrange — every validated parameter is out of range (an empty model is not one of
+        // them: it is the profile's own, GAP-17)
         var config = LlmConfig.Default() with
         {
             Model = "",
@@ -567,7 +567,7 @@ public class CrewValidatorTests
         var errors = CrewValidator.ValidateLlmConfig(config, RoleDeveloper);
 
         // Assert
-        Assert.Equal(8, errors.Count);
+        Assert.Equal(7, errors.Count);
     }
 
     [Fact]

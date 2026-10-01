@@ -171,7 +171,9 @@ public partial class YamlCrewExporter
 
         return new LlmYamlConfig
         {
-            Model = llmConfig.Model,
+            Profile = llmConfig.Profile,
+            // An empty model is the profile's own (GAP-17): left out, like an unpinned cap.
+            Model = string.IsNullOrWhiteSpace(llmConfig.Model) ? null : llmConfig.Model,
             Temperature = llmConfig.Temperature != LlmDefaults.DefaultTemperature ? llmConfig.Temperature : null,
             MaxTokens = llmConfig.MaxTokens,   // only a pinned cap is written; null was never one
         };

@@ -83,7 +83,9 @@ public static class JsCrewConfigurationAdapter
         // — otherwise the constraint gets dropped silently.
         if (!string.IsNullOrWhiteSpace(builder.ResponseFormatValue) || builder.ResponseSchemaValue is not null)
         {
-            llmConfig ??= LlmConfig.Default();
+            // On the default profile's own model: the framework default model would pin a
+            // vendor's model name on whatever provider the host runs (GAP-17).
+            llmConfig ??= LlmConfig.OnProfile();
             llmConfig = llmConfig with
             {
                 ResponseFormat = BuildResponseFormat(

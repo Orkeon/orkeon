@@ -46,7 +46,8 @@ agents:
     maxRpm: int           # default: 10 — requêtes par minute (rate limiting)
     verbose: bool         # default: false — logs détaillés pour cet agent
     llm:
-      model: string       # Modèle LLM ("gpt-4", "claude-3-opus", etc.)
+      profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) — absent = le fournisseur par défaut de l'hôte
+      model: string       # Modèle LLM ("gpt-4", "claude-3-opus", etc.) — absent = le modèle propre du profil
       temperature: float  # Créativité (0.0-1.0)
       maxTokens: int      # Limite de tokens en sortie
 
@@ -67,6 +68,44 @@ tasks:
       toolRules:
         <tool_name>: [string]
 ```
+
+### Un fournisseur par agent (profils)
+
+Un hôte offre ses fournisseurs sous forme de **profils** nommés (`Llm:Profiles:<nom>` dans ses
+réglages, la section `Llm` étant celui par défaut — voir [Configuration](../reference/configuration.md#profils-nommés-llmprofiles)).
+Une crew en choisit un **par son nom** — au niveau crew (tous les agents), sur un agent, ou dans le
+`llm_override` d'une tâche (cette tâche seulement) ; le plus précis l'emporte, et
+`profile: default` ramène un agent ou une tâche au défaut de l'hôte. Un fichier de crew ne porte
+jamais ni clé ni URL.
+
+```yaml
+llm:
+  profile: deepseek          # niveau crew : tous les agents, sauf avis contraire
+agents:
+  planner:
+    role: Planner
+    goal: Plan the article
+    llm:
+      profile: claude        # cet agent tourne sur le profil « claude » de l'hôte…
+      model: claude-opus-5   # …sur un autre modèle que celui du profil
+  writer:
+    role: Writer
+    goal: Write the article  # hérite du profil « deepseek » de la crew, sur son propre modèle
+tasks:
+  review:
+    description: Review the article
+    expectedOutput: A review
+    agent: writer
+    llm_override:
+      profile: claude        # cette tâche seule fait passer le rédacteur sur « claude »
+```
+
+Un profil que l'hôte ne définit pas fait échouer le chargement de la crew, et le message liste
+les profils offerts — exactement comme un outil inconnu. Un bloc `llm:` qui ne nomme pas de
+`model` tourne sur le modèle propre du profil (celui de l'hôte pour le profil par défaut), jamais
+sur un défaut du framework. Seuls les tours des agents changent de fournisseur : le manager
+hiérarchique, le planificateur, le Guardian et les pipelines RAG restent sur le profil par défaut.
+En `.ork.ts`, le même choix s'écrit `agentBuilder().llm(llm.profile("claude"))`.
 
 Le `tools:` d'une tâche s'ajoute aux outils de son agent pour cette tâche seulement : un rédacteur qui détient `file_read` et exécute une tâche déclarant `tools: [file_write]` peut lire et écrire pendant cette tâche, et seulement lire pendant les autres. Il n'y a pas de bloc `circuitBreaker:` — une crew qui en écrit un est refusée au chargement. Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent (`maxIter`, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie) ; un run Graph est borné par `graphConfig` (ci-dessous).
 
@@ -94,7 +133,7 @@ Les modèles YAML incluent :
 - `CrewYamlConfig` (définition complète d'une crew)
 - `AgentYamlConfig` (rôle, objectif, backstory, outils, limites)
 - `TaskYamlConfig` (description, résultat attendu, dépendances, outils, livrable, guardrails)
-- `LlmYamlConfig` (modèle, température, max tokens)
+- `LlmYamlConfig` (profil, modèle, température, max tokens)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges — voir [Orchestration Graph](../orchestration/graph.md))
 
 Il n'existe pas d'objet « configuration prédéfinie » au niveau du framework : un hôte compose ses réglages via `AddOrkeonInfrastructure` / `AddOrkeonApplication` et son `appsettings.json`.
@@ -174,7 +213,7 @@ La pipeline de création transforme la configuration YAML en objets domaine opé
 2. **CrewYamlConfig → CrewConfiguration** : Mapping des modèles YAML vers les DTOs application avec validation basique (les erreurs lèvent `InvalidOperationException`, les avertissements sont journalisés)
 3. **Collections RAG** : les collections déclarées par un bloc `rag:` sont ingérées (de façon incrémentale) — quand le sous-système RAG est enregistré ; sans lui, un Warning et aucune ingestion
 4. **Résolution des outils** : Noms d'outils (strings) résolus via `IToolRegistry.GetToolByNameAsync(name)` en instances `IBaseTool`
-5. **Création des agents** : Instances `Agent` construites avec `AgentBuilder` et outils résolus
+5. **Création des agents** : Instances `Agent` construites avec `AgentBuilder`, les outils résolus et leur bloc `llm:` — chaque profil qu'un agent ou une tâche nomme doit être offert par l'hôte, sinon le chargement échoue en les listant
 6. **Création des tasks** : Instances `CrewTask` construites avec `CrewTaskBuilder` et dépendances validées
 7. **Validation des dépendances** : Détection des cycles (circular dependency detection) et validation de l'ordre
 8. **Création de la Crew** : Instance `Crew` construite avec `CrewBuilder`, process strategy appliquée

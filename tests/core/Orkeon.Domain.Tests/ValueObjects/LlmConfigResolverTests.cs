@@ -105,6 +105,29 @@ public class LlmConfigResolverTests
     }
 
     [Fact]
+    public void ShouldCascadeTheProfile_CallOverTaskOverBase()
+    {
+        // GAP-17: the host profile follows the same cascade as every other field.
+        var baseCfg = LlmConfig.OnProfile("claude");
+
+        Assert.Equal("claude", LlmConfigResolver.Resolve(baseCfg, null, null).Profile);
+        Assert.Equal("local", LlmConfigResolver.Resolve(baseCfg, new LlmConfigOverride { Profile = "local" }, null).Profile);
+        Assert.Equal("gpt", LlmConfigResolver.Resolve(
+            baseCfg, new LlmConfigOverride { Profile = "local" }, new LlmConfigOverride { Profile = "gpt" }).Profile);
+    }
+
+    [Fact]
+    public void OnProfile_PinsNoModel_AndBlankMeansTheDefaultProfile()
+    {
+        var onProfile = LlmConfig.OnProfile("claude");
+
+        Assert.Equal(string.Empty, onProfile.Model);
+        Assert.Equal("claude", onProfile.Profile);
+        Assert.Null(LlmConfig.OnProfile("  ").Profile);
+        Assert.Null(LlmConfig.OnProfile().Profile);
+    }
+
+    [Fact]
     public void ShouldThrow_WhenBaseConfigIsNull()
     {
         Assert.Throws<ArgumentNullException>(

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.Llm;
+using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.DependencyInjection;
@@ -250,7 +251,11 @@ public static partial class RunnerHost
             .CreateLogger("Orkeon.Hosting.RunnerHost");
 
         var llmSection = configuration.GetSection(ConfigurationKeys.LlmSection);
-        if (llmSection.Exists())
+        var profiles = LlmSettings.ProfileNames(configuration);
+        if (profiles.Count > 0)
+            LogLlmProfiles(logger, profiles);
+
+        if (LlmSettings.HasDefault(configuration))
         {
             // One line of truth about what was actually resolved (file + ORKEON_ overlay):
             // when a run behaves as if a setting never arrived — a timeout still at its
@@ -268,6 +273,9 @@ public static partial class RunnerHost
         Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
         LogLlmNotConfigured(logger);
     }
+
+    [LoggerMessage(EventId = 9, Level = LogLevel.Information, Message = "LLM profiles offered to crews besides the default: {Profiles}")]
+    private static partial void LogLlmProfiles(ILogger logger, IReadOnlyList<string> profiles);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = LlmNotConfiguredMessage)]
     private static partial void LogLlmNotConfigured(ILogger logger);
@@ -925,38 +933,20 @@ public static partial class RunnerHost
 
     private static void RegisterLlmProvider(HostBuilderContext context, IServiceCollection services)
     {
-        var llmSection = context.Configuration.GetSection(ConfigurationKeys.LlmSection);
-        // No section → the echo provider, announced once per host build by
-        // WarnIfLlmNotConfigured (no logger exists yet at this point).
-        if (!llmSection.Exists())
+        // Llm:Profiles:<name> — the named providers a crew may pick per agent or per task
+        // (GAP-17). Read and validated now: a bad profile fails the host build with its key.
+        services.AddOrkeonLlmProfiles(context.Configuration);
+
+        // No default section (none at all, or one holding profiles alone) → the echo
+        // provider, announced once per host build by WarnIfLlmNotConfigured (no logger exists
+        // yet at this point).
+        if (!LlmSettings.HasDefault(context.Configuration))
         {
             RegisterEchoProvider(services);
             return;
         }
 
-        // The one default, not a literal: LlmConfig, AgentBuilder and Studio's presets all
-        // read LlmDefaults.DefaultModelName, so a hardcoded model here gave an appsettings
-        // whose Llm section omits Model a different model from every other entry point.
-        var llmConfig = LlmConfig.Create(
-            llmSection["Model"] ?? LlmDefaults.DefaultModelName) with
-        {
-            BaseUrl = llmSection["BaseUrl"] is { } llmBaseUrl ? new Uri(llmBaseUrl) : null,
-#pragma warning disable CS0618
-            ApiKey = llmSection["ApiKey"],
-#pragma warning restore CS0618
-            // Invariant parse: configuration values are written invariant ("0.7"), and a
-            // culture-sensitive read turns that into 7 on a comma-decimal locale (fr-FR).
-            Temperature = double.TryParse(llmSection["Temperature"], System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : 0.7,
-            // Absent = not pinned: the provider sends the model's documented maximum (LLM-10).
-            MaxTokens = int.TryParse(llmSection["MaxTokens"], out var m) ? m : null,
-            TimeoutSeconds = int.TryParse(llmSection["TimeoutSeconds"], out var ts) ? ts : 30,
-            Thinking = ReadThinkingConfig(llmSection),
-            // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
-            GrammarEnabled = bool.TryParse(llmSection[ConfigurationKeys.LlmGrammar], out var grammar) && grammar,
-        };
-        if (int.TryParse(llmSection["MaxRetries"], out var maxRetries))
-            llmConfig = llmConfig with { MaxRetries = Math.Max(0, maxRetries) };
+        var llmConfig = LlmSettings.ReadDefault(context.Configuration);
 
         services.AddSingleton<IBasicLlmProvider>(sp =>
         {
@@ -964,18 +954,6 @@ public static partial class RunnerHost
             return factory.Create(llmConfig);
         });
 
-        static LlmThinkingConfig? ReadThinkingConfig(IConfigurationSection llmSection)
-        {
-            // Llm:Thinking:{Enabled,Effort} — forwarded to thinking-capable providers
-            // (DeepSeek, Z.AI GLM) as the `thinking` block + `reasoning_effort` field.
-            var thinkingSection = llmSection.GetSection(ConfigurationKeys.ThinkingSection);
-            if (!thinkingSection.Exists()) return null;
-            return new LlmThinkingConfig
-            {
-                Enabled = bool.TryParse(thinkingSection["Enabled"], out var enabled) ? enabled : null,
-                Effort = thinkingSection["Effort"],
-            };
-        }
         services.AddSingleton<IChatClient>(sp =>
         {
             var basicProvider = sp.GetRequiredService<IBasicLlmProvider>();

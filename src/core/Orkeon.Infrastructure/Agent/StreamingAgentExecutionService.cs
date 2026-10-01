@@ -29,6 +29,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
     private readonly IFileSystemService _fileSystemService;
     private readonly IToolInvocationPipeline _toolInvocation;
     private readonly IGuardianPipeline? _guardian;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
 
     /// <summary>Initializes a new instance of <see cref="StreamingAgentExecutionService"/>.</summary>
     /// <param name="chatClient">The Microsoft.Extensions.AI chat client used for streaming.</param>
@@ -40,6 +41,8 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
     /// <param name="guardian">The guardian whose input phase screens the user prompt; null runs no input check.</param>
     /// <param name="callbacks">The run's callback orchestrator: each tool call is reported to the
     /// <c>ICallbackHandler</c> registrations as a step (GAP-06); null reports none.</param>
+    /// <param name="llmProfiles">The host's named LLM profiles: an agent or a task naming one streams
+    /// from its provider (GAP-17); null keeps every agent on <paramref name="chatClient"/>.</param>
     public StreamingAgentExecutionService(
         IChatClient chatClient,
         IEnumerable<IBaseTool> tools,
@@ -47,7 +50,8 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         IFileSystemService fileSystemService,
         IToolInvocationPipeline? toolInvocation = null,
         IGuardianPipeline? guardian = null,
-        Orkeon.Application.Interfaces.Services.ICallbackOrchestrator? callbacks = null)
+        Orkeon.Application.Interfaces.Services.ICallbackOrchestrator? callbacks = null,
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
         _chatClient = chatClient;
@@ -59,6 +63,21 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         _toolInvocation = Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.Wrap(
             toolInvocation ?? ToolInvocationPipeline.Unguarded, callbacks);
         _guardian = guardian;
+        _llmProfiles = llmProfiles;
+    }
+
+    /// <summary>
+    /// The chat client of the profile the task runs on — its <c>llm_override</c> profile, else
+    /// its agent's — or the service's own for the default profile (GAP-17).
+    /// </summary>
+    private IChatClient ChatClientFor(DomainAgent agent, CrewTask task)
+    {
+        var profile = task.LlmOverride?.Profile ?? agent.LlmConfig?.Profile;
+        if (Orkeon.Application.Interfaces.Ports.LlmProfiles.IsDefault(profile))
+            return _chatClient;
+
+        Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(_llmProfiles, profile, $"Agent '{agent.Role.Value}'");
+        return _llmProfiles!.Resolve(profile).ChatClient;
     }
 
     /// <inheritdoc />
@@ -98,6 +117,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
             };
 
             var (options, availableTools) = BuildStreamingChatOptions(agent, task, caller);
+            var chatClient = ChatClientFor(agent, task);
             var maxIterations = agent.MaxIterations > 0 ? agent.MaxIterations : AgentDefaults.MaxIterations;
 
             for (int i = 0; i < maxIterations; i++)
@@ -114,7 +134,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
                     taskId: task.Id.ToString()))
                 {
                     turn = await ProcessStreamingIterationAsync(
-                        messages, options, availableTools, caller, cancellationToken).ConfigureAwait(false);
+                        chatClient, messages, options, availableTools, caller, cancellationToken).ConfigureAwait(false);
                 }
 
                 var (fullResponse, toolCallThoughts) = turn;
@@ -180,6 +200,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
     }
 
     private async Task<(string fullResponse, List<AgentThought> thoughts)> ProcessStreamingIterationAsync(
+        IChatClient chatClient,
         List<ChatMessage> messages,
         ChatOptions options,
         List<IBaseTool> availableTools,
@@ -189,7 +210,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         var fullResponse = new StringBuilder();
         var thoughts = new List<AgentThought>();
 
-        await foreach (var update in _chatClient.GetStreamingResponseAsync(messages, options, cancellationToken).ConfigureAwait(false))
+        await foreach (var update in chatClient.GetStreamingResponseAsync(messages, options, cancellationToken).ConfigureAwait(false))
         {
             if (update.Text is not null)
             {

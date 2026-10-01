@@ -80,6 +80,15 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private NativeToolCallingAgentLoop NativeLoop =>
         _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools);
 
+    /// <summary>
+    /// One agent loop per host profile an agent or a task of this scope named (GAP-17): the
+    /// profile's chat client and its own call gate (rate limits and the <c>gen_ai.provider.name</c>
+    /// of the spans follow the profile's provider), sharing the options composer and the tool
+    /// dispatcher with the default loop.
+    /// </summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, ChatClientAgentLoop> _profileLoops =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private OutputValidationCoordinator OutputValidation =>
         _outputValidation ??= new OutputValidationCoordinator(
             _logger, _validationPipeline, _parserFactory, _llmProvider,
@@ -119,6 +128,15 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// first built, so set it before the first execution.
     /// </summary>
     public IToolInvocationPipeline? ToolInvocation { get; set; }
+
+    /// <summary>
+    /// The host's named LLM profiles (GAP-17). An agent whose <c>llm</c> configuration — or a
+    /// task whose <c>llm_override</c> — names a profile runs on that profile's provider; every
+    /// other agent stays on the orchestrator's own (the host's default profile). Set by
+    /// <c>AddOrkeonApplication</c>; null — an orchestrator built by hand — offers the default
+    /// alone, and a task naming another profile fails with the list of known ones.
+    /// </summary>
+    public ILlmProfileRegistry? LlmProfiles { get; set; }
 
     /// <summary>
     /// The run's callback orchestrator: every tool call of the agent loops is reported to the
@@ -309,7 +327,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var (validatedOutput, structuredOutput) = loopResult.ExitReason == AgentExitReason.LlmCallFailed
                     ? (loopResult.Output, null)
                     : await OutputValidation.ValidateAndParseOutputAsync(
-                        new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed),
+                        new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed)
+                        {
+                            // A correction round asks the model that answered: the profile's, when there is one.
+                            ChatLoop = ProfileLoopFor(agent, task),
+                        },
                         MaxOutputRetries, MaxIterations, cancellationToken).ConfigureAwait(false);
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
@@ -446,6 +468,16 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
+        if (ProfileLoopFor(agent, task) is { } profileLoop)
+        {
+            var profileResult = await profileLoop.ExecuteAsync(
+                agent, task, systemPrompt, userPrompt, toolsUsed, MaxIterations, cancellationToken).ConfigureAwait(false);
+
+            sw.Stop();
+            ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, profileResult.Output.Length, profileResult.Output);
+            return profileResult;
+        }
+
         if (_chatClient != null)
         {
             var loopResult = await ChatLoop.ExecuteAsync(
@@ -474,6 +506,33 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
         // Existing text-based [TOOL_CALL] fallback
         return await LegacyLoop.ExecuteAsync(invocation, MaxIterations, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The loop of the host profile this task runs on — its <c>llm_override</c> profile, else its
+    /// agent's — or null for the default profile, which keeps the orchestrator's own provider.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The profile is not one <see cref="LlmProfiles"/> offers. The crew load checks it first;
+    /// this is the guard for a crew built by hand.
+    /// </exception>
+    private ChatClientAgentLoop? ProfileLoopFor(DomainAgent agent, CrewTask task)
+    {
+        var profile = task.LlmOverride?.Profile ?? agent.LlmConfig?.Profile;
+        if (Interfaces.Ports.LlmProfiles.IsDefault(profile))
+            return null;
+
+        Interfaces.Ports.LlmProfiles.EnsureKnown(LlmProfiles, profile, $"Agent '{agent.Role.Value}'");
+        return _profileLoops.GetOrAdd(profile!.Trim(), name =>
+        {
+            var resolved = LlmProfiles!.Resolve(name);
+            return new ChatClientAgentLoop(
+                _logger,
+                resolved.ChatClient,
+                new LlmCallGate(_logger, resolved.BasicProvider, _rateLimiter),
+                OptionsComposer,
+                ToolDispatcher);
+        });
     }
 
     /// <summary>

@@ -105,6 +105,24 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    public void The_meter_tells_what_each_provider_was_spent_on()
+    {
+        // GAP-17: agents on different host profiles talk to different providers. Each reading
+        // carries the run's standing total and names its own call's provider, so the growth
+        // since the previous reading is that provider's — the manager's included.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":300,"model":"claude-sonnet-5","provider":"anthropic","operation":"agent"}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"cost.updated","tokens":420,"model":"deepseek-chat","provider":"deepseek","operation":"agent"}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"cost.updated","tokens":500,"model":"deepseek-chat","provider":"deepseek","operation":"manager"}""",
+            """{"v":2,"seq":4,"ts":"t","kind":"cost.updated","tokens":650,"model":"claude-sonnet-5","provider":"anthropic","operation":"agent"}""");
+
+        Assert.Equal(650, model.Cost!.Tokens);
+        Assert.Equal(2, model.TokensByProvider.Count);
+        Assert.Equal(450, model.TokensByProvider["anthropic"]);
+        Assert.Equal(200, model.TokensByProvider["deepseek"]);
+    }
+
+    [Fact]
     public void The_meter_folds_the_split_and_the_vendor_charge_while_the_run_goes()
     {
         // STUDIO-29: cost.updated says what goes up, what comes back and — when the vendor

@@ -81,65 +81,16 @@ public class CrewConfigurationMapperTests
         public static TimeSpan Timeout => TimeoutQuick;
     }
 
-    private class TestLlmProvider : IBasicLlmProvider
+    /// <summary>The host's named LLM profiles, as the mapper reads them: names only (GAP-17).</summary>
+    private sealed class TestLlmProfileRegistry(params string[] names) : ILlmProfileRegistry
     {
-        public string Name { get; }
-        public List<string> GenerateCalls { get; } = [];
+        public IReadOnlyList<string> Names { get; } = names;
 
-        public TestLlmProvider(string modelName = TestModelName)
-        {
-            Name = modelName;
-        }
+        public bool IsKnown(string name) =>
+            LlmProfiles.IsDefault(name) || Names.Contains(name, StringComparer.OrdinalIgnoreCase);
 
-        public System.Threading.Tasks.Task<string> ChatAsync(string message, LlmConfig? config = null, CancellationToken cancellationToken = default)
-        {
-            GenerateCalls.Add(message);
-            return System.Threading.Tasks.Task.FromResult($"Response to: {message}");
-        }
-
-        public System.Threading.Tasks.Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
-        {
-            return System.Threading.Tasks.Task.FromResult(true);
-        }
-    }
-
-    private class TestLlmProviderFactory : ILlmProviderFactory
-    {
-        private readonly Dictionary<string, TestLlmProvider> _providers = [];
-        public List<string> CreateCalls { get; } = [];
-
-        public TestLlmProviderFactory(TestLlmProvider? defaultProvider = null)
-        {
-            if (defaultProvider != null)
-            {
-                _providers["default"] = defaultProvider;
-            }
-        }
-
-        public void RegisterProvider(string model, TestLlmProvider provider)
-        {
-            _providers[model] = provider;
-        }
-
-        public IBasicLlmProvider Create(LlmConfig config)
-        {
-            CreateCalls.Add($"{config.Model}:{config.BaseUrl}");
-
-            // Simulate failure for specific model
-            if (config.Model == "failing-model")
-            {
-                throw new InvalidOperationException("Failed to create LLM provider for failing-model");
-            }
-
-            if (_providers.TryGetValue(config.Model, out var provider))
-            {
-                return provider;
-            }
-
-            return _providers.TryGetValue("default", out var defaultProvider)
-                ? defaultProvider
-                : new TestLlmProvider(config.Model);
-        }
+        public LlmProfile Resolve(string? name) =>
+            throw new NotSupportedException("The mapper checks profile names; it never resolves a provider.");
     }
 
     #endregion
@@ -232,11 +183,11 @@ public class CrewConfigurationMapperTests
         // Arrange
         CrewConfiguration? configuration = null;
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
-            configuration!.ToDomainCrew(toolResolver, llmProviderFactory));
+            configuration!.ToDomainCrew(toolResolver, llmProfiles));
         Assert.Equal("configuration", exception.ParamName);
     }
 
@@ -246,26 +197,32 @@ public class CrewConfigurationMapperTests
         // Arrange
         var configuration = CreateTestCrewConfiguration();
         Func<string, IBaseTool>? toolResolver = null;
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
-            configuration.ToDomainCrew(toolResolver!, llmProviderFactory));
+            configuration.ToDomainCrew(toolResolver!, llmProfiles));
         Assert.Equal("toolResolver", exception.ParamName);
     }
 
     [Fact]
-    public void ShouldThrowArgumentNullException_WhenUsingToDomainCrewWithNullLlmProviderFactory()
+    public void ShouldOfferTheDefaultProfileAlone_WhenUsingToDomainCrewWithoutProfiles()
     {
-        // Arrange
-        var configuration = CreateTestCrewConfiguration();
+        // Arrange — no registry: the host's default profile is the only one
         var toolResolver = CreateToolResolver();
-        ILlmProviderFactory? llmProviderFactory = null;
+        var onDefault = CreateTestCrewConfiguration() with
+        {
+            Agents = [CreateTestAgentConfiguration() with { LlmConfig = LlmConfig.OnProfile("default") }],
+        };
+        var onClaude = CreateTestCrewConfiguration() with
+        {
+            Agents = [CreateTestAgentConfiguration() with { LlmConfig = LlmConfig.OnProfile("claude") }],
+        };
 
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-            configuration.ToDomainCrew(toolResolver, llmProviderFactory!));
-        Assert.Equal("llmProviderFactory", exception.ParamName);
+        Assert.NotNull(onDefault.ToDomainCrew(toolResolver, llmProfiles: null));
+        var error = Assert.Throws<InvalidOperationException>(() => onClaude.ToDomainCrew(toolResolver, llmProfiles: null));
+        Assert.Contains("Known profiles: default.", error.Message);
     }
 
     [Fact]
@@ -274,10 +231,10 @@ public class CrewConfigurationMapperTests
         // Arrange
         var configuration = CreateTestCrewConfiguration();
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.NotNull(crew);
@@ -306,10 +263,10 @@ public class CrewConfigurationMapperTests
         };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.Equal(2, crew.Agents.Count);
@@ -324,13 +281,13 @@ public class CrewConfigurationMapperTests
 
         var toolRegistry = CreateTestToolRegistry();
         var toolResolver = CreateToolResolver(toolRegistry);
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         var processedAgents = new List<DomainAgent?>();
         Action<DomainAgent?> agentPostProcessor = agent => processedAgents.Add(agent);
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory, agentPostProcessor);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles, agentPostProcessor);
 
         // Assert
         Assert.Single(processedAgents);
@@ -351,11 +308,11 @@ public class CrewConfigurationMapperTests
         // silent-skip path; the warning is for resolvers that fail loudly).
         Func<string, IBaseTool> toolResolver =
             name => throw new InvalidOperationException($"Unknown tool: {name}");
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
         var logger = new Fixtures.TestLogger<CrewConfigurationMapperTests>();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory, logger: logger);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles, logger: logger);
 
         // Assert — the failure is handled gracefully and reported as a logger warning.
         Assert.NotNull(crew);
@@ -373,10 +330,10 @@ public class CrewConfigurationMapperTests
         configuration = configuration with { Agents = [agentConfig] };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.NotNull(crew);
@@ -384,22 +341,20 @@ public class CrewConfigurationMapperTests
     }
 
     [Fact]
-    public void ShouldCreateLlmProvider_WhenUsingToDomainCrewWithAgentLlmConfig()
+    public void ShouldCarryTheAgentLlmConfig_WhenUsingToDomainCrewWithAKnownProfile()
     {
         // Arrange
         var configuration = CreateTestCrewConfiguration();
-        var agentConfig = CreateTestAgentConfiguration() with { LlmConfig = LlmConfig.Create(ModelGpt4) with { ApiKey = "test-key" } };
+        var agentConfig = CreateTestAgentConfiguration() with { LlmConfig = LlmConfig.Create(ModelGpt4) with { Profile = "claude" } };
         configuration = configuration with { Agents = [agentConfig] };
-
-        var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        DomainAgent? mapped = null;
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        configuration.ToDomainCrew(CreateToolResolver(), new TestLlmProfileRegistry("claude"), a => mapped = a);
 
         // Assert
-        Assert.Single(llmProviderFactory.CreateCalls);
-        Assert.Contains(ModelGpt4, llmProviderFactory.CreateCalls[0]);
+        Assert.Equal("claude", mapped!.LlmConfig!.Profile);
+        Assert.Equal(ModelGpt4, mapped.LlmConfig.Model);
     }
 
     [Fact]
@@ -409,7 +364,7 @@ public class CrewConfigurationMapperTests
         var configuration = CreateTestCrewConfiguration() with { Agents = [CreateTestAgentConfiguration()] };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         var processedAgents = new List<string>();
         Action<DomainAgent?> agentPostProcessor = agent =>
@@ -419,7 +374,7 @@ public class CrewConfigurationMapperTests
         };
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory, agentPostProcessor);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles, agentPostProcessor);
 
         // Assert
         Assert.Single(processedAgents);
@@ -444,10 +399,10 @@ public class CrewConfigurationMapperTests
         };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.Equal(2, crew.Tasks.Count);
@@ -461,10 +416,10 @@ public class CrewConfigurationMapperTests
         var configuration = CreateTestCrewConfiguration() with { Tasks = [taskConfig] };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.Single(crew.Tasks);
@@ -484,10 +439,10 @@ public class CrewConfigurationMapperTests
         var configuration = CreateTestCrewConfiguration() with { Tasks = [task1, task2] };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.Equal(2, crew.Tasks.Count);
@@ -544,10 +499,10 @@ public class CrewConfigurationMapperTests
         };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.NotNull(crew);
@@ -581,10 +536,10 @@ public class CrewConfigurationMapperTests
         };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.Equal(15, crew.MaxRpm); // MaxConcurrentTasks maps to MaxRpm
@@ -775,7 +730,7 @@ public class CrewConfigurationMapperTests
         var reimportedTasks = new List<DomainCrewTask>();
         var reimportedCrew = configuration.ToDomainCrew(
             CreateToolResolver(),
-            new TestLlmProviderFactory(),
+            new TestLlmProfileRegistry(),
             reimportedAgents.Add,
             reimportedTasks.Add);
 
@@ -912,10 +867,10 @@ public class CrewConfigurationMapperTests
         var configuration = CreateTestCrewConfiguration() with { Goal = null! };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.Equal("Default goal", crew.Goal);
@@ -928,38 +883,37 @@ public class CrewConfigurationMapperTests
         var configuration = CreateTestCrewConfiguration() with { ExecutionConfig = null };
 
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
+        var llmProfiles = new TestLlmProfileRegistry();
 
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProfiles);
 
         // Assert
         Assert.Equal(10, crew.MaxRpm); // Default value
     }
 
     [Fact]
-    public void ShouldHandleGracefully_WhenUsingToDomainCrewWithLlmProviderCreationFailure()
+    public void ShouldFailTheMapping_WhenAnAgentOrATaskNamesAnUnknownProfile()
     {
-        // Arrange
-        var agentConfig = CreateTestAgentConfiguration() with { LlmConfig = LlmConfig.Create("failing-model") };
-        var configuration = CreateTestCrewConfiguration() with { Agents = [agentConfig] };
-
+        // Arrange — GAP-17: a profile the host does not offer fails like an unknown tool would,
+        // listing the known ones; the mapper used to build a provider and throw it away.
         var toolResolver = CreateToolResolver();
-        var llmProviderFactory = new TestLlmProviderFactory();
-        var logger = new Fixtures.TestLogger<CrewConfigurationMapperTests>();
+        var llmProfiles = new TestLlmProfileRegistry("claude", "local");
+        var agentOnTypo = CreateTestCrewConfiguration() with
+        {
+            Agents = [CreateTestAgentConfiguration() with { LlmConfig = LlmConfig.OnProfile("cluade") }],
+        };
+        var taskOnTypo = CreateTestCrewConfiguration() with
+        {
+            Tasks = [new TaskConfiguration { Description = "Do it", ExpectedOutput = "Done", LlmOverride = new LlmConfigOverride { Profile = "gpt" } }],
+        };
 
-        // The TestLlmProviderFactory already handles throwing for failing-model in its Create method
-
-        // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory, logger: logger);
-
-        // Assert
-        // Crew should still be created even with LLM provider failure
-        Assert.NotNull(crew);
-        // Verify that the provider creation was attempted and the failure logged as a warning
-        Assert.Contains("failing-model", llmProviderFactory.CreateCalls[0]);
-        Assert.True(logger.HasLoggedWarning());
-        Assert.True(logger.HasLoggedMessage("Could not create LLM provider for agent"));
+        // Act & Assert
+        var agentError = Assert.Throws<InvalidOperationException>(() => agentOnTypo.ToDomainCrew(toolResolver, llmProfiles));
+        Assert.Contains("'cluade'", agentError.Message);
+        Assert.Contains("Known profiles: default, claude, local.", agentError.Message);
+        var taskError = Assert.Throws<InvalidOperationException>(() => taskOnTypo.ToDomainCrew(toolResolver, llmProfiles));
+        Assert.Contains("'gpt'", taskError.Message);
     }
 
     #endregion

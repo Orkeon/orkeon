@@ -28,4 +28,10 @@ public sealed record ScriptingHostPorts
     /// audit. Null = the tool is called directly.
     /// </summary>
     public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
+
+    /// <summary>
+    /// The host's named LLM profiles behind <c>llm.profile(name)</c> (GAP-17). Null offers the
+    /// default profile alone: <c>llm.profile</c> of any other name throws, listing it.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? LlmProfiles { get; init; }
 }

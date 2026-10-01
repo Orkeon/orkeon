@@ -8,6 +8,12 @@ namespace Orkeon.Domain.SharedKernel.ValueObjects;
 /// </summary>
 public sealed record LlmConfigOverride
 {
+    /// <summary>
+    /// The host LLM profile this task runs on instead of its agent's (GAP-17). <c>null</c> = keep
+    /// inherited.
+    /// </summary>
+    public string? Profile { get; init; }
+
     /// <summary>Output-format constraint (e.g. JSON object). <c>null</c> = keep inherited.</summary>
     public LlmResponseFormat? ResponseFormat { get; init; }
 

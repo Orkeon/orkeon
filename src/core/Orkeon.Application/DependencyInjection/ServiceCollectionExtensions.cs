@@ -211,6 +211,10 @@ public static class ServiceCollectionExtensions
             // GAP-06 — each tool call of the agent loops reaches the ICallbackHandler
             // registrations as a step (OnStepStartedAsync / OnStepCompletedAsync).
             orchestrator.Callbacks = sp.GetService<ICallbackOrchestrator>();
+
+            // GAP-17 — the host's named LLM profiles: an agent or a task naming one runs on its
+            // provider; every other one stays on the default resolved above.
+            orchestrator.LlmProfiles = sp.GetService<Interfaces.Ports.ILlmProfileRegistry>();
             return orchestrator;
         });
         return services;

@@ -125,9 +125,12 @@ public sealed partial class YamlCrewMapper
                 MaxIterations = kvp.Value.MaxIter ?? 20,
                 MaxRPM = kvp.Value.MaxRpm ?? 10,
                 Verbose = kvp.Value.Verbose ?? false,
+                // No model named: the profile's own (GAP-17) — never the framework's default
+                // model, which a block setting only a temperature used to pin on any vendor.
                 LlmConfig = effectiveLlm != null
-                    ? LlmConfig.Create(effectiveLlm.Model ?? LlmDefaults.DefaultModelName) with
+                    ? (string.IsNullOrWhiteSpace(effectiveLlm.Model) ? LlmConfig.OnProfile() : LlmConfig.Create(effectiveLlm.Model)) with
                     {
+                        Profile = string.IsNullOrWhiteSpace(effectiveLlm.Profile) ? null : effectiveLlm.Profile.Trim(),
                         Temperature = effectiveLlm.Temperature ?? LlmDefaults.DefaultTemperature,
                         MaxTokens = effectiveLlm.MaxTokens,   // null = the model's documented maximum (LLM-10)
                         TopP = effectiveLlm.TopP ?? 1.0,
@@ -246,6 +249,7 @@ public sealed partial class YamlCrewMapper
 
         return new LlmYamlConfig
         {
+            Profile = string.IsNullOrWhiteSpace(agentLevel.Profile) ? crewLevel.Profile : agentLevel.Profile,
             Model = agentLevel.Model ?? crewLevel.Model,
             Temperature = agentLevel.Temperature ?? crewLevel.Temperature,
             MaxTokens = agentLevel.MaxTokens ?? crewLevel.MaxTokens,
@@ -364,7 +368,8 @@ public sealed partial class YamlCrewMapper
     private LlmConfigOverride? MapTaskLlmOverride(LlmOverrideYamlConfig? yaml)
     {
         if (yaml is null) return null;
-        if (string.IsNullOrWhiteSpace(yaml.ResponseFormat)
+        if (string.IsNullOrWhiteSpace(yaml.Profile)
+            && string.IsNullOrWhiteSpace(yaml.ResponseFormat)
             && yaml.ResponseSchema is null
             && yaml.Temperature is null
             && yaml.MaxTokens is null
@@ -376,6 +381,7 @@ public sealed partial class YamlCrewMapper
 
         return new LlmConfigOverride
         {
+            Profile = string.IsNullOrWhiteSpace(yaml.Profile) ? null : yaml.Profile.Trim(),
             ResponseFormat = MapResponseFormat(yaml.ResponseFormat, yaml.ResponseSchema),
             Temperature = yaml.Temperature,
             MaxTokens = yaml.MaxTokens,

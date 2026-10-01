@@ -62,6 +62,18 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
 
 The model's key is not in the file either: it comes from `ORKEON_Llm__ApiKey`, set in the service's environment (see *Installing it*). Every key can be overridden the same way — the `ORKEON_` prefix, `__` for `:` — so `ORKEON_Orkeon__Host__RunTimeout=00:10:00` shortens the deadline without touching the file.
 
+**Which providers the hosted crews may use.** A host can offer several LLM providers as named profiles (`Llm:Profiles:<name>`, see [Configuration](../reference/configuration.md#named-profiles-llmprofiles)), and a crew picks one per agent by name. The daemon runs crews it does not control, so it decides which names answer: `Orkeon:Host:LlmProfiles` is an **allow-list**. Unset, every profile the configuration defines is offered; set, only those listed — a crew naming any other one fails to load, and the thread that started it says why. The default profile (the `Llm` section) is always offered, so `"LlmProfiles": ["default"]` keeps every hosted crew on it. An entry naming a profile `Llm:Profiles` does not define refuses the start.
+
+```json
+{
+  "Llm": {
+    "BaseUrl": "https://api.deepseek.com/v1", "Model": "deepseek-v4-flash",
+    "Profiles": { "claude": { "BaseUrl": "https://api.anthropic.com/v1", "Model": "claude-sonnet-5" } }
+  },
+  "Orkeon": { "Host": { "LlmProfiles": [ "default" ] } }
+}
+```
+
 ### The command line
 
 ```
@@ -98,7 +110,7 @@ there, unless you widen `PathSecurity:AdditionalAllowedDirectories`.
 
 `Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches. Each crew's directory is **mounted read-only into the VFS automatically**, under a name — `/crews`, then `/crews-1`, `/crews-2`, … for each further directory — and the crew is loaded by that virtual spelling (`/crews/support.yaml` for a file, `/crews-1` for a directory). The loader reads through the virtual file system like everything else in the framework, and a path that only existed on the physical disk would pass the startup probe and then fail on every message. The mount is deliberately *not* identity-mapped: an agent that calls `list_mounts`, or reads any access-denied message, must never be handed the operator's disk layout ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). A `--mount` of your own claiming `/crews*` is refused at start with exit code 78. One caveat travels with the script form: transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare service install carries it — a daemon-hosted crew is a YAML crew unless you install esbuild yourself.
 
-The configuration is **validated at start**: no crew under `Orkeon:Host:Crews`, a crew without a `Name` or a `Path`, two crews with one name (compared case-insensitively), a crew path that does not exist, a `MaxConcurrentRuns` below 1, a `RunTimeout` that is zero or negative, a negative `ShutdownGracePeriod`, and — for an enabled channel — an empty allow list, an unset token variable, a `ProgressInterval` that is zero or negative, a `GuildIds` entry or `Routes` key that is not a number, or a `Routes` entry or `DefaultCrew` naming a crew the host does not declare all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time.
+The configuration is **validated at start**: no crew under `Orkeon:Host:Crews`, a crew without a `Name` or a `Path`, two crews with one name (compared case-insensitively), a crew path that does not exist, a `MaxConcurrentRuns` below 1, a `RunTimeout` that is zero or negative, a negative `ShutdownGracePeriod`, an `LlmProfiles` entry naming a profile `Llm:Profiles` does not define, and — for an enabled channel — an empty allow list, an unset token variable, a `ProgressInterval` that is zero or negative, a `GuildIds` entry or `Routes` key that is not a number, or a `Routes` entry or `DefaultCrew` naming a crew the host does not declare all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time.
 
 Crews are read **once**, at start: there is no directory scan and no reload. Adding a crew is an edit of the file and a restart.
 

@@ -179,6 +179,29 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
         : null;
 
     /// <summary>
+    /// The tokens spent on each provider, one line each, most first — only when the run talked to
+    /// more than one, its agents on different host profiles (GAP-17). Null otherwise: the
+    /// reported model already names the one.
+    /// </summary>
+    public string? ProvidersDetail => _model.TokensByProvider.Count > 1
+        ? StatusBarText.Join(
+            [
+                .. _model.TokensByProvider
+                    .OrderByDescending(spent => spent.Value)
+                    .Select(spent => StatusBarText.Join(
+                        [
+                            spent.Key.Length > 0 ? spent.Key : "—",
+                            string.Format(
+                                CultureInfo.CurrentCulture,
+                                _strings[StudioStringKeys.UsageTokens],
+                                spent.Value.ToString("N0", CultureInfo.CurrentCulture)),
+                        ],
+                        StatusBarText.Separator)),
+            ],
+            Environment.NewLine)
+        : null;
+
+    /// <summary>
     /// The expert's segments, in the order D-02 lists them, as one line the bar can trim when the
     /// window is narrow; the whole of it, lists included, is <see cref="DetailsTip"/>.
     /// </summary>
@@ -193,7 +216,7 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
             BilledCost is { } billed
                 ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.StatusBarCostBilled], billed)
                 : null,
-            ToolsDetail, DelegationsDetail, ReportedModel,
+            ToolsDetail, DelegationsDetail, ReportedModel, ProvidersDetail,
         ],
         Environment.NewLine) ?? string.Empty;
 

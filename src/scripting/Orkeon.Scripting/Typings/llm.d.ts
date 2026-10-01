@@ -1,10 +1,11 @@
 // Orkeon Scripting DSL — Llm provider namespace
-// Declares LlmConfig and the `llm` namespace: `llm.default_` and `llm.model(...)`.
+// Declares LlmConfig and the `llm` namespace: `llm.default_`, `llm.model(...)` and
+// `llm.profile(...)`.
 //
-// There is no per-vendor factory (GAP-12). Every agent of a script talks to the provider the
-// host registered; `llm.openai()`, `llm.anthropic()` and their six siblings only renamed it —
-// `llm.anthropic()` on an OpenAI host sent `claude-haiku-4-5` to OpenAI. What a script sets is
-// the MODEL, and the settings below.
+// There is no per-vendor factory (GAP-12): `llm.openai()`, `llm.anthropic()` and their six
+// siblings only renamed the host's provider — `llm.anthropic()` on an OpenAI host sent
+// `claude-haiku-4-5` to OpenAI. A script picks a provider the host CONFIGURED, by the name of
+// one of its profiles (`Llm:Profiles:<name>`, GAP-17), and sets the model and the settings below.
 
 declare global {
     /** A provider response format, for `withResponseFormat` and the `responseFormat` options. */
@@ -15,8 +16,10 @@ declare global {
      * `with(...)` return, and the only value `agentBuilder().llm(...)` accepts.
      */
     interface LlmConfig {
-        /** The host's provider, which every agent talks to. Informational: a script cannot change it. */
+        /** The provider this configuration talks to — the host's default one, or its profile's. Informational. */
         readonly provider: string;
+        /** The host profile picked with `llm.profile(...)`; absent on the default profile. */
+        readonly profile?: string;
         readonly model: string;
         readonly temperature?: number;
         readonly maxTokens?: number;
@@ -42,6 +45,14 @@ declare global {
 
         /** `llm.default_` on another model: `llm.default_.with({ model: name, ...overrides })`. */
         function model(name: string, overrides?: Omit<LlmConfigOverrides, "model">): LlmConfig;
+
+        /**
+         * One of the host's named profiles (`Llm:Profiles:<name>`), on its own model unless
+         * `overrides.model` names another. An agent configured with it runs on that profile's
+         * provider — its turns and its `ctx.llm` calls. `"default"` is `llm.default_`. A name the
+         * host does not offer throws, listing the known profiles.
+         */
+        function profile(name: string, overrides?: LlmConfigOverrides): LlmConfig;
     }
 }
 

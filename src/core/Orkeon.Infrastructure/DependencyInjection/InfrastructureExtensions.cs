@@ -178,6 +178,11 @@ public static class InfrastructureExtensions
         // Add LLM providers
         services.AddSingleton<ILlmProviderFactory, LlmProviderFactory>();
 
+        // The host's named LLM profiles (GAP-17): the default provider plus every profile
+        // registered by AddOrkeonLlmProfile(s). Always present, so a crew naming a profile the
+        // host does not define fails its load with the list of known ones.
+        services.TryAddSingleton<ILlmProfileRegistry, LLMs.Profiles.LlmProfileRegistry>();
+
         // Memory providers (GAP-08). One host section per provider supplies its connection
         // (Orkeon:Redis, Orkeon:Sqlite, Orkeon:ChromaDb, Orkeon:Pinecone, Orkeon:LanceDb); the
         // factory hands out one shared instance per type. Memory:Provider only chooses the TYPE

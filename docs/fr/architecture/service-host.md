@@ -62,6 +62,18 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
 
 La clé du modèle n'est pas dans le fichier non plus : elle vient de `ORKEON_Llm__ApiKey`, posée dans l'environnement du service (voir *L'installer*). Toute clé se surcharge de la même façon — le préfixe `ORKEON_`, `__` pour `:` — si bien que `ORKEON_Orkeon__Host__RunTimeout=00:10:00` raccourcit l'échéance sans toucher au fichier.
 
+**Quels fournisseurs les crews hébergées peuvent utiliser.** Un hôte peut offrir plusieurs fournisseurs LLM sous forme de profils nommés (`Llm:Profiles:<nom>`, voir [Configuration](../reference/configuration.md#profils-nommés-llmprofiles)), et une crew en choisit un par agent, par son nom. Le démon exécute des crews qu'il ne contrôle pas : c'est donc lui qui décide quels noms répondent. `Orkeon:Host:LlmProfiles` est une **liste blanche**. Absente, tous les profils que la configuration définit sont offerts ; présente, seuls ceux qu'elle liste le sont — une crew qui en nomme un autre échoue au chargement, et le fil qui l'a lancée dit pourquoi. Le profil par défaut (la section `Llm`) est toujours offert : `"LlmProfiles": ["default"]` garde toutes les crews hébergées dessus. Une entrée qui nomme un profil que `Llm:Profiles` ne définit pas refuse le démarrage.
+
+```json
+{
+  "Llm": {
+    "BaseUrl": "https://api.deepseek.com/v1", "Model": "deepseek-v4-flash",
+    "Profiles": { "claude": { "BaseUrl": "https://api.anthropic.com/v1", "Model": "claude-sonnet-5" } }
+  },
+  "Orkeon": { "Host": { "LlmProfiles": [ "default" ] } }
+}
+```
+
 ### La ligne de commande
 
 ```
@@ -100,7 +112,7 @@ résout dans l'espace de noms puis se fait refuser là, sauf à élargir
 
 `Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Le dossier de chaque crew est **monté automatiquement dans le VFS, en lecture seule, sous un nom** — `/crews`, puis `/crews-1`, `/crews-2`, … pour chaque dossier supplémentaire — et la crew est chargée par cette orthographe virtuelle (`/crews/support.yaml` pour un fichier, `/crews-1` pour un dossier). Le loader lit par le système de fichiers virtuel comme tout le reste du framework, et un chemin qui n'existerait que sur le disque physique passerait la sonde de démarrage puis échouerait à chaque message. Le montage n'est délibérément **pas** identité : un agent qui appelle `list_mounts`, ou qui lit un message de refus d'accès, ne doit jamais recevoir l'organisation disque de l'opérateur ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Un `--mount` à vous qui revendique `/crews*` est refusé au démarrage avec le code de sortie 78. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
 
-La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, deux crews de même nom (sans tenir compte de la casse), un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul ou négatif, un `ShutdownGracePeriod` négatif, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif, une entrée de `GuildIds` ou une clé de `Routes` qui n'est pas un nombre, ou une entrée de `Routes` ou un `DefaultCrew` qui nomme une crew que l'hôte ne déclare pas refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
+La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, deux crews de même nom (sans tenir compte de la casse), un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul ou négatif, un `ShutdownGracePeriod` négatif, une entrée de `LlmProfiles` qui nomme un profil que `Llm:Profiles` ne définit pas, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif, une entrée de `GuildIds` ou une clé de `Routes` qui n'est pas un nombre, ou une entrée de `Routes` ou un `DefaultCrew` qui nomme une crew que l'hôte ne déclare pas refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
 
 Les crews sont lues **une seule fois**, au démarrage : ni balayage de dossier, ni rechargement. Ajouter une crew, c'est modifier le fichier et redémarrer.
 

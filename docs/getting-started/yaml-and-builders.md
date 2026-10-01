@@ -46,7 +46,8 @@ agents:
     maxRpm: int           # default: 10 — requests per minute (rate limiting)
     verbose: bool         # default: false — detailed logs for this agent
     llm:
-      model: string       # LLM model ("gpt-4", "claude-3-opus", etc.)
+      profile: string     # Host LLM profile (Llm:Profiles:<name>) — unset = the host's default provider
+      model: string       # LLM model ("gpt-4", "claude-3-opus", etc.) — unset = the profile's own model
       temperature: float  # Creativity (0.0-1.0)
       maxTokens: int      # Output token limit
 
@@ -67,6 +68,42 @@ tasks:
       toolRules:
         <tool_name>: [string]
 ```
+
+### One provider per agent (profiles)
+
+A host offers its providers as named **profiles** (`Llm:Profiles:<name>` in its settings, the
+`Llm` section being the default one — see [Configuration](../reference/configuration.md#named-profiles-llmprofiles)).
+A crew picks one **by name** — at crew level (every agent), on an agent, or on a task's
+`llm_override` (that task only); the most specific wins, and `profile: default` brings an agent or
+a task back to the host's default. A crew file never carries a key or an endpoint.
+
+```yaml
+llm:
+  profile: deepseek          # crew level: every agent, unless it says otherwise
+agents:
+  planner:
+    role: Planner
+    goal: Plan the article
+    llm:
+      profile: claude        # this agent runs on the host's "claude" profile…
+      model: claude-opus-5   # …on another model than the profile's own
+  writer:
+    role: Writer
+    goal: Write the article  # inherits the crew's "deepseek" profile, on its own model
+tasks:
+  review:
+    description: Review the article
+    expectedOutput: A review
+    agent: writer
+    llm_override:
+      profile: claude        # this task alone moves the writer to "claude"
+```
+
+A profile the host does not define fails the crew load, and the message lists the profiles it
+offers — exactly like an unknown tool. A `llm:` block that names no `model` runs on the profile's
+own model (the host's for the default profile), never on a framework default. Only the agents'
+turns change provider: the hierarchical manager, the planner, the Guardian and the RAG pipelines
+stay on the default profile. In `.ork.ts` the same choice is `agentBuilder().llm(llm.profile("claude"))`.
 
 A task's `tools:` add to its agent's own for that task only: a writer that holds `file_read` and runs a task declaring `tools: [file_write]` can read and write during that task, and only read during the others. There is no `circuitBreaker:` block — a crew that writes one is refused at load. What bounds a task at run time is the agent loop (`maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries); a Graph run is bounded by `graphConfig` (below).
 
@@ -93,7 +130,7 @@ The YAML models include:
 - `CrewYamlConfig` (complete definition of a crew)
 - `AgentYamlConfig` (role, goal, backstory, tools, limits)
 - `TaskYamlConfig` (description, expected output, dependencies, tools, deliverable, guardrails)
-- `LlmYamlConfig` (model, temperature, max tokens)
+- `LlmYamlConfig` (profile, model, temperature, max tokens)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, overrides — see [Graph Orchestration](../orchestration/graph.md))
 
 There is no framework-level "predefined configuration" object: a host composes its own settings through `AddOrkeonInfrastructure` / `AddOrkeonApplication` and its `appsettings.json`.
@@ -170,7 +207,7 @@ The creation pipeline transforms the YAML configuration into operational domain 
 2. **CrewYamlConfig → CrewConfiguration**: Mapping of the YAML models to the application DTOs with basic validation (errors throw `InvalidOperationException`, warnings are logged)
 3. **RAG collections**: the collections a `rag:` block declares are ingested (incrementally) — when the RAG subsystem is registered; without it, a Warning and no ingestion
 4. **Tool resolution**: Tool names (strings) resolved via `IToolRegistry.GetToolByNameAsync(name)` into `IBaseTool` instances
-5. **Agent creation**: `Agent` instances built with `AgentBuilder` and resolved tools
+5. **Agent creation**: `Agent` instances built with `AgentBuilder`, resolved tools and their `llm:` block — every profile an agent or a task names must be one the host offers, or the load fails listing them
 6. **Task creation**: `CrewTask` instances built with `CrewTaskBuilder` and validated dependencies
 7. **Dependency validation**: Circular dependency detection and order validation
 8. **Crew creation**: `Crew` instance built with `CrewBuilder`, process strategy applied

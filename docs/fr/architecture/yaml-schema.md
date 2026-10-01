@@ -30,6 +30,7 @@ managerAgent: string      # Hiérarchique : le manager (omis → le premier agen
 graphConfig: {…}          # Réglages du mode Graph, seul réglage de circuit breaker d'une crew (voir la section dédiée)
 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
+  profile: string         # Profil LLM de l'hôte (Llm:Profiles:<nom>) pour tous les agents — inconnu → le chargement échoue en listant les profils de l'hôte
   model: string
   temperature: float
 
@@ -65,7 +66,8 @@ agents:
     maxRpm: int           # default: 10 — requêtes par minute (rate limiting)
     verbose: bool         # default: false — logs détaillés pour cet agent
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
-      model: string       # Identifiant du modèle LLM
+      profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
+      model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil
       temperature: float  # default: 0.7 quand le bloc est présent
       maxTokens: int      # Plafond de tokens en sortie — omis = le maximum documenté du modèle (LLM-10)
       topP: float         # Nucleus sampling, default: 1.0
@@ -114,6 +116,7 @@ tasks:
       schema_path: string # Chemin virtuel d'un fichier JSON Schema (structured_output exige lui ou schema_inline)
       schema_inline: string # Le JSON Schema sous forme de chaîne JSON — alternative à schema_path
     llm_override:         # Surcharge LLM au niveau tâche (cascade crew → agent → tâche)
+      profile: string     # Cette tâche tourne sur un autre profil LLM de l'hôte que celui de son agent
       response_format: string  # Mêmes valeurs que llm.responseFormat
       response_schema: {name, schema, strict} # schema est une chaîne JSON
       temperature: float
@@ -269,7 +272,7 @@ Tous vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrast
 - `CrewYamlConfig` (définition complète d'une crew) et `CrewSettingsYamlConfig` (le fichier de réglages de crew des formats multi-fichiers — `crew.yaml` ou `config.yaml`)
 - `AgentYamlConfig` (rôle, objectif, backstory, outils, limites)
 - `TaskYamlConfig` (description, résultat attendu, dépendances, outils, livrable, surcharge LLM, guardrails)
-- `LlmYamlConfig` (modèle, température, max tokens, topP, thinking, responseFormat/responseSchema, cache) avec `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`
+- `LlmYamlConfig` (profil, modèle, température, max tokens, topP, thinking, responseFormat/responseSchema, cache) avec `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`
 - `LlmOverrideYamlConfig` (le bloc `llm_override:` de tâche)
 - `DeliverableYamlConfig` (le bloc `deliverable:` de tâche)
 - `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)

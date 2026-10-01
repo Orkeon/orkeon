@@ -29,6 +29,7 @@ managerAgent: string      # Hierarchical: the manager (omitted → the first age
 graphConfig: {…}          # Graph mode settings, the crew's only circuit-breaker setting (see the dedicated section)
 
 llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
+  profile: string         # Host LLM profile (Llm:Profiles:<name>) for every agent — unknown → the load fails, listing the host's profiles
   model: string
   temperature: float
 
@@ -64,7 +65,8 @@ agents:
     maxRpm: int           # default: 10 — requests per minute (rate limiting)
     verbose: bool         # default: false — detailed logs for this agent
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
-      model: string       # LLM model id
+      profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
+      model: string       # LLM model id — omitted → the profile's own model
       temperature: float  # default: 0.7 when the block is present
       maxTokens: int      # Output token pin — omitted = the model's documented maximum (LLM-10)
       topP: float         # Nucleus sampling, default: 1.0
@@ -113,6 +115,7 @@ tasks:
       schema_path: string # Virtual path of a JSON Schema file (structured_output needs it or schema_inline)
       schema_inline: string # The JSON Schema as a JSON string — alternative to schema_path
     llm_override:         # Task-level LLM override (cascade crew → agent → task)
+      profile: string     # This task runs on another host LLM profile than its agent's
       response_format: string  # Same values as llm.responseFormat
       response_schema: {name, schema, strict} # schema is a JSON string
       temperature: float
@@ -255,7 +258,7 @@ All live in `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructu
 - `CrewYamlConfig` (complete crew definition) and `CrewSettingsYamlConfig` (the crew settings file of the multi-file layouts — `crew.yaml` or `config.yaml`)
 - `AgentYamlConfig` (role, goal, backstory, tools, limits)
 - `TaskYamlConfig` (description, expected output, dependencies, tools, deliverable, LLM override, guardrails)
-- `LlmYamlConfig` (model, temperature, max tokens, topP, thinking, responseFormat/responseSchema, cache) with `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`
+- `LlmYamlConfig` (profile, model, temperature, max tokens, topP, thinking, responseFormat/responseSchema, cache) with `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`
 - `LlmOverrideYamlConfig` (the task-level `llm_override:` block)
 - `DeliverableYamlConfig` (the task-level `deliverable:` block)
 - `GuardrailsYamlConfig` (agent- and task-level `guardrails:`)

@@ -13,8 +13,18 @@ public sealed record LlmConfig
     /// <summary>Default base URL for a locally running Ollama server.</summary>
     private const string OllamaBaseUrl = LlmProviderEndpoints.OllamaDefault;
 
-    /// <summary>Gets the model identifier (e.g., "gpt-4").</summary>
+    /// <summary>
+    /// Gets the model identifier (e.g., "gpt-4"). Empty on a configuration that names no model
+    /// (<see cref="OnProfile"/>): the call then runs on the model of the profile it is sent to.
+    /// </summary>
     public string Model { get; init; } = LlmDefaults.DefaultModelName;
+
+    /// <summary>
+    /// The host's named LLM profile this configuration runs on (<c>Llm:Profiles:&lt;name&gt;</c>),
+    /// or null for the host's default profile — the <c>Llm</c> section (GAP-17). A crew names a
+    /// profile, never a key or an endpoint: those stay in the host's configuration.
+    /// </summary>
+    public string? Profile { get; init; }
 
     /// <summary>
     /// The API key the provider authenticates with. This is the supported path in 1.0:
@@ -238,6 +248,19 @@ public sealed record LlmConfig
             MaxRetries = maxRetries,
             BaseUrl = baseUrl
         };
+    }
+
+    /// <summary>
+    /// Creates a configuration that pins nothing: no model — the call runs on the model of the
+    /// profile it is sent to — and default sampling. What a crew's <c>llm:</c> block starts from
+    /// when it names no model, so a block that only sets a temperature or a profile does not
+    /// pull the framework's default model onto another vendor's endpoint (GAP-17).
+    /// </summary>
+    /// <param name="profile">The host profile to run on; null for the host's default.</param>
+    /// <returns>A configuration on <paramref name="profile"/>'s own model.</returns>
+    public static LlmConfig OnProfile(string? profile = null)
+    {
+        return new LlmConfig { Model = string.Empty, Profile = string.IsNullOrWhiteSpace(profile) ? null : profile };
     }
 
     /// <summary>Creates a default LLM configuration.</summary>

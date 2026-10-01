@@ -19,6 +19,9 @@ public static class LlmConfigResolver
 
         return baseConfig with
         {
+            Profile = callOverride?.Profile
+                          ?? taskOverride?.Profile
+                          ?? baseConfig.Profile,
             ResponseFormat = callOverride?.ResponseFormat
                           ?? taskOverride?.ResponseFormat
                           ?? baseConfig.ResponseFormat,

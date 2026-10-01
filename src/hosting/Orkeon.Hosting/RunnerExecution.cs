@@ -1332,6 +1332,8 @@ public static partial class RunnerExecution
                 PermissionGate = sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
                 DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
                 ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
+                // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
+                LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
             });
 
         // Always bundle through esbuild so relative imports + TS-only syntax in the

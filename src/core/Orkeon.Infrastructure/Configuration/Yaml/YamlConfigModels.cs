@@ -100,6 +100,8 @@ public class TaskYamlConfig
 /// </summary>
 public class LlmOverrideYamlConfig
 {
+    /// <summary>Host LLM profile override: the task runs on this profile instead of its agent's (GAP-17).</summary>
+    public string? Profile { get; set; }
     /// <summary>Output-format constraint override (<c>"text"</c> | <c>"json_object"</c> | <c>"json_schema"</c>).</summary>
     public string? ResponseFormat { get; set; }
     /// <summary>JSON Schema override, accompanying <c>response_format: json_schema</c>.</summary>
@@ -161,7 +163,13 @@ public class GraphYamlConfig
 /// </summary>
 public class LlmYamlConfig
 {
-    /// <summary>Gets or sets the model identifier.</summary>
+    /// <summary>
+    /// Gets or sets the host LLM profile to run on (<c>Llm:Profiles:&lt;name&gt;</c>, GAP-17):
+    /// a name, never a key or an endpoint. Unset = the host's default profile (<c>Llm</c>);
+    /// <c>default</c> names it explicitly.
+    /// </summary>
+    public string? Profile { get; set; }
+    /// <summary>Gets or sets the model identifier; unset = the profile's own model.</summary>
     public string? Model { get; set; }
     /// <summary>Gets or sets the sampling temperature.</summary>
     public double? Temperature { get; set; }

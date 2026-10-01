@@ -7,7 +7,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// <summary>
 /// Architecture guard (STUDIO-42 D-04): an LLM provider reaches the runtime on the metered
 /// path, or its calls escape the token meter. The path has two entrances — the provider
-/// factory, which meters every vendor provider it builds, and <c>AddOrkeonLlmProvider</c>,
+/// factory, which meters every vendor provider it builds, and <c>AddOrkeonLlmProvider</c> (with its named-profile twin <c>AddOrkeonLlmProfile</c>),
 /// which meters a provider registered by hand — so a provider may be built only in the
 /// factory or in the very statement that hands it to <c>AddOrkeonLlmProvider</c>, and the
 /// meter itself is applied nowhere else (a second meter would count calls twice).
@@ -252,7 +252,9 @@ public sealed partial class LlmProviderMeteringGuardTests
         var start = source.LastIndexOfAny([';', '{', '}'], index) + 1;
         var end = source.IndexOf(';', index);
         var statement = source[start..(end < 0 ? source.Length : end)];
-        return statement.Contains("AddOrkeonLlmProvider(", StringComparison.Ordinal);
+        // AddOrkeonLlmProfile meters a named profile's provider the same way (GAP-17).
+        return statement.Contains("AddOrkeonLlmProvider(", StringComparison.Ordinal)
+            || statement.Contains("AddOrkeonLlmProfile(", StringComparison.Ordinal);
     }
 
     // --- Repository access and text helpers ---

@@ -16,7 +16,14 @@ internal sealed record OutputValidationRequest(
     DomainAgent Agent,
     string SystemPrompt,
     string UserPrompt,
-    List<Domain.Tools.ToolUsage> ToolsUsed);
+    List<Domain.Tools.ToolUsage> ToolsUsed)
+{
+    /// <summary>
+    /// The loop a correction round runs on — the task's profile loop (GAP-17); null keeps the
+    /// coordinator's own, the default profile's.
+    /// </summary>
+    public ChatClientAgentLoop? ChatLoop { get; init; }
+}
 
 /// <summary>
 /// Validates LLM output against the task's expected format and coordinates correction
@@ -93,7 +100,8 @@ internal sealed class OutputValidationCoordinator
 
             LogRetryAttempt(request.Task, retry, pipelineResult, maxOutputRetries);
             var correctionContext = new CorrectionExecutionContext(
-                request.Agent, request.Task, request.SystemPrompt, request.ToolsUsed, defaultMaxIterations);
+                request.Agent, request.Task, request.SystemPrompt, request.ToolsUsed, defaultMaxIterations,
+                request.ChatLoop ?? _chatLoop);
             currentOutput = await RetryWithCorrectionAsync(
                 pipelineResult, request.ValidationContext, correctionContext, cancellationToken).ConfigureAwait(false);
         }
@@ -134,7 +142,8 @@ internal sealed class OutputValidationCoordinator
         CrewTask Task,
         string SystemPrompt,
         List<Domain.Tools.ToolUsage> ToolsUsed,
-        int DefaultMaxIterations);
+        int DefaultMaxIterations,
+        ChatClientAgentLoop? ChatLoop);
 
     private async System.Threading.Tasks.Task<string> RetryWithCorrectionAsync(
         OutputPipelineResult pipelineResult,
@@ -144,9 +153,9 @@ internal sealed class OutputValidationCoordinator
     {
         var correctionPrompt = BuildCorrectionPrompt(pipelineResult, validationContext);
 
-        if (_chatLoop != null)
+        if (context.ChatLoop != null)
         {
-            var correctionResult = await _chatLoop.ExecuteAsync(
+            var correctionResult = await context.ChatLoop.ExecuteAsync(
                 context.Agent, context.Task, context.SystemPrompt, correctionPrompt,
                 context.ToolsUsed, context.DefaultMaxIterations, cancellationToken).ConfigureAwait(false);
             return correctionResult.Output;

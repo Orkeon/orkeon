@@ -994,3 +994,8 @@ static Orkeon.Domain.Crew.Crew.Create(string! goal, Orkeon.Domain.SharedKernel.V
 *REMOVED*virtual Orkeon.Domain.Flows.FlowExecutionResult.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Domain.Flows.FlowExecutionResult.Equals(Orkeon.Domain.Flows.FlowExecutionResult? other) -> bool
 *REMOVED*virtual Orkeon.Domain.Flows.FlowExecutionResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Profile.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Profile.init -> void
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(string? profile = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.Profile.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.Profile.init -> void

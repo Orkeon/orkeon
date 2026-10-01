@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Tests.Shared.Doubles;
@@ -70,6 +71,44 @@ public sealed class CrewHostServiceTests : IDisposable
         var ex = await Assert.ThrowsAsync<HostConfigurationException>(
             () => service.StartAsync(TestContext.Current.CancellationToken));
         Assert.Contains("RunTimeout", ex.Message, StringComparison.Ordinal);
+    }
+
+    private static IConfiguration Profiles(params string[] names) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(names.Select(n => new KeyValuePair<string, string?>($"Llm:Profiles:{n}:Model", "m")))
+            .Build();
+
+    [Fact]
+    public async Task An_llm_profile_allow_list_naming_an_undefined_profile_is_refused_at_start()
+    {
+        // GAP-17: the allow-list names the profiles hosted crews may pick; a typo there would
+        // refuse, one crew load at a time, the profile the operator meant to offer.
+        var options = new OrkeonHostOptions { Crews = [Crew()], LlmProfiles = ["default", "claude", "cluade"] };
+        using var service = new CrewHostService(
+            new CrewHostRegistry(Options.Create(options)), Options.Create(options), NullLogger<CrewHostService>.Instance,
+            configuration: Profiles("claude", "local"));
+
+        var ex = await Assert.ThrowsAsync<HostConfigurationException>(
+            () => service.StartAsync(TestContext.Current.CancellationToken));
+        Assert.Contains("'cluade'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Defined profiles: default, claude, local.", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_llm_profile_allow_list_of_defined_profiles_is_accepted()
+    {
+        var options = new OrkeonHostOptions
+        {
+            Crews = [Crew()],
+            LlmProfiles = ["default", "LOCAL"],
+            ShutdownGracePeriod = TimeSpan.FromMilliseconds(50),
+        };
+        using var service = new CrewHostService(
+            new CrewHostRegistry(Options.Create(options)), Options.Create(options), NullLogger<CrewHostService>.Instance,
+            configuration: Profiles("claude", "local"));
+
+        await service.StartAsync(CancellationToken.None);
+        await service.StopAsync(CancellationToken.None);
     }
 
     [Fact]

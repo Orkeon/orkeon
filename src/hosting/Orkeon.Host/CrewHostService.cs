@@ -21,19 +21,32 @@ internal sealed partial class CrewHostService : BackgroundService
     private readonly OrkeonHostOptions _options;
     private readonly ILogger<CrewHostService> _logger;
     private readonly TimeProvider _time;
+    private readonly IReadOnlyList<string> _definedLlmProfiles;
 
     /// <summary>Builds the service over the registry and the host's options.</summary>
+    /// <param name="registry">The hosted crews.</param>
+    /// <param name="options">The service's configuration.</param>
+    /// <param name="logger">The service's logger.</param>
+    /// <param name="timeProvider">The clock the drain reads; the system's by default.</param>
+    /// <param name="configuration">
+    /// The host configuration, for the LLM profiles it defines (<c>Llm:Profiles</c>), which the
+    /// <see cref="OrkeonHostOptions.LlmProfiles"/> allow-list must name; null defines none.
+    /// </param>
     public CrewHostService(
         CrewHostRegistry registry,
         IOptions<OrkeonHostOptions> options,
         ILogger<CrewHostService> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _time = timeProvider ?? TimeProvider.System;
+        _definedLlmProfiles = configuration is null
+            ? []
+            : Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.ProfileNames(configuration);
     }
 
     /// <inheritdoc />
@@ -125,6 +138,18 @@ internal sealed partial class CrewHostService : BackgroundService
         if (_options.ShutdownGracePeriod < TimeSpan.Zero)
             throw new HostConfigurationException(
                 $"ShutdownGracePeriod cannot be negative; got {_options.ShutdownGracePeriod}.");
+
+        // The allow-list names profiles the configuration defines (GAP-17): a typo there would
+        // otherwise refuse, one crew load at a time, a profile the operator meant to offer.
+        var undefined = (_options.LlmProfiles ?? [])
+            .Where(name => !Orkeon.Application.Interfaces.Ports.LlmProfiles.IsDefault(name)
+                && !_definedLlmProfiles.Contains(name.Trim(), StringComparer.OrdinalIgnoreCase))
+            .ToList();
+        if (undefined.Count > 0)
+            throw new HostConfigurationException(
+                $"{OrkeonHostOptions.SectionName}:LlmProfiles names {string.Join(", ", undefined.Select(n => $"'{n}'"))}, "
+                + $"which Llm:Profiles does not define. Defined profiles: "
+                + $"{string.Join(", ", new[] { Orkeon.Application.Interfaces.Ports.LlmProfiles.Default }.Concat(_definedLlmProfiles))}.");
     }
 
     /// <summary>

@@ -48,9 +48,13 @@ Orkeon.Scripting.Runtime.JsLogger.debug(string! message, params Jint.Native.JsVa
 Orkeon.Scripting.Runtime.JsLogger.error(string! message, params Jint.Native.JsValue![]! args) -> void
 Orkeon.Scripting.Runtime.JsLogger.info(string! message, params Jint.Native.JsValue![]! args) -> void
 Orkeon.Scripting.Runtime.JsLogger.warn(string! message, params Jint.Native.JsValue![]! args) -> void
-static Orkeon.Scripting.Bindings.LlmNamespaceBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? defaultProvider = null) -> void
+static Orkeon.Scripting.Bindings.LlmNamespaceBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? defaultProvider = null, Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles = null) -> void
 *REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeLlmError = "llm_error" -> string!
 *REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeLockTimeout = "lock_timeout" -> string!
 *REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeToolError = "tool_error" -> string!
 static Orkeon.Scripting.Configuration.ScriptingToolchainOptions.FromConfiguration(Microsoft.Extensions.Configuration.IConfiguration? configuration) -> Orkeon.Scripting.Configuration.ScriptingToolchainOptions!
 static Orkeon.Scripting.Toolchain.EsbuildTranspiler.Create(Microsoft.Extensions.Configuration.IConfiguration? configuration, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.EsbuildTranspiler!>? logger = null) -> Orkeon.Scripting.Toolchain.EsbuildTranspiler!
+Orkeon.Scripting.Bindings.JsLlmNamespace.profile(Jint.Native.JsValue! name, Jint.Native.JsValue? overrides = null) -> Orkeon.Scripting.Runtime.JsLlmConfig!
+Orkeon.Scripting.Runtime.JsLlmConfig.profile.get -> string?
+Orkeon.Scripting.ScriptingHostPorts.LlmProfiles.get -> Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry?
+Orkeon.Scripting.ScriptingHostPorts.LlmProfiles.init -> void

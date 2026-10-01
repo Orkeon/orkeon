@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.LLMs;
 using ILlmProvider = Orkeon.Domain.SharedKernel.ILlmProvider;
 
@@ -46,8 +47,9 @@ internal static class ConfiguredLlmProviderBootstrapper
 
     /// <summary>
     /// Binds the <c>Llm</c> section and registers a matching <see cref="ILlmProvider"/> +
-    /// <see cref="IBasicLlmProvider"/>. No-op when the section is absent (the infrastructure
-    /// default then stands).
+    /// <see cref="IBasicLlmProvider"/>, and the named profiles under <c>Llm:Profiles</c>. The
+    /// default is left alone when the section describes no provider (absent, or holding profiles
+    /// only): the infrastructure default then stands.
     /// </summary>
     public static IServiceCollection AddConfiguredLlmProvider(
         this IServiceCollection services,
@@ -56,8 +58,11 @@ internal static class ConfiguredLlmProviderBootstrapper
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        // Llm:Profiles:<name> — the named providers a crew may pick per agent (GAP-17).
+        services.AddOrkeonLlmProfiles(configuration);
+
         var section = configuration.GetSection(ConfigurationKeys.LlmSection);
-        if (!section.Exists())
+        if (!Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.HasDefault(configuration))
             return services;
 
         var defaults = LlmConfig.Default();
