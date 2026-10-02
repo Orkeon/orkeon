@@ -123,7 +123,6 @@ static Orkeon.Application.Interfaces.BallotRequest.operator ==(Orkeon.Applicatio
 *REMOVED*virtual Orkeon.Application.Memory.MemoryProviderConfigDto.PrintMembers(System.Text.StringBuilder! builder) -> bool
 Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.GetProvider(string! providerType) -> Orkeon.Domain.Memory.IMemoryProvider!
 Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.SupportedTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Orkeon.Application.Memory.MemoryService.MemoryService(Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory! memoryProviderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryService!>! logger, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null) -> void
 *REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext
 *REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.Action.get -> string?
 *REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.Action.init -> void
@@ -918,10 +917,8 @@ static Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(Orkeon.Applic
 static Orkeon.Application.Interfaces.Ports.LlmProfiles.IsDefault(string? name) -> bool
 static Orkeon.Application.Interfaces.Ports.LlmProfiles.UnknownMessage(string! name, string! where, System.Collections.Generic.IEnumerable<string!>! known) -> string!
 *REMOVED*Orkeon.Application.Memory.CrewMemoryProviderRegistry.SetProvider(Orkeon.Domain.Common.CrewId! crewId, string? providerType) -> void
-Orkeon.Application.Memory.CrewMemoryProviderRegistry.Record(Orkeon.Domain.Common.CrewId! crewId, string? providerType, string? crewName) -> void
 Orkeon.Application.Memory.CrewMemoryProviderRegistry.GetScope(Orkeon.Domain.Common.CrewId! crewId) -> string!
 *REMOVED*Orkeon.Application.Memory.MemoryCoordinator.MemoryCoordinator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryCoordinator!>! logger, Orkeon.Application.Interfaces.Services.IMemoryService! memoryService) -> void
-Orkeon.Application.Memory.MemoryCoordinator.MemoryCoordinator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryCoordinator!>! logger, Orkeon.Application.Interfaces.Services.IMemoryService! memoryService, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null) -> void
 Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory.get -> bool
 Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory.init -> void
 *REMOVED*Orkeon.Application.Agent.PlanningConfiguration
@@ -946,3 +943,58 @@ Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory.init -> vo
 *REMOVED*virtual Orkeon.Application.Agent.PlanningConfiguration.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Application.Agent.PlanningConfiguration.Equals(Orkeon.Application.Agent.PlanningConfiguration? other) -> bool
 *REMOVED*virtual Orkeon.Application.Agent.PlanningConfiguration.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*Orkeon.Application.Interfaces.Services.IMemoryCoordinator.RetrieveRelevantMemoriesAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, int maxResults = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
+*REMOVED*Orkeon.Application.Interfaces.Services.IMemoryCoordinator.StoreAgentExperienceAsync(Orkeon.Domain.Agent.Agent! agent, string! experience, double importance, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Interfaces.Services.IMemoryCoordinator.UpdateWorkingMemoryAsync(Orkeon.Domain.Agent.Agent! agent, string! key, string! value, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Memory.MemoryCoordinator.RetrieveRelevantMemoriesAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, int maxResults = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
+*REMOVED*Orkeon.Application.Memory.MemoryCoordinator.StoreAgentExperienceAsync(Orkeon.Domain.Agent.Agent! agent, string! experience, double importance, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Memory.MemoryCoordinator.UpdateWorkingMemoryAsync(Orkeon.Domain.Agent.Agent! agent, string! key, string! value, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Context.SimpleExecutionContext.RecallFromMemory.get -> bool
+Orkeon.Application.Context.SimpleExecutionContext.RecallFromMemory.init -> void
+Orkeon.Application.Context.SimpleExecutionContext.RecalledMemories.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.RecalledMemory!>!
+Orkeon.Application.Context.SimpleExecutionContext.RecalledMemories.init -> void
+Orkeon.Application.Interfaces.Services.ILongTermMemory.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Interfaces.Services.ILongTermMemory.SearchSimilarAsync(float[]! queryEmbedding, int maxResults, float minScore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.ScoredMemoryItem!>!>!
+Orkeon.Application.Interfaces.Services.IMemoryCoordinator.EnsureReadyAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.IMemoryCoordinator.RecallAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.RecalledMemory!>!>!
+Orkeon.Application.Memory.CrewMemoryOptions
+Orkeon.Application.Memory.CrewMemoryOptions.CrewMemoryOptions() -> void
+Orkeon.Application.Memory.CrewMemoryOptions.MaxChars.get -> int
+Orkeon.Application.Memory.CrewMemoryOptions.MaxChars.set -> void
+Orkeon.Application.Memory.CrewMemoryOptions.MinScore.get -> float
+Orkeon.Application.Memory.CrewMemoryOptions.MinScore.set -> void
+Orkeon.Application.Memory.CrewMemoryOptions.RecallLimit.get -> int
+Orkeon.Application.Memory.CrewMemoryOptions.RecallLimit.set -> void
+Orkeon.Application.Memory.CrewMemoryProviderRegistry.GetName(Orkeon.Domain.Common.CrewId! crewId) -> string?
+Orkeon.Application.Memory.CrewMemoryProviderRegistry.IsMemoryEnabled(Orkeon.Domain.Common.CrewId! crewId) -> bool
+Orkeon.Application.Memory.CrewMemoryProviderRegistry.Record(Orkeon.Domain.Common.CrewId! crewId, string? providerType, string? crewName, bool memoryEnabled) -> void
+Orkeon.Application.Memory.CrewMemoryScope
+Orkeon.Application.Memory.MemoryCoordinator.EnsureReadyAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Memory.MemoryCoordinator.MemoryCoordinator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryCoordinator!>! logger, Orkeon.Application.Interfaces.Services.IMemoryService! memoryService, Orkeon.Application.Memory.CrewMemoryProviderRegistry! providerRegistry, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider? embeddingProvider = null, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Memory.CrewMemoryOptions!>? options = null) -> void
+Orkeon.Application.Memory.MemoryCoordinator.RecallAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.RecalledMemory!>!>!
+Orkeon.Application.Memory.MemoryService.MemoryService(Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory! memoryProviderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryService!>! logger, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null, Orkeon.Domain.Memory.IMemoryProvider? applicationProvider = null) -> void
+Orkeon.Application.Memory.RecalledMemory
+Orkeon.Application.Memory.RecalledMemory.<Clone>$() -> Orkeon.Application.Memory.RecalledMemory!
+Orkeon.Application.Memory.RecalledMemory.AgentRole.get -> string!
+Orkeon.Application.Memory.RecalledMemory.AgentRole.init -> void
+Orkeon.Application.Memory.RecalledMemory.Content.get -> string!
+Orkeon.Application.Memory.RecalledMemory.Content.init -> void
+Orkeon.Application.Memory.RecalledMemory.Deconstruct(out System.DateTime StoredAt, out string! AgentRole, out string! TaskDescription, out string! Content) -> void
+Orkeon.Application.Memory.RecalledMemory.Equals(Orkeon.Application.Memory.RecalledMemory? other) -> bool
+Orkeon.Application.Memory.RecalledMemory.RecalledMemory(System.DateTime StoredAt, string! AgentRole, string! TaskDescription, string! Content) -> void
+Orkeon.Application.Memory.RecalledMemory.StoredAt.get -> System.DateTime
+Orkeon.Application.Memory.RecalledMemory.StoredAt.init -> void
+Orkeon.Application.Memory.RecalledMemory.TaskDescription.get -> string!
+Orkeon.Application.Memory.RecalledMemory.TaskDescription.init -> void
+const Orkeon.Application.Constants.Orchestration.PromptDefaults.MemoriesHeader = "From this crew's memory — earlier work, possibly outdated; use it only where it helps:" -> string!
+const Orkeon.Application.Memory.CrewMemoryOptions.SectionName = "Orkeon:CrewMemory" -> string!
+const Orkeon.Application.Memory.CrewMemoryScope.CrewMemoryKind = "crew-memory" -> string!
+const Orkeon.Application.Memory.CrewMemoryScope.CrewProperty = "crew" -> string!
+const Orkeon.Application.Memory.CrewMemoryScope.KindProperty = "kind" -> string!
+override Orkeon.Application.Memory.RecalledMemory.Equals(object? obj) -> bool
+override Orkeon.Application.Memory.RecalledMemory.GetHashCode() -> int
+override Orkeon.Application.Memory.RecalledMemory.ToString() -> string!
+static Orkeon.Application.Memory.CrewMemoryScope.Filter(string! scope) -> System.Collections.Generic.Dictionary<string!, object!>!
+static Orkeon.Application.Memory.CrewMemoryScope.Stamp(Orkeon.Domain.Memory.MemoryItem! item, string! scope) -> Orkeon.Domain.Memory.MemoryItem!
+static Orkeon.Application.Memory.RecalledMemory.operator !=(Orkeon.Application.Memory.RecalledMemory? left, Orkeon.Application.Memory.RecalledMemory? right) -> bool
+static Orkeon.Application.Memory.RecalledMemory.operator ==(Orkeon.Application.Memory.RecalledMemory? left, Orkeon.Application.Memory.RecalledMemory? right) -> bool

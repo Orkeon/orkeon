@@ -194,14 +194,21 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Enables or disables memory for the crew.</summary>
+    /// <summary>
+    /// Enables or disables the crew's memory: with it on, a run stores the result of each task and
+    /// recalls the crew's memories before each task (GAP-30). Off by default.
+    /// </summary>
     public CrewBuilder EnableMemory(bool memoryEnabled = true)
     {
         _memoryEnabled = memoryEnabled;
         return this;
     }
 
-    /// <summary>Selects the crew's memory provider (e.g. <c>redis</c>, <c>sqlite</c>); resolved at kickoff.</summary>
+    /// <summary>
+    /// Selects the crew's memory provider (e.g. <c>redis</c>, <c>sqlite</c>); resolved at kickoff.
+    /// Needs <see cref="EnableMemory"/>: <see cref="Build"/> refuses a provider for a crew without
+    /// memory (GAP-30).
+    /// </summary>
     public CrewBuilder WithMemoryProvider(string memoryProvider)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(memoryProvider);

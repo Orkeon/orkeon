@@ -247,6 +247,50 @@ public class InternalMemoryStoresTests
         Assert.Empty(results);
     }
 
+    [Fact]
+    public async System.Threading.Tasks.Task LongTermMemory_SearchSimilar_ScoresByCosineInProcess_BestFirst_AboveTheFloor()
+    {
+        // GAP-30: the memory of an unnamed crew has no provider to search by vector.
+        using var memory = new InternalLongTermMemory();
+        await memory.AddAsync(MemoryItem.Create("same direction", embedding: [1f, 0f], importance: 0.8f));
+        await memory.AddAsync(MemoryItem.Create("close", embedding: [0.8f, 0.6f], importance: 0.8f));
+        await memory.AddAsync(MemoryItem.Create("orthogonal", embedding: [0f, 1f], importance: 0.8f));
+        await memory.AddAsync(MemoryItem.Create("no vector", embedding: null, importance: 0.8f));
+        await memory.AddAsync(MemoryItem.Create("other dimension", embedding: [1f, 0f, 0f], importance: 0.8f));
+
+        var results = await memory.SearchSimilarAsync([1f, 0f], maxResults: 10, minScore: 0.5f, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["same direction", "close"], results.Select(r => r.Item.Content));
+        Assert.Equal(1f, results[0].Score, precision: 4);
+        Assert.Equal(results[0].Item.Id.ToString(), results[0].Key);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task LongTermMemory_SearchSimilar_RespectsMaxResults()
+    {
+        using var memory = new InternalLongTermMemory();
+        for (var i = 0; i < 5; i++)
+            await memory.AddAsync(MemoryItem.Create($"match {i}", embedding: [1f, 0f], importance: 0.8f));
+
+        Assert.Equal(2, (await memory.SearchSimilarAsync([1f, 0f], 2, 0f, TestContext.Current.CancellationToken)).Count);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task LongTermMemory_Remove_DropsTheItemOfThatId()
+    {
+        using var memory = new InternalLongTermMemory();
+        var kept = MemoryItem.Create("kept", embedding: [1f, 0f], importance: 0.8f);
+        var removed = MemoryItem.Create("removed", embedding: [1f, 0f], importance: 0.8f);
+        await memory.AddAsync(kept);
+        await memory.AddAsync(removed);
+
+        Assert.True(await memory.RemoveAsync(removed.Id.ToString(), TestContext.Current.CancellationToken));
+        Assert.False(await memory.RemoveAsync(removed.Id.ToString(), TestContext.Current.CancellationToken));
+
+        var left = await memory.SearchSimilarAsync([1f, 0f], 10, -1f, TestContext.Current.CancellationToken);
+        Assert.Equal("kept", Assert.Single(left).Item.Content);
+    }
+
     // ── CrewMemorySystem ─────────────────────────────────────────
 
     [Fact]

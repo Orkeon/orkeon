@@ -64,7 +64,7 @@ public class PineconeMemoryProviderTests
         httpClient.DefaultRequestHeaders.Add("Api-Key", "my-secret-key");
 
         using var provider = _fixture.CreateProvider(handler, options);
-        var item = MemoryItem.Create(TestContent);
+        var item = MemoryItem.Create(TestContent, embedding: [0.1f, 0.2f, 0.3f]);
 
         // Act
         await provider.StoreAsync("key", item, TestContext.Current.CancellationToken);
@@ -151,52 +151,18 @@ public class PineconeMemoryProviderTests
     }
 
     [Fact]
-    public async Task ShouldSendQueryWithVector_WhenSearchAsync()
+    public async Task ShouldRefuseTextSearch_WhenSearchAsync()
     {
-        // Arrange
-        var responseBody = new
-        {
-            matches = new[]
-            {
-                new
-                {
-                    id = "key1",
-                    score = 0.95f,
-                    values = new[] { 0.1f, 0.2f },
-                    metadata = new Dictionary<string, object>
-                    {
-                        ["content"] = "Match 1",
-                        ["importance"] = 0.9,
-                        ["source"] = "src1"
-                    }
-                },
-                new
-                {
-                    id = "key2",
-                    score = 0.80f,
-                    values = new[] { 0.3f, 0.4f },
-                    metadata = new Dictionary<string, object>
-                    {
-                        ["content"] = "Match 2",
-                        ["importance"] = 0.5,
-                        ["source"] = "src2"
-                    }
-                }
-            }
-        };
-
-        using var handler = PineconeMemoryProviderTestsFixture.CreateHandler(HttpStatusCode.OK, responseBody);
+        // GAP-30: Pinecone has no text search. The query used to send an empty vector and match the
+        // content by $eq — what no real index serves; it says so now, and sends nothing.
+        using var handler = new FakeHttpMessageHandler();
         using var provider = _fixture.CreateProvider(handler);
 
-        // Act
-        var results = await provider.SearchAsync("search query", limit: 5, cancellationToken: TestContext.Current.CancellationToken);
+        var error = await Assert.ThrowsAsync<NotSupportedException>(
+            () => provider.SearchAsync("search query", limit: 5, cancellationToken: TestContext.Current.CancellationToken));
 
-        // Assert
-        Assert.Equal(2, results.Count());
-
-        var request = handler.CapturedRequests[0];
-        Assert.Equal(HttpMethod.Post, request.Method);
-        Assert.Contains("/query", request.RequestUri?.ToString());
+        Assert.Contains(nameof(IMemoryProvider.SearchSimilarAsync), error.Message, StringComparison.Ordinal);
+        Assert.Empty(handler.CapturedRequests);
     }
 
     [Fact]
@@ -262,17 +228,14 @@ public class PineconeMemoryProviderTests
     }
 
     [Fact]
-    public async Task ShouldReturnEmptyResults_WhenSearchAsyncWithEmptyQuery()
+    public async Task ShouldRefuseTextSearch_WhenSearchAsyncWithEmptyQuery()
     {
-        // Arrange
         using var handler = new FakeHttpMessageHandler();
         using var provider = _fixture.CreateProvider(handler);
 
-        // Act
-        var results = await provider.SearchAsync("", limit: 10, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Empty(results);
+        await Assert.ThrowsAsync<NotSupportedException>(
+            () => provider.SearchAsync("", limit: 10, cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Empty(handler.CapturedRequests);
     }
 
     [Fact]

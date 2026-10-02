@@ -14,7 +14,10 @@ namespace Orkeon.Hosting.Tests;
 /// provider. Before, the crew's SQLite was an in-process <c>:memory:</c> database lost at the end
 /// of the run, and the RAG store had its own connection keys. SQLite stands in for every provider
 /// here because it runs offline; the factory path is the same for Redis, ChromaDB and Pinecone.
-/// Joins <see cref="ConsoleSerialCollection"/> because it redirects the process-global console.
+/// GAP-30: a crew with <c>memory: true</c> stores each result with its vector and recalls it in its
+/// next run's prompt; a crew without stores nothing. The embedder is bag-of-words, its MinScore set
+/// in the settings. Joins <see cref="ConsoleSerialCollection"/> because it redirects the
+/// process-global console.
 /// </summary>
 [Collection(ConsoleSerialCollection.Name)]
 public sealed class RunnerHostMemoryProviderTests : IDisposable
@@ -25,6 +28,7 @@ public sealed class RunnerHostMemoryProviderTests : IDisposable
         name: "memory-crew"
         goal: "Remember what was found"
         process: "sequential"
+        memory: true
         memoryProvider: "SQLite"
         agents:
           analyst:
@@ -37,6 +41,32 @@ public sealed class RunnerHostMemoryProviderTests : IDisposable
             description: "State one fact about the sea."
             expectedOutput: "One fact."
             agent: "analyst"
+        """;
+
+    /// <summary>The same crew, without memory: nor memoryProvider:.</summary>
+    private const string ForgetfulCrew = """
+        name: "memory-crew"
+        goal: "Remember what was found"
+        process: "sequential"
+        agents:
+          analyst:
+            role: "Analyst"
+            goal: "Find one fact"
+            backstory: "A minimal test agent."
+            maxIter: 1
+        tasks:
+          find:
+            description: "State one fact about the sea."
+            expectedOutput: "One fact."
+            agent: "analyst"
+        """;
+
+    private const string MemorySettings = """
+        { "RaggableTree": { "Enabled": false },
+          "Memory": { "Provider": "sqlite" },
+          "Orkeon": {
+            "Sqlite": { "ConnectionString": "Data Source=/data/crew-memory.db" },
+            "CrewMemory": { "MinScore": 0.3 } } }
         """;
 
     private const string KnowledgeCrew = """
@@ -74,6 +104,7 @@ public sealed class RunnerHostMemoryProviderTests : IDisposable
         Directory.CreateDirectory(_kb);
         File.WriteAllText(Path.Combine(_kb, "faq.md"), "Refund policy: customers may request a full refund within 30 days of purchase.");
         File.WriteAllText(Path.Combine(_root, "memory.yaml"), SqliteCrew);
+        File.WriteAllText(Path.Combine(_root, "forgetful.yaml"), ForgetfulCrew);
         File.WriteAllText(Path.Combine(_root, "knowledge.yaml"), KnowledgeCrew);
     }
 
@@ -124,6 +155,59 @@ public sealed class RunnerHostMemoryProviderTests : IDisposable
     }
 
     [Fact]
+    public async Task Every_memory_of_a_crew_with_memory_carries_its_vector_and_says_whose_it_is()
+    {
+        WriteSettings(MemorySettings);
+        using var chat = new CapturingChatClient();
+
+        var (exit, stderr) = await RunAsync("memory.yaml", chat);
+
+        Assert.True(exit == 0, stderr);
+        var rows = ReadRows(Path.Combine(_data, "crew-memory.db"));
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row =>
+        {
+            Assert.True(row.HasEmbedding, "a memory without its vector");
+            Assert.Contains("\"kind\":\"crew-memory\"", row.CustomProperties, StringComparison.Ordinal);
+            Assert.Contains("\"crew\":\"memory-crew\"", row.CustomProperties, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task A_second_run_sends_the_model_what_the_first_run_produced_under_the_memory_header()
+    {
+        WriteSettings(MemorySettings);
+        using var first = new CapturingChatClient { Answer = "The sea covers seventy one percent of the planet." };
+        using var second = new CapturingChatClient { Answer = "Salt water is denser than fresh water." };
+
+        var (firstExit, firstErr) = await RunAsync("memory.yaml", first);
+        var (secondExit, secondErr) = await RunAsync("memory.yaml", second);
+
+        Assert.True(firstExit == 0, firstErr);
+        Assert.True(secondExit == 0, secondErr);
+        Assert.DoesNotContain(first.Prompts, p => p.Contains(MemoriesHeader, StringComparison.Ordinal));
+        Assert.Contains(second.Prompts, p =>
+            p.Contains(MemoriesHeader, StringComparison.Ordinal)
+            && p.Contains("The sea covers seventy one percent of the planet.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task The_same_crew_without_memory_stores_nothing_and_recalls_nothing()
+    {
+        WriteSettings(MemorySettings);
+        using var first = new CapturingChatClient { Answer = "The sea covers seventy one percent of the planet." };
+        using var second = new CapturingChatClient();
+
+        var (firstExit, firstErr) = await RunAsync("forgetful.yaml", first);
+        var (secondExit, secondErr) = await RunAsync("forgetful.yaml", second);
+
+        Assert.True(firstExit == 0, firstErr);
+        Assert.True(secondExit == 0, secondErr);
+        Assert.Empty(ReadRows(Path.Combine(_data, "crew-memory.db"), mayBeAbsent: true));
+        Assert.DoesNotContain(second.Prompts, p => p.Contains(MemoriesHeader, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task The_rag_store_named_sqlite_writes_to_the_database_of_the_Sqlite_section()
     {
         WriteSettings("""
@@ -158,8 +242,32 @@ public sealed class RunnerHostMemoryProviderTests : IDisposable
         Assert.Same(factory.GetProvider("sqlite"), ambient);
     }
 
+    private const string MemoriesHeader = Orkeon.Application.Constants.Orchestration.PromptDefaults.MemoriesHeader;
+
     private void WriteSettings(string json) =>
         File.WriteAllText(Path.Combine(_root, "appsettings.json"), json);
+
+    private sealed record StoredRow(bool HasEmbedding, string CustomProperties);
+
+    private static List<StoredRow> ReadRows(string databasePath, bool mayBeAbsent = false)
+    {
+        if (mayBeAbsent && !File.Exists(databasePath))
+            return [];
+        Assert.True(File.Exists(databasePath), $"{databasePath} was not created.");
+        using var connection = new SqliteConnection($"Data Source={databasePath};Mode=ReadOnly;Pooling=False");
+        connection.Open();
+        using var exists = connection.CreateCommand();
+        exists.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'memory_items'";
+        if ((long)exists.ExecuteScalar()! == 0)
+            return [];
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT embedding, custom_properties_json FROM memory_items";
+        using var reader = command.ExecuteReader();
+        var rows = new List<StoredRow>();
+        while (reader.Read())
+            rows.Add(new StoredRow(!reader.IsDBNull(0), reader.IsDBNull(1) ? string.Empty : reader.GetString(1)));
+        return rows;
+    }
 
     private static List<string> ReadCustomProperties(string databasePath)
     {

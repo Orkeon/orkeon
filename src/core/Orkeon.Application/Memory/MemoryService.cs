@@ -5,6 +5,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Memory;
 using System.Collections.Concurrent;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using DomainMemoryType = Orkeon.Domain.Memory.MemoryType;
 using Orkeon.Domain.Constants.Memory;
 
@@ -18,6 +19,7 @@ public partial class MemoryService : IMemoryService, IDisposable
     private readonly IMemoryProviderFactory _memoryProviderFactory;
     private readonly ILogger<MemoryService> _logger;
     private readonly CrewMemoryProviderRegistry? _providerRegistry;
+    private readonly IMemoryProvider? _applicationProvider;
     private readonly ConcurrentDictionary<CrewId, CrewMemorySystem> _memorySystems = new();
 
     /// <summary>
@@ -26,20 +28,28 @@ public partial class MemoryService : IMemoryService, IDisposable
     /// <param name="memoryProviderFactory">Factory handing out the shared provider of each type.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="providerRegistry">
-    /// Optional per-crew provider selections (P2-O-02). When a crew has a recorded provider, its
-    /// long-term memory is backed by that type's shared <see cref="IMemoryProvider"/>; otherwise the
-    /// in-process default store is used.
+    /// Optional per-crew selections (P2-O-02, GAP-20). When a crew has a recorded provider, its
+    /// long-term memory is backed by that type's shared <see cref="IMemoryProvider"/>; a named crew
+    /// without one is backed by <paramref name="applicationProvider"/>; any other crew uses an
+    /// in-process store of its own.
+    /// </param>
+    /// <param name="applicationProvider">
+    /// The host's default provider — the application-wide <see cref="IMemoryProvider"/>, whose type
+    /// is <c>Memory:Provider</c> (In-Memory when unset). The memory of a named crew that declares no
+    /// <c>memoryProvider:</c> lives there, scoped by its name, so it outlasts the run (GAP-30).
     /// </param>
     public MemoryService(
         IMemoryProviderFactory memoryProviderFactory,
         ILogger<MemoryService> logger,
-        CrewMemoryProviderRegistry? providerRegistry = null)
+        CrewMemoryProviderRegistry? providerRegistry = null,
+        IMemoryProvider? applicationProvider = null)
     {
         ArgumentNullException.ThrowIfNull(memoryProviderFactory);
         _memoryProviderFactory = memoryProviderFactory;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _providerRegistry = providerRegistry;
+        _applicationProvider = applicationProvider;
     }
 
     /// <summary>
@@ -59,14 +69,29 @@ public partial class MemoryService : IMemoryService, IDisposable
         // recorded with the type, scopes its entries in that shared store (GAP-20). Unknown types
         // fall back to in-memory with a warning inside the factory.
         var registry = _providerRegistry;
-        var providerType = registry?.GetProvider(crewId);
-        if (registry is null || string.IsNullOrWhiteSpace(providerType))
+        if (registry is null)
             return new CrewMemorySystem(crewId, provider: null, _logger);
 
-        var provider = _memoryProviderFactory.GetProvider(providerType);
-        var scope = registry.GetScope(crewId);
-        LogCrewMemoryProviderResolved(crewId, providerType, scope);
-        return new CrewMemorySystem(crewId, provider, _logger, scope);
+        var providerType = registry.GetProvider(crewId);
+        if (!string.IsNullOrWhiteSpace(providerType))
+        {
+            var provider = _memoryProviderFactory.GetProvider(providerType);
+            var scope = registry.GetScope(crewId);
+            LogCrewMemoryProviderResolved(crewId, providerType, scope);
+            return new CrewMemorySystem(crewId, provider, _logger, scope);
+        }
+
+        // A named crew that declares no provider lives in the host's default one, as the aggregate's
+        // contract says (GAP-30): its name scopes it there, so its next run — the next process too,
+        // on a durable Memory:Provider — reads what this one stored. An unnamed crew keeps a store
+        // of its own: scoped by an id no later run will carry, it would be read by nobody.
+        if (_applicationProvider is not null && registry.GetName(crewId) is { } name)
+        {
+            LogCrewMemoryOnDefaultProvider(crewId, name);
+            return new CrewMemorySystem(crewId, _applicationProvider, _logger, name);
+        }
+
+        return new CrewMemorySystem(crewId, provider: null, _logger);
     }
 
     /// <summary>
@@ -196,6 +221,9 @@ public partial class MemoryService : IMemoryService, IDisposable
     [LoggerMessage(Level = LogLevel.Information, Message = "Crew {CrewId} long-term memory backed by provider '{ProviderType}', scope '{Scope}'")]
     private partial void LogCrewMemoryProviderResolved(object crewId, string providerType, string scope);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Crew {CrewId} long-term memory backed by the host's default provider (Memory:Provider), scope '{Scope}'")]
+    private partial void LogCrewMemoryOnDefaultProvider(object crewId, string scope);
+
     [LoggerMessage(Level = LogLevel.Debug, Message = "Saved memory for crew {CrewId}")]
     private partial void LogMemorySaved(object crewId);
 
@@ -215,10 +243,10 @@ internal class CrewMemorySystem : ICrewMemorySystem, IDisposable
 
     /// <summary>
     /// Initializes a new instance of <see cref="CrewMemorySystem"/>. When <paramref name="provider"/>
-    /// is supplied (crew declared a memory provider), long-term memory is durably backed by it,
-    /// within <paramref name="scope"/> (the crew's name, else its id); otherwise the in-process
-    /// default store is used. Short-term memory stays an in-process sliding window in both cases
-    /// (ephemeral by design).
+    /// is supplied (the crew's declared provider, or the host's default one for a named crew),
+    /// long-term memory is durably backed by it, within <paramref name="scope"/> (the crew's name,
+    /// else its id); otherwise the in-process default store is used. Short-term memory stays an
+    /// in-process sliding window in both cases (ephemeral by design).
     /// </summary>
     public CrewMemorySystem(CrewId crewId, IMemoryProvider? provider, ILogger logger, string? scope = null)
     {
@@ -347,6 +375,44 @@ internal class InternalLongTermMemory : ILongTermMemory, IDisposable
     }
 
     /// <summary>
+    /// The items closest to <paramref name="queryEmbedding"/> by cosine similarity, computed in
+    /// process (<see cref="VectorMath"/>): an item without a vector, or with one of another
+    /// dimension, is never compared.
+    /// </summary>
+    public async System.Threading.Tasks.Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsync(
+        float[] queryEmbedding, int maxResults, float minScore, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(queryEmbedding);
+        if (maxResults <= 0)
+            return [];
+
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return InProcessSimilarity.Rank(_items, queryEmbedding, maxResults, minScore);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    /// <summary>Removes the item whose id is <paramref name="key"/>.</summary>
+    public async System.Threading.Tasks.Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return _items.RemoveAll(item => string.Equals(item.Id.ToString(), key, StringComparison.Ordinal)) > 0;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    /// <summary>
     /// Clear Async.
     /// </summary>
     public async System.Threading.Tasks.Task ClearAsync()
@@ -378,19 +444,44 @@ internal class InternalLongTermMemory : ILongTermMemory, IDisposable
 }
 
 /// <summary>
-/// Long-term memory backed by a crew-declared <see cref="IMemoryProvider"/> (Redis, SQLite, …).
-/// Adapts the provider's key/value + search surface to <see cref="ILongTermMemory"/> so a crew's
-/// durable memory actually lands in the selected store instead of the in-process list (P2-O-02).
+/// The cosine ranking of an in-process memory: what <see cref="ILongTermMemory.SearchSimilarAsync"/>
+/// does when no provider does it.
+/// </summary>
+internal static class InProcessSimilarity
+{
+    /// <summary>
+    /// <paramref name="items"/> scored against <paramref name="queryEmbedding"/>, best first, at
+    /// least <paramref name="minScore"/>, at most <paramref name="maxResults"/>; keyed by item id.
+    /// </summary>
+    public static List<ScoredMemoryItem> Rank(
+        IEnumerable<MemoryItem> items, float[] queryEmbedding, int maxResults, float minScore) =>
+        items
+            .Where(item => item.Embedding is { Count: > 0 } vector && vector.Count == queryEmbedding.Length)
+            .Select(item => new ScoredMemoryItem(
+                item, VectorMath.CosineSimilarity(queryEmbedding, AsArray(item.Embedding!)), item.Id.ToString()))
+            .Where(scored => scored.Score >= minScore)
+            .OrderByDescending(scored => scored.Score)
+            .Take(maxResults)
+            .ToList();
+
+    private static float[] AsArray(IReadOnlyList<float> vector) => vector as float[] ?? [.. vector];
+}
+
+/// <summary>
+/// Long-term memory backed by an <see cref="IMemoryProvider"/> (Redis, SQLite, …): the provider the
+/// crew declared, or the host's default one for a named crew that declared none. Adapts the
+/// provider's key/value + search surface to <see cref="ILongTermMemory"/> so a crew's durable memory
+/// actually lands in that store instead of the in-process list (P2-O-02, GAP-30).
 /// </summary>
 /// <remarks>
 /// <para>
 /// The provider is the factory's instance for its type, shared with every other crew of that type
 /// and with the RAG store of that type (its chunks, manifests and registries). The crew's
-/// <c>scope</c> — its name, else its id — keeps its entries apart (GAP-20): every entry stored
-/// here carries <c>kind = crew-memory</c> and <c>crew = &lt;scope&gt;</c>, and every search asks
-/// the provider for those two properties, which it applies before its limit. A crew therefore
-/// reads what it stored, in this run and in the earlier runs of a crew of its name, and nothing
-/// else: no other crew's memory, no RAG chunk.
+/// <c>scope</c> — its name, else its id — keeps its entries apart (GAP-20,
+/// <see cref="CrewMemoryScope"/>): every entry stored here carries <c>kind = crew-memory</c> and
+/// <c>crew = &lt;scope&gt;</c>, and every search asks the provider for those two properties, which
+/// it applies before its limit. A crew therefore reads what it stored, in this run and in the
+/// earlier runs of a crew of its name, and nothing else: no other crew's memory, no RAG chunk.
 /// </para>
 /// <para>
 /// Clearing removes only the entries this memory stored, never the whole shared store. The
@@ -399,15 +490,6 @@ internal class InternalLongTermMemory : ILongTermMemory, IDisposable
 /// </remarks>
 internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
 {
-    /// <summary>The custom property naming what an entry is.</summary>
-    internal const string KindProperty = "kind";
-
-    /// <summary>The <see cref="KindProperty"/> of a crew's long-term memory.</summary>
-    internal const string CrewMemoryKind = "crew-memory";
-
-    /// <summary>The custom property naming whose memory an entry is: the crew's scope.</summary>
-    internal const string CrewProperty = "crew";
-
     private readonly IMemoryProvider _provider;
     private readonly string _scope;
     private readonly ConcurrentDictionary<string, byte> _storedKeys = new(StringComparer.Ordinal);
@@ -423,41 +505,36 @@ internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
     public async System.Threading.Tasks.Task AddAsync(MemoryItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var entry = OwnEntry(item);
+        var entry = CrewMemoryScope.Stamp(item, _scope);
         var key = entry.Id.ToString();
         await _provider.StoreAsync(key, entry).ConfigureAwait(false);
         _storedKeys.TryAdd(key, 0);
     }
 
-    /// <summary>
-    /// The entry stored for <paramref name="item"/>: the same item — id, content, embedding,
-    /// importance, metadata — with <c>kind</c> and <c>crew</c> set. A copy, so the caller's item
-    /// is left as it was built.
-    /// </summary>
-    private MemoryItem OwnEntry(MemoryItem item)
-    {
-        var properties = item.Metadata.CustomProperties is { } existing
-            ? new Dictionary<string, string>(existing, existing.Comparer)
-            : new Dictionary<string, string>(StringComparer.Ordinal);
-        properties[KindProperty] = CrewMemoryKind;
-        properties[CrewProperty] = _scope;
-
-        return MemoryItem.Restore(
-            item.Id, item.Content, item.Embedding, item.Importance, item.Metadata with { CustomProperties = properties });
-    }
-
     public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10)
     {
-        var results = await _provider.SearchAsync(query, maxResults, OwnEntries()).ConfigureAwait(false);
+        var results = await _provider.SearchAsync(query, maxResults, CrewMemoryScope.Filter(_scope)).ConfigureAwait(false);
         return results.ToList();
     }
 
-    /// <summary>The filter that selects this crew's entries, and nothing else, in the shared store.</summary>
-    private Dictionary<string, object> OwnEntries() => new(StringComparer.Ordinal)
+    public async System.Threading.Tasks.Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsync(
+        float[] queryEmbedding, int maxResults, float minScore, CancellationToken cancellationToken = default)
     {
-        [KindProperty] = CrewMemoryKind,
-        [CrewProperty] = _scope,
-    };
+        ArgumentNullException.ThrowIfNull(queryEmbedding);
+        if (maxResults <= 0)
+            return [];
+
+        return await _provider.SearchSimilarAsync(
+            queryEmbedding, maxResults, minScore, CrewMemoryScope.Filter(_scope), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async System.Threading.Tasks.Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var removed = await _provider.DeleteAsync(key, cancellationToken).ConfigureAwait(false);
+        _storedKeys.TryRemove(key, out _);
+        return removed;
+    }
 
     public async System.Threading.Tasks.Task ClearAsync()
     {

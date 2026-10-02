@@ -241,7 +241,8 @@ whenever OTLP export is on, the structured logs (formatted message and scopes in
 endpoint. The resource names the service `Orkeon`. The span and metric names follow the OpenTelemetry
 GenAI conventions — see [Opt-in subsystems](opt-in-subsystems.md#traces-and-metrics-follow-the-opentelemetry-genai-conventions).
 
-The section also registers three health checks — `llm_provider`, `memory_provider`,
+The section also registers three health checks — `llm_provider`, `memory_provider` (which reads a key
+that does not exist: every provider serves it, Pinecone and ChromaDB included),
 `system_resources` — which no shipped runner exposes: neither `orkeon` nor `orkeon-host` serves HTTP.
 
 ## .NET Aspire — `Orkeon.Hosting.Aspire`

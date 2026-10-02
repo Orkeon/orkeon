@@ -22,10 +22,12 @@ using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 namespace Orkeon.Infrastructure.Tests.Process.Consensus;
 
 /// <summary>
-/// GAP-20 — what a consensual crew remembers. Every agent answers and every agent casts a ballot,
-/// all through the real <see cref="AgentExecutionService"/>, which stores a successful result in the
-/// crew's memory. Only the answer the vote retained is a task result: it is stored once, under the
-/// agent that wrote it — no candidate the vote rejected, no ballot.
+/// GAP-20, GAP-30 — what a consensual crew remembers. Every agent answers and every agent casts a
+/// ballot, all through the real <see cref="AgentExecutionService"/>, which stores a successful result
+/// in the crew's memory and recalls the crew's memories before a task. Only the answer the vote
+/// retained is a task result: it is stored once, under the agent that wrote it — no candidate the
+/// vote rejected, no ballot. A candidate answers the task and recalls; a ballot answers a vote and
+/// recalls nothing.
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "MockMemoryScope has a no-op Dispose.")]
 public sealed partial class ConsensualMemoryTests : IDisposable
@@ -39,17 +41,24 @@ public sealed partial class ConsensualMemoryTests : IDisposable
     private readonly MemoryProviderFactory _providers;
     private readonly CrewMemoryProviderRegistry _registry = new();
     private readonly MemoryService _memory;
+    private readonly MockEmbeddingProvider _embedder = new();
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> _embedded = new();
     private readonly AgentExecutionService _execution;
 
     public ConsensualMemoryTests()
     {
         _providers = new MemoryProviderFactory(new FakeFileSystemService(), _httpClientFactory);
         _memory = new MemoryService(_providers, NullLogger<MemoryService>.Instance, _registry);
+        _embedder.SetEmbeddingFunc(text =>
+        {
+            _embedded.Enqueue(text);
+            return [1f, 0f, 0f];
+        });
         _execution = new AgentExecutionService(
             NullLogger<AgentExecutionService>.Instance,
             _llm,
             new CallbackOrchestrator(NullLogger<CallbackOrchestrator>.Instance),
-            new MemoryCoordinator(NullLogger<MemoryCoordinator>.Instance, _memory, _registry));
+            Coordinator());
 
         // A candidate answers with its role; a voter puts "answer of beta" first when it is offered.
         _llm.Answer = (agent, task) => IsBallot(task)
@@ -128,6 +137,26 @@ public sealed partial class ConsensualMemoryTests : IDisposable
         Assert.Equal(gamma.Id, remembered.Metadata.CreatedBy);
     }
 
+    [Fact]
+    public async Task A_ballot_recalls_nothing_and_its_task_is_never_embedded()
+    {
+        var (alpha, beta, gamma) = (Agent("alpha"), Agent("beta"), Agent("gamma"));
+
+        var output = await RunAsync(Options(ConsensusFallback.Fail), alpha, beta, gamma);
+
+        Assert.True(output.Success, output.Error);
+        // The three candidates recalled before answering the task — a recall query is the task and
+        // its expected output — and the retained answer was embedded to be stored; the three
+        // ballots did neither.
+        Assert.Equal(3, _embedded.Count(text => text.StartsWith("When does the tide turn?\nExpected output:", StringComparison.Ordinal)));
+        Assert.Equal("When does the tide turn?\nanswer of beta", Assert.Single(_embedded, text => !text.Contains("Expected output:", StringComparison.Ordinal)));
+        Assert.DoesNotContain(_embedded, text => text.Contains("You are casting a ballot", StringComparison.Ordinal));
+        Assert.DoesNotContain(_llm.Contexts, context => IsBallot(context.Task) && context.Context.RecalledMemories.Count > 0);
+    }
+
+    private MemoryCoordinator Coordinator() =>
+        new(NullLogger<MemoryCoordinator>.Instance, _memory, _registry, _embedder);
+
     /// <summary>Everything the crew's memory store holds, whatever its text.</summary>
     private async Task<List<MemoryItem>> RememberedAsync() =>
         [.. await _providers.GetProvider("inmemory").SearchAsync(string.Empty, 100, cancellationToken: TestContext.Current.CancellationToken)];
@@ -180,14 +209,14 @@ public sealed partial class ConsensualMemoryTests : IDisposable
 
     private Task<DomainCrewOutput> RunAsync(ConsensualProcessOptions options, Orkeon.Domain.Crew.Crew crew)
     {
-        // What the orchestrator records at kickoff: the crew names the In-Memory provider.
-        _registry.Record(crew.Id, "inmemory", crew.Name);
+        // What the orchestrator records at kickoff: the crew remembers, in the In-Memory provider.
+        _registry.Record(crew.Id, "inmemory", crew.Name, memoryEnabled: true);
 
         var strategy = new ConsensualProcessStrategy(
             new VotingStrategyFactory(Microsoft.Extensions.Options.Options.Create(options)).Create(options.VotingOptions.ConsensusType),
             new AgentBallotCollector(_execution, NullLogger<AgentBallotCollector>.Instance),
             new CrewStrategyDependencies(_tasks, _agents, _execution, new MockMemoryScope()),
-            new MemoryCoordinator(NullLogger<MemoryCoordinator>.Instance, _memory, _registry),
+            Coordinator(),
             NullLogger<ConsensualProcessStrategy>.Instance,
             Microsoft.Extensions.Options.Options.Create(options));
 

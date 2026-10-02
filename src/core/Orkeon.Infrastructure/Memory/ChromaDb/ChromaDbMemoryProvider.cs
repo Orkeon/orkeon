@@ -71,10 +71,22 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// ChromaDB's HTTP API requires an embedding on every record it adds (the clients compute one;
+    /// the server does not): an item without one is refused before any request, as the
+    /// collection path refuses it (GAP-30).
+    /// </remarks>
+    /// <exception cref="ArgumentException">The item carries no embedding.</exception>
     public override async Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
     {
         ValidateKey(key);
         ValidateMemoryItem(item);
+        if (item.Embedding is not { Count: > 0 } embedding)
+        {
+            throw new ArgumentException(
+                $"Item '{key}' carries no embedding — ChromaDB adds a record with its embedding only.", nameof(item));
+        }
+
         await EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
 
         try
@@ -84,7 +96,7 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
                 ids = new[] { key },
                 documents = new[] { item.Content },
                 metadatas = new[] { BuildMetadata(item) },
-                embeddings = item.Embedding != null ? new[] { item.Embedding } : null
+                embeddings = new[] { embedding }
             };
 
             var response = await _httpClient.PostAsJsonAsync(
@@ -207,7 +219,14 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// The records whose document contains <paramref name="query"/> — case-sensitive, as the server
+    /// matches it — within <paramref name="filter"/>, up to <paramref name="limit"/>: a
+    /// <c>POST …/get</c> with <c>where_document</c> <c>$contains</c> and the filter as its
+    /// <c>where</c> clause, applied by the server before the limit (GAP-20). An empty query sends
+    /// the filter alone. The HTTP API has no text query — <c>query_texts</c> exists only in the
+    /// clients, which embed it themselves (GAP-30).
+    /// </summary>
     public override Task<IEnumerable<MemoryItem>> SearchAsync(
         string query,
         int limit = MemoryDefaults.DefaultSearchLimit,
@@ -215,10 +234,6 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-
-        if (string.IsNullOrWhiteSpace(query))
-            return Task.FromResult<IEnumerable<MemoryItem>>(Array.Empty<MemoryItem>());
-
         return SearchAsyncCore(query, limit, filter, cancellationToken);
     }
 
@@ -232,35 +247,36 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
 
         try
         {
-            // The filter travels as the query's where clause: the server applies it before
-            // n_results (GAP-20).
             var payload = new
             {
-                query_texts = new[] { query },
-                n_results = limit > 0 ? limit : _options.DefaultTopK,
-                where = BuildWhereClause(filter)
+                where = BuildWhereClause(filter),
+                where_document = string.IsNullOrEmpty(query)
+                    ? null
+                    : new Dictionary<string, object> { ["$contains"] = query },
+                limit = limit > 0 ? limit : _options.DefaultTopK,
+                include = s_textSearchIncludes
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                $"{_collectionsRoute}/{_collectionId}/query",
+                $"{_collectionsRoute}/{_collectionId}/get",
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<ChromaQueryResponse>(s_jsonOptions, cancellationToken).ConfigureAwait(false);
+            var result = await response.Content.ReadFromJsonAsync<ChromaGetResponse>(s_jsonOptions, cancellationToken).ConfigureAwait(false);
 
-            if (result?.Ids == null || result.Ids.Count == 0 || result.Ids[0].Count == 0)
+            if (result?.Ids == null || result.Ids.Count == 0)
             {
                 LogNoResultsFoundForQuery(query);
                 return Array.Empty<MemoryItem>();
             }
 
             var items = new List<MemoryItem>();
-            for (var i = 0; i < result.Ids[0].Count; i++)
+            for (var i = 0; i < result.Ids.Count; i++)
             {
-                var item = BuildMemoryItemFromQuery(result, 0, i);
+                var item = BuildMemoryItem(result, i);
                 if (item != null)
                     items.Add(item);
             }
@@ -274,6 +290,9 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
             throw;
         }
     }
+
+    /// <summary>Fields requested from ChromaDB for a text search.</summary>
+    private static readonly string[] s_textSearchIncludes = ["documents", "metadatas"];
 
     /// <inheritdoc />
     public override async Task ClearAsync(CancellationToken cancellationToken = default)
@@ -436,7 +455,7 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
 
                 var score = GetSimilarityScore(result, 0, i);
                 if (score >= minScore)
-                    scored.Add(new ScoredMemoryItem(item, score));
+                    scored.Add(new ScoredMemoryItem(item, score, result.Ids[0][i]));
             }
 
             var results = scored

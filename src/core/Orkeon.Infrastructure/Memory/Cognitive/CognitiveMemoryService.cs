@@ -27,10 +27,36 @@ public sealed record CognitiveAnalysisServices(
 /// Cognitive memory service that decorates <see cref="IMemoryService"/> with LLM-powered
 /// analysis, contradiction detection, composite scoring, and consolidation.
 /// </summary>
+/// <remarks>
+/// <para>
+/// It works in the crew's own memory (GAP-30): the long-term memory <see cref="IMemoryService"/>
+/// materializes for the crew — the provider the crew declared, else the host's default one for a
+/// named crew, scoped by its name; an in-process store for an unnamed crew. A remembered item is
+/// stored there once, stamped <c>kind = crew-memory</c> and <c>crew = &lt;scope&gt;</c> like every
+/// memory of the crew's runs (<see cref="Application.Memory.CrewMemoryScope"/>), so a crew has one
+/// memory: its runs recall what it remembered, and it recalls what its runs stored.
+/// </para>
+/// <para>
+/// Recall, contradiction candidates and consolidation all search that memory by similarity, within
+/// the scope, and a conflict is resolved where its candidates came from. The scope is the one the
+/// crew's kickoff recorded: before its first kickoff, a crew id is a crew without a name.
+/// </para>
+/// </remarks>
 public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
 {
+    /// <summary>
+    /// The most memories of one crew a consolidation considers at once — what Pinecone answers at
+    /// most, with their metadata, to one query.
+    /// </summary>
+    private const int ConsolidationScanLimit = 1_000;
+
+    /// <summary>
+    /// The text whose vector a consolidation searches from. With no score floor every memory of the
+    /// scope comes back, up to <see cref="ConsolidationScanLimit"/>: the probe only orders them.
+    /// </summary>
+    private const string ConsolidationProbe = "everything this crew remembers";
+
     private readonly IMemoryService _innerMemoryService;
-    private readonly IMemoryProvider _memoryProvider;
     private readonly IEmbeddingProvider _embeddingProvider;
     private readonly MemoryAnalyzer _analyzer;
     private readonly ContradictionDetector _contradictionDetector;
@@ -42,9 +68,13 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
     /// <summary>
     /// Initializes a new instance of <see cref="CognitiveMemoryService"/>.
     /// </summary>
+    /// <param name="innerMemoryService">The memory service whose crew memories this service works in.</param>
+    /// <param name="embeddingProvider">Embeds what is remembered, recalled and compared.</param>
+    /// <param name="analysisServices">The LLM analysis services.</param>
+    /// <param name="options">The cognitive memory options (<c>Orkeon:CognitiveMemory</c>).</param>
+    /// <param name="logger">The logger.</param>
     public CognitiveMemoryService(
         IMemoryService innerMemoryService,
-        IMemoryProvider memoryProvider,
         IEmbeddingProvider embeddingProvider,
         CognitiveAnalysisServices analysisServices,
         IOptions<CognitiveMemoryOptions> options,
@@ -53,8 +83,6 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
         ArgumentNullException.ThrowIfNull(analysisServices);
         ArgumentNullException.ThrowIfNull(innerMemoryService);
         _innerMemoryService = innerMemoryService;
-        ArgumentNullException.ThrowIfNull(memoryProvider);
-        _memoryProvider = memoryProvider;
         ArgumentNullException.ThrowIfNull(embeddingProvider);
         _embeddingProvider = embeddingProvider;
         ArgumentNullException.ThrowIfNull(analysisServices.Analyzer);
@@ -107,6 +135,7 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
         string? context = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(crewId);
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
 
         LogRememberStart(content.Length);
@@ -119,36 +148,32 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
             LogAnalysisComplete(analysis.Importance, analysis.Category);
         }
 
-        // Step 2: Contradiction detection
-        ContradictionCheck? contradictionCheck = null;
+        // Step 2: the vector — the contradiction candidates are found by it, and the item stored with it
+        var embedding = await _embeddingProvider.GetEmbeddingAsync(content, cancellationToken).ConfigureAwait(false);
+        var memory = CrewMemory(crewId);
+
+        // Step 3: contradiction detection and resolution, in the crew's memory the candidates come from
         if (_options.EnableContradictionDetection)
         {
-            contradictionCheck = await CheckContradictionsInternalAsync(crewId, content, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Step 3: Resolve conflicts
-        if (contradictionCheck is { HasContradiction: true })
-        {
-            var resolved = await ResolveConflictAsync(
-                crewId, content, analysis, contradictionCheck, cancellationToken).ConfigureAwait(false);
-            if (resolved is not null)
+            var candidates = await CandidatesAsync(memory, embedding, cancellationToken).ConfigureAwait(false);
+            var check = await _contradictionDetector.CheckAsync(
+                content, candidates.Select(candidate => candidate.Item), cancellationToken).ConfigureAwait(false);
+            if (check.HasContradiction)
             {
-                return resolved;
+                var resolved = await ResolveConflictAsync(
+                    memory, candidates, content, analysis, check, cancellationToken).ConfigureAwait(false);
+                if (resolved is not null)
+                    return resolved;
             }
         }
 
-        // Step 4: Generate embedding
-        var embedding = await _embeddingProvider.GetEmbeddingAsync(content, cancellationToken).ConfigureAwait(false);
-
-        // Step 5: Create enriched MemoryItem
-        var importance = analysis?.Importance ?? MemoryDefaults.DefaultImportance;
-        var tags = analysis?.SuggestedTags.ToArray();
+        // Step 4: the enriched item, stored once
         var item = MemoryItem.Create(
             content: content,
             embedding: embedding,
-            importance: importance,
+            importance: analysis?.Importance ?? MemoryDefaults.DefaultImportance,
             source: "cognitive",
-            tags: tags);
+            tags: analysis?.SuggestedTags.ToArray());
 
         if (analysis is not null)
         {
@@ -160,9 +185,7 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
             }
         }
 
-        // Step 6: Store
-        await _memoryProvider.StoreWithEmbeddingAsync(item.Id, item, embedding, cancellationToken).ConfigureAwait(false);
-        await _innerMemoryService.SaveMemoryAsync(crewId, item, cancellationToken).ConfigureAwait(false);
+        await memory.AddAsync(item).ConfigureAwait(false);
 
         LogRememberComplete(item.Id);
         return item;
@@ -175,23 +198,18 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
         RecallOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(crewId);
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         options ??= _options.DefaultRecallOptions;
 
         LogRecallStart(query.Length, options.TopK);
 
-        // Generate query embedding
         var queryEmbedding = await _embeddingProvider.GetEmbeddingAsync(query, cancellationToken).ConfigureAwait(false);
 
-        // Over-fetch 3x for composite re-ranking
-        var overFetchCount = options.TopK * 3;
-        var semanticResults = await _memoryProvider.SearchSimilarAsync(
-            queryEmbedding,
-            overFetchCount,
-            0.0f,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+        // Over-fetch 3x for composite re-ranking, in the crew's memory only
+        var semanticResults = await CrewMemory(crewId).SearchSimilarAsync(
+            queryEmbedding, options.TopK * 3, 0.0f, cancellationToken).ConfigureAwait(false);
 
-        // Composite scoring
         var scored = _scorer.Score(semanticResults, options);
 
         LogRecallComplete(scored.Count);
@@ -203,13 +221,16 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
         CrewId crewId,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(crewId);
         LogConsolidationStart(crewId);
 
-        // Fetch all memories for this crew
-        var allMemories = await _innerMemoryService.SearchMemoryAsync(
-            crewId, "", int.MaxValue, cancellationToken: cancellationToken).ConfigureAwait(false);
+        // The crew's memories, by similarity within its scope and with no score floor: every one of
+        // them, up to the scan limit. An empty text search found them on no provider.
+        var memory = CrewMemory(crewId);
+        var probe = await _embeddingProvider.GetEmbeddingAsync(ConsolidationProbe, cancellationToken).ConfigureAwait(false);
+        var memories = await memory.SearchSimilarAsync(probe, ConsolidationScanLimit, -1f, cancellationToken).ConfigureAwait(false);
 
-        var result = await _consolidator.ConsolidateAsync(allMemories, cancellationToken).ConfigureAwait(false);
+        var result = await _consolidator.ConsolidateAsync(memories, memory, cancellationToken).ConfigureAwait(false);
 
         LogConsolidationComplete(result.MergedCount, result.PrunedCount);
         return result;
@@ -233,26 +254,31 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
         string content,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(crewId);
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
-        return await CheckContradictionsInternalAsync(crewId, content, cancellationToken).ConfigureAwait(false);
+
+        var embedding = await _embeddingProvider.GetEmbeddingAsync(content, cancellationToken).ConfigureAwait(false);
+        var candidates = await CandidatesAsync(CrewMemory(crewId), embedding, cancellationToken).ConfigureAwait(false);
+        return await _contradictionDetector.CheckAsync(
+            content, candidates.Select(candidate => candidate.Item), cancellationToken).ConfigureAwait(false);
     }
 
     // --- Private helpers ---
 
-    private async Task<ContradictionCheck> CheckContradictionsInternalAsync(
-        CrewId crewId,
-        string content,
-        CancellationToken cancellationToken)
-    {
-        // Search for similar existing memories
-        var existingMemories = await _innerMemoryService.SearchMemoryAsync(
-            crewId, content, _options.ContradictionCandidateCount, cancellationToken: cancellationToken).ConfigureAwait(false);
+    /// <summary>The crew's long-term memory: its store, within its scope.</summary>
+    private ILongTermMemory CrewMemory(CrewId crewId) => _innerMemoryService.GetMemorySystem(crewId).LongTerm;
 
-        return await _contradictionDetector.CheckAsync(content, existingMemories, cancellationToken).ConfigureAwait(false);
-    }
+    /// <summary>The crew's memories closest to <paramref name="embedding"/>: what new content may contradict.</summary>
+    private Task<IReadOnlyList<ScoredMemoryItem>> CandidatesAsync(
+        ILongTermMemory memory, float[] embedding, CancellationToken cancellationToken) =>
+        memory.SearchSimilarAsync(embedding, _options.ContradictionCandidateCount, 0.0f, cancellationToken);
+
+    /// <summary>The storage key of a found memory: the key its store returned, else its id.</summary>
+    private static string KeyOf(ScoredMemoryItem found) => found.Key ?? found.Item.Id.ToString();
 
     private async Task<MemoryItem?> ResolveConflictAsync(
-        CrewId crewId,
+        ILongTermMemory memory,
+        IReadOnlyList<ScoredMemoryItem> candidates,
         string content,
         MemoryAnalysis? analysis,
         ContradictionCheck check,
@@ -260,55 +286,41 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
     {
         LogConflictResolution(check.RecommendedAction);
 
+        // The conflicting memories are among the candidates the detector was shown: resolved in the
+        // memory they came from, by the key that memory returned.
+        var conflicting = candidates
+            .Where(candidate => check.ConflictingMemoryIds.Contains(candidate.Item.Id.ToString(), StringComparer.Ordinal))
+            .ToList();
+
         switch (check.RecommendedAction)
         {
             case ConflictResolution.KeepExisting:
-                // Return the first conflicting memory as the "existing" one
-                if (check.ConflictingMemoryIds.Count > 0)
-                {
-                    var existing = await _memoryProvider.GetAsync(
-                        check.ConflictingMemoryIds[0], cancellationToken).ConfigureAwait(false);
-                    if (existing is not null)
-                        return existing;
-                }
-                // If we can't find the existing, fall through to store new
-                return null;
+                // The first conflicting memory stands; none found: the new content is stored.
+                return conflicting.FirstOrDefault()?.Item;
 
             case ConflictResolution.KeepNew:
-                // Delete conflicting memories, then fall through to store new
-                foreach (var id in check.ConflictingMemoryIds)
+                foreach (var old in conflicting)
                 {
-                    await _memoryProvider.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
+                    await memory.RemoveAsync(KeyOf(old), cancellationToken).ConfigureAwait(false);
                 }
                 return null;
 
             case ConflictResolution.Merge:
-                // Fetch conflicting, merge content, then store merged
-                var conflictContents = new List<string> { content };
-                foreach (var id in check.ConflictingMemoryIds)
+                foreach (var old in conflicting)
                 {
-                    var m = await _memoryProvider.GetAsync(id, cancellationToken).ConfigureAwait(false);
-                    if (m is not null)
-                    {
-                        conflictContents.Add(m.Content);
-                        await _memoryProvider.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
-                    }
+                    await memory.RemoveAsync(KeyOf(old), cancellationToken).ConfigureAwait(false);
                 }
 
-                var mergedContent = string.Join(" | ", conflictContents);
+                var mergedContent = string.Join(" | ", conflicting.Select(old => old.Item.Content).Prepend(content));
                 var embedding = await _embeddingProvider.GetEmbeddingAsync(mergedContent, cancellationToken).ConfigureAwait(false);
-                var importance = analysis?.Importance ?? MemoryDefaults.DefaultImportance;
-                var tags = analysis?.SuggestedTags.ToArray();
-
                 var merged = MemoryItem.Create(
                     content: mergedContent,
                     embedding: embedding,
-                    importance: importance,
+                    importance: analysis?.Importance ?? MemoryDefaults.DefaultImportance,
                     source: "cognitive-merge",
-                    tags: tags);
+                    tags: analysis?.SuggestedTags.ToArray());
 
-                await _memoryProvider.StoreWithEmbeddingAsync(merged.Id, merged, embedding, cancellationToken).ConfigureAwait(false);
-                await _innerMemoryService.SaveMemoryAsync(crewId, merged, cancellationToken).ConfigureAwait(false);
+                await memory.AddAsync(merged).ConfigureAwait(false);
                 return merged;
 
             case ConflictResolution.KeepBoth:

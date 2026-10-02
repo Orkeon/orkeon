@@ -175,6 +175,8 @@ A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates th
 - Review: up to **3 reviews per task**, so at most **2 re-executions** (each with a `revision_feedback` context variable). A third rejection keeps the last output, prefixed `[NEEDS REVISION]` and marked failed — and the task fails the crew. A review that errors counts as an approval.
 - A task assigned to an agent the crew does not carry never runs, and fails the crew. A task whose dependency failed is skipped without asking the manager.
 
+**What the crew remembers** (`memory: true`): the output the manager accepted, once, under the agent it was assigned to — never a rejected attempt. Each attempt runs with `SimpleExecutionContext.StoreResultInMemory` off (it still recalls the crew's memories: it answers the task), and the strategy stores the accepted output through `IMemoryCoordinator`. Nothing is stored when the manager rejects all three attempts, nor when the worker fails; a review that errors counts as an acceptance, so that output is stored. See [Memory system](../architecture/memory-system.md#a-crews-memory-provider-and-scope).
+
 ### Internal mechanism
 
 ```
@@ -353,7 +355,7 @@ Task N ──┬── Agent A → answer A ──┐                ┌── A
 
 The retained result is the task's result: when it failed, the crew fails and the task's dependents are skipped; the tasks that do not depend on it still run.
 
-**What the crew remembers**: the retained answer, once, under the agent that wrote it — never a candidate the vote rejected, never a ballot. The candidates and the ballots run with `SimpleExecutionContext.StoreResultInMemory` off (`AgentBallotCollector` turns it off for any ballot it casts), and the strategy stores the retained answer through `IMemoryCoordinator`; a task without a retained answer stores nothing. When that store fails, the task fails, as in the other modes. See [Memory system](../architecture/memory-system.md#a-crews-memory-provider-and-scope).
+**What the crew remembers**: the retained answer, once, under the agent that wrote it — never a candidate the vote rejected, never a ballot. The candidates and the ballots run with `SimpleExecutionContext.StoreResultInMemory` off (`AgentBallotCollector` turns it off for any ballot it casts), and the strategy stores the retained answer through `IMemoryCoordinator`; a task without a retained answer stores nothing. A candidate recalls the crew's memories before answering — it answers the task — and a ballot does not (`RecallFromMemory` off). When the store fails, the retained answer stays the task's result and the failure is a warning, as in the other modes. See [Memory system](../architecture/memory-system.md#a-crews-memory-provider-and-scope).
 
 **Cost**: a round costs N executions plus N ballots — one short LLM call per voter, whose prompt holds the answers under review, so its input grows with N × the answers' length (a long answer is truncated to fit a task description). Three agents that agree cost 3 executions + 3 ballots per task. A task that never reaches consensus costs `MaxVotingRounds` × (N + N) calls, plus one manager ballot under `ManagerDecision`; `AcceptBestScore` re-runs nothing. The crew's input variables reach every execution and every ballot; earlier tasks' winning outputs are passed as context.
 

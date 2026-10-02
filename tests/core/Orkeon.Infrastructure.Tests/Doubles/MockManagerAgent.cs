@@ -20,6 +20,7 @@ public class MockManagerAgent : IManagerAgent
         DateTime.UtcNow);
 
     private bool _reviewResult = true;
+    private readonly Queue<bool> _reviewResults = new();
 
     // --- Tracking ---
     public int AssignTaskCallCount { get; private set; }
@@ -35,6 +36,14 @@ public class MockManagerAgent : IManagerAgent
     public void SetAssignResult(TaskAssignment result) => _assignResult = result;
 
     public void SetReviewResult(bool result) => _reviewResult = result;
+
+    /// <summary>The verdicts of the next reviews, in order; past them, <see cref="SetReviewResult"/>'s.</summary>
+    public void SetReviewResults(params bool[] results)
+    {
+        ArgumentNullException.ThrowIfNull(results);
+        foreach (var result in results)
+            _reviewResults.Enqueue(result);
+    }
 
     // --- IManagerAgent ---
     public Task<TaskAssignment> AssignTaskAsync(
@@ -56,6 +65,6 @@ public class MockManagerAgent : IManagerAgent
         ReviewOutputCallCount++;
         LastReviewedOutput = output;
         LastReviewedTask = originalTask;
-        return Task.FromResult(_reviewResult);
+        return Task.FromResult(_reviewResults.TryDequeue(out var next) ? next : _reviewResult);
     }
 }

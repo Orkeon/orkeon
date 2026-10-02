@@ -78,8 +78,8 @@ public sealed class AgentBallotCollectorTests
         Assert.Equal(42, ballot.Execution?.TokensUsed);
         Assert.Same(voter, execution.LastExecuteAgent);
         // The request's context — its crew, its variables, the outputs so far — minus the memory:
-        // a ballot is not a task result (GAP-20).
-        Assert.Equal(request.Context with { StoreResultInMemory = false }, execution.LastExecuteContext);
+        // a ballot is not a task result (GAP-20), and it answers a vote, not the task (GAP-30).
+        Assert.Equal(request.Context with { StoreResultInMemory = false, RecallFromMemory = false }, execution.LastExecuteContext);
         var ballotTask = Assert.IsType<CrewTask>(execution.LastExecuteTask);
         Assert.Equal("json_object", ballotTask.LlmOverride?.ResponseFormat?.Type);
         Assert.Contains("Candidate A", ballotTask.Description.Value, StringComparison.Ordinal);
@@ -100,6 +100,21 @@ public sealed class AgentBallotCollectorTests
         await collector.CollectAsync(request, TestContext.Current.CancellationToken);
 
         Assert.False(execution.LastExecuteContext?.StoreResultInMemory);
+    }
+
+    [Fact]
+    public async Task A_ballot_never_recalls_the_crew_memory_whatever_context_it_is_given()
+    {
+        // GAP-30: a ballot answers a vote; the crew's earlier work has no place in its prompt.
+        var execution = new MockAgentExecutionService();
+        execution.SetExecuteResult(new TaskResult(true, """{"ranking": ["B", "A"]}""", null, [], TimeSpan.Zero));
+        var collector = new AgentBallotCollector(execution, NullLogger<AgentBallotCollector>.Instance);
+        var (request, _) = Request();
+        Assert.True(request.Context.RecallFromMemory);
+
+        await collector.CollectAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(execution.LastExecuteContext?.RecallFromMemory);
     }
 
     [Fact]

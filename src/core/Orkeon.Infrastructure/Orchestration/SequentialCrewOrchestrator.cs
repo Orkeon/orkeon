@@ -40,11 +40,16 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly Orkeon.Application.Memory.CrewMemoryProviderRegistry? _memoryProviderRegistry;
     private readonly Orkeon.Application.EventHub.IEventHubCallerContext? _hubCallerContext;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
+    private readonly IMemoryCoordinator? _memoryCoordinator;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
     /// </summary>
-    /// <remarks>Parameters exceed threshold due to DI injection requirements for optional services.</remarks>
+    /// <remarks>
+    /// Parameters exceed threshold due to DI injection requirements for optional services. The
+    /// <paramref name="memoryCoordinator"/> refuses, before the first task, a crew with
+    /// <c>memory: true</c> whose memory cannot work (GAP-30); without one, nothing is checked.
+    /// </remarks>
 #pragma warning disable S107 // Methods should not have too many parameters — DI constructor with optional services
     public SequentialCrewOrchestrator(
         ICrewRepository crewRepository,
@@ -58,7 +63,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         ICheckpointManager? checkpointManager = null,
         Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null,
         Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null,
-        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null)
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
+        IMemoryCoordinator? memoryCoordinator = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -79,6 +85,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _memoryProviderRegistry = memoryProviderRegistry;
         _hubCallerContext = hubCallerContext;
         _llmProfiles = llmProfiles;
+        _memoryCoordinator = memoryCoordinator;
     }
 
     /// <summary>
@@ -120,10 +127,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Crew {crewId} not found");
 
-            // Record the crew's declared memory provider, which the memory subsystem resolves to a
-            // concrete IMemoryProvider for this run (P2-O-02), and its name, the scope of its
-            // long-term memory in that shared store (GAP-20). Idempotent.
-            _memoryProviderRegistry?.Record(crew.Id, crew.MemoryProvider, crew.Name);
+            // Record whether the crew remembers (memory:, GAP-30), the memory provider it declared,
+            // which the memory subsystem resolves to a concrete IMemoryProvider for this run
+            // (P2-O-02), and its name, the scope of its long-term memory in that shared store
+            // (GAP-20). Idempotent.
+            _memoryProviderRegistry?.Record(crew.Id, crew.MemoryProvider, crew.Name, crew.MemoryEnabled);
 
             // Start checkpoint session if checkpoint manager is available
             if (_checkpointManager != null)
@@ -255,6 +263,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
         try
         {
+            // A crew that remembers is refused before anything is asked of a model when its memory
+            // cannot work: no embedder, a refused key, an unreachable store, a vector of the wrong
+            // dimension (GAP-30). During the run, a memory that fails is only a warning.
+            if (crew.MemoryEnabled && _memoryCoordinator is not null)
+                await _memoryCoordinator.EnsureReadyAsync(crew.Id, cancellationToken).ConfigureAwait(false);
+
             // Planning (moved from Crew.KickoffAsync)
             var plan = await CreatePlanIfEnabledAsync(crew, domainInput).ConfigureAwait(false);
 
@@ -559,6 +573,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         var crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Crew {crewId.ToString()} not found");
 
+        // The streamed run is not wired to the crew's memory (GAP-30): it recalls nothing and
+        // stores nothing — said once, rather than a crew with memory: true silently forgetting.
+        if (crew.MemoryEnabled)
+            LogStreamingIgnoresMemory(crew.Name ?? crew.Id.ToString());
+
         try
         {
             await foreach (var ev in StreamCrewTasksAsync(crew, input, cancellationToken).ConfigureAwait(false))
@@ -690,6 +709,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "KickoffStreamingAsync is degrading to per-task replay — tool-call granularity is lost. No IStreamingAgentExecutionService (and/or IAgentRepository) is registered: call AddOrkeonInfrastructure() (which registers StreamingAgentExecutionService) with an IChatClient/LLM provider configured to stream AgentThought-level events.")]
     private partial void LogStreamingDegraded();
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{Crew}' has memory: true, but a streamed run neither recalls nor stores its memory; KickoffAsync does")]
+    private partial void LogStreamingIgnoresMemory(string crew);
     [LoggerMessage(Level = LogLevel.Warning, Message = "A handler of domain event {EventName} raised by crew {CrewId} failed; the run's result is unchanged")]
     private partial void LogDomainEventHandlerFailed(Exception ex, string eventName, CrewId crewId);
     [LoggerMessage(Level = LogLevel.Error, Message = "Cannot execute crew: CrewId is null")]

@@ -1,26 +1,33 @@
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Application.Memory;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.Memory;
 using Orkeon.Infrastructure.Memory.Cognitive;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Orkeon.Infrastructure.Tests.Memory.Cognitive;
 
-public class CognitiveMemoryIntegrationTests
+/// <summary>
+/// The cognitive memory end to end, over the real memory of a named crew — the host's default
+/// provider, In-Memory here, scoped by the crew's name (GAP-30).
+/// </summary>
+public sealed class CognitiveMemoryIntegrationTests : IDisposable
 {
     private static readonly float[] EmbeddingContradiction = [0.3f, 0.6f, 0.1f];
-    private static readonly float[] EmbeddingRecall = [0.1f, 0.2f, 0.3f];
 
-    private readonly MockMemoryService _memoryService;
-    private readonly MockMemoryProvider _memoryProvider;
+    private readonly InMemoryProvider _store = new();
+    private readonly CrewMemoryProviderRegistry _registry = new();
+    private readonly MemoryService _memoryService;
     private readonly MockEmbeddingProvider _embeddingProvider;
     private readonly MockLlmProvider _llmProvider;
     private readonly CognitiveMemoryService _service;
@@ -28,30 +35,33 @@ public class CognitiveMemoryIntegrationTests
 
     public CognitiveMemoryIntegrationTests()
     {
-        _memoryService = new MockMemoryService();
-        _memoryProvider = new MockMemoryProvider();
+        _memoryService = new MemoryService(new StubMemoryProviderFactory(_store), NullLogger<MemoryService>.Instance, _registry, _store);
+        _registry.Record(_crewId, providerType: null, "news-desk", memoryEnabled: true);
         _embeddingProvider = new MockEmbeddingProvider();
         _llmProvider = new MockLlmProvider();
         var options = Options.Create(new CognitiveMemoryOptions());
 
         var analyzer = new MemoryAnalyzer(_llmProvider, options, new MockLogger<MemoryAnalyzer>());
         var detector = new ContradictionDetector(_llmProvider, options, new MockLogger<ContradictionDetector>());
-        var consolidator = new MemoryConsolidator(_llmProvider, _memoryProvider, options, new MockLogger<MemoryConsolidator>());
+        var consolidator = new MemoryConsolidator(_llmProvider, _embeddingProvider, options, new MockLogger<MemoryConsolidator>());
         var scorer = new CompositeScorer(options);
 
         var analysisServices = new CognitiveAnalysisServices(analyzer, detector, consolidator, scorer);
         _service = new CognitiveMemoryService(
-            _memoryService, _memoryProvider, _embeddingProvider,
+            _memoryService, _embeddingProvider,
             analysisServices,
             options, new MockLogger<CognitiveMemoryService>());
     }
+
+    public void Dispose() => _memoryService.Dispose();
+
+    private ILongTermMemory CrewMemory => _memoryService.GetMemorySystem(_crewId).LongTerm;
 
     [Fact]
     public async Task Remember_ThenRecall_ReturnsWithHighScore()
     {
         // Arrange
-        var embedding = new float[] { 0.5f, 0.5f, 0.5f };
-        _embeddingProvider.SetEmbeddingResult(embedding);
+        _embeddingProvider.SetEmbeddingResult([0.5f, 0.5f, 0.5f]);
 
         // Analysis response
         var callCount = 0;
@@ -72,15 +82,9 @@ public class CognitiveMemoryIntegrationTests
         });
 
         // Remember
-        var remembered = await _service.RememberAsync(_crewId, "Orkeon is an AI agent framework", cancellationToken: TestContext.Current.CancellationToken);
+        await _service.RememberAsync(_crewId, "Orkeon is an AI agent framework", cancellationToken: TestContext.Current.CancellationToken);
 
-        // Setup for recall - return the stored item as a similar result
-        _memoryProvider.SetSearchSimilarResult(
-        [
-            new(remembered, 0.95f)
-        ]);
-
-        // Act - Recall
+        // Act - Recall, by vector, in the crew's memory
         var results = await _service.RecallAsync(_crewId, "AI agent framework", cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -93,9 +97,9 @@ public class CognitiveMemoryIntegrationTests
     public async Task Remember_Contradiction_ResolvesCorrectly()
     {
         // Arrange
-        var existingItem = MemoryItem.Create("The deadline is Friday", importance: 0.7f);
-        await _memoryProvider.StoreAsync(existingItem.Id, existingItem, TestContext.Current.CancellationToken);
-        _memoryService.SetSearchResult([existingItem]);
+        _embeddingProvider.SetEmbeddingResult(EmbeddingContradiction);
+        var existingItem = MemoryItem.Create("The deadline is Friday", embedding: EmbeddingContradiction, importance: 0.7f);
+        await CrewMemory.AddAsync(existingItem);
 
         var callCount = 0;
         _llmProvider.SetChatFunc((messages, config) =>
@@ -113,29 +117,22 @@ public class CognitiveMemoryIntegrationTests
                 Content = $$"""{"has_contradiction": true, "conflicting_ids": ["{{existingItem.Id}}"], "description": "Deadline changed", "resolution": "Use new deadline", "action": "keep_new"}"""
             };
         });
-        _embeddingProvider.SetEmbeddingResult(EmbeddingContradiction);
 
         // Act
         var result = await _service.RememberAsync(_crewId, "The deadline is Monday", cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("The deadline is Monday", result.Content);
-        Assert.True(_memoryProvider.DeleteCallCount >= 1); // Old memory deleted
+        Assert.Null(await _store.GetAsync(existingItem.Id.ToString(), TestContext.Current.CancellationToken)); // Old memory deleted
     }
 
     [Fact]
     public async Task Consolidate_MergesRedundantMemories()
     {
         // Arrange - create redundant memories
-        var embedding = new float[] { 1.0f, 0.0f, 0.0f };
-        var items = new List<MemoryItem>();
+        _embeddingProvider.SetEmbeddingResult([1.0f, 0.0f, 0.0f]);
         for (var i = 0; i < 5; i++)
-        {
-            var item = MemoryItem.Create($"Redundant fact version {i}", embedding: embedding, importance: 0.5f);
-            items.Add(item);
-            await _memoryProvider.StoreAsync(item.Id, item, TestContext.Current.CancellationToken);
-        }
-        _memoryService.SetSearchResult(items);
+            await CrewMemory.AddAsync(MemoryItem.Create($"Redundant fact version {i}", embedding: [1.0f, 0.0f, 0.0f], importance: 0.5f));
 
         _llmProvider.SetChatResult("Consolidated: single fact combining all versions");
 
@@ -143,7 +140,9 @@ public class CognitiveMemoryIntegrationTests
         var result = await _service.ConsolidateAsync(_crewId, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.True(result.MergedCount > 0 || result.UnchangedCount > 0);
+        Assert.Equal(5, result.MergedCount);
+        var remaining = await CrewMemory.SearchSimilarAsync([1.0f, 0.0f, 0.0f], 10, -1f, TestContext.Current.CancellationToken);
+        Assert.Equal("Consolidated: single fact combining all versions", Assert.Single(remaining).Item.Content);
     }
 
     [Fact]
@@ -161,7 +160,6 @@ public class CognitiveMemoryIntegrationTests
 
         // Register dependencies
         services.AddSingleton<ILlmProvider>(_llmProvider);
-        services.AddSingleton<IMemoryProvider>(_memoryProvider);
         services.AddSingleton<IEmbeddingProvider>(_embeddingProvider);
         services.AddSingleton<IMemoryService>(_memoryService);
         services.AddLogging();
@@ -170,7 +168,7 @@ public class CognitiveMemoryIntegrationTests
         services.AddOrkeonCognitiveMemory(configuration);
 
         // Act
-        var provider = services.BuildServiceProvider();
+        using var provider = services.BuildServiceProvider();
         var cognitiveService = provider.GetService<ICognitiveMemoryService>();
 
         // Assert
@@ -181,16 +179,10 @@ public class CognitiveMemoryIntegrationTests
     [Fact]
     public async Task RecallWithOptions_RespectsWeights()
     {
-        // Arrange
-        var highImportanceItem = MemoryItem.Create("Very important fact", importance: 1.0f);
-        var highSimilarityItem = MemoryItem.Create("Closely related fact", importance: 0.1f);
-
-        _memoryProvider.SetSearchSimilarResult(
-        [
-            new(highImportanceItem, 0.3f),   // low similarity, high importance
-            new(highSimilarityItem, 0.95f)   // high similarity, low importance
-        ]);
-        _embeddingProvider.SetEmbeddingResult(EmbeddingRecall);
+        // Arrange — the query is close to one memory, far from the other
+        _embeddingProvider.SetEmbeddingResult([1f, 0f]);
+        await CrewMemory.AddAsync(MemoryItem.Create("Very important fact", embedding: [0.3f, 0.954f], importance: 1.0f));
+        await CrewMemory.AddAsync(MemoryItem.Create("Closely related fact", embedding: [0.95f, 0.312f], importance: 0.1f));
 
         // Act - weight importance heavily
         var importanceWeighted = await _service.RecallAsync(_crewId, "test query", new RecallOptions
@@ -217,9 +209,9 @@ public class CognitiveMemoryIntegrationTests
         Assert.Equal(2, similarityWeighted.Count);
 
         // With importance weight, high importance item should be first
-        Assert.Equal(1.0f, importanceWeighted[0].ImportanceScore);
+        Assert.Equal("Very important fact", importanceWeighted[0].Item.Content);
 
         // With similarity weight, high similarity item should be first
-        Assert.Equal(0.95f, similarityWeighted[0].SemanticScore);
+        Assert.Equal("Closely related fact", similarityWeighted[0].Item.Content);
     }
 }

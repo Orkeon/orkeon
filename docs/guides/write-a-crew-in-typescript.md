@@ -250,7 +250,10 @@ const topic = (globalThis.inputs?.topic as string) ?? "coffee";
 … run examples/scripting/10-inputs-and-memory.ork.ts --inputs '{"topic":"orkeon"}'
 ```
 
-`ctx.memory.crew` and `ctx.memory.agent` are scoped key/value stores. What the run reports is
+`ctx.memory.crew` and `ctx.memory.agent` are scoped key/value stores of the script — not the crew's
+memory that `.memory(true)` turns on, which stores each task's result and recalls the closest ones before
+each task, run after run ([Memory system](../architecture/memory-system.md#a-crews-memory-provider-and-scope)).
+What the run reports is
 `globalThis.result` — assign it explicitly: a file with a top-level `await` runs wrapped in an
 async function, so its last expression is never the result, and a top-level `const result`
 stays local to the wrapper.

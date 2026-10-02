@@ -7,6 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a crew with `memory: true` recalls its earlier work before each task, and a memory that fails no longer fails the task **[breaking]**
+
+Every crew stored each successful output, whatever its `memory:` said, and nothing in a run read the
+memory back into a prompt (GAP-30, the four findings left by GAP-20):
+
+- **`memory:` is the switch.** With `memory: true` (`.memory(true)` in `.ork.ts`,
+  `CrewBuilder.EnableMemory()` in C#) a run stores the result of each task and, before each task,
+  recalls the crew's closest memories into its prompt; with `memory: false`, or no `memory:`, nothing
+  is stored or recalled and no memory system is materialized. The default is unchanged: off.
+  `memoryProvider:` without `memory: true` is refused, the remedy in the message — at load, and by
+  `Crew.Create` (so `CrewBuilder.Build()`) and `Crew.UpdateConfiguration`.
+- **A named crew that names no provider lives in the host's default store** (`Memory:Provider`,
+  In-Memory when unset), scoped by its name, as the aggregate's contract said. It lived in a store of
+  its own that did not outlast the run, so an `.ork.ts` crew — the DSL has no `memoryProvider` —
+  never kept anything. `orkeon-host` now remembers from one message to the next; `orkeon run` from one
+  process to the next only with a durable store (`memoryProvider: sqlite`, or a durable
+  `Memory:Provider`). An unnamed C# crew keeps a store of its own.
+- **The recall is a vector search in the crew's scope.** `AgentExecutionService` asks
+  `IMemoryCoordinator.RecallAsync` for the memories closest to the task — on the query of the
+  knowledge retrieval: description, expected output, variables — leaving out those the prompt already
+  carries as previous outputs. The user prompt renders them after the previous outputs and before the
+  retrieved knowledge, under `PromptDefaults.MemoriesHeader`, one `--- date · role · task ---` line
+  before each; the Guardian screens them with the rest of the prompt. The new `Orkeon:CrewMemory`
+  section (`CrewMemoryOptions`, bound by `AddOrkeonInfrastructure()`) bounds it: `RecallLimit` 5,
+  `MinScore` 0.6 (cosine, measured on the local model), `MaxChars` 4,000. A consensual candidate and a
+  hierarchical attempt recall — they answer the task; a ballot does not
+  (`SimpleExecutionContext.RecallFromMemory`, turned off by `AgentBallotCollector`).
+- **Every memory is embedded, and the embedder is checked at kickoff.** A memory is embedded on its
+  task and its output by the host's `IEmbeddingProvider`, the port of the RAG. Before its first LLM
+  call, a crew with `memory: true` embeds a probe and searches its memory once
+  (`IMemoryCoordinator.EnsureReadyAsync`): a missing embedder, a refused key, an unreachable store or
+  a vector of the wrong dimension fails the run, naming the crew, the cause and the remedies.
+- **A memory that fails during a run is a warning.** A store or a recall that fails is logged as a
+  `Warning` — the crew, the task, the agent, the store, the cause — and the task keeps its output; a
+  failed recall leaves it without memories. A failed store used to fail the task, its output lost, and
+  since GAP-03 the crew: on Pinecone and ChromaDB, every task. `ConsensualProcessStrategy` no longer
+  fails a retained answer it cannot store.
+- **`Hierarchical` stores the accepted output only**, once, under the assigned agent: every attempt
+  runs with `StoreResultInMemory` off — a task stored up to three outputs, all rejected when the
+  manager rejected them all. The revision contexts are derived (`with`), so their settings travel.
+- **Pinecone and ChromaDB stop faking.** Their `StoreAsync` refuses an item without an embedding
+  before any request (`ArgumentException`), as their collection paths did — they sent no vector, which
+  a real server rejects. Pinecone's `SearchAsync` throws `NotSupportedException`: it has no text
+  search, and sent an empty vector with an exact match on the content. ChromaDB's sends
+  `POST …/get` with `where_document: {"$contains": query}` and the filter as `where` — case-sensitive,
+  as the server matches; an empty query sends the filter alone — where it sent `query_texts`, which only
+  the clients serve. The `memory_provider` health check reads an absent key, which every provider
+  serves, where it searched by text.
+- **The cognitive memory works in the crew's memory** (`AddOrkeonCognitiveMemory`): it stores what it
+  remembers once — it stored it twice — stamped like the run's memories (`CrewMemoryScope`, now public),
+  so a crew has one memory. Recall, contradiction candidates and consolidation search it by similarity
+  within the crew's scope — the recall searched every crew's memories and the RAG chunks; a conflict is
+  resolved, and a consolidation merges and prunes, in the store the memories came from; a merged
+  memory is embedded.
+- **A forge trial runs without memory**, whatever the plan says: the promoted crew would recall the
+  trial's outputs as its earlier runs. **The streaming kickoff** (`KickoffStreamingAsync`) neither
+  recalls nor stores, and says so in a warning for a crew with `memory: true`.
+
+Breaking: a crew without `memory: true` stores nothing, one that names a `memoryProvider:` without it
+is refused, and one with it needs an embedder at kickoff. `IMemoryCoordinator` is reduced to
+`EnsureReadyAsync`, `RecallAsync` (which replaces `RetrieveRelevantMemoriesAsync`) and
+`StoreTaskResultAsync` — `StoreAgentExperienceAsync` and `UpdateWorkingMemoryAsync`, which nothing
+called, are removed; `MemoryCoordinator` requires the registry and takes the embedder and
+`IOptions<CrewMemoryOptions>`. `CrewMemoryProviderRegistry.Record` takes `memoryEnabled`, with
+`IsMemoryEnabled` and `GetName`. `ILongTermMemory` gains `SearchSimilarAsync` and `RemoveAsync`.
+`HierarchicalProcessStrategy` requires an `IMemoryCoordinator`; `SequentialCrewOrchestrator` takes an
+optional one, and `MemoryService` the application's `IMemoryProvider`. `CognitiveMemoryService` no
+longer takes an `IMemoryProvider`; `MemoryConsolidator` takes an `IEmbeddingProvider` in its place,
+and `ConsolidateAsync` the memories found (`ScoredMemoryItem`) with the memory they came from.
+[Known limitations](docs/reference/limitations.md) now say what the crew's memory does not do: no
+retention or reset, recall by vector only, durable only in a durable store.
+
+Migration: add `memory: true` to a crew that names a `memoryProvider:`, or drop the provider; give a
+host that runs a crew with memory an embedder — `AddOrkeonLocalEmbeddings()` or the
+`Orkeon:Embeddings` section; `orkeon run` and `orkeon-host` register the local model unless
+`RaggableTree:Enabled: false`, the REPL always — whose dimension is the store's (the local model gives
+384, LanceDB defaults to 1,536); store items with their embedding in Pinecone and ChromaDB, and search
+Pinecone with `SearchSimilarAsync`; implement the two new members in a custom `ILongTermMemory`; call
+`RecallAsync` where `RetrieveRelevantMemoriesAsync` was called; tune the recall in `Orkeon:CrewMemory`
+— `MinScore` is on the embedder's scale.
+
 ### Fixed — a call's configuration completes its provider's, `planning: true` plans, and the REPL's chat client has a key **[breaking]**
 
 A configuration passed with one LLM call replaced the provider's whole (`config ?? Config`), and every

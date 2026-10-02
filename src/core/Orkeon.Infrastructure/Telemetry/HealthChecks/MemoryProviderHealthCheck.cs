@@ -5,10 +5,15 @@ using Orkeon.Domain.Memory;
 namespace Orkeon.Infrastructure.Telemetry.HealthChecks;
 
 /// <summary>
-/// Health check that verifies memory provider connectivity by performing a test search.
+/// Health check that verifies memory provider connectivity by reading a key that does not exist —
+/// what all six providers serve, without walking the key space. It probed by text search, which
+/// Pinecone does not have and ChromaDB does not serve over HTTP (GAP-30).
 /// </summary>
 public class MemoryProviderHealthCheck : IHealthCheck
 {
+    /// <summary>The key the probe reads, which no entry is stored under.</summary>
+    private const string ProbeKey = "__health_check__";
+
     private readonly IMemoryProvider _memoryProvider;
 
     /// <summary>Initializes a new instance of <see cref="MemoryProviderHealthCheck"/>.</summary>
@@ -33,8 +38,8 @@ public class MemoryProviderHealthCheck : IHealthCheck
         try
         {
             var stopwatch = Stopwatch.StartNew();
-            // Perform a lightweight search to verify connectivity
-            await _memoryProvider.SearchAsync("__health_check__", limit: 1, cancellationToken: cancellationToken).ConfigureAwait(false);
+            // A read of an absent key: one round trip, whatever the provider
+            await _memoryProvider.GetAsync(ProbeKey, cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
             data["latency_ms"] = stopwatch.ElapsedMilliseconds;

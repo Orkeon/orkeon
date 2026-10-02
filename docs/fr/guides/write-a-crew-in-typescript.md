@@ -255,7 +255,10 @@ const topic = (globalThis.inputs?.topic as string) ?? "coffee";
 … run examples/scripting/10-inputs-and-memory.ork.ts --inputs '{"topic":"orkeon"}'
 ```
 
-`ctx.memory.crew` et `ctx.memory.agent` sont des stocks clé/valeur cloisonnés. Ce que le run
+`ctx.memory.crew` et `ctx.memory.agent` sont des stocks clé/valeur cloisonnés du script — pas la
+mémoire de la crew qu'active `.memory(true)`, qui range le résultat de chaque tâche et rappelle les plus
+proches avant chaque tâche, run après run ([Système de mémoire](../architecture/memory-system.md#la-mémoire-dune-crew--provider-et-portée)).
+Ce que le run
 rapporte, c'est `globalThis.result` — affectez-le explicitement : un fichier qui a un `await`
 de premier niveau s'exécute enveloppé dans une fonction async, si bien que sa dernière
 expression n'est jamais le résultat, et qu'un `const result` de premier niveau reste local à

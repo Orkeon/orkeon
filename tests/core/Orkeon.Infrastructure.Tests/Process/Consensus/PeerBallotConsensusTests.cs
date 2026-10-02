@@ -31,6 +31,7 @@ public sealed class PeerBallotConsensusTests
     private readonly MockAgentRepository _agents = new();
     private readonly FakeBallotCollector _ballots = new();
     private readonly MockMemoryCoordinator _memory = new();
+    private IMemoryCoordinator? _coordinator;
     private readonly ConcurrentQueue<SimpleExecutionContext> _contexts = new();
     private readonly ConcurrentDictionary<string, string> _failures = new(StringComparer.Ordinal);
 
@@ -95,17 +96,27 @@ public sealed class PeerBallotConsensusTests
     }
 
     [Fact]
-    public async Task A_retained_answer_the_memory_cannot_store_fails_the_task_as_in_every_other_mode()
+    public async Task A_retained_answer_the_memory_cannot_store_stays_the_task_result_with_a_warning()
     {
-        // In the other modes the store is part of the agent's execution (AgentExecutionService):
-        // a store that is down fails the task. The vote's answer is no exception.
-        _memory.Failure = new InvalidOperationException("the memory store is down");
+        // GAP-30: the retained answer is the deliverable, already paid for. A memory store that is
+        // down is a warning of the coordinator, as in every other mode — it used to fail the task,
+        // and so the crew and every task depending on it.
+        var crew = BuildCrew([Agent("alpha"), Agent("beta"), Agent("gamma")]);
+        var down = new MockMemoryProvider();
+        down.SetStoreException(new InvalidOperationException("the memory store is down"));
+        var registry = new Orkeon.Application.Memory.CrewMemoryProviderRegistry();
+        registry.Record(crew.Id, providerType: null, "review-board", memoryEnabled: true);
+        using var memory = new Orkeon.Application.Memory.MemoryService(
+            new StubMemoryProviderFactory(down), NullLogger<Orkeon.Application.Memory.MemoryService>.Instance, registry, down);
+        var warnings = new Orkeon.Infrastructure.Tests.TestDoubles.TestLogger<Orkeon.Application.Memory.MemoryCoordinator>();
+        _coordinator = new Orkeon.Application.Memory.MemoryCoordinator(warnings, memory, registry, new MockEmbeddingProvider());
         _ballots.Vote = request => FakeBallotCollector.Prefer(request, Answer("beta"));
 
-        var output = await RunAsync(Options(ConsensusType.Majority), Agent("alpha"), Agent("beta"), Agent("gamma"));
+        var output = await RunAsync(Options(ConsensusType.Majority), crew);
 
-        Assert.False(output.Success);
-        Assert.Contains("the memory store is down", output.Error, StringComparison.Ordinal);
+        Assert.True(output.Success, output.Error);
+        Assert.Equal(Answer("beta"), output.Output);
+        Assert.True(warnings.HasLoggedWarning("the memory store is down"), string.Join(Environment.NewLine, warnings.LoggedMessages));
     }
 
     [Fact]
@@ -414,7 +425,7 @@ public sealed class PeerBallotConsensusTests
         new VotingStrategyFactory(Microsoft.Extensions.Options.Options.Create(options)).Create(options.VotingOptions.ConsensusType),
         _ballots,
         new CrewStrategyDependencies(_tasks, _agents, _execution, new MockMemoryScope()),
-        _memory,
+        _coordinator ?? _memory,
         NullLogger<ConsensualProcessStrategy>.Instance,
         Microsoft.Extensions.Options.Options.Create(options));
 

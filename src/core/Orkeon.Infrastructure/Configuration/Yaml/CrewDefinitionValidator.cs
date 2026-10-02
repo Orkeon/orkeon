@@ -68,6 +68,16 @@ public static class CrewDefinitionValidator
 
         if (string.IsNullOrWhiteSpace(config.Goal))
             errors.Add("Crew goal is required.");
+
+        // memory: decides whether the crew remembers, memoryProvider: where (GAP-30): a provider
+        // named for a crew without memory would hold nothing.
+        if (!config.Memory && !string.IsNullOrWhiteSpace(config.MemoryProvider))
+        {
+            errors.Add(
+                $"memoryProvider: '{config.MemoryProvider}' needs memory: true — the provider holds what the crew " +
+                "remembers, and without memory: true (the default is false) the crew remembers nothing. " +
+                "Add memory: true, or remove memoryProvider:.");
+        }
     }
 
     private static void ValidateAgents(CrewConfiguration config, List<string> errors)

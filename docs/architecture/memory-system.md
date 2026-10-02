@@ -19,8 +19,8 @@ up to the limit, never fewer because entries the filter rejects filled the page:
 | In-Memory | In memory, on every item, before the limit; values compared case-insensitively |
 | Redis | On each item of the key-space scan, which stops at the limit; values compared case-insensitively |
 | SQLite | Matching rows read newest first and checked one by one until the limit; values compared case-insensitively |
-| ChromaDB | The query's `where` clause (`$eq` per key, under one `$and`); exact values |
-| Pinecone | The query's metadata filter (`$eq` per key, with the text condition, under one `$and`); exact values |
+| ChromaDB | The request's `where` clause (`$eq` per key, under one `$and`) — of the vector query, and of the `/get` that serves a text search; exact values |
+| Pinecone | The vector query's metadata filter (`$eq` per key); exact values. Pinecone has no text search: its `SearchAsync` throws `NotSupportedException` |
 | LanceDB | The query's SQL predicate, prefiltered; a custom property matches as its `"key":"value"` pair in `metadata_json` (exact, `LIKE` wildcards in values match loosely) |
 | `EncryptedMemoryProviderDecorator` | Passed to the wrapped provider: metadata is stored in clear |
 
@@ -49,8 +49,8 @@ Discover them with `provider.TryGetCapability<TCapability>(out var capability)` 
 | In-Memory | `InMemoryProvider` | `ConcurrentDictionary`, cosine vector search, development/tests |
 | Redis | `RedisMemoryProvider` | Keys prefixed `orkeon:memory:` by default, Polly retry policy (`ResiliencePolicies.GetRedisRetryPolicy`), camelCase JSON serialization. Options `RedisMemoryOptions` (`Orkeon:Redis`: `ConnectionString`, default `localhost:6379`; `KeyPrefix`). The connection opens on the first call, once, whatever the number of concurrent callers; an unreachable server surfaces as a `RedisConnectionException` on that call and the next call tries again |
 | SQLite | `SqliteMemoryProvider` | `Microsoft.Data.Sqlite`, local persistence (file or `:memory:`, default `Data Source=:memory:`), embeddings stored as BLOB, `LIKE` full-text search + cosine vector search (in-memory scan), identifiers and metadata preserved on read-back. A file `Data Source` is a **virtual path** resolved through the VFS and must lie on a writable mount (e.g. `Data Source=/output/orkeon-memory.db`), otherwise the constructor throws `FileAccessDeniedException` |
-| ChromaDB | `ChromaDbMemoryProvider` | REST API v2 (tenant/database routes), vector database |
-| Pinecone | `PineconeMemoryProvider` | Cloud vector database — `Api-Key` header. Requests go to the index host: `Orkeon:Pinecone:Host` when set, otherwise the `host` Pinecone returns for `IndexName` from one `describe_index` call (`GET https://api.pinecone.io/indexes/{IndexName}`) made on first use |
+| ChromaDB | `ChromaDbMemoryProvider` | REST API v2 (tenant/database routes), vector database. A record is added with its embedding only — `StoreAsync` refuses an item without one, before any request. A text search (`SearchAsync`) is a `/get` of the documents that contain the query (`where_document` `$contains`, case-sensitive as the server matches it), within the filter; an empty query sends the filter alone. The HTTP API has no text query: `query_texts` exists only in the clients, which embed it themselves |
+| Pinecone | `PineconeMemoryProvider` | Cloud vector database — `Api-Key` header. Requests go to the index host: `Orkeon:Pinecone:Host` when set, otherwise the `host` Pinecone returns for `IndexName` from one `describe_index` call (`GET https://api.pinecone.io/indexes/{IndexName}`) made on first use. A vector requires values: `StoreAsync` refuses an item without an embedding, before any request. Search by vector (`SearchSimilarAsync`): `SearchAsync` throws `NotSupportedException` — there is no text search to serve it |
 | LanceDB | `LanceDbMemoryProvider` | Remote LanceDB Cloud/Enterprise server — REST + Arrow IPC, **server-side** vector and full-text search |
 
 ## LanceDB (real remote integration)
@@ -202,7 +202,8 @@ In-Memory with an explicit warning; `SupportedTypes` lists the aliases.
 
 `AddOrkeonInfrastructure()` binds the five sections and registers `IMemoryProviderFactory` and the
 `IMemoryProvider` singleton, whose type is `Memory:Provider` (unset → In-Memory). `Memory:Provider`
-holds the type only; the connection is the section of the chosen provider.
+holds the type only; the connection is the section of the chosen provider. It is also where the memory
+of a named crew that declares no `memoryProvider:` lives ([below](#a-crews-memory-provider-and-scope)).
 
 ### Dependency-injection extensions
 
@@ -220,47 +221,134 @@ extensions make the shared provider injectable by its class, next to whatever `M
 
 ### A crew's memory: provider and scope
 
-A crew can declare its own provider via `memoryProvider` in YAML (or `CrewBuilder.WithMemoryProvider`).
-The selection travels to the run rather than being fixed globally by `Memory:Provider` config:
+`memory:` decides whether a crew remembers — `memory: true` in YAML, `.memory(true)` in `.ork.ts`,
+`CrewBuilder.EnableMemory()` in C#; off by default in all three, as in CrewAI:
 
-1. `memoryProvider` maps into `CrewConfiguration.MemoryProvider`, which `CrewFactory` carries onto the
-   domain `Crew` aggregate (`Crew.MemoryProvider`), with the crew's name (`Crew.Name`: the `name:` of
-   its configuration — YAML file, crew directory, `.ork.ts` crew — or `CrewBuilder.Name` in C#).
-2. At kickoff the orchestrator records both in the singleton `CrewMemoryProviderRegistry`
-   (`Record(crewId, providerType, crewName)`; keyed by crew, so selections never leak across crews).
-3. When `MemoryService` materializes that crew's memory system, it asks `MemoryProviderFactory` for
-   that type's shared provider — connected from the host's section — and backs the crew's
-   **long-term** memory with it (short-term memory stays an in-process sliding window). Unknown types
-   keep the factory's In-Memory-with-warning fallback.
+- **`memory: true`**: the crew stores the result each task keeps, and recalls its memories before each
+  task ([below](#what-a-crew-recalls)).
+- **`memory: false`, or no `memory:`**: nothing is stored, nothing is recalled, and no memory system is
+  materialized for the crew.
+
+`memoryProvider:` says **where** a crew's memory lives, and needs `memory: true`: a provider named for a
+crew without memory is refused — at load (`memoryProvider: 'sqlite' needs memory: true …`), and by
+`Crew.Create(CrewCreateOptions)` / `CrewBuilder.Build()` in C#, both naming the remedy.
+
+1. `memory` and `memoryProvider` map into `CrewConfiguration.Memory` / `.MemoryProvider`, which
+   `CrewFactory` carries onto the domain `Crew` aggregate (`Crew.MemoryEnabled`, `Crew.MemoryProvider`),
+   with the crew's name (`Crew.Name`: the `name:` of its configuration — YAML file, crew directory,
+   `.ork.ts` crew — or `CrewBuilder.Name` in C#).
+2. At kickoff the orchestrator records all three in the singleton `CrewMemoryProviderRegistry`
+   (`Record(crewId, providerType, crewName, memoryEnabled)`; keyed by crew, so selections never leak
+   across crews; `IsMemoryEnabled(crewId)` is what the run asks).
+3. When `MemoryService` materializes that crew's memory system, it backs the crew's **long-term** memory
+   (short-term memory stays an in-process sliding window) with:
+   - the shared provider of the type the crew declared, from `MemoryProviderFactory` — connected from the
+     host's section; unknown types keep the factory's In-Memory-with-warning fallback;
+   - else, for a **named** crew, the host's default provider — the application-wide `IMemoryProvider`,
+     whose type is `Memory:Provider` (In-Memory when unset);
+   - else — a crew built in C# without a name — an in-process store of its own, which ends with the run:
+     scoped by an id no later run will carry, it would be read by nobody.
 
 `memoryProvider:` is a type and nothing more: `memoryProvider: "Redis"` connects with `Orkeon:Redis`,
 `"SQLite"` with `Orkeon:Sqlite` (an in-process `:memory:` database when that section is absent).
 
+What it means for the shipped hosts: `orkeon-host` remembers from one message to the next — its In-Memory
+store lives as long as the daemon —, while `orkeon run` remembers from one process to the next only with a
+durable provider: `memoryProvider: sqlite` (or Redis, a vector database), or a durable `Memory:Provider`.
+On In-Memory, a crew's memory lives in RAM for the life of the process.
+
 **The scope is the crew's name.** The provider instance is shared — by every crew of that type, and
 by the RAG store of that type: with `Orkeon:Rag:Provider` unset the RAG store is the ambient provider,
 whose chunks, manifests and registries live in the same key space. Every entry a crew's long-term
-memory stores carries two custom properties, `kind = crew-memory` and `crew = <the crew's name>`, and
-every search of that memory asks the provider for both ([metadata filter](#metadata-filter), applied
-before the limit). A crew therefore reads what it stored, in this run and in the earlier runs of a
-crew of that name — which is what makes the memory durable — and never another crew's entries, nor a
-RAG chunk. A crew without a name (built in C# without `CrewBuilder.Name`) is scoped by its id: its
-memory lasts one run. Two crews of one name share their memory — on In-Memory, Redis and SQLite, two
-names that differ only by case as well. `MemoryCoordinator` also tags each memory it saves
-`crew:<name>` (the crew id when unnamed).
+memory stores carries two custom properties, `kind = crew-memory` and `crew = <the crew's name>`
+(`CrewMemoryScope`: `Stamp(item, scope)`, `Filter(scope)`), and every search of that memory asks the
+provider for both ([metadata filter](#metadata-filter), applied before the limit). A crew therefore reads
+what it stored, in this run and in the earlier runs of a crew of that name — which is what makes the
+memory durable — and never another crew's entries, nor a RAG chunk. A crew without a name (built in C#
+without `CrewBuilder.Name`) is scoped by its id: its memory lasts one run. Two crews of one name share
+their memory — on In-Memory, Redis and SQLite, two names that differ only by case as well.
+`MemoryCoordinator` also tags each memory it saves `crew:<name>` (the crew id when unnamed).
 
 Clearing a crew's memory (`IMemoryService.ClearMemoryAsync`) deletes the entries that memory system
 stored — the current run's — never the rest of the shared store, and releasing it never disposes the
-shared provider.
+shared provider. There is no retention: a crew's memory grows by one entry per task that succeeds, run
+after run, and no verb resets it.
 
-A crew that declares no `memoryProvider` uses an in-process store of its own, which ends with the run.
+**What is stored.** After each task that succeeds, its output — exactly the task's output, under the agent
+that wrote it (`IMemoryCoordinator.StoreTaskResultAsync`) —, embedded on its task (the description, with
+the run's variables in it) and the start of its output (1,000 characters), with the custom properties
+`agent_id`, `agent_role`, `task_id`, `task_description` and `stored_at`. Only what a task keeps:
 
-**What is stored.** After each task that succeeds, the agent's output, under that agent
-(`IMemoryCoordinator.StoreTaskResultAsync`). In `Consensual` mode only the answer the vote retained is
-a task result: the candidate answers and the ballots run with
-`SimpleExecutionContext.StoreResultInMemory` off, and the strategy stores the retained answer once,
-under the agent that wrote it ([Process types](../orchestration/process-types.md#4-consensual--voting-and-consensus)).
-No shipped run reads this memory back into a prompt — a C# host reads it through `IMemoryService`
-(see [Known limitations](../reference/limitations.md)).
+- in `Consensual` mode, the answer the vote retained: the candidate answers and the ballots run with
+  `SimpleExecutionContext.StoreResultInMemory` off, and the strategy stores the retained answer once,
+  under the agent that wrote it ([Process types](../orchestration/process-types.md#4-consensual--voting-and-consensus));
+- in `Hierarchical` mode, the output the manager accepted: each attempt runs with
+  `StoreResultInMemory` off, and the strategy stores the accepted one once, under the agent it was
+  assigned to — nothing when the manager rejects all three, nor when the worker fails
+  ([Process types](../orchestration/process-types.md#2-hierarchical--manager--workers));
+- never a ballot, never a forge trial ([Forge](../getting-started/forge-a-team-from-a-need.md)).
+
+#### What a crew recalls
+
+Before each task, `AgentExecutionService` asks `IMemoryCoordinator.RecallAsync` for the crew's memories
+closest to the task, and the user prompt carries them:
+
+- **The query** is the task the way the knowledge retrieval sees it: its description and expected output,
+  with the run's variables. A memory is embedded on its own task and output, so the same task of an
+  earlier run comes first.
+- **The search** is by vector, in the crew's scope: the provider's `SearchSimilarAsync` with the `kind`
+  and `crew` filter (on the in-process store of an unnamed crew, a cosine computed in process).
+- **What is left out**: a memory equal to one of the outputs the prompt already carries from this run.
+  The recall asks for as many more results as there are previous outputs, so it still returns
+  `RecallLimit` memories when the crew has that many others; a content recalled twice is kept once.
+- **The bounds** come from the `Orkeon:CrewMemory` section (`CrewMemoryOptions`, bound by
+  `AddOrkeonInfrastructure()`): `RecallLimit` 5 memories, `MinScore` 0.6 (cosine), `MaxChars` 4,000
+  characters of memory content in all — the last memory that does not fit is cut, the next ones dropped.
+  `MinScore` is on the embedder's scale; 0.6 was measured on the local model (BGE-micro-v2), where the
+  same task of an earlier run scores 0.72 and above, an unrelated English task 0.53 and below, and related
+  work in between (0.59 to 0.72). The query carries the run's variables: a long input sharing the memory's
+  subject lifted an unrelated task to 0.61. That model reads English: a French text scores high whatever
+  it says (0.67 for an unrelated pair). Another embedder needs its own measure.
+- **The format**: a section of the user prompt, after the previous task results and before the retrieved
+  knowledge — the header *From this crew's memory — earlier work, possibly outdated; use it only where it
+  helps:*, then for each memory a `--- 2026-09-30 · Analyst · Summarize the weekly news ---` line (when it
+  was stored, the agent's role, the task cut to 80 characters) followed by its content. The Guardian
+  screens it with the rest of the prompt (input phase).
+- **Who recalls**: every execution that answers a task — a consensual candidate, a hierarchical attempt —
+  but no ballot (`AgentBallotCollector` runs it with `SimpleExecutionContext.RecallFromMemory` off).
+
+A crew relaunched without being reloaded — the C# `KickoffAsync` loop, the fixed-crew `CrewAgent` —
+finds its earlier turns the same way: what is excluded is only what the prompt already carries.
+
+#### The embedder, and failures
+
+Every memory is embedded when it is stored, and every recall embeds its query, with the host's
+`IEmbeddingProvider` — the port of the RAG: the local model, which `orkeon run` and `orkeon-host`
+register through the `RaggableTree` section (`RaggableTree:Enabled: false` removes it) and the REPL
+always, else the `Orkeon:Embeddings` section. Pinecone and ChromaDB therefore receive the vector they require.
+
+A crew with `memory: true` is checked **before its first LLM call**: the orchestrator calls
+`IMemoryCoordinator.EnsureReadyAsync`, which embeds a probe text and searches the crew's memory once. A
+missing embedder, a refused key, an unreachable store or a vector of the wrong dimension fails the crew
+there, the crew's name and the cause in its error. The store's dimension must be the embedder's: LanceDB
+is created at 1,536 by default (`Orkeon:LanceDb:EmbeddingDimension`) where the local model gives 384, and
+a Pinecone index's dimension is fixed when it is created.
+
+During the run, a memory that fails is a warning, never a failed task: a store or a recall that throws is
+logged at `Warning` with the crew, the task, the agent, the store and the cause; the task keeps its output,
+and a recall that failed leaves it without memories. A cancellation is never swallowed. The rule lives in
+`MemoryCoordinator`, the one entry point of the run's memory.
+
+Embedding calls are not counted by the token meter ([Known limitations](../reference/limitations.md)).
+
+#### What is not wired
+
+- **The streaming kickoff** (`KickoffStreamingAsync`, a C# API no shipped host calls) neither recalls
+  nor stores a crew's memory — it ignores knowledge attachments too. A crew with `memory: true` gets a
+  warning saying so; `KickoffAsync` does both.
+- **No LLM in the recall**: no fact extraction, no LLM-ranked recall, no composite recency/importance
+  score (CrewAI's): the recall is vector-only. The [cognitive memory](#cognitive-memory) is the C# option
+  that analyses with an LLM.
 
 ## Encryption at rest
 
@@ -283,8 +371,9 @@ AES-256-GCM `IEncryptionProvider` registered by `AddOrkeonInfrastructure()`
 The cognitive subsystem (`Orkeon.Infrastructure.Memory.Cognitive`, opt-in
 `AddOrkeonCognitiveMemory(configuration)`) layers `ICognitiveMemoryService` — an `IMemoryService`
 extended with `RememberAsync`, `RecallAsync`, `ConsolidateAsync`, `AnalyzeAsync` and
-`CheckContradictionsAsync` — over the memory provider. It needs an `ILlmProvider` (analysis) and
-an `IEmbeddingProvider` (recall). Its result types live in the Domain (`CognitiveMemoryTypes.cs`):
+`CheckContradictionsAsync` — over the crew's memory. It needs an `ILlmProvider` (analysis) and
+an `IEmbeddingProvider` (every remembered item, recall query and merged memory is embedded). Its result
+types live in the Domain (`CognitiveMemoryTypes.cs`):
 
 - `MemoryAnalysis` — LLM-scored importance (0.0-1.0), categorization, entity extraction (`MemoryAnalyzer`);
 - `ContradictionCheck` + `ConflictResolution` — conflict detection between memories (`ContradictionDetector`);
@@ -292,6 +381,24 @@ an `IEmbeddingProvider` (recall). Its result types live in the Domain (`Cognitiv
   recency 0.3 + importance 0.2 by default (`RecallOptions.SemanticWeight`/`RecencyWeight`/`ImportanceWeight`,
   plus `TopK` 10 and `MinScore` 0.1); recency decays with a half-life of `RecencyHalfLifeHours`;
 - `ConsolidationResult` — consolidation, pruning and conflict resolution (`MemoryConsolidator`).
+
+It works in **the crew's own memory**: the long-term memory `IMemoryService` materializes for the crew —
+its declared provider, else the host's default one for a named crew, scoped by its name
+([above](#a-crews-memory-provider-and-scope)); an in-process store for a crew without a name. So a crew has
+one memory: what it remembered is stamped `kind = crew-memory` and `crew = <scope>` like the memories its
+runs store — its runs recall it, and its recall finds theirs —, and no other crew's memory, nor a RAG
+chunk of the same store, ever comes back. The scope is the one the crew's kickoff recorded: before its
+first kickoff, a crew id is a crew without a name.
+
+- `RememberAsync` stores the item **once**, in that memory.
+- `RecallAsync` and the contradiction candidates search it **by similarity**, within the scope.
+- A conflict is resolved **where its candidates came from**: the memories to keep, remove or merge are
+  the candidates the detector was shown, removed from the crew's memory by the key it returned; a merged
+  memory is embedded and stored there.
+- `ConsolidateAsync` finds the crew's memories by similarity within the scope, with no score floor (up to
+  1,000 of them — what Pinecone answers to one query), clusters them by cosine, stores each merged memory
+  embedded and removes what it replaces, in the same memory. A memory that comes back without its vector
+  (ChromaDB returns none with a similarity match) stays a cluster of its own.
 
 Options (`Orkeon:CognitiveMemory`, `CognitiveMemoryOptions`): `EnableLlmAnalysis` (`true`),
 `EnableContradictionDetection` (`true`), `ContradictionCandidateCount` (10), `AnalysisModel`

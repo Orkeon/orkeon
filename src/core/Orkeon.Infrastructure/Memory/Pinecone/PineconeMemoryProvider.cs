@@ -68,17 +68,28 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// A Pinecone vector requires values: an item without an embedding is refused before any
+    /// request, as the namespace path refuses it (GAP-30) — sent with <c>values: []</c>, it was
+    /// rejected by a real index.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The item carries no embedding.</exception>
     public override async Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
     {
         ValidateKey(key);
         ValidateMemoryItem(item);
+        if (item.Embedding is not { Count: > 0 } embedding)
+        {
+            throw new ArgumentException(
+                $"Item '{key}' carries no embedding — Pinecone vectors require values.", nameof(item));
+        }
 
         try
         {
             var vector = new PineconeVector
             {
                 Id = key,
-                Values = item.Embedding?.ToArray() ?? [],
+                Values = [.. embedding],
                 Metadata = BuildMetadata(item)
             };
 
@@ -194,7 +205,12 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Pinecone has no text search: it answers vector queries only. Refused rather than faked — the
+    /// provider used to send an empty vector with an exact match on the content, which no real
+    /// index serves (GAP-30). Search by vector with <see cref="SearchSimilarAsync"/>.
+    /// </summary>
+    /// <exception cref="NotSupportedException">Always.</exception>
     public override Task<IEnumerable<MemoryItem>> SearchAsync(
         string query,
         int limit = MemoryDefaults.DefaultSearchLimit,
@@ -202,67 +218,8 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-
-        if (string.IsNullOrWhiteSpace(query))
-            return Task.FromResult<IEnumerable<MemoryItem>>(Array.Empty<MemoryItem>());
-
-        return SearchAsyncCore(query, limit, filter, cancellationToken);
-    }
-
-    private async Task<IEnumerable<MemoryItem>> SearchAsyncCore(
-        string query,
-        int limit,
-        Dictionary<string, object>? filter,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            // Pinecone requires a vector for querying. For text-based search,
-            // the caller should provide embeddings via the item. Here we search
-            // by metadata filter as a fallback when no embedding is available.
-            var payload = new
-            {
-                // Use a zero vector as placeholder; real usage should provide embeddings
-                vector = Array.Empty<float>(),
-                topK = limit,
-                includeMetadata = true,
-                includeValues = true,
-                @namespace = _options.Namespace,
-                filter = BuildTextSearchFilter(query, filter)
-            };
-
-            var response = await _httpClient.PostAsJsonAsync(
-                await IndexUriAsync("/query", cancellationToken).ConfigureAwait(false),
-                payload,
-                s_jsonOptions,
-                cancellationToken).ConfigureAwait(false);
-
-            response.EnsureSuccessStatusCode();
-
-            var result = await response.Content.ReadFromJsonAsync<PineconeQueryResponse>(s_jsonOptions, cancellationToken).ConfigureAwait(false);
-
-            if (result?.Matches == null || result.Matches.Count == 0)
-            {
-                LogNoResultsFoundForQuery();
-                return Array.Empty<MemoryItem>();
-            }
-
-            var items = new List<MemoryItem>();
-            foreach (var match in result.Matches)
-            {
-                var item = BuildMemoryItem(match);
-                if (item != null)
-                    items.Add(item);
-            }
-
-            LogFoundMemoryItemsInPinecone(items.Count);
-            return items;
-        }
-        catch (Exception ex)
-        {
-            LogException(ex, "SearchAsync");
-            throw;
-        }
+        throw new NotSupportedException(
+            "Pinecone has no text search: search by vector with SearchSimilarAsync.");
     }
 
     /// <inheritdoc />
@@ -431,7 +388,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
 
                 var item = BuildMemoryItem(match);
                 if (item != null)
-                    scored.Add(new ScoredMemoryItem(item, match.Score));
+                    scored.Add(new ScoredMemoryItem(item, match.Score, match.Id));
             }
 
             var results = scored
@@ -447,24 +404,6 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
             LogException(ex, "SearchSimilarAsync");
             throw;
         }
-    }
-
-    /// <summary>
-    /// The metadata filter of a text search: the content condition and, under one <c>$and</c>, the
-    /// caller's equality conditions — the index applies them all before <c>topK</c> (GAP-20).
-    /// </summary>
-    private static Dictionary<string, object> BuildTextSearchFilter(string query, Dictionary<string, object>? filter)
-    {
-        var content = new Dictionary<string, object> { ["content"] = new Dictionary<string, object> { ["$eq"] = query } };
-        if (filter is null || filter.Count == 0)
-            return content;
-
-        var conditions = new List<Dictionary<string, object>> { content };
-        conditions.AddRange(filter.Select(entry => new Dictionary<string, object>
-        {
-            [entry.Key] = new Dictionary<string, object> { ["$eq"] = entry.Value },
-        }));
-        return new Dictionary<string, object> { ["$and"] = conditions };
     }
 
     /// <summary>
@@ -785,12 +724,6 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Deleted memory item with key: {Key} from Pinecone, Success: {Success}")]
     private partial void LogDeletedMemoryItemWithKey(object key, bool success);
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "No results found for query in Pinecone")]
-    private partial void LogNoResultsFoundForQuery();
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Found {Count} memory items in Pinecone")]
-    private partial void LogFoundMemoryItemsInPinecone(int count);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Cleared all memory items from Pinecone namespace: {Namespace}")]
     private partial void LogClearedAllMemoryItemsFrom(object @namespace);

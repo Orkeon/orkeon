@@ -6,6 +6,12 @@ using Microsoft.Extensions.Options;
 
 namespace Orkeon.Infrastructure.Tests.Memory.Cognitive;
 
+/// <summary>
+/// The consolidator clusters a crew's memories by similarity, merges a cluster through the LLM and
+/// prunes low-value memories — in the memory it is given, the crew's (GAP-30): the merged memory is
+/// embedded and added there, and what it replaces or prunes is removed there by the key that memory
+/// returned.
+/// </summary>
 public class MemoryConsolidatorTests
 {
     private static readonly float[] EmbeddingUnit3 = [1.0f, 0.0f, 0.0f];
@@ -23,19 +29,24 @@ public class MemoryConsolidatorTests
     private static readonly float[] EmbeddingOrth6_5 = [0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f];
 
     private readonly MockLlmProvider _llmProvider;
-    private readonly MockMemoryProvider _memoryProvider;
+    private readonly MockEmbeddingProvider _embeddingProvider;
+    private readonly RecordingLongTermMemory _memory = new();
     private readonly MemoryConsolidator _consolidator;
     private readonly CognitiveMemoryOptions _cognitiveOptions;
 
     public MemoryConsolidatorTests()
     {
         _llmProvider = new MockLlmProvider();
-        _memoryProvider = new MockMemoryProvider();
+        _embeddingProvider = new MockEmbeddingProvider();
         _cognitiveOptions = new CognitiveMemoryOptions();
         var options = Options.Create(_cognitiveOptions);
         var logger = new MockLogger<MemoryConsolidator>();
-        _consolidator = new MemoryConsolidator(_llmProvider, _memoryProvider, options, logger);
+        _consolidator = new MemoryConsolidator(_llmProvider, _embeddingProvider, options, logger);
     }
+
+    /// <summary>The memories as a search of the crew's memory returns them: scored, keyed.</summary>
+    private static List<ScoredMemoryItem> Found(IEnumerable<MemoryItem> items) =>
+        [.. items.Select(item => new ScoredMemoryItem(item, 1f, $"key-{item.Id}"))];
 
     [Fact]
     public async Task ConsolidateAsync_FewItems_SkipsConsolidation()
@@ -49,7 +60,7 @@ public class MemoryConsolidatorTests
         };
 
         // Act
-        var result = await _consolidator.ConsolidateAsync(items, CancellationToken.None);
+        var result = await _consolidator.ConsolidateAsync(Found(items), _memory, CancellationToken.None);
 
         // Assert
         Assert.Equal(0, result.MergedCount);
@@ -64,41 +75,35 @@ public class MemoryConsolidatorTests
     {
         var items = new List<MemoryItem>();
         for (var i = 0; i < 5; i++)
-        {
-            var item = MemoryItem.Create($"Similar content {i}", embedding: EmbeddingUnit3, importance: 0.5f);
-            items.Add(item);
-            await _memoryProvider.StoreAsync(item.Id, item, TestContext.Current.CancellationToken);
-        }
+            items.Add(MemoryItem.Create($"Similar content {i}", embedding: EmbeddingUnit3, importance: 0.5f));
         _llmProvider.SetChatResult("Merged: All similar content combined");
 
-        await _consolidator.ConsolidateAsync(items, CancellationToken.None);
+        await _consolidator.ConsolidateAsync(Found(items), _memory, CancellationToken.None);
 
         Assert.Equal(string.Empty, _llmProvider.LastChatConfig!.Model);
     }
 
     [Fact]
-    public async Task ConsolidateAsync_MergesRedundantCluster()
+    public async Task ConsolidateAsync_MergesRedundantCluster_into_one_embedded_memory_and_removes_what_it_replaces()
     {
         // Arrange - create items with identical embeddings (will cluster together)
-        var embedding = EmbeddingUnit3;
         var items = new List<MemoryItem>();
-
         for (var i = 0; i < 5; i++)
-        {
-            var item = MemoryItem.Create($"Similar content {i}", embedding: embedding, importance: 0.5f);
-            items.Add(item);
-            await _memoryProvider.StoreAsync(item.Id, item, TestContext.Current.CancellationToken);
-        }
+            items.Add(MemoryItem.Create($"Similar content {i}", embedding: EmbeddingUnit3, importance: 0.5f));
 
         _llmProvider.SetChatResult("Merged: All similar content combined");
+        _embeddingProvider.SetEmbeddingResult(EmbeddingMixed);
 
         // Act
-        var result = await _consolidator.ConsolidateAsync(items, CancellationToken.None);
+        var result = await _consolidator.ConsolidateAsync(Found(items), _memory, CancellationToken.None);
 
         // Assert
-        Assert.True(result.MergedCount > 0);
-        Assert.NotEmpty(result.CreatedMemoryIds);
-        Assert.True(_llmProvider.ChatCallCount > 0);
+        Assert.Equal(5, result.MergedCount);
+        var merged = Assert.Single(_memory.Added);
+        Assert.Equal("Merged: All similar content combined", merged.Content);
+        Assert.Equal(EmbeddingMixed, merged.Embedding);
+        Assert.Equal(merged.Id.ToString(), Assert.Single(result.CreatedMemoryIds));
+        Assert.Equal(items.Select(item => $"key-{item.Id}"), _memory.Removed);
     }
 
     [Fact]
@@ -114,20 +119,18 @@ public class MemoryConsolidatorTests
             MemoryItem.Create("Low 4", embedding: EmbeddingLow4, importance: 0.05f),
         };
 
-        foreach (var item in items)
-            await _memoryProvider.StoreAsync(item.Id, item, TestContext.Current.CancellationToken);
-
         // Override pruning settings to prune recent items too
         var opts = new CognitiveMemoryOptions { PruningMinAgeDays = 0 };
         var consolidator = new MemoryConsolidator(
-            _llmProvider, _memoryProvider, Options.Create(opts),
+            _llmProvider, _embeddingProvider, Options.Create(opts),
             new MockLogger<MemoryConsolidator>());
 
         // Act
-        var result = await consolidator.ConsolidateAsync(items, CancellationToken.None);
+        var result = await consolidator.ConsolidateAsync(Found(items), _memory, CancellationToken.None);
 
         // Assert
-        Assert.True(result.PrunedCount > 0);
+        Assert.Equal(5, result.PrunedCount);
+        Assert.Equal(items.Select(item => $"key-{item.Id}"), _memory.Removed);
     }
 
     [Fact]
@@ -145,16 +148,15 @@ public class MemoryConsolidatorTests
             MemoryItem.Create("Unique topic", embedding: EmbeddingMixed, importance: 0.9f)
         };
 
-        foreach (var item in items)
-            await _memoryProvider.StoreAsync(item.Id, item, TestContext.Current.CancellationToken);
-
         _llmProvider.SetChatResult("Merged content from cluster");
 
         // Act
-        var result = await _consolidator.ConsolidateAsync(items, CancellationToken.None);
+        var result = await _consolidator.ConsolidateAsync(Found(items), _memory, CancellationToken.None);
 
         // Assert
-        Assert.NotEmpty(result.CreatedMemoryIds);
+        Assert.Equal(2, result.CreatedMemoryIds.Count);
+        Assert.Equal(2, _memory.Added.Count);
+        Assert.Equal(4, _memory.Removed.Count);
     }
 
     [Fact]
@@ -172,11 +174,12 @@ public class MemoryConsolidatorTests
         };
 
         // Act
-        var result = await _consolidator.ConsolidateAsync(items, CancellationToken.None);
+        var result = await _consolidator.ConsolidateAsync(Found(items), _memory, CancellationToken.None);
 
         // Assert
         Assert.Equal(0, result.MergedCount);
         Assert.Equal(0, result.PrunedCount);
         Assert.Equal(6, result.UnchangedCount);
+        Assert.Empty(_memory.Removed);
     }
 }

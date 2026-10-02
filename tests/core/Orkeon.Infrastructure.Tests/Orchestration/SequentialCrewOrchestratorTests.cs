@@ -231,6 +231,7 @@ public class SequentialCrewOrchestratorTests
         {
             Goal = "Test crew",
             ProcessType = ProcessType.Sequential,
+            MemoryEnabled = true,
             MemoryProvider = "redis"
         });
         crew.AddAgent(AgentId.Create());
@@ -242,6 +243,7 @@ public class SequentialCrewOrchestratorTests
 
         // Assert
         Assert.Equal("redis", registry.GetProvider(crew.Id));
+        Assert.True(registry.IsMemoryEnabled(crew.Id));
     }
 
     [Fact]
@@ -260,6 +262,7 @@ public class SequentialCrewOrchestratorTests
             Goal = "Test crew",
             Name = "legal-watch",
             ProcessType = ProcessType.Sequential,
+            MemoryEnabled = true,
             MemoryProvider = "sqlite"
         });
         crew.AddAgent(AgentId.Create());
@@ -292,6 +295,81 @@ public class SequentialCrewOrchestratorTests
         await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
 
         Assert.Null(registry.GetProvider(crew.Id));
+        Assert.False(registry.IsMemoryEnabled(crew.Id));
+    }
+
+    [Fact]
+    public async Task KickoffAsync_records_that_a_crew_without_memory_does_not_remember()
+    {
+        // GAP-30: memory: decides; a name alone stores nothing.
+        var repository = new TestCrewRepository();
+        var registry = new CrewMemoryProviderRegistry();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(),
+            new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
+            memoryProviderRegistry: registry);
+        var crew = DomainCrew.Create(new CrewCreateOptions { Goal = "Test crew", Name = "legal-watch", ProcessType = ProcessType.Sequential });
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.False(registry.IsMemoryEnabled(crew.Id));
+        Assert.Equal("legal-watch", registry.GetScope(crew.Id));
+    }
+
+    [Fact]
+    public async Task A_crew_whose_memory_cannot_work_fails_before_its_first_task_with_the_cause()
+    {
+        // GAP-30: no embedder, a refused key, an unreachable store — the run is refused before
+        // anything is asked of a model, saying why.
+        var repository = new TestCrewRepository();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var executed = false;
+        strategyFactory.Strategy.OnExecute = () => executed = true;
+        var memory = new MockMemoryCoordinator
+        {
+            NotReady = new InvalidOperationException("Crew 'legal-watch' has memory: true, but its memory cannot be used: no embedding provider is registered."),
+        };
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), strategyFactory,
+            new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
+            memoryProviderRegistry: new CrewMemoryProviderRegistry(), memoryCoordinator: memory);
+        var crew = DomainCrew.Create(new CrewCreateOptions
+        {
+            Goal = "Test crew", Name = "legal-watch", ProcessType = ProcessType.Sequential, MemoryEnabled = true,
+        });
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        var output = await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.False(output.Succeeded);
+        Assert.Contains("no embedding provider is registered", output.Error, StringComparison.Ordinal);
+        Assert.Equal(crew.Id, Assert.Single(memory.ReadinessChecks));
+        Assert.False(executed);
+    }
+
+    [Fact]
+    public async Task A_crew_without_memory_is_not_checked()
+    {
+        var repository = new TestCrewRepository();
+        var memory = new MockMemoryCoordinator { NotReady = new InvalidOperationException("never asked") };
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(),
+            new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
+            memoryProviderRegistry: new CrewMemoryProviderRegistry(), memoryCoordinator: memory);
+        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        var output = await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.True(output.Succeeded, output.Error);
+        Assert.Empty(memory.ReadinessChecks);
     }
 
     #endregion
@@ -365,6 +443,35 @@ public class SequentialCrewOrchestratorTests
             l.Contains("[Warning]") &&
             l.Contains("degrading to per-task replay") &&
             l.Contains("IStreamingAgentExecutionService"));
+    }
+
+    [Fact]
+    public async Task KickoffStreamingAsync_warns_that_the_streamed_run_neither_recalls_nor_stores_the_crew_memory()
+    {
+        // GAP-30: the streaming path (a C# API no shipped host calls) is not wired to memory; a
+        // crew with memory: true is told so rather than silently forgotten.
+        var repository = new TestCrewRepository();
+        var logger = new TestLogger();
+        var agent = new AgentBuilder().Role("Researcher").Goal("Find data").Build();
+        var agentRepository = new InMemoryAgentRepository(new NullUnitOfWork());
+        await agentRepository.AddAsync(agent, TestContext.Current.CancellationToken);
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, logger, new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(),
+            new RecordingDomainEventDispatcher(), new FakeStreamingAgentExecutionService(), agentRepository);
+        var crew = DomainCrew.Create(new CrewCreateOptions
+        {
+            Goal = "Test crew", Name = "legal-watch", ProcessType = ProcessType.Sequential, MemoryEnabled = true,
+        });
+        crew.AddAgent(agent.Id);
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        await foreach (var _ in orchestrator.KickoffStreamingAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken))
+        {
+            // drain
+        }
+
+        Assert.Contains(logger.Logs, l => l.Contains("[Warning]") && l.Contains("legal-watch") && l.Contains("memory"));
     }
 
     #endregion

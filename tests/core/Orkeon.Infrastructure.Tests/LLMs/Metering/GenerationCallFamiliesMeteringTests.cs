@@ -80,14 +80,14 @@ public sealed class GenerationCallFamiliesMeteringTests
         var sink = new MockLlmUsageSink();
         var metered = MeteredLlmProvider.Wrap(provider, sink);
         var options = Options.Create(new CognitiveMemoryOptions());
-        var memory = new MockMemoryProvider();
+        var memory = new RecordingLongTermMemory();
         var ct = TestContext.Current.CancellationToken;
-        var similar = new List<MemoryItem>();
+        var similar = new List<ScoredMemoryItem>();
         for (var i = 0; i < 5; i++)
         {
             var item = MemoryItem.Create($"Similar content {i}", embedding: [1.0f, 0.0f, 0.0f], importance: 0.5f);
-            similar.Add(item);
-            await memory.StoreAsync(item.Id, item, ct);
+            similar.Add(new ScoredMemoryItem(item, 1f, item.Id.ToString()));
+            await memory.AddAsync(item);
         }
 
         using (LlmUsageScope.Begin(LlmUsageOperations.Agent, agentId: "Archivist", taskId: "task-7"))
@@ -96,8 +96,8 @@ public sealed class GenerationCallFamiliesMeteringTests
                 .CheckAsync("the sky is green", [MemoryItem.Create("the sky is blue")], ct);
             await new MemoryAnalyzer(metered, options, new MockLogger<MemoryAnalyzer>())
                 .AnalyzeAsync("remember this", context: null, ct);
-            await new MemoryConsolidator(metered, memory, options, new MockLogger<MemoryConsolidator>())
-                .ConsolidateAsync(similar, ct);
+            await new MemoryConsolidator(metered, new MockEmbeddingProvider(), options, new MockLogger<MemoryConsolidator>())
+                .ConsolidateAsync(similar, memory, ct);
         }
 
         Assert.True(provider.ChatCallCount >= 3);

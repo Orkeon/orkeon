@@ -29,7 +29,7 @@ enregistrant le vôtre **après** l'appel Orkeon.
 | `ITemplateInstantiator` | `NullTemplateInstantiator` | **Lève** aussi `NotSupportedException` s'il est réellement utilisé — plus bruyant que n'importe quel log. | Enregistrer votre propre implémentation. |
 | `IMemorySystem` | `InMemoryMemorySystem` | Vraie implémentation en mémoire — correcte, juste pas persistante. | Configurer un provider persistant (`Memory:Provider`). |
 | `IAgentSelectionService` (FirstFit) | `SimpleAgentSelectionService` | Prend le **premier agent disponible** — le repli sûr explicite. | Passer `OrkeonApplicationOptions.AgentSelectionStrategy` à `Skill` (lexical) ou `Embedding` (sémantique — exige un vrai fournisseur d'embeddings), via `AddOrkeonApplication(o => …)` ou `services.Configure<OrkeonApplicationOptions>(…)`. |
-| `IEmbeddingProvider` | chaîne de résolution | BGE local (quand `AddOrkeonLocalEmbeddings()` est enregistré) → fournisseur distant via `Orkeon:Embeddings` → **fail-fast au premier usage** avec une exception actionnable. Jamais de repli hash silencieux. | Enregistrer `AddOrkeonLocalEmbeddings()` ou configurer `Orkeon:Embeddings`. |
+| `IEmbeddingProvider` | chaîne de résolution | BGE local (quand `AddOrkeonLocalEmbeddings()` est enregistré) → fournisseur distant via `Orkeon:Embeddings` → **fail-fast au premier usage** avec une exception actionnable. Jamais de repli hash silencieux. Une crew `memory: true` s'en sert dès son kickoff : sans lui, cette crew est refusée avant sa première tâche. | Enregistrer `AddOrkeonLocalEmbeddings()` ou configurer `Orkeon:Embeddings`. |
 
 > **`IAgentExecutionService`** n'est volontairement *pas* dans cette liste :
 > `AddOrkeonApplication()` enregistre le vrai `AgentExecutionService`

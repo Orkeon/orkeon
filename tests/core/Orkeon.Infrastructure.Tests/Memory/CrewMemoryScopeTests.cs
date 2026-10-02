@@ -55,7 +55,7 @@ public sealed class CrewMemoryScopeTests : IDisposable
     private static CrewId Kickoff(CrewMemoryProviderRegistry registry, string providerType, string? crewName)
     {
         var crewId = CrewId.From(Guid.NewGuid());
-        registry.Record(crewId, providerType, crewName);
+        registry.Record(crewId, providerType, crewName, memoryEnabled: true);
         return crewId;
     }
 

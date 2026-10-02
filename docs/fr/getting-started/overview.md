@@ -137,6 +137,12 @@ fournisseur que nomme `.WithPlanningLlm(provider)`, qui ordonne les tâches dans
 dépendances. Un plan qui échoue fait échouer le run et dit pourquoi — voir
 [Types de processus](../orchestration/process-types.md).
 
+`.EnableMemory(true)` — `memory: true` — fait que la crew se souvient : le résultat de chaque tâche est
+rangé, et les plus proches sont rappelés dans le prompt des tâches suivantes, run après run. Les souvenirs
+sont plongés par le fournisseur d'embeddings de l'hôte, dont la crew a besoin dès son kickoff
+(`AddOrkeonLocalEmbeddings()` ou la section `Orkeon:Embeddings`) — voir
+[Système de mémoire](../architecture/memory-system.md#la-mémoire-dune-crew--provider-et-portée).
+
 ## Deux approches de définition : YAML ou Fluent Builder
 
 Les Crews et leurs agents peuvent être définis de deux manières : soit via un fichier **YAML**, soit via l'API **Fluent Builder** en C#. Les deux approches produisent des résultats identiques. Une troisième surface, TypeScript (`.ork.ts`), décrit la même crew avec le DSL de scripting et passe par le même `orkeon run` — voir [Écrire une crew en TypeScript](../guides/write-a-crew-in-typescript.md).

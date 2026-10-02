@@ -42,7 +42,7 @@ public class ChromaDbMemoryProviderTests
             new { });
 
         using var provider = _fixture.CreateProvider(handler);
-        var item = MemoryItem.Create(TestContent, source: "test");
+        var item = MemoryItem.Create(TestContent, embedding: [0.1f, 0.2f, 0.3f], source: "test");
 
         // Act
         await provider.StoreAsync("test-key", item, TestContext.Current.CancellationToken);
@@ -139,22 +139,19 @@ public class ChromaDbMemoryProviderTests
     }
 
     [Fact]
-    public async Task ShouldSendQueryRequest_WhenSearchAsync()
+    public async Task ShouldGetTheDocumentsContainingTheQuery_WhenSearchAsync()
     {
-        // Arrange
+        // GAP-30: the HTTP API has no text query — query_texts exists only in the clients, which
+        // embed it themselves. A text search is a /get on the documents that contain the query.
         var responseBody = new
         {
-            ids = new[] { new[] { "key1", "key2" } },
-            documents = new[] { new[] { "Content 1", "Content 2" } },
+            ids = new[] { "key1", "key2" },
+            documents = new[] { "Content 1 about the test query", "Content 2 about the test query" },
             metadatas = new[]
             {
-                new[]
-                {
-                    new Dictionary<string, object> { ["importance"] = 0.5, ["source"] = "s1" },
-                    new Dictionary<string, object> { ["importance"] = 0.7, ["source"] = "s2" }
-                }
+                new Dictionary<string, object> { ["importance"] = 0.5, ["source"] = "s1" },
+                new Dictionary<string, object> { ["importance"] = 0.7, ["source"] = "s2" }
             },
-            distances = new[] { new[] { 0.1f, 0.3f } }
         };
 
         using var handler = ChromaDbMemoryProviderTestsFixture.CreateHandlerWithCollection(
@@ -169,12 +166,13 @@ public class ChromaDbMemoryProviderTests
         // Assert
         Assert.Equal(2, results.Count());
 
-        var queryRequest = handler.CapturedRequests[1];
-        Assert.Equal(HttpMethod.Post, queryRequest.Method);
-        Assert.Contains($"{V2CollectionsRoute}/test-collection-id/query", queryRequest.RequestUri?.ToString());
+        var getRequest = handler.CapturedRequests[1];
+        Assert.Equal(HttpMethod.Post, getRequest.Method);
+        Assert.Contains($"{V2CollectionsRoute}/test-collection-id/get", getRequest.RequestUri?.ToString());
 
-        var body = await queryRequest.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        Assert.Contains("test query", body);
+        var body = await getRequest.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Contains("\"$contains\":\"test query\"", body);
+        Assert.DoesNotContain("query_texts", body);
     }
 
     [Fact]
@@ -185,7 +183,7 @@ public class ChromaDbMemoryProviderTests
             HttpStatusCode.InternalServerError);
 
         using var provider = _fixture.CreateProvider(handler);
-        var item = MemoryItem.Create(TestContent);
+        var item = MemoryItem.Create(TestContent, embedding: [0.1f, 0.2f, 0.3f]);
 
         // Act & Assert
         await Assert.ThrowsAsync<HttpRequestException>(
@@ -210,10 +208,12 @@ public class ChromaDbMemoryProviderTests
     }
 
     [Fact]
-    public async Task ShouldReturnEmptyResults_WhenSearchAsyncWithEmptyQuery()
+    public async Task ShouldGetWithoutAnyCondition_WhenSearchAsyncWithEmptyQueryAndNoFilter()
     {
-        // Arrange - no handler responses needed since empty query returns early
-        using var handler = new FakeHttpMessageHandler();
+        // GAP-30: an empty query sends the filter alone — none here, so every document up to the limit.
+        using var handler = ChromaDbMemoryProviderTestsFixture.CreateHandlerWithCollection(
+            HttpStatusCode.OK,
+            new { ids = Array.Empty<string>(), documents = Array.Empty<string>() });
         using var provider = _fixture.CreateProvider(handler);
 
         // Act
@@ -221,8 +221,11 @@ public class ChromaDbMemoryProviderTests
 
         // Assert
         Assert.Empty(results);
-        // No HTTP requests should be made for empty query
-        Assert.Empty(handler.CapturedRequests);
+        var getRequest = handler.CapturedRequests[1];
+        Assert.Contains($"{V2CollectionsRoute}/test-collection-id/get", getRequest.RequestUri?.ToString());
+        var body = await getRequest.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("where", body);
+        Assert.Contains("\"limit\":10", body);
     }
 
     [Fact]
@@ -387,7 +390,7 @@ public class ChromaDbMemoryProviderTests
         };
 
         using var provider = _fixture.CreateProvider(handler, options);
-        var item = MemoryItem.Create(TestContent, source: "test");
+        var item = MemoryItem.Create(TestContent, embedding: [0.1f, 0.2f, 0.3f], source: "test");
 
         // Act
         await provider.StoreAsync("test-key", item, TestContext.Current.CancellationToken);
@@ -407,7 +410,7 @@ public class ChromaDbMemoryProviderTests
             new { });
 
         using var provider = _fixture.CreateProvider(handler);
-        var item = MemoryItem.Create(TestContent, source: "test");
+        var item = MemoryItem.Create(TestContent, embedding: [0.1f, 0.2f, 0.3f], source: "test");
 
         // Act
         await provider.StoreAsync("test-key", item, TestContext.Current.CancellationToken);

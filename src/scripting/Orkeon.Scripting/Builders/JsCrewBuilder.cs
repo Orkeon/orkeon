@@ -126,7 +126,11 @@ public sealed partial class JsCrewBuilder
         return this;
     }
 
-    /// <summary>YAML parity <c>memory: true</c> — the crew keeps a shared memory scope.</summary>
+    /// <summary>
+    /// YAML parity <c>memory: true</c> — the crew remembers: each run stores the result of its tasks
+    /// and recalls the closest ones before each task, in the host's default memory store, under the
+    /// crew's name (GAP-30). Off by default. Not <c>ctx.memory.*</c>, the scoped key/value stores of a run.
+    /// </summary>
     public JsCrewBuilder memory(bool value = true) { _memory = value; return this; }
 
     public JsCrewBuilder verbose() { _verbose = true; return this; }

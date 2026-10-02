@@ -92,6 +92,7 @@ public sealed class HierarchicalFailedTaskTests : IDisposable
             _manager,
             _fixture.Execution,
             _fixture.MemoryScope,
+            new MockMemoryCoordinator(),
             _fixture.Hook);
 
         return await strategy.ExecuteHierarchicalAsync(

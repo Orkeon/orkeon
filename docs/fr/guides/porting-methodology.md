@@ -229,7 +229,7 @@ Avant de démarrer l'implémentation, vérifier que :
 - Les outils manquants sont identifiés avec un effort estimé
 - Le `ProcessType` est justifié par la nature du workflow
 - Les points d'intervention humaine sont identifiés (`HumanInput = true`)
-- La mémoire est activée si le contexte inter-tasks est nécessaire (`EnableMemory(true)`)
+- La mémoire est activée si la crew doit se souvenir de ses runs précédents (`EnableMemory(true)`, `memory: true`) — pas pour le contexte entre les tâches d'un même run, que les sorties précédentes portent déjà dans chaque prompt
 - Les contraintes de rate limiting (`MaxRpm`) sont compatibles avec les API externes utilisées
 
 ### 5.5 Setup DI minimal pour le portage

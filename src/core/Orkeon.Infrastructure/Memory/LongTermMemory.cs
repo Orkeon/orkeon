@@ -1,5 +1,6 @@
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Memory;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 
 namespace Orkeon.Infrastructure.Memory;
 
@@ -44,6 +45,47 @@ public sealed class LongTermMemory : ILongTermMemory, IDisposable
                 .OrderByDescending(m => m.Timestamp)
                 .Take(maxResults)
                 .ToList();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsync(
+        float[] queryEmbedding, int maxResults, float minScore, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(queryEmbedding);
+        if (maxResults <= 0)
+            return [];
+
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return _memories
+                .Where(m => m?.Embedding is { Count: > 0 } vector && vector.Count == queryEmbedding.Length)
+                .Select(m => new ScoredMemoryItem(
+                    m, VectorMath.CosineSimilarity(queryEmbedding, [.. m.Embedding!]), m.Id.ToString()))
+                .Where(scored => scored.Score >= minScore)
+                .OrderByDescending(scored => scored.Score)
+                .Take(maxResults)
+                .ToList();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return _memories.RemoveAll(m => m is not null && string.Equals(m.Id.ToString(), key, StringComparison.Ordinal)) > 0;
         }
         finally
         {

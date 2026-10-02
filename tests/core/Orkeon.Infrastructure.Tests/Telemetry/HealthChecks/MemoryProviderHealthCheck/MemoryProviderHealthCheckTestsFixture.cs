@@ -14,6 +14,12 @@ public class MemoryProviderHealthCheckTestsFixture
         return this;
     }
 
+    public MemoryProviderHealthCheckTestsFixture WithGetException(Exception exception)
+    {
+        _memoryProvider.SetGetException(exception);
+        return this;
+    }
+
     public MemoryProviderHealthCheck CreateHealthCheck()
         => new(_memoryProvider);
 

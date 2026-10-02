@@ -9,7 +9,9 @@ namespace Orkeon.Application.Agent
 {
     /// <summary>
     /// Improved agent execution service that delegates responsibilities to specialized services.
-    /// Follows Single Responsibility Principle by orchestrating execution without handling callbacks, memory, or parsing directly.
+    /// Follows Single Responsibility Principle by orchestrating execution without handling callbacks, memory, or parsing directly:
+    /// before a task it asks <see cref="IMemoryCoordinator"/> what the crew recalls, after a task that succeeded it hands it the
+    /// result to store (GAP-30). Neither ever fails the task.
     /// </summary>
     public partial class AgentExecutionService : IAgentExecutionService
     {
@@ -121,20 +123,34 @@ namespace Orkeon.Application.Agent
                 new EventHub.EventHubCaller(context.CrewId, agent.Id));
 
             var startTime = DateTime.UtcNow;
+            var domainTask = CastToDomainTask(task);
 
             // Notify task started
             await _callbackOrchestrator.NotifyTaskStartedAsync(
-                agent, CastToDomainTask(task),
+                agent, domainTask,
                 startTime,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             try
             {
+                // What the crew remembers of earlier work goes into this task's prompt (GAP-30), on
+                // this execution's own copy of the context — unless the run does not answer the
+                // task (a ballot). A crew without memory recalls nothing; a recall that fails is a
+                // warning of the coordinator and leaves the task without memories.
+                var runContext = context;
+                if (context.RecallFromMemory)
+                {
+                    var recalled = await _memoryCoordinator.RecallAsync(
+                        agent, domainTask, context, cancellationToken).ConfigureAwait(false);
+                    if (recalled.Count > 0)
+                        runContext = context with { RecalledMemories = recalled };
+                }
+
                 // Execute the task
                 var result = await _executionOrchestrator.ExecuteTaskCoreAsync(
                     agent,
-                    CastToDomainTask(task),
-                    context, // Use context directly
+                    domainTask,
+                    runContext,
                     cancellationToken).ConfigureAwait(false);
 
                 // Record metrics
@@ -144,18 +160,19 @@ namespace Orkeon.Application.Agent
                     result.ExecutionTime,
                     result.Success);
 
-                // Store result in memory if successful — unless the run is not the task's result
-                // (a consensual candidate or a ballot: the context says so, GAP-20)
+                // Store result in memory if successful — unless the run is not the task's result (a
+                // consensual candidate, a hierarchical attempt, a ballot: the context says so, GAP-20,
+                // GAP-30). A store that fails is a warning of the coordinator: the task keeps its output.
                 if (context.StoreResultInMemory && result.Success && !string.IsNullOrEmpty(result.Output))
                 {
                     await _memoryCoordinator.StoreTaskResultAsync(
-                        agent, CastToDomainTask(task), result.Output, context, cancellationToken).ConfigureAwait(false);
+                        agent, domainTask, result.Output, context, cancellationToken).ConfigureAwait(false);
                 }
 
                 // Notify task completed
                 await _callbackOrchestrator.NotifyTaskCompletedAsync(
                     agent,
-                    CastToDomainTask(task),
+                    domainTask,
                     new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = startTime },
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -176,7 +193,7 @@ namespace Orkeon.Application.Agent
                 // Notify task failed
                 await _callbackOrchestrator.NotifyTaskCompletedAsync(
                     agent,
-                    CastToDomainTask(task),
+                    domainTask,
                     new TaskCompletionInfo { Result = errorResult, StepsExecuted = 0, StartTime = startTime },
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 

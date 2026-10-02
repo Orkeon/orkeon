@@ -79,7 +79,11 @@ declare global {
         manager(agent: Agent<unknown, unknown>): this;
         budget(opts: ExecutionBudget): this;
         verbose(value?: boolean): this;
-        /** YAML parity `memory: true` — the crew keeps a shared memory scope. */
+        /**
+         * YAML parity `memory: true` — the crew remembers: each run stores the result of its tasks
+         * and recalls the closest ones before each task, in the host's default memory store, under
+         * the crew's name. Off by default. Not `ctx.memory.*`, the scoped key/value stores of a run.
+         */
         memory(value?: boolean): this;
         onCrewStart(hook: (ctx: ExecutionContext) => Promise<void> | void): this;
         onCrewComplete(hook: (ctx: ExecutionContext, result: CrewResult) => Promise<void> | void): this;

@@ -48,25 +48,33 @@ public class MemoryProviderInterfaceDispatchTests
     [Fact]
     public async Task ShouldRecallStoredItem_WhenCognitiveMemoryServiceUsesInMemoryProvider()
     {
-        // Arrange - CognitiveMemoryService holds the provider as IMemoryProvider, which is
-        // exactly the dispatch path that used to hit the empty default interface method.
+        // Arrange - the cognitive memory reaches the provider as IMemoryProvider (through the
+        // crew's memory), exactly the dispatch path that used to hit the empty default interface
+        // method. What it recalls it remembered itself, in the crew's scope (GAP-30): never an
+        // entry stored straight into the provider — another crew's, or a RAG chunk.
         IMemoryProvider provider = new InMemoryProvider(new TestLogger<InMemoryProvider>());
         var embeddingProvider = new MockEmbeddingProvider();
         embeddingProvider.SetEmbeddingResult(s_unitX);
+        var registry = new Orkeon.Application.Memory.CrewMemoryProviderRegistry();
+        var crewId = CrewId.Create();
+        registry.Record(crewId, providerType: null, "ops-crew", memoryEnabled: true);
+        using var memory = new Orkeon.Application.Memory.MemoryService(
+            new StubMemoryProviderFactory(provider), Microsoft.Extensions.Logging.Abstractions.NullLogger<Orkeon.Application.Memory.MemoryService>.Instance,
+            registry, provider);
+        var service = CreateCognitiveMemoryService(memory, embeddingProvider);
 
-        var service = CreateCognitiveMemoryService(provider, embeddingProvider);
-
-        var item = MemoryItem.Create("The deployment pipeline uses GitHub Actions", importance: 0.8f);
-        await provider.StoreWithEmbeddingAsync(item.Id, item, s_unitX, TestContext.Current.CancellationToken);
+        var unscoped = MemoryItem.Create("An entry of nobody's memory", importance: 0.8f);
+        await provider.StoreWithEmbeddingAsync(unscoped.Id, unscoped, s_unitX, TestContext.Current.CancellationToken);
+        await service.RememberAsync(crewId, "The deployment pipeline uses GitHub Actions", cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var recalled = await service.RecallAsync(
-            CrewId.Create(), "How do we deploy?", cancellationToken: TestContext.Current.CancellationToken);
+            crewId, "How do we deploy?", cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert - on the pre-R10.1 code this was empty (silent zero-result recall)
-        Assert.NotEmpty(recalled);
-        Assert.Equal("The deployment pipeline uses GitHub Actions", recalled[0].Item.Content);
-        Assert.True(recalled[0].SemanticScore > 0.99f);
+        var only = Assert.Single(recalled);
+        Assert.Equal("The deployment pipeline uses GitHub Actions", only.Item.Content);
+        Assert.True(only.SemanticScore > 0.99f);
     }
 
     [Fact]
@@ -107,21 +115,20 @@ public class MemoryProviderInterfaceDispatchTests
     }
 
     private static CognitiveMemoryService CreateCognitiveMemoryService(
-        IMemoryProvider provider,
+        Orkeon.Application.Interfaces.Services.IMemoryService memory,
         MockEmbeddingProvider embeddingProvider)
     {
-        var options = Options.Create(new CognitiveMemoryOptions());
+        var options = Options.Create(new CognitiveMemoryOptions { EnableLlmAnalysis = false, EnableContradictionDetection = false });
         var llmProvider = new MockLlmProvider();
 
         var analysisServices = new CognitiveAnalysisServices(
             new MemoryAnalyzer(llmProvider, options, new MockLogger<MemoryAnalyzer>()),
             new ContradictionDetector(llmProvider, options, new MockLogger<ContradictionDetector>()),
-            new MemoryConsolidator(llmProvider, provider, options, new MockLogger<MemoryConsolidator>()),
+            new MemoryConsolidator(llmProvider, embeddingProvider, options, new MockLogger<MemoryConsolidator>()),
             new CompositeScorer(options));
 
         return new CognitiveMemoryService(
-            new MockMemoryService(),
-            provider,
+            memory,
             embeddingProvider,
             analysisServices,
             options,

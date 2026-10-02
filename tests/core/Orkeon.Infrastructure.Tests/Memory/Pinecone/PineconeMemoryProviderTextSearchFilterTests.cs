@@ -6,10 +6,13 @@ using Orkeon.Infrastructure.Tests.Memory.ChromaDb;
 namespace Orkeon.Infrastructure.Tests.Memory.Pinecone;
 
 /// <summary>
-/// GAP-20 — Pinecone filters on the server. A text search sends the metadata filter with its own
-/// condition on the content, under one <c>$and</c>, so the index applies both before <c>topK</c>.
-/// A filter on a custom property needs the property to be stored: the default namespace keeps an
-/// item's custom properties, as the named namespaces do, and gives them back.
+/// GAP-20, GAP-30 — Pinecone stores vectors and searches by vector. A memory is sent with its
+/// values, and one without is refused before any request, as the namespace path refuses it — a
+/// crew's memory used to go out with <c>values: []</c>, which a real index rejects, failing every
+/// task. A text search, which Pinecone does not have, is refused rather than faked with an empty
+/// vector and an exact match on the content. The metadata filter travels with a similarity search,
+/// applied by the index before <c>topK</c>; the default namespace keeps an item's custom properties,
+/// as the named namespaces do, and gives them back with the key of each match.
 /// </summary>
 public class PineconeMemoryProviderTextSearchFilterTests
 {
@@ -25,36 +28,53 @@ public class PineconeMemoryProviderTextSearchFilterTests
         return JsonDocument.Parse(body).RootElement.Clone();
     }
 
-    private static string? EqualityOn(List<JsonElement> conditions, string key) =>
-        conditions.FirstOrDefault(c => c.TryGetProperty(key, out _)) is { ValueKind: JsonValueKind.Object } condition
-            ? condition.GetProperty(key).GetProperty("$eq").GetString()
-            : null;
-
     [Fact]
-    public async Task A_text_search_sends_the_filter_with_its_content_condition()
+    public async Task A_text_search_is_refused_and_sends_nothing()
     {
-        using var handler = PineconeMemoryProviderTestsFixture.CreateHandler(HttpStatusCode.OK, new { matches = Array.Empty<object>() });
+        using var handler = new FakeHttpMessageHandler();
         using var provider = _fixture.CreateProvider(handler);
 
-        await provider.SearchAsync("contract clause 4", 5, LegalWatch, Ct);
+        await Assert.ThrowsAsync<NotSupportedException>(() => provider.SearchAsync("contract clause 4", 5, LegalWatch, Ct));
 
-        var conditions = (await LastBodyAsync(handler)).GetProperty("filter").GetProperty("$and").EnumerateArray().ToList();
-        Assert.Equal(3, conditions.Count);
-        Assert.Equal("contract clause 4", EqualityOn(conditions, "content"));
-        Assert.Equal("crew-memory", EqualityOn(conditions, "kind"));
-        Assert.Equal("legal-watch", EqualityOn(conditions, "crew"));
+        Assert.Empty(handler.CapturedRequests);
     }
 
     [Fact]
-    public async Task A_text_search_without_a_filter_sends_its_content_condition_alone()
+    public async Task A_similarity_search_sends_the_filter_one_equality_per_key()
     {
         using var handler = PineconeMemoryProviderTestsFixture.CreateHandler(HttpStatusCode.OK, new { matches = Array.Empty<object>() });
         using var provider = _fixture.CreateProvider(handler);
 
-        await provider.SearchAsync("contract clause 4", 5, cancellationToken: Ct);
+        await provider.SearchSimilarAsync([0.1f, 0.2f], 5, 0f, LegalWatch, Ct);
 
         var filter = (await LastBodyAsync(handler)).GetProperty("filter");
-        Assert.Equal("contract clause 4", filter.GetProperty("content").GetProperty("$eq").GetString());
+        Assert.Equal("crew-memory", filter.GetProperty("kind").GetProperty("$eq").GetString());
+        Assert.Equal("legal-watch", filter.GetProperty("crew").GetProperty("$eq").GetString());
+    }
+
+    [Fact]
+    public async Task A_memory_without_a_vector_is_refused_before_any_request()
+    {
+        using var handler = new FakeHttpMessageHandler();
+        using var provider = _fixture.CreateProvider(handler);
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(
+            () => provider.StoreAsync("k1", MemoryItem.Create("contract clause 4"), Ct));
+
+        Assert.Contains("embedding", error.Message, StringComparison.Ordinal);
+        Assert.Empty(handler.CapturedRequests);
+    }
+
+    [Fact]
+    public async Task A_memory_with_a_vector_is_sent_with_values_of_its_dimension()
+    {
+        using var handler = PineconeMemoryProviderTestsFixture.CreateHandler(HttpStatusCode.OK, new { upsertedCount = 1 });
+        using var provider = _fixture.CreateProvider(handler);
+
+        await provider.StoreAsync("k1", MemoryItem.Create("contract clause 4", embedding: [0.1f, 0.2f, 0.3f, 0.4f]), Ct);
+
+        var values = (await LastBodyAsync(handler)).GetProperty("vectors")[0].GetProperty("values");
+        Assert.Equal(4, values.GetArrayLength());
     }
 
     [Fact]
@@ -78,7 +98,7 @@ public class PineconeMemoryProviderTextSearchFilterTests
     }
 
     [Fact]
-    public async Task A_text_search_gives_the_custom_properties_back()
+    public async Task A_similarity_search_gives_the_custom_properties_and_the_key_back()
     {
         var result = new
         {
@@ -100,10 +120,11 @@ public class PineconeMemoryProviderTextSearchFilterTests
         using var handler = PineconeMemoryProviderTestsFixture.CreateHandler(HttpStatusCode.OK, result);
         using var provider = _fixture.CreateProvider(handler);
 
-        var item = Assert.Single(await provider.SearchAsync("contract clause 4", 5, LegalWatch, Ct));
+        var match = Assert.Single(await provider.SearchSimilarAsync([0.1f, 0.2f], 5, 0f, LegalWatch, Ct));
 
-        Assert.Equal("legal-watch", item.Metadata.CustomProperties?.GetValueOrDefault("crew"));
-        Assert.Equal("crew-memory", item.Metadata.CustomProperties?.GetValueOrDefault("kind"));
-        Assert.Contains("crew:legal-watch", item.Tags);
+        Assert.Equal("k1", match.Key);
+        Assert.Equal("legal-watch", match.Item.Metadata.CustomProperties?.GetValueOrDefault("crew"));
+        Assert.Equal("crew-memory", match.Item.Metadata.CustomProperties?.GetValueOrDefault("kind"));
+        Assert.Contains("crew:legal-watch", match.Item.Tags);
     }
 }

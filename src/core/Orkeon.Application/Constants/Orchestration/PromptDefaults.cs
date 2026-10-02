@@ -29,4 +29,12 @@ public static class PromptDefaults
 
     /// <summary>Message appended when previous outputs are truncated due to context size limits.</summary>
     public const string TruncationMessage = "[... truncated for brevity]";
+
+    /// <summary>
+    /// Header of the section of the user prompt that carries the crew's recalled memories (GAP-30):
+    /// placed after the previous task results and before the retrieved knowledge, one
+    /// <c>--- date · role · task ---</c> line before each memory.
+    /// </summary>
+    public const string MemoriesHeader =
+        "From this crew's memory — earlier work, possibly outdated; use it only where it helps:";
 }

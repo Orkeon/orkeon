@@ -5,17 +5,20 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Services;
 
 namespace Orkeon.Infrastructure.Memory.Cognitive;
 
 /// <summary>
 /// Consolidates memories by clustering semantically similar items,
-/// merging redundant clusters via LLM, and pruning low-value entries.
+/// merging redundant clusters via LLM, and pruning low-value entries — in the memory they were
+/// found in, the crew's (GAP-30): a merged memory is embedded and stored there, the memories it
+/// replaces and the pruned ones are removed from it.
 /// </summary>
 public sealed partial class MemoryConsolidator
 {
     private readonly ILlmProvider _llmProvider;
-    private readonly IMemoryProvider _memoryProvider;
+    private readonly IEmbeddingProvider _embeddingProvider;
     private readonly CognitiveMemoryOptions _options;
     private readonly ILogger<MemoryConsolidator> _logger;
 
@@ -26,16 +29,20 @@ public sealed partial class MemoryConsolidator
     private const float ClusterThreshold = Orkeon.Infrastructure.Constants.Memory.SearchDefaults.DefaultSimilarityThreshold;
 
     /// <summary>Initializes a new instance of <see cref="MemoryConsolidator"/>.</summary>
+    /// <param name="llmProvider">Merges the memories of a cluster into one.</param>
+    /// <param name="embeddingProvider">Embeds a merged memory, which is found by its vector like any other.</param>
+    /// <param name="options">The cognitive memory options.</param>
+    /// <param name="logger">The logger.</param>
     public MemoryConsolidator(
         ILlmProvider llmProvider,
-        IMemoryProvider memoryProvider,
+        IEmbeddingProvider embeddingProvider,
         IOptions<CognitiveMemoryOptions> options,
         ILogger<MemoryConsolidator> logger)
     {
         ArgumentNullException.ThrowIfNull(llmProvider);
         _llmProvider = llmProvider;
-        ArgumentNullException.ThrowIfNull(memoryProvider);
-        _memoryProvider = memoryProvider;
+        ArgumentNullException.ThrowIfNull(embeddingProvider);
+        _embeddingProvider = embeddingProvider;
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
         ArgumentNullException.ThrowIfNull(logger);
@@ -43,12 +50,19 @@ public sealed partial class MemoryConsolidator
     }
 
     /// <summary>
-    /// Consolidates the given memories by merging redundant clusters and pruning low-value items.
+    /// Consolidates the given memories, found in <paramref name="memory"/>, by merging redundant
+    /// clusters and pruning low-value items there.
     /// </summary>
+    /// <param name="memories">The memories to consolidate, with the key their memory returned.</param>
+    /// <param name="memory">The memory they were found in: where merges are stored and removals made.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<ConsolidationResult> ConsolidateAsync(
-        IEnumerable<MemoryItem> memories,
+        IReadOnlyList<ScoredMemoryItem> memories,
+        ILongTermMemory memory,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(memories);
+        ArgumentNullException.ThrowIfNull(memory);
         var memoryList = memories.ToList();
 
         if (memoryList.Count < MinMemoriesForConsolidation)
@@ -68,10 +82,12 @@ public sealed partial class MemoryConsolidator
         LogClustersFound(clusters.Count);
 
         // Phase 2: Merge multi-item clusters via LLM
-        var (mergedCount, createdIds) = await MergeClustersAsync(clusters, cancellationToken).ConfigureAwait(false);
+        var (mergedCount, createdIds) = await MergeClustersAsync(clusters, memory, cancellationToken).ConfigureAwait(false);
 
-        // Phase 3: Prune low-importance, old, never-accessed memories
-        var prunedCount = await PruneLowValueMemoriesAsync(memoryList, cancellationToken).ConfigureAwait(false);
+        // Phase 3: Prune low-importance, old, never-accessed memories — none of those just merged
+        var merged = clusters.Where(c => c.Count > 1).SelectMany(c => c).Select(KeyOf).ToHashSet(StringComparer.Ordinal);
+        var prunedCount = await PruneLowValueMemoriesAsync(
+            memoryList.Where(m => !merged.Contains(KeyOf(m))).ToList(), memory, cancellationToken).ConfigureAwait(false);
 
         var unchangedCount = memoryList.Count - mergedCount - prunedCount;
 
@@ -88,7 +104,7 @@ public sealed partial class MemoryConsolidator
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Per-cluster fault barrier: a failure merging or storing one cluster is logged and skipped so the remaining clusters are still consolidated.")]
     private async Task<(int MergedCount, List<string> CreatedIds)> MergeClustersAsync(
-        List<List<MemoryItem>> clusters, CancellationToken cancellationToken)
+        List<List<ScoredMemoryItem>> clusters, ILongTermMemory memory, CancellationToken cancellationToken)
     {
         var mergedCount = 0;
         var createdIds = new List<string>();
@@ -100,18 +116,18 @@ public sealed partial class MemoryConsolidator
                 var merged = await MergeClusterAsync(cluster, cancellationToken).ConfigureAwait(false);
                 if (merged is not null)
                 {
-                    await _memoryProvider.StoreAsync(merged.Id, merged, cancellationToken).ConfigureAwait(false);
+                    await memory.AddAsync(merged).ConfigureAwait(false);
                     createdIds.Add(merged.Id);
 
                     foreach (var old in cluster)
                     {
-                        await _memoryProvider.DeleteAsync(old.Id, cancellationToken).ConfigureAwait(false);
+                        await memory.RemoveAsync(KeyOf(old), cancellationToken).ConfigureAwait(false);
                     }
 
                     mergedCount += cluster.Count;
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 LogMergeError(ex, cluster.Count);
             }
@@ -121,18 +137,19 @@ public sealed partial class MemoryConsolidator
     }
 
     private async Task<int> PruneLowValueMemoriesAsync(
-        List<MemoryItem> memoryList, CancellationToken cancellationToken)
+        List<ScoredMemoryItem> memoryList, ILongTermMemory memory, CancellationToken cancellationToken)
     {
         var prunedCount = 0;
         var cutoff = DateTime.UtcNow.AddDays(-_options.PruningMinAgeDays);
 
-        foreach (var item in memoryList)
+        foreach (var found in memoryList)
         {
+            var item = found.Item;
             if (item.Importance < _options.PruningThreshold
                 && item.AccessCount == 0
                 && item.Timestamp < cutoff)
             {
-                await _memoryProvider.DeleteAsync(item.Id, cancellationToken).ConfigureAwait(false);
+                await memory.RemoveAsync(KeyOf(found), cancellationToken).ConfigureAwait(false);
                 prunedCount++;
             }
         }
@@ -140,23 +157,26 @@ public sealed partial class MemoryConsolidator
         return prunedCount;
     }
 
+    /// <summary>The storage key of a found memory: the key its memory returned, else its id.</summary>
+    private static string KeyOf(ScoredMemoryItem found) => found.Key ?? found.Item.Id.ToString();
+
     /// <summary>
     /// Clusters memories by cosine similarity of their embeddings.
     /// Memories without embeddings are placed in their own single-item clusters.
     /// </summary>
-    internal static List<List<MemoryItem>> ClusterMemories(List<MemoryItem> items)
+    internal static List<List<ScoredMemoryItem>> ClusterMemories(List<ScoredMemoryItem> items)
     {
         var assigned = new bool[items.Count];
-        var clusters = new List<List<MemoryItem>>();
+        var clusters = new List<List<ScoredMemoryItem>>();
 
         for (var i = 0; i < items.Count; i++)
         {
             if (assigned[i]) continue;
 
             assigned[i] = true;
-            var cluster = new List<MemoryItem> { items[i] };
+            var cluster = new List<ScoredMemoryItem> { items[i] };
 
-            if (items[i].Embedding is not null)
+            if (items[i].Item.Embedding is not null)
                 AssignSimilarItems(items, assigned, cluster, i);
 
             clusters.Add(cluster);
@@ -166,13 +186,13 @@ public sealed partial class MemoryConsolidator
     }
 
     private static void AssignSimilarItems(
-        List<MemoryItem> items, bool[] assigned, List<MemoryItem> cluster, int anchorIndex)
+        List<ScoredMemoryItem> items, bool[] assigned, List<ScoredMemoryItem> cluster, int anchorIndex)
     {
         for (var j = anchorIndex + 1; j < items.Count; j++)
         {
-            if (assigned[j] || items[j].Embedding is null) continue;
+            if (assigned[j] || items[j].Item.Embedding is null) continue;
 
-            var similarity = CosineSimilarity(items[anchorIndex].Embedding!.ToArray(), items[j].Embedding!.ToArray());
+            var similarity = CosineSimilarity(items[anchorIndex].Item.Embedding!.ToArray(), items[j].Item.Embedding!.ToArray());
             if (similarity >= ClusterThreshold)
             {
                 cluster.Add(items[j]);
@@ -182,10 +202,10 @@ public sealed partial class MemoryConsolidator
     }
 
     private async Task<MemoryItem?> MergeClusterAsync(
-        List<MemoryItem> cluster,
+        List<ScoredMemoryItem> cluster,
         CancellationToken cancellationToken)
     {
-        var contents = string.Join("\n---\n", cluster.Select(m => m.Content));
+        var contents = string.Join("\n---\n", cluster.Select(m => m.Item.Content));
         var prompt = $"""
             The following {cluster.Count} memory entries are semantically similar and should be merged into a single, concise memory.
             Preserve all unique information. Return ONLY the merged text, nothing else.
@@ -217,13 +237,17 @@ public sealed partial class MemoryConsolidator
             return null;
 
         // Use the highest importance from the cluster
-        var maxImportance = cluster.Max(m => m.Importance);
+        var maxImportance = cluster.Max(m => m.Item.Importance);
 
         // Combine tags from all items
-        var allTags = cluster.SelectMany(m => m.Tags).Distinct().ToArray();
+        var allTags = cluster.SelectMany(m => m.Item.Tags).Distinct().ToArray();
+
+        // Embedded like any memory: found by its vector, and accepted by the stores that require one.
+        var embedding = await _embeddingProvider.GetEmbeddingAsync(mergedContent, cancellationToken).ConfigureAwait(false);
 
         return MemoryItem.Create(
             content: mergedContent,
+            embedding: embedding,
             importance: maxImportance,
             source: "consolidation",
             tags: allTags);

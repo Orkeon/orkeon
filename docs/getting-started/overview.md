@@ -136,6 +136,11 @@ first task: one call on the host's default LLM profile (the `Llm` section), or o
 `.WithPlanningLlm(provider)` names, which orders the tasks within their dependencies. A plan that
 fails fails the run and says why — see [Process types](../orchestration/process-types.md).
 
+`.EnableMemory(true)` — `memory: true` — makes the crew remember: each task's result is stored, and the
+closest ones are recalled into the prompt of the next tasks, run after run. Memories are embedded by the
+host's embedding provider, which the crew needs from its kickoff (`AddOrkeonLocalEmbeddings()` or the
+`Orkeon:Embeddings` section) — see [Memory system](../architecture/memory-system.md#a-crews-memory-provider-and-scope).
+
 ## Two definition approaches: YAML or Fluent Builder
 
 Crews and their agents can be defined in two ways: either via a **YAML** file, or via the **Fluent Builder** API in C#. Both approaches produce identical results. A third surface, TypeScript (`.ork.ts`), describes the same crew with the scripting DSL and runs through the same `orkeon run` — see [Write a crew in TypeScript](../guides/write-a-crew-in-typescript.md).

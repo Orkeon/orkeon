@@ -34,7 +34,7 @@ public sealed class MemoryProviderCrewWiringTests : IDisposable
     }
 
     private static MemoryItem Insight(string content = "insight") =>
-        MemoryItem.Create(content: content, embedding: null, importance: 0.9f, source: "test");
+        MemoryItem.Create(content: content, embedding: [0.1f, 0.2f, 0.3f], importance: 0.9f, source: "test");
 
     private static (MemoryService Service, CrewMemoryProviderRegistry Registry) NewService(MemoryProviderFactory factory)
     {
@@ -45,7 +45,7 @@ public sealed class MemoryProviderCrewWiringTests : IDisposable
     private static CrewId CrewOf(CrewMemoryProviderRegistry registry, string providerType)
     {
         var crewId = CrewId.From(Guid.NewGuid());
-        registry.Record(crewId, providerType, crewName: null);
+        registry.Record(crewId, providerType, crewName: null, memoryEnabled: true);
         return crewId;
     }
 

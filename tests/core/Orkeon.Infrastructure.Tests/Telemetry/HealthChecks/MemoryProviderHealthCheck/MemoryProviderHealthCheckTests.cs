@@ -2,6 +2,11 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Orkeon.Infrastructure.Tests.Telemetry.HealthChecks;
 
+/// <summary>
+/// The <c>memory_provider</c> check probes the provider by reading a key that does not exist —
+/// something all six providers serve, without walking the key space (GAP-30). It used to probe by
+/// text search, which Pinecone refuses and ChromaDB does not have over HTTP.
+/// </summary>
 public class MemoryProviderHealthCheckTests
 {
     [Fact]
@@ -22,13 +27,26 @@ public class MemoryProviderHealthCheckTests
     {
         var fixture = new MemoryProviderHealthCheckTestsFixture();
         var healthCheck = fixture
-            .WithSearchException(new InvalidOperationException("Connection lost"))
+            .WithGetException(new InvalidOperationException("Connection lost"))
             .CreateHealthCheck();
 
         var result = await MemoryProviderHealthCheckTestsFixture.CheckHealthAsync(healthCheck);
 
         Assert.Equal(HealthStatus.Degraded, result.Status);
         Assert.Contains("Connection lost", result.Description);
+    }
+
+    [Fact]
+    public async Task ShouldReturnHealthy_WhenTheProviderHasNoTextSearch()
+    {
+        var fixture = new MemoryProviderHealthCheckTestsFixture();
+        var healthCheck = fixture
+            .WithSearchException(new NotSupportedException("Pinecone has no text search"))
+            .CreateHealthCheck();
+
+        var result = await MemoryProviderHealthCheckTestsFixture.CheckHealthAsync(healthCheck);
+
+        Assert.Equal(HealthStatus.Healthy, result.Status);
     }
 
     [Fact]
@@ -39,13 +57,14 @@ public class MemoryProviderHealthCheckTests
     }
 
     [Fact]
-    public async Task ShouldUseHealthCheckQuery_WhenCheckingHealth()
+    public async Task ShouldProbeByReadingAnAbsentKey_WhenCheckingHealth()
     {
         var fixture = new MemoryProviderHealthCheckTestsFixture();
         var healthCheck = fixture.CreateHealthCheck();
 
         await MemoryProviderHealthCheckTestsFixture.CheckHealthAsync(healthCheck);
 
-        Assert.Equal("__health_check__", fixture.GetMemoryProvider().LastSearchQuery);
+        Assert.Equal("__health_check__", fixture.GetMemoryProvider().LastGetKey);
+        Assert.Equal(0, fixture.GetMemoryProvider().SearchCallCount);
     }
 }

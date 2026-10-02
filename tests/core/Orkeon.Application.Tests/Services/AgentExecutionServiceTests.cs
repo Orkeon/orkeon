@@ -9,6 +9,10 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
 using Orkeon.Application.Callback;
+using Orkeon.Application.Memory;
+using Orkeon.Application.Tests.Doubles;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using TaskExecutionPlan = Orkeon.Application.Interfaces.Services.TaskExecutionPlan;
 using PlannedStep = Orkeon.Application.Interfaces.Services.PlannedStep;
@@ -66,7 +70,14 @@ public sealed class AgentExecutionServiceTests : IDisposable
             CancellationToken: CancellationToken.None);
     }
 
-    public void Dispose() => _memoryScope.Dispose();
+    private readonly List<IDisposable> _disposables = [];
+
+    public void Dispose()
+    {
+        _memoryScope.Dispose();
+        foreach (var disposable in _disposables)
+            disposable.Dispose();
+    }
 
     [Fact]
     public void ShouldThrowArgumentNullException_WhenConstructingWithNullLogger()
@@ -515,40 +526,83 @@ public sealed class AgentExecutionServiceTests : IDisposable
         Assert.Null(result.StructuredOutput);
     }
 
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldContinueExecution_WhenExecutingTaskAsyncWithMemoryError()
+    /// <summary>
+    /// The service over the real <see cref="MemoryCoordinator"/> and memory (GAP-30): the crew of
+    /// <c>_context</c> remembers, and its store is <paramref name="store"/>. Returns the coordinator's
+    /// logger, which carries the warnings.
+    /// </summary>
+    private (AgentExecutionService Service, Fixtures.TestLogger<MemoryCoordinator> MemoryLog) WithRealMemory(
+        Orkeon.Domain.Memory.IMemoryProvider store)
     {
-        // Arrange
-        var expectedResult = new TaskResult(
+        var registry = new CrewMemoryProviderRegistry();
+        registry.Record(_context.CrewId, providerType: null, "news-desk", memoryEnabled: true);
+        var embedder = new MockEmbeddingProvider();
+        embedder.SetEmbeddingFunc(LexicalVectors.Of);
+        var memory = new MemoryService(new StubMemoryProviderFactory(store), NullLogger<MemoryService>.Instance, registry, store);
+        _disposables.Add(memory);
+        var memoryLog = new Fixtures.TestLogger<MemoryCoordinator>();
+        var coordinator = new MemoryCoordinator(memoryLog, memory, registry, embedder);
+        return (new AgentExecutionService(_logger, _executionOrchestrator, _callbackOrchestrator, coordinator, _performanceMetrics), memoryLog);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_store_that_fails_leaves_the_task_succeeded_with_its_output_and_a_warning()
+    {
+        // GAP-30: the output is the deliverable, already paid for. A memory store that is down used
+        // to fail the task — and, since GAP-03, the crew and every task depending on it.
+        _executionOrchestrator.SetupResult(new TaskResult(
             Success: true,
             Output: "Test output",
             StructuredOutput: null,
             ToolsUsed: [],
             ExecutionTime: TimeSpan.FromSeconds(1),
-            Error: null);
+            Error: null));
+        var (service, memoryLog) = WithRealMemory(
+            new ThrowingMemoryProvider(new InvalidOperationException("Memory error"), searches: false));
 
-        _executionOrchestrator.SetupResult(expectedResult);
-        _memoryCoordinator.ThrowException(new InvalidOperationException("Memory error"));
+        var result = await service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
 
-        // Act
-        var result = await _service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("Test output", result.Output);
+        Assert.Contains(memoryLog.LogEntries, e => e.LogLevel == LogLevel.Warning && (e.Message ?? "").Contains("Memory error", StringComparison.Ordinal));
+        Assert.False(_logger.HasLoggedError());
+    }
 
-        // Assert
-        // The service might fail when memory storage fails, or might succeed
-        // depending on implementation. Let's check what actually happened:
-        if (result.Success)
-        {
-            // If it succeeded, output should be preserved
-            Assert.Equal("Test output", result.Output);
-        }
-        else
-        {
-            // If it failed, ensure it's due to memory error
-            Assert.Contains("Memory", result.Error ?? "");
-        }
+    [Fact]
+    public async System.Threading.Tasks.Task A_recall_that_fails_runs_the_task_without_memories_and_warns()
+    {
+        var (service, memoryLog) = WithRealMemory(
+            new ThrowingMemoryProvider(new InvalidOperationException("search is down"), stores: false));
 
-        // Verify error was logged
-        Assert.True(_logger.HasLoggedWarning() || _logger.HasLoggedError());
+        var result = await service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Empty(_executionOrchestrator.LastContext!.RecalledMemories);
+        Assert.Contains(memoryLog.LogEntries, e => e.LogLevel == LogLevel.Warning && (e.Message ?? "").Contains("search is down", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task The_recalled_memories_reach_the_execution_on_its_own_copy_of_the_context()
+    {
+        _memoryCoordinator.Recalled = [new RecalledMemory(DateTime.UtcNow, "Analyst", "An earlier task", "An earlier output")];
+
+        await _service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, _memoryCoordinator.RecallCount);
+        Assert.Equal("An earlier output", Assert.Single(_executionOrchestrator.LastContext!.RecalledMemories).Content);
+        Assert.Empty(_context.RecalledMemories);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_context_that_does_not_recall_asks_the_memory_for_nothing()
+    {
+        _memoryCoordinator.Recalled = [new RecalledMemory(DateTime.UtcNow, "Analyst", "An earlier task", "An earlier output")];
+
+        await _service.ExecuteTaskAsync(
+            _testAgent, _testTask, _context with { RecallFromMemory = false }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, _memoryCoordinator.RecallCount);
+        Assert.Empty(_executionOrchestrator.LastContext!.RecalledMemories);
     }
 
     [Fact]
@@ -596,9 +650,13 @@ internal class TestExecutionOrchestrator : IExecutionOrchestrator
     public void ThrowException(Exception exception) => _exception = exception;
     public void SimulateDelay(TimeSpan delay) => _delay = delay;
 
+    /// <summary>The context of the last execution: what the agent's prompt was built from.</summary>
+    public SimpleExecutionContext? LastContext { get; private set; }
+
     public async System.Threading.Tasks.Task<TaskResult> ExecuteTaskCoreAsync(
         DomainAgent agent, DomainTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
     {
+        LastContext = context;
         if (_delay > TimeSpan.Zero)
         {
             await System.Threading.Tasks.Task.Delay(_delay, cancellationToken);
@@ -689,43 +747,29 @@ internal class TestMemoryCoordinator : IMemoryCoordinator
 {
     public bool TaskResultStored { get; private set; }
     public string? LastStoredResult { get; private set; }
-    private Exception? _exceptionToThrow;
 
-    public void ThrowException(Exception exception)
+    /// <summary>How many times a task asked to recall.</summary>
+    public int RecallCount { get; private set; }
+
+    /// <summary>What a recall returns.</summary>
+    public IReadOnlyList<RecalledMemory> Recalled { get; set; } = [];
+
+    public System.Threading.Tasks.Task EnsureReadyAsync(CrewId crewId, CancellationToken cancellationToken = default) =>
+        System.Threading.Tasks.Task.CompletedTask;
+
+    public System.Threading.Tasks.Task<IReadOnlyList<RecalledMemory>> RecallAsync(
+        DomainAgent agent, DomainTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default)
     {
-        _exceptionToThrow = exception;
+        RecallCount++;
+        return System.Threading.Tasks.Task.FromResult(Recalled);
     }
 
     public System.Threading.Tasks.Task StoreTaskResultAsync(
         DomainAgent agent, DomainTask task, string output,
         SimpleExecutionContext context, CancellationToken cancellationToken)
     {
-        if (_exceptionToThrow != null)
-            throw _exceptionToThrow;
-
         TaskResultStored = true;
         LastStoredResult = output;
-        return System.Threading.Tasks.Task.CompletedTask;
-    }
-
-    public System.Threading.Tasks.Task<IEnumerable<MemoryItem>> RetrieveRelevantMemoriesAsync(
-        DomainAgent agent, DomainTask task, SimpleExecutionContext context,
-        int maxResults = 10, CancellationToken cancellationToken = default)
-    {
-        return System.Threading.Tasks.Task.FromResult(Enumerable.Empty<MemoryItem>());
-    }
-
-    public System.Threading.Tasks.Task StoreAgentExperienceAsync(
-        DomainAgent agent, string experience, double importance,
-        SimpleExecutionContext context, CancellationToken cancellationToken = default)
-    {
-        return System.Threading.Tasks.Task.CompletedTask;
-    }
-
-    public System.Threading.Tasks.Task UpdateWorkingMemoryAsync(
-        DomainAgent agent, string key, string value,
-        SimpleExecutionContext context, CancellationToken cancellationToken = default)
-    {
         return System.Threading.Tasks.Task.CompletedTask;
     }
 }

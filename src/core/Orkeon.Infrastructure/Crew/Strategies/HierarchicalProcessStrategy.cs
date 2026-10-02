@@ -31,6 +31,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     private readonly IManagerAgent _managerAgent;
     private readonly IAgentExecutionService _executionService;
     private readonly IMemoryScope _memoryScope;
+    private readonly IMemoryCoordinator _memoryCoordinator;
     private readonly CrewHookDispatcher _hooks;
 
     /// <summary>The role a skipped task reports: the manager was never asked to assign it.</summary>
@@ -43,7 +44,12 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     /// <param name="managerAgent">The manager agent responsible for task delegation and review.</param>
     /// <param name="executionService">The agent execution service.</param>
     /// <param name="memoryScope">The memory scope.</param>
+    /// <param name="memoryCoordinator">
+    /// Stores the output the manager accepted in the crew's memory, once, under the agent that
+    /// wrote it: the attempts run without storing (GAP-30).
+    /// </param>
     /// <param name="hook">Optional execution hook notified as each task is finalised (BUS-03).</param>
+#pragma warning disable S107 // DI constructor: the four collaborators of every strategy, the manager, the memory and the hook
     public HierarchicalProcessStrategy(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,
@@ -51,7 +57,9 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         IManagerAgent managerAgent,
         IAgentExecutionService executionService,
         IMemoryScope memoryScope,
+        IMemoryCoordinator memoryCoordinator,
         ICrewExecutionHook? hook = null)
+#pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -65,6 +73,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         _executionService = executionService;
         ArgumentNullException.ThrowIfNull(memoryScope);
         _memoryScope = memoryScope;
+        ArgumentNullException.ThrowIfNull(memoryCoordinator);
+        _memoryCoordinator = memoryCoordinator;
         _hooks = new CrewHookDispatcher(hook, logger);
     }
 
@@ -287,9 +297,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         var (domainOutput, appOutput, error) = await ExecuteWithRevisionLoopAsync(
             assignedAgent, task, task.Id, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
 
-        var updatedContext = new SimpleExecutionContext(
-            context.CrewId, context.Variables, context.Memory,
-            applicationTaskOutputs, context.CancellationToken);
+        // Derived, never rebuilt: a context's init settings survive from task to task (GAP-30).
+        var updatedContext = context with { PreviousOutputs = applicationTaskOutputs };
 
         return new ProcessedTask(assignedAgent, assignment.AssignedAgent, domainOutput, appOutput, updatedContext, error);
     }
@@ -303,8 +312,14 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         TokenUsageTally tokenTally,
         CancellationToken cancellationToken)
     {
+        // An attempt is not the task's result until the manager accepts it: every attempt runs
+        // without storing (it still recalls — it answers the task), and the accepted output is
+        // stored once, below (GAP-30). Derived with `with`, never rebuilt, so the context's init
+        // settings travel with it.
+        var attemptContext = context with { StoreResultInMemory = false };
+
         var executionResult = await _executionService.ExecuteTaskAsync(
-            assignedAgent, task, context, cancellationToken).ConfigureAwait(false);
+            assignedAgent, task, attemptContext, cancellationToken).ConfigureAwait(false);
         tokenTally.Record(executionResult);
 
         var appOutput = BuildApplicationTaskOutput(task, assignedAgent, executionResult);
@@ -313,18 +328,22 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
         const int MaxRevisions = 3;
         var revisionContext = new TaskRevisionContext(
-            assignedAgent, task, taskId, context, applicationTaskOutputs, MaxRevisions);
+            assignedAgent, task, taskId, attemptContext, applicationTaskOutputs, MaxRevisions);
 
+        var accepted = false;
         for (int revision = 0; revision < MaxRevisions; revision++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var approved = await _managerAgent.ReviewOutputAsync(appOutput, task).ConfigureAwait(false);
             if (approved)
+            {
+                accepted = true;
                 break;
+            }
 
             if (revision < MaxRevisions - 1)
             {
-                (domainOutput, appOutput, error) = await ReExecuteTaskAsync(
+                (domainOutput, appOutput, error, executionResult) = await ReExecuteTaskAsync(
                     revisionContext, revision, tokenTally, cancellationToken).ConfigureAwait(false);
             }
             else
@@ -333,6 +352,15 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                     taskId, MaxRevisions, domainOutput, appOutput);
                 error = $"the manager rejected its output after {MaxRevisions} revisions";
             }
+        }
+
+        // What the crew remembers: the output the manager accepted — a review that errors counts
+        // as an acceptance — once, under the agent that wrote it; never a rejected attempt, never
+        // a failed one. A crew without memory stores nothing; a store that fails is a warning.
+        if (accepted && executionResult.Success && !string.IsNullOrEmpty(executionResult.Output))
+        {
+            await _memoryCoordinator.StoreTaskResultAsync(
+                assignedAgent, task, executionResult.Output, context, cancellationToken).ConfigureAwait(false);
         }
 
         return (domainOutput, appOutput, error);
@@ -349,7 +377,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         List<ApplicationTaskOutput> ApplicationTaskOutputs,
         int MaxRevisions);
 
-    private async Task<(DomainTaskOutput, ApplicationTaskOutput, string?)> ReExecuteTaskAsync(
+    private async Task<(DomainTaskOutput, ApplicationTaskOutput, string?, TaskResult)> ReExecuteTaskAsync(
         TaskRevisionContext revisionContext,
         int revision,
         TokenUsageTally tokenTally,
@@ -359,13 +387,15 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
         LogManagerRejectedOutputForTask(taskId, revision + 1, maxRevisions);
 
-        var executionContext = new SimpleExecutionContext(
-            context.CrewId,
-            new Dictionary<string, string>(context.Variables)
+        // Derived from the attempt context: it stores nothing, like the first attempt.
+        var executionContext = context with
+        {
+            Variables = new Dictionary<string, string>(context.Variables)
             {
                 ["revision_feedback"] = $"Previous output was rejected. Revision {revision + 1}/{maxRevisions}. Please improve."
             },
-            context.Memory, applicationTaskOutputs, context.CancellationToken);
+            PreviousOutputs = applicationTaskOutputs,
+        };
 
         var executionResult = await _executionService.ExecuteTaskAsync(
             assignedAgent, task, executionContext, cancellationToken).ConfigureAwait(false);
@@ -373,7 +403,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
         return (BuildDomainTaskOutput(task, executionResult),
                 BuildApplicationTaskOutput(task, assignedAgent, executionResult),
-                executionResult.Error ?? executionResult.LastError);
+                executionResult.Error ?? executionResult.LastError,
+                executionResult);
     }
 
     private (DomainTaskOutput, ApplicationTaskOutput) MarkAsNeedsRevision(

@@ -186,13 +186,19 @@ public static class InfrastructureExtensions
         // (Orkeon:Redis, Orkeon:Sqlite, Orkeon:ChromaDb, Orkeon:Pinecone, Orkeon:LanceDb); the
         // factory hands out one shared instance per type. Memory:Provider only chooses the TYPE
         // of the application-wide provider (unset → in-memory), exactly like a crew's
-        // memoryProvider: and Orkeon:Rag:Provider.
+        // memoryProvider: and Orkeon:Rag:Provider — and it is where the memory of a named crew
+        // that declares no memoryProvider: lives (GAP-30).
         services.AddOrkeonMemoryProviderFactory();
         services.BindMemorySection<Memory.RedisMemoryOptions>(Memory.RedisMemoryOptions.SectionName);
         services.BindMemorySection<Memory.Sqlite.SqliteMemoryOptions>(Memory.Sqlite.SqliteMemoryOptions.SectionName);
         services.BindMemorySection<Memory.ChromaDb.ChromaDbOptions>(Memory.ChromaDb.ChromaDbOptions.SectionName);
         services.BindMemorySection<Memory.Pinecone.PineconeOptions>(Memory.Pinecone.PineconeOptions.SectionName);
         services.BindMemorySection<Memory.LanceDb.LanceDbOptions>(Memory.LanceDb.LanceDbOptions.SectionName);
+
+        // The bounds of what a crew with memory: true recalls before each task (GAP-30): bound here,
+        // where every host composes its memory, from the container's configuration.
+        services.BindMemorySection<CrewMemoryOptions>(CrewMemoryOptions.SectionName);
+
         services.AddSingleton<Orkeon.Domain.Memory.IMemoryProvider>(sp =>
             sp.GetRequiredService<Application.Interfaces.Ports.IMemoryProviderFactory>()
                 .GetProvider(sp.GetService<IConfiguration>()?[VectorStoreExtensions.MemoryProviderKey] ?? string.Empty));

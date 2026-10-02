@@ -30,6 +30,11 @@ public class ContextualMemoryTests
                 .Take(maxResults)
                 .ToList());
         }
+        public Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsync(
+            float[] queryEmbedding, int maxResults, float minScore, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<ScoredMemoryItem>>([]);
+        public Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
+            => Task.FromResult(_items.RemoveAll(i => i.Id.ToString() == key) > 0);
         public Task ClearAsync() { _items.Clear(); return Task.CompletedTask; }
     }
 

@@ -229,7 +229,7 @@ Before starting the implementation, verify that:
 - Missing tools are identified with an estimated effort
 - The `ProcessType` is justified by the nature of the workflow
 - Human intervention points are identified (`HumanInput = true`)
-- Memory is enabled if inter-task context is needed (`EnableMemory(true)`)
+- Memory is enabled if the crew should remember its earlier runs (`EnableMemory(true)`, `memory: true`) — not for the context between the tasks of one run, which the previous outputs already carry into each prompt
 - The rate-limiting constraints (`MaxRpm`) are compatible with the external APIs used
 
 ### 5.5 Minimal DI setup for the port

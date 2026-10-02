@@ -35,7 +35,7 @@ public sealed class MemoryProviderFactoryTests : IDisposable
         new(new FakeFileSystemService(), _httpClientFactory, settings, loggerFactory);
 
     private static MemoryItem Item(string content = "insight") =>
-        MemoryItem.Create(content: content, embedding: null, importance: 0.9f, source: "test");
+        MemoryItem.Create(content: content, embedding: [0.1f, 0.2f, 0.3f], importance: 0.9f, source: "test");
 
     [Theory]
     [InlineData("inmemory", typeof(InMemoryProvider))]

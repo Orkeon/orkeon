@@ -101,7 +101,7 @@ public class ProcessStrategyFactoryTests
             var mockManagerAgent = new MockManagerAgent();
             var hierarchicalStrategy = new HierarchicalProcessStrategy(
                 mockTaskRepo, mockAgentRepo, hierarchicalLogger,
-                mockManagerAgent, mockExecutionService, mockMemoryScope);
+                mockManagerAgent, mockExecutionService, mockMemoryScope, new MockMemoryCoordinator());
             serviceProvider.RegisterService<HierarchicalProcessStrategy>(hierarchicalStrategy);
         }
 
@@ -134,6 +134,9 @@ public class ProcessStrategyFactoryTests
         services.AddSingleton<IAgentExecutionService>(mockExecutionService);
         services.AddSingleton<IMemoryScope>(mockMemoryScope);
         services.AddSingleton<IAgentCommunicationService>(new MockAgentCommunicationService());
+        // The hierarchical (GAP-30) and consensual (GAP-20) strategies store the result a run keeps;
+        // AddOrkeonApplication registers the coordinator.
+        services.AddSingleton<Orkeon.Application.Interfaces.Services.IMemoryCoordinator>(new MockMemoryCoordinator());
         services.AddTransient<AgentDelegationToolsProvider>();
         services.AddTransient<CrewStrategyDependencies>();
 
@@ -320,9 +323,6 @@ public class ProcessStrategyFactoryTests
         var services = CreateServiceCollectionWithMocks();
         services.AddSingleton<IVotingStrategy>(new MajorityVotingStrategy());
         services.AddSingleton<IBallotCollector>(new Orkeon.Infrastructure.Tests.Doubles.FakeBallotCollector());
-        // The strategy stores the retained answer (GAP-20); AddOrkeonApplication registers the coordinator.
-        services.AddSingleton<Orkeon.Application.Interfaces.Services.IMemoryCoordinator>(
-            new Orkeon.Infrastructure.Tests.Doubles.MockMemoryCoordinator());
         services.AddTransient<ConsensualProcessStrategy>();
         var serviceProvider = services.BuildServiceProvider();
         var logger = new TestLogger();

@@ -23,8 +23,9 @@ namespace Orkeon.Infrastructure.Consensus;
 /// execution each count as an abstention and are logged; none fails the task. Labels the
 /// voter was not offered — its own answer among them — are dropped from the ranking. The
 /// ballot runs with <see cref="Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory"/>
-/// off, whatever the request's context says: its JSON is not a task result and never reaches
-/// the crew's memory (GAP-20).
+/// and <see cref="Orkeon.Application.Context.SimpleExecutionContext.RecallFromMemory"/> off,
+/// whatever the request's context says: its JSON is not a task result and never reaches the crew's
+/// memory (GAP-20), and a vote recalls none of it (GAP-30).
 /// </remarks>
 public sealed partial class AgentBallotCollector : IBallotCollector
 {
@@ -65,10 +66,9 @@ public sealed partial class AgentBallotCollector : IBallotCollector
             .Build();
 
         // A ballot is not a task result: whatever context it comes with, its JSON never goes to
-        // the crew's memory, where a later task would read it as one (GAP-20).
-        var context = request.Context.StoreResultInMemory
-            ? request.Context with { StoreResultInMemory = false }
-            : request.Context;
+        // the crew's memory, where a later task would read it as one (GAP-20). Nor does it answer
+        // the task: the crew's earlier work has no place in its prompt (GAP-30).
+        var context = request.Context with { StoreResultInMemory = false, RecallFromMemory = false };
 
         var execution = await _executionService.ExecuteTaskAsync(
             request.Voter, ballotTask, context, cancellationToken).ConfigureAwait(false);

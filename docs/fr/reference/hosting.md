@@ -254,7 +254,8 @@ compris) vers le même point de terminaison. La ressource nomme le service `Orke
 et de métriques suivent les conventions GenAI d'OpenTelemetry — voir
 [Sous-systèmes opt-in](opt-in-subsystems.md).
 
-La section enregistre aussi trois contrôles de santé — `llm_provider`, `memory_provider`,
+La section enregistre aussi trois contrôles de santé — `llm_provider`, `memory_provider` (qui lit une
+clé absente : chaque provider le sert, Pinecone et ChromaDB compris),
 `system_resources` — qu'aucun runner livré n'expose : ni `orkeon` ni `orkeon-host` ne servent de HTTP.
 
 ## .NET Aspire — `Orkeon.Hosting.Aspire`

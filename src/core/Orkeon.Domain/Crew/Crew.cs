@@ -57,8 +57,11 @@ public sealed class Crew : AggregateRoot<CrewId>
     public bool Planning { get; private set; }
 
     /// <summary>
-    /// Gets the memory-provider selection (e.g. <c>redis</c>, <c>sqlite</c>). Null falls back to the
-    /// host's configured default provider. Resolved to a concrete <c>IMemoryProvider</c> at kickoff.
+    /// Gets the memory-provider selection (e.g. <c>redis</c>, <c>sqlite</c>): where the memory of a
+    /// crew with <see cref="MemoryEnabled"/> lives. Null falls back to the host's configured default
+    /// provider (<c>Memory:Provider</c>). Resolved to a concrete <c>IMemoryProvider</c> at kickoff.
+    /// Set only with <see cref="MemoryEnabled"/>: a provider holds what a crew remembers, and a crew
+    /// without memory remembers nothing (GAP-30).
     /// </summary>
     public string? MemoryProvider { get; private set; }
 
@@ -116,7 +119,9 @@ public sealed class Crew : AggregateRoot<CrewId>
     public ILlmProvider? PlanningLlm { get; private set; }
 
     /// <summary>
-    /// Gets whether memory is enabled.
+    /// Gets whether the crew remembers (<c>memory: true</c>, <c>CrewBuilder.EnableMemory()</c>): only
+    /// then does a run store the result of each task in the crew's memory and recall its memories
+    /// before each task (GAP-30). Off by default.
     /// </summary>
     public bool MemoryEnabled { get; private set; }
 
@@ -180,6 +185,9 @@ public sealed class Crew : AggregateRoot<CrewId>
 
         if (string.IsNullOrWhiteSpace(options.Goal))
             throw new ArgumentException("options.Goal cannot be empty.", nameof(options));
+
+        if (!options.MemoryEnabled && !string.IsNullOrWhiteSpace(options.MemoryProvider))
+            throw new ArgumentException(ProviderWithoutMemory(options.MemoryProvider), nameof(options));
 
         var crew = new Crew(CrewId.Create())
         {
@@ -499,8 +507,21 @@ public sealed class Crew : AggregateRoot<CrewId>
             FullOutput = update.FullOutput.Value;
 
         if (update.MemoryEnabled.HasValue)
+        {
+            if (!update.MemoryEnabled.Value && !string.IsNullOrWhiteSpace(MemoryProvider))
+                throw new InvalidOperationException(ProviderWithoutMemory(MemoryProvider));
             MemoryEnabled = update.MemoryEnabled.Value;
+        }
     }
+
+    /// <summary>
+    /// The refusal of a memory provider named for a crew whose memory is off (GAP-30), with the
+    /// remedy in both spellings.
+    /// </summary>
+    private static string ProviderWithoutMemory(string memoryProvider) =>
+        $"The crew names a memory provider ('{memoryProvider}') but its memory is off: a provider holds " +
+        "what a crew remembers, and a crew without memory remembers nothing. Turn memory on — memory: true " +
+        "in YAML, CrewBuilder.EnableMemory() in C# — or remove the provider (memoryProvider:, WithMemoryProvider).";
 
     /// <summary>
     /// Updates crew configuration.

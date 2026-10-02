@@ -100,6 +100,32 @@ public interface ILongTermMemory
     System.Threading.Tasks.Task AddAsync(MemoryItem item);
     /// <summary>Search Async(string, int).</summary>
     System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10);
+
+    /// <summary>
+    /// The entries of this memory closest to <paramref name="queryEmbedding"/>, best first: at most
+    /// <paramref name="maxResults"/>, each scoring at least <paramref name="minScore"/> (cosine
+    /// similarity). A memory backed by a provider searches it with its scope filter, applied by the
+    /// provider before its limit; the in-process memory computes the cosine itself. Entries without
+    /// a vector, or with a vector of another dimension, are never returned (GAP-30).
+    /// </summary>
+    /// <param name="queryEmbedding">The vector to compare the entries with.</param>
+    /// <param name="maxResults">How many entries to return at most.</param>
+    /// <param name="minScore">The least similarity an entry must reach.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsync(
+        float[] queryEmbedding,
+        int maxResults,
+        float minScore,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes the entry stored under <paramref name="key"/> — the <see cref="ScoredMemoryItem.Key"/>
+    /// a search returned, else the item's id. Returns whether an entry was removed.
+    /// </summary>
+    /// <param name="key">The entry's storage key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default);
+
     /// <summary>Clear Async().</summary>
     System.Threading.Tasks.Task ClearAsync();
 }

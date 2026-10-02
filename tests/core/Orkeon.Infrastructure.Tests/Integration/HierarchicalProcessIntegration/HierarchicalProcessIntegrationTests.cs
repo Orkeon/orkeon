@@ -252,7 +252,8 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
             _logger,
             managerAgent ?? new TestManagerAgent(),
             executionService ?? new TestAgentExecutionService(),
-            _memoryScope);
+            _memoryScope,
+            new Orkeon.Infrastructure.Tests.Doubles.MockMemoryCoordinator());
     }
 
     [Fact]

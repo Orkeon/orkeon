@@ -1,7 +1,9 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
+using System.Globalization;
 using System.Text;
 using Orkeon.Application.Context;
 using Orkeon.Application.Constants.Orchestration;
+using Orkeon.Application.Memory;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
@@ -11,8 +13,8 @@ namespace Orkeon.Application.Crew.Execution;
 /// Stateless system/user prompt composition for agent task execution.
 /// Extracted verbatim from <see cref="ExecutionOrchestrator"/> (R4.1): role section,
 /// tools section (with text tool-call instructions for non-native providers),
-/// guardrails, response template, task interpolation, context variables and
-/// previous-output sections.
+/// guardrails, response template, task interpolation, context variables,
+/// previous-output and recalled-memory (GAP-30) sections.
 /// </summary>
 internal static class AgentPromptComposer
 {
@@ -21,6 +23,9 @@ internal static class AgentPromptComposer
     /// Prevents excessive prompt sizes when previous tasks produce very large outputs.
     /// </summary>
     private const int MaxPreviousOutputContextChars = 8000;
+
+    /// <summary>How much of a recalled memory's task description its heading line shows.</summary>
+    private const int MaxMemoryTaskDescriptionChars = 80;
 
     /// <param name="agent">The executing agent.</param>
     /// <param name="task">The task being run.</param>
@@ -144,10 +149,57 @@ internal static class AgentPromptComposer
 
         AppendContextVariables(prompt, context);
         AppendPreviousOutputs(prompt, context);
+        AppendRecalledMemories(prompt, context);
         AppendKnowledgeContext(prompt, knowledgeContext);
 
         return prompt.ToString();
     }
+
+    /// <summary>
+    /// Appends the crew's recalled memories (GAP-30), after the previous outputs and before the
+    /// retrieved knowledge: <see cref="PromptDefaults.MemoriesHeader"/>, then for each memory a
+    /// <c>--- date · role · task ---</c> line followed by its content, already cut to the recall's
+    /// budget. No-op when the context carries none — the prompt is then byte-identical to the
+    /// prompt of a crew without memory.
+    /// </summary>
+    private static void AppendRecalledMemories(StringBuilder prompt, SimpleExecutionContext context)
+    {
+        if (context.RecalledMemories is not { Count: > 0 } memories)
+            return;
+
+        prompt.AppendLine();
+        prompt.AppendLine(PromptDefaults.MemoriesHeader);
+        foreach (var memory in memories)
+        {
+            prompt.AppendLine(MemoryHeading(memory));
+            prompt.AppendLine(memory.Content);
+        }
+    }
+
+    /// <summary>
+    /// <c>--- 2026-09-30 · Analyst · Summarize the weekly news ---</c>: when the memory was stored,
+    /// the role of the agent that wrote it and the task it answered, on one line and cut to
+    /// <see cref="MaxMemoryTaskDescriptionChars"/> characters; what is unknown is left out.
+    /// </summary>
+    private static string MemoryHeading(RecalledMemory memory)
+    {
+        var parts = new List<string> { memory.StoredAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) };
+        if (!string.IsNullOrWhiteSpace(memory.AgentRole))
+            parts.Add(OneLine(memory.AgentRole));
+        if (!string.IsNullOrWhiteSpace(memory.TaskDescription))
+        {
+            var description = OneLine(memory.TaskDescription);
+            parts.Add(description.Length > MaxMemoryTaskDescriptionChars
+                ? string.Concat(description.AsSpan(0, MaxMemoryTaskDescriptionChars - 1), "…")
+                : description);
+        }
+
+        return $"--- {string.Join(" · ", parts)} ---";
+    }
+
+    /// <summary>The text on one line: every run of whitespace, line breaks included, as one space.</summary>
+    private static string OneLine(string text) =>
+        string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>
     /// Names the deliverable path when the task's contract says the agent writes it
@@ -205,6 +257,13 @@ internal static class AgentPromptComposer
 
         return query.ToString();
     }
+
+    /// <summary>
+    /// The task's description with the run's variables in it — what a memory of the task records
+    /// (GAP-30).
+    /// </summary>
+    internal static string InterpolateDescription(CrewTask task, SimpleExecutionContext? context) =>
+        InterpolateTaskFields(task, context).Description;
 
     /// <summary>
     /// Applies <see cref="InterpolateVariables(string, Dictionary{string, string})"/> to the task description

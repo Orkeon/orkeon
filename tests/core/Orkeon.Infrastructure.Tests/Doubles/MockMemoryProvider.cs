@@ -32,8 +32,11 @@ public sealed class MockMemoryProvider : IMemoryProvider
     public Dictionary<string, object>? LastSearchSimilarFilter { get; private set; }
     public int? LastSearchSimilarTopK { get; private set; }
     public float? LastSearchSimilarMinScore { get; private set; }
+    public Dictionary<string, object>? LastSearchFilter { get; private set; }
 
     private Exception? _searchException;
+    private Exception? _storeException;
+    private Exception? _getException;
 
     // --- Configuration ---
     public void SetSearchResult(IEnumerable<MemoryItem> result) => _searchResult = result;
@@ -46,12 +49,25 @@ public sealed class MockMemoryProvider : IMemoryProvider
     public void SetSearchException(Exception exception) => _searchException = exception;
 
     /// <summary>
+    /// Configures StoreAsync and StoreWithEmbeddingAsync to throw the specified exception (a store that is down).
+    /// </summary>
+    public void SetStoreException(Exception exception) => _storeException = exception;
+
+    /// <summary>
+    /// Configures GetAsync to throw the specified exception (a server that cannot be reached).
+    /// </summary>
+    public void SetGetException(Exception exception) => _getException = exception;
+
+    /// <summary>
     /// Gets the internal storage dictionary for test assertions.
     /// </summary>
     public IReadOnlyDictionary<string, MemoryItem> Storage => _storage;
 
     public Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
     {
+        if (_storeException != null)
+            throw _storeException;
+
         StoreCallCount++;
         LastStoreKey = key;
         LastStoreItem = item;
@@ -63,6 +79,9 @@ public sealed class MockMemoryProvider : IMemoryProvider
     {
         GetCallCount++;
         LastGetKey = key;
+
+        if (_getException != null)
+            throw _getException;
         _storage.TryGetValue(key, out var item);
         return Task.FromResult(item);
     }
@@ -76,6 +95,7 @@ public sealed class MockMemoryProvider : IMemoryProvider
         SearchCallCount++;
         LastSearchQuery = query;
         LastSearchLimit = limit;
+        LastSearchFilter = filter;
 
         if (_searchException != null)
             throw _searchException;
@@ -104,6 +124,9 @@ public sealed class MockMemoryProvider : IMemoryProvider
         float[] embedding,
         CancellationToken cancellationToken = default)
     {
+        if (_storeException != null)
+            throw _storeException;
+
         StoreWithEmbeddingCallCount++;
         LastStoreKey = key;
         LastStoreItem = item;

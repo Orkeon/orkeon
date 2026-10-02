@@ -596,7 +596,7 @@ public class MemoryServiceTests
         var factory = new TestMemoryProviderFactory(provider);
         var registry = new CrewMemoryProviderRegistry();
         var crewId = CreateTestCrewId();
-        registry.Record(crewId, "redis", crewName: null);
+        registry.Record(crewId, "redis", crewName: null, memoryEnabled: true);
         using var service = new MemoryService(factory, new TestLogger(), registry);
 
         // Act — high importance (> 0.7) routes to long-term memory.
@@ -614,7 +614,7 @@ public class MemoryServiceTests
         var factory = new TestMemoryProviderFactory(provider);
         var registry = new CrewMemoryProviderRegistry();
         var crewId = CreateTestCrewId();
-        registry.Record(crewId, "redis", crewName: null);
+        registry.Record(crewId, "redis", crewName: null, memoryEnabled: true);
         using var service = new MemoryService(factory, new TestLogger(), registry);
 
         await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
@@ -632,7 +632,7 @@ public class MemoryServiceTests
         var provider = new TestMemoryProvider();
         var registry = new CrewMemoryProviderRegistry();
         var crewId = CreateTestCrewId();
-        registry.Record(crewId, "redis", "legal-watch");
+        registry.Record(crewId, "redis", "legal-watch", memoryEnabled: true);
         using var service = new MemoryService(new TestMemoryProviderFactory(provider), new TestLogger(), registry);
 
         await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
@@ -648,7 +648,7 @@ public class MemoryServiceTests
         var provider = new TestMemoryProvider();
         var registry = new CrewMemoryProviderRegistry();
         var crewId = CreateTestCrewId();
-        registry.Record(crewId, "redis", "legal-watch");
+        registry.Record(crewId, "redis", "legal-watch", memoryEnabled: true);
         using var service = new MemoryService(new TestMemoryProviderFactory(provider), new TestLogger(), registry);
 
         await service.SearchMemoryAsync(crewId, "insight", 5, DomainMemoryType.LongTerm, TestContext.Current.CancellationToken);
@@ -665,7 +665,7 @@ public class MemoryServiceTests
         var provider = new TestMemoryProvider();
         var registry = new CrewMemoryProviderRegistry();
         var crewId = CreateTestCrewId();
-        registry.Record(crewId, "redis", crewName: null);
+        registry.Record(crewId, "redis", crewName: null, memoryEnabled: true);
         using var service = new MemoryService(new TestMemoryProviderFactory(provider), new TestLogger(), registry);
 
         await service.SearchMemoryAsync(crewId, "insight", 5, DomainMemoryType.LongTerm, TestContext.Current.CancellationToken);
@@ -687,6 +687,59 @@ public class MemoryServiceTests
 
         Assert.Empty(factory.CreatedConfigs);
         Assert.Empty(provider.MethodCalls);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_named_crew_without_a_provider_lives_in_the_host_default_provider()
+    {
+        // GAP-30: no memoryProvider: is the host's default (Memory:Provider), as the aggregate says —
+        // not a store of the run's own, which ended with it.
+        var applicationProvider = new TestMemoryProvider();
+        var factory = new TestMemoryProviderFactory(new TestMemoryProvider());
+        var registry = new CrewMemoryProviderRegistry();
+        var crewId = CreateTestCrewId();
+        registry.Record(crewId, providerType: null, "news-desk", memoryEnabled: true);
+        using var service = new MemoryService(factory, new TestLogger(), registry, applicationProvider);
+
+        await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
+
+        var stored = Assert.Single(applicationProvider.Stored.Values);
+        Assert.Equal("crew-memory", stored.Metadata.CustomProperties?.GetValueOrDefault("kind"));
+        Assert.Equal("news-desk", stored.Metadata.CustomProperties?.GetValueOrDefault("crew"));
+        Assert.Empty(factory.CreatedConfigs);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_later_run_of_a_named_crew_searches_the_host_default_provider_in_its_scope()
+    {
+        var applicationProvider = new TestMemoryProvider();
+        var registry = new CrewMemoryProviderRegistry();
+        var firstRun = CreateTestCrewId();
+        var secondRun = CreateTestCrewId();
+        registry.Record(firstRun, providerType: null, "news-desk", memoryEnabled: true);
+        registry.Record(secondRun, providerType: null, "news-desk", memoryEnabled: true);
+        using var service = new MemoryService(new TestMemoryProviderFactory(), new TestLogger(), registry, applicationProvider);
+
+        await service.SaveMemoryAsync(firstRun, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
+        var results = await service.SearchMemoryAsync(secondRun, "insight", 5, DomainMemoryType.LongTerm, TestContext.Current.CancellationToken);
+
+        Assert.Equal("durable insight", Assert.Single(results).Content);
+        Assert.Equal("news-desk", applicationProvider.LastSearchFilter?["crew"]);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task An_unnamed_crew_without_a_provider_keeps_a_store_of_its_own()
+    {
+        // Scoped by an id no later run carries, it would be read by nobody in the shared store.
+        var applicationProvider = new TestMemoryProvider();
+        var registry = new CrewMemoryProviderRegistry();
+        var crewId = CreateTestCrewId();
+        registry.Record(crewId, providerType: null, crewName: null, memoryEnabled: true);
+        using var service = new MemoryService(new TestMemoryProviderFactory(), new TestLogger(), registry, applicationProvider);
+
+        await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
+
+        Assert.Empty(applicationProvider.MethodCalls);
     }
 
     [Fact]

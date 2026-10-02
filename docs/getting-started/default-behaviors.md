@@ -27,7 +27,7 @@ exceptions are called out in their row — a service registered unconditionally
 | `ITemplateInstantiator` | `NullTemplateInstantiator` | Also **throws** `NotSupportedException` when actually used — louder than any log. | Register your own implementation. |
 | `IMemorySystem` | `InMemoryMemorySystem` | Real in-memory implementation — correct, just not persistent. | Configure a persistent provider (`Memory:Provider`). |
 | `IAgentSelectionService` (FirstFit) | `SimpleAgentSelectionService` | Picks the **first available agent** — the explicit safe fallback. | Set `OrkeonApplicationOptions.AgentSelectionStrategy` to `Skill` (lexical) or `Embedding` (semantic — requires a real embedding provider), via `AddOrkeonApplication(o => …)` or `services.Configure<OrkeonApplicationOptions>(…)`. |
-| `IEmbeddingProvider` | resolution chain | Local BGE (when `AddOrkeonLocalEmbeddings()` is registered) → remote provider from `Orkeon:Embeddings` → **fail-fast at first use** with an actionable exception. Never a silent hash fallback. | Register `AddOrkeonLocalEmbeddings()` or configure `Orkeon:Embeddings`. |
+| `IEmbeddingProvider` | resolution chain | Local BGE (when `AddOrkeonLocalEmbeddings()` is registered) → remote provider from `Orkeon:Embeddings` → **fail-fast at first use** with an actionable exception. Never a silent hash fallback. A crew with `memory: true` uses it at kickoff, so without one that crew is refused before its first task. | Register `AddOrkeonLocalEmbeddings()` or configure `Orkeon:Embeddings`. |
 
 > **`IAgentExecutionService`** is *not* on this list on purpose: `AddOrkeonApplication()`
 > registers the real `AgentExecutionService` unconditionally (`AddScoped`). The

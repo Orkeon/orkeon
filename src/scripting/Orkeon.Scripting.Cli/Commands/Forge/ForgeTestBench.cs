@@ -139,7 +139,12 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
             ? await LoadScriptConfigurationAsync(session, cancellationToken).ConfigureAwait(false)
             : await _services.GetRequiredService<ICrewDefinitionLoader>()
                 .LoadFromDirectoryAsync(_crewVirtualPath, cancellationToken).ConfigureAwait(false);
-        var crew = await factory.CreateFromConfigAsync(configuration, cancellationToken).ConfigureAwait(false);
+
+        // A trial runs without memory (GAP-30): under the name of the crew being designed, it would
+        // store trial outputs that the promoted crew would then recall as its earlier runs. The
+        // team's memory starts with its first real run.
+        var crew = await factory.CreateFromConfigAsync(
+            configuration with { Memory = false, MemoryProvider = null }, cancellationToken).ConfigureAwait(false);
 
         var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName);
         var input = CrewInput.WithStringVariables(

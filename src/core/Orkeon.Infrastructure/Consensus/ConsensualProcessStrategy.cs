@@ -351,7 +351,9 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 
         /// <summary>
         /// The context of a candidate answer or of a ballot: neither is the task's result, so
-        /// neither goes to the crew's memory (GAP-20) — the retained answer does, once.
+        /// neither goes to the crew's memory (GAP-20) — the retained answer does, once. A candidate
+        /// answers the task and recalls the crew's memories; a ballot does not
+        /// (<c>AgentBallotCollector</c>, GAP-30).
         /// </summary>
         public SimpleExecutionContext VotingContext(IMemoryScope memory, CancellationToken ct) =>
             ExecutionContext(memory, ct) with { StoreResultInMemory = false };
@@ -714,35 +716,21 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     /// <summary>
     /// The retained answer, and nothing else of the vote, goes to the crew's memory — once, under
     /// the agent that wrote it (GAP-20): the candidates and the ballots ran with
-    /// <see cref="SimpleExecutionContext.StoreResultInMemory"/> off. A store that fails fails the
-    /// task, as it does in every other mode, where storing is part of the agent's execution.
+    /// <see cref="SimpleExecutionContext.StoreResultInMemory"/> off. A crew without memory stores
+    /// nothing, and a store that fails is a warning of the coordinator: the retained answer stays
+    /// the task's result, as in every other mode (GAP-30).
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Memory-store fault barrier: a store that fails turns the retained answer into a failed task result — the behaviour of AgentExecutionService in the other modes — instead of ending the crew on the spot.")]
     private async Task<TaskResult> RememberAsync(VoteContext vote, RetainedAnswer retained, CancellationToken ct)
     {
         var result = retained.Result;
-        if (retained.Author is null || !result.Success || string.IsNullOrEmpty(result.Output))
-            return result;
-
-        try
+        if (retained.Author is not null && result.Success && !string.IsNullOrEmpty(result.Output))
         {
             await _memoryCoordinator.StoreTaskResultAsync(
                 retained.Author, vote.Task, result.Output, vote.ExecutionContext(_memoryScope, ct), ct).ConfigureAwait(false);
-            return result;
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            LogRetainedAnswerNotStored(ex, vote.Task.Id);
-            return new TaskResult(false, string.Empty, null, [], result.ExecutionTime, Error: ex.Message);
-        }
-    }
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Task {TaskId}: the retained answer could not be stored in the crew's memory")]
-    private partial void LogRetainedAnswerNotStored(Exception ex, TaskId taskId);
+        return result;
+    }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Task {TaskId}: no consensus, the manager agent {Manager} chose candidate {Label}")]
     private partial void LogTaskDecidedByManager(TaskId taskId, string manager, string label);

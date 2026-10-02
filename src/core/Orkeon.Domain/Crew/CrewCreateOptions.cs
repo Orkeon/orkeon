@@ -81,14 +81,17 @@ public sealed class CrewCreateOptions
     public ILlmProvider? PlanningLlm { get; init; }
 
     /// <summary>
-    /// Whether to enable memory for the crew.
+    /// Whether the crew remembers: only then does a run store the result of each task and recall
+    /// the crew's memories before each task (GAP-30). Off by default.
     /// </summary>
     public bool MemoryEnabled { get; init; }
 
     /// <summary>
     /// Optional memory-provider selection (e.g. <c>inmemory</c>, <c>redis</c>, <c>sqlite</c>,
     /// <c>chromadb</c>, <c>pinecone</c>, <c>lancedb</c>). Null falls back to the host's configured
-    /// default provider. Resolved to a concrete <c>IMemoryProvider</c> at kickoff.
+    /// default provider. Resolved to a concrete <c>IMemoryProvider</c> at kickoff. Requires
+    /// <see cref="MemoryEnabled"/>: <see cref="Crew.Create(CrewCreateOptions)"/> refuses a provider
+    /// for a crew without memory (GAP-30).
     /// </summary>
     public string? MemoryProvider { get; init; }
 

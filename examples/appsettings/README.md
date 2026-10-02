@@ -71,8 +71,9 @@ and the [Local models guide](../../docs/guides/local-models.md).
 ## Memory providers (`memoryProvider:` in a crew)
 
 A crew's `memoryProvider:` names a **type** — `"Redis"`, `"SQLite"`, `"ChromaDb"`, … — and
-nothing else. Its connection comes from the settings, one section per provider; add the one
-your example needs to the profile you pass with `--settings`:
+nothing else: where a crew with `memory: true` keeps what it remembers (without `memory: true`,
+a `memoryProvider:` is refused at load). Its connection comes from the settings, one section per
+provider; add the one your example needs to the profile you pass with `--settings`:
 
 ```json
 {
@@ -84,7 +85,8 @@ your example needs to the profile you pass with `--settings`:
 ```
 
 - **Redis** (examples 86, 89, 92, 94, 95, 96, 101): without the section the provider connects
-  to `localhost:6379`; it connects on the crew's first stored result, so start a server first
+  to `localhost:6379`; it connects at the crew's kickoff, which checks the memory before the first
+  LLM call and refuses the run when the server cannot be reached, so start a server first
   (`docker run -d -p 6379:6379 redis:7`). Add `,password=…` to the connection string when yours
   needs one, or export `ORKEON_Orkeon__Redis__ConnectionString` instead of writing it down.
 - **SQLite** (examples 87, 88, 90, 91, 93, 97, 98, 99, 100): without the section the database is
@@ -93,6 +95,13 @@ your example needs to the profile you pass with `--settings`:
 
 The other sections (`Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`) are described in
 the [configuration reference](../../docs/reference/configuration.md).
+
+A crew with `memory: true` embeds what it stores and what it recalls with the host's embedding
+provider — the local model, which the runners register unless `RaggableTree:Enabled` is `false`
+(then set `Orkeon:Embeddings`). A vector store's dimension must be the embedder's: the local model
+gives 384, and LanceDB's table defaults to 1,536. How much a crew recalls before each task is the
+`Orkeon:CrewMemory` section (`RecallLimit`, `MinScore`, `MaxChars`) — see the
+[memory system](../../docs/architecture/memory-system.md#what-a-crew-recalls).
 
 ## Secrets stay local
 
