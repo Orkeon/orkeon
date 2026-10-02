@@ -16,8 +16,9 @@
   reasoning live in build-msi.ps1's header and .config\dotnet-tools.json.
 .PARAMETER StageDir
   The extracted FULL archive's inner folder — the one that directly contains
-  libexec\orkeon-host\orkeon-host.exe, LICENSE.md and VERSION. Mandatory: there
-  is no "build one fresh" fallback here, the CI job always has the tree.
+  libexec\orkeon-host\orkeon-host.exe, LICENSE.md, THIRD-PARTY-NOTICES.md and
+  VERSION. Mandatory: there is no "build one fresh" fallback here, the CI job
+  always has the tree.
 .PARAMETER Version
   Full version string. Default: StageDir\VERSION. Truncated to x.y.z for the
   MSI ProductVersion; the full string survives in the filename and ARPCOMMENTS.
@@ -47,7 +48,7 @@ $hostPublishDir = Join-Path $StageDir 'libexec\orkeon-host'
 if (-not (Test-Path (Join-Path $hostPublishDir 'orkeon-host.exe'))) {
     throw "StageDir '$StageDir' has no libexec\orkeon-host\orkeon-host.exe -- pass the FULL archive's inner folder (the cli archive carries no service host)."
 }
-foreach ($required in @('LICENSE.md', 'VERSION', 'appsettings.sample.json')) {
+foreach ($required in @('LICENSE.md', 'THIRD-PARTY-NOTICES.md', 'VERSION', 'appsettings.sample.json')) {
     if (-not (Test-Path (Join-Path $StageDir $required))) { throw "StageDir '$StageDir' has no $required." }
 }
 

@@ -66,7 +66,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Semantic search tool | `AddSemanticSearchTool()` (`Orkeon.Hosting`) — wired by `orkeon run` | Hosting | `semantic_search` (`SearchTool`) + `IEmbeddingService` adapter over `IEmbeddingProvider` + in-memory `IVectorMemoryStore` | Beta |
 | EventHub core + agent tools | `AddOrkeonInMemoryEventHub()` · `AddOrkeonEventHubTools()` — both wired by `RunnerHost` (hence `orkeon run` and `orkeon-host`) | Infrastructure / Tools.EventHub | `IEventHub` (in-process), the seven EventHub tools — see [EventHub](../architecture/event-hub-and-crew-lifecycle.md) | Beta |
 | E-mail tools | `AddOrkeonEmailTools(configuration)` (`Orkeon:Tools:Email`, inert until an account is declared) · `AddOrkeonEmailTokenStore(fileSystem, virtualDirectory)` (OAuth token store) — both wired by `RunnerHost`; the REPL wires the tools only | Tools.Email | the 13 `email_*` tools — see [E-mail tools](../guides/email.md) | Beta (live campaign pending) |
-| Microsoft Agent Framework bridge | `AddOrkeonAgentFramework()` | Interop.AgentFramework | `ICrewAgentFactory` (a registered crew as an `AIAgent`) — see [ADR-010](../adr/ADR-010-agent-framework-interop.md) | Beta |
+| Microsoft Agent Framework bridge | `AddOrkeonAgentFramework()` | Interop.AgentFramework | `ICrewAgentFactory` (a crew as an `AIAgent`, loaded and run in a scope of its own every turn) — see [ADR-010](../adr/ADR-010-agent-framework-interop.md) | Beta |
 
 > **Not in this catalog — registered by `AddOrkeonInfrastructure()` and gated by
 > configuration, not by a registration gesture**: MCP (`MCP` section, via the
@@ -390,7 +390,9 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
   services.AddOrkeonOnnxReranker();       // opt-in — required by balanced/quality/adaptive
   ```
   Every runner host built on `RunnerHost` (`orkeon run`, `orkeon-host`) makes
-  the first two calls itself; the `orkeon` CLI adds the third.
+  the first two calls itself, and so does the `orkeon-repl` REPL; the three
+  shipped binaries — `orkeon`, `orkeon-host`, `orkeon-repl` — add the third
+  (`RunnerHost` does not: the `Orkeon.Hosting` package stays free of ONNX).
   `AddOrkeonRag` already wires the query transformers, routing, hybrid BM25+RRF,
   the corrective graph **and the web-fallback transport registration** —
   calling `AddOrkeonRagWebFallback(configuration)` yourself is a no-op; the

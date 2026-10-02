@@ -123,8 +123,14 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
         // mount set for this run, entered for its whole flow and left with it.
         using var folders = _workspace is null ? null : ForgeTrialScope.Enter(_services, session, _workspace, _readRoot);
 
-        var factory = _services.GetRequiredService<ICrewFactory>();
-        var orchestration = _services.GetRequiredService<ICrewOrchestrationService>();
+        // A trial is a run: it loads and kicks off in one scope of its own, as `orkeon run`
+        // and orkeon-host do (GAP-25). The factory, the orchestrator and the repositories the
+        // crew is loaded into are scoped; resolved from the engine host's root they kept every
+        // trial's crew for the life of the session, and a host validating scopes refused them.
+        var scope = _services.CreateAsyncScope();
+        await using var _ = scope.ConfigureAwait(false);
+        var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
+        var orchestration = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
 
         // Both formats load FROM THE RENDERED FILE — what was written is what runs — and
         // converge on the same CrewConfiguration, the same factory, the same kickoff

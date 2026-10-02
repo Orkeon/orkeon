@@ -36,21 +36,22 @@ the MIT License.
 **Which shipped artefacts actually embed model weights.** Two sets of weights leave
 this repository, and it is worth being explicit about where. (1) The **BGE-micro-v2**
 weights of section 2 (`model.onnx`, ~17 MB, MIT) ride inside the `orkeon` and
-`orkeon-repl` dotnet tool packages (`tools/net10.0/any/LocalEmbeddingsModel/default/`)
-and inside the platform installers built from the CLI
-(`libexec/orkeon/LocalEmbeddingsModel/`), because `Orkeon.Hosting` references
-`Orkeon.Tools.Embeddings.Local` and SmartComponents' content files follow into the
-publish output. The `Orkeon.Tools.Embeddings.Local` **library** package deliberately
+`orkeon-repl` dotnet tool packages (`tools/net10.0/any/LocalEmbeddingsModel/default/`),
+inside the `orkeon-host` daemon, and inside the platform installers and archives built
+from those three (`libexec/<launcher>/LocalEmbeddingsModel/`), because `Orkeon.Hosting`
+and the REPL reference `Orkeon.Tools.Embeddings.Local` and SmartComponents' content
+files follow into the publish output. The `Orkeon.Tools.Embeddings.Local` **library** package deliberately
 ships *without* them — not as a licensing stance, but because a consumer already gets
 them transitively from the `SmartComponents.LocalEmbeddings` dependency, so a second
 copy would double the download (see the `OrkeonStripUpstreamContentFromPackage` target
 in `src/packaging/Orkeon.Tools.Embeddings.Local/`). (2) The **ms-marco-MiniLM-L-6-v2**
 weights of section 7 (~22 MB, Apache-2.0) are embedded resources of the
 `Orkeon.Rag.Onnx.Model` assembly, so they travel with every artefact that contains it:
-the `Orkeon.Rag.Onnx.Model` package itself, the `orkeon` tool and its installers. They
-are *not* in `orkeon-repl`, which does not reference that package. Both licences permit
-this redistribution; the notices below are what discharge their attribution
-obligations.
+the `Orkeon.Rag.Onnx.Model` package itself, the three shipped binaries that register the
+reranker of the `balanced` and `quality` RAG profiles — the `orkeon` and `orkeon-repl`
+tools and the `orkeon-host` daemon — and the installers and archives built from them.
+Both licences permit this redistribution; the notices below are what discharge their
+attribution obligations.
 
 ---
 

@@ -40,7 +40,8 @@
     OrkeonVersionFull  the full version string, kept in ARPCOMMENTS and the
                         .msi filename
     HostPublishDir     <full-archive tree>\libexec\orkeon-host
-    StageRoot          the full-archive tree root (LICENSE.md, VERSION,
+    StageRoot          the full-archive tree root (LICENSE.md,
+                        THIRD-PARTY-NOTICES.md, VERSION,
                         appsettings.sample.json)
 
   Same WiX v5.0.2 doctrine as Package.wxs (see its header: v5 pinned in
@@ -133,9 +134,13 @@
       </Files>
     </ComponentGroup>
 
-    <!-- Reference files at the install root, same as the archive ships. -->
+    <!-- Reference files at the install root, same as the archive ships. The
+         notices travel with the bits they cover: the daemon embeds model
+         weights (BGE-micro-v2, MIT; the ms-marco cross-encoder, Apache-2.0)
+         whose obligations attach to this package too. -->
     <ComponentGroup Id="RootDocsComponents" Directory="INSTALLFOLDER">
       <Files Include="$(var.StageRoot)\LICENSE.md" />
+      <Files Include="$(var.StageRoot)\THIRD-PARTY-NOTICES.md" />
       <Files Include="$(var.StageRoot)\VERSION" />
       <Files Include="$(var.StageRoot)\appsettings.sample.json" />
     </ComponentGroup>

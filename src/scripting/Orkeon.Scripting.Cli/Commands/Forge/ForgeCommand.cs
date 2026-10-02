@@ -644,21 +644,7 @@ internal static class ForgeCommand
                 // /output, and the log is where that is said.
                 logging.AddFilter("Orkeon.Hosting.RunnerHost", LogLevel.Information);
             },
-            configureServices: (_, services) =>
-            {
-                services.AddSingleton(box);
-                services.AddSingleton(tally);
-                services.AddSingleton<ILlmUsageSink>(tally);
-                // Registering a delta sink is what puts the assistant on the provider's
-                // streaming path, and that is the point: the meter then moves with each
-                // chunk instead of once a whole response has been written. The
-                // OpenAI-compatible base reassembles tool_calls from stream fragments for
-                // exactly this loop, so brief_submit / blueprint_submit are unaffected.
-                services.AddSingleton<ILlmDeltaSink>(tally);
-                services.AddSingleton<Orkeon.Application.Crew.ICrewExecutionHook>(observer);
-                services.AddSingleton<IBaseTool>(new BriefSubmitTool(box));
-                services.AddSingleton<IBaseTool>(new BlueprintSubmitTool(box));
-            });
+            configureServices: (_, services) => AddEngineServices(services, box, tally, observer));
 
         // No Llm section = no interview. Refuse with the remedy, before spending a turn —
         // the silent echo degrade that is acceptable for `orkeon run` would make the
@@ -788,6 +774,43 @@ internal static class ForgeCommand
             CliMounts = mounts,
             AllowExternalMounts = readsOutsideCwd,
         };
+    }
+
+    /// <summary>
+    /// What the forge adds to the runner host it builds: the submission box and the usage
+    /// tally the assistant reports through, the run observer the test stage reads, the two
+    /// submission tools, and what <c>orkeon run</c> adds to the RAG subsystem — a trial runs
+    /// the crew <c>orkeon run</c> will run once it is promoted, so it offers the same profiles
+    /// (GAP-25). Built here, apart from the cycle, so a test builds the engine host the verb runs.
+    /// </summary>
+    internal static void AddEngineServices(
+        IServiceCollection services,
+        ForgeSubmissionBox box,
+        ForgeUsageTally tally,
+        ForgeRunObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(box);
+        ArgumentNullException.ThrowIfNull(tally);
+        ArgumentNullException.ThrowIfNull(observer);
+
+        services.AddSingleton(box);
+        services.AddSingleton(tally);
+        services.AddSingleton<ILlmUsageSink>(tally);
+        // Registering a delta sink is what puts the assistant on the provider's
+        // streaming path, and that is the point: the meter then moves with each
+        // chunk instead of once a whole response has been written. The
+        // OpenAI-compatible base reassembles tool_calls from stream fragments for
+        // exactly this loop, so brief_submit / blueprint_submit are unaffected.
+        services.AddSingleton<ILlmDeltaSink>(tally);
+        services.AddSingleton<Orkeon.Application.Crew.ICrewExecutionHook>(observer);
+        services.AddSingleton<IBaseTool>(new BriefSubmitTool(box));
+        services.AddSingleton<IBaseTool>(new BlueprintSubmitTool(box));
+
+        // The ONNX cross-encoder of the balanced and quality profiles: without it a forged
+        // crew's rag_search on a host set to either failed its trial with "Unknown reranker
+        // 'onnx'", and worked once promoted.
+        RunCommand.AddCliRagServices(services);
     }
 
     /// <summary>Where the trial bench writes <c>/output</c>: inside the session, snapshotted per run.</summary>

@@ -485,9 +485,10 @@ internal static partial class RunCommand
     /// registration as <c>orkeon rag</c>. Without it a crew or a script asking for either
     /// profile got "Unknown reranker 'onnx'". Weights are embedded (Orkeon.Rag.Onnx.Model) and
     /// loaded lazily at first use, so a profile that never reranks pays nothing. One method
-    /// for the script path and the shared runner path, so the two cannot drift again.
+    /// for the script path, the shared runner path and the forge's trials (GAP-25), so they
+    /// cannot drift again.
     /// </summary>
-    private static void AddCliRagServices(IServiceCollection services) =>
+    internal static void AddCliRagServices(IServiceCollection services) =>
         services.AddOrkeonOnnxReranker();
 
     /// <summary>

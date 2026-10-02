@@ -13,14 +13,22 @@ The `balanced` and `quality` RAG profiles (and `adaptive`, whose `SingleShot` ro
 `balanced`) rerank with the ONNX cross-encoder, and only the `orkeon` CLI registered it: a hosted
 crew whose `knowledge:` asked for either profile, or `rag_search` in `orkeon-repl`, failed its first
 retrieval with "Unknown reranker 'onnx'" (GAP-25). `orkeon-host` and `orkeon-repl` now reference
-`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` and call `AddOrkeonOnnxReranker()`, as the CLI does;
-`Orkeon.Hosting` (a NuGet package) stays free of ONNX. The daemon gains about 24 MB (the embedded
-int8 weights; ONNX Runtime was already there for the local embeddings). Its own registrations moved
-from `Program.cs` to `HostServiceRegistration.AddHostServices`, so a test builds the very host it runs.
+`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` and call `AddOrkeonOnnxReranker()`, as the CLI does —
+and the CLI now does in `orkeon forge` too, whose trials run the crew `orkeon run` will run once
+promoted: a forged crew's `rag_search` on a host set to `balanced` failed its trial and worked after
+promotion. `Orkeon.Hosting` (a NuGet package) stays free of ONNX. Each of the two binaries gains
+23.4 MB, 16.5 MB once compressed in an archive (the embedded int8 weights; ONNX Runtime was already
+there for the local embeddings). The daemon's own registrations moved from `Program.cs` to
+`HostServiceRegistration.AddHostServices`, so a test builds the very host it runs. The weights'
+Apache-2.0 notice travels with them: `THIRD-PARTY-NOTICES.md` lists the three binaries that carry
+them, and the `orkeon-host` service MSI now installs that file next to `LICENSE.md` (it shipped the
+BGE-micro-v2 embedding weights without it).
 
 `orkeon run` (and `--validate`) resolved the crew factory, the orchestrator and the agent repository
-— all scoped — from the root provider; the load and the kickoff now run in one scope, as
-`orkeon-host` does per run. The Agent Framework bridge had the same defect, in its public API:
+— all scoped — from the root provider, and so did each `orkeon forge` trial; the load and the
+kickoff now run in one scope, as `orkeon-host` does per run, and the runner host and the daemon are
+tested with scope validation on (a Development host's default). The Agent Framework bridge had the
+same defect, in its public API:
 
 - **Breaking** — `ICrewAgentFactory` was a singleton holding the root-resolved orchestrator, so
   every `CrewAgent` of a host shared it (and its repositories) for the life of the process, and a
