@@ -97,7 +97,7 @@ var agent = new AgentBuilder()
 
 ### Task (`Orkeon.Domain.Task.CrewTask`)
 
-Une Task (ou `CrewTask`) représente une unité de travail assignable à un agent. Elle est définie par une **description** (`TaskDescription`) et un **résultat attendu** (`ExpectedOutput`). Les tasks supportent les dépendances inter-tâches (`Dependencies`), l'exécution asynchrone (`AsyncExecution`), la validation par schéma JSON (`OutputJson`), et la demande d'intervention humaine (`HumanInput`).
+Une Task (ou `CrewTask`) représente une unité de travail assignable à un agent. Elle est définie par une **description** (`TaskDescription`) et un **résultat attendu** (`ExpectedOutput`). Les tasks supportent les dépendances inter-tâches (`Dependencies`), l'exécution asynchrone (`AsyncExecution` — une crew séquentielle exécute une telle tâche pendant les tâches qui la suivent, voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)), la validation par schéma JSON (`OutputJson`), et la demande d'intervention humaine (`HumanInput`).
 
 ```csharp
 var task = new CrewTaskBuilder()

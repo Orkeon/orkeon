@@ -162,6 +162,22 @@ tasks:
     asyncExecution: true
     humanInput: false
 
+  turn_forest_strategy:
+    description: "Forest Tribes plan their turn: manage natural resources, plan trade routes, decide on diplomacy and guerrilla operations"
+    expectedOutput: "Forest turn plan with resource management, trade proposals, diplomatic stance, guerrilla operations, and herbal production"
+    agent: "forest_chief"
+    dependencies: ["setup_world"]
+    asyncExecution: true
+    humanInput: false
+
+  turn_merchant_strategy:
+    description: "Merchant Republic plans their turn: negotiate trade deals, manage treasury, invest in infrastructure, leverage economic influence"
+    expectedOutput: "Merchant turn plan with trade proposals to each faction, treasury management, infrastructure investments, and market analysis"
+    agent: "merchant_guild_master"
+    dependencies: ["setup_world"]
+    asyncExecution: true
+    humanInput: false
+
   turn_realm_military:
     description: "Execute Realm military actions: train troops, build fortifications, execute expansion or defense operations"
     expectedOutput: "Military action report with troop status, fortification progress, combat results if any, and strategic position update"
@@ -178,28 +194,12 @@ tasks:
     asyncExecution: false
     humanInput: false
 
-  turn_forest_strategy:
-    description: "Forest Tribes plan their turn: manage natural resources, plan trade routes, decide on diplomacy and guerrilla operations"
-    expectedOutput: "Forest turn plan with resource management, trade proposals, diplomatic stance, guerrilla operations, and herbal production"
-    agent: "forest_chief"
-    dependencies: ["setup_world"]
-    asyncExecution: true
-    humanInput: false
-
   turn_forest_rituals:
     description: "Execute Forest spiritual and healing activities: produce medicines, read omens, manage tribe morale and health"
     expectedOutput: "Spiritual report with medicine stocks, weather predictions, omen interpretations, morale status, and tribe health"
     agent: "forest_shaman"
     dependencies: ["turn_forest_strategy"]
     asyncExecution: false
-    humanInput: false
-
-  turn_merchant_strategy:
-    description: "Merchant Republic plans their turn: negotiate trade deals, manage treasury, invest in infrastructure, leverage economic influence"
-    expectedOutput: "Merchant turn plan with trade proposals to each faction, treasury management, infrastructure investments, and market analysis"
-    agent: "merchant_guild_master"
-    dependencies: ["setup_world"]
-    asyncExecution: true
     humanInput: false
 
   resolve_turn:

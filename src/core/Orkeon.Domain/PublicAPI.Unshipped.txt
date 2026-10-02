@@ -1078,3 +1078,4 @@ Orkeon.Domain.Agent.AgentSnapshot.CurrentTasks.init -> void
 Orkeon.Domain.Task.CrewTaskBase<TContext>.Reopen() -> void
 Orkeon.Domain.Task.CrewTaskBase<TContext>.Start() -> void
 Orkeon.Domain.Task.Events.TaskStartedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId?
+Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.AcceptsAsyncExecution.get -> bool

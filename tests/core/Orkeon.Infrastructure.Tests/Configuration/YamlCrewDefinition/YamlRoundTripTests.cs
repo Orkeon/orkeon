@@ -594,7 +594,9 @@ public class YamlRoundTripTests
                     ExpectedOutput = "Completed deliverables",
                     AssignedAgentId = workerId,
                     Dependencies = [planTaskId],
-                    AsyncExecution = true,
+                    // A hierarchical crew refuses asyncExecution: true at load — its manager orders
+                    // the tasks (GAP-22); RoundTrip_SimpleCrewConfig_PreservesAllFields carries the flag.
+                    AsyncExecution = false,
                     HumanInput = false
                 }
             ]

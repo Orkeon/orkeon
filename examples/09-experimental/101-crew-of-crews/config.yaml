@@ -124,7 +124,7 @@ tasks:
     expectedOutput: "Research deliverables with sourced findings, validation status, synthesis report, and inter-crew data packages for Development and Documentation"
     agent: "research_lead"
     dependencies: ["receive_mission"]
-    asyncExecution: true
+    asyncExecution: false
     humanInput: false
 
   execute_development:
@@ -132,7 +132,7 @@ tasks:
     expectedOutput: "Development deliverables with architecture decisions, implemented components, code review results, and integration readiness status"
     agent: "dev_lead"
     dependencies: ["receive_mission"]
-    asyncExecution: true
+    asyncExecution: false
     humanInput: false
 
   execute_testing:

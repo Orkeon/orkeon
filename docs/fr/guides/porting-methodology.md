@@ -188,7 +188,7 @@ Utiliser `CrewTaskBuilder.DependsOn()` (YAML : `dependencies:`) pour exprimer le
 
 ### 4.4 Configurer les options d'exécution
 
-Pour chaque task, décider de : la priorité (`TaskPriority`), l'intervention humaine (`HumanInput`, voir 1.4), le schéma de validation de sortie (`OutputJson`), et le fichier que le framework écrit à partir du résultat (le bloc YAML `deliverable:` — `path`, `format`, schéma optionnel). `AsyncExecution` (`asyncExecution:`) est enregistré mais honoré par aucun mode pour l'instant : utiliser `process: parallel` pour la concurrence.
+Pour chaque task, décider de : la priorité (`TaskPriority`), l'intervention humaine (`HumanInput`, voir 1.4), le schéma de validation de sortie (`OutputJson`), et le fichier que le framework écrit à partir du résultat (le bloc YAML `deliverable:` — `path`, `format`, schéma optionnel). `AsyncExecution` (`asyncExecution:`, l'`async_execution` de CrewAI) est honoré par `process: sequential` — la tâche tourne pendant les tâches qui la suivent, et une tâche qui en dépend l'attend — et accepté sans effet propre par `process: parallel` ; les quatre autres modes le refusent au chargement (voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
 
 ## Étape 5 — Produire le plan de portage
 

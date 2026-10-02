@@ -37,6 +37,9 @@ public static class JsCrewConfigurationAdapter
     {
         ArgumentNullException.ThrowIfNull(crew);
 
+        var process = ParseProcessType(crew.Process);
+        RefuseAsyncExecutionTheModeIgnores(process, crew);
+
         var agentMap = new Dictionary<JsAgent, AgentId>(ReferenceEqualityComparer.Instance);
         var agentConfigs = new List<AgentConfiguration>();
         foreach (var jsAgent in crew.agents)
@@ -64,7 +67,7 @@ public static class JsCrewConfigurationAdapter
         {
             Name = crew.name,
             Goal = ResolveCrewGoal(crew),
-            Process = ParseProcessType(crew.Process),
+            Process = process,
             Verbose = crew.Verbose,
             Memory = crew.Memory,
             ManagerAgentId = managerId,
@@ -460,6 +463,29 @@ public static class JsCrewConfigurationAdapter
         if (!string.IsNullOrWhiteSpace(crew.Goal))
             return crew.Goal!;
         return $"Execute crew '{crew.name}'";
+    }
+
+    /// <summary>
+    /// The YAML rule (GAP-22), in the script's own words: <c>taskBuilder().asyncExecution()</c> is
+    /// honoured by <c>.process("sequential")</c> — the task runs alongside the tasks after it — and
+    /// accepted by <c>.process("parallel")</c>, a wave running at once anyway. The four other modes
+    /// order their tasks themselves, so the crew is refused, naming every task that asks for it:
+    /// carried to them, the flag would be ignored in silence.
+    /// </summary>
+    private static void RefuseAsyncExecutionTheModeIgnores(ProcessType process, JsCrew crew)
+    {
+        if (process.AcceptsAsyncExecution)
+            return;
+
+        var asking = crew.Tasks.OfType<JsTask>().Where(t => t.AsyncExecutionFlag).Select(t => $"'{t.name}'").ToList();
+        if (asking.Count == 0)
+            return;
+
+        throw new InvalidOperationException(
+            (asking.Count == 1 ? $"Task {asking[0]} calls" : $"Tasks {string.Join(", ", asking)} call") +
+            $" .asyncExecution(), which .process(\"{crew.Process}\") does not honour: that mode orders its tasks itself. " +
+            "Remove .asyncExecution(), or use .process(\"sequential\") (an async task runs alongside the tasks after it) " +
+            "or .process(\"parallel\") (the tasks whose context is ready already run at once).");
     }
 
     /// <summary>

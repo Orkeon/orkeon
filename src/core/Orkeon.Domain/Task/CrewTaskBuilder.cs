@@ -114,7 +114,11 @@ public sealed class CrewTaskBuilder
         return this;
     }
 
-    /// <summary>Enables or disables asynchronous execution.</summary>
+    /// <summary>
+    /// Asks for asynchronous execution: in a sequential crew the task runs alongside the tasks after
+    /// it, and a task that depends on it waits for it (GAP-22). A parallel crew accepts it without an
+    /// effect of its own; the other modes refuse it when the crew is built.
+    /// </summary>
     public CrewTaskBuilder Async(bool asyncExecution = true)
     {
         _asyncExecution = asyncExecution;

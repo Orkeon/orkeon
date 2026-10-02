@@ -30,7 +30,7 @@ internal sealed record JsTaskMetadata
     /// <summary>YAML parity <c>humanInput: true</c> — the task pauses for the human-input provider.</summary>
     public bool HumanInput { get; init; }
 
-    /// <summary>YAML parity <c>asyncExecution: true</c> — the task may run concurrently with its siblings.</summary>
+    /// <summary>YAML parity <c>asyncExecution: true</c> — a sequential crew runs the task alongside the tasks after it (GAP-22).</summary>
     public bool AsyncExecution { get; init; }
 
     /// <summary>Task-level <c>tools:</c> — names or <see cref="JsTool"/> instances the task requires.</summary>

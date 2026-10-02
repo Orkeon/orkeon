@@ -9,7 +9,7 @@
 Les trois entités principales sont construites via des builders fluides définis dans la couche Domain :
 
 - `AgentBuilder` (`Orkeon.Domain.Agent`) : configure rôle, objectif, backstory, outils, contraintes d'exécution, templates de prompt, politique d'accès outils
-- `CrewTaskBuilder` (`Orkeon.Domain.Task`) : configure description, résultat attendu, priorité, dépendances, schéma JSON de sortie, mode async, intervention humaine
+- `CrewTaskBuilder` (`Orkeon.Domain.Task`) : configure description, résultat attendu, priorité, dépendances, schéma JSON de sortie, mode async (`.Async()` — honoré par une crew séquentielle, refusé par `CrewBuilder.Build()` hors Sequential et Parallel), intervention humaine
 - `CrewBuilder` (`Orkeon.Domain.Crew`) : configure nom, objectif, process type, agents, tasks, planification, mémoire, callbacks, agents dynamiques
 
 Chaque builder délègue en interne aux méthodes factory `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` et lève une `BuilderValidationException` si les champs obligatoires sont absents.
@@ -64,7 +64,7 @@ tasks:
     expectedOutput: string # Format/contenu attendu en résultat (requis)
     agent: string         # ID de l'agent assigné à la tâche
     dependencies: [string] # IDs des tâches prérequises (garantit l'ordre)
-    asyncExecution: bool  # default: false — ENREGISTRÉ, honoré par aucun mode (utiliser process: parallel)
+    asyncExecution: bool  # default: false — sequential : tourne pendant les tâches suivantes, une dépendante l'attend ; parallel : sans effet propre ; autres modes : true fait échouer le chargement
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement — sans jamais les remplacer

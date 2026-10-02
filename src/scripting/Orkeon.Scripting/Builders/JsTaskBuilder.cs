@@ -67,7 +67,11 @@ public sealed class JsTaskBuilder
     /// <summary>YAML parity <c>humanInput: true</c> — the task pauses for the human-input provider.</summary>
     public JsTaskBuilder humanInput(bool value = true) { _humanInput = value; return this; }
 
-    /// <summary>YAML parity <c>asyncExecution: true</c> — the task may run concurrently with its siblings.</summary>
+    /// <summary>
+    /// YAML parity <c>asyncExecution: true</c> — in a sequential crew the task runs alongside the tasks
+    /// after it, and a task that lists it in <c>withContext</c> waits for it (GAP-22). A parallel crew
+    /// accepts it without an effect of its own; the other modes refuse the crew.
+    /// </summary>
     public JsTaskBuilder asyncExecution(bool value = true) { _asyncExecution = value; return this; }
 
     /// <summary>

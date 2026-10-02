@@ -9,7 +9,8 @@ namespace Orkeon.Domain.Task;
 public sealed record TaskOutputOptions
 {
     /// <summary>
-    /// Gets whether asynchronous execution is enabled.
+    /// Gets whether the task asks for asynchronous execution — honoured by a sequential crew, see
+    /// <see cref="CrewTaskBase{TContext}.AsyncExecution"/>.
     /// </summary>
     public bool AsyncExecution { get; init; }
 

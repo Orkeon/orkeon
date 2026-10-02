@@ -103,7 +103,7 @@ tasks:
     expectedOutput: string # Expected result format/content (required)
     agent: string         # Key of the agent assigned to the task (a key matching no agent leaves the task unassigned)
     dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key is ignored; a cycle fails the load)
-    asyncExecution: bool  # default: false — RECORDED, honoured by no mode yet (use process: parallel)
+    asyncExecution: bool  # default: false — sequential: runs alongside the next tasks, a dependant waits for it; parallel: no effect of its own; other modes: true fails the load
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data
     tools: [string]       # Tools ADDED to the agent's own for this task only (never replacing them) — resolved like an agent's tools: an unknown name fails the load under StrictTools
@@ -134,7 +134,9 @@ Validation happens at load time (`CrewDefinitionValidator`): a crew needs a `nam
 with a goal) and at least one task (each with a `description` and an `expectedOutput`); circular
 `dependencies`, a `mounts:` item listed twice or two ids selecting the same root fail the load. So
 does a `circuitBreaker:` key, at the root or on a task: the block was removed (see "Removed: `circuitBreaker`" below), and the load names `graphConfig`
-instead of ignoring it.
+instead of ignoring it. And so does a task's `asyncExecution: true` outside `process: sequential` and
+`process: parallel`: the four other modes order their tasks themselves, and the load names every task
+that asks for it rather than ignore the flag (see [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
 
 ## Guardrails configuration
 

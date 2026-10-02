@@ -264,6 +264,52 @@ public class CrewBuilderTests
         Assert.Equal(2, crew.Tasks.Count);
     }
 
+    /// <summary>
+    /// GAP-22 — a task built with <c>.Async()</c> runs alongside the next ones in a sequential crew;
+    /// the modes that order their tasks themselves would ignore it, so the builder refuses it there,
+    /// naming the task, rather than build a crew that silently drops the promise.
+    /// </summary>
+    [Theory]
+    [InlineData("Hierarchical")]
+    [InlineData("Consensual")]
+    [InlineData("Graph")]
+    [InlineData("Autonomous")]
+    public void Build_RefusesAnAsyncTask_InAModeThatOrdersItsTasksItself(string process)
+    {
+        var manager = CreateAgent("Manager", "Lead");
+        var builder = new CrewBuilder()
+            .Goal("Watch the market")
+            .Process(ProcessType.From(process))
+            .WithManager(manager)
+            .WithAgent(CreateAgent())
+            .WithTask(CreateTask("Write the report"))
+            .WithTask(t => t.Description("Gather the facts").ExpectedOutput("The facts").Async());
+
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        Assert.Contains("'Gather the facts'", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("'Write the report'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains(process, ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Sequential", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Parallel", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Sequential", true)]
+    [InlineData("Parallel", true)]
+    [InlineData("Graph", false)]
+    public void Build_AcceptsAnAsyncTask_WhereTheModeHonoursIt_AndASynchronousOneEverywhere(string process, bool asyncExecution)
+    {
+        var crew = new CrewBuilder()
+            .Goal("Watch the market")
+            .Process(ProcessType.From(process))
+            .WithAgent(CreateAgent())
+            .WithTask(t => t.Description("Gather the facts").ExpectedOutput("The facts").Async(asyncExecution))
+            .Build();
+
+        Assert.Single(crew.Tasks);
+    }
+
     #region Test Doubles
 
     private sealed class StubLlmProvider : ILlmProvider

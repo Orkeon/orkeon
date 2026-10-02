@@ -77,13 +77,15 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     public DateTime? CompletedAt { get; private set; }
 
     /// <summary>
-    /// Gets whether the author asked for asynchronous execution.
+    /// Gets whether the author asked for asynchronous execution (YAML <c>asyncExecution:</c>,
+    /// <c>.Async()</c>, <c>.asyncExecution()</c> in a script) — CrewAI's <c>async_execution</c>.
     /// <para>
-    /// <b>Recorded, not yet honoured.</b> The YAML <c>asyncExecution:</c> field is parsed,
-    /// mapped and stored here, and no orchestration strategy reads it: concurrency comes from
-    /// <c>ProcessType.Parallel</c>, which now runs dependency waves. Kept because the field is
-    /// already in shipped crew files and dropping it would fail them at load; stated here
-    /// because "asynchronous execution" reads as a promise the engine does not keep.
+    /// A sequential crew honours it (GAP-22): the task is launched and the next one starts at once;
+    /// a task that depends on it waits for it, and only then reads its output; the crew waits for
+    /// every task it launched before it reports, and its output stays the last declared task's.
+    /// A parallel crew accepts it without an effect of its own — every task of a dependency wave
+    /// already runs at once. The four other modes order their tasks themselves, so a crew asking
+    /// it of them is refused when it is loaded or built (<c>ProcessType.AcceptsAsyncExecution</c>).
     /// </para>
     /// </summary>
     public bool AsyncExecution { get; private set; }

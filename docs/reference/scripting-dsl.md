@@ -101,9 +101,15 @@ Declarative only — the procedural engine never reads tasks. Carried to the cre
 `description`, `agent` (a built agent), `expectedOutput`, `withContext(s)` (this is what builds
 the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `deliverable`, `withResponseFormat(type)` and
 `withResponseSchema(name, schema, strict?)`. Accepted but not acted on: `name` (a task
-configuration has no name) and `expect` (recorded in the task context when there is no
-`deliverable`, never validated). `withTaskTool` is gone: nothing ever read it, and `tools`
-covers it.
+configuration has no name; it only names the task in a load error) and `expect` (recorded in the
+task context when there is no `deliverable`, never validated). `withTaskTool` is gone: nothing ever
+read it, and `tools` covers it.
+
+`asyncExecution()` follows the YAML rule: under `.process("sequential")` the task runs alongside
+the tasks after it, and a task that lists it in `withContext` waits for it; under
+`.process("parallel")` it has no effect of its own; under the four other modes the crew is refused
+when the run adapts it, naming the task (see
+[Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
 
 ### `toolBuilder()`
 

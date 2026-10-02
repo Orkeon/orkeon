@@ -27,6 +27,15 @@ public sealed record ProcessType
     public static ProcessType From(string value) => s_all.TryGetValue(value, out var s) ? s : throw new ArgumentException($"Unknown ProcessType: '{value}'", nameof(value));
     /// <summary>Attempts to create a <see cref="ProcessType"/> from its string representation.</summary>
     public static bool TryFrom(string? value, out ProcessType? result) { if (value is not null && s_all.TryGetValue(value, out var f)) { result = f; return true; } result = null; return false; }
+    /// <summary>
+    /// Whether a task of a crew run in this mode may ask for <c>asyncExecution</c> (GAP-22).
+    /// <see cref="Sequential"/> honours it: the task runs alongside the tasks after it, and a task that
+    /// depends on it waits for it. <see cref="Parallel"/> accepts it without an effect of its own: every
+    /// task of a dependency wave already runs at once. The four other modes order their tasks
+    /// themselves — the manager, the vote, the graph, the budget —, so a crew asking it of them is
+    /// refused when it is loaded or built.
+    /// </summary>
+    public bool AcceptsAsyncExecution => this == Sequential || this == Parallel;
     /// <summary>Returns the string representation.</summary>
     public override string ToString() => Value;
     /// <summary>Implicitly converts to string.</summary>

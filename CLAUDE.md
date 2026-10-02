@@ -247,7 +247,7 @@ Each provider declares an `LlmProviderCapabilities` (Domain value object, expose
 **Memory System**: Provider-based architecture supporting Redis, In-Memory, ChromaDB, Pinecone, LanceDB, and SQLite.
 
 **Orchestration Strategies** (6 modes via `ProcessType` value object):
-- `Sequential` — Fixed linear pipeline
+- `Sequential` — Fixed linear pipeline; a task with `asyncExecution: true` runs alongside the next ones, a dependant waits for it (CrewAI semantics). Parallel accepts the flag without own effect; the four other modes refuse it at load (`ProcessType.AcceptsAsyncExecution`)
 - `Hierarchical` — Manager LLM assigns and reviews tasks (up to 2 re-executions)
 - `Parallel` — Dependency waves; tasks of one wave run concurrently
 - `Consensual` — Every agent answers, then ranks the other agents' anonymised answers by LLM ballot (`IBallotCollector`, no self-vote); tallied by Majority, SuperMajority, Unanimity, Weighted or Borda with quorum and abstention enforced; `ManagerDecision` is decided by the crew's manager agent

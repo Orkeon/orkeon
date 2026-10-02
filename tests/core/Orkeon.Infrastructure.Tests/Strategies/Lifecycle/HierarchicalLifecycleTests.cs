@@ -62,7 +62,7 @@ public sealed class HierarchicalLifecycleTests : IDisposable
         Assert.Equal(chosen.Id, Assert.Single(_fixture.Dispatched<TaskCompletedEvent>()).AgentId);
         // A revision is the agent's work on its task, not a new start.
         Assert.Equal(chosen.Id, Assert.Single(_fixture.Dispatched<AgentStartedTaskEvent>()).AgentId);
-        Assert.Empty(_fixture.Dispatched<AgentStartedTaskEvent>().Where(e => e.AgentId == declared.Id));
+        Assert.DoesNotContain(_fixture.Dispatched<AgentStartedTaskEvent>(), e => e.AgentId == declared.Id);
     }
 
     [Fact]

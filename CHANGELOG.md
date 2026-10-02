@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `asyncExecution: true` runs a task alongside the next ones in a sequential crew, and is refused where the mode orders its tasks itself **[breaking]**
+
+A task's `asyncExecution: true` (CrewAI's `async_execution`) was read, mapped and stored on the task,
+and no mode read it: the two research tasks a sequential pipeline marked asynchronous ran one after the
+other, and `taskBuilder().asyncExecution()` promised a concurrency nothing delivered (GAP-22):
+
+- **Sequential honours it, with CrewAI's semantics.** The task is launched without being waited for
+  and the next task starts at once; a task that depends on it (`dependencies:`, CrewAI's `context`)
+  waits for it, then reads its output — and is skipped if it failed; the crew waits for every task it
+  launched before it reports, and its output stays the last declared task's. A failure fails the crew,
+  as in every mode, and the tasks already running go to their end. The task starts when it is launched
+  and ends when the run waits for it (its lifecycle events); the hooks hear each task as it finishes,
+  so `AUTO_SUMMARY.md` and `orkeon run --events` follow the order the tasks finish in. It runs through
+  the same execution service as a task of a parallel wave, and a coworker it delegates to works in its
+  context.
+- **What a task reads never depends on timing.** An asynchronous output enters the context of the next
+  tasks once a task has waited for it, in declared order. Each task's context now holds its own copy
+  of the outputs so far: every task shared one list the run kept appending to, so a context captured
+  during a task — by a handler, a test double — kept growing after it.
+- **Parallel accepts it** without an effect of its own: a wave already runs at once.
+- **Hierarchical, Consensual, Graph and Autonomous refuse it at load** — their manager, vote, graph or
+  budget order the tasks — naming every task that sets it and proposing `process: sequential` or
+  `parallel`: in YAML (`YamlCrewMapper`), in a `.ork.ts` crew when the run adapts it
+  (`JsCrewConfigurationAdapter`), in a configuration built in code (`CrewDefinitionValidator`), and in
+  C# (`CrewBuilder.Build()` throws `BuilderValidationException`). `asyncExecution: false`, the default,
+  loads everywhere; `ProcessType.AcceptsAsyncExecution` says which modes accept the flag.
+
+The three hierarchical examples that set it (87 fleet management, 95 crisis management, 101 crew of
+crews) no longer do — it never had an effect there —, and 100 civilization simulator declares its three
+faction strategies together, so they run at once. The limitation that said the flag was honoured by no
+mode is gone from [Known limitations](docs/reference/limitations.md).
+
+Breaking: a crew with `asyncExecution: true` outside `process: sequential` and `process: parallel` no
+longer loads, and `CrewBuilder.Build()` refuses a task built with `.Async()` in those modes.
+
+Migration: remove `asyncExecution: true` from the tasks of a hierarchical, consensual, graph or
+autonomous crew — it never ran them concurrently —, or move the crew to `process: sequential`,
+declaring in `dependencies:` the asynchronous tasks a task needs (a task that does not depend on them
+starts without their output), or to `process: parallel`.
+
 ### Fixed — a run moves its tasks and agents through their lifecycle and raises their events as it goes, and a delegation runs in the context of the task it serves **[breaking]**
 
 A run raised the crew's domain events and nothing else: no mode moved a `CrewTask` or an `Agent`

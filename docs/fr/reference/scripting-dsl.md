@@ -107,9 +107,15 @@ Déclaratif uniquement — le moteur procédural ne lit jamais les tâches. Tran
 construit le DAG), `tools` (ajoutés aux outils de l'agent pour cette tâche seulement, sans jamais
 les remplacer), `humanInput`, `asyncExecution`, `deliverable`,
 `withResponseFormat(type)` et `withResponseSchema(name, schema, strict?)`. Acceptés mais sans
-effet : `name` (une configuration de tâche n'a pas de nom) et `expect` (consigné dans le
-contexte de la tâche en l'absence de `deliverable`, jamais validé). `withTaskTool` a disparu :
-rien ne le lisait, et `tools` le couvre.
+effet : `name` (une configuration de tâche n'a pas de nom ; il ne sert qu'à nommer la tâche dans
+une erreur de chargement) et `expect` (consigné dans le contexte de la tâche en l'absence de
+`deliverable`, jamais validé). `withTaskTool` a disparu : rien ne le lisait, et `tools` le couvre.
+
+`asyncExecution()` suit la règle du YAML : sous `.process("sequential")` la tâche tourne pendant
+les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'attend ; sous
+`.process("parallel")` elle n'a pas d'effet propre ; sous les quatre autres modes la crew est
+refusée quand le run l'adapte, en nommant la tâche (voir
+[Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
 
 ### `toolBuilder()`
 

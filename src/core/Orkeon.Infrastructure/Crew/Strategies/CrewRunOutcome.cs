@@ -26,7 +26,8 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 /// <para>
 /// Not thread-safe: a mode running tasks concurrently records them from its own flow — Parallel
 /// records a wave's starts as it launches them and their results once the wave has joined, in
-/// declaration order.
+/// declaration order; Sequential records an <c>asyncExecution</c> task's start when it launches it
+/// and its result when a task — or the end of the run — waits for it (GAP-22).
 /// </para>
 /// </summary>
 internal sealed class CrewRunOutcome

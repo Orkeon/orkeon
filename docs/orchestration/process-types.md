@@ -73,6 +73,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 | **Circuit breaker** | — | — | — | — | ✅ 3 mechanisms | — |
 | **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
 | **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | ✅ `maxRetryCycles` | One delegation to a peer |
+| **A task's `asyncExecution: true`** | ✅ Runs alongside the next tasks | Refused at load | Accepted, no effect of its own | Refused at load | Refused at load | Refused at load |
 | **Complexity** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
 | **Relative LLM cost** | Low | Medium | Low | High | Low to medium | Medium |
 | **Main use case** | ETL pipelines | QA, review loops | Fan-out + synthesis | Multiple independent attempts | Flaky tasks worth retrying | Exploration, R&D |
@@ -83,11 +84,40 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 
 ### Principle
 
-Tasks execute **one by one**. Each task receives the outputs of the tasks that ran before it as context. Agent assignment follows the rule above: the task's `agent:` when declared, otherwise the configured selector (round-robin by default).
+Tasks execute **one by one** — except a task with `asyncExecution: true`, which runs alongside the tasks after it (see [Asynchronous tasks](#asynchronous-tasks-asyncexecution)). Each task receives the outputs of the tasks that ran before it as context. Agent assignment follows the rule above: the task's `agent:` when declared, otherwise the configured selector (round-robin by default).
 
 **Execution order without a plan** (`planning: false`, the default): the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused). With `planning: true`, the planner's order replaces the declared one — still under the dependencies: the planner sees the tasks' ids, not their dependencies, and its plan never runs a task before one it depends on.
 
 **Failure handling (every mode)**: a task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task (LLM-11). The rule is the same in the six modes: a crew with a failed task returns `Success = false`, its hook hears `Failed` with the same reason, and `orkeon run` exits 2. A mode that tolerates a failure — Graph and its retries, Autonomous and its delegation — does so before the task counts as failed.
+
+### Asynchronous tasks (`asyncExecution`)
+
+A task with `asyncExecution: true` — CrewAI's `async_execution`; `.Async()` on `CrewTaskBuilder`, `.asyncExecution()` in a script — is **launched without being waited for**: the next task starts at once, and both run together.
+
+- **A task that depends on it waits for it** — through `dependencies:`, the equivalent of CrewAI's `context` — then reads its output; if it failed, that task is skipped like any dependent of a failed task.
+- **Its output enters the context once a task has waited for it**: a task that does not depend on it starts without it, and every task after that wait reads it, in declared order — what a task reads never depends on timing. A task that needs it declares it.
+- **The crew waits for every task it launched** before it reports — nothing outlives the run —, and its output stays the **last declared task's**, not the last one to finish; `CrewOutput.TaskOutputs` lists the tasks in declared order.
+- A failure is the rule of every mode: the crew fails and the task's dependents are skipped; the tasks already running go to their end, nothing is cancelled in cascade. A cancelled run waits for them to stop, then cancels them.
+- The task starts (`TaskStartedEvent`, `task.started`) when it is launched and ends (`TaskCompletedEvent` or `TaskFailedEvent`) when the run waits for it; the end hook — `AUTO_SUMMARY.md`, `task.completed` — hears each task as it finishes, in the order the tasks finish. A coworker it delegates to works in its context. There is no concurrency cap: two asynchronous tasks call their LLM at the same time.
+
+```yaml
+process: sequential
+tasks:
+  research:
+    description: "Research the market"
+    expectedOutput: "Market findings"
+    asyncExecution: true
+  survey:
+    description: "Survey the customers"
+    expectedOutput: "Survey results"
+    asyncExecution: true               # runs together with research
+  synthesis:
+    description: "Write the recommendation"
+    expectedOutput: "Recommendation"
+    dependencies: [research, survey]   # waits for both, reads both
+```
+
+`process: parallel` accepts `asyncExecution: true` without an effect of its own — every task of a wave already runs at once. Hierarchical, Consensual, Graph and Autonomous order their tasks themselves (the manager, the vote, the graph, the budget): a crew that sets `asyncExecution: true` there is **refused at load**, naming each task, in YAML as in a `.ork.ts` script, and `CrewBuilder.Build()` refuses the same in C#. `asyncExecution: false`, the default, loads everywhere.
 
 ### Internal mechanism
 
@@ -144,7 +174,7 @@ var crew = new CrewBuilder()
 
 ### Drawbacks
 
-- **No parallelism**: the total time is the sum of all the tasks
+- **Little parallelism**: the total time is the sum of the tasks, except those marked `asyncExecution`
 - **Single point of failure**: one failure blocks the rest of the chain — its dependents are skipped, only the independent tasks still run
 - **No retry**: no automatic recovery on error
 - **Rigid**: the order is fixed, no conditional branching
@@ -158,7 +188,7 @@ var crew = new CrewBuilder()
 
 ### When not to use it
 
-- Independent tasks that could run in parallel
+- Many independent tasks that could all run in parallel — Parallel runs each dependency wave at once; `asyncExecution` suits a few concurrent steps of a pipeline
 - Workflows that should retry a flaky step (Graph)
 
 ---
@@ -258,6 +288,7 @@ Tasks are grouped into **dependency waves**. A wave holds every task whose decla
 - A dependency **cycle is refused**: the run fails naming the tasks caught in it.
 - A failed task does not stop its wave siblings; its dependents in the next waves are **skipped**, and the crew fails naming every failed and skipped task.
 - There is no concurrency cap: every task of a wave calls its LLM at the same time.
+- A task's `asyncExecution: true` is accepted and changes nothing: its wave already runs at once.
 
 ### Internal mechanism
 

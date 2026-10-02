@@ -117,7 +117,11 @@ public sealed record TaskConfiguration
     public IReadOnlyList<string> Tools { get; init; } = Array.Empty<string>();
     /// <summary>Gets additional context data for this task.</summary>
     public Dictionary<string, object> Context { get; init; } = [];
-    /// <summary>Gets a value indicating whether this task should be executed asynchronously.</summary>
+    /// <summary>
+    /// Gets a value indicating whether this task asks for asynchronous execution (YAML
+    /// <c>asyncExecution:</c>): honoured by a sequential crew, accepted by a parallel one, refused at
+    /// load by the four modes that order their tasks themselves (GAP-22).
+    /// </summary>
     public bool AsyncExecution { get; init; }
     /// <summary>Gets a value indicating whether human input is required.</summary>
     public bool HumanInput { get; init; }

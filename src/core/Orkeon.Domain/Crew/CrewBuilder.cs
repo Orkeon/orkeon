@@ -272,8 +272,9 @@ public sealed class CrewBuilder
     /// Builds and returns a new <see cref="Crew"/> instance.
     /// </summary>
     /// <exception cref="BuilderValidationException">
-    /// Thrown when <see cref="Goal(string)"/> has not been set, or when a Hierarchical process
-    /// is configured without a manager agent or manager LLM.
+    /// Thrown when <see cref="Goal(string)"/> has not been set, when a Hierarchical process
+    /// is configured without a manager agent or manager LLM, or when a task asks for asynchronous
+    /// execution in a process that does not honour it (<see cref="ProcessType.AcceptsAsyncExecution"/>).
     /// </exception>
     public Crew Build()
     {
@@ -300,6 +301,20 @@ public sealed class CrewBuilder
         // 4. Validate Hierarchical has manager
         if (_processType == ProcessType.Hierarchical && _managerAgentId is null && _managerLlm is null)
             throw new BuilderValidationException("Crew", "Hierarchical process requires either a manager agent or a manager LLM.");
+
+        // 4b. A task asks for asynchronous execution only where the mode honours it (GAP-22): the
+        //     other modes order their tasks themselves and would drop the promise in silence.
+        var asyncTasks = _tasks.Where(task => task.AsyncExecution).ToList();
+        if (asyncTasks.Count > 0 && !_processType.AcceptsAsyncExecution)
+        {
+            var named = string.Join(", ", asyncTasks.Select(task => $"'{task.Description.Value}'"));
+            throw new BuilderValidationException(
+                "Crew",
+                (asyncTasks.Count == 1 ? $"Task {named} asks" : $"Tasks {named} ask") +
+                $" for asynchronous execution (.Async()), which the {_processType.Value} process does not honour: " +
+                "it orders its tasks itself. Use .Sequential() — an async task runs alongside the tasks after it — " +
+                "or .Parallel(), or drop .Async().");
+        }
 
         // 5. Create the crew
         var crew = Crew.Create(new CrewCreateOptions

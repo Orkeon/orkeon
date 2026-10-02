@@ -140,7 +140,7 @@ tasks:
     expectedOutput: "Communication package with emergency alerts, press release, social media posts, multilingual versions, and distribution plan"
     agent: "public_communicator"
     dependencies: ["assess_impact"]
-    asyncExecution: true
+    asyncExecution: false
     humanInput: false
 
   validate_critical_decisions:

@@ -20,6 +20,12 @@ public partial class AgentDelegationToolsProvider
     private readonly Dictionary<AgentId, DomainAgent> _agentEntities = [];
     private SimpleExecutionContext? _currentContext;
 
+    /// <summary>
+    /// The context of the task a flow running alongside the run serves — a task launched with
+    /// <c>asyncExecution</c> (GAP-22) —, which wins over <see cref="_currentContext"/> on that flow.
+    /// </summary>
+    private readonly AsyncLocal<SimpleExecutionContext?> _flowContext = new();
+
     /// <summary>Initializes a new instance of <see cref="AgentDelegationToolsProvider"/>.</summary>
     /// <param name="communicationService">The agent communication service.</param>
     /// <param name="agentExecutionService">The agent execution service for synchronous delegation.</param>
@@ -80,7 +86,7 @@ public partial class AgentDelegationToolsProvider
             FindAgentByRole,
             _agentExecutionService,
             FindAgentById,
-            () => _currentContext,
+            () => _flowContext.Value ?? _currentContext,
             _logger as ILogger<DelegateWorkTool>
         );
 
@@ -132,11 +138,22 @@ public partial class AgentDelegationToolsProvider
     }
 
     /// <summary>
-    /// Updates the current execution context for synchronous delegation.
-    /// Not thread-safe — designed for sequential process only.
+    /// Updates the current execution context for synchronous delegation: the context of the task the
+    /// run's own flow is running. Not thread-safe — set from that flow only; a task running alongside
+    /// it carries its own (<see cref="UseExecutionContextOnThisFlow"/>).
     /// </summary>
     public void UpdateExecutionContext(SimpleExecutionContext context)
         => _currentContext = context;
+
+    /// <summary>
+    /// Gives the delegations made on the calling async flow the context of the task that flow runs.
+    /// A task launched with <c>asyncExecution</c> runs on its own flow while the run moves on to the
+    /// next tasks and their contexts; a coworker it delegates to works in the context of the task it
+    /// serves, never in the one the run has reached (GAP-21, GAP-22). Called from that task's own
+    /// flow: the run's flow never sees it.
+    /// </summary>
+    internal void UseExecutionContextOnThisFlow(SimpleExecutionContext context)
+        => _flowContext.Value = context;
 
     /// <summary>
     /// Finds an agent by role.

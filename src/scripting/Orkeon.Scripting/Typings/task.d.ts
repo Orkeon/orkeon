@@ -27,7 +27,12 @@ declare global {
         withResponseSchema(name: string, schema: JsonSchema | string, strict?: boolean): this;
         /** YAML parity `humanInput: true` — the task pauses for the human-input provider. */
         humanInput(value?: boolean): this;
-        /** YAML parity `asyncExecution: true` — the task may run concurrently with its siblings. */
+        /**
+         * YAML parity `asyncExecution: true` — in a `.process("sequential")` crew the task runs
+         * alongside the tasks after it, and a task that lists it in `withContext` waits for it.
+         * `.process("parallel")` accepts it without an effect of its own (a wave already runs at
+         * once); the four other modes refuse the crew, naming the task.
+         */
         asyncExecution(value?: boolean): this;
         /**
          * YAML parity task-level `tools:` — names, `toolBuilder()` instances, or an

@@ -31,7 +31,10 @@ public interface ICrewTask
     DateTime? StartedAt { get; }
     /// <summary>Gets when the task was completed, or <see langword="null"/> if not completed.</summary>
     DateTime? CompletedAt { get; }
-    /// <summary>Gets whether this task executes asynchronously.</summary>
+    /// <summary>
+    /// Gets whether this task asks for asynchronous execution: a sequential crew runs it alongside
+    /// the tasks after it (GAP-22).
+    /// </summary>
     bool AsyncExecution { get; }
     /// <summary>Gets the JSON schema for the output, or <see langword="null"/> if not specified.</summary>
     JsonSchema? OutputJson { get; }

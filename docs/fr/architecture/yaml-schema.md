@@ -104,7 +104,7 @@ tasks:
     expectedOutput: string # Format/contenu attendu en résultat (requis)
     agent: string         # Clé de l'agent assigné à la tâche (une clé qui ne désigne aucun agent laisse la tâche non assignée)
     dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue est ignorée ; un cycle fait échouer le chargement)
-    asyncExecution: bool  # default: false — ENREGISTRÉ, honoré par aucun mode (utiliser process: parallel)
+    asyncExecution: bool  # default: false — sequential : tourne pendant les tâches suivantes, une dépendante l'attend ; parallel : sans effet propre ; autres modes : true fait échouer le chargement
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement (sans jamais les remplacer) — résolus comme ceux d'un agent : un nom inconnu fait échouer le chargement sous StrictTools
@@ -137,7 +137,10 @@ au chargement (`CrewDefinitionValidator`) : une crew exige un `name`, un `goal`,
 `expectedOutput`) ; des `dependencies` circulaires, un item de `mounts:` listé deux fois ou deux
 identifiants qui sélectionnent la même racine font échouer le chargement. Une clé
 `circuitBreaker:` aussi, à la racine comme sur une tâche : le bloc a été supprimé (voir « Supprimé :
-`circuitBreaker` » plus bas), et le chargement nomme `graphConfig` au lieu de l'ignorer.
+`circuitBreaker` » plus bas), et le chargement nomme `graphConfig` au lieu de l'ignorer. Le
+`asyncExecution: true` d'une tâche aussi, hors `process: sequential` et `process: parallel` : les quatre
+autres modes ordonnent leurs tâches eux-mêmes, et le chargement nomme chaque tâche qui le demande au lieu
+d'ignorer le drapeau (voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
 
 ## Configuration Guardrails
 

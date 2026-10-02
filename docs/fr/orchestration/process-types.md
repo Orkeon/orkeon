@@ -73,6 +73,7 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 | **Circuit breaker** | — | — | — | — | ✅ 3 mécanismes | — |
 | **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
 | **Retry automatique** | — | Jusqu'à 2 ré-exécutions après revue | — | Rounds de vote | ✅ `maxRetryCycles` | Une délégation à un pair |
+| **`asyncExecution: true` d'une tâche** | ✅ Tourne pendant les tâches suivantes | Refusé au chargement | Accepté, sans effet propre | Refusé au chargement | Refusé au chargement | Refusé au chargement |
 | **Complexité** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
 | **Coût LLM relatif** | Bas | Moyen | Bas | Élevé | Bas à moyen | Moyen |
 | **Cas d'usage principal** | Pipelines ETL | QA, boucles de revue | Fan-out + synthèse | Plusieurs tentatives indépendantes | Tâches instables à relancer | Exploration, R&D |
@@ -83,11 +84,40 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 
 ### Principe
 
-Les tâches s'exécutent **une par une**. Chaque tâche reçoit en contexte les sorties des tâches exécutées avant elle. L'assignation des agents suit la règle ci-dessus : l'`agent:` de la tâche s'il est déclaré, sinon le sélecteur configuré (round-robin par défaut).
+Les tâches s'exécutent **une par une** — sauf une tâche `asyncExecution: true`, qui tourne pendant les tâches qui la suivent (voir [Tâches asynchrones](#tâches-asynchrones-asyncexecution)). Chaque tâche reçoit en contexte les sorties des tâches exécutées avant elle. L'assignation des agents suit la règle ci-dessus : l'`agent:` de la tâche s'il est déclaré, sinon le sélecteur configuré (round-robin par défaut).
 
 **Ordre d'exécution sans plan** (`planning: false`, le défaut) : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche passe après toutes celles dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew qui ne déclare aucune dépendance s'exécute exactement comme écrite. Cela vaut dans toutes les dispositions : la disposition multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichier, si bien que sans ce tri `consolidate.yaml` passait avant l'`extract.yaml` dont elle dépend. Une dépendance qui nomme un identifiant de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dedans et un avertissement les nomme. La même règle ordonne les modes hierarchical, consensual, graph et autonomous, qui distribuent eux aussi leurs tâches l'une après l'autre ; le mode parallel garde sa propre sémantique (des **vagues** de dépendances, et un cycle y est refusé). Avec `planning: true`, l'ordre du planificateur remplace l'ordre déclaré — toujours sous les dépendances : le planificateur voit les identifiants des tâches, pas leurs dépendances, et son plan ne fait jamais passer une tâche avant une tâche dont elle dépend.
 
 **Gestion des échecs (tous les modes)** : une tâche dont une dépendance déclarée n'a pas réussi — échouée, ou elle-même sautée — est **sautée**, jamais exécutée sur un contexte qui dit `Task failed: …` là où son entrée aurait dû se trouver : elle apparaît comme `⊘ skipped` dans `AUTO_SUMMARY.md` et comme un événement `task.completed` avec `skipped: true`, les tâches qui n'en dépendent pas s'exécutent quand même, et la crew échoue en nommant chaque tâche échouée ou sautée (LLM-11). La règle est la même dans les six modes : une crew dont une tâche a échoué rend `Success = false`, son hook reçoit `Failed` avec la même raison, et `orkeon run` sort en 2. Un mode qui tolère un échec — Graph et ses retries, Autonomous et sa délégation — le fait avant que la tâche compte comme échouée.
+
+### Tâches asynchrones (`asyncExecution`)
+
+Une tâche `asyncExecution: true` — l'`async_execution` de CrewAI ; `.Async()` sur `CrewTaskBuilder`, `.asyncExecution()` dans un script — est **lancée sans être attendue** : la tâche suivante démarre aussitôt, et les deux tournent ensemble.
+
+- **Une tâche qui en dépend l'attend** — par `dependencies:`, l'équivalent du `context` de CrewAI —, puis lit sa sortie ; si elle a échoué, cette tâche est sautée comme toute dépendante d'une tâche échouée.
+- **Sa sortie entre dans le contexte une fois qu'une tâche l'a attendue** : une tâche qui n'en dépend pas démarre sans elle, et toute tâche après cette attente la lit, dans l'ordre déclaré — ce qu'une tâche lit ne dépend jamais du minutage. Une tâche qui en a besoin la déclare.
+- **La crew attend toutes les tâches qu'elle a lancées** avant de rendre son issue — rien ne survit au run —, et sa sortie reste celle de la **dernière tâche déclarée**, pas de la dernière à finir ; `CrewOutput.TaskOutputs` liste les tâches dans l'ordre déclaré.
+- Un échec suit la règle de tous les modes : la crew échoue et les dépendantes de la tâche sont sautées ; les tâches déjà lancées vont à leur terme, rien n'est annulé en cascade. Un run annulé attend qu'elles s'arrêtent, puis les annule.
+- La tâche démarre (`TaskStartedEvent`, `task.started`) quand elle est lancée et se termine (`TaskCompletedEvent` ou `TaskFailedEvent`) quand le run l'attend ; le crochet de fin — `AUTO_SUMMARY.md`, `task.completed` — entend chaque tâche quand elle finit, dans l'ordre où les tâches finissent. Un collègue à qui elle délègue travaille dans son contexte. Il n'y a pas de plafond de concurrence : deux tâches asynchrones appellent leur LLM en même temps.
+
+```yaml
+process: sequential
+tasks:
+  research:
+    description: "Research the market"
+    expectedOutput: "Market findings"
+    asyncExecution: true
+  survey:
+    description: "Survey the customers"
+    expectedOutput: "Survey results"
+    asyncExecution: true               # tourne en même temps que research
+  synthesis:
+    description: "Write the recommendation"
+    expectedOutput: "Recommendation"
+    dependencies: [research, survey]   # attend les deux, lit les deux
+```
+
+`process: parallel` accepte `asyncExecution: true` sans effet propre — toutes les tâches d'une vague tournent déjà en même temps. Hierarchical, Consensual, Graph et Autonomous ordonnent leurs tâches eux-mêmes (le manager, le vote, le graphe, le budget) : une crew qui y écrit `asyncExecution: true` est **refusée au chargement**, chaque tâche nommée, en YAML comme dans un script `.ork.ts`, et `CrewBuilder.Build()` refuse de même en C#. `asyncExecution: false`, la valeur par défaut, se charge partout.
 
 ### Mécanisme interne
 
@@ -145,7 +175,7 @@ var crew = new CrewBuilder()
 
 ### Inconvénients
 
-- **Pas de parallélisme** : le temps total est la somme de toutes les tâches
+- **Peu de parallélisme** : le temps total est la somme des tâches, sauf celles marquées `asyncExecution`
 - **Point de défaillance unique** : un échec bloque la suite de la chaîne — ses dépendantes sont sautées, seules les tâches indépendantes s'exécutent encore
 - **Pas de retry** : aucune reprise automatique en cas d'erreur
 - **Rigide** : l'ordre est fixe, pas de branchement conditionnel
@@ -159,7 +189,7 @@ var crew = new CrewBuilder()
 
 ### Quand ne pas l'utiliser
 
-- Tâches indépendantes qui pourraient tourner en parallèle
+- Beaucoup de tâches indépendantes qui pourraient toutes tourner en parallèle — Parallel exécute chaque vague de dépendances d'un coup ; `asyncExecution` convient à quelques étapes concurrentes d'un pipeline
 - Workflows qui devraient relancer une étape instable (Graph)
 
 ---
@@ -259,6 +289,7 @@ Les tâches sont groupées en **vagues de dépendances**. Une vague contient tou
 - Un **cycle de dépendances est refusé** : l'exécution échoue en nommant les tâches prises dedans.
 - Une tâche échouée n'arrête pas ses voisines de vague ; ses dépendantes des vagues suivantes sont **sautées**, et la crew échoue en nommant chaque tâche échouée ou sautée.
 - Il n'y a pas de plafond de concurrence : toutes les tâches d'une vague appellent leur LLM en même temps.
+- Le `asyncExecution: true` d'une tâche est accepté et ne change rien : sa vague tourne déjà en même temps.
 
 ### Mécanisme interne
 

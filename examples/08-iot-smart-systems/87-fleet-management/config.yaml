@@ -115,7 +115,7 @@ tasks:
     expectedOutput: "Mission execution report with checkpoint confirmations, delivery timestamps, and any incident flags"
     agent: "vehicle_alpha"
     dependencies: ["assign_missions"]
-    asyncExecution: true
+    asyncExecution: false
     humanInput: false
 
   execute_mission_bravo:
@@ -123,7 +123,7 @@ tasks:
     expectedOutput: "Mission execution report with checkpoint confirmations, delivery timestamps, and any incident flags"
     agent: "vehicle_bravo"
     dependencies: ["assign_missions"]
-    asyncExecution: true
+    asyncExecution: false
     humanInput: false
 
   monitor_safety:
@@ -131,7 +131,7 @@ tasks:
     expectedOutput: "Safety monitoring report with any alerts triggered, violation details, and overall fleet safety score"
     agent: "safety_observer"
     dependencies: ["assign_missions"]
-    asyncExecution: true
+    asyncExecution: false
     humanInput: false
 
   check_maintenance:

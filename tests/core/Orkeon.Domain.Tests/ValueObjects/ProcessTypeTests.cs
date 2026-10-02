@@ -36,6 +36,22 @@ public class ProcessTypeTests
         Assert.Equal("Sequential", value);
     }
 
+    /// <summary>
+    /// GAP-22 — Sequential honours a task's asyncExecution and Parallel accepts it (a wave already runs
+    /// at once); the four modes that order their tasks themselves do not accept it.
+    /// </summary>
+    [Theory]
+    [InlineData("Sequential", true)]
+    [InlineData("Parallel", true)]
+    [InlineData("Hierarchical", false)]
+    [InlineData("Consensual", false)]
+    [InlineData("Graph", false)]
+    [InlineData("Autonomous", false)]
+    public void Only_sequential_and_parallel_accept_async_execution(string value, bool accepts)
+    {
+        Assert.Equal(accepts, ProcessType.From(value).AcceptsAsyncExecution);
+    }
+
     [Fact]
     public void ShouldReturnCorrectValue_WhenCheckingIsDefault()
     {

@@ -27,6 +27,7 @@ public static class CrewDefinitionValidator
         ValidateTasks(config, errors);
         ValidateHierarchicalProcess(config, errors, warnings);
         ValidateConsensualManager(config, errors);
+        ValidateAsyncExecution(config, errors);
         ValidateMounts(config, errors);
 
         return new CrewDefinitionValidationResult(
@@ -165,6 +166,27 @@ public static class CrewDefinitionValidator
         var agentIds = config.Agents?.Select(a => a.Id).ToHashSet() ?? [];
         if (!agentIds.Contains(config.ManagerAgentId))
             errors.Add($"Manager agent '{config.ManagerAgentId}' is not defined in agents.");
+    }
+
+    /// <summary>
+    /// A task's <c>asyncExecution</c> is honoured by Sequential and accepted by Parallel only (GAP-22);
+    /// the four other modes order their tasks themselves. The YAML and <c>.ork.ts</c> loaders refuse it
+    /// first, naming the task as its author wrote it; this covers a configuration built in code, before
+    /// <c>CrewFactory</c> builds or ingests anything — naming the task by its description.
+    /// </summary>
+    private static void ValidateAsyncExecution(CrewConfiguration config, List<string> errors)
+    {
+        if (config.Process.AcceptsAsyncExecution || config.Tasks is null)
+            return;
+
+        foreach (var task in config.Tasks.Where(t => t.AsyncExecution))
+        {
+            var description = task.Description.Length <= 60 ? task.Description : string.Concat(task.Description.AsSpan(0, 57), "...");
+            errors.Add(
+                $"Task '{description}' asks for asyncExecution, which the {config.Process.Value} process does not honour: " +
+                "it orders its tasks itself. Use the Sequential process (an async task runs alongside the tasks after it) " +
+                "or Parallel, or remove asyncExecution.");
+        }
     }
 
     /// <summary>Returns true when the task dependency graph contains at least one cycle.</summary>

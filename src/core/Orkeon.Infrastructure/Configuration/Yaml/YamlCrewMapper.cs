@@ -38,6 +38,9 @@ public sealed partial class YamlCrewMapper
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        var process = ParseProcessType(settings.Process);
+        RefuseAsyncExecutionTheModeIgnores(process, settings.Process, tasks);
+
         var mappedAgents = agents != null
             ? MapAgents(agents, settings.CrewDefaultLlm, out var agentNameMap)
             : MapAgentsEmpty(out agentNameMap);
@@ -46,7 +49,7 @@ public sealed partial class YamlCrewMapper
         {
             Name = settings.Name ?? string.Empty,
             Goal = settings.Goal ?? string.Empty,
-            Process = ParseProcessType(settings.Process),
+            Process = process,
             Verbose = settings.Verbose ?? false,
             Memory = settings.Memory ?? false,
             MemoryProvider = settings.MemoryProvider,
@@ -705,6 +708,32 @@ public sealed partial class YamlCrewMapper
     {
         if (name == null) return null;
         return agentNameMap.TryGetValue(name, out var id) ? id : null;
+    }
+
+    /// <summary>
+    /// A task's <c>asyncExecution: true</c> is a promise only Sequential keeps — the task runs
+    /// alongside the tasks after it — and Parallel accepts, a wave running at once anyway (GAP-22).
+    /// The four other modes order their tasks themselves, so the load fails, naming every task that
+    /// asks for it by its key: kept, the flag would be ignored in silence (the rule of GAP-07).
+    /// </summary>
+    /// <param name="process">The crew's process.</param>
+    /// <param name="writtenProcess">The process as the crew file spells it, for the message.</param>
+    /// <param name="tasks">The crew's tasks, by key.</param>
+    private static void RefuseAsyncExecutionTheModeIgnores(
+        ProcessType process, string? writtenProcess, Dictionary<string, TaskYamlConfig>? tasks)
+    {
+        if (process.AcceptsAsyncExecution || tasks is null)
+            return;
+
+        var asking = tasks.Where(t => t.Value?.AsyncExecution == true).Select(t => $"'{t.Key}'").ToList();
+        if (asking.Count == 0)
+            return;
+
+        throw new InvalidOperationException(
+            (asking.Count == 1 ? $"Task {asking[0]} sets" : $"Tasks {string.Join(", ", asking)} set") +
+            $" asyncExecution: true, which process: {writtenProcess?.Trim() ?? process.Value} does not honour: that mode " +
+            "orders its tasks itself. Remove asyncExecution, or use process: sequential (an async task runs alongside " +
+            "the tasks after it) or process: parallel (the tasks whose dependencies are met already run at once).");
     }
 
     /// <summary>
