@@ -77,7 +77,8 @@ public sealed record CrewExecutionStartedEvent : DomainEvent
 }
 
 /// <summary>
-/// Event raised when crew execution completes successfully.
+/// Event raised when crew execution completes successfully: every task the run ran succeeded. A
+/// run with a task that did not succeed raises <see cref="CrewExecutionFailedEvent"/> instead (GAP-32).
 /// </summary>
 public sealed record CrewExecutionCompletedEvent : DomainEvent
 {
@@ -87,14 +88,14 @@ public sealed record CrewExecutionCompletedEvent : DomainEvent
     public required ProcessId ProcessId { get; init; }
     /// <summary>Gets the execution duration.</summary>
     public required TimeSpan Duration { get; init; }
-    /// <summary>Gets the number of completed tasks.</summary>
+    /// <summary>Gets the number of tasks the run completed, each counted once by its final outcome.</summary>
     public required int CompletedTasks { get; init; }
-    /// <summary>Gets the number of failed tasks.</summary>
-    public required int FailedTasks { get; init; }
 }
 
 /// <summary>
-/// Event raised when crew execution fails.
+/// Event raised when crew execution fails: a task did not succeed — the reason names each task that
+/// failed or was skipped —, or the run stopped on an exception or a cancellation, which
+/// <see cref="Exception"/> carries (GAP-32).
 /// </summary>
 public sealed record CrewExecutionFailedEvent : DomainEvent
 {

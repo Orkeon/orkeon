@@ -21,8 +21,8 @@ packages*: it is pushed neither to NuGet.org nor to GitHub Packages, so
 `dotnet add package Orkeon.Hosting` cannot resolve (`NU1101`).
 
 It is not embedded in the `Orkeon` umbrella package either. `src/packaging/Orkeon/Orkeon.csproj`
-embeds eleven assemblies — `Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`,
-`Orkeon.Constants.{Llm,FileSystem,Configuration}`, `Orkeon.Tools.Abstractions`,
+embeds twelve assemblies — `Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`,
+`Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}`, `Orkeon.Tools.Abstractions`,
 `Orkeon.Analysis{,.Abstractions}`, `Orkeon.Rag{,.Abstractions}` — and `Orkeon.Hosting` is not one
 of them.
 

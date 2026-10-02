@@ -126,7 +126,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         var agents = new List<DomainAgent>();
         var tokenTally = new TokenUsageTally();
         var taskSnapshots = new List<TaskExecutionSnapshot>();
-        var outcome = new CrewRunOutcome(_lifecycle);
+        var outcome = new CrewRunOutcome(_lifecycle, cancellationToken);
         var takeovers = new System.Collections.Concurrent.ConcurrentDictionary<Guid, Takeover>();
         IReadOnlyList<TaskId> taskIds = [];
         var nextTask = 0;

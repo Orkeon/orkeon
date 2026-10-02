@@ -185,8 +185,10 @@ public sealed class CrewAgent : AIAgent
         AgentRunOptions? options = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // A crew answers when it is done; there is no token stream to forward, so the
-        // stream is the one final message. Callers that only know RunStreamingAsync work.
+        // A crew answers when it is done: the stream is the one final message. The deltas a
+        // streamed crew run yields (KickoffStreamingAsync, GAP-32) are those of all its tasks —
+        // ballots, rejected revisions and retried attempts included —, not the answer RunAsync
+        // returns, so they are not forwarded. Callers that only know RunStreamingAsync work.
         var response = await RunCoreAsync(messages, session, options, cancellationToken).ConfigureAwait(false);
         foreach (var update in response.ToAgentResponseUpdates())
             yield return update;

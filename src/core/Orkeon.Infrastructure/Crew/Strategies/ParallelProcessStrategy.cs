@@ -133,7 +133,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         // firing mid-fan-out used to escape with tasks 1..n-1 already launched — no terminal
         // event, and orphans still emitting task.completed after the strategy had returned.
         var results = new List<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>();
-        var outcome = new CrewRunOutcome(_lifecycle);
+        var outcome = new CrewRunOutcome(_lifecycle, cancellationToken);
         try
         {
         // Setup stays inside the barrier: an agent-less crew is the everyday failure, and it

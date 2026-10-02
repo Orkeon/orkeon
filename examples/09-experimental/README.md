@@ -19,7 +19,9 @@ Several crews here declare `memoryProvider: "Redis"` or `"SQLite"`: the connecti
 ## streaming-demo
 
 `streaming-demo/` is a standalone console project (not a `standard`-runner crew)
-showing real-time streaming of agent execution via `IStreamingAgentExecutionService`.
+that runs a crew of one agent and one task with `ICrewOrchestrationService.KickoffStreamingAsync`:
+the same run as `KickoffAsync`, whose events arrive as it goes — the task's start, the
+model's text as it is written, the task's end, then `run.finished` with the run's output.
 Run it directly with `dotnet run --project 09-experimental/streaming-demo`. It reads
 its own `appsettings.json` (Docker Model Runner by default).
 

@@ -106,7 +106,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     {
         LogStartingGraphExecution(crew.Id);
         var startTime = DateTime.UtcNow;
-        var outcome = new CrewRunOutcome(_lifecycle);
+        var outcome = new CrewRunOutcome(_lifecycle, cancellationToken);
 
         try
         {

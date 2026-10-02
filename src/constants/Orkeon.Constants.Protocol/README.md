@@ -11,17 +11,20 @@ runtime along ([ADR-009](https://github.com/Orkeon/orkeon/blob/main/docs/adr/ADR
 It exists because the producer and the consumer live in projects that cannot reference each other:
 the CLI runner emits the stream, Orkeon Studio reads it. Nothing validates their agreement — an
 event kind one side stopped emitting, or never learned to read, is silently ignored rather than
-reported, and that had already happened.
+reported, and that had already happened. The same kinds name the events a C# host reads in
+process from `ICrewOrchestrationService.KickoffStreamingAsync`, which is why `Orkeon.Application`
+references this satellite and the `Orkeon` package carries it.
 
 ## Install
 
-This project is no longer distributed as a NuGet package — reference it from source (`ProjectReference` inside this repository); its assembly ships through the release artifacts. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+This project is not distributed as a NuGet package of its own — its assembly ships inside the `Orkeon` umbrella package (it is part of `Orkeon.Application`'s closure) and through the release artifacts; inside this repository, reference it from source (`ProjectReference`). See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Contents
 
 | Type | What it declares |
 |---|---|
 | `RunEventKinds` | The event kinds a run emits, plus `All` — the set, so a consumer can assert it handles every one. |
+| `RunEventErrorCodes` | The `code` of the `error` event a stopped run ends on: `crew_failed` or `crew_cancelled`. |
 | `UseCaseEventKinds` | The event kinds `orkeon usecases` exchanges with the process driving it — the search session's query and answer, the catalogue, a sheet, an export — plus `All`. |
 
 ## License

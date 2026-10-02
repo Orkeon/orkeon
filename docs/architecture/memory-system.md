@@ -349,9 +349,9 @@ Embedding calls are not counted by the token meter ([Known limitations](../refer
 
 #### What is not wired
 
-- **The streaming kickoff** (`KickoffStreamingAsync`, a C# API no shipped host calls) neither recalls
-  nor stores a crew's memory — it ignores knowledge attachments too. A crew with `memory: true` gets a
-  warning saying so; `KickoffAsync` does both.
+The streaming kickoff (`KickoffStreamingAsync`) is the same run as `KickoffAsync`: it recalls and stores
+a crew's memory, and reads its knowledge, the same way (GAP-32).
+
 - **No LLM in the recall**: no fact extraction, no LLM-ranked recall, no composite recency/importance
   score (CrewAI's): the recall is vector-only. The [cognitive memory](#cognitive-memory) is the C# option
   that analyses with an LLM.

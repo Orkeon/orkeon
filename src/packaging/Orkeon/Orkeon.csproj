@@ -3,7 +3,7 @@
   <!-- PUB-25: the `Orkeon` umbrella package. The 39-project source layout (Clean
        Architecture, VFS analyzer, per-assembly PublicAPI freeze) is untouched — this
        project only changes how the framework is DISTRIBUTED: one nupkg carrying the
-       eleven assemblies of the core closure, so `dotnet add package Orkeon` is a
+       twelve assemblies of the core closure, so `dotnet add package Orkeon` is a
        complete install. The embedded projects are IsPackable=false.
 
        Mechanics: ProjectReference PrivateAssets="all" keeps them out of the nuspec
@@ -26,7 +26,8 @@
   </ItemGroup>
 
   <!-- The embedded closure: every assembly the core trio needs, nothing more.
-       Verified 2026-09-01 by walking the ProjectReference graph. -->
+       Verified 2026-09-01 by walking the ProjectReference graph; Orkeon.Constants.Protocol joined
+       it on 2026-10-02 (GAP-32: Orkeon.Application references it). -->
   <ItemGroup>
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" PrivateAssets="all" />
@@ -34,6 +35,7 @@
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Llm\Orkeon.Constants.Llm.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.FileSystem\Orkeon.Constants.FileSystem.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Protocol\Orkeon.Constants.Protocol.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" PrivateAssets="all" />

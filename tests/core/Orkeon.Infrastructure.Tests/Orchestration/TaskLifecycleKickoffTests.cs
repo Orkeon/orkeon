@@ -63,11 +63,17 @@ public sealed class TaskLifecycleKickoffTests
             crew.Id, new CrewInput("launch", new Dictionary<string, object>()), Ct);
 
         Assert.False(output.Succeeded);
+        // GAP-32: a run with a failed task ends on CrewExecutionFailedEvent — it used to end on
+        // CrewExecutionCompletedEvent (FailedTasks = 1), and the shipped failure handler saw nothing.
         Assert.Equal(
             [nameof(TaskStartedEvent), nameof(TaskCompletedEvent), nameof(AgentCompletedTaskEvent),
              nameof(TaskStartedEvent), nameof(TaskFailedEvent), nameof(AgentFailedTaskEvent),
-             nameof(CrewExecutionCompletedEvent)],
+             nameof(CrewExecutionFailedEvent)],
             recorder.Names);
+        var failed = Assert.IsType<CrewExecutionFailedEvent>(recorder.Events[^1]);
+        Assert.Contains(crew.Tasks[1].ToString(), failed.Reason, StringComparison.Ordinal);
+        Assert.DoesNotContain(crew.Tasks[0].ToString(), failed.Reason, StringComparison.Ordinal);
+        Assert.Equal(output.Error, failed.Reason);
 
         // The repository of the run's scope says what became of each task.
         var tasks = sp.GetRequiredService<ITaskRepository>();
@@ -84,6 +90,10 @@ public sealed class TaskLifecycleKickoffTests
         Assert.Contains(logs.Entries, e => e.Category.EndsWith(".AgentFailedTaskHandler", StringComparison.Ordinal)
             && e.Level == LogLevel.Warning
             && e.Message.Contains(crew.Tasks[1].ToString(), StringComparison.Ordinal));
+        Assert.Contains(logs.Entries, e => e.Category.EndsWith(".CrewExecutionFailedHandler", StringComparison.Ordinal)
+            && e.Level == LogLevel.Warning
+            && e.Message.Contains(crew.Tasks[1].ToString(), StringComparison.Ordinal));
+        Assert.DoesNotContain(logs.Entries, e => e.Category.EndsWith(".CrewExecutionCompletedHandler", StringComparison.Ordinal));
     }
 
     private static ServiceProvider Host(EventRecorder recorder, RecordingLoggerProvider logs)
@@ -125,11 +135,13 @@ public sealed class TaskLifecycleKickoffTests
 
     private sealed class EventRecorder
     {
-        private readonly ConcurrentQueue<string> _names = new();
+        private readonly ConcurrentQueue<DomainEvent> _events = new();
 
-        public IReadOnlyList<string> Names => [.. _names];
+        public IReadOnlyList<DomainEvent> Events => [.. _events];
 
-        public void Record(DomainEvent domainEvent) => _names.Enqueue(domainEvent.GetType().Name);
+        public IReadOnlyList<string> Names => [.. _events.Select(e => e.GetType().Name)];
+
+        public void Record(DomainEvent domainEvent) => _events.Enqueue(domainEvent);
     }
 
     private sealed class RecordingHandler(EventRecorder recorder) :

@@ -101,6 +101,35 @@ public sealed class ChatStreamingTests : IDisposable
         Assert.Equal("""{"path":"/x"}""", fn.GetProperty("arguments").GetString());
     }
 
+    /// <summary>
+    /// GAP-32 — on the native protocol, a model that writes its call in the text protocol: the
+    /// buffered answer carries the vendor's body, in which the fallback parser reads the call; the
+    /// streamed answer carries the body it rebuilds, so a streamed agent turn calls the same tool.
+    /// </summary>
+    [Fact]
+    public async Task ChatStreaming_on_the_native_protocol_carries_a_body_so_a_call_written_as_text_is_read_as_buffered()
+    {
+        const string text = """Let me look. [TOOL_CALL]{tool => "lookup", args => {--query "release date"}}[/TOOL_CALL]""";
+        var sse = BuildSseStream(ContentChunk(text[..20]), ContentChunk(text[20..]));
+        using var provider = CreateDeepSeekProvider(sse, new Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallingStrategy(
+            NullLogger<Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser>.Instance));
+        var parser = new Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser(
+            NullLogger<Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser>.Instance);
+        using var chatClient = new Orkeon.Infrastructure.LLMs.Adapters.LlmProviderToChatClientAdapter(
+            provider, textFallbackParser: parser);
+
+        var response = await Microsoft.Extensions.AI.ChatResponseExtensions.ToChatResponseAsync(
+            chatClient.GetStreamingResponseAsync(
+                [new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, "When is the release?")],
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
+
+        var call = Assert.Single(response.Messages.SelectMany(m => m.Contents).OfType<Microsoft.Extensions.AI.FunctionCallContent>());
+        Assert.Equal("lookup", call.Name);
+        Assert.Equal("release date", call.Arguments!["query"]?.ToString());
+        Assert.Single(response.Messages);
+    }
+
     [Fact]
     public async Task ChatStreaming_http_error_completes_with_an_error_response()
     {
@@ -155,11 +184,25 @@ public sealed class ChatStreamingTests : IDisposable
         return sb.ToString();
     }
 
+    /// <summary>One SSE chunk carrying <paramref name="text"/> as a content delta, escaped as JSON.</summary>
+    private static string ContentChunk(string text) =>
+        JsonSerializer.Serialize(new { choices = new[] { new { delta = new { content = text } } } });
+
     private DeepSeekLlmProvider CreateDeepSeekProvider(string sseBody)
     {
         SetupHttpClient(sseBody, HttpStatusCode.OK);
         var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = "sk-test" };
         return new DeepSeekLlmProvider(config, _httpClientFactory, _noOpPolicy,
+            NullLogger<DeepSeekLlmProvider>.Instance);
+    }
+
+    /// <summary>A provider on the native protocol, as <c>LlmProviderFactory</c> builds every one.</summary>
+    private DeepSeekLlmProvider CreateDeepSeekProvider(
+        string sseBody, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy toolCallingStrategy)
+    {
+        SetupHttpClient(sseBody, HttpStatusCode.OK);
+        var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = "sk-test" };
+        return new DeepSeekLlmProvider(config, _httpClientFactory, toolCallingStrategy,
             NullLogger<DeepSeekLlmProvider>.Instance);
     }
 

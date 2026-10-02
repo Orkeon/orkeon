@@ -126,13 +126,62 @@ public class AgentStepCallbackTests
     }
 
     [Fact]
-    public void Wrap_leaves_the_pipeline_alone_without_callbacks_and_never_wraps_twice()
+    public async System.Threading.Tasks.Task Wrap_wraps_even_without_callbacks_so_a_streamed_run_hears_its_tool_calls_and_never_wraps_twice()
     {
+        // GAP-32: whether a run is streamed is known when the call is made, not when the loops are
+        // built — an orchestrator without callbacks still tells a streamed run about its tools.
         var (callbacks, _) = Callbacks();
-
-        Assert.Same(ToolInvocationPipeline.Unguarded, StepNotifyingToolInvocationPipeline.Wrap(ToolInvocationPipeline.Unguarded, null));
+        var bare = StepNotifyingToolInvocationPipeline.Wrap(ToolInvocationPipeline.Unguarded, null);
+        Assert.IsType<StepNotifyingToolInvocationPipeline>(bare);
         var wrapped = StepNotifyingToolInvocationPipeline.Wrap(ToolInvocationPipeline.Unguarded, callbacks);
         Assert.Same(wrapped, StepNotifyingToolInvocationPipeline.Wrap(wrapped, callbacks));
+
+        var channel = System.Threading.Channels.Channel.CreateUnbounded<CrewExecutionEvent>();
+        using (Orkeon.Application.Crew.Execution.CrewStreamScope.Begin(channel.Writer))
+        {
+            await bare.InvokeAsync(
+                new Orkeon.Application.Interfaces.Security.ToolInvocation(
+                    new SpyTool("web_scrape", result: "page text"),
+                    new Dictionary<string, object?> { ["url"] = "https://example.com/private" },
+                    new Orkeon.Application.Interfaces.Security.ToolInvocationCaller("a-1", "Researcher", "t-1")),
+                TestContext.Current.CancellationToken);
+        }
+
+        channel.Writer.Complete();
+        var events = new List<CrewExecutionEvent>();
+        await foreach (var executionEvent in channel.Reader.ReadAllAsync(TestContext.Current.CancellationToken))
+            events.Add(executionEvent);
+        Assert.Equal([Orkeon.Constants.Protocol.RunEventKinds.ToolCalled, Orkeon.Constants.Protocol.RunEventKinds.ToolReturned], events.Select(e => e.Kind));
+        Assert.All(events, e =>
+        {
+            Assert.Equal("web_scrape", e.ToolName);
+            Assert.Equal("t-1", e.TaskId);
+            Assert.Equal("Researcher", e.AgentRole);
+        });
+        Assert.True(events[1].Success);
+        Assert.NotNull(events[1].Duration);
+        // Never an argument's value on the stream.
+        Assert.DoesNotContain(events, e => (e.Text ?? string.Empty).Contains("example.com", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task Outside_a_streamed_run_a_tool_call_writes_nothing()
+    {
+        var bare = StepNotifyingToolInvocationPipeline.Wrap(ToolInvocationPipeline.Unguarded, null);
+        var channel = System.Threading.Channels.Channel.CreateUnbounded<CrewExecutionEvent>();
+
+        // A run nobody streams opens its scope without a writer — and hides an enclosing stream.
+        using (Orkeon.Application.Crew.Execution.CrewStreamScope.Begin(channel.Writer))
+        using (Orkeon.Application.Crew.Execution.CrewStreamScope.Begin(null))
+        {
+            await bare.InvokeAsync(
+                new Orkeon.Application.Interfaces.Security.ToolInvocation(
+                    new SpyTool("web_scrape", result: "page text"), new Dictionary<string, object?>(),
+                    new Orkeon.Application.Interfaces.Security.ToolInvocationCaller("a-1", "Researcher", "t-1")),
+                TestContext.Current.CancellationToken);
+        }
+
+        Assert.False(channel.Reader.TryRead(out _));
     }
 
     [Fact]

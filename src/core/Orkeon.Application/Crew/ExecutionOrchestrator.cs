@@ -62,6 +62,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private LlmCallGate LlmGate =>
         _llmGate ??= new LlmCallGate(_logger, _llmProvider, _rateLimiter);
 
+    // Wrapped even without callbacks: a streamed run hears each tool call (GAP-32).
     private IToolInvocationPipeline Tools => Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.Wrap(
         ToolInvocation ?? ToolInvocationPipeline.Unguarded, Callbacks);
 
@@ -72,7 +73,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem, Tools);
 
     private ChatClientAgentLoop ChatLoop =>
-        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher);
+        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, DeltaSink);
 
     private LegacyTextAgentLoop LegacyLoop =>
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools);
@@ -145,6 +146,16 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// reports no step. Read when the loops are first built, like <see cref="ToolInvocation"/>.
     /// </summary>
     public Interfaces.Services.ICallbackOrchestrator? Callbacks { get; set; }
+
+    /// <summary>
+    /// Where the host renders the model's text as it arrives (<c>orkeon run --stream</c>, the REPL's
+    /// console): when set, every turn of the chat-client loop is streamed and each text fragment is
+    /// handed to it (GAP-32). Set by <c>AddOrkeonApplication</c> from the registered
+    /// <see cref="ILlmDeltaSink"/>; null — the host renders nothing — keeps the turns buffered unless
+    /// the run itself is streamed (<c>KickoffStreamingAsync</c>). Read when the loops are first built,
+    /// like <see cref="Callbacks"/>. The native and text loops (no <c>IChatClient</c>) stream nothing.
+    /// </summary>
+    public ILlmDeltaSink? DeltaSink { get; set; }
 
     /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
@@ -535,7 +546,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 resolved.ChatClient,
                 new LlmCallGate(_logger, resolved.BasicProvider, _rateLimiter),
                 OptionsComposer,
-                ToolDispatcher);
+                ToolDispatcher,
+                DeltaSink);
         });
     }
 

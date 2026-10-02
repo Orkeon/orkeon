@@ -153,8 +153,7 @@ public sealed class MiniMaxThinkExtractionTests : IDisposable
     }
 
     /// <summary>
-    /// The stream-final assembled content goes through the same split as the buffered
-    /// paths (live deltas stay raw by design — only the terminal response is scrubbed).
+    /// The stream-final assembled content goes through the same split as the buffered paths.
     /// </summary>
     [Fact]
     public async Task ShouldScrubTheThinkBlock_OnTheStreamFinal()
@@ -176,6 +175,85 @@ public sealed class MiniMaxThinkExtractionTests : IDisposable
         Assert.Equal(
             "Streamed thought.",
             ((string)completed.FinalResponse.Metadata["reasoning_content"]!).Trim());
+    }
+
+    /// <summary>
+    /// GAP-32: the live deltas are split too — the block's text goes out as reasoning, the
+    /// whitespace after it is dropped — so the content a stream carries is the answer its final
+    /// response keeps. A streamed agent turn is the folded content deltas: left raw, the think
+    /// block became part of the task's output. A tag split across chunks is held until it can be
+    /// told apart.
+    /// </summary>
+    [Fact]
+    public async Task ShouldStreamTheThinkBlockAsReasoning_AndTheAnswerAsContent()
+    {
+        RespondSse(
+            """{"choices":[{"delta":{"content":" <thi"}}]}""",
+            """{"choices":[{"delta":{"content":"nk>\nStreamed "}}]}""",
+            """{"choices":[{"delta":{"content":"thought.\n</th"}}]}""",
+            """{"choices":[{"delta":{"content":"ink>\n\n"}}]}""",
+            """{"choices":[{"delta":{"content":"Hello"}}]}""",
+            """{"choices":[{"delta":{"content":" there!"}}]}""");
+        using var provider = CreateProvider();
+
+        var events = new List<LlmStreamEvent>();
+        await foreach (var ev in provider.ChatStreamingAsync(
+            [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken))
+        {
+            events.Add(ev);
+        }
+
+        var content = string.Concat(events.Where(e => e.Kind == LlmStreamEventKind.ContentDelta).Select(e => e.Delta));
+        var reasoning = string.Concat(events.Where(e => e.Kind == LlmStreamEventKind.ReasoningDelta).Select(e => e.Delta));
+        var completed = Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed);
+        Assert.Equal("Hello there!", content);
+        Assert.Equal(completed.FinalResponse!.Content, content);
+        Assert.Equal("Streamed thought.", reasoning.Trim());
+        Assert.Equal("Streamed thought.", (string)completed.FinalResponse.Metadata["reasoning_content"]!);
+    }
+
+    [Fact]
+    public async Task ShouldStreamAnUnterminatedThinkBlockAsReasoningToItsEnd()
+    {
+        RespondSse(
+            """{"choices":[{"delta":{"content":"<think>\nHalf a thought, cut by max_"}}]}""",
+            """{"choices":[{"delta":{"content":"tokens</thi"}}]}""");
+        using var provider = CreateProvider();
+
+        var events = new List<LlmStreamEvent>();
+        await foreach (var ev in provider.ChatStreamingAsync(
+            [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken))
+        {
+            events.Add(ev);
+        }
+
+        Assert.DoesNotContain(events, e => e.Kind == LlmStreamEventKind.ContentDelta);
+        var completed = Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed);
+        Assert.Equal(string.Empty, completed.FinalResponse!.Content);
+        Assert.Equal(
+            "Half a thought, cut by max_tokens</thi",
+            string.Concat(events.Where(e => e.Kind == LlmStreamEventKind.ReasoningDelta).Select(e => e.Delta)).Trim());
+    }
+
+    [Fact]
+    public async Task ShouldStreamAReplyWithoutAThinkBlockUnchanged()
+    {
+        RespondSse(
+            """{"choices":[{"delta":{"content":"The tag is "}}]}""",
+            """{"choices":[{"delta":{"content":"<think>quoted</think> here."}}]}""");
+        using var provider = CreateProvider();
+
+        var events = new List<LlmStreamEvent>();
+        await foreach (var ev in provider.ChatStreamingAsync(
+            [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken))
+        {
+            events.Add(ev);
+        }
+
+        Assert.Equal(
+            "The tag is <think>quoted</think> here.",
+            string.Concat(events.Where(e => e.Kind == LlmStreamEventKind.ContentDelta).Select(e => e.Delta)));
+        Assert.DoesNotContain(events, e => e.Kind == LlmStreamEventKind.ReasoningDelta);
     }
 
     /// <summary>

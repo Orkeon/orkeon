@@ -7,11 +7,10 @@ using Orkeon.Domain.Task;
 namespace Orkeon.Application.Crew.Execution;
 
 /// <summary>
-/// Shared rendering of <see cref="GuardrailsConfig"/> sections into system prompts. Used by both
-/// the standard path (<see cref="AgentPromptComposer"/>) and the streaming path
-/// (<c>StreamingAgentExecutionService</c>) so guardrails render byte-identically on either:
-/// agent-level section first, then the task's own, tool-specific rules gated by the tools the
-/// agent holds for this task (<see cref="TaskToolbelt"/>).
+/// Rendering of <see cref="GuardrailsConfig"/> sections into system prompts, for
+/// <see cref="AgentPromptComposer"/> — the one composer since a streamed run goes through the same
+/// agent loops (GAP-32): agent-level section first, then the task's own, tool-specific rules gated
+/// by the tools the agent holds for this task (<see cref="TaskToolbelt"/>).
 /// </summary>
 public static class GuardrailsPromptRenderer
 {

@@ -28,14 +28,11 @@ public sealed class CrewExecution
     public ExecutionStatus Status { get; private set; }
 
     /// <summary>
-    /// Gets the number of completed tasks.
+    /// Gets the number of tasks a successful execution completed — each counted once, by its final
+    /// outcome (GAP-32): a task a graph retried and that then succeeded is one completed task. A
+    /// failed execution keeps 0; its <see cref="FailureReason"/> names every task that did not succeed.
     /// </summary>
     public int CompletedTasks { get; private set; }
-
-    /// <summary>
-    /// Gets the number of failed tasks.
-    /// </summary>
-    public int FailedTasks { get; private set; }
 
     /// <summary>
     /// Gets the failure reason if execution failed.
@@ -50,18 +47,6 @@ public sealed class CrewExecution
         : null;
 
     /// <summary>
-    /// Gets the success rate as a percentage.
-    /// </summary>
-    public double SuccessRate
-    {
-        get
-        {
-            var totalTasks = CompletedTasks + FailedTasks;
-            return totalTasks > 0 ? (double)CompletedTasks / totalTasks * 100 : 0;
-        }
-    }
-
-    /// <summary>
     /// Initializes a new instance of CrewExecution.
     /// </summary>
     internal CrewExecution(ProcessId processId, DateTime startedAt)
@@ -71,13 +56,14 @@ public sealed class CrewExecution
         StartedAt = startedAt;
         Status = ExecutionStatus.Running;
         CompletedTasks = 0;
-        FailedTasks = 0;
     }
 
     /// <summary>
-    /// Marks the execution as completed.
+    /// Marks the execution as completed: the run succeeded, every task it ran succeeded (GAP-32). A run
+    /// with a task that did not succeed is a failed run (<see cref="Fail"/>), never a partial success.
     /// </summary>
-    internal void Complete(int completedTasks, int failedTasks)
+    /// <param name="completedTasks">The tasks the run completed, each counted once.</param>
+    internal void Complete(int completedTasks)
     {
         if (Status != ExecutionStatus.Running)
             throw new InvalidOperationException($"Cannot complete execution in {Status} status.");
@@ -85,13 +71,9 @@ public sealed class CrewExecution
         if (completedTasks < 0)
             throw new ArgumentException("Completed tasks cannot be negative.", nameof(completedTasks));
 
-        if (failedTasks < 0)
-            throw new ArgumentException("Failed tasks cannot be negative.", nameof(failedTasks));
-
         CompletedTasks = completedTasks;
-        FailedTasks = failedTasks;
         CompletedAt = DateTime.UtcNow;
-        Status = failedTasks == 0 ? ExecutionStatus.Succeeded : ExecutionStatus.PartialSuccess;
+        Status = ExecutionStatus.Succeeded;
     }
 
     /// <summary>
@@ -108,24 +90,6 @@ public sealed class CrewExecution
         CompletedAt = DateTime.UtcNow;
         Status = ExecutionStatus.Failed;
     }
-
-    /// <summary>
-    /// Updates the task progress.
-    /// </summary>
-    internal void UpdateProgress(int completedTasks, int failedTasks)
-    {
-        if (Status != ExecutionStatus.Running)
-            throw new InvalidOperationException($"Cannot update progress for execution in {Status} status.");
-
-        if (completedTasks < 0)
-            throw new ArgumentException("Completed tasks cannot be negative.", nameof(completedTasks));
-
-        if (failedTasks < 0)
-            throw new ArgumentException("Failed tasks cannot be negative.", nameof(failedTasks));
-
-        CompletedTasks = completedTasks;
-        FailedTasks = failedTasks;
-    }
 }
 
 /// <summary>
@@ -139,22 +103,18 @@ public enum ExecutionStatus
     Running,
 
     /// <summary>
-    /// Execution completed successfully.
+    /// Execution completed successfully: every task it ran succeeded.
     /// </summary>
     Succeeded,
 
     /// <summary>
-    /// Execution completed with some failures.
-    /// </summary>
-    PartialSuccess,
-
-    /// <summary>
-    /// Execution failed completely.
+    /// Execution failed: a task did not succeed, or the run stopped on an exception or a
+    /// cancellation — a cancelled run is a failed one, its reason saying so (GAP-32).
     /// </summary>
     Failed,
 
     /// <summary>
-    /// Execution was cancelled.
+    /// Execution was cancelled. No run reaches it: a cancelled run ends <see cref="Failed"/>.
     /// </summary>
     Cancelled
 }

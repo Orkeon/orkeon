@@ -6,9 +6,11 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Constants.Protocol</PackageId>
-    <!-- PUB-25: out of the published set — consumed only by in-repo executables (source reference); re-promote if the Hosting/Cli family ever ships to NuGet.org. -->
+    <!-- PUB-25: no package of its own. Orkeon.Application references it (GAP-32: the events of the
+         in-process streaming kickoff carry its kinds), so its assembly ships inside the `Orkeon`
+         umbrella package, like the other satellites of the core closure. -->
     <IsPackable>false</IsPackable>
-    <Description>Shared wire vocabulary for Orkeon: the event kinds a run streams between the runner process and whatever is watching it. Depends on nothing.</Description>
+    <Description>Shared wire vocabulary for Orkeon: the event kinds a run streams between the runner process and whatever is watching it, and in process to a C# host. Depends on nothing.</Description>
     <PackageTags>AI;Agents;Orkeon;Constants;Protocol</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

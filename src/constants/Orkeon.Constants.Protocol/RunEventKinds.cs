@@ -9,6 +9,11 @@ namespace Orkeon.Constants.Protocol;
 /// twice, and nothing checked the two spellings against each other.
 /// </para>
 /// <para>
+/// It is also the vocabulary of a run observed in process: the events
+/// <c>ICrewOrchestrationService.KickoffStreamingAsync</c> yields carry these kinds (GAP-32), so a
+/// C# host and a process watching the wire read the same words — one vocabulary, not a third.
+/// </para>
+/// <para>
 /// The two copies had already drifted: the runner emitted <c>tool.called</c>,
 /// <c>tool.returned</c>, <c>delegation.started</c> and <c>agent.spawned</c>, and Studio's copy
 /// knew none of them. An unknown kind is not an error on either side - the reader ignores it -

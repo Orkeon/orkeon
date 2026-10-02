@@ -23,7 +23,9 @@ public interface ICrewOrchestrationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Executes crew for each input in sequence.
+    /// Executes the crew for each input, in sequence: each input is a full run — started, ended,
+    /// its events dispatched — and the next one starts once the previous one has returned
+    /// (CrewAI's <c>kickoff_for_each</c>). The results come back in the order of the inputs.
     /// </summary>
     System.Threading.Tasks.Task<BatchOutput> KickoffForEachAsync(
         CrewId crewId,
@@ -45,9 +47,18 @@ public interface ICrewOrchestrationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Executes a crew with streaming output.
-    /// Emits events as agents think, use tools, and produce answers.
+    /// Executes the crew exactly as <see cref="KickoffAsync"/> does — the same tasks, agents, order,
+    /// mode, memory, knowledge and plan — and yields what happens as the run goes (GAP-32): each
+    /// task's start and end, each tool call, the model's text as it arrives (on a host with an
+    /// <c>IChatClient</c>), then <c>run.finished</c> carrying the run's <see cref="CrewOutput"/>,
+    /// preceded by an <c>error</c> when the run failed. Each event's <see cref="CrewExecutionEvent.Kind"/>
+    /// is a <c>RunEventKinds</c> constant, the vocabulary <c>orkeon run --events</c> writes on the wire.
     /// </summary>
+    /// <remarks>
+    /// Leaving the stream — a <c>break</c>, the consumer's token — cancels the run; the iterator waits
+    /// for it to end, so the crew ends failed by cancellation, its running tasks cancelled and its
+    /// events dispatched.
+    /// </remarks>
     IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(
         CrewId crewId,
         CrewInput input,
@@ -190,13 +201,72 @@ public record TokenUsage(
 
 
 /// <summary>
-/// Event emitted during streaming crew execution.
+/// One event of a streamed crew run (<see cref="ICrewOrchestrationService.KickoffStreamingAsync"/>,
+/// GAP-32): what happened — <see cref="Kind"/>, a <c>RunEventKinds</c> constant, the vocabulary
+/// <c>orkeon run --events</c> writes on the wire —, when, for which task and agent when the event has
+/// one, then what its kind says:
+/// <list type="table">
+///   <listheader><term>Kind</term><description>Carries</description></listheader>
+///   <item><term><c>task.started</c></term><description><see cref="TaskId"/>, <see cref="AgentRole"/>.</description></item>
+///   <item><term><c>tool.called</c></term><description><see cref="ToolName"/> — never the arguments' values.</description></item>
+///   <item><term><c>tool.returned</c></term><description><see cref="ToolName"/>, <see cref="Success"/>, <see cref="Duration"/> — not the result.</description></item>
+///   <item><term><c>llm.delta</c></term><description><see cref="Text"/>: the model's text as it arrives.</description></item>
+///   <item><term><c>task.completed</c></term><description><see cref="Success"/>, <see cref="Skipped"/> and <see cref="SkipReason"/>, <see cref="Duration"/>, <see cref="Tokens"/>, <see cref="ToolCalls"/>.</description></item>
+///   <item><term><c>error</c></term><description><see cref="Code"/> (<c>crew_failed</c> or <c>crew_cancelled</c>) and <see cref="Message"/>, the run's reason.</description></item>
+///   <item><term><c>run.finished</c></term><description><see cref="Output"/>: the run's <see cref="CrewOutput"/>. Always last.</description></item>
+/// </list>
+/// A task's events come in order — its start, its tool calls and deltas, its end —; the events of
+/// tasks that run at once interleave. A delta or a tool call carries the task and the agent of the
+/// call that produced it: a delegation or a ballot runs on a task of its own, and its events carry
+/// that task's id.
 /// </summary>
-public record CrewExecutionEvent(
-    string AgentRole,
-    string TaskDescription,
-    AgentThought Thought,
-    DateTime Timestamp);
+public sealed record CrewExecutionEvent
+{
+    /// <summary>What happened: a <c>RunEventKinds</c> constant (<c>task.started</c>, <c>llm.delta</c>, …).</summary>
+    public required string Kind { get; init; }
+
+    /// <summary>When it happened (UTC).</summary>
+    public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
+
+    /// <summary>The task the event belongs to; null for the run's own events (<c>error</c>, <c>run.finished</c>).</summary>
+    public string? TaskId { get; init; }
+
+    /// <summary>The role of the agent the event belongs to; null when no agent is involved.</summary>
+    public string? AgentRole { get; init; }
+
+    /// <summary><c>llm.delta</c>: a fragment of the model's text, as it arrived.</summary>
+    public string? Text { get; init; }
+
+    /// <summary><c>tool.called</c>, <c>tool.returned</c>: the tool's name.</summary>
+    public string? ToolName { get; init; }
+
+    /// <summary><c>tool.returned</c>, <c>task.completed</c>: whether the tool call or the task succeeded.</summary>
+    public bool? Success { get; init; }
+
+    /// <summary><c>tool.returned</c>, <c>task.completed</c>: how long the tool call or the task took.</summary>
+    public TimeSpan? Duration { get; init; }
+
+    /// <summary><c>task.completed</c>: the task never ran, because a task it depends on did not succeed.</summary>
+    public bool Skipped { get; init; }
+
+    /// <summary><c>task.completed</c>: why the task was skipped; null unless <see cref="Skipped"/>.</summary>
+    public string? SkipReason { get; init; }
+
+    /// <summary><c>task.completed</c>: the tokens the task used, 0 when its mode does not track them.</summary>
+    public int Tokens { get; init; }
+
+    /// <summary><c>task.completed</c>: the tool calls the task made, 0 when its mode does not track them.</summary>
+    public int ToolCalls { get; init; }
+
+    /// <summary><c>error</c>: <c>crew_failed</c> or <c>crew_cancelled</c> (<c>RunEventErrorCodes</c>).</summary>
+    public string? Code { get; init; }
+
+    /// <summary><c>error</c>: why the run failed — the crew's error, naming each task that did not succeed.</summary>
+    public string? Message { get; init; }
+
+    /// <summary><c>run.finished</c>: the run's output — success, error, final output, task outputs, tokens.</summary>
+    public CrewOutput? Output { get; init; }
+}
 
 /// <summary>
 /// Status of async crew execution.

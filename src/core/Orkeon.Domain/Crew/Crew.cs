@@ -372,9 +372,11 @@ public sealed class Crew : AggregateRoot<CrewId>
     }
 
     /// <summary>
-    /// Completes the current execution successfully.
+    /// Completes the current execution successfully: every task the run ran succeeded. A run with a
+    /// task that did not succeed fails instead (<see cref="FailExecution"/>, GAP-32).
     /// </summary>
-    public void CompleteExecution(int completedTasks, int failedTasks)
+    /// <param name="completedTasks">The tasks the run completed, each counted once by its final outcome.</param>
+    public void CompleteExecution(int completedTasks)
     {
         if (Status != CrewStatus.Executing || _currentProcessId == null)
             throw new InvalidOperationException("No execution is currently in progress.");
@@ -383,7 +385,7 @@ public sealed class Crew : AggregateRoot<CrewId>
         if (execution == null)
             throw new InvalidOperationException("Current execution not found.");
 
-        execution.Complete(completedTasks, failedTasks);
+        execution.Complete(completedTasks);
 
         Status = CrewStatus.Idle;
         var processId = _currentProcessId;
@@ -395,13 +397,15 @@ public sealed class Crew : AggregateRoot<CrewId>
             ProcessId = processId,
             Duration = execution.Duration!.Value,
             CompletedTasks = completedTasks,
-            FailedTasks = failedTasks
         });
     }
 
     /// <summary>
-    /// Fails the current execution.
+    /// Fails the current execution: a task did not succeed, or the run stopped on an exception or a
+    /// cancellation (GAP-32). The crew stays <see cref="CrewStatus.Failed"/> until its next run.
     /// </summary>
+    /// <param name="reason">Why the run failed: the crew's error, naming every task that did not succeed.</param>
+    /// <param name="exception">The exception that stopped the run, when one did.</param>
     public void FailExecution(string reason, Exception? exception = null)
     {
         if (Status != CrewStatus.Executing || _currentProcessId == null)

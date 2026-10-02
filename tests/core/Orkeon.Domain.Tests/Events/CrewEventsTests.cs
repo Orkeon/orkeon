@@ -169,17 +169,15 @@ public class CrewEventsTests
         // Arrange
         var duration = TimeSpan.FromMinutes(30);
         var completedTasks = 10;
-        var failedTasks = 2;
 
         // Act
-        var @event = new CrewExecutionCompletedEvent { CrewId = _crewId, ProcessId = _processId, Duration = duration, CompletedTasks = completedTasks, FailedTasks = failedTasks, OccurredAt = _occurredAt };
+        var @event = new CrewExecutionCompletedEvent { CrewId = _crewId, ProcessId = _processId, Duration = duration, CompletedTasks = completedTasks, OccurredAt = _occurredAt };
 
         // Assert
         Assert.Equal(_crewId, @event.CrewId);
         Assert.Equal(_processId, @event.ProcessId);
         Assert.Equal(duration, @event.Duration);
         Assert.Equal(completedTasks, @event.CompletedTasks);
-        Assert.Equal(failedTasks, @event.FailedTasks);
         Assert.Equal(_occurredAt, @event.OccurredAt);
         Assert.NotEqual(Guid.Empty, @event.Id);
     }
@@ -188,7 +186,7 @@ public class CrewEventsTests
     public void ShouldReturnCorrectName_WhenUsingCrewExecutionCompletedEventUsingEventName()
     {
         // Act
-        var @event = new CrewExecutionCompletedEvent { CrewId = _crewId, ProcessId = _processId, Duration = TimeSpan.Zero, CompletedTasks = 0, FailedTasks = 0, OccurredAt = _occurredAt };
+        var @event = new CrewExecutionCompletedEvent { CrewId = _crewId, ProcessId = _processId, Duration = TimeSpan.Zero, CompletedTasks = 0, OccurredAt = _occurredAt };
 
         // Assert
         Assert.Equal("CrewExecutionCompletedEvent", @event.EventName);
@@ -333,12 +331,11 @@ public class CrewEventsTests
     public void ShouldInitializeCorrectly_WhenUsingCrewExecutionCompletedEventWithZeroDuration()
     {
         // Act
-        var @event = new CrewExecutionCompletedEvent { CrewId = _crewId, ProcessId = _processId, Duration = TimeSpan.Zero, CompletedTasks = 0, FailedTasks = 0, OccurredAt = _occurredAt };
+        var @event = new CrewExecutionCompletedEvent { CrewId = _crewId, ProcessId = _processId, Duration = TimeSpan.Zero, CompletedTasks = 0, OccurredAt = _occurredAt };
 
         // Assert
         Assert.Equal(TimeSpan.Zero, @event.Duration);
         Assert.Equal(0, @event.CompletedTasks);
-        Assert.Equal(0, @event.FailedTasks);
     }
 
     [Fact]
@@ -347,15 +344,13 @@ public class CrewEventsTests
         // Arrange
         var duration = TimeSpan.FromDays(7);
         var completedTasks = 1000;
-        var failedTasks = 50;
 
         // Act
-        var @event = new CrewExecutionCompletedEvent { CrewId = _crewId, ProcessId = _processId, Duration = duration, CompletedTasks = completedTasks, FailedTasks = failedTasks, OccurredAt = _occurredAt };
+        var @event = new CrewExecutionCompletedEvent { CrewId = _crewId, ProcessId = _processId, Duration = duration, CompletedTasks = completedTasks, OccurredAt = _occurredAt };
 
         // Assert
         Assert.Equal(duration, @event.Duration);
         Assert.Equal(completedTasks, @event.CompletedTasks);
-        Assert.Equal(failedTasks, @event.FailedTasks);
     }
 
     [Fact]

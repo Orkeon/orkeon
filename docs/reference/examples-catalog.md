@@ -54,7 +54,7 @@ not contiguous.
 | `run-events/` | The `orkeon run --events jsonl` protocol: README, `sample-stream.jsonl`, `watch-run.py` |
 | `aspire/AppHost/` | A .NET Aspire AppHost (`Orkeon.Hosting.Aspire`) running the quickstart crew as a resource, its spans, metrics and logs in the dashboard |
 | `interop/agent-framework/` | `Orkeon.Interop.AgentFramework` both ways: a crew wrapped as a Microsoft Agent Framework `AIAgent`, and a MAF agent handed to an Orkeon agent as a tool |
-| `09-experimental/llm-response-format/`, `09-experimental/streaming-demo/` | Two unnumbered demos inside the experimental category: structured output (`response_format`) and real-time streaming of an agent's execution |
+| `09-experimental/llm-response-format/`, `09-experimental/streaming-demo/` | Two unnumbered demos inside the experimental category: structured output (`response_format`) and a crew run streamed as it goes (`KickoffStreamingAsync`) |
 | `appsettings/` | The shared settings profile matrix: one `appsettings.json` plus a `*.local.json.example` per provider |
 | `others/` | The README of a benchmark corpus of twenty TypeScript codebases for the `102` codebase crew (the codebases themselves are not committed) |
 

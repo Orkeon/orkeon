@@ -136,7 +136,7 @@ bufferisée ou en flux — avec `cost_currency` à côté quand le provider éno
 laquelle son vendeur facture (`CostCurrency` : `USD` chez OpenRouter, dont les crédits sont
 des dollars ; aucun autre provider n'en énonce). De là, le coût voyage tel que facturé :
 l'adaptateur de client de chat le porte sur le `ChatResponse` (`AdditionalProperties`, aussi
-sur son repli en flux), la boucle d'agent le rapporte sur l'événement d'usage
+sur son chemin de streaming), la boucle d'agent le rapporte sur l'événement d'usage
 (`CostUsageEvent.Cost`, null quand le vendeur n'a rien facturé — le `0` d'un modèle gratuit
 reste `0`), la façade de scripting fait de même pour `ctx.llm.*`, et le `cost.updated` du run
 le relaie avec `costSource: "vendor"` ([le bus d'événements du run](run-event-bus.md)).
@@ -144,8 +144,21 @@ le relaie avec `costSource: "vendor"` ([le bus d'événements du run](run-event-
 chiffré, pour ses propres budgets ; cette estimation n'atteint jamais le fil. Un
 chunk portant un `error` racine après le HTTP 200 termine un flux comme un refus pré-flux —
 métadonnée `error` sur le flux chat, `HttpRequestException` sur le flux texte — jamais
-comme une complétion propre. Les 16 providers sont des `IStreamingLlmProvider`. La matrice
-par provider vit dans [le comparatif des providers](../reference/llm-providers-comparison.md).
+comme une complétion propre. Les 16 providers sont des `IStreamingLlmProvider`. Le chemin de
+streaming de l'adaptateur de client de chat (`GetStreamingResponseAsync`, GAP-32) se construit
+comme son chemin bufferisé — mêmes messages, mêmes rôles, mêmes outils, mêmes options — et lit
+le flux chat du provider (`ChatStreamingAsync`) : le texte au fil, puis une dernière mise à jour
+qui porte les appels d'outils (natifs ou du protocole texte), l'usage du provider, la raison de
+fin, le modèle, le coût du vendeur et le raisonnement à rejouer. Repliées, les mises à jour
+donnent la réponse de l'appel bufferisé : un tour d'agent diffusé appelle ses outils et est
+compté exactement, jamais estimé ; un provider qui ne diffuse pas y répond en bufferisé. Les
+flux eux-mêmes ont dû dire ce que disent les réponses bufferisées : Anthropic assemble désormais
+les blocs `tool_use` qu'il diffuse ; MiniMax sépare son bloc `<think>` de tête des deltas de
+contenu (`LeadingReasoningTag`), si bien que le texte d'un flux est la réponse que garde sa
+réponse finale ; et, sur le protocole natif, le dialecte OpenAI et Anthropic donnent à une
+réponse diffusée le corps que porte leur réponse bufferisée, où le repli du protocole texte lit
+un appel que le modèle a écrit en texte. La matrice par provider vit dans [le comparatif des
+providers](../reference/llm-providers-comparison.md).
 
 ### Points d'extension du dialecte de la base compatible OpenAI
 

@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Agent;
@@ -187,27 +186,6 @@ public class SequentialCrewOrchestratorTests
         public IProcessStrategy CreateStrategy(ProcessType processType) => Strategy;
     }
 
-    /// <summary>
-    /// Streaming service that emits the full AgentThought granularity (reasoning + tool selection +
-    /// tool execution + conclusion) an <see cref="IStreamingAgentExecutionService"/> is expected to
-    /// surface — used to prove the orchestrator relays it instead of collapsing to a single output.
-    /// </summary>
-    private sealed class FakeStreamingAgentExecutionService : IStreamingAgentExecutionService
-    {
-        public async IAsyncEnumerable<AgentThought> StreamExecutionAsync(
-            DomainAgent agent,
-            CrewTask task,
-            SimpleExecutionContext context,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            yield return new AgentThought("Thinking about the task", AgentThought.ThoughtType.Reasoning, null, DateTime.UtcNow);
-            yield return new AgentThought("Calling tool: search", AgentThought.ThoughtType.ToolSelection, null, DateTime.UtcNow);
-            yield return new AgentThought("search returned 3 rows", AgentThought.ThoughtType.ToolExecution, null, DateTime.UtcNow);
-            yield return new AgentThought("Final answer", AgentThought.ThoughtType.Conclusion, null, DateTime.UtcNow);
-            await System.Threading.Tasks.Task.CompletedTask;
-        }
-    }
-
     #endregion
 
     #region Memory Provider Recording (P2-O-02)
@@ -373,104 +351,102 @@ public class SequentialCrewOrchestratorTests
 
     #endregion
 
-    #region KickoffStreamingAsync Tests (P2-O-03)
+    #region KickoffStreamingAsync Tests (P2-O-03, GAP-32)
 
-    [Fact]
-    public async Task KickoffStreamingAsync_ShouldYieldAgentThoughtLevelEvents_WhenStreamingServiceRegistered()
+    private static async Task<List<CrewExecutionEvent>> StreamAsync(SequentialCrewOrchestrator orchestrator, DomainCrew crew)
     {
-        // Arrange — orchestrator wired with the streaming service + agent repository (the default
-        // AddOrkeonInfrastructure registration path).
-        var repository = new TestCrewRepository();
-        var logger = new TestLogger();
-        var stateManager = new TestStateManager();
-        var strategyFactory = new TestProcessStrategyFactory();
-
-        var agent = new AgentBuilder().Role("Researcher").Goal("Find data").Build();
-        var agentRepository = new InMemoryAgentRepository(new NullUnitOfWork());
-        await agentRepository.AddAsync(agent, TestContext.Current.CancellationToken);
-
-        var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
-            new FakeStreamingAgentExecutionService(), agentRepository);
-
-        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
-        crew.AddAgent(agent.Id);
-        crew.AddTask(TaskId.Create());
-        repository.AddCrew(crew);
-
-        var input = new CrewInput("ctx", new Dictionary<string, object>());
-
-        // Act
         var events = new List<CrewExecutionEvent>();
-        await foreach (var ev in orchestrator.KickoffStreamingAsync(crew.Id, input, TestContext.Current.CancellationToken))
-            events.Add(ev);
+        await foreach (var executionEvent in orchestrator.KickoffStreamingAsync(
+            crew.Id, new CrewInput("ctx", new Dictionary<string, object> { ["topic"] = "markets" }), TestContext.Current.CancellationToken))
+        {
+            events.Add(executionEvent);
+        }
 
-        // Assert — tool-call granularity is preserved (not collapsed to a single conclusion),
-        // and no degradation warning is emitted.
-        Assert.Contains(events, e => e.Thought.Type == AgentThought.ThoughtType.ToolSelection);
-        Assert.Contains(events, e => e.Thought.Type == AgentThought.ThoughtType.ToolExecution);
-        Assert.Contains(events, e => e.Thought.Type == AgentThought.ThoughtType.Conclusion);
-        Assert.DoesNotContain(logger.Logs, l => l.Contains("degrading to per-task replay"));
+        return events;
     }
 
     [Fact]
-    public async Task KickoffStreamingAsync_ShouldLogLoudFallbackWarning_WhenStreamingServiceMissing()
+    public async Task KickoffStreamingAsync_runs_the_crews_strategy_and_ends_on_the_output_KickoffAsync_returns()
     {
-        // Arrange — no streaming service and no agent repository (optional ctor args default to null).
+        // GAP-32: the streamed kickoff is the real run — the strategy of the crew's mode, given the
+        // run's variables — and its last event carries the run's CrewOutput. It used to run a fake
+        // task per id (the GUID as its description) on agents taken in turn, and said no result.
         var repository = new TestCrewRepository();
-        var logger = new TestLogger();
-        var stateManager = new TestStateManager();
-        var strategyFactory = new TestProcessStrategyFactory();
+        var strategies = new TestProcessStrategyFactory();
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
-
+            repository, new TestLogger(), new TestStateManager(), strategies, new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
         var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
         crew.AddAgent(AgentId.Create());
         crew.AddTask(TaskId.Create());
         repository.AddCrew(crew);
 
-        var input = new CrewInput("ctx", new Dictionary<string, object>());
+        var events = await StreamAsync(orchestrator, crew);
+        var streamedVariables = strategies.Strategy.LastReceivedVariables;
+        var kicked = await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object> { ["topic"] = "markets" }), TestContext.Current.CancellationToken);
 
-        // Act — the warning fires lazily when the stream is enumerated.
-        await foreach (var _ in orchestrator.KickoffStreamingAsync(crew.Id, input, TestContext.Current.CancellationToken))
-        {
-            // drain
-        }
-
-        // Assert — the fallback is loud and names the missing registration.
-        Assert.Contains(logger.Logs, l =>
-            l.Contains("[Warning]") &&
-            l.Contains("degrading to per-task replay") &&
-            l.Contains("IStreamingAgentExecutionService"));
+        Assert.Equal("markets", streamedVariables?["topic"]);
+        var finished = Assert.Single(events);
+        Assert.Equal(Orkeon.Constants.Protocol.RunEventKinds.RunFinished, finished.Kind);
+        Assert.NotNull(finished.Output);
+        Assert.True(finished.Output.Succeeded);
+        Assert.Equal(kicked.FinalOutput, finished.Output.FinalOutput);
     }
 
     [Fact]
-    public async Task KickoffStreamingAsync_warns_that_the_streamed_run_neither_recalls_nor_stores_the_crew_memory()
+    public async Task KickoffStreamingAsync_warns_of_nothing_it_does_what_KickoffAsync_does()
     {
-        // GAP-30: the streaming path (a C# API no shipped host calls) is not wired to memory; a
-        // crew with memory: true is told so rather than silently forgotten.
+        // The degraded fallback, its warning and the memory and planning warnings are gone with the
+        // second path they described: there is one run.
         var repository = new TestCrewRepository();
         var logger = new TestLogger();
-        var agent = new AgentBuilder().Role("Researcher").Goal("Find data").Build();
-        var agentRepository = new InMemoryAgentRepository(new NullUnitOfWork());
-        await agentRepository.AddAsync(agent, TestContext.Current.CancellationToken);
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, logger, new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(),
-            new RecordingDomainEventDispatcher(), new FakeStreamingAgentExecutionService(), agentRepository);
+            repository, logger, new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
+        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        await StreamAsync(orchestrator, crew);
+
+        Assert.DoesNotContain(logger.Logs, l => l.StartsWith("[Warning]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task KickoffStreamingAsync_checks_the_crews_memory_before_its_first_task_like_KickoffAsync()
+    {
+        // GAP-30 + GAP-32: a streamed crew with memory: true is the real run — its memory is checked,
+        // recalled and stored —, not a run that warns it forgets. A memory that cannot work refuses it
+        // before its first task, and the stream says so before it finishes.
+        var repository = new TestCrewRepository();
+        var strategies = new TestProcessStrategyFactory();
+        var executed = false;
+        strategies.Strategy.OnExecute = () => executed = true;
+        var memory = new MockMemoryCoordinator
+        {
+            NotReady = new InvalidOperationException("Crew 'legal-watch' has memory: true, but its memory cannot be used: no embedding provider is registered."),
+        };
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), strategies, new ExecutionPlanParser(),
+            new RecordingDomainEventDispatcher(), memoryProviderRegistry: new CrewMemoryProviderRegistry(), memoryCoordinator: memory);
         var crew = DomainCrew.Create(new CrewCreateOptions
         {
             Goal = "Test crew", Name = "legal-watch", ProcessType = ProcessType.Sequential, MemoryEnabled = true,
         });
-        crew.AddAgent(agent.Id);
+        crew.AddAgent(AgentId.Create());
         crew.AddTask(TaskId.Create());
         repository.AddCrew(crew);
 
-        await foreach (var _ in orchestrator.KickoffStreamingAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken))
-        {
-            // drain
-        }
+        var events = await StreamAsync(orchestrator, crew);
 
-        Assert.Contains(logger.Logs, l => l.Contains("[Warning]") && l.Contains("legal-watch") && l.Contains("memory"));
+        Assert.Equal(crew.Id, Assert.Single(memory.ReadinessChecks));
+        Assert.False(executed);
+        Assert.Equal(
+            [Orkeon.Constants.Protocol.RunEventKinds.Error, Orkeon.Constants.Protocol.RunEventKinds.RunFinished],
+            events.Select(e => e.Kind));
+        Assert.Equal(Orkeon.Constants.Protocol.RunEventErrorCodes.CrewFailed, events[0].Code);
+        Assert.Contains("no embedding provider is registered", events[0].Message, StringComparison.Ordinal);
+        Assert.False(events[1].Output!.Succeeded);
+        Assert.Equal(events[0].Message, events[1].Output!.Error);
     }
 
     #endregion
@@ -996,8 +972,11 @@ public class SequentialCrewOrchestratorTests
     }
 
     [Fact]
-    public async Task The_streaming_fallback_dispatches_through_the_same_point()
+    public async Task A_streamed_kickoff_dispatches_through_the_same_point()
     {
+        // GAP-32: the streamed kickoff is the same run, so it starts and ends the crew like
+        // KickoffAsync — the granular path used to skip StartExecution, leaving the crew Idle and
+        // dispatching the construction events alone.
         var (orchestrator, repository, _, dispatcher) = BuildWithRecordingDispatcher();
         var crew = RunnableCrew(repository);
 
@@ -1009,31 +988,104 @@ public class SequentialCrewOrchestratorTests
         Assert.Equal(
             [typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent), typeof(Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent)],
             RunEventTypes(dispatcher));
+        Assert.Contains(dispatcher.Dispatched, e => e is Orkeon.Domain.Crew.Events.CrewCreatedEvent);
+        Assert.Single(crew.Executions);
+        Assert.Empty(crew.DomainEvents);
     }
 
     [Fact]
-    public async Task The_granular_streaming_path_dispatches_the_queued_events_too()
+    public async Task A_failed_streamed_kickoff_fails_the_crew_and_says_why_before_it_finishes()
     {
-        var repository = new TestCrewRepository();
-        var dispatcher = new RecordingDomainEventDispatcher();
-        var agent = new AgentBuilder().Role("Researcher").Goal("Find data").Build();
-        var agentRepository = new InMemoryAgentRepository(new NullUnitOfWork());
-        await agentRepository.AddAsync(agent, TestContext.Current.CancellationToken);
-        var orchestrator = new SequentialCrewOrchestrator(
-            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), dispatcher,
-            new FakeStreamingAgentExecutionService(), agentRepository);
-        var crew = DomainCrew.Create("Streamed crew", ProcessType.Sequential);
-        crew.AddAgent(agent.Id);
-        crew.AddTask(TaskId.Create());
-        repository.AddCrew(crew);
+        var (orchestrator, repository, strategies, dispatcher) = BuildWithRecordingDispatcher();
+        strategies.Strategy.ShouldFail = true;
+        var crew = RunnableCrew(repository);
 
-        await foreach (var _ in orchestrator.KickoffStreamingAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken))
-        {
-            // drain
-        }
+        var events = new List<CrewExecutionEvent>();
+        await foreach (var executionEvent in orchestrator.KickoffStreamingAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken))
+            events.Add(executionEvent);
 
-        Assert.Contains(dispatcher.Dispatched, e => e is Orkeon.Domain.Crew.Events.CrewCreatedEvent);
-        Assert.Empty(crew.DomainEvents);
+        Assert.Equal(
+            [typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent), typeof(Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent)],
+            RunEventTypes(dispatcher));
+        Assert.Equal(
+            [Orkeon.Constants.Protocol.RunEventKinds.Error, Orkeon.Constants.Protocol.RunEventKinds.RunFinished],
+            events.Select(e => e.Kind));
+        Assert.Equal("Process strategy failed", events[0].Message);
+        Assert.False(events[1].Output!.Succeeded);
+    }
+
+    [Fact]
+    public async Task A_run_whose_strategy_returns_a_failed_output_fails_the_crew_with_the_outputs_error()
+    {
+        // GAP-32 decision 4.1: a task that failed fails the crew (the rule of every strategy since
+        // GAP-03), so the domain says so too — CrewExecutionFailedEvent with the output's error, the
+        // crew and its execution Failed — where it used to say Completed with FailedTasks = 1.
+        var (orchestrator, repository, strategies, dispatcher) = BuildWithRecordingDispatcher();
+        const string reason = "Task 01JGAP32 (Writer) failed: no final answer";
+        strategies.Strategy.ConfiguredOutput = DomainCrewOutput.CreateFailure(
+            reason, [], TimeSpan.FromMilliseconds(5), output: "the draft it did produce");
+        var crew = RunnableCrew(repository);
+
+        var output = await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.False(output.Succeeded);
+        Assert.Equal(reason, output.Error);
+        Assert.Equal(
+            [typeof(Orkeon.Domain.Crew.Events.CrewExecutionStartedEvent), typeof(Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent)],
+            RunEventTypes(dispatcher));
+        var failed = Assert.Single(dispatcher.Dispatched.OfType<Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent>());
+        Assert.Equal(reason, failed.Reason);
+        Assert.Null(failed.Exception);
+        Assert.Equal(CrewStatus.Failed, crew.Status);
+        var execution = crew.Executions[^1];
+        Assert.Equal(ExecutionStatus.Failed, execution.Status);
+        Assert.Equal(reason, execution.FailureReason);
+    }
+
+    [Fact]
+    public async Task A_failed_output_without_an_error_still_fails_the_crew_with_a_readable_reason()
+    {
+        var (orchestrator, repository, strategies, dispatcher) = BuildWithRecordingDispatcher();
+        strategies.Strategy.ConfiguredOutput = DomainCrewOutput.CreateFailure(string.Empty, [], TimeSpan.FromMilliseconds(5));
+        var crew = RunnableCrew(repository);
+
+        var output = await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.False(output.Succeeded);
+        var failed = Assert.Single(dispatcher.Dispatched.OfType<Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent>());
+        Assert.False(string.IsNullOrWhiteSpace(failed.Reason));
+        Assert.Contains("failed", failed.Reason, StringComparison.Ordinal);
+        Assert.Equal(failed.Reason, output.Error);
+        Assert.DoesNotContain(dispatcher.Dispatched, e => e is Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent);
+    }
+
+    [Fact]
+    public async Task A_successful_run_counts_each_task_once_by_its_final_outcome()
+    {
+        // GAP-32 decision 4.2: a graph keeps one output per attempt — a task that failed and then
+        // succeeded on its retry is one completed task, and the run is a success, not a partial one.
+        var (orchestrator, repository, strategies, dispatcher) = BuildWithRecordingDispatcher();
+        var draft = TaskId.Create();
+        var review = TaskId.Create();
+        strategies.Strategy.ConfiguredOutput = DomainCrewOutput.CreateSuccess(
+            "reviewed",
+            null,
+            [
+                Orkeon.Domain.Task.ValueObjects.TaskOutput.Create("Task failed: flaky", "text", null, draft, false, TimeSpan.Zero),
+                Orkeon.Domain.Task.ValueObjects.TaskOutput.Create("drafted", "text", null, draft, true, TimeSpan.Zero),
+                Orkeon.Domain.Task.ValueObjects.TaskOutput.Create("reviewed", "text", null, review, true, TimeSpan.Zero),
+            ],
+            TimeSpan.FromMilliseconds(5));
+        var crew = RunnableCrew(repository);
+
+        var output = await orchestrator.KickoffAsync(crew.Id, EventInput(), TestContext.Current.CancellationToken);
+
+        Assert.True(output.Succeeded, output.Error);
+        var completed = Assert.Single(dispatcher.Dispatched.OfType<Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent>());
+        Assert.Equal(2, completed.CompletedTasks);
+        Assert.Equal(ExecutionStatus.Succeeded, crew.Executions[^1].Status);
+        Assert.Equal(2, crew.Executions[^1].CompletedTasks);
+        Assert.Equal(CrewStatus.Idle, crew.Status);
     }
 
     private sealed class CountingCompletedHandler : Orkeon.Domain.SharedKernel.Events.IDomainEventHandler<Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent>

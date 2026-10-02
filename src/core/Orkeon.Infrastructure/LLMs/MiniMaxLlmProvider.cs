@@ -86,6 +86,12 @@ public partial class MiniMaxLlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
+    /// The same block, split out of a stream as it arrives (GAP-32): its text goes out as
+    /// reasoning deltas, so the content a stream carries is the answer its final response keeps.
+    /// </summary>
+    protected override string? LeadingReasoningTag => "think";
+
+    /// <summary>
     /// The vendor documents that multi-turn history must KEEP the think blocks. Orkeon
     /// removed the block from the visible content, so replay puts it back — re-inlined
     /// ahead of the answer in the vendor's own shape, not as the separate

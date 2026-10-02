@@ -157,7 +157,12 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         });
         services.AddSingleton<ICrewExecutionHook>(sp => sp.GetRequiredService<RunEventObserver>());
         services.AddSingleton<ILlmUsageSink>(sp => sp.GetRequiredService<RunEventObserver>());
-        services.AddSingleton<ILlmDeltaSink>(sp => sp.GetRequiredService<RunEventObserver>());
+
+        // The delta sink only under --stream (GAP-32): a registered sink makes the agent loop and
+        // ctx.llm.* stream every turn to it, and without --stream every delta would be dropped —
+        // the turns stay buffered, byte for byte, when nobody reads them as they come.
+        if (_stream)
+            services.AddSingleton<ILlmDeltaSink>(sp => sp.GetRequiredService<RunEventObserver>());
 
         // D6: an observed run never approves on the user's behalf. The runner's AutoApprove
         // fallback is registered by TryAdd, so an explicit singleton here wins without

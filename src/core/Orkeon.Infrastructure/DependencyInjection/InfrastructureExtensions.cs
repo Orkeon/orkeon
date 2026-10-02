@@ -390,13 +390,6 @@ public static class InfrastructureExtensions
         services.AddScoped<ITaskRepository, InMemoryTaskRepository>();
         services.AddScoped<IAgentMemoryStoreRepository, InMemoryAgentMemoryStoreRepository>();
 
-        // Streaming agent execution service — registered by default so that
-        // ICrewOrchestrationService.KickoffStreamingAsync streams AgentThought-level
-        // (tool-call granular) events instead of degrading to per-task replay. It resolves
-        // the host's IChatClient (AddOrkeonLlmProvider registers one), which the infrastructure
-        // no longer fakes when the host registers no model (GAP-29).
-        services.AddScoped<Orkeon.Application.Interfaces.Services.IStreamingAgentExecutionService, StreamingAgentExecutionService>();
-
         // Agent lifecycle manager (kill switch)
         services.AddSingleton<Orkeon.Application.Interfaces.Services.IAgentLifecycleManager, AgentLifecycleManager>();
 

@@ -55,48 +55,6 @@ public interface IAgentExecutionService
 }
 
 /// <summary>
-/// Service for streaming agent execution with real-time thought process.
-/// </summary>
-public interface IStreamingAgentExecutionService
-{
-    /// <summary>
-    /// Streams the agent's execution process as it happens.
-    /// </summary>
-    IAsyncEnumerable<AgentThought> StreamExecutionAsync(
-        DomainAgent agent,
-        CrewTask task,
-        Context.SimpleExecutionContext context,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// Represents a single thought or action during agent execution.
-/// </summary>
-public record AgentThought(
-    string Content,
-    AgentThought.ThoughtType Type,
-    IReadOnlyList<ToolCall>? ToolCalls,
-    DateTime Timestamp)
-{
-    /// <summary>
-    /// ThoughtType type.
-    /// </summary>
-    public enum ThoughtType
-    {
-        /// <summary>Reasoning.</summary>
-        Reasoning,
-        /// <summary>Tool Selection.</summary>
-        ToolSelection,
-        /// <summary>Tool Execution.</summary>
-        ToolExecution,
-        /// <summary>Conclusion.</summary>
-        Conclusion,
-        /// <summary>Error.</summary>
-        Error
-    }
-}
-
-/// <summary>
 /// Describes why the agent execution loop exited.
 /// </summary>
 public enum AgentExitReason

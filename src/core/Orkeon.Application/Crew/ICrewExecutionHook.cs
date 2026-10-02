@@ -31,7 +31,9 @@ public interface ICrewExecutionHook
     System.Threading.Tasks.Task OnCrewCompletedAsync(CrewExecutionSnapshot snapshot, CancellationToken ct);
 
     /// <summary>
-    /// Called when the crew is canceled (timeout) or fails with an unexpected exception.
+    /// Called once when the crew run fails or is canceled: a task that did not succeed, an
+    /// exception, a timeout — and a run that fails before its strategy, such as a memory that cannot
+    /// work or a plan whose provider failed, which the orchestrator reports itself (GAP-32).
     /// Implementations must be robust — any exception thrown here is swallowed by the caller.
     /// </summary>
     /// <param name="isPartial">Partial snapshot of whatever was completed before the failure.</param>

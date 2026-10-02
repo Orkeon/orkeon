@@ -1004,3 +1004,82 @@ const Orkeon.Application.Constants.Orchestration.PromptDefaults.PlanSectionHeade
 static Orkeon.Application.Crew.Execution.CrewPlanScope.Begin(Orkeon.Domain.Crew.ExecutionPlan! plan) -> System.IDisposable!
 static Orkeon.Application.Crew.Execution.CrewPlanScope.InstructionsFor(Orkeon.Domain.Common.TaskId! taskId) -> string?
 static Orkeon.Application.Crew.Execution.TaskTextInterpolation.Interpolate(string! template, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? variables) -> string!
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.AgentThought(Orkeon.Application.Interfaces.Services.AgentThought! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.AgentThought(string! Content, Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType Type, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.ValueObjects.ToolCall!>? ToolCalls, System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.Content.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.Content.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.Deconstruct(out string! Content, out Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType Type, out System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.ValueObjects.ToolCall!>? ToolCalls, out System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType.Conclusion = 3 -> Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType.Error = 4 -> Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType.Reasoning = 0 -> Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType.ToolExecution = 2 -> Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType.ToolSelection = 1 -> Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.Timestamp.get -> System.DateTime
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.Timestamp.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.ToolCalls.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.ValueObjects.ToolCall!>?
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.ToolCalls.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.Type.get -> Orkeon.Application.Interfaces.Services.AgentThought.ThoughtType
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentThought.Type.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.AgentRole.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.CrewExecutionEvent(Orkeon.Application.Interfaces.Services.CrewExecutionEvent! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.CrewExecutionEvent(string! AgentRole, string! TaskDescription, Orkeon.Application.Interfaces.Services.AgentThought! Thought, System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Deconstruct(out string! AgentRole, out string! TaskDescription, out Orkeon.Application.Interfaces.Services.AgentThought! Thought, out System.DateTime Timestamp) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.TaskDescription.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.TaskDescription.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Thought.get -> Orkeon.Application.Interfaces.Services.AgentThought!
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Thought.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Timestamp.get -> System.DateTime
+*REMOVED*Orkeon.Application.Interfaces.Services.IStreamingAgentExecutionService
+*REMOVED*Orkeon.Application.Interfaces.Services.IStreamingAgentExecutionService.StreamExecutionAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.AgentThought!>!
+*REMOVED*override Orkeon.Application.Interfaces.Services.AgentThought.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Services.AgentThought.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Services.AgentThought.ToString() -> string!
+*REMOVED*static Orkeon.Application.Interfaces.Services.AgentThought.operator !=(Orkeon.Application.Interfaces.Services.AgentThought? left, Orkeon.Application.Interfaces.Services.AgentThought? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Services.AgentThought.operator ==(Orkeon.Application.Interfaces.Services.AgentThought? left, Orkeon.Application.Interfaces.Services.AgentThought? right) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Services.AgentThought.<Clone>$() -> Orkeon.Application.Interfaces.Services.AgentThought!
+*REMOVED*virtual Orkeon.Application.Interfaces.Services.AgentThought.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Services.AgentThought.Equals(Orkeon.Application.Interfaces.Services.AgentThought? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Services.AgentThought.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Services.CrewExecutionEvent.<Clone>$() -> Orkeon.Application.Interfaces.Services.CrewExecutionEvent!
+*REMOVED*virtual Orkeon.Application.Interfaces.Services.CrewExecutionEvent.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Equals(Orkeon.Application.Interfaces.Services.CrewExecutionEvent? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Services.CrewExecutionEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Crew.Execution.CrewStreamScope
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Equals(Orkeon.Application.Interfaces.Services.CrewExecutionEvent? other) -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.<Clone>$() -> Orkeon.Application.Interfaces.Services.CrewExecutionEvent!
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.CrewExecutionEvent() -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Kind.get -> string!
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Kind.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Timestamp.get -> System.DateTimeOffset
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.TaskId.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.AgentRole.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.TaskId.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.ToolName.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.ToolName.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Text.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Text.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Success.get -> bool?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Success.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Duration.get -> System.TimeSpan?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Duration.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Skipped.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Skipped.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.SkipReason.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Tokens.get -> int
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Tokens.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.ToolCalls.get -> int
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.SkipReason.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Code.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Code.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Message.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Message.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Output.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Output.get -> Orkeon.Application.Interfaces.Services.CrewOutput?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.ToolCalls.init -> void
+Orkeon.Application.Crew.ExecutionOrchestrator.DeltaSink.get -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink?
+Orkeon.Application.Crew.ExecutionOrchestrator.DeltaSink.set -> void
+static Orkeon.Application.Crew.Execution.CrewStreamScope.Begin(System.Threading.Channels.ChannelWriter<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>? writer) -> System.IDisposable!
+static Orkeon.Application.Crew.Execution.CrewStreamScope.IsOpen.get -> bool
+static Orkeon.Application.Crew.Execution.CrewStreamScope.Write(Orkeon.Application.Interfaces.Services.CrewExecutionEvent! executionEvent) -> void

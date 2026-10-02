@@ -113,7 +113,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         var startTime = DateTime.UtcNow;
         var results = new List<DomainTaskOutput>();
         var taskSnapshots = new List<TaskExecutionSnapshot>();
-        var outcome = new CrewRunOutcome(_lifecycle);
+        var outcome = new CrewRunOutcome(_lifecycle, cancellationToken);
 
         // The terminal event goes out on EVERY exit — success, cancellation, failure — and
         // the barrier covers SETUP as well as the loop: a missing manager or an agent-less

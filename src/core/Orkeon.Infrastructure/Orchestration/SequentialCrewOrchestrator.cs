@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
+using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Autonomous;
@@ -13,6 +15,8 @@ using Orkeon.Domain.SharedKernel.Events;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Constants.Protocol;
+using Orkeon.Infrastructure.Crew;
 using Orkeon.Infrastructure.Crew.Strategies;
 // Resolve ambiguous references
 using TaskOutput = Orkeon.Application.Execution.TaskOutput;
@@ -33,7 +37,6 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly ILogger<SequentialCrewOrchestrator> _logger;
     private readonly ICrewExecutionStateManager _stateManager;
     private readonly IProcessStrategyFactory _processStrategyFactory;
-    private readonly IStreamingAgentExecutionService? _streamingService;
     private readonly IAgentRepository? _agentRepository;
     private readonly ICheckpointManager? _checkpointManager;
     private readonly IExecutionPlanParser _executionPlanParser;
@@ -43,6 +46,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
     private readonly IMemoryCoordinator? _memoryCoordinator;
     private readonly ITaskRepository? _taskRepository;
+    private readonly ICrewExecutionHook? _executionHook;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -52,7 +56,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// <paramref name="memoryCoordinator"/> refuses, before the first task, a crew with
     /// <c>memory: true</c> whose memory cannot work (GAP-30); without one, nothing is checked. The
     /// <paramref name="taskRepository"/> and <paramref name="agentRepository"/> show the crew's planner
-    /// its tasks and agents (GAP-31): a crew with <c>planning: true</c> needs both.
+    /// its tasks and agents (GAP-31): a crew with <c>planning: true</c> needs both. The
+    /// <paramref name="executionHook"/> — the one the strategies report to — hears a run that fails
+    /// before its strategy reported anything, from the orchestrator itself (GAP-32).
     /// </remarks>
 #pragma warning disable S107 // Methods should not have too many parameters — DI constructor with optional services
     public SequentialCrewOrchestrator(
@@ -62,14 +68,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         IProcessStrategyFactory processStrategyFactory,
         IExecutionPlanParser executionPlanParser,
         IDomainEventDispatcher domainEventDispatcher,
-        IStreamingAgentExecutionService? streamingService = null,
         IAgentRepository? agentRepository = null,
         ICheckpointManager? checkpointManager = null,
         Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null,
         Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null,
         Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
         IMemoryCoordinator? memoryCoordinator = null,
-        ITaskRepository? taskRepository = null)
+        ITaskRepository? taskRepository = null,
+        ICrewExecutionHook? executionHook = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -84,7 +90,6 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _executionPlanParser = executionPlanParser;
         ArgumentNullException.ThrowIfNull(domainEventDispatcher);
         _domainEventDispatcher = domainEventDispatcher;
-        _streamingService = streamingService;
         _agentRepository = agentRepository;
         _checkpointManager = checkpointManager;
         _memoryProviderRegistry = memoryProviderRegistry;
@@ -92,23 +97,43 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _llmProfiles = llmProfiles;
         _memoryCoordinator = memoryCoordinator;
         _taskRepository = taskRepository;
+        _executionHook = executionHook;
     }
 
     /// <summary>
-    /// Kickoff Async.
+    /// Runs the crew and returns its output. Never throws: a failed run — a task that did not
+    /// succeed, an exception, a cancellation — is a <see cref="CrewOutput"/> whose
+    /// <see cref="CrewOutput.Succeeded"/> is false and whose <see cref="CrewOutput.Error"/> says why.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Crew-execution fault barrier: any strategy failure is logged, the checkpoint is marked failed, and a failed CrewOutput is returned so the orchestrator surfaces the error as a result rather than throwing to the caller.")]
     public Task<CrewOutput> KickoffAsync(
         CrewId crewId,
         CrewInput input,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
-        return KickoffCoreAsync();
+        return RunAsync(crewId, input, events: null, cancellationToken);
+    }
 
-        async Task<CrewOutput> KickoffCoreAsync()
-        {
+    /// <summary>
+    /// The one kickoff (GAP-32): what <see cref="KickoffAsync"/> awaits and what
+    /// <see cref="KickoffStreamingAsync"/> observes while it runs. It loads the crew, records its
+    /// memory, validates and starts it, plans when it asks, runs its mode's strategy — the outcome
+    /// rule, the lifecycle of its tasks and agents, its memory, knowledge and plan — ends it with one
+    /// terminal transition, checkpoints and dispatches its events. <paramref name="events"/> is the
+    /// stream of a streamed run, null otherwise: every run opens its own stream scope, so a crew run
+    /// from inside a task never writes into its caller's stream.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Crew-execution fault barrier: any strategy failure is logged, the checkpoint is marked failed, and a failed CrewOutput is returned so the orchestrator surfaces the error as a result rather than throwing to the caller.")]
+    private async Task<CrewOutput> RunAsync(
+        CrewId crewId,
+        CrewInput input,
+        ChannelWriter<CrewExecutionEvent>? events,
+        CancellationToken cancellationToken)
+    {
+        using var streamScope = CrewStreamScope.Begin(events);
+        using var ending = CrewRunEnding.Begin(out var end);
         var stopwatch = Stopwatch.StartNew();
+        var startedAt = DateTimeOffset.UtcNow;
 
         if (crewId == null)
         {
@@ -119,90 +144,99 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 TaskOutputs: [],
                 Duration: stopwatch.Elapsed,
                 TokensUsed: null) // nothing executed — nothing was measured
-            { Succeeded = false };
+            { Succeeded = false, Error = "CrewId cannot be null" };
         }
 
         LogOrchestratingCrewExecution(crewId);
 
         string? sessionId = null;
         Orkeon.Domain.Crew.Crew? crew = null;
+        CrewOutput output;
+        Exception? cause = null;
 
         try
         {
-            // Load crew from repository
-            crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
-                ?? throw new InvalidOperationException($"Crew {crewId} not found");
-
-            // Record whether the crew remembers (memory:, GAP-30), the memory provider it declared,
-            // which the memory subsystem resolves to a concrete IMemoryProvider for this run
-            // (P2-O-02), and its name, the scope of its long-term memory in that shared store
-            // (GAP-20). Idempotent.
-            _memoryProviderRegistry?.Record(crew.Id, crew.MemoryProvider, crew.Name, crew.MemoryEnabled);
-
-            // Start checkpoint session if checkpoint manager is available
-            if (_checkpointManager != null)
+            try
             {
-                sessionId = await _checkpointManager.StartSessionAsync(crewId.ToString(), cancellationToken).ConfigureAwait(false);
-                LogCheckpointSessionStarted(sessionId, crewId);
+                // Load crew from repository
+                crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
+                    ?? throw new InvalidOperationException($"Crew {crewId} not found");
+
+                // Record whether the crew remembers (memory:, GAP-30), the memory provider it declared,
+                // which the memory subsystem resolves to a concrete IMemoryProvider for this run
+                // (P2-O-02), and its name, the scope of its long-term memory in that shared store
+                // (GAP-20). Idempotent.
+                _memoryProviderRegistry?.Record(crew.Id, crew.MemoryProvider, crew.Name, crew.MemoryEnabled);
+
+                // Start checkpoint session if checkpoint manager is available
+                if (_checkpointManager != null)
+                {
+                    sessionId = await _checkpointManager.StartSessionAsync(crewId.ToString(), cancellationToken).ConfigureAwait(false);
+                    LogCheckpointSessionStarted(sessionId, crewId);
+                }
+
+                // Validate and start execution (state transition in domain)
+                crew.ValidateCanKickoff();
+                crew.StartExecution();
+
+                // Get the appropriate process strategy (every process type, including
+                // Consensual, routes through the factory — R3.3)
+                var processStrategy = _processStrategyFactory.CreateStrategy(crew.ProcessType);
+
+                // Stamp the crew's identity on everything the run touches: the EventHub reads
+                // the ambient caller to source its messages, and the ACL is blind — every sender
+                // looks like CrewId.System — unless someone pushes it here (HUB-03). AsyncLocal,
+                // so it flows through strategies, agents and tools alike.
+                var domainOutput = await RunWithCrewIdentityAsync(
+                    crew.Id,
+                    () => ExecuteAndCompleteAsync(crew, processStrategy, input, cancellationToken))
+                    .ConfigureAwait(false);
+
+                // Checkpoint each task output
+                if (_checkpointManager != null && sessionId != null)
+                {
+                    await CheckpointTaskOutputsAsync(sessionId, domainOutput, cancellationToken).ConfigureAwait(false);
+                }
+
+                stopwatch.Stop();
+
+                // Simple orchestration: convert domain result to application result.
+                // Real token telemetry is propagated from the strategy via domain metadata  —
+                // when the strategy collected no token data, TokensUsed stays null so that
+                // consumers can distinguish "not measured" from a genuine zero-cost run
+                // (R10.8 / MAT-004 — no fabricated TokenUsage(0,0,0)).
+                output = new CrewOutput(
+                    FinalOutput: domainOutput.Output,
+                    TaskOutputs: domainOutput.TaskOutputs?.Select(ConvertTaskOutput).ToList() ?? [],
+                    Duration: stopwatch.Elapsed,
+                    TokensUsed: ExtractTokenUsage(domainOutput))
+                {
+                    Succeeded = domainOutput.Success,
+                    // The reason the domain failed the crew with — a readable one when the run gave none.
+                    Error = domainOutput.Success ? null : RunFailureReason(crew, domainOutput.Error),
+                };
+            }
+            catch (Exception ex)
+            {
+                cause = ex;
+                LogCrewExecutionError(ex);
+                stopwatch.Stop();
+                output = new CrewOutput(
+                    FinalOutput: $"Crew execution failed: {ex.Message}",
+                    TaskOutputs: [],
+                    Duration: stopwatch.Elapsed,
+                    TokensUsed: null) // failed before telemetry could be collected
+                { Succeeded = false, Error = ex.Message };
+
+                // The run's token is not passed: a cancelled run still records its failure.
+                if (_checkpointManager != null && sessionId != null)
+                    await _checkpointManager.MarkFailedAsync(sessionId, "crew-execution", ex, CancellationToken.None).ConfigureAwait(false);
             }
 
-            // Validate and start execution (state transition in domain)
-            crew.ValidateCanKickoff();
-            crew.StartExecution();
+            if (!output.Succeeded)
+                await ReportUnreportedFailureAsync(crewId, startedAt, output, cause, end).ConfigureAwait(false);
 
-            // Get the appropriate process strategy (every process type, including
-            // Consensual, routes through the factory — R3.3)
-            var processStrategy = _processStrategyFactory.CreateStrategy(crew.ProcessType);
-
-            // Stamp the crew's identity on everything the run touches: the EventHub reads
-            // the ambient caller to source its messages, and the ACL is blind — every sender
-            // looks like CrewId.System — unless someone pushes it here (HUB-03). AsyncLocal,
-            // so it flows through strategies, agents and tools alike.
-            var domainOutput = await RunWithCrewIdentityAsync(
-                crew.Id,
-                () => ExecuteAndCompleteAsync(crew, processStrategy, input, cancellationToken))
-                .ConfigureAwait(false);
-
-            // Checkpoint each task output
-            if (_checkpointManager != null && sessionId != null)
-            {
-                await CheckpointTaskOutputsAsync(sessionId, domainOutput, cancellationToken).ConfigureAwait(false);
-            }
-
-            stopwatch.Stop();
-
-            // Simple orchestration: convert domain result to application result.
-            // Real token telemetry is propagated from the strategy via domain metadata  —
-            // when the strategy collected no token data, TokensUsed stays null so that
-            // consumers can distinguish "not measured" from a genuine zero-cost run
-            // (R10.8 / MAT-004 — no fabricated TokenUsage(0,0,0)).
-            return new CrewOutput(
-                FinalOutput: domainOutput.Output,
-                TaskOutputs: domainOutput.TaskOutputs?.Select(ConvertTaskOutput).ToList() ?? [],
-                Duration: stopwatch.Elapsed,
-                TokensUsed: ExtractTokenUsage(domainOutput))
-            {
-                Succeeded = domainOutput.Success,
-                Error = domainOutput.Success ? null : domainOutput.Error,
-            };
-        }
-        catch (Exception ex)
-        {
-            LogCrewExecutionError(ex);
-
-            if (_checkpointManager != null && sessionId != null)
-            {
-                await _checkpointManager.MarkFailedAsync(sessionId, "crew-execution", ex, cancellationToken).ConfigureAwait(false);
-            }
-
-            stopwatch.Stop();
-
-            return new CrewOutput(
-                FinalOutput: $"Crew execution failed: {ex.Message}",
-                TaskOutputs: [],
-                Duration: stopwatch.Elapsed,
-                TokensUsed: null) // failed before telemetry could be collected
-            { Succeeded = false, Error = ex.Message };
+            return output;
         }
         finally
         {
@@ -212,7 +246,33 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             if (crew is not null)
                 await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// A failed run whose strategy reported nothing — it failed before one ran: a memory that cannot
+    /// work (GAP-30), a plan whose provider failed (GAP-29, GAP-31), a crew the repository does not
+    /// hold or that <c>ValidateCanKickoff</c> refuses — reaches the execution hook here, once, with its
+    /// cause; cancelled when it was a cancellation (GAP-32, decision 4.3). AUTO_SUMMARY.md, orkeon-host
+    /// and the <c>--events</c> stream (<c>error</c> before <c>run.finished</c>) hear it like any failed
+    /// run. A failure a strategy already reported is never reported twice; the one case where the hook
+    /// heard the crew complete and the run failed afterwards (a checkpoint) still says <c>error</c> to a
+    /// streamed run, which always ends on <c>error</c> then <c>run.finished</c> when it failed.
+    /// </summary>
+    private async Task ReportUnreportedFailureAsync(
+        CrewId crewId, DateTimeOffset startedAt, CrewOutput output, Exception? cause, CrewRunEnding.Mark end)
+    {
+        var status = cause is OperationCanceledException ? CrewHookStatus.Canceled : CrewHookStatus.Failed;
+        if (end.Reported)
+        {
+            if (!end.FailureReported)
+                CrewStreamScope.Write(CrewHookDispatcher.FailureEvent(status, output.Error));
+            return;
         }
+
+        await new CrewHookDispatcher(_executionHook, _logger).CrewFailedAsync(
+            CrewHookDispatcher.Snapshot(crewId.ToString(), startedAt, [], status, output.Error),
+            cause,
+            CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -247,9 +307,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
     /// <summary>
     /// Runs planning (when enabled), executes the process strategy inside the run's plan scope, and
-    /// transitions the crew to its completed state. On any failure the crew is transitioned to failed
-    /// and the exception is rethrown so the outer fault barrier can surface it as a failed
-    /// <see cref="CrewOutput"/>.
+    /// ends the run with one terminal transition (GAP-32): a successful run completes the crew — each
+    /// task counted once, by its final outcome —, a failed one fails it with the strategy's reason
+    /// (<see cref="Orkeon.Domain.Crew.Events.CrewExecutionFailedEvent"/>). On an exception the crew
+    /// fails with it, and the exception is rethrown so the outer fault barrier can surface it as a
+    /// failed <see cref="CrewOutput"/>.
     /// </summary>
     private async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteAndCompleteAsync(
         Orkeon.Domain.Crew.Crew crew,
@@ -262,6 +324,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         // opened below say what the work was; this one says whose run it is.
         using var usageScope = Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(crewId: crew.Id.ToString());
 
+        var ended = false;
         try
         {
             // A crew that remembers is refused before anything is asked of a model when its memory
@@ -286,19 +349,44 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     crew, processStrategy, stringVariables, cancellationToken).ConfigureAwait(false);
             }
 
-            // Transition to completed state
-            var completedTasks = domainOutput.TaskOutputs?.Count(t => t.Success) ?? 0;
-            var failedTasks = domainOutput.TaskOutputs?.Count(t => !t.Success) ?? 0;
-            crew.CompleteExecution(completedTasks, failedTasks);
+            // One terminal transition per run. A task that did not succeed fails the crew — the
+            // rule every strategy applies (GAP-03) — so the domain says Failed with the same reason,
+            // never Completed with a failed task in its count (GAP-32).
+            ended = true;
+            if (domainOutput.Success)
+                crew.CompleteExecution(CompletedTaskCount(domainOutput));
+            else
+                crew.FailExecution(RunFailureReason(crew, domainOutput.Error));
 
             return domainOutput;
         }
-        catch (Exception innerEx)
+        catch (Exception innerEx) when (!ended)
         {
-            crew.FailExecution(innerEx.Message, innerEx);
+            crew.FailExecution(RunFailureReason(crew, innerEx.Message), innerEx);
             throw;
         }
     }
+
+    /// <summary>
+    /// The tasks a successful run completed, each counted once by its final outcome: a graph keeps
+    /// one output per attempt, and a task it retried before it succeeded is one completed task.
+    /// </summary>
+    private static int CompletedTaskCount(DomainCrewOutput output) =>
+        (output.TaskOutputs ?? [])
+            .Where(taskOutput => taskOutput.Success)
+            .Select(taskOutput => taskOutput.TaskId is { } taskId ? (object)taskId.Value : taskOutput)
+            .Distinct()
+            .Count();
+
+    /// <summary>
+    /// Why the run failed: the run's own error — the strategy's reason, naming each task that did not
+    /// succeed, or the exception's message — or, when it gave none, a sentence that says so. The
+    /// domain refuses an empty reason (<c>Crew.FailExecution</c>).
+    /// </summary>
+    private static string RunFailureReason(Orkeon.Domain.Crew.Crew crew, string? error) =>
+        string.IsNullOrWhiteSpace(error)
+            ? $"Crew '{crew.Name ?? crew.Id.ToString()}' failed: its run gave no reason"
+            : error;
 
     /// <summary>
     /// The crew's plan when it asks for one (<c>planning: true</c>, <c>.Planning(true)</c>,
@@ -544,25 +632,30 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
-    /// Kickoff For Each Async.
+    /// Runs the crew once per input, in sequence (GAP-32, decision 6): each input is a full run —
+    /// started, ended, its events dispatched — and the next one starts once the previous one has
+    /// returned, like CrewAI's <c>kickoff_for_each</c>. The inputs used to start at once on the same
+    /// aggregate: as soon as the first run awaited a model, the others found the crew executing and
+    /// failed ("Crew is already executing").
     /// </summary>
     public async Task<BatchOutput> KickoffForEachAsync(
         CrewId crewId,
         IEnumerable<CrewInput> inputs,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(inputs);
         LogOrchestratingBatchExecution(crewId);
 
         var stopwatch = Stopwatch.StartNew();
 
-        // Mandatory parallelism
-        var tasks = inputs.Select(input => KickoffAsync(crewId, input, cancellationToken));
-        var results = await System.Threading.Tasks.Task.WhenAll(tasks).ConfigureAwait(false);
+        var results = new List<CrewOutput>();
+        foreach (var input in inputs)
+            results.Add(await KickoffAsync(crewId, input, cancellationToken).ConfigureAwait(false));
 
         stopwatch.Stop();
 
         return new BatchOutput(
-            Results: results.ToList(),
+            Results: results,
             SuccessCount: results.Count(r => r.Succeeded),
             FailureCount: results.Count(r => !r.Succeeded),
             TotalDuration: stopwatch.Elapsed);
@@ -629,7 +722,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
-    /// Kickoff Streaming Async.
+    /// Runs the crew exactly as <see cref="KickoffAsync"/> does and yields what happens as it goes
+    /// (GAP-32): each task's start and end, each tool call, the model's text as it arrives, then
+    /// <c>run.finished</c> with the run's <see cref="CrewOutput"/> — after an <c>error</c> when it failed.
     /// </summary>
     public IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(
         CrewId crewId,
@@ -638,147 +733,61 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     {
         ArgumentNullException.ThrowIfNull(crewId);
         ArgumentNullException.ThrowIfNull(input);
-        return KickoffStreamingCoreAsync(cancellationToken);
-
-        // [EnumeratorCancellation] belongs on the actual async-iterator (this local function), so a
-        // consumer's WithCancellation(token) still flows into the stream after the S4457 split.
-        async IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingCoreAsync(
-            [EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            // If streaming service is available, use real streaming; otherwise fall back
-            // to a normal execution whose task outputs are replayed as events. The fallback
-            // silently loses tool-call granularity, so we warn loudly (once per kickoff)
-            // naming the missing registration.
-            var canStreamGranularly = _streamingService != null && _agentRepository != null;
-            if (!canStreamGranularly)
-                LogStreamingDegraded();
-
-            var events = canStreamGranularly
-                ? StreamViaServiceAsync(crewId, input, cancellationToken)
-                : StreamViaFallbackAsync(crewId, input, cancellationToken);
-
-            await foreach (var ev in events.ConfigureAwait(false))
-                yield return ev;
-        }
+        return StreamAsync(crewId, input, cancellationToken);
     }
 
-    private async IAsyncEnumerable<CrewExecutionEvent> StreamViaServiceAsync(
+    /// <summary>
+    /// The stream of one run. The run goes on its own flow (<c>Task.Run</c>), writing to an unbounded
+    /// channel this iterator reads: an async iterator resumes in its consumer's context, so a scope it
+    /// opened would not survive its first <c>yield</c>, and the run's scopes must never reach the
+    /// consumer. Several tasks write at once (a parallel wave, consensual candidates, an
+    /// <c>asyncExecution</c> task); a slow reader never slows the run, and the channel never holds
+    /// more than the run produces. Leaving the stream — a <c>break</c>, the consumer's token —
+    /// cancels the run and waits for its end: the crew fails by cancellation, its running tasks are
+    /// cancelled and its events dispatched.
+    /// </summary>
+    private async IAsyncEnumerable<CrewExecutionEvent> StreamAsync(
         CrewId crewId,
         CrewInput input,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Crew {crewId.ToString()} not found");
-
-        // The streamed run is not wired to the crew's memory (GAP-30): it recalls nothing and
-        // stores nothing — said once, rather than a crew with memory: true silently forgetting.
-        if (crew.MemoryEnabled)
-            LogStreamingIgnoresMemory(crew.Name ?? crew.Id.ToString());
-
-        // Nor to its plan (GAP-31): a streamed run does not plan — said once, like the memory.
-        if (crew.Planning)
-            LogStreamingIgnoresPlanning(crew.Name ?? crew.Id.ToString());
+        var channel = Channel.CreateUnbounded<CrewExecutionEvent>(
+            new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var run = System.Threading.Tasks.Task.Run(
+            () => RunStreamedAsync(crewId, input, channel.Writer, stop.Token), CancellationToken.None);
 
         try
         {
-            await foreach (var ev in StreamCrewTasksAsync(crew, input, cancellationToken).ConfigureAwait(false))
-                yield return ev;
+            await foreach (var executionEvent in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+                yield return executionEvent;
         }
         finally
         {
-            await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
+            if (!run.IsCompleted)
+                await stop.CancelAsync().ConfigureAwait(false);
+            await run.ConfigureAwait(false);
         }
     }
 
-    private async IAsyncEnumerable<CrewExecutionEvent> StreamCrewTasksAsync(
-        Orkeon.Domain.Crew.Crew crew,
-        CrewInput input,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var crewId = crew.Id;
-        var agents = await LoadAgentsAsync(crew, cancellationToken).ConfigureAwait(false);
-
-        if (agents.Count == 0)
-        {
-            yield return new CrewExecutionEvent("unknown", "error",
-                new AgentThought("No agents found for crew", AgentThought.ThoughtType.Error, null, DateTime.UtcNow),
-                DateTime.UtcNow);
-            yield break;
-        }
-
-        // Same identity discipline as KickoffAsync — the streaming path used to skip the
-        // push entirely, leaving CrewId.System ambient, which quietly disabled the
-        // receive_message ownership guard for streamed agents. Yield first: the fork keeps
-        // the push inside this iterator's flow (see RunWithCrewIdentityAsync).
-        await System.Threading.Tasks.Task.Yield();
-        using var identityScope = _hubCallerContext?.Push(
-            new Orkeon.Application.EventHub.EventHubCaller(crewId, null));
-
-        var context = new Orkeon.Application.Context.SimpleExecutionContext(
-            crewId,
-            new Dictionary<string, string>(PromptVariables(input)),
-            Orkeon.Application.Context.NullMemoryScope.Instance,
-            []);
-        var agentIndex = 0;
-
-        foreach (var taskId in crew.Tasks)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var agent = agents[agentIndex % agents.Count];
-            agentIndex++;
-
-            // Create a domain task for streaming
-            var domainTask = new CrewTaskBuilder()
-                .Description(taskId.ToString())
-                .ExpectedOutput("Complete the assigned task")
-                .Build();
-
-            await foreach (var thought in _streamingService!.StreamExecutionAsync(
-                agent, domainTask, context, cancellationToken).ConfigureAwait(false))
-            {
-                yield return new CrewExecutionEvent(
-                    AgentRole: agent.Role.ToString(),
-                    TaskDescription: domainTask.Description,
-                    Thought: thought,
-                    Timestamp: thought.Timestamp);
-            }
-        }
-    }
-
-    private async System.Threading.Tasks.Task<List<Domain.Agent.Agent>> LoadAgentsAsync(
-        Orkeon.Domain.Crew.Crew crew,
-        CancellationToken cancellationToken)
-    {
-        var agents = new List<Domain.Agent.Agent>();
-        foreach (var agentId in crew.Agents)
-        {
-            var agent = await _agentRepository!.GetByIdAsync(agentId, cancellationToken).ConfigureAwait(false);
-            if (agent != null)
-                agents.Add(agent);
-        }
-        return agents;
-    }
-
-    private async IAsyncEnumerable<CrewExecutionEvent> StreamViaFallbackAsync(
+    /// <summary>
+    /// The run of a stream: the one kickoff, then <c>run.finished</c> with its output, always last.
+    /// The channel is completed whatever happens, so the reader never waits for a run that is over.
+    /// </summary>
+    private async System.Threading.Tasks.Task RunStreamedAsync(
         CrewId crewId,
         CrewInput input,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        ChannelWriter<CrewExecutionEvent> events,
+        CancellationToken cancellationToken)
     {
-        // Fallback: execute normally and emit events for each task output
-        var result = await KickoffAsync(crewId, input, cancellationToken).ConfigureAwait(false);
-
-        foreach (var taskOutput in result.TaskOutputs)
+        try
         {
-            yield return new CrewExecutionEvent(
-                AgentRole: taskOutput.AgentId ?? "unknown",
-                TaskDescription: taskOutput.TaskId ?? "unknown",
-                Thought: new AgentThought(
-                    taskOutput.Content,
-                    AgentThought.ThoughtType.Conclusion,
-                    null,
-                    taskOutput.CompletedAt),
-                Timestamp: taskOutput.CompletedAt);
+            var output = await RunAsync(crewId, input, events, cancellationToken).ConfigureAwait(false);
+            events.TryWrite(new CrewExecutionEvent { Kind = RunEventKinds.RunFinished, Output = output });
+        }
+        finally
+        {
+            events.TryComplete();
         }
     }
 
@@ -808,12 +817,6 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "KickoffStreamingAsync is degrading to per-task replay — tool-call granularity is lost. No IStreamingAgentExecutionService (and/or IAgentRepository) is registered: call AddOrkeonInfrastructure() (which registers StreamingAgentExecutionService) with an IChatClient/LLM provider configured to stream AgentThought-level events.")]
-    private partial void LogStreamingDegraded();
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{Crew}' has memory: true, but a streamed run neither recalls nor stores its memory; KickoffAsync does")]
-    private partial void LogStreamingIgnoresMemory(string crew);
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{Crew}' has planning: true, but a streamed run does not plan; KickoffAsync does")]
-    private partial void LogStreamingIgnoresPlanning(string crew);
     [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{Crew}': planning skipped — the echo provider cannot plan, it replays its prompt instead of answering it; the crew runs without a plan. Run `orkeon init` to configure a model")]
     private partial void LogPlanningSkippedOnEcho(string crew);
     [LoggerMessage(Level = LogLevel.Warning, Message = "Planning of crew '{Crew}': {Warning}")]

@@ -7,7 +7,7 @@ namespace Orkeon.Application.Crew.EventHandlers;
 
 /// <summary>
 /// Handles the CrewExecutionCompletedEvent to perform side effects
-/// such as logging successful crew execution completions.
+/// such as logging successful crew execution completions: every task the run ran succeeded.
 /// </summary>
 public sealed partial class CrewExecutionCompletedHandler : IDomainEventHandler<CrewExecutionCompletedEvent>
 {
@@ -29,13 +29,14 @@ public sealed partial class CrewExecutionCompletedHandler : IDomainEventHandler<
         LogCrewExecutionCompleted(
             domainEvent.CrewId,
             domainEvent.CompletedTasks,
-            domainEvent.FailedTasks,
             domainEvent.Duration,
             domainEvent.OccurredAt);
 
         return System.Threading.Tasks.Task.CompletedTask;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Crew {CrewId} execution completed: {CompletedTasks} succeeded, {FailedTasks} failed, duration {Duration}, at {CompletedAt}")]
-    private partial void LogCrewExecutionCompleted(object crewId, int completedTasks, int failedTasks, TimeSpan duration, DateTime completedAt);
+    // A completed run is a run whose every task succeeded (GAP-32): a failed task fails the run,
+    // which CrewExecutionFailedHandler reports with its reason. There is no "N failed" to log.
+    [LoggerMessage(Level = LogLevel.Information, Message = "Crew {CrewId} execution completed: {CompletedTasks} tasks, duration {Duration}, at {CompletedAt}")]
+    private partial void LogCrewExecutionCompleted(object crewId, int completedTasks, TimeSpan duration, DateTime completedAt);
 }

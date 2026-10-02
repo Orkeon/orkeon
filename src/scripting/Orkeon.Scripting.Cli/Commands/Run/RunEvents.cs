@@ -64,7 +64,8 @@ internal static class RunEventKinds
 /// <summary>
 /// Projects a crew run onto the shared event stream: task completions from
 /// <see cref="ICrewExecutionHook"/>, the token meter from <see cref="ILlmUsageSink"/>, and —
-/// only when <c>--stream</c> asked for it — generation deltas from <see cref="ILlmDeltaSink"/>.
+/// only when <c>--stream</c> asked for it — generation deltas from <see cref="ILlmDeltaSink"/>:
+/// the crew's agent turns (GAP-32) and the <c>ctx.llm.*</c> calls of a script.
 /// <para>
 /// <b>It composes, it does not replace.</b> <c>ICrewExecutionHook</c> is a single service and
 /// <c>RunnerExecution</c> already registers <c>AutoSummaryWriter</c> on it whenever an
@@ -202,7 +203,9 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
             new OrkeonEventScope { CrewId = Blank(isPartial.CrewId) },
             new
             {
-                code = isPartial.Status == CrewHookStatus.Canceled ? "crew_cancelled" : "crew_failed",
+                code = isPartial.Status == CrewHookStatus.Canceled
+                    ? Orkeon.Constants.Protocol.RunEventErrorCodes.CrewCancelled
+                    : Orkeon.Constants.Protocol.RunEventErrorCodes.CrewFailed,
                 message = isPartial.FailureReason ?? ex?.Message ?? string.Empty,
                 recoverable = false,
             });

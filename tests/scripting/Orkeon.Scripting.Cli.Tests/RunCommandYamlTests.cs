@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Commands;
 
@@ -127,6 +128,80 @@ public sealed class RunCommandYamlTests
         Assert.Contains("\"result\"", console.Stdout, StringComparison.Ordinal);
         Assert.DoesNotContain("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// GAP-32 decision 4.3: a crew that fails before its first task — here a memory with no
+    /// embedder (GAP-30) — reaches the execution hook like any failed run, so the event stream says
+    /// <c>error</c> before <c>run.finished</c>, as the protocol promises. No strategy ran, and none
+    /// told the hook: the stream used to end on <c>run.finished</c> alone.
+    /// </summary>
+    [Fact]
+    public async Task A_crew_that_fails_before_its_first_task_says_so_on_the_event_stream_before_it_finishes()
+    {
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript(
+            "remembering.yaml",
+            MinimalCrew.Replace("process: sequential", "process: sequential\nmemory: true", StringComparison.Ordinal));
+        // No embedder at all: the runner's local one comes with RaggableTree, which this run turns off.
+        var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
+        using var console = new TestConsole(stdin: string.Empty);
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = crew,
+            SettingsPath = settings,
+            AllowExternalMounts = true,
+            Events = "jsonl",
+        });
+
+        Assert.Equal(Program.ExitRuntimeError, exit);
+        var events = Events(console.Stdout);
+        var kinds = events.Select(e => e.GetProperty("kind").GetString()).ToList();
+        var error = Assert.Single(events, e => e.GetProperty("kind").GetString() == "error");
+        Assert.Equal("crew_failed", error.GetProperty("code").GetString());
+        Assert.Contains("no semantic embedding provider is configured", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.True(kinds.IndexOf("error") < kinds.IndexOf("run.finished"), string.Join(", ", kinds));
+        Assert.Equal("run.finished", kinds[^1]);
+    }
+
+    /// <summary>
+    /// GAP-32 decision 5: <c>--stream</c> puts a crew's agent turns on the stream as they come —
+    /// <c>llm.delta</c> used to come from <c>ctx.llm.*</c> only, never from a YAML crew. The echo
+    /// provider replays the task's prompt, so the deltas carry it, between the task's start and end.
+    /// </summary>
+    [Fact]
+    public async Task Stream_puts_the_agents_turns_of_a_yaml_crew_on_the_event_stream()
+    {
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript("crew.yaml", MinimalCrew);
+        using var console = new TestConsole(stdin: string.Empty);
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = crew,
+            AllowExternalMounts = true,
+            Events = "jsonl",
+            Stream = true,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        var events = Events(console.Stdout);
+        var kinds = events.Select(e => e.GetProperty("kind").GetString()).ToList();
+        var deltas = events.Where(e => e.GetProperty("kind").GetString() == "llm.delta").ToList();
+        Assert.NotEmpty(deltas);
+        Assert.Contains("Say hello.", string.Concat(deltas.Select(d => d.GetProperty("text").GetString())), StringComparison.Ordinal);
+        Assert.True(kinds.IndexOf("task.started") < kinds.IndexOf("llm.delta"), string.Join(", ", kinds));
+        Assert.True(kinds.LastIndexOf("llm.delta") < kinds.IndexOf("task.completed"), string.Join(", ", kinds));
+    }
+
+    /// <summary>The JSON documents a run wrote on stdout, one per line.</summary>
+    private static List<JsonElement> Events(string stdout) =>
+    [
+        .. stdout
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line.StartsWith('{'))
+            .Select(line => JsonElement.Parse(line)),
+    ];
 
     [Fact]
     public async Task Missing_yaml_crew_returns_ExitScriptError()

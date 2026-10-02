@@ -106,17 +106,18 @@ public class AgentEventHandlerTests
             ProcessId = processId,
             Duration = TimeSpan.FromMinutes(3),
             CompletedTasks = 10,
-            FailedTasks = 0
         };
 
         // Act
         await handler.HandleAsync(domainEvent, CancellationToken.None);
 
-        // Assert
+        // Assert — a completed run says how many tasks it completed, never how many failed: a run
+        // with a failed task fails (GAP-32).
         Assert.True(logger.LogEntries.Count > 0);
         var logEntry = logger.LogEntries[0];
         Assert.Equal(LogLevel.Information, logEntry.LogLevel);
-        Assert.Contains("completed", logEntry.Message!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("completed: 10 tasks", logEntry.Message!, StringComparison.Ordinal);
+        Assert.DoesNotContain("failed", logEntry.Message!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

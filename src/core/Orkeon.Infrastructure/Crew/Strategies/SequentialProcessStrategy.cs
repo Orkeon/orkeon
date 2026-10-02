@@ -102,7 +102,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             : [];
         var run = new SequentialRun(
             new SimpleExecutionContext(crew.Id, variables, _memoryScope, [], cancellationToken),
-            new CrewRunOutcome(_lifecycle));
+            new CrewRunOutcome(_lifecycle, cancellationToken));
 
         try
         {

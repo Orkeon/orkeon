@@ -104,6 +104,56 @@ tasks:
     public static TheoryData<string> Modes() =>
         new("sequential", "hierarchical", "parallel", "consensual", "graph", "autonomous");
 
+    /// <summary>
+    /// GAP-32: the streaming kickoff runs the crew <see cref="ICrewOrchestrationService.KickoffAsync"/>
+    /// runs, in every mode — the same tasks, agents and output — and says each task's start and end as
+    /// they happen, then ends on <c>run.finished</c> with that output. It used to run a fake task per id
+    /// on agents taken in turn, whatever the mode.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Modes))]
+    public async Task The_streamed_kickoff_runs_the_crew_KickoffAsync_runs_and_says_each_tasks_start_and_end(string mode)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var stub = new StubLlmProvider().RespondTo(prompt => new LlmResponse { Content = $"[offline] answer to: {prompt[..Math.Min(40, prompt.Length)]}" });
+        stub.RespondToChatWith(new LlmResponse { Content = "[offline] chat answer" });
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddLogging();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService()
+            .AddMount("/output", FileAccessRights.Read | FileAccessRights.Write | FileAccessRights.Create));
+        using var chatClient = new StubChatClient();
+        services.AddSingleton<ILlmProvider>(stub);
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IBasicLlmProvider>(new Orkeon.Infrastructure.LLMs.LlmProviderAdapter(stub));
+        services.AddSingleton<IChatClient>(chatClient);
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var config = await scope.ServiceProvider.GetRequiredService<ICrewDefinitionLoader>().LoadFromStringAsync(CrewYaml(mode), ct);
+        var crew = await scope.ServiceProvider.GetRequiredService<ICrewFactory>().CreateFromConfigAsync(config, ct);
+        var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
+
+        var events = new List<CrewExecutionEvent>();
+        await foreach (var executionEvent in orchestrator.KickoffStreamingAsync(crew.Id, new CrewInput("offline e2e", new Dictionary<string, object>()), ct))
+            events.Add(executionEvent);
+        var kicked = await orchestrator.KickoffAsync(crew.Id, new CrewInput("offline e2e", new Dictionary<string, object>()), ct);
+
+        Assert.Equal(Orkeon.Constants.Protocol.RunEventKinds.RunFinished, events[^1].Kind);
+        var streamed = events[^1].Output;
+        Assert.NotNull(streamed);
+        Assert.Equal(kicked.Succeeded, streamed.Succeeded);
+        Assert.Equal(kicked.FinalOutput, streamed.FinalOutput);
+        Assert.Equal(
+            kicked.TaskOutputs.Select(o => (o.TaskId, o.Content, o.Success)),
+            streamed.TaskOutputs.Select(o => (o.TaskId, o.Content, o.Success)));
+        foreach (var taskId in crew.Tasks.Select(t => t.ToString()))
+        {
+            Assert.Single(events, e => e.Kind == Orkeon.Constants.Protocol.RunEventKinds.TaskStarted && e.TaskId == taskId);
+            Assert.Single(events, e => e.Kind == Orkeon.Constants.Protocol.RunEventKinds.TaskCompleted && e.TaskId == taskId);
+        }
+    }
+
     [Theory]
     [MemberData(nameof(Modes))]
     public async Task Kickoff_Completes_Offline(string mode)

@@ -32,7 +32,11 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 /// </summary>
 internal sealed class CrewRunOutcome
 {
+    /// <summary>What a task the run's cancellation caught running ends with, and its agents.</summary>
+    internal const string CancelledReason = "the run was cancelled";
+
     private readonly TaskLifecycle _lifecycle;
+    private readonly CancellationToken _runToken;
     private readonly List<string> _failures = [];
     private readonly HashSet<TaskId> _notSucceeded = [];
     private readonly Dictionary<TaskId, RunningTask> _running = [];
@@ -40,10 +44,17 @@ internal sealed class CrewRunOutcome
     private string? _headline;
 
     /// <summary>Starts recording a run whose tasks move through <paramref name="lifecycle"/>.</summary>
-    internal CrewRunOutcome(TaskLifecycle lifecycle)
+    /// <param name="lifecycle">The lifecycle of the run's tasks and agents.</param>
+    /// <param name="runToken">
+    /// The run's token: a task whose failure is recorded once it is cancelled was caught by the
+    /// cancellation — the agent loop hands a cancelled call back as a failed result — and is
+    /// cancelled, not failed (GAP-32: a consumer leaving a streamed run cancels it).
+    /// </param>
+    internal CrewRunOutcome(TaskLifecycle lifecycle, CancellationToken runToken = default)
     {
         ArgumentNullException.ThrowIfNull(lifecycle);
         _lifecycle = lifecycle;
+        _runToken = runToken;
     }
 
     /// <summary>A task this run started and has not ended, and the agents running it.</summary>
@@ -189,6 +200,9 @@ internal sealed class CrewRunOutcome
     /// </summary>
     internal async System.Threading.Tasks.Task<string> RecordFailureAsync(DomainTask task, string agentRole, string? error)
     {
+        if (_runToken.IsCancellationRequested)
+            return await RecordCancellationAsync(task, agentRole).ConfigureAwait(false);
+
         var cause = string.IsNullOrWhiteSpace(error) ? "unknown error" : error;
         var reason = $"Task {task.Id} ({agentRole}) failed: {cause}";
         _notSucceeded.Add(task.Id);
@@ -205,6 +219,19 @@ internal sealed class CrewRunOutcome
             foreach (var agent in agents)
                 End(agent, task.Id, output: null, cause);
         }).ConfigureAwait(false);
+        return reason;
+    }
+
+    /// <summary>
+    /// Records a task the run's cancellation caught: it did not succeed, and it is cancelled — the
+    /// agents running it failing it — with <see cref="CancelledReason"/>, as an interruption does.
+    /// </summary>
+    private async System.Threading.Tasks.Task<string> RecordCancellationAsync(DomainTask task, string agentRole)
+    {
+        var reason = $"Task {task.Id} ({agentRole}) cancelled: {CancelledReason}";
+        _notSucceeded.Add(task.Id);
+        _failures.Add(reason);
+        await CancelAsync(task, CancelledReason).ConfigureAwait(false);
         return reason;
     }
 
@@ -256,7 +283,7 @@ internal sealed class CrewRunOutcome
     {
         ArgumentNullException.ThrowIfNull(exception);
         var cancelled = exception is OperationCanceledException;
-        var reason = cancelled ? "the run was cancelled" : $"the run stopped: {exception.Message}";
+        var reason = cancelled ? CancelledReason : $"the run stopped: {exception.Message}";
 
         foreach (var running in _running.Values.ToList())
         {

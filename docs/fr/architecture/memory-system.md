@@ -359,9 +359,9 @@ Les appels d'embedding ne sont pas comptés par le compteur de jetons ([Limites 
 
 #### Ce qui n'est pas câblé
 
-- **Le kickoff en streaming** (`KickoffStreamingAsync`, une API C# qu'aucun hôte livré n'appelle) ne
-  rappelle ni ne range la mémoire d'une crew — il ignore aussi la connaissance attachée. Une crew
-  `memory: true` reçoit un avertissement qui le dit ; `KickoffAsync` fait les deux.
+Le kickoff en streaming (`KickoffStreamingAsync`) est le même run que `KickoffAsync` : il rappelle et
+range la mémoire d'une crew, et lit sa connaissance, de la même façon (GAP-32).
+
 - **Pas de LLM dans le rappel** : ni extraction de faits, ni rappel classé par LLM, ni score composite
   récence/importance (celui de CrewAI) : le rappel est vectoriel. La [mémoire cognitive](#mémoire-cognitive)
   est l'option C# qui analyse par LLM.

@@ -352,7 +352,7 @@ def render(cats: list[Category]) -> str:
     a("| [`service-host/`](service-host/) | JSON configuration | Hosting a crew as a daemon: one hosted crew, a Discord channel, mounts, and the two secrets named rather than written. |")
     a("| [`rag/`](rag/) | C# programs | RAG subsystem (fully offline, local BGE, no API key): `basic-ingestion` (incremental ingestion + cited queries), `hybrid-retrieval` (BM25 + RRF vs vector-only), `custom-reranker` (host-provided `IReranker` via `IRerankerRegistrar`), `crew-yaml` (crew `rag:`/`knowledge:` blocks); plus the `eval/` golden dataset. |")
     a("| [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |")
-    a("| [`09-experimental/streaming-demo/`](09-experimental/streaming-demo/) | C# program | Real-time streaming of agent execution (`IStreamingAgentExecutionService`). |")
+    a("| [`09-experimental/streaming-demo/`](09-experimental/streaming-demo/) | C# program | A crew run streamed as it goes (`KickoffStreamingAsync`): task start and end, the model's text, the final output. |")
     a("")
 
     return "\n".join(out) + "\n"

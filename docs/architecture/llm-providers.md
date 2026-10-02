@@ -132,7 +132,7 @@ vendor bills in the response — buffered or streamed — with `cost_currency` b
 provider states its vendor's billing currency (`CostCurrency`: `USD` on OpenRouter, whose
 credits are dollars; no other provider states one). From there the charge travels as billed:
 the chat client adapter carries it onto the `ChatResponse` (`AdditionalProperties`, also on
-its streamed fallback), the agent loop reports it on the usage event
+its streaming path), the agent loop reports it on the usage event
 (`CostUsageEvent.Cost`, null when the vendor billed nothing — a free model's `0` stays
 `0`), the scripting facade does the same for `ctx.llm.*`, and the run's `cost.updated`
 relays it with `costSource: "vendor"` ([the run event bus](run-event-bus.md)).
@@ -140,7 +140,19 @@ relays it with `costSource: "vendor"` ([the run event bus](run-event-bus.md)).
 budgets; that estimate never reaches the wire. A chunk carrying a root-level `error` after
 the HTTP 200 ends a stream the way a pre-stream refusal does — `error` metadata on the chat stream, an
 `HttpRequestException` on the token stream — never as a clean completion. All 16 providers
-are `IStreamingLlmProvider`s. The per-provider matrix lives in
+are `IStreamingLlmProvider`s. The chat client adapter's streaming path
+(`GetStreamingResponseAsync`, GAP-32) is built like its buffered one — the same messages,
+roles, tools and options — and reads the provider's chat stream (`ChatStreamingAsync`): the
+text as it arrives, then one last update carrying the tool calls (native or of the text
+protocol), the provider's usage, the finish reason, the model, the vendor's cost and the
+reasoning to replay. Folded, the updates are the response the buffered call returns, so a
+streamed agent turn calls its tools and is metered exactly, never estimated; a provider that
+does not stream answers it buffered. The streams themselves had to say what the buffered
+answers say: Anthropic now assembles the `tool_use` blocks it streams; MiniMax splits its
+leading `<think>` block out of the content deltas (`LeadingReasoningTag`), so the text a stream
+carries is the answer its final response keeps; and on the native protocol, the OpenAI dialect
+and Anthropic give a streamed answer the body their buffered answer carries, in which the
+text-protocol fallback reads a call the model wrote as text. The per-provider matrix lives in
 [the provider comparison](../reference/llm-providers-comparison.md).
 
 ### Dialect seams of the OpenAI-compatible base

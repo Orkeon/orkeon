@@ -139,15 +139,19 @@ public class CrewAggregateRootTests
 
         // Act - first execution
         crew.StartExecution();
-        crew.CompleteExecution(1, 0);
+        crew.CompleteExecution(1);
 
-        // Second execution
+        // Second execution, which fails: a run with a failed task is a failed run (GAP-32)
         crew.StartExecution();
-        crew.CompleteExecution(2, 1);
+        crew.FailExecution("Task review (Writer) failed: no final answer");
 
         // Assert
         Assert.Equal(2, crew.Executions.Count);
-        Assert.Equal(CrewStatus.Idle, crew.Status);
+        Assert.Equal(ExecutionStatus.Succeeded, crew.Executions[0].Status);
+        Assert.Equal(1, crew.Executions[0].CompletedTasks);
+        Assert.Equal(ExecutionStatus.Failed, crew.Executions[1].Status);
+        Assert.Equal("Task review (Writer) failed: no final answer", crew.Executions[1].FailureReason);
+        Assert.Equal(CrewStatus.Failed, crew.Status);
         Assert.Null(crew.CurrentProcessId);
     }
 
@@ -204,7 +208,7 @@ public class CrewAggregateRootTests
         crew.StartExecution();
 
         // Act
-        crew.CompleteExecution(3, 0);
+        crew.CompleteExecution(3);
 
         // Assert
         var execution = crew.Executions[^1];

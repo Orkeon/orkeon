@@ -317,7 +317,7 @@ Orkeon supporte plusieurs modes d'exécution via `ICrewOrchestrationService` :
 
 **Mode itératif (par lot)** :
 ```csharp
-// Exécuter la Crew pour chaque élément d'une collection
+// Exécuter la Crew pour chaque élément d'une collection, l'un après l'autre
 var inputs = new List<CrewInput>
 {
     CrewInput.Empty("Process sales data for region 1"),
@@ -327,30 +327,54 @@ var inputs = new List<CrewInput>
 
 var batchOutput = await orchestrator.KickoffForEachAsync(crew.Id, inputs);
 
-// batchOutput est de type BatchOutput contenant les résultats individuels
+// batchOutput est de type BatchOutput contenant les résultats individuels, dans l'ordre des entrées
 ```
+
+Chaque entrée est un run complet de la crew — démarré, terminé, ses événements dispatchés — et le
+suivant commence quand le précédent est rendu, comme le `kickoff_for_each` de CrewAI. (Les entrées
+démarraient toutes à la fois sur la même crew, et tous les runs sauf le premier échouaient avec
+« Crew is already executing ».)
 
 **Mode streaming** :
 ```csharp
-// Exécuter la Crew et recevoir les événements en temps réel via IAsyncEnumerable
-await foreach (var executionEvent in orchestrator.KickoffStreamingAsync(crew.Id, input))
+using Orkeon.Constants.Protocol; // RunEventKinds
+
+// Exécuter la Crew et recevoir ce qui se passe au fil du run, via IAsyncEnumerable
+CrewOutput? output = null;
+await foreach (var e in orchestrator.KickoffStreamingAsync(crew.Id, input))
 {
-    Console.WriteLine(
-        $"[{executionEvent.Timestamp:HH:mm:ss}] {executionEvent.AgentRole} — {executionEvent.TaskDescription}");
-    Console.WriteLine($"  {executionEvent.Thought.Type} : {executionEvent.Thought.Content}");
+    switch (e.Kind)
+    {
+        case RunEventKinds.TaskStarted:   Console.WriteLine($"[{e.AgentRole}] tâche {e.TaskId} démarrée"); break;
+        case RunEventKinds.ToolCalled:    Console.WriteLine($"  -> {e.ToolName}"); break;
+        case RunEventKinds.ToolReturned:  Console.WriteLine($"  <- {e.ToolName} ({e.Success}, {e.Duration})"); break;
+        case RunEventKinds.LlmDelta:      Console.Write(e.Text); break;
+        case RunEventKinds.TaskCompleted: Console.WriteLine($"\n[{e.AgentRole}] terminée : {e.Success}, {e.Tokens} jetons"); break;
+        case RunEventKinds.Error:         Console.Error.WriteLine($"[{e.Code}] {e.Message}"); break;
+        case RunEventKinds.RunFinished:   output = e.Output; break; // toujours le dernier événement
+    }
 }
 ```
 
-> **Granularité du streaming.** La pleine granularité par appel d'outil (événements
-> `AgentThought` de type `Reasoning` / `ToolSelection` / `ToolExecution` / `Conclusion`)
-> requiert un `IStreamingAgentExecutionService`. `AddOrkeonInfrastructure()` en enregistre
-> un (`StreamingAgentExecutionService`) **par défaut**, aucun câblage supplémentaire n'est
-> donc nécessaire — il lui faut seulement un `IChatClient` / provider LLM configuré (voir
-> [Fournisseurs LLM](../architecture/llm-providers.md)). Si le service est absent (setup DI
-> partiel, ou orchestrateur construit à la main sans lui), `KickoffStreamingAsync`
-> **dégrade en rejeu par tâche** — un événement `Conclusion` par tâche, sans détail des
-> appels d'outils — et journalise un `Warning` explicite nommant l'enregistrement manquant,
-> plutôt que de rétrograder en silence.
+> **Ce qu'est un run diffusé.** `KickoffStreamingAsync` exécute exactement ce qu'exécute
+> `KickoffAsync` — les tâches, les agents et l'ordre de la crew, son mode (les six), sa mémoire, sa
+> connaissance et son plan, le cycle de vie de ses tâches et ses événements de domaine — et rend ce
+> qui se passe au fil du run. Chaque `CrewExecutionEvent` porte un `Kind` de `RunEventKinds`, le
+> vocabulaire qu'`orkeon run --events jsonl` écrit sur le fil ([le bus d'événements du
+> run](../architecture/run-event-bus.md)) : `task.started` et `task.completed` pour chaque tâche
+> (avec son id et le rôle de son agent), `tool.called` et `tool.returned` pour chaque appel d'outil (le
+> nom de l'outil, jamais ses arguments), `llm.delta` pour le texte du modèle tel qu'il arrive, et —
+> toujours en dernier — `run.finished`, dont l'`Output` est le `CrewOutput` que `KickoffAsync` aurait
+> rendu. Un run en échec le dit d'abord : un `error` dont le `Code` vaut `crew_failed` ou
+> `crew_cancelled` et dont le `Message` est la raison du run. Les événements d'une tâche arrivent dans
+> l'ordre ; ceux de tâches qui tournent en même temps (Parallel, Consensual, `asyncExecution`)
+> s'entrelacent. Les deltas de texte viennent des hôtes qui donnent à la crew un `IChatClient`
+> (`AddOrkeonLlmProvider` en enregistre un) et sont le texte du modèle tel qu'il est arrivé — un tour
+> que le run écarte ensuite (un essai repris, une révision rejetée, un bulletin de vote) a été diffusé
+> quand même ; la sortie qui compte est celle de `run.finished`. Une délégation ou un bulletin tourne
+> sur une tâche à lui, et ses événements portent l'id de cette tâche. **Quitter le flux annule le
+> run** : un `break`, ou le jeton passé à l'énumération, l'annule, et l'itérateur attend sa fin — la
+> crew échoue par annulation, sa tâche en cours est annulée, et ses événements sont dispatchés.
 
 **Mode asynchrone non-bloquant (fire-and-forget)** :
 ```csharp

@@ -744,13 +744,13 @@ public class CrewTests
         crew.StartExecution();
 
         // Act
-        crew.CompleteExecution(5, 1);
+        crew.CompleteExecution(5);
 
         // Assert
         Assert.Equal(CrewStatus.Idle, crew.Status);
         Assert.Null(crew.CurrentProcessId);
         Assert.Equal(5, crew.Executions[0].CompletedTasks);
-        Assert.Equal(1, crew.Executions[0].FailedTasks);
+        Assert.Equal(ExecutionStatus.Succeeded, crew.Executions[0].Status);
     }
 
     [Fact]
@@ -764,13 +764,13 @@ public class CrewTests
         crew.ClearDomainEvents();
 
         // Act
-        crew.CompleteExecution(3, 0);
+        crew.CompleteExecution(3);
 
         // Assert
         var completedEvent = Assert.Single(crew.DomainEvents.OfType<CrewExecutionCompletedEvent>());
         Assert.Equal(crew.Id, completedEvent.CrewId);
         Assert.Equal(3, completedEvent.CompletedTasks);
-        Assert.Equal(0, completedEvent.FailedTasks);
+        Assert.Empty(crew.DomainEvents.OfType<CrewExecutionFailedEvent>());
     }
 
     [Fact]
@@ -780,7 +780,7 @@ public class CrewTests
         var crew = DomainCrew.Create("Test");
 
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => crew.CompleteExecution(0, 0));
+        Assert.Throws<InvalidOperationException>(() => crew.CompleteExecution(0));
     }
 
     #endregion

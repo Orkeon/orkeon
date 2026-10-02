@@ -1,6 +1,9 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew;
+using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Interfaces.Services;
+using Orkeon.Constants.Protocol;
 
 namespace Orkeon.Infrastructure.Crew;
 
@@ -16,6 +19,13 @@ namespace Orkeon.Infrastructure.Crew;
 /// run must never change its outcome. That rule is the reason this type exists rather than
 /// a plain interface call at each site.
 /// </para>
+/// <para>
+/// It is also where a streamed run hears its tasks (GAP-32): each start, end and failure is written
+/// to the run's stream (<see cref="CrewStreamScope"/>) as <c>task.started</c>, <c>task.completed</c>
+/// and <c>error</c>, before the hook is called — the hook the host registered is served as before.
+/// And it marks the run's end as reported (<see cref="CrewRunEnding"/>), so the orchestrator reports
+/// only a failure no strategy did.
+/// </para>
 /// </summary>
 internal sealed partial class CrewHookDispatcher
 {
@@ -29,8 +39,11 @@ internal sealed partial class CrewHookDispatcher
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
     }
 
-    /// <summary>Whether anything is listening — lets a caller skip building a snapshot for nobody.</summary>
-    internal bool HasHook => _hook is not null;
+    /// <summary>
+    /// Whether anything is listening — the hook, or the stream of a streamed run — lets a caller
+    /// skip building a snapshot for nobody.
+    /// </summary>
+    internal bool HasHook => _hook is not null || CrewStreamScope.IsOpen;
 
     /// <summary>
     /// Notifies that one task is starting (STUDIO-17). Dispatched by every mode at the moment
@@ -40,6 +53,15 @@ internal sealed partial class CrewHookDispatcher
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty start hook is logged and must not break the crew execution pipeline.")]
     internal async Task TaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        CrewStreamScope.Write(new CrewExecutionEvent
+        {
+            Kind = RunEventKinds.TaskStarted,
+            Timestamp = snapshot.StartedAt,
+            TaskId = snapshot.TaskId,
+            AgentRole = snapshot.AgentRole,
+        });
+
         if (_hook is null) return;
         try
         {
@@ -55,6 +77,21 @@ internal sealed partial class CrewHookDispatcher
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty completion hook is logged and must not break the crew execution pipeline.")]
     internal async Task TaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        CrewStreamScope.Write(new CrewExecutionEvent
+        {
+            Kind = RunEventKinds.TaskCompleted,
+            Timestamp = snapshot.CompletedAt,
+            TaskId = snapshot.TaskId,
+            AgentRole = snapshot.AgentRole,
+            Success = snapshot.Success,
+            Skipped = snapshot.Skipped,
+            SkipReason = snapshot.SkipReason,
+            Duration = snapshot.Duration,
+            Tokens = snapshot.TokensUsed,
+            ToolCalls = snapshot.ToolCallCount,
+        });
+
         if (_hook is null) return;
         try
         {
@@ -70,6 +107,7 @@ internal sealed partial class CrewHookDispatcher
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty crew-completed hook is logged and must not break the crew execution pipeline.")]
     internal async Task CrewCompletedAsync(CrewExecutionSnapshot snapshot, CancellationToken ct = default)
     {
+        CrewRunEnding.Record(failed: false);
         if (_hook is null) return;
         try
         {
@@ -85,6 +123,10 @@ internal sealed partial class CrewHookDispatcher
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a failure here is logged and must not mask the original failure being reported.")]
     internal async Task CrewFailedAsync(CrewExecutionSnapshot snapshot, Exception? cause, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        CrewRunEnding.Record(failed: true);
+        CrewStreamScope.Write(FailureEvent(snapshot.Status, snapshot.FailureReason ?? cause?.Message));
+
         if (_hook is null) return;
         try
         {
@@ -95,6 +137,18 @@ internal sealed partial class CrewHookDispatcher
             LogCrewFailedFailed(ex);
         }
     }
+
+    /// <summary>
+    /// The <c>error</c> a stopped run ends on, before <c>run.finished</c>: <c>crew_cancelled</c> or
+    /// <c>crew_failed</c>, with the run's reason — the code the wire carries (<c>--events</c>).
+    /// </summary>
+    internal static CrewExecutionEvent FailureEvent(CrewHookStatus status, string? reason) =>
+        new()
+        {
+            Kind = RunEventKinds.Error,
+            Code = status == CrewHookStatus.Canceled ? RunEventErrorCodes.CrewCancelled : RunEventErrorCodes.CrewFailed,
+            Message = reason ?? string.Empty,
+        };
 
     /// <summary>The start snapshot every mode reports the same way, stamped now.</summary>
     internal static TaskStartSnapshot Started(string taskId, string agentRole) =>

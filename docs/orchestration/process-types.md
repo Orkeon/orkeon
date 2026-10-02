@@ -73,7 +73,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 - **When it goes wrong** — the plan is advice. A reply that cannot be read is asked for once more, with what could not be read, then the crew runs without a plan, with a warning — which says so when the reply stopped at the profile's `MaxTokens`. A task the plan leaves out runs without one, with a warning that names it; a number given twice keeps its first plan and an unknown number is ignored, each with a warning. Only a provider that fails — a refused key, an unreachable endpoint — fails the run, before its first task, with the provider's reason.
 - **On the echo provider** — the one a host without an `Llm` section runs on, which replays its prompt instead of answering it (`LlmProviderCapabilities.ReplaysPrompt`) — planning is skipped with a warning (*planning skipped — the echo provider cannot plan*, with the remedy, `orkeon init`), and the crew runs to the end like any keyless run.
 - **Cost** — one call per run (two after an unreadable reply), so one per input under `KickoffForEachAsync` and one per message in `orkeon-host`, its prompt growing with the crew; and each task's plan travels with every turn of that task's agent loop, which the 2,000-character bound contains.
-- **Not planned** — a streamed run (`KickoffStreamingAsync`, a C# API): it warns once that it does not plan.
+- **Streamed too** — a streamed run (`KickoffStreamingAsync`, a C# API) is the same run: it plans, and each task reads its plan, like `KickoffAsync` (GAP-32).
 
 **Key classes**: `CrewPlanner` and `PlanningContext` (Domain), `ExecutionPlanParser`, `CrewPlanScope` and `AgentPromptComposer`.
 

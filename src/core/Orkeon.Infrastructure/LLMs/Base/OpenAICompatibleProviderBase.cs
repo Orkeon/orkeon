@@ -60,12 +60,22 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// every reply starts with a <c>&lt;think&gt;...&lt;/think&gt;</c> block inside
     /// <c>content</c>, no separate field — left alone, an agent speaks its private
     /// reasoning out loud. Applied to the buffered parses and to a stream's terminal
-    /// response; the live deltas stay raw, which is how reasoning streams read anyway.
+    /// response; a stream's live deltas are split by <see cref="LeadingReasoningTag"/>.
     /// </summary>
     /// <param name="content">The visible content as the vendor sent it.</param>
     /// <returns>The cleaned content, and the extracted trace or null.</returns>
     protected virtual (string Content, string? Reasoning) SplitReasoningFromContent(string content)
         => (content, null);
+
+    /// <summary>
+    /// The tag of the reasoning block a dialect writes at the very start of its content
+    /// (<c>think</c> for MiniMax), for the live deltas of a stream: the block's text goes out
+    /// as reasoning deltas, never as content, and the whitespace after it is dropped — what
+    /// <see cref="SplitReasoningFromContent"/> does to the whole answer. A stream's content
+    /// deltas then add up to its final response's content, which the chat client folds into
+    /// an agent's turn (GAP-32). Null — the base — splits nothing.
+    /// </summary>
+    protected virtual string? LeadingReasoningTag => null;
 
     /// <summary>
     /// Whether this provider composes OpenAI vision content parts (<c>text</c> +
@@ -305,8 +315,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// when the vendor bills in it), and terminates with a
     /// <see cref="LlmStreamEventKind.Completed"/> event whose response is equivalent to the
     /// non-streaming <see cref="ChatAsync"/> result — including a synthesized OpenAI-shaped
-    /// <see cref="LlmResponse.RawResponseBody"/> when the model streamed tool calls, so
-    /// tool-call parsers work unchanged. Providers that ignore <c>stream_options</c> yield a
+    /// <see cref="LlmResponse.RawResponseBody"/> when the model streamed tool calls, and on the
+    /// native protocol whatever it answered (as the buffered body is), so tool-call parsers —
+    /// the text-protocol fallback included — work unchanged. Providers that ignore <c>stream_options</c> yield a
     /// Completed event with zero usage (degraded but safe). A chunk carrying a root-level
     /// <c>error</c> ends the stream the way a pre-stream refusal does: the Completed event
     /// carries the <c>error</c> metadata and whatever content arrived before it, never a
@@ -344,7 +355,10 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         payload["stream_options"] = new Dictionary<string, object> { ["include_usage"] = true };
         var json = JsonSerializer.Serialize(payload, JsonOptions);
 
-        var state = new ChatStreamState();
+        var state = new ChatStreamState
+        {
+            Splitter = LeadingReasoningTag is { } tag ? new LeadingReasoningSplitter(tag) : null,
+        };
         HttpResponseMessage? response = null;
         try
         {
@@ -374,6 +388,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             response?.Dispose();
         }
 
+        // What the inline-reasoning split still held — an unterminated block is all reasoning.
+        if (state.Splitter is { } splitter)
+        {
+            foreach (var ev in Emit(splitter.Flush(), state))
+                yield return ev;
+        }
+
         yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig));
     }
 
@@ -382,6 +403,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     {
         public StringBuilder Content { get; } = new();
         public StringBuilder Reasoning { get; } = new();
+        /// <summary>The live split of the dialect's leading reasoning block (<see cref="LeadingReasoningTag"/>); null without one.</summary>
+        public LeadingReasoningSplitter? Splitter { get; init; }
         /// <summary>Tool-call fragments accumulated by stream index.</summary>
         public SortedDictionary<int, StreamedToolCall> ToolCalls { get; } = new();
         public int TotalTokens { get; set; }
@@ -482,7 +505,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
         {
             var token = content.GetString();
-            if (!string.IsNullOrEmpty(token))
+            if (!string.IsNullOrEmpty(token) && state.Splitter is { } splitter)
+            {
+                events.AddRange(Emit(splitter.Feed(token), state));
+            }
+            else if (!string.IsNullOrEmpty(token))
             {
                 state.Content.Append(token);
                 events.Add(LlmStreamEvent.Content(token));
@@ -501,6 +528,134 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
         if (delta.TryGetProperty("tool_calls", out var toolCalls) && toolCalls.ValueKind == JsonValueKind.Array)
             AccumulateToolCallFragments(toolCalls, state);
+    }
+
+    /// <summary>The pieces the inline-reasoning split produced, accumulated and turned into events.</summary>
+    private static List<LlmStreamEvent> Emit(IEnumerable<(bool Reasoning, string Text)> pieces, ChatStreamState state)
+    {
+        var events = new List<LlmStreamEvent>();
+        foreach (var (reasoning, text) in pieces)
+        {
+            if (string.IsNullOrEmpty(text))
+                continue;
+            if (reasoning)
+            {
+                state.Reasoning.Append(text);
+                events.Add(LlmStreamEvent.Reasoning(text));
+            }
+            else
+            {
+                state.Content.Append(text);
+                events.Add(LlmStreamEvent.Content(text));
+            }
+        }
+
+        return events;
+    }
+
+    /// <summary>
+    /// Splits a reasoning block the dialect writes at the very start of its content —
+    /// <c>&lt;tag&gt;…&lt;/tag&gt;</c>, whitespace before it allowed — out of a stream as it
+    /// arrives: the block's text is reasoning, the whitespace after it is dropped, everything
+    /// else is content. A tag split across chunks is held until it can be told apart; a block
+    /// never closed (a reply cut by <c>max_tokens</c>) is reasoning to its end; a tag later in
+    /// the content is content.
+    /// </summary>
+    private sealed class LeadingReasoningSplitter(string tag)
+    {
+        private readonly string _open = $"<{tag}>";
+        private readonly string _close = $"</{tag}>";
+        private readonly StringBuilder _pending = new();
+        private Phase _phase = Phase.Detecting;
+
+        private enum Phase { Detecting, InBlock, AfterBlock, Content }
+
+        public List<(bool Reasoning, string Text)> Feed(string token)
+        {
+            _pending.Append(token);
+            var pieces = new List<(bool Reasoning, string Text)>();
+            Advance(pieces, final: false);
+            return pieces;
+        }
+
+        public List<(bool Reasoning, string Text)> Flush()
+        {
+            var pieces = new List<(bool Reasoning, string Text)>();
+            Advance(pieces, final: true);
+            return pieces;
+        }
+
+        private void Advance(List<(bool Reasoning, string Text)> pieces, bool final)
+        {
+            while (true)
+            {
+                var pending = _pending.ToString();
+                switch (_phase)
+                {
+                    case Phase.Detecting:
+                    {
+                        var trimmed = pending.TrimStart();
+                        if (trimmed.StartsWith(_open, StringComparison.Ordinal))
+                        {
+                            _pending.Clear().Append(trimmed[_open.Length..]);
+                            _phase = Phase.InBlock;
+                            continue;
+                        }
+
+                        if (!final && _open.StartsWith(trimmed, StringComparison.Ordinal))
+                            return; // nothing but whitespace, or the opening tag still arriving
+
+                        _phase = Phase.Content;
+                        continue;
+                    }
+
+                    case Phase.InBlock:
+                    {
+                        var close = pending.IndexOf(_close, StringComparison.Ordinal);
+                        if (close >= 0)
+                        {
+                            pieces.Add((true, pending[..close]));
+                            _pending.Clear().Append(pending[(close + _close.Length)..]);
+                            _phase = Phase.AfterBlock;
+                            continue;
+                        }
+
+                        // Keep back what could be the start of the closing tag; the rest is reasoning.
+                        var keep = final ? 0 : HeldBack(pending);
+                        pieces.Add((true, pending[..^keep]));
+                        _pending.Clear().Append(pending[^keep..]);
+                        return;
+                    }
+
+                    case Phase.AfterBlock:
+                    {
+                        var rest = pending.TrimStart();
+                        _pending.Clear().Append(rest);
+                        if (rest.Length == 0)
+                            return;
+                        _phase = Phase.Content;
+                        continue;
+                    }
+
+                    default:
+                        pieces.Add((false, pending));
+                        _pending.Clear();
+                        return;
+                }
+            }
+        }
+
+        /// <summary>The length of the longest end of <paramref name="text"/> that begins the closing tag.</summary>
+        private int HeldBack(string text)
+        {
+            for (var length = Math.Min(_close.Length - 1, text.Length); length > 0; length--)
+            {
+                if (_close.StartsWith(text[^length..], StringComparison.Ordinal))
+                    return length;
+            }
+
+            return 0;
+        }
     }
 
     /// <summary>
@@ -611,8 +766,10 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     {
         var (finalContent, dialectReasoning) = SplitReasoningFromContent(state.Content.ToString());
         var metadata = LlmResponseMetadata.CreateBuilder().AddProvider(Name);
-        if (state.Reasoning.Length > 0)
-            metadata.Add("reasoning_content", state.Reasoning.ToString());
+        // The block the live split read is trimmed like the buffered split trims it.
+        var streamedReasoning = state.Splitter is null ? state.Reasoning.ToString() : state.Reasoning.ToString().Trim();
+        if (streamedReasoning.Length > 0)
+            metadata.Add("reasoning_content", streamedReasoning);
         else if (!string.IsNullOrEmpty(dialectReasoning))
             metadata.Add("reasoning_content", dialectReasoning);
         if (state.Cost is { } cost)
@@ -642,15 +799,22 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 ?? (state.CacheHitTokens is { } streamedHit ? DeriveCacheMiss(streamedHit, state.PromptTokens) : null),
             Model = ResolveModel(effectiveConfig),
             Metadata = metadata.Build().ToDictionary(),
-            RawResponseBody = state.Error is null && state.ToolCalls.Count > 0 ? SynthesizeChatBody(state) : null,
+            // The body the buffered path returns, rebuilt: when the model streamed tool calls, and on
+            // the native protocol always — the text-protocol fallback reads a call the model wrote as
+            // text in the body's content, as it reads the buffered body (GAP-32).
+            RawResponseBody = state.Error is null
+                && (state.ToolCalls.Count > 0 || _toolCallingStrategy?.SupportsNativeToolCalling == true)
+                    ? SynthesizeChatBody(state)
+                    : null,
         };
     }
 
     /// <summary>
     /// Reassembles the OpenAI chat response shape
-    /// (<c>choices[0].message.tool_calls[]</c>) from accumulated stream fragments so
-    /// downstream parsers (e.g. the scripted act loop's <c>TryParseToolCall</c>) consume
-    /// streamed and buffered responses identically.
+    /// (<c>choices[0].message.content</c>, and <c>tool_calls[]</c> when the model called a tool)
+    /// from accumulated stream fragments so downstream parsers (e.g. the scripted act loop's
+    /// <c>TryParseToolCall</c>, the text-protocol fallback) consume streamed and buffered
+    /// responses identically.
     /// </summary>
     private static string SynthesizeChatBody(ChatStreamState state)
     {
@@ -671,12 +835,18 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             {
                 new Dictionary<string, object?>
                 {
-                    ["message"] = new Dictionary<string, object?>
-                    {
-                        ["role"] = "assistant",
-                        ["content"] = state.Content.ToString(),
-                        ["tool_calls"] = toolCalls,
-                    },
+                    ["message"] = toolCalls.Count > 0
+                        ? new Dictionary<string, object?>
+                        {
+                            ["role"] = "assistant",
+                            ["content"] = state.Content.ToString(),
+                            ["tool_calls"] = toolCalls,
+                        }
+                        : new Dictionary<string, object?>
+                        {
+                            ["role"] = "assistant",
+                            ["content"] = state.Content.ToString(),
+                        },
                 },
             },
         };

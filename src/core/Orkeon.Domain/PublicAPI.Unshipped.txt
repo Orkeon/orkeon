@@ -1210,3 +1210,14 @@ static Orkeon.Domain.Crew.PlanningAgent.operator !=(Orkeon.Domain.Crew.PlanningA
 static Orkeon.Domain.Crew.PlanningAgent.operator ==(Orkeon.Domain.Crew.PlanningAgent? left, Orkeon.Domain.Crew.PlanningAgent? right) -> bool
 static Orkeon.Domain.Crew.PlanningTask.operator !=(Orkeon.Domain.Crew.PlanningTask? left, Orkeon.Domain.Crew.PlanningTask? right) -> bool
 static Orkeon.Domain.Crew.PlanningTask.operator ==(Orkeon.Domain.Crew.PlanningTask? left, Orkeon.Domain.Crew.PlanningTask? right) -> bool
+*REMOVED*Orkeon.Domain.Crew.Crew.CompleteExecution(int completedTasks, int failedTasks) -> void
+*REMOVED*Orkeon.Domain.Crew.CrewExecution.FailedTasks.get -> int
+*REMOVED*Orkeon.Domain.Crew.CrewExecution.SuccessRate.get -> double
+*REMOVED*Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent.FailedTasks.get -> int
+*REMOVED*Orkeon.Domain.Crew.Events.CrewExecutionCompletedEvent.FailedTasks.init -> void
+*REMOVED*Orkeon.Domain.Crew.ExecutionStatus.Cancelled = 4 -> Orkeon.Domain.Crew.ExecutionStatus
+*REMOVED*Orkeon.Domain.Crew.ExecutionStatus.Failed = 3 -> Orkeon.Domain.Crew.ExecutionStatus
+*REMOVED*Orkeon.Domain.Crew.ExecutionStatus.PartialSuccess = 2 -> Orkeon.Domain.Crew.ExecutionStatus
+Orkeon.Domain.Crew.Crew.CompleteExecution(int completedTasks) -> void
+Orkeon.Domain.Crew.ExecutionStatus.Cancelled = 3 -> Orkeon.Domain.Crew.ExecutionStatus
+Orkeon.Domain.Crew.ExecutionStatus.Failed = 2 -> Orkeon.Domain.Crew.ExecutionStatus

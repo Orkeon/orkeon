@@ -17,7 +17,7 @@ namespace Orkeon.Infrastructure.Tests.CovAutonomous;
 
 /// <summary>
 /// Coverage tests for <see cref="SequentialCrewOrchestrator"/> exercising the batch,
-/// fire-and-forget, streaming-fallback, checkpoint, and process-type dispatch branches.
+/// fire-and-forget, streaming, checkpoint, and process-type dispatch branches.
 /// All doubles are manual (no Moq / network / DB).
 /// </summary>
 public sealed class CovAutonomous_SequentialCrewOrchestratorTests
@@ -144,6 +144,57 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         }
     }
 
+    /// <summary>
+    /// Answers each run with its initial context after a real suspension, and records how many runs
+    /// it served at once.
+    /// </summary>
+    private sealed class YieldingProcessStrategy : IProcessStrategy
+    {
+        private int _running;
+        private int _mostAtOnce;
+
+        public int MostAtOnce => Volatile.Read(ref _mostAtOnce);
+
+        public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
+            => AnswerAsync(vars);
+
+        public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId mgr, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
+            => AnswerAsync(vars);
+
+        public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
+            => AnswerAsync(vars);
+
+        public Task<DomainCrewOutput> ExecuteAutonomousAsync(DomainCrew crew, AgentExecutionBudget budget, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
+            => AnswerAsync(vars);
+
+        private async Task<DomainCrewOutput> AnswerAsync(IReadOnlyDictionary<string, string>? vars)
+        {
+            var running = Interlocked.Increment(ref _running);
+            int seen;
+            do
+            {
+                seen = Volatile.Read(ref _mostAtOnce);
+            }
+            while (running > seen && Interlocked.CompareExchange(ref _mostAtOnce, running, seen) != seen);
+
+            await Task.Yield();
+            await Task.Yield();
+            Interlocked.Decrement(ref _running);
+
+            var context = vars is not null && vars.TryGetValue("initial_context", out var value) ? value : "?";
+            return DomainCrewOutput.CreateSuccess(
+                $"Answered {context}",
+                null,
+                [DomainTaskOutput.Create($"Answered {context}", "text", null, TaskId.Create(), true, TimeSpan.Zero)],
+                TimeSpan.Zero);
+        }
+    }
+
+    private sealed class SingleStrategyFactory(IProcessStrategy strategy) : IProcessStrategyFactory
+    {
+        public IProcessStrategy CreateStrategy(ProcessType processType) => strategy;
+    }
+
     private sealed class FakeFactory : IProcessStrategyFactory
     {
         public RecordingProcessStrategy Strategy { get; } = new();
@@ -190,7 +241,6 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
             state,
             factory,
             new ExecutionPlanParser(), new Orkeon.Infrastructure.Tests.Doubles.RecordingDomainEventDispatcher(),
-            streamingService: null,
             agentRepository: null,
             checkpointManager: cp);
 
@@ -362,16 +412,29 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
     [Fact]
     public async Task KickoffForEachAsync_RunsAllInputs()
     {
-        var h = Build();
+        // GAP-32 decision 6: each input is a full run of the crew, the next one starting when the
+        // previous one is done. The inputs used to start at once, on the same aggregate: as soon as
+        // the first run awaited something, the others found the crew executing and failed. A strategy
+        // that answers synchronously hid it — this one yields, like a real model call.
+        var repo = new FakeCrewRepository();
+        var strategy = new YieldingProcessStrategy();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repo, NullLogger<SequentialCrewOrchestrator>.Instance, new FakeStateManager(),
+            new SingleStrategyFactory(strategy), new ExecutionPlanParser(),
+            new Orkeon.Infrastructure.Tests.Doubles.RecordingDomainEventDispatcher());
         var crew = MakeCrew(ProcessType.Sequential);
-        await h.Repo.AddAsync(crew, TestContext.Current.CancellationToken);
+        await repo.AddAsync(crew, TestContext.Current.CancellationToken);
 
-        var inputs = new[] { Input(), Input(), Input() };
-        var batch = await h.Orchestrator.KickoffForEachAsync(crew.Id, inputs, TestContext.Current.CancellationToken);
+        var inputs = new[] { CrewInput.Empty("first"), CrewInput.Empty("second"), CrewInput.Empty("third") };
+        var batch = await orchestrator.KickoffForEachAsync(crew.Id, inputs, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, batch.Results.Count);
+        Assert.All(batch.Results, result => Assert.True(result.Succeeded, result.Error));
         Assert.Equal(3, batch.SuccessCount);
         Assert.Equal(0, batch.FailureCount);
+        Assert.Equal(["Answered first", "Answered second", "Answered third"], batch.Results.Select(r => r.FinalOutput));
+        Assert.Equal(1, strategy.MostAtOnce);
+        Assert.Equal(3, crew.Executions.Count);
     }
 
     // ── Fire-and-forget ──────────────────────────────────────────────────────
@@ -394,12 +457,14 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         Assert.True(h.State.CompleteExecutionCount >= 1);
     }
 
-    // ── Streaming fallback ───────────────────────────────────────────────────
+    // ── Streaming ────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task KickoffStreamingAsync_NoStreamingService_EmitsEventsFromFallback()
+    public async Task KickoffStreamingAsync_EndsOnTheRunsOutput()
     {
-        var h = Build(); // streamingService null → fallback path
+        // GAP-32: no fallback replaying the outputs once the run is over — the streamed kickoff is
+        // the run, and its last event carries the output KickoffAsync would return.
+        var h = Build();
         var crew = MakeCrew(ProcessType.Sequential);
         await h.Repo.AddAsync(crew, TestContext.Current.CancellationToken);
 
@@ -407,9 +472,10 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         await foreach (var ev in h.Orchestrator.KickoffStreamingAsync(crew.Id, Input(), TestContext.Current.CancellationToken))
             events.Add(ev);
 
-        // Fallback emits one event per task output (the strategy produced one).
-        Assert.Single(events);
-        Assert.Equal(AgentThought.ThoughtType.Conclusion, events[0].Thought.Type);
+        var finished = Assert.Single(events);
+        Assert.Equal(Orkeon.Constants.Protocol.RunEventKinds.RunFinished, finished.Kind);
+        Assert.Equal("ok-content", Assert.Single(finished.Output!.TaskOutputs).Content);
+        Assert.Equal("Sequential", h.Factory.Strategy.LastMode);
     }
 
     // ── Status query ─────────────────────────────────────────────────────────

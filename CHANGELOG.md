@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the streaming kickoff runs the crew and says what happens as it goes, a failed run fails the crew, and `KickoffForEachAsync` runs each input in turn **[breaking]**
+
+`ICrewOrchestrationService.KickoffStreamingAsync` — the documented C# equivalent of CrewAI's
+`stream=True` — did not run the crew: for each task id it ran a fake task whose description was the
+GUID, on the crew's agents taken in turn, ignoring the declared agent, the dependencies, the mode, the
+memory, the knowledge and the plan; the crew was never started nor ended; the stream said neither the
+output nor whether the run succeeded; and its per-token service could call no tool through the shipped
+chat client. A run whose task failed raised `CrewExecutionCompletedEvent` (`FailedTasks = 1`, the
+execution `PartialSuccess`, the crew back to `Idle`) while `orkeon run` exited 2; a run that failed
+before its strategy — a memory that cannot work, a plan whose provider failed — never reached the
+execution hook, so `orkeon run --events` ended without its `error`; `--stream` never streamed a crew's
+turns; and `KickoffForEachAsync` started every input at once on the same crew, all but the first
+failing with "Crew is already executing" (GAP-32):
+
+- **The streaming kickoff is the crew's run.** `KickoffStreamingAsync` runs exactly what `KickoffAsync`
+  runs — one kickoff core: load, memory, validation, start, the strategy of the crew's mode (all six),
+  the lifecycle of its tasks and agents, its memory, knowledge and plan, the terminal transition, the
+  checkpoints and the domain events — and yields what happens while it runs.
+- **`CrewExecutionEvent` speaks the run's wire vocabulary.** Its `Kind` is a `RunEventKinds` constant:
+  `task.started` and `task.completed` for each task (task id, agent role; success, skip, duration,
+  tokens, tool calls), `tool.called` and `tool.returned` for each tool call (the tool's name, success and
+  duration — never an argument's value nor the result), `llm.delta` for the model's text as it arrives
+  (with the task and agent of the call), and `run.finished`, always last, whose `Output` is the run's
+  `CrewOutput` — after an `error` (`Code` `crew_failed` or `crew_cancelled`, new `RunEventErrorCodes`
+  in `Orkeon.Constants.Protocol`, and the run's reason) when the run failed. A task's events come in
+  order; the events of tasks that run at once interleave. A crew run from inside a task — a tool that
+  kicks another crew off — never writes into its caller's stream (`CrewStreamScope`, one per run).
+  **Leaving the stream cancels the run**, and the iterator waits for its end: the crew fails by
+  cancellation, its running task is cancelled, its events are dispatched.
+- **The model's text streams through the real agent loop.** The chat-client loop streams a turn when
+  someone reads it — a streamed run, or a host's `ILlmDeltaSink` — and folds the updates into the turn
+  it reads as before; otherwise the call stays buffered, byte for byte. The chat client adapter's
+  streaming path is built like its buffered one — same messages, roles, tools and options — and reads
+  the provider's chat stream: the text as it arrives, then one last update with the tool calls (native
+  or of the text protocol), the provider's usage, the finish reason, the model, the vendor's cost and the
+  reasoning to replay. A streamed turn calls its tools and is metered once, with the provider's own
+  figures — it was flattened into one prompt, sent no tool, and counted as an estimate. The providers'
+  streams now say what their buffered answers say: Anthropic assembles the `tool_use` blocks it
+  streams; MiniMax splits its leading `<think>` block out of the content deltas
+  (`LeadingReasoningTag`); and on the native protocol the OpenAI dialect and Anthropic give a streamed
+  answer the body their buffered answer carries, so the text-protocol fallback reads a call the model
+  wrote as text. The native and text loops (no `IChatClient`) stream every event but the text.
+- **`orkeon run --stream` streams a crew's turns.** The run observer's delta sink now reaches the
+  agent loop (`ExecutionOrchestrator.DeltaSink`, set by `AddOrkeonApplication` from the registered
+  `ILlmDeltaSink`): a YAML crew, a crew directory and a declarative `.ork.ts` crew write `llm.delta`
+  events, where only `ctx.llm.*` calls did. The observer registers the sink only under `--stream`, so a
+  run with `--events` alone keeps every call buffered. The REPL's console sink
+  (`Orkeon:Cli:ConsoleStreaming:Enabled`) renders the crew's turns too.
+- **A failed run fails the crew.** A strategy that returns a failed output — the rule of every mode
+  since GAP-03 — makes the orchestrator call `Crew.FailExecution` with the output's error (a readable
+  sentence when it has none): `CrewExecutionFailedEvent` with that `Reason`, naming each failed or
+  skipped task, and no `Exception`; the crew and its execution stay `Failed`. Only a run whose every task
+  succeeded completes it — one terminal transition per run. A cancelled run is a failed run whose
+  `Exception` is the `OperationCanceledException`, and a task the cancellation caught running is
+  `Cancelled` (it was failed with "Operation was cancelled").
+- **A task counts once, by its final outcome.** `CrewExecutionCompletedEvent.CompletedTasks` and
+  `CrewExecution.CompletedTasks` count each task the run completed once: a graph task that failed and
+  succeeded on its retry made a successful run report a failed task and a `PartialSuccess` execution.
+  `CrewExecutionCompletedHandler` logs "N tasks".
+- **A run that fails before its strategy reaches the execution hook**, once, from the orchestrator
+  (which takes an optional `ICrewExecutionHook`): a memory that cannot work, a plan whose provider
+  failed, a crew not found or refused by `ValidateCanKickoff`. `AUTO_SUMMARY.md` is written, `orkeon-host`
+  hears it, and `orkeon run --events jsonl` says `error` (`crew_failed`, the cause) before `run.finished`
+  — as [the run event bus](docs/architecture/run-event-bus.md) promised. A failure a strategy reported
+  is never reported twice.
+- **`KickoffForEachAsync` runs each input in sequence**, as its contract says and like CrewAI's
+  `kickoff_for_each`: each input is a full run, the next one starts once the previous one has
+  returned, and the results keep the inputs' order.
+- **`StepNotifyingToolInvocationPipeline.Wrap` always wraps** — without callbacks it notifies the stream
+  of a streamed run alone —, so an `ExecutionOrchestrator` built by hand streams its tool calls too.
+- **The `Orkeon` package embeds `Orkeon.Constants.Protocol`**, which `Orkeon.Application` now
+  references: the core closure is twelve assemblies.
+
+Breaking: `CrewExecutionEvent` is a record with `Kind`, `Timestamp`, `TaskId`, `AgentRole`, `Text`,
+`ToolName`, `Success`, `Duration`, `Skipped`, `SkipReason`, `Tokens`, `ToolCalls`, `Code`, `Message` and
+`Output` (its `TaskDescription` and `Thought` are gone); `AgentThought` (with `ThoughtType`),
+`IStreamingAgentExecutionService` and `StreamingAgentExecutionService` are removed, and
+`AddOrkeonInfrastructure()` registers no streaming service; `SequentialCrewOrchestrator` loses its
+`streamingService` parameter and gains an optional `ICrewExecutionHook executionHook`;
+`Crew.CompleteExecution(int completedTasks)` and the internal `CrewExecution.Complete(int)` lose their
+`failedTasks` parameter; `CrewExecutionCompletedEvent.FailedTasks`, `ExecutionStatus.PartialSuccess`
+(`Failed` is now `2`, `Cancelled` `3`), `CrewExecution.FailedTasks`, `CrewExecution.SuccessRate` and the
+internal `CrewExecution.UpdateProgress` are removed; a run with a failed task raises
+`CrewExecutionFailedEvent` instead of `CrewExecutionCompletedEvent` and leaves the crew `Failed`;
+`KickoffForEachAsync` no longer runs its inputs at once; `orkeon run --events` without `--stream`
+registers no `ILlmDeltaSink`, so `ctx.llm.act` stays buffered there.
+
+Migration: read a streamed run's events by `Kind` (`RunEventKinds.TaskStarted`, `LlmDelta`,
+`RunFinished`, …) and its result from the `run.finished` event's `Output`; drop
+`IStreamingAgentExecutionService` and call `KickoffStreamingAsync` on a crew; drop the
+`streamingService` argument of a hand-built `SequentialCrewOrchestrator` (pass `executionHook:` to have
+it report failures before the strategy); call `CompleteExecution(completed)`; move a handler of
+`CrewExecutionCompletedEvent` that inspected `FailedTasks` to `CrewExecutionFailedEvent`, whose
+`Reason` names each task that did not succeed; replace `ExecutionStatus.PartialSuccess` with `Failed`.
+A batch that relied on its inputs running at once builds one crew per input.
+
 ### Fixed — `planning: true` earns its call: the planner reads the crew and each task reads its own plan, in every mode **[breaking]**
 
 `planning: true` made one call before the first task (GAP-29) and little else came of it: the planner
@@ -49,7 +145,8 @@ twice; Hierarchical and Autonomous made the plan and ignored it; on the echo pro
   `Capabilities` hid the wrapped provider's. A keyless `orkeon run` of a `planning: true` crew exits 0.
 - **`.ork.ts`: `crewBuilder().planning(value = true)`**, YAML's `planning: true`, on the host's default
   profile; the procedural shape warns that it plans nothing.
-- A streamed run (`KickoffStreamingAsync`) does not plan, and warns once.
+- A streamed run (`KickoffStreamingAsync`) did not plan, and warned once — until the streaming kickoff
+  became the crew's own run (above).
 - **Removed:** `IPlanningStrategy` and `DefaultPlanningStrategy` (no caller); the plan's order, agent
   assignments, parallel groups and dependencies (`ExecutionPlan.Assignments`, `WithTask`,
   `WithAgentAssignment`, `GetAssignedAgent`, `GetTasksInOrder`, `GetParallelGroups`,
@@ -235,7 +332,7 @@ memory back into a prompt (GAP-30, the four findings left by GAP-20):
   memory is embedded.
 - **A forge trial runs without memory**, whatever the plan says: the promoted crew would recall the
   trial's outputs as its earlier runs. **The streaming kickoff** (`KickoffStreamingAsync`) neither
-  recalls nor stores, and says so in a warning for a crew with `memory: true`.
+  recalled nor stored, and said so in a warning — until it became the crew's own run (above).
 
 Breaking: a crew without `memory: true` stores nothing, one that names a `memoryProvider:` without it
 is refused, and one with it needs an embedder at kickoff. `IMemoryCoordinator` is reduced to

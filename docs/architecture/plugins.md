@@ -61,7 +61,7 @@ public sealed class WeatherPlugin : IOrkeonPlugin
 
 `Orkeon.Plugins` is **not distributed as a NuGet package**. Its csproj sets `IsPackable=false`,
 the [publication matrix](../reference/publication-matrix.md#discontinued-packages) lists it under
-*Discontinued packages*, and it is not one of the eleven assemblies embedded in the `Orkeon`
+*Discontinued packages*, and it is not one of the twelve assemblies embedded in the `Orkeon`
 umbrella package (`src/packaging/Orkeon/Orkeon.csproj`). `dotnet add package Orkeon.Plugins`
 resolves on no feed — NuGet.org and GitHub Packages alike (`NU1101`).
 

@@ -85,10 +85,11 @@ public class LlmProviderToChatClientAdapterTests
         using var adapter = new LlmProviderToChatClientAdapter(streamingProvider);
         var messages = new[] { new ChatMessage(ChatRole.User, "test") };
 
+        // The text arrives chunk by chunk; the last update carries the rest of the answer, no text.
         var chunks = new List<string>();
         await foreach (var update in adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
-            if (update.Text != null) chunks.Add(update.Text);
+            if (!string.IsNullOrEmpty(update.Text)) chunks.Add(update.Text);
         }
 
         Assert.Equal(2, chunks.Count);
@@ -107,7 +108,7 @@ public class LlmProviderToChatClientAdapterTests
         var chunks = new List<string>();
         await foreach (var update in adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
-            if (update.Text != null) chunks.Add(update.Text);
+            if (!string.IsNullOrEmpty(update.Text)) chunks.Add(update.Text);
         }
 
         Assert.Single(chunks);

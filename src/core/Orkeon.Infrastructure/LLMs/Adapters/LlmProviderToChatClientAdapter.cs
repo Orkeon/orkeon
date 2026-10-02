@@ -82,7 +82,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// One buffered call to the provider, returning both the answer as the provider gave it and
-    /// its M.E.AI mapping. The streaming fallback needs the raw answer too: a refusal lives in
+    /// its M.E.AI mapping. The buffered streaming path needs the raw answer too: a refusal lives in
     /// <see cref="LlmResponse.Metadata"/>, which a <see cref="ChatResponse"/> does not carry.
     /// </summary>
     private async Task<(LlmResponse Raw, ChatResponse Mapped)> CallProviderAsync(
@@ -92,13 +92,17 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         var config = MapOptions(options);
 
         var response = await _provider.ChatAsync(llmMessages, config, cancellationToken).ConfigureAwait(false);
+        return (response, MapResponse(response));
+    }
 
-        var mapped = TryBuildNativeToolCallResponse(response)
+    /// <summary>
+    /// The provider's answer as a <see cref="ChatResponse"/> — native tool calls, else tool calls of
+    /// the text protocol, else plain text —, the one mapping the buffered and the streamed paths share.
+    /// </summary>
+    private ChatResponse MapResponse(LlmResponse response) =>
+        TryBuildNativeToolCallResponse(response)
             ?? TryBuildTextFallbackToolCallResponse(response)
             ?? BuildPlainTextResponse(response);
-
-        return (response, mapped);
-    }
 
     /// <summary>
     /// Attempts to build a <see cref="ChatResponse"/> from native tool calls
@@ -304,43 +308,102 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Built like <see cref="GetResponseAsync"/> (GAP-32): the same messages, roles, tools and
+    /// options, so a streamed agent turn can call its tools. On a provider that streams
+    /// (<see cref="IStreamingLlmProvider.ChatStreamingAsync"/>), the text comes as it arrives, one
+    /// update per fragment; then one last update carries the rest of the answer the provider
+    /// assembled — its tool calls (native or of the text protocol), usage, finish reason, model,
+    /// the vendor's cost and the reasoning trace to replay —, and the text only where the fragments
+    /// did not already carry it: folded with <c>ToChatResponseAsync</c>, the updates give the
+    /// <see cref="ChatResponse"/> <see cref="GetResponseAsync"/> would have, in one assistant message.
+    /// No update carries a message id: updates of one role and no id fold into one message, and the
+    /// properties of an update without an id are the response's — where the buffered call puts the
+    /// vendor's cost (M.E.AI moves an identified update's properties onto its message). The call is
+    /// metered once, with the provider's usage. A provider that does not stream answers buffered, as
+    /// the same two updates. A refusal fails the enumeration, like the buffered call.
+    /// </remarks>
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // If the underlying provider supports streaming, use it
-        if (_provider is IStreamingLlmProvider streamingProvider && streamingProvider.SupportsStreaming)
-        {
-            var prompt = string.Join("\n", messages.Select(m =>
-                string.Join("", m.Contents.OfType<TextContent>().Select(t => t.Text))));
-            var config = MapOptions(options);
+        ArgumentNullException.ThrowIfNull(messages);
 
-            await foreach (var chunk in streamingProvider.GenerateStreamingAsync(prompt, config, cancellationToken).ConfigureAwait(false))
-            {
-                yield return new ChatResponseUpdate(ChatRole.Assistant, chunk);
-            }
-        }
-        else
+        if (_provider is not IStreamingLlmProvider streamingProvider || !streamingProvider.SupportsStreaming)
         {
-            // Fallback: execute non-streaming and return complete result as single chunk.
-            // A refusal (no content, the reason in the metadata) is not a chunk: an empty update
-            // would tell the consumer the model said nothing, hiding the sentence the provider
-            // did produce, so it fails the enumeration the way the providers' own streaming
-            // paths fail a rejected request.
+            // Buffered: the whole answer, then the rest of it. A refusal (no content, the reason in
+            // the metadata) is not an answer: it fails the enumeration, as the providers' own
+            // streaming paths fail a rejected request.
             var (raw, mapped) = await CallProviderAsync(messages, options, cancellationToken).ConfigureAwait(false);
-
             if (string.IsNullOrEmpty(raw.Content) && ProviderFailure(raw) is { } refusal)
                 throw refusal;
 
-            // The one update is the whole answer, so it carries what the answer cost: a
-            // consumer folding the updates gets the charge the buffered path would have given.
-            yield return new ChatResponseUpdate(ChatRole.Assistant, mapped.Text ?? string.Empty)
-            {
-                ModelId = mapped.ModelId,
-                AdditionalProperties = mapped.AdditionalProperties,
-            };
+            if (!string.IsNullOrEmpty(mapped.Text))
+                yield return TextUpdate(mapped.Text);
+            yield return FinalUpdate(mapped, streamedText: mapped.Text);
+            yield break;
         }
+
+        var llmMessages = MapMessages(messages);
+        var config = MapOptions(options);
+        var streamed = new System.Text.StringBuilder();
+        LlmResponse? final = null;
+        await foreach (var streamEvent in streamingProvider.ChatStreamingAsync(llmMessages, config, cancellationToken).ConfigureAwait(false))
+        {
+            if (streamEvent.Kind == LlmStreamEventKind.ContentDelta && !string.IsNullOrEmpty(streamEvent.Delta))
+            {
+                streamed.Append(streamEvent.Delta);
+                yield return TextUpdate(streamEvent.Delta);
+            }
+            else if (streamEvent.Kind == LlmStreamEventKind.Completed)
+            {
+                final = streamEvent.FinalResponse;
+            }
+        }
+
+        // A stream that ended without its final response answered what it streamed.
+        final ??= new LlmResponse { Content = streamed.ToString() };
+        if (string.IsNullOrEmpty(final.Content) && ProviderFailure(final) is { } failure)
+            throw failure;
+
+        yield return FinalUpdate(MapResponse(final), streamed.ToString());
+    }
+
+    /// <summary>One fragment of the turn's text, in the turn's assistant message.</summary>
+    private static ChatResponseUpdate TextUpdate(string text) => new(ChatRole.Assistant, text);
+
+    /// <summary>
+    /// The last update of a streamed turn: everything of <paramref name="mapped"/> the text updates
+    /// did not carry — the text left over when they carried only its beginning (a provider that
+    /// streamed nothing, or not all), the tool calls, the reasoning trace (as reasoning content, which
+    /// the next turn replays like the buffered trace), the usage, finish reason, model and the
+    /// vendor's cost. Folded after the fragments, it gives back <paramref name="mapped"/>.
+    /// </summary>
+    private static ChatResponseUpdate FinalUpdate(ChatResponse mapped, string streamedText)
+    {
+        var contents = new List<AIContent>();
+        var text = mapped.Text ?? string.Empty;
+        if (text.Length > streamedText.Length && text.StartsWith(streamedText, StringComparison.Ordinal))
+            contents.Add(new TextContent(text[streamedText.Length..]));
+
+        var message = mapped.Messages.Count > 0 ? mapped.Messages[^1] : null;
+        if (message is not null)
+        {
+            contents.AddRange(message.Contents.Where(content => content is not TextContent));
+            if (ExtractReasoningContent(message) is { Length: > 0 } reasoning)
+                contents.Add(new TextReasoningContent(reasoning));
+        }
+
+        if (mapped.Usage is { } usage)
+            contents.Add(new UsageContent(usage));
+
+        return new ChatResponseUpdate(ChatRole.Assistant, contents)
+        {
+            FinishReason = mapped.FinishReason,
+            ModelId = mapped.ModelId,
+            AdditionalProperties = mapped.AdditionalProperties,
+        };
     }
 
     /// <summary>
@@ -446,11 +509,17 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         return reasoningContent is null ? built : built with { ReasoningContent = reasoningContent };
     }
 
+    /// <summary>
+    /// The reasoning trace of an assistant message: in its properties when it came buffered, as
+    /// reasoning content when it came streamed (GAP-32) — replayed the same way either way.
+    /// </summary>
     private static string? ExtractReasoningContent(ChatMessage m)
     {
-        if (m.AdditionalProperties is null) return null;
-        if (!m.AdditionalProperties.TryGetValue(ReasoningContentMetadataKey, out var raw)) return null;
-        return raw as string;
+        if (m.AdditionalProperties is not null && m.AdditionalProperties.TryGetValue(ReasoningContentMetadataKey, out var raw))
+            return raw as string;
+
+        var streamed = string.Concat(m.Contents.OfType<TextReasoningContent>().Select(r => r.Text));
+        return streamed.Length > 0 ? streamed : null;
     }
 
     /// <summary>Creates an <see cref="LlmMessage"/> with the role factory matching the ChatRole.</summary>

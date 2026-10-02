@@ -549,7 +549,7 @@ The repository contains **48 src projects** and **36 test projects**, plus two s
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
 │   ├── interop/
 │   │   └── Orkeon.Interop.AgentFramework/ # Microsoft Agent Framework bridge, both directions (ADR-010): CrewAgent : AIAgent, AIAgentLlmProvider, AIAgentTool
-│   ├── packaging/                # NuGet packaging projects (PUB-25, 6 incl. the Interop and Aspire wrappers): the `Orkeon` umbrella (the 11-assembly core closure in one nupkg), `Orkeon.Tools` (the 8 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
+│   ├── packaging/                # NuGet packaging projects (PUB-25, 6 incl. the Interop and Aspire wrappers): the `Orkeon` umbrella (the 12-assembly core closure in one nupkg), `Orkeon.Tools` (the 8 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/    # Interactive REPL (dotnet tool `orkeon-repl`, Terminal.Gui split-pane)
 │       ├── Orkeon.Studio.Config/ # Studio: config TUI (orkeon init flows)

@@ -821,6 +821,17 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         public StringBuilder Content { get; } = new();
         public StringBuilder Reasoning { get; } = new();
         public AnthropicUsage Usage { get; set; }
+
+        /// <summary>The <c>tool_use</c> blocks streamed so far, by block index: id, name, input JSON.</summary>
+        public SortedDictionary<int, StreamedToolUse> ToolUses { get; } = new();
+    }
+
+    /// <summary>One streamed <c>tool_use</c> block: its id and name, then its input as JSON fragments.</summary>
+    private sealed class StreamedToolUse(string id, string name)
+    {
+        public string Id { get; } = id;
+        public string Name { get; } = name;
+        public StringBuilder InputJson { get; } = new();
     }
 
     /// <summary>
@@ -862,8 +873,22 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                     };
                     break;
 
+                // A tool call opens its own block (GAP-32): its id and name come first, its input
+                // after, as input_json_delta fragments of the same block index.
+                case "content_block_start" when root.TryGetProperty("content_block", out var block)
+                    && block.TryGetProperty("type", out var blockType) && blockType.GetString() == "tool_use":
+                    state.ToolUses[BlockIndex(root)] = new StreamedToolUse(
+                        block.TryGetProperty("id", out var toolId) ? toolId.GetString() ?? string.Empty : string.Empty,
+                        block.TryGetProperty("name", out var toolName) ? toolName.GetString() ?? string.Empty : string.Empty);
+                    break;
+
                 case "content_block_delta" when root.TryGetProperty("delta", out var blockDelta):
                     AccumulateBlockDelta(blockDelta, state, events);
+                    if (blockDelta.TryGetProperty("partial_json", out var partialJson)
+                        && state.ToolUses.TryGetValue(BlockIndex(root), out var toolUse))
+                    {
+                        toolUse.InputJson.Append(partialJson.GetString());
+                    }
                     break;
 
                 default:
@@ -873,6 +898,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         return events;
     }
+
+    private static int BlockIndex(JsonElement root) =>
+        root.TryGetProperty("index", out var index) && index.TryGetInt32(out var value) ? value : 0;
 
     private static void AccumulateBlockDelta(
         JsonElement delta, AnthropicStreamState state, List<LlmStreamEvent> events)
@@ -920,7 +948,66 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             CacheMissTokens = state.Usage.CacheMissTokens,
             Model = ResolveModel(config),
             Metadata = metadata.Build().ToDictionary(),
+            // The body the buffered path returns, rebuilt — the Messages API shape the tool-call
+            // parsers read: the tool calls the model streamed, and the text in which the
+            // text-protocol fallback reads a call written as text —, so a streamed turn calls its
+            // tools (GAP-32). Like the buffered body, only when tools travel natively.
+            RawResponseBody = _toolCallingStrategy?.SupportsNativeToolCalling == true
+                ? SynthesizeMessageBody(state)
+                : null,
         };
+    }
+
+    /// <summary>
+    /// The Messages API body of a streamed response: its text block, then one <c>tool_use</c>
+    /// block per call with its input parsed — an input that is not a JSON object (an empty one, a
+    /// cut stream) is an empty object.
+    /// </summary>
+    private static string SynthesizeMessageBody(AnthropicStreamState state)
+    {
+        var blocks = new List<object>();
+        if (state.Content.Length > 0)
+            blocks.Add(new Dictionary<string, object?> { ["type"] = "text", ["text"] = state.Content.ToString() });
+
+        foreach (var toolUse in state.ToolUses.Values)
+        {
+            blocks.Add(new Dictionary<string, object?>
+            {
+                ["type"] = "tool_use",
+                ["id"] = toolUse.Id,
+                ["name"] = toolUse.Name,
+                ["input"] = ParseToolInput(toolUse.InputJson.ToString()),
+            });
+        }
+
+        return JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["type"] = "message",
+            ["role"] = "assistant",
+            ["content"] = blocks,
+            ["stop_reason"] = state.ToolUses.Count > 0 ? "tool_use" : "end_turn",
+        });
+    }
+
+    private static JsonElement ParseToolInput(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "{}" : json);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                ? document.RootElement.Clone()
+                : EmptyObject();
+        }
+        catch (JsonException)
+        {
+            return EmptyObject();
+        }
+    }
+
+    private static JsonElement EmptyObject()
+    {
+        using var document = JsonDocument.Parse("{}");
+        return document.RootElement.Clone();
     }
 
     private LlmResponse ParseResponse(string responseJson, LlmConfig config)

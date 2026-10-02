@@ -214,6 +214,91 @@ public class AnthropicParityTests
         Assert.Equal("pondering", completed.FinalResponse.Metadata["reasoning_content"]);
     }
 
+    /// <summary>
+    /// GAP-32: a streamed turn calls its tools. The Messages API streams a tool call as a
+    /// <c>tool_use</c> block — its id and name first, its input in <c>input_json_delta</c>
+    /// fragments —, which the stream used to drop: the final response carried the text alone, and
+    /// an agent streamed on Claude never called a tool. The final response now carries them in the
+    /// body the buffered path returns, which the chat client reads.
+    /// </summary>
+    [Fact]
+    public async Task ShouldAssembleStreamedToolUseBlocks_IntoTheFinalResponse()
+    {
+        var sse = string.Join("\n\n",
+            """data: {"type":"message_start","message":{"usage":{"input_tokens":12}}}""",
+            """data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}""",
+            """data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Looking it up."}}""",
+            """data: {"type":"content_block_stop","index":0}""",
+            """data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01","name":"web_search","input":{}}}""",
+            """data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"query\": \"orke"}}""",
+            """data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"on\"}"}}""",
+            """data: {"type":"content_block_stop","index":1}""",
+            """data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":9}}""",
+            """data: {"type":"message_stop"}""",
+            "") + "\n";
+        using var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(sse, Encoding.UTF8, "text/event-stream"),
+        });
+        _httpClientFactory.RegisterClient("AnthropicLlmProvider", new HttpClient(handler));
+        using var provider = new AnthropicLlmProvider(
+            BaseConfig(), _httpClientFactory, new Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallingStrategy(), _logger);
+        using var chatClient = new Orkeon.Infrastructure.LLMs.Adapters.LlmProviderToChatClientAdapter(provider);
+
+        var response = await Microsoft.Extensions.AI.ChatResponseExtensions.ToChatResponseAsync(
+            chatClient.GetStreamingResponseAsync(
+                [new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, "search")],
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("Looking it up.", response.Text);
+        var call = Assert.Single(response.Messages.SelectMany(m => m.Contents).OfType<Microsoft.Extensions.AI.FunctionCallContent>());
+        Assert.Equal("toolu_01", call.CallId);
+        Assert.Equal("web_search", call.Name);
+        Assert.Equal("orkeon", call.Arguments!["query"]?.ToString());
+        Assert.Equal(21, response.Usage?.TotalTokenCount);
+    }
+
+    /// <summary>
+    /// GAP-32 — on the native protocol, a model that writes its call in the text protocol: the
+    /// streamed answer carries a Messages API body, as the buffered one does, so the fallback parser
+    /// reads the call there too and a streamed agent turn calls the same tool.
+    /// </summary>
+    [Fact]
+    public async Task ShouldCarryABody_WhenAStreamedAnswerWritesItsCallAsText()
+    {
+        var sse = string.Join("\n\n",
+            """data: {"type":"message_start","message":{"usage":{"input_tokens":12}}}""",
+            """data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}""",
+            """data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Looking. [TOOL_CALL]{tool => \"web_search\", "}}""",
+            """data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"args => {--query \"orkeon\"}}[/TOOL_CALL]"}}""",
+            """data: {"type":"content_block_stop","index":0}""",
+            """data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":9}}""",
+            """data: {"type":"message_stop"}""",
+            "") + "\n";
+        using var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(sse, Encoding.UTF8, "text/event-stream"),
+        });
+        _httpClientFactory.RegisterClient("AnthropicLlmProvider", new HttpClient(handler));
+        using var provider = new AnthropicLlmProvider(
+            BaseConfig(), _httpClientFactory, new Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallingStrategy(), _logger);
+        using var chatClient = new Orkeon.Infrastructure.LLMs.Adapters.LlmProviderToChatClientAdapter(
+            provider,
+            textFallbackParser: new Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser>.Instance));
+
+        var response = await Microsoft.Extensions.AI.ChatResponseExtensions.ToChatResponseAsync(
+            chatClient.GetStreamingResponseAsync(
+                [new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, "search")],
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
+
+        var call = Assert.Single(response.Messages.SelectMany(m => m.Contents).OfType<Microsoft.Extensions.AI.FunctionCallContent>());
+        Assert.Equal("web_search", call.Name);
+        Assert.Equal("orkeon", call.Arguments!["query"]?.ToString());
+    }
+
     [Fact]
     public async Task ShouldCompleteWithAnError_WhenTheStreamingCallFails()
     {

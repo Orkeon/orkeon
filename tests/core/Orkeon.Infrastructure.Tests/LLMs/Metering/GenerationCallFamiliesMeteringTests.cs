@@ -1,15 +1,20 @@
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Context;
+using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Evaluation;
+using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
-using Orkeon.Infrastructure.Agent;
 using Orkeon.Infrastructure.Crew;
 using Orkeon.Infrastructure.Evaluation.LlmJudge;
 using Orkeon.Infrastructure.LLMs;
@@ -25,7 +30,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
 /// STUDIO-42, the families the meter used to miss: the hierarchical manager, the flows, the
-/// memory services, the LLM judges and the streamed agent. For each one, a provider that
+/// memory services, the LLM judges and the streamed agent turn. For each one, a provider that
 /// counts its calls under the one metering decorator: as many usage events as calls, never a
 /// duplicate — and each tagged with the work it was (D-02).
 /// </summary>
@@ -128,27 +133,63 @@ public sealed class GenerationCallFamiliesMeteringTests
     [Fact]
     public async Task A_streamed_agent_turn_is_metered_once_for_its_agent_its_task_and_its_crew()
     {
-        // The streamed path has no usage channel (D-06): the turn is counted once, at the end
-        // of the stream, as an estimate — attributed like any other agent turn.
+        // GAP-32: a streamed agent turn is the crew's own turn, through the chat client's streaming
+        // path, which reads the provider's chat stream — its final response carries the usage. It
+        // is counted once, attributed like any other turn, with the provider's own figures: the old
+        // text-only stream carried no usage and was counted as an estimate.
         var provider = new MockStreamingLlmProvider { SupportsStreaming = true };
         provider.SetStreamingChunks(["A streamed ", "final answer"]);
+        provider.SetCompletedResponse(new LlmResponse
+        {
+            Content = "A streamed final answer",
+            PromptTokens = 120,
+            CompletionTokens = 8,
+            TokensUsed = 128,
+        });
         var sink = new MockLlmUsageSink();
-        using var chatClient = new LlmProviderToChatClientAdapter(MeteredLlmProvider.Wrap(provider, sink));
-        var service = new StreamingAgentExecutionService(
-            chatClient, [], NullLogger<StreamingAgentExecutionService>.Instance, new FakeFileSystemService());
-        var task = BuildTask();
-        var context = BuildContext();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService()
+            .AddMount("/output", FileAccessRights.Read | FileAccessRights.Write | FileAccessRights.Create));
+        services.AddSingleton<ILlmUsageSink>(sink);
+        services.AddOrkeonLlmProvider(_ => provider);
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var host = services.BuildServiceProvider();
+        await using var scope = host.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var config = await sp.GetRequiredService<ICrewDefinitionLoader>().LoadFromStringAsync("""
+            name: metered-desk
+            goal: Spend tokens
+            agents:
+              streamer:
+                role: Streamer
+                goal: Spend tokens
+            tasks:
+              answer:
+                description: Metered task
+                expected_output: An answer
+                agent: streamer
+            """, TestContext.Current.CancellationToken);
+        var crew = await sp.GetRequiredService<ICrewFactory>().CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
+        var orchestrator = sp.GetRequiredService<Orkeon.Application.Interfaces.Services.ICrewOrchestrationService>();
 
-        await foreach (var _ in service.StreamExecutionAsync(BuildAgent("Streamer"), task, context, TestContext.Current.CancellationToken))
+        await foreach (var _ in orchestrator.KickoffStreamingAsync(
+            crew.Id, Orkeon.Application.Interfaces.Services.CrewInput.Empty(), TestContext.Current.CancellationToken))
         {
         }
 
-        Assert.Equal(1, provider.GenerateStreamingCallCount);
+        Assert.Equal(1, provider.ChatStreamingCallCount);
+        Assert.Equal(0, provider.ChatCallCount);
+        Assert.Equal(0, provider.GenerateStreamingCallCount);
         var usage = Assert.Single(sink.Recorded);
-        Assert.True(usage.Estimated);
+        Assert.False(usage.Estimated);
+        Assert.Equal(120, usage.PromptTokens);
+        Assert.Equal(8, usage.CompletionTokens);
         Assert.Equal(LlmUsageOperations.Agent, usage.OperationType);
         Assert.Equal("Streamer", usage.AgentId);
-        Assert.Equal(task.Id.ToString(), usage.TaskId);
-        Assert.Equal(context.CrewId.ToString(), usage.CrewId);
+        Assert.Equal(crew.Tasks[0].ToString(), usage.TaskId);
+        Assert.Equal(crew.Id.ToString(), usage.CrewId);
     }
 }

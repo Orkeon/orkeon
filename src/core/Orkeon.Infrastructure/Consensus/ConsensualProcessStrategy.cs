@@ -170,7 +170,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         // re-execution), so the real cost is the sum of all executions, not just the
         // winning result.
         var tokenTally = new TokenUsageTally();
-        var outcome = new CrewRunOutcome(_lifecycle);
+        var outcome = new CrewRunOutcome(_lifecycle, ct);
 
         // The terminal event goes out on EVERY exit — setup included: "consensus not
         // reached" was the only failure this mode reported, and a throwing round, a Ctrl+C

@@ -22,8 +22,8 @@ abandonnés* : elle n'est poussée ni sur NuGet.org ni sur GitHub Packages, donc
 `dotnet add package Orkeon.Hosting` ne peut pas se résoudre (`NU1101`).
 
 Elle n'est pas non plus embarquée dans le paquet parapluie `Orkeon`.
-`src/packaging/Orkeon/Orkeon.csproj` embarque onze assemblies — `Orkeon.Domain`,
-`Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration}`,
+`src/packaging/Orkeon/Orkeon.csproj` embarque douze assemblies — `Orkeon.Domain`,
+`Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}`,
 `Orkeon.Tools.Abstractions`, `Orkeon.Analysis{,.Abstractions}`, `Orkeon.Rag{,.Abstractions}` — et
 `Orkeon.Hosting` n'en fait pas partie.
 

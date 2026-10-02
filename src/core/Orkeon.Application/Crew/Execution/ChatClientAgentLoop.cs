@@ -2,7 +2,9 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 using System.Diagnostics;
 using Microsoft.Extensions.AI;
 using Orkeon.Constants.Llm;
+using Orkeon.Constants.Protocol;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Task;
@@ -16,10 +18,21 @@ namespace Orkeon.Application.Crew.Execution;
 /// accounting, empty-final-message retry and max-iteration exhaustion handling.
 /// </summary>
 /// <remarks>
+/// <para>
 /// It reports no usage of its own: the provider under the chat client is metered, so every
 /// call made here — each turn and each retry — reaches the token meter once, attributed to
 /// the scope <see cref="ExecutionOrchestrator"/> opens for the task (STUDIO-42). The loop
 /// used to report its turns itself and missed its retries.
+/// </para>
+/// <para>
+/// A turn is streamed when someone reads it (GAP-32): the run is streamed
+/// (<see cref="CrewStreamScope"/>, <c>KickoffStreamingAsync</c>) or the host registered an
+/// <see cref="ILlmDeltaSink"/> (<c>orkeon run --stream</c>, the REPL's console). The call then goes
+/// through <see cref="IChatClient.GetStreamingResponseAsync"/>: each text fragment goes to the stream
+/// as an <c>llm.delta</c> — with the task and the agent of the call, those of the token meter — and
+/// to the sink, then the updates fold into the turn's <see cref="ChatResponse"/> and the loop goes on
+/// unchanged. Otherwise the call stays buffered, byte for byte.
+/// </para>
 /// </remarks>
 internal sealed class ChatClientAgentLoop
 {
@@ -28,19 +41,22 @@ internal sealed class ChatClientAgentLoop
     private readonly LlmCallGate _llmGate;
     private readonly ChatOptionsComposer _optionsComposer;
     private readonly ChatToolDispatcher _toolDispatcher;
+    private readonly ILlmDeltaSink? _deltaSink;
 
     internal ChatClientAgentLoop(
         ILogger logger,
         IChatClient chatClient,
         LlmCallGate llmGate,
         ChatOptionsComposer optionsComposer,
-        ChatToolDispatcher toolDispatcher)
+        ChatToolDispatcher toolDispatcher,
+        ILlmDeltaSink? deltaSink = null)
     {
         _logger = logger;
         _chatClient = chatClient;
         _llmGate = llmGate;
         _optionsComposer = optionsComposer;
         _toolDispatcher = toolDispatcher;
+        _deltaSink = deltaSink;
     }
 
     /// <summary>
@@ -210,7 +226,7 @@ internal sealed class ChatClientAgentLoop
         using var chatActivity = StartChatActivity(agent, options);
         try
         {
-            var chatResponse = await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+            var chatResponse = await RespondAsync(messages, options, cancellationToken).ConfigureAwait(false);
             CompleteChatActivity(chatActivity, chatResponse);
             return (chatResponse, null);
         }
@@ -642,7 +658,7 @@ internal sealed class ChatClientAgentLoop
         ChatResponse response;
         try
         {
-            response = await _chatClient.GetResponseAsync(messages, retryOptions, cancellationToken).ConfigureAwait(false);
+            response = await RespondAsync(messages, retryOptions, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -653,5 +669,55 @@ internal sealed class ChatClientAgentLoop
         var tokens = (int)(response.Usage?.TotalTokenCount ?? 0);
         messages.AddRange(response.Messages);
         return (text, tokens);
+    }
+
+    /// <summary>
+    /// One call to the chat client, under the caller's lease: buffered, unless someone reads the
+    /// turn as it comes — a streamed run (<see cref="CrewStreamScope"/>) or a host's
+    /// <see cref="ILlmDeltaSink"/>. Streamed, each text fragment is written to the run's stream as an
+    /// <c>llm.delta</c> and handed to the sink as it arrives, and the updates fold into the same
+    /// <see cref="ChatResponse"/> a buffered call returns: the turn's text, its tool calls, usage and
+    /// cost, read by the rest of the loop unchanged. The text is the model's as it arrived — a turn
+    /// the loop then retries or that ends in a tool call was streamed all the same.
+    /// </summary>
+    private async System.Threading.Tasks.Task<ChatResponse> RespondAsync(
+        List<ChatMessage> messages, ChatOptions options, CancellationToken cancellationToken)
+    {
+        if (!CrewStreamScope.IsOpen && _deltaSink is null)
+            return await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+
+        // Read before the first update: the call's task and agent, as the token meter knows them.
+        var call = LlmUsageScope.Current;
+        var taskId = string.IsNullOrEmpty(call.TaskId) ? null : call.TaskId;
+        var agentRole = string.IsNullOrEmpty(call.AgentId) ? null : call.AgentId;
+        var updates = new List<ChatResponseUpdate>();
+        var sank = false;
+        await foreach (var update in _chatClient.GetStreamingResponseAsync(messages, options, cancellationToken).ConfigureAwait(false))
+        {
+            updates.Add(update);
+            var text = update.Text;
+            if (string.IsNullOrEmpty(text))
+                continue;
+
+            CrewStreamScope.Write(new CrewExecutionEvent
+            {
+                Kind = RunEventKinds.LlmDelta,
+                TaskId = taskId,
+                AgentRole = agentRole,
+                Text = text,
+            });
+            if (_deltaSink is not null)
+            {
+                _deltaSink.OnDelta(text);
+                sank = true;
+            }
+        }
+
+        // The sink's turn boundary, only after a turn that rendered something: a turn that only
+        // called tools leaves the console as it was.
+        if (sank)
+            _deltaSink!.OnTurnCompleted();
+
+        return updates.ToChatResponse();
     }
 }

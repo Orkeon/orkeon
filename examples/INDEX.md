@@ -214,5 +214,5 @@ These live under `examples/` but are code- or script-driven rather than pure `co
 | [`service-host/`](service-host/) | JSON configuration | Hosting a crew as a daemon: one hosted crew, a Discord channel, mounts, and the two secrets named rather than written. |
 | [`rag/`](rag/) | C# programs | RAG subsystem (fully offline, local BGE, no API key): `basic-ingestion` (incremental ingestion + cited queries), `hybrid-retrieval` (BM25 + RRF vs vector-only), `custom-reranker` (host-provided `IReranker` via `IRerankerRegistrar`), `crew-yaml` (crew `rag:`/`knowledge:` blocks); plus the `eval/` golden dataset. |
 | [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |
-| [`09-experimental/streaming-demo/`](09-experimental/streaming-demo/) | C# program | Real-time streaming of agent execution (`IStreamingAgentExecutionService`). |
+| [`09-experimental/streaming-demo/`](09-experimental/streaming-demo/) | C# program | A crew run streamed as it goes (`KickoffStreamingAsync`): task start and end, the model's text, the final output. |
 
