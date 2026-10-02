@@ -62,6 +62,32 @@ public sealed class RunCommandYamlTests
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GAP-31: the echo provider replays its prompt, so the "plan" it returned declared every task
+    /// missing and a <c>planning: true</c> crew exited 2 where the same crew without planning ran
+    /// to the end. The plan is skipped instead, with a warning that says so.
+    /// </summary>
+    [Fact]
+    public async Task A_crew_with_planning_runs_to_the_end_on_the_echo_provider_and_says_it_planned_nothing()
+    {
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript(
+            "planned.yaml",
+            MinimalCrew.Replace("process: sequential", "process: sequential\nplanning: true", StringComparison.Ordinal));
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = crew,
+            AllowExternalMounts = true,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains("planning skipped", console.Stdout + console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("ERROR: ", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Yaml_extension_routes_to_crew_runner_not_script_host()
     {

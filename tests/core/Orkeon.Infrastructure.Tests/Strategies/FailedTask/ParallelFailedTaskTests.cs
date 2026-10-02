@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.Crew;
 using Orkeon.Domain.Task;
 using Orkeon.Infrastructure.Crew.Strategies;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 
 namespace Orkeon.Infrastructure.Tests.Strategies.FailedTask;
 
@@ -76,6 +75,6 @@ public sealed class ParallelFailedTaskTests : IDisposable
             _fixture.Hook);
 
         return await strategy.ExecuteParallelAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

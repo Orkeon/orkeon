@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 
 namespace Orkeon.Infrastructure.Tests.Integration;
@@ -208,10 +207,9 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
         crew.AddTask(taskB.Id);
         crew.AddTask(taskC.Id);
 
-        var plan = CrewExecutionPlan.Create([taskA.Id, taskB.Id, taskC.Id]);
 
         // Act
-        var result = await _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -265,10 +263,9 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
         foreach (var t in tasks)
             crew.AddTask(t.Id);
 
-        var plan = CrewExecutionPlan.Create(tasks.Select(t => t.Id));
 
         // Act
-        var result = await _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -310,10 +307,9 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
         foreach (var t in tasks)
             crew.AddTask(t.Id);
 
-        var plan = CrewExecutionPlan.Create(tasks.Select(t => t.Id));
 
         // Act
-        var result = await _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -340,11 +336,10 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
             .Build();
         crew.AddTask(task.Id);
 
-        var plan = CrewExecutionPlan.Create([task.Id]);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            () => _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("No agents available", ex.Message);
     }
 
@@ -375,10 +370,9 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
         crew.AddTask(validTask.Id);
         crew.AddTask(missingTaskId);
 
-        var plan = CrewExecutionPlan.Create([validTask.Id, missingTaskId]);
 
         // Act
-        var result = await _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -418,10 +412,9 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
         foreach (var a in agents) crew.AddAgent(a.Id);
         foreach (var t in tasks) crew.AddTask(t.Id);
 
-        var plan = CrewExecutionPlan.Create(tasks.Select(t => t.Id));
 
         // Act
-        var result = await _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -459,10 +452,9 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
         crew.AddTask(task1.Id);
         crew.AddTask(task2.Id);
 
-        var plan = CrewExecutionPlan.Create([task1.Id, task2.Id]);
 
         // Act
-        var result = await _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -487,7 +479,6 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
             .Goal("Test unsupported methods")
             .Parallel()
             .Build();
-        var plan = CrewExecutionPlan.Create();
         var managerAgent = new AgentBuilder()
             .Role(RoleManager)
             .Goal("Manage")
@@ -496,7 +487,7 @@ public sealed class ParallelProcessIntegrationTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<NotSupportedException>(
-            () => _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            () => _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<NotSupportedException>(
             () => _strategy.ExecuteHierarchicalAsync(crew, managerAgent.Id, cancellationToken: TestContext.Current.CancellationToken));
     }

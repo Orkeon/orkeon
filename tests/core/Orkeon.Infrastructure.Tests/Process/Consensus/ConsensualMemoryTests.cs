@@ -16,7 +16,6 @@ using Orkeon.Infrastructure.Memory;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 
 namespace Orkeon.Infrastructure.Tests.Process.Consensus;
@@ -220,6 +219,6 @@ public sealed partial class ConsensualMemoryTests : IDisposable
             NullLogger<ConsensualProcessStrategy>.Instance,
             Microsoft.Extensions.Options.Options.Create(options));
 
-        return strategy.ExecuteConsensualAsync(crew, CrewExecutionPlan.Create(), ct: TestContext.Current.CancellationToken);
+        return strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
     }
 }

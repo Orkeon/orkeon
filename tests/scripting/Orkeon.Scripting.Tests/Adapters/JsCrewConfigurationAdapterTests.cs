@@ -443,6 +443,37 @@ public sealed class JsCrewConfigurationAdapterTests
         Assert.Equal("script_tool", tool.Name);
     }
 
+    /// <summary>
+    /// GAP-31: YAML parity <c>planning: true</c>. <c>crewBuilder()</c> had no planning switch and
+    /// the adapter never filled <see cref="Orkeon.Domain.Configuration.CrewConfiguration.Planning"/>:
+    /// a crew ported from YAML to <c>.ork.ts</c> lost its planning on the way.
+    /// </summary>
+    [Theory]
+    [InlineData(".planning()", true)]
+    [InlineData(".planning(true)", true)]
+    [InlineData(".planning(false)", false)]
+    [InlineData("", false)]
+    public void Adapt_maps_planning_as_written_and_leaves_it_off_by_default(string call, bool expected)
+    {
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, $$"""
+            const analyst = agentBuilder().name("analyst").role("Analyst").goal("Analyze").build();
+            const work = taskBuilder().name("work").agent(analyst)
+                .description("Do the work").expectedOutput("A result").build();
+
+            crewBuilder()
+                .name("planned").goal("Plan the work")
+                {{call}}
+                .withAgent(analyst)
+                .withTask(work)
+                .build();
+            """);
+
+        var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
+
+        Assert.Equal(expected, config.Planning);
+    }
+
     [Fact]
     public void Ignored_features_are_empty_when_the_script_declares_only_what_this_path_honours()
     {

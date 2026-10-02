@@ -4,7 +4,6 @@ using Orkeon.Domain.Crew;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.Events;
 using Orkeon.Infrastructure.Crew.Strategies;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Infrastructure.Tests.Strategies.Lifecycle;
@@ -66,6 +65,6 @@ public sealed class ParallelLifecycleTests : IDisposable
             domainEvents: _fixture.Events);
 
         return await strategy.ExecuteParallelAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

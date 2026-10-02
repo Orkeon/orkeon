@@ -13,7 +13,6 @@ using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Persistence.Task;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using TaskStatus = Orkeon.Domain.Task.ValueObjects.TaskStatus;
@@ -463,6 +462,6 @@ public sealed class SequentialAsyncExecutionTests : IDisposable
         foreach (var task in tasks)
             builder.WithTask(task);
         return await Strategy().ExecuteSequentialAsync(
-            builder.Build(), CrewExecutionPlan.Create(), cancellationToken: cancellationToken);
+            builder.Build(), cancellationToken: cancellationToken);
     }
 }

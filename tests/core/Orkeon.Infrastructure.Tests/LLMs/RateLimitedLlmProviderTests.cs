@@ -20,6 +20,18 @@ public class RateLimitedLlmProviderTests
     }
 
     [Fact]
+    public void Capabilities_PassThroughInner()
+    {
+        // GAP-31: the crew's planner reads the capabilities of the provider it plans on — the echo
+        // provider says it replays its prompt — and a decorator that hid them reported Unknown.
+        var capabilities = new LlmProviderCapabilities { ReplaysPrompt = true, ResponseFormat = ResponseFormatSupport.JsonObject };
+        ILlmProvider sut = new RateLimitedLlmProvider(
+            new Orkeon.Infrastructure.Tests.Doubles.MockLlmProvider { Capabilities = capabilities }, new AlwaysAcquire());
+
+        Assert.Same(capabilities, sut.Capabilities);
+    }
+
+    [Fact]
     public void Ctor_NullArgs_Throw()
     {
         Assert.Throws<ArgumentNullException>(() => new RateLimitedLlmProvider(null!, new AlwaysAcquire()));

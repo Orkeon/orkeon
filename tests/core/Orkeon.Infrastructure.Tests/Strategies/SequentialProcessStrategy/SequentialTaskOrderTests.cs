@@ -15,17 +15,19 @@ using Orkeon.Infrastructure.Persistence.Task;
 using Orkeon.Infrastructure.Serialization;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 
 namespace Orkeon.Infrastructure.Tests.Strategies;
 
 /// <summary>
-/// STUDIO-12 C2 — without a plan, the sequential strategy runs the crew's tasks in a stable
-/// topological order on their declared dependencies, whichever layout the crew was written
-/// in. The multi-file layout lists the tasks in the ordinal order of their file names, so
-/// <c>aaa-second.yaml</c> (which depends on <c>zzz-first</c>) used to run first, silently.
+/// STUDIO-12 C2 — the sequential strategy runs the crew's tasks in a stable topological order on
+/// their declared dependencies, whichever layout the crew was written in. The multi-file layout
+/// lists the tasks in the ordinal order of their file names, so <c>aaa-second.yaml</c> (which
+/// depends on <c>zzz-first</c>) used to run first, silently. No plan reaches the strategy (GAP-31):
+/// the two tests that pinned a plan's order here are now orchestrator tests —
+/// <c>PlanningOnTheDefaultProfileTests</c>, where a plan listing the tasks in another order, or one
+/// task twice, changes neither the order nor the executions.
 /// </summary>
 public sealed class SequentialTaskOrderTests : IDisposable
 {
@@ -85,7 +87,7 @@ public sealed class SequentialTaskOrderTests : IDisposable
         var (crew, strategy) = await BuildFromYamlAsync(fs, path, multiFile);
 
         var output = await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(output.Success);
         Assert.Equal(["STEP ONE - must run first", "STEP TWO - depends on zzz-first"], _executed);
@@ -101,7 +103,7 @@ public sealed class SequentialTaskOrderTests : IDisposable
         var (crew, strategy) = Build(agent, tasks);
 
         await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(["C", "A", "B"], _executed);
     }
@@ -116,7 +118,7 @@ public sealed class SequentialTaskOrderTests : IDisposable
         var (crew, strategy) = Build(agent, [a, b]);
 
         await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(["A", "B"], _executed);
         Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("circular", StringComparison.OrdinalIgnoreCase));
@@ -133,49 +135,13 @@ public sealed class SequentialTaskOrderTests : IDisposable
         var (crew, strategy) = Build(agent, [a, b]);
 
         var output = await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(output.Success);
         Assert.Equal(["A", "B"], _executed);
         var warning = Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning);
         Assert.Contains("circular", warning.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(a.Id.ToString(), warning.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task A_plan_that_carries_tasks_decides_the_order_as_before()
-    {
-        var agent = NewAgent();
-        var a = NewTask("A");
-        var b = NewTask("B");
-        var (crew, strategy) = Build(agent, [a, b]);
-        var plan = CrewExecutionPlan.Create([b.Id, a.Id]);
-
-        await strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
-
-        Assert.Equal(["B", "A"], _executed);
-    }
-
-    /// <summary>
-    /// GAP-29: <c>planning: true</c> plans every YAML crew that sets it now, and the planner sees
-    /// task ids, not their dependencies. Its order is followed wherever the declared
-    /// dependencies allow it — never ahead of one: taken as is, a plan listing the tasks in the
-    /// multi-file layout's file-name order brought back the defect STUDIO-12 C2 removed.
-    /// </summary>
-    [Fact]
-    public async Task A_plan_never_runs_a_task_before_one_it_depends_on()
-    {
-        var agent = NewAgent();
-        var a = NewTask("A");
-        var b = NewTask("B");
-        var c = NewTask("C");
-        b.AddDependency(a.Id);
-        var (crew, strategy) = Build(agent, [a, b, c]);
-        var plan = CrewExecutionPlan.Create([c.Id, b.Id, a.Id]);
-
-        await strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
-
-        Assert.Equal(["C", "A", "B"], _executed);
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────────────

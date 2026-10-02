@@ -14,7 +14,6 @@ using Orkeon.Domain.Autonomous;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using DomainExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
 using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
 
@@ -22,8 +21,9 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 
 /// <summary>
 /// Sequential process strategy implementation.
-/// Executes tasks one after another: in the plan's order when the crew was planned, otherwise
-/// in the declared order sorted on the tasks' dependencies (<see cref="CrewTaskSequencer"/>).
+/// Executes tasks one after another, in the declared order sorted on the tasks' dependencies
+/// (<see cref="CrewTaskSequencer"/>) — with or without <c>planning: true</c>, whose plan reaches
+/// each task in its prompt and never changes the order (GAP-31).
 /// <para>
 /// A task with <c>asyncExecution</c> is the exception, with CrewAI's semantics (GAP-22): it is
 /// launched on its own flow and the next task starts at once; a task that depends on it waits for
@@ -81,18 +81,15 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// <inheritdoc />
     public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(crew);
-        ArgumentNullException.ThrowIfNull(plan);
-        return ExecuteSequentialCoreAsync(crew, plan, inputVariables, cancellationToken);
+        return ExecuteSequentialCoreAsync(crew, inputVariables, cancellationToken);
     }
 
     private async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialCoreAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables,
         CancellationToken cancellationToken)
     {
@@ -126,7 +123,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             _delegationProvider.UpdateExecutionContext(run.ContextNow());
 
             var taskIds = await CrewTaskSequencer.ResolveAsync(
-                crew, plan, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
+                crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
             var agentIndex = 0;
 
             for (var position = 0; position < taskIds.Count; position++)
@@ -502,7 +499,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     }
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, DomainExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException(
             "Parallel execution is not supported by SequentialProcessStrategy. " +

@@ -47,6 +47,8 @@ enregistrant le vôtre **après** l'appel Orkeon.
 > `AddOrkeonLlmProvider(...)` (voir [Bootstrap](./bootstrap.md)). Le fournisseur OpenAI sans clé
 > qui en tenait lieu a disparu (GAP-29). La CLI `orkeon`, `orkeon-host` et `orkeon-repl` se
 > comportent autrement : sans section `Llm`, ils tournent sur le fournisseur écho et le signalent.
+> Une crew `planning: true` y saute alors son plan, avec un avertissement : le fournisseur écho
+> renvoie son prompt, il n'y a rien avec quoi planifier (GAP-31).
 
 ## Les défauts véritablement silencieux
 

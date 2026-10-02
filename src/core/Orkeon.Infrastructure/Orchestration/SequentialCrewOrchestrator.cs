@@ -12,11 +12,12 @@ using Orkeon.Domain.Task;
 using Orkeon.Domain.SharedKernel.Events;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Application.Interfaces;
+using Orkeon.Application.Crew.Execution;
+using Orkeon.Infrastructure.Crew.Strategies;
 // Resolve ambiguous references
 using TaskOutput = Orkeon.Application.Execution.TaskOutput;
 using CrewInput = Orkeon.Application.Interfaces.Services.CrewInput;
 using CrewOutput = Orkeon.Application.Interfaces.Services.CrewOutput;
-using DomainCrewInput = Orkeon.Domain.Crew.CrewInput;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using DomainExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 
@@ -41,6 +42,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly Orkeon.Application.EventHub.IEventHubCallerContext? _hubCallerContext;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
     private readonly IMemoryCoordinator? _memoryCoordinator;
+    private readonly ITaskRepository? _taskRepository;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -48,7 +50,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// <remarks>
     /// Parameters exceed threshold due to DI injection requirements for optional services. The
     /// <paramref name="memoryCoordinator"/> refuses, before the first task, a crew with
-    /// <c>memory: true</c> whose memory cannot work (GAP-30); without one, nothing is checked.
+    /// <c>memory: true</c> whose memory cannot work (GAP-30); without one, nothing is checked. The
+    /// <paramref name="taskRepository"/> and <paramref name="agentRepository"/> show the crew's planner
+    /// its tasks and agents (GAP-31): a crew with <c>planning: true</c> needs both.
     /// </remarks>
 #pragma warning disable S107 // Methods should not have too many parameters — DI constructor with optional services
     public SequentialCrewOrchestrator(
@@ -64,7 +68,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null,
         Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null,
         Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
-        IMemoryCoordinator? memoryCoordinator = null)
+        IMemoryCoordinator? memoryCoordinator = null,
+        ITaskRepository? taskRepository = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -86,6 +91,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _hubCallerContext = hubCallerContext;
         _llmProfiles = llmProfiles;
         _memoryCoordinator = memoryCoordinator;
+        _taskRepository = taskRepository;
     }
 
     /// <summary>
@@ -140,11 +146,6 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 LogCheckpointSessionStarted(sessionId, crewId);
             }
 
-            // Convert application input to domain input
-            var domainInput = new DomainCrewInput(
-                input.InitialContext ?? "Default context",
-                input.Variables?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? []);
-
             // Validate and start execution (state transition in domain)
             crew.ValidateCanKickoff();
             crew.StartExecution();
@@ -159,7 +160,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // so it flows through strategies, agents and tools alike.
             var domainOutput = await RunWithCrewIdentityAsync(
                 crew.Id,
-                () => ExecuteAndCompleteAsync(crew, processStrategy, domainInput, input, cancellationToken))
+                () => ExecuteAndCompleteAsync(crew, processStrategy, input, cancellationToken))
                 .ConfigureAwait(false);
 
             // Checkpoint each task output
@@ -245,14 +246,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
-    /// Runs planning (when enabled), executes the process strategy, and transitions the crew to
-    /// its completed state. On any failure the crew is transitioned to failed and the exception
-    /// is rethrown so the outer fault barrier can surface it as a failed <see cref="CrewOutput"/>.
+    /// Runs planning (when enabled), executes the process strategy inside the run's plan scope, and
+    /// transitions the crew to its completed state. On any failure the crew is transitioned to failed
+    /// and the exception is rethrown so the outer fault barrier can surface it as a failed
+    /// <see cref="CrewOutput"/>.
     /// </summary>
     private async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteAndCompleteAsync(
         Orkeon.Domain.Crew.Crew crew,
         IProcessStrategy processStrategy,
-        DomainCrewInput domainInput,
         CrewInput input,
         CancellationToken cancellationToken)
     {
@@ -269,15 +270,21 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             if (crew.MemoryEnabled && _memoryCoordinator is not null)
                 await _memoryCoordinator.EnsureReadyAsync(crew.Id, cancellationToken).ConfigureAwait(false);
 
-            // Planning (moved from Crew.KickoffAsync)
-            var plan = await CreatePlanIfEnabledAsync(crew, domainInput).ConfigureAwait(false);
-
             // Extract string variables from input for template interpolation
             var stringVariables = PromptVariables(input);
 
-            // Execute according to process type (moved from Crew.KickoffAsync)
-            var domainOutput = await ExecuteDomainStrategyAsync(
-                crew, plan, processStrategy, stringVariables, cancellationToken).ConfigureAwait(false);
+            // One step-by-step plan per task when the crew plans (GAP-31), before the first task.
+            var plan = await PlanIfAskedAsync(crew, stringVariables, cancellationToken).ConfigureAwait(false);
+
+            // Execute according to process type. The plan reaches each task through the run's scope,
+            // read where every mode's executions compose their prompt — no strategy carries it. Opened
+            // on every run, empty without planning, so a run nested in a task sees its own plan only.
+            DomainCrewOutput domainOutput;
+            using (CrewPlanScope.Begin(plan))
+            {
+                domainOutput = await ExecuteDomainStrategyAsync(
+                    crew, processStrategy, stringVariables, cancellationToken).ConfigureAwait(false);
+            }
 
             // Transition to completed state
             var completedTasks = domainOutput.TaskOutputs?.Count(t => t.Success) ?? 0;
@@ -294,25 +301,60 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
-    /// The crew's plan when it asks for one (<c>planning: true</c>, <c>.Planning(true)</c>): made by
-    /// the crew's planning provider when C# set one (<c>WithPlanningLlm</c>), else by the host's
-    /// default profile — where the planner stays (GAP-29, GAP-19). It used to require the former,
-    /// so a YAML crew, or a C# crew calling <c>.Planning(true)</c> alone, planned nothing while the
-    /// documentation said it did. A plan that fails fails the run, saying why.
+    /// The crew's plan when it asks for one (<c>planning: true</c>, <c>.Planning(true)</c>,
+    /// <c>crewBuilder().planning()</c>): one step-by-step plan per task, made by the crew's planning
+    /// provider when C# set one (<c>WithPlanningLlm</c>), else by the host's default profile — where
+    /// the planner stays (GAP-29, GAP-19) — from what the crew declares: its goal, the run's
+    /// variables, each task by number with its description, expected output, dependencies and agent
+    /// (GAP-31). <see cref="DomainExecutionPlan.Empty"/> when the crew does not plan.
     /// </summary>
-    private async System.Threading.Tasks.Task<DomainExecutionPlan?> CreatePlanIfEnabledAsync(
+    /// <remarks>
+    /// The plan is advice (decision 2.5): a reply the planner cannot read twice, a task it leaves
+    /// out, an entry it cannot use are warnings, and the crew runs on; only a provider that fails —
+    /// a refused key, an unreachable endpoint — fails the run, before its first task, saying why. A
+    /// provider that replays its prompt (the echo provider of a host without an <c>Llm</c> section)
+    /// is not asked: there is nothing it could plan (decision 4). The call takes the run's token.
+    /// </remarks>
+    private async System.Threading.Tasks.Task<DomainExecutionPlan> PlanIfAskedAsync(
         Orkeon.Domain.Crew.Crew crew,
-        DomainCrewInput domainInput)
+        IReadOnlyDictionary<string, string> variables,
+        CancellationToken cancellationToken)
     {
         if (!crew.Planning)
-            return null;
+            return DomainExecutionPlan.Empty;
 
+        var crewName = crew.Name ?? crew.Id.ToString();
         var planningLlm = crew.PlanningLlm ?? DefaultPlanningLlm(crew);
-        var planner = CrewPlanner.Create(planningLlm, _executionPlanParser);
-        var planningContext = new PlanningContext(crew.Id, crew.Goal, crew.Agents);
-        using var usageScope = Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(
-            Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning, crewId: crew.Id.ToString());
-        return await planner.CreatePlanAsync(planningContext, crew.Tasks, domainInput).ConfigureAwait(false);
+        if (planningLlm.Capabilities.ReplaysPrompt)
+        {
+            LogPlanningSkippedOnEcho(crewName);
+            return DomainExecutionPlan.Empty;
+        }
+
+        var context = await PlanningContextAsync(crew, variables, cancellationToken).ConfigureAwait(false);
+        CrewPlanningOutcome planning;
+        using (Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(
+            Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning, crewId: crew.Id.ToString()))
+        {
+            planning = await CrewPlanner.Create(planningLlm, _executionPlanParser)
+                .CreatePlanAsync(context, cancellationToken).ConfigureAwait(false);
+        }
+
+        foreach (var warning in planning.Warnings)
+            LogPlanningWarning(crewName, warning);
+
+        // What was planned, one line per task: the user sees it with --verbose 1.
+        for (var index = 0; index < context.Tasks.Count && _logger.IsEnabled(LogLevel.Information); index++)
+        {
+            if (planning.Plan.InstructionsFor(context.Tasks[index].Id) is not { } instructions)
+                continue;
+
+            var task = OneLine(context.Tasks[index].Description, 60);
+            var steps = OneLine(instructions, 200);
+            LogTaskPlan(crewName, index + 1, task, steps);
+        }
+
+        return planning.Plan;
     }
 
     /// <summary>The provider of the host's default profile, the one a crew plans on by default.</summary>
@@ -322,6 +364,65 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             $"Crew '{crew.Name ?? crew.Id.ToString()}' asks for planning, but it names no planning provider and this " +
             "orchestrator has no LLM profile to plan on: set one with CrewBuilder.WithPlanningLlm, or resolve the " +
             "orchestrator from a container that registers the host's model (AddOrkeonInfrastructure, AddOrkeonLlmProvider).");
+
+    /// <summary>
+    /// What the planner is shown of the run (GAP-31): the tasks in the order the run takes them
+    /// (<see cref="CrewTaskSequencer"/>), each with its description and expected output interpolated
+    /// as its agent reads them (<see cref="TaskTextInterpolation"/>), its dependencies, and the agent it
+    /// names with the tools it holds for the task (<see cref="TaskToolbelt"/>: the agent's and the
+    /// task's — <c>human_input</c>, which the host adds to a task that asks for it, is not shown); then
+    /// the crew's agents that run tasks — the manager of a hierarchical or consensual crew runs none.
+    /// </summary>
+    private async System.Threading.Tasks.Task<PlanningContext> PlanningContextAsync(
+        Orkeon.Domain.Crew.Crew crew,
+        IReadOnlyDictionary<string, string> variables,
+        CancellationToken cancellationToken)
+    {
+        if (_taskRepository is null || _agentRepository is null)
+        {
+            throw new InvalidOperationException(
+                $"Crew '{crew.Name ?? crew.Id.ToString()}' asks for planning, but this orchestrator cannot show the planner the " +
+                "crew's tasks and agents: resolve it from a container that registers the task and agent repositories " +
+                "(AddOrkeonInfrastructure), or pass them to its constructor.");
+        }
+
+        var agents = new Dictionary<AgentId, Orkeon.Domain.Agent.Agent>();
+        foreach (var agentId in crew.Agents)
+        {
+            if (await _agentRepository.GetByIdAsync(agentId, cancellationToken).ConfigureAwait(false) is { } agent)
+                agents.TryAdd(agentId, agent);
+        }
+
+        var tasks = await CrewTaskSequencer.InRunOrderAsync(crew, _taskRepository, cancellationToken).ConfigureAwait(false);
+        var sheets = tasks
+            .Select(task => new PlanningTask(
+                task.Id,
+                TaskTextInterpolation.Interpolate(task.Description.Value, variables),
+                TaskTextInterpolation.Interpolate(task.ExpectedOutput.Value, variables),
+                task.Dependencies,
+                task.AssignedAgent is { } named && agents.TryGetValue(named, out var agent)
+                    ? Sheet(agent, TaskToolbelt.Compose(agent, task))
+                    : null))
+            .ToList();
+
+        var managerRunsNoTask = crew.ProcessType == ProcessType.Hierarchical || crew.ProcessType == ProcessType.Consensual;
+        var workers = agents.Values
+            .Where(agent => !(managerRunsNoTask && agent.Id == crew.ManagerAgentId))
+            .Select(agent => Sheet(agent, agent.Tools))
+            .ToList();
+
+        return new PlanningContext(crew.Goal.Value, crew.ProcessType, sheets, workers, variables);
+    }
+
+    private static PlanningAgent Sheet(Orkeon.Domain.Agent.Agent agent, IReadOnlyList<Orkeon.Domain.Tools.IBaseTool> tools) =>
+        new(agent.Role.Value, agent.Goal.Value, [.. tools.Select(tool => tool.Name)]);
+
+    /// <summary>The text on one line, cut to <paramref name="max"/> characters: one log line per task.</summary>
+    private static string OneLine(string text, int max)
+    {
+        var line = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return line.Length <= max ? line : string.Concat(line.AsSpan(0, max), "…");
+    }
 
     private async System.Threading.Tasks.Task CheckpointTaskOutputsAsync(
         string sessionId,
@@ -341,26 +442,22 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
     private static async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteDomainStrategyAsync(
         Orkeon.Domain.Crew.Crew crew,
-        DomainExecutionPlan? plan,
         IProcessStrategy processStrategy,
         IReadOnlyDictionary<string, string> stringVariables,
         CancellationToken cancellationToken)
     {
-        // No planning, no plan: an empty one hands the order to the strategy, which sorts the
-        // crew's tasks on their declared dependencies (CrewTaskSequencer). Synthesising a
-        // plan from crew.Tasks here froze the declared order — the ordinal file-name order in
-        // the multi-file layout — into a "plan" the strategies then honoured over the
-        // dependencies (STUDIO-12 C2).
-        var defaultPlan = plan ?? DomainExecutionPlan.Create();
-
+        // Every strategy sorts the crew's tasks on their declared dependencies (CrewTaskSequencer),
+        // with or without a plan: the plan reaches each task in its prompt and orders nothing
+        // (GAP-31). Its order, followed under the dependencies (GAP-29), decided the crew's output,
+        // the context a task read and Parallel's round-robin, and a task it cited twice ran twice.
         return crew.ProcessType.Value switch
         {
-            "Sequential" => await processStrategy.ExecuteSequentialAsync(crew, defaultPlan, stringVariables, cancellationToken).ConfigureAwait(false),
-            "Graph" => await processStrategy.ExecuteSequentialAsync(crew, defaultPlan, stringVariables, cancellationToken).ConfigureAwait(false),
+            "Sequential" => await processStrategy.ExecuteSequentialAsync(crew, stringVariables, cancellationToken).ConfigureAwait(false),
+            "Graph" => await processStrategy.ExecuteSequentialAsync(crew, stringVariables, cancellationToken).ConfigureAwait(false),
             // Consensual maps to the sequential entry point of ConsensualProcessStrategy
-            // (the strategy runs its voting pipeline over the planned tasks — R3.3).
-            "Consensual" => await processStrategy.ExecuteSequentialAsync(crew, defaultPlan, stringVariables, cancellationToken).ConfigureAwait(false),
-            "Parallel" => await processStrategy.ExecuteParallelAsync(crew, defaultPlan, stringVariables, cancellationToken).ConfigureAwait(false),
+            // (the strategy runs its voting pipeline over the crew's tasks — R3.3).
+            "Consensual" => await processStrategy.ExecuteSequentialAsync(crew, stringVariables, cancellationToken).ConfigureAwait(false),
+            "Parallel" => await processStrategy.ExecuteParallelAsync(crew, stringVariables, cancellationToken).ConfigureAwait(false),
             "Hierarchical" => await processStrategy.ExecuteHierarchicalAsync(
                 crew,
                 crew.ManagerAgentId ?? throw new InvalidOperationException("Hierarchical process requires a manager agent"),
@@ -578,6 +675,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         if (crew.MemoryEnabled)
             LogStreamingIgnoresMemory(crew.Name ?? crew.Id.ToString());
 
+        // Nor to its plan (GAP-31): a streamed run does not plan — said once, like the memory.
+        if (crew.Planning)
+            LogStreamingIgnoresPlanning(crew.Name ?? crew.Id.ToString());
+
         try
         {
             await foreach (var ev in StreamCrewTasksAsync(crew, input, cancellationToken).ConfigureAwait(false))
@@ -711,6 +812,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private partial void LogStreamingDegraded();
     [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{Crew}' has memory: true, but a streamed run neither recalls nor stores its memory; KickoffAsync does")]
     private partial void LogStreamingIgnoresMemory(string crew);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{Crew}' has planning: true, but a streamed run does not plan; KickoffAsync does")]
+    private partial void LogStreamingIgnoresPlanning(string crew);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{Crew}': planning skipped — the echo provider cannot plan, it replays its prompt instead of answering it; the crew runs without a plan. Run `orkeon init` to configure a model")]
+    private partial void LogPlanningSkippedOnEcho(string crew);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Planning of crew '{Crew}': {Warning}")]
+    private partial void LogPlanningWarning(string crew, string warning);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Plan of crew '{Crew}' for task {Number} ({Task}): {Plan}")]
+    private partial void LogTaskPlan(string crew, int number, string task, string plan);
     [LoggerMessage(Level = LogLevel.Warning, Message = "A handler of domain event {EventName} raised by crew {CrewId} failed; the run's result is unchanged")]
     private partial void LogDomainEventHandlerFailed(Exception ex, string eventName, CrewId crewId);
     [LoggerMessage(Level = LogLevel.Error, Message = "Cannot execute crew: CrewId is null")]

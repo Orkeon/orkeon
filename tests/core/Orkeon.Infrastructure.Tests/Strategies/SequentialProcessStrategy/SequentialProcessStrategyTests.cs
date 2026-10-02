@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Infrastructure.Agent;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 
 namespace Orkeon.Infrastructure.Tests.Strategies;
@@ -161,22 +160,10 @@ public sealed class SequentialProcessStrategyTests : IDisposable
     public async Task ShouldThrow_WhenExecuteSequentialAsyncWithNullCrew()
     {
         // Arrange
-        var plan = CrewExecutionPlan.Create();
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _strategy.ExecuteSequentialAsync(null!, plan, cancellationToken: TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async Task ShouldThrow_WhenExecuteSequentialAsyncWithNullPlan()
-    {
-        // Arrange
-        var crew = CreateSimpleCrew();
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _strategy.ExecuteSequentialAsync(crew, null!, cancellationToken: TestContext.Current.CancellationToken));
+            _strategy.ExecuteSequentialAsync(null!, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -187,10 +174,9 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             .Goal("A crew with no tasks")
             .Sequential()
             .Build();
-        var plan = CrewExecutionPlan.Create();
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -209,7 +195,6 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         var task1 = CreateTask("metered-task-1");
         var task2 = CreateTask("metered-task-2");
         var crew = CreateCrewWithTasksAndAgents([task1, task2], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task1.Id] = task1;
@@ -223,7 +208,7 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             });
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert — measured sums reach the crew metadata under the canonical keys (R10.8)
         Assert.True(result.Success);
@@ -239,13 +224,12 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         var agent = CreateAgent("agent1");
         var task = CreateTask("task1");
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -268,7 +252,6 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         var crew = CreateCrewWithTasksAndAgents(
             [task1, task2, task3],
             [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task1.Id] = task1;
@@ -276,7 +259,7 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         _tasks[task3.Id] = task3;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -305,14 +288,13 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             .Build();
         crew.AddTask(missingTaskId); // This task won't exist in repository
 
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task1.Id] = task1;
         _tasks[task2.Id] = task2;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -390,7 +372,7 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             new CrewStrategyDependencies(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _mockExecutionService, _mockMemoryScope),
             _delegationProvider, _logger, hook);
 
-        var result = await strategy.ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Only the failed task and the independent one asked the agent anything.
         Assert.Equal([clean.Id, independent.Id], executed);
@@ -433,7 +415,7 @@ public sealed class SequentialProcessStrategyTests : IDisposable
                 ? new TaskResult(false, "", null, [], TimeSpan.FromSeconds(1), "boom")
                 : new TaskResult(true, "done", null, [], TimeSpan.FromSeconds(1)));
 
-        var result = await _strategy.ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, _mockExecutionService.ExecuteTaskCallCount);
         Assert.False(result.Success);
@@ -450,13 +432,12 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             .Sequential()
             .WithTask(task)
             .Build();
-        var plan = CrewExecutionPlan.Create();
 
         _tasks[task.Id] = task;
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("No agents available", ex.Message);
     }
 
@@ -470,14 +451,13 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         var crew = CreateCrewWithTasksAndAgents(
             [task],
             [agent1, agent2]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent1.Id] = agent1;
         _agents[agent2.Id] = agent2;
         _tasks[task.Id] = task;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -513,11 +493,10 @@ public sealed class SequentialProcessStrategyTests : IDisposable
     {
         // Arrange
         var crew = CreateSimpleCrew();
-        var plan = CrewExecutionPlan.Create();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<NotSupportedException>(() =>
-            _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("Parallel execution is not supported", ex.Message);
         Assert.Contains("Use ParallelProcessStrategy", ex.Message);
     }
@@ -536,7 +515,6 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         var crew = CreateCrewWithTasksAndAgents(
             [task1, task2],
             [agent]);
-        var plan = CrewExecutionPlan.Create();
         using var cts = new CancellationTokenSource();
 
         _agents[agent.Id] = agent;
@@ -547,7 +525,7 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         cts.CancelAfter(10);
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -569,14 +547,13 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             .WithTask(task2) // Add second task with different ID
             .WithAgent(agent)
             .Build();
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task1.Id] = task1;
         _tasks[task2.Id] = task2;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -591,7 +568,6 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         var agent = CreateAgent("agent1");
         var tasks = Enumerable.Range(0, 50).Select(i => CreateTask($"task{i}")).ToArray();
         var crew = CreateCrewWithTasksAndAgents(tasks, [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         foreach (var task in tasks)
@@ -600,7 +576,7 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         }
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -620,13 +596,12 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             .WithTask(task)
             .Build();
         crew.AddAgent(missingAgentId); // Agent doesn't exist in repository
-        var plan = CrewExecutionPlan.Create();
 
         _tasks[task.Id] = task;
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("No agents available", ex.Message);
     }
 
@@ -644,12 +619,11 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             .Build();
         crew.AddTask(missingTask1);
         crew.AddTask(missingTask2);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -677,14 +651,13 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         var crew = CreateCrewWithTasksAndAgents(
             [normalTask, highTask],
             [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[normalTask.Id] = normalTask;
         _tasks[highTask.Id] = highTask;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -706,13 +679,12 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             .ExpectedOutput("Expected output")
             .Build();
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -727,14 +699,13 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         var agent = CreateAgent("agent1");
         var task = CreateTask("task1");
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
 
         // Act
-        var result1 = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
-        var result2 = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result1 = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
+        var result2 = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result1);
@@ -755,13 +726,12 @@ public sealed class SequentialProcessStrategyTests : IDisposable
             .Build();
         var task = CreateTask("task1");
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -775,14 +745,13 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         // Arrange
         var agent = CreateAgent("agent1");
         var task = CreateTask("task1");
-        var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var emptyPlan = CrewExecutionPlan.Create(); // Empty plan
+        var crew = CreateCrewWithTasksAndAgents([task], [agent]); // Empty plan
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, emptyPlan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);

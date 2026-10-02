@@ -26,7 +26,7 @@ In YAML the mode is `process:` (case-insensitive, `sequential` when absent); an 
 
 ```
 ICrewOrchestrationService.KickoffAsync (SequentialCrewOrchestrator)
-     │  planning (when enabled), then a switch on crew.ProcessType
+     │  planning (when enabled, held in the run's plan scope), then a switch on crew.ProcessType
      ▼
 IProcessStrategyFactory.CreateStrategy(ProcessType)   (ProcessStrategyFactory, Infrastructure)
      │
@@ -42,8 +42,8 @@ IProcessStrategyFactory.CreateStrategy(ProcessType)   (ProcessStrategyFactory, I
 
 What every strategy shares:
 
-- **Task order** — the modes that hand tasks out one after another (all but Parallel) run them in the order resolved by `CrewTaskSequencer`: a stable topological sort on the declared `dependencies` (detailed under Sequential), which follows the planner's order wherever the dependencies allow it when `planning: true` produced a plan (Sequential, Graph, Consensual).
-- **Planning** — `planning: true` (YAML) or `.Planning(true)` (C#; the `.ork.ts` DSL has no planning switch) makes one LLM call before the first task, on the provider `CrewBuilder.WithPlanningLlm` sets, else on the host's **default profile** — the `Llm` section: the planner stays there whatever profiles the agents name. It is given the crew's goal, its input and the ids of its agents and tasks, at temperature 0.3, and returns an order. Parallel takes the plan's task list and still builds its waves from the dependencies; Hierarchical and Autonomous make the plan without using it — their manager and their budget hand the tasks out (see [Known limitations](../reference/limitations.md)). A plan that fails fails the run with its cause: the provider's own error (a refused key, an elapsed timeout), or the task the plan left out.
+- **Task order** — the modes that hand tasks out one after another (all but Parallel) run them in the order resolved by `CrewTaskSequencer`: a stable topological sort on the declared `dependencies` (detailed under Sequential). A plan never changes it, in any mode.
+- **Planning** — `planning: true` (YAML), `.Planning(true)` (C#) or `crewBuilder().planning()` (`.ork.ts`) has a planner write a step-by-step plan for each task before the first one runs, and each task reads its own plan in its prompt — in all six modes. The plan changes neither the order of the tasks nor who runs them. See [Planning](#planning-planning-true) below.
 - **Lifecycle hooks** — every mode reports through `ICrewExecutionHook` (`OnTaskStartedAsync`, `OnTaskCompletedAsync`, `OnCrewCompletedAsync`, `OnCrewFailedAsync`), on every exit including cancellation; this is what feeds `AUTO_SUMMARY.md`, the `orkeon run --events` stream and the host's progress.
 - **Outcome** — a failed task fails the crew and skips its dependents, in every mode (detailed under Sequential): `Success = false`, an `Error` naming every failed and skipped task, a `Failed` hook, exit code 2.
 - **Token telemetry** — the real token usage (prompt, completion, cache hits/misses when the provider reports them) travels in the `CrewOutput` metadata; `CrewOutput.TokensUsed` stays `null` when nothing was measured.
@@ -60,6 +60,23 @@ A task-level `agent:` is a decision, not a hint: Sequential, Parallel and Graph 
 
 A selection that fails, or names an agent the crew does not carry, falls back to round-robin with a warning. Hierarchical and Autonomous let the manager LLM choose (a task's `agent:` is not consulted there); Consensual runs every task with every agent.
 
+### Planning (`planning: true`)
+
+`planning: true` (YAML), `.Planning(true)` (C#) or `crewBuilder().planning()` (`.ork.ts`) — CrewAI's `planning=True`, off by default. Before the first task, a planner writes a **step-by-step plan for each task**, and each task then reads its own plan in its prompt.
+
+- **On which model** — the provider `CrewBuilder.WithPlanningLlm` sets (C#), else the host's **default profile** — the `Llm` section: the planner stays there whatever profiles the agents name. One call per run, at temperature 0.3, metered as `operation: planning` in `cost.updated`, and cancelled with the run.
+- **What it reads** — the crew's goal, a line on how the mode orders the tasks and picks their agents, the run's variables (`initial_context` included), and each task **by number**, in the order the run takes them: its description and expected output with the variables in them, as its agent reads them; its dependencies, by number; and its agent — role, goal, the names of the tools it holds for the task — where the mode runs a task on the agent it names (Sequential, Parallel, Graph). Elsewhere the planner is told what the mode does instead — "assigned by the manager" (Hierarchical, Autonomous), "every agent answers" (Consensual), "chosen at run time" (a task that names no agent) — and the crew's agents are listed once. Never an id: the planner answers by number. Bounded (`PlanningDefaults`): a description to 1,500 characters, an expected output to 500, an agent's goal to 300, 15 tool names per agent, the variables to 2,000 in all — a cut text ends with ` […]`. No backstory, knowledge or memory.
+- **What it writes** — `{"plans": [{"task": 1, "plan": "1. …"}]}`: at most 8 numbered steps per task, naming the tools to use where a tool helps. The reply's shape is constrained as far as the provider can (`json_schema`, else `json_object`, else the prompt alone) and read tolerantly — a fence or a sentence around the object.
+- **Where it goes** — into the task's user prompt, after the task (description, expected output, deliverable) and before the context variables, under *Plan for this task, from the crew's planner — follow it where it helps; the task above prevails:*, cut at 2,000 characters. The Guardian screens it with the rest of the prompt, and each task's plan is logged on one line at `Information` (`--verbose 1`). The task itself is never changed: the knowledge query, the stored memory and the manager's prompts read the task, not its plan. The run holds its plan in a scope of its own (`CrewPlanScope`), read where every mode's executions compose their prompt — two runs of one crew never read each other's.
+- **In every mode** — Sequential, Parallel and Graph (each attempt): the task's agent. Hierarchical: the worker the manager assigns, and each revision it asks for; the manager's own prompts are unchanged. Consensual: every candidate answer — a ballot, a task of its own, does not. Autonomous: the agent that claims the task, and the peer it is handed to after a failure, which takes the task itself over.
+- **It changes neither the order nor the agents** — with or without a plan, a crew runs the same tasks, in the same order, on the same agents. (A plan used to return an order, agent assignments and parallel groups; its order was followed under the dependencies, so the crew's output, the context a task reads and Parallel's round-robin depended on it.)
+- **When it goes wrong** — the plan is advice. A reply that cannot be read is asked for once more, with what could not be read, then the crew runs without a plan, with a warning — which says so when the reply stopped at the profile's `MaxTokens`. A task the plan leaves out runs without one, with a warning that names it; a number given twice keeps its first plan and an unknown number is ignored, each with a warning. Only a provider that fails — a refused key, an unreachable endpoint — fails the run, before its first task, with the provider's reason.
+- **On the echo provider** — the one a host without an `Llm` section runs on, which replays its prompt instead of answering it (`LlmProviderCapabilities.ReplaysPrompt`) — planning is skipped with a warning (*planning skipped — the echo provider cannot plan*, with the remedy, `orkeon init`), and the crew runs to the end like any keyless run.
+- **Cost** — one call per run (two after an unreadable reply), so one per input under `KickoffForEachAsync` and one per message in `orkeon-host`, its prompt growing with the crew; and each task's plan travels with every turn of that task's agent loop, which the 2,000-character bound contains.
+- **Not planned** — a streamed run (`KickoffStreamingAsync`, a C# API): it warns once that it does not plan.
+
+**Key classes**: `CrewPlanner` and `PlanningContext` (Domain), `ExecutionPlanParser`, `CrewPlanScope` and `AgentPromptComposer`.
+
 ---
 
 ## Quick comparison matrix
@@ -74,6 +91,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 | **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
 | **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | ✅ `maxRetryCycles` | One delegation to a peer |
 | **A task's `asyncExecution: true`** | ✅ Runs alongside the next tasks | Refused at load | Accepted, no effect of its own | Refused at load | Refused at load | Refused at load |
+| **`planning: true`: each task reads its plan** | ✅ | ✅ The worker, each revision | ✅ | ✅ Each candidate | ✅ Each attempt | ✅ The claimer, the peer |
 | **Complexity** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
 | **Relative LLM cost** | Low | Medium | Low | High | Low to medium | Medium |
 | **Main use case** | ETL pipelines | QA, review loops | Fan-out + synthesis | Multiple independent attempts | Flaky tasks worth retrying | Exploration, R&D |
@@ -86,7 +104,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 
 Tasks execute **one by one** — except a task with `asyncExecution: true`, which runs alongside the tasks after it (see [Asynchronous tasks](#asynchronous-tasks-asyncexecution)). Each task receives the outputs of the tasks that ran before it as context. Agent assignment follows the rule above: the task's `agent:` when declared, otherwise the configured selector (round-robin by default).
 
-**Execution order without a plan** (`planning: false`, the default): the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused). With `planning: true`, the planner's order replaces the declared one — still under the dependencies: the planner sees the tasks' ids, not their dependencies, and its plan never runs a task before one it depends on.
+**Execution order** — with or without a plan, which never changes it: the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused).
 
 **Failure handling (every mode)**: a task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task (LLM-11). The rule is the same in the six modes: a crew with a failed task returns `Success = false`, its hook hears `Failed` with the same reason, and `orkeon run` exits 2. A mode that tolerates a failure — Graph and its retries, Autonomous and its delegation — does so before the task counts as failed.
 
@@ -129,7 +147,7 @@ Task 2 → Agent B → output₂
 Task 3 → Agent C → output₃ → final result
 ```
 
-**Key classes**: `SequentialProcessStrategy`, `CrewTaskSequencer`, `TaskAgentSelector`, `ExecutionPlan`, `AgentDelegationToolsProvider` (agents with `allowDelegation: true` receive `delegate_work_to_coworker` and `ask_question_to_coworker`)
+**Key classes**: `SequentialProcessStrategy`, `CrewTaskSequencer`, `TaskAgentSelector`, `AgentDelegationToolsProvider` (agents with `allowDelegation: true` receive `delegate_work_to_coworker` and `ask_question_to_coworker`)
 
 ### YAML configuration
 

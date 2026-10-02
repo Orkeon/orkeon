@@ -75,6 +75,7 @@ inferred.
 | `process` | ❌ telemetry tag only | ✅ (`"graph"` selects the domain's retry-and-route strategy, not a script-drawn topology — see below) |
 | `manager` | ❌ | ✅ |
 | `memory` | ❌ | ✅ |
+| `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
 | `budget` | ✅ | ❌ ignored |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 

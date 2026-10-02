@@ -108,6 +108,11 @@ documente, est allumée par la configuration avec laquelle le provider est const
 (`Llm:Grammar`, `LlmConfig.GrammarEnabled`) pour un serveur compatible llama.cpp derrière les
 providers compatibles OpenAI ou Ollama — `ILlmProvider.Capabilities` est la déclaration plus cet
 interrupteur.
+Et une n'est à aucun vendeur : `ReplaysPrompt`, déclarée par le seul fournisseur écho
+(`UndefinedLlmProvider`, le modèle d'un hôte sans section `Llm`), dit que ce qu'il rend est son
+prompt, jamais la réponse d'un modèle — le planificateur de la crew saute alors son appel avec un
+avertissement au lieu de relire le prompt comme un plan (GAP-31). Les décorateurs qui enveloppent un
+provider (`MeteredLlmProvider`, `RateLimitedLlmProvider`) transmettent les capacités.
 `OpenAICompatibleProviderBase` traduit la déclaration en dialecte OpenAI une seule fois
 (payloads vision, `response_format`, thinking, les diagnostics `CapabilityMismatchHint`) ;
 Anthropic et Ollama écrivent leur propre dialecte, et Qwen surcharge le hook pour les champs

@@ -43,4 +43,10 @@ internal sealed record JsCrewDefinition
     /// crew's name (GAP-30). Off by default. Not <c>ctx.memory.*</c>, the scoped key/value stores of a run.
     /// </summary>
     public bool Memory { get; init; }
+
+    /// <summary>
+    /// YAML parity <c>planning: true</c> (GAP-31): a step-by-step plan per task, written before the
+    /// first one on the host's default LLM profile, read by each task in its prompt. Off by default.
+    /// </summary>
+    public bool Planning { get; init; }
 }

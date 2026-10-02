@@ -11,7 +11,6 @@ using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Application.Interfaces.Services;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using CrewInput = Orkeon.Application.Interfaces.Services.CrewInput;
-using ExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
 
 namespace Orkeon.Infrastructure.Tests.CovAutonomous;
@@ -122,13 +121,13 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public bool AutonomousCalled { get; private set; }
         public AgentExecutionBudget? LastBudget { get; private set; }
 
-        public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
+        public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Sequential"; return Out(crew); }
 
         public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId mgr, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Hierarchical"; return Out(crew); }
 
-        public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
+        public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Parallel"; return Out(crew); }
 
         public Task<DomainCrewOutput> ExecuteAutonomousAsync(DomainCrew crew, AgentExecutionBudget budget, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)

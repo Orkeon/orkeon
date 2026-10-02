@@ -16,7 +16,6 @@ using Orkeon.Domain.Autonomous;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using DomainExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
 using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
 
@@ -94,17 +93,14 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// <inheritdoc />
     public Task<DomainCrewOutput> ExecuteSequentialAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(crew);
-        ArgumentNullException.ThrowIfNull(plan);
-        return ExecuteSequentialCoreAsync(crew, plan, inputVariables, cancellationToken);
+        return ExecuteSequentialCoreAsync(crew, inputVariables, cancellationToken);
     }
 
     private async Task<DomainCrewOutput> ExecuteSequentialCoreAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables,
         CancellationToken cancellationToken)
     {
@@ -131,7 +127,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             : [];
 
         var taskIds = await CrewTaskSequencer.ResolveAsync(
-            crew, plan, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
+            crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
         // Resolve the effective graph config off the crew (P2-O-01): per-crew GraphConfig wins,
         // then this strategy's fallback defaults. The
@@ -571,7 +567,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
     /// <inheritdoc />
     public Task<DomainCrewOutput> ExecuteParallelAsync(
-        DomainCrew crew, DomainExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException(
             "Parallel execution is not supported by GraphProcessStrategy. " +

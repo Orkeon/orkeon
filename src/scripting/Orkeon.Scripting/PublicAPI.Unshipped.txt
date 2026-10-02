@@ -58,3 +58,5 @@ Orkeon.Scripting.Bindings.JsLlmNamespace.profile(Jint.Native.JsValue! name, Jint
 Orkeon.Scripting.Runtime.JsLlmConfig.profile.get -> string?
 Orkeon.Scripting.ScriptingHostPorts.LlmProfiles.get -> Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry?
 Orkeon.Scripting.ScriptingHostPorts.LlmProfiles.init -> void
+Orkeon.Scripting.Builders.JsCrewBuilder.planning(bool value = true) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Runtime.UndefinedLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!

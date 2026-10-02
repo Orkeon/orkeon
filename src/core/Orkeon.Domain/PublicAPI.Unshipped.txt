@@ -114,6 +114,8 @@ Orkeon.Domain.Agent.AgentSpawnRequestBuilder.WithTools(params Orkeon.Domain.Tool
 Orkeon.Domain.Security.SanitizationPolicy.Block = 2 -> Orkeon.Domain.Security.SanitizationPolicy
 Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.GbnfGrammar.get -> bool
 Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.GbnfGrammar.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.ReplaysPrompt.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.ReplaysPrompt.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarEnabled.get -> bool
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarEnabled.init -> void
 *REMOVED*Orkeon.Domain.Agent.AgentMemory.Type.get -> Orkeon.Domain.Agent.MemoryType
@@ -1079,3 +1081,132 @@ Orkeon.Domain.Task.CrewTaskBase<TContext>.Reopen() -> void
 Orkeon.Domain.Task.CrewTaskBase<TContext>.Start() -> void
 Orkeon.Domain.Task.Events.TaskStartedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId?
 Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.AcceptsAsyncExecution.get -> bool
+*REMOVED*Orkeon.Domain.Crew.CrewPlanner.CreatePlanAsync(Orkeon.Domain.Crew.PlanningContext! context, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! tasks, Orkeon.Domain.Crew.CrewInput! input) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.ExecutionPlan!>!
+*REMOVED*Orkeon.Domain.Crew.DefaultPlanningStrategy
+*REMOVED*Orkeon.Domain.Crew.DefaultPlanningStrategy.CreatePlanAsync(Orkeon.Domain.Crew.PlanningContext! context, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! tasks, Orkeon.Domain.Crew.CrewInput! input) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.ExecutionPlan!>!
+*REMOVED*Orkeon.Domain.Crew.DefaultPlanningStrategy.DefaultPlanningStrategy() -> void
+*REMOVED*Orkeon.Domain.Crew.ExecutionPlan.Assignments.get -> System.Collections.Generic.IReadOnlyDictionary<Orkeon.Domain.Common.TaskId!, Orkeon.Domain.Common.AgentId!>!
+*REMOVED*Orkeon.Domain.Crew.ExecutionPlan.GetAssignedAgent(Orkeon.Domain.Common.TaskId! taskId) -> Orkeon.Domain.Common.AgentId?
+*REMOVED*Orkeon.Domain.Crew.ExecutionPlan.GetParallelGroups() -> System.Collections.Generic.IEnumerable<System.Linq.IGrouping<int, Orkeon.Domain.Crew.PlannedTask!>!>!
+*REMOVED*Orkeon.Domain.Crew.ExecutionPlan.GetTasksInOrder() -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Crew.PlannedTask!>!
+*REMOVED*Orkeon.Domain.Crew.ExecutionPlan.WithAgentAssignment(Orkeon.Domain.Common.TaskId! taskId, Orkeon.Domain.Common.AgentId! agentId) -> Orkeon.Domain.Crew.ExecutionPlan!
+*REMOVED*Orkeon.Domain.Crew.ExecutionPlan.WithTask(Orkeon.Domain.Crew.PlannedTask! task) -> Orkeon.Domain.Crew.ExecutionPlan!
+*REMOVED*Orkeon.Domain.Crew.IPlanningStrategy
+*REMOVED*Orkeon.Domain.Crew.IPlanningStrategy.CreatePlanAsync(Orkeon.Domain.Crew.PlanningContext! context, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! tasks, Orkeon.Domain.Crew.CrewInput! input) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.ExecutionPlan!>!
+*REMOVED*Orkeon.Domain.Crew.IProcessStrategy.ExecuteParallelAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
+*REMOVED*Orkeon.Domain.Crew.IProcessStrategy.ExecuteSequentialAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
+*REMOVED*Orkeon.Domain.Crew.Interfaces.IExecutionPlanParser.ParseAsync(string! llmResponse, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! tasks, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.AgentId!>! agents, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.ExecutionPlan?>!
+*REMOVED*Orkeon.Domain.Crew.Interfaces.IExecutionPlanParser.ParserName.get -> string!
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.Dependencies.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>!
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.Dependencies.init -> void
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.ExecutionOrder.get -> int
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.ExecutionOrder.init -> void
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.Instructions.get -> string?
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.Instructions.init -> void
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.ParallelGroup.get -> int?
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.ParallelGroup.init -> void
+*REMOVED*Orkeon.Domain.Crew.PlannedTask.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Crew.PlanningContext.Agents.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.AgentId!>!
+*REMOVED*Orkeon.Domain.Crew.PlanningContext.CrewId.get -> Orkeon.Domain.Common.CrewId!
+*REMOVED*Orkeon.Domain.Crew.PlanningContext.CrewId.init -> void
+*REMOVED*Orkeon.Domain.Crew.PlanningContext.Deconstruct(out Orkeon.Domain.Common.CrewId! CrewId, out Orkeon.Domain.Crew.ValueObjects.CrewGoal! Goal, out System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.AgentId!>! Agents) -> void
+*REMOVED*Orkeon.Domain.Crew.PlanningContext.Goal.get -> Orkeon.Domain.Crew.ValueObjects.CrewGoal!
+*REMOVED*Orkeon.Domain.Crew.PlanningContext.PlanningContext(Orkeon.Domain.Common.CrewId! CrewId, Orkeon.Domain.Crew.ValueObjects.CrewGoal! Goal, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.AgentId!>! Agents) -> void
+*REMOVED*static Orkeon.Domain.Crew.CrewPlanner.Create(Orkeon.Domain.SharedKernel.ILlmProvider! planningLlm, Orkeon.Domain.Crew.Interfaces.IExecutionPlanParser! parser, Orkeon.Domain.Crew.IPlanningStrategy? strategy = null) -> Orkeon.Domain.Crew.CrewPlanner!
+*REMOVED*static Orkeon.Domain.Crew.ExecutionPlan.Create() -> Orkeon.Domain.Crew.ExecutionPlan!
+*REMOVED*static Orkeon.Domain.Crew.ExecutionPlan.Create(System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>! taskIds) -> Orkeon.Domain.Crew.ExecutionPlan!
+*REMOVED*static Orkeon.Domain.Crew.PlannedTask.Create(Orkeon.Domain.Common.TaskId! taskId, int executionOrder, int? parallelGroup = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>? dependencies = null, string? instructions = null) -> Orkeon.Domain.Crew.PlannedTask!
+Orkeon.Domain.Constants.Crew.PlanningDefaults
+Orkeon.Domain.Crew.CrewPlanner.CreatePlanAsync(Orkeon.Domain.Crew.PlanningContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewPlanningOutcome!>!
+Orkeon.Domain.Crew.CrewPlanningOutcome
+Orkeon.Domain.Crew.CrewPlanningOutcome.<Clone>$() -> Orkeon.Domain.Crew.CrewPlanningOutcome!
+Orkeon.Domain.Crew.CrewPlanningOutcome.CrewPlanningOutcome(Orkeon.Domain.Crew.ExecutionPlan! Plan, System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
+Orkeon.Domain.Crew.CrewPlanningOutcome.Deconstruct(out Orkeon.Domain.Crew.ExecutionPlan! Plan, out System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
+Orkeon.Domain.Crew.CrewPlanningOutcome.Equals(Orkeon.Domain.Crew.CrewPlanningOutcome? other) -> bool
+Orkeon.Domain.Crew.CrewPlanningOutcome.Plan.get -> Orkeon.Domain.Crew.ExecutionPlan!
+Orkeon.Domain.Crew.CrewPlanningOutcome.Plan.init -> void
+Orkeon.Domain.Crew.CrewPlanningOutcome.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Crew.CrewPlanningOutcome.Warnings.init -> void
+Orkeon.Domain.Crew.ExecutionPlan.InstructionsFor(Orkeon.Domain.Common.TaskId! taskId) -> string?
+Orkeon.Domain.Crew.IProcessStrategy.ExecuteParallelAsync(Orkeon.Domain.Crew.Crew! crew, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
+Orkeon.Domain.Crew.IProcessStrategy.ExecuteSequentialAsync(Orkeon.Domain.Crew.Crew! crew, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
+Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading
+Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.<Clone>$() -> Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading!
+Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.Equals(Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading? other) -> bool
+Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.Error.get -> string?
+Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.Plan.get -> Orkeon.Domain.Crew.ExecutionPlan?
+Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Crew.Interfaces.IExecutionPlanParser.Read(string! reply, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! numberedTasks) -> Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading!
+Orkeon.Domain.Crew.PlannedTask.Instructions.get -> string!
+Orkeon.Domain.Crew.PlannedTask.PlannedTask(Orkeon.Domain.Common.TaskId! taskId, string! instructions) -> void
+Orkeon.Domain.Crew.PlanningAgent
+Orkeon.Domain.Crew.PlanningAgent.<Clone>$() -> Orkeon.Domain.Crew.PlanningAgent!
+Orkeon.Domain.Crew.PlanningAgent.Deconstruct(out string! Role, out string! Goal, out System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void
+Orkeon.Domain.Crew.PlanningAgent.Equals(Orkeon.Domain.Crew.PlanningAgent? other) -> bool
+Orkeon.Domain.Crew.PlanningAgent.Goal.get -> string!
+Orkeon.Domain.Crew.PlanningAgent.Goal.init -> void
+Orkeon.Domain.Crew.PlanningAgent.PlanningAgent(string! Role, string! Goal, System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void
+Orkeon.Domain.Crew.PlanningAgent.Role.get -> string!
+Orkeon.Domain.Crew.PlanningAgent.Role.init -> void
+Orkeon.Domain.Crew.PlanningAgent.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Crew.PlanningAgent.Tools.init -> void
+Orkeon.Domain.Crew.PlanningContext.Agents.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Crew.PlanningAgent!>!
+Orkeon.Domain.Crew.PlanningContext.Deconstruct(out string! Goal, out Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! Process, out System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Crew.PlanningTask!>! Tasks, out System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Crew.PlanningAgent!>! Agents, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Variables) -> void
+Orkeon.Domain.Crew.PlanningContext.Goal.get -> string!
+Orkeon.Domain.Crew.PlanningContext.PlanningContext(string! Goal, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! Process, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Crew.PlanningTask!>! Tasks, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Crew.PlanningAgent!>! Agents, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Variables) -> void
+Orkeon.Domain.Crew.PlanningContext.Process.get -> Orkeon.Domain.SharedKernel.ValueObjects.ProcessType!
+Orkeon.Domain.Crew.PlanningContext.Process.init -> void
+Orkeon.Domain.Crew.PlanningContext.Tasks.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Crew.PlanningTask!>!
+Orkeon.Domain.Crew.PlanningContext.Tasks.init -> void
+Orkeon.Domain.Crew.PlanningContext.Variables.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Domain.Crew.PlanningContext.Variables.init -> void
+Orkeon.Domain.Crew.PlanningTask
+Orkeon.Domain.Crew.PlanningTask.<Clone>$() -> Orkeon.Domain.Crew.PlanningTask!
+Orkeon.Domain.Crew.PlanningTask.Agent.get -> Orkeon.Domain.Crew.PlanningAgent?
+Orkeon.Domain.Crew.PlanningTask.Agent.init -> void
+Orkeon.Domain.Crew.PlanningTask.Deconstruct(out Orkeon.Domain.Common.TaskId! Id, out string! Description, out string! ExpectedOutput, out System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! Dependencies, out Orkeon.Domain.Crew.PlanningAgent? Agent) -> void
+Orkeon.Domain.Crew.PlanningTask.Dependencies.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>!
+Orkeon.Domain.Crew.PlanningTask.Dependencies.init -> void
+Orkeon.Domain.Crew.PlanningTask.Description.get -> string!
+Orkeon.Domain.Crew.PlanningTask.Description.init -> void
+Orkeon.Domain.Crew.PlanningTask.Equals(Orkeon.Domain.Crew.PlanningTask? other) -> bool
+Orkeon.Domain.Crew.PlanningTask.ExpectedOutput.get -> string!
+Orkeon.Domain.Crew.PlanningTask.ExpectedOutput.init -> void
+Orkeon.Domain.Crew.PlanningTask.Id.get -> Orkeon.Domain.Common.TaskId!
+Orkeon.Domain.Crew.PlanningTask.Id.init -> void
+Orkeon.Domain.Crew.PlanningTask.PlanningTask(Orkeon.Domain.Common.TaskId! Id, string! Description, string! ExpectedOutput, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! Dependencies, Orkeon.Domain.Crew.PlanningAgent? Agent) -> void
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.MaxAgentGoalChars = 300 -> int
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.MaxExpectedOutputChars = 500 -> int
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.MaxPlanChars = 2000 -> int
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.MaxPlanSteps = 8 -> int
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.MaxTaskDescriptionChars = 1500 -> int
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.MaxToolNamesPerAgent = 15 -> int
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.MaxVariablesChars = 2000 -> int
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.Temperature = 0.3 -> float
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.TruncationMarker = " […]" -> string!
+const Orkeon.Domain.Crew.CrewPlanner.PromptOpening = "You are the planner of an agent crew." -> string!
+override Orkeon.Domain.Crew.CrewPlanningOutcome.Equals(object? obj) -> bool
+override Orkeon.Domain.Crew.CrewPlanningOutcome.GetHashCode() -> int
+override Orkeon.Domain.Crew.CrewPlanningOutcome.ToString() -> string!
+override Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.Equals(object? obj) -> bool
+override Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.GetHashCode() -> int
+override Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.ToString() -> string!
+override Orkeon.Domain.Crew.PlanningAgent.Equals(object? obj) -> bool
+override Orkeon.Domain.Crew.PlanningAgent.GetHashCode() -> int
+override Orkeon.Domain.Crew.PlanningAgent.ToString() -> string!
+override Orkeon.Domain.Crew.PlanningTask.Equals(object? obj) -> bool
+override Orkeon.Domain.Crew.PlanningTask.GetHashCode() -> int
+override Orkeon.Domain.Crew.PlanningTask.ToString() -> string!
+static Orkeon.Domain.Crew.CrewPlanner.Create(Orkeon.Domain.SharedKernel.ILlmProvider! planningLlm, Orkeon.Domain.Crew.Interfaces.IExecutionPlanParser! parser) -> Orkeon.Domain.Crew.CrewPlanner!
+static Orkeon.Domain.Crew.CrewPlanningOutcome.operator !=(Orkeon.Domain.Crew.CrewPlanningOutcome? left, Orkeon.Domain.Crew.CrewPlanningOutcome? right) -> bool
+static Orkeon.Domain.Crew.CrewPlanningOutcome.operator ==(Orkeon.Domain.Crew.CrewPlanningOutcome? left, Orkeon.Domain.Crew.CrewPlanningOutcome? right) -> bool
+static Orkeon.Domain.Crew.ExecutionPlan.Create(System.Collections.Generic.IEnumerable<Orkeon.Domain.Crew.PlannedTask!>! tasks) -> Orkeon.Domain.Crew.ExecutionPlan!
+static Orkeon.Domain.Crew.ExecutionPlan.Empty.get -> Orkeon.Domain.Crew.ExecutionPlan!
+static Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.Of(Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyList<string!>! warnings) -> Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading!
+static Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.Unreadable(string! error) -> Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading!
+static Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.operator !=(Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading? left, Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading? right) -> bool
+static Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading.operator ==(Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading? left, Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading? right) -> bool
+static Orkeon.Domain.Crew.PlanningAgent.operator !=(Orkeon.Domain.Crew.PlanningAgent? left, Orkeon.Domain.Crew.PlanningAgent? right) -> bool
+static Orkeon.Domain.Crew.PlanningAgent.operator ==(Orkeon.Domain.Crew.PlanningAgent? left, Orkeon.Domain.Crew.PlanningAgent? right) -> bool
+static Orkeon.Domain.Crew.PlanningTask.operator !=(Orkeon.Domain.Crew.PlanningTask? left, Orkeon.Domain.Crew.PlanningTask? right) -> bool
+static Orkeon.Domain.Crew.PlanningTask.operator ==(Orkeon.Domain.Crew.PlanningTask? left, Orkeon.Domain.Crew.PlanningTask? right) -> bool

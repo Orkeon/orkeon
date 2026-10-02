@@ -85,6 +85,13 @@ declare global {
          * the crew's name. Off by default. Not `ctx.memory.*`, the scoped key/value stores of a run.
          */
         memory(value?: boolean): this;
+        /**
+         * YAML parity `planning: true` — before the first task, a planner writes a step-by-step
+         * plan for each task, which the task reads in its prompt, in every process. The plan
+         * changes neither the order of the tasks nor who runs them. On the host's default LLM
+         * profile; skipped, with a warning, on the echo provider. Off by default.
+         */
+        planning(value?: boolean): this;
         onCrewStart(hook: (ctx: ExecutionContext) => Promise<void> | void): this;
         onCrewComplete(hook: (ctx: ExecutionContext, result: CrewResult) => Promise<void> | void): this;
         /** `message` is the displayed message of the failure — the innermost CLR message, or a script error's own. */

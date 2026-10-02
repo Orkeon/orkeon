@@ -14,7 +14,6 @@ using Orkeon.Application.Context;
 using Microsoft.Extensions.Logging;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
@@ -771,11 +770,10 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     {
         // Arrange
         var crew = CreateSimpleCrew();
-        var plan = CrewExecutionPlan.Create();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<NotSupportedException>(() =>
-            _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("Sequential execution is not supported", ex.Message);
         Assert.Contains("Use SequentialProcessStrategy", ex.Message);
     }
@@ -789,11 +787,10 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     {
         // Arrange
         var crew = CreateSimpleCrew();
-        var plan = CrewExecutionPlan.Create();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<NotSupportedException>(() =>
-            _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("Parallel execution is not supported", ex.Message);
         Assert.Contains("Use ParallelProcessStrategy", ex.Message);
     }

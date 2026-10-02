@@ -7,7 +7,6 @@ using Orkeon.Domain.Task.Events;
 using Orkeon.Infrastructure.Agent;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using TaskStatus = Orkeon.Domain.Task.ValueObjects.TaskStatus;
 
@@ -64,9 +63,9 @@ public sealed class SequentialLifecycleTests : IDisposable
         var draft = _fixture.Task("draft");
         var crew = LifecycleFixture.Build(new CrewBuilder().Goal("Pipeline").Sequential(), [worker], [draft]);
 
-        var first = await StrategyFor().ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+        var first = await StrategyFor().ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
         var startedFirst = draft.StartedAt;
-        var second = await StrategyFor().ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+        var second = await StrategyFor().ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(first.Success, first.Error);
         Assert.True(second.Success, second.Error);
@@ -128,6 +127,6 @@ public sealed class SequentialLifecycleTests : IDisposable
     {
         var crew = LifecycleFixture.Build(new CrewBuilder().Goal("Pipeline").Sequential(), agents, tasks);
         return await StrategyFor().ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

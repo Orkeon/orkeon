@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `planning: true` earns its call: the planner reads the crew and each task reads its own plan, in every mode **[breaking]**
+
+`planning: true` made one call before the first task (GAP-29) and little else came of it: the planner
+was shown the crew's goal and the **ids** of its agents and tasks — no description, no expected output,
+no dependency, no tool — so all it could decide was an order; the instructions, agent assignments and
+parallel groups it returned were parsed and dropped; its order, followed under the dependencies, decided
+the crew's output, the context a task read and Parallel's round-robin, and a task it cited twice ran
+twice; Hierarchical and Autonomous made the plan and ignored it; on the echo provider every
+`planning: true` crew failed, each task "missing from the plan"; and `.ork.ts` had no switch (GAP-31):
+
+- **The planner reads the crew.** Its goal, a line on how the mode orders the tasks and picks their
+  agents, the run's variables (`initial_context` included), and each task by number, in the order the
+  run takes them: its description and expected output with the variables in them, as its agent reads
+  them; its dependencies, by number; and its agent's role, goal and tool names where the mode runs a
+  task on the agent it names — elsewhere what the mode does instead, with the crew's agents listed once.
+  Never an id. Bounded by `PlanningDefaults`: a description to 1,500 characters, an expected output to
+  500, an agent's goal to 300, 15 tool names per agent, the variables to 2,000.
+- **It writes one step-by-step plan per task** — `{"plans": [{"task": 1, "plan": "1. …"}]}`, at most
+  8 numbered steps naming the tools to use —, the reply constrained as far as the provider can
+  (`json_schema`, else `json_object`) and read tolerantly (a fence or a sentence around it). The call
+  takes the run's token: cancelling the run cancels it.
+- **Each task reads its own plan in its prompt, in all six modes**, after the task and before the
+  context variables, under *Plan for this task, from the crew's planner — follow it where it helps; the
+  task above prevails:*, cut at 2,000 characters — the worker and each revision in Hierarchical, every
+  candidate in Consensual (not a ballot), each attempt in Graph, the agent that claims a task and the
+  peer it is handed to in Autonomous. The run holds its plan in a scope of its own (`CrewPlanScope`),
+  read where every mode's executions compose their prompt: no strategy carries it, the task's own
+  description is never changed, and two runs of one crew never read each other's plan. Each task's plan
+  is logged at `Information`.
+- **The plan changes neither the order nor the agents.** With or without a plan, a crew runs the same
+  tasks, in the same order, on the same agents.
+- **An unreadable plan no longer fails the run.** It is asked for once more, with what could not be
+  read, then the crew runs without a plan, with a warning — which says so when the reply stopped at the
+  profile's `MaxTokens`; a task the plan leaves out runs without one, a number given twice keeps its
+  first plan, an unknown number is ignored, each with a warning. A provider that fails still fails the
+  run, before its first task, with its reason.
+- **The echo provider skips planning** with a warning (*planning skipped — the echo provider cannot
+  plan*, and `orkeon init`): `LlmProviderCapabilities.ReplaysPrompt`, declared by `UndefinedLlmProvider`
+  alone, and passed through by `MeteredLlmProvider` and — now — `RateLimitedLlmProvider`, whose
+  `Capabilities` hid the wrapped provider's. A keyless `orkeon run` of a `planning: true` crew exits 0.
+- **`.ork.ts`: `crewBuilder().planning(value = true)`**, YAML's `planning: true`, on the host's default
+  profile; the procedural shape warns that it plans nothing.
+- A streamed run (`KickoffStreamingAsync`) does not plan, and warns once.
+- **Removed:** `IPlanningStrategy` and `DefaultPlanningStrategy` (no caller); the plan's order, agent
+  assignments, parallel groups and dependencies (`ExecutionPlan.Assignments`, `WithTask`,
+  `WithAgentAssignment`, `GetAssignedAgent`, `GetTasksInOrder`, `GetParallelGroups`,
+  `PlannedTask.ExecutionOrder`, `ParallelGroup`, `Dependencies`, `PlannedTask.Create`) and the planner's
+  cycle check; the `plan` parameter of `IProcessStrategy.ExecuteSequentialAsync` and
+  `ExecuteParallelAsync` and of `ConsensualProcessStrategy.ExecuteConsensualAsync`;
+  `IExecutionPlanParser.ParseAsync` and `ParserName`, and the text fallback of `ExecutionPlanParser`.
+
+Breaking: `ExecutionPlan` is one plan per task (`ExecutionPlan.Create(IEnumerable<PlannedTask>)`,
+`ExecutionPlan.Empty`, `InstructionsFor(TaskId)`, `new PlannedTask(TaskId, string)`);
+`CrewPlanner.Create(provider, parser)` takes no strategy and `CreatePlanAsync(PlanningContext,
+CancellationToken)` returns a `CrewPlanningOutcome` (the plan and its warnings), its `PlanningContext`
+built of `PlanningTask` and `PlanningAgent` sheets; `IExecutionPlanParser.Read(reply, numberedTasks)`
+returns an `ExecutionPlanReading`; `IProcessStrategy` implementations lose their `plan` parameter;
+`SequentialCrewOrchestrator` takes an optional `ITaskRepository`, and a hand-built orchestrator needs it
+and its `IAgentRepository` to plan.
+
+Migration: drop the plan argument of a strategy call (`strategy.ExecuteSequentialAsync(crew, variables,
+token)`); a custom `IProcessStrategy` removes the parameter, and a custom `IExecutionPlanParser`
+implements `Read`. A crew that relied on the plan's order declares it in `dependencies:` — the order a
+crew runs in is its own now, with or without a plan. Nothing changes for a YAML crew: `planning: true`
+keeps its meaning and gains its effect.
+
 ### Fixed — `asyncExecution: true` runs a task alongside the next ones in a sequential crew, and is refused where the mode orders its tasks itself **[breaking]**
 
 A task's `asyncExecution: true` (CrewAI's `async_execution`) was read, mapped and stored on the task,

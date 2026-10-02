@@ -11,12 +11,20 @@ namespace Orkeon.Scripting.Runtime;
 /// <remarks>
 /// It calls no model, so it spends nothing — and says so: every answer counts zero tokens
 /// on both sides. Leaving the counts out would read as "the provider reported nothing", which
-/// the token meter estimates rather than takes for zero.
+/// the token meter estimates rather than takes for zero. It declares that it replays its prompt
+/// (<see cref="LlmProviderCapabilities.ReplaysPrompt"/>): a caller that needs a model's answer —
+/// the crew's planner — skips the call and says so, instead of reading the prompt back as an
+/// answer (GAP-31).
 /// </remarks>
 public sealed class UndefinedLlmProvider : ILlmProvider
 {
+    private static readonly LlmProviderCapabilities s_capabilities = new() { ReplaysPrompt = true };
+
     /// <inheritdoc />
     public string Name => "undefined";
+
+    /// <inheritdoc />
+    public LlmProviderCapabilities Capabilities => s_capabilities;
 
     /// <inheritdoc />
     public Task<LlmResponse> GenerateAsync(

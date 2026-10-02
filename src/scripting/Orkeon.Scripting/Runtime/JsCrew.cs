@@ -57,6 +57,7 @@ public sealed partial class JsCrew
     internal IReadOnlyDictionary<string, object?> Budget { get; }
     internal bool Verbose { get; }
     internal bool Memory { get; }
+    internal bool Planning { get; }
     /// <summary>Tasks captured by <c>crewBuilder().withTask(...)</c>. Exposed for the
     /// JS→orchestrator adapter.</summary>
     internal IReadOnlyList<JsTask> Tasks => _tasks;
@@ -72,6 +73,7 @@ public sealed partial class JsCrew
         Budget = definition.Budget;
         Verbose = definition.Verbose;
         Memory = definition.Memory;
+        Planning = definition.Planning;
         _logger = definition.Logger ?? NullLogger.Instance;
         _llmProvider = definition.LlmProvider;
         _builtInTools = definition.BuiltInTools;
@@ -363,6 +365,13 @@ public sealed partial class JsCrew
             LogProceduralShapeIgnores(_logger,
                 $"crew '{name}' declares a manager agent, which this run will not use: "
                 + "delegation is orchestrated on the declarative shape.");
+        }
+
+        if (Planning)
+        {
+            LogProceduralShapeIgnores(_logger,
+                $"crew '{name}' declares planning(), which this run will not use: the planner plans "
+                + "the tasks of the declarative shape, and the procedural engine runs agents.");
         }
 
         if (!string.Equals(Process, "sequential", StringComparison.Ordinal))

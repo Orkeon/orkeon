@@ -6,7 +6,6 @@ using Orkeon.Domain.Task;
 using Orkeon.Infrastructure.Consensus;
 using Orkeon.Infrastructure.Tests.Doubles;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 
 namespace Orkeon.Infrastructure.Tests.Strategies.FailedTask;
 
@@ -100,6 +99,6 @@ public sealed class ConsensualFailedTaskTests : IDisposable
             _fixture.Hook);
 
         return await strategy.ExecuteConsensualAsync(
-            crew, CrewExecutionPlan.Create(), ct: TestContext.Current.CancellationToken);
+            crew, ct: TestContext.Current.CancellationToken);
     }
 }

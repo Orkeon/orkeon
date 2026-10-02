@@ -79,6 +79,7 @@ déduit.
 | `process` | ❌ tag de télémétrie seulement | ✅ (`"graph"` choisit la stratégie de reprise-et-routage du domaine, pas une topologie dessinée par le script — voir plus bas) |
 | `manager` | ❌ | ✅ |
 | `memory` | ❌ | ✅ |
+| `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
 | `budget` | ✅ | ❌ ignoré |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 

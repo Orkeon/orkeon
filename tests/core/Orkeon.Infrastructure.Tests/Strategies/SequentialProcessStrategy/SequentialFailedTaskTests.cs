@@ -9,7 +9,6 @@ using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Persistence.Task;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 
@@ -48,7 +47,7 @@ public sealed class SequentialFailedTaskTests : IDisposable
         var (crew, strategy) = Build([first, second]);
 
         var output = await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(output.Success);
         Assert.NotNull(output.Error);
@@ -77,7 +76,7 @@ public sealed class SequentialFailedTaskTests : IDisposable
         var (crew, strategy) = Build([NewTask("a"), NewTask("b")]);
 
         var output = await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(output.Success);
         Assert.Null(output.Error);

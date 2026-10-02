@@ -15,7 +15,6 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Infrastructure.Agent;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 
 namespace Orkeon.Infrastructure.Tests.Strategies;
@@ -154,9 +153,8 @@ public sealed class GraphProcessStrategyTests : IDisposable
             .Goal("Empty crew")
             .Sequential()
             .Build();
-        var plan = CrewExecutionPlan.Create();
 
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.True(result.Success);
@@ -170,12 +168,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
         var agent = CreateAgent("analyst");
         var task = CreateTask("analyze");
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
 
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.True(result.Success);
@@ -192,14 +189,13 @@ public sealed class GraphProcessStrategyTests : IDisposable
         var task2 = CreateTask("step2");
         var task3 = CreateTask("step3");
         var crew = CreateCrewWithTasksAndAgents([task1, task2, task3], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task1.Id] = task1;
         _tasks[task2.Id] = task2;
         _tasks[task3.Id] = task3;
 
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(3, result.TaskOutputs.Count);
@@ -215,7 +211,6 @@ public sealed class GraphProcessStrategyTests : IDisposable
         var task1 = CreateTask("metered_step1");
         var task2 = CreateTask("metered_step2");
         var crew = CreateCrewWithTasksAndAgents([task1, task2], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task1.Id] = task1;
@@ -229,7 +224,7 @@ public sealed class GraphProcessStrategyTests : IDisposable
             });
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert — the graph's internal counting (CrewGraphState.TotalTokensUsed) now
         // surfaces in the crew metadata (R10.8); fails on the legacy code which kept
@@ -250,7 +245,6 @@ public sealed class GraphProcessStrategyTests : IDisposable
         var agent = CreateAgent("retrier");
         var task = CreateTask("flaky_task");
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
@@ -277,7 +271,7 @@ public sealed class GraphProcessStrategyTests : IDisposable
             CircuitPolicy = CircuitBreakerPolicy.Permissive
         };
 
-        var result = await retryStrategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await retryStrategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success || callCount >= 3);
         Assert.True(callCount >= 3, $"Expected at least 3 calls but got {callCount}");
@@ -289,7 +283,6 @@ public sealed class GraphProcessStrategyTests : IDisposable
         var agent = CreateAgent("doomed");
         var task = CreateTask("always_fails");
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
@@ -308,7 +301,7 @@ public sealed class GraphProcessStrategyTests : IDisposable
             CircuitPolicy = CircuitBreakerPolicy.Permissive
         };
 
-        var result = await retryStrategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await retryStrategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Should complete (not hang) — the retry limit stops it, and a task still failing
         // after its retries fails the crew, naming it (GAP-03)
@@ -329,7 +322,6 @@ public sealed class GraphProcessStrategyTests : IDisposable
         var agent = CreateAgent("looper");
         var task = CreateTask("infinite_retry");
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
@@ -357,7 +349,7 @@ public sealed class GraphProcessStrategyTests : IDisposable
             CircuitPolicy = tightPolicy
         };
 
-        var result = await circuitStrategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await circuitStrategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("circuit breaker", result.Error, StringComparison.OrdinalIgnoreCase);
@@ -381,10 +373,9 @@ public sealed class GraphProcessStrategyTests : IDisposable
     public async Task ShouldThrow_WhenExecuteParallelAsync()
     {
         var crew = CreateSimpleCrew();
-        var plan = CrewExecutionPlan.Create();
 
         await Assert.ThrowsAsync<NotSupportedException>(() =>
-            _strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            _strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     #endregion
@@ -406,13 +397,12 @@ public sealed class GraphProcessStrategyTests : IDisposable
         var missingTaskId = TaskId.Create();
         crew.AddTask(missingTaskId);
 
-        var plan = CrewExecutionPlan.Create();
 
         _agents[agent.Id] = agent;
         _tasks[task1.Id] = task1;
         // missingTaskId is NOT in _tasks
 
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.True(result.Success);
@@ -429,12 +419,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
             .Sequential()
             .WithTask(task)
             .Build();
-        var plan = CrewExecutionPlan.Create();
 
         _tasks[task.Id] = task;
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("No agents available", ex.Message);
     }
 
@@ -459,7 +448,6 @@ public sealed class GraphProcessStrategyTests : IDisposable
             MaxRetryCycles = 5,
             CircuitBreakerPreset = "permissive"
         });
-        var plan = CrewExecutionPlan.Create();
 
         var callCount = 0;
         _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
@@ -472,7 +460,7 @@ public sealed class GraphProcessStrategyTests : IDisposable
         });
 
         // Default-configured strategy (no object-initializer overrides).
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, $"Expected success once the crew's 5 retry cycles are honored; callCount={callCount}");
         Assert.True(callCount >= 5, $"Expected at least 5 attempts (crew MaxRetryCycles=5) but got {callCount}");
@@ -495,12 +483,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
             MaxStateVisits = 0,                  // disable visit-based tripping; rely on transitions
             MaxRetryCycles = 100                 // high — rely on the breaker, not the retry cap
         });
-        var plan = CrewExecutionPlan.Create();
 
         _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
             new TaskResult(false, "Fails forever", null, [], TimeSpan.FromSeconds(0)));
 
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("circuit breaker", result.Error, StringComparison.OrdinalIgnoreCase);
@@ -518,7 +505,6 @@ public sealed class GraphProcessStrategyTests : IDisposable
 
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
         Assert.Null(crew.GraphConfig); // no per-crew config
-        var plan = CrewExecutionPlan.Create();
 
         var callCount = 0;
         _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
@@ -527,7 +513,7 @@ public sealed class GraphProcessStrategyTests : IDisposable
             return new TaskResult(false, "Always fails", null, [], TimeSpan.FromSeconds(1));
         });
 
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Stops per the default cap/breaker (does not run away) and reports giving up — as before.
         Assert.NotNull(result);

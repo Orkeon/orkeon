@@ -4,6 +4,7 @@ using System.Text;
 using Orkeon.Application.Context;
 using Orkeon.Application.Constants.Orchestration;
 using Orkeon.Application.Memory;
+using Orkeon.Domain.Constants.Crew;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
@@ -13,8 +14,8 @@ namespace Orkeon.Application.Crew.Execution;
 /// Stateless system/user prompt composition for agent task execution.
 /// Extracted verbatim from <see cref="ExecutionOrchestrator"/> (R4.1): role section,
 /// tools section (with text tool-call instructions for non-native providers),
-/// guardrails, response template, task interpolation, context variables,
-/// previous-output and recalled-memory (GAP-30) sections.
+/// guardrails, response template, task interpolation, the task's plan (GAP-31), context
+/// variables, previous-output and recalled-memory (GAP-30) sections.
 /// </summary>
 internal static class AgentPromptComposer
 {
@@ -136,7 +137,15 @@ internal static class AgentPromptComposer
         prompt.AppendLine(agent.ResponseTemplate);
     }
 
-    internal static string BuildUserPrompt(CrewTask task, SimpleExecutionContext context, string? knowledgeContext = null)
+    /// <param name="task">The task being run.</param>
+    /// <param name="context">The execution context: variables, previous outputs, recalled memories.</param>
+    /// <param name="knowledgeContext">The retrieved knowledge block, when the agent has knowledge attached.</param>
+    /// <param name="plan">
+    /// The task's plan, when the crew plans (GAP-31): what <see cref="CrewPlanScope"/> holds for the task.
+    /// Null or blank leaves the prompt byte-identical to the prompt of a crew that does not plan.
+    /// </param>
+    internal static string BuildUserPrompt(
+        CrewTask task, SimpleExecutionContext context, string? knowledgeContext = null, string? plan = null)
     {
         var (description, expectedOutput) = InterpolateTaskFields(task, context);
 
@@ -147,12 +156,34 @@ internal static class AgentPromptComposer
         prompt.AppendLine(FormattableString.Invariant($"{PromptDefaults.ExpectedOutputPrefix}{expectedOutput}"));
         AppendDeliverableInstruction(prompt, task);
 
+        AppendPlan(prompt, plan);
         AppendContextVariables(prompt, context);
         AppendPreviousOutputs(prompt, context);
         AppendRecalledMemories(prompt, context);
         AppendKnowledgeContext(prompt, knowledgeContext);
 
         return prompt.ToString();
+    }
+
+    /// <summary>
+    /// Appends the task's plan (GAP-31) right after the task, before the context variables:
+    /// <see cref="PromptDefaults.PlanSectionHeader"/>, then the plan, cut at
+    /// <see cref="PlanningDefaults.MaxPlanChars"/> — the plan travels with every turn of the task's
+    /// loop. No-op without a plan: the prompt is then byte-identical to the prompt of a crew that
+    /// does not plan.
+    /// </summary>
+    private static void AppendPlan(StringBuilder prompt, string? plan)
+    {
+        if (string.IsNullOrWhiteSpace(plan))
+            return;
+
+        var text = plan.Trim();
+        if (text.Length > PlanningDefaults.MaxPlanChars)
+            text = string.Concat(text.AsSpan(0, PlanningDefaults.MaxPlanChars), PlanningDefaults.TruncationMarker);
+
+        prompt.AppendLine();
+        prompt.AppendLine(PromptDefaults.PlanSectionHeader);
+        prompt.AppendLine(text);
     }
 
     /// <summary>
@@ -266,23 +297,13 @@ internal static class AgentPromptComposer
         InterpolateTaskFields(task, context).Description;
 
     /// <summary>
-    /// Applies <see cref="InterpolateVariables(string, Dictionary{string, string})"/> to the task description
-    /// and expected output using the supplied execution context variables.
+    /// The task description and expected output with the execution context's variables in them
+    /// (<see cref="TaskTextInterpolation.Interpolate"/>, which the crew's planner reads the tasks with too).
     /// </summary>
     private static (string Description, string ExpectedOutput) InterpolateTaskFields(
-        CrewTask task, SimpleExecutionContext? context)
-    {
-        var description = task.Description.ToString();
-        var expectedOutput = task.ExpectedOutput.ToString();
-
-        if (context?.Variables?.Count > 0)
-        {
-            description = InterpolateVariables(description, context.Variables);
-            expectedOutput = InterpolateVariables(expectedOutput, context.Variables);
-        }
-
-        return (description, expectedOutput);
-    }
+        CrewTask task, SimpleExecutionContext? context) =>
+        (TaskTextInterpolation.Interpolate(task.Description.ToString(), context?.Variables),
+         TaskTextInterpolation.Interpolate(task.ExpectedOutput.ToString(), context?.Variables));
 
     /// <summary>
     /// Appends the <c>Context Variables</c> section (when any variables are set) to the user prompt.
@@ -333,23 +354,5 @@ internal static class AgentPromptComposer
             prompt.AppendLine(content);
             totalChars += content.Length;
         }
-    }
-
-    /// <summary>
-    /// Replaces <c>{key}</c> placeholders in the template with corresponding variable values.
-    /// Unmatched placeholders are left as-is.
-    /// </summary>
-    private static string InterpolateVariables(string template, Dictionary<string, string> variables)
-    {
-        if (string.IsNullOrEmpty(template) || variables.Count == 0)
-            return template;
-
-        var result = template;
-        foreach (var kvp in variables)
-        {
-            result = result.Replace($"{{{kvp.Key}}}", kvp.Value, StringComparison.OrdinalIgnoreCase);
-        }
-
-        return result;
     }
 }

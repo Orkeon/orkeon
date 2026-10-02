@@ -12,7 +12,6 @@ using DomainCrew = Orkeon.Domain.Crew.Crew;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using DomainExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
 using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
 
@@ -86,7 +85,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     }
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, DomainExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException(
             "Sequential execution is not supported by ParallelProcessStrategy. " +
@@ -106,16 +105,14 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         => throw new NotSupportedException("Use AutonomousProcessStrategy for autonomous orchestration.");
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, DomainExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(crew);
-        ArgumentNullException.ThrowIfNull(plan);
-        return ExecuteParallelCoreAsync(crew, plan, inputVariables, cancellationToken);
+        return ExecuteParallelCoreAsync(crew, inputVariables, cancellationToken);
     }
 
     private async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteParallelCoreAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables,
         CancellationToken cancellationToken)
     {
@@ -142,7 +139,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         // Setup stays inside the barrier: an agent-less crew is the everyday failure, and it
         // has to produce a terminal event like any other exit.
         var agents = await LoadAgentsAsync(crew, cancellationToken).ConfigureAwait(false);
-        var tasks = await LoadPlannedTasksAsync(crew, plan, cancellationToken).ConfigureAwait(false);
+        var tasks = await LoadTasksAsync(crew, cancellationToken).ConfigureAwait(false);
 
         var taskIndex = 0;
         var runContext = new SimpleExecutionContext(crew.Id, variables, _memoryScope, [], cancellationToken);
@@ -290,22 +287,16 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     }
 
     /// <summary>
-    /// The tasks to run: the plan's order when it carries one, the crew's own list otherwise.
-    /// A task id nothing resolves is logged and skipped rather than guessed at.
+    /// The tasks to run: the crew's own, in the order it declares them — with or without a plan, which
+    /// never decides the order, the round-robin of unassigned tasks nor the order of the assembled
+    /// output (GAP-31). A task id nothing resolves is logged and skipped rather than guessed at.
     /// </summary>
-    private async System.Threading.Tasks.Task<List<DomainTask>> LoadPlannedTasksAsync(
+    private async System.Threading.Tasks.Task<List<DomainTask>> LoadTasksAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         CancellationToken cancellationToken)
     {
-        // Use plan tasks if available, otherwise fall back to crew tasks
-        var plannedTasks = plan.GetTasksInOrder().ToList();
-        var taskIds = plannedTasks.Count > 0
-            ? plannedTasks.Select(pt => pt.TaskId)
-            : crew.Tasks;
-
         var tasks = new List<DomainTask>();
-        foreach (var taskId in taskIds)
+        foreach (var taskId in crew.Tasks)
         {
             var loaded = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
             if (loaded == null)

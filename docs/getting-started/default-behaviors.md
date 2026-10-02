@@ -44,7 +44,8 @@ exceptions are called out in their row — a service registered unconditionally
 > service — register yours with `AddOrkeonLlmProvider(...)` (see [Bootstrap](./bootstrap.md)).
 > The keyless OpenAI provider that stood in for it is gone (GAP-29). The `orkeon` CLI,
 > `orkeon-host` and `orkeon-repl` behave differently: with no `Llm` section they run on the
-> echo provider and say so.
+> echo provider and say so. A crew with `planning: true` then skips its plan, with a warning:
+> the echo provider replays its prompt, so there is nothing to plan with (GAP-31).
 
 ## The genuinely silent defaults
 

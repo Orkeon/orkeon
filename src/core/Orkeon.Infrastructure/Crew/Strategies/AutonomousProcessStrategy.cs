@@ -89,7 +89,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     }
 
     /// <inheritdoc />
-    public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Use ExecuteAutonomousAsync for autonomous orchestration.");
 
     /// <inheritdoc />
@@ -97,7 +97,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         => throw new NotSupportedException("Use ExecuteAutonomousAsync for autonomous orchestration.");
 
     /// <inheritdoc />
-    public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Use ExecuteAutonomousAsync for autonomous orchestration.");
 
     /// <inheritdoc />
@@ -156,7 +156,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // The crew's tasks are handed out one after another, so the order is the
             // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
             taskIds = await CrewTaskSequencer.ResolveAsync(
-                crew, plan: null, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
+                crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
             for (; nextTask < taskIds.Count; nextTask++)
             {

@@ -13,7 +13,6 @@ using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 
 namespace Orkeon.Infrastructure.Tests.Process.Consensus;
 
@@ -373,7 +372,7 @@ public sealed class PeerBallotConsensusTests
         var strategy = Strategy(options);
 
         var output = await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), new Dictionary<string, string> { ["topic"] = "tides" },
+            crew, new Dictionary<string, string> { ["topic"] = "tides" },
             TestContext.Current.CancellationToken);
 
         Assert.True(output.Success, output.Error);
@@ -433,5 +432,5 @@ public sealed class PeerBallotConsensusTests
         RunAsync(options, BuildCrew(agents));
 
     private Task<DomainCrewOutput> RunAsync(ConsensualProcessOptions options, Orkeon.Domain.Crew.Crew crew) =>
-        Strategy(options).ExecuteConsensualAsync(crew, CrewExecutionPlan.Create(), ct: TestContext.Current.CancellationToken);
+        Strategy(options).ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
 }

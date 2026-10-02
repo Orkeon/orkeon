@@ -95,7 +95,6 @@ public sealed class RunMeterCoverageTests : IDisposable
         crew.AddAgent(manager.Id);
         crew.AddAgent(researcher.Id);
         crew.AddTask(task.Id);
-        vendor.TaskId = task.Id.ToString();
         vendor.WorkerId = researcher.Id.ToString();
 
         await services.GetRequiredService<IAgentRepository>().AddAsync(manager, ct);

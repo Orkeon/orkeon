@@ -14,7 +14,6 @@ using AgentBuilder = Orkeon.Domain.Agent.AgentBuilder;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using CrewBuilder = Orkeon.Domain.Crew.CrewBuilder;
 using CrewTaskBuilder = Orkeon.Domain.Task.CrewTaskBuilder;
-using ExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using IProcessStrategy = Orkeon.Domain.Crew.IProcessStrategy;
 using AgentExecutionBudget = Orkeon.Domain.Autonomous.AgentExecutionBudget;
 using System.Diagnostics.CodeAnalysis;
@@ -157,9 +156,8 @@ public class CovConsensus_ConsensusCoverageTests
 
         var (strategy, _) = BuildStrategy(opts, new[] { agent1, agent2 }, new[] { task1 }, exec: exec);
         var crew = CreateCrew(new[] { agent1, agent2 }, new[] { task1 });
-        var plan = ExecutionPlan.Create(crew.Tasks);
 
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
 
         // AcceptBestScore keeps one of the last round's answers.
         Assert.True(result.Success);
@@ -193,10 +191,9 @@ public class CovConsensus_ConsensusCoverageTests
 
         var (strategy, _) = BuildStrategy(opts, new[] { agent1 }, new[] { task1 }, exec: exec);
         var crew = CreateCrew(new[] { agent1 }, new[] { task1 });
-        var plan = ExecutionPlan.Create(crew.Tasks);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken));
+            () => strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken));
         Assert.Equal("boom", ex.Message);
     }
 
@@ -233,9 +230,8 @@ public class CovConsensus_ConsensusCoverageTests
         var crew = new CrewBuilder().Goal("Consensual crew").Consensual()
             .WithAgent(agent1).WithAgent(agent2).WithAgent(manager).WithManager(manager)
             .WithTask(task1).Build();
-        var plan = ExecutionPlan.Create(crew.Tasks);
 
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(result.TaskOutputs);
@@ -245,7 +241,7 @@ public class CovConsensus_ConsensusCoverageTests
     }
 
     [Fact]
-    public async Task ShouldFallbackToCrewTasks_WhenPlanHasNoOrdering()
+    public async Task ShouldRunTheCrewsOwnTasks_WhenNoPlanReachesTheStrategy()
     {
         var opts = new ConsensualProcessOptions
         {
@@ -261,9 +257,8 @@ public class CovConsensus_ConsensusCoverageTests
         var (strategy, _) = BuildStrategy(opts, new[] { agent1 }, new[] { task1 });
         var crew = CreateCrew(new[] { agent1 }, new[] { task1 });
 
-        // Empty plan -> GetTasksInOrder() empty -> falls back to crew.Tasks.
-        var emptyPlan = ExecutionPlan.Create();
-        var result = await strategy.ExecuteConsensualAsync(crew, emptyPlan, ct: TestContext.Current.CancellationToken);
+        // The crew's own tasks run: no plan reaches a strategy (GAP-31).
+        var result = await strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(result.TaskOutputs);
@@ -288,8 +283,7 @@ public class CovConsensus_ConsensusCoverageTests
         var crew = CreateCrew(new[] { agent1 }, new[] { task1 });
         crew.AddAgent(AgentId.Create()); // unknown id -> repo returns null -> skipped
 
-        var plan = ExecutionPlan.Create(crew.Tasks);
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
 
         // Still succeeds because at least one agent resolved.
         Assert.True(result.Success);
@@ -309,13 +303,12 @@ public class CovConsensus_ConsensusCoverageTests
         var task1 = CreateTask("t");
         var (strategy, _) = BuildStrategy(opts, new[] { agent1 }, new[] { task1 });
         var crew = CreateCrew(new[] { agent1 }, new[] { task1 });
-        var plan = ExecutionPlan.Create(crew.Tasks);
 
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => strategy.ExecuteConsensualAsync(crew, plan, ct: cts.Token));
+            () => strategy.ExecuteConsensualAsync(crew, ct: cts.Token));
     }
 
     [Fact]
@@ -342,9 +335,8 @@ public class CovConsensus_ConsensusCoverageTests
 
         var (strategy, _) = BuildStrategy(opts, new[] { agent1, agent2 }, new[] { task1 }, exec: exec);
         var crew = CreateCrew(new[] { agent1, agent2 }, new[] { task1 });
-        var plan = ExecutionPlan.Create(crew.Tasks);
 
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("Consensus could not be reached", result.Error);
@@ -368,9 +360,8 @@ public class CovConsensus_ConsensusCoverageTests
         var task1 = CreateTask("weighted");
         var (strategy, _) = BuildStrategy(opts, new[] { agent1 }, new[] { task1 }, voting: weighted);
         var crew = CreateCrew(new[] { agent1 }, new[] { task1 });
-        var plan = ExecutionPlan.Create(crew.Tasks);
 
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
     }
 
@@ -409,10 +400,9 @@ public class CovConsensus_ConsensusCoverageTests
         var (strategy, _) = BuildStrategy(opts, [agent], [task], exec: exec);
         IProcessStrategy processStrategy = strategy;
         var crew = CreateCrew([agent], [task]);
-        var plan = ExecutionPlan.Create(crew.Tasks);
 
         var result = await processStrategy.ExecuteSequentialAsync(
-            crew, plan, inputVariables: null, TestContext.Current.CancellationToken);
+            crew, inputVariables: null, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(result.TaskOutputs);
@@ -426,13 +416,12 @@ public class CovConsensus_ConsensusCoverageTests
             new ConsensualProcessOptions(), [CreateAgent("solo")], [CreateTask("t")]);
         IProcessStrategy processStrategy = strategy;
         var crew = CreateCrew([CreateAgent("solo")], [CreateTask("t")]);
-        var plan = ExecutionPlan.Create(crew.Tasks);
 
         var ct = TestContext.Current.CancellationToken;
         await Assert.ThrowsAsync<NotSupportedException>(
             () => processStrategy.ExecuteHierarchicalAsync(crew, AgentId.Create(), null, ct));
         await Assert.ThrowsAsync<NotSupportedException>(
-            () => processStrategy.ExecuteParallelAsync(crew, plan, null, ct));
+            () => processStrategy.ExecuteParallelAsync(crew, null, ct));
         await Assert.ThrowsAsync<NotSupportedException>(
             () => processStrategy.ExecuteAutonomousAsync(crew, AgentExecutionBudget.Default, null, ct));
     }

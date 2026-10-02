@@ -37,7 +37,7 @@ process: string           # "sequential" | "hierarchical" | "parallel" | "consen
 verbose: bool             # default: false
 memory: bool              # default: false. true: stores each task's result and recalls the closest ones before each task (needs an embedder)
 memoryProvider: string    # needs memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — the type; the host section (Orkeon:Redis, …) gives the connection; unset: the host's default store
-planning: bool            # default: false
+planning: bool            # default: false. true: a step-by-step plan per task, written before the first one and read by each task in its prompt; never reorders the tasks
 managerAgent: string      # Required when process = "hierarchical"
 mounts: [string]          # Virtual roots the crew uses ("/output", or "<id>|/output" to pin one settings entry)
 

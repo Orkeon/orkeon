@@ -86,7 +86,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     }
 
     /// <inheritdoc />
-    public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, Orkeon.Domain.Crew.ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         // Not supported by this strategy
         throw new NotSupportedException(
@@ -151,7 +151,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             // The manager hands the tasks out one after another, so the order is the
             // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
             var taskIds = await CrewTaskSequencer.ResolveAsync(
-                crew, plan: null, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
+                crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
             foreach (var taskId in taskIds)
             {
@@ -512,7 +512,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     }
 
     /// <inheritdoc />
-    public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, Orkeon.Domain.Crew.ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         // Not supported by this strategy
         throw new NotSupportedException(

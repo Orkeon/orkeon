@@ -1,5 +1,5 @@
+using System.Globalization;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Crew;
 using Orkeon.Domain.Crew.Interfaces;
@@ -7,311 +7,136 @@ using Orkeon.Domain.Crew.Interfaces;
 namespace Orkeon.Infrastructure.Parsing;
 
 /// <summary>
-/// Parses LLM responses into ExecutionPlan objects using a hybrid strategy:
-/// tries JSON parsing first, then falls back to text-based "KEY: value" parsing.
-/// This implementation was extracted from <c>CrewPlanner</c> (Domain layer)
-/// to respect Clean Architecture — the Domain layer should not depend on
-/// <see cref="System.Text.Json"/>.
+/// Reads the crew planner's reply (GAP-31): <c>{"plans": [{"task": 1, "plan": "…"}]}</c>, one
+/// step-by-step plan per task, by the number the planning prompt gave the task. It tolerates what
+/// models put around the object — a <c>```json</c> fence, a sentence (<see cref="LlmJsonText"/>) —,
+/// property names in any case, a number written as a string and a plan written as a list of steps.
+/// A number given twice keeps its first plan, a number the crew does not have and an entry without
+/// a number or a plan are ignored, each with a warning. A reply without a <c>plans</c> array cannot
+/// be read: the planner is asked once more, with the reason this reader gives.
 /// </summary>
-public sealed partial class ExecutionPlanParser : IExecutionPlanParser
+/// <remarks>
+/// Kept out of the Domain, which stays free of <see cref="System.Text.Json"/>. The former hybrid
+/// reader — task and agent ids to copy back to the character, an order, parallel groups,
+/// dependencies, and a <c>KEY: value</c> text fallback that kept the first line of a multi-line
+/// instruction — is gone with what it fed.
+/// </remarks>
+public sealed class ExecutionPlanParser : IExecutionPlanParser
 {
-    private static readonly string[] s_taskBlockSeparator = ["---"];
-
-    private readonly ILogger<ExecutionPlanParser>? _logger;
-
     /// <inheritdoc />
-    public string ParserName => "HybridExecutionPlanParser";
-
-    /// <summary>
-    /// Creates a new instance of <see cref="ExecutionPlanParser"/>.
-    /// </summary>
-    /// <param name="logger">Optional logger for diagnostics.</param>
-    public ExecutionPlanParser(ILogger<ExecutionPlanParser>? logger = null)
+    public ExecutionPlanReading Read(string reply, IReadOnlyList<TaskId> numberedTasks)
     {
-        _logger = logger;
-    }
+        ArgumentNullException.ThrowIfNull(reply);
+        ArgumentNullException.ThrowIfNull(numberedTasks);
 
-    /// <inheritdoc />
-    public Task<ExecutionPlan?> ParseAsync(
-        string llmResponse,
-        IReadOnlyList<TaskId> tasks,
-        IReadOnlyList<AgentId> agents,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(llmResponse);
-        ArgumentNullException.ThrowIfNull(tasks);
-        ArgumentNullException.ThrowIfNull(agents);
+        var json = LlmJsonText.ExtractObject(reply);
+        if (json is null)
+            return ExecutionPlanReading.Unreadable("the reply holds no JSON object");
 
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Try JSON parsing first, fall back to text-based parsing
-        var plan = TryParseFromJson(llmResponse, tasks, agents);
-        if (plan != null)
-        {
-            if (_logger is not null)
-                LogParsedFromJson(_logger);
-            return Task.FromResult<ExecutionPlan?>(plan);
-        }
-
-        if (_logger is not null)
-            LogJsonParseFallback(_logger);
-        plan = ParseFromText(llmResponse, tasks, agents);
-
-        return Task.FromResult<ExecutionPlan?>(plan);
-    }
-
-    // =====================================================================
-    // JSON parsing (extracted from CrewPlanner.TryParseExecutionPlanFromJson)
-    // =====================================================================
-
-    private static ExecutionPlan? TryParseFromJson(
-        string llmResponse,
-        IReadOnlyList<TaskId> tasks,
-        IReadOnlyList<AgentId> agents)
-    {
+        JsonDocument document;
         try
         {
-            var jsonDoc = JsonDocument.Parse(llmResponse);
-            var root = jsonDoc.RootElement;
-
-            if (!root.TryGetProperty("tasks", out var tasksElement) ||
-                tasksElement.ValueKind != JsonValueKind.Array)
-                return null;
-
-            var plan = ExecutionPlan.Create();
-
-            foreach (var taskElement in tasksElement.EnumerateArray())
-            {
-                plan = ParseJsonTaskElement(taskElement, tasks, agents, plan);
-            }
-
-            return plan.Tasks.Count > 0 ? plan : null;
+            document = JsonDocument.Parse(json);
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            return null;
+            return ExecutionPlanReading.Unreadable($"the reply is not valid JSON ({ex.Message})");
+        }
+
+        using (document)
+        {
+            if (Property(document.RootElement, "plans") is not { ValueKind: JsonValueKind.Array } plans)
+                return ExecutionPlanReading.Unreadable("the reply has no \"plans\" array");
+
+            var planned = new List<PlannedTask>();
+            var taken = new HashSet<int>();
+            var warnings = new List<string>();
+            foreach (var entry in plans.EnumerateArray())
+                ReadEntry(entry, numberedTasks, planned, taken, warnings);
+
+            return ExecutionPlanReading.Of(ExecutionPlan.Create(planned), warnings);
         }
     }
 
-    private static ExecutionPlan ParseJsonTaskElement(
-        JsonElement taskElement,
-        IReadOnlyList<TaskId> tasks,
-        IReadOnlyList<AgentId> agents,
-        ExecutionPlan plan)
+    private static void ReadEntry(
+        JsonElement entry,
+        IReadOnlyList<TaskId> numberedTasks,
+        List<PlannedTask> planned,
+        HashSet<int> taken,
+        List<string> warnings)
     {
-        var taskId = ExtractTaskId(taskElement, tasks);
-        if (taskId == null)
-            return plan;
+        if (entry.ValueKind != JsonValueKind.Object)
+        {
+            warnings.Add("the planner wrote an entry that is not an object; it is ignored.");
+            return;
+        }
 
-        if (!taskElement.TryGetProperty("order", out var orderProp) ||
-            !orderProp.TryGetInt32(out var order))
-            return plan;
+        if (Number(Property(entry, "task")) is not { } number)
+        {
+            warnings.Add("the planner wrote a plan without a task number; it is ignored.");
+            return;
+        }
 
-        int? parallelGroup = ExtractParallelGroup(taskElement);
-        var dependencies = ExtractDependencies(taskElement, tasks);
-        string? instructions = taskElement.TryGetProperty("instructions", out var instProp)
-            && instProp.ValueKind == JsonValueKind.String
-            ? instProp.GetString()
-            : null;
+        if (number < 1 || number > numberedTasks.Count)
+        {
+            warnings.Add(string.Create(CultureInfo.InvariantCulture,
+                $"the planner wrote a plan for task {number}, which the crew does not have; it is ignored."));
+            return;
+        }
 
-        var plannedTask = PlannedTask.Create(taskId, order, parallelGroup, dependencies, instructions);
-        plan = plan.WithTask(plannedTask);
+        if (Text(Property(entry, "plan")) is not { } text)
+        {
+            warnings.Add(string.Create(CultureInfo.InvariantCulture,
+                $"the planner wrote an empty plan for task {number}; it is ignored."));
+            return;
+        }
 
-        plan = TryAssignAgentFromJson(taskElement, agents, plan, taskId);
-        return plan;
+        if (!taken.Add(number))
+        {
+            warnings.Add(string.Create(CultureInfo.InvariantCulture,
+                $"the planner wrote two plans for task {number}; the first is kept."));
+            return;
+        }
+
+        planned.Add(new PlannedTask(numberedTasks[number - 1], text));
     }
 
-    private static TaskId? ExtractTaskId(
-        JsonElement taskElement,
-        IReadOnlyList<TaskId> tasks)
+    /// <summary>The property named <paramref name="name"/>, whatever its case: models capitalise keys.</summary>
+    private static JsonElement? Property(JsonElement element, string name)
     {
-        // LLM output is untrusted: a non-string "task" must skip the entry,
-        // not throw out of GetString().
-        if (!taskElement.TryGetProperty("task", out var taskIdProp) ||
-            taskIdProp.ValueKind != JsonValueKind.String)
+        if (element.ValueKind != JsonValueKind.Object)
             return null;
 
-        var taskIdStr = taskIdProp.GetString();
-        if (taskIdStr == null)
-            return null;
-
-        return FindById(tasks, taskIdStr);
-    }
-
-    private static int? ExtractParallelGroup(JsonElement taskElement)
-    {
-        if (taskElement.TryGetProperty("parallel_group", out var groupProp) &&
-            groupProp.TryGetInt32(out var group))
-            return group;
+        foreach (var property in element.EnumerateObject())
+        {
+            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                return property.Value;
+        }
 
         return null;
     }
 
-    private static List<TaskId> ExtractDependencies(
-        JsonElement taskElement,
-        IReadOnlyList<TaskId> tasks)
+    /// <summary>A task number, written as a JSON number or as a string of digits.</summary>
+    private static int? Number(JsonElement? value) => value switch
     {
-        var dependencies = new List<TaskId>();
+        { ValueKind: JsonValueKind.Number } number when number.TryGetInt32(out var parsed) => parsed,
+        { ValueKind: JsonValueKind.String } text when int.TryParse(text.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) => parsed,
+        _ => null,
+    };
 
-        if (!taskElement.TryGetProperty("dependencies", out var depsProp) ||
-            depsProp.ValueKind != JsonValueKind.Array)
-            return dependencies;
-
-        foreach (var dep in depsProp.EnumerateArray())
+    /// <summary>A plan: a string, or a list of steps joined one per line; null when blank.</summary>
+    private static string? Text(JsonElement? value)
+    {
+        var text = value switch
         {
-            // Skip non-string entries instead of throwing on GetString().
-            if (dep.ValueKind != JsonValueKind.String)
-                continue;
+            { ValueKind: JsonValueKind.String } plan => plan.GetString(),
+            { ValueKind: JsonValueKind.Array } steps => string.Join('\n', steps.EnumerateArray()
+                .Where(step => step.ValueKind == JsonValueKind.String)
+                .Select(step => step.GetString()?.Trim())
+                .Where(step => !string.IsNullOrEmpty(step))),
+            _ => null,
+        };
 
-            var depStr = dep.GetString();
-            if (depStr == null)
-                continue;
-
-            var depId = FindById(tasks, depStr);
-            if (depId != null)
-                dependencies.Add(depId);
-        }
-
-        return dependencies;
+        return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
     }
-
-    private static ExecutionPlan TryAssignAgentFromJson(
-        JsonElement taskElement,
-        IReadOnlyList<AgentId> agents,
-        ExecutionPlan plan,
-        TaskId taskId)
-    {
-        if (!taskElement.TryGetProperty("agent", out var agentProp) ||
-            agentProp.ValueKind != JsonValueKind.String)
-            return plan;
-
-        var agentIdStr = agentProp.GetString();
-        if (agentIdStr == null)
-            return plan;
-
-        var agentId = FindById(agents, agentIdStr);
-        if (agentId != null)
-            return plan.WithAgentAssignment(taskId, agentId);
-
-        return plan;
-    }
-
-    // =====================================================================
-    // Text-based parsing (extracted from CrewPlanner.ParseExecutionPlanFromText)
-    // =====================================================================
-
-    private static ExecutionPlan ParseFromText(
-        string llmResponse,
-        IReadOnlyList<TaskId> tasks,
-        IReadOnlyList<AgentId> agents)
-    {
-        var plan = ExecutionPlan.Create();
-        var taskBlocks = llmResponse.Split(s_taskBlockSeparator, StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var block in taskBlocks)
-        {
-            plan = ParseTextTaskBlock(block, tasks, agents, plan);
-        }
-
-        return plan;
-    }
-
-    private static ExecutionPlan ParseTextTaskBlock(
-        string block,
-        IReadOnlyList<TaskId> tasks,
-        IReadOnlyList<AgentId> agents,
-        ExecutionPlan plan)
-    {
-        var taskData = ParseKeyValueBlock(block);
-
-        if (!taskData.TryGetValue("TASK", out var taskIdStr) ||
-            !taskData.TryGetValue("ORDER", out var orderStr) ||
-            !int.TryParse(orderStr, out var order))
-            return plan;
-
-        var taskId = FindById(tasks, taskIdStr);
-        if (taskId == null)
-            return plan;
-
-        var parallelGroup = ExtractParallelGroupFromText(taskData);
-        var dependencies = ExtractDependenciesFromText(taskData, tasks);
-        var instructions = taskData.TryGetValue("INSTRUCTIONS", out var inst) ? inst : null;
-
-        var plannedTask = PlannedTask.Create(taskId, order, parallelGroup, dependencies, instructions);
-        plan = plan.WithTask(plannedTask);
-
-        plan = TryAssignAgentFromText(taskData, agents, plan, taskId);
-        return plan;
-    }
-
-    private static int? ExtractParallelGroupFromText(Dictionary<string, string> taskData)
-    {
-        if (taskData.TryGetValue("PARALLEL_GROUP", out var groupStr) &&
-            int.TryParse(groupStr, out var group))
-            return group;
-
-        return null;
-    }
-
-    private static List<TaskId> ExtractDependenciesFromText(
-        Dictionary<string, string> taskData,
-        IReadOnlyList<TaskId> tasks)
-    {
-        if (!taskData.TryGetValue("DEPENDENCIES", out var depsStr) || string.IsNullOrWhiteSpace(depsStr))
-            return [];
-
-        return depsStr.Split(',')
-            .Select(d => FindById(tasks, d.Trim()))
-            .Where(t => t != null)
-            .Cast<TaskId>()
-            .ToList();
-    }
-
-    private static ExecutionPlan TryAssignAgentFromText(
-        Dictionary<string, string> taskData,
-        IReadOnlyList<AgentId> agents,
-        ExecutionPlan plan,
-        TaskId taskId)
-    {
-        if (!taskData.TryGetValue("AGENT", out var agentIdStr))
-            return plan;
-
-        var agentId = FindById(agents, agentIdStr);
-        if (agentId != null)
-            return plan.WithAgentAssignment(taskId, agentId);
-
-        return plan;
-    }
-
-    private static Dictionary<string, string> ParseKeyValueBlock(string block)
-    {
-        var result = new Dictionary<string, string>();
-        var lines = block.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var line in lines)
-        {
-            var parts = line.Split(':', 2);
-            if (parts.Length == 2)
-                result[parts[0].Trim()] = parts[1].Trim();
-        }
-
-        return result;
-    }
-
-    // =====================================================================
-    // Shared helpers
-    // =====================================================================
-
-    private static T? FindById<T>(IReadOnlyList<T> items, string idStr) where T : class, IEntityId
-        => items.FirstOrDefault(item => item.Value.ToString().Equals(idStr, StringComparison.Ordinal));
-
-    // --- source-generated logging ---
-
-    [LoggerMessage(EventId = 1, Level = LogLevel.Debug,
-        Message = "Successfully parsed execution plan from JSON")]
-    static partial void LogParsedFromJson(ILogger logger);
-
-    [LoggerMessage(EventId = 2, Level = LogLevel.Debug,
-        Message = "JSON parsing failed, falling back to text-based parsing")]
-    static partial void LogJsonParseFallback(ILogger logger);
 }

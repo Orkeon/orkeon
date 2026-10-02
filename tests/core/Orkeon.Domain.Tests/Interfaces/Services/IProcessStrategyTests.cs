@@ -4,9 +4,7 @@ using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
-using ExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using CrewOutput = Orkeon.Domain.Crew.CrewOutput;
-using PlannedTask = Orkeon.Domain.Crew.PlannedTask;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
 
@@ -17,40 +15,37 @@ public class IProcessStrategyTests
     // Test implementation of IProcessStrategy
     private class TestProcessStrategy : IProcessStrategy
     {
-        private readonly Func<Orkeon.Domain.Crew.Crew, ExecutionPlan, Task<CrewOutput>>? _sequentialFunc;
+        private readonly Func<Orkeon.Domain.Crew.Crew, Task<CrewOutput>>? _sequentialFunc;
         private readonly Func<Orkeon.Domain.Crew.Crew, AgentId, Task<CrewOutput>>? _hierarchicalFunc;
-        private readonly Func<Orkeon.Domain.Crew.Crew, ExecutionPlan, Task<CrewOutput>>? _parallelFunc;
+        private readonly Func<Orkeon.Domain.Crew.Crew, Task<CrewOutput>>? _parallelFunc;
 
         public int SequentialCallCount { get; private set; }
         public int HierarchicalCallCount { get; private set; }
         public int ParallelCallCount { get; private set; }
         public Orkeon.Domain.Crew.Crew? LastSequentialCrew { get; private set; }
-        public ExecutionPlan? LastSequentialPlan { get; private set; }
         public Orkeon.Domain.Crew.Crew? LastHierarchicalCrew { get; private set; }
         public AgentId? LastHierarchicalManagerId { get; private set; }
         public Orkeon.Domain.Crew.Crew? LastParallelCrew { get; private set; }
-        public ExecutionPlan? LastParallelPlan { get; private set; }
         public IReadOnlyDictionary<string, string>? LastReceivedVariables { get; private set; }
 
         public TestProcessStrategy(
-            Func<Orkeon.Domain.Crew.Crew, ExecutionPlan, Task<CrewOutput>>? sequentialFunc = null,
+            Func<Orkeon.Domain.Crew.Crew, Task<CrewOutput>>? sequentialFunc = null,
             Func<Orkeon.Domain.Crew.Crew, AgentId, Task<CrewOutput>>? hierarchicalFunc = null,
-            Func<Orkeon.Domain.Crew.Crew, ExecutionPlan, Task<CrewOutput>>? parallelFunc = null)
+            Func<Orkeon.Domain.Crew.Crew, Task<CrewOutput>>? parallelFunc = null)
         {
             _sequentialFunc = sequentialFunc;
             _hierarchicalFunc = hierarchicalFunc;
             _parallelFunc = parallelFunc;
         }
 
-        public async System.Threading.Tasks.Task<CrewOutput> ExecuteSequentialAsync(Orkeon.Domain.Crew.Crew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        public async System.Threading.Tasks.Task<CrewOutput> ExecuteSequentialAsync(Orkeon.Domain.Crew.Crew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             SequentialCallCount++;
             LastSequentialCrew = crew;
-            LastSequentialPlan = plan;
             LastReceivedVariables = inputVariables;
 
             if (_sequentialFunc != null)
-                return await _sequentialFunc(crew, plan);
+                return await _sequentialFunc(crew);
 
             return CreateDefaultOutput("Sequential execution completed");
         }
@@ -68,15 +63,14 @@ public class IProcessStrategyTests
             return CreateDefaultOutput("Hierarchical execution completed");
         }
 
-        public async System.Threading.Tasks.Task<CrewOutput> ExecuteParallelAsync(Orkeon.Domain.Crew.Crew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        public async System.Threading.Tasks.Task<CrewOutput> ExecuteParallelAsync(Orkeon.Domain.Crew.Crew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             ParallelCallCount++;
             LastParallelCrew = crew;
-            LastParallelPlan = plan;
             LastReceivedVariables = inputVariables;
 
             if (_parallelFunc != null)
-                return await _parallelFunc(crew, plan);
+                return await _parallelFunc(crew);
 
             return CreateDefaultOutput("Parallel execution completed");
         }
@@ -126,16 +120,13 @@ public class IProcessStrategyTests
             .Build();
     }
 
-    private static ExecutionPlan CreateTestPlan()
+    /// <summary>A crew carrying three task ids — what a strategy runs; no plan travels with it (GAP-31).</summary>
+    private static Orkeon.Domain.Crew.Crew CreateTestCrewWithTasks(ProcessType processType)
     {
-        var taskIds = new List<TaskId>
-        {
-            TaskId.From(Guid.NewGuid()),
-            TaskId.From(Guid.NewGuid()),
-            TaskId.From(Guid.NewGuid())
-        };
-
-        return ExecutionPlan.Create(taskIds);
+        var crew = CreateTestCrew(processType);
+        for (var i = 0; i < 3; i++)
+            crew.AddTask(TaskId.Create());
+        return crew;
     }
 
     [Fact]
@@ -144,10 +135,9 @@ public class IProcessStrategyTests
         // Arrange
         var strategy = new TestProcessStrategy();
         var crew = CreateTestCrew(ProcessType.Sequential);
-        var plan = CreateTestPlan();
 
         // Act
-        var result = await strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -155,7 +145,6 @@ public class IProcessStrategyTests
         Assert.Equal("Sequential execution completed", result.Output);
         Assert.Equal(1, strategy.SequentialCallCount);
         Assert.Equal(crew, strategy.LastSequentialCrew);
-        Assert.Equal(plan, strategy.LastSequentialPlan);
     }
 
     [Fact]
@@ -169,13 +158,12 @@ public class IProcessStrategyTests
             TimeSpan.FromMinutes(2));
 
         var strategy = new TestProcessStrategy(
-            sequentialFunc: (crew, plan) => System.Threading.Tasks.Task.FromResult(expectedOutput));
+            sequentialFunc: crew => System.Threading.Tasks.Task.FromResult(expectedOutput));
 
         var crew = CreateTestCrew(ProcessType.Sequential);
-        var plan = CreateTestPlan();
 
         // Act
-        var result = await strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedOutput, result);
@@ -192,13 +180,12 @@ public class IProcessStrategyTests
             TimeSpan.FromSeconds(1));
 
         var strategy = new TestProcessStrategy(
-            sequentialFunc: (crew, plan) => System.Threading.Tasks.Task.FromResult(failedOutput));
+            sequentialFunc: crew => System.Threading.Tasks.Task.FromResult(failedOutput));
 
         var crew = CreateTestCrew(ProcessType.Sequential);
-        var plan = CreateTestPlan();
 
         // Act
-        var result = await strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result.Success);
@@ -279,10 +266,9 @@ public class IProcessStrategyTests
         // Arrange
         var strategy = new TestProcessStrategy();
         var crew = CreateTestCrew(ProcessType.Parallel);
-        var plan = CreateTestPlan();
 
         // Act
-        var result = await strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -290,46 +276,6 @@ public class IProcessStrategyTests
         Assert.Equal("Parallel execution completed", result.Output);
         Assert.Equal(1, strategy.ParallelCallCount);
         Assert.Equal(crew, strategy.LastParallelCrew);
-        Assert.Equal(plan, strategy.LastParallelPlan);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldExecuteInGroups_WhenExecutingParallelAsyncWithParallelGroups()
-    {
-        // Arrange
-        var taskId1 = TaskId.From(Guid.NewGuid());
-        var taskId2 = TaskId.From(Guid.NewGuid());
-        var taskId3 = TaskId.From(Guid.NewGuid());
-
-        // Group 1: task1 and task2 in parallel
-        // Group 2: task3 after group 1
-        var plan = ExecutionPlan.Create()
-            .WithTask(PlannedTask.Create(taskId1, 0, parallelGroup: 1))
-            .WithTask(PlannedTask.Create(taskId2, 1, parallelGroup: 1))
-            .WithTask(PlannedTask.Create(taskId3, 2, parallelGroup: 2));
-
-        var strategy = new TestProcessStrategy(
-            parallelFunc: (crew, p) =>
-            {
-                var groups = p.GetParallelGroups().ToList();
-                Assert.Equal(2, groups.Count);
-                Assert.Equal(2, groups[0].Count());
-                Assert.Single(groups[1]);
-
-                return System.Threading.Tasks.Task.FromResult(CrewOutput.CreateSuccess(
-                    $"Executed {groups.Count} parallel groups",
-                    null,
-                    [],
-                    TimeSpan.FromSeconds(2)));
-            });
-
-        var crew = CreateTestCrew(ProcessType.Parallel);
-
-        // Act
-        var result = await strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Contains("2 parallel groups", result.Output);
     }
 
     [Fact]
@@ -337,14 +283,13 @@ public class IProcessStrategyTests
     {
         // Arrange
         var strategy = new TestProcessStrategy(
-            parallelFunc: (crew, plan) => throw new InvalidOperationException("Parallel execution error"));
+            parallelFunc: crew => throw new InvalidOperationException("Parallel execution error"));
 
         var crew = CreateTestCrew(ProcessType.Parallel);
-        var plan = CreateTestPlan();
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            () => strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("Parallel execution error", exception.Message);
     }
 
@@ -356,13 +301,12 @@ public class IProcessStrategyTests
         var sequentialCrew = CreateTestCrew(ProcessType.Sequential);
         var hierarchicalCrew = CreateTestCrew(ProcessType.Hierarchical);
         var parallelCrew = CreateTestCrew(ProcessType.Parallel);
-        var plan = CreateTestPlan();
         var managerAgentId = AgentId.Create();
 
         // Act
-        await strategy.ExecuteSequentialAsync(sequentialCrew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        await strategy.ExecuteSequentialAsync(sequentialCrew, cancellationToken: TestContext.Current.CancellationToken);
         await strategy.ExecuteHierarchicalAsync(hierarchicalCrew, managerAgentId, cancellationToken: TestContext.Current.CancellationToken);
-        await strategy.ExecuteParallelAsync(parallelCrew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        await strategy.ExecuteParallelAsync(parallelCrew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(1, strategy.SequentialCallCount);
@@ -380,14 +324,14 @@ public class IProcessStrategyTests
         var executionLog = new List<string>();
 
         var strategy = new TestProcessStrategy(
-            sequentialFunc: async (crew, plan) =>
+            sequentialFunc: async crew =>
             {
                 executionLog.Add("Sequential started");
                 await System.Threading.Tasks.Task.Delay(10);
                 executionLog.Add("Sequential completed");
 
-                var outputs = plan.Tasks.Select(t =>
-                    TaskOutput.Create($"Sequential task {t.TaskId}", "raw", "text")).ToList();
+                var outputs = crew.Tasks.Select(t =>
+                    TaskOutput.Create($"Sequential task {t}", "raw", "text")).ToList();
 
                 return CrewOutput.CreateSuccess(
                     "Sequential workflow done",
@@ -407,21 +351,20 @@ public class IProcessStrategyTests
                     [],
                     TimeSpan.FromMilliseconds(150));
             },
-            parallelFunc: async (crew, plan) =>
+            parallelFunc: async crew =>
             {
                 executionLog.Add("Parallel started");
-                var groups = plan.GetParallelGroups().ToList();
 
-                foreach (var group in groups)
+                foreach (var task in crew.Tasks)
                 {
-                    executionLog.Add($"Processing group with {group.Count()} tasks");
+                    executionLog.Add($"Processing task {task}");
                     await System.Threading.Tasks.Task.Delay(5);
                 }
 
                 executionLog.Add("Parallel completed");
 
                 return CrewOutput.CreateSuccess(
-                    $"Parallel workflow done with {groups.Count} groups",
+                    $"Parallel workflow done with {crew.Tasks.Count} tasks",
                     null,
                     [],
                     TimeSpan.FromMilliseconds(200));
@@ -431,21 +374,14 @@ public class IProcessStrategyTests
 
         // Act - Execute different strategies
         var sequentialResult = await strategy.ExecuteSequentialAsync(
-            CreateTestCrew(ProcessType.Sequential),
-            CreateTestPlan(), cancellationToken: TestContext.Current.CancellationToken);
+            CreateTestCrewWithTasks(ProcessType.Sequential), cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchicalResult = await strategy.ExecuteHierarchicalAsync(
             CreateTestCrew(ProcessType.Hierarchical),
             managerAgentId, cancellationToken: TestContext.Current.CancellationToken);
 
-        var parallelPlan = ExecutionPlan.Create()
-            .WithTask(PlannedTask.Create(TaskId.Create(), 0, parallelGroup: 1))
-            .WithTask(PlannedTask.Create(TaskId.Create(), 1, parallelGroup: 1))
-            .WithTask(PlannedTask.Create(TaskId.Create(), 2, parallelGroup: 2));
-
         var parallelResult = await strategy.ExecuteParallelAsync(
-            CreateTestCrew(ProcessType.Parallel),
-            parallelPlan, cancellationToken: TestContext.Current.CancellationToken);
+            CreateTestCrewWithTasks(ProcessType.Parallel), cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.All([sequentialResult, hierarchicalResult, parallelResult],
@@ -453,51 +389,11 @@ public class IProcessStrategyTests
 
         Assert.Equal(3, sequentialResult.TaskOutputs.Count);
         Assert.Contains(managerAgentId.ToString(), hierarchicalResult.Output);
-        Assert.Contains("2 groups", parallelResult.Output);
+        Assert.Contains("3 tasks", parallelResult.Output);
 
-        Assert.Equal(8, executionLog.Count);
+        Assert.Equal(9, executionLog.Count);
         Assert.Contains("Sequential started", executionLog);
         Assert.StartsWith("Hierarchical started with", executionLog[2]);
-        Assert.Contains("Processing group with 2 tasks", executionLog);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldTrackAgentAssignments_WhenUsingExecutionPlanWithTaskAssignments()
-    {
-        // Arrange
-        var agentId1 = AgentId.From(Guid.NewGuid());
-        var agentId2 = AgentId.From(Guid.NewGuid());
-
-        var plan = CreateTestPlan();
-        foreach (var task in plan.Tasks)
-        {
-            plan = plan.WithAgentAssignment(task.TaskId, task.ExecutionOrder % 2 == 0 ? agentId1 : agentId2);
-        }
-
-        var strategy = new TestProcessStrategy(
-            sequentialFunc: (crew, p) =>
-            {
-                // Verify assignments are preserved
-                foreach (var task in p.Tasks)
-                {
-                    var assignedAgent = p.GetAssignedAgent(task.TaskId);
-                    Assert.NotNull(assignedAgent);
-                }
-
-                return System.Threading.Tasks.Task.FromResult(CrewOutput.CreateSuccess(
-                    "Executed with assignments",
-                    null,
-                    [],
-                    TimeSpan.FromSeconds(1)));
-            });
-
-        var crew = CreateTestCrew();
-
-        // Act
-        var result = await strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(result.Success);
-        Assert.Equal("Executed with assignments", result.Output);
+        Assert.StartsWith("Processing task ", executionLog[5]);
     }
 }

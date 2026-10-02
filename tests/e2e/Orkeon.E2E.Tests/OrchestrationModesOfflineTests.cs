@@ -22,9 +22,9 @@ namespace Orkeon.E2E.Tests;
 /// the kickoff completes, it produces per-task outputs, and it actually drove
 /// the LLM (the run is not a silent no-op path).
 /// </summary>
-public class OrchestrationModesOfflineTests
+public partial class OrchestrationModesOfflineTests
 {
-    private static string CrewYaml(string process, int tasks = 2)
+    private static string CrewYaml(string process, int tasks = 2, bool planning = false)
     {
         var taskBlocks = string.Join("\n", Enumerable.Range(1, tasks).Select(i => $"""
   step{i}:
@@ -33,10 +33,11 @@ public class OrchestrationModesOfflineTests
     agent: worker{(i % 2) + 1}
 """));
         var managerLine = process == "hierarchical" ? "\nmanagerAgent: worker1" : "";
+        var planningLine = planning ? "\nplanning: true" : "";
         return $"""
 name: {process}-crew
 goal: Exercise the {process} orchestration mode offline
-process: "{process}"{managerLine}
+process: "{process}"{managerLine}{planningLine}
 agents:
   worker1:
     role: Analyst
@@ -58,7 +59,9 @@ tasks:
         var hook = new RecordingExecutionHook();
         var stub = new StubLlmProvider().RespondTo(prompt => new LlmResponse
         {
-            Content = $"[offline] answer to: {prompt[..Math.Min(40, prompt.Length)]}"
+            Content = prompt.StartsWith(PlannerPromptOpening, StringComparison.Ordinal)
+                ? PlanEveryTask(prompt)
+                : $"[offline] answer to: {prompt[..Math.Min(40, prompt.Length)]}"
         });
         stub.RespondToChatWith(new LlmResponse { Content = "[offline] chat answer" });
 
@@ -151,6 +154,56 @@ tasks:
         var llmCalls = stub.GenerateCalls.Count + stub.ChatCalls.Count + chat.CallCount;
         Assert.True(llmCalls > 0,
             $"{mode}: the crew completed without a single LLM exchange — the mode ran a no-op path.");
+    }
+
+    /// <summary>The first words of the crew planner's prompt (GAP-31).</summary>
+    private const string PlannerPromptOpening = "You are the planner of an agent crew.";
+
+    /// <summary>A task the planning prompt numbers: its number, and the part its description asks for.</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"^Task (\d+)\r?\nDescription: Produce part (\d+) of the analysis", System.Text.RegularExpressions.RegexOptions.Multiline)]
+    private static partial System.Text.RegularExpressions.Regex PlannedPart();
+
+    /// <summary>The user prompt of a task's execution: the part its description asks for.</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"\ATask:\r?\nProduce part (\d+) of the analysis")]
+    private static partial System.Text.RegularExpressions.Regex ExecutedPart();
+
+    /// <summary>One plan per task the planning prompt numbers: "PLAN for part N" for "Produce part N …".</summary>
+    private static string PlanEveryTask(string planningPrompt)
+    {
+        var plans = PlannedPart().Matches(planningPrompt)
+            .Select(m => $$"""{"task":{{m.Groups[1].Value}},"plan":"PLAN for part {{m.Groups[2].Value}}"}""");
+        return $$"""{"plans":[{{string.Join(",", plans)}}]}""";
+    }
+
+    /// <summary>
+    /// GAP-31: with <c>planning: true</c>, the planner's plan for a task reaches that task's prompt —
+    /// and only that task's — in every mode: through the one composer every mode's executions go
+    /// through. Hierarchical and Autonomous used to make the plan and ignore it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Modes))]
+    public async Task Every_mode_puts_each_tasks_plan_in_its_prompt(string mode)
+    {
+        var (_, stub, chat, _) = await RunAsync(CrewYaml(mode, planning: true), TestContext.Current.CancellationToken);
+
+        Assert.Single(stub.GenerateCalls, prompt => prompt.StartsWith(PlannerPromptOpening, StringComparison.Ordinal));
+        foreach (var part in new[] { 1, 2 })
+        {
+            var prompts = chat.UserPrompts
+                .Where(prompt => ExecutedPart().Match(prompt) is { Success: true } match
+                    && match.Groups[1].Value == part.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .ToList();
+            Assert.True(prompts.Count > 0, $"{mode}: task {part} never reached the model");
+            Assert.All(prompts, prompt =>
+            {
+                Assert.Contains($"PLAN for part {part}", prompt, StringComparison.Ordinal);
+                Assert.DoesNotContain($"PLAN for part {3 - part}", prompt, StringComparison.Ordinal);
+            });
+        }
+
+        // A ballot is a task of its own, not the task it judges: it reads no plan.
+        Assert.DoesNotContain(chat.UserPrompts, prompt =>
+            prompt.Contains("casting a ballot", StringComparison.Ordinal) && prompt.Contains("PLAN for part", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -299,14 +352,20 @@ tasks:
 
     private sealed class StubChatClient : IChatClient
     {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<string> _userPrompts = new();
         private int _callCount;
 
         public int CallCount => _callCount;
+
+        /// <summary>The first user message of every call, in arrival order: what each execution was asked.</summary>
+        public IReadOnlyList<string> UserPrompts => [.. _userPrompts];
 
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _callCount);
+            if (messages.FirstOrDefault(m => m.Role == ChatRole.User) is { } user)
+                _userPrompts.Enqueue(user.Text);
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "[offline] chat client answer")));
         }
 

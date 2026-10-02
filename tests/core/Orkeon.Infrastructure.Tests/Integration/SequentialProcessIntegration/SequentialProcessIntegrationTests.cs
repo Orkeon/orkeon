@@ -12,7 +12,6 @@ using Orkeon.Infrastructure.Agent;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 
 namespace Orkeon.Infrastructure.Tests.Integration;
@@ -202,10 +201,9 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         crew.AddTask(task2.Id);
         crew.AddTask(task3.Id);
 
-        var plan = CrewExecutionPlan.Create([task1.Id, task2.Id, task3.Id]);
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -264,10 +262,9 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         crew.AddTask(task1.Id);
         crew.AddTask(task2.Id);
 
-        var plan = CrewExecutionPlan.Create([task1.Id, task2.Id]);
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -307,10 +304,9 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         foreach (var t in tasks)
             crew.AddTask(t.Id);
 
-        var plan = CrewExecutionPlan.Create(tasks.Select(t => t.Id));
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -351,10 +347,9 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         crew.AddTask(validTask.Id);
         crew.AddTask(missingTaskId);
 
-        var plan = CrewExecutionPlan.Create([validTask.Id, missingTaskId]);
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -374,10 +369,9 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
             .Goal("Empty crew")
             .Sequential()
             .Build();
-        var plan = CrewExecutionPlan.Create();
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -427,10 +421,9 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         crew.AddTask(implementTask.Id);
         crew.AddTask(testTask.Id);
 
-        var plan = CrewExecutionPlan.Create([designTask.Id, implementTask.Id, testTask.Id]);
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -472,10 +465,9 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
             tasks.Add(task);
         }
 
-        var plan = CrewExecutionPlan.Create(tasks.Select(t => t.Id));
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -507,11 +499,10 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         crew.AddAgent(agent.Id);
         crew.AddTask(task.Id);
 
-        var plan = CrewExecutionPlan.Create([task.Id]);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            () => _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("No agents available", ex.Message);
     }
 
@@ -545,10 +536,9 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         crew.AddTask(task1.Id);
         crew.AddTask(task2.Id);
 
-        var plan = CrewExecutionPlan.Create([task1.Id, task2.Id]);
 
         // Act
-        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var stats = result.GetStatistics();
@@ -582,11 +572,10 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         crew.AddAgent(agent.Id);
         crew.AddTask(task.Id);
 
-        var plan = CrewExecutionPlan.Create([task.Id]);
 
         // Act
-        var result1 = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
-        var result2 = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+        var result1 = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
+        var result2 = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(result1.TaskOutputs.Count, result2.TaskOutputs.Count);

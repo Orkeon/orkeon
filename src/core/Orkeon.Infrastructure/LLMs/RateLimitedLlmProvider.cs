@@ -74,6 +74,14 @@ public sealed partial class RateLimitedLlmProvider : ILlmProvider, IStreamingLlm
     public LlmConfig? BaseConfig => _inner.BaseConfig;
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The wrapped provider's, like <see cref="BaseConfig"/>: a decorator that declared nothing hid
+    /// what the provider can do — the echo provider's <c>ReplaysPrompt</c> that the crew's planner
+    /// reads (GAP-31), a response format the planner and the judge constrain their replies with.
+    /// </remarks>
+    public LlmProviderCapabilities Capabilities => _inner.Capabilities;
+
+    /// <inheritdoc />
     public async Task<LlmResponse> GenerateAsync(
         string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {

@@ -11,6 +11,7 @@ public sealed class MockLlmProvider : ILlmProvider
     private LlmResponse _generateResult = new() { Content = "mock response" };
     private LlmResponse _chatResult = new() { Content = "mock chat response" };
     private Func<string, LlmConfig?, LlmResponse>? _generateFunc;
+    private Func<string, LlmConfig?, CancellationToken, Task<LlmResponse>>? _generateAsyncFunc;
     private Func<LlmMessage[], LlmConfig?, LlmResponse>? _chatFunc;
     private Exception? _chatException;
 
@@ -36,6 +37,12 @@ public sealed class MockLlmProvider : ILlmProvider
     public void SetChatResult(LlmResponse result) => _chatResult = result;
     public void SetChatResult(string content) => _chatResult = new LlmResponse { Content = content };
     public void SetGenerateFunc(Func<string, LlmConfig?, LlmResponse> func) => _generateFunc = func;
+
+    /// <summary>
+    /// Answers <see cref="GenerateAsync"/> asynchronously, with the caller's token — for a test that
+    /// needs a call to wait, or to see whether the token it was given is cancelled.
+    /// </summary>
+    public void SetGenerateAsyncFunc(Func<string, LlmConfig?, CancellationToken, Task<LlmResponse>> func) => _generateAsyncFunc = func;
     public void SetChatFunc(Func<LlmMessage[], LlmConfig?, LlmResponse> func) => _chatFunc = func;
     public void SetChatException(Exception ex) => _chatException = ex;
 
@@ -47,6 +54,9 @@ public sealed class MockLlmProvider : ILlmProvider
         GenerateCallCount++;
         LastGeneratePrompt = prompt;
         LastGenerateConfig = config;
+
+        if (_generateAsyncFunc != null)
+            return _generateAsyncFunc(prompt, config, cancellationToken);
 
         var result = _generateFunc != null ? _generateFunc(prompt, config) : _generateResult;
         return Task.FromResult(result);

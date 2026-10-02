@@ -92,7 +92,7 @@ public sealed partial class AgentBallotCollector : IBallotCollector
     /// </summary>
     internal static Ballot Parse(string? reply, IReadOnlySet<string> offeredLabels)
     {
-        var json = ExtractJsonObject(reply);
+        var json = Orkeon.Infrastructure.Parsing.LlmJsonText.ExtractObject(reply);
         if (json is null)
             return Ballot.Abstention("the ballot reply is not a JSON object");
 
@@ -149,16 +149,6 @@ public sealed partial class AgentBallotCollector : IBallotCollector
             || !confidence.TryGetDouble(out var value) || double.IsNaN(value))
             return 1f;
         return (float)Math.Clamp(value, 0d, 1d);
-    }
-
-    /// <summary>The first <c>{</c> to the last <c>}</c>: tolerates a fenced block or a sentence around the object.</summary>
-    private static string? ExtractJsonObject(string? reply)
-    {
-        if (string.IsNullOrWhiteSpace(reply))
-            return null;
-        var start = reply.IndexOf('{', StringComparison.Ordinal);
-        var end = reply.LastIndexOf('}');
-        return start >= 0 && end > start ? reply[start..(end + 1)] : null;
     }
 
     /// <summary>

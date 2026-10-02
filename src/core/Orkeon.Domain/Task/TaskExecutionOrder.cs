@@ -3,7 +3,7 @@ using Orkeon.Domain.Common;
 namespace Orkeon.Domain.Task;
 
 /// <summary>
-/// The order a crew runs its tasks in when no plan decides it: a <b>stable topological sort</b>
+/// The order a crew runs its tasks in — with or without a plan, which never decides it (GAP-31): a <b>stable topological sort</b>
 /// of the tasks on their declared dependencies. A task is placed only after every task it
 /// depends on; among the tasks whose dependencies are all satisfied, the declared order is
 /// kept — so a crew that declares no dependency runs exactly in the order it was written.

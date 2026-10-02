@@ -24,7 +24,7 @@ process: string           # "sequential" (default) | "hierarchical" | "parallel"
 verbose: bool             # default: false
 memory: bool              # default: false. true: the crew stores the result of each task and recalls the closest ones before each task (embedder required at kickoff); false: nothing is stored or recalled
 memoryProvider: string    # Requires memory: true (refused otherwise). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning. The TYPE only: the connection comes from the host section (Orkeon:Redis, Orkeon:Sqlite, …). Unset: the host's default store (Memory:Provider)
-planning: bool            # default: false
+planning: bool            # default: false. true: before the first task, a planner (the host's default profile) writes a step-by-step plan per task, which the task reads in its prompt, in every mode; it changes neither the order nor the agents
 managerAgent: string      # Hierarchical: the manager (omitted → the first agent manages, warning). Consensual: the arbiter of the ManagerDecision fallback
 graphConfig: {…}          # Graph mode settings, the crew's only circuit-breaker setting (see the dedicated section)
 

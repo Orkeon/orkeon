@@ -70,6 +70,7 @@ public static class JsCrewConfigurationAdapter
             Process = process,
             Verbose = crew.Verbose,
             Memory = crew.Memory,
+            Planning = crew.Planning,
             ManagerAgentId = managerId,
             Agents = agentConfigs,
             Tasks = taskConfigs,

@@ -20,10 +20,7 @@ internal sealed class ScriptedCrewVendor : ILlmProvider
     /// <inheritdoc />
     public string Name => "scripted-vendor";
 
-    /// <summary>The task the plan and the assignment name.</summary>
-    public string TaskId { get; set; } = string.Empty;
-
-    /// <summary>The agent the plan and the assignment pick.</summary>
+    /// <summary>The agent the assignment picks.</summary>
     public string WorkerId { get; set; } = string.Empty;
 
     /// <summary>The kind of every call answered, in order.</summary>
@@ -45,8 +42,8 @@ internal sealed class ScriptedCrewVendor : ILlmProvider
     public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(prompt);
-        return Task.FromResult(prompt.StartsWith("You are planning the execution", StringComparison.Ordinal)
-            ? Answer("planning", $$"""{"tasks":[{"task":"{{TaskId}}","order":1,"agent":"{{WorkerId}}"}]}""", 101, 11)
+        return Task.FromResult(prompt.StartsWith(Orkeon.Domain.Crew.CrewPlanner.PromptOpening, StringComparison.Ordinal)
+            ? Answer("planning", """{"plans":[{"task":1,"plan":"1. Search the knowledge base for the warranty."}]}""", 101, 11)
             : Answer("generate", "generated", 100, 10));
     }
 

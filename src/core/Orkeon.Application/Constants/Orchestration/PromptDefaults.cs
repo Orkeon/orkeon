@@ -31,6 +31,15 @@ public static class PromptDefaults
     public const string TruncationMessage = "[... truncated for brevity]";
 
     /// <summary>
+    /// Header of the section of the user prompt that carries the task's plan, when the crew plans
+    /// (<c>planning: true</c>, GAP-31): placed after the task — description, expected output,
+    /// deliverable — and before the context variables. The plan is a model's output read by another
+    /// model, so the header says the task prevails over it.
+    /// </summary>
+    public const string PlanSectionHeader =
+        "Plan for this task, from the crew's planner — follow it where it helps; the task above prevails:";
+
+    /// <summary>
     /// Header of the section of the user prompt that carries the crew's recalled memories (GAP-30):
     /// placed after the previous task results and before the retrieved knowledge, one
     /// <c>--- date · role · task ---</c> line before each memory.

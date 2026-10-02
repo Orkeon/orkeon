@@ -7,7 +7,6 @@ using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.Events;
 using Orkeon.Infrastructure.Consensus;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using TaskStatus = Orkeon.Domain.Task.ValueObjects.TaskStatus;
 
@@ -91,6 +90,6 @@ public sealed class ConsensualLifecycleTests : IDisposable
             _fixture.Hook);
 
         return await strategy.ExecuteConsensualAsync(
-            crew, CrewExecutionPlan.Create(), ct: TestContext.Current.CancellationToken);
+            crew, ct: TestContext.Current.CancellationToken);
     }
 }

@@ -15,7 +15,6 @@ using Orkeon.Infrastructure.Communication;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tools;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Infrastructure.Tests.Strategies.Lifecycle;
@@ -105,7 +104,7 @@ public sealed class DerivedContextTests : IDisposable
         var strategy = new SequentialProcessStrategy(
             Dependencies(), Delegation(), NullLogger<SequentialProcessStrategy>.Instance);
 
-        var output = await strategy.ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), cancellationToken: Ct);
+        var output = await strategy.ExecuteSequentialAsync(crew, cancellationToken: Ct);
 
         Assert.True(output.Success, output.Error);
         var stored = Assert.Single(_memory.Stored);
@@ -128,9 +127,9 @@ public sealed class DerivedContextTests : IDisposable
         intro.AssignTo(lead.Id);
 
         var first = await new SequentialProcessStrategy(Dependencies(), Delegation(), NullLogger<SequentialProcessStrategy>.Instance)
-            .ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), new Dictionary<string, string> { ["run"] = "1" }, Ct);
+            .ExecuteSequentialAsync(crew, new Dictionary<string, string> { ["run"] = "1" }, Ct);
         var second = await new SequentialProcessStrategy(Dependencies(), Delegation(), NullLogger<SequentialProcessStrategy>.Instance)
-            .ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), new Dictionary<string, string> { ["run"] = "2" }, Ct);
+            .ExecuteSequentialAsync(crew, new Dictionary<string, string> { ["run"] = "2" }, Ct);
 
         Assert.True(first.Success, first.Error);
         Assert.True(second.Success, second.Error);
@@ -150,7 +149,7 @@ public sealed class DerivedContextTests : IDisposable
         var strategy = new GraphProcessStrategy(
             Dependencies(), Delegation(), NullLogger<GraphProcessStrategy>.Instance);
 
-        var output = await strategy.ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), cancellationToken: Ct);
+        var output = await strategy.ExecuteSequentialAsync(crew, cancellationToken: Ct);
 
         Assert.True(output.Success, output.Error);
         var subAnswer = Assert.Single(_llm.Contexts, turn => turn.Agent.Id == writer.Id);

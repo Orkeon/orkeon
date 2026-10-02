@@ -99,6 +99,25 @@ public sealed class JsCrewShapeWarningTests
     }
 
     [Fact]
+    public async Task Planning_on_the_procedural_shape_warns_that_nothing_will_be_planned()
+    {
+        // GAP-31: crewBuilder().planning() plans the declarative shape's tasks; the procedural
+        // engine runs agents, not tasks, so it has nothing to plan — said, like the manager.
+        var entries = await RunAsync(Agent + """
+            crewBuilder()
+                .name("planned")
+                .goal("Asks for a plan the procedural engine never makes")
+                .planning()
+                .withAgent(worker)
+                .build();
+            """);
+
+        Assert.Contains(entries, e => e.Level == LogLevel.Warning
+            && e.Message.Contains("'planned'", StringComparison.Ordinal)
+            && e.Message.Contains("planning()", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task A_procedural_crew_that_declares_nothing_it_cannot_honour_stays_quiet()
     {
         var entries = await RunAsync(Agent + """

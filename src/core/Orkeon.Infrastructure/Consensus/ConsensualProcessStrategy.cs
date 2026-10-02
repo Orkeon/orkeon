@@ -17,7 +17,6 @@ using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using DomainExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
 using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
 
@@ -108,32 +107,28 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     /// entry point and delegates here.
     /// </summary>
     /// <param name="crew">The crew to execute.</param>
-    /// <param name="plan">The execution plan defining task order.</param>
     /// <param name="inputVariables">The crew's input variables, passed to every agent execution and ballot.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The crew output after consensus is reached.</returns>
     public Task<DomainCrewOutput> ExecuteConsensualAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(crew);
-        ArgumentNullException.ThrowIfNull(plan);
-        return ExecuteConsensualCoreAsync(crew, plan, inputVariables ?? new Dictionary<string, string>(), ct);
+        return ExecuteConsensualCoreAsync(crew, inputVariables ?? new Dictionary<string, string>(), ct);
     }
 
     /// <inheritdoc />
     /// <remarks>
-    /// Runs the consensual voting pipeline over the planned tasks. The input variables reach
+    /// Runs the consensual voting pipeline over the crew's tasks. The input variables reach
     /// every agent execution and every ballot (GAP-04).
     /// </remarks>
     public Task<DomainCrewOutput> ExecuteSequentialAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables = null,
         CancellationToken cancellationToken = default)
-        => ExecuteConsensualAsync(crew, plan, inputVariables, cancellationToken);
+        => ExecuteConsensualAsync(crew, inputVariables, cancellationToken);
 
     /// <inheritdoc />
     public Task<DomainCrewOutput> ExecuteHierarchicalAsync(
@@ -146,7 +141,6 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     /// <inheritdoc />
     public Task<DomainCrewOutput> ExecuteParallelAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables = null,
         CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Use ParallelProcessStrategy for parallel orchestration.");
@@ -161,7 +155,6 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 
     private async Task<DomainCrewOutput> ExecuteConsensualCoreAsync(
         DomainCrew crew,
-        DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string> inputVariables,
         CancellationToken ct)
     {
@@ -201,10 +194,10 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         if (agents.Count == 0)
             throw new InvalidOperationException("No agents available for consensual execution");
 
-        // Execute each task with consensus, in the order sorted on the tasks' dependencies
-        // (STUDIO-12 C2): the plan's wherever they allow it (GAP-29), else the declared one.
+        // Execute each task with consensus, in the declared order sorted on the tasks' dependencies
+        // (STUDIO-12 C2) — never a plan's (GAP-31).
         var taskIds = await CrewTaskSequencer.ResolveAsync(
-            crew, plan, _taskRepository, _logger, ct).ConfigureAwait(false);
+            crew, _taskRepository, _logger, ct).ConfigureAwait(false);
 
         foreach (var taskId in taskIds)
         {

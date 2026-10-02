@@ -18,7 +18,6 @@ using Orkeon.Application.Interfaces.Services;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using CrewInput = Orkeon.Application.Interfaces.Services.CrewInput;
-using ExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 
 namespace Orkeon.Infrastructure.Tests.Orchestration;
 
@@ -139,7 +138,7 @@ public class SequentialCrewOrchestratorTests
         /// <summary>When set, this output is returned verbatim instead of the default one.</summary>
         public DomainCrewOutput? ConfiguredOutput { get; set; }
 
-        public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             LastReceivedVariables = inputVariables;
             return CreateOutput(crew);
@@ -151,7 +150,7 @@ public class SequentialCrewOrchestratorTests
             return CreateOutput(crew);
         }
 
-        public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             LastReceivedVariables = inputVariables;
             return CreateOutput(crew);
@@ -810,14 +809,23 @@ public class SequentialCrewOrchestratorTests
     public async Task The_planning_call_is_metered_as_planning_work_for_the_crew()
     {
         var repository = new TestCrewRepository();
+        // The planner reads the crew's tasks and agents (GAP-31): the orchestrator is given both.
+        var unitOfWork = new NullUnitOfWork();
+        var tasks = new Orkeon.Infrastructure.Persistence.Task.InMemoryTaskRepository(unitOfWork);
+        var agents = new InMemoryAgentRepository(unitOfWork);
         var orchestrator = new SequentialCrewOrchestrator(
-            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), new RecordingDomainEventDispatcher());
-        var agentId = AgentId.Create();
-        var taskId = TaskId.Create();
+            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
+            agentRepository: agents, taskRepository: tasks);
+        var agent = new AgentBuilder().Role("Writer").Goal("Write the report").Build();
+        var task = new CrewTaskBuilder().Description("Write the report").ExpectedOutput("A report").AssignTo(agent).Build();
+        await agents.AddAsync(agent, TestContext.Current.CancellationToken);
+        await tasks.AddAsync(task, TestContext.Current.CancellationToken);
+        var agentId = agent.Id;
+        var taskId = task.Id;
         var provider = new MockLlmProvider();
         provider.SetGenerateFunc((_, _) => new LlmResponse
         {
-            Content = $$"""{"tasks":[{"task":"{{taskId}}","order":1,"agent":"{{agentId}}"}]}""",
+            Content = """{"plans":[{"task":1,"plan":"1. Write the report."}]}""",
             PromptTokens = 80,
             CompletionTokens = 20,
             TokensUsed = 100,

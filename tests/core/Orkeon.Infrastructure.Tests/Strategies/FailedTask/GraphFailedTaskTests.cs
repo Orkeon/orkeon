@@ -7,7 +7,6 @@ using Orkeon.Domain.Task;
 using Orkeon.Infrastructure.Agent;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 
 namespace Orkeon.Infrastructure.Tests.Strategies.FailedTask;
@@ -135,6 +134,6 @@ public sealed class GraphFailedTaskTests : IDisposable
             _fixture.Hook);
 
         return await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

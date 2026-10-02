@@ -131,11 +131,12 @@ var crew = new CrewBuilder()
     .Build();
 ```
 
-`.Planning(true)` — `planning: true` en YAML — demande un plan d'exécution avant la
-première tâche : un appel sur le profil LLM par défaut de l'hôte (la section `Llm`), ou sur le
-fournisseur que nomme `.WithPlanningLlm(provider)`, qui ordonne les tâches dans le respect de leurs
-dépendances. Un plan qui échoue fait échouer le run et dit pourquoi — voir
-[Types de processus](../orchestration/process-types.md).
+`.Planning(true)` — `planning: true` en YAML, `.planning()` en `.ork.ts` — fait écrire par un
+planificateur un plan pas à pas pour chaque tâche avant la première : un appel sur le profil LLM par
+défaut de l'hôte (la section `Llm`), ou sur le fournisseur que nomme `.WithPlanningLlm(provider)`.
+Chaque tâche lit son propre plan dans son prompt, dans chaque mode ; le plan ne change ni l'ordre des
+tâches ni qui les exécute, et un plan illisible laisse la crew sans plan, avec un avertissement — voir
+[Types de processus](../orchestration/process-types.md#planification-planning-true).
 
 `.EnableMemory(true)` — `memory: true` — fait que la crew se souvient : le résultat de chaque tâche est
 rangé, et les plus proches sont rappelés dans le prompt des tâches suivantes, run après run. Les souvenirs

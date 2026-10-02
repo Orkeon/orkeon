@@ -292,7 +292,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     _toolCallingStrategy?.SupportsNativeToolCalling == true);
                 var knowledgeContext = await ResolveKnowledgeContextAsync(
                     agent, task, context, cancellationToken).ConfigureAwait(false);
-                var userPrompt = AgentPromptComposer.BuildUserPrompt(task, context, knowledgeContext);
+                // The task's plan, when the crew plans (GAP-31): the run's scope holds it, so it
+                // reaches the task the same way in every mode — a takeover and a revision of the
+                // same task included, a ballot or a delegated sub-task (other tasks) not.
+                var userPrompt = AgentPromptComposer.BuildUserPrompt(
+                    task, context, knowledgeContext, CrewPlanScope.InstructionsFor(task.Id));
 
                 // Input phase: the prompt the provider is about to read — previous outputs and
                 // retrieved knowledge included — is screened first. A block is a readable task

@@ -114,6 +114,14 @@ public sealed record LlmProviderCapabilities
     public bool GbnfGrammar { get; init; }
 
     /// <summary>
+    /// Whether the provider replays its prompt instead of answering it — the echo provider a host
+    /// runs on when it configures no model. What it returns is never a model's answer, so a caller
+    /// that needs one skips the call and says so: the crew's planner does (GAP-31). Declared by the
+    /// echo alone; the decorators a provider is wrapped in pass it through.
+    /// </summary>
+    public bool ReplaysPrompt { get; init; }
+
+    /// <summary>
     /// The conservative default for a provider that has not declared anything: no capability
     /// is assumed, so nothing is written to the wire on its behalf.
     /// </summary>

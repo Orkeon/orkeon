@@ -90,15 +90,19 @@ public sealed class CallersOnTheProvidersConnectionTests
     public async Task The_planner_plans_on_the_providers_connection()
     {
         var taskId = TaskId.Create();
-        var plan = JsonSerializer.Serialize(new { tasks = new[] { new { task = taskId.ToString(), order = 1 } } });
+        var plan = JsonSerializer.Serialize(new { plans = new[] { new { task = 1, plan = "1. Plan the work." } } });
         using var vendor = new Vendor(plan);
-        var crew = Orkeon.Domain.Crew.Crew.Create("Plan the work", ProcessType.Sequential, false, false);
+        var context = new PlanningContext(
+            "Plan the work",
+            ProcessType.Sequential,
+            [new PlanningTask(taskId, "Plan the work", "A plan", [], Agent: null)],
+            [],
+            new Dictionary<string, string>());
 
-        var created = await CrewPlanner.Create(vendor.Provider, new ExecutionPlanParser()).CreatePlanAsync(
-            new PlanningContext(crew.Id, crew.Goal, crew.Agents), [taskId], new CrewInput("context"));
+        var created = await CrewPlanner.Create(vendor.Provider, new ExecutionPlanParser()).CreatePlanAsync(context, Ct);
 
         vendor.AssertTheProvidersConnection();
-        Assert.Equal(taskId, Assert.Single(created.Tasks).TaskId);
+        Assert.Equal("1. Plan the work.", created.Plan.InstructionsFor(taskId));
         Assert.Equal(0.3, (await vendor.SentPayloadAsync()).GetProperty("temperature").GetDouble(), precision: 3);
     }
 

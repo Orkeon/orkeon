@@ -13,7 +13,6 @@ using Orkeon.Application.Context;
 using Microsoft.Extensions.Logging;
 using Orkeon.Infrastructure.Crew.Strategies;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
@@ -817,14 +816,13 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
             .Goal("Test unsupported")
             .Hierarchical(manager)
             .Build();
-        var plan = CrewExecutionPlan.Create();
         var strategy = CreateStrategy();
 
         // Act & Assert
         await Assert.ThrowsAsync<NotSupportedException>(
-            () => strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            () => strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<NotSupportedException>(
-            () => strategy.ExecuteParallelAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken));
+            () => strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]

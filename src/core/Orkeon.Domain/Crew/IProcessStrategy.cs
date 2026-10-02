@@ -4,7 +4,10 @@ using Orkeon.Domain.Common;
 namespace Orkeon.Domain.Crew;
 
 /// <summary>
-/// Interface for crew process execution strategies.
+/// Interface for crew process execution strategies. A strategy runs the crew's tasks in the order the
+/// crew declares, sorted on their dependencies; no plan reaches it — the crew's plan
+/// (<c>planning: true</c>) is a step-by-step plan per task, read by each task in its prompt, and decides
+/// neither the order nor the agents (GAP-31).
 /// </summary>
 public interface IProcessStrategy
 {
@@ -12,10 +15,9 @@ public interface IProcessStrategy
     /// Executes tasks sequentially.
     /// </summary>
     /// <param name="crew">The crew to execute.</param>
-    /// <param name="plan">The execution plan.</param>
     /// <param name="inputVariables">Optional user-supplied input variables for template interpolation in task descriptions.</param>
     /// <param name="cancellationToken">Cancellation token. Implementations should propagate it to every internal await (agent execution, LLM HTTP calls, etc.).</param>
-    Task<CrewOutput> ExecuteSequentialAsync(Crew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default);
+    Task<CrewOutput> ExecuteSequentialAsync(Crew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Executes tasks in a hierarchical manner with a manager.
@@ -30,10 +32,9 @@ public interface IProcessStrategy
     /// Executes tasks in parallel.
     /// </summary>
     /// <param name="crew">The crew to execute.</param>
-    /// <param name="plan">The execution plan.</param>
     /// <param name="inputVariables">Optional user-supplied input variables for template interpolation in task descriptions.</param>
     /// <param name="cancellationToken">Cancellation token. Implementations should propagate it to every internal await (agent execution, LLM HTTP calls, etc.).</param>
-    Task<CrewOutput> ExecuteParallelAsync(Crew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default);
+    Task<CrewOutput> ExecuteParallelAsync(Crew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Executes tasks autonomously: agents self-organise, delegate recursively,

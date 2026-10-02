@@ -154,8 +154,10 @@ public sealed class CrewBuilder
     }
 
     /// <summary>
-    /// Enables or disables planning before execution — on the provider
-    /// <see cref="WithPlanningLlm"/> sets, else on the host's default LLM profile.
+    /// Enables or disables planning: before the first task, a planner — on the provider
+    /// <see cref="WithPlanningLlm"/> sets, else on the host's default LLM profile — writes a
+    /// step-by-step plan for each task, which the task reads in its prompt, in every mode. The plan
+    /// changes neither the order of the tasks nor who runs them (GAP-31).
     /// </summary>
     public CrewBuilder Planning(bool planning = true)
     {

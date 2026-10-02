@@ -998,3 +998,9 @@ static Orkeon.Application.Memory.CrewMemoryScope.Filter(string! scope) -> System
 static Orkeon.Application.Memory.CrewMemoryScope.Stamp(Orkeon.Domain.Memory.MemoryItem! item, string! scope) -> Orkeon.Domain.Memory.MemoryItem!
 static Orkeon.Application.Memory.RecalledMemory.operator !=(Orkeon.Application.Memory.RecalledMemory? left, Orkeon.Application.Memory.RecalledMemory? right) -> bool
 static Orkeon.Application.Memory.RecalledMemory.operator ==(Orkeon.Application.Memory.RecalledMemory? left, Orkeon.Application.Memory.RecalledMemory? right) -> bool
+Orkeon.Application.Crew.Execution.CrewPlanScope
+Orkeon.Application.Crew.Execution.TaskTextInterpolation
+const Orkeon.Application.Constants.Orchestration.PromptDefaults.PlanSectionHeader = "Plan for this task, from the crew's planner — follow it where it helps; the task above prevails:" -> string!
+static Orkeon.Application.Crew.Execution.CrewPlanScope.Begin(Orkeon.Domain.Crew.ExecutionPlan! plan) -> System.IDisposable!
+static Orkeon.Application.Crew.Execution.CrewPlanScope.InstructionsFor(Orkeon.Domain.Common.TaskId! taskId) -> string?
+static Orkeon.Application.Crew.Execution.TaskTextInterpolation.Interpolate(string! template, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? variables) -> string!

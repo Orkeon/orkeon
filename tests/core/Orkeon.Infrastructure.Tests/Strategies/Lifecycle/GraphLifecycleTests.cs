@@ -8,7 +8,6 @@ using Orkeon.Domain.Task.Events;
 using Orkeon.Infrastructure.Agent;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
-using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using TaskStatus = Orkeon.Domain.Task.ValueObjects.TaskStatus;
 
@@ -93,6 +92,6 @@ public sealed class GraphLifecycleTests : IDisposable
             _fixture.Hook);
 
         return await strategy.ExecuteSequentialAsync(
-            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+            crew, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

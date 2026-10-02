@@ -51,8 +51,10 @@ public sealed class Crew : AggregateRoot<CrewId>
     public bool Verbose { get; private set; }
 
     /// <summary>
-    /// Gets whether planning is enabled: the run plans before its first task, on
-    /// <see cref="PlanningLlm"/> when set, else on the host's default LLM profile (GAP-29).
+    /// Gets whether planning is enabled: before its first task, the run has a planner — on
+    /// <see cref="PlanningLlm"/> when set, else on the host's default LLM profile (GAP-29) — write a
+    /// step-by-step plan for each task, which the task then reads in its prompt, in every mode. The
+    /// plan changes neither the order of the tasks nor who runs them (GAP-31).
     /// </summary>
     public bool Planning { get; private set; }
 

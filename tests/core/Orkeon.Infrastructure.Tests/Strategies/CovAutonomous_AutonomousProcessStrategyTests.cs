@@ -11,8 +11,8 @@ using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
+using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
-using ExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 
 namespace Orkeon.Infrastructure.Tests.CovAutonomous;
 
@@ -100,7 +100,7 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
     {
         var crew = BuildCrew([CreateAgent("a")], []);
         await Assert.ThrowsAsync<NotSupportedException>(() =>
-            CreateStrategy().ExecuteSequentialAsync(crew, ExecutionPlan.Create(crew.Tasks), cancellationToken: TestContext.Current.CancellationToken));
+            CreateStrategy().ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
     {
         var crew = BuildCrew([CreateAgent("a")], []);
         await Assert.ThrowsAsync<NotSupportedException>(() =>
-            CreateStrategy().ExecuteParallelAsync(crew, ExecutionPlan.Create(crew.Tasks), cancellationToken: TestContext.Current.CancellationToken));
+            CreateStrategy().ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     // ── ExecuteAutonomousAsync guard clauses ───────────────────────────────
@@ -289,6 +289,38 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
         Assert.True(budget.CurrentDelegationDepth >= 1);
         // Tokens consumed by delegated work are accounted on the parent budget.
         Assert.True(budget.CurrentTokensConsumed >= 42);
+    }
+
+    [Fact]
+    public async Task The_peer_a_failed_task_is_handed_to_reads_the_tasks_plan_too()
+    {
+        // GAP-31: a task reads its plan from the run's scope where its prompt is composed. The peer
+        // takes the task itself over (GAP-21), on the run's flow: it reads the plan the agent that
+        // failed it read.
+        var delegator = CreateAgent("delegator", allowDelegation: true);
+        var helper = CreateAgent("helper");
+        var task = CreateTask("hard task");
+        var crew = BuildCrew([delegator, helper], [task]);
+        _manager.SetAssignResult(new TaskAssignment(task.Id, delegator.Id, "lead", DateTime.UtcNow));
+        var seen = new System.Collections.Concurrent.ConcurrentQueue<(string Role, string? Plan)>();
+        _execService.SetExecuteFunc((agent, executed, _, _) =>
+        {
+            seen.Enqueue((agent.Role.Value, Orkeon.Application.Crew.Execution.CrewPlanScope.InstructionsFor(executed.TaskId)));
+            return agent.Id == delegator.Id
+                ? new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help")
+                : new TaskResult(true, "helper solved it", null, [], TimeSpan.FromMilliseconds(10));
+        });
+        var plan = Orkeon.Domain.Crew.ExecutionPlan.Create([new PlannedTask(task.Id, "PLAN-HARD")]);
+
+        DomainCrewOutput result;
+        using (Orkeon.Application.Crew.Execution.CrewPlanScope.Begin(plan))
+        {
+            result = await CreateStrategy().ExecuteAutonomousAsync(
+                crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+        }
+
+        Assert.True(result.Success);
+        Assert.Equal([("delegator", "PLAN-HARD"), ("helper", "PLAN-HARD")], seen.ToArray());
     }
 
     [Fact]

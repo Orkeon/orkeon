@@ -104,6 +104,11 @@ One capability is not the vendor's to declare: `GbnfGrammar`, which no vendor AP
 switched on by the configuration the provider is built with (`Llm:Grammar`,
 `LlmConfig.GrammarEnabled`) for a llama.cpp-compatible server behind the OpenAI-compatible
 providers or Ollama — `ILlmProvider.Capabilities` is the declaration plus that switch.
+And one is no vendor's at all: `ReplaysPrompt`, declared by the echo provider alone
+(`UndefinedLlmProvider`, the model of a host without an `Llm` section), says that what it returns
+is its prompt, never a model's answer — the crew's planner then skips its call with a warning
+instead of reading the prompt back as a plan (GAP-31). The decorators a provider is wrapped in
+(`MeteredLlmProvider`, `RateLimitedLlmProvider`) pass the capabilities through.
 `OpenAICompatibleProviderBase` translates the declaration into the OpenAI dialect once
 (vision payloads, `response_format`, thinking, the `CapabilityMismatchHint` diagnostics);
 Anthropic and Ollama write their own dialects, and Qwen overrides the hook for DashScope's

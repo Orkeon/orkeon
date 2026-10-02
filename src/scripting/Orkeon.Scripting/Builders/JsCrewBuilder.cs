@@ -37,6 +37,7 @@ public sealed partial class JsCrewBuilder
     private readonly Dictionary<string, object?> _budget = new();
     private bool _verbose;
     private bool _memory;
+    private bool _planning;
     private JsValue? _onCrewStart, _onCrewComplete, _onCrewError;
 
     public JsCrewBuilder(
@@ -133,6 +134,13 @@ public sealed partial class JsCrewBuilder
     /// </summary>
     public JsCrewBuilder memory(bool value = true) { _memory = value; return this; }
 
+    /// <summary>
+    /// YAML parity <c>planning: true</c> (GAP-31) — before the first task, a planner writes a
+    /// step-by-step plan for each task, which the task reads in its prompt; the plan changes neither
+    /// the order of the tasks nor who runs them. On the host's default LLM profile. Off by default.
+    /// </summary>
+    public JsCrewBuilder planning(bool value = true) { _planning = value; return this; }
+
     public JsCrewBuilder verbose() { _verbose = true; return this; }
     public JsCrewBuilder verbose(bool value) { _verbose = value; return this; }
     public JsCrewBuilder onCrewStart(JsValue hook) { _onCrewStart = hook; return this; }
@@ -156,6 +164,7 @@ public sealed partial class JsCrewBuilder
             Budget = _budget,
             Verbose = _verbose,
             Memory = _memory,
+            Planning = _planning,
             Logger = _logger,
             LlmProvider = _llmProvider,
             BuiltInTools = _builtInTools,

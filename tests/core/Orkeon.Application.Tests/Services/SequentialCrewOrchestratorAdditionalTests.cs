@@ -13,7 +13,6 @@ using System.Diagnostics;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using CrewInput = Orkeon.Application.Interfaces.Services.CrewInput;
 using CrewOutput = Orkeon.Application.Interfaces.Services.CrewOutput;
-using ExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 
 namespace Orkeon.Application.Tests.Services;
 
@@ -232,7 +231,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         public bool ShouldThrow { get; set; }
         public IReadOnlyDictionary<string, string>? LastReceivedVariables { get; private set; }
 
-        public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             LastReceivedVariables = inputVariables;
             if (ShouldThrow)
@@ -252,7 +251,7 @@ public class SequentialCrewOrchestratorAdditionalTests
             return CreateOutput(crew);
         }
 
-        public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, ExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             LastReceivedVariables = inputVariables;
             if (ShouldThrow)
