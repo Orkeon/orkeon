@@ -57,7 +57,11 @@ declare global {
         extract<T>(prompt: string, schema: JsonSchema, opts?: LlmCallOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
         embed(text: string | readonly string[], opts?: LlmCallOptions): Promise<readonly number[][]>;
-        /** The LLM ⇄ tool-call loop over the agent's tools: `.tools([...])` built-ins and `withAutonomousTool` instances. */
+        /**
+         * The LLM ⇄ tool-call loop over the agent's tools: `.tools([...])` built-ins and
+         * `withAutonomousTool` instances. Rejects with an `UnknownToolError`, before any model
+         * call, when `.tools([...])` names a tool the host does not offer.
+         */
         act(prompt: string, opts?: ActOptions): Promise<ActResult>;
         /** Cancels the in-flight and future llm calls of this context; a running `act()` resolves with `{ interrupted: true }`. */
         interrupt(): void;

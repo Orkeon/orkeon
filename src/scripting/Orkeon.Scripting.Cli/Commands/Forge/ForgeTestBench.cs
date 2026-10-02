@@ -177,7 +177,9 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
     /// <summary>
     /// Loads the rendered <c>crew.ork.ts</c> the way <c>orkeon run</c> does: ScriptHost →
     /// <c>globalThis.crew</c> → <c>JsCrewConfigurationAdapter</c> — the same
-    /// CrewConfiguration surface the YAML loader produces.
+    /// CrewConfiguration surface the YAML loader produces — with the same host ports, the host's
+    /// LLM profiles included: a crew naming one (<c>llm.profile(name)</c>) failed its trial with
+    /// "Known profiles: default." and ran once promoted (GAP-27).
     /// </summary>
     private async Task<Orkeon.Domain.Configuration.CrewConfiguration> LoadScriptConfigurationAsync(
         ForgeSession session, CancellationToken cancellationToken)
@@ -192,6 +194,7 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
                 PermissionGate = _services.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
                 DeltaSink = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
                 ToolInvocation = _services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
+                LlmProfiles = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
             });
 
         var transpiler = _transpilerFactory();

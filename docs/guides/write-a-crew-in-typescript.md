@@ -96,7 +96,8 @@ An agent reaches tools three ways, and they are not interchangeable:
 1. **Built-ins by name** — `.tools(["file_read", "directory_read"])`. Resolved from the host
    catalogue, and in this shape the resolution is *strict*: a name that is not registered
    fails the run rather than quietly leaving the agent one tool short. (The procedural
-   engine, which cannot be validated, skips an unknown name silently.)
+   engine checks the same names when `ctx.llm.act` runs: an unknown one rejects the call with
+   an `UnknownToolError`.)
 2. **TypeScript tools as instances** — `.withAutonomousTools([...])`, built with
    `toolBuilder()`. They travel with the script, so they need no host registration. In the
    procedural shape a body calls them directly (`diffStats.execute({ diff })`), and
@@ -302,13 +303,14 @@ knowing before you are surprised by them:
 - **`import` works between your own files**, resolved relative to the script: esbuild bundles
   them when the file is run from disk, as `orkeon run` does.
 
-## Ten errors and what they mean
+## Errors and what they mean
 
 | Message | Cause |
 |---|---|
 | `did not assign globalThis.crew` | `--validate`, or a runner that wants the declarative shape, on a file ending in `await crew.run()`. |
 | The crew runs but every task is ignored | The reverse: `withTask` in a file ending with `await crew.run()`. |
 | `Crew configuration references unknown tool(s): x` | A name in `.tools([...])` the host catalogue does not have. The message lists every name that *is* available. |
+| `Agent 'a' lists unknown tool(s) in .tools([...])` (an `UnknownToolError`) | The procedural twin: `ctx.llm.act` refuses to run, before any model call, on an agent whose `.tools([...])` names a tool the host does not offer. The message lists what is available. |
 | `FSM transition 'a.b' targets undeclared state 'c'` | A `target` that is not a key of `states`. |
 | `stateGraph literal must declare an edge from START` | `edges` written as an array. It is an object keyed by source node. |
 | `stateGraph has no path from START to END` | No static route; add one or use a conditional edge. |

@@ -692,11 +692,21 @@ internal static class ForgeCommand
             announce = false;
         }
 
+        // A run that does not stop before its trial holds that trial in this process: a folder it
+        // confirms must be one the host's path validator — fixed now, at the host's build — lets
+        // the trial read (GAP-27). A --dry run leaves the trial to a resume, which mounts and
+        // allows the confirmed folders when its own host is built (the way Studio forges).
+        var trialPathValidator = options.Dry
+            ? null
+            : host.Services.GetRequiredService<Orkeon.Domain.Tools.Security.IPathValidator>();
+
         var engine = new ForgeEngine(
             session,
             events,
             [
-                new BriefStage(assistant, channel, resumed ? null : options.Need, autoConfirmFolders: options.Auto),
+                new BriefStage(
+                    assistant, channel, resumed ? null : options.Need,
+                    autoConfirmFolders: options.Auto, trialPathValidator: trialPathValidator),
                 new BlueprintStage(assistant),
                 new RenderStage(),
                 new ValidateStage(knownTools),

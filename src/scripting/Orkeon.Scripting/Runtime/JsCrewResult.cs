@@ -1,22 +1,19 @@
 namespace Orkeon.Scripting.Runtime;
 
 /// <summary>
-/// Result returned by <c>crew.run(...)</c>. Mirrors the shape declared in <c>crew.d.ts</c>.
+/// Result returned by <c>crew.run(...)</c>. Mirrors the shape declared in <c>crew.d.ts</c>, member
+/// for member and type for type (<c>TypingsRuntimeParityTests</c>).
 /// </summary>
 #pragma warning disable IDE1006 // Property names match the JS surface
 #pragma warning disable CS1591 // JS-interop mirror of CrewResult/TaskResult in Typings/crew.d.ts; that declaration is the contract scripts read.
 public sealed class JsCrewResult
 {
     public string output { get; }
-    public IReadOnlyDictionary<string, object?> artifacts { get; }
     public IReadOnlyList<JsTaskResult> tasks { get; }
 
-    internal JsCrewResult(string output,
-        IReadOnlyDictionary<string, object?> artifacts,
-        IReadOnlyList<JsTaskResult> tasks)
+    internal JsCrewResult(string output, IReadOnlyList<JsTaskResult> tasks)
     {
         this.output = output;
-        this.artifacts = artifacts;
         this.tasks = tasks;
     }
 }

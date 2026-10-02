@@ -7,6 +7,7 @@ using Jint.Native;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
+using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Telemetry;
 using ToolCallMode = Orkeon.Domain.Tools.Protocol.ToolCallMode;
@@ -38,7 +39,20 @@ public sealed partial class JsLlmFacade
     private readonly Microsoft.Extensions.Logging.ILogger? _logger;
     private readonly string _crewName;
     private readonly string _agentName;
+    private readonly UnknownAgentTools? _unknownTools;
 
+    /// <summary>Builds the facade of one execution context.</summary>
+    /// <param name="engine">The engine the facade's JS functions belong to.</param>
+    /// <param name="provider">The provider every call goes to.</param>
+    /// <param name="ct">The context's token.</param>
+    /// <param name="tools">The tools <c>act</c> offers.</param>
+    /// <param name="budget">The run's budget, when it has one.</param>
+    /// <param name="permissionGate">The host's permission gate, when it registered one.</param>
+    /// <param name="observability">The sinks and the attribution of the calls.</param>
+    /// <param name="unknownTools">
+    /// The names of the agent's <c>.tools([...])</c> the host does not offer: <c>act</c> then
+    /// rejects with an <see cref="UnknownToolException"/> before any model call (GAP-27).
+    /// </param>
     internal JsLlmFacade(
         Engine engine,
         ILlmProvider? provider,
@@ -46,7 +60,8 @@ public sealed partial class JsLlmFacade
         IReadOnlyList<IBaseTool>? tools = null,
         Orkeon.Domain.Autonomous.AgentExecutionBudget? budget = null,
         Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        JsLlmObservability? observability = null)
+        JsLlmObservability? observability = null,
+        UnknownAgentTools? unknownTools = null)
     {
         _engine = engine;
         _provider = provider;
@@ -64,6 +79,7 @@ public sealed partial class JsLlmFacade
         _crewName = observability?.CrewName ?? string.Empty;
         _agentName = observability?.AgentName ?? string.Empty;
         _toolInvocation = observability?.ToolInvocation;
+        _unknownTools = unknownTools;
         embed = EmbedAsync;
     }
 
@@ -657,6 +673,13 @@ public sealed partial class JsLlmFacade
 
         public ActSession(JsLlmFacade facade, string prompt, JsValue? options, bool streamDeltas)
         {
+            // What the agent's .tools([...]) names is what the loop offers (GAP-27): a name the
+            // host does not answer to fails the call here, before a single model turn, as the
+            // declarative shape fails its load on it. Thrown under beginAct's Guard, it rejects
+            // act with the declared UnknownToolError.
+            if (facade._unknownTools is { } unknown)
+                throw new UnknownToolException(facade._agentName, unknown.Names, unknown.Available);
+
             _facade = facade;
             Prompt = prompt;
             MaxIterations = ResolveMaxIterations(options);

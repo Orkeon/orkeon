@@ -53,7 +53,7 @@ inferred.
 | `name` | ✅ | ✅ |
 | `role` `goal` `backstory` | stored, not sent: `ctx.llm` sends your prompt alone; `role` only serves `crew.findByRole` | ✅ **the agent's prompt** — `build()` requires `role` |
 | `llm` | the provider only: an agent configured with `llm.profile("…")` has `ctx.llm` talk to that profile's provider, on the profile's model; otherwise `ctx.llm` uses the host's provider on its configured model (per call: `{ llm: { model } }`) | ✅ an `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — sets the agent's provider (one of the host's profiles), model, temperature and token cap. A string or a plain object is refused by `.llm(...)` |
-| `tools([...])` built-ins by name | ✅ what `ctx.llm.act` may call — an unknown name is skipped silently | ✅ strict: an unknown name fails the run |
+| `tools([...])` built-ins by name | ✅ what `ctx.llm.act` may call — a name the host does not offer rejects `act` with an `UnknownToolError`, before any model call | ✅ strict: an unknown name fails the run |
 | `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`) and offered to `ctx.llm.act`, which runs the tool's `execute` in the script | ✅ registered and resolved by name |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ |
 | `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (per call: `{ responseFormat }`) | ✅ |
@@ -83,6 +83,14 @@ Everything marked ❌ on the declarative side is now **announced**: the run logs
 per dropped declaration, naming the method and the agent it was written on. It is still
 dropped — the two shapes are two engines — but a crew no longer runs a body that was never
 invoked and says nothing about it.
+
+**What `await crew.run()` resolves to** — a `CrewResult`, exactly what `crew.d.ts` declares:
+`output`, the text of the last agent output that was not `null` (`""` when no agent returned
+anything), and `tasks`, one `{ name, output, durationMs }` per agent run, in the order they ran,
+`output` being what the body returned. Nothing more: the `artifacts` map the typings used to
+declare was never filled, and `crew.run<T>()` typed an `output` the runtime always serves as a
+string — both are gone (GAP-27), and `TypingsRuntimeParityTests` compares the two result shapes
+type by type.
 
 #### `process("graph")` is not `stateGraph`
 
@@ -171,8 +179,12 @@ already observes the context's.
 `.tools([...])` and its `withAutonomousTool` instances — whose `execute` runs in the script,
 on the engine's own thread — until the model stops asking or `maxIterations` (default 10,
 `0` = unlimited) is reached. It resolves to `{ output, iterations }` (plus `interrupted` or
-`exhausted` when the loop stopped early). `ActOptions.system` seeds a real `role:"system"`
-message that persists across every iteration; without it `act()` sends a single user message.
+`exhausted` when the loop stopped early). A name in `.tools([...])` that no tool of the host
+answers to (compared case-insensitively) is not skipped: `act` rejects with an
+`UnknownToolError` (`agentName`, `toolNames`, `availableTools`) before any model call — the
+procedural twin of the load failure the declarative shape gets for the same name; an `onError`
+handler reads it as `validation`. `ActOptions.system` seeds a real `role:"system"` message that
+persists across every iteration; without it `act()` sends a single user message.
 `permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`) is checked against the
 host's permission gate on each tool call, when the host registered one — declare a script
 tool's `.access("read")` for it to pass `plan`; `onDelta` receives the streamed text of each

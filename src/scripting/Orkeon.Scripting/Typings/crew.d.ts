@@ -21,15 +21,23 @@ declare global {
         // `inputs` global the runner plants from --inputs.
     }
 
-    interface CrewResult<TOut = unknown> {
-        readonly output: TOut;
-        readonly artifacts: ReadonlyMap<string, unknown>;
+    /**
+     * What `crew.run()` resolves to: exactly what the runtime serves (GAP-27). No `artifacts`:
+     * it was declared and always empty, so `result.artifacts.get("x")` compiled and threw.
+     */
+    interface CrewResult {
+        /** The text of the last non-null agent output; `""` when no agent returned anything. */
+        readonly output: string;
+        /** One entry per agent run, in the order they ran. */
         readonly tasks: readonly TaskResult[];
     }
 
-    interface TaskResult<TOut = unknown> {
+    interface TaskResult {
+        /** The agent's name. */
         readonly name: string;
-        readonly output: TOut;
+        /** What the agent's body returned (`null` for `undefined` or a skipped body). */
+        readonly output: unknown;
+        /** Wall time of the agent's run, every attempt included. */
         readonly durationMs: number;
     }
 
@@ -37,7 +45,7 @@ declare global {
         readonly name: string;
         /** The members, in the order they joined. */
         readonly agents: readonly Agent<unknown, unknown>[];
-        run<TOut = unknown>(opts?: CrewRunOptions): Promise<CrewResult<TOut>>;
+        run(opts?: CrewRunOptions): Promise<CrewResult>;
         runAgent<TIn, TOut>(agent: string | Agent<TIn, TOut>, input: TIn, opts?: CrewRunOptions): Promise<TOut>;
         runStream(opts?: CrewRunOptions): AsyncIterable<CrewStreamEvent>;
         add(agent: Agent<unknown, unknown>): void;

@@ -334,7 +334,7 @@ internal sealed class CrewRunScope : IDisposable
         if (clr is not null) _aggregate = clr.ToString() ?? _aggregate;
     }
 
-    internal JsCrewResult Finish() => new(_aggregate, new Dictionary<string, object?>(), _results);
+    internal JsCrewResult Finish() => new(_aggregate, _results);
 
     /// <summary>
     /// The loop's own end, from its <c>finally</c> on the engine thread: releases everything still

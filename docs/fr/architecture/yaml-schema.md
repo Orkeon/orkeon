@@ -47,7 +47,7 @@ rag:                      # Configuration RAG au niveau crew (optionnel)
   provider: string        # Enregistré sur RagCrewConfig, pas encore consommé — le store est Orkeon:Rag:Provider (ou le provider mémoire ambiant)
   collections:
     <nom_collection>:
-      sources: [string]   # Sources d'ingestion (globs de fichiers ou répertoires), ingérées à la création de la crew
+      sources: [string]   # Fichiers, globs, répertoires ou URL — relatifs au dossier de la crew sauf s'ils sont absolus — ingérés à la création de la crew
       chunking:           # Omis → les défauts du pipeline d'ingestion
         strategy: string  # default: "recursive"
         max_tokens: int   # default: 512 — tokens par chunk (×4 caractères)
@@ -174,6 +174,18 @@ chaque agent journalisent un warning et n'injectent rien. Le parsing du YAML lui
 déclenche jamais d'ingestion. Le document store relève de l'hôte (`Orkeon:Rag:Provider`, voir
 [Pipeline RAG](./rag-pipeline.md)) ; l'ancienne clé `rag.provider` a disparu et provoque un
 warning au chargement.
+
+Ce que veut dire une entrée de `sources` (GAP-27) : un chemin qui ne commence pas par `/` est
+relatif au dossier de la crew — `/crew` sous `orkeon run crew.yaml` ou un répertoire de crew,
+donc `./data/faq.md` à côté du fichier de crew est `/crew/data/faq.md` — et un chemin absolu est
+un chemin virtuel (`/kb/faq.md`, un de vos montages). Un glob (`*`, `**`, `?`) est développé à
+travers le VFS comme le développent `rag_ingest`, `orkeon rag ingest` et `rag.ingest` ; un
+répertoire vaut tous les fichiers qu'il contient ; une adresse `http(s)://` et un fichier simple
+parviennent tels quels aux chargeurs. Un glob ou un répertoire qui ne donne aucun fichier, une
+source relative d'une crew lue depuis une chaîne (pas de dossier auquel être relative) et un
+glob hors de tout montage sont chacun un warning de chargement qui nomme la collection — la crew
+se charge quand même ; un fichier absent est signalé par l'ingestion. Un fichier que deux
+entrées nomment n'est ingéré qu'une fois.
 
 Forme courte — attacher des collections avec les options par défaut :
 

@@ -51,7 +51,8 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         LogLoadingCrewDefinitionFromFile(filePath);
 
         var yamlContent = await _fs.TryReadAllTextAsync(filePath, ct).ConfigureAwait(false);
-        return await LoadFromStringAsync(yamlContent!, ct).ConfigureAwait(false);
+        var config = await LoadFromStringAsync(yamlContent!, ct).ConfigureAwait(false);
+        return WithCrewDirectory(config, DirectoryOf(filePath));
     }
 
     /// <inheritdoc />
@@ -62,7 +63,32 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         if (!await _fs.ExistsAsync(directoryPath, ct).ConfigureAwait(false))
             throw new DirectoryNotFoundException($"Crew definition directory not found: {directoryPath}");
 
-        return await LoadFromDirectoryCoreAsync(directoryPath, ct).ConfigureAwait(false);
+        var config = await LoadFromDirectoryCoreAsync(directoryPath, ct).ConfigureAwait(false);
+        return WithCrewDirectory(config, directoryPath.Length > 1 ? directoryPath.TrimEnd('/') : directoryPath);
+    }
+
+    /// <summary>
+    /// Records where the crew was read from on its <c>rag:</c> block: a relative source
+    /// (<c>./data/faq.txt</c>) resolves against the crew's folder — <c>/crew</c> under
+    /// <c>orkeon run crew.yaml</c>, the directory itself for a crew directory (GAP-27). The
+    /// sources stay as written; the bootstrapper resolves them.
+    /// </summary>
+    private static CrewConfiguration WithCrewDirectory(CrewConfiguration config, string? directory)
+        => config.Rag is { } rag && directory is not null
+            ? config with { Rag = rag with { CrewDirectory = directory } }
+            : config;
+
+    /// <summary>The virtual folder of <paramref name="filePath"/>, or null for a bare file name.</summary>
+    private static string? DirectoryOf(string filePath)
+    {
+        var path = filePath.Replace('\\', '/');
+        var slash = path.LastIndexOf('/');
+        return slash switch
+        {
+            < 0 => null,
+            0 => "/",
+            _ => path[..slash],
+        };
     }
 
     private async Task<CrewConfiguration> LoadFromDirectoryCoreAsync(string directoryPath, CancellationToken ct)

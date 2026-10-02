@@ -50,6 +50,7 @@ internal static class JsHostError
         "ScriptVersionMismatchError", "AgentAlreadyInCrewError", "AgentNotInCrewError",
         "AgentNotInThisCrewError", "DuplicateAgentNameError", "RecursiveAgentInvocationError",
         "WaiterKickedError", "ReceiveTimeoutError", "StateMutationOutsideWithError", "BudgetExhaustedError",
+        "UnknownToolError",
     ];
 
     private static readonly string ErrorClassNamesJson = System.Text.Json.JsonSerializer.Serialize(ErrorClassNames);
@@ -116,11 +117,20 @@ internal static class JsHostError
         ReceiveTimeoutException r => ("ReceiveTimeoutError", [("timeoutMs", r.Timeout.TotalMilliseconds)]),
         StateMutationOutsideWithException s => ("StateMutationOutsideWithError", [("propertyName", s.PropertyName)]),
         BudgetExhaustedException b => ("BudgetExhaustedError", [("dimension", CamelCase(b.Dimension.ToString()))]),
+        UnknownToolException u => ("UnknownToolError", [("agentName", u.AgentName), ("toolNames", u.ToolNames), ("availableTools", u.AvailableTools)]),
         _ => null,
     };
 
     private static string CamelCase(string name)
         => name.Length == 0 ? name : char.ToLower(name[0], CultureInfo.InvariantCulture) + name[1..];
+
+    /// <summary>
+    /// A field as the script reads it: a list of names is a real JavaScript array — what
+    /// <c>errors.d.ts</c> declares, with <c>join</c> and <c>includes</c> — not a wrapped CLR list.
+    /// </summary>
+    private static JsValue FieldValue(Engine engine, object value) => value is IReadOnlyList<string> names
+        ? new JsArray(engine, [.. names.Select(name => (JsValue)name)])
+        : JsValue.FromObject(engine, value);
 
     /// <summary>
     /// A JavaScript throw of <paramref name="exception"/>: an <c>Error</c> with the CLR message,
@@ -142,7 +152,7 @@ internal static class JsHostError
             className = described.ClassName;
             var bag = new JsObject(engine);
             foreach (var (key, value) in described.Fields)
-                bag.Set(key, JsValue.FromObject(engine, value));
+                bag.Set(key, FieldValue(engine, value));
             fields = bag;
         }
         var error = engine.Invoke(factory, exception.Message, exception, exception.GetType().Name, className, fields);

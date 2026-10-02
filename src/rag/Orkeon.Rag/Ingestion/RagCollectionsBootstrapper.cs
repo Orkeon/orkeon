@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Configuration;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Rag.Abstractions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Abstractions.Options;
@@ -13,6 +15,17 @@ namespace Orkeon.Rag.Ingestion;
 /// through the incremental <see cref="IIngestionPipeline"/> — a fresh manifest makes the
 /// call a no-op (0 embeddings), a stale one re-ingests only the changed sources.
 /// </summary>
+/// <remarks>
+/// <para>What a source means is decided here, and only here (GAP-27): a path relative to the
+/// crew's folder (<see cref="RagCrewConfig.CrewDirectory"/>) is anchored there; a glob
+/// (<c>*</c>, <c>**</c>, <c>?</c>) is expanded through the VFS by <see cref="SourceGlobExpander"/>,
+/// the same semantics as <c>rag_ingest</c>, <c>orkeon rag ingest</c>, <c>rag.ingest</c> and the
+/// eval harness; a directory ingests every file below it (<c>&lt;dir&gt;/**</c>); an http(s)
+/// address and a plain file path reach the pipeline as written — the loaders' business, which
+/// report a file that is not there. A glob or a directory that yields no file, and a relative
+/// source of a crew with no folder, are load warnings naming the collection: nothing written
+/// in a <c>rag:</c> block is dropped without a word.</para>
+/// </remarks>
 public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstrapper
 {
     /// <summary>
@@ -23,15 +36,22 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
     private const int CharactersPerToken = 4;
 
     private readonly IIngestionPipeline _ingestionPipeline;
+    private readonly IFileSystemService _fileSystem;
     private readonly ILogger<RagCollectionsBootstrapper> _logger;
 
     /// <summary>Initializes a new instance of <see cref="RagCollectionsBootstrapper"/>.</summary>
+    /// <param name="ingestionPipeline">The pipeline each collection is ingested through.</param>
+    /// <param name="fileSystem">The VFS the sources are resolved and expanded against.</param>
+    /// <param name="logger">The logger.</param>
     public RagCollectionsBootstrapper(
         IIngestionPipeline ingestionPipeline,
+        IFileSystemService fileSystem,
         ILogger<RagCollectionsBootstrapper>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(ingestionPipeline);
+        ArgumentNullException.ThrowIfNull(fileSystem);
         _ingestionPipeline = ingestionPipeline;
+        _fileSystem = fileSystem;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<RagCollectionsBootstrapper>.Instance;
     }
 
@@ -56,12 +76,18 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
                 continue;
             }
 
+            var sources = await ResolveSourcesAsync(
+                collection, collectionConfig.Sources, config.CrewDirectory, cancellationToken).ConfigureAwait(false);
+            if (sources.Count == 0)
+            {
+                LogCollectionWithNothingToIngest(collection);
+                continue;
+            }
+
             var request = new IngestionRequest
             {
                 Collection = collection,
-                Sources = collectionConfig.Sources
-                    .Select(source => new SourceDescriptor { Location = source })
-                    .ToImmutableList(),
+                Sources = sources,
                 ChunkingStrategy = collectionConfig.Chunking?.Strategy,
                 Chunking = collectionConfig.Chunking is { } chunking
                     ? new ChunkingOptions
@@ -78,9 +104,125 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
         }
     }
 
+    /// <summary>
+    /// The descriptors the declared <paramref name="sources"/> stand for, in their order, each
+    /// file once (see the class remarks for what each kind of source means).
+    /// </summary>
+    private async Task<ImmutableList<SourceDescriptor>> ResolveSourcesAsync(
+        string collection, IReadOnlyList<string> sources, string? crewDirectory, CancellationToken cancellationToken)
+    {
+        var descriptors = ImmutableList.CreateBuilder<SourceDescriptor>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        void Add(string location)
+        {
+            if (seen.Add(location))
+                descriptors.Add(new SourceDescriptor { Location = location });
+        }
+
+        foreach (var written in sources)
+        {
+            if (string.IsNullOrWhiteSpace(written))
+                continue;
+
+            var source = written.Trim();
+            if (IsWebAddress(source))
+            {
+                Add(source);
+                continue;
+            }
+
+            if (!source.StartsWith('/'))
+            {
+                if (crewDirectory is null)
+                {
+                    LogRelativeSourceWithoutCrewDirectory(collection, source);
+                    continue;
+                }
+                source = Anchor(source, crewDirectory);
+            }
+
+            var pattern = SourceGlobExpander.HasWildcard(source)
+                ? source
+                : await IsDirectoryAsync(source, cancellationToken).ConfigureAwait(false)
+                    ? source.TrimEnd('/') + "/**"
+                    : null;
+            if (pattern is null)
+            {
+                // A file: the loaders' business, which report it when it is not there.
+                Add(source);
+                continue;
+            }
+
+            IReadOnlyList<SourceDescriptor> matches;
+            try
+            {
+                matches = await SourceGlobExpander.ExpandAsync(_fileSystem, [pattern], cancellationToken).ConfigureAwait(false);
+            }
+            catch (FileAccessDeniedException ex)
+            {
+                // Outside every mount: the denial names the mounts there are.
+                LogSourceUnreachable(collection, written, ex.Message);
+                continue;
+            }
+
+            if (matches.Count == 0)
+            {
+                LogSourceMatchedNothing(collection, written);
+                continue;
+            }
+
+            foreach (var match in matches)
+                Add(match.Location);
+        }
+
+        return descriptors.ToImmutable();
+    }
+
+    private async Task<bool> IsDirectoryAsync(string location, CancellationToken cancellationToken)
+    {
+        var probe = location.Length > 1 ? location.TrimEnd('/') : location;
+        var entry = await _fileSystem.TryGetEntryAsync(probe, cancellationToken).ConfigureAwait(false);
+        return entry?.Kind == VirtualEntryKind.Directory;
+    }
+
+    /// <summary>An absolute http(s) address — never a path, whatever characters it carries.</summary>
+    private static bool IsWebAddress(string source) =>
+        Uri.TryCreate(source, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+    /// <summary><c>./data/faq.txt</c> under <c>/crew</c> is <c>/crew/data/faq.txt</c>.</summary>
+    private static string Anchor(string relative, string crewDirectory)
+    {
+        var path = relative.Replace('\\', '/');
+        while (path.StartsWith("./", StringComparison.Ordinal))
+            path = path[2..];
+        if (path == ".")
+            path = string.Empty;
+
+        var root = crewDirectory.Length > 1 ? crewDirectory.TrimEnd('/') : crewDirectory;
+        return path.Length == 0 ? root : $"{root.TrimEnd('/')}/{path}";
+    }
+
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "RAG collection '{Collection}' is declared without sources — nothing to ingest.")]
     private partial void LogCollectionWithoutSources(string collection);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "RAG collection '{Collection}': none of its sources names a file — nothing to ingest.")]
+    private partial void LogCollectionWithNothingToIngest(string collection);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "RAG collection '{Collection}': source '{Source}' matched no file — nothing ingested from it.")]
+    private partial void LogSourceMatchedNothing(string collection, string source);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "RAG collection '{Collection}': source '{Source}' is outside every mount — nothing ingested from it. {Reason}")]
+    private partial void LogSourceUnreachable(string collection, string source, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "RAG collection '{Collection}': source '{Source}' is relative, and this crew was not read from a folder it could be relative to — write it as a virtual path (/crew/…, /kb/…). Nothing ingested from it.")]
+    private partial void LogRelativeSourceWithoutCrewDirectory(string collection, string source);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "RAG collection '{Collection}' prepared: {Added} added, {Unchanged} unchanged, {Reingested} re-ingested.")]

@@ -46,7 +46,7 @@ rag:                      # Crew-level RAG configuration (optional)
   provider: string        # Recorded on RagCrewConfig, not consumed yet — the store is Orkeon:Rag:Provider (or the ambient memory provider)
   collections:
     <collection_name>:
-      sources: [string]   # Ingestion sources (file globs or directories), ingested when the crew is created
+      sources: [string]   # Files, globs, directories or URLs — relative to the crew's folder unless absolute — ingested when the crew is created
       chunking:           # Omitted → the ingestion pipeline's defaults
         strategy: string  # default: "recursive"
         max_tokens: int   # default: 512 — tokens per chunk (×4 characters)
@@ -165,6 +165,17 @@ without the subsystem, a declared `rag:` block and each agent's `knowledge:` log
 inject nothing. Parsing the YAML itself never triggers ingestion. The document store is the
 host's (`Orkeon:Rag:Provider`, see [RAG pipeline](./rag-pipeline.md)); the former `rag.provider`
 key is gone and draws a warning at load.
+
+What a `sources` entry means (GAP-27): a path that does not start with `/` is relative to the
+crew's folder — `/crew` under `orkeon run crew.yaml` or a crew directory, so
+`./data/faq.md` next to the crew file is `/crew/data/faq.md` — and an absolute one is a virtual
+path (`/kb/faq.md`, a mount of yours). A glob (`*`, `**`, `?`) is expanded through the VFS the
+way `rag_ingest`, `orkeon rag ingest` and `rag.ingest` expand it; a directory stands for every
+file below it; an `http(s)://` address and a plain file reach the loaders as written. A glob or a
+directory that yields no file, a relative source of a crew read from a string (no folder to be
+relative to) and a glob outside every mount are each a load warning naming the collection —
+the crew still loads; a file that is not there is reported by the ingestion. A file two entries
+name is ingested once.
 
 Short form — attach collections with default options:
 

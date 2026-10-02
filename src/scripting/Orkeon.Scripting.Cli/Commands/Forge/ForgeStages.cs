@@ -27,19 +27,28 @@ internal sealed class BriefStage : IForgeStageRunner
     private readonly IForgeUserChannel _channel;
     private readonly string? _initialNeed;
     private readonly bool _autoConfirmFolders;
+    private readonly Orkeon.Domain.Tools.Security.IPathValidator? _trialPathValidator;
 
     /// <summary>
     /// Builds the stage; <paramref name="initialNeed"/> is the need typed on the command line,
     /// when any; <paramref name="autoConfirmFolders"/> takes the proposed folders as they are
-    /// (<c>--auto</c>) instead of asking.
+    /// (<c>--auto</c>) instead of asking. <paramref name="trialPathValidator"/> is the path
+    /// validator of the engine host, passed when this run tries the team in the same process
+    /// (no <c>--dry</c>): a confirmed input folder bound to a directory it refuses is refused at
+    /// the confirmation (GAP-27) — mounted for the trial, it would be refused on every read.
     /// </summary>
     public BriefStage(
-        IForgeAssistant assistant, IForgeUserChannel channel, string? initialNeed = null, bool autoConfirmFolders = false)
+        IForgeAssistant assistant,
+        IForgeUserChannel channel,
+        string? initialNeed = null,
+        bool autoConfirmFolders = false,
+        Orkeon.Domain.Tools.Security.IPathValidator? trialPathValidator = null)
     {
         _assistant = assistant ?? throw new ArgumentNullException(nameof(assistant));
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
         _initialNeed = initialNeed;
         _autoConfirmFolders = autoConfirmFolders;
+        _trialPathValidator = trialPathValidator;
     }
 
     /// <inheritdoc />
@@ -152,10 +161,12 @@ internal sealed class BriefStage : IForgeStageRunner
     /// <summary>
     /// The folders step (STUDIO-46): proposes the brief's folders — or the defaults when the
     /// request named none — as <c>folders.proposed</c>, and waits for <c>folders.confirmed</c>.
-    /// A list that breaks the rules, or binds a directory that is not there, is a recoverable
-    /// <c>FORGE-FOLDERS-INVALID</c> and the proposal is made again. The confirmed list is kept
-    /// in <c>folders.json</c> (with the directories bound) and in the brief (without them —
-    /// a physical path never reaches a prompt), then announced by <c>brief.ready</c>.
+    /// A list that breaks the rules, binds a directory that is not there, or — when this run
+    /// tries the team in this process — binds an input to a directory the trial could not read
+    /// (GAP-27), is a recoverable <c>FORGE-FOLDERS-INVALID</c> and the proposal is made again.
+    /// The confirmed list is kept in <c>folders.json</c> (with the directories bound) and in the
+    /// brief (without them — a physical path never reaches a prompt), then announced by
+    /// <c>brief.ready</c>.
     /// </summary>
     private async Task ConfirmFoldersAsync(
         ForgeSession session, ForgeEventWriter events, ForgeBrief brief, CancellationToken cancellationToken)
@@ -173,12 +184,13 @@ internal sealed class BriefStage : IForgeStageRunner
             var errors = new List<string>(ForgeFolders.Validate(answer));
             foreach (var folder in answer)
             {
-                if (folder.Directory is { Length: > 0 } directory
-                    && Path.IsPathFullyQualified(directory)
-                    && !Directory.Exists(directory))
-                {
+                if (folder.Directory is not { Length: > 0 } directory || !Path.IsPathFullyQualified(directory))
+                    continue;
+
+                if (!Directory.Exists(directory))
                     errors.Add($"'{folder.Path}' is bound to a directory that does not exist.");
-                }
+                else if (TrialCannotRead(folder, directory))
+                    errors.Add(OutsideTheTrialMessage(folder, session));
             }
 
             if (errors.Count > 0)
@@ -194,6 +206,29 @@ internal sealed class BriefStage : IForgeStageRunner
             return;
         }
     }
+
+    /// <summary>
+    /// Whether this run's trial, held in this process, could not read <paramref name="directory"/>:
+    /// an input folder is mounted from the directory bound behind it (an output always lands in
+    /// the session), and the engine host's path validator — fixed when the host was built, before
+    /// the folders were confirmed — refuses it. Never asked when the trial runs later, in a
+    /// <c>forge resume</c> whose host mounts and allows the confirmed folders from its start.
+    /// </summary>
+    private bool TrialCannotRead(ForgeFolder folder, string directory) =>
+        folder.IsInput
+        && _trialPathValidator is { } validator
+        && !validator.ValidatePath(directory).IsAllowed;
+
+    /// <summary>
+    /// The refusal of a folder this run's trial could not read, with the way that works (GAP-27).
+    /// The directory is not repeated: a physical path never reaches the stream.
+    /// </summary>
+    private static string OutsideTheTrialMessage(ForgeFolder folder, ForgeSession session) =>
+        $"'{folder.Path}' is bound to a directory this run cannot read during its trial: the trial runs in this "
+        + "process, whose file tools allow only the directories they started with — the working directory, not a "
+        + "folder confirmed since. Bind a directory under the working directory, or confirm these folders in a run "
+        + $"that stops before its trial (orkeon forge resume {session.Document.Slug} --dry), then try the team with "
+        + $"orkeon forge resume {session.Document.Slug}, which mounts and allows them from its start.";
 
     /// <summary>
     /// Shows the assistant's message and waits for the answer. A closed channel is an

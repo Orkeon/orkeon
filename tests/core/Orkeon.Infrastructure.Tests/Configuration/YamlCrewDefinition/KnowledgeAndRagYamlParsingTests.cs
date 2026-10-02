@@ -200,6 +200,60 @@ agents:
         var procedures = config.Rag.Collections["procedures"];
         Assert.Equal(["./docs/procedures/"], procedures.Sources);
         Assert.Null(procedures.Chunking);
+
+        // Read from a string: no folder for a relative source to resolve against.
+        Assert.Null(config.Rag.CrewDirectory);
+    }
+
+    private const string RelativeRagCrew = """
+name: rag-crew
+goal: x
+rag:
+  collections:
+    procedures:
+      sources: ["./docs/procedures/"]
+agents:
+  support: { role: Support, goal: Answer, knowledge: [procedures] }
+tasks:
+  answer: { description: Answer, expectedOutput: An answer, agent: support }
+""";
+
+    [Fact]
+    public async Task LoadFromFile_RagBlock_RecordsTheFolderOfTheCrewFile()
+    {
+        // GAP-27: a relative source resolves against the crew's folder — /crew under
+        // `orkeon run crew.yaml` — so the loader, the one that knows where the crew lives,
+        // records it. The sources themselves stay as written.
+        var fileSystem = new FakeFileSystemService().AddMount("/crew").AddFile("/crew/crew.yaml", RelativeRagCrew);
+        var loader = new YamlCrewDefinitionLoader(new YamlDotNetSerializer(), fileSystem, NullLogger<YamlCrewDefinitionLoader>.Instance);
+
+        var config = await loader.LoadFromFileAsync("/crew/crew.yaml", TestContext.Current.CancellationToken);
+
+        Assert.Equal("/crew", config.Rag!.CrewDirectory);
+        Assert.Equal(["./docs/procedures/"], config.Rag.Collections["procedures"].Sources);
+    }
+
+    [Fact]
+    public async Task LoadFromDirectory_RagBlock_RecordsTheCrewDirectory()
+    {
+        var settings = """
+name: rag-crew
+goal: x
+rag:
+  collections:
+    procedures:
+      sources: ["./docs/procedures/"]
+""";
+        var fileSystem = new FakeFileSystemService()
+            .AddMount("/crews-1")
+            .AddFile("/crews-1/config.yaml", settings)
+            .AddFile("/crews-1/agents/support.yaml", "role: Support\ngoal: Answer\nknowledge: [procedures]\n")
+            .AddFile("/crews-1/tasks/answer.yaml", "description: Answer\nexpectedOutput: An answer\nagent: support\n");
+        var loader = new YamlCrewDefinitionLoader(new YamlDotNetSerializer(), fileSystem, NullLogger<YamlCrewDefinitionLoader>.Instance);
+
+        var config = await loader.LoadFromDirectoryAsync("/crews-1", TestContext.Current.CancellationToken);
+
+        Assert.Equal("/crews-1", config.Rag!.CrewDirectory);
     }
 
     [Fact]

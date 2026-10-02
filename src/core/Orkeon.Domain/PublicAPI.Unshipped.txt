@@ -1221,3 +1221,5 @@ static Orkeon.Domain.Crew.PlanningTask.operator ==(Orkeon.Domain.Crew.PlanningTa
 Orkeon.Domain.Crew.Crew.CompleteExecution(int completedTasks) -> void
 Orkeon.Domain.Crew.ExecutionStatus.Cancelled = 3 -> Orkeon.Domain.Crew.ExecutionStatus
 Orkeon.Domain.Crew.ExecutionStatus.Failed = 2 -> Orkeon.Domain.Crew.ExecutionStatus
+Orkeon.Domain.Configuration.RagCrewConfig.CrewDirectory.get -> string?
+Orkeon.Domain.Configuration.RagCrewConfig.CrewDirectory.init -> void

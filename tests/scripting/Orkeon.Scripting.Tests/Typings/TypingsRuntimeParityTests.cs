@@ -17,9 +17,11 @@ namespace Orkeon.Scripting.Tests.Typings;
 /// projects for it.
 /// </summary>
 /// <remarks>
-/// A name match is all it checks — not parameter shapes. It is the cheap half of the contract,
-/// and the half that drifted most: <c>agent.role</c> declared and absent, <c>withResponseFormat</c>
-/// present and undeclared, <c>withTaskTool</c> declared and read by nothing.
+/// A name match is what it checks on every surface — not parameter shapes. It is the cheap half
+/// of the contract, and the half that drifted most: <c>agent.role</c> declared and absent,
+/// <c>withResponseFormat</c> present and undeclared, <c>withTaskTool</c> declared and read by
+/// nothing. The surfaces a script reads as data — the run's result — are also compared by the
+/// type of each property (GAP-27), where a matching name hid a promise the runtime never kept.
 /// </remarks>
 public sealed partial class TypingsRuntimeParityTests
 {
@@ -44,6 +46,8 @@ public sealed partial class TypingsRuntimeParityTests
         ["EventQueue"] = typeof(JsEventQueue),
         ["EventTopic"] = typeof(JsEventTopic),
         ["PublishedEvent"] = typeof(JsPublishedEvent),
+        ["CrewResult"] = typeof(JsCrewResult),
+        ["TaskResult"] = typeof(JsTaskResult),
     };
 
     public static TheoryData<string> Pairs() => new(s_pairs.Keys.Order(StringComparer.Ordinal));
@@ -93,6 +97,58 @@ public sealed partial class TypingsRuntimeParityTests
             Assert.True(declaredMembers.Contains(member) != runtimeMembers.Contains(member),
                 $"The exception `{declared}.{member}` ({why}) no longer names a mismatch; remove it.");
         }
+    }
+
+    /// <summary>
+    /// The surfaces whose members are data a script reads, compared by TYPE as well as by name
+    /// (GAP-27). A name match let <c>CrewResult</c> promise <c>output: TOut</c> over a string,
+    /// and <c>artifacts: ReadonlyMap</c> over a CLR dictionary Jint does not project as a Map —
+    /// so <c>result.artifacts.get("x")</c> compiled and threw.
+    /// </summary>
+    public static TheoryData<string> DataSurfaces() => new("CrewResult", "TaskResult");
+
+    [Theory]
+    [MemberData(nameof(DataSurfaces))]
+    public void Declared_property_types_are_what_the_runtime_serves(string declared)
+    {
+        var declaredTypes = PropertyTypes(StripComments(LoadTypings()), declared);
+        var type = s_pairs[declared];
+
+        var disagreements = new List<string>();
+        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                     .Where(p => char.IsLower(p.Name[0]))
+                     .OrderBy(p => p.Name, StringComparer.Ordinal))
+        {
+            var served = TypeScriptOf(property.PropertyType);
+            var written = declaredTypes.GetValueOrDefault(property.Name);
+            if (served is null)
+                disagreements.Add($"{property.Name}: no TypeScript type describes what Jint projects for {property.PropertyType.Name}");
+            else if (!string.Equals(served, written, StringComparison.Ordinal))
+                disagreements.Add($"{property.Name}: declared `{written}`, the runtime serves `{served}`");
+        }
+
+        Assert.True(disagreements.Count == 0,
+            $"`{declared}` and {type.Name} disagree on types.\n  " + string.Join("\n  ", disagreements));
+    }
+
+    [Fact]
+    public void The_type_parser_reads_a_property_s_declared_type()
+    {
+        const string source = """
+            declare global {
+                interface Probe {
+                    readonly output: string;
+                    readonly tasks: readonly ProbeItem[];
+                    optional?: number;
+                    method(value: string): this;
+                }
+            }
+            """;
+        var types = PropertyTypes(source, "Probe");
+        Assert.Equal("string", types["output"]);
+        Assert.Equal("readonly ProbeItem[]", types["tasks"]);
+        Assert.Equal("number", types["optional"]);
+        Assert.False(types.ContainsKey("method"));
     }
 
     private static readonly string[] s_probeMembers =
@@ -166,6 +222,26 @@ public sealed partial class TypingsRuntimeParityTests
             .ToHashSet(StringComparer.Ordinal);
     }
 
+    /// <summary>
+    /// The declared type of each property of interface <paramref name="name"/> — <c>readonly
+    /// output: string</c> gives <c>output → string</c>, whitespace collapsed. Methods are left out.
+    /// <paramref name="text"/> is already stripped of its comments.
+    /// </summary>
+    private static Dictionary<string, string> PropertyTypes(string text, string name)
+    {
+        var match = InterfaceHeader().Matches(text).FirstOrDefault(m => m.Groups["name"].Value == name);
+        Assert.True(match is not null, $"interface {name} is not declared in Typings/*.d.ts.");
+
+        var types = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var member in TopLevelMembers(Body(text, match.Index + match.Length - 1)))
+        {
+            var property = PropertyDeclaration().Match(member);
+            if (property.Success)
+                types[property.Groups["name"].Value] = Whitespace().Replace(property.Groups["type"].Value.Trim(), " ");
+        }
+        return types;
+    }
+
     /// <summary>The text between the brace at <paramref name="open"/> and its match.</summary>
     private static string Body(string text, int open)
     {
@@ -226,6 +302,12 @@ public sealed partial class TypingsRuntimeParityTests
     [GeneratedRegex(@"^\s*(?:readonly\s+)?(?<name>[A-Za-z_$][\w$]*)\s*\??\s*[(<:]")]
     private static partial Regex MemberName();
 
+    [GeneratedRegex(@"^\s*(?:readonly\s+)?(?<name>[A-Za-z_$][\w$]*)\s*\??\s*:(?<type>.+)$", RegexOptions.Singleline)]
+    private static partial Regex PropertyDeclaration();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex Whitespace();
+
     // ---- runtime side -------------------------------------------------------------------
 
     /// <summary>
@@ -241,6 +323,28 @@ public sealed partial class TypingsRuntimeParityTests
             .Where(n => char.IsLower(n[0]))
             .Where(n => typeof(object).GetMethod(n) is null);
         return names.ToHashSet(StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The TypeScript type of what Jint hands a script for a CLR value of <paramref name="type"/>,
+    /// or null when no declaration can say it honestly: a CLR string is a <c>string</c>, a number
+    /// a <c>number</c>, an <c>object</c> anything (<c>unknown</c>), a list an array of its items, a
+    /// paired CLR type its interface. A CLR dictionary is left out on purpose: Jint wraps it as an
+    /// object, never as a <c>Map</c> — the shape <c>CrewResult.artifacts</c> promised.
+    /// </summary>
+    private static string? TypeScriptOf(Type type)
+    {
+        if (type == typeof(string))
+            return "string";
+        if (type == typeof(bool))
+            return "boolean";
+        if (type == typeof(double) || type == typeof(float) || type == typeof(int) || type == typeof(long))
+            return "number";
+        if (type == typeof(object))
+            return "unknown";
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IReadOnlyList<>))
+            return TypeScriptOf(type.GetGenericArguments()[0]) is { } item ? $"readonly {item}[]" : null;
+        return s_pairs.FirstOrDefault(p => p.Value == type).Key;
     }
 
     private static string TypingsDirectory()

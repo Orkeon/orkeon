@@ -43,9 +43,10 @@ public class JsExecutionContext
         crew = new JsCrewProxy(environment.Crew, environment.Engine, environment.Ct);
         log = new JsLogger(environment.Logger);
         events = environment.Crew.EventBroker;
+        var (tools, unknownTools) = ResolveAgentTools(environment);
         llm = new JsLlmFacade(
             environment.Engine, environment.LlmProvider, environment.Ct,
-            ResolveAgentTools(environment), environment.Budget, environment.PermissionGate,
+            tools, environment.Budget, environment.PermissionGate,
             new JsLlmObservability
             {
                 DeltaSink = environment.DeltaSink,
@@ -53,7 +54,8 @@ public class JsExecutionContext
                 Logger = environment.Logger,
                 CrewName = environment.Crew.name,
                 AgentName = environment.Self.name,
-            });
+            },
+            unknownTools);
     }
 
     /// <summary>
@@ -83,18 +85,38 @@ public class JsExecutionContext
 
     /// <summary>
     /// Resolves the tools this agent may use in <c>ctx.llm.act</c>: the built-in tools selected
-    /// via <c>agentBuilder().tools([...])</c>, matched by name, then the <c>toolBuilder()</c>
-    /// instances of <c>withAutonomousTool(s)</c> — the same two sets the declarative shape offers
-    /// (GAP-12: act used to see the first only). Empty when the agent declares neither, and act
-    /// then behaves like a tool-less completion loop.
+    /// via <c>agentBuilder().tools([...])</c>, matched by name case-insensitively, then the
+    /// <c>toolBuilder()</c> instances of <c>withAutonomousTool(s)</c> — the same two sets the
+    /// declarative shape offers (GAP-12: act used to see the first only). Empty when the agent
+    /// declares neither, and act then behaves like a tool-less completion loop.
     /// </summary>
-    private static Orkeon.Domain.Tools.IBaseTool[] ResolveAgentTools(JsExecutionEnvironment environment)
+    /// <returns>
+    /// The tools, and the names of <c>.tools([...])</c> the host's catalogue does not answer to —
+    /// null when there are none. <c>act</c> refuses to run on those (GAP-27): a misspelled name used
+    /// to be dropped without a word, where the declarative shape fails its load on it.
+    /// </returns>
+    private static (Orkeon.Domain.Tools.IBaseTool[] Tools, UnknownAgentTools? Unknown) ResolveAgentTools(
+        JsExecutionEnvironment environment)
     {
         var selected = environment.Self.Builder.BuiltInToolNames;
-        var builtIns = environment.BuiltInTools is { Count: > 0 } all && selected.Count > 0
-            ? all.Where(t => selected.Contains(t.Name, System.StringComparer.OrdinalIgnoreCase))
+        var catalogue = environment.BuiltInTools ?? [];
+        var builtIns = selected.Count > 0
+            ? catalogue.Where(t => selected.Contains(t.Name, System.StringComparer.OrdinalIgnoreCase))
             : [];
-        return builtIns.Concat(environment.Self.Builder.AutonomousTools).ToArray();
+        var tools = builtIns.Concat(environment.Self.Builder.AutonomousTools).ToArray();
+
+        var unknown = selected
+            .Where(name => !catalogue.Any(t => string.Equals(t.Name, name, System.StringComparison.OrdinalIgnoreCase)))
+            .Distinct(System.StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (unknown.Count == 0)
+            return (tools, null);
+
+        var available = catalogue.Select(t => t.Name)
+            .Distinct(System.StringComparer.Ordinal)
+            .Order(System.StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return (tools, new UnknownAgentTools(unknown, available));
     }
 
     // `ctx.delegate(agentOrName, input)` IS `crew.runAgent(agentOrName, input)` (GAP-12): the

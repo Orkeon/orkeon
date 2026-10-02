@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — what a crew writes is what runs: an unknown tool fails `act`, `CrewResult` declares what it serves, `rag:` sources expand, and a forge trial reads the folders and profiles it is given **[breaking]**
+
+Four things a user wrote were ignored without a word, plus a fifth found since (GAP-27):
+
+- **`ctx.llm.act` refuses an unknown tool.** A procedural `.ork.ts` agent whose `.tools([...])` names a
+  tool the host does not offer — `web_serch` for `web_search` — ran `act` without that tool, silently,
+  where the declarative shape fails its load on the same name (`StrictTools`). `act` now rejects, before
+  any model call, with the declared `UnknownToolError` (new in `errors.d.ts`, planted as a global like
+  the others: `agentName`, `toolNames`, `availableTools`); an `onError` handler reads it as
+  `validation`, and a C# host calling `JsCrew.RunAsync` gets the typed `UnknownToolException`
+  (`Orkeon.Scripting.Exceptions`). Names still match case-insensitively, and a body that never calls
+  `act` is not concerned.
+- **`CrewResult` declares what `crew.run()` serves.** The typings promised `output: TOut` and
+  `artifacts: ReadonlyMap<string, unknown>`; the runtime served a string and a CLR dictionary that was
+  always empty, so `result.artifacts.get("x")` compiled and threw. `CrewResult` is now
+  `{ output: string; tasks: readonly TaskResult[] }`, `TaskResult.output` is `unknown`, the type
+  parameters of `CrewResult`, `TaskResult` and `Crew.run` are gone, and so is `JsCrewResult.artifacts`.
+  `TypingsRuntimeParityTests` pairs both shapes with their CLR types and compares each property's type,
+  not only its name.
+- **A crew's `rag:` sources mean what they say.** The schema documented "file globs or directories" and
+  showed `sources: ["./data/catalogue/**/*.pdf"]` and `["./docs/procedures/"]`: both failed at
+  ingestion ("No document loader can handle source"), the sources reaching the pipeline verbatim.
+  `RagCollectionsBootstrapper` now expands a glob through `SourceGlobExpander`, as `rag_ingest`,
+  `orkeon rag ingest`, `rag.ingest` and the eval harness do; a directory stands for every file below
+  it; a path without a leading `/` resolves against the crew's folder (`RagCrewConfig.CrewDirectory`,
+  recorded by the YAML loader — `/crew` under `orkeon run crew.yaml`); an `http(s)` address and a
+  plain file reach the loaders as written, and a file two entries name is ingested once. A pattern or a
+  directory that yields no file, a glob outside every mount and a relative source of a crew read from a
+  string are load warnings naming the collection. Both examples of the schema page now ingest what they
+  show, checked by a test that reads them from the page.
+- **A forge folder outside the working directory is refused where the trial could not read it.** A
+  JSONL client that confirmed, in a run trying the team in the same process, an input bound to a
+  directory outside the working directory had it mounted for the trial and refused on every read: the
+  path validator keeps the directories its host started with. In such a run `folders.confirmed` now
+  refuses it — a recoverable `FORGE-FOLDERS-INVALID` saying to confirm the folders in a run that stops
+  before its trial (`orkeon forge resume <slug> --dry`) and to try the team with
+  `orkeon forge resume <slug>`, whose host mounts and allows them from its start. The validator is
+  unchanged, and Studio, which confirms the folders in a `--dry` run, is not concerned.
+- **A forge trial knows the host's LLM profiles.** It loaded a forged `.ork.ts` crew without them: a crew
+  naming a host profile (`llm.profile("fast")`) failed its trial with "Known profiles: default." and ran
+  once promoted. The trial now loads it with `LlmProfiles`, like `orkeon run` and the forge's assistant;
+  a name the host does not define still fails, listing the ones it does.
+
+Documented in [Scripting DSL](docs/reference/scripting-dsl.md),
+[Write a crew in TypeScript](docs/guides/write-a-crew-in-typescript.md),
+[YAML schema](docs/architecture/yaml-schema.md), [RAG pipeline](docs/architecture/rag-pipeline.md),
+[CLI](docs/reference/cli.md#orkeon-forge) and
+[Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md); the namespace entry of
+[Known limitations](docs/reference/limitations.md) says how the forge keeps its trial clear of the
+validator's refusal.
+
+Breaking: `ctx.llm.act` rejects an agent whose `.tools([...])` names a tool the host does not offer;
+`CrewResult` has no `artifacts` and no type parameter, `TaskResult` and `crew.run()` take none, and
+`JsCrewResult.artifacts` is removed; `RagCollectionsBootstrapper` takes the `IFileSystemService` its
+sources are expanded against.
+
+Migration: correct or drop the names an `UnknownToolError` lists (`toolNames`; `availableTools` says
+what the host offers); drop the type argument of `crew.run<T>()` and narrow `result.tasks[i].output`
+yourself; remove any read of `result.artifacts` — it was always empty; a C# host that builds
+`RagCollectionsBootstrapper` itself passes its `IFileSystemService`.
+
 ### Fixed — the streaming kickoff runs the crew and says what happens as it goes, a failed run fails the crew, and `KickoffForEachAsync` runs each input in turn **[breaking]**
 
 `ICrewOrchestrationService.KickoffStreamingAsync` — the documented C# equivalent of CrewAI's

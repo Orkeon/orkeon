@@ -203,9 +203,11 @@ public static class RagServiceCollectionExtensions
         // YAML `rag:` crew block → collections ingested at crew load (RAG-03/C3)  —
         // the incremental manifest makes a fresh collection a no-op. The crew factory
         // takes the bootstrapper for every crew, so the pipeline behind it (store,
-        // backing provider, embeddings) is resolved at the first ingestion only (GAP-02).
+        // backing provider, embeddings) is resolved at the first ingestion only (GAP-02). The
+        // VFS the sources are expanded against is the one the crew loader already reads through.
         services.TryAddSingleton<IRagCollectionsBootstrapper>(sp => new RagCollectionsBootstrapper(
             new DeferredIngestionPipeline(sp.GetRequiredService<IIngestionPipeline>),
+            sp.GetRequiredService<IFileSystemService>(),
             sp.GetService<ILogger<RagCollectionsBootstrapper>>()));
 
         return services;

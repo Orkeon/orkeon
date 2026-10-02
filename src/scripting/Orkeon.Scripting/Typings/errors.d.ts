@@ -91,6 +91,21 @@ declare global {
     }
 
     /**
+     * Thrown by `ctx.llm.act` when the agent's `.tools([...])` names a tool the host does not
+     * offer — a typo is never run as a loop without that tool. Names match case-insensitively.
+     */
+    class UnknownToolError extends Error implements HostError {
+        /** The agent whose `.tools([...])` names them. */
+        readonly agentName: string;
+        /** The names no host tool answers to, as written. */
+        readonly toolNames: readonly string[];
+        /** The tools the host offers, by name. */
+        readonly availableTools: readonly string[];
+        readonly clrType?: string;
+        readonly clr?: unknown;
+    }
+
+    /**
      * The code an `onError` handler reads on `err.code` — exactly the codes the runtime's
      * mapper produces (`ErrorCodeMapper`).
      */

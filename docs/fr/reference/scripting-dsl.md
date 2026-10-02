@@ -57,7 +57,7 @@ déduit.
 | `name` | ✅ | ✅ |
 | `role` `goal` `backstory` | conservés, pas envoyés : `ctx.llm` envoie votre seul prompt ; `role` ne sert qu'à `crew.findByRole` | ✅ **le prompt de l'agent** — `build()` exige `role` |
 | `llm` | le fournisseur seulement : un agent configuré avec `llm.profile("…")` fait parler `ctx.llm` au fournisseur de ce profil, sur le modèle du profil ; sinon `ctx.llm` utilise le fournisseur de l'hôte sur son modèle configuré (par appel : `{ llm: { model } }`) | ✅ un `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — règle le fournisseur de l'agent (l'un des profils de l'hôte), son modèle, sa température et son plafond de jetons. Une chaîne ou un objet simple est refusé par `.llm(...)` |
-| `tools([...])` intégrés par nom | ✅ ce que `ctx.llm.act` peut appeler — un nom inconnu est sauté sans bruit | ✅ strict : un nom inconnu fait échouer le run |
+| `tools([...])` intégrés par nom | ✅ ce que `ctx.llm.act` peut appeler — un nom que l'hôte n'offre pas fait rejeter `act` par une `UnknownToolError`, avant tout appel au modèle | ✅ strict : un nom inconnu fait échouer le run |
 | `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) et proposées à `ctx.llm.act`, qui exécute le `execute` de l'outil dans le script | ✅ enregistrées et résolues par nom |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ |
 | `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (par appel : `{ responseFormat }`) | ✅ |
@@ -87,6 +87,14 @@ Tout ce qui porte un ❌ du côté déclaratif est désormais **annoncé** : l'e
 un avertissement par déclaration abandonnée, en nommant la méthode et l'agent sur lequel elle
 était écrite. C'est toujours abandonné — les deux formes sont deux moteurs — mais une crew ne
 peut plus exécuter un `.body()` jamais invoqué sans rien en dire.
+
+**Ce que rend `await crew.run()`** — un `CrewResult`, exactement ce que déclare `crew.d.ts` :
+`output`, le texte de la dernière sortie d'agent qui n'était pas `null` (`""` quand aucun agent
+n'a rien rendu), et `tasks`, une entrée `{ name, output, durationMs }` par exécution d'agent,
+dans l'ordre où ils ont tourné, `output` étant ce que le corps a rendu. Rien de plus : la table
+`artifacts` que déclaraient les typings n'était jamais remplie, et `crew.run<T>()` typait un
+`output` que le runtime sert toujours en chaîne — les deux ont disparu (GAP-27), et
+`TypingsRuntimeParityTests` compare les deux formes de résultat type par type.
 
 #### `process("graph")` n'est pas `stateGraph`
 
@@ -179,7 +187,11 @@ l'agent a choisis avec `.tools([...])` et ses instances `withAutonomousTool` —
 `execute` s'exécute dans le script, sur le fil du moteur — jusqu'à ce que le modèle cesse de
 demander ou que `maxIterations` (défaut 10, `0` = illimité) soit atteint. Elle se résout en
 `{ output, iterations }` (plus `interrupted` ou `exhausted` quand la boucle s'est arrêtée
-avant). `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
+avant). Un nom de `.tools([...])` auquel aucun outil de l'hôte ne répond (comparaison
+insensible à la casse) n'est pas sauté : `act` rejette par une `UnknownToolError`
+(`agentName`, `toolNames`, `availableTools`) avant tout appel au modèle — le pendant procédural
+de l'échec de chargement que la forme déclarative obtient pour le même nom ; un handler
+`onError` la lit comme `validation`. `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
 itération ; sans lui, `act()` envoie un seul message utilisateur. `permissionMode`
 (`default`, `acceptEdits`, `bypassPermissions`, `plan`) est vérifié auprès de la porte de
 permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une — déclarez

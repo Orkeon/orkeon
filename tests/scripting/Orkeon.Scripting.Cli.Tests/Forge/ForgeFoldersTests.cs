@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Scripting.Cli.Commands.Forge;
 
@@ -311,6 +312,56 @@ public sealed class ForgeFoldersTests : IDisposable
     }
 
     [Fact]
+    public async Task A_folder_bound_outside_the_working_directory_is_refused_when_this_run_tries_the_team()
+    {
+        // GAP-27: the trial of a run that does not stop before it (no --dry) runs in this same
+        // process, whose path validator was built before the folders were confirmed: a bound
+        // directory it refuses would be mounted for the trial and then refused on every read.
+        // The confirmation is refused instead, recoverable, with the way that works.
+        var workingDirectory = Directory.CreateDirectory(Path.Combine(_workspace, "cwd")).FullName;
+        var outside = Directory.CreateDirectory(Path.Combine(_workspace, "elsewhere", "pdfs")).FullName;
+        var inside = Directory.CreateDirectory(Path.Combine(workingDirectory, "pdfs")).FullName;
+        var validator = new Orkeon.Infrastructure.Security.PathValidator(
+            new Orkeon.Infrastructure.Configuration.PathSecurityOptions { DefaultWorkspaceRoot = workingDirectory },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Orkeon.Infrastructure.Security.PathValidator>.Instance);
+        var session = ForgeSession.Create(_workspace, "outside");
+        var channel = new ScriptedUserChannel()
+            .ConfirmsFolders([Folder("/inpdf", "input", outside), Folder("/outmd", "output")])
+            .ConfirmsFolders([Folder("/inpdf", "input", inside), Folder("/outmd", "output")]);
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(PdfBrief), channel, trialPathValidator: validator))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, channel.ProposedFolders.Count);
+        var error = Assert.Single(Events(), e => e.GetProperty("kind").GetString() == "error");
+        Assert.Equal("FORGE-FOLDERS-INVALID", error.GetProperty("code").GetString());
+        Assert.True(error.GetProperty("recoverable").GetBoolean());
+        var message = error.GetProperty("message").GetString()!;
+        Assert.Contains("'/inpdf'", message, StringComparison.Ordinal);
+        Assert.Contains($"orkeon forge resume {session.Document.Slug} --dry", message, StringComparison.Ordinal);
+        Assert.Contains($"orkeon forge resume {session.Document.Slug}", message, StringComparison.Ordinal);
+        // A physical path never reaches the stream (the brief's rule).
+        Assert.DoesNotContain(outside, message, StringComparison.Ordinal);
+        Assert.Equal(inside, ForgeFolders.Confirmed(session)![0].Directory);
+    }
+
+    [Fact]
+    public async Task A_dry_run_confirms_a_folder_outside_the_working_directory_its_trial_comes_later()
+    {
+        // Studio's path: the folders are confirmed in a run that stops before its trial, which
+        // a resume then runs in a process that mounts and allows them from its start.
+        var outside = Directory.CreateDirectory(Path.Combine(_workspace, "elsewhere", "pdfs")).FullName;
+        var session = ForgeSession.Create(_workspace, "dry");
+        var channel = new ScriptedUserChannel().ConfirmsFolders([Folder("/inpdf", "input", outside), Folder("/outmd", "output")]);
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(PdfBrief), channel))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(Events(), e => e.GetProperty("kind").GetString() == "error");
+        Assert.Equal(outside, ForgeFolders.Confirmed(session)![0].Directory);
+    }
+
+    [Fact]
     public async Task A_session_stopped_at_the_folders_resumes_there_without_a_new_interview()
     {
         var session = ForgeSession.Create(_workspace, "stopped");
@@ -485,5 +536,99 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.DoesNotContain(":/workspace:", launcher, StringComparison.Ordinal);
         var card = File.ReadAllText(Path.Combine(destination, "FORGE.md"));
         Assert.Contains("`inpdf/`", card, StringComparison.Ordinal);
+    }
+}
+
+/// <summary>
+/// GAP-27, the host half: a folder bound to a directory outside the working directory is readable
+/// by the trial of <c>forge resume</c>, whose engine host mounts the confirmed folders and allows
+/// their directories when it is built — and not by a host built before the confirmation, whose
+/// path validator is fixed at its start (the reason the confirmation is refused when the trial
+/// would run in that same process). The hosts are built the way the verb builds them — its mount
+/// plan and <see cref="ForgeCommand.AddEngineServices"/> — and never run.
+/// </summary>
+[Collection(CliCollection.Name)]
+public sealed class ForgeFoldersResumeHostTests : IDisposable
+{
+    private readonly string _workspace =
+        Path.Combine(Path.GetTempPath(), "orkeon-forge-folders-resume-" + Guid.NewGuid().ToString("N"));
+
+    private readonly string _settings;
+
+    public ForgeFoldersResumeHostTests()
+    {
+        Directory.CreateDirectory(_workspace);
+        _settings = Path.Combine(_workspace, "appsettings.json");
+        // Disabling RaggableTree keeps the on-device embedding model (ONNX) out of the host.
+        File.WriteAllText(_settings, "{ \"RaggableTree\": { \"Enabled\": false } }");
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_workspace))
+            Directory.Delete(_workspace, recursive: true);
+    }
+
+    private static ForgeFolder Folder(string path, string role, string? dir = null) =>
+        new() { Path = path, Role = role, Purpose = "p", Directory = dir };
+
+    private Microsoft.Extensions.Hosting.IHost BuildEngineHost(ForgeSession session)
+    {
+        Directory.CreateDirectory(Path.Combine(session.Directory, TestStage.OutputDirectoryName));
+        var plan = ForgeCommand.BuildMountPlan(_workspace, readRoot: null, session);
+        return Orkeon.Hosting.RunnerHost.Build(
+            _settings,
+            plan,
+            configureServices: (_, services) => ForgeCommand.AddEngineServices(
+                services, new ForgeSubmissionBox(), new ForgeUsageTally(), new ForgeRunObserver()));
+    }
+
+    /// <summary>A PDF folder outside the process working directory: the workspace is a temp directory.</summary>
+    private string OutsideFolder()
+    {
+        var pdfs = Directory.CreateDirectory(Path.Combine(_workspace, "mes-pdf")).FullName;
+        File.WriteAllText(Path.Combine(pdfs, "facture.pdf"), "%PDF facture");
+        Assert.False(
+            Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(pdfs, Directory.GetCurrentDirectory()),
+            "The fixture's folder must lie outside the working directory.");
+        return pdfs;
+    }
+
+    [Fact]
+    public async Task Under_forge_resume_the_folder_is_mounted_and_readable()
+    {
+        var pdfs = OutsideFolder();
+        var session = ForgeSession.Create(_workspace, "resumed");
+        session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList
+        {
+            Folders = [Folder("/inpdf", "input", pdfs), Folder("/outmd", "output")],
+        });
+
+        using var host = BuildEngineHost(session);
+        using var trial = ForgeTrialScope.Enter(host.Services, session, _workspace, readRoot: null);
+        var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+
+        Assert.Equal("%PDF facture", await fileSystem.TryReadAllTextAsync("/inpdf/facture.pdf", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task A_folder_confirmed_after_the_host_was_built_is_mounted_but_refused()
+    {
+        var pdfs = OutsideFolder();
+        var session = ForgeSession.Create(_workspace, "same-process");
+        using var host = BuildEngineHost(session);
+
+        // Confirmed in the run that built the host: the trial scope mounts it, the validator
+        // the host started with does not allow it.
+        session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList
+        {
+            Folders = [Folder("/inpdf", "input", pdfs), Folder("/outmd", "output")],
+        });
+        using var trial = ForgeTrialScope.Enter(host.Services, session, _workspace, readRoot: null);
+        var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+
+        Assert.Contains("/inpdf", fileSystem.GetAvailableMounts().Select(m => m.VirtualPath));
+        await Assert.ThrowsAsync<FileAccessDeniedException>(
+            () => fileSystem.TryReadAllTextAsync("/inpdf/facture.pdf", TestContext.Current.CancellationToken));
     }
 }

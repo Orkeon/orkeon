@@ -98,7 +98,8 @@ Un agent atteint les outils de trois façons, et elles ne sont pas interchangeab
 1. **Intégrés par nom** — `.tools(["file_read", "directory_read"])`. Résolus depuis le
    catalogue de l'hôte, et dans cette forme la résolution est *stricte* : un nom non
    enregistré fait échouer le run plutôt que de laisser discrètement l'agent avec un outil de
-   moins. (Le moteur procédural, qu'on ne peut pas valider, saute un nom inconnu sans bruit.)
+   moins. (Le moteur procédural vérifie les mêmes noms quand `ctx.llm.act` s'exécute : un nom
+   inconnu fait rejeter l'appel par une `UnknownToolError`.)
 2. **Outils TypeScript en instances** — `.withAutonomousTools([...])`, construits avec
    `toolBuilder()`. Ils voyagent avec le script : aucun enregistrement côté hôte. En forme
    procédurale, un `body` les appelle directement (`diffStats.execute({ diff })`), et
@@ -312,13 +313,14 @@ vaut mieux connaître avant d'en être surpris :
 - **`import` fonctionne entre vos propres fichiers**, résolu relativement au script : esbuild
   les assemble quand le fichier est exécuté depuis le disque, comme le fait `orkeon run`.
 
-## Dix erreurs et ce qu'elles veulent dire
+## Les erreurs et ce qu'elles veulent dire
 
 | Message | Cause |
 |---|---|
 | `did not assign globalThis.crew` | `--validate`, ou un runner qui veut la forme déclarative, sur un fichier finissant par `await crew.run()`. |
 | La crew tourne mais chaque tâche est ignorée | L'inverse : `withTask` dans un fichier finissant par `await crew.run()`. |
 | `Crew configuration references unknown tool(s): x` | Un nom dans `.tools([...])` absent du catalogue de l'hôte. Le message liste tous les noms disponibles. |
+| `Agent 'a' lists unknown tool(s) in .tools([...])` (une `UnknownToolError`) | Le pendant procédural : `ctx.llm.act` refuse de tourner, avant tout appel au modèle, pour un agent dont `.tools([...])` nomme un outil que l'hôte n'offre pas. Le message liste ceux qui sont disponibles. |
 | `FSM transition 'a.b' targets undeclared state 'c'` | Un `target` qui n'est pas une clé de `states`. |
 | `stateGraph literal must declare an edge from START` | `edges` écrit comme un tableau. C'est un objet indexé par nœud source. |
 | `stateGraph has no path from START to END` | Aucune route statique ; ajoutez-en une ou passez par une arête conditionnelle. |

@@ -410,9 +410,12 @@ redirect, so an approved URL cannot be bounced to an internal address.
   a drift between the manifest's recorded profile and the active provider fails
   the run loudly rather than silently mixing incompatible vectors.
 - Glob sources (`*`, `**`, `?`) are expanded through the VFS by
-  `SourceGlobExpander` at the consuming surfaces (scripting `rag.ingest`,
-  `rag_ingest` tool, CLI `orkeon rag ingest`, eval harness corpus). The crew
-  `rag:` block passes its `sources` verbatim: list concrete files or URLs there.
+  `SourceGlobExpander` at every consuming surface (scripting `rag.ingest`,
+  `rag_ingest` tool, CLI `orkeon rag ingest`, eval harness corpus, and the crew
+  `rag:` block). The crew block also takes a directory, which stands for every
+  file below it, and resolves a relative path against the crew's folder — all
+  of it decided in `RagCollectionsBootstrapper`, which warns, naming the
+  collection, about a pattern or a directory that yields no file (GAP-27).
 
 ## Crew YAML integration
 
@@ -464,7 +467,7 @@ YAML keys:
 
 | Key | Effect |
 |---|---|
-| `rag.collections.<name>.sources` | Ingested at crew creation (verbatim, no glob expansion) |
+| `rag.collections.<name>.sources` | Ingested at crew creation: files, globs, directories (every file below) and URLs; a path without a leading `/` is relative to the crew's folder (`/crew` under `orkeon run`); a pattern or a directory that yields nothing is a load warning |
 | `rag.collections.<name>.chunking` (`strategy`, `max_tokens`, `overlap`) | Tokens converted to characters at ×4 |
 | `rag.defaults.profile` | The retrieval profile of every attachment that names none (copied onto it at crew creation) |
 | `knowledge:` short form (`[product-kb]`) | Attaches the collection with the defaults below |

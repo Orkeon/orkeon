@@ -6,3 +6,5 @@ Orkeon.Rag.Evaluation.RagEvalRunRequest.DefaultCollection.init -> void
 *REMOVED*Orkeon.Rag.DependencyInjection.RagStoreOptions.ConnectionString.get -> string?
 *REMOVED*Orkeon.Rag.DependencyInjection.RagStoreOptions.ConnectionString.set -> void
 *REMOVED*Orkeon.Rag.DependencyInjection.RagStoreOptions.ProviderOptions.get -> System.Collections.Generic.Dictionary<string!, string!>!
+*REMOVED*Orkeon.Rag.Ingestion.RagCollectionsBootstrapper.RagCollectionsBootstrapper(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Ingestion.RagCollectionsBootstrapper!>? logger = null) -> void
+Orkeon.Rag.Ingestion.RagCollectionsBootstrapper.RagCollectionsBootstrapper(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Ingestion.RagCollectionsBootstrapper!>? logger = null) -> void

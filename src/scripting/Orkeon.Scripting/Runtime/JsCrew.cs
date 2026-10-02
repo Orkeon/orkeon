@@ -406,6 +406,7 @@ public sealed partial class JsCrew
             if (cur is Exceptions.StateMutationOutsideWithException sm) { typed = sm; return true; }
             if (cur is Exceptions.RecursiveAgentInvocationException ra) { typed = ra; return true; }
             if (cur is Orkeon.Domain.Autonomous.BudgetExhaustedException be) { typed = be; return true; }
+            if (cur is Exceptions.UnknownToolException ut) { typed = ut; return true; }
         }
         typed = null!;
         return false;

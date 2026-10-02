@@ -415,10 +415,13 @@ renvoyée vers une adresse interne.
   aussi le seul moyen de ré-ingérer après un changement de profil d'embedding : une dérive
   entre le profil consigné au manifeste et le provider actif fait échouer la passe
   bruyamment plutôt que de mélanger en silence des vecteurs incompatibles.
-- Les sources en glob (`*`, `**`, `?`) sont dépliées via le VFS par `SourceGlobExpander` au
-  niveau des surfaces consommatrices (scripting `rag.ingest`, outil `rag_ingest`, CLI
-  `orkeon rag ingest`, corpus du harnais d'évaluation). Le bloc `rag:` de la crew transmet
-  ses `sources` telles quelles : y lister des fichiers concrets ou des URLs.
+- Les sources en glob (`*`, `**`, `?`) sont dépliées via le VFS par `SourceGlobExpander` sur
+  chaque surface consommatrice (scripting `rag.ingest`, outil `rag_ingest`, CLI
+  `orkeon rag ingest`, corpus du harnais d'évaluation, et le bloc `rag:` de la crew). Le bloc
+  de crew accepte aussi un répertoire, qui vaut tous les fichiers qu'il contient, et résout un
+  chemin relatif contre le dossier de la crew — tout cela décidé dans
+  `RagCollectionsBootstrapper`, qui avertit, en nommant la collection, d'un motif ou d'un
+  répertoire qui ne donne aucun fichier (GAP-27).
 
 ## Intégration crew YAML
 
@@ -468,7 +471,7 @@ Clés YAML :
 
 | Clé | Effet |
 |---|---|
-| `rag.collections.<name>.sources` | Ingérées à la création de la crew (telles quelles, sans dépliage de glob) |
+| `rag.collections.<name>.sources` | Ingérées à la création de la crew : fichiers, globs, répertoires (tous les fichiers qu'ils contiennent) et URL ; un chemin sans `/` initial est relatif au dossier de la crew (`/crew` sous `orkeon run`) ; un motif ou un répertoire qui ne donne rien est un warning de chargement |
 | `rag.collections.<name>.chunking` (`strategy`, `max_tokens`, `overlap`) | Tokens convertis en caractères à ×4 |
 | `rag.defaults.profile` | Le profil de retrieval de toute pièce jointe qui n'en nomme pas (recopié sur elle à la création de la crew) |
 | `knowledge:` forme courte (`[product-kb]`) | Attache la collection avec les défauts ci-dessous |

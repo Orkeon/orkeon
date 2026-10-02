@@ -60,3 +60,12 @@ Orkeon.Scripting.ScriptingHostPorts.LlmProfiles.get -> Orkeon.Application.Interf
 Orkeon.Scripting.ScriptingHostPorts.LlmProfiles.init -> void
 Orkeon.Scripting.Builders.JsCrewBuilder.planning(bool value = true) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Runtime.UndefinedLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+Orkeon.Scripting.Exceptions.UnknownToolException
+Orkeon.Scripting.Exceptions.UnknownToolException.AgentName.get -> string!
+Orkeon.Scripting.Exceptions.UnknownToolException.AvailableTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Scripting.Exceptions.UnknownToolException.ToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Scripting.Exceptions.UnknownToolException.UnknownToolException() -> void
+Orkeon.Scripting.Exceptions.UnknownToolException.UnknownToolException(string! agentName, System.Collections.Generic.IReadOnlyList<string!>! toolNames, System.Collections.Generic.IReadOnlyList<string!>! availableTools) -> void
+Orkeon.Scripting.Exceptions.UnknownToolException.UnknownToolException(string! message) -> void
+Orkeon.Scripting.Exceptions.UnknownToolException.UnknownToolException(string! message, System.Exception! innerException) -> void
+*REMOVED*Orkeon.Scripting.Runtime.JsCrewResult.artifacts.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!

@@ -55,6 +55,7 @@ public static class ErrorCodeMapper
             AgentNotInCrewException => CodeAgentNotInCrew,
             ArgumentException => CodeValidation,
             InvalidScriptException => CodeValidation,
+            UnknownToolException => CodeValidation,
             _ => CodeUnknown,
         };
     }
