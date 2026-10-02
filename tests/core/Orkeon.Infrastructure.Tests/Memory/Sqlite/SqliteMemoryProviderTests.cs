@@ -184,7 +184,7 @@ public sealed class SqliteMemoryProviderTests : IDisposable
         await _provider.StoreAsync("key-2", MemoryItem.Create("two"), TestCt);
         await _provider.StoreAsync("key-3", MemoryItem.Create("three"), TestCt);
 
-        var results = await _provider.SearchAsync("", limit: 2, TestCt);
+        var results = await _provider.SearchAsync("", limit: 2, cancellationToken: TestCt);
 
         Assert.Equal(2, results.Count());
     }

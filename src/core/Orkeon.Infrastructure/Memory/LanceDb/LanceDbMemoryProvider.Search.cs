@@ -13,24 +13,35 @@ namespace Orkeon.Infrastructure.Memory.LanceDb;
 public partial class LanceDbMemoryProvider
 {
     /// <inheritdoc />
-    public override Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default)
+    public override Task<IEnumerable<MemoryItem>> SearchAsync(
+        string query,
+        int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         if (string.IsNullOrWhiteSpace(query))
             return Task.FromResult<IEnumerable<MemoryItem>>(Array.Empty<MemoryItem>());
 
-        return SearchAsyncCore(query, limit, cancellationToken);
+        return SearchAsyncCore(query, limit, filter, cancellationToken);
     }
 
-    private async Task<IEnumerable<MemoryItem>> SearchAsyncCore(string query, int limit, CancellationToken cancellationToken)
+    private async Task<IEnumerable<MemoryItem>> SearchAsyncCore(
+        string query,
+        int limit,
+        Dictionary<string, object>? filter,
+        CancellationToken cancellationToken)
     {
         await EnsureTableExistsAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
+            // The metadata filter is the query's predicate, applied before k (GAP-20).
             var effectiveLimit = limit > 0 ? limit : _options.DefaultTopK;
-            var rows = await _client.QueryAsync(BuildFullTextRequest(query, effectiveLimit), cancellationToken).ConfigureAwait(false);
+            var rows = await _client.QueryAsync(
+                BuildFullTextRequest(query, effectiveLimit, LanceDbFilterBuilder.FromMetadataFilter(filter)),
+                cancellationToken).ConfigureAwait(false);
 
             var results = rows.Select(r => r.Record.ToMemoryItem()).ToList();
             LogFoundMemoryItemsMatchingQuery(results.Count, query);
@@ -178,6 +189,7 @@ public partial class LanceDbMemoryProvider
             Vector = null,
             K = k,
             Filter = predicate,
+            Prefilter = predicate is null ? null : true,
             FullTextQuery = new LanceDbFullTextQuery
             {
                 StringQuery = new LanceDbStringFtsQuery

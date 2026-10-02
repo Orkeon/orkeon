@@ -55,15 +55,18 @@ public partial class MemoryService : IMemoryService, IDisposable
         // A crew that declared a memory provider (carried on the aggregate, recorded at kickoff) gets
         // its long-term memory backed by that type's shared provider: the crew names the type, the
         // host's section for that provider supplies the connection, and two crews of the same type
-        // share one instance the factory owns. Unknown types fall back to in-memory with a warning
-        // inside the factory.
-        var providerType = _providerRegistry?.GetProvider(crewId);
-        if (string.IsNullOrWhiteSpace(providerType))
+        // share one instance the factory owns — with the RAG store of that type. The crew's name,
+        // recorded with the type, scopes its entries in that shared store (GAP-20). Unknown types
+        // fall back to in-memory with a warning inside the factory.
+        var registry = _providerRegistry;
+        var providerType = registry?.GetProvider(crewId);
+        if (registry is null || string.IsNullOrWhiteSpace(providerType))
             return new CrewMemorySystem(crewId, provider: null, _logger);
 
         var provider = _memoryProviderFactory.GetProvider(providerType);
-        LogCrewMemoryProviderResolved(crewId, providerType);
-        return new CrewMemorySystem(crewId, provider, _logger);
+        var scope = registry.GetScope(crewId);
+        LogCrewMemoryProviderResolved(crewId, providerType, scope);
+        return new CrewMemorySystem(crewId, provider, _logger, scope);
     }
 
     /// <summary>
@@ -190,8 +193,8 @@ public partial class MemoryService : IMemoryService, IDisposable
         _memorySystems.Clear();
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Crew {CrewId} long-term memory backed by provider '{ProviderType}'")]
-    private partial void LogCrewMemoryProviderResolved(object crewId, string providerType);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Crew {CrewId} long-term memory backed by provider '{ProviderType}', scope '{Scope}'")]
+    private partial void LogCrewMemoryProviderResolved(object crewId, string providerType, string scope);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Saved memory for crew {CrewId}")]
     private partial void LogMemorySaved(object crewId);
@@ -212,15 +215,17 @@ internal class CrewMemorySystem : ICrewMemorySystem, IDisposable
 
     /// <summary>
     /// Initializes a new instance of <see cref="CrewMemorySystem"/>. When <paramref name="provider"/>
-    /// is supplied (crew declared a memory provider), long-term memory is durably backed by it;
-    /// otherwise the in-process default store is used. Short-term memory stays an in-process sliding
-    /// window in both cases (ephemeral by design).
+    /// is supplied (crew declared a memory provider), long-term memory is durably backed by it,
+    /// within <paramref name="scope"/> (the crew's name, else its id); otherwise the in-process
+    /// default store is used. Short-term memory stays an in-process sliding window in both cases
+    /// (ephemeral by design).
     /// </summary>
-    public CrewMemorySystem(CrewId crewId, IMemoryProvider? provider, ILogger logger)
+    public CrewMemorySystem(CrewId crewId, IMemoryProvider? provider, ILogger logger, string? scope = null)
     {
+        ArgumentNullException.ThrowIfNull(crewId);
         ShortTerm = new SimpleShortTermMemory();
         LongTerm = provider is not null
-            ? new ProviderBackedLongTermMemory(provider)
+            ? new ProviderBackedLongTermMemory(provider, string.IsNullOrWhiteSpace(scope) ? crewId.ToString() : scope)
             : new InternalLongTermMemory();
         Entities = new SimpleEntityMemory();
         Contextual = new SimpleContextualMemory(ShortTerm, LongTerm);
@@ -378,35 +383,81 @@ internal class InternalLongTermMemory : ILongTermMemory, IDisposable
 /// durable memory actually lands in the selected store instead of the in-process list (P2-O-02).
 /// </summary>
 /// <remarks>
-/// The provider is the factory's instance for its type, shared with every other crew (and run)
-/// of that type — which is what makes the memory durable across runs. Searching therefore sees
-/// what other crews stored; clearing removes only the entries this crew stored, never the whole
-/// shared store. The provider is not owned here and is never disposed by this class.
+/// <para>
+/// The provider is the factory's instance for its type, shared with every other crew of that type
+/// and with the RAG store of that type (its chunks, manifests and registries). The crew's
+/// <c>scope</c> — its name, else its id — keeps its entries apart (GAP-20): every entry stored
+/// here carries <c>kind = crew-memory</c> and <c>crew = &lt;scope&gt;</c>, and every search asks
+/// the provider for those two properties, which it applies before its limit. A crew therefore
+/// reads what it stored, in this run and in the earlier runs of a crew of its name, and nothing
+/// else: no other crew's memory, no RAG chunk.
+/// </para>
+/// <para>
+/// Clearing removes only the entries this memory stored, never the whole shared store. The
+/// provider is not owned here and is never disposed by this class.
+/// </para>
 /// </remarks>
 internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
 {
+    /// <summary>The custom property naming what an entry is.</summary>
+    internal const string KindProperty = "kind";
+
+    /// <summary>The <see cref="KindProperty"/> of a crew's long-term memory.</summary>
+    internal const string CrewMemoryKind = "crew-memory";
+
+    /// <summary>The custom property naming whose memory an entry is: the crew's scope.</summary>
+    internal const string CrewProperty = "crew";
+
     private readonly IMemoryProvider _provider;
+    private readonly string _scope;
     private readonly ConcurrentDictionary<string, byte> _storedKeys = new(StringComparer.Ordinal);
 
-    public ProviderBackedLongTermMemory(IMemoryProvider provider)
+    public ProviderBackedLongTermMemory(IMemoryProvider provider, string scope)
     {
         ArgumentNullException.ThrowIfNull(provider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scope);
         _provider = provider;
+        _scope = scope;
     }
 
     public async System.Threading.Tasks.Task AddAsync(MemoryItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var key = item.Id.ToString();
-        await _provider.StoreAsync(key, item).ConfigureAwait(false);
+        var entry = OwnEntry(item);
+        var key = entry.Id.ToString();
+        await _provider.StoreAsync(key, entry).ConfigureAwait(false);
         _storedKeys.TryAdd(key, 0);
+    }
+
+    /// <summary>
+    /// The entry stored for <paramref name="item"/>: the same item — id, content, embedding,
+    /// importance, metadata — with <c>kind</c> and <c>crew</c> set. A copy, so the caller's item
+    /// is left as it was built.
+    /// </summary>
+    private MemoryItem OwnEntry(MemoryItem item)
+    {
+        var properties = item.Metadata.CustomProperties is { } existing
+            ? new Dictionary<string, string>(existing, existing.Comparer)
+            : new Dictionary<string, string>(StringComparer.Ordinal);
+        properties[KindProperty] = CrewMemoryKind;
+        properties[CrewProperty] = _scope;
+
+        return MemoryItem.Restore(
+            item.Id, item.Content, item.Embedding, item.Importance, item.Metadata with { CustomProperties = properties });
     }
 
     public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10)
     {
-        var results = await _provider.SearchAsync(query, maxResults).ConfigureAwait(false);
+        var results = await _provider.SearchAsync(query, maxResults, OwnEntries()).ConfigureAwait(false);
         return results.ToList();
     }
+
+    /// <summary>The filter that selects this crew's entries, and nothing else, in the shared store.</summary>
+    private Dictionary<string, object> OwnEntries() => new(StringComparer.Ordinal)
+    {
+        [KindProperty] = CrewMemoryKind,
+        [CrewProperty] = _scope,
+    };
 
     public async System.Threading.Tasks.Task ClearAsync()
     {

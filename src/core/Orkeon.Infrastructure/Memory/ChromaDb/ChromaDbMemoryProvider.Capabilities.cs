@@ -59,7 +59,7 @@ public partial class ChromaDbMemoryProvider : IScoredVectorSearch
             var scored = new List<ScoredMemoryItem>(result.Ids[0].Count);
             for (var i = 0; i < result.Ids[0].Count; i++)
             {
-                var item = BuildScopedMemoryItem(result, 0, i);
+                var item = BuildMemoryItemFromQuery(result, 0, i);
                 if (item == null)
                     continue;
 

@@ -79,6 +79,7 @@ public class CovConsensus_ConsensusCoverageTests
             voting ?? new MajorityVotingStrategy(),
             ballots ?? new FakeBallotCollector(),
             new CrewStrategyDependencies(taskRepo, agentRepo, mockExec, new MockMemoryScope()),
+            new MockMemoryCoordinator(),
             NullLogger<ConsensualProcessStrategy>.Instance,
             Options.Create(options));
 
@@ -98,6 +99,7 @@ public class CovConsensus_ConsensusCoverageTests
     [InlineData(5)]
     [InlineData(6)]
     [InlineData(7)]
+    [InlineData(8)]
     public void ShouldThrowArgumentNull_WhenAnyDependencyIsNull(int nullIndex)
     {
         IVotingStrategy voting = new MajorityVotingStrategy();
@@ -116,6 +118,7 @@ public class CovConsensus_ConsensusCoverageTests
                 nullIndex == 3 ? null! : agentRepo,
                 nullIndex == 1 ? null! : exec,
                 nullIndex == 4 ? null! : scope),
+            nullIndex == 8 ? null! : new MockMemoryCoordinator(),
             nullIndex == 5 ? null! : logger,
             nullIndex == 6 ? null! : options));
     }

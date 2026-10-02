@@ -208,26 +208,37 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <inheritdoc />
-    public override Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default)
+    public override Task<IEnumerable<MemoryItem>> SearchAsync(
+        string query,
+        int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         if (string.IsNullOrWhiteSpace(query))
             return Task.FromResult<IEnumerable<MemoryItem>>(Array.Empty<MemoryItem>());
 
-        return SearchAsyncCore(query, limit, cancellationToken);
+        return SearchAsyncCore(query, limit, filter, cancellationToken);
     }
 
-    private async Task<IEnumerable<MemoryItem>> SearchAsyncCore(string query, int limit, CancellationToken cancellationToken)
+    private async Task<IEnumerable<MemoryItem>> SearchAsyncCore(
+        string query,
+        int limit,
+        Dictionary<string, object>? filter,
+        CancellationToken cancellationToken)
     {
         await EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
+            // The filter travels as the query's where clause: the server applies it before
+            // n_results (GAP-20).
             var payload = new
             {
                 query_texts = new[] { query },
-                n_results = limit > 0 ? limit : _options.DefaultTopK
+                n_results = limit > 0 ? limit : _options.DefaultTopK,
+                where = BuildWhereClause(filter)
             };
 
             var response = await _httpClient.PostAsJsonAsync(
@@ -461,8 +472,10 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <summary>
-    /// Maps the provider-agnostic metadata filter to a ChromaDB <c>where</c> clause
-    /// (one <c>$eq</c> condition per key), or <see langword="null"/> when no filter is set.
+    /// Maps the provider-agnostic metadata filter to a ChromaDB <c>where</c> clause — one
+    /// <c>$eq</c> condition per key, under one <c>$and</c> when there are several (ChromaDB
+    /// refuses a clause with more than one top-level key) — or <see langword="null"/> when no
+    /// filter is set.
     /// </summary>
     private static Dictionary<string, object>? BuildWhereClause(Dictionary<string, object>? filter)
     {
@@ -471,13 +484,16 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
             return null;
 #pragma warning restore S1168
 
-        var where = new Dictionary<string, object>(filter.Count);
-        foreach (var (key, value) in filter)
-        {
-            where[key] = new Dictionary<string, object> { ["$eq"] = value };
-        }
+        var conditions = filter
+            .Select(entry => new Dictionary<string, object>
+            {
+                [entry.Key] = new Dictionary<string, object> { ["$eq"] = entry.Value },
+            })
+            .ToList();
 
-        return where;
+        return conditions.Count == 1
+            ? conditions[0]
+            : new Dictionary<string, object> { ["$and"] = conditions };
     }
 
     /// <summary>
@@ -585,7 +601,11 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <summary>
-    /// Builds metadata dictionary from a MemoryItem.
+    /// Builds the ChromaDB metadata document of an item: the reserved provider keys
+    /// (<c>importance</c>, <c>source</c>, <c>timestamp</c>, <c>tags</c>) plus the item's custom
+    /// properties flattened verbatim — reserved keys win on collision. The default collection and
+    /// the named ones store the same document, so a filter on a custom property finds the item in
+    /// either (GAP-20).
     /// </summary>
     private static Dictionary<string, object> BuildMetadata(MemoryItem item)
     {
@@ -599,11 +619,59 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
         if (item.Tags.Count > 0)
             metadata["tags"] = string.Join(",", item.Tags);
 
+        if (item.Metadata.CustomProperties is { Count: > 0 } custom)
+        {
+            foreach (var (propertyKey, value) in custom)
+            {
+                if (!s_reservedMetadataKeys.Contains(propertyKey, StringComparer.OrdinalIgnoreCase))
+                    metadata[propertyKey] = value;
+            }
+        }
+
         return metadata;
     }
 
     /// <summary>
-    /// Builds a MemoryItem from a ChromaDB get response.
+    /// Reads a ChromaDB metadata document back: importance, source, tags, and every other key
+    /// but <c>timestamp</c> as a custom property.
+    /// </summary>
+    private static (float Importance, string? Source, string[]? Tags, Dictionary<string, string>? Custom) ReadMetadata(
+        Dictionary<string, object>? meta)
+    {
+        var importance = MemoryDefaults.DefaultImportance;
+        string? source = null;
+        string[]? tags = null;
+        Dictionary<string, string>? custom = null;
+
+        if (meta is null)
+            return (importance, source, tags, custom);
+
+        foreach (var (metaKey, value) in meta)
+        {
+            if (string.Equals(metaKey, "importance", StringComparison.OrdinalIgnoreCase))
+            {
+                importance = ConvertToFloat(value);
+            }
+            else if (string.Equals(metaKey, "source", StringComparison.OrdinalIgnoreCase))
+            {
+                source = ConvertToString(value);
+            }
+            else if (string.Equals(metaKey, "tags", StringComparison.OrdinalIgnoreCase))
+            {
+                tags = ConvertToString(value)?.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            }
+            else if (!string.Equals(metaKey, "timestamp", StringComparison.OrdinalIgnoreCase))
+            {
+                custom ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                custom[metaKey] = ConvertToString(value) ?? string.Empty;
+            }
+        }
+
+        return (importance, source, tags, custom);
+    }
+
+    /// <summary>
+    /// Builds a MemoryItem from a ChromaDB get response, restoring its tags and custom properties.
     /// </summary>
     private static MemoryItem? BuildMemoryItem(ChromaGetResponse response, int index)
     {
@@ -614,30 +682,19 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
         if (string.IsNullOrWhiteSpace(content))
             return null;
 
-        var importance = MemoryDefaults.DefaultImportance;
-        string? source = null;
-
-        if (response.Metadatas != null && index < response.Metadatas.Count)
-        {
-            var meta = response.Metadatas[index];
-            if (meta != null)
-            {
-                if (meta.TryGetValue("importance", out var imp))
-                    importance = ConvertToFloat(imp);
-                if (meta.TryGetValue("source", out var src))
-                    source = ConvertToString(src);
-            }
-        }
+        var meta = response.Metadatas != null && index < response.Metadatas.Count ? response.Metadatas[index] : null;
+        var (importance, source, tags, custom) = ReadMetadata(meta);
 
         float[]? embedding = null;
         if (response.Embeddings != null && index < response.Embeddings.Count)
             embedding = response.Embeddings[index];
 
-        return MemoryItem.Create(content, embedding, importance, source);
+        return MemoryItem.Create(content, embedding, importance, source, tags, customProperties: custom);
     }
 
     /// <summary>
-    /// Builds a MemoryItem from a ChromaDB query response.
+    /// Builds a MemoryItem from a ChromaDB query response row, restoring its tags and custom
+    /// properties.
     /// </summary>
     private static MemoryItem? BuildMemoryItemFromQuery(ChromaQueryResponse response, int queryIndex, int resultIndex)
     {
@@ -650,24 +707,14 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
         if (string.IsNullOrWhiteSpace(content))
             return null;
 
-        var importance = MemoryDefaults.DefaultImportance;
-        string? source = null;
+        var meta = response.Metadatas != null &&
+                   queryIndex < response.Metadatas.Count &&
+                   resultIndex < response.Metadatas[queryIndex].Count
+            ? response.Metadatas[queryIndex][resultIndex]
+            : null;
+        var (importance, source, tags, custom) = ReadMetadata(meta);
 
-        if (response.Metadatas != null &&
-            queryIndex < response.Metadatas.Count &&
-            resultIndex < response.Metadatas[queryIndex].Count)
-        {
-            var meta = response.Metadatas[queryIndex][resultIndex];
-            if (meta != null)
-            {
-                if (meta.TryGetValue("importance", out var imp))
-                    importance = ConvertToFloat(imp);
-                if (meta.TryGetValue("source", out var src))
-                    source = ConvertToString(src);
-            }
-        }
-
-        return MemoryItem.Create(content, importance: importance, source: source);
+        return MemoryItem.Create(content, importance: importance, source: source, tags: tags, customProperties: custom);
     }
 
     // --- Internal DTO classes for ChromaDB API responses ---

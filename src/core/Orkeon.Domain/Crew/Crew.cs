@@ -32,6 +32,15 @@ public sealed class Crew : AggregateRoot<CrewId>
     public CrewGoal Goal { get; private set; }
 
     /// <summary>
+    /// Gets the crew's name — the <c>name:</c> of its configuration (YAML, crew directory,
+    /// <c>.ork.ts</c>), trimmed. It scopes the crew's long-term memory: recorded at kickoff next
+    /// to <see cref="MemoryProvider"/>, it lets the crews of one name read what their earlier runs
+    /// stored, and no other crew's. Null for a crew built without one (C#), whose memory lasts one
+    /// run.
+    /// </summary>
+    public string? Name { get; private set; }
+
+    /// <summary>
     /// Gets the process type used by this crew.
     /// </summary>
     public ProcessType ProcessType { get; private set; }
@@ -173,6 +182,7 @@ public sealed class Crew : AggregateRoot<CrewId>
         var crew = new Crew(CrewId.Create())
         {
             Goal = CrewGoal.From(options.Goal),
+            Name = string.IsNullOrWhiteSpace(options.Name) ? null : options.Name.Trim(),
             ProcessType = options.ProcessType,
             Verbose = options.Verbose,
             Planning = options.Planning,

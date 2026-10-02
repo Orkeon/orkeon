@@ -18,9 +18,22 @@ public interface IMemoryProvider
     System.Threading.Tasks.Task<MemoryItem?> GetAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Searches for memory items.
+    /// Searches for memory items by their text.
     /// </summary>
-    System.Threading.Tasks.Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default);
+    /// <param name="query">The text to look for (each provider matches it its own way).</param>
+    /// <param name="limit">Maximum number of results, counted after the filter.</param>
+    /// <param name="filter">
+    /// Optional metadata filter with the semantics of <see cref="SearchSimilarAsync"/>'s:
+    /// <c>source</c> equality, <c>tag</c>/<c>tags</c> membership, any other key an equality on the
+    /// item's custom property of that name. The provider applies it <b>before</b> the limit, so a
+    /// filtered search returns as many matches as the store holds, up to <paramref name="limit"/>.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IEnumerable<MemoryItem>> SearchAsync(
+        string query,
+        int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a memory item.

@@ -917,3 +917,10 @@ const Orkeon.Application.Interfaces.Ports.LlmProfiles.Default = "default" -> str
 static Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? registry, string? name, string! where) -> void
 static Orkeon.Application.Interfaces.Ports.LlmProfiles.IsDefault(string? name) -> bool
 static Orkeon.Application.Interfaces.Ports.LlmProfiles.UnknownMessage(string! name, string! where, System.Collections.Generic.IEnumerable<string!>! known) -> string!
+*REMOVED*Orkeon.Application.Memory.CrewMemoryProviderRegistry.SetProvider(Orkeon.Domain.Common.CrewId! crewId, string? providerType) -> void
+Orkeon.Application.Memory.CrewMemoryProviderRegistry.Record(Orkeon.Domain.Common.CrewId! crewId, string? providerType, string? crewName) -> void
+Orkeon.Application.Memory.CrewMemoryProviderRegistry.GetScope(Orkeon.Domain.Common.CrewId! crewId) -> string!
+*REMOVED*Orkeon.Application.Memory.MemoryCoordinator.MemoryCoordinator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryCoordinator!>! logger, Orkeon.Application.Interfaces.Services.IMemoryService! memoryService) -> void
+Orkeon.Application.Memory.MemoryCoordinator.MemoryCoordinator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryCoordinator!>! logger, Orkeon.Application.Interfaces.Services.IMemoryService! memoryService, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null) -> void
+Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory.get -> bool
+Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory.init -> void

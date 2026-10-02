@@ -15,11 +15,11 @@ namespace Orkeon.Infrastructure.Memory.ChromaDb;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Unlike the legacy single-collection path, collection-scoped writes persist the item's
-/// custom metadata properties (flattened into the ChromaDB metadata document) and reads
-/// restore them, so typed consumers (e.g. the RAG document store) round-trip their
-/// per-chunk metadata. Reserved metadata keys (<c>importance</c>, <c>source</c>,
-/// <c>timestamp</c>, <c>tags</c>) are never overridden by custom properties.
+/// Writes persist the item's custom metadata properties (flattened into the ChromaDB metadata
+/// document) and reads restore them — in a named collection as in the default one — so typed
+/// consumers (e.g. the RAG document store, a crew's memory) round-trip their metadata and can
+/// filter on it. Reserved metadata keys (<c>importance</c>, <c>source</c>, <c>timestamp</c>,
+/// <c>tags</c>) are never overridden by custom properties.
 /// </para>
 /// <para>
 /// <see cref="MemoryFilter.Tags"/> cannot be compiled to a ChromaDB <c>where</c> clause
@@ -53,7 +53,7 @@ public partial class ChromaDbMemoryProvider : ICollectionAwareMemory
             collection,
             [key],
             [item.Content],
-            [BuildScopedMetadata(item)],
+            [BuildMetadata(item)],
             [embedding.ToArray()],
             cancellationToken);
     }
@@ -97,7 +97,7 @@ public partial class ChromaDbMemoryProvider : ICollectionAwareMemory
 
             ids[i] = entry.Key;
             documents[i] = entry.Item.Content;
-            metadatas[i] = BuildScopedMetadata(entry.Item);
+            metadatas[i] = BuildMetadata(entry.Item);
             embeddings[i] = vector;
         }
 
@@ -146,7 +146,7 @@ public partial class ChromaDbMemoryProvider : ICollectionAwareMemory
             var scored = new List<ScoredMemoryItem>(result.Ids[0].Count);
             for (var i = 0; i < result.Ids[0].Count; i++)
             {
-                var item = BuildScopedMemoryItem(result, 0, i);
+                var item = BuildMemoryItemFromQuery(result, 0, i);
                 if (item == null)
                     continue;
 
@@ -287,77 +287,6 @@ public partial class ChromaDbMemoryProvider : ICollectionAwareMemory
             LogException(ex, "UpsertBatchAsync (collection-scoped)");
             throw;
         }
-    }
-
-    /// <summary>
-    /// Builds the ChromaDB metadata document of an item for collection-scoped writes:
-    /// the reserved provider keys plus the item's custom properties flattened verbatim
-    /// (reserved keys win on collision).
-    /// </summary>
-    private static Dictionary<string, object> BuildScopedMetadata(MemoryItem item)
-    {
-        var metadata = BuildMetadata(item);
-
-        if (item.Metadata.CustomProperties is { Count: > 0 } custom)
-        {
-            foreach (var (propertyKey, value) in custom)
-            {
-                if (!s_reservedMetadataKeys.Contains(propertyKey, StringComparer.OrdinalIgnoreCase))
-                    metadata[propertyKey] = value;
-            }
-        }
-
-        return metadata;
-    }
-
-    /// <summary>
-    /// Rebuilds a <see cref="MemoryItem"/> from a query response row, restoring tags and
-    /// custom properties (every non-reserved metadata key) in addition to the base fields.
-    /// </summary>
-    private static MemoryItem? BuildScopedMemoryItem(ChromaQueryResponse response, int queryIndex, int resultIndex)
-    {
-        if (response.Documents == null ||
-            queryIndex >= response.Documents.Count ||
-            resultIndex >= response.Documents[queryIndex].Count)
-            return null;
-
-        var content = response.Documents[queryIndex][resultIndex];
-        if (string.IsNullOrWhiteSpace(content))
-            return null;
-
-        var importance = Orkeon.Domain.Constants.Memory.MemoryDefaults.DefaultImportance;
-        string? source = null;
-        string[]? tags = null;
-        Dictionary<string, string>? custom = null;
-
-        if (response.Metadatas != null &&
-            queryIndex < response.Metadatas.Count &&
-            resultIndex < response.Metadatas[queryIndex].Count &&
-            response.Metadatas[queryIndex][resultIndex] is { } meta)
-        {
-            foreach (var (metaKey, value) in meta)
-            {
-                if (string.Equals(metaKey, "importance", StringComparison.OrdinalIgnoreCase))
-                {
-                    importance = ConvertToFloat(value);
-                }
-                else if (string.Equals(metaKey, "source", StringComparison.OrdinalIgnoreCase))
-                {
-                    source = ConvertToString(value);
-                }
-                else if (string.Equals(metaKey, "tags", StringComparison.OrdinalIgnoreCase))
-                {
-                    tags = ConvertToString(value)?.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                }
-                else if (!string.Equals(metaKey, "timestamp", StringComparison.OrdinalIgnoreCase))
-                {
-                    custom ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    custom[metaKey] = ConvertToString(value) ?? string.Empty;
-                }
-            }
-        }
-
-        return MemoryItem.Create(content, importance: importance, source: source, tags: tags, customProperties: custom);
     }
 
     /// <summary>

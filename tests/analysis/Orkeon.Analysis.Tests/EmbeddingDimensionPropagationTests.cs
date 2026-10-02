@@ -233,7 +233,8 @@ public class EmbeddingDimensionPropagationTests
             => Task.FromResult(_store.TryGetValue(key, out var v) ? v : null);
 
         public Task<IEnumerable<MemoryItem>> SearchAsync(
-            string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken ct = default)
+            string query, int limit = MemoryDefaults.DefaultSearchLimit, Dictionary<string, object>? filter = null,
+            CancellationToken ct = default)
             => Task.FromResult<IEnumerable<MemoryItem>>(_store.Values.Take(limit));
 
         public Task<bool> DeleteAsync(string key, CancellationToken ct = default)

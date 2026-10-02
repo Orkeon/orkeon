@@ -45,6 +45,8 @@ public class MemoryServiceTests
     {
         private readonly Dictionary<string, MemoryItem> _store = [];
         public List<string> MethodCalls { get; } = [];
+        public IReadOnlyDictionary<string, MemoryItem> Stored => _store;
+        public Dictionary<string, object>? LastSearchFilter { get; private set; }
 
         public System.Threading.Tasks.Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
         {
@@ -59,9 +61,10 @@ public class MemoryServiceTests
             return System.Threading.Tasks.Task.FromResult(_store.TryGetValue(key, out var value) ? value : null);
         }
 
-        public System.Threading.Tasks.Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+        public System.Threading.Tasks.Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
         {
             MethodCalls.Add($"SearchAsync:{query}:{limit}");
+            LastSearchFilter = filter;
             var results = _store.Values
                 .Where(item => item.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
                 .Take(limit);
@@ -593,7 +596,7 @@ public class MemoryServiceTests
         var factory = new TestMemoryProviderFactory(provider);
         var registry = new CrewMemoryProviderRegistry();
         var crewId = CreateTestCrewId();
-        registry.SetProvider(crewId, "redis");
+        registry.Record(crewId, "redis", crewName: null);
         using var service = new MemoryService(factory, new TestLogger(), registry);
 
         // Act — high importance (> 0.7) routes to long-term memory.
@@ -611,7 +614,7 @@ public class MemoryServiceTests
         var factory = new TestMemoryProviderFactory(provider);
         var registry = new CrewMemoryProviderRegistry();
         var crewId = CreateTestCrewId();
-        registry.SetProvider(crewId, "redis");
+        registry.Record(crewId, "redis", crewName: null);
         using var service = new MemoryService(factory, new TestLogger(), registry);
 
         await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
@@ -619,6 +622,55 @@ public class MemoryServiceTests
 
         Assert.Contains(provider.MethodCalls, c => c.StartsWith("SearchAsync", StringComparison.Ordinal));
         Assert.Single(results);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_crew_stores_its_memories_marked_as_crew_memory_of_its_name()
+    {
+        // GAP-20: the provider is shared by every crew of its type and by the RAG store of that
+        // type; what a crew stores says what it is and whose it is.
+        var provider = new TestMemoryProvider();
+        var registry = new CrewMemoryProviderRegistry();
+        var crewId = CreateTestCrewId();
+        registry.Record(crewId, "redis", "legal-watch");
+        using var service = new MemoryService(new TestMemoryProviderFactory(provider), new TestLogger(), registry);
+
+        await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
+
+        var stored = Assert.Single(provider.Stored.Values);
+        Assert.Equal("crew-memory", stored.Metadata.CustomProperties?.GetValueOrDefault("kind"));
+        Assert.Equal("legal-watch", stored.Metadata.CustomProperties?.GetValueOrDefault("crew"));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_crew_searches_the_shared_provider_for_its_own_crew_memory_only()
+    {
+        var provider = new TestMemoryProvider();
+        var registry = new CrewMemoryProviderRegistry();
+        var crewId = CreateTestCrewId();
+        registry.Record(crewId, "redis", "legal-watch");
+        using var service = new MemoryService(new TestMemoryProviderFactory(provider), new TestLogger(), registry);
+
+        await service.SearchMemoryAsync(crewId, "insight", 5, DomainMemoryType.LongTerm, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(provider.LastSearchFilter);
+        Assert.Equal(2, provider.LastSearchFilter.Count);
+        Assert.Equal("crew-memory", provider.LastSearchFilter["kind"]);
+        Assert.Equal("legal-watch", provider.LastSearchFilter["crew"]);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task An_unnamed_crew_is_scoped_by_its_id()
+    {
+        var provider = new TestMemoryProvider();
+        var registry = new CrewMemoryProviderRegistry();
+        var crewId = CreateTestCrewId();
+        registry.Record(crewId, "redis", crewName: null);
+        using var service = new MemoryService(new TestMemoryProviderFactory(provider), new TestLogger(), registry);
+
+        await service.SearchMemoryAsync(crewId, "insight", 5, DomainMemoryType.LongTerm, TestContext.Current.CancellationToken);
+
+        Assert.Equal(crewId.ToString(), provider.LastSearchFilter?["crew"]);
     }
 
     [Fact]

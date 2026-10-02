@@ -187,7 +187,7 @@ public class EncryptedMemoryProviderCapabilityTests
         public Task<MemoryItem?> GetAsync(string key, CancellationToken cancellationToken = default)
             => Task.FromResult<MemoryItem?>(null);
 
-        public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+        public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
             => Task.FromResult<IEnumerable<MemoryItem>>([]);
 
         public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default)
@@ -348,7 +348,7 @@ public class EncryptedMemoryProviderCapabilityTests
         public Task<MemoryItem?> GetAsync(string key, CancellationToken cancellationToken = default)
             => Task.FromResult<MemoryItem?>(null);
 
-        public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+        public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
             => Task.FromResult<IEnumerable<MemoryItem>>([]);
 
         public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default)

@@ -112,12 +112,15 @@ internal sealed class SqliteMemoryRecord
     }
 
     /// <summary>
-    /// Checks whether this record matches the provided metadata filter
-    /// (same semantics as the LanceDb search engine: <c>source</c>, <c>tag(s)</c>,
-    /// then a substring probe into the custom-properties JSON).
+    /// Checks whether this record matches the provided metadata filter, with the semantics of
+    /// the In-Memory and Redis providers: <c>source</c> equality, <c>tag</c>/<c>tags</c>
+    /// membership, any other key an equality (case-insensitive value) on the custom property of
+    /// that name — never a substring of the custom-properties JSON, which matched a value held by
+    /// any property and any longer value containing it (GAP-20).
     /// </summary>
     public bool MatchesFilter(Dictionary<string, object> filter)
     {
+        Dictionary<string, string>? customProperties = null;
         foreach (var (key, value) in filter)
         {
             var filterValue = value?.ToString();
@@ -138,12 +141,10 @@ internal sealed class SqliteMemoryRecord
                     break;
 
                 default:
-                    if (CustomPropertiesJson != null)
-                    {
-                        if (!CustomPropertiesJson.Contains(filterValue ?? "", StringComparison.OrdinalIgnoreCase))
-                            return false;
-                    }
-                    else
+                    customProperties ??= DeserializeOrNull<Dictionary<string, string>>(CustomPropertiesJson);
+                    if (customProperties is null
+                        || !customProperties.TryGetValue(key, out var actual)
+                        || !string.Equals(actual, filterValue, StringComparison.OrdinalIgnoreCase))
                     {
                         return false;
                     }

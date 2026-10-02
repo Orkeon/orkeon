@@ -30,6 +30,7 @@ public class FakeMemoryProvider : IMemoryProvider
     public Task<IEnumerable<MemoryItem>> SearchAsync(
         string query,
         int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);

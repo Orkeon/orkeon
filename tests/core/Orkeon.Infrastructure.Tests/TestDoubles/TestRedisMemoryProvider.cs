@@ -135,7 +135,7 @@ public sealed class TestRedisMemoryProvider : IMemoryProvider, IDisposable
         return null;
     }
 
-    public async Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync(cancellationToken);
 

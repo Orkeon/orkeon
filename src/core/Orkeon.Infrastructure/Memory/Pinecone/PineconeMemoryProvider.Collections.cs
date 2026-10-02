@@ -14,10 +14,10 @@ namespace Orkeon.Infrastructure.Memory.Pinecone;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Unlike the legacy single-namespace path, collection-scoped writes persist the item's
-/// custom metadata properties (flattened into the vector metadata) and reads restore them,
-/// so typed consumers (e.g. the RAG document store) round-trip their per-chunk metadata.
-/// Reserved metadata keys (<c>content</c>, <c>importance</c>, <c>source</c>,
+/// Writes persist the item's custom metadata properties (flattened into the vector metadata)
+/// and reads restore them — in a named namespace as in the default one — so typed consumers
+/// (e.g. the RAG document store, a crew's memory) round-trip their metadata and can filter on
+/// it. Reserved metadata keys (<c>content</c>, <c>importance</c>, <c>source</c>,
 /// <c>timestamp</c>, <c>tags</c>) are never overridden by custom properties.
 /// </para>
 /// <para>
@@ -49,7 +49,7 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
         {
             Id = key,
             Values = embedding.ToArray(),
-            Metadata = BuildScopedMetadata(item)
+            Metadata = BuildMetadata(item)
         };
 
         return UpsertScopedAsync(collection, [vector], cancellationToken);
@@ -93,7 +93,7 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
             {
                 Id = entry.Key,
                 Values = values,
-                Metadata = BuildScopedMetadata(entry.Item)
+                Metadata = BuildMetadata(entry.Item)
             };
         }
 
@@ -145,7 +145,7 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
                 if (match.Score < minScore)
                     continue;
 
-                var item = BuildScopedMemoryItem(match);
+                var item = BuildMemoryItem(match);
                 if (item != null)
                     scored.Add(new ScoredMemoryItem(item, match.Score, match.Id));
             }
@@ -256,76 +256,6 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
             LogException(ex, "UpsertBatchAsync (collection-scoped)");
             throw;
         }
-    }
-
-    /// <summary>
-    /// Builds the Pinecone vector metadata of an item for collection-scoped writes: the
-    /// reserved provider keys plus the item's custom properties flattened verbatim
-    /// (reserved keys win on collision).
-    /// </summary>
-    private static Dictionary<string, object> BuildScopedMetadata(MemoryItem item)
-    {
-        var metadata = BuildMetadata(item);
-
-        if (item.Metadata.CustomProperties is { Count: > 0 } custom)
-        {
-            foreach (var (propertyKey, value) in custom)
-            {
-                if (!s_reservedMetadataKeys.Contains(propertyKey, StringComparer.OrdinalIgnoreCase))
-                    metadata[propertyKey] = value;
-            }
-        }
-
-        return metadata;
-    }
-
-    /// <summary>
-    /// Rebuilds a <see cref="MemoryItem"/> from a query match, restoring tags and custom
-    /// properties (every non-reserved metadata key) in addition to the base fields.
-    /// </summary>
-    private static MemoryItem? BuildScopedMemoryItem(PineconeMatch match)
-    {
-        if (match.Metadata == null || !match.Metadata.TryGetValue("content", out var contentObj))
-            return null;
-
-        var content = ConvertToString(contentObj);
-        if (string.IsNullOrWhiteSpace(content))
-            return null;
-
-        var importance = Orkeon.Domain.Constants.Memory.MemoryDefaults.DefaultImportance;
-        string? source = null;
-        string[]? tags = null;
-        Dictionary<string, string>? custom = null;
-
-        foreach (var (metaKey, value) in match.Metadata)
-        {
-            if (string.Equals(metaKey, "content", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(metaKey, "timestamp", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (string.Equals(metaKey, "importance", StringComparison.OrdinalIgnoreCase))
-            {
-                importance = ConvertToFloat(value);
-            }
-            else if (string.Equals(metaKey, "source", StringComparison.OrdinalIgnoreCase))
-            {
-                source = ConvertToString(value);
-            }
-            else if (string.Equals(metaKey, "tags", StringComparison.OrdinalIgnoreCase))
-            {
-                tags = ConvertToString(value)?.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            }
-            else
-            {
-                custom ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                custom[metaKey] = ConvertToString(value) ?? string.Empty;
-            }
-        }
-
-        var vector = match.Values?.Length > 0 ? match.Values : null;
-        return MemoryItem.Create(content, vector, importance, source, tags, customProperties: custom);
     }
 
     /// <summary>

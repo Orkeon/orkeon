@@ -155,7 +155,7 @@ public class RedisMemoryProviderTests
             }
         }
 
-        public override async Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+        public override async Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
         {
             ValidateInitialized();
 

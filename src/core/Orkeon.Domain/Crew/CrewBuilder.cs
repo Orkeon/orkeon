@@ -16,6 +16,7 @@ namespace Orkeon.Domain.Crew;
 public sealed class CrewBuilder
 {
     private string? _goal;
+    private string? _name;
     private ProcessType _processType = ProcessType.Sequential;
     private bool _verbose;
     private bool _planning;
@@ -42,6 +43,17 @@ public sealed class CrewBuilder
     public CrewBuilder Goal(string goal)
     {
         _goal = goal;
+        return this;
+    }
+
+    /// <summary>
+    /// Names the crew. The name scopes its long-term memory: a crew of this name reads what its
+    /// earlier runs stored, and never another crew's. Without one, the memory lasts one run.
+    /// </summary>
+    public CrewBuilder Name(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        _name = name;
         return this;
     }
 
@@ -280,6 +292,7 @@ public sealed class CrewBuilder
         var crew = Crew.Create(new CrewCreateOptions
         {
             Goal = _goal,
+            Name = _name,
             ProcessType = _processType,
             Verbose = _verbose,
             Planning = _planning,

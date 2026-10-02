@@ -447,8 +447,8 @@ All DTOs in `Orkeon.Application` follow these conventions:
 
 ### Memory Provider Development
 Implement `IMemoryProvider` interface with:
-- `StoreAsync` - Store embeddings with metadata
-- `SearchAsync` - Semantic search with cosine similarity
+- `StoreAsync` - Store embeddings with metadata (custom properties included — a filter reads them)
+- `SearchAsync` - Text search honouring the optional metadata `filter` (`source`, `tag`/`tags`, any other key an equality on a custom property) **before** the limit; `SearchSimilarAsync` - cosine similarity with the same filter
 - `GetAsync`, `DeleteAsync` - Read and delete operations
 
 ### LLM Provider Development

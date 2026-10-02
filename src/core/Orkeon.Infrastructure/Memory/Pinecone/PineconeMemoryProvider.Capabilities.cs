@@ -62,7 +62,7 @@ public partial class PineconeMemoryProvider : IScoredVectorSearch
                 if (match.Score < minScore)
                     continue;
 
-                var item = BuildScopedMemoryItem(match);
+                var item = BuildMemoryItem(match);
                 if (item != null)
                     scored.Add(new ScoredMemoryItem(item, match.Score, match.Id));
             }

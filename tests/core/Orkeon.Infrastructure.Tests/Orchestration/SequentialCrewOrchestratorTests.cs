@@ -245,6 +245,34 @@ public class SequentialCrewOrchestratorTests
     }
 
     [Fact]
+    public async Task KickoffAsync_ShouldRecordTheCrewName_AsTheScopeOfItsMemory()
+    {
+        // GAP-20: the name travels with the type, so the crew reads its earlier runs' memory.
+        var repository = new TestCrewRepository();
+        var registry = new CrewMemoryProviderRegistry();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(),
+            new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
+            memoryProviderRegistry: registry);
+
+        var crew = DomainCrew.Create(new CrewCreateOptions
+        {
+            Goal = "Test crew",
+            Name = "legal-watch",
+            ProcessType = ProcessType.Sequential,
+            MemoryProvider = "sqlite"
+        });
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.Equal("sqlite", registry.GetProvider(crew.Id));
+        Assert.Equal("legal-watch", registry.GetScope(crew.Id));
+    }
+
+    [Fact]
     public async Task KickoffAsync_ShouldLeaveRegistryEmpty_WhenCrewDeclaresNoProvider()
     {
         var repository = new TestCrewRepository();

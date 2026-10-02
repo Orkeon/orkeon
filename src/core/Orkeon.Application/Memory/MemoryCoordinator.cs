@@ -16,18 +16,27 @@ public partial class MemoryCoordinator : IMemoryCoordinator
 {
     private readonly ILogger<MemoryCoordinator> _logger;
     private readonly IMemoryService _memoryService;
+    private readonly CrewMemoryProviderRegistry? _providerRegistry;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MemoryCoordinator"/>.
     /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="memoryService">Where the memories are saved and searched.</param>
+    /// <param name="providerRegistry">
+    /// What each crew declared at kickoff; gives the scope a memory is tagged with
+    /// (<c>crew:&lt;scope&gt;</c>). Without it, the scope is the crew id.
+    /// </param>
     public MemoryCoordinator(
         ILogger<MemoryCoordinator> logger,
-        IMemoryService memoryService)
+        IMemoryService memoryService,
+        CrewMemoryProviderRegistry? providerRegistry = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         ArgumentNullException.ThrowIfNull(memoryService);
         _memoryService = memoryService;
+        _providerRegistry = providerRegistry;
     }
 
     /// <summary>
@@ -98,7 +107,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
                 embedding: null,
                 importance: 0.8f,
                 source: "task_execution",
-                tags: [$"agent:{agent.Id}", $"task:{task.Id}"],
+                tags: [$"agent:{agent.Id}", $"task:{task.Id}", CrewTag(context)],
                 createdBy: agent.Id,
                 customProperties: customProps);
 
@@ -139,7 +148,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
                 embedding: null,
                 importance: (float)importance,
                 source: "agent_experience",
-                tags: [$"agent:{agent.Id}", "experience"],
+                tags: [$"agent:{agent.Id}", "experience", CrewTag(context)],
                 createdBy: agent.Id,
                 customProperties: tags);
 
@@ -186,7 +195,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
                 embedding: null,
                 importance: MemoryDefaults.DefaultImportance, // Working memory has medium importance
                 source: "working_memory",
-                tags: [$"agent:{agent.Id}", "working_memory", $"key:{key ?? "null"}"],
+                tags: [$"agent:{agent.Id}", "working_memory", $"key:{key ?? "null"}", CrewTag(context)],
                 createdBy: agent.Id,
                 customProperties: metadata.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString() ?? string.Empty));
 
@@ -198,6 +207,13 @@ public partial class MemoryCoordinator : IMemoryCoordinator
             LogWorkingMemoryUpdated(agent.Id, key, value);
         }
     }
+
+    /// <summary>
+    /// The tag naming the crew a memory belongs to: <c>crew:&lt;scope&gt;</c>, the scope being the
+    /// crew's name recorded at kickoff, else its id (GAP-20).
+    /// </summary>
+    private string CrewTag(SimpleExecutionContext context) =>
+        $"crew:{_providerRegistry?.GetScope(context.CrewId) ?? context.CrewId.ToString()}";
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Retrieved {Count} memories for agent {AgentId} and task {TaskId}")]
     private partial void LogMemoriesRetrieved(int count, object agentId, object taskId);

@@ -92,9 +92,14 @@ public sealed partial class EncryptedMemoryProviderDecorator
 
     /// <inheritdoc />
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Per-item decrypt fault barrier: an item whose content fails to decrypt (e.g. wrong key / corrupt ciphertext) is logged and skipped so the remaining search results are still returned.")]
-    public async Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<MemoryItem>> SearchAsync(
+        string query,
+        int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
+        CancellationToken cancellationToken = default)
     {
-        var items = await _inner.SearchAsync(query, limit, cancellationToken).ConfigureAwait(false);
+        // Metadata is stored in clear: the inner provider filters as it would unwrapped.
+        var items = await _inner.SearchAsync(query, limit, filter, cancellationToken).ConfigureAwait(false);
         if (!_encryption.IsEnabled)
             return items;
 

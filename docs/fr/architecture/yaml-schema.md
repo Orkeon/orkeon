@@ -19,7 +19,7 @@ parsing (`YamlAnchorPreprocessor`).
 
 ```yaml
 # Schéma complet CrewYamlConfig
-name: string              # Identifiant de la crew (requis)
+name: string              # Identifiant de la crew (requis) ; portée de sa mémoire long terme
 goal: string              # Objectif (requis)
 process: string           # "sequential" (défaut) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — insensible à la casse ; une valeur inconnue fait échouer le chargement
 verbose: bool             # default: false

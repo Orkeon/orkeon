@@ -117,9 +117,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Crew {crewId} not found");
 
-            // Record the crew's declared memory provider so the memory subsystem resolves it to a
-            // concrete IMemoryProvider for this run (P2-O-02). Idempotent; null clears to host default.
-            _memoryProviderRegistry?.SetProvider(crew.Id, crew.MemoryProvider);
+            // Record the crew's declared memory provider, which the memory subsystem resolves to a
+            // concrete IMemoryProvider for this run (P2-O-02), and its name, the scope of its
+            // long-term memory in that shared store (GAP-20). Idempotent.
+            _memoryProviderRegistry?.Record(crew.Id, crew.MemoryProvider, crew.Name);
 
             // Start checkpoint session if checkpoint manager is available
             if (_checkpointManager != null)

@@ -71,12 +71,18 @@ public abstract partial class MemoryProviderBase : Orkeon.Domain.Memory.IMemoryP
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Searches for memories using embeddings.
-    /// Pure data query - similarity calculation done in domain.
+    /// Searches for memories by their text, applying the optional metadata
+    /// <paramref name="filter"/> before the <paramref name="limit"/> (see
+    /// <see cref="IMemoryProvider.SearchAsync"/>).
     /// </summary>
+    /// <param name="query">The text to look for.</param>
+    /// <param name="limit">Maximum number of results, counted after the filter.</param>
+    /// <param name="filter">Optional metadata filter (<c>source</c>, <c>tag</c>/<c>tags</c>, custom properties) — the semantics of <see cref="SearchSimilarAsync"/>'s.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public abstract Task<IEnumerable<MemoryItem>> SearchAsync(
         string query,
         int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

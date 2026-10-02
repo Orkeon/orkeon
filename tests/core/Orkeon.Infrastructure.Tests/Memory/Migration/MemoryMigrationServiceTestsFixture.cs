@@ -85,7 +85,7 @@ public class MemoryMigrationServiceTestsFixture
             return Task.FromResult(_storage.TryRemove(key, out _));
         }
 
-        public override Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+        public override Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
         {
             var results = _storage.Values
                 .Where(i => i.Content.Contains(query, StringComparison.OrdinalIgnoreCase))

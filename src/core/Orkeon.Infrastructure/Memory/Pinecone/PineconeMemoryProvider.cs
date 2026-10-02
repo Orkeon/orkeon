@@ -195,17 +195,25 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <inheritdoc />
-    public override Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default)
+    public override Task<IEnumerable<MemoryItem>> SearchAsync(
+        string query,
+        int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         if (string.IsNullOrWhiteSpace(query))
             return Task.FromResult<IEnumerable<MemoryItem>>(Array.Empty<MemoryItem>());
 
-        return SearchAsyncCore(query, limit, cancellationToken);
+        return SearchAsyncCore(query, limit, filter, cancellationToken);
     }
 
-    private async Task<IEnumerable<MemoryItem>> SearchAsyncCore(string query, int limit, CancellationToken cancellationToken)
+    private async Task<IEnumerable<MemoryItem>> SearchAsyncCore(
+        string query,
+        int limit,
+        Dictionary<string, object>? filter,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -220,10 +228,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
                 includeMetadata = true,
                 includeValues = true,
                 @namespace = _options.Namespace,
-                filter = new Dictionary<string, object>
-                {
-                    ["content"] = new Dictionary<string, object> { ["$eq"] = query }
-                }
+                filter = BuildTextSearchFilter(query, filter)
             };
 
             var response = await _httpClient.PostAsJsonAsync(
@@ -445,6 +450,24 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <summary>
+    /// The metadata filter of a text search: the content condition and, under one <c>$and</c>, the
+    /// caller's equality conditions — the index applies them all before <c>topK</c> (GAP-20).
+    /// </summary>
+    private static Dictionary<string, object> BuildTextSearchFilter(string query, Dictionary<string, object>? filter)
+    {
+        var content = new Dictionary<string, object> { ["content"] = new Dictionary<string, object> { ["$eq"] = query } };
+        if (filter is null || filter.Count == 0)
+            return content;
+
+        var conditions = new List<Dictionary<string, object>> { content };
+        conditions.AddRange(filter.Select(entry => new Dictionary<string, object>
+        {
+            [entry.Key] = new Dictionary<string, object> { ["$eq"] = entry.Value },
+        }));
+        return new Dictionary<string, object> { ["$and"] = conditions };
+    }
+
+    /// <summary>
     /// Maps the provider-agnostic metadata filter to a Pinecone metadata filter
     /// (one <c>$eq</c> condition per key), or <see langword="null"/> when no filter is set.
     /// </summary>
@@ -585,7 +608,11 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <summary>
-    /// Builds metadata dictionary from a MemoryItem.
+    /// Builds the vector metadata of an item: the reserved provider keys (<c>content</c>,
+    /// <c>importance</c>, <c>source</c>, <c>timestamp</c>, <c>tags</c>) plus the item's custom
+    /// properties flattened verbatim — reserved keys win on collision. The default namespace and
+    /// the named ones store the same metadata, so a filter on a custom property finds the item in
+    /// either (GAP-20).
     /// </summary>
     private static Dictionary<string, object> BuildMetadata(MemoryItem item)
     {
@@ -600,15 +627,31 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
         if (item.Tags.Count > 0)
             metadata["tags"] = string.Join(",", item.Tags);
 
+        if (item.Metadata.CustomProperties is { Count: > 0 } custom)
+        {
+            foreach (var (propertyKey, value) in custom)
+            {
+                if (!s_reservedMetadataKeys.Contains(propertyKey, StringComparer.OrdinalIgnoreCase))
+                    metadata[propertyKey] = value;
+            }
+        }
+
         return metadata;
     }
 
+    /// <summary>Builds a MemoryItem from a Pinecone vector response, from its metadata.</summary>
+    private static MemoryItem? BuildMemoryItem(PineconeVector vector) => BuildMemoryItem(vector.Metadata, vector.Values);
+
+    /// <summary>Builds a MemoryItem from a Pinecone query match, from its metadata.</summary>
+    private static MemoryItem? BuildMemoryItem(PineconeMatch match) => BuildMemoryItem(match.Metadata, match.Values);
+
     /// <summary>
-    /// Builds a MemoryItem from a Pinecone vector response.
+    /// Rebuilds a <see cref="MemoryItem"/> from its vector metadata: the content, importance,
+    /// source and tags, and every other key but <c>timestamp</c> as a custom property.
     /// </summary>
-    private static MemoryItem? BuildMemoryItem(PineconeVector vector)
+    private static MemoryItem? BuildMemoryItem(Dictionary<string, object>? metadata, float[]? values)
     {
-        if (vector.Metadata == null || !vector.Metadata.TryGetValue("content", out var contentObj))
+        if (metadata == null || !metadata.TryGetValue("content", out var contentObj))
             return null;
 
         var content = ConvertToString(contentObj);
@@ -617,38 +660,38 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
 
         var importance = MemoryDefaults.DefaultImportance;
         string? source = null;
+        string[]? tags = null;
+        Dictionary<string, string>? custom = null;
 
-        if (vector.Metadata.TryGetValue("importance", out var imp))
-            importance = ConvertToFloat(imp);
-        if (vector.Metadata.TryGetValue("source", out var src))
-            source = ConvertToString(src);
+        foreach (var (metaKey, value) in metadata)
+        {
+            if (string.Equals(metaKey, "content", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(metaKey, "timestamp", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
 
-        var embedding = vector.Values?.Length > 0 ? vector.Values : null;
-        return MemoryItem.Create(content, embedding, importance, source);
-    }
+            if (string.Equals(metaKey, "importance", StringComparison.OrdinalIgnoreCase))
+            {
+                importance = ConvertToFloat(value);
+            }
+            else if (string.Equals(metaKey, "source", StringComparison.OrdinalIgnoreCase))
+            {
+                source = ConvertToString(value);
+            }
+            else if (string.Equals(metaKey, "tags", StringComparison.OrdinalIgnoreCase))
+            {
+                tags = ConvertToString(value)?.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            }
+            else
+            {
+                custom ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                custom[metaKey] = ConvertToString(value) ?? string.Empty;
+            }
+        }
 
-    /// <summary>
-    /// Builds a MemoryItem from a Pinecone query match.
-    /// </summary>
-    private static MemoryItem? BuildMemoryItem(PineconeMatch match)
-    {
-        if (match.Metadata == null || !match.Metadata.TryGetValue("content", out var contentObj))
-            return null;
-
-        var content = ConvertToString(contentObj);
-        if (string.IsNullOrWhiteSpace(content))
-            return null;
-
-        var importance = MemoryDefaults.DefaultImportance;
-        string? source = null;
-
-        if (match.Metadata.TryGetValue("importance", out var imp))
-            importance = ConvertToFloat(imp);
-        if (match.Metadata.TryGetValue("source", out var src))
-            source = ConvertToString(src);
-
-        var embedding = match.Values?.Length > 0 ? match.Values : null;
-        return MemoryItem.Create(content, embedding, importance, source);
+        var embedding = values?.Length > 0 ? values : null;
+        return MemoryItem.Create(content, embedding, importance, source, tags, customProperties: custom);
     }
 
     // --- Internal DTO classes for Pinecone API responses ---

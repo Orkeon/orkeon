@@ -10,7 +10,7 @@ Les trois entités principales sont construites via des builders fluides défini
 
 - `AgentBuilder` (`Orkeon.Domain.Agent`) : configure rôle, objectif, backstory, outils, contraintes d'exécution, templates de prompt, politique d'accès outils
 - `CrewTaskBuilder` (`Orkeon.Domain.Task`) : configure description, résultat attendu, priorité, dépendances, schéma JSON de sortie, mode async, intervention humaine
-- `CrewBuilder` (`Orkeon.Domain.Crew`) : configure objectif, process type, agents, tasks, planification, mémoire, callbacks, agents dynamiques
+- `CrewBuilder` (`Orkeon.Domain.Crew`) : configure nom, objectif, process type, agents, tasks, planification, mémoire, callbacks, agents dynamiques
 
 Chaque builder délègue en interne aux méthodes factory `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` et lève une `BuilderValidationException` si les champs obligatoires sont absents.
 
@@ -32,7 +32,7 @@ La structure YAML suit ce schéma :
 ```yaml
 # Schéma CrewYamlConfig — clés les plus utilisées (surface complète dans docs/architecture/yaml-schema.md :
 # llm:/rag:/links:/mounts: au niveau crew, knowledge: agent, tools:/deliverable:/llm_override: tâche, llm thinking/responseFormat/cache)
-name: string              # Identifiant de la crew
+name: string              # Identifiant de la crew ; portée de sa mémoire long terme (les crews d'un même nom la partagent)
 goal: string              # Objectif (requis)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
 verbose: bool             # default: false

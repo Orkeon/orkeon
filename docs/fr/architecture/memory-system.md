@@ -4,7 +4,30 @@
 
 ## Interface et types
 
-`IMemoryProvider` (`Orkeon.Domain.Memory`) définit le contrat avec sept méthodes : `StoreAsync`, `GetAsync`, `SearchAsync`, `DeleteAsync`, `ClearAsync`, `StoreWithEmbeddingAsync` et `SearchSimilarAsync` (recherche vectorielle par similarité cosinus). Les deux dernières ont un corps par défaut dans l'interface (celui de `SearchSimilarAsync` ne renvoie rien) ; tous les providers du dépôt dérivent donc de `MemoryProviderBase` (`Orkeon.Infrastructure.Memory.Base`), qui redéclare `SearchSimilarAsync` **abstraite** — sans quoi un provider qui aurait oublié la recherche vectorielle renverrait silencieusement zéro résultat via l'interface. La classe de base ajoute aussi `UpdateAsync`, `CountAsync` et `ListKeysAsync`. Il n'y a pas d'étape d'initialisation : un provider reçoit ses options dans son constructeur et ouvre sa connexion éventuelle à son premier appel.
+`IMemoryProvider` (`Orkeon.Domain.Memory`) définit le contrat avec sept méthodes : `StoreAsync`, `GetAsync`, `SearchAsync` (recherche textuelle), `DeleteAsync`, `ClearAsync`, `StoreWithEmbeddingAsync` et `SearchSimilarAsync` (recherche vectorielle par similarité cosinus). Les deux dernières ont un corps par défaut dans l'interface (celui de `SearchSimilarAsync` ne renvoie rien) ; tous les providers du dépôt dérivent donc de `MemoryProviderBase` (`Orkeon.Infrastructure.Memory.Base`), qui redéclare `SearchSimilarAsync` **abstraite** — sans quoi un provider qui aurait oublié la recherche vectorielle renverrait silencieusement zéro résultat via l'interface. La classe de base ajoute aussi `UpdateAsync`, `CountAsync` et `ListKeysAsync`. Il n'y a pas d'étape d'initialisation : un provider reçoit ses options dans son constructeur et ouvre sa connexion éventuelle à son premier appel.
+
+### Filtre de métadonnées
+
+`SearchAsync(query, limit, filter, cancellationToken)` et `SearchSimilarAsync` prennent le même `filter`
+optionnel (`Dictionary<string, object>`) : `source` est une égalité sur la source de l'entrée,
+`tag`/`tags` une appartenance à ses étiquettes, et toute autre clé une égalité sur la **propriété
+personnalisée** de ce nom. Chaque provider l'applique **avant** sa limite — une recherche filtrée rend
+toutes les correspondances que le magasin contient, jusqu'à la limite, jamais moins parce que des entrées
+que le filtre rejette auraient rempli la page :
+
+| Provider | Comment le filtre est appliqué |
+|---|---|
+| In-Memory | En mémoire, sur chaque entrée, avant la limite ; valeurs comparées sans tenir compte de la casse |
+| Redis | Sur chaque entrée du parcours de l'espace de clés, qui s'arrête à la limite ; valeurs comparées sans tenir compte de la casse |
+| SQLite | Lignes correspondantes lues de la plus récente à la plus ancienne et vérifiées une à une jusqu'à la limite ; valeurs comparées sans tenir compte de la casse |
+| ChromaDB | La clause `where` de la requête (un `$eq` par clé, sous un seul `$and`) ; valeurs exactes |
+| Pinecone | Le filtre de métadonnées de la requête (un `$eq` par clé, avec la condition textuelle, sous un seul `$and`) ; valeurs exactes |
+| LanceDB | Le prédicat SQL de la requête, en préfiltre ; une propriété personnalisée correspond par sa paire `"clé":"valeur"` dans `metadata_json` (exacte, les jokers `LIKE` d'une valeur matchent largement) |
+| `EncryptedMemoryProviderDecorator` | Transmis au provider enveloppé : les métadonnées sont stockées en clair |
+
+ChromaDB et Pinecone gardent les propriétés personnalisées d'une entrée dans ses métadonnées — dans la
+collection ou l'espace de noms par défaut comme dans les nommés — et les restituent à la lecture : un
+filtre sur une propriété personnalisée la trouve.
 
 Cinq types de mémoire sont définis par `MemoryType` (`Orkeon.Domain.Memory`) : `ShortTerm` (contexte immédiat), `LongTerm` (informations persistantes), `Episodic` (séquences d'événements), `Entity` (informations sur des entités spécifiques), `Procedural` (compétences apprises).
 
@@ -102,9 +125,11 @@ journalise un avertissement et retombe sur In-Memory (voir plus bas).
 - **`DeleteAsync`/`UpdateAsync`** : l'API delete renvoie une version de commit, pas un
   compteur — le provider vérifie d'abord l'existence de la clé (1 requête `query`
   supplémentaire) pour préserver le contrat booléen.
-- **Filtres métadonnées** : `source` se traduit en égalité SQL ; `tag`/`tags` et les
-  clés custom en `LIKE '%…%'` sur les colonnes JSON (sémantique de sous-chaîne — les
-  caractères jokers SQL `%`/`_` dans les valeurs matchent largement).
+- **Filtres métadonnées** : `source` se traduit en égalité SQL ; `tag`/`tags` en
+  `LIKE '%…%'` sur le JSON des étiquettes ; une clé personnalisée en
+  `LIKE '%"clé":"valeur"%'` sur `metadata_json`, la paire écrite comme l'encodeur JSON du
+  provider l'a écrite — la clé et la valeur entière, casse comprise. Les caractères jokers
+  SQL `%`/`_` d'une valeur matchent encore largement.
 - **Dimension fixe** : un embedding dont la taille diffère de `EmbeddingDimension`
   provoque une `InvalidOperationException` explicite (le schéma serveur est figé).
 
@@ -196,15 +221,18 @@ Seule `AddOrkeonRedisMemory` remplace l'`IMemoryProvider` de l'application ; les
 bases vectorielles rendent le provider partagé injectable par sa classe, à côté de celui que
 `Memory:Provider` a sélectionné.
 
-### Sélection du provider par crew
+### La mémoire d'une crew : provider et portée
 
 Une crew peut déclarer son propre provider via `memoryProvider` en YAML (ou `CrewBuilder.WithMemoryProvider`).
 La sélection voyage jusqu'au run au lieu d'être figée globalement par la configuration `Memory:Provider` :
 
 1. `memoryProvider` est mappé dans `CrewConfiguration.MemoryProvider`, que `CrewFactory` reporte sur
-   l'agrégat de domaine `Crew` (`Crew.MemoryProvider`).
-2. Au kickoff, l'orchestrateur enregistre `Crew.Id → Crew.MemoryProvider` dans le singleton
-   `CrewMemoryProviderRegistry` (indexé par crew, donc les sélections ne fuient jamais d'une crew à l'autre).
+   l'agrégat de domaine `Crew` (`Crew.MemoryProvider`), avec le nom de la crew (`Crew.Name` : le
+   `name:` de sa configuration — fichier YAML, dossier de crew, crew `.ork.ts` — ou `CrewBuilder.Name`
+   en C#).
+2. Au kickoff, l'orchestrateur enregistre les deux dans le singleton `CrewMemoryProviderRegistry`
+   (`Record(crewId, providerType, crewName)` ; indexé par crew, donc les sélections ne fuient jamais
+   d'une crew à l'autre).
 3. Quand `MemoryService` matérialise le système de mémoire de cette crew, il demande à
    `MemoryProviderFactory` le provider partagé de ce type — connecté depuis la section de l'hôte — et
    adosse la mémoire **long terme** de la crew à ce provider (la mémoire court terme reste une fenêtre
@@ -212,11 +240,33 @@ La sélection voyage jusqu'au run au lieu d'être figée globalement par la conf
 
 `memoryProvider:` est un type, rien de plus : `memoryProvider: "Redis"` se connecte avec `Orkeon:Redis`,
 `"SQLite"` avec `Orkeon:Sqlite` (une base `:memory:` in-process quand cette section est absente).
-L'instance étant partagée, la mémoire long terme d'une crew est visible du run suivant et des autres
-crews de ce type — c'est ce qui la rend durable. Vider la mémoire d'une crew ne supprime que les entrées
-qu'elle a rangées, et la libérer ne libère jamais le provider partagé.
 
-Une crew qui ne déclare aucun `memoryProvider` utilise le store in-process par défaut — le comportement est inchangé.
+**La portée est le nom de la crew.** L'instance du provider est partagée — par toutes les crews de ce
+type, et par le magasin RAG de ce type : sans `Orkeon:Rag:Provider`, le magasin RAG est le provider
+ambiant, dont les fragments, manifestes et registres vivent dans le même espace de clés. Chaque entrée
+que range la mémoire long terme d'une crew porte deux propriétés personnalisées, `kind = crew-memory` et
+`crew = <le nom de la crew>`, et chaque recherche dans cette mémoire les demande toutes deux au provider
+([filtre de métadonnées](#filtre-de-métadonnées), appliqué avant la limite). Une crew lit donc ce
+qu'elle a rangé, dans ce run et dans les runs précédents d'une crew de ce nom — c'est ce qui rend la
+mémoire durable — et jamais les entrées d'une autre crew, ni un fragment RAG. Une crew sans nom (construite
+en C# sans `CrewBuilder.Name`) a pour portée son id : sa mémoire dure un run. Deux crews d'un même nom
+partagent leur mémoire — avec In-Memory, Redis et SQLite, deux noms qui ne diffèrent que par la casse
+aussi. `MemoryCoordinator` étiquette en outre chaque souvenir qu'il range `crew:<nom>` (l'id de la crew
+quand elle n'a pas de nom).
+
+Vider la mémoire d'une crew (`IMemoryService.ClearMemoryAsync`) supprime les entrées que ce système de
+mémoire a rangées — celles du run en cours —, jamais le reste du magasin partagé, et la libérer ne libère
+jamais le provider partagé.
+
+Une crew qui ne déclare aucun `memoryProvider` utilise un magasin in-process à elle, qui finit avec le run.
+
+**Ce qui est rangé.** Après chaque tâche réussie, la sortie de l'agent, sous cet agent
+(`IMemoryCoordinator.StoreTaskResultAsync`). En mode `Consensual`, seule la réponse retenue par le vote
+est un résultat de tâche : les réponses candidates et les bulletins s'exécutent avec
+`SimpleExecutionContext.StoreResultInMemory` à faux, et la stratégie range la réponse retenue une fois,
+sous l'agent qui l'a écrite ([Types de processus](../orchestration/process-types.md#4-consensual--vote-et-consensus)).
+Aucun run livré ne relit cette mémoire dans un prompt — un hôte C# la lit via `IMemoryService`
+(voir [Limites connues](../reference/limitations.md)).
 
 ## Chiffrement au repos
 

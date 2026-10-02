@@ -144,8 +144,9 @@ namespace Orkeon.Application.Agent
                     result.ExecutionTime,
                     result.Success);
 
-                // Store result in memory if successful
-                if (result.Success && !string.IsNullOrEmpty(result.Output))
+                // Store result in memory if successful — unless the run is not the task's result
+                // (a consensual candidate or a ballot: the context says so, GAP-20)
+                if (context.StoreResultInMemory && result.Success && !string.IsNullOrEmpty(result.Output))
                 {
                     await _memoryCoordinator.StoreTaskResultAsync(
                         agent, CastToDomainTask(task), result.Output, context, cancellationToken).ConfigureAwait(false);

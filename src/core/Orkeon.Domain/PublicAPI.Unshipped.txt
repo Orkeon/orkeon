@@ -1000,3 +1000,9 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Profile.init -> void
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(string? profile = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.Profile.get -> string?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.Profile.init -> void
+*REMOVED*Orkeon.Domain.Memory.IMemoryProvider.SearchAsync(string! query, int limit = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
+Orkeon.Domain.Memory.IMemoryProvider.SearchAsync(string! query, int limit = 10, System.Collections.Generic.Dictionary<string!, object!>? filter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
+Orkeon.Domain.Crew.Crew.Name.get -> string?
+Orkeon.Domain.Crew.CrewBuilder.Name(string! name) -> Orkeon.Domain.Crew.CrewBuilder!
+Orkeon.Domain.Crew.CrewCreateOptions.Name.get -> string?
+Orkeon.Domain.Crew.CrewCreateOptions.Name.init -> void

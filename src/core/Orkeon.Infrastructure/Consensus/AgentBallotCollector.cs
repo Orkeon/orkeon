@@ -21,7 +21,10 @@ namespace Orkeon.Infrastructure.Consensus;
 /// <remarks>
 /// A reply that is not that object, a ranking that names no offered label, and a failed
 /// execution each count as an abstention and are logged; none fails the task. Labels the
-/// voter was not offered — its own answer among them — are dropped from the ranking.
+/// voter was not offered — its own answer among them — are dropped from the ranking. The
+/// ballot runs with <see cref="Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory"/>
+/// off, whatever the request's context says: its JSON is not a task result and never reaches
+/// the crew's memory (GAP-20).
 /// </remarks>
 public sealed partial class AgentBallotCollector : IBallotCollector
 {
@@ -61,8 +64,14 @@ public sealed partial class AgentBallotCollector : IBallotCollector
             .WithResponseFormat(LlmResponseFormat.JsonObject())
             .Build();
 
+        // A ballot is not a task result: whatever context it comes with, its JSON never goes to
+        // the crew's memory, where a later task would read it as one (GAP-20).
+        var context = request.Context.StoreResultInMemory
+            ? request.Context with { StoreResultInMemory = false }
+            : request.Context;
+
         var execution = await _executionService.ExecuteTaskAsync(
-            request.Voter, ballotTask, request.Context, cancellationToken).ConfigureAwait(false);
+            request.Voter, ballotTask, context, cancellationToken).ConfigureAwait(false);
 
         if (!execution.Success)
         {

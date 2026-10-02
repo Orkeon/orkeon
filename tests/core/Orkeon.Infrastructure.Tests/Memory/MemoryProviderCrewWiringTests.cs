@@ -45,7 +45,7 @@ public sealed class MemoryProviderCrewWiringTests : IDisposable
     private static CrewId CrewOf(CrewMemoryProviderRegistry registry, string providerType)
     {
         var crewId = CrewId.From(Guid.NewGuid());
-        registry.SetProvider(crewId, providerType);
+        registry.Record(crewId, providerType, crewName: null);
         return crewId;
     }
 
@@ -104,7 +104,7 @@ public sealed class MemoryProviderCrewWiringTests : IDisposable
         // A later run — new factory, new crew — reads it back from the same file.
         using var nextRun = new MemoryProviderFactory(
             new DiskBackedFileSystemService(_dataDirectory, "/data"), _httpClientFactory, settings);
-        var stored = await nextRun.GetProvider("sqlite").SearchAsync("durable", 5, TestContext.Current.CancellationToken);
+        var stored = await nextRun.GetProvider("sqlite").SearchAsync("durable", 5, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(File.Exists(Path.Combine(_dataDirectory, "crew-memory.db")));
         Assert.Contains(stored, item => item.Content == "durable insight");
@@ -166,7 +166,7 @@ public sealed class MemoryProviderCrewWiringTests : IDisposable
         await service.ClearMemoryAsync(first, cancellationToken: TestContext.Current.CancellationToken);
         service.ReleaseMemorySystem(first);
 
-        var remaining = await factory.GetProvider("sqlite").SearchAsync("second", 5, TestContext.Current.CancellationToken);
+        var remaining = await factory.GetProvider("sqlite").SearchAsync("second", 5, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Single(remaining);
         Assert.Equal(1, await ((Orkeon.Infrastructure.Memory.Base.MemoryProviderBase)factory.GetProvider("sqlite")).CountAsync(TestContext.Current.CancellationToken));
     }

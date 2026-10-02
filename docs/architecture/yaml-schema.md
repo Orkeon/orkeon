@@ -18,7 +18,7 @@ named multi-line strings is expanded before parsing (`YamlAnchorPreprocessor`).
 
 ```yaml
 # Complete CrewYamlConfig schema
-name: string              # Crew identifier (required)
+name: string              # Crew identifier (required); scopes the crew's long-term memory
 goal: string              # Goal (required)
 process: string           # "sequential" (default) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — case-insensitive; an unknown value fails the load
 verbose: bool             # default: false

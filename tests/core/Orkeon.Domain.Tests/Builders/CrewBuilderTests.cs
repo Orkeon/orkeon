@@ -20,6 +20,39 @@ public class CrewBuilderTests
         new CrewTaskBuilder().Description(desc).ExpectedOutput(output).Build();
 
     [Fact]
+    public void Name_IsCarriedToTheCrew_Trimmed()
+    {
+        // GAP-20: the name scopes the crew's long-term memory.
+        var crew = new CrewBuilder().Name(" legal-watch ").Goal("Watch the law").WithAgent(CreateAgent()).Build();
+
+        Assert.Equal("legal-watch", crew.Name);
+    }
+
+    [Fact]
+    public void A_crew_built_without_a_name_has_none()
+    {
+        var crew = new CrewBuilder().Goal("Watch the law").WithAgent(CreateAgent()).Build();
+
+        Assert.Null(crew.Name);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Name_RejectsABlankName(string name)
+    {
+        Assert.Throws<ArgumentException>(() => new CrewBuilder().Name(name));
+    }
+
+    [Fact]
+    public void A_blank_name_in_the_options_leaves_the_crew_unnamed()
+    {
+        var crew = Orkeon.Domain.Crew.Crew.Create(new CrewCreateOptions { Goal = "Watch the law", Name = "  " });
+
+        Assert.Null(crew.Name);
+    }
+
+    [Fact]
     public void Build_WithGoalAndAgents_CreatesCrew()
     {
         // Arrange

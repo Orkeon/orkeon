@@ -46,7 +46,12 @@ public sealed record BallotRequest
     /// <summary>The anonymised answers, in the order the voter sees them.</summary>
     public required ImmutableList<BallotCandidate> Candidates { get; init; }
 
-    /// <summary>The execution context of the ballot: the crew id, its input variables, the previous outputs.</summary>
+    /// <summary>
+    /// The execution context of the ballot: the crew id, its input variables, the previous outputs.
+    /// The consensual strategy passes one that stores nothing in the crew's memory
+    /// (<see cref="SimpleExecutionContext.StoreResultInMemory"/> off): a ballot is not a task
+    /// result (GAP-20).
+    /// </summary>
     public required SimpleExecutionContext Context { get; init; }
 }
 

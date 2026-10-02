@@ -132,6 +132,29 @@ public sealed class MemoryCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task A_stored_task_result_is_tagged_with_the_crew_it_belongs_to()
+    {
+        // GAP-20: the crew's name, recorded at kickoff, is the scope of its memory.
+        var registry = new CrewMemoryProviderRegistry();
+        registry.Record(_context.CrewId, "sqlite", "legal-watch");
+        var coordinator = new MemoryCoordinator(_logger, _memoryService, registry);
+
+        await coordinator.StoreTaskResultAsync(
+            _testAgent, _testTask, "clause 4 changed", _context, TestContext.Current.CancellationToken);
+
+        Assert.Contains("crew:legal-watch", _memoryService.LastSavedMemory?.Metadata.Tags ?? []);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_task_result_of_an_unnamed_crew_is_tagged_with_its_id()
+    {
+        await _coordinator.StoreTaskResultAsync(
+            _testAgent, _testTask, "clause 4 changed", _context, TestContext.Current.CancellationToken);
+
+        Assert.Contains($"crew:{_context.CrewId}", _memoryService.LastSavedMemory?.Metadata.Tags ?? []);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ShouldStoreMemory_WhenStoringTaskResultAsyncWithValidInputs()
     {
         // Arrange

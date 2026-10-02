@@ -19,6 +19,13 @@ public sealed class CrewCreateOptions
     public string Goal { get; init; } = null!;
 
     /// <summary>
+    /// Optional name of the crew — the <c>name:</c> of its configuration. It scopes the crew's
+    /// long-term memory: the crews of one name share it from one run to the next. Null or blank
+    /// leaves the crew unnamed, and its memory to the one run.
+    /// </summary>
+    public string? Name { get; init; }
+
+    /// <summary>
     /// The process type for task execution.
     /// </summary>
     public ProcessType ProcessType { get; init; } = ProcessType.Sequential;

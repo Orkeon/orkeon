@@ -163,26 +163,37 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider, ISc
     }
 
     /// <summary>
-    /// Searches for memories by content matching.
-    /// Pure data query - search logic implemented in domain services.
+    /// Searches for memories by content matching (case-insensitive substring; an empty query
+    /// matches every item). The optional metadata <paramref name="filter"/> — the semantics of
+    /// <see cref="SearchSimilarAsync"/>'s, via <see cref="MemoryFilter.FromDictionary"/> — is
+    /// applied in memory <b>before</b> the <paramref name="limit"/>.
     /// </summary>
-    public override Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default)
+    public override Task<IEnumerable<MemoryItem>> SearchAsync(
+        string query,
+        int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
+        CancellationToken cancellationToken = default)
     {
         // Null query should throw ArgumentNullException
         ArgumentNullException.ThrowIfNull(query);
 
         try
         {
+            var criteria = MemoryFilter.FromDictionary(filter);
+            var candidates = criteria is null
+                ? _storage.Values
+                : _storage.Values.Where(criteria.Matches);
+
             // Empty query returns all items
             if (string.IsNullOrWhiteSpace(query))
             {
-                var allResults = _storage.Values.Take(limit).ToList();
+                var allResults = candidates.Take(limit).ToList();
                 LogFoundItemsEmpty(allResults.Count);
                 return Task.FromResult<IEnumerable<MemoryItem>>(allResults);
             }
 
             // Simple content matching - complex similarity search handled by domain services
-            var results = _storage.Values
+            var results = candidates
                 .Where(item => item.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
                 .Take(limit)
                 .ToList();

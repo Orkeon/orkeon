@@ -320,6 +320,9 @@ public class ProcessStrategyFactoryTests
         var services = CreateServiceCollectionWithMocks();
         services.AddSingleton<IVotingStrategy>(new MajorityVotingStrategy());
         services.AddSingleton<IBallotCollector>(new Orkeon.Infrastructure.Tests.Doubles.FakeBallotCollector());
+        // The strategy stores the retained answer (GAP-20); AddOrkeonApplication registers the coordinator.
+        services.AddSingleton<Orkeon.Application.Interfaces.Services.IMemoryCoordinator>(
+            new Orkeon.Infrastructure.Tests.Doubles.MockMemoryCoordinator());
         services.AddTransient<ConsensualProcessStrategy>();
         var serviceProvider = services.BuildServiceProvider();
         var logger = new TestLogger();

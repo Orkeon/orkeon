@@ -159,6 +159,27 @@ public sealed class AgentExecutionServiceTests : IDisposable
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task A_run_whose_context_stores_nothing_succeeds_without_a_memory()
+    {
+        // GAP-20: a consensual candidate or a ballot is not the task's result — the strategy
+        // runs it with StoreResultInMemory off, and the service must honour it.
+        _executionOrchestrator.SetupResult(new TaskResult(true, "candidate answer", null, [], TimeSpan.Zero));
+
+        var result = await _service.ExecuteTaskAsync(
+            _testAgent, _testTask, _context with { StoreResultInMemory = false }, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal("candidate answer", result.Output);
+        Assert.False(_memoryCoordinator.TaskResultStored);
+    }
+
+    [Fact]
+    public void A_context_stores_the_result_by_default()
+    {
+        Assert.True(_context.StoreResultInMemory);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ShouldReturnErrorResult_WhenExecutingTaskAsyncWithFailedExecution()
     {
         // Arrange

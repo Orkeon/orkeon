@@ -392,6 +392,11 @@ public partial class CrewFactory : ICrewFactory
         if (!string.IsNullOrWhiteSpace(config.MemoryProvider))
             builder.WithMemoryProvider(config.MemoryProvider);
 
+        // So must the crew's name: it is the scope of the crew's long-term memory in that shared
+        // provider, recorded at kickoff next to the type (GAP-20).
+        if (!string.IsNullOrWhiteSpace(config.Name))
+            builder.Name(config.Name);
+
         // A consensual crew's manager is the arbiter of the ManagerDecision fallback (GAP-04).
         if ((config.Process == ProcessType.Hierarchical || config.Process == ProcessType.Consensual)
             && config.ManagerAgentId is not null

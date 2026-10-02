@@ -4,38 +4,45 @@ using Orkeon.Domain.Common;
 namespace Orkeon.Application.Memory;
 
 /// <summary>
-/// Process-wide registry mapping a crew to its declared memory-provider selection (e.g. <c>redis</c>).
-/// The orchestrator records the crew's provider at kickoff (P2-O-02); <see cref="MemoryService"/> reads
-/// it when it materializes the crew's memory system, resolving the string to a concrete
-/// <c>IMemoryProvider</c> via the factory. Keyed by <see cref="CrewId"/>, so per-crew selections never
-/// leak across crews. A crew with no declared provider is simply absent — the host default applies.
+/// Process-wide registry of what each crew declared about its memory: the provider type it selected
+/// (e.g. <c>redis</c>) and its name, the scope of its long-term memory. The orchestrator records both
+/// at kickoff (P2-O-02, GAP-20); <see cref="MemoryService"/> reads them when it materializes the
+/// crew's memory system, resolving the type to a concrete <c>IMemoryProvider</c> via the factory.
+/// Keyed by <see cref="CrewId"/>, so one crew's selection never leaks to another. A crew that
+/// declared neither is simply absent — the host default applies.
 /// </summary>
 public sealed class CrewMemoryProviderRegistry
 {
-    private readonly ConcurrentDictionary<CrewId, string> _providers = new();
+    private readonly ConcurrentDictionary<CrewId, Selection> _selections = new();
 
     /// <summary>
-    /// Records the provider selection for a crew. A null/blank value clears any prior selection,
-    /// so the crew falls back to the host default.
+    /// Records what a crew declared at kickoff. A null or blank <paramref name="providerType"/>
+    /// leaves the crew on the host default (the in-process store); a null or blank
+    /// <paramref name="crewName"/> makes its id the scope of its memory.
     /// </summary>
-    public void SetProvider(CrewId crewId, string? providerType)
+    /// <param name="crewId">The crew.</param>
+    /// <param name="providerType">The memory provider type the crew selected, if any.</param>
+    /// <param name="crewName">The crew's name, if any — the scope of its long-term memory.</param>
+    public void Record(CrewId crewId, string? providerType, string? crewName)
     {
         ArgumentNullException.ThrowIfNull(crewId);
-        if (string.IsNullOrWhiteSpace(providerType))
-            _providers.TryRemove(crewId, out _);
+        var type = string.IsNullOrWhiteSpace(providerType) ? null : providerType;
+        var name = string.IsNullOrWhiteSpace(crewName) ? null : crewName.Trim();
+        if (type is null && name is null)
+            _selections.TryRemove(crewId, out _);
         else
-            _providers[crewId] = providerType;
+            _selections[crewId] = new Selection(type, name);
     }
 
     /// <summary>
     /// Forgets a crew's selection entirely — the daemon-side counterpart of
-    /// <see cref="SetProvider"/>: every hosted message loads a fresh crew with a fresh id,
+    /// <see cref="Record"/>: every hosted message loads a fresh crew with a fresh id,
     /// and an entry per run that nothing ever removes is a leak with a slow fuse.
     /// </summary>
     public void Remove(CrewId crewId)
     {
         ArgumentNullException.ThrowIfNull(crewId);
-        _providers.TryRemove(crewId, out _);
+        _selections.TryRemove(crewId, out _);
     }
 
     /// <summary>
@@ -44,6 +51,21 @@ public sealed class CrewMemoryProviderRegistry
     public string? GetProvider(CrewId crewId)
     {
         ArgumentNullException.ThrowIfNull(crewId);
-        return _providers.TryGetValue(crewId, out var provider) ? provider : null;
+        return _selections.TryGetValue(crewId, out var selection) ? selection.ProviderType : null;
     }
+
+    /// <summary>
+    /// Returns the scope of the crew's long-term memory: its recorded name, so that the runs of
+    /// one crew share what they stored; its id when it has none, so that the memory of an unnamed
+    /// crew lasts its one run (GAP-20).
+    /// </summary>
+    public string GetScope(CrewId crewId)
+    {
+        ArgumentNullException.ThrowIfNull(crewId);
+        return _selections.TryGetValue(crewId, out var selection) && selection.CrewName is { } name
+            ? name
+            : crewId.ToString();
+    }
+
+    private sealed record Selection(string? ProviderType, string? CrewName);
 }

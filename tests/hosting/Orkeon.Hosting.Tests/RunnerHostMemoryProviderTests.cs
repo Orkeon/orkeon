@@ -101,6 +101,29 @@ public sealed class RunnerHostMemoryProviderTests : IDisposable
     }
 
     [Fact]
+    public async Task A_crew_stores_its_results_as_crew_memory_under_the_name_of_its_yaml()
+    {
+        // GAP-20: the YAML name: reaches the store — every row says it is crew memory, and whose —
+        // so the next run of this crew finds it, and another crew of the same type does not.
+        WriteSettings("""
+            { "RaggableTree": { "Enabled": false },
+              "Orkeon": { "Sqlite": { "ConnectionString": "Data Source=/data/crew-memory.db" } } }
+            """);
+        using var chat = new CapturingChatClient();
+
+        var (exit, stderr) = await RunAsync("memory.yaml", chat);
+
+        Assert.True(exit == 0, stderr);
+        var properties = ReadCustomProperties(Path.Combine(_data, "crew-memory.db"));
+        Assert.NotEmpty(properties);
+        Assert.All(properties, json =>
+        {
+            Assert.Contains("\"kind\":\"crew-memory\"", json, StringComparison.Ordinal);
+            Assert.Contains("\"crew\":\"memory-crew\"", json, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public async Task The_rag_store_named_sqlite_writes_to_the_database_of_the_Sqlite_section()
     {
         WriteSettings("""
@@ -137,6 +160,20 @@ public sealed class RunnerHostMemoryProviderTests : IDisposable
 
     private void WriteSettings(string json) =>
         File.WriteAllText(Path.Combine(_root, "appsettings.json"), json);
+
+    private static List<string> ReadCustomProperties(string databasePath)
+    {
+        Assert.True(File.Exists(databasePath), $"{databasePath} was not created.");
+        using var connection = new SqliteConnection($"Data Source={databasePath};Mode=ReadOnly;Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT custom_properties_json FROM memory_items";
+        using var reader = command.ExecuteReader();
+        var rows = new List<string>();
+        while (reader.Read())
+            rows.Add(reader.IsDBNull(0) ? string.Empty : reader.GetString(0));
+        return rows;
+    }
 
     private static long CountRows(string databasePath)
     {

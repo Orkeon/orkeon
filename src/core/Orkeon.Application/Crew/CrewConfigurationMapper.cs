@@ -214,7 +214,7 @@ public static class CrewConfigurationMapper
 
         return new CrewConfiguration
         {
-            Name = "Unnamed Crew", // Crew aggregate doesn't have Name property
+            Name = crew.Name ?? "Unnamed Crew",
             Goal = crew.Goal.Value,
             Process = crew.ProcessType,
             Verbose = crew.Verbose,

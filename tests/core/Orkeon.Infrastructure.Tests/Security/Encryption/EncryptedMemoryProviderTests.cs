@@ -29,8 +29,12 @@ internal sealed class FakeMemoryProvider : IMemoryProvider
         return Task.FromResult(item);
     }
 
-    public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+    /// <summary>The metadata filter the last search received.</summary>
+    public Dictionary<string, object>? LastSearchFilter { get; private set; }
+
+    public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
     {
+        LastSearchFilter = filter;
         var results = _store.Values
             .Where(i => i.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
             .Take(limit);
@@ -75,6 +79,19 @@ public class EncryptedMemoryProviderTests
     /// Asserting on the content alone, as the tests here did, cannot see that.
     /// </para>
     /// </summary>
+    [Fact]
+    public async Task Search_PassesTheMetadataFilterToTheInnerProvider()
+    {
+        // GAP-20: metadata is stored in clear, so the inner provider filters as usual.
+        var inner = new FakeMemoryProvider();
+        var decorator = new EncryptedMemoryProviderDecorator(inner, CreateEncryption(), NullLogger<EncryptedMemoryProviderDecorator>.Instance);
+        var filter = new Dictionary<string, object> { ["kind"] = "crew-memory", ["crew"] = "legal-watch" };
+
+        await decorator.SearchAsync("contract", 5, filter, TestContext.Current.CancellationToken);
+
+        Assert.Same(filter, inner.LastSearchFilter);
+    }
+
     [Fact]
     public async Task RoundTrip_PreservesIdentityAndTimestamps()
     {

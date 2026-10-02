@@ -14,24 +14,37 @@ namespace Orkeon.Infrastructure.Memory.Sqlite;
 public sealed partial class SqliteMemoryProvider
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// The content is matched with <c>LIKE</c> (case-insensitive for ASCII), newest first; an
+    /// empty query matches every row. With a <paramref name="filter"/> the matching rows are read
+    /// newest first and checked one by one with the record-level filter of
+    /// <see cref="SearchSimilarAsync"/>, until <paramref name="limit"/> of them pass: the filter
+    /// applies before the limit.
+    /// </remarks>
     public override Task<IEnumerable<MemoryItem>> SearchAsync(
         string query,
         int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        return SearchAsyncCore(query, limit, cancellationToken);
+        return SearchAsyncCore(query, limit, filter is { Count: > 0 } ? filter : null, cancellationToken);
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
-        Justification = "The only interpolated fragments are the {_options.TableName} identifier (validated at construction via ValidateTableName regex ^[A-Za-z_][A-Za-z0-9_]*$; identifiers cannot be parameterized) and the {ColumnList} const; all caller values are passed as command parameters.")]
+        Justification = "The only interpolated fragments are the {_options.TableName} identifier (validated at construction via ValidateTableName regex ^[A-Za-z_][A-Za-z0-9_]*$; identifiers cannot be parameterized), the {ColumnList} const and the {limitClause} fragment, one of two literals chosen in code; all caller values are passed as command parameters.")]
     private async Task<IEnumerable<MemoryItem>> SearchAsyncCore(
         string query,
         int limit,
+        Dictionary<string, object>? filter,
         CancellationToken cancellationToken)
     {
         var effectiveLimit = limit > 0 ? limit : _options.DefaultTopK;
+
+        // Without a filter SQLite stops at the limit itself; with one, every matching row is a
+        // candidate until enough of them pass the filter.
+        var limitClause = filter is null ? "LIMIT @limit" : string.Empty;
 
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -41,7 +54,7 @@ public sealed partial class SqliteMemoryProvider
             if (string.IsNullOrWhiteSpace(query))
             {
                 // Empty query returns all items (same semantics as InMemoryProvider).
-                cmd.CommandText = $"SELECT {ColumnList} FROM {_options.TableName} ORDER BY created_at DESC LIMIT @limit";
+                cmd.CommandText = $"SELECT {ColumnList} FROM {_options.TableName} ORDER BY created_at DESC {limitClause}";
             }
             else
             {
@@ -50,18 +63,21 @@ public sealed partial class SqliteMemoryProvider
                     SELECT {ColumnList} FROM {_options.TableName}
                     WHERE content LIKE @pattern ESCAPE '\'
                     ORDER BY created_at DESC
-                    LIMIT @limit
+                    {limitClause}
                     """;
                 cmd.Parameters.AddWithValue("@pattern", $"%{EscapeLikePattern(query)}%");
             }
 
-            cmd.Parameters.AddWithValue("@limit", effectiveLimit);
+            if (filter is null)
+                cmd.Parameters.AddWithValue("@limit", effectiveLimit);
 
             var results = new List<MemoryItem>();
             using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            while (results.Count < effectiveLimit && await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
-                results.Add(ReadRecord(reader).ToMemoryItem());
+                var record = ReadRecord(reader);
+                if (filter is null || record.MatchesFilter(filter))
+                    results.Add(record.ToMemoryItem());
             }
 
             LogFoundMemoryItems(results.Count, query);

@@ -30,10 +30,17 @@ namespace Orkeon.Infrastructure.Consensus;
 /// reconsider with context from others' results.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Also implements <see cref="IProcessStrategy"/> so that
 /// <c>ProcessStrategyFactory</c> routes <c>ProcessType.Consensual</c> like every other
 /// process type (R3.3): <see cref="ExecuteSequentialAsync"/> maps to the consensual
 /// voting pipeline; the other modes have dedicated strategies.
+/// </para>
+/// <para>
+/// The crew's memory receives the retained answer and nothing else of the vote (GAP-20): the
+/// candidates and the ballots run without storing their result, and the strategy stores the
+/// answer it retained once, under the agent that wrote it.
+/// </para>
 /// </remarks>
 public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 {
@@ -43,6 +50,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     private readonly ITaskRepository _taskRepository;
     private readonly IAgentRepository _agentRepository;
     private readonly IMemoryScope _memoryScope;
+    private readonly IMemoryCoordinator _memoryCoordinator;
     private readonly ILogger<ConsensualProcessStrategy> _logger;
     private readonly ConsensualProcessOptions _options;
     private readonly CrewHookDispatcher _hooks;
@@ -56,6 +64,10 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     /// <param name="votingStrategy">The voting strategy.</param>
     /// <param name="ballotCollector">Collects each voter's ballot on the anonymised answers (GAP-04).</param>
     /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
+    /// <param name="memoryCoordinator">
+    /// Stores the answer the vote retained in the crew's memory — the candidates and the ballots
+    /// are run without storing anything (GAP-20).
+    /// </param>
     /// <param name="logger">The logger.</param>
     /// <param name="options">The consensual process options.</param>
     /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
@@ -63,6 +75,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         IVotingStrategy votingStrategy,
         IBallotCollector ballotCollector,
         CrewStrategyDependencies dependencies,
+        IMemoryCoordinator memoryCoordinator,
         ILogger<ConsensualProcessStrategy> logger,
         IOptions<ConsensualProcessOptions> options,
         ICrewExecutionHook? hook = null)
@@ -76,6 +89,8 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         _taskRepository = dependencies.TaskRepository;
         _agentRepository = dependencies.AgentRepository;
         _memoryScope = dependencies.MemoryScope;
+        ArgumentNullException.ThrowIfNull(memoryCoordinator);
+        _memoryCoordinator = memoryCoordinator;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         ArgumentNullException.ThrowIfNull(options);
@@ -232,11 +247,13 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             // Null when the Fail fallback was triggered: no consensus, so no result. That is a
             // failed task like any other — its dependants are skipped and the crew fails — not
             // an end of the crew on the spot (GAP-03).
-            var taskResult = await ExecuteTaskWithConsensusAsync(
-                new VoteContext(crew, task, agents, arbiter, applicationOutputs, inputVariables, tokenTally), ct).ConfigureAwait(false)
-                ?? new TaskResult(
+            var vote = new VoteContext(crew, task, agents, arbiter, applicationOutputs, inputVariables, tokenTally);
+            var retained = await ExecuteTaskWithConsensusAsync(vote, ct).ConfigureAwait(false);
+            var taskResult = retained is null
+                ? new TaskResult(
                     false, $"[NO CONSENSUS] {ConsensusNotReached(task.Id)}", null, [], TimeSpan.Zero,
-                    Error: ConsensusNotReached(task.Id));
+                    Error: ConsensusNotReached(task.Id))
+                : await RememberAsync(vote, retained, ct).ConfigureAwait(false);
 
             // Build application output for context propagation
             var appOutput = new ApplicationTaskOutput(
@@ -331,6 +348,27 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         /// <summary>A fresh context under the crew's id: its input variables, the outputs so far.</summary>
         public SimpleExecutionContext ExecutionContext(IMemoryScope memory, CancellationToken ct) =>
             new(Crew.Id, new Dictionary<string, string>(InputVariables), memory, PreviousOutputs, ct);
+
+        /// <summary>
+        /// The context of a candidate answer or of a ballot: neither is the task's result, so
+        /// neither goes to the crew's memory (GAP-20) — the retained answer does, once.
+        /// </summary>
+        public SimpleExecutionContext VotingContext(IMemoryScope memory, CancellationToken ct) =>
+            ExecutionContext(memory, ct) with { StoreResultInMemory = false };
+    }
+
+    /// <summary>
+    /// What a task's vote kept: the result, and the agent that wrote it — none when the result is
+    /// a failure no agent's answer stands for.
+    /// </summary>
+    private sealed record RetainedAnswer(TaskResult Result, DomainAgent? Author)
+    {
+        /// <summary>The answer of the agent keyed <paramref name="agentKey"/>, retained.</summary>
+        public static RetainedAnswer Of(VoteContext vote, string agentKey, TaskResult result) =>
+            new(result, vote.Agents.FirstOrDefault(a => a.Id.ToString() == agentKey));
+
+        /// <summary>A failed result: no answer retained.</summary>
+        public static RetainedAnswer Failed(TaskResult result) => new(result, Author: null);
     }
 
     /// <summary>
@@ -364,7 +402,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
                 $"The manager agent {crew.ManagerAgentId} of crew {crew.Id} was not found; ManagerDecision has no arbiter.");
     }
 
-    private async Task<TaskResult?> ExecuteTaskWithConsensusAsync(VoteContext vote, CancellationToken ct)
+    private async Task<RetainedAnswer?> ExecuteTaskWithConsensusAsync(VoteContext vote, CancellationToken ct)
     {
         var task = vote.Task;
         var maxRounds = _options.MaxVotingRounds;
@@ -392,12 +430,12 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             // Every execution failed: there is nothing to vote on, and the task fails with the
             // agents' own error — another round would only pay for the same failure again.
             if (candidates.Count == 0)
-                return agentResults.Values.First(r => !r.Success);
+                return RetainedAnswer.Failed(agentResults.Values.First(r => !r.Success));
 
             // A lone successful answer has no rival to be weighed against: it is retained
             // without a ballot.
             if (candidates.Count == 1)
-                return agentResults[candidates[0]];
+                return RetainedAnswer.Of(vote, candidates[0], agentResults[candidates[0]]);
 
             lastRound = await HoldBallotAsync(vote, round, agentResults, candidates, ct).ConfigureAwait(false);
             var voteResult = lastRound.Tally;
@@ -407,7 +445,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             if (voteResult.ConsensusReached && voteResult.WinningChoice != null
                 && agentResults.TryGetValue(voteResult.WinningChoice, out var winningResult))
             {
-                return winningResult;
+                return RetainedAnswer.Of(vote, voteResult.WinningChoice, winningResult);
             }
 
             // No consensus, prepare for next round
@@ -510,7 +548,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
                 Voter = voter,
                 Task = vote.Task,
                 Candidates = offered,
-                Context = vote.ExecutionContext(_memoryScope, ct),
+                Context = vote.VotingContext(_memoryScope, ct),
             }, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -569,7 +607,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 
             // The crew's input variables reach every execution; the discussion context of the
             // previous round is added over them (GAP-04).
-            var context = vote.ExecutionContext(_memoryScope, ct);
+            var context = vote.VotingContext(_memoryScope, ct);
             if (discussionContext != null)
             {
                 // Add other agents' previous results as discussion context
@@ -615,13 +653,13 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         return results;
     }
 
-    private async Task<TaskResult?> ApplyFallbackAsync(VoteContext vote, CountedRound lastRound, CancellationToken ct)
+    private async Task<RetainedAnswer?> ApplyFallbackAsync(VoteContext vote, CountedRound lastRound, CancellationToken ct)
     {
         LogTaskMaxVotingRoundsExhausted(vote.Task.Id, _options.FallbackStrategy);
 
         return _options.FallbackStrategy switch
         {
-            ConsensusFallback.AcceptBestScore => AcceptBestScore(vote.Task, lastRound),
+            ConsensusFallback.AcceptBestScore => AcceptBestScore(vote, lastRound),
             ConsensusFallback.ManagerDecision => await AskTheManagerAsync(vote, lastRound, ct).ConfigureAwait(false),
             _ => null
         };
@@ -631,13 +669,13 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     /// The candidate the last count put first, without running anything again (GAP-04). The
     /// task fails when no ballot of that round named a candidate.
     /// </summary>
-    private TaskResult AcceptBestScore(CrewTask task, CountedRound lastRound)
+    private RetainedAnswer AcceptBestScore(VoteContext vote, CountedRound lastRound)
     {
         if (lastRound.Tally.WinningChoice is { } best && lastRound.Results.TryGetValue(best, out var result) && result.Success)
-            return result;
+            return RetainedAnswer.Of(vote, best, result);
 
-        var reason = $"{ConsensusNotReached(task.Id)}, and no ballot of the last round named a candidate to accept";
-        return new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, Error: reason);
+        var reason = $"{ConsensusNotReached(vote.Task.Id)}, and no ballot of the last round named a candidate to accept";
+        return RetainedAnswer.Failed(new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, Error: reason));
     }
 
     /// <summary>
@@ -645,7 +683,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     /// of the last round, anonymised like the peers saw them, and its first choice is retained.
     /// A manager that abstains decides nothing, and the task fails.
     /// </summary>
-    private async Task<TaskResult> AskTheManagerAsync(VoteContext vote, CountedRound lastRound, CancellationToken ct)
+    private async Task<RetainedAnswer> AskTheManagerAsync(VoteContext vote, CountedRound lastRound, CancellationToken ct)
     {
         var arbiter = vote.Arbiter
             ?? throw new InvalidOperationException("ManagerDecision reached the fallback without an arbiter.");
@@ -665,13 +703,46 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             && lastRound.Results.TryGetValue(lastRound.KeyByLabel[choice], out var chosen))
         {
             LogTaskDecidedByManager(vote.Task.Id, arbiter.Role.Value, choice);
-            return chosen;
+            return RetainedAnswer.Of(vote, lastRound.KeyByLabel[choice], chosen);
         }
 
         var reason = $"{ConsensusNotReached(vote.Task.Id)}, and the manager agent {arbiter.Role} chose none of the "
             + $"{offered.Count} answers: {ballot.Justification ?? "it abstained"}";
-        return new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, Error: reason);
+        return RetainedAnswer.Failed(new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, Error: reason));
     }
+
+    /// <summary>
+    /// The retained answer, and nothing else of the vote, goes to the crew's memory — once, under
+    /// the agent that wrote it (GAP-20): the candidates and the ballots ran with
+    /// <see cref="SimpleExecutionContext.StoreResultInMemory"/> off. A store that fails fails the
+    /// task, as it does in every other mode, where storing is part of the agent's execution.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Memory-store fault barrier: a store that fails turns the retained answer into a failed task result — the behaviour of AgentExecutionService in the other modes — instead of ending the crew on the spot.")]
+    private async Task<TaskResult> RememberAsync(VoteContext vote, RetainedAnswer retained, CancellationToken ct)
+    {
+        var result = retained.Result;
+        if (retained.Author is null || !result.Success || string.IsNullOrEmpty(result.Output))
+            return result;
+
+        try
+        {
+            await _memoryCoordinator.StoreTaskResultAsync(
+                retained.Author, vote.Task, result.Output, vote.ExecutionContext(_memoryScope, ct), ct).ConfigureAwait(false);
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogRetainedAnswerNotStored(ex, vote.Task.Id);
+            return new TaskResult(false, string.Empty, null, [], result.ExecutionTime, Error: ex.Message);
+        }
+    }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Task {TaskId}: the retained answer could not be stored in the crew's memory")]
+    private partial void LogRetainedAnswerNotStored(Exception ex, TaskId taskId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Task {TaskId}: no consensus, the manager agent {Manager} chose candidate {Label}")]
     private partial void LogTaskDecidedByManager(TaskId taskId, string manager, string label);

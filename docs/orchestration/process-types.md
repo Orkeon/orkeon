@@ -352,6 +352,8 @@ Task N ──┬── Agent A → answer A ──┐                ┌── A
 
 The retained result is the task's result: when it failed, the crew fails and the task's dependents are skipped; the tasks that do not depend on it still run.
 
+**What the crew remembers**: the retained answer, once, under the agent that wrote it — never a candidate the vote rejected, never a ballot. The candidates and the ballots run with `SimpleExecutionContext.StoreResultInMemory` off (`AgentBallotCollector` turns it off for any ballot it casts), and the strategy stores the retained answer through `IMemoryCoordinator`; a task without a retained answer stores nothing. When that store fails, the task fails, as in the other modes. See [Memory system](../architecture/memory-system.md#a-crews-memory-provider-and-scope).
+
 **Cost**: a round costs N executions plus N ballots — one short LLM call per voter, whose prompt holds the answers under review, so its input grows with N × the answers' length (a long answer is truncated to fit a task description). Three agents that agree cost 3 executions + 3 ballots per task. A task that never reaches consensus costs `MaxVotingRounds` × (N + N) calls, plus one manager ballot under `ManagerDecision`; `AcceptBestScore` re-runs nothing. The crew's input variables reach every execution and every ballot; earlier tasks' winning outputs are passed as context.
 
 ```yaml

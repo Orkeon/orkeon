@@ -30,7 +30,7 @@ public sealed class FakeMemoryProvider : IMemoryProvider
     public Task<MemoryItem?> GetAsync(string key, CancellationToken cancellationToken = default)
         => Task.FromResult(_store.TryGetValue(key, out var item) ? item : null);
 
-    public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
         => Task.FromResult<IEnumerable<MemoryItem>>(_store.Values);
 
     public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default)

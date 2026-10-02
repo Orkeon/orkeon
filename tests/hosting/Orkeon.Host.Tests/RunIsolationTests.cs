@@ -76,7 +76,7 @@ public class RunIsolationTests
         var registry = provider.GetRequiredService<CrewMemoryProviderRegistry>();
         var crewId = CrewId.Create();
 
-        registry.SetProvider(crewId, "redis");
+        registry.Record(crewId, "redis", crewName: null);
         Assert.Equal("redis", registry.GetProvider(crewId));
 
         registry.Remove(crewId);

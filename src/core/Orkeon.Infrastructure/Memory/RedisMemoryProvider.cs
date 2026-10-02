@@ -239,10 +239,16 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     }
 
     /// <summary>
-    /// Searches for memories by scanning all keys.
-    /// Pure data query - search logic implemented in domain services.
+    /// Searches for memories by scanning all keys: an item whose content holds the query and
+    /// that passes the optional metadata <paramref name="filter"/> is a hit
+    /// (<see cref="IsTextSearchHit"/>); the scan stops at <paramref name="limit"/> hits.
+    /// An empty query finds nothing.
     /// </summary>
-    public override async Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default)
+    public override async Task<IEnumerable<MemoryItem>> SearchAsync(
+        string query,
+        int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
             return Array.Empty<MemoryItem>();
@@ -268,9 +274,9 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
                     if (value.HasValue)
                     {
                         var item = DeserializeMemoryItem(value!);
-                        if (item != null && item.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
+                        if (IsTextSearchHit(item, query, filter))
                         {
-                            items.Add(item);
+                            items.Add(item!);
                         }
                     }
                 }
@@ -449,6 +455,17 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
         var score = VectorMath.CosineSimilarity(queryEmbedding, item.Embedding.ToArray());
         return score >= minScore ? new ScoredMemoryItem(item, score) : null;
     }
+
+    /// <summary>
+    /// Whether a stored item answers a text search: its content holds the query
+    /// (case-insensitive) and it passes the metadata filter — the one
+    /// <see cref="SearchSimilarAsync"/> applies. <see cref="SearchAsync"/> counts only the hits
+    /// toward its limit, so the filter applies before the limit.
+    /// </summary>
+    internal static bool IsTextSearchHit(MemoryItem? item, string query, Dictionary<string, object>? filter)
+        => item is not null
+           && item.Content.Contains(query, StringComparison.OrdinalIgnoreCase)
+           && (filter is null || MatchesMetadataFilter(item, filter));
 
     /// <summary>
     /// Applies the metadata filter to a candidate item, mirroring the semantics of the

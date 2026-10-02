@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Orkeon.Domain.Memory;
 
 namespace Orkeon.Infrastructure.Memory.LanceDb;
@@ -9,8 +10,10 @@ namespace Orkeon.Infrastructure.Memory.LanceDb;
 /// </summary>
 /// <remarks>
 /// Tag and custom-metadata filters compile to <c>LIKE '%…%'</c> over the JSON-encoded
-/// columns, mirroring the substring semantics of the historical provider; values
-/// containing SQL LIKE wildcards (<c>%</c>, <c>_</c>) therefore match loosely.
+/// columns. A custom property matches as its <c>"key":"value"</c> pair, spelled the way
+/// <see cref="LanceDbRecordMapper.JsonOptions"/> wrote it into <c>metadata_json</c> — the key
+/// and the whole value, not a substring of either (GAP-20); values containing SQL LIKE
+/// wildcards (<c>%</c>, <c>_</c>) still match loosely, and the comparison is case-sensitive.
 /// See <c>docs/architecture/memory-system.md</c>.
 /// </remarks>
 internal static class LanceDbFilterBuilder
@@ -24,8 +27,8 @@ internal static class LanceDbFilterBuilder
 
     /// <summary>
     /// Translates the metadata filter dictionary into a SQL predicate
-    /// (<c>source</c> equality, tag containment, metadata substring), or
-    /// <see langword="null"/> when the filter is empty.
+    /// (<c>source</c> equality, tag containment, a custom property's <c>"key":"value"</c> pair in
+    /// the metadata JSON), or <see langword="null"/> when the filter is empty.
     /// </summary>
     public static string? FromMetadataFilter(IReadOnlyDictionary<string, object>? filter)
     {
@@ -49,7 +52,7 @@ internal static class LanceDbFilterBuilder
                     break;
 
                 default:
-                    clauses.Add($"{LanceDbArrowCodec.MetadataColumn} LIKE '%{literal}%'");
+                    clauses.Add(CustomPropertyClause(key, Convert.ToString(value, CultureInfo.InvariantCulture) ?? ""));
                     break;
             }
         }
@@ -62,7 +65,7 @@ internal static class LanceDbFilterBuilder
     /// (<c>source</c> equality, tag containment over the JSON-encoded tags column,
     /// <c>"key":"value"</c> containment over the JSON-encoded metadata column), or
     /// <see langword="null"/> when the filter is null or empty. Custom-property matching
-    /// relies on the compact JSON encoding of <c>metadata_json</c> and inherits the loose
+    /// relies on the compact JSON encoding of <c>metadata_json</c> and inherits the
     /// <c>LIKE</c> semantics documented on the class.
     /// </summary>
     public static string? FromMemoryFilter(MemoryFilter? filter)
@@ -84,13 +87,20 @@ internal static class LanceDbFilterBuilder
         if (filter.CustomProperties is { Count: > 0 })
         {
             foreach (var (key, value) in filter.CustomProperties)
-            {
-                var pair = $"\"{key}\":\"{value}\"";
-                clauses.Add($"{LanceDbArrowCodec.MetadataColumn} LIKE '%{EscapeLiteral(pair)}%'");
-            }
+                clauses.Add(CustomPropertyClause(key, value));
         }
 
         return string.Join(" AND ", clauses);
+    }
+
+    /// <summary>
+    /// The clause matching a custom property: its <c>"key":"value"</c> pair as the stored JSON
+    /// spells it (same serializer options, so non-ASCII characters and quotes are escaped alike).
+    /// </summary>
+    private static string CustomPropertyClause(string key, string value)
+    {
+        var pair = $"{JsonSerializer.Serialize(key, LanceDbRecordMapper.JsonOptions)}:{JsonSerializer.Serialize(value, LanceDbRecordMapper.JsonOptions)}";
+        return $"{LanceDbArrowCodec.MetadataColumn} LIKE '%{EscapeLiteral(pair)}%'";
     }
 
     /// <summary>Escapes a string literal for inclusion in a single-quoted SQL string.</summary>

@@ -353,6 +353,8 @@ Tâche N ──┬── Agent A → réponse A ──┐                   ┌�
 
 Le résultat retenu est celui de la tâche : s'il est en échec, la crew échoue et les dépendantes de la tâche sont sautées ; les tâches qui n'en dépendent pas s'exécutent quand même.
 
+**Ce que la crew mémorise** : la réponse retenue, une fois, sous l'agent qui l'a écrite — jamais une candidate que le vote a écartée, jamais un bulletin. Les candidates et les bulletins s'exécutent avec `SimpleExecutionContext.StoreResultInMemory` à faux (`AgentBallotCollector` le met à faux pour tout bulletin qu'il fait voter), et la stratégie range la réponse retenue via `IMemoryCoordinator` ; une tâche sans réponse retenue ne range rien. Si ce rangement échoue, la tâche échoue, comme dans les autres modes. Voir [Système de mémoire](../architecture/memory-system.md#la-mémoire-dune-crew--provider-et-portée).
+
 **Coût** : un round coûte N exécutions plus N bulletins — un appel LLM court par votant, dont le prompt contient les réponses soumises au vote : son entrée croît avec N × la longueur des réponses (une réponse longue est tronquée pour tenir dans une description de tâche). Trois agents d'accord coûtent 3 exécutions + 3 bulletins par tâche. Une tâche qui n'atteint jamais le consensus coûte `MaxVotingRounds` × (N + N) appels, plus un bulletin du manager en `ManagerDecision` ; `AcceptBestScore` ne relance rien. Les variables d'entrée de la crew atteignent chaque exécution et chaque bulletin ; les sorties gagnantes des tâches précédentes sont transmises en contexte.
 
 ```yaml

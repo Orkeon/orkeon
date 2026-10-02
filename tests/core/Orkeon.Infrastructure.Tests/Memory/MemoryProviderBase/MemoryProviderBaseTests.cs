@@ -27,7 +27,7 @@ public class MemoryProviderBaseTests
         { _store[key] = item; return Task.CompletedTask; }
         public override Task<bool> UpdateAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
         { var exists = _store.ContainsKey(key); _store[key] = item; return Task.FromResult(exists); }
-        public override Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+        public override Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
         { return Task.FromResult(_store.Values.Where(v => v.Content.Contains(query, StringComparison.OrdinalIgnoreCase)).Take(limit).AsEnumerable()); }
         public override Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsync(float[] queryEmbedding, int topK = 10, float minScore = 0.0f, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
         {

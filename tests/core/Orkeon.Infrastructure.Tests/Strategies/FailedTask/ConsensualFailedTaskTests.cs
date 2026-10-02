@@ -94,6 +94,7 @@ public sealed class ConsensualFailedTaskTests : IDisposable
             new MajorityVotingStrategy(),
             new FakeBallotCollector(),
             _fixture.Dependencies,
+            new MockMemoryCoordinator(),
             NullLogger<ConsensualProcessStrategy>.Instance,
             Options.Create(options),
             _fixture.Hook);

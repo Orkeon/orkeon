@@ -61,7 +61,7 @@ public class IMemoryProviderTests
             return _storage.TryGetValue(key, out var item) ? item : null;
         }
 
-        public async System.Threading.Tasks.Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+        public async System.Threading.Tasks.Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, Dictionary<string, object>? filter = null, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _searchCallCount);
 
@@ -232,7 +232,7 @@ public class IMemoryProviderTests
         }
 
         // Act
-        var results = await provider.SearchAsync("Test", limit: 5, TestContext.Current.CancellationToken);
+        var results = await provider.SearchAsync("Test", limit: 5, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(5, results.Count());
@@ -398,7 +398,7 @@ public class IMemoryProviderTests
         Assert.Equal(3, provider.ItemCount);
 
         // Search for specific content
-        var searchResults = await provider.SearchAsync("memory", limit: 2, TestContext.Current.CancellationToken);
+        var searchResults = await provider.SearchAsync("memory", limit: 2, cancellationToken: TestContext.Current.CancellationToken);
         var searchResultsList = searchResults.ToList(); // Evaluate once
 
         // Get specific item

@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a crew's memory is its own: scoped by its name, without RAG chunks, without ballots **[breaking]**
+
+A crew that names a memory provider (`memoryProvider:`) keeps its long-term memory in that type's
+provider, the one instance every crew of that type shares — with the RAG store of that type too when
+`Orkeon:Rag:Provider` is unset (GAP-08). What it stored and what it read did not account for that
+(GAP-20):
+
+- **A crew read every crew's memory.** Entries were stored under a bare id and a search scanned the
+  whole store: the "legal watch" crew could get the "customer follow-up" crew's outputs, and any RAG
+  chunk — or chunk manifest — whose text held the query. Each entry now carries `kind = crew-memory`
+  and `crew = <the crew's name>`, and the crew's searches ask the provider for both. The name — the
+  `name:` of the YAML file, crew directory or `.ork.ts` crew, `CrewBuilder.Name` in C# — is the same
+  from one run to the next, so a crew still reads what its earlier runs stored, and only that. A crew
+  without a name is scoped by its id, for one run. `MemoryCoordinator` also tags each memory
+  `crew:<name>`.
+- **A consensual task stored every candidate and every ballot.** Each agent's answer and each
+  `{"ranking": …}` ballot ran through the execution service, which stores a successful result: the
+  crew's memory held the answers the vote rejected, and the ballots, as task outputs. A new
+  `SimpleExecutionContext.StoreResultInMemory` (on by default) is off for the candidates and the
+  ballots — `AgentBallotCollector` turns it off for any ballot it casts — and the strategy stores the
+  retained answer once, under the agent that wrote it. A store that fails fails the task, as in the
+  other modes.
+- **The providers' text search had no filter.** `IMemoryProvider.SearchAsync` takes the `filter` of
+  `SearchSimilarAsync` (`source`, `tag`/`tags`, any other key an equality on a custom property), and
+  every provider applies it before its limit: in memory for In-Memory, Redis and SQLite, as ChromaDB's
+  `where`, Pinecone's metadata filter and LanceDB's prefiltered predicate. On the way: ChromaDB refused
+  a filter of two keys (they go under one `$and` now); SQLite's and LanceDB's filters matched a custom
+  property by substring — of the whole custom-properties JSON for SQLite, of the value for LanceDB — so
+  `crew = "legal"` found `"legal ops"`, and they compare the property now (LanceDB its `"key":"value"`
+  pair, spelled as the stored JSON spells it); ChromaDB and Pinecone dropped an item's custom
+  properties in their default collection/namespace, where a filter on one found nothing — they keep
+  and restore them, as the named ones did.
+
+Breaking: `IMemoryProvider.SearchAsync(query, limit, filter, cancellationToken)` and
+`MemoryProviderBase.SearchAsync` take the filter before the token — an implementation adds the
+parameter, a call that passed the token by position names it (`cancellationToken:`).
+`CrewMemoryProviderRegistry.SetProvider(crewId, type)` becomes `Record(crewId, type, crewName)`, with
+`GetScope(crewId)`; `MemoryCoordinator` takes the registry, `ConsensualProcessStrategy` an
+`IMemoryCoordinator`; `Crew.Name`, `CrewCreateOptions.Name` and `CrewBuilder.Name(name)` are new. A
+crew no longer reads what other crews stored in a shared provider, nor entries stored before this
+version (they carry no `crew`). Give a C# crew a name (`CrewBuilder.Name`) to keep its memory from one
+run to the next. [Known limitations](docs/reference/limitations.md) now say what a run does with a
+crew's memory: it writes it, and nothing in a shipped run reads it back into a prompt.
+
 ### Fixed — a model left unset is the profile's own, on every path **[breaking]**
 
 GAP-17 made a crew's `llm:` block that names no model run on its profile's model; other paths

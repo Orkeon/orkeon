@@ -30,6 +30,7 @@ public sealed class PeerBallotConsensusTests
     private readonly MockTaskRepository _tasks = new();
     private readonly MockAgentRepository _agents = new();
     private readonly FakeBallotCollector _ballots = new();
+    private readonly MockMemoryCoordinator _memory = new();
     private readonly ConcurrentQueue<SimpleExecutionContext> _contexts = new();
     private readonly ConcurrentDictionary<string, string> _failures = new(StringComparer.Ordinal);
 
@@ -60,6 +61,51 @@ public sealed class PeerBallotConsensusTests
         Assert.Equal("The tide turns at noon.", output.Output);
         Assert.Equal(3, _execution.ExecuteTaskCallCount);
         Assert.Equal(3, _ballots.Requests.Count);
+    }
+
+    [Fact]
+    public async Task The_candidates_and_the_ballots_store_nothing_and_the_retained_answer_is_stored_once_under_its_author()
+    {
+        // GAP-20: a candidate and a ballot are not the task's result.
+        var (alpha, beta, gamma) = (Agent("alpha"), Agent("beta"), Agent("gamma"));
+        _ballots.Vote = request => FakeBallotCollector.Prefer(request, Answer("beta"));
+
+        var output = await RunAsync(Options(ConsensusType.Majority), alpha, beta, gamma);
+
+        Assert.True(output.Success, output.Error);
+        Assert.Equal(3, _contexts.Count);
+        Assert.All(_contexts, context => Assert.False(context.StoreResultInMemory));
+        Assert.All(_ballots.Requests, request => Assert.False(request.Context.StoreResultInMemory));
+        var stored = Assert.Single(_memory.Stored);
+        Assert.Same(beta, stored.Agent);
+        Assert.Equal(Answer("beta"), stored.Output);
+    }
+
+    [Fact]
+    public async Task A_task_without_a_retained_answer_stores_nothing()
+    {
+        _failures["alpha"] = "down";
+        _failures["beta"] = "down";
+        _failures["gamma"] = "down";
+
+        var output = await RunAsync(Options(ConsensusType.Majority), Agent("alpha"), Agent("beta"), Agent("gamma"));
+
+        Assert.False(output.Success);
+        Assert.Empty(_memory.Stored);
+    }
+
+    [Fact]
+    public async Task A_retained_answer_the_memory_cannot_store_fails_the_task_as_in_every_other_mode()
+    {
+        // In the other modes the store is part of the agent's execution (AgentExecutionService):
+        // a store that is down fails the task. The vote's answer is no exception.
+        _memory.Failure = new InvalidOperationException("the memory store is down");
+        _ballots.Vote = request => FakeBallotCollector.Prefer(request, Answer("beta"));
+
+        var output = await RunAsync(Options(ConsensusType.Majority), Agent("alpha"), Agent("beta"), Agent("gamma"));
+
+        Assert.False(output.Success);
+        Assert.Contains("the memory store is down", output.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -368,6 +414,7 @@ public sealed class PeerBallotConsensusTests
         new VotingStrategyFactory(Microsoft.Extensions.Options.Options.Create(options)).Create(options.VotingOptions.ConsensusType),
         _ballots,
         new CrewStrategyDependencies(_tasks, _agents, _execution, new MockMemoryScope()),
+        _memory,
         NullLogger<ConsensualProcessStrategy>.Instance,
         Microsoft.Extensions.Options.Options.Create(options));
 

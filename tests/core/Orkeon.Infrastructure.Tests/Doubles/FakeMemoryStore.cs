@@ -75,6 +75,7 @@ public sealed class FakeMemoryStore : MemoryProviderBase
     public override Task<IEnumerable<MemoryItem>> SearchAsync(
         string query,
         int limit = MemoryDefaults.DefaultSearchLimit,
+        Dictionary<string, object>? filter = null,
         CancellationToken cancellationToken = default)
         => Task.FromResult<IEnumerable<MemoryItem>>(_items.Values.Take(limit).ToList());
 

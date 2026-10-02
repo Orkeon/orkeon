@@ -153,7 +153,8 @@ public class MemoryProviderVectorStoreAdapterTests
             => System.Threading.Tasks.Task.FromResult(_store.TryGetValue(key, out var v) ? v : null);
 
         public System.Threading.Tasks.Task<IEnumerable<MemoryItem>> SearchAsync(
-            string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken ct = default)
+            string query, int limit = MemoryDefaults.DefaultSearchLimit, Dictionary<string, object>? filter = null,
+            CancellationToken ct = default)
             => System.Threading.Tasks.Task.FromResult<IEnumerable<MemoryItem>>(_store.Values.Take(limit));
 
         public System.Threading.Tasks.Task<bool> DeleteAsync(string key, CancellationToken ct = default)
