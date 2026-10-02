@@ -1,6 +1,7 @@
 using Orkeon.Application.Crew;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Crew.ValueObjects;
+using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
@@ -15,15 +16,37 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 /// that wants to tolerate a failure — Graph and its retries, Autonomous and its delegation —
 /// does so <b>before</b> recording it here, never by masking the crew's result.
 /// <para>
-/// Not thread-safe: a mode running tasks concurrently records their outcomes once they have
-/// joined (Parallel records a wave's results after the wave, in declaration order).
+/// It also drives the lifecycle of the tasks and agents as the run goes (GAP-21), through
+/// <see cref="TaskLifecycle"/>: a start assigns the task to its agent and starts both; a success
+/// completes them, a failure fails them; a skipped task, a task the run never reached and a task an
+/// interruption caught are cancelled — with the reason —, the agents running the last failing it.
+/// A task an earlier run of the crew ended is reopened the first time this run records it. The
+/// six modes call it, never the aggregates.
+/// </para>
+/// <para>
+/// Not thread-safe: a mode running tasks concurrently records them from its own flow — Parallel
+/// records a wave's starts as it launches them and their results once the wave has joined, in
+/// declaration order.
 /// </para>
 /// </summary>
 internal sealed class CrewRunOutcome
 {
+    private readonly TaskLifecycle _lifecycle;
     private readonly List<string> _failures = [];
     private readonly HashSet<TaskId> _notSucceeded = [];
+    private readonly Dictionary<TaskId, RunningTask> _running = [];
+    private readonly HashSet<TaskId> _recorded = [];
     private string? _headline;
+
+    /// <summary>Starts recording a run whose tasks move through <paramref name="lifecycle"/>.</summary>
+    internal CrewRunOutcome(TaskLifecycle lifecycle)
+    {
+        ArgumentNullException.ThrowIfNull(lifecycle);
+        _lifecycle = lifecycle;
+    }
+
+    /// <summary>A task this run started and has not ended, and the agents running it.</summary>
+    private sealed record RunningTask(DomainTask Task, List<DomainAgent> Agents);
 
     /// <summary>Whether anything failed: a task, a skipped dependant, or the run itself.</summary>
     internal bool HasFailures => _headline is not null || _failures.Count > 0;
@@ -49,21 +72,151 @@ internal sealed class CrewRunOutcome
     internal TaskId? BlockingDependency(DomainTask task) =>
         task.Dependencies.FirstOrDefault(_notSucceeded.Contains);
 
-    /// <summary>Records a task that ran and failed, with the cause its agent reported.</summary>
-    internal string RecordFailure(TaskId taskId, string agentRole, string? error)
+    /// <summary>
+    /// <paramref name="task"/> starts under <paramref name="agent"/>: assigned to it — re-assigned
+    /// when the run chose another agent than the one it had —, started, and given to the agent, who
+    /// starts it. A task this run already runs (a graph retry) goes on: under the same agent nothing
+    /// moves, under another it is handed over.
+    /// </summary>
+    internal System.Threading.Tasks.Task RecordStartAsync(DomainTask task, DomainAgent agent)
     {
-        var reason = $"Task {taskId} ({agentRole}) failed: {(string.IsNullOrWhiteSpace(error) ? "unknown error" : error)}";
-        _notSucceeded.Add(taskId);
+        if (_running.TryGetValue(task.Id, out var running))
+        {
+            return running.Agents.Exists(a => a.Id == agent.Id)
+                ? System.Threading.Tasks.Task.CompletedTask
+                : RecordHandOverAsync(task, agent, $"handed over to {agent.Role.Value}");
+        }
+
+        var reopen = FirstRecord(task);
+        _running[task.Id] = new RunningTask(task, [agent]);
+        return _lifecycle.ApplyAsync(task, [agent], () =>
+        {
+            if (reopen)
+                task.Reopen();
+            task.AssignTo(agent.Id);
+            task.Start(agent.Id);
+            Begin(agent, task.Id);
+        });
+    }
+
+    /// <summary>
+    /// <paramref name="task"/> starts once with no single agent — a consensual task: every agent of
+    /// <paramref name="agents"/> answers it, so each is given the task and starts it.
+    /// </summary>
+    internal System.Threading.Tasks.Task RecordStartWithoutAgentAsync(DomainTask task, IReadOnlyList<DomainAgent> agents)
+    {
+        var reopen = FirstRecord(task);
+        _running[task.Id] = new RunningTask(task, [.. agents]);
+        return _lifecycle.ApplyAsync(task, agents, () =>
+        {
+            if (reopen)
+                task.Reopen();
+            task.Start();
+            foreach (var agent in agents)
+                Begin(agent, task.Id);
+        });
+    }
+
+    /// <summary>
+    /// The running <paramref name="task"/> goes to <paramref name="to"/> — a failed task delegated to
+    /// a peer: the agent running it fails it with <paramref name="reason"/>, the task is assigned to
+    /// <paramref name="to"/>, who is given it and starts it. The task itself goes on.
+    /// </summary>
+    internal System.Threading.Tasks.Task RecordHandOverAsync(DomainTask task, DomainAgent to, string reason)
+    {
+        if (!_running.TryGetValue(task.Id, out var running))
+            return RecordStartAsync(task, to);
+
+        var from = running.Agents.Where(a => a.Id != to.Id).ToList();
+        running.Agents.Clear();
+        running.Agents.Add(to);
+        return _lifecycle.ApplyAsync(task, [.. from, to], () =>
+        {
+            foreach (var agent in from)
+                End(agent, task.Id, output: null, reason);
+            task.AssignTo(to.Id);
+            Begin(to, task.Id);
+        });
+    }
+
+    /// <summary>
+    /// One of the agents running <paramref name="task"/> is done with it while the task goes on — a
+    /// consensual candidate once the vote is over: it completes the task with its own answer, or
+    /// fails it with its own error.
+    /// </summary>
+    internal System.Threading.Tasks.Task RecordAnswerAsync(DomainTask task, DomainAgent agent, Application.Interfaces.Services.TaskResult answer)
+    {
+        if (!_running.TryGetValue(task.Id, out var running) || running.Agents.RemoveAll(a => a.Id == agent.Id) == 0)
+            return System.Threading.Tasks.Task.CompletedTask;
+
+        var output = answer.Success ? OutputOf(task, agent, answer) : null;
+        return _lifecycle.ApplyAsync(task, [agent], () =>
+            End(agent, task.Id, output, answer.Error ?? answer.LastError ?? "unknown error"));
+    }
+
+    /// <summary>
+    /// <paramref name="task"/> succeeded with <paramref name="output"/>, under <paramref name="author"/>
+    /// — the agent running it when null: the task is completed under that agent, and every agent
+    /// still running it completes it.
+    /// </summary>
+    internal System.Threading.Tasks.Task RecordSuccessAsync(DomainTask task, DomainTaskOutput output, DomainAgent? author = null)
+    {
+        _running.Remove(task.Id, out var running);
+        var agents = running?.Agents ?? [];
+        var completer = author ?? agents.FirstOrDefault();
+        var reopen = running is null && FirstRecord(task);
+        List<DomainAgent> touched = [.. agents];
+        if (completer is not null && !touched.Exists(a => a.Id == completer.Id))
+            touched.Add(completer);
+
+        return _lifecycle.ApplyAsync(task, touched, () =>
+        {
+            if (completer is null)
+                throw new InvalidOperationException($"No agent produced the output of task {task.Id}.");
+            if (reopen)
+                task.Reopen();
+            task.AssignTo(completer.Id);
+            task.Complete(completer.Id, output);
+            foreach (var agent in agents)
+                End(agent, task.Id, output, reason: null);
+        });
+    }
+
+    /// <summary>
+    /// Records a task that failed, with the cause its agent reported: the task fails — before it
+    /// started, when the run never got to run it — and every agent running it fails it.
+    /// </summary>
+    internal async System.Threading.Tasks.Task<string> RecordFailureAsync(DomainTask task, string agentRole, string? error)
+    {
+        var cause = string.IsNullOrWhiteSpace(error) ? "unknown error" : error;
+        var reason = $"Task {task.Id} ({agentRole}) failed: {cause}";
+        _notSucceeded.Add(task.Id);
         _failures.Add(reason);
+
+        _running.Remove(task.Id, out var running);
+        var agents = running?.Agents ?? [];
+        var reopen = running is null && FirstRecord(task);
+        await _lifecycle.ApplyAsync(task, agents, () =>
+        {
+            if (reopen)
+                task.Reopen();
+            task.Fail(cause);
+            foreach (var agent in agents)
+                End(agent, task.Id, output: null, cause);
+        }).ConfigureAwait(false);
         return reason;
     }
 
-    /// <summary>Records a task that never ran because <paramref name="blockedBy"/> did not succeed.</summary>
-    internal string RecordSkip(TaskId taskId, string agentRole, TaskId blockedBy)
+    /// <summary>
+    /// Records a task that never ran because <paramref name="blockedBy"/> did not succeed: it is
+    /// cancelled with that reason, neither started nor ended.
+    /// </summary>
+    internal async System.Threading.Tasks.Task<string> RecordSkipAsync(DomainTask task, string agentRole, TaskId blockedBy)
     {
-        var reason = $"Task {taskId} ({agentRole}) skipped: it depends on task {blockedBy}, which did not succeed";
-        _notSucceeded.Add(taskId);
+        var reason = $"Task {task.Id} ({agentRole}) skipped: it depends on task {blockedBy}, which did not succeed";
+        _notSucceeded.Add(task.Id);
         _failures.Add(reason);
+        await CancelAsync(task, $"skipped: it depends on task {blockedBy}, which did not succeed").ConfigureAwait(false);
         return reason;
     }
 
@@ -74,10 +227,10 @@ internal sealed class CrewRunOutcome
     internal void RecordRunFailure(string headline) => _headline ??= headline;
 
     /// <summary>
-    /// Records tasks the run never reached (the budget ran out before them): each is named, and
-    /// counted as not succeeded.
+    /// Records tasks the run never reached (the budget ran out before them): each is named, counted
+    /// as not succeeded, and cancelled with <paramref name="reason"/>.
     /// </summary>
-    internal void RecordNotExecuted(IReadOnlyCollection<TaskId> taskIds)
+    internal async System.Threading.Tasks.Task RecordNotExecutedAsync(IReadOnlyCollection<TaskId> taskIds, string reason)
     {
         if (taskIds.Count == 0)
             return;
@@ -85,7 +238,97 @@ internal sealed class CrewRunOutcome
         foreach (var taskId in taskIds)
             _notSucceeded.Add(taskId);
         _failures.Add($"not executed: {string.Join(", ", taskIds.Select(id => $"task {id}"))}");
+
+        foreach (var taskId in taskIds)
+        {
+            if (await _lifecycle.FindAsync(taskId).ConfigureAwait(false) is { } task)
+                await CancelAsync(task, $"not executed: {reason}").ConfigureAwait(false);
+        }
     }
+
+    /// <summary>
+    /// The run stopped on <paramref name="exception"/> while tasks were running: a cancellation
+    /// cancels each of them, any other exception fails it; the agents running it fail it with the
+    /// same reason.
+    /// </summary>
+    internal async System.Threading.Tasks.Task RecordInterruptionAsync(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        var cancelled = exception is OperationCanceledException;
+        var reason = cancelled ? "the run was cancelled" : $"the run stopped: {exception.Message}";
+
+        foreach (var running in _running.Values.ToList())
+        {
+            _running.Remove(running.Task.Id);
+            await _lifecycle.ApplyAsync(running.Task, running.Agents, () =>
+            {
+                if (cancelled)
+                    running.Task.Cancel(reason);
+                else
+                    running.Task.Fail(reason);
+                foreach (var agent in running.Agents)
+                    End(agent, running.Task.Id, output: null, reason);
+            }).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Cancels <paramref name="task"/>, the agents running it failing it with the reason.</summary>
+    private System.Threading.Tasks.Task CancelAsync(DomainTask task, string reason)
+    {
+        _running.Remove(task.Id, out var running);
+        var agents = running?.Agents ?? [];
+        var reopen = running is null && FirstRecord(task);
+        return _lifecycle.ApplyAsync(task, agents, () =>
+        {
+            if (reopen)
+                task.Reopen();
+            task.Cancel(reason);
+            foreach (var agent in agents)
+                End(agent, task.Id, output: null, reason);
+        });
+    }
+
+    /// <summary>
+    /// Whether <paramref name="task"/> is recorded for the first time in this run while an earlier
+    /// run left it started or ended — then the run reopens it before moving it.
+    /// </summary>
+    private bool FirstRecord(DomainTask task) =>
+        _recorded.Add(task.Id) && task.Status != Orkeon.Domain.Task.ValueObjects.TaskStatus.Pending;
+
+    /// <summary>The agent is given the task, unless it has it already, and starts it.</summary>
+    private static void Begin(DomainAgent agent, TaskId taskId)
+    {
+        if (!agent.AssignedTasks.Contains(taskId))
+            agent.AssignTask(taskId);
+        if (!agent.CurrentTasks.Contains(taskId))
+            agent.StartTask(taskId);
+    }
+
+    /// <summary>
+    /// The agent ends a task it runs: completed with <paramref name="output"/> when there is one,
+    /// failed with <paramref name="reason"/> otherwise.
+    /// </summary>
+    private static void End(DomainAgent agent, TaskId taskId, DomainTaskOutput? output, string? reason)
+    {
+        if (!agent.CurrentTasks.Contains(taskId))
+            return;
+        if (output is not null)
+            agent.CompleteTask(taskId, output);
+        else
+            agent.FailTask(taskId, reason ?? "unknown error");
+    }
+
+    /// <summary>An agent's own answer to a task, as the output its completion carries.</summary>
+    private static DomainTaskOutput OutputOf(DomainTask task, DomainAgent agent, Application.Interfaces.Services.TaskResult answer) =>
+        DomainTaskOutput.Create(
+            rawOutput: RawOutputOf(answer),
+            format: "text",
+            formattedOutput: null,
+            taskId: task.Id,
+            success: true,
+            executionTime: answer.ExecutionTime,
+            structuredOutput: answer.StructuredOutput,
+            agentId: agent.Id.ToString());
 
     /// <summary>
     /// The text a task's output carries: the agent's answer, or — when it gave none — a

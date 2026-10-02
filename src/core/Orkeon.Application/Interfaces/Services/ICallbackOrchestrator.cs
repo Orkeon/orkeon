@@ -16,7 +16,8 @@ public sealed class TaskCompletionInfo
     public TaskResult Result { get; init; } = null!;
 
     /// <summary>
-    /// Number of steps executed.
+    /// The turns the agent loop ran for the task — each a model call, with the tool calls it asked
+    /// for (<see cref="TaskResult.IterationsUsed"/>). Zero when the task ended before its first turn.
     /// </summary>
     public int StepsExecuted { get; init; }
 

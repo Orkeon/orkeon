@@ -12,18 +12,19 @@ namespace Orkeon.Domain.Agent;
 
 /// <summary>
 /// Agent aggregate root representing an intelligent agent in the crew.
-/// Delegates tool management to AgentToolManager and memory management to AgentMemoryManager.
+/// Delegates tool management to AgentToolManager. A run drives its task lifecycle (GAP-21):
+/// <see cref="AssignTask"/>, <see cref="StartTask"/>, then <see cref="CompleteTask"/> or
+/// <see cref="FailTask"/> — several tasks at once when the parallel mode runs a wave. What a crew
+/// remembers is not held here: the crew's memory is stored and recalled by the memory coordinator.
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1724", Justification = "Agent is the core aggregate-root type; the Orkeon.Domain.Agent namespace deliberately shares the name. Renaming would break the entire public API.")]
 public sealed class Agent : AggregateRoot<AgentId>
 {
     private readonly List<IBaseTool> _tools;
     private readonly List<TaskId> _assignedTasks;
-    private readonly List<AgentMemory> _memories;
+    private readonly List<TaskId> _currentTasks;
     private readonly List<KnowledgeAttachment> _knowledgeAttachments;
     private readonly AgentToolManager _toolManager;
-    private readonly AgentMemoryManager _memoryManager;
-    private TaskId? _currentTask;
     private Func<ICrewTask, IEnumerable<AgentId>, CancellationToken, System.Threading.Tasks.Task<AgentId?>>? _agentSelectionFunc;
     private CancellationTokenSource? _lifecycleCts;
 
@@ -138,14 +139,10 @@ public sealed class Agent : AggregateRoot<AgentId>
     public IReadOnlyList<TaskId> AssignedTasks => _assignedTasks.AsReadOnly();
 
     /// <summary>
-    /// Gets the agent's memories.
+    /// Gets the tasks the agent is running, in the order it started them: none when it is idle,
+    /// several when the parallel mode runs a wave that gives it more than one task.
     /// </summary>
-    public IReadOnlyList<AgentMemory> Memories => _memories.AsReadOnly();
-
-    /// <summary>
-    /// Gets the currently executing task.
-    /// </summary>
-    public TaskId? CurrentTask => _currentTask;
+    public IReadOnlyList<TaskId> CurrentTasks => _currentTasks.AsReadOnly();
 
     /// <summary>
     /// Private constructor for the Agent.
@@ -154,10 +151,9 @@ public sealed class Agent : AggregateRoot<AgentId>
     {
         _tools = [];
         _assignedTasks = [];
-        _memories = [];
+        _currentTasks = [];
         _knowledgeAttachments = [];
         _toolManager = new AgentToolManager(_tools, () => ToolAccessPolicy!);
-        _memoryManager = new AgentMemoryManager(_memories);
         Role = AgentRole.From(AgentDefaults.UnassignedValue);
         Goal = AgentGoal.From(AgentDefaults.UnassignedValue);
         Status = AgentStatus.Idle;
@@ -293,8 +289,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         ToolAccessPolicy? toolAccessPolicy = null,
         IEnumerable<IBaseTool>? tools = null,
         IEnumerable<TaskId>? assignedTasks = null,
-        IEnumerable<AgentMemory>? memories = null,
-        TaskId? currentTask = null,
+        IEnumerable<TaskId>? currentTasks = null,
         GuardrailsConfig? guardrails = null)
         => Restore(new AgentSnapshot
         {
@@ -317,8 +312,7 @@ public sealed class Agent : AggregateRoot<AgentId>
             ToolAccessPolicy = toolAccessPolicy,
             Tools = tools,
             AssignedTasks = assignedTasks,
-            Memories = memories,
-            CurrentTask = currentTask,
+            CurrentTasks = currentTasks,
             Guardrails = guardrails
         });
 #pragma warning restore S107
@@ -362,13 +356,11 @@ public sealed class Agent : AggregateRoot<AgentId>
         if (snapshot.AssignedTasks != null)
             agent._assignedTasks.AddRange(snapshot.AssignedTasks);
 
-        if (snapshot.Memories != null)
-            agent._memories.AddRange(snapshot.Memories);
+        if (snapshot.CurrentTasks != null)
+            agent._currentTasks.AddRange(snapshot.CurrentTasks);
 
         if (snapshot.KnowledgeAttachments != null)
             agent._knowledgeAttachments.AddRange(snapshot.KnowledgeAttachments);
-
-        agent._currentTask = snapshot.CurrentTask;
 
         return agent;
     }
@@ -385,7 +377,8 @@ public sealed class Agent : AggregateRoot<AgentId>
     }
 
     /// <summary>
-    /// Assigns a task to this agent.
+    /// Assigns a task to this agent. An agent busy with other tasks can still be given one: the
+    /// parallel mode gives an agent every task of a wave declared for it.
     /// </summary>
     public void AssignTask(TaskId taskId)
     {
@@ -393,9 +386,6 @@ public sealed class Agent : AggregateRoot<AgentId>
 
         if (_assignedTasks.Contains(taskId))
             throw new InvalidOperationException($"Task {taskId} is already assigned to this agent.");
-
-        if (_currentTask != null)
-            throw new InvalidOperationException($"Agent is currently executing task {_currentTask}. Cannot assign new task.");
 
         _assignedTasks.Add(taskId);
 
@@ -407,7 +397,8 @@ public sealed class Agent : AggregateRoot<AgentId>
     }
 
     /// <summary>
-    /// Starts executing a task.
+    /// Starts running an assigned task. The agent is <see cref="AgentStatus.Busy"/> until it has
+    /// completed or failed every task it started; it may run several at once.
     /// </summary>
     public void StartTask(TaskId taskId)
     {
@@ -416,13 +407,13 @@ public sealed class Agent : AggregateRoot<AgentId>
         if (!_assignedTasks.Contains(taskId))
             throw new InvalidOperationException($"Task {taskId} is not assigned to this agent.");
 
-        if (_currentTask != null)
-            throw new InvalidOperationException($"Agent is already executing task {_currentTask}.");
+        if (_currentTasks.Contains(taskId))
+            throw new InvalidOperationException($"Agent is already executing task {taskId}.");
 
-        if (Status != AgentStatus.Idle)
-            throw new InvalidOperationException($"Agent must be idle to start a task. Current status: {Status}.");
+        if (Status != AgentStatus.Idle && Status != AgentStatus.Busy)
+            throw new InvalidOperationException($"Agent must be idle or busy to start a task. Current status: {Status}.");
 
-        _currentTask = taskId;
+        _currentTasks.Add(taskId);
         Status = AgentStatus.Busy;
 
         RaiseDomainEvent(new AgentStartedTaskEvent
@@ -433,47 +424,48 @@ public sealed class Agent : AggregateRoot<AgentId>
     }
 
     /// <summary>
-    /// Completes the current task with the given output.
+    /// Completes a task the agent is running, with the output it produced. The agent is idle again
+    /// once it runs no other task.
     /// </summary>
-    public void CompleteTask(TaskOutput output)
+    public void CompleteTask(TaskId taskId, TaskOutput output)
     {
         ArgumentNullException.ThrowIfNull(output);
-
-        if (_currentTask == null)
-            throw new InvalidOperationException("No task is currently being executed.");
-
-        var completedTaskId = _currentTask!;
-        _currentTask = null;
-        Status = AgentStatus.Idle;
+        EndTask(taskId);
 
         RaiseDomainEvent(new AgentCompletedTaskEvent
         {
             AgentId = Id,
-            TaskId = completedTaskId,
+            TaskId = taskId,
             Output = output
         });
     }
 
     /// <summary>
-    /// Fails the current task with the given reason.
+    /// Fails a task the agent is running, saying why. The agent is idle again once it runs no
+    /// other task.
     /// </summary>
-    public void FailTask(string reason)
+    public void FailTask(TaskId taskId, string reason)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
-
-        if (_currentTask == null)
-            throw new InvalidOperationException("No task is currently being executed.");
-
-        var failedTaskId = _currentTask!;
-        _currentTask = null;
-        Status = AgentStatus.Idle;
+        EndTask(taskId);
 
         RaiseDomainEvent(new AgentFailedTaskEvent
         {
             AgentId = Id,
-            TaskId = failedTaskId,
+            TaskId = taskId,
             Reason = reason
         });
+    }
+
+    private void EndTask(TaskId taskId)
+    {
+        ArgumentNullException.ThrowIfNull(taskId);
+
+        if (!_currentTasks.Remove(taskId))
+            throw new InvalidOperationException($"Agent is not executing task {taskId}.");
+
+        if (_currentTasks.Count == 0)
+            Status = AgentStatus.Idle;
     }
 
     /// <summary>
@@ -511,48 +503,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// </summary>
     public bool HasTool(string toolName) =>
         _toolManager.HasTool(toolName);
-
-    /// <summary>
-    /// Updates the agent's memory.
-    /// </summary>
-    public void UpdateMemory(AgentMemory memory)
-    {
-        var addedMemory = _memoryManager.AddMemory(memory);
-
-        RaiseDomainEvent(new AgentMemoryUpdatedEvent
-        {
-            AgentId = Id,
-            MemoryId = addedMemory.Id,
-            MemoryType = addedMemory.Type.ToString()
-        });
-    }
-
-    /// <summary>
-    /// Initiates collaboration with another agent.
-    /// </summary>
-    public CollaborationId CollaborateWith(AgentId collaboratorId, TaskId taskId)
-    {
-        ArgumentNullException.ThrowIfNull(collaboratorId);
-        ArgumentNullException.ThrowIfNull(taskId);
-
-        if (!_assignedTasks.Contains(taskId))
-            throw new InvalidOperationException($"Task {taskId} is not assigned to this agent.");
-
-        if (!AllowDelegation)
-            throw new InvalidOperationException("This agent does not allow delegation.");
-
-        var collaborationId = CollaborationId.Create();
-
-        RaiseDomainEvent(new AgentCollaborationStartedEvent
-        {
-            InitiatorId = Id,
-            CollaboratorId = collaboratorId,
-            TaskId = taskId,
-            CollaborationId = collaborationId
-        });
-
-        return collaborationId;
-    }
 
     /// <summary>
     /// Validates whether this agent is capable of executing a task.
@@ -707,7 +657,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         {
             await _lifecycleCts.CancelAsync().ConfigureAwait(false);
             Status = AgentStatus.Idle;
-            _currentTask = null;
+            _currentTasks.Clear();
 
             RaiseDomainEvent(new AgentKilledEvent
             {

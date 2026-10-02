@@ -270,7 +270,7 @@ Four protocol types are available via `ProtocolType`:
 
 The concrete implementation is provided by `AsyncAgentCommunicationService` (`Orkeon.Infrastructure.Communication`) which exposes `SendMessageAsync`, `ReceiveMessagesAsync` and `IsAgentAvailableAsync`.
 
-Collaboration between agents is also supported at the domain level: `Agent.CollaborateWith(AgentId, TaskId)` initiates a collaboration and emits an `AgentCollaborationStartedEvent`. Delegation is handled by the `AskQuestionTool` and `DelegateWorkTool` tools.
+Agents collaborate through delegation: the `AskQuestionTool` and `DelegateWorkTool` tools, which an agent with `AllowDelegation` receives in the Sequential and Graph modes, and the hand-over of a failed task to a peer in the Autonomous mode.
 
 ## Project structure
 

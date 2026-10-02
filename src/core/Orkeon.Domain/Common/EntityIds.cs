@@ -29,8 +29,6 @@ public sealed class MemoryId : EntityId<MemoryId> { }
 public sealed class ProcessId : EntityId<ProcessId> { }
 /// <summary>Strongly-typed identifier for KnowledgeSource entities.</summary>
 public sealed class KnowledgeSourceId : EntityId<KnowledgeSourceId> { }
-/// <summary>Strongly-typed identifier for Collaboration entities.</summary>
-public sealed class CollaborationId : EntityId<CollaborationId> { }
 
 // -- Memory -----------------------------------------------------------------
 /// <summary>Strongly-typed identifier for MemoryStore entities.</summary>

@@ -55,6 +55,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     private readonly IMemoryScope _memoryScope;
     private readonly CrewHookDispatcher _hooks;
     private readonly ILogger<AutonomousProcessStrategy> _logger;
+    private readonly TaskLifecycle _lifecycle;
 
     /// <summary>The role every autonomous task reports: the manager picks its agent per task.</summary>
     private const string AutonomousRole = "autonomous";
@@ -84,6 +85,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);
+        _lifecycle = dependencies.LifecycleFor(logger);
     }
 
     /// <inheritdoc />
@@ -124,7 +126,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         var agents = new List<DomainAgent>();
         var tokenTally = new TokenUsageTally();
         var taskSnapshots = new List<TaskExecutionSnapshot>();
-        var outcome = new CrewRunOutcome();
+        var outcome = new CrewRunOutcome(_lifecycle);
+        var takeovers = new System.Collections.Concurrent.ConcurrentDictionary<Guid, Takeover>();
         IReadOnlyList<TaskId> taskIds = [];
         var nextTask = 0;
         List<IDisposable> registrations = [];
@@ -144,7 +147,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // BudgetExhausted fall-through; it records nothing until agents register.)
 
             // Register all agents on the channel
-            registrations = RegisterAgentsOnChannel(agents, budget, tokenTally);
+            registrations = RegisterAgentsOnChannel(agents, budget, tokenTally, takeovers);
 
             var variables = inputVariables != null
                 ? new Dictionary<string, string>(inputVariables)
@@ -172,7 +175,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 // (GAP-03): no agent claims it, and it spends nothing from the budget.
                 if (outcome.BlockingDependency(task) is { } blockedBy)
                 {
-                    var skipReason = outcome.RecordSkip(task.Id, AutonomousRole, blockedBy);
+                    var skipReason = await outcome.RecordSkipAsync(task, AutonomousRole, blockedBy).ConfigureAwait(false);
                     LogTaskSkippedAfterDependency(task.Id, blockedBy);
                     var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agentId: null, blockedBy);
                     domainResults.Add(skippedDomain);
@@ -182,7 +185,11 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 }
 
                 var executed = await ExecuteTaskAutonomouslyAsync(
-                    new AutonomousTaskContext(task, agents, budget, crew.Id, variables, applicationOutputs, tokenTally),
+                    new AutonomousTaskContext(task, agents, budget, crew.Id, variables, applicationOutputs, tokenTally)
+                    {
+                        Outcome = outcome,
+                        Takeovers = takeovers,
+                    },
                     cancellationToken)
                     .ConfigureAwait(false);
 
@@ -200,8 +207,12 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                     // travel in the crew metadata (budget_tool_calls).
                 });
 
-                if (!executed.Domain.Success)
-                    outcome.RecordFailure(task.Id, executed.AgentRole, executed.Error);
+                // The agent that ran it last ends the task: the one that claimed it, or the peer it
+                // was handed to (GAP-21).
+                if (executed.Domain.Success)
+                    await outcome.RecordSuccessAsync(task, executed.Domain).ConfigureAwait(false);
+                else
+                    await outcome.RecordFailureAsync(task, executed.AgentRole, executed.Error).ConfigureAwait(false);
 
                 // Guard snapshot allocation: only materialize when the log level is enabled
                 if (_logger.IsEnabled(LogLevel.Information))
@@ -214,7 +225,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 {
                     // The budget is crew-wide: once one dimension ran out inside a task, no
                     // later task can run either.
-                    RecordBudgetExhaustion(outcome, crew.Id, exhausted, taskIds.Skip(nextTask + 1));
+                    await RecordBudgetExhaustionAsync(outcome, crew.Id, exhausted, taskIds.Skip(nextTask + 1)).ConfigureAwait(false);
                     break;
                 }
             }
@@ -222,12 +233,14 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         catch (BudgetExhaustedException ex)
         {
             // Between two tasks: the wall time ran out before the next one could start.
-            RecordBudgetExhaustion(outcome, crew.Id, ex, taskIds.Skip(nextTask));
+            await RecordBudgetExhaustionAsync(outcome, crew.Id, ex, taskIds.Skip(nextTask)).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
             // The terminal event goes out on every exit — hooks used to live only on the
-            // success path (BuildOutputAsync), so a Ctrl+C froze the watcher mid-run.
+            // success path (BuildOutputAsync), so a Ctrl+C froze the watcher mid-run. The task
+            // the cancellation caught is cancelled first (GAP-21).
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, [], CrewHookStatus.Canceled, "Execution was cancelled."),
@@ -236,6 +249,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         }
         catch (Exception ex)
         {
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, [], CrewHookStatus.Failed, ex.Message),
@@ -258,13 +272,15 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     /// <summary>
     /// An exhausted budget fails the crew, naming the dimension and every task it never reached
     /// (GAP-03). It used to be swallowed: the crew reported success while the hook said Canceled.
+    /// The tasks it never reached are cancelled, saying why (GAP-21).
     /// </summary>
-    private void RecordBudgetExhaustion(
+    private async Task RecordBudgetExhaustionAsync(
         CrewRunOutcome outcome, CrewId crewId, BudgetExhaustedException ex, IEnumerable<TaskId> notExecuted)
     {
         LogBudgetExhausted(crewId, ex.Dimension, ex.Message);
         outcome.RecordRunFailure($"Execution budget exhausted: {ex.Dimension} ({ex.Message})");
-        outcome.RecordNotExecuted([.. notExecuted]);
+        await outcome.RecordNotExecutedAsync(
+            [.. notExecuted], $"the execution budget ran out ({ex.Dimension}) before it").ConfigureAwait(false);
     }
 
     private async Task<List<DomainAgent>> LoadAgentsAsync(DomainCrew crew)
@@ -282,7 +298,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     private List<IDisposable> RegisterAgentsOnChannel(
         List<DomainAgent> agents,
         AgentExecutionBudget budget,
-        TokenUsageTally tokenTally)
+        TokenUsageTally tokenTally,
+        System.Collections.Concurrent.ConcurrentDictionary<Guid, Takeover> takeovers)
     {
         var registrations = new List<IDisposable>();
         foreach (var agent in agents)
@@ -290,9 +307,17 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             var capturedAgent = agent;
             var reg = _channel.RegisterHandler(agent.Id, async (request, ct) =>
             {
-                // Handle delegation requests from peers
+                // Handle delegation requests from peers: a task of this run handed over after its
+                // agent failed it. A request naming no such task is refused.
                 if (request.Intent == "delegate")
                 {
+                    if (!takeovers.TryGetValue(request.CorrelationId, out var takeover))
+                    {
+                        return AgentChannelResponse.Fail(
+                            request.CorrelationId, capturedAgent.Id,
+                            "No task of this run was handed over under this request.");
+                    }
+
                     try
                     {
                         // Derive a child budget from the parent. This represents the
@@ -303,23 +328,23 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                         var childBudget = budget.CreateChildBudget();
                         childBudget.AssertWallTime();
 
-                        var delegatedTask = CrewTask.Create(
-                            TaskDescription.From(request.Payload),
-                            ExpectedOutput.From("Complete the delegated task"));
-
-                        var delegationVariables = new Dictionary<string, string>
+                        // The peer takes the task itself over, in the context of the attempt that
+                        // failed, derived and never rebuilt (GAP-21): the crew's id and memory scope,
+                        // its inputs and the outputs so far. It recalls the crew's memory like any
+                        // execution that answers a task, and its output, when it succeeds, is the
+                        // task's result — stored once, under the peer that produced it.
+                        var context = takeover.Context with
                         {
-                            ["delegation_context"] = request.Payload,
-                            [ChildBudgetSnapshotVariable] = FormatBudgetSnapshot(childBudget.ToSnapshot())
+                            Variables = new Dictionary<string, string>(takeover.Context.Variables)
+                            {
+                                ["delegation_context"] = request.Payload,
+                                [ChildBudgetSnapshotVariable] = FormatBudgetSnapshot(childBudget.ToSnapshot()),
+                            },
+                            CancellationToken = ct,
                         };
 
-                        var context = new SimpleExecutionContext(
-                            CrewId.Create(),
-                            delegationVariables,
-                            _memoryScope, [], ct);
-
                         var result = await _executionService.ExecuteTaskAsync(
-                            capturedAgent, delegatedTask, context, ct).ConfigureAwait(false);
+                            capturedAgent, takeover.Task, context, ct).ConfigureAwait(false);
 
                         // Account for the tokens consumed by the delegated task on
                         // both the child budget (so its snapshot reflects reality)
@@ -357,7 +382,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     /// <summary>
     /// Groups the per-task execution dependencies of the autonomous loop (tames long
     /// argument lists, S107). <see cref="TokenTally"/> carries the crew-level token
-    /// telemetry (R10.8).
+    /// telemetry (R10.8); <see cref="Outcome"/> records the task's lifecycle and
+    /// <see cref="Takeovers"/> the tasks this run hands to a peer (GAP-21).
     /// </summary>
     private sealed record AutonomousTaskContext(
         CrewTask Task,
@@ -366,7 +392,18 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         CrewId CrewId,
         Dictionary<string, string> Variables,
         List<ApplicationTaskOutput> PreviousOutputs,
-        TokenUsageTally TokenTally);
+        TokenUsageTally TokenTally)
+    {
+        public required CrewRunOutcome Outcome { get; init; }
+
+        public required System.Collections.Concurrent.ConcurrentDictionary<Guid, Takeover> Takeovers { get; init; }
+    }
+
+    /// <summary>
+    /// A task this run handed to a peer after its agent failed it: the task itself, and the context
+    /// of the attempt that failed, which the peer's derives from.
+    /// </summary>
+    private sealed record Takeover(CrewTask Task, SimpleExecutionContext Context);
 
     /// <summary>
     /// What one task produced: its outputs, the role that answers for it, the cause of its
@@ -384,6 +421,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         CancellationToken cancellationToken)
     {
         var (task, agents, budget, crewId, variables, previousOutputs, tokenTally) = taskContext;
+        var outcome = taskContext.Outcome;
 
         // Let the LLM-based manager pick the best agent
         var context = new SimpleExecutionContext(
@@ -395,10 +433,12 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 
         LogAgentClaimedTask(agent.Id, task.Id, assignment.Reason);
 
-        // Completions are reported when the run settles; the claim is the live moment.
+        // Completions are reported when the run settles; the claim is the live moment. The agent
+        // that claims the task starts it (GAP-21).
         await _hooks.TaskStartedAsync(
             CrewHookDispatcher.Started(task.Id.Value.ToString(), agent.Role.Value), cancellationToken)
             .ConfigureAwait(false);
+        await outcome.RecordStartAsync(task, agent).ConfigureAwait(false);
 
         try
         {
@@ -419,7 +459,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             if (!result.Success && agent.AllowDelegation && budget.CurrentDelegationDepth < budget.MaxDelegationDepth)
             {
                 if (agents.Exists(a => a.Id != agent.Id))
-                    return await AttemptDelegationAsync(task, agent, agents, budget).ConfigureAwait(false);
+                    return await AttemptDelegationAsync(taskContext, agent, context, error).ConfigureAwait(false);
 
                 error = $"{error ?? "unknown error"}; no peer to delegate it to";
             }
@@ -454,11 +494,12 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     }
 
     private async Task<ExecutedTask> AttemptDelegationAsync(
-        CrewTask task,
+        AutonomousTaskContext taskContext,
         DomainAgent originalAgent,
-        List<DomainAgent> agents,
-        AgentExecutionBudget budget)
+        SimpleExecutionContext failedContext,
+        string? failure)
     {
+        var (task, agents, budget, _, _, _, _) = taskContext;
         budget.RecordDelegation();
 
         // Delegate to the first other agent (the caller checked there is one)
@@ -471,10 +512,23 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 
         LogDelegation(originalAgent.Id, delegateAgent.Id, task.Id, budget.CurrentDelegationDepth);
 
-        var response = await _channel.RequestAsync(
-            request,
-            timeout: TimeSpan.FromMinutes(2))
-            .ConfigureAwait(false);
+        // The peer takes the task over: the agent that failed it says so, the task goes on under
+        // the peer, which runs it in the failed attempt's context (GAP-21).
+        await taskContext.Outcome.RecordHandOverAsync(task, delegateAgent, failure ?? "unknown error").ConfigureAwait(false);
+        taskContext.Takeovers[request.CorrelationId] = new Takeover(task, failedContext);
+
+        AgentChannelResponse response;
+        try
+        {
+            response = await _channel.RequestAsync(
+                request,
+                timeout: TimeSpan.FromMinutes(2))
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            taskContext.Takeovers.TryRemove(request.CorrelationId, out _);
+        }
 
         var output = TaskOutput.Create(
             rawOutput: response.Success ? response.Payload : $"[DELEGATION FAILED] {response.Error}",

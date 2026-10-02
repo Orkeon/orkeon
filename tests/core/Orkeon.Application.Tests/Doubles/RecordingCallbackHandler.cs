@@ -16,6 +16,8 @@ internal sealed class RecordingCallbackHandler : ICallbackHandler
 
     public List<StepCompletedContext> StepsCompleted { get; } = [];
 
+    public List<TaskCompletedContext> TasksCompleted { get; } = [];
+
     public System.Threading.Tasks.Task OnStepStartedAsync(StepStartedContext context, CancellationToken cancellationToken = default)
     {
         lock (_lock)
@@ -44,7 +46,11 @@ internal sealed class RecordingCallbackHandler : ICallbackHandler
 
     public System.Threading.Tasks.Task OnTaskCompletedAsync(TaskCompletedContext context, CancellationToken cancellationToken = default)
     {
-        lock (_lock) { Hooks.Add($"TaskCompleted:{context.TaskId}:{context.Success}"); }
+        lock (_lock)
+        {
+            Hooks.Add($"TaskCompleted:{context.TaskId}:{context.Success}");
+            TasksCompleted.Add(context);
+        }
         return System.Threading.Tasks.Task.CompletedTask;
     }
 }

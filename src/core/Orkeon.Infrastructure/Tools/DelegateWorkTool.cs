@@ -108,7 +108,11 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
     /// <param name="findAgentByRole">A function to look up an agent ID by role name.</param>
     /// <param name="agentExecutionService">Optional agent execution service for synchronous delegation.</param>
     /// <param name="findAgentById">Optional function to resolve an agent entity by ID.</param>
-    /// <param name="contextSupplier">Optional function to supply the current execution context.</param>
+    /// <param name="contextSupplier">
+    /// Supplies the execution context of the task the agent is running, from which a synchronous
+    /// delegation derives its coworker's (GAP-21). Without one — or while it supplies none — a
+    /// synchronous delegation is refused: there is no crew run to answer for.
+    /// </param>
     /// <param name="logger">Optional logger.</param>
     /// <param name="budget">Optional execution budget for recursive delegation control.</param>
     public DelegateWorkTool(
@@ -146,6 +150,9 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
 
         if (request.WaitForResult && _agentExecutionService is null)
             return "Synchronous delegation is not available: IAgentExecutionService not configured";
+
+        if (request.WaitForResult && _contextSupplier?.Invoke() is null)
+            return NoRunContext;
 
         return null;
     }
@@ -222,20 +229,23 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
             TaskDescription.From(request.Task),
             ExpectedOutput.From(expectedOutput));
 
-        var parentContext = _contextSupplier?.Invoke();
-        var childVariables = parentContext?.Variables is { } vars
-            ? new Dictionary<string, string>(vars)
-            : [];
+        var parentContext = _contextSupplier?.Invoke()
+            ?? throw new InvalidOperationException(NoRunContext);
+        var childVariables = new Dictionary<string, string>(parentContext.Variables);
 
         if (!string.IsNullOrWhiteSpace(request.Context))
             childVariables["delegation_context"] = request.Context;
 
-        var childContext = new SimpleExecutionContext(
-            parentContext?.CrewId ?? CrewId.Create(),
-            childVariables,
-            parentContext?.Memory ?? Orkeon.Application.Context.NullMemoryScope.Instance,
-            parentContext?.PreviousOutputs ?? [],
-            cancellationToken);
+        // Derived from the context of the task the agent is running, never rebuilt (GAP-21): the
+        // same crew, the same memory scope, the outputs so far and every setting of the parent — it
+        // recalls when the parent does. What the coworker answers is a sub-answer, not a task's
+        // result: it never goes to the crew's memory.
+        var childContext = parentContext with
+        {
+            Variables = childVariables,
+            StoreResultInMemory = false,
+            CancellationToken = cancellationToken,
+        };
 
         LogSynchronousDelegationStarted(targetAgentId, request.CoworkerRole);
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -261,6 +271,10 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
             ToolsUsed = result.ToolsUsed.Select(t => t.ToolName).ToArray()
         };
     }
+
+    /// <summary>Why a synchronous delegation is refused outside a crew run.</summary>
+    private const string NoRunContext =
+        "Synchronous delegation is not available: no crew run supplies the context the coworker's work derives from";
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Delegated task to {TargetAgent} (role: {Role})")]
     private partial void LogDelegatedTask(AgentId targetAgent, string role);

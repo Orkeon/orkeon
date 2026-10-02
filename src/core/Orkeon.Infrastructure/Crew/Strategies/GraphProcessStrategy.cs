@@ -43,6 +43,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private readonly AgentDelegationToolsProvider _delegationProvider;
     private readonly ILogger<GraphProcessStrategy> _logger;
     private readonly TaskAgentSelector _agentSelector;
+    private readonly TaskLifecycle _lifecycle;
 
     /// <summary>
     /// Circuit breaker policy used as-is when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>.
@@ -87,6 +88,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);
         _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
+        _lifecycle = dependencies.LifecycleFor(logger);
     }
 
     /// <inheritdoc />
@@ -108,6 +110,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     {
         LogStartingGraphExecution(crew.Id);
         var startTime = DateTime.UtcNow;
+        var outcome = new CrewRunOutcome(_lifecycle);
 
         try
         {
@@ -146,7 +149,10 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             Variables = variables,
             TotalTokensUsed = 0,
             RetryCounts = new Dictionary<string, int>(),
-            MaxRetryCycles = effectiveMaxRetryCycles
+            MaxRetryCycles = effectiveMaxRetryCycles,
+            Outcome = outcome,
+            // The run's context, from which each task's is derived (GAP-30, GAP-21).
+            Context = new SimpleExecutionContext(crew.Id, variables, _memoryScope, [], cancellationToken),
         };
 
         // Build and compile the state graph
@@ -203,7 +209,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                     crew.Id.ToString(), startTime, brokenSnapshots, CrewHookStatus.Failed, ex.Message),
                 ex, CancellationToken.None).ConfigureAwait(false);
 
-            // The break heads the error; the tasks that had already failed follow it.
+            // The break heads the error; the tasks that had already failed follow it. A task it
+            // caught running — between two attempts — fails with it (GAP-21).
+            await initialState.Outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             initialState.Outcome.RecordRunFailure($"Graph execution stopped by circuit breaker: {ex.Message}");
             return DomainCrewOutput.CreateFailure(
                 error: initialState.Outcome.Reason,
@@ -212,11 +220,13 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                 metadata: BuildTokenMetadata(initialState));
         }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
             // The terminal event goes out on every exit — setup included: an agent-less
             // crew or a graph that fails to compile is the everyday failure, and the
-            // circuit breaker used to be the only failure this mode reported.
+            // circuit breaker used to be the only failure this mode reported. The task the
+            // cancellation caught is cancelled first (GAP-21).
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, [], CrewHookStatus.Canceled, "Execution was cancelled."),
@@ -231,6 +241,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         }
         catch (Exception ex)
         {
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, [], CrewHookStatus.Failed, ex.Message),
@@ -298,14 +309,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// </summary>
     private StateGraph<CrewGraphState> BuildCrewGraph(CrewGraphState initialState, CircuitBreakerPolicy policy)
     {
-        var context = new SimpleExecutionContext(
-            initialState.CrewId,
-            initialState.Variables,
-            _memoryScope,
-            initialState.ApplicationOutputs,
-            CancellationToken.None);
-
-        _delegationProvider.UpdateExecutionContext(context);
+        _delegationProvider.UpdateExecutionContext(
+            initialState.Context with { PreviousOutputs = initialState.ApplicationOutputs });
 
         var graph = new StateGraph<CrewGraphState>(policy);
 
@@ -355,7 +360,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         // time a dependant is dequeued its dependency has either succeeded or given up.
         if (state.Outcome.BlockingDependency(task) is { } blockedBy)
         {
-            var reason = state.Outcome.RecordSkip(task.Id, agent.Role.Value, blockedBy);
+            var reason = await state.Outcome.RecordSkipAsync(task, agent.Role.Value, blockedBy).ConfigureAwait(false);
             LogTaskSkippedAfterDependency(task.Id, agent.Role.Value, blockedBy);
             var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
             state.SkipReasons[state.DomainResults.Count] = reason;
@@ -370,11 +375,13 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         await _hooks.TaskStartedAsync(
             CrewHookDispatcher.Started(taskId.Value.ToString(), agent.Role.Value), ct)
             .ConfigureAwait(false);
+        // A retry goes on with the task its first attempt started: started once (GAP-21).
+        await state.Outcome.RecordStartAsync(task, agent).ConfigureAwait(false);
 
         var executionResult = await RunTaskAsync(state, task, agent, ct).ConfigureAwait(false);
 
         AppendTaskOutputs(state, task, agent, executionResult);
-        EvaluateFailureForRetry(state, taskId, agent, executionResult);
+        await EvaluateFailureForRetryAsync(state, task, agent, executionResult).ConfigureAwait(false);
 
         LogTaskCompleted(taskId, executionResult.Success);
         return state;
@@ -389,12 +396,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         DomainAgent agent,
         CancellationToken ct)
     {
-        var execContext = new SimpleExecutionContext(
-            state.CrewId,
-            state.Variables,
-            _memoryScope,
-            state.ApplicationOutputs,
-            ct);
+        // Derived from the run's context, never rebuilt (GAP-30): a delegation from this task
+        // derives its coworker's context from it in turn (GAP-21).
+        var execContext = state.Context with { PreviousOutputs = state.ApplicationOutputs, CancellationToken = ct };
         _delegationProvider.UpdateExecutionContext(execContext);
 
         return await _executionService.ExecuteTaskAsync(
@@ -443,16 +447,21 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     }
 
     /// <summary>
-    /// Tracks failure for the task and enqueues it for retry if cycles remain.
+    /// Ends a task that succeeded; tracks the failure of one that did not and enqueues it for retry
+    /// if cycles remain — it keeps running meanwhile — or fails it once it gives up.
     /// </summary>
-    private void EvaluateFailureForRetry(
+    private async Task EvaluateFailureForRetryAsync(
         CrewGraphState state,
-        TaskId taskId,
+        Orkeon.Domain.Task.CrewTask task,
         DomainAgent agent,
         TaskResult executionResult)
     {
+        var taskId = task.Id;
         if (executionResult.Success)
+        {
+            await state.Outcome.RecordSuccessAsync(task, state.DomainResults[^1]).ConfigureAwait(false);
             return;
+        }
 
         var taskKey = taskId.Value.ToString();
         state.RetryCounts.TryGetValue(taskKey, out var retries);
@@ -467,7 +476,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         else
         {
             LogTaskFailedMaxRetries(taskId, state.MaxRetryCycles);
-            state.Outcome.RecordFailure(taskId, agent.Role.Value, executionResult.Error ?? executionResult.LastError);
+            await state.Outcome.RecordFailureAsync(task, agent.Role.Value, executionResult.Error ?? executionResult.LastError).ConfigureAwait(false);
         }
     }
 
@@ -692,8 +701,14 @@ public sealed class CrewGraphState
     /// <summary>Max retry cycles per failed task.</summary>
     public required int MaxRetryCycles { get; init; }
 
-    /// <summary>The failures of this run and the tasks that did not succeed (GAP-03).</summary>
-    internal CrewRunOutcome Outcome { get; } = new();
+    /// <summary>
+    /// The failures of this run and the tasks that did not succeed (GAP-03), and the lifecycle of the
+    /// tasks it records (GAP-21).
+    /// </summary>
+    internal CrewRunOutcome Outcome { get; init; } = null!;
+
+    /// <summary>The run's execution context, from which each task's is derived.</summary>
+    internal SimpleExecutionContext Context { get; init; } = null!;
 
     /// <summary>Skip reasons, keyed by the index of the skipped task's entry in <see cref="DomainResults"/>.</summary>
     internal Dictionary<int, string> SkipReasons { get; } = [];

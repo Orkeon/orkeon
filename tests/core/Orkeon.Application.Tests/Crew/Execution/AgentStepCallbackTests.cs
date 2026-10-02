@@ -154,6 +154,33 @@ public class AgentStepCallbackTests
         Assert.Equal(["StepStarted:tool:web_scrape", "StepCompleted:tool:web_scrape:True"], handler.Hooks);
     }
 
+    [Fact]
+    public async System.Threading.Tasks.Task A_completed_task_reports_the_iterations_of_its_loop_as_its_steps()
+    {
+        // GAP-21: one tool call then the answer are two turns of the text loop, and the task's
+        // completion says so — StepsExecuted used to be 1 whatever the loop did.
+        var tool = new SpyTool("web_scrape", result: "page text");
+        var provider = new ScriptedBasicLlmProvider();
+        provider.Enqueue("""[TOOL_CALL]{tool => "web_scrape", args => {--input "https://example.com"}}[/TOOL_CALL]""");
+        provider.Enqueue("A summary.");
+        var (callbacks, handler) = Callbacks();
+        var orchestrator = new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, provider, new NullPlanner())
+        {
+            Callbacks = callbacks,
+        };
+        var service = new Orkeon.Application.Agent.AgentExecutionService(
+            NullLogger<Orkeon.Application.Agent.AgentExecutionService>.Instance,
+            orchestrator,
+            callbacks,
+            new Orkeon.Application.Tests.Services.TestMemoryCoordinator());
+
+        var result = await service.ExecuteTaskAsync(BuildAgent(tool), BuildTask(), BuildContext(), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(2, result.IterationsUsed);
+        Assert.Equal(2, Assert.Single(handler.TasksCompleted).StepsExecuted);
+    }
+
     private sealed class NullPlanner : IAgentPlanner
     {
         public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(DomainTask task, CancellationToken cancellationToken = default) =>

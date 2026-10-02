@@ -443,8 +443,11 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
     }
 
     [Fact]
-    public async Task ChannelHandler_DelegateIntent_ExecutesDelegatedTaskAndReturnsPayload()
+    public async Task ChannelHandler_DelegateIntent_NamingNoTaskOfTheRun_IsRefused()
     {
+        // GAP-21 decision 5 — a peer takes over a task this run handed it, in that task's context;
+        // a delegate request the run did not send names no task, and is refused rather than run as
+        // a copy of its payload under a fresh crew id.
         var agent = CreateAgent("worker");
         var blocker = CreateTask("blocking");
         var crew = BuildCrew([agent], [blocker]);
@@ -471,8 +474,9 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
         await CreateStrategy().ExecuteAutonomousAsync(crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
 
         var resp = await probe.Task;
-        Assert.True(resp.Success);
-        Assert.Equal("delegated-result", resp.Payload);
+        Assert.False(resp.Success);
+        Assert.Contains("No task of this run", resp.Error, StringComparison.Ordinal);
+        Assert.Equal(1, _execService.ExecuteTaskCallCount);
     }
 
     public void Dispose()

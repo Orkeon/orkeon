@@ -1321,7 +1321,7 @@ public sealed class ParallelProcessStrategyTests : IDisposable
         // All other methods throw NotImplementedException
         public Task<Orkeon.Domain.Task.CrewTask> AddAsync(Orkeon.Domain.Task.CrewTask entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         Task IRepository<Orkeon.Domain.Task.CrewTask, TaskId>.AddAsync(Orkeon.Domain.Task.CrewTask aggregate, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task UpdateAsync(Orkeon.Domain.Task.CrewTask entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task UpdateAsync(Orkeon.Domain.Task.CrewTask entity, CancellationToken cancellationToken = default) => Task.CompletedTask; // a run saves the tasks and agents it moves (GAP-21); the double already holds them
         public Task<bool> DeleteAsync(TaskId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         Task IRepository<Orkeon.Domain.Task.CrewTask, TaskId>.DeleteAsync(TaskId id, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> ExistsAsync(TaskId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
@@ -1351,7 +1351,7 @@ public sealed class ParallelProcessStrategyTests : IDisposable
 
         // All other methods throw NotImplementedException
         public Task AddAsync(DomainAgent entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task UpdateAsync(DomainAgent entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task UpdateAsync(DomainAgent entity, CancellationToken cancellationToken = default) => Task.CompletedTask; // a run saves the tasks and agents it moves (GAP-21); the double already holds them
         public Task DeleteAsync(AgentId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<bool> ExistsAsync(AgentId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<int> CountAsync(CancellationToken cancellationToken = default) => throw new NotImplementedException();
@@ -1388,7 +1388,7 @@ public sealed class ParallelProcessStrategyTests : IDisposable
         // All other methods throw NotImplementedException
         public Task<Orkeon.Domain.Task.CrewTask> AddAsync(Orkeon.Domain.Task.CrewTask entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         Task IRepository<Orkeon.Domain.Task.CrewTask, TaskId>.AddAsync(Orkeon.Domain.Task.CrewTask aggregate, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task UpdateAsync(Orkeon.Domain.Task.CrewTask entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task UpdateAsync(Orkeon.Domain.Task.CrewTask entity, CancellationToken cancellationToken = default) => Task.CompletedTask; // a run saves the tasks and agents it moves (GAP-21); the double already holds them
         public Task<bool> DeleteAsync(TaskId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         Task IRepository<Orkeon.Domain.Task.CrewTask, TaskId>.DeleteAsync(TaskId id, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> ExistsAsync(TaskId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
@@ -1424,7 +1424,7 @@ public sealed class ParallelProcessStrategyTests : IDisposable
 
         // All other methods throw NotImplementedException
         public Task AddAsync(DomainAgent entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task UpdateAsync(DomainAgent entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task UpdateAsync(DomainAgent entity, CancellationToken cancellationToken = default) => Task.CompletedTask; // a run saves the tasks and agents it moves (GAP-21); the double already holds them
         public Task DeleteAsync(AgentId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<bool> ExistsAsync(AgentId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<int> CountAsync(CancellationToken cancellationToken = default) => throw new NotImplementedException();

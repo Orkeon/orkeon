@@ -33,6 +33,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     private readonly IMemoryScope _memoryScope;
     private readonly IMemoryCoordinator _memoryCoordinator;
     private readonly CrewHookDispatcher _hooks;
+    private readonly TaskLifecycle _lifecycle;
 
     /// <summary>The role a skipped task reports: the manager was never asked to assign it.</summary>
     private const string UnassignedRole = "unassigned";
@@ -49,7 +50,11 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     /// wrote it: the attempts run without storing (GAP-30).
     /// </param>
     /// <param name="hook">Optional execution hook notified as each task is finalised (BUS-03).</param>
-#pragma warning disable S107 // DI constructor: the four collaborators of every strategy, the manager, the memory and the hook
+    /// <param name="domainEvents">
+    /// Delivers the events of the tasks and agents as the run moves them (GAP-21); the container
+    /// always provides one. Without it they are moved and saved, their events left queued.
+    /// </param>
+#pragma warning disable S107 // DI constructor: the four collaborators of every strategy, the manager, the memory, the hook and the dispatcher
     public HierarchicalProcessStrategy(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,
@@ -58,7 +63,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         IAgentExecutionService executionService,
         IMemoryScope memoryScope,
         IMemoryCoordinator memoryCoordinator,
-        ICrewExecutionHook? hook = null)
+        ICrewExecutionHook? hook = null,
+        Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher? domainEvents = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
@@ -76,6 +82,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         ArgumentNullException.ThrowIfNull(memoryCoordinator);
         _memoryCoordinator = memoryCoordinator;
         _hooks = new CrewHookDispatcher(hook, logger);
+        _lifecycle = new TaskLifecycle(taskRepository, agentRepository, domainEvents, logger);
     }
 
     /// <inheritdoc />
@@ -106,6 +113,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         var startTime = DateTime.UtcNow;
         var results = new List<DomainTaskOutput>();
         var taskSnapshots = new List<TaskExecutionSnapshot>();
+        var outcome = new CrewRunOutcome(_lifecycle);
 
         // The terminal event goes out on EVERY exit — success, cancellation, failure — and
         // the barrier covers SETUP as well as the loop: a missing manager or an agent-less
@@ -145,8 +153,6 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             var taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, plan: null, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
-            var outcome = new CrewRunOutcome();
-
             foreach (var taskId in taskIds)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -163,7 +169,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 // "Task failed: …" where its input should be.
                 if (outcome.BlockingDependency(task) is { } blockedBy)
                 {
-                    var skipReason = outcome.RecordSkip(task.Id, UnassignedRole, blockedBy);
+                    var skipReason = await outcome.RecordSkipAsync(task, UnassignedRole, blockedBy).ConfigureAwait(false);
                     LogTaskSkippedAfterDependency(task.Id, blockedBy);
                     var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agentId: null, blockedBy);
                     results.Add(skippedDomain);
@@ -182,14 +188,14 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 var cacheMissBefore = tokenTally.CacheMissTokens;
 
                 var processed = await ProcessSingleTaskAsync(
-                    task, workerAgents, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
+                    task, workerAgents, context, applicationTaskOutputs, tokenTally, outcome, cancellationToken).ConfigureAwait(false);
 
                 if (processed.Assignee is null)
                 {
                     // The manager named an agent the crew does not carry: the task never ran,
                     // and a crew with a task that never ran did not complete.
-                    outcome.RecordFailure(task.Id, managerAgent.Role.Value,
-                        $"the manager assigned it to agent {processed.AssignedAgentId}, who is not a worker of this crew");
+                    await outcome.RecordFailureAsync(task, managerAgent.Role.Value,
+                        $"the manager assigned it to agent {processed.AssignedAgentId}, who is not a worker of this crew").ConfigureAwait(false);
                     continue;
                 }
 
@@ -198,8 +204,12 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 applicationTaskOutputs.Add(appOutput);
                 context = processed.Context!;
 
-                if (!domainOutput.Success)
-                    outcome.RecordFailure(task.Id, processed.Assignee.Role.Value, processed.Error);
+                // The agent the manager assigned ends the task it started — its revisions were
+                // part of its work on it (GAP-21).
+                if (domainOutput.Success)
+                    await outcome.RecordSuccessAsync(task, domainOutput).ConfigureAwait(false);
+                else
+                    await outcome.RecordFailureAsync(task, processed.Assignee.Role.Value, processed.Error).ConfigureAwait(false);
 
                 var snapshot = new TaskExecutionSnapshot
                 {
@@ -223,9 +233,11 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 outcome, results, taskSnapshots, workerAgents, managerAgent, crew, startTime, tokenTally)
                 .ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            // The run's own token is cancelled; the dispatch must still go out.
+            // The run's own token is cancelled; the dispatch must still go out, and the task it
+            // caught is cancelled (GAP-21).
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
@@ -234,6 +246,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         }
         catch (Exception ex)
         {
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed, ex.Message),
@@ -276,6 +289,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         SimpleExecutionContext context,
         List<ApplicationTaskOutput> applicationTaskOutputs,
         TokenUsageTally tokenTally,
+        CrewRunOutcome outcome,
         CancellationToken cancellationToken)
     {
         LogManagerProcessingTask(task.Id);
@@ -293,6 +307,9 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         await _hooks.TaskStartedAsync(
             CrewHookDispatcher.Started(task.Id.Value.ToString(), assignedAgent.Role.Value), cancellationToken)
             .ConfigureAwait(false);
+        // The agent the manager assigned starts the task — re-assigned to it when the crew declared
+        // another (GAP-21).
+        await outcome.RecordStartAsync(task, assignedAgent).ConfigureAwait(false);
 
         var (domainOutput, appOutput, error) = await ExecuteWithRevisionLoopAsync(
             assignedAgent, task, task.Id, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);

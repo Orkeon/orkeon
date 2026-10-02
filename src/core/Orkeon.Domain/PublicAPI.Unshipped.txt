@@ -1022,3 +1022,59 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.InheritFrom(Orkeon.Domain.Shar
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResolveTimeoutSeconds() -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTimeoutSeconds = 30 -> int
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int? maxTokens = null, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int? timeoutSeconds = null, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+*REMOVED*Orkeon.Domain.Agent.Agent.CollaborateWith(Orkeon.Domain.Common.AgentId! collaboratorId, Orkeon.Domain.Common.TaskId! taskId) -> Orkeon.Domain.Common.CollaborationId!
+*REMOVED*Orkeon.Domain.Agent.Agent.CompleteTask(Orkeon.Domain.Task.ValueObjects.TaskOutput! output) -> void
+*REMOVED*Orkeon.Domain.Agent.Agent.CurrentTask.get -> Orkeon.Domain.Common.TaskId?
+*REMOVED*Orkeon.Domain.Agent.Agent.FailTask(string! reason) -> void
+*REMOVED*Orkeon.Domain.Agent.Agent.Memories.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.AgentMemory!>!
+*REMOVED*Orkeon.Domain.Agent.Agent.UpdateMemory(Orkeon.Domain.Agent.AgentMemory! memory) -> void
+*REMOVED*Orkeon.Domain.Agent.AgentSnapshot.CurrentTask.get -> Orkeon.Domain.Common.TaskId?
+*REMOVED*Orkeon.Domain.Agent.AgentSnapshot.CurrentTask.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentSnapshot.Memories.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Agent.AgentMemory!>?
+*REMOVED*Orkeon.Domain.Agent.AgentSnapshot.Memories.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.AgentCollaborationStartedEvent() -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.CollaborationId.get -> Orkeon.Domain.Common.CollaborationId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.CollaborationId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.CollaboratorId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.CollaboratorId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.Equals(Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.InitiatorId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.InitiatorId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.TaskId.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.TaskId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.AgentId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.AgentMemoryUpdatedEvent() -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.Equals(Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.MemoryId.get -> Orkeon.Domain.Common.MemoryId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.MemoryId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.MemoryType.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.MemoryType.init -> void
+*REMOVED*Orkeon.Domain.Common.CollaborationId
+*REMOVED*Orkeon.Domain.Common.CollaborationId.CollaborationId() -> void
+*REMOVED*Orkeon.Domain.Task.Events.TaskStartedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*const Orkeon.Domain.Constants.Agent.AgentDefaults.MaxMemories = 100 -> int
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.<Clone>$() -> Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent!
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.<Clone>$() -> Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent!
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.ToString() -> string!
+*REMOVED*override sealed Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.operator !=(Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent? left, Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent.operator ==(Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent? left, Orkeon.Domain.Agent.Events.AgentCollaborationStartedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.operator !=(Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent? left, Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent.operator ==(Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent? left, Orkeon.Domain.Agent.Events.AgentMemoryUpdatedEvent? right) -> bool
+Orkeon.Domain.Agent.Agent.CompleteTask(Orkeon.Domain.Common.TaskId! taskId, Orkeon.Domain.Task.ValueObjects.TaskOutput! output) -> void
+Orkeon.Domain.Agent.Agent.CurrentTasks.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>!
+Orkeon.Domain.Agent.Agent.FailTask(Orkeon.Domain.Common.TaskId! taskId, string! reason) -> void
+Orkeon.Domain.Agent.AgentSnapshot.CurrentTasks.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>?
+Orkeon.Domain.Agent.AgentSnapshot.CurrentTasks.init -> void
+Orkeon.Domain.Task.CrewTaskBase<TContext>.Reopen() -> void
+Orkeon.Domain.Task.CrewTaskBase<TContext>.Start() -> void
+Orkeon.Domain.Task.Events.TaskStartedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId?

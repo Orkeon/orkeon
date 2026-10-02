@@ -196,22 +196,24 @@ public class AgentDelegationToolsProviderTests
     }
 
     [Fact]
-    public void ShouldThrowException_WhenAddDelegationToolsToAgentMultipleTimes()
+    public void ShouldReplaceTheToolsAnEarlierRunGave_WhenAddDelegationToolsToAgentAgain()
     {
-        // Arrange
+        // GAP-21 — a crew kicked off again without being reloaded keeps its agents: the second run
+        // used to fail at its start ("Tool delegate_work_to_coworker already exists"), and the
+        // tools it kept read the first run's context. They are replaced.
         var agent = new AgentBuilder()
             .Role(RoleDeveloper)
             .Goal("Develop software")
             .AllowDelegation()
             .Build();
+        _provider.AddDelegationToolsToAgent(agent);
+        var first = agent.Tools.Single(t => t.Name == "delegate_work_to_coworker");
 
-        // Act
         _provider.AddDelegationToolsToAgent(agent);
 
-        // Assert - Second call should throw because tools already exist
-        var exception = Assert.Throws<InvalidOperationException>(
-            () => _provider.AddDelegationToolsToAgent(agent));
-        Assert.Contains("already exists", exception.Message);
+        var second = Assert.Single(agent.Tools, t => t.Name == "delegate_work_to_coworker");
+        Assert.NotSame(first, second);
+        Assert.Single(agent.Tools, t => t.Name == "ask_question_to_coworker");
     }
 
     [Fact]

@@ -55,7 +55,9 @@ public partial class AgentDelegationToolsProvider
     }
 
     /// <summary>
-    /// Adds delegation tools to an agent if it allows delegation.
+    /// Adds delegation tools to an agent if it allows delegation. The tools an earlier run gave the
+    /// same agent — a crew kicked off again without being reloaded keeps its agents — are replaced:
+    /// theirs read that run's context, these read this one's (GAP-21).
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
         Justification = "Ownership of the disposable DelegateWorkTool/AskQuestionTool is transferred to the agent via AddTool; they live in the agent's tool list for the agent's lifetime and are not owned by this method.")]
@@ -89,6 +91,9 @@ public partial class AgentDelegationToolsProvider
             _logger as ILogger<AskQuestionTool>
         );
 
+        ReplaceEarlierRunsTool(agent, delegateWorkTool.Name);
+        ReplaceEarlierRunsTool(agent, askQuestionTool.Name);
+
         // Add tools to agent (ownership transfer — see comment above). Decorated when an
         // observer is registered: these two are built per agent with `new`, so the DI-level
         // decoration that covers every registered tool never sees them — and a delegation is
@@ -101,6 +106,20 @@ public partial class AgentDelegationToolsProvider
 
     private Orkeon.Domain.Tools.IBaseTool Decorate(Orkeon.Domain.Tools.IBaseTool tool) =>
         _toolDecorator?.Decorate(tool) ?? tool;
+
+    /// <summary>
+    /// Removes the tool named <paramref name="toolName"/> an earlier run gave <paramref name="agent"/>,
+    /// and disposes it — the agent owned it.
+    /// </summary>
+    private static void ReplaceEarlierRunsTool(DomainAgent agent, string toolName)
+    {
+        var earlier = agent.Tools.FirstOrDefault(t => t.Name == toolName);
+        if (earlier is null)
+            return;
+
+        agent.RemoveTool(toolName);
+        (earlier as IDisposable)?.Dispose();
+    }
 
     /// <summary>
     /// Registers an agent entity for synchronous delegation lookup.

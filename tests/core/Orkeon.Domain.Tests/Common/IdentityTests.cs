@@ -141,7 +141,6 @@ public class IdentityTests
     [InlineData(typeof(MemoryId))]
     [InlineData(typeof(ProcessId))]
     [InlineData(typeof(KnowledgeSourceId))]
-    [InlineData(typeof(CollaborationId))]
     public void ShouldBehaveSimilarly_WhenUsingAllDerivedTypes(Type identityType)
     {
         // Act - Create two instances using the static Create() factory method

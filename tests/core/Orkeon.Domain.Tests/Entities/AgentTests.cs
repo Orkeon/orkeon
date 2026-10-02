@@ -274,26 +274,26 @@ public class AgentTests
     }
 
     [Fact]
-    public void ShouldBeReadOnly_WhenUsingMemoriesCollection()
+    public void ShouldBeReadOnly_WhenUsingCurrentTasksCollection()
     {
         // Arrange
         var agent = AgentFixtures.CreateResearcherAgent();
 
         // Act
-        var memories = agent.Memories;
+        var currentTasks = agent.CurrentTasks;
 
         // Assert
-        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<AgentMemory>>(memories);
+        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<TaskId>>(currentTasks);
     }
 
     [Fact]
-    public void ShouldBeNull_WhenUsingCurrentTaskUsingInitially()
+    public void ShouldBeEmpty_WhenUsingCurrentTasksInitially()
     {
         // Arrange & Act
         var agent = AgentFixtures.CreateResearcherAgent();
 
         // Assert
-        Assert.Null(agent.CurrentTask);
+        Assert.Empty(agent.CurrentTasks);
     }
 
     #region ValidateForExecution Tests
@@ -414,19 +414,19 @@ public class AgentTests
     }
 
     [Fact]
-    public void ShouldThrow_WhenAssigningTaskWhileExecuting()
+    public void ShouldAssignAnotherTask_WhileExecutingOne()
     {
-        // Arrange
+        // GAP-21 — a parallel wave gives an agent every task declared for it: an agent busy with
+        // one task can be given the next.
         var agent = AgentFixtures.CreateResearcherAgent();
         var taskId1 = TaskId.Create();
         agent.AssignTask(taskId1);
         agent.StartTask(taskId1);
 
         var taskId2 = TaskId.Create();
+        agent.AssignTask(taskId2);
 
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(() => agent.AssignTask(taskId2));
-        Assert.Contains("currently executing", ex.Message);
+        Assert.Equal([taskId1, taskId2], agent.AssignedTasks);
     }
 
     [Fact]
@@ -459,7 +459,7 @@ public class AgentTests
         agent.StartTask(taskId);
 
         // Assert
-        Assert.Equal(taskId, agent.CurrentTask);
+        Assert.Equal([taskId], agent.CurrentTasks);
         Assert.Equal(AgentStatus.Busy, agent.Status);
     }
 
@@ -486,9 +486,9 @@ public class AgentTests
     }
 
     [Fact]
-    public void ShouldThrow_WhenStartingTaskWhileAlreadyExecuting()
+    public void ShouldRunTwoTasksAtOnce_WhenAParallelWaveGivesItTwo()
     {
-        // Arrange
+        // GAP-21 — the parallel mode runs a wave's tasks concurrently, the same agent's included.
         var agent = AgentFixtures.CreateResearcherAgent();
         var taskId1 = TaskId.Create();
         var taskId2 = TaskId.Create();
@@ -496,8 +496,41 @@ public class AgentTests
         agent.AssignTask(taskId2);
         agent.StartTask(taskId1);
 
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(() => agent.StartTask(taskId2));
+        agent.StartTask(taskId2);
+
+        Assert.Equal([taskId1, taskId2], agent.CurrentTasks);
+        Assert.Equal(AgentStatus.Busy, agent.Status);
+    }
+
+    [Fact]
+    public void ShouldStayBusy_UntilEveryTaskItRunsHasEnded()
+    {
+        var agent = AgentFixtures.CreateResearcherAgent();
+        var taskId1 = TaskId.Create();
+        var taskId2 = TaskId.Create();
+        agent.AssignTask(taskId1);
+        agent.AssignTask(taskId2);
+        agent.StartTask(taskId1);
+        agent.StartTask(taskId2);
+
+        agent.CompleteTask(taskId1, TaskOutput.Text("first"));
+        Assert.Equal(AgentStatus.Busy, agent.Status);
+        Assert.Equal([taskId2], agent.CurrentTasks);
+
+        agent.FailTask(taskId2, "second failed");
+        Assert.Equal(AgentStatus.Idle, agent.Status);
+        Assert.Empty(agent.CurrentTasks);
+    }
+
+    [Fact]
+    public void ShouldThrow_WhenStartingATaskItIsAlreadyRunning()
+    {
+        var agent = AgentFixtures.CreateResearcherAgent();
+        var taskId = TaskId.Create();
+        agent.AssignTask(taskId);
+        agent.StartTask(taskId);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => agent.StartTask(taskId));
         Assert.Contains("already executing", ex.Message);
     }
 
@@ -531,10 +564,10 @@ public class AgentTests
         var output = TaskOutput.Text("Task completed successfully");
 
         // Act
-        agent.CompleteTask(output);
+        agent.CompleteTask(taskId, output);
 
         // Assert
-        Assert.Null(agent.CurrentTask);
+        Assert.Empty(agent.CurrentTasks);
         Assert.Equal(AgentStatus.Idle, agent.Status);
     }
 
@@ -548,19 +581,19 @@ public class AgentTests
         agent.StartTask(taskId);
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => agent.CompleteTask(null!));
+        Assert.Throws<ArgumentNullException>(() => agent.CompleteTask(taskId, null!));
     }
 
     [Fact]
-    public void ShouldThrow_WhenCompletingWithNoCurrentTask()
+    public void ShouldThrow_WhenCompletingATaskItIsNotRunning()
     {
         // Arrange
         var agent = AgentFixtures.CreateResearcherAgent();
         var output = TaskOutput.Text("Some output");
 
         // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(() => agent.CompleteTask(output));
-        Assert.Contains("No task is currently being executed", ex.Message);
+        var ex = Assert.Throws<InvalidOperationException>(() => agent.CompleteTask(TaskId.Create(), output));
+        Assert.Contains("is not executing task", ex.Message);
     }
 
     [Fact]
@@ -575,7 +608,7 @@ public class AgentTests
         var output = TaskOutput.Text("Done");
 
         // Act
-        agent.CompleteTask(output);
+        agent.CompleteTask(taskId, output);
 
         // Assert
         var domainEvent = Assert.Single(agent.DomainEvents);
@@ -595,10 +628,10 @@ public class AgentTests
         agent.StartTask(taskId);
 
         // Act
-        agent.FailTask("Something went wrong");
+        agent.FailTask(taskId, "Something went wrong");
 
         // Assert
-        Assert.Null(agent.CurrentTask);
+        Assert.Empty(agent.CurrentTasks);
         Assert.Equal(AgentStatus.Idle, agent.Status);
     }
 
@@ -613,7 +646,7 @@ public class AgentTests
 
         // Act & Assert
         // ArgumentException.ThrowIfNullOrWhiteSpace throws ArgumentNullException for null
-        Assert.Throws<ArgumentNullException>(() => agent.FailTask(null!));
+        Assert.Throws<ArgumentNullException>(() => agent.FailTask(taskId, null!));
     }
 
     [Fact]
@@ -626,18 +659,18 @@ public class AgentTests
         agent.StartTask(taskId);
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => agent.FailTask("   "));
+        Assert.Throws<ArgumentException>(() => agent.FailTask(taskId, "   "));
     }
 
     [Fact]
-    public void ShouldThrow_WhenFailingWithNoCurrentTask()
+    public void ShouldThrow_WhenFailingATaskItIsNotRunning()
     {
         // Arrange
         var agent = AgentFixtures.CreateResearcherAgent();
 
         // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(() => agent.FailTask("error"));
-        Assert.Contains("No task is currently being executed", ex.Message);
+        var ex = Assert.Throws<InvalidOperationException>(() => agent.FailTask(TaskId.Create(), "error"));
+        Assert.Contains("is not executing task", ex.Message);
     }
 
     [Fact]
@@ -651,7 +684,7 @@ public class AgentTests
         agent.ClearDomainEvents();
 
         // Act
-        agent.FailTask("Timeout occurred");
+        agent.FailTask(taskId, "Timeout occurred");
 
         // Assert
         var domainEvent = Assert.Single(agent.DomainEvents);
@@ -905,123 +938,6 @@ public class AgentTests
 
     #endregion
 
-    #region Collaboration Tests
-
-    [Fact]
-    public void ShouldCollaborateWith_WhenDelegationAllowedAndTaskAssigned()
-    {
-        // Arrange
-        var agent = new AgentBuilder()
-            .Role(RoleManager)
-            .Goal(GoalCoordinate)
-            .AllowDelegation()
-            .Build();
-        var taskId = TaskId.Create();
-        agent.AssignTask(taskId);
-        var collaboratorId = AgentId.Create();
-
-        // Act
-        var collaborationId = agent.CollaborateWith(collaboratorId, taskId);
-
-        // Assert
-        Assert.NotNull(collaborationId);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenCollaboratingWithNullCollaborator()
-    {
-        // Arrange
-        var agent = new AgentBuilder()
-            .Role(RoleManager)
-            .Goal(GoalCoordinate)
-            .AllowDelegation()
-            .Build();
-        var taskId = TaskId.Create();
-        agent.AssignTask(taskId);
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(
-            () => agent.CollaborateWith(null!, taskId));
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenCollaboratingWithNullTaskId()
-    {
-        // Arrange
-        var agent = new AgentBuilder()
-            .Role(RoleManager)
-            .Goal(GoalCoordinate)
-            .AllowDelegation()
-            .Build();
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(
-            () => agent.CollaborateWith(AgentId.Create(), null!));
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenCollaboratingWithUnassignedTask()
-    {
-        // Arrange
-        var agent = new AgentBuilder()
-            .Role(RoleManager)
-            .Goal(GoalCoordinate)
-            .AllowDelegation()
-            .Build();
-        var taskId = TaskId.Create();
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => agent.CollaborateWith(AgentId.Create(), taskId));
-        Assert.Contains("not assigned", ex.Message);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenCollaboratingWithDelegationDisabled()
-    {
-        // Arrange
-        var agent = new AgentBuilder()
-            .Role(RoleDeveloper)
-            .Goal("Code")
-            .AllowDelegation(false)
-            .Build();
-        var taskId = TaskId.Create();
-        agent.AssignTask(taskId);
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => agent.CollaborateWith(AgentId.Create(), taskId));
-        Assert.Contains("does not allow delegation", ex.Message);
-    }
-
-    [Fact]
-    public void ShouldRaiseCollaborationStartedEvent_WhenCollaborating()
-    {
-        // Arrange
-        var agent = new AgentBuilder()
-            .Role(RoleManager)
-            .Goal(GoalCoordinate)
-            .AllowDelegation()
-            .Build();
-        var taskId = TaskId.Create();
-        agent.AssignTask(taskId);
-        agent.ClearDomainEvents();
-        var collaboratorId = AgentId.Create();
-
-        // Act
-        agent.CollaborateWith(collaboratorId, taskId);
-
-        // Assert
-        var domainEvent = Assert.Single(agent.DomainEvents);
-        var collabEvent = Assert.IsType<AgentCollaborationStartedEvent>(domainEvent);
-        Assert.Equal(agent.Id, collabEvent.InitiatorId);
-        Assert.Equal(collaboratorId, collabEvent.CollaboratorId);
-        Assert.Equal(taskId, collabEvent.TaskId);
-        Assert.NotNull(collabEvent.CollaborationId);
-    }
-
-    #endregion
-
     #region ExecuteTaskAsync Tests
 
     [Fact]
@@ -1200,44 +1116,6 @@ public class AgentTests
 
     #endregion
 
-    #region Memory Management Tests
-
-    [Fact]
-    public void ShouldUpdateMemory_WhenMemoryProvided()
-    {
-        // Arrange
-        var agent = AgentFixtures.CreateResearcherAgent();
-        var memory = AgentMemory.CreateShortTerm("Test memory content", "context");
-
-        // Act
-        agent.UpdateMemory(memory);
-
-        // Assert
-        Assert.Single(agent.Memories);
-        Assert.Equal("Test memory content", agent.Memories[0].Content);
-    }
-
-    [Fact]
-    public void ShouldRaiseMemoryUpdatedEvent_WhenUpdatingMemory()
-    {
-        // Arrange
-        var agent = AgentFixtures.CreateResearcherAgent();
-        agent.ClearDomainEvents();
-        var memory = AgentMemory.CreateShortTerm("Event test");
-
-        // Act
-        agent.UpdateMemory(memory);
-
-        // Assert
-        var domainEvent = Assert.Single(agent.DomainEvents);
-        var memEvent = Assert.IsType<AgentMemoryUpdatedEvent>(domainEvent);
-        Assert.Equal(agent.Id, memEvent.AgentId);
-        Assert.Equal(memory.Id, memEvent.MemoryId);
-        Assert.Equal("ShortTerm", memEvent.MemoryType);
-    }
-
-    #endregion
-
     #region RegisterCancellation and StopAsync Tests
 
     [Fact]
@@ -1281,7 +1159,7 @@ public class AgentTests
 
         // Assert
         Assert.Equal(AgentStatus.Idle, agent.Status);
-        Assert.Null(agent.CurrentTask);
+        Assert.Empty(agent.CurrentTasks);
         Assert.True(cts.IsCancellationRequested);
     }
 

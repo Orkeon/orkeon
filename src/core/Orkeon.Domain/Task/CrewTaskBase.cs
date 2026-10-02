@@ -12,8 +12,11 @@ namespace Orkeon.Domain.Task;
 
 /// <summary>
 /// Abstract base class for task aggregate roots with typed context.
-/// Provides the full task lifecycle (assign, start, complete, fail, cancel),
-/// dependency management, output validation, and typed context support.
+/// Provides the full task lifecycle (assign, start, complete, fail, cancel, reopen),
+/// dependency management, output validation, and typed context support. Every orchestration
+/// mode drives it during a run (GAP-21): a task is assigned to the agent that runs it, started,
+/// then completed, failed or — skipped behind a dependency that did not succeed, never reached, or
+/// interrupted by a cancellation — cancelled; the next run of its crew reopens it.
 /// </summary>
 public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     where TContext : class, new()
@@ -68,7 +71,8 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     public DateTime? StartedAt { get; private set; }
 
     /// <summary>
-    /// Gets when the task was completed.
+    /// Gets when the task ended: completed, or failed. Null while it runs, and for a task cancelled
+    /// or skipped before it ended.
     /// </summary>
     public DateTime? CompletedAt { get; private set; }
 
@@ -257,16 +261,22 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         MarkAsUpdated();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Assigns the task to <paramref name="agentId"/>, before it starts or while it runs: a run
+    /// hands a task over when its manager picks another agent than the one declared, when a failed
+    /// task goes to a peer, or when a vote retains another agent's answer. Assigning the agent it
+    /// already has changes nothing; a task that ended cannot be assigned.
+    /// </summary>
+    /// <param name="agentId">The agent identifier to assign to.</param>
     public void AssignTo(AgentId agentId)
     {
         ArgumentNullException.ThrowIfNull(agentId);
 
-        if (Status != TaskStatus.Pending)
+        if (HasEnded)
             throw new InvalidOperationException($"Cannot assign task in {Status} status.");
 
-        if (AssignedAgent != null)
-            throw new InvalidOperationException($"Task is already assigned to agent {AssignedAgent}.");
+        if (AssignedAgent == agentId)
+            return;
 
         AssignedAgent = agentId;
 
@@ -277,7 +287,12 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Starts the task under the agent it is assigned to. When it may start is the run's decision:
+    /// the run starts a task once the tasks it depends on succeeded (<see cref="CanExecute"/>), and
+    /// skips it otherwise.
+    /// </summary>
+    /// <param name="agentId">The agent that runs the task.</param>
     public void Start(AgentId agentId)
     {
         ArgumentNullException.ThrowIfNull(agentId);
@@ -285,14 +300,20 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         if (AssignedAgent == null || AssignedAgent != agentId)
             throw new InvalidOperationException($"Task must be assigned to agent {agentId} before starting.");
 
+        StartCore(agentId);
+    }
+
+    /// <summary>
+    /// Starts a task no single agent runs: a consensual task is answered by every agent of its
+    /// crew, and completed under the author of the answer its vote retains
+    /// (<see cref="AssignTo"/>, then <see cref="Complete"/>).
+    /// </summary>
+    public void Start() => StartCore(agentId: null);
+
+    private void StartCore(AgentId? agentId)
+    {
         if (Status != TaskStatus.Pending)
             throw new InvalidOperationException($"Cannot start task in {Status} status.");
-
-        if (_dependencyManager.HasUncompletedDependencies())
-        {
-            UpdateStatus(TaskStatus.Blocked, "Waiting for dependencies to complete");
-            return;
-        }
 
         StartedAt = DateTime.UtcNow;
         UpdateStatus(TaskStatus.InProgress);
@@ -339,6 +360,7 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         if (Status == TaskStatus.Completed || Status == TaskStatus.Failed)
             throw new InvalidOperationException($"Cannot fail task in {Status} status.");
 
+        CompletedAt = DateTime.UtcNow;
         UpdateStatus(TaskStatus.Failed, errorMessage);
 
         RaiseDomainEvent(new TaskFailedEvent
@@ -350,7 +372,11 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         });
     }
 
-    /// <summary>Cancels the task.</summary>
+    /// <summary>
+    /// Cancels the task: a run cancels a task it skips behind a dependency that did not succeed, a
+    /// task it never reached, and a task its cancellation interrupted. The reason says which. A
+    /// cancelled task did not end: its <see cref="CompletedAt"/> stays empty.
+    /// </summary>
     /// <param name="reason">The cancellation reason.</param>
     public void Cancel(string reason)
     {
@@ -366,6 +392,23 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
             TaskId = Id,
             Reason = reason
         });
+    }
+
+    /// <summary>
+    /// Puts a task an earlier run started or ended back to <see cref="TaskStatus.Pending"/>, for the
+    /// next run of its crew — a crew kicked off again without being reloaded runs the same tasks.
+    /// Its output and its dates are cleared; its assignment and its dependencies are kept. A pending
+    /// task is left as it is.
+    /// </summary>
+    public void Reopen()
+    {
+        if (Status == TaskStatus.Pending)
+            return;
+
+        Output = null;
+        StartedAt = null;
+        CompletedAt = null;
+        UpdateStatus(TaskStatus.Pending, "Reopened for a new run");
     }
 
     /// <summary>Adds a dependency on another task.</summary>
@@ -497,15 +540,16 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         return _context.Data.ToString() ?? "Context: " + typeof(TContext).Name;
     }
 
-    /// <inheritdoc />
-    public TimeSpan GetExecutionTime()
-    {
-        if (!CompletedAt.HasValue)
-            return TimeSpan.Zero;
+    /// <summary>
+    /// Gets how long the task ran, from its start to its end. Zero while it runs, and for a task
+    /// that never started.
+    /// </summary>
+    public TimeSpan GetExecutionTime() =>
+        StartedAt is { } started && CompletedAt is { } ended ? ended - started : TimeSpan.Zero;
 
-        var startTime = StartedAt ?? CreatedAt;
-        return CompletedAt.Value - startTime;
-    }
+    /// <summary>Whether the task ended — completed, failed or cancelled.</summary>
+    private bool HasEnded =>
+        Status == TaskStatus.Completed || Status == TaskStatus.Failed || Status == TaskStatus.Cancelled;
 
     private void UpdateStatus(TaskStatus newStatus, string? reason = null)
     {

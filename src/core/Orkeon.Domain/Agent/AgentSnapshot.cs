@@ -72,11 +72,8 @@ public sealed record AgentSnapshot
     /// <summary>The tasks assigned to the agent.</summary>
     public IEnumerable<TaskId>? AssignedTasks { get; init; }
 
-    /// <summary>The persisted agent memories.</summary>
-    public IEnumerable<AgentMemory>? Memories { get; init; }
-
-    /// <summary>The task currently being executed, if any.</summary>
-    public TaskId? CurrentTask { get; init; }
+    /// <summary>The tasks the agent is running, if any.</summary>
+    public IEnumerable<TaskId>? CurrentTasks { get; init; }
 
     /// <summary>The optional guardrails configuration.</summary>
     public GuardrailsConfig? Guardrails { get; init; }

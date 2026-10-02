@@ -64,16 +64,12 @@ internal sealed class TaskDependencyManager
     }
 
     /// <summary>
-    /// Checks if this task has uncompleted dependencies.
+    /// Checks if this task has uncompleted dependencies, by what <paramref name="isTaskCompleted"/>
+    /// says of each — the task itself cannot know how the others went.
     /// </summary>
-    public bool HasUncompletedDependencies(Func<TaskId, bool>? isTaskCompleted = null)
+    public bool HasUncompletedDependencies(Func<TaskId, bool> isTaskCompleted)
     {
-        if (_dependencies.Count == 0)
-            return false;
-
-        if (isTaskCompleted == null)
-            return true; // Conservative: assume dependencies are not completed
-
-        return _dependencies.Any(dep => !isTaskCompleted(dep));
+        ArgumentNullException.ThrowIfNull(isTaskCompleted);
+        return _dependencies.Exists(dep => !isTaskCompleted(dep));
     }
 }

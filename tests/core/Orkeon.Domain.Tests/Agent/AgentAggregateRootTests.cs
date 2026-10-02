@@ -146,7 +146,7 @@ public class AgentAggregateRootTests
 
         // Assert
         Assert.Equal(AgentStatus.Busy, agent.Status);
-        Assert.Equal(taskId, agent.CurrentTask);
+        Assert.Equal([taskId], agent.CurrentTasks);
     }
 
     [Fact]
@@ -159,11 +159,11 @@ public class AgentAggregateRootTests
         agent.StartTask(taskId);
 
         // Act
-        agent.CompleteTask(TaskOutput.Text("Done"));
+        agent.CompleteTask(taskId, TaskOutput.Text("Done"));
 
         // Assert
         Assert.Equal(AgentStatus.Idle, agent.Status);
-        Assert.Null(agent.CurrentTask);
+        Assert.Empty(agent.CurrentTasks);
     }
 
     [Fact]
@@ -176,11 +176,11 @@ public class AgentAggregateRootTests
         agent.StartTask(taskId);
 
         // Act
-        agent.FailTask("Something went wrong");
+        agent.FailTask(taskId, "Something went wrong");
 
         // Assert
         Assert.Equal(AgentStatus.Idle, agent.Status);
-        Assert.Null(agent.CurrentTask);
+        Assert.Empty(agent.CurrentTasks);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class AgentAggregateRootTests
 
         agent.AssignTask(taskId1);
         agent.StartTask(taskId1);
-        agent.CompleteTask(TaskOutput.Text("Done"));
+        agent.CompleteTask(taskId1, TaskOutput.Text("Done"));
 
         // Act - should be able to assign and start a second task
         agent.AssignTask(taskId2);
@@ -201,7 +201,7 @@ public class AgentAggregateRootTests
 
         // Assert
         Assert.Equal(AgentStatus.Busy, agent.Status);
-        Assert.Equal(taskId2, agent.CurrentTask);
+        Assert.Equal([taskId2], agent.CurrentTasks);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public class AgentAggregateRootTests
 
         agent.AssignTask(taskId1);
         agent.StartTask(taskId1);
-        agent.FailTask("Error");
+        agent.FailTask(taskId1, "Error");
 
         // Act
         agent.AssignTask(taskId2);
@@ -222,7 +222,7 @@ public class AgentAggregateRootTests
 
         // Assert
         Assert.Equal(AgentStatus.Busy, agent.Status);
-        Assert.Equal(taskId2, agent.CurrentTask);
+        Assert.Equal([taskId2], agent.CurrentTasks);
     }
 
     #endregion
@@ -473,30 +473,6 @@ public class AgentAggregateRootTests
 
         // Assert
         Assert.True(cts.IsCancellationRequested);
-    }
-
-    #endregion
-
-    #region CollaborateWith Validation Tests
-
-    [Fact]
-    public void ShouldReturnUniqueCollaborationId_WhenCollaborating()
-    {
-        // Arrange
-        var agent = CreateIdleAgent(allowDelegation: true);
-        var taskId = TaskId.Create();
-        agent.AssignTask(taskId);
-        var collaborator1 = AgentId.Create();
-        var collaborator2 = AgentId.Create();
-
-        // Act
-        var collabId1 = agent.CollaborateWith(collaborator1, taskId);
-        var collabId2 = agent.CollaborateWith(collaborator2, taskId);
-
-        // Assert
-        Assert.NotNull(collabId1);
-        Assert.NotNull(collabId2);
-        Assert.NotEqual(collabId1, collabId2);
     }
 
     #endregion

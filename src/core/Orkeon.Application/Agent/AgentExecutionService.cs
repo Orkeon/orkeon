@@ -169,11 +169,12 @@ namespace Orkeon.Application.Agent
                         agent, domainTask, result.Output, context, cancellationToken).ConfigureAwait(false);
                 }
 
-                // Notify task completed
+                // Notify task completed. Its steps are the turns its agent loop ran (GAP-21) — the loop
+                // counts them, a guardian block or a cancellation before the first turn counts none.
                 await _callbackOrchestrator.NotifyTaskCompletedAsync(
                     agent,
                     domainTask,
-                    new TaskCompletionInfo { Result = result, StepsExecuted = 1, StartTime = startTime },
+                    new TaskCompletionInfo { Result = result, StepsExecuted = result.IterationsUsed, StartTime = startTime },
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 return result;

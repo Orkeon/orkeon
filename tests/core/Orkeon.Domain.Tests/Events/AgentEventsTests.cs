@@ -139,43 +139,6 @@ public class AgentEventsTests
     }
 
     [Fact]
-    public void ShouldInitializeProperties_WhenUsingAgentCollaborationStartedEventUsingConstructor()
-    {
-        // Arrange
-        var collaboratorId = AgentId.From(Guid.NewGuid());
-        var collaborationId = CollaborationId.From(Guid.NewGuid());
-
-        // Act
-        var @event = new AgentCollaborationStartedEvent { InitiatorId = _agentId, CollaboratorId = collaboratorId, TaskId = _taskId, CollaborationId = collaborationId, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal(_agentId, @event.InitiatorId);
-        Assert.Equal(collaboratorId, @event.CollaboratorId);
-        Assert.Equal(_taskId, @event.TaskId);
-        Assert.Equal(collaborationId, @event.CollaborationId);
-        Assert.Equal(_occurredAt, @event.OccurredAt);
-        Assert.NotEqual(Guid.Empty, @event.Id);
-    }
-
-    [Fact]
-    public void ShouldInitializeProperties_WhenUsingAgentMemoryUpdatedEventUsingConstructor()
-    {
-        // Arrange
-        var memoryId = MemoryId.From(Guid.NewGuid());
-        var memoryType = "ShortTerm";
-
-        // Act
-        var @event = new AgentMemoryUpdatedEvent { AgentId = _agentId, MemoryId = memoryId, MemoryType = memoryType, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal(_agentId, @event.AgentId);
-        Assert.Equal(memoryId, @event.MemoryId);
-        Assert.Equal(memoryType, @event.MemoryType);
-        Assert.Equal(_occurredAt, @event.OccurredAt);
-        Assert.NotEqual(Guid.Empty, @event.Id);
-    }
-
-    [Fact]
     public void ShouldSupportEquality_WhenUsingAgentEventsAsRecords()
     {
         // Arrange
@@ -256,33 +219,6 @@ public class AgentEventsTests
     }
 
     [Fact]
-    public void ShouldReturnCorrectName_WhenUsingAgentCollaborationStartedEventUsingEventName()
-    {
-        // Arrange
-        var collaboratorId = AgentId.From(Guid.NewGuid());
-        var collaborationId = CollaborationId.From(Guid.NewGuid());
-
-        // Act
-        var @event = new AgentCollaborationStartedEvent { InitiatorId = _agentId, CollaboratorId = collaboratorId, TaskId = _taskId, CollaborationId = collaborationId, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal("AgentCollaborationStartedEvent", @event.EventName);
-    }
-
-    [Fact]
-    public void ShouldReturnCorrectName_WhenUsingAgentMemoryUpdatedEventUsingEventName()
-    {
-        // Arrange
-        var memoryId = MemoryId.From(Guid.NewGuid());
-
-        // Act
-        var @event = new AgentMemoryUpdatedEvent { AgentId = _agentId, MemoryId = memoryId, MemoryType = "LongTerm", OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal("AgentMemoryUpdatedEvent", @event.EventName);
-    }
-
-    [Fact]
     public void ShouldHandleGracefully_WhenUsingAgentFailedTaskEventWithNullReason()
     {
         // Act
@@ -292,21 +228,6 @@ public class AgentEventsTests
         Assert.Null(@event.Reason);
         Assert.Equal(_agentId, @event.AgentId);
         Assert.Equal(_taskId, @event.TaskId);
-    }
-
-    [Fact]
-    public void ShouldHandleGracefully_WhenUsingAgentMemoryUpdatedEventWithNullMemoryType()
-    {
-        // Arrange
-        var memoryId = MemoryId.From(Guid.NewGuid());
-
-        // Act
-        var @event = new AgentMemoryUpdatedEvent { AgentId = _agentId, MemoryId = memoryId, MemoryType = null!, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Null(@event.MemoryType);
-        Assert.Equal(_agentId, @event.AgentId);
-        Assert.Equal(memoryId, @event.MemoryId);
     }
 
     [Fact]

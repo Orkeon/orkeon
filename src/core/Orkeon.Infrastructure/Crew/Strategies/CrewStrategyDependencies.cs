@@ -1,13 +1,15 @@
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Domain.SharedKernel.Events;
 using IAgentRepository = Orkeon.Domain.Agent.IAgentRepository;
 using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
 
 namespace Orkeon.Infrastructure.Crew.Strategies;
 
 /// <summary>
-/// The four collaborators every crew strategy needs before it can run anything: where tasks and
-/// agents are read from, who executes an agent, and the memory scope the run writes through.
+/// The collaborators every crew strategy needs before it can run anything: where tasks and agents
+/// are read from and saved, who executes an agent, the memory scope the run writes through, and
+/// who delivers the domain events the tasks and agents raise as the run moves them (GAP-21).
 /// <para>
 /// They are grouped because they always travel together. Taken one by one they filled a
 /// constructor before the strategy could name a single thing specific to its own mode; passed as
@@ -17,16 +19,22 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 /// </summary>
 public sealed class CrewStrategyDependencies
 {
-    /// <summary>Builds the shared dependency set. Every collaborator is required.</summary>
-    /// <param name="taskRepository">Where the planned tasks are read from.</param>
-    /// <param name="agentRepository">Where the crew's agents are read from.</param>
+    /// <summary>Builds the shared dependency set. Every collaborator but the dispatcher is required.</summary>
+    /// <param name="taskRepository">Where the planned tasks are read from, and saved as the run moves them.</param>
+    /// <param name="agentRepository">Where the crew's agents are read from, and saved as the run moves them.</param>
     /// <param name="executionService">Runs one task with one agent.</param>
     /// <param name="memoryScope">The memory scope the execution context writes through.</param>
+    /// <param name="domainEvents">
+    /// Delivers the events of the tasks and agents as the run goes — the container always provides
+    /// one (<c>AddOrkeonInfrastructure</c>); without it the run still moves and saves them, and their
+    /// events stay queued.
+    /// </param>
     public CrewStrategyDependencies(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,
         IAgentExecutionService executionService,
-        IMemoryScope memoryScope)
+        IMemoryScope memoryScope,
+        IDomainEventDispatcher? domainEvents = null)
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         ArgumentNullException.ThrowIfNull(agentRepository);
@@ -37,6 +45,7 @@ public sealed class CrewStrategyDependencies
         AgentRepository = agentRepository;
         ExecutionService = executionService;
         MemoryScope = memoryScope;
+        DomainEvents = domainEvents;
     }
 
     /// <summary>Where the planned tasks are read from.</summary>
@@ -50,4 +59,11 @@ public sealed class CrewStrategyDependencies
 
     /// <summary>The memory scope the execution context writes through.</summary>
     public IMemoryScope MemoryScope { get; }
+
+    /// <summary>Delivers the events of the tasks and agents as the run goes; null when nothing does.</summary>
+    public IDomainEventDispatcher? DomainEvents { get; }
+
+    /// <summary>The lifecycle of the tasks and agents of a strategy's runs, logging through <paramref name="logger"/>.</summary>
+    internal TaskLifecycle LifecycleFor(Microsoft.Extensions.Logging.ILogger logger) =>
+        new(TaskRepository, AgentRepository, DomainEvents, logger);
 }

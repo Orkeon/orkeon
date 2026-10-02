@@ -80,34 +80,6 @@ public sealed record AgentCapabilitiesUpdatedEvent : DomainEvent
 }
 
 /// <summary>
-/// Event raised when an agent collaborates with another agent.
-/// </summary>
-public sealed record AgentCollaborationStartedEvent : DomainEvent
-{
-    /// <summary>Gets the initiator agent identifier.</summary>
-    public required AgentId InitiatorId { get; init; }
-    /// <summary>Gets the collaborator agent identifier.</summary>
-    public required AgentId CollaboratorId { get; init; }
-    /// <summary>Gets the task identifier.</summary>
-    public required TaskId TaskId { get; init; }
-    /// <summary>Gets the collaboration identifier.</summary>
-    public required CollaborationId CollaborationId { get; init; }
-}
-
-/// <summary>
-/// Event raised when an agent updates its memory.
-/// </summary>
-public sealed record AgentMemoryUpdatedEvent : DomainEvent
-{
-    /// <summary>Gets the agent identifier.</summary>
-    public required AgentId AgentId { get; init; }
-    /// <summary>Gets the memory identifier.</summary>
-    public required MemoryId MemoryId { get; init; }
-    /// <summary>Gets the memory type.</summary>
-    public required string MemoryType { get; init; }
-}
-
-/// <summary>
 /// Event raised when an agent is killed (emergency stop).
 /// </summary>
 public sealed record AgentKilledEvent : DomainEvent

@@ -292,6 +292,12 @@ qu'une tâche garde :
   `StoreResultInMemory` à faux, et la stratégie range l'acceptée une fois, sous l'agent assigné — rien
   quand le manager rejette les trois essais, ni quand le travailleur échoue
   ([Types de processus](../orchestration/process-types.md#2-hierarchical--manager--workers)) ;
+- en mode `Autonomous`, la sortie d'un pair qui a repris une tâche échouée : il s'exécute dans le contexte
+  de la tentative échouée, dérivé d'elle sous l'id de la crew (GAP-21), et sa sortie, quand elle réussit,
+  est le résultat de la tâche — rangée une fois, sous le pair ([Autonomous](../orchestration/autonomous.md)) ;
+- jamais la sous-réponse d'un collègue : `delegate_work_to_coworker` exécute le collègue dans le contexte
+  de la tâche qui délègue, dérivé avec `StoreResultInMemory` à faux — même crew, même portée, réglages du
+  parent ;
 - jamais un bulletin, jamais un essai de forge ([Forge](../getting-started/forge-a-team-from-a-need.md)).
 
 #### Ce que rappelle une crew
@@ -322,7 +328,8 @@ crew les plus proches de la tâche, et le prompt utilisateur les porte :
   weekly news ---` (sa date, le rôle de l'agent, la tâche tronquée à 80 caractères) suivie de son contenu.
   Le Guardian la filtre avec le reste du prompt (phase d'entrée).
 - **Qui rappelle** : toute exécution qui répond à une tâche — une candidate du consensuel, un essai du
-  hiérarchique —, mais pas un bulletin (`AgentBallotCollector` l'exécute avec
+  hiérarchique, un pair autonome qui reprend une tâche —, et un collègue quand la tâche qui lui délègue
+  rappelle, mais pas un bulletin (`AgentBallotCollector` l'exécute avec
   `SimpleExecutionContext.RecallFromMemory` à faux).
 
 Une crew relancée sans être rechargée — la boucle `KickoffAsync` en C#, le `CrewAgent` à crew fixe —

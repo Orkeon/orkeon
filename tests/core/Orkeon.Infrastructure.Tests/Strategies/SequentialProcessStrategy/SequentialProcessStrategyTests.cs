@@ -859,7 +859,7 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         // All other methods throw NotImplementedException
         public Task<DomainTask> AddAsync(DomainTask entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         Task IRepository<DomainTask, TaskId>.AddAsync(DomainTask aggregate, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task UpdateAsync(DomainTask entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task UpdateAsync(DomainTask entity, CancellationToken cancellationToken = default) => Task.CompletedTask; // a run saves the tasks and agents it moves (GAP-21); the double already holds them
         public Task<bool> DeleteAsync(TaskId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         Task IRepository<DomainTask, TaskId>.DeleteAsync(TaskId id, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> ExistsAsync(TaskId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
@@ -895,7 +895,7 @@ public sealed class SequentialProcessStrategyTests : IDisposable
 
         // All other methods throw NotImplementedException
         public Task AddAsync(DomainAgent entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task UpdateAsync(DomainAgent entity, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task UpdateAsync(DomainAgent entity, CancellationToken cancellationToken = default) => Task.CompletedTask; // a run saves the tasks and agents it moves (GAP-21); the double already holds them
         public Task DeleteAsync(AgentId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<bool> ExistsAsync(AgentId id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<int> CountAsync(CancellationToken cancellationToken = default) => throw new NotImplementedException();

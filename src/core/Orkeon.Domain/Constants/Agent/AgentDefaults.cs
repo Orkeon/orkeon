@@ -29,12 +29,6 @@ public static class AgentDefaults
     public const int MaxRetryLimit = 3;
 
     /// <summary>
-    /// Default maximum number of in-memory agent memories retained.
-    /// Older memories are trimmed when this limit is exceeded.
-    /// </summary>
-    public const int MaxMemories = 100;
-
-    /// <summary>
     /// Maximum number of consecutive identical tool call errors before the circuit breaker trips.
     /// Prevents the agent from burning tokens re-trying the exact same failing action indefinitely.
     /// </summary>

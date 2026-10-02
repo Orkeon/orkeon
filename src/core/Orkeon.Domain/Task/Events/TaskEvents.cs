@@ -49,8 +49,11 @@ public sealed record TaskStartedEvent : DomainEvent
 {
     /// <summary>Gets the task identifier.</summary>
     public required TaskId TaskId { get; init; }
-    /// <summary>Gets the agent identifier.</summary>
-    public required AgentId AgentId { get; init; }
+    /// <summary>
+    /// Gets the agent that runs the task; <see langword="null"/> when no single agent runs it — a
+    /// consensual task is answered by every agent of its crew.
+    /// </summary>
+    public AgentId? AgentId { get; init; }
 }
 
 /// <summary>

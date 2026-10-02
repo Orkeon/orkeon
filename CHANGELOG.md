@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a run moves its tasks and agents through their lifecycle and raises their events as it goes, and a delegation runs in the context of the task it serves **[breaking]**
+
+A run raised the crew's domain events and nothing else: no mode moved a `CrewTask` or an `Agent`
+through its lifecycle, so `TaskStartedEvent`, `AgentCompletedTaskEvent` and their siblings never went
+out, the shipped `AgentCompletedTaskHandler` / `AgentFailedTaskHandler` never logged, and a task read
+back from its repository after a run was still `Pending`, without a date (GAP-21):
+
+- **Every mode drives the lifecycle, as the run goes.** The outcome the six modes share
+  (`CrewRunOutcome`) records each start, success, failure, skip, task never reached and interruption,
+  and `TaskLifecycle` applies the transition — the task assigned to the agent that runs it, started,
+  then completed or failed; the agent given the task, started, then completed or failed —, saves both
+  in the run's repositories, then dispatches their events through `IDomainEventDispatcher`, before the
+  crew's own at the end of the kickoff. A handler that throws is logged, as for the crew's events; a
+  transition the aggregate refuses is a warning, never a failed run.
+- **What each mode adds.** Parallel starts a task as it launches it and ends a wave's tasks once the
+  wave has joined, an agent running two tasks of a wave at once. Graph starts a task once and keeps it
+  running through its retries. In Hierarchical the agent the manager assigns starts the task —
+  re-assigned from a declared one — and ends it once, its revisions included. A consensual task starts
+  once, under no single agent; every agent that answers starts it and ends it with its own answer, and
+  the task completes under the author of the retained one. In Autonomous a task handed to a peer is
+  failed by the agent that claimed it and completed by the peer.
+- **A task that does not run is cancelled, saying why**: skipped behind a dependency that did not
+  succeed (neither started nor ended), never reached by an exhausted budget, or caught by a
+  cancellation (`the run was cancelled`); a run that stops on an exception fails the task it was
+  running. After a run the repository holds `Completed`, `Failed` or `Cancelled`, with the dates; a crew
+  kicked off again without being reloaded reopens its tasks (`CrewTask.Reopen`).
+- **`StepsExecuted` is real.** `TaskCompletionInfo.StepsExecuted`, handed to every `ICallbackHandler`
+  and logged by `LoggingCallbackHandler`, is the number of turns the agent loop ran
+  (`TaskResult.IterationsUsed`); it was 1 whatever the loop did.
+- **A delegation runs in the context of the task it serves.** `delegate_work_to_coworker` derives the
+  coworker's context from the delegating task's with `with` — the crew's id, the memory scope, the
+  outputs so far and the parent's settings, so it recalls when the parent does — and turns
+  `StoreResultInMemory` off: under `memory: true` a coworker's sub-answer was stored as a task result,
+  and the parent's settings were lost. Without the context of a crew run, a synchronous delegation is
+  refused rather than run under a fresh crew id. A crew kicked off again keeps its agents: their
+  delegation tools are now replaced, so they read the new run's context — the second run of a
+  Sequential or Graph crew whose agents may delegate failed at its start ("Tool
+  delegate_work_to_coworker already exists").
+- **An Autonomous takeover is the task.** The peer runs the failed task itself — not a copy built from
+  its description — in the failed attempt's context, derived under the crew's id, with the run's inputs
+  and the outputs so far: it recalls the crew's memory, and its output, when it succeeds, is stored
+  once, under it. It ran under a fresh crew id: nothing stored, nothing recalled. A `delegate` request
+  naming no task of the run is refused.
+
+Breaking: the dead surfaces of the agent aggregate are removed — `Agent.UpdateMemory` and
+`AgentMemoryUpdatedEvent`, with `Agent.Memories`, `AgentSnapshot.Memories` and
+`AgentDefaults.MaxMemories` (a crew's memory is the memory coordinator's), and `Agent.CollaborateWith`
+and `AgentCollaborationStartedEvent`, with `CollaborationId` (agents collaborate through delegation);
+31 domain events remain. An agent runs several tasks at once: `Agent.CurrentTask` becomes
+`CurrentTasks` (`AgentSnapshot.CurrentTask` too), `CompleteTask` and `FailTask` take the task's id, and
+`AssignTask` accepts a busy agent. `CrewTask.AssignTo` re-assigns a pending or running task (the same
+agent changes nothing), `Start` no longer blocks a task that has dependencies — the run decides when it
+starts —, `Start()` starts a task no single agent runs and `TaskStartedEvent.AgentId` is nullable for
+it, `Fail` records `CompletedAt`, `GetExecutionTime` counts from `StartedAt` only, and `Reopen` is new.
+`CrewStrategyDependencies`, `ParallelProcessStrategy` and `HierarchicalProcessStrategy` take an optional
+`IDomainEventDispatcher`, which the container fills. `DelegateWorkTool` refuses `wait_for_result: true`
+when its context supplier supplies no context. The limitation that said a run raised the crew's events
+only is gone from [Known limitations](docs/reference/limitations.md).
+
+Migration: call `CompleteTask(taskId, output)` / `FailTask(taskId, reason)` and read `CurrentTasks`;
+expect a null `AgentId` on the `TaskStartedEvent` of a consensual task; register an
+`IDomainEventHandler<T>` for the task and agent events to follow a run task by task; remove calls to
+`UpdateMemory` and `CollaborateWith` — store and recall through `IMemoryCoordinator`, collaborate
+through the delegation tools; give a `DelegateWorkTool` built by hand a context supplier for
+synchronous delegation.
+
 ### Fixed — a crew with `memory: true` recalls its earlier work before each task, and a memory that fails no longer fails the task **[breaking]**
 
 Every crew stored each successful output, whatever its `memory:` said, and nothing in a run read the

@@ -191,6 +191,32 @@ public sealed class AgentExecutionServiceTests : IDisposable
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task The_steps_a_completed_task_reports_are_the_iterations_its_agent_loop_ran()
+    {
+        // GAP-21: StepsExecuted, handed to every ICallbackHandler and logged, used to be 1 whatever
+        // the loop did.
+        _executionOrchestrator.SetupResult(new TaskResult(true, "after four turns", null, [], TimeSpan.Zero) { IterationsUsed = 4 });
+
+        await _service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(4, _callbackOrchestrator.LastCompletionInfo?.StepsExecuted);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_failed_loop_reports_the_iterations_it_ran_before_failing()
+    {
+        _executionOrchestrator.SetupResult(new TaskResult(false, "", null, [], TimeSpan.Zero, Error: "no final answer")
+        {
+            ExitReason = AgentExitReason.MaxIterationsReached,
+            IterationsUsed = 3,
+        });
+
+        await _service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, _callbackOrchestrator.LastCompletionInfo?.StepsExecuted);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ShouldReturnErrorResult_WhenExecutingTaskAsyncWithFailedExecution()
     {
         // Arrange
@@ -712,6 +738,7 @@ internal class TestCallbackOrchestrator : ICallbackOrchestrator
     public DomainAgent? LastAgent { get; private set; }
     public DomainTask? LastTask { get; private set; }
     public TaskResult? LastResult { get; private set; }
+    public TaskCompletionInfo? LastCompletionInfo { get; private set; }
 
     public System.Threading.Tasks.Task NotifyTaskStartedAsync(
         DomainAgent agent, DomainTask task, DateTime startTime,
@@ -731,6 +758,7 @@ internal class TestCallbackOrchestrator : ICallbackOrchestrator
         LastAgent = agent;
         LastTask = task;
         LastResult = completionInfo.Result;
+        LastCompletionInfo = completionInfo;
         return System.Threading.Tasks.Task.CompletedTask;
     }
 

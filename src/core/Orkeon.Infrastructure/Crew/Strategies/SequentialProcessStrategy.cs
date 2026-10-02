@@ -32,6 +32,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     private readonly IMemoryScope _memoryScope;
     private readonly AgentDelegationToolsProvider _delegationProvider;
     private readonly ILogger<SequentialProcessStrategy> _logger;
+    private readonly TaskLifecycle _lifecycle;
 
     /// <summary>
     /// Best-effort hook dispatcher (BUS-03). Shared with the five other modes — this
@@ -65,6 +66,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);
         _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
+        _lifecycle = dependencies.LifecycleFor(logger);
     }
 
     /// <inheritdoc />
@@ -95,7 +97,8 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         var applicationOutputs = new List<ApplicationTaskOutput>();
         var run = new SequentialRun(
             new SimpleExecutionContext(crew.Id, variables, _memoryScope, applicationOutputs, cancellationToken),
-            applicationOutputs);
+            applicationOutputs,
+            new CrewRunOutcome(_lifecycle));
 
         try
         {
@@ -136,7 +139,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     .ConfigureAwait(false);
 
                 var snapshot = run.Outcome.BlockingDependency(task) is { } blockedBy
-                    ? SkipBlockedTask(run, task, agent, blockedBy)
+                    ? await SkipBlockedTaskAsync(run, task, agent, blockedBy).ConfigureAwait(false)
                     : await RunTaskAsync(run, task, agent, cancellationToken).ConfigureAwait(false);
 
                 if (_hooks.HasHook)
@@ -167,8 +170,10 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 _hooks, crew.Id.Value.ToString(), startedAt, run.TaskSnapshots,
                 run.DomainResults, totalTime, metadata, finalOutput).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (_hooks.HasHook)
+        catch (OperationCanceledException ex)
         {
+            // The task the cancellation caught is cancelled, its agent failing it (GAP-21).
+            await run.Outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Canceled,
@@ -176,8 +181,9 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 null, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
-        catch (Exception ex) when (_hooks.HasHook)
+        catch (Exception ex)
         {
+            await run.Outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Failed, ex.Message),
@@ -193,10 +199,11 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// </summary>
     private sealed class SequentialRun
     {
-        public SequentialRun(SimpleExecutionContext context, List<ApplicationTaskOutput> applicationOutputs)
+        public SequentialRun(SimpleExecutionContext context, List<ApplicationTaskOutput> applicationOutputs, CrewRunOutcome outcome)
         {
             Context = context;
             ApplicationOutputs = applicationOutputs;
+            Outcome = outcome;
         }
 
         public SimpleExecutionContext Context { get; set; }
@@ -209,21 +216,23 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         /// The failures so far, and the tasks that did not succeed: a task depending on one of
         /// them is skipped in its turn, so a broken step never runs the rest of the chain on a
         /// context that says "Task failed: …" where the deliverable it needed should have been
-        /// (LLM-11). The rule is shared by the six modes (GAP-03).
+        /// (LLM-11). The rule is shared by the six modes (GAP-03), and so is the lifecycle of the
+        /// tasks and agents it records (GAP-21).
         /// </summary>
-        public CrewRunOutcome Outcome { get; } = new();
+        public CrewRunOutcome Outcome { get; }
     }
 
     /// <summary>
     /// A task blocked by a dependency that did not succeed (LLM-11): recorded as skipped, never
     /// run — a failed output for the next tasks' context and the crew's result, and a snapshot
     /// marked <see cref="TaskExecutionSnapshot.Skipped"/> for the summary and the run events.
-    /// No agent is asked anything, so nothing is started and no token is spent.
+    /// No agent is asked anything, so nothing is started and no token is spent; the task is
+    /// cancelled with the reason (GAP-21).
     /// </summary>
-    private TaskExecutionSnapshot SkipBlockedTask(
+    private async System.Threading.Tasks.Task<TaskExecutionSnapshot> SkipBlockedTaskAsync(
         SequentialRun run, Orkeon.Domain.Task.CrewTask task, DomainAgent agent, TaskId blockedBy)
     {
-        var reason = run.Outcome.RecordSkip(task.Id, agent.Role.Value, blockedBy);
+        var reason = await run.Outcome.RecordSkipAsync(task, agent.Role.Value, blockedBy).ConfigureAwait(false);
         LogTaskSkippedAfterDependency(task.Id, agent.Role, blockedBy);
 
         var (domainOutput, applicationOutput) = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
@@ -244,6 +253,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         await _hooks.TaskStartedAsync(
             CrewHookDispatcher.Started(task.Id.Value.ToString(), agent.Role.Value), CancellationToken.None)
             .ConfigureAwait(false);
+        await run.Outcome.RecordStartAsync(task, agent).ConfigureAwait(false);
 
         Orkeon.Application.Interfaces.Services.TaskResult taskResult;
         TaskExecutionSnapshot snapshot;
@@ -255,8 +265,10 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         _delegationProvider.UpdateExecutionContext(run.Context);
         LogTaskCompletedSuccess(task.Id, snapshot.Success);
 
-        if (!taskResult.Success)
-            run.Outcome.RecordFailure(task.Id, agent.Role.Value, taskResult.Error ?? taskResult.LastError);
+        if (taskResult.Success)
+            await run.Outcome.RecordSuccessAsync(task, run.DomainResults[^1]).ConfigureAwait(false);
+        else
+            await run.Outcome.RecordFailureAsync(task, agent.Role.Value, taskResult.Error ?? taskResult.LastError).ConfigureAwait(false);
 
         return snapshot;
     }
@@ -303,12 +315,8 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             structuredOutput: executionResult.StructuredOutput,
             agentId: agent.Id.ToString()));
 
-        var updatedContext = new SimpleExecutionContext(
-            context.CrewId,
-            context.Variables,
-            context.Memory,
-            applicationOutputs,
-            context.CancellationToken);
+        // Derived, never rebuilt: a context's init settings survive from task to task (GAP-30).
+        var updatedContext = context with { PreviousOutputs = applicationOutputs };
 
         var snapshot = new TaskExecutionSnapshot
         {

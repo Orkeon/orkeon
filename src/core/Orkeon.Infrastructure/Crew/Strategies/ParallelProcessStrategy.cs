@@ -44,6 +44,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     private readonly CrewHookDispatcher _hooks;
     private readonly TaskAgentSelector _agentSelector;
     private readonly ILogger<ParallelProcessStrategy> _logger;
+    private readonly TaskLifecycle _lifecycle;
 
     /// <summary>Initializes a new instance of <see cref="ParallelProcessStrategy"/>.</summary>
     /// <param name="taskRepository">The task repository.</param>
@@ -53,6 +54,11 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// <param name="logger">The logger.</param>
     /// <param name="agentSelector">Who runs a task that names no agent. Null means round-robin.</param>
     /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
+    /// <param name="domainEvents">
+    /// Delivers the events of the tasks and agents as the run moves them (GAP-21); the container
+    /// always provides one. Without it they are moved and saved, their events left queued.
+    /// </param>
+#pragma warning disable S107 // DI constructor: the four collaborators of every strategy, the logger, and three optional services
     public ParallelProcessStrategy(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,
@@ -60,7 +66,9 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         IMemoryScope memoryScope,
         ILogger<ParallelProcessStrategy> logger,
         ICrewExecutionHook? hook = null,
-        TaskAgentSelector? agentSelector = null)
+        TaskAgentSelector? agentSelector = null,
+        Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher? domainEvents = null)
+#pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -74,6 +82,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);
         _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
+        _lifecycle = new TaskLifecycle(taskRepository, agentRepository, domainEvents, logger);
     }
 
     /// <inheritdoc />
@@ -127,7 +136,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         // firing mid-fan-out used to escape with tasks 1..n-1 already launched — no terminal
         // event, and orphans still emitting task.completed after the strategy had returned.
         var results = new List<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>();
-        var outcome = new CrewRunOutcome();
+        var outcome = new CrewRunOutcome(_lifecycle);
         try
         {
         // Setup stays inside the barrier: an agent-less crew is the everyday failure, and it
@@ -136,6 +145,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         var tasks = await LoadPlannedTasksAsync(crew, plan, cancellationToken).ConfigureAwait(false);
 
         var taskIndex = 0;
+        var runContext = new SimpleExecutionContext(crew.Id, variables, _memoryScope, [], cancellationToken);
 
         // Waves, not one flat fan-out. A crew declaring `dependencies:` used to have them
         // ignored here: every task started at once, so a synthesis task ran against an empty
@@ -169,7 +179,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 // (GAP-03): it used to run in the next wave with "Task failed: …" as its input.
                 if (outcome.BlockingDependency(task) is { } blockedBy)
                 {
-                    var skipReason = outcome.RecordSkip(task.Id, agent.Role.Value, blockedBy);
+                    var skipReason = await outcome.RecordSkipAsync(task, agent.Role.Value, blockedBy).ConfigureAwait(false);
                     LogTaskSkippedAfterDependency(task.Id, agent.Role.Value, blockedBy);
                     var skipped = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
                     results.Add((skipped.Domain, skipped.Application));
@@ -180,16 +190,16 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                     continue;
                 }
 
-                var context = new SimpleExecutionContext(
-                    crew.Id,
-                    variables,
-                    _memoryScope,
-                    previousOutputs,
-                    cancellationToken);
+                // Derived from the run's context, never rebuilt (GAP-30): every task of the wave
+                // reads what the previous waves produced.
+                var context = runContext with { PreviousOutputs = previousOutputs };
 
                 var capturedTask = task;
                 var capturedAgent = agent;
 
+                // Started as it is launched, so the start goes out before its agent runs (GAP-21);
+                // one agent given two tasks of the wave runs both at once.
+                await outcome.RecordStartAsync(task, agent).ConfigureAwait(false);
                 launched.Add((task, agent));
                 executionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
                     capturedAgent, capturedTask, context, tokenTally, taskSnapshots, cancellationToken)
@@ -205,20 +215,24 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             for (var i = 0; i < waveResults.Length; i++)
             {
                 var (domainOutput, appOutput, error) = waveResults[i];
-                if (!domainOutput.Success)
-                    outcome.RecordFailure(launched[i].Task.Id, launched[i].Agent.Role.Value, error);
+                if (domainOutput.Success)
+                    await outcome.RecordSuccessAsync(launched[i].Task, domainOutput).ConfigureAwait(false);
+                else
+                    await outcome.RecordFailureAsync(launched[i].Task, launched[i].Agent.Role.Value, error).ConfigureAwait(false);
                 results.Add((domainOutput, appOutput));
             }
 
             completedOutputs.AddRange(waveResults.Select(r => r.appOutput));
         }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
             // Let the already-launched tasks settle before the terminal event: they observe
             // the same token, and a task.completed emitted AFTER the terminal event would
-            // read as a run speaking from beyond its own grave.
+            // read as a run speaking from beyond its own grave. The wave's tasks are then
+            // cancelled, their agents failing them (GAP-21).
             await SettleAsync(executionTasks).ConfigureAwait(false);
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
@@ -228,6 +242,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         catch (Exception ex)
         {
             await SettleAsync(executionTasks).ConfigureAwait(false);
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed, ex.Message),

@@ -54,6 +54,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     private readonly ILogger<ConsensualProcessStrategy> _logger;
     private readonly ConsensualProcessOptions _options;
     private readonly CrewHookDispatcher _hooks;
+    private readonly TaskLifecycle _lifecycle;
 
     /// <summary>
     /// The role a consensual task reports: it has no single author, the vote is the agent.
@@ -96,6 +97,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
         _hooks = new CrewHookDispatcher(hook, logger);
+        _lifecycle = dependencies.LifecycleFor(logger);
     }
 
     /// <summary>
@@ -175,7 +177,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         // re-execution), so the real cost is the sum of all executions, not just the
         // winning result.
         var tokenTally = new TokenUsageTally();
-        var outcome = new CrewRunOutcome();
+        var outcome = new CrewRunOutcome(_lifecycle);
 
         // The terminal event goes out on EVERY exit — setup included: "consensus not
         // reached" was the only failure this mode reported, and a throwing round, a Ctrl+C
@@ -219,7 +221,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             // (GAP-03): no agent runs it, no vote is held.
             if (outcome.BlockingDependency(task) is { } blockedBy)
             {
-                var skipReason = outcome.RecordSkip(task.Id, ConsensusRole, blockedBy);
+                var skipReason = await outcome.RecordSkipAsync(task, ConsensusRole, blockedBy).ConfigureAwait(false);
                 LogTaskSkippedAfterDependency(task.Id, blockedBy);
                 var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, ConsensusRole, blockedBy);
                 domainResults.Add(skippedDomain);
@@ -236,6 +238,9 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             await _hooks.TaskStartedAsync(
                 CrewHookDispatcher.Started(task.Id.Value.ToString(), ConsensusRole), ct)
                 .ConfigureAwait(false);
+            // The task starts once, not once per candidate; every agent answers it, so each starts
+            // it too (GAP-21).
+            await outcome.RecordStartWithoutAgentAsync(task, agents).ConfigureAwait(false);
 
             // The loop is sequential, so the tally's delta around one task IS what the
             // whole vote cost — every agent, every round — not just the winning
@@ -267,19 +272,30 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             applicationOutputs.Add(appOutput);
 
             // Build domain output
-            domainResults.Add(DomainTaskOutput.Create(
+            var domainOutput = DomainTaskOutput.Create(
                 rawOutput: CrewRunOutcome.RawOutputOf(taskResult),
                 format: "text",
                 formattedOutput: null,
                 taskId: task.Id,
                 success: taskResult.Success,
                 executionTime: taskResult.ExecutionTime,
-                structuredOutput: taskResult.StructuredOutput));
+                structuredOutput: taskResult.StructuredOutput);
+            domainResults.Add(domainOutput);
+
+            // Each agent ends the task with its own last answer — or its error —, then the task
+            // ends: completed under the author of the retained answer (GAP-21).
+            foreach (var agent in agents)
+            {
+                if (vote.LastAnswers.TryGetValue(agent.Id.ToString(), out var answer))
+                    await outcome.RecordAnswerAsync(task, agent, answer).ConfigureAwait(false);
+            }
 
             // The retained result is the task's result: when it failed, the task failed,
             // whatever the vote said (GAP-03).
-            if (!taskResult.Success)
-                outcome.RecordFailure(task.Id, ConsensusRole, taskResult.Error ?? taskResult.LastError);
+            if (taskResult.Success)
+                await outcome.RecordSuccessAsync(task, domainOutput, retained?.Author).ConfigureAwait(false);
+            else
+                await outcome.RecordFailureAsync(task, ConsensusRole, taskResult.Error ?? taskResult.LastError).ConfigureAwait(false);
 
             LogTaskCompletedViaConsensusSuccess(taskId, taskResult.Success);
 
@@ -300,8 +316,9 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);
         }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
@@ -310,6 +327,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         }
         catch (Exception ex)
         {
+            await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed, ex.Message),
@@ -357,6 +375,12 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         /// </summary>
         public SimpleExecutionContext VotingContext(IMemoryScope memory, CancellationToken ct) =>
             ExecutionContext(memory, ct) with { StoreResultInMemory = false };
+
+        /// <summary>
+        /// Each agent's answer in the last round held, keyed by agent id: what the agent ends the
+        /// task with (GAP-21). Empty until a round is held.
+        /// </summary>
+        public Dictionary<string, TaskResult> LastAnswers { get; set; } = [];
     }
 
     /// <summary>
@@ -417,6 +441,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 
             // Execute task with all agents in parallel
             var agentResults = await ExecuteWithAllAgentsAsync(vote, previousResults, ct).ConfigureAwait(false);
+            vote.LastAnswers = agentResults;
 
             // Record the cost of the whole round: every agent execution consumed tokens,
             // whichever result ends up winning the vote.

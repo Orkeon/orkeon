@@ -286,6 +286,11 @@ the run's variables in it) and the start of its output (1,000 characters), with 
   `StoreResultInMemory` off, and the strategy stores the accepted one once, under the agent it was
   assigned to — nothing when the manager rejects all three, nor when the worker fails
   ([Process types](../orchestration/process-types.md#2-hierarchical--manager--workers));
+- in `Autonomous` mode, the output of a peer that took a failed task over: it runs in the context of
+  the attempt that failed, derived from it under the crew's id (GAP-21), and its output, when it succeeds,
+  is the task's result — stored once, under the peer ([Autonomous](../orchestration/autonomous.md));
+- never a coworker's sub-answer: `delegate_work_to_coworker` runs the coworker in the delegating task's
+  context, derived with `StoreResultInMemory` off — the same crew, the same scope, the parent's settings;
 - never a ballot, never a forge trial ([Forge](../getting-started/forge-a-team-from-a-need.md)).
 
 #### What a crew recalls
@@ -314,8 +319,9 @@ closest to the task, and the user prompt carries them:
   helps:*, then for each memory a `--- 2026-09-30 · Analyst · Summarize the weekly news ---` line (when it
   was stored, the agent's role, the task cut to 80 characters) followed by its content. The Guardian
   screens it with the rest of the prompt (input phase).
-- **Who recalls**: every execution that answers a task — a consensual candidate, a hierarchical attempt —
-  but no ballot (`AgentBallotCollector` runs it with `SimpleExecutionContext.RecallFromMemory` off).
+- **Who recalls**: every execution that answers a task — a consensual candidate, a hierarchical attempt,
+  an autonomous peer taking a task over — and a coworker when the task delegating to it does, but no
+  ballot (`AgentBallotCollector` runs it with `SimpleExecutionContext.RecallFromMemory` off).
 
 A crew relaunched without being reloaded — the C# `KickoffAsync` loop, the fixed-crew `CrewAgent` —
 finds its earlier turns the same way: what is excluded is only what the prompt already carries.
