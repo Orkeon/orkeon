@@ -76,7 +76,7 @@ public sealed class CrewCreateOptions
     public bool FullOutput { get; init; }
 
     /// <summary>
-    /// Optional LLM provider for planning.
+    /// Optional LLM provider the crew plans on; null plans on the host's default LLM profile.
     /// </summary>
     public ILlmProvider? PlanningLlm { get; init; }
 

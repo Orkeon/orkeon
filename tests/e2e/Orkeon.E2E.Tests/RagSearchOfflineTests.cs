@@ -48,8 +48,8 @@ public class RagSearchOfflineTests
             services.AddSingleton<IEmbeddingProvider>(new BagOfWordsEmbeddingProvider());
         }
 
-        // Offline: stub chat client registered first — the TryAdd default of
-        // AddOrkeonInfrastructure() must not wire a real LLM. Retrieval stays fully real.
+        // Offline: the host's chat client is a stub — no network, no key. Retrieval stays
+        // fully real.
         services.AddSingleton<IChatClient, EchoChatClient>();
 
         services.AddOrkeonInfrastructure();

@@ -924,3 +924,25 @@ Orkeon.Application.Memory.CrewMemoryProviderRegistry.GetScope(Orkeon.Domain.Comm
 Orkeon.Application.Memory.MemoryCoordinator.MemoryCoordinator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryCoordinator!>! logger, Orkeon.Application.Interfaces.Services.IMemoryService! memoryService, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null) -> void
 Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory.get -> bool
 Orkeon.Application.Context.SimpleExecutionContext.StoreResultInMemory.init -> void
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration.EnablePlanning.get -> bool
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration.EnablePlanning.init -> void
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration.MaxRetries.get -> int
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration.MaxRetries.init -> void
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration.PlanningConfiguration() -> void
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration.PlanningConfiguration(Orkeon.Application.Agent.PlanningConfiguration! original) -> void
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration.Timeout.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Agent.PlanningConfiguration.Timeout.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EnablePlanning.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EnablePlanning.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.PlanningLlmModel.get -> string?
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.PlanningLlmModel.set -> void
+*REMOVED*override Orkeon.Application.Agent.PlanningConfiguration.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Agent.PlanningConfiguration.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Agent.PlanningConfiguration.ToString() -> string!
+*REMOVED*static Orkeon.Application.Agent.PlanningConfiguration.operator !=(Orkeon.Application.Agent.PlanningConfiguration? left, Orkeon.Application.Agent.PlanningConfiguration? right) -> bool
+*REMOVED*static Orkeon.Application.Agent.PlanningConfiguration.operator ==(Orkeon.Application.Agent.PlanningConfiguration? left, Orkeon.Application.Agent.PlanningConfiguration? right) -> bool
+*REMOVED*virtual Orkeon.Application.Agent.PlanningConfiguration.<Clone>$() -> Orkeon.Application.Agent.PlanningConfiguration!
+*REMOVED*virtual Orkeon.Application.Agent.PlanningConfiguration.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Agent.PlanningConfiguration.Equals(Orkeon.Application.Agent.PlanningConfiguration? other) -> bool
+*REMOVED*virtual Orkeon.Application.Agent.PlanningConfiguration.PrintMembers(System.Text.StringBuilder! builder) -> bool

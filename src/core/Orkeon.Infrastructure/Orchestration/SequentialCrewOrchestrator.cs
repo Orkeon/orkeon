@@ -39,6 +39,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly IDomainEventDispatcher _domainEventDispatcher;
     private readonly Orkeon.Application.Memory.CrewMemoryProviderRegistry? _memoryProviderRegistry;
     private readonly Orkeon.Application.EventHub.IEventHubCallerContext? _hubCallerContext;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -56,7 +57,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         IAgentRepository? agentRepository = null,
         ICheckpointManager? checkpointManager = null,
         Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null,
-        Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null)
+        Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null,
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -76,6 +78,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _checkpointManager = checkpointManager;
         _memoryProviderRegistry = memoryProviderRegistry;
         _hubCallerContext = hubCallerContext;
+        _llmProfiles = llmProfiles;
     }
 
     /// <summary>
@@ -276,19 +279,35 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         }
     }
 
+    /// <summary>
+    /// The crew's plan when it asks for one (<c>planning: true</c>, <c>.Planning(true)</c>): made by
+    /// the crew's planning provider when C# set one (<c>WithPlanningLlm</c>), else by the host's
+    /// default profile — where the planner stays (GAP-29, GAP-19). It used to require the former,
+    /// so a YAML crew, or a C# crew calling <c>.Planning(true)</c> alone, planned nothing while the
+    /// documentation said it did. A plan that fails fails the run, saying why.
+    /// </summary>
     private async System.Threading.Tasks.Task<DomainExecutionPlan?> CreatePlanIfEnabledAsync(
         Orkeon.Domain.Crew.Crew crew,
         DomainCrewInput domainInput)
     {
-        if (!crew.Planning || crew.PlanningLlm == null)
+        if (!crew.Planning)
             return null;
 
-        var planner = CrewPlanner.Create(crew.PlanningLlm, _executionPlanParser);
+        var planningLlm = crew.PlanningLlm ?? DefaultPlanningLlm(crew);
+        var planner = CrewPlanner.Create(planningLlm, _executionPlanParser);
         var planningContext = new PlanningContext(crew.Id, crew.Goal, crew.Agents);
         using var usageScope = Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(
             Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning, crewId: crew.Id.ToString());
         return await planner.CreatePlanAsync(planningContext, crew.Tasks, domainInput).ConfigureAwait(false);
     }
+
+    /// <summary>The provider of the host's default profile, the one a crew plans on by default.</summary>
+    private Orkeon.Domain.SharedKernel.ILlmProvider DefaultPlanningLlm(Orkeon.Domain.Crew.Crew crew) =>
+        _llmProfiles?.Resolve(Orkeon.Application.Interfaces.Ports.LlmProfiles.Default).Provider
+        ?? throw new InvalidOperationException(
+            $"Crew '{crew.Name ?? crew.Id.ToString()}' asks for planning, but it names no planning provider and this " +
+            "orchestrator has no LLM profile to plan on: set one with CrewBuilder.WithPlanningLlm, or resolve the " +
+            "orchestrator from a container that registers the host's model (AddOrkeonInfrastructure, AddOrkeonLlmProvider).");
 
     private async System.Threading.Tasks.Task CheckpointTaskOutputsAsync(
         string sessionId,

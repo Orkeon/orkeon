@@ -67,11 +67,14 @@ tasks:
         services.AddLogging();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService()
             .AddMount("/output", FileAccessRights.Read | FileAccessRights.Write | FileAccessRights.Create));
-        // Host-supplied LLM registrations win over the TryAdd fallbacks. The chat
-        // client's lifetime is owned by the container (disposed with the provider).
+        // The host supplies its model on the three surfaces the runtime consumes — the
+        // infrastructure registers none (GAP-29). The chat client is its own stub; its
+        // lifetime is owned by the container (disposed with the provider).
         using var chatClient = new StubChatClient();
         services.AddSingleton<ICrewExecutionHook>(hook);
         services.AddSingleton<ILlmProvider>(stub);
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IBasicLlmProvider>(
+            new Orkeon.Infrastructure.LLMs.LlmProviderAdapter(stub));
         services.AddSingleton<IChatClient>(chatClientOverride ?? chatClient);
         // Mirror the runner host: Application first (real AgentExecutionService,
         // scoped), then Infrastructure (whose stubs are TryAdd and lose).
@@ -161,7 +164,7 @@ tasks:
         Assert.Equal(declaredTasks, output.TaskOutputs.Count);
     }
 
-    /// <summary>Offline IChatClient so no TryAdd fallback wires a real client.</summary>
+    /// <summary>The host's offline IChatClient: no network, no key.</summary>
     /// <summary>
     /// R5 of the rc.2 train: **no orchestration mode is second-class**. Before BUS-03 only
     /// the sequential strategy notified <see cref="ICrewExecutionHook"/>, so anything

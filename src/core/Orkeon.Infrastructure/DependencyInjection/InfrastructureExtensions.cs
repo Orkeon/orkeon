@@ -76,7 +76,6 @@ public static class InfrastructureExtensions
         services.AddOrkeonInterfaceStubs();
         services.AddOrkeonRepositoriesAndStrategies();
         services.AddOrkeonSecurityCore();
-        services.AddOrkeonChatClientAdapters();
         services.AddOrkeonNativeToolCalling();
         services.AddOrkeonOutputValidation();
         services.AddOrkeonFeatureModules();
@@ -388,8 +387,8 @@ public static class InfrastructureExtensions
         // Streaming agent execution service — registered by default so that
         // ICrewOrchestrationService.KickoffStreamingAsync streams AgentThought-level
         // (tool-call granular) events instead of degrading to per-task replay. It resolves
-        // an IChatClient (see AddOrkeonChatClientAdapters); a host that omits an LLM provider
-        // gets the loud fallback warning from SequentialCrewOrchestrator, not a silent downgrade.
+        // the host's IChatClient (AddOrkeonLlmProvider registers one), which the infrastructure
+        // no longer fakes when the host registers no model (GAP-29).
         services.AddScoped<Orkeon.Application.Interfaces.Services.IStreamingAgentExecutionService, StreamingAgentExecutionService>();
 
         // Agent lifecycle manager (kill switch)
@@ -498,71 +497,33 @@ public static class InfrastructureExtensions
         }
     }
 
-    private static IServiceCollection AddOrkeonChatClientAdapters(this IServiceCollection services)
-    {
-        // IChatClient adapters - allow users to register their own IChatClient
-        // If not already registered, wrap the IBasicLlmProvider from the factory
-        // The fallback names no model and no key: the factory builds the OpenAI provider, which
-        // runs its own default model (GAP-18) and answers that a key is required.
-        services.TryAddSingleton<IBasicLlmProvider>(sp =>
-        {
-            var factory = sp.GetRequiredService<ILlmProviderFactory>();
-            return factory.Create(Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile());
-        });
-
-        services.TryAddSingleton<IChatClient>(sp =>
-        {
-            // Create a default provider via factory and wrap it
-            var factory = sp.GetRequiredService<ILlmProviderFactory>();
-            var config = Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile();
-            var provider = factory.Create(config);
-            var textParser = sp.GetService<Application.Interfaces.LLM.IToolCallParser>();
-
-            // Unwrap LlmProviderAdapter to get the actual ILlmProvider
-            // (factory.Create returns LlmProviderAdapter which wraps the real provider)
-            var llmProvider = provider switch
-            {
-                ILlmProvider lp => lp,
-                LlmProviderAdapter adapter => adapter.UnderlyingProvider,
-                _ => null
-            };
-
-            if (llmProvider == null)
-            {
-                throw new InvalidOperationException(
-                    "No IChatClient registered. Register one via services.AddSingleton<IChatClient>(...) " +
-                    "or ensure the LlmProviderFactory creates an ILlmProvider.");
-            }
-
-            // Detect Anthropic provider and inject its native tool call parser. The vendor is
-            // read under the meter; the chat client keeps calling through it.
-            Application.Interfaces.LLM.IToolCallParser? nativeParser = null;
-            if (MeteredLlmProvider.Unwrap(llmProvider) is AnthropicLlmProvider)
-                nativeParser = new LLMs.ToolCalling.AnthropicToolCallParser();
-
-            return new LlmProviderToChatClientAdapter(llmProvider, textFallbackParser: textParser, nativeToolCallParser: nativeParser);
-        });
-
-        return services;
-    }
+    /// <summary>
+    /// What a container that registers no model says at its first LLM resolution (GAP-29).
+    /// </summary>
+    internal const string NoLlmProviderRegistered =
+        "No LLM provider is registered. Register the host's model with services.AddOrkeonLlmProvider(sp => …, baseConfig), " +
+        "which serves it as ILlmProvider, IBasicLlmProvider and IChatClient over one instance; the orkeon runners and " +
+        "orkeon-repl register theirs from the Llm section, or the echo provider when there is none.";
 
     private static IServiceCollection AddOrkeonNativeToolCalling(this IServiceCollection services)
     {
         // === Phase 2b: Native Tool Calling (P1-TC-06) ===
-        // Register ILlmProvider by extracting it from the LlmProviderAdapter when available,
-        // and register IToolCallingStrategy for OpenAI-compatible providers.
-        services.TryAddSingleton<ILlmProvider>(sp =>
+        // The host's ILlmProvider when it registered only an IBasicLlmProvider over one (the
+        // runners register their configured provider that way), and IToolCallingStrategy for the
+        // OpenAI-compatible providers.
+        //
+        // No model of its own (GAP-29): the IBasicLlmProvider and IChatClient fallbacks this
+        // registered built a second provider from an empty configuration — OpenAI's endpoint, no
+        // key — whose every call answered "API key is required"; orkeon-repl served its chat
+        // client that way. A host registers its model (AddOrkeonLlmProvider), and one that does
+        // not is told so at its first LLM resolution.
+        services.TryAddSingleton<ILlmProvider>(sp => sp.GetService<IBasicLlmProvider>() switch
         {
-            var basicProvider = sp.GetRequiredService<IBasicLlmProvider>();
-            if (basicProvider is LLMs.LlmProviderAdapter adapter)
-                return adapter.UnderlyingProvider;
-            // Fallback: try the factory directly
-            var factory = sp.GetRequiredService<ILlmProviderFactory>();
-            var provider = factory.Create(Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile());
-            if (provider is ILlmProvider llm)
-                return llm;
-            throw new InvalidOperationException(
-                "No ILlmProvider available. The IBasicLlmProvider must be a LlmProviderAdapter or the factory must produce an ILlmProvider.");
+            LLMs.LlmProviderAdapter adapter => adapter.UnderlyingProvider,
+            null => throw new InvalidOperationException(NoLlmProviderRegistered),
+            var other => throw new InvalidOperationException(
+                $"The registered IBasicLlmProvider ({other.GetType().FullName}) exposes no ILlmProvider. " +
+                "Register the model with services.AddOrkeonLlmProvider(sp => …, baseConfig), which serves the three surfaces over one instance."),
         });
 
         services.TryAddSingleton<Application.Interfaces.LLM.IToolCallingStrategy>(sp =>

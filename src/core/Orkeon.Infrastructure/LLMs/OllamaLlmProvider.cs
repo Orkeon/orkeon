@@ -155,7 +155,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
 
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
         var requestPayload = CreateRequestPayload(prompt, effectiveConfig);
         using var requestContent = new StringContent(
             SerializeToJson(requestPayload),
@@ -224,7 +224,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         if (!RequiresChatEndpoint(messages, effectiveConfig))
             return await base.ChatAsync(messages, effectiveConfig, cancellationToken).ConfigureAwait(false);
@@ -630,7 +630,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         var useChatEndpoint = RequiresChatEndpoint(messages, effectiveConfig);
         var payload = useChatEndpoint
@@ -799,7 +799,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         if (string.IsNullOrWhiteSpace(prompt))
             yield break;
 
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         // Do NOT use 'using' — factory-managed clients must not be disposed.
         var client = CreateHttpClient(effectiveConfig);

@@ -141,7 +141,7 @@ tasks:
         }
     }
 
-    /// <summary>Offline stub so AddOrkeonInfrastructure never wires a real LLM client.</summary>
+    /// <summary>The host's offline chat client: no network, no key.</summary>
     private sealed class NullChatClient : IChatClient
     {
         public Task<ChatResponse> GetResponseAsync(

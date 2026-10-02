@@ -14,10 +14,13 @@ public interface ILlmProvider
     string Name { get; }
 
     /// <summary>
-    /// The provider's base configuration (model, key, base URL) when it exposes one — used by
-    /// callers that need to add per-call fields (e.g. tool schemas) without discarding the
-    /// configured model/credentials, since <c>ChatAsync</c>/<c>GenerateAsync</c> treat a passed
-    /// config as a full replacement (<c>config ?? _config</c>). Default <see langword="null"/>.
+    /// The configuration the provider was built with (model, key, base URL, timeout…) when it
+    /// exposes one; default <see langword="null"/>. A configuration passed to <c>ChatAsync</c> or
+    /// <c>GenerateAsync</c> <b>completes</b> this one (<see cref="LlmConfig.InheritFrom"/>, GAP-29):
+    /// every field the call leaves unset is the provider's, every field it sets wins — a caller
+    /// that names only a temperature keeps the provider's key, endpoint and timeout. A caller
+    /// that wants the provider's sampling settings too (they have no unset value) starts from
+    /// this configuration, as the chat client adapter and the scripting facade do.
     /// </summary>
     LlmConfig? BaseConfig => null;
 

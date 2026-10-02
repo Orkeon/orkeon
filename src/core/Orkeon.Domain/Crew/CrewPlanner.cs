@@ -91,11 +91,18 @@ public sealed class CrewPlanner
         // Build the planning prompt
         var planningPrompt = BuildPlanningPrompt(context, tasks, input);
 
-        // Call the LLM to generate the plan: on the planning provider's own model (GAP-18), at a
-        // low temperature for consistency.
+        // Call the LLM to generate the plan: on the planning provider's own model (GAP-18) and
+        // connection — the provider completes this configuration with its key, endpoint and
+        // timeout (GAP-29) — at a low temperature for consistency.
         var llmResponse = await _planningLlm.GenerateAsync(
             planningPrompt,
             LlmConfig.OnProfile() with { Temperature = 0.3f }).ConfigureAwait(false);
+
+        // A failed call is not an empty plan: its content is empty and the reason is in the
+        // response. Parsing that emptiness reported every task "missing from the plan", and the
+        // real cause — a refused key, an elapsed timeout — appeared nowhere (GAP-29).
+        if (llmResponse.Error is { } failure)
+            throw new InvalidOperationException($"Failed to create execution plan: the planning LLM call failed — {failure}");
 
         // Delegate parsing to the injected abstraction
         return await _parser.ParseAsync(llmResponse.Content, tasks, context.Agents).ConfigureAwait(false);

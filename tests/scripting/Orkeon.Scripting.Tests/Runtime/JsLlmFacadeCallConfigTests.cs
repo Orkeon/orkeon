@@ -11,11 +11,11 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// provider's own <see cref="ILlmProvider.BaseConfig"/>, not replace it.
 /// </summary>
 /// <remarks>
-/// Downstream a per-call config is substituted wholesale — <c>HttpLlmProviderBase.CreateHttpClient</c>
-/// resolves <c>requestConfig ?? Config</c> — so a call-time config built from scratch
-/// (<see cref="LlmConfig.OnProfile"/>) reaches the transport with no API key, no base URL and the
-/// default timeout. A script asking for a JSON response would lose its credentials as a side
-/// effect. Stub providers ignore those fields, which is why only these assertions catch it.
+/// A real provider completes a call's configuration with its own key, base URL and timeout
+/// (GAP-29), but the settings with no unset value — the temperature and the rest of the
+/// sampling — are the call's: built from scratch (<see cref="LlmConfig.OnProfile"/>), a call-time
+/// config would reset them. Stub providers do not complete anything, which is why these
+/// assertions read the configuration the facade hands over.
 /// </remarks>
 public sealed class JsLlmFacadeCallConfigTests
 {

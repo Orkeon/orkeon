@@ -73,6 +73,8 @@ public sealed class AgentTurnSecurityIntegrationTests
         services.AddLogging();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(settings ?? []).Build());
         services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(new FakeFileSystemService());
+        // A host registers its model; the infrastructure registers none of its own (GAP-29).
+        services.AddOrkeonLlmProvider(_ => new MockLlmProvider());
         services.AddOrkeonInfrastructure();
         services.AddOrkeonApplication();
         return services.BuildServiceProvider();

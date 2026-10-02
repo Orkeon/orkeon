@@ -17,10 +17,14 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// <summary>
 /// GAP-18: a configuration that names no model (<see cref="LlmConfig.OnProfile"/>, an empty
 /// <see cref="LlmConfig.Model"/>) runs on the model of the provider it is sent to — the model
-/// that provider was configured with, else its own default — and never on an empty one. A call
-/// configuration replaces the provider's, and the providers fell back with <c>??</c>, which an
-/// empty string defeats: such a call went out with <c>"model": ""</c>.
+/// that provider was configured with, else its own default — and never on an empty one. The
+/// providers fell back with <c>??</c>, which an empty string defeats: such a call went out with
+/// <c>"model": ""</c>.
 /// </summary>
+/// <remarks>
+/// The key is on the provider only: a call's configuration completes the provider's (GAP-29),
+/// and a test that put the key on the call — as these did — could not see that it was lost.
+/// </remarks>
 public sealed class UnsetModelResolutionTests
 {
     private const string Key = "sk-test";
@@ -31,7 +35,11 @@ public sealed class UnsetModelResolutionTests
     private const string AnthropicAnswer =
         """{"content":[{"type":"text","text":"ok"}],"usage":{"input_tokens":1,"output_tokens":1}}""";
 
-    private static LlmConfig NoModel() => LlmConfig.OnProfile() with { ApiKey = Key };
+    /// <summary>A provider configured with a key and no model.</summary>
+    private static LlmConfig ProviderWithoutModel() => LlmConfig.OnProfile() with { ApiKey = Key };
+
+    /// <summary>A call that names nothing — no model, no key: the provider completes it.</summary>
+    private static LlmConfig CallWithoutModel() => LlmConfig.OnProfile();
 
     private static LlmMessage[] Hello => [LlmMessage.User("hello")];
 
@@ -65,8 +73,8 @@ public sealed class UnsetModelResolutionTests
             LlmConfig.Create("m-config", Key), factory, Policy.NoOpAsync<HttpResponseMessage>()))
         {
             var response = chat
-                ? await provider.ChatAsync(Hello, NoModel(), Ct)
-                : await provider.GenerateAsync("hello", NoModel(), Ct);
+                ? await provider.ChatAsync(Hello, CallWithoutModel(), Ct)
+                : await provider.GenerateAsync("hello", CallWithoutModel(), Ct);
 
             Assert.Equal("m-config", await SentModelAsync(handler));
             // The model the meter records is the one the request named.
@@ -81,11 +89,11 @@ public sealed class UnsetModelResolutionTests
     {
         var (handler, factory) = Wire(nameof(TestableOpenAICompatibleProvider), OpenAiShapedAnswer);
         using (handler)
-        using (var provider = new TestableOpenAICompatibleProvider(NoModel(), factory, Policy.NoOpAsync<HttpResponseMessage>()))
+        using (var provider = new TestableOpenAICompatibleProvider(ProviderWithoutModel(), factory, Policy.NoOpAsync<HttpResponseMessage>()))
         {
             var response = chat
                 ? await provider.ChatAsync(Hello, null, Ct)
-                : await provider.GenerateAsync("hello", NoModel() with { Model = "   " }, Ct);
+                : await provider.GenerateAsync("hello", CallWithoutModel() with { Model = "   " }, Ct);
 
             Assert.Equal(TestModelName, await SentModelAsync(handler));
             Assert.Equal(TestModelName, response.Model);
@@ -111,9 +119,9 @@ public sealed class UnsetModelResolutionTests
     {
         var (handler, factory) = Wire(nameof(DeepSeekLlmProvider), OpenAiShapedAnswer);
         using (handler)
-        using (var provider = new DeepSeekLlmProvider(NoModel(), factory, Policy.NoOpAsync<HttpResponseMessage>()))
+        using (var provider = new DeepSeekLlmProvider(ProviderWithoutModel(), factory, Policy.NoOpAsync<HttpResponseMessage>()))
         {
-            await provider.ChatAsync(Hello, NoModel(), Ct);
+            await provider.ChatAsync(Hello, CallWithoutModel(), Ct);
 
             Assert.Equal(LlmProviderDefaultModels.DeepSeek, await SentModelAsync(handler));
         }
@@ -129,7 +137,7 @@ public sealed class UnsetModelResolutionTests
         using (var provider = new AnthropicLlmProvider(
             LlmConfig.Create("claude-opus-5", Key), factory, Policy.NoOpAsync<HttpResponseMessage>()))
         {
-            var response = await provider.ChatAsync(Hello, NoModel(), Ct);
+            var response = await provider.ChatAsync(Hello, CallWithoutModel(), Ct);
 
             Assert.Equal("claude-opus-5", await SentModelAsync(configured));
             Assert.Equal("claude-opus-5", response.Model);
@@ -137,7 +145,7 @@ public sealed class UnsetModelResolutionTests
 
         var (bare, bareFactory) = Wire(nameof(AnthropicLlmProvider), AnthropicAnswer);
         using (bare)
-        using (var provider = new AnthropicLlmProvider(NoModel(), bareFactory, Policy.NoOpAsync<HttpResponseMessage>()))
+        using (var provider = new AnthropicLlmProvider(ProviderWithoutModel(), bareFactory, Policy.NoOpAsync<HttpResponseMessage>()))
         {
             var response = await provider.GenerateAsync("hello", null, Ct);
 
@@ -155,7 +163,7 @@ public sealed class UnsetModelResolutionTests
         using (var provider = new AzureOpenAILlmProvider(
             LlmConfig.Create("my-deployment", Key) with { BaseUrl = endpoint }, factory, Policy.NoOpAsync<HttpResponseMessage>()))
         {
-            await provider.GenerateAsync("hello", NoModel() with { BaseUrl = endpoint }, Ct);
+            await provider.GenerateAsync("hello", CallWithoutModel(), Ct);
 
             Assert.Equal(
                 "/openai/deployments/my-deployment/chat/completions",

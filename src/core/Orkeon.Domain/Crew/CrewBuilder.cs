@@ -153,14 +153,20 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Enables or disables planning before execution.</summary>
+    /// <summary>
+    /// Enables or disables planning before execution — on the provider
+    /// <see cref="WithPlanningLlm"/> sets, else on the host's default LLM profile.
+    /// </summary>
     public CrewBuilder Planning(bool planning = true)
     {
         _planning = planning;
         return this;
     }
 
-    /// <summary>Sets the LLM provider for planning.</summary>
+    /// <summary>
+    /// Sets the LLM provider the crew plans on, instead of the host's default profile; planning
+    /// itself is switched on by <see cref="Planning"/>.
+    /// </summary>
     public CrewBuilder WithPlanningLlm(ILlmProvider planningLlm)
     {
         _planningLlm = planningLlm;

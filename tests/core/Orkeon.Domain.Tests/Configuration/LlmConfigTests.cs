@@ -41,7 +41,9 @@ public class LlmConfigTests
         Assert.Empty(config.StopSequences);
         Assert.NotNull(config.CustomParameters);
         Assert.Empty(config.CustomParameters);
-        Assert.Equal(30, config.TimeoutSeconds);
+        // Nothing pinned: a call runs on its provider's timeout, a provider without one on 30 s (GAP-29).
+        Assert.Null(config.TimeoutSeconds);
+        Assert.Equal(30, config.ResolveTimeoutSeconds());
         Assert.Equal(LlmDefaults.DefaultMaxRetries, config.MaxRetries); // 10 — drives the HTTP retry budget (Llm:MaxRetries)
     }
 
@@ -356,7 +358,7 @@ public class LlmConfigTests
         Assert.Null(config.ApiKey);
         Assert.Equal(0.7, config.Temperature, precision: 1);
         Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
-        Assert.Equal(30, config.TimeoutSeconds);
+        Assert.Null(config.TimeoutSeconds);   // nothing pinned: the provider's timeout (GAP-29)
         Assert.Equal(LlmDefaults.DefaultMaxRetries, config.MaxRetries); // 10 — drives the HTTP retry budget (Llm:MaxRetries)
     }
 

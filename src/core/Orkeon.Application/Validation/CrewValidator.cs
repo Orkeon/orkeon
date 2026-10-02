@@ -174,7 +174,7 @@ public partial class CrewValidator
         if (llmConfig.PresencePenalty is < -2.0 or > 2.0)
             errors.Add(Inv.Format($"DomainAgent {agentRole} has an invalid LLM presence_penalty {llmConfig.PresencePenalty} (expected -2.0 to 2.0)"));
 
-        if (llmConfig.TimeoutSeconds <= 0)
+        if (llmConfig.TimeoutSeconds is <= 0)
             errors.Add(Inv.Format($"DomainAgent {agentRole} has an invalid LLM timeout {llmConfig.TimeoutSeconds}s (expected a positive value)"));
 
         if (llmConfig.MaxRetries < 0)

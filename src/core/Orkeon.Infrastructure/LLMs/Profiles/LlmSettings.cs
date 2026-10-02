@@ -102,7 +102,8 @@ public static class LlmSettings
             Temperature = ReadDouble(section, "Temperature", strict) ?? LlmDefaults.DefaultTemperature,
             // Absent = not pinned: the provider sends the model's documented maximum (LLM-10).
             MaxTokens = ReadInt(section, "MaxTokens", strict),
-            TimeoutSeconds = ReadInt(section, "TimeoutSeconds", strict) ?? 30,
+            // Absent = not pinned: the provider runs on LlmDefaults.DefaultTimeoutSeconds (30 s).
+            TimeoutSeconds = ReadInt(section, "TimeoutSeconds", strict),
             Thinking = ReadThinking(section),
             // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
             GrammarEnabled = bool.TryParse(section[ConfigurationKeys.LlmGrammar], out var grammar) && grammar,

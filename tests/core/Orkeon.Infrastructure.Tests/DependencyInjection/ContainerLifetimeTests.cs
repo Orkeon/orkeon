@@ -4,6 +4,7 @@ using Orkeon.Application.DependencyInjection;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Tests.Shared.Doubles;
 
 namespace Orkeon.Infrastructure.Tests.DependencyInjection;
 
@@ -52,6 +53,9 @@ public sealed class ContainerLifetimeTests : IDisposable
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IConfiguration>(configuration);
+        // The runners always register their model — the Llm section's provider, or the echo
+        // provider — and the infrastructure registers none of its own (GAP-29).
+        services.AddOrkeonLlmProvider(_ => new StubLlmProvider());
         services.AddOrkeonInfrastructure(configuration);
         services.AddOrkeonApplication();
         services.AddOrkeonFileSystem(configuration);

@@ -48,7 +48,9 @@ public sealed class LlmNodeSummarizer : INodeSummarizer
         if (_cache.TryGetValue(key, out var cached)) return cached;
 
         var prompt = BuildPrompt(node, context);
-        var config = LlmConfig.Create(_options.Model) with
+        // No model configured: the provider's own (GAP-18) — never one vendor's pinned onto
+        // another's endpoint. The provider completes the rest — key, endpoint, timeout (GAP-29).
+        var config = (string.IsNullOrWhiteSpace(_options.Model) ? LlmConfig.OnProfile() : LlmConfig.Create(_options.Model)) with
         {
             Temperature = _options.Temperature,
             MaxTokens = _options.MaxTokens,
@@ -241,7 +243,11 @@ public sealed class LlmNodeSummarizer : INodeSummarizer
 
 public sealed record LlmNodeSummarizerOptions
 {
-    public string Model { get; init; } = "claude-haiku-4-5";
+    /// <summary>
+    /// The model the summaries are asked of; empty — the default — runs them on the provider's own
+    /// model (GAP-29: it was <c>claude-haiku-4-5</c>, whatever vendor the host runs).
+    /// </summary>
+    public string Model { get; init; } = string.Empty;
     public int MaxTokens { get; init; } = 120;
     public double Temperature { get; init; } = 0.2;
     public int Concurrency { get; init; } = 5;

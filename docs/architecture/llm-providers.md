@@ -72,6 +72,23 @@ its own and falls back to OpenAI's as a deployment name, so name yours). A confi
 names no model (`LlmConfig.OnProfile()`, an empty `Model`) never reaches the wire empty, and
 never carries another vendor's model.
 
+**The configuration a call runs on** follows the same rule, field by field
+(`LlmConfig.InheritFrom`, applied by `HttpLlmProviderBase.EffectiveConfig` in the sixteen
+providers): a configuration passed with a call **completes** the one the provider was built with,
+it does not replace it. Every field the call leaves unset — null, an empty or blank string, no
+stop sequence — is the provider's: the key, `BaseUrl`, `TimeoutSeconds` (nullable: unset
+everywhere, 30 s), Azure's `ApiVersion`, Anthropic's `WorkspaceId`, `Thinking`, `MaxTokens`,
+`Seed`, `SystemMessage`, `ResponseFormat`, `Cache`, `Tools`, the grammar and the model; custom
+parameters merge, the call's keys winning. Every field the call sets wins. The settings that
+cannot be unset — `Temperature`, `TopP`, the penalties, the tool mode — are the caller's, and
+`MaxRetries` and `Grammar` are read from the provider's configuration when it is built. A call
+cannot unset what its provider sets; it overrides it (`Thinking = { Enabled = false }`,
+`LlmResponseFormat.Text()`). The chat client adapter registered without a base configuration
+starts from the provider's own (`ILlmProvider.BaseConfig`). Before, the providers took a call's
+configuration whole (`config ?? Config`): the planner, the cognitive memory, the context-window
+and RaggableTree summarizers and the agent loops outside the chat client lost the key — "API key
+is required" —, the endpoint and the timeout of the provider they reached (GAP-29).
+
 Every provider the factory builds is wrapped in `MeteredLlmProvider` (see
 [Decorators and registration](#decorators-and-registration)) and returned behind an
 `LlmProviderAdapter`.
@@ -146,6 +163,11 @@ members, not through copies of the payload builder:
   host without an `Llm` section, a Microsoft Agent Framework agent, a test double) is
   registered with `services.AddOrkeonLlmProvider(sp => …, baseConfig)`, which exposes it as
   `ILlmProvider`, `IBasicLlmProvider` and `IChatClient` over one metered instance.
+  `AddOrkeonInfrastructure()` registers no model of its own: `orkeon run`, `orkeon-host` and
+  `orkeon-repl` register theirs from the `Llm` section — or the echo provider when there is
+  none — and a container that registers none fails at its first LLM resolution, naming the
+  missing service. Its former fallback, a keyless OpenAI provider, was the REPL's chat client
+  (GAP-29).
 - **`RateLimitedLlmProvider`** — routes every call through the `ILlmRateLimiter` (the
   `RateLimiting` settings block). It wraps the provider handed to the scripting engine,
   whose `ctx.llm.*` calls bypass the orchestrator's own throttling; it is not meant as a

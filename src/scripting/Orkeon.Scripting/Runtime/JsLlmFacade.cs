@@ -1158,14 +1158,12 @@ public sealed partial class JsLlmFacade
     /// </summary>
     /// <remarks>
     /// Call-time settings PATCH the provider's <see cref="ILlmProvider.BaseConfig"/>; they do not
-    /// start from a blank one. Downstream, a per-call config REPLACES the provider's wholesale
-    /// (<c>HttpLlmProviderBase.CreateHttpClient</c>: <c>requestConfig ?? Config</c>), so building
-    /// on a blank configuration would hand the transport an empty API key, base URL and
-    /// timeout — a script asking for `{ responseFormat: 'json_object' }` would lose its
-    /// credentials as a side effect and fail to authenticate. The stub providers used in tests
-    /// ignore those fields, which is exactly why the defect stayed invisible. Only a provider
-    /// that declares no configuration gets one built from <see cref="LlmConfig.OnProfile"/>,
-    /// which names no model (GAP-18).
+    /// start from a blank one. A provider completes a call's configuration with its own key,
+    /// base URL and timeout (GAP-29), but the settings that have no unset value — the
+    /// temperature, the nucleus and penalty settings — are the call's: built on a blank
+    /// configuration, a script asking for `{ responseFormat: 'json_object' }` would also reset
+    /// the host's temperature. Only a provider that declares no configuration gets one built from
+    /// <see cref="LlmConfig.OnProfile"/>, which names no model (GAP-18).
     /// </remarks>
     private LlmConfig? ConfigFrom(JsValue? options)
     {

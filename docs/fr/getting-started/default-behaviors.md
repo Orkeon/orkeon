@@ -42,11 +42,11 @@ enregistrant le vôtre **après** l'appel Orkeon.
 > enregistré par l'un ou l'autre appel : `AddOrkeonFileSystem(configuration)`, avec au moins
 > un montage sous `Orkeon:FileSystem:Mounts`, est requis avant de charger une crew — le
 > chargeur YAML, les outils fichier et les livrables lisent et écrivent tous à travers lui.
-> Et le modèle retombe sur un fournisseur OpenAI, sur son modèle par défaut et sans clé :
-> le premier appel échoue au lieu de répondre ; enregistrez le vôtre avant
-> `AddOrkeonInfrastructure()` (`AddOrkeonLlmProvider(...)`, voir [Bootstrap](./bootstrap.md)).
-> La CLI `orkeon` se comporte autrement : sans section `Llm`, elle tourne sur le fournisseur
-> écho et le signale sur stderr.
+> Et aucun modèle n'est enregistré : un conteneur qui n'en a pas échoue à sa première
+> résolution LLM, en nommant le service manquant — enregistrez le vôtre avec
+> `AddOrkeonLlmProvider(...)` (voir [Bootstrap](./bootstrap.md)). Le fournisseur OpenAI sans clé
+> qui en tenait lieu a disparu (GAP-29). La CLI `orkeon`, `orkeon-host` et `orkeon-repl` se
+> comportent autrement : sans section `Llm`, ils tournent sur le fournisseur écho et le signalent.
 
 ## Les défauts véritablement silencieux
 

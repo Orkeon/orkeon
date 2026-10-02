@@ -73,10 +73,10 @@ public class AdapterPerAgentModelOverrideTests
     }
 
     /// <summary>
-    /// GAP-18: a chat client registered over a provider with no base config
-    /// (<c>AddOrkeonLlmProvider(provider)</c>) built a fresh config on OpenAI's default model as
-    /// soon as an option was overridden, and that config replaces the provider's. It names no
-    /// model now: the provider runs the call on its own.
+    /// GAP-18: a chat client registered over a provider that declares no configuration built a
+    /// fresh config on OpenAI's default model as soon as an option was overridden. It names no
+    /// model now: the provider runs the call on its own. (A provider that declares one is the
+    /// base instead — GAP-29, <c>CallersOnTheProvidersConnectionTests</c>.)
     /// </summary>
     [Fact]
     public async Task PerCall_OverrideWithoutModelId_AndNoBaseConfig_NamesNoModel()

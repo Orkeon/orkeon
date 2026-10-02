@@ -158,7 +158,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         LlmConfig? config = null,
         CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
 #pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
@@ -230,7 +230,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         LlmConfig? config = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         // A missing key used to `yield break` here: the caller got an empty sequence that ended
         // normally, which the buffered path reports as "API key is required". One provider, two
@@ -317,7 +317,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         LlmConfig? config = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
 #pragma warning disable CS0618 // Type or member is obsolete
         var missingKey = string.IsNullOrEmpty(effectiveConfig.ApiKey);
@@ -694,7 +694,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         LlmConfig? config = null,
         CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         WarnOnUnsendableAttachments(messages);
 

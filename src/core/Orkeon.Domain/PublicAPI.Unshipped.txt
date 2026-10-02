@@ -1006,3 +1006,19 @@ Orkeon.Domain.Crew.Crew.Name.get -> string?
 Orkeon.Domain.Crew.CrewBuilder.Name(string! name) -> Orkeon.Domain.Crew.CrewBuilder!
 Orkeon.Domain.Crew.CrewCreateOptions.Name.get -> string?
 Orkeon.Domain.Crew.CrewCreateOptions.Name.init -> void
+*REMOVED*Orkeon.Domain.Crew.Planning.PlanningConfiguration
+*REMOVED*Orkeon.Domain.Crew.Planning.PlanningConfiguration.EnablePlanning.get -> bool
+*REMOVED*Orkeon.Domain.Crew.Planning.PlanningConfiguration.EnablePlanning.init -> void
+*REMOVED*Orkeon.Domain.Crew.Planning.PlanningConfiguration.PlanningConfiguration() -> void
+*REMOVED*Orkeon.Domain.Crew.Planning.PlanningConfiguration.PlanningLlmModel.get -> string!
+*REMOVED*Orkeon.Domain.Crew.Planning.PlanningConfiguration.PlanningLlmModel.init -> void
+*REMOVED*Orkeon.Domain.Crew.Planning.PlanningConfiguration.Temperature.get -> double
+*REMOVED*Orkeon.Domain.Crew.Planning.PlanningConfiguration.Temperature.init -> void
+*REMOVED*const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultPlanningModel = "gpt-4o-mini" -> string!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TimeoutSeconds.get -> int
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int? maxTokens = null, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int timeoutSeconds = 30, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TimeoutSeconds.get -> int?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.InheritFrom(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! provider) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResolveTimeoutSeconds() -> int
+const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTimeoutSeconds = 30 -> int
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int? maxTokens = null, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int? timeoutSeconds = null, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!

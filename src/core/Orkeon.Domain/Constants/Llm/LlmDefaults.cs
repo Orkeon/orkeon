@@ -50,6 +50,13 @@ public static class LlmDefaults
     /// </summary>
     public const int DefaultMaxRetries = 10;
 
+    /// <summary>
+    /// The request timeout, in seconds, of a call when neither the call nor its provider pins one
+    /// (30) — <c>LlmConfig.ResolveTimeoutSeconds</c>. Too short for a model that thinks before it
+    /// answers: a host running one sets <c>Llm:TimeoutSeconds</c> (600 s).
+    /// </summary>
+    public const int DefaultTimeoutSeconds = 30;
+
     // ── Model Names ─────────────────────────────────────────────────────
 
     /// <summary>
@@ -63,9 +70,4 @@ public static class LlmDefaults
     /// Legacy LLM model name (GPT-3.5 Turbo) kept for backward compatibility.
     /// </summary>
     public const string LegacyModelName = "gpt-3.5-turbo";
-
-    /// <summary>
-    /// Default model used for planning operations (fast and cost-efficient).
-    /// </summary>
-    public const string DefaultPlanningModel = "gpt-4o-mini";
 }

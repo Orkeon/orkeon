@@ -74,6 +74,24 @@ de déploiement : nommez le vôtre). Une configuration qui ne nomme aucun modèl
 (`LlmConfig.OnProfile()`, un `Model` vide) n'atteint jamais le fil vide, et ne porte jamais le
 modèle d'un autre vendeur.
 
+**La configuration d'un appel** suit la même règle, champ par champ (`LlmConfig.InheritFrom`,
+appliquée par `HttpLlmProviderBase.EffectiveConfig` dans les seize providers) : une configuration
+passée avec un appel **complète** celle avec laquelle le provider a été construit, elle ne la
+remplace pas. Chaque champ que l'appel laisse vide — nul, une chaîne vide ou blanche, aucune
+séquence d'arrêt — est celui du provider : la clé, `BaseUrl`, `TimeoutSeconds` (nullable : vide
+partout, 30 s), l'`ApiVersion` d'Azure, le `WorkspaceId` d'Anthropic, `Thinking`, `MaxTokens`,
+`Seed`, `SystemMessage`, `ResponseFormat`, `Cache`, `Tools`, la grammaire et le modèle ; les
+paramètres personnalisés fusionnent, ceux de l'appel l'emportant. Chaque champ que l'appel fixe
+l'emporte. Les réglages qui ne peuvent pas être vides — `Temperature`, `TopP`, les pénalités, le
+mode d'outil — sont ceux de l'appelant, et `MaxRetries` et `Grammar` se lisent dans la
+configuration du provider quand il est construit. Un appel ne peut pas effacer ce que fixe son
+provider ; il le remplace (`Thinking = { Enabled = false }`, `LlmResponseFormat.Text()`).
+L'adaptateur de client de chat enregistré sans configuration de base part de celle du provider
+(`ILlmProvider.BaseConfig`). Avant, les providers prenaient la configuration d'un appel en entier
+(`config ?? Config`) : le planificateur, la mémoire cognitive, les résumés de fenêtre de contexte
+et de RaggableTree et les boucles d'agent hors du client de chat perdaient la clé — « API key is
+required » —, le point d'accès et le délai du provider qu'ils atteignaient (GAP-29).
+
 Chaque provider construit par la fabrique est enveloppé dans `MeteredLlmProvider` (voir
 [Décorateurs et enregistrement](#décorateurs-et-enregistrement)) et rendu derrière un
 `LlmProviderAdapter`.
@@ -150,6 +168,11 @@ pas par des copies du constructeur de payload :
   Agent Framework, un double de test) s'enregistre avec
   `services.AddOrkeonLlmProvider(sp => …, baseConfig)`, qui l'expose en `ILlmProvider`,
   `IBasicLlmProvider` et `IChatClient` sur une seule instance mesurée.
+  `AddOrkeonInfrastructure()` n'enregistre aucun modèle à lui : `orkeon run`, `orkeon-host` et
+  `orkeon-repl` enregistrent le leur depuis la section `Llm` — ou le provider écho quand elle
+  manque —, et un conteneur qui n'en enregistre aucun échoue à sa première résolution LLM, en
+  nommant le service manquant. Son ancien repli, un provider OpenAI sans clé, était le client de
+  chat du REPL (GAP-29).
 - **`RateLimitedLlmProvider`** — fait passer chaque appel par l'`ILlmRateLimiter` (le bloc de
   settings `RateLimiting`). Il enveloppe le provider remis au moteur de scripting, dont les
   appels `ctx.llm.*` contournent le throttling propre de l'orchestrateur ; il n'est pas prévu

@@ -58,11 +58,10 @@ internal static class Program
             new FileSystemMount(outputDir, "/output", FileAccessRights.ReadWrite),
         ]);
 
-        // Offline generation: StagedRagPipeline requires an IChatClient, and the
-        // TryAdd default of AddOrkeonInfrastructure() would wire a real LLM
-        // provider (API key required at call time). Registering this stub first
-        // keeps the example key-free: retrieval and citations are fully real,
-        // only the answer text is the deterministic offline notice.
+        // Offline generation: StagedRagPipeline requires an IChatClient, which the
+        // host registers — AddOrkeonInfrastructure() registers no model of its own.
+        // This stub keeps the example key-free: retrieval and citations are fully
+        // real, only the answer text is the deterministic offline notice.
         using var offlineChatClient = new OfflineChatClient();
 
         await using var provider = BuildProvider(registry, offlineChatClient);
@@ -129,8 +128,7 @@ internal static class Program
         // it as the Application-port IEmbeddingProvider.
         services.AddOrkeonLocalEmbeddings();
 
-        // Offline stub first — the TryAdd IChatClient default of
-        // AddOrkeonInfrastructure() must not wire a real LLM (see Main).
+        // The host's chat client: the offline stub (see Main).
         services.AddSingleton(offlineChatClient);
 
         services.AddOrkeonInfrastructure();

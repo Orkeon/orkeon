@@ -74,7 +74,6 @@ public class ServiceCollectionExtensionsTests
             opt.MaxShortTermMemoryItems = 50;
             opt.EnablePersistence = false;
             opt.DefaultMaxIterations = 5;
-            opt.EnablePlanning = false;
         });
 
         // Assert — the Configure<OrkeonApplicationOptions> call was registered
@@ -82,24 +81,6 @@ public class ServiceCollectionExtensionsTests
             sd.ServiceType.IsGenericType &&
             sd.ServiceType.GetGenericTypeDefinition() == typeof(Microsoft.Extensions.Options.IConfigureOptions<>) &&
             sd.ServiceType.GetGenericArguments()[0] == typeof(OrkeonApplicationOptions));
-    }
-
-    [Fact]
-    public void ShouldRegisterPlanningConfiguration_WhenPlanningEnabled()
-    {
-        // Arrange
-        var services = CreateServiceCollectionWithRequiredDeps();
-
-        // Act
-        services.AddOrkeonApplication(opt =>
-        {
-            opt.EnablePlanning = true;
-            opt.PlanningLlmModel = "claude-3-sonnet";
-        });
-
-        // Assert
-        Assert.Contains(services, sd =>
-            sd.ServiceType == typeof(Orkeon.Domain.Crew.Planning.PlanningConfiguration));
     }
 
     [Fact]
@@ -150,7 +131,7 @@ public class ServiceCollectionExtensionsTests
         var services = CreateServiceCollectionWithRequiredDeps();
 
         // Act
-        services.AddOrkeonApplication(opt => { opt.EnablePlanning = false; });
+        services.AddOrkeonApplication(opt => { opt.DefaultMaxIterations = 5; });
 
         // Assert — at least one ICommandHandler registration must exist through the options path.
         Assert.Contains(services, sd =>
@@ -166,7 +147,7 @@ public class ServiceCollectionExtensionsTests
         var services = CreateServiceCollectionWithRequiredDeps();
 
         // Act
-        services.AddOrkeonApplication(opt => { opt.EnablePlanning = false; });
+        services.AddOrkeonApplication(opt => { opt.DefaultMaxIterations = 5; });
 
         // Assert — at least one ICommandValidator registration must exist through the options path.
         Assert.Contains(services, sd =>

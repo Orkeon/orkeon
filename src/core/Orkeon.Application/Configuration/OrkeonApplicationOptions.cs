@@ -56,16 +56,6 @@ public class OrkeonApplicationOptions
     public int EmbeddingDimension { get; set; } = LocalDimension;
 
     /// <summary>
-    /// Enable AI-powered planning for task execution.
-    /// </summary>
-    public bool EnablePlanning { get; set; } = true;
-
-    /// <summary>
-    /// LLM model to use for planning (e.g., "gpt-4o-mini", "gpt-4", "claude-3-sonnet").
-    /// </summary>
-    public string? PlanningLlmModel { get; set; } = DefaultPlanningModel;
-
-    /// <summary>
     /// Type of embedding provider to use ("Simple", "OpenAI", "AzureOpenAI").
     /// Provider configuration is handled by Infrastructure layer.
     /// </summary>

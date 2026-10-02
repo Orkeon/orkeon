@@ -1,56 +1,43 @@
-using Orkeon.Constants.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Constants.Configuration;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.Profiles;
+using Orkeon.Scripting.Runtime;
 using ILlmProvider = Orkeon.Domain.SharedKernel.ILlmProvider;
 
 namespace Orkeon.ConsoleApp.DependencyInjection;
 
 /// <summary>
-/// Registers an <see cref="ILlmProvider"/> built from the <c>Llm</c> configuration section
-/// (Model / BaseUrl / ApiKey / Temperature / MaxTokens / TimeoutSeconds / MaxRetries).
+/// Registers the REPL's language model the way <c>orkeon run</c> does: the provider the
+/// <c>Llm</c> section describes, on the three surfaces the runtime consumes —
+/// <see cref="ILlmProvider"/>, <see cref="IBasicLlmProvider"/> and
+/// <see cref="Microsoft.Extensions.AI.IChatClient"/>, the chat client on that section's
+/// configuration — and the named profiles under <c>Llm:Profiles</c>. Without an <c>Llm</c>
+/// section, the echo provider, announced with the runner's warning.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Without this, <c>AddOrkeonInfrastructure()</c> only registers <see cref="ILlmProvider"/> and
-/// <see cref="IBasicLlmProvider"/> (via <c>TryAdd</c>) from <see cref="LlmConfig.OnProfile"/> — an
-/// empty config with no API key, which the factory builds on the default OpenAI endpoint. The crew
-/// runtime resolves that provider, so <c>ctx.llm.act</c> ends up talking to the wrong endpoint with
-/// no credentials and silently yields empty output: a request reports "done" while nothing real
-/// reaches the model.
+/// The REPL registered its provider as <see cref="ILlmProvider"/> and
+/// <see cref="IBasicLlmProvider"/> only: its chat client was the infrastructure's fallback, a
+/// second provider built from an empty configuration — OpenAI's endpoint, no key — and every
+/// agent turn, RAG answer or judge it served answered "API key is required" (GAP-29). The
+/// infrastructure registers no model of its own any more.
 /// </para>
 /// <para>
-/// MUST be called <em>before</em> <c>AddOrkeonInfrastructure()</c> so its <c>TryAdd</c> defaults
-/// see these registrations as already present and skip them. The provider type is inferred from the
-/// configured <c>BaseUrl</c> by <c>LlmProviderFactory</c> (e.g. <c>api.deepseek.com</c> → DeepSeek).
+/// The section is read by <see cref="LlmSettings"/>, the reader the runners use: the REPL accepts
+/// exactly the keys <c>orkeon run</c> does. The provider type is inferred from the configured
+/// <c>BaseUrl</c> by <c>LlmProviderFactory</c> (e.g. <c>api.deepseek.com</c> → DeepSeek).
 /// </para>
 /// </remarks>
-internal static class ConfiguredLlmProviderBootstrapper
+internal static partial class ConfiguredLlmProviderBootstrapper
 {
     /// <summary>
-    /// Reads the optional <c>Llm:Thinking</c> subsection into an <see cref="LlmThinkingConfig"/>.
-    /// </summary>
-    private static LlmThinkingConfig? ReadThinkingConfig(IConfigurationSection llmSection)
-    {
-        // Llm:Thinking:{Enabled,Effort} — forwarded to thinking-capable providers
-        // (DeepSeek, Z.AI GLM) as the `thinking` block + `reasoning_effort` field.
-        var thinkingSection = llmSection.GetSection(ConfigurationKeys.ThinkingSection);
-        if (!thinkingSection.Exists()) return null;
-        return new LlmThinkingConfig
-        {
-            Enabled = bool.TryParse(thinkingSection["Enabled"], out var enabled) ? enabled : null,
-            Effort = thinkingSection["Effort"],
-        };
-    }
-
-    /// <summary>
-    /// Binds the <c>Llm</c> section and registers a matching <see cref="ILlmProvider"/> +
-    /// <see cref="IBasicLlmProvider"/>, and the named profiles under <c>Llm:Profiles</c>. The
-    /// default is left alone when the section describes no provider (absent, or holding profiles
-    /// only): the infrastructure default then stands.
+    /// Registers the REPL's model from <paramref name="configuration"/>: the <c>Llm</c> section's
+    /// provider, else the echo provider; and every <c>Llm:Profiles</c> entry.
     /// </summary>
     public static IServiceCollection AddConfiguredLlmProvider(
         this IServiceCollection services,
@@ -62,34 +49,23 @@ internal static class ConfiguredLlmProviderBootstrapper
         // Llm:Profiles:<name> — the named providers a crew may pick per agent (GAP-17).
         services.AddOrkeonLlmProfiles(configuration);
 
-        var section = configuration.GetSection(ConfigurationKeys.LlmSection);
-        if (!Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.HasDefault(configuration))
+        if (!LlmSettings.HasDefault(configuration))
+        {
+            // No default section (none at all, or one holding profiles alone): the echo
+            // provider, as orkeon run falls back to, and the same warning, once — when the
+            // provider is first resolved.
+            services.AddOrkeonLlmProvider(sp => Announced(sp, new UndefinedLlmProvider()));
             return services;
+        }
 
         // A section without Model names none: the provider runs its own default (GAP-18).
-        var defaults = LlmConfig.OnProfile();
-#pragma warning disable CS0618 // ApiKey is the supported path for direct-from-config keys (appsettings Llm:ApiKey / Llm__ApiKey env).
-        var config = defaults with
-        {
-            Model = section["Model"] ?? defaults.Model,
-            BaseUrl = section["BaseUrl"] is { } baseUrl ? new Uri(baseUrl) : defaults.BaseUrl,
-            ApiKey = section["ApiKey"] ?? defaults.ApiKey,
-            Temperature = section.GetValue("Temperature", defaults.Temperature),
-            MaxTokens = section.GetValue<int?>("MaxTokens"),   // absent = the model's documented maximum (LLM-10)
-            TimeoutSeconds = section.GetValue("TimeoutSeconds", defaults.TimeoutSeconds),
-            MaxRetries = Math.Max(0, section.GetValue("MaxRetries", defaults.MaxRetries)),
-            Thinking = ReadThinkingConfig(section),
-            // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
-            GrammarEnabled = section.GetValue(ConfigurationKeys.LlmGrammar, defaults.GrammarEnabled),
-        };
-#pragma warning restore CS0618
+        var config = LlmSettings.ReadDefault(configuration);
 
-        // Single source of truth: the underlying ILlmProvider. IBasicLlmProvider is its adapter,
-        // so both surfaces share one configured instance.
-        services.AddSingleton<ILlmProvider>(sp =>
+        // One instance on the three surfaces: the provider the factory builds — metered there —
+        // and the chat client on the section's configuration, as orkeon run serves it.
+        services.AddOrkeonLlmProvider(sp =>
         {
-            var factory = sp.GetRequiredService<ILlmProviderFactory>();
-            var created = factory.Create(config);
+            var created = sp.GetRequiredService<ILlmProviderFactory>().Create(config);
             var provider = created switch
             {
                 ILlmProvider direct => direct,
@@ -104,11 +80,19 @@ internal static class ConfiguredLlmProviderBootstrapper
             if (MeteredLlmProvider.Unwrap(provider) is Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase httpProvider)
                 httpProvider.RetryObserver = sp.GetService<ILlmRetryObserver>();
             return provider;
-        });
-
-        services.AddSingleton<IBasicLlmProvider>(sp =>
-            new LlmProviderAdapter(sp.GetRequiredService<ILlmProvider>()));
+        }, config);
 
         return services;
     }
+
+    /// <summary>The echo provider, once the warning that says the REPL runs on it is logged.</summary>
+    private static UndefinedLlmProvider Announced(IServiceProvider services, UndefinedLlmProvider echo)
+    {
+        if (services.GetService<ILoggerFactory>() is { } loggers)
+            LogLlmNotConfigured(loggers.CreateLogger("Orkeon.ConsoleApp"));
+        return echo;
+    }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = OperatorMessages.LlmNotConfigured)]
+    private static partial void LogLlmNotConfigured(ILogger logger);
 }

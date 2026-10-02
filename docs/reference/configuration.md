@@ -70,7 +70,13 @@ the key ([provider comparison](llm-providers-comparison.md)). `TimeoutSeconds` d
 too short for a model that thinks before it answers (Kimi K2.6, DeepSeek V4 and GLM do so by
 default): set 600 s, or turn thinking off with `Thinking:Enabled = false`. A call that hits the
 timeout is retried once, then fails its task with a message naming the setting — it is never
-reported as an empty answer (LLM-11). `MaxTokens` is a **pin**: left
+reported as an empty answer (LLM-11). **This section is the base of every call** to its provider:
+a component that passes a configuration of its own — the planner, the cognitive memory, the
+context-window and RaggableTree summarizers, the agent loops outside the chat client, a chat
+client registered without one — completes the section's rather than replacing it. What it leaves
+unset is the section's (the key, `BaseUrl`, `TimeoutSeconds`, `Thinking`, `MaxTokens`…); what it
+sets wins (the planner's temperature 0.3, an analysis's output cap). A profile's provider works
+the same way with its own keys. `MaxTokens` is a **pin**: left
 out, the request carries the model's **documented maximum output** from the
 `LlmModelOutputLimits` catalogue (128K on `gpt-5.6-sol` and the Claude 5 generation, 384K on
 `deepseek-flash`, 131 072 on the GLM-5 and Qwen 3.7/3.8 families, 65 536 on Gemini 3.x Flash —
@@ -131,7 +137,7 @@ provider, with the usual warning. `orkeon-host` can restrict which profiles its 
 
 | Section | Configures | Consumer / opt-in |
 |---|---|---|
-| `Llm` | Active LLM provider — the default profile (see above) | `RunnerHost` |
+| `Llm` | Active LLM provider — the default profile (see above) | `RunnerHost`, the REPL (`LlmSettings.ReadDefault`, the same reader) |
 | `Llm:Profiles:<name>` | Named LLM profiles a crew picks per agent or per task, same keys as `Llm` (see above) | `RunnerHost`, the REPL (`AddOrkeonLlmProfiles(configuration)`) |
 | `Llm:AvailableModels` | The model list a scripted `/model` REPL command can offer (string array, or one comma-separated string) | `AddOrkeonSessionTools(configuration)` |
 | `Memory:Provider` | TYPE of the application-wide memory provider (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`; unset → in-memory). Its connection is that provider's own section (`Orkeon:Redis`, `Orkeon:Sqlite`, … below) — see [Memory system](../architecture/memory-system.md#selection-by-configuration) | `AddOrkeonInfrastructure()` |

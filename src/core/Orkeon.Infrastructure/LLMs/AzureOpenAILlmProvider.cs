@@ -123,7 +123,7 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         LlmConfig? config = null,
         CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         var configError = ValidateRequiredConfig(effectiveConfig);
         if (configError is not null)
@@ -138,7 +138,7 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         LlmConfig? config = null,
         CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         // Guard BaseUrl/ApiKey before the OpenAI-compatible chat pipeline runs:
         // BuildEndpoint requires a non-empty Azure resource URL.
@@ -167,7 +167,7 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         LlmConfig? config = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         var configError = ValidateRequiredConfig(effectiveConfig);
         if (configError is not null)
@@ -199,7 +199,7 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         LlmConfig? config = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         var missingRequirement = MissingRequirement(effectiveConfig);
         if (missingRequirement is not null)

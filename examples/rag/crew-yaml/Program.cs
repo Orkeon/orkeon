@@ -121,8 +121,8 @@ internal static class Program
         services.AddSingleton<IFileSystemService>(sp =>
             new FileSystemService(registry, new AllowAllPathValidator(), NullLogger<FileSystemService>.Instance));
 
-        // Local BGE embeddings first (semantic-first resolver), offline chat
-        // stub before the infrastructure defaults (no real LLM is ever wired).
+        // Local BGE embeddings first (semantic-first resolver); the host's chat
+        // client is the offline stub (the infrastructure registers no model).
         services.AddOrkeonLocalEmbeddings();
         services.AddSingleton(offlineChatClient);
         services.AddOrkeonInfrastructure();
@@ -151,7 +151,7 @@ internal static class Program
             PathValidationResult.Allowed(requestedPath);
     }
 
-    /// <summary>Offline stub so AddOrkeonInfrastructure never wires a real LLM client.</summary>
+    /// <summary>The host's offline chat client: no network, no key.</summary>
     private sealed class OfflineChatClient : IChatClient
     {
         private const string Notice =

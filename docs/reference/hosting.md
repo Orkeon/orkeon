@@ -107,9 +107,10 @@ The registration order is deliberate:
 1. **Logging** — runner logging (a single-line console at **Warning** level by default; `--verbose 1`/`2` or a `configureLogging` callback raises it) and, when `RunnerMountPlan.LlmLogVirtualPath` is set,
    the LLM exchange logging `DelegatingHandler`.
 2. **LLM provider first** — `RegisterLlmProvider` reads the `Llm` config section and registers the
-   provider (and its `IChatClient`) **before** `AddOrkeonApplication` / `AddOrkeonInfrastructure`. This
-   ordering matters: Orkeon infrastructure registers its LLM/`IChatClient` fallbacks with `TryAdd`, so a
-   host-supplied provider must be registered first to win.
+   provider (and its `IChatClient`, on that section's configuration) **before** `AddOrkeonApplication` /
+   `AddOrkeonInfrastructure` — or the echo provider when the section is missing. The infrastructure
+   registers no model of its own: a host that registers none fails at its first LLM resolution, naming
+   the missing service (GAP-29).
 3. **Core services** — `AddOrkeonApplication()` then `AddOrkeonInfrastructure()` (the
    parameterless overload), then `AddOrkeonTelemetry(configuration)` for the `Telemetry`
    section.
@@ -195,8 +196,8 @@ own `Program.cs` — there is no packaged shortcut for this; the REPL console in
 sequence by hand:
 
 ```csharp
-// 1. Register the LLM provider FIRST (before AddOrkeonInfrastructure, whose TryAdd fallback would
-//    otherwise win).
+// 1. Register the LLM provider (AddOrkeonLlmProvider): AddOrkeonInfrastructure registers no model
+//    of its own, and a container without one fails at its first LLM resolution.
 // 2. Core services:
 services.AddOrkeonApplication();
 services.AddOrkeonInfrastructure(configuration);

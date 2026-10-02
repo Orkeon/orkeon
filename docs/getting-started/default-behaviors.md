@@ -39,11 +39,12 @@ exceptions are called out in their row — a service registered unconditionally
 > **Two services have no working default at all.** No `IFileSystemService` is registered
 > by either call: `AddOrkeonFileSystem(configuration)`, with at least one mount under
 > `Orkeon:FileSystem:Mounts`, is required before a crew is loaded — the YAML loader, the
-> file tools and the deliverables all read and write through it. And the model falls back
-> to an OpenAI provider on its default model, with no key, so the first call fails
-> rather than answers; register yours before `AddOrkeonInfrastructure()`
-> (`AddOrkeonLlmProvider(...)`, see [Bootstrap](./bootstrap.md)). The `orkeon` CLI behaves
-> differently: with no `Llm` section it runs on the echo provider and says so on stderr.
+> file tools and the deliverables all read and write through it. And no model is
+> registered: a container without one fails at its first LLM resolution, naming the missing
+> service — register yours with `AddOrkeonLlmProvider(...)` (see [Bootstrap](./bootstrap.md)).
+> The keyless OpenAI provider that stood in for it is gone (GAP-29). The `orkeon` CLI,
+> `orkeon-host` and `orkeon-repl` behave differently: with no `Llm` section they run on the
+> echo provider and say so.
 
 ## The genuinely silent defaults
 

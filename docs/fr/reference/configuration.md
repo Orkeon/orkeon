@@ -78,7 +78,14 @@ un avertissement qui nomme la clé ([comparatif des fournisseurs](llm-providers-
 défaut, trop court pour un modèle qui réfléchit avant de répondre (Kimi K2.6, DeepSeek V4 et GLM
 le font par défaut) : mettez 600 s, ou coupez la réflexion avec `Thinking:Enabled = false`. Un
 appel qui atteint le délai est réessayé une fois, puis fait échouer sa tâche avec un message qui
-nomme le réglage — il n'est jamais rapporté comme une réponse vide (LLM-11). `MaxTokens` est un
+nomme le réglage — il n'est jamais rapporté comme une réponse vide (LLM-11). **Cette section est
+la base de chaque appel** à son fournisseur : un composant qui passe sa propre configuration — le
+planificateur, la mémoire cognitive, les résumés de fenêtre de contexte et de RaggableTree, les
+boucles d'agent hors du client de chat, un client de chat enregistré sans configuration — complète
+celle de la section au lieu de la remplacer. Ce qu'il laisse vide est celui de la section (la clé,
+`BaseUrl`, `TimeoutSeconds`, `Thinking`, `MaxTokens`…) ; ce qu'il fixe l'emporte (la température
+0,3 du planificateur, le plafond de sortie d'une analyse). Le fournisseur d'un profil fait de même
+avec ses propres clés. `MaxTokens` est un
 **épinglage** : absent, la requête porte le **maximum de sortie documenté** du modèle,
 lu dans le catalogue `LlmModelOutputLimits` (128K sur `gpt-5.6-sol` et la génération Claude 5,
 384K sur `deepseek-flash`, 131 072 sur les familles GLM-5 et Qwen 3.7/3.8, 65 536 sur Gemini 3.x
@@ -141,7 +148,7 @@ l'avertissement habituel. `orkeon-host` peut restreindre les profils que ses cre
 
 | Section | Configure | Consommateur / opt-in |
 |---|---|---|
-| `Llm` | Provider LLM actif — le profil par défaut (voir ci-dessus) | `RunnerHost` |
+| `Llm` | Provider LLM actif — le profil par défaut (voir ci-dessus) | `RunnerHost`, le REPL (`LlmSettings.ReadDefault`, le même lecteur) |
 | `Llm:Profiles:<nom>` | Profils LLM nommés qu'une crew choisit par agent ou par tâche, mêmes clés que `Llm` (voir ci-dessus) | `RunnerHost`, le REPL (`AddOrkeonLlmProfiles(configuration)`) |
 | `Llm:AvailableModels` | La liste de modèles qu'une commande REPL scriptée `/model` peut proposer (tableau de chaînes, ou une chaîne séparée par des virgules) | `AddOrkeonSessionTools(configuration)` |
 | `Memory:Provider` | TYPE du provider mémoire de l'application (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb` ; absent → in-memory). Sa connexion est la section propre de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, … plus bas) — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration) | `AddOrkeonInfrastructure()` |

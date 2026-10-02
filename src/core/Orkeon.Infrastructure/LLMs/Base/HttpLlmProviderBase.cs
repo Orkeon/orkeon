@@ -67,14 +67,27 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     protected abstract string DefaultModel { get; }
 
     /// <summary>
+    /// The configuration a call runs on (GAP-29): the call's own, completed by the one this
+    /// provider was built with (<see cref="LlmConfig.InheritFrom"/>) — every field the call leaves
+    /// unset is this provider's, every field it sets wins — or this provider's when the call
+    /// passes none. The providers used to take a call's configuration whole
+    /// (<c>config ?? Config</c>): a caller that named only a temperature lost the key, the base
+    /// URL, the timeout and the provider's own settings. Idempotent, so a configuration already
+    /// completed can go through it again.
+    /// </summary>
+    /// <param name="config">The call's configuration; null for the provider's own.</param>
+    /// <returns>The configuration to send the call with.</returns>
+    protected LlmConfig EffectiveConfig(LlmConfig? config) =>
+        config is null ? Config : config.InheritFrom(Config);
+
+    /// <summary>
     /// The model a request names (GAP-18): the call's own when it names one, else the model this
     /// provider is configured with — its profile's — else <see cref="DefaultModel"/>. A
     /// configuration that names no model (<see cref="LlmConfig.OnProfile"/>, an empty or blank
-    /// <see cref="LlmConfig.Model"/>) therefore runs on this provider's model; a call's
-    /// configuration replaces the provider's, and a <c>??</c> fallback let its empty model reach
-    /// the wire as <c>"model": ""</c>. The one rule every HTTP provider applies — to the payload,
-    /// the response's <see cref="LlmResponse.Model"/> the meter records, the output-cap lookup
-    /// and the error hints.
+    /// <see cref="LlmConfig.Model"/>) therefore runs on this provider's model, and an empty model
+    /// never reaches the wire as <c>"model": ""</c>. The one rule every HTTP provider applies — to
+    /// the payload, the response's <see cref="LlmResponse.Model"/> the meter records, the
+    /// output-cap lookup and the error hints.
     /// </summary>
     /// <param name="config">The call's effective configuration; null for the provider's own.</param>
     /// <returns>A model identifier, never empty.</returns>
@@ -198,7 +211,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     protected virtual HttpClient CreateHttpClient(LlmConfig? requestConfig = null)
     {
         var client = HttpClientFactory.CreateClient(GetType().Name);
-        var effectiveConfig = requestConfig ?? Config;
+        var effectiveConfig = EffectiveConfig(requestConfig);
 
         try
         {
@@ -211,8 +224,8 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             }
 #pragma warning restore CS0618
 
-            // Apply timeouts from configuration
-            client.Timeout = TimeSpan.FromSeconds(effectiveConfig.TimeoutSeconds);
+            // The call's timeout, else this provider's (Llm:TimeoutSeconds), else 30 s.
+            client.Timeout = TimeSpan.FromSeconds(effectiveConfig.ResolveTimeoutSeconds());
 
             // Allow derived classes to add headers
             ConfigureHttpClient(client, effectiveConfig);
@@ -311,7 +324,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         ArgumentNullException.ThrowIfNull(exception);
         ArgumentNullException.ThrowIfNull(config);
         return ResiliencePolicies.IsHttpClientTimeout(exception)
-            ? TimeoutFailureMessage(providerDisplayName, config.TimeoutSeconds)
+            ? TimeoutFailureMessage(providerDisplayName, config.ResolveTimeoutSeconds())
             : $"{providerDisplayName} API call failed: {LogSanitizer.SanitizeString(exception.Message)}";
     }
 

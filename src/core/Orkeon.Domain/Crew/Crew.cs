@@ -51,7 +51,8 @@ public sealed class Crew : AggregateRoot<CrewId>
     public bool Verbose { get; private set; }
 
     /// <summary>
-    /// Gets whether planning is enabled.
+    /// Gets whether planning is enabled: the run plans before its first task, on
+    /// <see cref="PlanningLlm"/> when set, else on the host's default LLM profile (GAP-29).
     /// </summary>
     public bool Planning { get; private set; }
 
@@ -109,7 +110,8 @@ public sealed class Crew : AggregateRoot<CrewId>
     public bool FullOutput { get; private set; }
 
     /// <summary>
-    /// Gets the planning LLM provider.
+    /// Gets the provider the crew plans on (C# <c>WithPlanningLlm</c>); null plans on the host's
+    /// default LLM profile.
     /// </summary>
     public ILlmProvider? PlanningLlm { get; private set; }
 

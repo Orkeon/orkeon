@@ -1,6 +1,7 @@
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
+using Orkeon.Analysis.DependencyInjection;
 using Orkeon.Analysis.Summarizers;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -57,6 +58,43 @@ public class LlmNodeSummarizerTests
         Assert.Equal("Manages users.", s1);
         Assert.Equal(s1, s2);
         Assert.Equal(1, llm.Calls);
+    }
+
+    /// <summary>
+    /// GAP-29: the summarizer pinned <c>claude-haiku-4-5</c> on whatever vendor the host runs. It
+    /// names no model now, and the provider runs the call on its own (the GAP-18 rule).
+    /// </summary>
+    [Fact]
+    public async Task LlmSummarizer_names_no_model_by_default_so_the_provider_runs_its_own()
+    {
+        var llm = new CountingLlmProvider("Manages users.");
+        var summarizer = new LlmNodeSummarizer(llm);
+        var node = MakeNode("UserService", UniversalNodeKind.Class, new string('x', 200));
+
+        await summarizer.SummarizeAsync(node, new SummarizationContext(null, [], [], null), CancellationToken.None);
+
+        Assert.Equal(string.Empty, llm.LastConfig!.Model);
+        Assert.Equal(0.2, llm.LastConfig.Temperature, precision: 3);
+        Assert.Equal(120, llm.LastConfig.MaxTokens);
+    }
+
+    [Fact]
+    public async Task LlmSummarizer_sends_the_model_it_is_configured_with()
+    {
+        var llm = new CountingLlmProvider("Manages users.");
+        var summarizer = new LlmNodeSummarizer(llm, new LlmNodeSummarizerOptions { Model = "claude-haiku-4-5" });
+        var node = MakeNode("UserService", UniversalNodeKind.Class, new string('x', 200));
+
+        await summarizer.SummarizeAsync(node, new SummarizationContext(null, [], [], null), CancellationToken.None);
+
+        Assert.Equal("claude-haiku-4-5", llm.LastConfig!.Model);
+    }
+
+    [Fact]
+    public void The_summarizer_options_name_no_model_by_default()
+    {
+        Assert.Equal(string.Empty, new LlmNodeSummarizerOptions().Model);
+        Assert.Equal(string.Empty, new SummarizerOptions().Model);
     }
 
     [Fact]
@@ -119,11 +157,13 @@ public class LlmNodeSummarizerTests
     {
         private readonly string _response;
         public int Calls;
+        public LlmConfig? LastConfig;
         public CountingLlmProvider(string response) { _response = response; }
         public string Name => "fake";
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref Calls);
+            LastConfig = config;
             return Task.FromResult(new LlmResponse { Content = _response });
         }
         public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)

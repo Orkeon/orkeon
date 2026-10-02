@@ -55,9 +55,8 @@ using Orkeon.Tools.Email.DependencyInjection;
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
-        // 0. Le modèle, enregistré AVANT AddOrkeonInfrastructure() : les services LLM que
-        //    cet appel enregistre sont des replis TryAdd — un fournisseur OpenAI sur son
-        //    modèle par défaut, sans clé. Ici : un modèle Ollama local.
+        // 0. Le modèle : AddOrkeonInfrastructure() n'en enregistre aucun, et un conteneur
+        //    qui n'en a pas échoue à sa première résolution LLM. Ici : un modèle Ollama local.
         var llm = LlmConfig.Create("qwen2.5:1.5b") with { BaseUrl = new Uri("http://localhost:11434") };
         services.AddOrkeonLlmProvider(
             sp => new OllamaLlmProvider(llm, sp.GetRequiredService<IHttpClientFactory>()), llm);

@@ -113,9 +113,10 @@ L'ordre d'enregistrement est délibéré :
 1. **Logging** — le logging du runner (console sur une ligne au niveau **Warning** par défaut ; `--verbose 1`/`2` ou un callback `configureLogging` le relève) et, quand
    `RunnerMountPlan.LlmLogVirtualPath` est renseigné, le `DelegatingHandler` de capture des échanges LLM.
 2. **Le fournisseur LLM d'abord** — `RegisterLlmProvider` lit la section de config `Llm` et enregistre
-   le fournisseur (et son `IChatClient`) **avant** `AddOrkeonApplication` / `AddOrkeonInfrastructure`.
-   Cet ordre compte : l'infrastructure Orkeon enregistre ses fallbacks LLM/`IChatClient` en `TryAdd`,
-   un fournisseur apporté par l'hôte doit donc être enregistré en premier pour gagner.
+   le fournisseur (et son `IChatClient`, sur la configuration de cette section) **avant**
+   `AddOrkeonApplication` / `AddOrkeonInfrastructure` — ou le fournisseur écho quand la section manque.
+   L'infrastructure n'enregistre aucun modèle à elle : un hôte qui n'en enregistre aucun échoue à sa
+   première résolution LLM, en nommant le service manquant (GAP-29).
 3. **Services cœur** — `AddOrkeonApplication()` puis `AddOrkeonInfrastructure()` (la surcharge
    sans paramètre), puis `AddOrkeonTelemetry(configuration)` pour la section `Telemetry`.
 4. **Outils stricts** — `CrewFactoryOptions.StrictTools` vaut `true` par défaut ici (un crew qui
@@ -205,8 +206,8 @@ par exemple) **réplique l'ordre d'enregistrement de `ConfigureRunnerServices`**
 séquence à la main :
 
 ```csharp
-// 1. Enregistrer le fournisseur LLM EN PREMIER (avant AddOrkeonInfrastructure, dont le fallback
-//    TryAdd gagnerait sinon).
+// 1. Enregistrer le fournisseur LLM (AddOrkeonLlmProvider) : AddOrkeonInfrastructure n'enregistre
+//    aucun modèle à lui, et un conteneur qui n'en a pas échoue à sa première résolution LLM.
 // 2. Services cœur :
 services.AddOrkeonApplication();
 services.AddOrkeonInfrastructure(configuration);

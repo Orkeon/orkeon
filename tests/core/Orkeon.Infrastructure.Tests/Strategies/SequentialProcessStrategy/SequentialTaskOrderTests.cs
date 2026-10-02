@@ -156,6 +156,28 @@ public sealed class SequentialTaskOrderTests : IDisposable
         Assert.Equal(["B", "A"], _executed);
     }
 
+    /// <summary>
+    /// GAP-29: <c>planning: true</c> plans every YAML crew that sets it now, and the planner sees
+    /// task ids, not their dependencies. Its order is followed wherever the declared
+    /// dependencies allow it — never ahead of one: taken as is, a plan listing the tasks in the
+    /// multi-file layout's file-name order brought back the defect STUDIO-12 C2 removed.
+    /// </summary>
+    [Fact]
+    public async Task A_plan_never_runs_a_task_before_one_it_depends_on()
+    {
+        var agent = NewAgent();
+        var a = NewTask("A");
+        var b = NewTask("B");
+        var c = NewTask("C");
+        b.AddDependency(a.Id);
+        var (crew, strategy) = Build(agent, [a, b, c]);
+        var plan = CrewExecutionPlan.Create([c.Id, b.Id, a.Id]);
+
+        await strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(["C", "A", "B"], _executed);
+    }
+
     // ── helpers ────────────────────────────────────────────────────────────────────────
 
     private static DomainAgent NewAgent() =>

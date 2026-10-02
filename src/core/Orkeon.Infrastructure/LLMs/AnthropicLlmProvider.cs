@@ -126,7 +126,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         LlmConfig? config = null,
         CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
 #pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
@@ -252,7 +252,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             return await GenerateAsync(string.Empty, config, cancellationToken).ConfigureAwait(false);
         }
 
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
 #pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
@@ -684,7 +684,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         LlmConfig? config = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
         // Same reason as the OpenAI-compatible path: an empty sequence must mean the model had
         // nothing to say, never that this provider was never able to ask.
@@ -764,7 +764,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
-        var effectiveConfig = config ?? Config;
+        var effectiveConfig = EffectiveConfig(config);
 
 #pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))

@@ -1,7 +1,6 @@
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Crew.Planning;
 using Orkeon.Application.Agent;
-using ApplicationPlanningConfiguration = Orkeon.Application.Agent.PlanningConfiguration;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
 
@@ -9,69 +8,6 @@ namespace Orkeon.Application.Tests.Services;
 
 public class AgentPlannerTypesTests
 {
-    #region PlanningConfiguration Tests
-
-    [Fact]
-    public void ShouldUseCorrectValues_WhenUsingPlanningConfigurationWithDefaults()
-    {
-        // Act
-        var config = new ApplicationPlanningConfiguration();
-
-        // Assert
-        Assert.True(config.EnablePlanning);
-        Assert.Equal(3, config.MaxRetries);
-        Assert.Equal(TimeoutStandard, config.Timeout);
-    }
-
-    [Fact]
-    public void ShouldSetCorrectly_WhenUsingPlanningConfigurationWithCustomValues()
-    {
-        // Arrange & Act
-        var config = new ApplicationPlanningConfiguration
-        {
-            EnablePlanning = false,
-            MaxRetries = 5,
-            Timeout = TimeoutExtended
-        };
-
-        // Assert
-        Assert.False(config.EnablePlanning);
-        Assert.Equal(5, config.MaxRetries);
-        Assert.Equal(TimeoutExtended, config.Timeout);
-    }
-
-    [Fact]
-    public void ShouldWorkCorrectly_WhenUsingPlanningConfigurationUsingEquality()
-    {
-        // Arrange
-        var config1 = new ApplicationPlanningConfiguration
-        {
-            EnablePlanning = true,
-            MaxRetries = 3,
-            Timeout = TimeoutStandard
-        };
-        var config2 = new ApplicationPlanningConfiguration
-        {
-            EnablePlanning = true,
-            MaxRetries = 3,
-            Timeout = TimeoutStandard
-        };
-        var config3 = new ApplicationPlanningConfiguration
-        {
-            EnablePlanning = false,
-            MaxRetries = 3,
-            Timeout = TimeoutStandard
-        };
-
-        // Act & Assert
-        Assert.Equal(config1, config2);
-        Assert.NotEqual(config1, config3);
-        Assert.Equal(config1.GetHashCode(), config2.GetHashCode());
-        Assert.NotEqual(config1.GetHashCode(), config3.GetHashCode());
-    }
-
-    #endregion
-
     #region PlanningContext Tests
 
     [Fact]
@@ -300,13 +236,6 @@ public class AgentPlannerTypesTests
     public void ShouldWorkTogether_WhenUsingPlanningWorkflowWithAllTypes()
     {
         // Arrange
-        var config = new ApplicationPlanningConfiguration
-        {
-            EnablePlanning = true,
-            MaxRetries = 2,
-            Timeout = TimeSpan.FromMinutes(3)
-        };
-
         var context = new PlanningContext(
             "Complex analysis task",
             "Detailed report",
@@ -331,7 +260,6 @@ public class AgentPlannerTypesTests
         var result = new PlanningResult(taskPlans, TimeSpan.FromMinutes(2), true);
 
         // Act & Assert
-        Assert.True(config.EnablePlanning);
         Assert.Equal("Complex analysis task", context.TaskDescription);
         Assert.Equal(3, steps.Count);
         Assert.True(result.Success);

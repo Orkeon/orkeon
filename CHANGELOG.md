@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a call's configuration completes its provider's, `planning: true` plans, and the REPL's chat client has a key **[breaking]**
+
+A configuration passed with one LLM call replaced the provider's whole (`config ?? Config`), and every
+caller outside the chat client builds one to set its temperature (GAP-29):
+
+- **Calls lost the key, the endpoint and the timeout of their provider.** On a real vendor, the crew
+  planner, the cognitive memory's analyses (`MemoryAnalyzer`, `ContradictionDetector`,
+  `MemoryConsolidator`), the context-window summary (`OpenAIContextWindowManager`), the RaggableTree
+  node summarizer (`LlmNodeSummarizer`), the text and native agent loops and the output-validation
+  correction round answered "API key is required" — or left for the vendor's default URL, on a 30 s
+  timeout whatever `Llm:TimeoutSeconds` said, without the provider's `Thinking` nor Azure's API version
+  — and fell back without a word: a plan "missing" its tasks, a default analysis, a truncation, no
+  summary. A call's configuration now **completes** the provider's (`LlmConfig.InheritFrom`, applied by
+  `HttpLlmProviderBase.EffectiveConfig` in the sixteen providers): every field the call leaves unset is
+  the provider's, every field it sets wins, custom parameters merge. The sampling settings that cannot
+  be unset — `Temperature`, `TopP`, the penalties, the tool mode — stay the caller's. The chat client
+  adapter registered without a base configuration starts from the provider's own.
+- **`LlmConfig.TimeoutSeconds` is nullable.** It defaulted to 30, so a call could not tell "not set"
+  from "30": null now inherits the provider's timeout, else `LlmDefaults.DefaultTimeoutSeconds` (30 s,
+  `LlmConfig.ResolveTimeoutSeconds()`).
+- **`planning: true` plans.** The orchestrator planned only when the crew carried a planning provider,
+  which only C#'s `WithPlanningLlm` sets: a YAML crew, or a C# one calling `.Planning(true)` alone,
+  planned nothing while the documentation said it did (the `.ork.ts` DSL has no planning switch). It plans now, before the first task, on the crew's
+  planning provider, else on the host's default profile. The plan's order is followed wherever the
+  declared dependencies allow it — the planner sees task ids, not their dependencies, and a plan taken
+  as is could run a task before one it depends on. A plan that fails says why: the planner read a failed
+  call's empty content and reported every task "missing from the plan".
+- **`orkeon-repl` serves a chat client on its `Llm` section.** It registered its provider without one,
+  so its `IChatClient` — agent turns, RAG answers, judges — was the infrastructure's fallback, a second
+  provider with no key on OpenAI's endpoint. It registers its provider the way `orkeon run` does — one
+  instance on the three surfaces, the chat client on the section's configuration, the section read by
+  the runners' `LlmSettings` — and the echo provider, with the runner's warning, without an `Llm`
+  section.
+- **The RaggableTree summarizer names no model by default**: `SummarizerOptions.Model` and
+  `LlmNodeSummarizerOptions.Model` were `claude-haiku-4-5` on whatever vendor the host runs; the
+  provider's own model now.
+- **Removed:** `AddOrkeonInfrastructure()`'s model fallbacks — the keyless `IBasicLlmProvider` and
+  `IChatClient` it registered when the host had none (a container without a model fails at its first
+  LLM resolution, naming what to register); and the planning settings nothing read:
+  `Orkeon.Domain.Crew.Planning.PlanningConfiguration`, `Orkeon.Application.Agent.PlanningConfiguration`,
+  `OrkeonApplicationOptions.EnablePlanning` and `PlanningLlmModel`, `LlmDefaults.DefaultPlanningModel`.
+
+Breaking: `LlmConfig.TimeoutSeconds` is an `int?`, and so is `CreateValidated`'s `timeoutSeconds`; a
+call can no longer erase a provider setting by leaving it null — it overrides it
+(`Thinking = { Enabled = false }`, `LlmResponseFormat.Text()`). A container that registers no model
+fails where it got a keyless OpenAI provider. A crew with `planning: true` makes its planning call now —
+on the echo provider (no `Llm` section), which replays the prompt, it fails at its plan.
+`SequentialCrewOrchestrator` takes an optional `ILlmProfileRegistry`.
+[Known limitations](docs/reference/limitations.md) say what planning does not do yet: the planner sees
+ids only, and Hierarchical and Autonomous make the plan without using it.
+
+Migration: read `ResolveTimeoutSeconds()` for the timeout a request runs on; a provider deriving from
+`HttpLlmProviderBase` that reads a call's configuration takes `EffectiveConfig(config)` instead of
+`config ?? Config`; a host registers its model with `AddOrkeonLlmProvider(…)`, which serves the three
+surfaces — one that registered `ILlmProvider` and an `IChatClient` by hand registers `IBasicLlmProvider`
+too (`new LlmProviderAdapter(provider)`), which the keyless fallback used to fake; drop the planning options
+— `planning: true` (`.Planning(true)`) is the switch, `WithPlanningLlm` the C# provider.
+
 ### Fixed — a crew's memory is its own: scoped by its name, without RAG chunks, without ballots **[breaking]**
 
 A crew that names a memory provider (`memoryProvider:`) keeps its long-term memory in that type's

@@ -83,7 +83,11 @@ public sealed record SummarizerOptions
 {
     public SummarizerProviderKind Provider { get; init; } = SummarizerProviderKind.None;
 
-    public string Model { get; init; } = "claude-haiku-4-5";
+    /// <summary>
+    /// The model the node summaries are asked of; empty — the default — runs them on the model of
+    /// the host's provider (GAP-29: it was <c>claude-haiku-4-5</c>, whatever vendor the host runs).
+    /// </summary>
+    public string Model { get; init; } = string.Empty;
 
     public int Concurrency { get; init; } = 5;
 }

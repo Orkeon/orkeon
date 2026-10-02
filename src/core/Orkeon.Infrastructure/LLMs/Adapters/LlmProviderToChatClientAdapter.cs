@@ -22,9 +22,11 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     /// <summary>Initializes a new instance of <see cref="LlmProviderToChatClientAdapter"/>.</summary>
     /// <param name="provider">The underlying LLM provider.</param>
     /// <param name="baseLlmConfig">
-    /// Optional base LLM configuration. When provided, <see cref="MapOptions"/> merges tool schemas
-    /// into a copy of this config instead of creating a new one from scratch — preserving ApiKey,
-    /// BaseUrl, and all other provider-specific settings.
+    /// Optional base LLM configuration. <see cref="MapOptions"/> merges the per-call options into
+    /// a copy of it — preserving its model, key, base URL and every other setting. Without one,
+    /// the provider's own (<see cref="ILlmProvider.BaseConfig"/>) is the base (GAP-29): a
+    /// configuration built from scratch dropped the provider's sampling settings, and its key,
+    /// endpoint and timeout until the providers learned to complete a call's configuration.
     /// </param>
     /// <param name="textFallbackParser">
     /// Optional text-based tool call parser. When the LLM does not return native <c>tool_calls</c>
@@ -466,8 +468,10 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Converts M.E.AI <see cref="ChatOptions"/> to a domain <see cref="LlmConfig"/>,
-    /// merging tool schemas and sampling parameters into the base config (preserving ApiKey, BaseUrl, etc.).
-    /// Returns <c>null</c> when no meaningful overrides exist — the provider then uses its own config.
+    /// merging tool schemas and sampling parameters into the base config — the adapter's, else the
+    /// provider's own (preserving its model, key, base URL, sampling and the rest).
+    /// Returns <c>null</c> when there is no base and no meaningful override — the provider then
+    /// uses its own config.
     /// </summary>
     private LlmConfig? MapOptions(ChatOptions? options)
     {
@@ -475,21 +479,23 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
         var (tools, toolMode) = ExtractToolsFromOptions(options);
 
-        // If we have a base config, merge sampling + tools into it (preserves ApiKey, BaseUrl, etc.)
-        if (_baseLlmConfig != null)
+        // A base config — the adapter's, else the one the provider was built with (GAP-29):
+        // merge sampling + tools into it, so an override of one option keeps every other setting.
+        if ((_baseLlmConfig ?? _provider.BaseConfig) is { } baseConfig)
         {
-            return ApplyOptionsOverrides(_baseLlmConfig, options, tools, toolMode, ResolveStructuredOutput(options));
+            return ApplyOptionsOverrides(baseConfig, options, tools, toolMode, ResolveStructuredOutput(options));
         }
 
-        // No base config: build a fresh LlmConfig only when ChatOptions has meaningful overrides.
+        // A provider that declares no configuration: build a fresh LlmConfig only when
+        // ChatOptions has meaningful overrides.
         if (!HasMeaningfulOverrides(options, tools))
             return null;
 
         // No model asked for: the call names none, and the provider runs on its own (GAP-18).
-        var baseConfig = string.IsNullOrWhiteSpace(options.ModelId)
+        var fresh = string.IsNullOrWhiteSpace(options.ModelId)
             ? LlmConfig.OnProfile()
             : LlmConfig.Create(options.ModelId);
-        return ApplyOptionsOverrides(baseConfig, options, tools, toolMode, ResolveStructuredOutput(options));
+        return ApplyOptionsOverrides(fresh, options, tools, toolMode, ResolveStructuredOutput(options));
     }
 
     /// <summary>

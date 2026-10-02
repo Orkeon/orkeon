@@ -131,6 +131,11 @@ var crew = new CrewBuilder()
     .Build();
 ```
 
+`.Planning(true)` — `planning: true` in YAML — asks for an execution plan before the
+first task: one call on the host's default LLM profile (the `Llm` section), or on the provider
+`.WithPlanningLlm(provider)` names, which orders the tasks within their dependencies. A plan that
+fails fails the run and says why — see [Process types](../orchestration/process-types.md).
+
 ## Two definition approaches: YAML or Fluent Builder
 
 Crews and their agents can be defined in two ways: either via a **YAML** file, or via the **Fluent Builder** API in C#. Both approaches produce identical results. A third surface, TypeScript (`.ork.ts`), describes the same crew with the scripting DSL and runs through the same `orkeon run` — see [Write a crew in TypeScript](../guides/write-a-crew-in-typescript.md).

@@ -834,4 +834,43 @@ INSTRUCTIONS: Execute
         var task2 = plan.Tasks.First(t => t.TaskId == taskId2);
         Assert.Empty(task2.Dependencies);
     }
+
+    /// <summary>
+    /// GAP-29: the planner read the content of a failed call — empty — and reported that the plan
+    /// was missing its tasks. The provider's own reason (a refused key, an elapsed timeout) never
+    /// appeared: it is what the failure says now.
+    /// </summary>
+    [Fact]
+    public async System.Threading.Tasks.Task A_planning_call_that_failed_says_why()
+    {
+        var crew = CreateTestCrew();
+        var taskId = TaskId.Create();
+        var planner = CrewPlanner.Create(
+            new FailingLlmProvider("DeepSeek API error: Unauthorized - Authentication Fails, Your api key is invalid"),
+            s_parser);
+
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => planner.CreatePlanAsync(
+            new Orkeon.Domain.Crew.PlanningContext(crew.Id, crew.Goal, crew.Agents), [taskId], new CrewInput("Test context")));
+
+        Assert.Contains("Your api key is invalid", failure.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("is missing from the plan", failure.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>A provider whose every call fails, the way the HTTP providers report it.</summary>
+    private sealed class FailingLlmProvider(string error) : ILlmProvider
+    {
+        public string Name => "failing";
+
+        public System.Threading.Tasks.Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
+            => System.Threading.Tasks.Task.FromResult(Failure());
+
+        public System.Threading.Tasks.Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
+            => System.Threading.Tasks.Task.FromResult(Failure());
+
+        private LlmResponse Failure() => new()
+        {
+            Content = string.Empty,
+            Metadata = new Dictionary<string, object> { [LlmResponseMetadataKeys.Error] = error },
+        };
+    }
 }

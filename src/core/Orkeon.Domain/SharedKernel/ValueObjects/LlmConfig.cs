@@ -5,6 +5,12 @@ using Orkeon.Domain.Tools.Protocol;
 namespace Orkeon.Domain.SharedKernel.ValueObjects;
 
 /// <summary>Configuration for Language Model settings.</summary>
+/// <remarks>
+/// The same type describes two things: the configuration a provider is built with (the host's
+/// <c>Llm</c> section, a profile) and the configuration a caller passes with one call. A call's
+/// configuration <b>completes</b> its provider's (<see cref="InheritFrom"/>, GAP-29): each field the
+/// call leaves unset takes the provider's value, each field it sets wins.
+/// </remarks>
 public sealed record LlmConfig
 {
     /// <summary>Default base URL for the Anthropic (Claude) API.</summary>
@@ -103,8 +109,15 @@ public sealed record LlmConfig
     /// for well-known keys. Use this dictionary only for provider-specific extensions.
     /// </summary>
     public IReadOnlyDictionary<string, object> CustomParameters { get; init; } = new Dictionary<string, object>();
-    /// <summary>Gets the request timeout in seconds.</summary>
-    public int TimeoutSeconds { get; init; } = 30;
+    /// <summary>
+    /// The request timeout in seconds, or null when nothing pins one: a call's configuration then
+    /// runs on its provider's timeout (<c>Llm:TimeoutSeconds</c>, 600 s for a model that thinks
+    /// before it answers), and a provider configured without one on
+    /// <see cref="LlmDefaults.DefaultTimeoutSeconds"/> (<see cref="ResolveTimeoutSeconds"/>). It used
+    /// to default to 30, so a caller's configuration could not tell "not set" from "30" and every
+    /// call outside the chat client ran on 30 s whatever the host configured (GAP-29).
+    /// </summary>
+    public int? TimeoutSeconds { get; init; }
     /// <summary>
     /// Gets the maximum number of retries on transient failures (bound from <c>Llm:MaxRetries</c>).
     /// Drives the HTTP resilience policy of the buffered path and the connect-phase retry
@@ -192,6 +205,77 @@ public sealed record LlmConfig
         };
     }
 
+    /// <summary>
+    /// The timeout a request runs on, in seconds: the one this configuration pins, else
+    /// <see cref="LlmDefaults.DefaultTimeoutSeconds"/>.
+    /// </summary>
+    /// <returns>A timeout in seconds.</returns>
+    public int ResolveTimeoutSeconds() => TimeoutSeconds ?? LlmDefaults.DefaultTimeoutSeconds;
+
+    /// <summary>
+    /// This configuration — a call's — completed by <paramref name="provider"/>, the configuration
+    /// the provider it reaches was built with (GAP-29). Every field this configuration leaves unset
+    /// takes the provider's value: a null, an empty or blank string — model, key, workspace, API
+    /// version —, no stop sequence. Every field it sets wins. Custom parameters merge, this
+    /// configuration's keys winning. The settings that have no unset value — the temperature, the
+    /// nucleus and penalty settings, the tool mode — are the caller's: a caller that builds a
+    /// configuration owns its sampling. <see cref="MaxRetries"/> and <see cref="GrammarEnabled"/>
+    /// are read from the provider's own configuration when it is built, never from a call.
+    /// </summary>
+    /// <remarks>
+    /// The providers took a call's configuration whole (<c>config ?? Config</c>), so every caller
+    /// outside the chat client — the planner, the cognitive memory, the context-window and
+    /// RaggableTree summarizers, the agent loops — lost the key, the base URL, the timeout and the
+    /// provider's own settings. A call cannot unset what its provider sets; it overrides it —
+    /// <c>Thinking = { Enabled = false }</c>, <see cref="LlmResponseFormat.Text"/>.
+    /// </remarks>
+    /// <param name="provider">The configuration the provider was built with.</param>
+    /// <returns>The configuration the call runs on.</returns>
+    public LlmConfig InheritFrom(LlmConfig provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+
+        return this with
+        {
+            Model = string.IsNullOrWhiteSpace(Model) ? provider.Model : Model,
+            Profile = string.IsNullOrWhiteSpace(Profile) ? provider.Profile : Profile,
+            ApiKey = string.IsNullOrEmpty(ApiKey) ? provider.ApiKey : ApiKey,
+            ApiKeySecretName = string.IsNullOrWhiteSpace(ApiKeySecretName) ? provider.ApiKeySecretName : ApiKeySecretName,
+            BaseUrl = BaseUrl ?? provider.BaseUrl,
+            MaxTokens = MaxTokens ?? provider.MaxTokens,
+            Seed = Seed ?? provider.Seed,
+            StopSequences = StopSequences is { Count: > 0 } ? StopSequences : provider.StopSequences,
+            SystemMessage = string.IsNullOrWhiteSpace(SystemMessage) ? provider.SystemMessage : SystemMessage,
+            ApiVersion = string.IsNullOrWhiteSpace(ApiVersion) ? provider.ApiVersion : ApiVersion,
+            WorkspaceId = string.IsNullOrWhiteSpace(WorkspaceId) ? provider.WorkspaceId : WorkspaceId,
+            CustomParameters = MergeCustomParameters(provider.CustomParameters, CustomParameters),
+            TimeoutSeconds = TimeoutSeconds ?? provider.TimeoutSeconds,
+            Tools = Tools ?? provider.Tools,
+            GrammarGbnf = string.IsNullOrWhiteSpace(GrammarGbnf) ? provider.GrammarGbnf : GrammarGbnf,
+            Thinking = Thinking ?? provider.Thinking,
+            Cache = Cache ?? provider.Cache,
+            ResponseFormat = ResponseFormat ?? provider.ResponseFormat,
+        };
+    }
+
+    /// <summary>The provider's custom parameters overlaid with the call's — the call's keys win.</summary>
+    private static IReadOnlyDictionary<string, object> MergeCustomParameters(
+        IReadOnlyDictionary<string, object>? inherited,
+        IReadOnlyDictionary<string, object>? own)
+    {
+        if (inherited is not { Count: > 0 })
+            return own ?? new Dictionary<string, object>();
+        if (own is not { Count: > 0 })
+            return inherited;
+
+        var merged = new Dictionary<string, object>(inherited.Count + own.Count);
+        foreach (var (key, value) in inherited)
+            merged[key] = value;
+        foreach (var (key, value) in own)
+            merged[key] = value;
+        return merged;
+    }
+
     /// <summary>Creates a new <see cref="LlmConfig"/> with the specified model and optional API key.</summary>
     /// <param name="model">The model identifier (must not be null or empty).</param>
     /// <param name="apiKey">The API key (deprecated; prefer secret-based resolution).</param>
@@ -215,7 +299,7 @@ public sealed record LlmConfig
         double topP = 1.0,
         double frequencyPenalty = 0.0,
         double presencePenalty = 0.0,
-        int timeoutSeconds = 30,
+        int? timeoutSeconds = null,
         int maxRetries = LlmDefaults.DefaultMaxRetries,
         string? apiKey = null,
         Uri? baseUrl = null)
@@ -236,7 +320,8 @@ public sealed record LlmConfig
         if (presencePenalty < -2.0 || presencePenalty > 2.0)
             throw new ArgumentOutOfRangeException(nameof(presencePenalty),
                 $"PresencePenalty must be between -2.0 and 2.0, but was {presencePenalty}.");
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timeoutSeconds);
+        if (timeoutSeconds is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(timeoutSeconds), "TimeoutSeconds must be positive when pinned; leave it null for the provider's timeout.");
         ArgumentOutOfRangeException.ThrowIfNegative(maxRetries);
 
         return new LlmConfig(model, apiKey)

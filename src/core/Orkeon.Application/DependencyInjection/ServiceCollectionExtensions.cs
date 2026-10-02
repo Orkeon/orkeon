@@ -14,7 +14,6 @@ using Orkeon.Application.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
-using Orkeon.Domain.Constants.Llm;
 
 namespace Orkeon.Application.DependencyInjection;
 
@@ -60,11 +59,9 @@ public static class ServiceCollectionExtensions
 
         // Planning services. The default IAgentPlanner is the deterministic stub
         // (fixed 4-step plan — see AgentPlannerService XML doc); an LLM-backed
-        // planner is a planned feature.
+        // planner is a planned feature. A crew's `planning: true` is the orchestrator's: it
+        // plans on the crew's planning provider, else the host's default profile (GAP-29).
         services.AddScoped<IAgentPlanner, AgentPlannerService>();
-        // TryAdd so a planning-enabled PlanningConfiguration registered by the options
-        // overload (before delegating here) is not overwritten by the default one.
-        services.TryAddSingleton(new Domain.Crew.Planning.PlanningConfiguration());
 
         return services;
     }
@@ -88,8 +85,6 @@ public static class ServiceCollectionExtensions
             opt.EnableRAG = options.EnableRAG;
             opt.MemoryDatabasePath = options.MemoryDatabasePath;
             opt.EmbeddingDimension = options.EmbeddingDimension;
-            opt.EnablePlanning = options.EnablePlanning;
-            opt.PlanningLlmModel = options.PlanningLlmModel;
             opt.CrewRepositoryType = options.CrewRepositoryType;
             opt.CrewsPath = options.CrewsPath;
             opt.EmbeddingProvider = options.EmbeddingProvider;
@@ -99,19 +94,6 @@ public static class ServiceCollectionExtensions
             opt.AzureOpenAIDeploymentName = options.AzureOpenAIDeploymentName;
             opt.AgentSelectionStrategy = options.AgentSelectionStrategy;
         });
-
-        // Configure planning based on options. Registered BEFORE the base overload so
-        // that the planning-enabled PlanningConfiguration wins over the default one
-        // (TryAddSingleton in the base overload is a no-op once this is present).
-        if (options.EnablePlanning)
-        {
-            services.AddSingleton(new Domain.Crew.Planning.PlanningConfiguration
-            {
-                EnablePlanning = true,
-                PlanningLlmModel = options.PlanningLlmModel ?? LlmDefaults.DefaultPlanningModel,
-                Temperature = 0.1
-            });
-        }
 
         // Delegate every shared registration (CQRS handlers, validators, domain event
         // handlers, execution pipeline, memory and planning services) to the base

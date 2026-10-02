@@ -271,8 +271,6 @@ public class OrkeonApplicationOptionsTests
         Assert.False(opt.EnableRAG);
         Assert.Equal("orkeon_memory.db", opt.MemoryDatabasePath);
         Assert.Equal(384, opt.EmbeddingDimension);
-        Assert.True(opt.EnablePlanning);
-        Assert.Equal(ModelGpt4oMini, opt.PlanningLlmModel);
         Assert.Equal("Simple", opt.EmbeddingProvider);
         Assert.Null(opt.OpenAIApiKey);
         Assert.Equal("text-embedding-ada-002", opt.OpenAIEmbeddingModel);
@@ -309,19 +307,6 @@ public class OrkeonApplicationOptionsTests
 
         // Assert
         Assert.True(opt.EnableRAG);
-    }
-
-    [Fact]
-    public void ShouldBeSettable_WhenUsingPlanningLlmModel()
-    {
-        // Arrange
-        var opt = new OrkeonApplicationOptions();
-
-        // Act
-        opt.PlanningLlmModel = "claude-3-opus";
-
-        // Assert
-        Assert.Equal("claude-3-opus", opt.PlanningLlmModel);
     }
 
     [Fact]
