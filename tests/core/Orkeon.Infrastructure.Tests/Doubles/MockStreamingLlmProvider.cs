@@ -18,6 +18,9 @@ public sealed class MockStreamingLlmProvider : ILlmProvider, IStreamingLlmProvid
 
     public string Name { get; set; } = "MockStreamingLlmProvider";
 
+    /// <summary>The configuration the provider declares (<see cref="ILlmProvider.BaseConfig"/>).</summary>
+    public LlmConfig? BaseConfig { get; set; }
+
     // --- Tracking ---
     public int ChatCallCount { get; private set; }
     public int GenerateCallCount { get; private set; }

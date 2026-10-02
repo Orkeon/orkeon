@@ -336,14 +336,16 @@ internal static class LlmCommand
 
     internal static LlmConfig BuildConfig(LlmProbeCommandOptions options, string? apiKey)
     {
-        // Falling back to LlmConfig.Default() would send OpenAI's default model to whichever
-        // provider was named — a campaign against Kimi would silently measure "gpt-5.6-sol".
+        // The provider's own default when --model is absent: OpenAI's would be sent to whichever
+        // provider was named — a campaign against Kimi would silently measure "gpt-5.6-sol". A
+        // provider with no default of its own (Azure's deployments) names none, and runs on the
+        // one its configuration names (GAP-18).
         var model = string.IsNullOrWhiteSpace(options.Model)
             ? ProviderDefaults.ForProvider(options.Provider)
             : options.Model;
 
         var config = string.IsNullOrWhiteSpace(model)
-            ? LlmConfig.Default()
+            ? LlmConfig.OnProfile()
             : LlmConfig.Create(model!);
 
 #pragma warning disable CS0618 // The probe talks to the provider directly, with no secret store.

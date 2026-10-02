@@ -6,7 +6,6 @@ using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.SharedKernel;
-using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.CostTracking;
 
@@ -486,7 +485,10 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         if (!HasMeaningfulOverrides(options, tools))
             return null;
 
-        var baseConfig = LlmConfig.Create(options.ModelId ?? LlmDefaults.DefaultModelName);
+        // No model asked for: the call names none, and the provider runs on its own (GAP-18).
+        var baseConfig = string.IsNullOrWhiteSpace(options.ModelId)
+            ? LlmConfig.OnProfile()
+            : LlmConfig.Create(options.ModelId);
         return ApplyOptionsOverrides(baseConfig, options, tools, toolMode, ResolveStructuredOutput(options));
     }
 

@@ -259,7 +259,7 @@ public sealed class JsLlmFacadeActPermissionTests
         public MessageCapturingProvider(LlmResponse[] responses) => _responses = responses;
 
         public string Name => "fake";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-model" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("fake-model");
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
             => Task.FromResult(_responses[Math.Min(_i++, _responses.Length - 1)]);

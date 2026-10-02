@@ -14,6 +14,13 @@ Les trois entités principales sont construites via des builders fluides défini
 
 Chaque builder délègue en interne aux méthodes factory `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` et lève une `BuilderValidationException` si les champs obligatoires sont absents.
 
+Les réglages de modèle d'un agent : `WithLlmConfig(config)` les pose en bloc ; les raccourcis
+`Thinking(enabled, effort)` et `MaxOutputTokens(n)` s'y fondent et, sur un agent qui n'en a pas,
+partent d'une configuration qui ne nomme aucun modèle (`LlmConfig.OnProfile()`) : l'agent tourne
+alors sur le modèle de l'hôte, quel que soit son vendeur. Pour épingler un modèle, partez de
+`LlmConfig.Create(modèle)` ; pour tourner sur l'un des [profils nommés](#un-fournisseur-par-agent-profils)
+de l'hôte, de `LlmConfig.OnProfile("claude")`.
+
 ## Configuration YAML
 
 Orkeon supporte la configuration complète des crews via YAML. Le loader `YamlCrewDefinitionLoader` (`Orkeon.Infrastructure.Configuration`) convertit les fichiers YAML en objets domaine.

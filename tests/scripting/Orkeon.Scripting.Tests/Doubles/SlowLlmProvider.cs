@@ -13,7 +13,7 @@ namespace Orkeon.Scripting.Tests.Doubles;
 internal sealed class SlowLlmProvider : ILlmProvider
 {
     public string Name => "slow";
-    public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "slow" };
+    public LlmConfig? BaseConfig => LlmConfig.Create("slow");
 
     public async Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
     {

@@ -147,9 +147,8 @@ public class LlmProviderAdapterTests
         // Arrange
         var provider = new TestLlmProvider();
         var adapter = new LlmProviderAdapter(provider);
-        var llmConfig = LlmConfig.Default() with
+        var llmConfig = LlmConfig.Create(CustomModelName) with
         {
-            Model = CustomModelName,
             Temperature = 0.8,
             MaxTokens = 500
         };
@@ -481,9 +480,8 @@ public class LlmProviderAdapterTests
         // Arrange
         var provider = new TestLlmProvider();
         var adapter = new LlmProviderAdapter(provider);
-        var complexConfig = LlmConfig.Default() with
+        var complexConfig = LlmConfig.Create(ModelGpt4Turbo) with
         {
-            Model = ModelGpt4Turbo,
             Temperature = 0.95,
             MaxTokens = 4096,
             TopP = 0.9,

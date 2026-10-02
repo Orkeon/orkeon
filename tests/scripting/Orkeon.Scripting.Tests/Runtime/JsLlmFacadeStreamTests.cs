@@ -486,7 +486,7 @@ public sealed class JsLlmFacadeStreamTests
         }
 
         public string Name => "fake-streaming";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-model" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("fake-model");
         public bool SupportsStreaming => true;
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
@@ -539,7 +539,7 @@ public sealed class JsLlmFacadeStreamTests
     private sealed class EndlessStreamingProvider : ILlmProvider, IStreamingLlmProvider
     {
         public string Name => "endless";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-model" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("fake-model");
         public bool SupportsStreaming => true;
         public bool Released { get; private set; }
 

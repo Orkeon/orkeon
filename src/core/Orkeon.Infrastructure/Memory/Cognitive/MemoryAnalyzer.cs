@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Infrastructure.Constants.Security;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
-using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.Constants.Memory;
 using Orkeon.Application.Interfaces.Ports;
 
@@ -60,7 +59,10 @@ public sealed partial class MemoryAnalyzer
                 LlmMessage.User(userPrompt)
             };
 
-            var config = LlmConfig.Create(_options.AnalysisModel ?? LlmDefaults.DefaultModelName) with
+            // No AnalysisModel: the provider's own model, never OpenAI's on another vendor (GAP-18).
+            var config = (string.IsNullOrWhiteSpace(_options.AnalysisModel)
+                    ? LlmConfig.OnProfile()
+                    : LlmConfig.Create(_options.AnalysisModel)) with
             {
                 Temperature = _options.AnalysisTemperature,
                 MaxTokens = 500

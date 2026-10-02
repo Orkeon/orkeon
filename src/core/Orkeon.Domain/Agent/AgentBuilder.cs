@@ -3,7 +3,6 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Constants.Agent;
-using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.Tools;
 
@@ -189,11 +188,13 @@ public sealed class AgentBuilder
     /// Enables (or disables) the provider's thinking/reasoning mode for this agent and optionally
     /// sets the reasoning-effort hint (<c>"low"</c>/<c>"medium"</c>/<c>"high"</c>/<c>"max"</c>).
     /// Sugar over <see cref="WithLlmConfig"/>: merges into the agent's LLM config without clobbering
-    /// other settings, so it composes with <see cref="MaxOutputTokens"/> and an existing config.
+    /// other settings, so it composes with <see cref="MaxOutputTokens"/> and an existing config. On
+    /// an agent without one it names no model (<see cref="LlmConfig.OnProfile"/>): the agent runs on
+    /// the host's model, whatever vendor serves it (GAP-18).
     /// </summary>
     public AgentBuilder Thinking(bool enabled = true, string? effort = null)
     {
-        _llmConfig = (_llmConfig ?? LlmConfig.Create(LlmDefaults.DefaultModelName)) with
+        _llmConfig = (_llmConfig ?? LlmConfig.OnProfile()) with
         {
             Thinking = new LlmThinkingConfig { Enabled = enabled, Effort = effort },
         };
@@ -203,12 +204,13 @@ public sealed class AgentBuilder
     /// <summary>
     /// Bounds the maximum number of output tokens the model may generate. Output is the dominant
     /// cost driver on thinking-mode providers (DeepSeek guideline §6.2), so cap it explicitly on
-    /// agents that do not need long generations. Sugar over <see cref="WithLlmConfig"/>.
+    /// agents that do not need long generations. Sugar over <see cref="WithLlmConfig"/>; on an
+    /// agent without a config it names no model, like <see cref="Thinking"/>.
     /// </summary>
     public AgentBuilder MaxOutputTokens(int maxOutputTokens)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxOutputTokens);
-        _llmConfig = (_llmConfig ?? LlmConfig.Create(LlmDefaults.DefaultModelName)) with { MaxTokens = maxOutputTokens };
+        _llmConfig = (_llmConfig ?? LlmConfig.OnProfile()) with { MaxTokens = maxOutputTokens };
         return this;
     }
 

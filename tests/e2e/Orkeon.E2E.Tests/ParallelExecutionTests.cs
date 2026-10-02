@@ -24,7 +24,7 @@ public class ParallelExecutionTests : E2ETestBase
             "In one sentence, what colour is the sky?"
         };
 
-        var config = LlmConfig.Default() with { MaxTokens = 64, Temperature = 0.0 };
+        var config = LlmConfig.OnProfile() with { MaxTokens = 64, Temperature = 0.0 };
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -58,7 +58,7 @@ public class ParallelExecutionTests : E2ETestBase
         Assert.Equal(10, agent.MaxRpm); // Verify the agent has RPM set
 
         var llmProvider = CreateLlmProvider();
-        var config = LlmConfig.Default() with { MaxTokens = 32, Temperature = 0.0 };
+        var config = LlmConfig.OnProfile() with { MaxTokens = 32, Temperature = 0.0 };
 
         // Make two sequential requests — should both succeed without error
         var r1 = await llmProvider.GenerateAsync("Say 'hello' in one word.", config, cts.Token);

@@ -265,13 +265,17 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             AgentId = attribution.AgentId,
             TaskId = attribution.TaskId,
             OperationType = attribution.Operation,
-            // No answer names the model on this path: the one asked for is the best reading.
-            Model = config?.Model ?? _inner.BaseConfig?.Model ?? string.Empty,
+            // No answer names the model on this path: the one asked for is the best reading —
+            // and a call that names none runs on the provider's own (GAP-18).
+            Model = NamedModel(config) ?? NamedModel(_inner.BaseConfig) ?? string.Empty,
             Provider = _inner.Name,
             PromptTokens = promptTokens,
             CompletionTokens = (int)Math.Min(int.MaxValue, LlmUsageEstimator.FromCharacterCount(characters)),
             Estimated = true,
         });
+
+    private static string? NamedModel(LlmConfig? config) =>
+        string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model;
 
     /// <summary>
     /// Hands one event to the sink. A sink that throws degrades to unobserved usage, never to

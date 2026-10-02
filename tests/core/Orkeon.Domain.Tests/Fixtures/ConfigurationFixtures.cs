@@ -14,11 +14,11 @@ namespace Orkeon.Domain.Tests.Fixtures;
 public static class ConfigurationFixtures
 {
     /// <summary>
-    /// Creates a default LlmConfig.
+    /// Creates an LlmConfig that names no model (the provider it reaches runs its own).
     /// </summary>
     public static LlmConfig CreateDefaultLlmConfig()
     {
-        return LlmConfig.Default();
+        return LlmConfig.OnProfile();
     }
 
     /// <summary>

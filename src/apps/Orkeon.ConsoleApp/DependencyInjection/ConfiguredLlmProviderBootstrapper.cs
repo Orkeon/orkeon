@@ -16,10 +16,11 @@ namespace Orkeon.ConsoleApp.DependencyInjection;
 /// <remarks>
 /// <para>
 /// Without this, <c>AddOrkeonInfrastructure()</c> only registers <see cref="ILlmProvider"/> and
-/// <see cref="IBasicLlmProvider"/> (via <c>TryAdd</c>) from <see cref="LlmConfig.Default()"/> — an
-/// empty config with no API key and the default OpenAI endpoint. The crew runtime resolves that
-/// provider, so <c>ctx.llm.act</c> ends up talking to the wrong endpoint with no credentials and
-/// silently yields empty output: a request reports "done" while nothing real reaches the model.
+/// <see cref="IBasicLlmProvider"/> (via <c>TryAdd</c>) from <see cref="LlmConfig.OnProfile"/> — an
+/// empty config with no API key, which the factory builds on the default OpenAI endpoint. The crew
+/// runtime resolves that provider, so <c>ctx.llm.act</c> ends up talking to the wrong endpoint with
+/// no credentials and silently yields empty output: a request reports "done" while nothing real
+/// reaches the model.
 /// </para>
 /// <para>
 /// MUST be called <em>before</em> <c>AddOrkeonInfrastructure()</c> so its <c>TryAdd</c> defaults
@@ -65,7 +66,8 @@ internal static class ConfiguredLlmProviderBootstrapper
         if (!Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.HasDefault(configuration))
             return services;
 
-        var defaults = LlmConfig.Default();
+        // A section without Model names none: the provider runs its own default (GAP-18).
+        var defaults = LlmConfig.OnProfile();
 #pragma warning disable CS0618 // ApiKey is the supported path for direct-from-config keys (appsettings Llm:ApiKey / Llm__ApiKey env).
         var config = defaults with
         {

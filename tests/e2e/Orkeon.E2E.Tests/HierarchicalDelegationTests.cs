@@ -39,7 +39,7 @@ public class HierarchicalDelegationTests : E2ETestBase
             """;
 
         var managerResponse = await llmProvider.GenerateAsync(managerPrompt,
-            LlmConfig.Default() with { MaxTokens = 256, Temperature = 0.1 }, cts.Token);
+            LlmConfig.OnProfile() with { MaxTokens = 256, Temperature = 0.1 }, cts.Token);
 
         Assert.NotNull(managerResponse);
         Assert.False(string.IsNullOrWhiteSpace(managerResponse.Content),
@@ -57,7 +57,7 @@ public class HierarchicalDelegationTests : E2ETestBase
             """;
 
         var workerResponse = await llmProvider.GenerateAsync(workerPrompt,
-            LlmConfig.Default() with { MaxTokens = 512, Temperature = 0.1 }, cts.Token);
+            LlmConfig.OnProfile() with { MaxTokens = 512, Temperature = 0.1 }, cts.Token);
 
         Assert.NotNull(workerResponse);
         Assert.False(string.IsNullOrWhiteSpace(workerResponse.Content),
@@ -103,7 +103,7 @@ public class HierarchicalDelegationTests : E2ETestBase
             """;
 
         var selectionResponse = await llmProvider.GenerateAsync(selectionPrompt,
-            LlmConfig.Default() with { MaxTokens = 128, Temperature = 0.0 }, cts.Token);
+            LlmConfig.OnProfile() with { MaxTokens = 128, Temperature = 0.0 }, cts.Token);
 
         Assert.NotNull(selectionResponse);
         Assert.False(string.IsNullOrWhiteSpace(selectionResponse.Content),

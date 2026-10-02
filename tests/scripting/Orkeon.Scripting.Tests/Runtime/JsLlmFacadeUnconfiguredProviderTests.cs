@@ -110,7 +110,7 @@ public sealed class JsLlmFacadeUnconfiguredProviderTests
 
         public string Name => "openai";
 
-        public LlmConfig? BaseConfig => LlmConfig.Default();
+        public LlmConfig? BaseConfig => LlmConfig.OnProfile();
 
         public bool SupportsStreaming => false;
 
@@ -157,7 +157,7 @@ public sealed class JsLlmFacadeUnconfiguredProviderTests
 
         public string Name => "openai";
 
-        public LlmConfig? BaseConfig => LlmConfig.Default();
+        public LlmConfig? BaseConfig => LlmConfig.OnProfile();
 
         public bool SupportsStreaming => true;
 

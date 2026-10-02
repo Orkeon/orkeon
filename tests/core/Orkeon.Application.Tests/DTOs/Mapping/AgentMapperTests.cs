@@ -243,7 +243,7 @@ public class AgentMapperTests
     public void ShouldReturnCorrectProvider_WhenUsingInferProvider(string baseUrl, string model, string expectedProvider)
     {
         // Arrange
-        var llmConfig = LlmConfig.Default() with
+        var llmConfig = LlmConfig.OnProfile() with
         {
             BaseUrl = string.IsNullOrEmpty(baseUrl) ? null : new Uri(baseUrl),
             Model = model

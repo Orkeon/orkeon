@@ -14,6 +14,12 @@ The three main entities are built via fluent builders defined in the Domain laye
 
 Each builder internally delegates to the factory methods `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` and throws a `BuilderValidationException` if the required fields are missing.
 
+An agent's model settings: `WithLlmConfig(config)` sets them whole; the sugar `Thinking(enabled, effort)`
+and `MaxOutputTokens(n)` merges into them and, on an agent that has none, starts from a configuration
+that names no model (`LlmConfig.OnProfile()`) — the agent then runs on the host's model, whatever vendor
+the host runs. To pin a model, start from `LlmConfig.Create(model)`; to run on one of the host's
+[named profiles](#one-provider-per-agent-profiles), from `LlmConfig.OnProfile("claude")`.
+
 ## YAML configuration
 
 Orkeon supports full crew configuration via YAML. The `YamlCrewDefinitionLoader` loader (`Orkeon.Infrastructure.Configuration`) converts YAML files into domain objects.

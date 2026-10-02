@@ -46,6 +46,12 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     public override string Name => "ollama";
 
     /// <summary>
+    /// The local server's documented default (<c>LlmProviderDefaultModels.Ollama</c>) — not the
+    /// <c>llama2</c> that six fallbacks of this class used to hard-code (GAP-18).
+    /// </summary>
+    protected override string DefaultModel => LlmProviderDefaultModels.Ollama;
+
+    /// <summary>
     /// Ollama is a local, unauthenticated endpoint: it has no API key to be missing, and no
     /// call in this class guards on one. Declaring that here is what keeps
     /// <see cref="HttpLlmProviderBase.SupportsStreaming"/> honest in BOTH directions — the
@@ -283,7 +289,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
         var payload = new Dictionary<string, object>
         {
-            ["model"] = config.Model ?? LlmProviderDefaultModels.Ollama,
+            ["model"] = ResolveModel(config),
             ["messages"] = BuildChatMessages(messages, config),
             ["stream"] = false,
             ["options"] = options.ToDictionary(),
@@ -520,7 +526,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 TokensUsed = (promptTokens ?? 0) + (completionTokens ?? 0),
                 PromptTokens = promptTokens,
                 CompletionTokens = completionTokens,
-                Model = config.Model ?? LlmProviderDefaultModels.Ollama,
+                Model = ResolveModel(config),
                 Metadata = metadata.Build().ToDictionary(),
                 RawResponseBody = SynthesizeOpenAiBody(message, content),
             };
@@ -778,7 +784,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             TokensUsed = (state.PromptTokens ?? 0) + (state.CompletionTokens ?? 0),
             PromptTokens = state.PromptTokens,
             CompletionTokens = state.CompletionTokens,
-            Model = config.Model ?? LlmProviderDefaultModels.Ollama,
+            Model = ResolveModel(config),
             Metadata = metadata.Build().ToDictionary(),
             RawResponseBody = rawBody,
         };
@@ -805,7 +811,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             .Build();
 
         var payload = OllamaRequestPayload.CreateBuilder()
-            .AddModel(effectiveConfig.Model ?? "llama2")
+            .AddModel(ResolveModel(effectiveConfig))
             .AddPrompt(prompt)
             .AddStream(true)
             .AddOptions(options)
@@ -875,7 +881,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         }
 
         var builder = OllamaRequestPayload.CreateBuilder()
-            .AddModel(config.Model ?? "llama2")
+            .AddModel(ResolveModel(config))
             .AddPrompt(effectivePrompt)
             .AddStream(false)
             .AddOptions(options);
@@ -967,7 +973,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 TokensUsed = (ollamaResponse.PromptEvalCount ?? 0) + (ollamaResponse.EvalCount ?? 0),
                 PromptTokens = ollamaResponse.PromptEvalCount,
                 CompletionTokens = ollamaResponse.EvalCount,
-                Model = config.Model ?? "llama2",
+                Model = ResolveModel(config),
                 Metadata = LlmResponseMetadata.CreateBuilder()
                     .AddProvider(Name)
                     .AddDone(ollamaResponse.Done)
@@ -996,7 +1002,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         {
             Content = string.Empty,
             TokensUsed = 0,
-            Model = config.Model ?? "llama2",
+            Model = ResolveModel(config),
             Metadata = LlmResponseMetadata.CreateBuilder()
                 .AddProvider(Name)
                 // An elapsed Llm:TimeoutSeconds names the setting and the ways out (LLM-11) —
@@ -1020,7 +1026,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         {
             Content = string.Empty,
             TokensUsed = 0,
-            Model = config.Model ?? "llama2",
+            Model = ResolveModel(config),
             Metadata = LlmResponseMetadata.CreateBuilder()
                 .AddProvider(Name)
                 .AddError(errorMessage)
@@ -1062,7 +1068,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 // If parsing fails, use the sanitized error content
             }
 
-            var model = Config.Model ?? "llama2";
+            var model = ResolveModel(null);
 
             // Ollama declares thinking and vision because some of its models have them; the
             // one actually loaded may not, and it says so plainly. Name whose assumption was

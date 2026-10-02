@@ -72,7 +72,8 @@ public sealed class ChatClientToLlmProviderAdapter : ILlmProvider
             TopP = (float)config.TopP,
             FrequencyPenalty = (float)config.FrequencyPenalty,
             PresencePenalty = (float)config.PresencePenalty,
-            ModelId = config.Model,
+            // A config that names no model leaves the client on its own (GAP-18).
+            ModelId = string.IsNullOrWhiteSpace(config.Model) ? null : config.Model,
             Seed = config.Seed.HasValue ? (long)config.Seed.Value : null
         };
     }
@@ -84,7 +85,7 @@ public sealed class ChatClientToLlmProviderAdapter : ILlmProvider
         {
             Content = response.Text ?? string.Empty,
             TokensUsed = (int)(usage?.TotalTokenCount ?? 0),
-            Model = response.ModelId ?? config?.Model,
+            Model = response.ModelId ?? (string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model),
             Metadata = new Dictionary<string, object>
             {
                 ["provider"] = "IChatClient"

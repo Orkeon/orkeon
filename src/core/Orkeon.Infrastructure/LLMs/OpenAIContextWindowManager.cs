@@ -71,7 +71,8 @@ public sealed partial class OpenAIContextWindowManager : IContextWindowManager
 
             try
             {
-                var config = LlmConfig.Default() with
+                // On the summarizing provider's own model (GAP-18).
+                var config = LlmConfig.OnProfile() with
                 {
                     Temperature = 0.3, // Lower temperature for more consistent summaries
                     MaxTokens = targetTokens

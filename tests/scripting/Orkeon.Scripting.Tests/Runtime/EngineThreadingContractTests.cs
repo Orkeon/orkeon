@@ -42,7 +42,7 @@ public sealed class EngineThreadingContractTests
     private sealed class SlowStreamingProvider : ILlmProvider, IStreamingLlmProvider
     {
         public string Name => "slow-streaming";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "slow" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("slow");
         public bool SupportsStreaming => true;
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)

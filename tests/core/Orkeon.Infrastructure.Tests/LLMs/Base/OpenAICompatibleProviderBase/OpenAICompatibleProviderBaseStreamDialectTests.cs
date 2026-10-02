@@ -297,14 +297,14 @@ public sealed class OpenAICompatibleProviderBaseStreamDialectTests : IDisposable
     private DeepSeekLlmProvider CreateDeepSeekProvider(string body)
     {
         SetupHttpClient(body);
-        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = "sk-test", Model = "deepseek-chat" };
+        var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = "sk-test" };
         return new DeepSeekLlmProvider(config, _httpClientFactory, _noOpPolicy, NullLogger<DeepSeekLlmProvider>.Instance);
     }
 
     private ReasoningFieldRenamingProvider CreateRenamedProvider(string body)
     {
         SetupHttpClient(body);
-        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = "sk-test", Model = "test-model" };
+        var config = LlmConfig.Create("test-model") with { MaxRetries = 0, ApiKey = "sk-test" };
         return new ReasoningFieldRenamingProvider(config, _httpClientFactory, _noOpPolicy, NullLogger<ReasoningFieldRenamingProvider>.Instance);
     }
 

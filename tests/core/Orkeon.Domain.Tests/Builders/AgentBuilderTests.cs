@@ -212,6 +212,26 @@ public class AgentBuilderTests
         Assert.Throws<ArgumentOutOfRangeException>(() => MinimalAgent().MaxOutputTokens(0));
     }
 
+    // GAP-18: the sugar names no model. It used to seed OpenAI's default model, which an agent
+    // run on a DeepSeek or Anthropic host then sent to that vendor ("model not found").
+    [Fact]
+    public void Thinking_names_no_model_so_the_agent_runs_on_its_profiles_own()
+    {
+        var config = MinimalAgent().Thinking().Build().LlmConfig!;
+
+        Assert.Equal(string.Empty, config.Model);
+        Assert.Null(config.Profile);
+    }
+
+    [Fact]
+    public void MaxOutputTokens_names_no_model_so_the_agent_runs_on_its_profiles_own()
+    {
+        var config = MinimalAgent().MaxOutputTokens(2000).Build().LlmConfig!;
+
+        Assert.Equal(string.Empty, config.Model);
+        Assert.Equal(2000, config.MaxTokens);
+    }
+
     #region Test Doubles
 
     private sealed class StubTool : IBaseTool

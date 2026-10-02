@@ -82,7 +82,7 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
             return base.TryAdaptRejectedPayload(payload, statusCode, errorBody, effectiveConfig);
         }
 
-        LogTemperatureMandated(mandated, payload.TryGetValue("model", out var model) ? model : DefaultModel);
+        LogTemperatureMandated(mandated, payload.TryGetValue("model", out var model) ? model : ResolveModel(null));
         payload["temperature"] = mandated;
         return true;
     }

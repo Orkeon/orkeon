@@ -614,3 +614,8 @@ static Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.ReadDefault(Microsoft.Ext
 static Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.ReadProfiles(Microsoft.Extensions.Configuration.IConfiguration! configuration) -> System.Collections.Generic.IReadOnlyList<(string! Name, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! Config)>!
 Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration.<Clone>$() -> Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration!
 override Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration.Equals(object? obj) -> bool
+*REMOVED*abstract Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.DefaultModel.get -> string!
+abstract Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DefaultModel.get -> string!
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ResolveModel(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> string!
+override Orkeon.Infrastructure.LLMs.AnthropicLlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.DefaultModel.get -> string!

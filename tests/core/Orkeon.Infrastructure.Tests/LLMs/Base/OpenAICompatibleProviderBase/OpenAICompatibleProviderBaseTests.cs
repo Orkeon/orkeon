@@ -246,11 +246,11 @@ public class OpenAICompatibleProviderBaseTests
     }
 
     [Fact]
-    public async Task ShouldUseDefaultModel_WhenGenerateAsyncWithNullModelInConfig()
+    public async Task ShouldUseDefaultModel_WhenGenerateAsyncWithNoModelInConfig()
     {
-        // Arrange
+        // Arrange — a configuration that names no model (GAP-18: empty, never OpenAI's default)
 #pragma warning disable CS0618
-        var effectiveConfig = LlmConfig.Default() with { ApiKey = TestApiKey };
+        var effectiveConfig = LlmConfig.OnProfile() with { ApiKey = TestApiKey };
 #pragma warning restore CS0618
 
         var responseContent = JsonSerializer.Serialize(new
@@ -274,6 +274,8 @@ public class OpenAICompatibleProviderBaseTests
         // Assert
         Assert.Equal("Default model response", result.Content);
         Assert.Equal(60, result.TokensUsed);
+        var sent = await handler.CapturedRequests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(TestModelName, JsonDocument.Parse(sent).RootElement.GetProperty("model").GetString());
     }
 
     [Fact]

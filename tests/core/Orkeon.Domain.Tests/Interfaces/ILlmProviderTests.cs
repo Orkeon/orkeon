@@ -133,9 +133,8 @@ public class ILlmProviderTests
     {
         // Arrange
         var provider = new TestLlmProvider();
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.Create(ModelGpt4) with
         {
-            Model = ModelGpt4,
             Temperature = 0.9,
             MaxTokens = 2000,
             TopP = 0.95
@@ -409,7 +408,7 @@ public class ILlmProviderTests
             });
 
         var conversation = new List<LlmMessage>();
-        var config = LlmConfig.Default();
+        var config = LlmConfig.OnProfile();
 
         // Act - Simulate a conversation
         conversation.Add(new LlmMessage { Role = "system", Content = "You are a helpful weather assistant." });
@@ -529,14 +528,14 @@ public class ILlmProviderTests
     public void ShouldCreateCorrectConfigs_WhenUsingLlmConfigUsingStaticFactories()
     {
         // Arrange & Act
-        var defaultConfig = LlmConfig.Default();
+        var defaultConfig = LlmConfig.OnProfile();
         var gpt4Config = LlmConfig.WithDefaultModel("key1");
         var gpt35Config = LlmConfig.Gpt35Turbo("key2");
         var claudeConfig = LlmConfig.Claude("key3");
         var ollamaConfig = LlmConfig.Ollama(ModelMistral);
 
-        // Assert
-        Assert.Equal(ModelDefault, defaultConfig.Model);
+        // Assert — the configuration that names no model (GAP-18)
+        Assert.Equal(string.Empty, defaultConfig.Model);
         Assert.Null(defaultConfig.ApiKey);
 
         Assert.Equal(ModelDefault, gpt4Config.Model);

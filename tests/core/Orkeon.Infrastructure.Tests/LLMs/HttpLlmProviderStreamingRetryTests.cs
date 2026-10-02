@@ -217,7 +217,7 @@ public sealed class HttpLlmProviderStreamingRetryTests
         }
 
         private ProbeProvider(MockHttpClientFactory factory, int maxRetries)
-            : base(LlmConfig.Default() with { MaxRetries = maxRetries, BaseUrl = new Uri("https://api.example.test") }, factory)
+            : base(LlmConfig.OnProfile() with { MaxRetries = maxRetries, BaseUrl = new Uri("https://api.example.test") }, factory)
         {
             _factory = factory;
         }
@@ -229,6 +229,8 @@ public sealed class HttpLlmProviderStreamingRetryTests
         }
 
         public override string Name => "probe";
+
+        protected override string DefaultModel => "probe-model";
 
         public override Task<LlmResponse> GenerateAsync(
             string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)

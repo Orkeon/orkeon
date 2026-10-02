@@ -58,7 +58,8 @@ internal sealed class LlmForgeJudge : IForgeJudge
         if (_provider is null)
             return ForgeJudgement.Unavailable;
 
-        var config = _provider.BaseConfig ?? LlmConfig.Default();
+        // A provider that declares no configuration: the call names no model (GAP-18).
+        var config = _provider.BaseConfig ?? LlmConfig.OnProfile();
         if (_provider.Capabilities.ResponseFormat != ResponseFormatSupport.None)
             config = config with { ResponseFormat = LlmResponseFormat.JsonObject() };
 

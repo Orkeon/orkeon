@@ -58,6 +58,24 @@ public class MemoryConsolidatorTests
         Assert.Equal(0, _llmProvider.ChatCallCount);
     }
 
+    // GAP-18: AnalysisModel unset merges on the provider's own model, not OpenAI's.
+    [Fact]
+    public async Task ConsolidateAsync_WithoutAnAnalysisModel_MergesOnTheProvidersOwnModel()
+    {
+        var items = new List<MemoryItem>();
+        for (var i = 0; i < 5; i++)
+        {
+            var item = MemoryItem.Create($"Similar content {i}", embedding: EmbeddingUnit3, importance: 0.5f);
+            items.Add(item);
+            await _memoryProvider.StoreAsync(item.Id, item, TestContext.Current.CancellationToken);
+        }
+        _llmProvider.SetChatResult("Merged: All similar content combined");
+
+        await _consolidator.ConsolidateAsync(items, CancellationToken.None);
+
+        Assert.Equal(string.Empty, _llmProvider.LastChatConfig!.Model);
+    }
+
     [Fact]
     public async Task ConsolidateAsync_MergesRedundantCluster()
     {

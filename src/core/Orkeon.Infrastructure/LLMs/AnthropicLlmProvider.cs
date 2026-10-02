@@ -31,6 +31,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// <inheritdoc />
     public override string Name => "anthropic";
 
+    /// <inheritdoc />
+    protected override string DefaultModel => LlmProviderDefaultModels.Anthropic;
+
     /// <summary>
     /// Claude constrains output through <c>output_config.format</c> (schema included), takes
     /// an adaptive thinking block with an effort level, sees images, and is the one provider
@@ -474,11 +477,11 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     {
         var payload = new Dictionary<string, object>
         {
-            ["model"] = config.Model ?? LlmProviderDefaultModels.Anthropic,
+            ["model"] = ResolveModel(config),
             ["messages"] = messages,
             // Required by the Messages API: the pinned value, else the model's documented
             // maximum (128K on the 5 generation), else the engine fallback (LLM-10).
-            ["max_tokens"] = config.ResolveMaxTokens(Name, LlmProviderDefaultModels.Anthropic)
+            ["max_tokens"] = config.ResolveMaxTokens(Name, ResolveModel(config))
                 ?? Orkeon.Domain.Constants.Llm.LlmDefaults.FallbackMaxOutputTokens,
             ["temperature"] = config.Temperature
         };
@@ -915,7 +918,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             CompletionTokens = state.Usage.OutputTokens,
             CacheHitTokens = state.Usage.CacheReadTokens,
             CacheMissTokens = state.Usage.CacheMissTokens,
-            Model = config.Model,
+            Model = ResolveModel(config),
             Metadata = metadata.Build().ToDictionary(),
         };
     }
@@ -959,7 +962,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             CompletionTokens = usage.OutputTokens,
             CacheHitTokens = usage.CacheReadTokens,
             CacheMissTokens = usage.CacheMissTokens,
-            Model = config.Model,
+            Model = ResolveModel(config),
             Metadata = metadata.Build().ToDictionary(),
             RawResponseBody = _toolCallingStrategy?.SupportsNativeToolCalling == true
                 ? responseJson

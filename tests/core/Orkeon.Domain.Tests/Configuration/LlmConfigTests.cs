@@ -20,13 +20,15 @@ public class LlmConfigTests
     #region Constructor Tests
 
     [Fact]
-    public void ShouldInitializeWithDefaults_WhenUsingLlmConfigWithDefaultConstructor()
+    public void ShouldNameNoModelAndKeepDefaultSampling_WhenCreatedOnProfile()
     {
-        // Act
-        var config = LlmConfig.Default();
+        // Act — the configuration that names no model (GAP-18: LlmConfig.Default() pinned
+        // OpenAI's default model here, sent to whatever vendor served the call)
+        var config = LlmConfig.OnProfile();
 
         // Assert
-        Assert.Equal(ModelDefault, config.Model);
+        Assert.Equal(string.Empty, config.Model);
+        Assert.Null(config.Profile);
         Assert.Null(config.ApiKey);
         Assert.Null(config.BaseUrl);
         Assert.Equal(0.7, config.Temperature, precision: 1);
@@ -107,9 +109,8 @@ public class LlmConfigTests
         };
 
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.Create("llama-2-70b") with
         {
-            Model = "llama-2-70b",
             ApiKey = CustomApiKey,
             BaseUrl = new Uri("https://api.custom.com"),
             Temperature = 0.9,
@@ -151,7 +152,7 @@ public class LlmConfigTests
     public void ShouldAcceptVariousValues_WhenUsingLlmConfigUsingTemperature(double temperature)
     {
         // Act
-        var config = LlmConfig.Default() with { Temperature = temperature };
+        var config = LlmConfig.OnProfile() with { Temperature = temperature };
 
         // Assert
         Assert.Equal(temperature, config.Temperature, precision: 1);
@@ -166,7 +167,7 @@ public class LlmConfigTests
     public void ShouldAcceptVariousValues_WhenUsingLlmConfigWithMaxTokens(int maxTokens)
     {
         // Act
-        var config = LlmConfig.Default() with { MaxTokens = maxTokens };
+        var config = LlmConfig.OnProfile() with { MaxTokens = maxTokens };
 
         // Assert
         Assert.Equal(maxTokens, config.MaxTokens);
@@ -180,7 +181,7 @@ public class LlmConfigTests
     public void ShouldAcceptValidRange_WhenUsingLlmConfigUsingTopP(double topP)
     {
         // Act
-        var config = LlmConfig.Default() with { TopP = topP };
+        var config = LlmConfig.OnProfile() with { TopP = topP };
 
         // Assert
         Assert.Equal(topP, config.TopP, precision: 1);
@@ -194,7 +195,7 @@ public class LlmConfigTests
     public void ShouldAcceptVariousValues_WhenUsingLlmConfigUsingFrequencyPenalty(double penalty)
     {
         // Act
-        var config = LlmConfig.Default() with { FrequencyPenalty = penalty };
+        var config = LlmConfig.OnProfile() with { FrequencyPenalty = penalty };
 
         // Assert
         Assert.Equal(penalty, config.FrequencyPenalty, precision: 1);
@@ -208,7 +209,7 @@ public class LlmConfigTests
     public void ShouldAcceptVariousValues_WhenUsingLlmConfigUsingPresencePenalty(double penalty)
     {
         // Act
-        var config = LlmConfig.Default() with { PresencePenalty = penalty };
+        var config = LlmConfig.OnProfile() with { PresencePenalty = penalty };
 
         // Assert
         Assert.Equal(penalty, config.PresencePenalty, precision: 1);
@@ -222,7 +223,7 @@ public class LlmConfigTests
     public void ShouldAcceptNullableValues_WhenUsingLlmConfigSeeding(int? seed)
     {
         // Act
-        var config = LlmConfig.Default() with { Seed = seed };
+        var config = LlmConfig.OnProfile() with { Seed = seed };
 
         // Assert
         Assert.Equal(seed, config.Seed);
@@ -236,7 +237,7 @@ public class LlmConfigTests
     public void ShouldAcceptVariousValues_WhenUsingLlmConfigUsingTimeoutSeconds(int timeoutSeconds)
     {
         // Act
-        var config = LlmConfig.Default() with { TimeoutSeconds = timeoutSeconds };
+        var config = LlmConfig.OnProfile() with { TimeoutSeconds = timeoutSeconds };
 
         // Assert
         Assert.Equal(timeoutSeconds, config.TimeoutSeconds);
@@ -250,7 +251,7 @@ public class LlmConfigTests
     public void ShouldAcceptVariousValues_WhenUsingLlmConfigWithMaxRetries(int maxRetries)
     {
         // Act
-        var config = LlmConfig.Default() with { MaxRetries = maxRetries };
+        var config = LlmConfig.OnProfile() with { MaxRetries = maxRetries };
 
         // Assert
         Assert.Equal(maxRetries, config.MaxRetries);
@@ -264,7 +265,7 @@ public class LlmConfigTests
     public void ShouldSupportInitialization_WhenUsingLlmConfigStoppingSequences()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             StopSequences = ["END", "STOP", "\n\n", "```"]
         };
@@ -281,7 +282,7 @@ public class LlmConfigTests
     public void ShouldSupportInitialization_WhenUsingLlmConfigWithCustomParameters()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             CustomParameters = new Dictionary<string, object>
             {
@@ -320,7 +321,7 @@ public class LlmConfigTests
         };
 
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             CustomParameters = new Dictionary<string, object>
             {
@@ -342,14 +343,16 @@ public class LlmConfigTests
     #region Static Factory Methods Tests
 
     [Fact]
-    public void ShouldReturnDefaultConfiguration_WhenUsingLlmConfigWithDefault()
+    public void ShouldRunOnTheNamedProfilesOwnModel_WhenCreatedOnANamedProfile()
     {
         // Act
-        var config = LlmConfig.Default();
+        var config = LlmConfig.OnProfile("claude");
 
         // Assert
         Assert.NotNull(config);
-        Assert.Equal(ModelDefault, config.Model);
+        Assert.Equal(string.Empty, config.Model);
+        Assert.Equal("claude", config.Profile);
+        Assert.Null(LlmConfig.OnProfile("  ").Profile);
         Assert.Null(config.ApiKey);
         Assert.Equal(0.7, config.Temperature, precision: 1);
         Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
@@ -461,8 +464,8 @@ public class LlmConfigTests
     public void ShouldReturnNewInstances_WhenUsingLlmConfigUsingStaticFactories()
     {
         // Act
-        var default1 = LlmConfig.Default();
-        var default2 = LlmConfig.Default();
+        var default1 = LlmConfig.OnProfile();
+        var default2 = LlmConfig.OnProfile();
         var gpt4_1 = LlmConfig.WithDefaultModel();
         var gpt4_2 = LlmConfig.WithDefaultModel();
 
@@ -678,7 +681,7 @@ public class LlmConfigTests
     public void ShouldAcceptValues_WhenUsingLlmConfigWithExtremeValues()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             Temperature = -1.0,
             MaxTokens = -1,
@@ -703,7 +706,7 @@ public class LlmConfigTests
     public void ShouldHandleCorrectly_WhenUsingLlmConfigWithNullCollections()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             StopSequences = null!,
             CustomParameters = null!
@@ -718,7 +721,7 @@ public class LlmConfigTests
     public void ShouldAcceptValues_WhenUsingLlmConfigWithVeryLargeValues()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             MaxTokens = int.MaxValue,
             TimeoutSeconds = int.MaxValue,
@@ -737,9 +740,8 @@ public class LlmConfigTests
     public void ShouldHandleCorrectly_WhenUsingLlmConfigWithUnicodeContent()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.Create("模型-gpt-4-中文") with
         {
-            Model = "模型-gpt-4-中文",
             ApiKey = "密钥-αβγ-key",
             BaseUrl = new Uri("https://api.测试.com"),
             StopSequences = ["结束", "停止"]
@@ -773,7 +775,7 @@ public class LlmConfigTests
     public void ShouldAcceptEmptyValues_WhenUsingLlmConfigWithEmptyStrings()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             Model = "",
             ApiKey = "",
@@ -790,7 +792,7 @@ public class LlmConfigTests
     public void ShouldAllowDuplicates_WhenUsingLlmConfigStoppingSequencesWithDuplicates()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             StopSequences = ["STOP", "STOP", "END", "STOP"]
         };
@@ -805,7 +807,7 @@ public class LlmConfigTests
     public void ShouldAcceptNulls_WhenUsingLlmConfigWithCustomParametersWithNullValues()
     {
         // Act
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             CustomParameters = new Dictionary<string, object>
             {

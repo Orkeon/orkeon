@@ -38,6 +38,35 @@ public class MemoryAnalyzerTests
         Assert.Equal(1, _llmProvider.ChatCallCount);
     }
 
+    // GAP-18: AnalysisModel unset is documented as "the default provider model", and was
+    // OpenAI's default model sent to whatever vendor the provider is. It names none now.
+    [Fact]
+    public async Task AnalyzeAsync_WithoutAnAnalysisModel_NamesNoModel()
+    {
+        _llmProvider.SetChatResult("""
+            {"importance": 0.5, "category": "fact", "key_entities": [], "summary": "s", "suggested_tags": [], "reasoning": "r"}
+            """);
+
+        await _analyzer.AnalyzeAsync("some content", null, CancellationToken.None);
+
+        Assert.Equal(string.Empty, _llmProvider.LastChatConfig!.Model);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_WithAnAnalysisModel_NamesIt()
+    {
+        var llm = new MockLlmProvider();
+        llm.SetChatResult("""
+            {"importance": 0.5, "category": "fact", "key_entities": [], "summary": "s", "suggested_tags": [], "reasoning": "r"}
+            """);
+        var analyzer = new MemoryAnalyzer(
+            llm, Options.Create(new CognitiveMemoryOptions { AnalysisModel = "m-analysis" }), new MockLogger<MemoryAnalyzer>());
+
+        await analyzer.AnalyzeAsync("some content", null, CancellationToken.None);
+
+        Assert.Equal("m-analysis", llm.LastChatConfig!.Model);
+    }
+
     [Fact]
     public async Task AnalyzeAsync_WithContext_IncludesContextInPrompt()
     {

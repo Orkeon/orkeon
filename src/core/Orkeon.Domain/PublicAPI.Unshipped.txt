@@ -28,6 +28,7 @@ const Orkeon.Domain.FileSystem.FolderSlug.TeamFallback = "equipe" -> string!
 static Orkeon.Domain.FileSystem.FolderSlug.From(string? text) -> string?
 *REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.get -> double
 *REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.init -> void
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Default() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 *REMOVED*Orkeon.Domain.Agent.Agent.AddTool(Orkeon.Domain.Common.ITool! tool) -> void
 Orkeon.Domain.Agent.Agent.AddTool(Orkeon.Domain.Tools.IBaseTool! tool) -> void
 *REMOVED*Orkeon.Domain.Agent.Agent.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.ITool!>!

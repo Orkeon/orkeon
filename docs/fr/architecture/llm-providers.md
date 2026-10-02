@@ -65,6 +65,15 @@ Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToCh
   4. **Préfixe de la clé API** — `hf_` → HuggingFace, `xai-` → Grok.
   5. Sinon **OpenAI**.
 
+Une section qui ne nomme aucun modèle saute la règle 3. **Le modèle d'un appel** est ensuite
+résolu par le provider, de la même façon pour les seize (`HttpLlmProviderBase.ResolveModel`) :
+celui de l'appel quand sa configuration en nomme un, sinon celui avec lequel le provider est
+configuré — celui de son profil —, sinon son `DefaultModel` (son entrée de
+`LlmProviderDefaultModels` ; Azure n'en a pas en propre et retombe sur celui d'OpenAI comme nom
+de déploiement : nommez le vôtre). Une configuration qui ne nomme aucun modèle
+(`LlmConfig.OnProfile()`, un `Model` vide) n'atteint jamais le fil vide, et ne porte jamais le
+modèle d'un autre vendeur.
+
 Chaque provider construit par la fabrique est enveloppé dans `MeteredLlmProvider` (voir
 [Décorateurs et enregistrement](#décorateurs-et-enregistrement)) et rendu derrière un
 `LlmProviderAdapter`.

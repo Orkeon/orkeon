@@ -235,6 +235,23 @@ public class CrewPlannerTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task The_planning_call_names_no_model_so_it_runs_on_the_planning_providers_own()
+    {
+        // GAP-18: the plan used to be asked of OpenAI's default model on whatever vendor the
+        // crew's planning provider is. It names none now; the provider sends its own.
+        var crew = CreateTestCrew();
+        var taskIds = new List<TaskId> { TaskId.Create() };
+        var llmProvider = new TestLlmProvider(GenerateLlmPlanResponse(
+            taskIds.Select((id, index) => (id, index, (AgentId?)null, (List<TaskId>?)null)).ToList()));
+
+        await CrewPlanner.Create(llmProvider, s_parser).CreatePlanAsync(
+            new Orkeon.Domain.Crew.PlanningContext(crew.Id, crew.Goal, crew.Agents), taskIds, new CrewInput("Test context"));
+
+        Assert.Equal(string.Empty, llmProvider.CapturedConfig!.Model);
+        Assert.Equal(0.3f, llmProvider.CapturedConfig.Temperature);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ShouldParseDependenciesCorrectly_WhenCreatingPlanAsyncWithTaskDependencies()
     {
         // Arrange

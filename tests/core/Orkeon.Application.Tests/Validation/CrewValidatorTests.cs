@@ -504,7 +504,7 @@ public class CrewValidatorTests
     public void ShouldReturnError_WhenUsingValidateLlmConfigWithOutOfRangeTemperature(double temperature)
     {
         // Arrange
-        var config = LlmConfig.Default() with { Temperature = temperature };
+        var config = LlmConfig.OnProfile() with { Temperature = temperature };
 
         // Act
         var errors = CrewValidator.ValidateLlmConfig(config, RoleDeveloper);
@@ -520,7 +520,7 @@ public class CrewValidatorTests
     public void ShouldReturnError_WhenUsingValidateLlmConfigWithOutOfRangeTopP(double topP)
     {
         // Arrange
-        var config = LlmConfig.Default() with { TopP = topP };
+        var config = LlmConfig.OnProfile() with { TopP = topP };
 
         // Act
         var errors = CrewValidator.ValidateLlmConfig(config, RoleDeveloper);
@@ -536,7 +536,7 @@ public class CrewValidatorTests
     public void ShouldReturnError_WhenUsingValidateLlmConfigWithNonPositiveMaxTokens(int maxTokens)
     {
         // Arrange
-        var config = LlmConfig.Default() with { MaxTokens = maxTokens };
+        var config = LlmConfig.OnProfile() with { MaxTokens = maxTokens };
 
         // Act
         var errors = CrewValidator.ValidateLlmConfig(config, RoleDeveloper);
@@ -551,7 +551,7 @@ public class CrewValidatorTests
     {
         // Arrange — every validated parameter is out of range (an empty model is not one of
         // them: it is the profile's own, GAP-17)
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             Model = "",
             Temperature = 3.0,
@@ -594,7 +594,7 @@ public class CrewValidatorTests
         var agent = new AgentBuilder()
             .Role(RoleDeveloper)
             .Goal(GoalWriteCode)
-            .WithLlmConfig(LlmConfig.Default() with { Temperature = 9.0 })
+            .WithLlmConfig(LlmConfig.OnProfile() with { Temperature = 9.0 })
             .Build();
 
         // Act

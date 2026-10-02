@@ -206,12 +206,15 @@ internal sealed class ScriptedBasicLlmProvider : IBasicLlmProvider
 
     public List<string> ReceivedPrompts { get; } = [];
 
+    public List<LlmConfig?> ReceivedConfigs { get; } = [];
+
     public void Enqueue(string response) => _responses.Enqueue(response);
 
     public Task<string> ChatAsync(string message, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ReceivedPrompts.Add(message);
+        ReceivedConfigs.Add(config);
         return System.Threading.Tasks.Task.FromResult(_responses.Count > 0 ? _responses.Dequeue() : FallbackResponse);
     }
 

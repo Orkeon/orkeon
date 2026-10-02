@@ -12,8 +12,8 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </summary>
 /// <remarks>
 /// Downstream a per-call config is substituted wholesale — <c>HttpLlmProviderBase.CreateHttpClient</c>
-/// resolves <c>requestConfig ?? Config</c> — so a call-time config built from
-/// <see cref="LlmConfig.Default"/> reaches the transport with no API key, no base URL and the
+/// resolves <c>requestConfig ?? Config</c> — so a call-time config built from scratch
+/// (<see cref="LlmConfig.OnProfile"/>) reaches the transport with no API key, no base URL and the
 /// default timeout. A script asking for a JSON response would lose its credentials as a side
 /// effect. Stub providers ignore those fields, which is why only these assertions catch it.
 /// </remarks>
@@ -138,10 +138,11 @@ public sealed class JsLlmFacadeCallConfigTests
     }
 
     [Fact]
-    public async Task complete_ProviderWithoutBaseConfig_StillFallsBackToDefault()
+    public async Task complete_ProviderWithoutBaseConfig_AppliesTheOverrideOnTheProvidersOwnModel()
     {
         // A third-party ILlmProvider that does not expose BaseConfig (the interface default is
-        // null) must keep working — the override then applies to LlmConfig.Default() as before.
+        // null) must keep working — the override then applies to a config that names no model
+        // (GAP-18: it named OpenAI's default model, whatever vendor the provider is).
         using var engine = new Engine();
         var provider = new StubLlmProvider();
         provider.RespondWith(new LlmResponse { Content = "{}" });
@@ -151,5 +152,6 @@ public sealed class JsLlmFacadeCallConfigTests
         await facade.complete("p", opts);
 
         Assert.Equal("json_object", provider.LastConfig!.ResponseFormat!.Type);
+        Assert.Equal(string.Empty, provider.LastConfig.Model);
     }
 }

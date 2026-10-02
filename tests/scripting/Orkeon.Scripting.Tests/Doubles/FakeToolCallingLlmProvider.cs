@@ -22,7 +22,7 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
     }
 
     public string Name => "fake-tools";
-    public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-tools-model" };
+    public LlmConfig? BaseConfig => LlmConfig.Create("fake-tools-model");
 
     /// <summary>The messages of each chat turn, in order.</summary>
     public List<LlmMessage[]> Turns { get; } = new();

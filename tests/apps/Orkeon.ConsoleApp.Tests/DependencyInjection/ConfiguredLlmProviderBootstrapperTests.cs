@@ -73,6 +73,16 @@ public sealed class ConfiguredLlmProviderBootstrapperTests
     }
 
     [Fact]
+    public void An_absent_Model_names_no_model_so_the_provider_runs_its_own()
+    {
+        // GAP-18: the binder used to fill in OpenAI's default model, which a DeepSeek endpoint
+        // (inferred from BaseUrl) then refused. An empty model is the provider's own default.
+        var config = BindAndCapture(("Llm:BaseUrl", "https://api.deepseek.com"));
+
+        Assert.Equal(string.Empty, config.Model);
+    }
+
+    [Fact]
     public void The_other_documented_keys_still_bind()
     {
         var config = BindAndCapture(

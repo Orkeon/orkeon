@@ -116,7 +116,7 @@ tasks:
         stub.RespondToChatWith(new LlmResponse { Content = "[offline] chat answer" });
         services.AddSingleton<ILlmProvider>(stub);
         // The agent loop talks IChatClient, and Infrastructure's default IChatClient wraps the
-        // provider the factory builds from LlmConfig.Default() — not this stub. Until the runner
+        // provider the factory builds from LlmConfig.OnProfile() — not this stub. Until the runner
         // treated an empty answer as a success (STUDIO-12 C5a), that unreachable default
         // provider answered empty and the run still read Completed; now it has to be the stub.
         services.AddSingleton<Microsoft.Extensions.AI.IChatClient>(

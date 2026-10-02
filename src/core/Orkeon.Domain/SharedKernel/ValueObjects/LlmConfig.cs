@@ -14,10 +14,12 @@ public sealed record LlmConfig
     private const string OllamaBaseUrl = LlmProviderEndpoints.OllamaDefault;
 
     /// <summary>
-    /// Gets the model identifier (e.g., "gpt-4"). Empty on a configuration that names no model
-    /// (<see cref="OnProfile"/>): the call then runs on the model of the profile it is sent to.
+    /// Gets the model identifier (e.g., "gpt-4"). Empty — the default — on a configuration that
+    /// names no model (<see cref="OnProfile"/>): the call then runs on the model of the provider it
+    /// reaches, the one its profile configures, else that provider's own default (GAP-18). Never a
+    /// vendor's model pinned for every vendor.
     /// </summary>
-    public string Model { get; init; } = LlmDefaults.DefaultModelName;
+    public string Model { get; init; } = string.Empty;
 
     /// <summary>
     /// The host's named LLM profile this configuration runs on (<c>Llm:Profiles:&lt;name&gt;</c>),
@@ -154,7 +156,7 @@ public sealed record LlmConfig
     /// </summary>
     public LlmResponseFormat? ResponseFormat { get; init; }
 
-    /// <summary>Initializes a new instance of <see cref="LlmConfig"/> with default settings.</summary>
+    /// <summary>Initializes a new instance of <see cref="LlmConfig"/> that names no model, with default settings.</summary>
     private LlmConfig() { }
 
     /// <summary>Initializes a new instance of <see cref="LlmConfig"/> with a model and optional API key.</summary>
@@ -176,13 +178,13 @@ public sealed record LlmConfig
     /// generates up to its window.
     /// </summary>
     /// <param name="provider">The provider key, for a catalogue entry that only holds on that endpoint.</param>
-    /// <param name="defaultModel">The provider's default model, when this config names none.</param>
+    /// <param name="defaultModel">The model the provider sends when this config names none (empty or blank).</param>
     public int? ResolveMaxTokens(string? provider = null, string? defaultModel = null)
     {
         if (MaxTokens is > 0)
             return MaxTokens;
 
-        return LlmModelOutputLimits.MaxOutputTokens(Model ?? defaultModel, provider) switch
+        return LlmModelOutputLimits.MaxOutputTokens(string.IsNullOrWhiteSpace(Model) ? defaultModel : Model, provider) switch
         {
             null => LlmDefaults.FallbackMaxOutputTokens,
             LlmModelOutputLimits.Unbounded => null,
@@ -252,22 +254,16 @@ public sealed record LlmConfig
 
     /// <summary>
     /// Creates a configuration that pins nothing: no model — the call runs on the model of the
-    /// profile it is sent to — and default sampling. What a crew's <c>llm:</c> block starts from
-    /// when it names no model, so a block that only sets a temperature or a profile does not
-    /// pull the framework's default model onto another vendor's endpoint (GAP-17).
+    /// profile it is sent to — and default sampling. The one configuration that names no model:
+    /// what a crew's <c>llm:</c> block, <c>AgentBuilder.Thinking()</c>, the agent loops and the
+    /// planner start from, so a setting that only changes a temperature or a profile never pulls
+    /// one vendor's model onto another vendor's endpoint (GAP-17, GAP-18).
     /// </summary>
     /// <param name="profile">The host profile to run on; null for the host's default.</param>
     /// <returns>A configuration on <paramref name="profile"/>'s own model.</returns>
     public static LlmConfig OnProfile(string? profile = null)
     {
-        return new LlmConfig { Model = string.Empty, Profile = string.IsNullOrWhiteSpace(profile) ? null : profile };
-    }
-
-    /// <summary>Creates a default LLM configuration.</summary>
-    /// <returns>A default <see cref="LlmConfig"/>.</returns>
-    public static LlmConfig Default()
-    {
-        return new LlmConfig();
+        return new LlmConfig { Profile = string.IsNullOrWhiteSpace(profile) ? null : profile };
     }
 
     /// <summary>

@@ -217,7 +217,7 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         };
         // The cap is resolved like everywhere else (LLM-10): pinned, else the deployment's
         // documented maximum, else the fallback; left out when the vendor documents no cap.
-        if (effectiveConfig.ResolveMaxTokens(Name, DefaultModel) is { } cap)
+        if (effectiveConfig.ResolveMaxTokens(Name, ResolveModel(effectiveConfig)) is { } cap)
             requestPayload["max_tokens"] = cap;
 
         var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
@@ -290,7 +290,8 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         if (string.Equals(apiVersion, V1ApiMode, StringComparison.OrdinalIgnoreCase))
             return new Uri($"{baseUrl}/openai/v1{ApiEndpointPath}");
 
-        var deployment = config.Model ?? LlmDefaults.DefaultModelName;
+        // The call's deployment, else the configured one (GAP-18) — never an empty segment.
+        var deployment = ResolveModel(config);
         return new Uri($"{baseUrl}/openai/deployments/{deployment}{ApiEndpointPath}?api-version={apiVersion}");
     }
 

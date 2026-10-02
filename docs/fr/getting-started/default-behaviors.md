@@ -42,7 +42,7 @@ enregistrant le vôtre **après** l'appel Orkeon.
 > enregistré par l'un ou l'autre appel : `AddOrkeonFileSystem(configuration)`, avec au moins
 > un montage sous `Orkeon:FileSystem:Mounts`, est requis avant de charger une crew — le
 > chargeur YAML, les outils fichier et les livrables lisent et écrivent tous à travers lui.
-> Et le modèle retombe sur `LlmConfig.Default()` — le modèle OpenAI par défaut, sans clé :
+> Et le modèle retombe sur un fournisseur OpenAI, sur son modèle par défaut et sans clé :
 > le premier appel échoue au lieu de répondre ; enregistrez le vôtre avant
 > `AddOrkeonInfrastructure()` (`AddOrkeonLlmProvider(...)`, voir [Bootstrap](./bootstrap.md)).
 > La CLI `orkeon` se comporte autrement : sans section `Llm`, elle tourne sur le fournisseur

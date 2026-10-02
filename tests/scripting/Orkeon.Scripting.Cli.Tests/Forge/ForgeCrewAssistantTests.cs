@@ -35,6 +35,9 @@ internal sealed class ScriptedLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// <summary>Every chat call's messages, in call order.</summary>
     public List<LlmMessage[]> Chats { get; } = [];
 
+    /// <summary>Every chat call's configuration, in call order.</summary>
+    public List<LlmConfig?> ChatConfigs { get; } = [];
+
     /// <summary>Queues a plain text answer (no tool call).</summary>
     public ScriptedLlmProvider Answers(string content) =>
         Enqueue(new LlmResponse { Content = content, PromptTokens = 100, CompletionTokens = 20, TokensUsed = 120 });
@@ -87,6 +90,7 @@ internal sealed class ScriptedLlmProvider : ILlmProvider, IStreamingLlmProvider
     public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
         Chats.Add(messages);
+        ChatConfigs.Add(config);
         return Task.FromResult(Next());
     }
 

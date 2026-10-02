@@ -16,7 +16,7 @@ public sealed class CognitiveMemoryOptions
     /// <summary>Number of existing memories to check for contradictions. Default: 10.</summary>
     public int ContradictionCandidateCount { get; set; } = 10;
 
-    /// <summary>Optional model override for analysis calls. Null uses the default provider model.</summary>
+    /// <summary>Optional model override for analysis calls. Null (or blank) runs them on the provider's own model.</summary>
     public string? AnalysisModel { get; set; }
 
     /// <summary>Temperature for LLM analysis calls. Default: 0.1.</summary>

@@ -502,17 +502,19 @@ public static class InfrastructureExtensions
     {
         // IChatClient adapters - allow users to register their own IChatClient
         // If not already registered, wrap the IBasicLlmProvider from the factory
+        // The fallback names no model and no key: the factory builds the OpenAI provider, which
+        // runs its own default model (GAP-18) and answers that a key is required.
         services.TryAddSingleton<IBasicLlmProvider>(sp =>
         {
             var factory = sp.GetRequiredService<ILlmProviderFactory>();
-            return factory.Create(Domain.SharedKernel.ValueObjects.LlmConfig.Default());
+            return factory.Create(Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile());
         });
 
         services.TryAddSingleton<IChatClient>(sp =>
         {
             // Create a default provider via factory and wrap it
             var factory = sp.GetRequiredService<ILlmProviderFactory>();
-            var config = Domain.SharedKernel.ValueObjects.LlmConfig.Default();
+            var config = Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile();
             var provider = factory.Create(config);
             var textParser = sp.GetService<Application.Interfaces.LLM.IToolCallParser>();
 
@@ -556,7 +558,7 @@ public static class InfrastructureExtensions
                 return adapter.UnderlyingProvider;
             // Fallback: try the factory directly
             var factory = sp.GetRequiredService<ILlmProviderFactory>();
-            var provider = factory.Create(Domain.SharedKernel.ValueObjects.LlmConfig.Default());
+            var provider = factory.Create(Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile());
             if (provider is ILlmProvider llm)
                 return llm;
             throw new InvalidOperationException(

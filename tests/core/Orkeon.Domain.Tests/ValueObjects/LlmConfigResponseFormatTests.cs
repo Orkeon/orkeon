@@ -7,14 +7,14 @@ public class LlmConfigResponseFormatTests
     [Fact]
     public void ShouldDefaultResponseFormatToNull_OnDefaultConfig()
     {
-        var cfg = LlmConfig.Default();
+        var cfg = LlmConfig.OnProfile();
         Assert.Null(cfg.ResponseFormat);
     }
 
     [Fact]
     public void ShouldRoundTripResponseFormat_ViaWithExpression()
     {
-        var cfg = LlmConfig.Default() with { ResponseFormat = LlmResponseFormat.JsonObject() };
+        var cfg = LlmConfig.OnProfile() with { ResponseFormat = LlmResponseFormat.JsonObject() };
         Assert.NotNull(cfg.ResponseFormat);
         Assert.Equal("json_object", cfg.ResponseFormat!.Type);
     }
@@ -22,7 +22,7 @@ public class LlmConfigResponseFormatTests
     [Fact]
     public void ShouldPreserveResponseFormat_WhenOtherFieldsMutated()
     {
-        var cfg = LlmConfig.Default() with
+        var cfg = LlmConfig.OnProfile() with
         {
             ResponseFormat = LlmResponseFormat.JsonObject(),
         };

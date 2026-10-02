@@ -72,6 +72,25 @@ public class AdapterPerAgentModelOverrideTests
         Assert.Equal(0.1, capturingProvider.LastConfig.Temperature, precision: 3);
     }
 
+    /// <summary>
+    /// GAP-18: a chat client registered over a provider with no base config
+    /// (<c>AddOrkeonLlmProvider(provider)</c>) built a fresh config on OpenAI's default model as
+    /// soon as an option was overridden, and that config replaces the provider's. It names no
+    /// model now: the provider runs the call on its own.
+    /// </summary>
+    [Fact]
+    public async Task PerCall_OverrideWithoutModelId_AndNoBaseConfig_NamesNoModel()
+    {
+        var capturingProvider = new CapturingLlmProvider();
+        using var adapter = new LlmProviderToChatClientAdapter(capturingProvider);
+
+        await adapter.GetResponseAsync(
+            new[] { new ChatMessage(ChatRole.User, "hello") }, new ChatOptions { Temperature = 0.1f }, CancellationToken.None);
+
+        Assert.Equal(string.Empty, capturingProvider.LastConfig!.Model);
+        Assert.Equal(0.1, capturingProvider.LastConfig.Temperature, precision: 3);
+    }
+
     private sealed class CapturingLlmProvider : ILlmProvider
     {
         public LlmConfig? LastConfig { get; private set; }

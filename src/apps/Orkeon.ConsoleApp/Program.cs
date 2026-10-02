@@ -169,7 +169,7 @@ static class Program
 
         services.AddOrkeonApplication();
         // Register the real LLM provider from the `Llm` config section BEFORE the infrastructure
-        // defaults: AddOrkeonInfrastructure() only TryAdds a provider built from LlmConfig.Default()
+        // defaults: AddOrkeonInfrastructure() only TryAdds a provider built from LlmConfig.OnProfile()
         // (no key, default OpenAI endpoint), which makes ctx.llm.act silently no-op. Binding the
         // configured provider here means the crew runtime actually reaches the model.
         services.AddConfiguredLlmProvider(context.Configuration);

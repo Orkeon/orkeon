@@ -55,7 +55,10 @@ The `Llm` section is read by `RunnerHost.RegisterLlmProvider` and turned into an
 `ILlmProvider` via `ILlmProviderFactory`. **The provider is inferred automatically**, in
 order: base-URL host patterns (e.g. `deepseek.com` → DeepSeek, `api.x.ai` → Grok,
 `/engines/` → Docker Model Runner/OpenAI-compatible), then model-name patterns, then
-API-key shape; default `openai`. Keys: `Model`, `BaseUrl`, `ApiKey` (prefer
+API-key shape; default `openai`. A section without `Model` runs on that provider's own default
+model (the *Default (code)* column of the
+[provider comparison](llm-providers-comparison.md#defaults-and-newer-models--catalogue-review-of-2026-09-19)),
+never on OpenAI's pinned onto another vendor. Keys: `Model`, `BaseUrl`, `ApiKey` (prefer
 `ORKEON_Llm__ApiKey` — the variable each provider's key conventionally lives in, and the three
 names confused with it, are in the
 [provider comparison](llm-providers-comparison.md#api-keys-the-variable-per-provider)), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (default 10), and
@@ -113,7 +116,12 @@ provider. The profiles are validated when the host starts: `default` is a reserv
 designates the `Llm` section, and a crew may name it to bring an agent back to the default), and
 an invalid `BaseUrl` or a value that is not a number fails the start with the key to fix. A
 crew naming a profile the host does not define **fails to load**, and the message lists the
-profiles the host offers. Only the agents' own turns change provider: the hierarchical manager,
+profiles the host offers. **A model left unset is the profile's own, on every path**: a YAML or
+`.ork.ts` `llm:` block without `model`, a C# agent's `.Thinking()` or `.MaxOutputTokens(n)`,
+`llm.default_` on a host that configures no model, the planner, the agent loops outside the chat
+client and the cognitive memory's analysis calls all leave the model to the provider they reach,
+which sends the model its profile configures, else its own default — never an empty one, never
+OpenAI's on another vendor. Only the agents' own turns change provider: the hierarchical manager,
 the planner, the Guardian, the RAG pipelines and the LLM judges stay on the default profile. A
 section holding `Profiles` alone configures no default provider — the default is then the echo
 provider, with the usual warning. `orkeon-host` can restrict which profiles its crews may name

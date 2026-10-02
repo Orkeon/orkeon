@@ -40,7 +40,7 @@ exceptions are called out in their row — a service registered unconditionally
 > by either call: `AddOrkeonFileSystem(configuration)`, with at least one mount under
 > `Orkeon:FileSystem:Mounts`, is required before a crew is loaded — the YAML loader, the
 > file tools and the deliverables all read and write through it. And the model falls back
-> to `LlmConfig.Default()` — OpenAI's default model with no key, so the first call fails
+> to an OpenAI provider on its default model, with no key, so the first call fails
 > rather than answers; register yours before `AddOrkeonInfrastructure()`
 > (`AddOrkeonLlmProvider(...)`, see [Bootstrap](./bootstrap.md)). The `orkeon` CLI behaves
 > differently: with no `Llm` section it runs on the echo provider and says so on stderr.

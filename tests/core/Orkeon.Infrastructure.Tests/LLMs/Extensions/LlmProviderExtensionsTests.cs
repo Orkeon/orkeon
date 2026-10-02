@@ -15,7 +15,7 @@ public class LlmProviderExtensionsTests
     public async Task GenerateAsync_OverloadFusesOverride_BeforeDelegating()
     {
         var captured = new CapturingProvider();
-        var baseCfg = LlmConfig.Default() with { Temperature = 0.7 };
+        var baseCfg = LlmConfig.OnProfile() with { Temperature = 0.7 };
         var overrides = LlmConfigOverride.ForResponseFormat(LlmResponseFormat.JsonObject());
 
         await captured.GenerateAsync("p", overrides, baseCfg, TestContext.Current.CancellationToken);
@@ -30,7 +30,7 @@ public class LlmProviderExtensionsTests
     public async Task ChatAsync_OverloadFusesOverride_BeforeDelegating()
     {
         var captured = new CapturingProvider();
-        var baseCfg = LlmConfig.Default() with { MaxTokens = 4096 };
+        var baseCfg = LlmConfig.OnProfile() with { MaxTokens = 4096 };
         var overrides = new LlmConfigOverride { Temperature = 0.0, MaxTokens = 256 };
 
         var msgs = new[] { new LlmMessage { Role = "user", Content = "hi" } };
@@ -47,7 +47,7 @@ public class LlmProviderExtensionsTests
     {
         var captured = new CapturingProvider();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            captured.GenerateAsync("p", overrides: null!, baseConfig: LlmConfig.Default(), TestContext.Current.CancellationToken));
+            captured.GenerateAsync("p", overrides: null!, baseConfig: LlmConfig.OnProfile(), TestContext.Current.CancellationToken));
     }
 
     [Fact]

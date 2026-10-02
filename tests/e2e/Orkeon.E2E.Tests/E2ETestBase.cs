@@ -70,9 +70,8 @@ public abstract class E2ETestBase : IDisposable
         if (UseOpenAi)
         {
 #pragma warning disable CS0618
-            config = LlmConfig.Default() with
+            config = LlmConfig.Create(model) with
             {
-                Model = model,
                 ApiKey = OpenAiApiKey,
                 MaxTokens = 512,
                 Temperature = 0.1,
@@ -82,9 +81,8 @@ public abstract class E2ETestBase : IDisposable
         }
         else
         {
-            config = LlmConfig.Default() with
+            config = LlmConfig.Create(ModelLlama2) with
             {
-                Model = ModelLlama2,
                 BaseUrl = new Uri(OllamaBaseUrl ?? EndpointOllamaDefault),
                 MaxTokens = 512,
                 Temperature = 0.1,

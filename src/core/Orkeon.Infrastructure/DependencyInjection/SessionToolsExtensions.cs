@@ -50,9 +50,12 @@ public static class SessionToolsExtensions
         // Resolved lazily through the factory, so registration order does not matter
         // and a host with no provider at all still gets a working buffer (null model,
         // as before). GetService, not GetRequiredService: the provider is optional.
+        // A provider configured without a model runs its own default, which only it knows:
+        // the metadata says null — unknown — rather than an empty name (GAP-18).
         services.TryAddSingleton<ISessionBufferService>(sp =>
             new InMemorySessionBufferService(
-                sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>()?.BaseConfig?.Model,
+                sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>()?.BaseConfig?.Model is { } model
+                    && !string.IsNullOrWhiteSpace(model) ? model : null,
                 availableModels));
         services.TryAddSingleton<ICategoryMemoryStore, InMemoryCategoryMemoryStore>();
 

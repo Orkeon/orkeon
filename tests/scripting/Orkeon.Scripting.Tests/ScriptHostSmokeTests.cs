@@ -35,7 +35,7 @@ public sealed class ScriptHostSmokeTests
     private sealed class CancellingParkedProvider(CancellationTokenSource source) : ILlmProvider
     {
         public string Name => "parked";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "parked" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("parked");
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default) => ParkAsync();
 

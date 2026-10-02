@@ -152,14 +152,16 @@ public sealed partial class JsLlmNamespace
         {
             LogResolvedDefaultFromDi(_defaultProvider.Name);
             // The model only — never the host's credentials or endpoint: this value is visible
-            // to the script, and an agent's config carries nothing else the runtime applies.
+            // to the script, and an agent's config carries nothing else the runtime applies. A
+            // host provider configured without a model names none here either: the agent runs
+            // on that provider's own default, never on OpenAI's (GAP-18).
             var hostModel = _defaultProvider.BaseConfig?.Model;
             return new JsLlmConfig(_defaultProvider.Name,
-                string.IsNullOrWhiteSpace(hostModel) ? LlmConfig.Default() : LlmConfig.Create(hostModel));
+                string.IsNullOrWhiteSpace(hostModel) ? LlmConfig.OnProfile() : LlmConfig.Create(hostModel));
         }
 
         LogNoDefaultProvider();
-        return new JsLlmConfig("undefined", LlmConfig.Default());
+        return new JsLlmConfig("undefined", LlmConfig.OnProfile());
     }
 
     // --- source-generated logging ---

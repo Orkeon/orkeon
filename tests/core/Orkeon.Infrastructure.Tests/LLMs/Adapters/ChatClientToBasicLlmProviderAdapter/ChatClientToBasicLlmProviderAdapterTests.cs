@@ -32,7 +32,7 @@ public sealed class ChatClientToBasicLlmProviderAdapterTests : IDisposable
         _mockChatClient.SetGetResponseResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
 
         var adapter = CreateAdapter();
-        var config = LlmConfig.Default() with { Temperature = 0.5, MaxTokens = 100 };
+        var config = LlmConfig.OnProfile() with { Temperature = 0.5, MaxTokens = 100 };
         var result = await adapter.ChatAsync("test", config, TestContext.Current.CancellationToken);
 
         Assert.Equal("ok", result);
@@ -41,6 +41,8 @@ public sealed class ChatClientToBasicLlmProviderAdapterTests : IDisposable
         Assert.NotNull(options);
         Assert.Equal(0.5f, options!.Temperature);
         Assert.Equal(100, options.MaxOutputTokens);
+        // GAP-18: a config that names no model leaves the model to the client — never "".
+        Assert.Null(options.ModelId);
     }
 
     [Fact]

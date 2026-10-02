@@ -54,8 +54,8 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
         // 0. The model, registered BEFORE AddOrkeonInfrastructure(): the LLM services that
-        //    call registers are TryAdd fallbacks on LlmConfig.Default() — OpenAI's default
-        //    model, with no key. Here: a local Ollama model.
+        //    call registers are TryAdd fallbacks — an OpenAI provider on its default model,
+        //    with no key. Here: a local Ollama model.
         var llm = LlmConfig.Create("qwen2.5:1.5b") with { BaseUrl = new Uri("http://localhost:11434") };
         services.AddOrkeonLlmProvider(
             sp => new OllamaLlmProvider(llm, sp.GetRequiredService<IHttpClientFactory>()), llm);

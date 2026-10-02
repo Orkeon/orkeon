@@ -4,7 +4,6 @@ using Orkeon.Domain.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
-using Orkeon.Domain.Constants.Llm;
 using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Infrastructure.Memory.Cognitive;
@@ -195,7 +194,10 @@ public sealed partial class MemoryConsolidator
             {contents}
             """;
 
-        var config = LlmConfig.Create(_options.AnalysisModel ?? LlmDefaults.DefaultModelName) with
+        // No AnalysisModel: the provider's own model, never OpenAI's on another vendor (GAP-18).
+        var config = (string.IsNullOrWhiteSpace(_options.AnalysisModel)
+                ? LlmConfig.OnProfile()
+                : LlmConfig.Create(_options.AnalysisModel)) with
         {
             Temperature = _options.AnalysisTemperature,
             MaxTokens = 500

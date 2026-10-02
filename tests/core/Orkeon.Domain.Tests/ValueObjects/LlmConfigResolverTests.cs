@@ -4,7 +4,7 @@ namespace Orkeon.Domain.Tests.ValueObjects;
 
 public class LlmConfigResolverTests
 {
-    private static LlmConfig MakeBase() => LlmConfig.Default() with
+    private static LlmConfig MakeBase() => LlmConfig.OnProfile() with
     {
         Temperature = 0.5,
         MaxTokens = 2048,

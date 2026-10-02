@@ -56,7 +56,8 @@ internal sealed class NativeToolCallingAgentLoop
         var parser = _toolCallingStrategy.Parser;
 
         var availableTools = ResolveNativeTools(agent, task);
-        var baseConfigForCascade = agent.LlmConfig ?? Domain.SharedKernel.ValueObjects.LlmConfig.Default();
+        // An agent without a config names no model: the provider runs the call on its own (GAP-18).
+        var baseConfigForCascade = agent.LlmConfig ?? Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile();
         var nativeConfig = BuildNativeLlmConfig(invocation.SystemPrompt, availableTools, baseConfigForCascade);
         var config = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(
             baseConfig: nativeConfig,

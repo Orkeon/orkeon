@@ -62,7 +62,10 @@ La section `Llm` est lue par `RunnerHost.RegisterLlmProvider` et transformée en
 `ILlmProvider` via `ILlmProviderFactory`. **Le provider est inféré automatiquement**, dans
 l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `api.x.ai` → Grok,
 `/engines/` → Docker Model Runner/compatible OpenAI), puis motifs du nom de modèle, puis
-forme de la clé API ; défaut `openai`. Clés : `Model`, `BaseUrl`, `ApiKey` (préférer
+forme de la clé API ; défaut `openai`. Une section sans `Model` tourne sur le modèle par défaut de
+ce fournisseur (la colonne *Défaut (code)* du
+[comparatif des fournisseurs](llm-providers-comparison.md#défauts-et-modèles-plus-récents--revue-des-catalogues-du-2026-09-19)),
+jamais sur celui d'OpenAI posé sur un autre vendeur. Clés : `Model`, `BaseUrl`, `ApiKey` (préférer
 `ORKEON_Llm__ApiKey` — la variable où vit conventionnellement la clé de chaque fournisseur, et
 les trois noms qu'on confond avec elle, sont dans le
 [comparatif des fournisseurs](llm-providers-comparison.md#clés-dapi--la-variable-par-fournisseur)), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (défaut 10), et
@@ -122,8 +125,13 @@ d'état de Studio ventile les jetons par fournisseur. Les profils sont validés 
 l'hôte : `default` est un nom réservé (il désigne la section `Llm`, et une crew peut le nommer pour
 ramener un agent au défaut), et une `BaseUrl` invalide ou une valeur qui n'est pas un nombre fait
 échouer le démarrage en nommant la clé à corriger. Une crew qui nomme un profil que l'hôte ne
-définit pas **échoue au chargement**, et le message liste les profils offerts. Seuls les tours des
-agents changent de fournisseur : le manager hiérarchique, le planificateur, le Guardian, les
+définit pas **échoue au chargement**, et le message liste les profils offerts. **Un modèle non
+précisé est celui du profil, sur tous les chemins** : un bloc `llm:` YAML ou `.ork.ts` sans
+`model`, le `.Thinking()` ou le `.MaxOutputTokens(n)` d'un agent C#, `llm.default_` sur un hôte qui
+ne configure aucun modèle, le planificateur, les boucles d'agent hors client de chat et les appels
+d'analyse de la mémoire cognitive laissent tous le modèle au fournisseur qu'ils atteignent, qui
+envoie le modèle que son profil configure, sinon son propre défaut — jamais un modèle vide, jamais
+celui d'OpenAI sur un autre vendeur. Seuls les tours des agents changent de fournisseur : le manager hiérarchique, le planificateur, le Guardian, les
 pipelines RAG et les juges LLM restent sur le profil par défaut. Une section qui ne contient que
 `Profiles` ne configure aucun fournisseur par défaut — le défaut est alors le provider écho, avec
 l'avertissement habituel. `orkeon-host` peut restreindre les profils que ses crews peuvent nommer

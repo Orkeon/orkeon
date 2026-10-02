@@ -22,7 +22,7 @@ public class SequentialPipelineTests : E2ETestBase
             "A one-sentence summary of the input text.");
 
         // Use the LLM provider directly to simulate a single-agent pipeline step
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.OnProfile() with
         {
             MaxTokens = 256,
             Temperature = 0.1
@@ -68,7 +68,7 @@ public class SequentialPipelineTests : E2ETestBase
                 : $"Agent: {agent.Role}\nContext: {previousOutput}\nTask: {task.Description}";
 
             var response = await llmProvider.GenerateAsync(prompt,
-                LlmConfig.Default() with { MaxTokens = 256, Temperature = 0.1 }, cts.Token);
+                LlmConfig.OnProfile() with { MaxTokens = 256, Temperature = 0.1 }, cts.Token);
 
             Assert.NotNull(response);
             Assert.False(string.IsNullOrWhiteSpace(response.Content),
@@ -99,7 +99,7 @@ public class SequentialPipelineTests : E2ETestBase
             """;
 
         var response = await llmProvider.GenerateAsync(prompt,
-            LlmConfig.Default() with { MaxTokens = 256, Temperature = 0.0 }, cts.Token);
+            LlmConfig.OnProfile() with { MaxTokens = 256, Temperature = 0.0 }, cts.Token);
 
         Assert.NotNull(response);
         Assert.False(string.IsNullOrWhiteSpace(response.Content), "Expected non-empty response.");

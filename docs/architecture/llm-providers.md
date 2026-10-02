@@ -64,6 +64,14 @@ Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdap
   4. **API key prefix** — `hf_` → HuggingFace, `xai-` → Grok.
   5. Otherwise **OpenAI**.
 
+A section that names no model skips rule 3. **The model a call runs on** is then resolved by
+the provider, the same way for all sixteen (`HttpLlmProviderBase.ResolveModel`): the call's own
+when its configuration names one, else the model the provider is configured with — its
+profile's —, else its `DefaultModel` (its `LlmProviderDefaultModels` entry; Azure has none of
+its own and falls back to OpenAI's as a deployment name, so name yours). A configuration that
+names no model (`LlmConfig.OnProfile()`, an empty `Model`) never reaches the wire empty, and
+never carries another vendor's model.
+
 Every provider the factory builds is wrapped in `MeteredLlmProvider` (see
 [Decorators and registration](#decorators-and-registration)) and returned behind an
 `LlmProviderAdapter`.

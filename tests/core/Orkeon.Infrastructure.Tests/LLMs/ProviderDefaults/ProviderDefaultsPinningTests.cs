@@ -41,6 +41,10 @@ public class ProviderDefaultsPinningTests
         // aggregator's own identifier shape (D-03).
         { nameof(OpenRouterLlmProvider), "google/gemini-3.7-flash" },
         { nameof(MammouthLlmProvider), "gemini-3.7-flash" },
+        // The two providers outside the compatible family declare theirs too since GAP-18:
+        // every HTTP provider resolves an unnamed model the same way (HttpLlmProviderBase).
+        { nameof(AnthropicLlmProvider), "claude-sonnet-5" },
+        { nameof(OllamaLlmProvider), "llama3.2" },
     };
 
     public static TheoryData<string, string> PinnedDefaultBaseUrls() => new()
@@ -76,18 +80,21 @@ public class ProviderDefaultsPinningTests
     }
 
     [Fact]
-    public void ShouldPinPlatformWideDefaultModel()
+    public void ShouldPinThePlatformDefaultModel_AsTheOpenAiProvidersOwnOnly()
     {
-        // LlmConfig.Model falls back to this when nothing is configured anywhere.
+        // LlmDefaults.DefaultModelName is OpenAI's default model and nothing more (GAP-18): a
+        // configuration that names no model carries an empty one and runs on the model of the
+        // provider it is sent to, never on this one pinned onto another vendor.
         Assert.Equal("gpt-5.6-sol", LlmDefaults.DefaultModelName);
-        Assert.Equal(LlmDefaults.DefaultModelName, LlmConfig.Default().Model);
+        Assert.Equal(LlmProviderDefaultModels.OpenAI, LlmDefaults.DefaultModelName);
+        Assert.Equal(string.Empty, LlmConfig.OnProfile().Model);
     }
 
     // ── The OpenAI-compatible providers ─────────────────────────────────────
 
     [Theory]
     [MemberData(nameof(PinnedDefaultModels))]
-    public void ShouldPinDefaultModel_ForEachOpenAiCompatibleProvider(string providerTypeName, string expectedModel)
+    public void ShouldPinDefaultModel_ForEachProvider(string providerTypeName, string expectedModel)
     {
         var actual = ReadProtectedMember<string>(providerTypeName, "DefaultModel");
         Assert.Equal(expectedModel, actual);
@@ -184,8 +191,8 @@ public class ProviderDefaultsPinningTests
     }
 
     /// <summary>
-    /// Builds a provider with a default configuration — the exact situation the defaults exist
-    /// for. No HTTP call is made; only the default properties are read.
+    /// Builds a provider on a configuration that names no model — the exact situation the
+    /// defaults exist for. No HTTP call is made; only the default properties are read.
     /// </summary>
     /// <remarks>
     /// The constructor is selected by predicate rather than through
@@ -208,7 +215,7 @@ public class ProviderDefaultsPinningTests
         Assert.NotNull(ctor);
 
         var args = new object?[ctor.GetParameters().Length];
-        args[0] = LlmConfig.Default();
+        args[0] = LlmConfig.OnProfile();
         args[1] = HttpClientFactory;
         return ctor.Invoke(args);
     }

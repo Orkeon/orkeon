@@ -87,10 +87,11 @@ public static class LlmSettings
     /// </summary>
     private static LlmConfig Read(IConfigurationSection section, bool strict)
     {
-        // The one default, not a literal: LlmConfig, AgentBuilder and Studio's presets all
-        // read LlmDefaults.DefaultModelName, so a hardcoded model here gave an appsettings
-        // whose Llm section omits Model a different model from every other entry point.
-        var config = LlmConfig.Create(section["Model"] ?? LlmDefaults.DefaultModelName) with
+        // No Model: the section names none, and its provider runs its own default (GAP-18) —
+        // OpenAI's default model, filled in here, went to a DeepSeek endpoint inferred from
+        // BaseUrl as well, which refused it.
+        var model = section["Model"];
+        var config = (string.IsNullOrWhiteSpace(model) ? LlmConfig.OnProfile() : LlmConfig.Create(model)) with
         {
             BaseUrl = ReadBaseUrl(section),
 #pragma warning disable CS0618

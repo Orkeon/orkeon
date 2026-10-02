@@ -66,8 +66,7 @@ public class YamlRoundTripTests
                     MaxIterations = 15,
                     MaxRPM = 5,
                     Tools = ["file_read", "data_query"],
-                    LlmConfig = LlmConfig.Default() with {
-                        Model = ModelGpt4o,
+                    LlmConfig = LlmConfig.Create(ModelGpt4o) with {
                         Temperature = 0.3,
                         MaxTokens = 8192
                     }
@@ -256,8 +255,7 @@ public class YamlRoundTripTests
                     Role = "Custom LLM Agent",
                     Goal = "Use specific LLM settings",
                     Backstory = "Agent with fine-tuned LLM parameters",
-                    LlmConfig = LlmConfig.Default() with {
-                        Model = "gpt-4-turbo-preview",
+                    LlmConfig = LlmConfig.Create("gpt-4-turbo-preview") with {
                         Temperature = 0.1,
                         MaxTokens = 16384
                     }
@@ -268,8 +266,7 @@ public class YamlRoundTripTests
                     Role = "Default LLM Agent",
                     Goal = "Use default LLM settings",
                     Backstory = "Agent with default parameters",
-                    LlmConfig = LlmConfig.Default() with {
-                        Model = ModelGpt35Turbo,
+                    LlmConfig = LlmConfig.Create(ModelGpt35Turbo) with {
                         // Temperature=0.7 is the default and MaxTokens is unpinned (null);
                         // the exporter omits both, the loader restores them (LLM-10)
                         Temperature = 0.7,
@@ -557,8 +554,7 @@ public class YamlRoundTripTests
                     MaxIterations = 25,
                     MaxRPM = 15,
                     Tools = ["task_tracker", "communicator"],
-                    LlmConfig = LlmConfig.Default() with {
-                        Model = ModelGpt4o,
+                    LlmConfig = LlmConfig.Create(ModelGpt4o) with {
                         Temperature = 0.5,
                         MaxTokens = 8192
                     }
@@ -574,8 +570,7 @@ public class YamlRoundTripTests
                     MaxIterations = 30,
                     MaxRPM = 20,
                     Tools = ["file_read", "file_write"],
-                    LlmConfig = LlmConfig.Default() with {
-                        Model = ModelGpt35Turbo,
+                    LlmConfig = LlmConfig.Create(ModelGpt35Turbo) with {
                         Temperature = 0.2,
                         MaxTokens = 2048
                     }

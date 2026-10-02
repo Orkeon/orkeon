@@ -236,4 +236,18 @@ public class LegacyTextAgentLoopTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, cts.Token));
     }
+
+    // GAP-18: an agent without an LLM config used to be sent with OpenAI's default model,
+    // whatever vendor the provider is; the call names no model now, so the provider sends its own.
+    [Fact]
+    public async System.Threading.Tasks.Task An_agent_without_an_llm_config_names_no_model()
+    {
+        var agent = BuildAgent();
+        var (loop, provider) = BuildLoop();
+
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+
+        Assert.Null(agent.LlmConfig);
+        Assert.Equal(string.Empty, Assert.Single(provider.ReceivedConfigs)!.Model);
+    }
 }

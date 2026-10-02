@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a model left unset is the profile's own, on every path **[breaking]**
+
+GAP-17 made a crew's `llm:` block that names no model run on its profile's model; other paths
+still pinned OpenAI's default model (`LlmDefaults.DefaultModelName`) on whatever vendor served the
+call, and fifteen of the sixteen providers refuse it ("model not found") (GAP-18):
+
+- **A C# agent's sugar.** `AgentBuilder.Thinking()` and `.MaxOutputTokens(n)` seeded
+  `LlmConfig.Create(LlmDefaults.DefaultModelName)`: on a DeepSeek or Anthropic host, such an agent
+  sent OpenAI's model. They start from `LlmConfig.OnProfile()` now, and the agent runs on the
+  host's model.
+- **`llm.default_`** on a host whose provider configures no model returned — and an agent
+  configured with it pinned — OpenAI's model. It reads an empty `model` now, and the call carries
+  the provider's own.
+- **The calls outside the chat client.** The text and native agent loops, the output-validation
+  correction round and the crew planner called with `LlmConfig.Default()`; they name no model now
+  (the planner keeps its temperature 0.3). So do the forge's judge and `ctx.llm`'s call-time
+  overrides on a provider that declares no configuration, the context-window summarizer, the
+  cognitive memory's analysis calls without `AnalysisModel` (documented as "the default provider
+  model"), the chat client registered without a base configuration
+  (`AddOrkeonLlmProvider(provider)`), and `orkeon llm probe` on a provider without a default of its
+  own (Azure).
+- **The providers resolve an empty model.** A call's configuration replaces the provider's, and
+  the providers fell back with `config.Model ?? default`, which an empty string defeats: such a
+  call went out with `"model": ""`. `HttpLlmProviderBase.ResolveModel(config)` is the one rule now —
+  the call's model, else the model the provider is configured with (its profile's), else its
+  `DefaultModel` — for the payload, the response's `Model` (what the meter records), the output-cap
+  lookup and the error hints, in the OpenAI-compatible family, Anthropic, Azure OpenAI (whose
+  deployment no longer falls back to OpenAI's model before the configured one) and Ollama (whose
+  six hard-coded `"llama2"` fallbacks become its documented default, `llama3.2`). The adapters
+  over an `IChatClient` leave `ModelId` unset instead of empty, and the meter attributes a stream
+  that named no model to the provider's.
+- **An `Llm` section — or a profile — without `Model`** runs on the inferred provider's own default
+  model: the settings reader, and the REPL's, filled in OpenAI's, which a DeepSeek endpoint inferred
+  from `BaseUrl` refused. With no model to read, the vendor inference also reaches the API-key
+  shape it documents (`xai-` → Grok, `hf_` → HuggingFace), which the filled-in OpenAI model always
+  pre-empted.
+- **Removed:** `LlmConfig.Default()` — a name that says "default" and pins one vendor's model was
+  the trap. `LlmConfig.Model` is empty by default, and `LlmConfig.OnProfile()` is the configuration
+  that names no model. `DefaultModel` moved from `OpenAICompatibleProviderBase` to
+  `HttpLlmProviderBase` (abstract): Anthropic and Ollama declare theirs.
+
+Migration: replace `LlmConfig.Default()` with `LlmConfig.OnProfile()` — the same settings, on the
+model of the provider the call reaches — or with `LlmConfig.Create(model)` to pin one
+(`LlmConfig.WithDefaultModel()` still names OpenAI's default model, explicitly). A provider that
+derives from `HttpLlmProviderBase` directly overrides `DefaultModel`.
+
 ### Fixed — `balanced` and `quality` work in `orkeon-host` and the REPL; runs resolve scoped services in their own scope
 
 The `balanced` and `quality` RAG profiles (and `adaptive`, whose `SingleShot` route delegates to

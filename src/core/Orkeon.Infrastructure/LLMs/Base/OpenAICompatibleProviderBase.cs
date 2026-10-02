@@ -27,9 +27,6 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// <summary>Gets the default base URL for this provider (e.g. "https://api.openai.com/v1").</summary>
     protected abstract Uri DefaultBaseUrl { get; }
 
-    /// <summary>Gets the default model identifier when none is specified in the config.</summary>
-    protected abstract string DefaultModel { get; }
-
     /// <summary>Gets the display name used in user-facing error messages (e.g. "OpenAI", "Grok").</summary>
     protected abstract string ProviderDisplayName { get; }
 
@@ -643,7 +640,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             CacheHitTokens = state.CacheHitTokens,
             CacheMissTokens = state.CacheMissTokens
                 ?? (state.CacheHitTokens is { } streamedHit ? DeriveCacheMiss(streamedHit, state.PromptTokens) : null),
-            Model = effectiveConfig.Model,
+            Model = ResolveModel(effectiveConfig),
             Metadata = metadata.Build().ToDictionary(),
             RawResponseBody = state.Error is null && state.ToolCalls.Count > 0 ? SynthesizeChatBody(state) : null,
         };
@@ -858,7 +855,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
         var payload = new Dictionary<string, object>
         {
-            ["model"] = effectiveConfig.Model ?? DefaultModel,
+            ["model"] = ResolveModel(effectiveConfig),
             ["messages"] = messagesList,
             ["temperature"] = effectiveConfig.Temperature,
         };
@@ -1073,7 +1070,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// </summary>
     private void WriteOutputCap(Dictionary<string, object> payload, LlmConfig config)
     {
-        if (config.ResolveMaxTokens(Name, DefaultModel) is { } cap)
+        if (config.ResolveMaxTokens(Name, ResolveModel(config)) is { } cap)
             payload[MaxTokensFieldName] = cap;
     }
 
@@ -1123,7 +1120,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (!payload.TryGetValue(MaxTokensFieldName, out var sent) || !MentionsOutputCap(errorBody))
             return false;
 
-        LogCatalogueOutputCapRefused(ProviderDisplayName, sent, payload.TryGetValue("model", out var model) ? model : DefaultModel);
+        LogCatalogueOutputCapRefused(ProviderDisplayName, sent, payload.TryGetValue("model", out var model) ? model : ResolveModel(null));
         payload.Remove(MaxTokensFieldName);
         return true;
     }
@@ -1353,7 +1350,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
         var payload = new Dictionary<string, object>
         {
-            ["model"] = config.Model ?? DefaultModel,
+            ["model"] = ResolveModel(config),
             ["messages"] = messages,
             ["temperature"] = config.Temperature,
         };
@@ -1478,7 +1475,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             CompletionTokens = completionTokens,
             CacheHitTokens = cacheHit,
             CacheMissTokens = cacheMiss,
-            Model = config.Model,
+            Model = ResolveModel(config),
             Metadata = metadata.Build().ToDictionary(),
             RawResponseBody = _toolCallingStrategy?.SupportsNativeToolCalling == true
                 ? responseJson
@@ -1737,7 +1734,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     private string VisionHintFor(LlmMessage[] messages, LlmConfig effectiveConfig, string vendorError) =>
         HasVisionPayload(messages) && !BlamesAnotherParameter(vendorError)
             ? $" — the request carried an image and {ProviderDisplayName} declares vision support, " +
-              $"but that is declared per provider while models differ: '{effectiveConfig.Model ?? DefaultModel}' " +
+              $"but that is declared per provider while models differ: '{ResolveModel(effectiveConfig)}' " +
               "may be text-only. Try a vision model, or send text only."
             : "";
 
@@ -1782,7 +1779,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// </summary>
     private string CapabilityHintFor(string vendorError, LlmConfig effectiveConfig) =>
         CapabilityMismatchHint.ForVendorError(
-            vendorError, ProviderDisplayName, effectiveConfig.Model ?? DefaultModel);
+            vendorError, ProviderDisplayName, ResolveModel(effectiveConfig));
 
     private LlmResponse CreateExceptionResponse(Exception ex, string error)
     {

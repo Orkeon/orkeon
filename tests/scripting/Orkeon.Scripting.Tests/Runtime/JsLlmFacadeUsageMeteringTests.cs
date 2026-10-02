@@ -204,7 +204,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
         public int Calls => _i;
 
         public string Name => "scripted";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-model" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("fake-model");
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
             => Task.FromResult(_responses[Math.Min(_i++, _responses.Length - 1)]);
@@ -220,7 +220,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
         public OneTurnStreamingProvider(LlmResponse final) => _final = final;
 
         public string Name => "streaming";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-model" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("fake-model");
         public bool SupportsStreaming => true;
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)

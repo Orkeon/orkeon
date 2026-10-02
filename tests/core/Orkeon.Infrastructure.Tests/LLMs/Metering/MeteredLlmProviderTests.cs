@@ -301,6 +301,23 @@ public sealed class MeteredLlmProviderTests
     }
 
     [Fact]
+    public async Task A_stream_naming_no_model_is_attributed_to_the_providers_own_model()
+    {
+        // GAP-18: a call that names no model (LlmConfig.OnProfile) runs on the provider's model;
+        // the estimate read the call's empty model and recorded "".
+        var provider = new MockStreamingLlmProvider { Name = "vendor", BaseConfig = LlmConfig.Create("model-of-the-profile") };
+        provider.SetStreamingChunks(["streamed"]);
+        var sink = new MockLlmUsageSink();
+        var metered = (IStreamingLlmProvider)MeteredLlmProvider.Wrap(provider, sink);
+
+        await foreach (var _ in metered.GenerateStreamingAsync("stream me", LlmConfig.OnProfile(), TestContext.Current.CancellationToken))
+        {
+        }
+
+        Assert.Equal("model-of-the-profile", Assert.Single(sink.Recorded).Model);
+    }
+
+    [Fact]
     public async Task A_stream_abandoned_early_counts_what_it_had_streamed()
     {
         var provider = new MockStreamingLlmProvider();

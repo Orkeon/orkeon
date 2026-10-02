@@ -166,6 +166,8 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
     {
         public override string Name => "TestProvider";
 
+        protected override string DefaultModel => "test-default-model";
+
         public TestLlmProvider(
             LlmConfig config,
             IHttpClientFactory httpClientFactory,
@@ -261,9 +263,8 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
         _logger = new TestLogger<TestLlmProvider>();
         _handler = new TestHttpMessageHandler();
         _httpClientFactory = new TestHttpClientFactory(_handler);
-        _defaultConfig = LlmConfig.Default() with
+        _defaultConfig = LlmConfig.Create(TestModelName) with
         {
-            Model = TestModelName,
             ApiKey = TestApiKey,
             Temperature = 0.7,
             MaxTokens = 100,
@@ -349,9 +350,8 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
     {
         // Arrange
         using var provider = new TestLlmProvider(_defaultConfig, _httpClientFactory, _logger);
-        var overrideConfig = LlmConfig.Default() with
+        var overrideConfig = LlmConfig.Create("override-model") with
         {
-            Model = "override-model",
             ApiKey = "override-key",
             Temperature = 0.9,
             MaxTokens = 200,
@@ -525,7 +525,7 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
     {
         // Arrange
         using var provider = new TestLlmProvider(_defaultConfig, _httpClientFactory, _logger);
-        var overrideConfig = LlmConfig.Default() with
+        var overrideConfig = LlmConfig.OnProfile() with
         {
             ApiKey = "override-key",
             TimeoutSeconds = 60

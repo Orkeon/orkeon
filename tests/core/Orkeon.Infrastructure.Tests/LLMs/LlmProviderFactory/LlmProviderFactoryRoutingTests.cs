@@ -22,7 +22,7 @@ public class LlmProviderFactoryRoutingTests
 
     private static string RoutedProviderName(string? model, string? baseUrl)
     {
-        var config = (model is null ? LlmConfig.Default() : LlmConfig.Create(model)) with
+        var config = (model is null ? LlmConfig.OnProfile() : LlmConfig.Create(model)) with
         {
             BaseUrl = baseUrl is null ? null : new Uri(baseUrl),
         };

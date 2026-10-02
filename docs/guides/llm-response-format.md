@@ -238,7 +238,7 @@ before writing the file.
 The cascade is fused exactly once per turn (`LlmConfigResolver.Resolve`), in 3 call sites — in the agent loops and the validation coordinator (`LegacyTextAgentLoop`, `NativeToolCallingAgentLoop`, `OutputValidationCoordinator`), which `ExecutionOrchestrator` drives:
 
 1. Legacy text-based `[TOOL_CALL]` loop — `_llmProvider.ChatAsync(prompt, effectiveConfig, …)`
-2. Native tool-calling loop — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. `BuildNativeLlmConfig` seeds from `agent.LlmConfig` (not `LlmConfig.Default()`), so the model name and Thinking config survive the entry to the native path.
+2. Native tool-calling loop — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. `BuildNativeLlmConfig` seeds from `agent.LlmConfig`, so the model name and Thinking config survive the entry to the native path; an agent without one gets a configuration that names no model (`LlmConfig.OnProfile()`), and the provider runs the call on its own.
 3. Validation correction retry — `_llmProvider.ChatAsync(correctionPrompt, effectiveConfig, …)`
 
 The 6 process strategies (Sequential, Hierarchical, Autonomous, Graph, Parallel, Consensual) run tasks through `IAgentExecutionService.ExecuteTaskAsync`, which delegates to `ExecutionOrchestrator.ExecuteTaskCoreAsync` — they get the cascade for free.

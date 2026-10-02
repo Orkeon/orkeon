@@ -58,14 +58,13 @@ public sealed class ChatClientToLlmProviderAdapterTests : IDisposable
         _mockChatClient.SetGetResponseResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
 
         var adapter = CreateAdapter();
-        var config = LlmConfig.Default() with
+        var config = LlmConfig.Create(ModelGpt4o) with
         {
             Temperature = 0.3,
             MaxTokens = 200,
             TopP = 0.9,
             FrequencyPenalty = 0.1,
             PresencePenalty = 0.2,
-            Model = ModelGpt4o,
             Seed = 42
         };
 
@@ -83,6 +82,25 @@ public sealed class ChatClientToLlmProviderAdapterTests : IDisposable
         Assert.Equal(0.2f, options.PresencePenalty);
         Assert.Equal(ModelGpt4o, options.ModelId);
         Assert.Equal((long)42, options.Seed);
+    }
+
+    /// <summary>
+    /// GAP-18: a config that names no model (<see cref="LlmConfig.OnProfile"/>) leaves the
+    /// model to the client, which runs its own — an empty <c>ModelId</c> would be sent as is.
+    /// </summary>
+    [Fact]
+    public async Task ShouldLeaveTheModelToTheClient_WhenTheConfigNamesNone()
+    {
+        _mockChatClient.SetGetResponseResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
+
+        var adapter = CreateAdapter();
+        var result = await adapter.ChatAsync(
+            [new LlmMessage { Role = "user", Content = "test" }],
+            LlmConfig.OnProfile() with { Temperature = 0.3 }, TestContext.Current.CancellationToken);
+
+        Assert.Null(_mockChatClient.LastGetResponseOptions!.ModelId);
+        Assert.Equal(0.3f, _mockChatClient.LastGetResponseOptions.Temperature);
+        Assert.Null(result.Model);
     }
 
     [Fact]

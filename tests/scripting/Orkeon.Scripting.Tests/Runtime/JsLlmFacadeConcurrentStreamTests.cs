@@ -92,7 +92,7 @@ public sealed class JsLlmFacadeConcurrentStreamTests
     private sealed class InterleavingProvider : ILlmProvider, IStreamingLlmProvider
     {
         public string Name => "interleaving";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("fake");
         public bool SupportsStreaming => true;
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)

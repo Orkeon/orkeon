@@ -137,6 +137,21 @@ public sealed class LlmProfileRegistryTests
         Assert.True(LlmSettings.HasDefault(configuration));
     }
 
+    /// <summary>
+    /// GAP-18: a section that names no model is the provider's own default model — not OpenAI's,
+    /// which the reader used to fill in and a DeepSeek or Anthropic endpoint then refused.
+    /// </summary>
+    [Fact]
+    public void A_section_naming_no_model_leaves_the_model_to_its_provider()
+    {
+        var configuration = Configuration(
+            ("Llm:BaseUrl", "https://api.deepseek.com"),
+            ("Llm:Profiles:claude:BaseUrl", "https://api.anthropic.com/v1"));
+
+        Assert.Equal(string.Empty, LlmSettings.ReadDefault(configuration).Model);
+        Assert.Equal(string.Empty, Assert.Single(LlmSettings.ReadProfiles(configuration)).Config.Model);
+    }
+
     [Fact]
     public void An_Llm_section_holding_profiles_alone_configures_no_default()
     {

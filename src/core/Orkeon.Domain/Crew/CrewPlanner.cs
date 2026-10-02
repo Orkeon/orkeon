@@ -91,10 +91,11 @@ public sealed class CrewPlanner
         // Build the planning prompt
         var planningPrompt = BuildPlanningPrompt(context, tasks, input);
 
-        // Call the LLM to generate the plan
+        // Call the LLM to generate the plan: on the planning provider's own model (GAP-18), at a
+        // low temperature for consistency.
         var llmResponse = await _planningLlm.GenerateAsync(
             planningPrompt,
-            LlmConfig.Default() with { Temperature = 0.3f }).ConfigureAwait(false); // Low temperature for consistency
+            LlmConfig.OnProfile() with { Temperature = 0.3f }).ConfigureAwait(false);
 
         // Delegate parsing to the injected abstraction
         return await _parser.ParseAsync(llmResponse.Content, tasks, context.Agents).ConfigureAwait(false);

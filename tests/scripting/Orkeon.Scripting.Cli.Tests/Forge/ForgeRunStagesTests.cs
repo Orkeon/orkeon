@@ -643,4 +643,17 @@ public class LlmForgeJudgeTests
         Assert.Null(judgement.Verdict);
         Assert.Equal(0, judgement.Usage.TotalTokens);
     }
+
+    // GAP-18: on a provider that declares no configuration of its own the judge asked for
+    // OpenAI's default model, whatever vendor the provider is. It names none now.
+    [Fact]
+    public async Task The_judge_names_no_model_on_a_provider_that_declares_no_configuration()
+    {
+        var provider = new ScriptedLlmProvider()
+            .Answers("""{"score":0.9,"passing":true,"findings":[],"suggestions":[]}""");
+
+        await new LlmForgeJudge(provider).JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
+
+        Assert.Equal(string.Empty, Assert.Single(provider.ChatConfigs)!.Model);
+    }
 }

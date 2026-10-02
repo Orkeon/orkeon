@@ -61,6 +61,31 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     public abstract string Name { get; }
 
     /// <summary>
+    /// The model this provider runs when neither the call nor its own configuration names one
+    /// (<c>LlmProviderDefaultModels</c>): what <see cref="ResolveModel"/> falls back to last.
+    /// </summary>
+    protected abstract string DefaultModel { get; }
+
+    /// <summary>
+    /// The model a request names (GAP-18): the call's own when it names one, else the model this
+    /// provider is configured with — its profile's — else <see cref="DefaultModel"/>. A
+    /// configuration that names no model (<see cref="LlmConfig.OnProfile"/>, an empty or blank
+    /// <see cref="LlmConfig.Model"/>) therefore runs on this provider's model; a call's
+    /// configuration replaces the provider's, and a <c>??</c> fallback let its empty model reach
+    /// the wire as <c>"model": ""</c>. The one rule every HTTP provider applies — to the payload,
+    /// the response's <see cref="LlmResponse.Model"/> the meter records, the output-cap lookup
+    /// and the error hints.
+    /// </summary>
+    /// <param name="config">The call's effective configuration; null for the provider's own.</param>
+    /// <returns>A model identifier, never empty.</returns>
+    protected string ResolveModel(LlmConfig? config)
+    {
+        if (!string.IsNullOrWhiteSpace(config?.Model))
+            return config.Model;
+        return string.IsNullOrWhiteSpace(Config.Model) ? DefaultModel : Config.Model;
+    }
+
+    /// <summary>
     /// What this provider's API supports: its <see cref="DeclaredCapabilities"/>, plus
     /// <see cref="LlmProviderCapabilities.GbnfGrammar"/>, which no vendor declares and the
     /// configuration the provider was built with switches on (<c>Llm:Grammar</c>,
@@ -398,7 +423,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             {
                 Content = string.Empty,
                 TokensUsed = 0,
-                Model = Config.Model,
+                Model = ResolveModel(null),
                 Metadata = new Dictionary<string, object>
                 {
                     ["http_status_code"] = (int)httpResponse.StatusCode,

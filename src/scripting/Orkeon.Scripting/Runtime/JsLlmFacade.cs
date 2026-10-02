@@ -94,7 +94,8 @@ public sealed partial class JsLlmFacade
     // like the C# execution loop: one backend view for both runtimes.
     private Activity? StartChatActivity(string method)
     {
-        var model = _provider?.BaseConfig?.Model;
+        // A provider configured without a model runs its own default, which only it knows.
+        var model = _provider?.BaseConfig?.Model is { } configured && !string.IsNullOrWhiteSpace(configured) ? configured : null;
         var activity = ScriptingActivitySource.Instance.StartActivity(
             GenAiAttributes.SpanName(ScriptingActivitySource.LlmCallSpan, model), ActivityKind.Client);
         if (activity is null) return null;
@@ -502,7 +503,7 @@ public sealed partial class JsLlmFacade
     /// </summary>
     private LlmConfig ConfigForExtract(JsValue? options)
     {
-        var cfg = ConfigFrom(options) ?? _provider?.BaseConfig ?? LlmConfig.Default();
+        var cfg = ConfigFrom(options) ?? _provider?.BaseConfig ?? LlmConfig.OnProfile();
         if (cfg.ResponseFormat is not null || CallerForcedText(options))
             return cfg;
         return cfg with { ResponseFormat = new LlmResponseFormat { Type = "json_object" } };
@@ -660,7 +661,7 @@ public sealed partial class JsLlmFacade
             Prompt = prompt;
             MaxIterations = ResolveMaxIterations(options);
             PermissionMode = ResolvePermissionMode(options);
-            Config = facade.ConfigFrom(options) ?? facade._provider?.BaseConfig ?? LlmConfig.Default();
+            Config = facade.ConfigFrom(options) ?? facade._provider?.BaseConfig ?? LlmConfig.OnProfile();
             // A script tool instance is offered through a proxy bound to this session: its calls
             // cross over to the JS tool pump instead of running on the loop's thread.
             Tools = facade._tools
@@ -1159,10 +1160,12 @@ public sealed partial class JsLlmFacade
     /// Call-time settings PATCH the provider's <see cref="ILlmProvider.BaseConfig"/>; they do not
     /// start from a blank one. Downstream, a per-call config REPLACES the provider's wholesale
     /// (<c>HttpLlmProviderBase.CreateHttpClient</c>: <c>requestConfig ?? Config</c>), so building
-    /// on <see cref="LlmConfig.Default"/> would hand the transport an empty API key, base URL and
+    /// on a blank configuration would hand the transport an empty API key, base URL and
     /// timeout — a script asking for `{ responseFormat: 'json_object' }` would lose its
     /// credentials as a side effect and fail to authenticate. The stub providers used in tests
-    /// ignore those fields, which is exactly why the defect stayed invisible.
+    /// ignore those fields, which is exactly why the defect stayed invisible. Only a provider
+    /// that declares no configuration gets one built from <see cref="LlmConfig.OnProfile"/>,
+    /// which names no model (GAP-18).
     /// </remarks>
     private LlmConfig? ConfigFrom(JsValue? options)
     {
@@ -1201,7 +1204,8 @@ public sealed partial class JsLlmFacade
 
         return config;
 
-        LlmConfig Inherited() => _provider?.BaseConfig ?? LlmConfig.Default();
+        // A provider that declares no configuration: the call names no model (GAP-18).
+        LlmConfig Inherited() => _provider?.BaseConfig ?? LlmConfig.OnProfile();
     }
 
     private static LlmMessage[] ToMessages(JsValue messages)

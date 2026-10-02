@@ -1,7 +1,12 @@
+using System.Text.Json;
+using Jint;
 using Microsoft.Extensions.Logging;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.LLMs;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Scripting.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -40,6 +45,38 @@ public sealed class LlmDefaultsTests
     }
 
     [Fact]
+    public async Task On_a_host_without_a_model_llm_default_names_none_and_a_call_carries_the_providers_own()
+    {
+        // GAP-18: a host provider configured without a model (a DeepSeek endpoint, say) made
+        // llm.default_ report — and an agent configured with it pin — OpenAI's default model.
+        // The script now reads an empty model, and the call carries the provider's own.
+        using var handler = new CapturingHttpMessageHandler(
+            """{"choices":[{"message":{"role":"assistant","content":"ok"}}],"usage":{"total_tokens":2,"prompt_tokens":1,"completion_tokens":1}}""");
+        using var provider = new DeepSeekLlmProvider(
+            LlmConfig.OnProfile() with { ApiKey = "sk-test" }, new SingleHandlerHttpClientFactory(handler));
+
+        var def = EvalWithProvider<JsLlmConfig>(null, provider, "llm.default_");
+
+        Assert.Equal("deepseek", def.provider);
+        Assert.Equal(string.Empty, def.model);
+
+        using var engine = new Engine();
+        await new JsLlmFacade(engine, provider, TestContext.Current.CancellationToken).complete("hello", null);
+
+        using var sent = JsonDocument.Parse(Assert.Single(handler.Bodies));
+        Assert.Equal(LlmProviderDefaultModels.DeepSeek, sent.RootElement.GetProperty("model").GetString());
+    }
+
+    [Fact]
+    public void llm_default_on_a_provider_declaring_no_configuration_names_no_model()
+    {
+        var def = EvalWithProvider<JsLlmConfig>(null, new StubLlmProvider("echo-like"), "llm.default_");
+
+        Assert.Equal("echo-like", def.provider);
+        Assert.Equal(string.Empty, def.model);
+    }
+
+    [Fact]
     public void llm_default_without_a_host_provider_is_the_undefined_echo_and_warns()
     {
         using var lf = new RecordingLoggerFactory();
@@ -47,6 +84,7 @@ public sealed class LlmDefaultsTests
         var def = EvalWithProvider<JsLlmConfig>(lf, null, "llm.default_");
 
         Assert.Equal("undefined", def.provider);
+        Assert.Equal(string.Empty, def.model);
         Assert.True(lf.Logger.HasEntry(e =>
             e.Level == LogLevel.Warning && e.Message.Contains("llm.default_", StringComparison.Ordinal)));
     }

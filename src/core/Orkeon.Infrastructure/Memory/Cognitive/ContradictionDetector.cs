@@ -6,7 +6,6 @@ using Orkeon.Domain.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
-using Orkeon.Domain.Constants.Llm;
 using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Infrastructure.Memory.Cognitive;
@@ -57,7 +56,10 @@ public sealed partial class ContradictionDetector
             LlmMessage.User(userPrompt)
         };
 
-        var config = LlmConfig.Create(_options.AnalysisModel ?? LlmDefaults.DefaultModelName) with
+        // No AnalysisModel: the provider's own model, never OpenAI's on another vendor (GAP-18).
+        var config = (string.IsNullOrWhiteSpace(_options.AnalysisModel)
+                ? LlmConfig.OnProfile()
+                : LlmConfig.Create(_options.AnalysisModel)) with
         {
             Temperature = 0.0,
             MaxTokens = 400

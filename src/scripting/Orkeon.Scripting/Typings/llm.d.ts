@@ -20,6 +20,10 @@ declare global {
         readonly provider: string;
         /** The host profile picked with `llm.profile(...)`; absent on the default profile. */
         readonly profile?: string;
+        /**
+         * The model the agent runs on. Empty when the host's provider configures none: the
+         * agent then runs on that provider's own default model.
+         */
         readonly model: string;
         readonly temperature?: number;
         readonly maxTokens?: number;

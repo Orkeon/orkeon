@@ -657,6 +657,8 @@ internal class TestHttpLlmProvider : HttpLlmProviderBase
 {
     public override string Name => "TestHttpLlmProvider";
 
+    protected override string DefaultModel => "test-default-model";
+
     public TestHttpLlmProvider(
         LlmConfig config,
         IHttpClientFactory httpClientFactory,

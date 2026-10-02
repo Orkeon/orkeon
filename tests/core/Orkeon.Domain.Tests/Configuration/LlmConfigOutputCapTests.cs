@@ -61,9 +61,12 @@ public class LlmConfigOutputCapTests
     [Fact]
     public void The_providers_default_model_is_used_when_the_config_names_none()
     {
-        var config = LlmConfig.Default() with { Model = null! };
+        // GAP-18: a config that names no model carries an empty one, never null — the empty
+        // string must reach the provider's model too, not the 4096 of an unknown model.
+        var config = LlmConfig.OnProfile();
 
         Assert.Equal(128_000, config.ResolveMaxTokens(defaultModel: LlmProviderDefaultModels.Anthropic));
+        Assert.Equal(128_000, (config with { Model = "  " }).ResolveMaxTokens(defaultModel: LlmProviderDefaultModels.Anthropic));
     }
 
     [Fact]

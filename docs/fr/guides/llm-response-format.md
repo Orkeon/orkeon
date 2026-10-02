@@ -241,7 +241,7 @@ au parsing JSON avant d'écrire le fichier.
 La cascade est fusionnée exactement une fois par tour (`LlmConfigResolver.Resolve`), sur 3 sites d'appel — dans les boucles d'agent et le coordinateur de validation (`LegacyTextAgentLoop`, `NativeToolCallingAgentLoop`, `OutputValidationCoordinator`), que pilote `ExecutionOrchestrator` :
 
 1. Boucle legacy `[TOOL_CALL]` basée texte — `_llmProvider.ChatAsync(prompt, effectiveConfig, …)`
-2. Boucle de tool-calling natif — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. `BuildNativeLlmConfig` s'amorce depuis `agent.LlmConfig` (et non `LlmConfig.Default()`), si bien que le nom du modèle et la config Thinking survivent à l'entrée du chemin natif.
+2. Boucle de tool-calling natif — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. `BuildNativeLlmConfig` s'amorce depuis `agent.LlmConfig`, si bien que le nom du modèle et la config Thinking survivent à l'entrée du chemin natif ; un agent sans config reçoit une configuration qui ne nomme aucun modèle (`LlmConfig.OnProfile()`), et le fournisseur exécute l'appel sur le sien.
 3. Retry de correction de validation — `_llmProvider.ChatAsync(correctionPrompt, effectiveConfig, …)`
 
 Les 6 stratégies de process (Sequential, Hierarchical, Autonomous, Graph, Parallel, Consensual) exécutent les tâches via `IAgentExecutionService.ExecuteTaskAsync`, qui délègue à `ExecutionOrchestrator.ExecuteTaskCoreAsync` — elles bénéficient de la cascade gratuitement.

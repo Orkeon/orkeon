@@ -59,10 +59,12 @@ public class HttpLlmProviderBaseStreamingFallbackTests
         private readonly LlmResponse _answer;
 
         public BufferedOnlyProvider(IHttpClientFactory httpClientFactory, LlmResponse answer)
-            : base(LlmConfig.Default(), httpClientFactory)
+            : base(LlmConfig.OnProfile(), httpClientFactory)
             => _answer = answer;
 
         public override string Name => "TestProvider";
+
+        protected override string DefaultModel => "test-default-model";
 
         public override Task<LlmResponse> GenerateAsync(
             string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)

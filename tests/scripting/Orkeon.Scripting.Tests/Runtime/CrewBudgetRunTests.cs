@@ -93,7 +93,7 @@ public sealed class CrewBudgetRunTests
         private readonly string _body;
         public LoopingProvider(string body) => _body = body;
         public string Name => "fake";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-model" };
+        public LlmConfig? BaseConfig => LlmConfig.Create("fake-model");
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
             => Task.FromResult(new LlmResponse { Content = "", RawResponseBody = _body });

@@ -40,6 +40,19 @@ public class ContradictionDetectorTests
         Assert.Empty(result.ConflictingMemoryIds);
     }
 
+    // GAP-18: AnalysisModel unset runs the check on the provider's own model, not OpenAI's.
+    [Fact]
+    public async Task CheckAsync_WithoutAnAnalysisModel_NamesNoModel()
+    {
+        _llmProvider.SetChatResult("""
+            {"has_contradiction": false, "conflicting_ids": [], "description": "", "resolution": "", "action": "keep_both"}
+            """);
+
+        await _detector.CheckAsync("Water is wet", [MemoryItem.Create("The sky is blue", importance: 0.5f)], CancellationToken.None);
+
+        Assert.Equal(string.Empty, _llmProvider.LastChatConfig!.Model);
+    }
+
     [Fact]
     public async Task CheckAsync_Contradiction_ReturnsTrue()
     {

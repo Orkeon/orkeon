@@ -58,4 +58,19 @@ public sealed class LlmCommandBuildConfigTests
 
         Assert.Null(config.Thinking);
     }
+
+    /// <summary>
+    /// GAP-18: a provider with no default of its own (Azure serves the deployments an operator
+    /// named) and no <c>--model</c> fell back to OpenAI's default model; the probe names none
+    /// now, and the provider runs on the model it is configured with.
+    /// </summary>
+    [Fact]
+    public void ShouldNameNoModel_WhenNeitherTheOptionNorTheProviderHasOne()
+    {
+        var options = new LlmProbeCommandOptions { Provider = "azure" };
+
+        var config = LlmCommand.BuildConfig(options, apiKey: "k");
+
+        Assert.Equal(string.Empty, config.Model);
+    }
 }
