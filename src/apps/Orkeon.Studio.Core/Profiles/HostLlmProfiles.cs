@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
 
 namespace Orkeon.Studio.Core.Profiles;
@@ -44,11 +45,13 @@ public sealed record HostProfileCheck(HostProfileStatus Status, string? Id, stri
 /// <summary>
 /// Studio's model settings as the host's LLM profiles (STUDIO-48). Each setting that names a
 /// provider is the entry <c>Llm:Profiles:&lt;id&gt;</c> of the settings file — its id the name's
-/// slug —, written without the key, which a launch passes as
+/// slug —, written without the key: the entry names the variable holding it (<c>ApiKeyEnvVar</c>,
+/// STUDIO-49), which a run outside Studio reads, and a launch passes the key itself as
 /// <c>ORKEON_Llm__Profiles__&lt;id&gt;__ApiKey</c>; so a crew that writes <c>profile: claude</c> runs
-/// on the « Claude » setting from Studio, and from a terminal <c>orkeon run</c> reading the same
-/// file. An entry no setting owns was written by hand: Studio shows it, never rewrites it, never
-/// removes it, and refuses a name that would take it over.
+/// on the « Claude » setting from Studio, and from a terminal <c>orkeon run</c> or a scheduled
+/// team reading the same file. The elected setting is the <c>Llm</c> section itself, written
+/// whole (<see cref="ElectDefault"/>). An entry no setting owns was written by hand: Studio shows
+/// it, never rewrites it, never removes it, and refuses a name that would take it over.
 /// <para>
 /// Ownership is the rule of the fiche: an id is Studio's when a setting of
 /// <c>studio-model-profiles.json</c> offers it. The first setting to answer to an id owns it — the
@@ -168,9 +171,10 @@ public static class HostLlmProfiles
     /// settings from <paramref name="before"/> to <paramref name="after"/>: a renamed setting's
     /// entry moves, every key it carries with it; the entry of a setting no longer offered —
     /// removed, switched to « no model » — goes; and every offered setting the change touched, or
-    /// whose entry the file lacks, is written, without its key. <c>Orkeon:Rag:LlmProfile</c>
-    /// follows a rename and falls back to the default when its profile goes: the host refuses to
-    /// start on a profile it does not define. Entries written by hand are never touched.
+    /// whose entry the file lacks or carries without the reference to its key's variable
+    /// (STUDIO-49), is written, without its key. <c>Orkeon:Rag:LlmProfile</c> follows a rename and
+    /// falls back to the default when its profile goes: the host refuses to start on a profile it
+    /// does not define. Entries written by hand are never touched.
     /// </summary>
     /// <param name="document">The settings file being edited.</param>
     /// <param name="before">The settings before the change.</param>
@@ -213,15 +217,59 @@ public static class HostLlmProfiles
         foreach (var (name, id) in now)
         {
             var profile = after.Find(name)!;
+            var entry = profile.ToHostEntry(id);
+            // Untouched — and healed (STUDIO-49): an entry written before it named its key's
+            // variable is written again at the next gesture, never at startup.
             var untouched = before.Find(name) == profile
                 && was.TryGetValue(name, out var previousId)
                 && string.Equals(previousId, id, StringComparison.OrdinalIgnoreCase)
-                && section.Find(id) is not null;
+                && section.Get(id) is { } written
+                && string.Equals(written.ApiKeyEnvVar, entry.ApiKeyEnvVar, StringComparison.Ordinal);
             if (!untouched)
-                changed |= section.Set(profile.ToHostEntry(id));
+                changed |= section.Set(entry);
         }
 
         return changed;
+    }
+
+    /// <summary>
+    /// Writes the elected <paramref name="profile"/> into the <c>Llm</c> section, whole (STUDIO-49):
+    /// every field it pins, a field it leaves unset removing its key, and the reference to its key's
+    /// variable — so a run outside Studio follows the election with its timeout, its thinking
+    /// switch and its key, as a host profile already did. The keys Studio does not model stay
+    /// (<see cref="LlmSection.Set"/>), a clear-text <c>ApiKey</c> among them: it is not Studio's.
+    /// </summary>
+    /// <param name="document">The settings file being edited.</param>
+    /// <param name="profile">The setting elected default.</param>
+    /// <returns>True when the document changed.</returns>
+    public static bool ElectDefault(AppSettingsDocument document, ModelProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(profile);
+        return document.Llm.Set(profile.ToHostEntry(LlmProfileNames.Default));
+    }
+
+    /// <summary>
+    /// Heals the <c>Llm</c> section the election wrote before it named the key's variable
+    /// (STUDIO-49): when it lacks the reference the elected setting carries — or carries another —
+    /// it receives the elected setting whole, at the next gesture on the settings, never at
+    /// startup. Otherwise nothing is written: only the election and an edit of the elected
+    /// setting write the section, so a field edited by hand there stays.
+    /// </summary>
+    /// <param name="document">The settings file being edited.</param>
+    /// <param name="set">The settings, the elected one among them.</param>
+    /// <returns>True when the document changed.</returns>
+    public static bool HealDefault(AppSettingsDocument document, ModelProfileSet set)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(set);
+
+        if (set.Default is not { } profile)
+            return false;
+
+        var expected = profile.ToHostEntry(LlmProfileNames.Default).ApiKeyEnvVar;
+        return !string.Equals(document.Llm.ApiKeyEnvVar, expected, StringComparison.Ordinal)
+            && ElectDefault(document, profile);
     }
 
     /// <summary>

@@ -47,9 +47,10 @@ static class Program
             return;
 
         var scriptedOpts = ScriptedCommandsCliOptions.Parse(args);
+        var globalSettingsPath = GlobalSettingsPathOrNull();
 
         var host = Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((_, builder) => ConfigureAppConfiguration(builder, scriptedOpts))
+            .ConfigureAppConfiguration((_, builder) => ConfigureAppConfiguration(builder, scriptedOpts, globalSettingsPath))
             .ConfigureServices((context, services) =>
                 ConfigureServices(context, services, effectiveUi, scriptedOpts, replWordWrap))
             .Build();
@@ -59,6 +60,12 @@ static class Program
         RagLlm.EnsureProfileIsKnown(
             host.Services.GetRequiredService<IConfiguration>(),
             host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>());
+
+        // STUDIO-49: where each LLM key comes from, never the key, and one warning per reference
+        // to a variable set nowhere — once, as the runner host says it.
+        ConfiguredLlmProviderBootstrapper.ReportApiKeys(
+            host.Services.GetRequiredService<IConfiguration>(),
+            host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.ConsoleApp"));
 
         await RunHostAsync(host, effectiveUi, scriptedOpts);
     }
@@ -107,8 +114,11 @@ static class Program
     }
 
     /// <summary>
-    /// Layers any <c>--settings &lt;path&gt;</c> JSON files over the app's own configuration and
-    /// turns off <c>reloadOnChange</c> on every file-backed source.
+    /// Layers the settings the runners read over the app's own configuration (STUDIO-49, decision
+    /// 10): the <c>--settings &lt;path&gt;</c> JSON files — or, when none is named, the global file
+    /// <c>orkeon init</c> writes, as a runner falls back to it —, then the <c>ORKEON_</c>
+    /// environment variables, prefix removed, in the order of the runner host. Turns off
+    /// <c>reloadOnChange</c> on every file-backed source.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -118,6 +128,15 @@ static class Program
     /// duplicating every value as an environment variable. We add the requested files just before
     /// the environment-variable source: they override the app's bundled <c>appsettings.json</c>,
     /// while env vars (notably the LLM API key, which must stay out of committed files) still win.
+    /// A file named here replaces the global file rather than layering over it, as for the
+    /// runners: the global file's <c>Llm:ApiKeyEnvVar</c> must not send its key to another file's
+    /// endpoint.
+    /// </para>
+    /// <para>
+    /// <b>The <c>ORKEON_</c> layer.</b> The default host reads the environment variables without a
+    /// prefix only: <c>ORKEON_Llm__ApiKey</c>, the variable every runner and the documentation name,
+    /// never reached the REPL as <c>Llm:ApiKey</c>. The layer goes after the unprefixed variables
+    /// — it wins over them — and before the command line, which stays last.
     /// </para>
     /// <para>
     /// <b>No reload watcher.</b> The default host enables a recursive <c>FileSystemWatcher</c> over
@@ -130,38 +149,76 @@ static class Program
     /// </para>
     /// </remarks>
     [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: --settings paths are resolved to absolute for a JSON config source during host build, before DI/VFS exist. Used as a config-file path, not direct framework I/O.")]
-    static void ConfigureAppConfiguration(IConfigurationBuilder builder, ScriptedCommandsCliOptions scriptedOpts)
+    internal static void ConfigureAppConfiguration(
+        IConfigurationBuilder builder,
+        ScriptedCommandsCliOptions scriptedOpts,
+        string? globalSettingsPath)
     {
-        if (scriptedOpts.SettingsFiles.Count > 0)
-        {
-            // Insert before the first env-var source so files override appsettings.json but lose
-            // to env vars; if none is present yet, append at the end.
-            var insertAt = builder.Sources.Count;
-            for (var i = 0; i < builder.Sources.Count; i++)
-            {
-                if (builder.Sources[i] is EnvironmentVariablesConfigurationSource)
-                {
-                    insertAt = i;
-                    break;
-                }
-            }
+        // The named files, else the global one — optional: a fresh machine has none yet.
+        var files = scriptedOpts.SettingsFiles.Count > 0
+            ? scriptedOpts.SettingsFiles.Select(path => (Path: System.IO.Path.GetFullPath(path), Optional: false)).ToList()
+            : globalSettingsPath is not null ? [(globalSettingsPath, true)] : [];
 
-            foreach (var path in scriptedOpts.SettingsFiles)
+        // Insert before the first env-var source so files override appsettings.json but lose
+        // to env vars; if none is present yet, append at the end.
+        var insertAt = builder.Sources.Count;
+        for (var i = 0; i < builder.Sources.Count; i++)
+        {
+            if (builder.Sources[i] is EnvironmentVariablesConfigurationSource)
             {
-                // EXCEPTION-BOOTSTRAP: config-source path resolution runs before DI/VFS exist.
-                var source = new JsonConfigurationSource
-                {
-                    Path = System.IO.Path.GetFullPath(path),
-                    Optional = false,
-                    ReloadOnChange = false,
-                };
-                source.ResolveFileProvider();
-                builder.Sources.Insert(insertAt++, source);
+                insertAt = i;
+                break;
             }
         }
 
+        foreach (var (path, optional) in files)
+        {
+            // EXCEPTION-BOOTSTRAP: config-source path resolution runs before DI/VFS exist.
+            var source = new JsonConfigurationSource
+            {
+                Path = path,
+                Optional = optional,
+                ReloadOnChange = false,
+            };
+            source.ResolveFileProvider();
+            builder.Sources.Insert(insertAt++, source);
+        }
+
+        // The ORKEON_ layer, after the last env-var source: it wins over the unprefixed variables
+        // and loses to the command line, which the default host adds last.
+        var orkeonAt = builder.Sources.Count;
+        for (var i = builder.Sources.Count - 1; i >= 0; i--)
+        {
+            if (builder.Sources[i] is EnvironmentVariablesConfigurationSource)
+            {
+                orkeonAt = i + 1;
+                break;
+            }
+        }
+
+        builder.Sources.Insert(orkeonAt, new EnvironmentVariablesConfigurationSource { Prefix = OrkeonEnvironmentPrefix });
+
         foreach (var source in builder.Sources.OfType<FileConfigurationSource>())
             source.ReloadOnChange = false;
+    }
+
+    /// <summary>The prefix of the environment variables every runner reads as configuration.</summary>
+    internal const string OrkeonEnvironmentPrefix = "ORKEON_";
+
+    /// <summary>
+    /// The global settings file <c>orkeon init</c> writes, resolved as the runners resolve it;
+    /// null where no per-user directory exists (a bare container without <c>HOME</c>).
+    /// </summary>
+    static string? GlobalSettingsPathOrNull()
+    {
+        try
+        {
+            return Orkeon.Hosting.RunnerSettings.GetGlobalSettingsPath();
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     internal static void ConfigureServices(

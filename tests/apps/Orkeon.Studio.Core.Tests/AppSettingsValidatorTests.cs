@@ -280,6 +280,8 @@ public sealed class AppSettingsValidatorTests
         Assert.NotNull(message);
         Assert.Equal(ValidationSeverity.Information, message.Severity);
         Assert.Contains("ORKEON_Llm__ApiKey", message.Text, StringComparison.Ordinal);
+        // STUDIO-49: a key the configuration holds wins — it masks the variable the reference names.
+        Assert.Contains("masks Llm:ApiKeyEnvVar", message.Text, StringComparison.Ordinal);
     }
 
     [Fact]

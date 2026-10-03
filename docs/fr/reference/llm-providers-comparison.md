@@ -153,16 +153,22 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
 
 ## Clés d'API : la variable par fournisseur
 
-**Un run lit une clé et une seule** : `Llm:ApiKey` dans le fichier de réglages, surchargée par
-`ORKEON_Llm__ApiKey` dans l'environnement. Les noms de fournisseurs ci-dessous ne sont **pas**
-lus par le moteur — c'est la convention que porte l'éditeur de réglages de modèle d'Orkeon
-Studio (`LlmPresets.ProviderCatalogFor`) : un profil stocke le *nom* de la variable et jamais
-la clé (`ModelProfile.KeyEnvName`), le résout au lancement, et pose la valeur sur le processus
-enfant en `ORKEON_Llm__ApiKey`. Exporter `DEEPSEEK_API_KEY` en espérant qu'un `orkeon run`
-lancé au terminal la trouve est le piège que cette table existe pour fermer : hors de Studio,
-exportez `ORKEON_Llm__ApiKey`.
+**Un run prend la clé que résout la configuration, sinon la variable que nomme le fichier de
+réglages** (STUDIO-49) : `Llm:ApiKey` dans le fichier, surchargée par `ORKEON_Llm__ApiKey` dans
+l'environnement (`ORKEON_Llm__Profiles__<id>__ApiKey` pour un profil) ; sinon la variable que
+nomme l'`ApiKeyEnvVar` de la section — lue dans l'environnement du processus, puis, sous Windows,
+dans la portée Utilisateur où Orkeon Studio mémorise les clés
+([configuration](./configuration.md#la-clé-dapi-apikey-apikeyenvvar)). Les noms de fournisseurs
+ci-dessous sont la convention que porte l'éditeur de réglages de modèle d'Orkeon Studio
+(`LlmPresets.ProviderCatalogFor`) : un profil stocke le *nom* de la variable et jamais la clé
+(`ModelProfile.KeyEnvName`), écrit ce nom dans le fichier de réglages comme `ApiKeyEnvVar` de la
+section `Llm` élue et de l'entrée `Llm:Profiles:<id>` du profil, et pose la valeur sur le processus
+enfant d'un lancement Studio en `ORKEON_Llm__ApiKey`. Exporter `DEEPSEEK_API_KEY` suffit donc à un
+`orkeon run` en terminal sur un fichier que Studio a écrit — ou sur un fichier écrit à la main qui
+la nomme : `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. Un fichier qui ne nomme aucune variable ne lit
+toujours que `Llm:ApiKey` et `ORKEON_Llm__ApiKey`.
 
-| Fournisseur | Variable (convention Studio) | Clé délivrée sur | Timeout pré-rempli par Studio | Solde exposé par l'API ([détails](#ce-que-chaque-api-dit-du-solde-du-compte)) |
+| Fournisseur | Variable (ce que Studio écrit dans `ApiKeyEnvVar`) | Clé délivrée sur | Timeout pré-rempli par Studio | Solde exposé par l'API ([détails](#ce-que-chaque-api-dit-du-solde-du-compte)) |
 |---|---|---|---|---|
 | OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | défaut moteur (30 s) | ✗ (dépense seulement, pour une clé admin) |
 | Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | défaut moteur | ✗ (dépense seulement, pour une clé Admin API) |
@@ -179,7 +185,7 @@ exportez `ORKEON_Llm__ApiKey`.
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | défaut moteur | ◐ par clé (`GET /api/v1/key`) ; les crédits du compte pour une clé de gestion seulement |
 | Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — le fournisseur documente « depuis les réglages API » ; la page exacte se confirme avec la première clé | défaut moteur | ✗ (dépense d'une clé, réponse non documentée) |
 | Ollama · Docker Model Runner | aucune | — | défaut moteur | — (local, sans compte) |
-| Compatible OpenAI (`custom`) | `ORKEON_Llm__ApiKey` | — | défaut moteur | ✗ (hôte inconnu) · — sur cette machine |
+| Compatible OpenAI (`custom`) | `ORKEON_CUSTOM_LLM_API_KEY` — un réglage créé avant STUDIO-49 garde `ORKEON_Llm__ApiKey`, la clé du défaut de chaque run (sa carte le dit) | — | défaut moteur | ✗ (hôte inconnu) · — sur cette machine |
 | Azure OpenAI | pas de carte, par conception : son endpoint par ressource en fait une entrée « compatible OpenAI » | — | — | ✗ (dépense dans Cost Management, pour une identité Microsoft Entra) |
 
 Les 600 s pré-remplies ne sont pas décoratives. Les quatre fournisseurs dont le modèle **par
@@ -188,17 +194,18 @@ défaut** raisonne avant de répondre débordent les 30 s du moteur, et le run d
 champ timeout du profil ; un fichier de réglages écrit à la main demande de monter
 `Llm:TimeoutSeconds` explicitement.
 
-Trois noms qui ne sont **pas** celui-là, et qu'on confond avec lui :
+Deux noms qui ne sont **pas** celui-là, et qu'on confond avec lui :
 
 - `ORKEON_LLM_API_KEY` — le défaut de `orkeon llm probe -k` et `orkeon llm models -k`.
   Outillage de campagne seulement ; un run ne le lit jamais.
-- `orkeon init --api-key-env <nom>` — n'écrit **rien** dans le fichier généré. Le nom alimente
-  la sonde d'endpoint de `init`, qui imprime ensuite que le runtime lit `ORKEON_Llm__ApiKey`
-  nativement. Le fichier produit ne référence aucune variable.
 - `ORKEON_<NOM>` — la chaîne de secrets des **outils**, pas celle du LLM
   (`EnvironmentSecretProvider`, puis `Secrets:<NOM>` dans le fichier) : `ORKEON_TAVILY_API_KEY`
   pour `web_search`, `BRAVE_API_KEY` lu tel quel pour `brave_search`. Voir la
   [référence de configuration](./configuration.md).
+
+`orkeon init --api-key-env <nom>` n'en fait plus partie : il écrit `Llm:ApiKeyEnvVar: <nom>` dans
+le fichier généré — rien pour `ORKEON_Llm__ApiKey`, que le runtime lit nativement —, si bien que
+chaque run lit la variable qu'il nomme.
 
 ## Ce que chaque API dit du solde du compte
 

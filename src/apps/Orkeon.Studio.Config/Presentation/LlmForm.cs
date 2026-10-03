@@ -13,6 +13,7 @@ namespace Orkeon.Studio.Config.Presentation;
 /// RAG calls are shown read-only too (STUDIO-48): Studio's model settings write the first, its
 /// model screen chooses the second, and this form writes neither — applying it touches the
 /// default provider's keys alone, so every profile, written by hand or not, stays as it is.
+/// An election made in Studio afterwards rewrites the fields it owns (STUDIO-49).
 /// </summary>
 internal sealed class LlmForm : ISettingsForm
 {
@@ -30,6 +31,12 @@ internal sealed class LlmForm : ISettingsForm
 
     /// <summary>API key stored in the file — discouraged, see <see cref="ApiKeyRecommendation"/>.</summary>
     public string ApiKey { get; set; } = "";
+
+    /// <summary>
+    /// The environment variable holding the key (<c>Llm:ApiKeyEnvVar</c>, STUDIO-49): its name,
+    /// never the key. Every run reads it when the configuration holds no key.
+    /// </summary>
+    public string ApiKeyEnvVar { get; set; } = "";
 
     /// <summary>Sampling temperature.</summary>
     public string Temperature { get; set; } = "";
@@ -51,7 +58,8 @@ internal sealed class LlmForm : ISettingsForm
 
     /// <summary>
     /// The named profiles of <c>Llm:Profiles</c>, one line each — <c>profile: &lt;id&gt; — model ·
-    /// endpoint</c>, what a crew writes and what it gets. Read-only.
+    /// endpoint — key: &lt;variable&gt;</c>, what a crew writes, what it gets and where a run reads its
+    /// key (STUDIO-49). Read-only.
     /// </summary>
     public IReadOnlyList<string> Profiles { get; private set; } = [];
 
@@ -65,8 +73,9 @@ internal sealed class LlmForm : ISettingsForm
 
     /// <summary>
     /// The connectivity probe for what the fields currently hold (SPEC §4.2). The key follows
-    /// <see cref="LlmApiKeyResolver"/>: a user who took the standing advice and left the key in
-    /// <c>ORKEON_Llm__ApiKey</c> must still be able to test the connection.
+    /// <see cref="LlmApiKeyResolver"/>, as a run reads it: a user who took the standing advice and
+    /// left the key in the environment — <c>ORKEON_Llm__ApiKey</c>, or the variable
+    /// <see cref="ApiKeyEnvVar"/> names — must still be able to test the connection.
     /// </summary>
     /// <param name="environment">
     /// Reads an environment variable by name; defaults to the process environment.
@@ -85,8 +94,8 @@ internal sealed class LlmForm : ISettingsForm
         {
             BaseUrl = FieldText.ToStringOrNull(BaseUrl),
             ApiKey = environment is null
-                ? LlmApiKeyResolver.Resolve(ApiKey)
-                : LlmApiKeyResolver.Resolve(ApiKey, environment),
+                ? LlmApiKeyResolver.Resolve(ApiKey, FieldText.ToStringOrNull(ApiKeyEnvVar))
+                : LlmApiKeyResolver.Resolve(ApiKey, FieldText.ToStringOrNull(ApiKeyEnvVar), environment),
             Model = FieldText.ToStringOrNull(Model),
             ThinkingEnabled = thinking,
             CheckCompletion = true,
@@ -94,11 +103,12 @@ internal sealed class LlmForm : ISettingsForm
         };
     }
 
-    /// <summary>The label shown under the API key field.</summary>
+    /// <summary>The label shown under the API key fields.</summary>
     public static string ApiKeyRecommendation { get; } = string.Create(
         CultureInfo.InvariantCulture,
-        $"Prefer the {LlmPresets.DefaultApiKeyEnv} environment variable — the runtime reads it " +
-        $"with precedence over this file, and the key stays out of the JSON.");
+        $"Prefer naming the variable that holds the key (Llm:ApiKeyEnvVar) — every run reads it, " +
+        $"and the key stays out of the JSON — or set {LlmPresets.DefaultApiKeyEnv}, which the runtime " +
+        $"reads with precedence over this file.");
 
     /// <summary>True when a real key would be written in clear text on save.</summary>
     public bool StoresApiKeyInClearText =>
@@ -112,6 +122,7 @@ internal sealed class LlmForm : ISettingsForm
         Model = FieldText.FromString(section.Model);
         BaseUrl = FieldText.FromString(section.BaseUrl);
         ApiKey = FieldText.FromString(section.ApiKey);
+        ApiKeyEnvVar = FieldText.FromString(section.ApiKeyEnvVar);
         Temperature = FieldText.FromDouble(section.Temperature);
         MaxTokens = FieldText.FromInt32(section.MaxTokens);
         TimeoutSeconds = FieldText.FromInt32(section.TimeoutSeconds);
@@ -121,9 +132,7 @@ internal sealed class LlmForm : ISettingsForm
             .. section.Profiles.Ids
                 .Select(section.Profiles.Get)
                 .OfType<LlmProfileEntry>()
-                .Select(entry => entry.Summary.Length > 0
-                    ? string.Create(CultureInfo.InvariantCulture, $"profile: {entry.Id} — {entry.Summary}")
-                    : string.Create(CultureInfo.InvariantCulture, $"profile: {entry.Id}")),
+                .Select(ProfileLine),
         ];
         RagLlmProfile = FieldText.FromString(document.Rag.LlmProfile);
     }
@@ -145,6 +154,14 @@ internal sealed class LlmForm : ISettingsForm
         if (!FieldText.TryReadBoolean(ThinkingEnabled, "Llm:Thinking:Enabled", out var thinking, out var thinkingError))
             errors.Add(thinkingError!);
 
+        // The runtime refuses to start on a reference that cannot be a variable's name — say it
+        // here, by its path: the value may be a key pasted in the wrong field.
+        if (FieldText.ToStringOrNull(ApiKeyEnvVar) is { } reference
+            && reference.Any(c => c == '=' || char.IsWhiteSpace(c) || char.IsControl(c)))
+        {
+            errors.Add("Llm:ApiKeyEnvVar must be the name of an environment variable (no '=', space or line break) — never the key itself.");
+        }
+
         if (errors.Count > 0)
             return errors;
 
@@ -152,11 +169,23 @@ internal sealed class LlmForm : ISettingsForm
         section.Model = FieldText.ToStringOrNull(Model);
         section.BaseUrl = FieldText.ToStringOrNull(BaseUrl);
         section.ApiKey = FieldText.ToStringOrNull(ApiKey);
+        section.ApiKeyEnvVar = FieldText.ToStringOrNull(ApiKeyEnvVar);
         section.Temperature = temperature;
         section.MaxTokens = maxTokens;
         section.TimeoutSeconds = timeout;
         section.ThinkingEnabled = thinking;
 
         return [];
+    }
+
+    /// <summary>One read-only line per profile: what a crew writes, what it gets, where its key comes from.</summary>
+    private static string ProfileLine(LlmProfileEntry entry)
+    {
+        var line = entry.Summary.Length > 0
+            ? string.Create(CultureInfo.InvariantCulture, $"profile: {entry.Id} — {entry.Summary}")
+            : string.Create(CultureInfo.InvariantCulture, $"profile: {entry.Id}");
+        return entry.ApiKeyEnvVar is { Length: > 0 } variable
+            ? string.Create(CultureInfo.InvariantCulture, $"{line} — key: {variable}")
+            : line;
     }
 }

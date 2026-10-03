@@ -135,6 +135,15 @@ public static class LlmPresets
     public const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
 
     /// <summary>
+    /// The variable a « Compatible OpenAI » model setting keeps its key in (STUDIO-49), shared by
+    /// the settings of that card as two DeepSeek settings share <c>DEEPSEEK_API_KEY</c>. It used to
+    /// be <see cref="DefaultApiKeyEnv"/> — the runtime's own key of the <em>default</em>: remembered
+    /// in the user scope, the card's key became the default key of every run of the user, whatever
+    /// its setting or endpoint. A setting created before keeps its variable; its card says so.
+    /// </summary>
+    public const string CustomApiKeyEnv = "ORKEON_CUSTOM_LLM_API_KEY";
+
+    /// <summary>
     /// The timeout the profile editor pre-fills for a provider whose default model reasons
     /// before it answers — Kimi (K2.6 thinks unless told not to, K3 always), DeepSeek (V4
     /// thinking by default), Z.AI (the GLM-5 family) and MiniMax (an inline reasoning trace
@@ -247,9 +256,11 @@ public static class LlmPresets
     /// mirror of the five <c>orkeon init</c> presets, while a model profile may point at any
     /// of the runtime's 16 providers (the runtime detects the dialect from the URL, so the
     /// profile only needs the endpoint and the model). Clouds carry the vendor's conventional
-    /// key variable in <see cref="LlmPresetInfo.DefaultApiKeyEnv"/> — the key itself never
-    /// enters a file: Studio stores it in that user environment variable and lays it over
-    /// each launch as <c>ORKEON_Llm__ApiKey</c>.
+    /// key variable in <see cref="LlmPresetInfo.DefaultApiKeyEnv"/>, the catch-all its own
+    /// (<see cref="CustomApiKeyEnv"/>) — the key itself never enters a file: Studio stores it in
+    /// that user environment variable, names the variable in the settings file
+    /// (<c>ApiKeyEnvVar</c>, which a run outside Studio reads) and lays the key over each launch
+    /// as <c>ORKEON_Llm__ApiKey</c>.
     /// </summary>
     public static IReadOnlyList<LlmPresetInfo> ProviderCatalogFor(IStudioStrings strings)
     {
@@ -312,7 +323,7 @@ public static class LlmPresets
                 LlmProviderEndpoints.Mammouth, LlmProviderDefaultModels.Mammouth, RequiresApiKey: true,
                 "MAMMOUTH_API_KEY", LlmPresetKind.Cloud, "mammouth.ai"),
             new(Custom, strings[StudioStringKeys.PresetCustomTitle], strings[StudioStringKeys.ProviderCustomShortDescription],
-                null, null, RequiresApiKey: true, DefaultApiKeyEnv, LlmPresetKind.Other),
+                null, null, RequiresApiKey: true, CustomApiKeyEnv, LlmPresetKind.Other),
             new(None, strings[StudioStringKeys.PresetNoneTitle], strings[StudioStringKeys.ProviderNoneShortDescription],
                 null, null, RequiresApiKey: false, null, LlmPresetKind.None),
         ];
@@ -481,11 +492,24 @@ public static class LlmPresets
         if (string.Equals(document.GetString(CommentKey), NoLlmComment, StringComparison.Ordinal))
             document.Remove(CommentKey);
 
-        // Insertion order matches `orkeon init`: Model, BaseUrl, then ApiKey if any.
+        // Insertion order matches `orkeon init`: Model, BaseUrl, then the reference to the key's
+        // variable or the key itself — never both. A preset without a key removes the reference.
         document.Llm.Model = plan.Model;
         document.Llm.BaseUrl = plan.BaseUrl;
+        document.Llm.ApiKeyEnvVar = ReferenceFor(plan.ApiKeyEnvName);
         document.Llm.ApiKey = plan.InlineApiKey;
     }
+
+    /// <summary>
+    /// The <c>Llm:ApiKeyEnvVar</c> a plan writes (STUDIO-49), as <c>orkeon init --api-key-env</c>
+    /// does: the variable it names, unless that is <see cref="DefaultApiKeyEnv"/>, which the
+    /// runtime reads natively — compared as the configuration compares keys — or none.
+    /// </summary>
+    /// <param name="apiKeyEnvName">The variable the plan keeps the key in, or null.</param>
+    public static string? ReferenceFor(string? apiKeyEnvName) =>
+        Blank(apiKeyEnvName) is { } name && !string.Equals(name, DefaultApiKeyEnv, StringComparison.OrdinalIgnoreCase)
+            ? name
+            : null;
 
     /// <summary>
     /// The guidance <c>orkeon init</c> prints after writing, as messages a UI can show:
@@ -516,12 +540,11 @@ public static class LlmPresets
                     envName),
             };
 
-            if (!string.Equals(envName, DefaultApiKeyEnv, StringComparison.Ordinal))
+            if (ReferenceFor(envName) is not null)
             {
                 messages.Add(string.Format(
                     CultureInfo.InvariantCulture,
                     strings[StudioStringKeys.PresetGuidanceNonDefaultEnv],
-                    DefaultApiKeyEnv,
                     envName));
             }
 

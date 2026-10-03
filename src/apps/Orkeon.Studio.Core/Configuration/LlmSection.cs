@@ -30,13 +30,16 @@ public sealed class LlmSection
 
     /// <summary>
     /// True when the section describes the default provider: at least one key besides
-    /// <c>Profiles</c>, the runtime's own reading (<c>LlmSettings.HasDefault</c>). False is the
-    /// WIN-01 condition: the runtime silently falls back to the <c>&lt;undefined-llm&gt;</c> echo
-    /// provider — a section holding profiles alone included.
+    /// <c>Profiles</c> that holds a value, the runtime's own reading (<c>LlmSettings.HasDefault</c>,
+    /// where a blank value reads as absent — STUDIO-49). False is the WIN-01 condition: the runtime
+    /// silently falls back to the <c>&lt;undefined-llm&gt;</c> echo provider — a section holding
+    /// profiles alone included.
     /// </summary>
     public bool Exists =>
         _document.GetNode(SectionPath) is JsonObject section
-        && section.Any(property => !string.Equals(property.Key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase));
+        && section.Any(property =>
+            !string.Equals(property.Key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase)
+            && HoldsValue(property.Value));
 
     /// <summary>Model identifier (<c>Llm:Model</c>).</summary>
     public string? Model
@@ -57,14 +60,25 @@ public sealed class LlmSection
     }
 
     /// <summary>
-    /// Inline API key (<c>Llm:ApiKey</c>). Prefer the <c>ORKEON_Llm__ApiKey</c>
-    /// environment variable — see <see cref="Presets.LlmPresets.DefaultApiKeyEnv"/>;
-    /// the runtime reads environment variables with precedence over the file.
+    /// Inline API key (<c>Llm:ApiKey</c>) — discouraged: prefer <see cref="ApiKeyEnvVar"/>, which
+    /// names the variable holding the key. A key here masks that reference: the runtime uses a key
+    /// the configuration resolves first.
     /// </summary>
     public string? ApiKey
     {
         get => _document.GetString($"{SectionPath}:ApiKey");
         set => _document.SetString($"{SectionPath}:ApiKey", value);
+    }
+
+    /// <summary>
+    /// The environment variable holding the default's key (<c>Llm:ApiKeyEnvVar</c>, STUDIO-49) —
+    /// its name, never the key —, which every run reads, Studio's or not. Written by the election
+    /// of a model setting, by <c>orkeon init --api-key-env</c> and by <c>orkeon-studio-config</c>.
+    /// </summary>
+    public string? ApiKeyEnvVar
+    {
+        get => _document.GetString($"{SectionPath}:{ConfigurationKeys.LlmApiKeyEnvVar}");
+        set => _document.SetString($"{SectionPath}:{ConfigurationKeys.LlmApiKeyEnvVar}", value);
     }
 
     /// <summary>Sampling temperature (<c>Llm:Temperature</c>).</summary>
@@ -110,6 +124,40 @@ public sealed class LlmSection
     /// to the file. See <see cref="LlmProviderDetector"/>.
     /// </summary>
     public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
+
+    /// <summary>
+    /// Writes what a model setting pins into the default section, field by field (STUDIO-49,
+    /// the election): every field <see cref="LlmProfileEntry"/> models, a null one removing its
+    /// key, the reference to the key's variable included — so a run outside Studio follows the
+    /// election, its timeout and its key included. The keys Studio does not model stay where they
+    /// are: <c>ApiKey</c>, <c>MaxRetries</c>, <c>Grammar</c>, <c>AvailableModels</c>,
+    /// <c>Profiles</c>. The entry's <see cref="LlmProfileEntry.Id"/> is not read.
+    /// </summary>
+    /// <param name="entry">What the elected setting pins.</param>
+    /// <returns>True when the document changed.</returns>
+    public bool Set(LlmProfileEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        var before = _document.GetNode(SectionPath)?.ToJsonString();
+        LlmProfilesSection.WriteEntry(_document, SectionPath, entry);
+        if (_document.GetNode(SectionPath) is JsonObject { Count: 0 })
+            _document.Remove(SectionPath);
+        return !string.Equals(before, _document.GetNode(SectionPath)?.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether a JSON node holds a value as the configuration reads it: a scalar that is not blank,
+    /// or a container holding one. <c>null</c>, <c>""</c> and <c>{ }</c> read as absent.
+    /// </summary>
+    private static bool HoldsValue(JsonNode? node) => node switch
+    {
+        JsonObject container => container.Any(property => HoldsValue(property.Value)),
+        JsonArray items => items.Any(HoldsValue),
+        JsonValue value when value.TryGetValue<string>(out var text) => !string.IsNullOrWhiteSpace(text),
+        JsonValue => true,
+        _ => false,
+    };
 
     /// <summary>
     /// Removes the default provider — every key of the section but <c>Profiles</c> — which is

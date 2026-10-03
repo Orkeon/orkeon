@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using CommandLine;
@@ -26,7 +27,7 @@ internal sealed class InitCommandOptions
 
     /// <summary>Environment variable that will hold the API key (the safe default).</summary>
     [Option('k', "api-key-env", Required = false,
-        HelpText = "Environment variable that will hold the API key (default ORKEON_Llm__ApiKey, which the runtime reads natively). The key is never written to the file.")]
+        HelpText = "Environment variable that will hold the API key. The file names it (Llm:ApiKeyEnvVar) and every run reads it — default ORKEON_Llm__ApiKey, which the runtime reads natively and needs no reference. The key is never written to the file.")]
     public string? ApiKeyEnv { get; set; }
 
     /// <summary>API key stored inline in the file. Discouraged.</summary>
@@ -393,6 +394,10 @@ internal static class InitCommand
                 ["Model"] = plan.Model,
                 ["BaseUrl"] = plan.BaseUrl,
             };
+            // STUDIO-49: the file names the variable holding the key — never the key — and every
+            // run reads it. The native variable needs no reference: the runtime reads it anyway.
+            if (ReferenceFor(plan.ApiKeyEnvName) is { } reference)
+                llm[ConfigurationKeys.LlmApiKeyEnvVar] = reference;
             if (plan.InlineApiKey is not null)
                 llm["ApiKey"] = plan.InlineApiKey;
             root["Llm"] = llm;
@@ -415,11 +420,11 @@ internal static class InitCommand
         if (plan.ApiKeyEnvName is { } envName)
         {
             Console.WriteLine($"API key: kept out of the file — set it in your environment: export {envName}=<your-key>");
-            if (!string.Equals(envName, DefaultApiKeyEnv, StringComparison.Ordinal))
+            if (ReferenceFor(envName) is not null)
             {
                 Console.WriteLine(
-                    $"Note: the Orkeon runtime reads `{DefaultApiKeyEnv}` natively; " +
-                    $"`{envName}` is only used by `orkeon init`/`orkeon llm` probes.");
+                    $"The file names the variable (Llm:{ConfigurationKeys.LlmApiKeyEnvVar}), and every run reads " +
+                    $"`{envName}` from its environment — the key itself never goes in the file.");
             }
         }
         else if (plan.InlineApiKey is not null && plan.InlineApiKey != DockerModelRunnerApiKeyPlaceholder)
@@ -430,6 +435,16 @@ internal static class InitCommand
                 "the runtime reads it with precedence over the file.");
         }
     }
+
+    /// <summary>
+    /// The <c>Llm:ApiKeyEnvVar</c> a plan writes: the variable it names, unless that is the one
+    /// the runtime reads natively (<c>ORKEON_Llm__ApiKey</c>, compared as the configuration
+    /// compares keys) — or no variable at all.
+    /// </summary>
+    private static string? ReferenceFor(string? envName) =>
+        envName is { Length: > 0 } && !string.Equals(envName, DefaultApiKeyEnv, StringComparison.OrdinalIgnoreCase)
+            ? envName
+            : null;
 
     // ── connectivity probe (reuses the `llm models` catalogue plumbing) ─────
 

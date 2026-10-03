@@ -107,6 +107,17 @@ public sealed class LlmConnectionTestTests
     }
 
     [Fact]
+    public void The_probed_key_follows_the_reference_as_a_run_does()
+    {
+        // STUDIO-49: the variable Llm:ApiKeyEnvVar names is where a run finds the key.
+        var form = new LlmForm { BaseUrl = LlmProviderEndpoints.Zai, ApiKeyEnvVar = "ZAI_API_KEY" };
+
+        var request = form.ToProbeRequest(name => name == "ZAI_API_KEY" ? "sk-zai" : null);
+
+        Assert.Equal("sk-zai", request.ApiKey);
+    }
+
+    [Fact]
     public void An_inline_key_wins_over_the_environment_variable()
     {
         var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OpenAI, ApiKey = "sk-from-file" };

@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.ConsoleApp.DependencyInjection;
+using Orkeon.ConsoleApp.Tests.Fakes;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -97,6 +99,58 @@ public sealed class ConfiguredLlmProviderBootstrapperTests
         Assert.Equal(0.2, config.Temperature);
         Assert.Equal(2048, config.MaxTokens);
         Assert.Equal(90, config.TimeoutSeconds);
+    }
+
+    // ── STUDIO-49: the key a section names ──────────────────────────────────
+
+    [Fact]
+    public void The_key_is_read_from_the_variable_the_section_names()
+    {
+        // The file Studio writes names the variable it remembers the key in; the REPL reads it as
+        // the runners do — the same file, the same variable, and the key is there.
+        var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(variable, "sk-repl-reference");
+        try
+        {
+            var config = BindAndCapture(
+                ("Llm:BaseUrl", "https://api.deepseek.com"),
+                ("Llm:Model", "deepseek-v4-flash"),
+                ("Llm:ApiKeyEnvVar", variable));
+
+#pragma warning disable CS0618 // ApiKey is the field every provider reads.
+            Assert.Equal("sk-repl-reference", config.ApiKey);
+#pragma warning restore CS0618
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
+    [Fact]
+    public void The_report_says_where_each_key_comes_from_and_warns_once_per_reference_set_nowhere()
+    {
+        var unset = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Llm:BaseUrl"] = "https://api.deepseek.com",
+                ["Llm:ApiKey"] = "sk-inline-repl",
+                ["Llm:Profiles:z-ai:BaseUrl"] = "https://api.z.ai/api/paas/v4",
+                ["Llm:Profiles:z-ai:ApiKeyEnvVar"] = unset,
+                ["Llm:Profiles:local:BaseUrl"] = "http://localhost:11434",
+            })
+            .Build();
+        var logger = new CapturingLogger();
+
+        ConfiguredLlmProviderBootstrapper.ReportApiKeys(configuration, logger);
+
+        var lines = logger.Entries.Select(e => e.Message).ToList();
+        Assert.Contains("LLM default profile: apiKey=from configuration (Llm:ApiKey)", lines);
+        Assert.Contains("LLM profile local: apiKey=none", lines);
+        var warning = Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.StartsWith("Llm:Profiles:z-ai:ApiKeyEnvVar names an environment variable that is not set", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(lines, l => l.Contains(unset, StringComparison.Ordinal) || l.Contains("sk-inline-repl", StringComparison.Ordinal));
     }
 
     // ── doubles ──────────────────────────────────────────────────────────────

@@ -140,16 +140,21 @@ details the `response_format` surfaces.
 
 ## API keys: the variable per provider
 
-**A run reads one key and one only**: `Llm:ApiKey` in the settings file, overridden by
-`ORKEON_Llm__ApiKey` in the environment. The vendor names below are **not** read by the
-engine — they are the convention Orkeon Studio's model-profile editor carries
+**A run takes the key the configuration resolves, else the variable the settings file
+names** (STUDIO-49): `Llm:ApiKey` in the file, overridden by `ORKEON_Llm__ApiKey` in the
+environment (`ORKEON_Llm__Profiles__<id>__ApiKey` for a profile); otherwise the variable the
+section's `ApiKeyEnvVar` names — read in the process environment, then, on Windows, in the
+user scope where Orkeon Studio remembers keys ([configuration](./configuration.md#the-api-key-apikey-apikeyenvvar)).
+The vendor names below are the convention Orkeon Studio's model-profile editor carries
 (`LlmPresets.ProviderCatalogFor`): a profile stores the *name* of the variable and never the
-key (`ModelProfile.KeyEnvName`), resolves it at launch, and lays the value over the child
-process as `ORKEON_Llm__ApiKey`. Exporting `DEEPSEEK_API_KEY` and expecting a terminal
-`orkeon run` to find it is the trap this table exists to close: outside Studio, export
-`ORKEON_Llm__ApiKey`.
+key (`ModelProfile.KeyEnvName`), writes that name into the settings file as the `ApiKeyEnvVar`
+of the elected `Llm` section and of the profile's `Llm:Profiles:<id>` entry, and lays the value
+over the child process of a Studio launch as `ORKEON_Llm__ApiKey`. So exporting
+`DEEPSEEK_API_KEY` is enough for a terminal `orkeon run` on a file Studio wrote — or on a
+hand-written one that names it: `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. A file that names no
+variable still reads `Llm:ApiKey` and `ORKEON_Llm__ApiKey` only.
 
-| Provider | Variable (Studio convention) | Key issued at | Timeout Studio pre-fills | Balance exposed by the API ([details](#account-balance-what-each-api-tells)) |
+| Provider | Variable (what Studio writes in `ApiKeyEnvVar`) | Key issued at | Timeout Studio pre-fills | Balance exposed by the API ([details](#account-balance-what-each-api-tells)) |
 |---|---|---|---|---|
 | OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | engine default (30 s) | ✗ (spend only, to an admin key) |
 | Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | engine default | ✗ (spend only, to an Admin API key) |
@@ -166,7 +171,7 @@ process as `ORKEON_Llm__ApiKey`. Exporting `DEEPSEEK_API_KEY` and expecting a te
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | engine default | ◐ per key (`GET /api/v1/key`); the account's credits to a management key only |
 | Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — the vendor documents "from the API settings"; the exact page is confirmed with the first key | engine default | ✗ (a key's spend, answer undocumented) |
 | Ollama · Docker Model Runner | none | — | engine default | — (local, no account) |
-| OpenAI-compatible (`custom`) | `ORKEON_Llm__ApiKey` | — | engine default | ✗ (unknown host) · — on this machine |
+| OpenAI-compatible (`custom`) | `ORKEON_CUSTOM_LLM_API_KEY` — a setting created before STUDIO-49 keeps `ORKEON_Llm__ApiKey`, the default key of every run (its card says so) | — | engine default | ✗ (unknown host) · — on this machine |
 | Azure OpenAI | no card by design: its per-resource endpoint makes it an OpenAI-compatible entry | — | — | ✗ (spend in Cost Management, to a Microsoft Entra identity) |
 
 The pre-filled 600 s is not decorative. The four providers whose **default** model reasons
@@ -174,17 +179,18 @@ before it answers overrun the engine's 30 s, and the run of 2026-09-20 was lost 
 timeouts reported as an empty answer (LLM-11). Studio pre-fills the profile's timeout field;
 a hand-written settings file needs `Llm:TimeoutSeconds` raised explicitly.
 
-Three names that are **not** this one, and get confused with it:
+Two names that are **not** this one, and get confused with it:
 
 - `ORKEON_LLM_API_KEY` — the default of `orkeon llm probe -k` and `orkeon llm models -k`.
   Campaign tooling only; a run never reads it.
-- `orkeon init --api-key-env <name>` — writes **nothing** into the generated file. The name
-  feeds init's own endpoint probe, after which init prints that the runtime reads
-  `ORKEON_Llm__ApiKey` natively. The file it produces references no variable at all.
 - `ORKEON_<NAME>` — the secret chain of the **tools**, not of the LLM
   (`EnvironmentSecretProvider`, then `Secrets:<NAME>` in the file): `ORKEON_TAVILY_API_KEY`
   for `web_search`, `BRAVE_API_KEY` read as-is for `brave_search`. See the
   [configuration reference](./configuration.md).
+
+`orkeon init --api-key-env <name>` is no longer one of them: it writes `Llm:ApiKeyEnvVar: <name>`
+into the generated file — nothing for `ORKEON_Llm__ApiKey`, which the runtime reads natively — so
+every run reads the variable it names.
 
 ## Account balance: what each API tells
 

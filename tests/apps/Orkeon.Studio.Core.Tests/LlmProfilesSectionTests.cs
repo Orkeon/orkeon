@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Core.Tests.Profiles;
 using Orkeon.Studio.Core.Validation;
 
 namespace Orkeon.Studio.Core.Tests;
@@ -48,6 +49,11 @@ public sealed class LlmProfilesSectionTests
     [InlineData("""{ "Llm": { "Model": "qwen3", "Profiles": { "claude": { "BaseUrl": "https://api.anthropic.com/v1" } } } }""", true)]
     [InlineData("""{ "Llm": { } }""", false)]
     [InlineData("""{ }""", false)]
+    // STUDIO-49: a blank value reads as absent, to the runtime as here.
+    [InlineData("""{ "Llm": { "Model": "", "ApiKeyEnvVar": " " } }""", false)]
+    [InlineData("""{ "Llm": { "Thinking": { } } }""", false)]
+    [InlineData("""{ "Llm": { "Model": "", "Temperature": 0.2 } }""", true)]
+    [InlineData("""{ "Llm": { "Thinking": { "Enabled": false } } }""", true)]
     public void The_default_exists_as_the_runtime_reads_it_and_profiles_alone_do_not_make_one(string json, bool expected)
     {
         var document = AppSettingsDocument.Parse(json);
@@ -115,6 +121,7 @@ public sealed class LlmProfilesSectionTests
             Id = "claude",
             BaseUrl = "https://api.anthropic.com/v1",
             Model = "claude-opus-5",
+            ApiKeyEnvVar = "ANTHROPIC_API_KEY",
             Temperature = 0.2,
             TimeoutSeconds = 120,
             ThinkingEnabled = false,
@@ -126,7 +133,25 @@ public sealed class LlmProfilesSectionTests
         Assert.Equal(120, document.GetInt32("Llm:Profiles:claude:TimeoutSeconds"));
         Assert.False(document.GetBoolean("Llm:Profiles:claude:Thinking:Enabled"));
         Assert.Equal(2, document.GetInt32("Llm:Profiles:claude:MaxRetries"));
-        Assert.DoesNotContain("ApiKey", document.ToJson(), StringComparison.OrdinalIgnoreCase);
+        // STUDIO-49: the entry names the variable holding its key, and holds no key.
+        Assert.Equal("ANTHROPIC_API_KEY", document.GetString("Llm:Profiles:claude:ApiKeyEnvVar"));
+        KeyTripwire.AssertNamesNoKey(document.ToJson(), "ANTHROPIC_API_KEY");
+    }
+
+    [Fact]
+    public void A_reference_written_by_hand_is_read_back_and_a_null_one_removes_its_key()
+    {
+        var document = AppSettingsDocument.Parse(
+            """{ "Llm": { "ApiKeyEnvVar": "MY_LLM_KEY", "Profiles": { "claude": { "Model": "m", "ApiKeyEnvVar": "CLAUDE_KEY" } } } }""");
+
+        Assert.Equal("MY_LLM_KEY", document.Llm.ApiKeyEnvVar);
+        Assert.Equal("CLAUDE_KEY", document.Llm.Profiles.Get("claude")?.ApiKeyEnvVar);
+
+        document.Llm.Profiles.Set(new LlmProfileEntry { Id = "claude", Model = "m" });
+        document.Llm.ApiKeyEnvVar = null;
+
+        Assert.False(document.ContainsPath("Llm:Profiles:claude:ApiKeyEnvVar"));
+        Assert.False(document.ContainsPath("Llm:ApiKeyEnvVar"));
     }
 
     [Fact]

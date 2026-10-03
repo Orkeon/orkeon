@@ -1,6 +1,7 @@
 using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
 using System.Globalization;
+using System.Text;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -265,7 +266,9 @@ public static partial class RunnerHost
     /// number one onboarding trap on a fresh install. Emit one actionable warning per host
     /// build: on the host logger AND on stderr (the host may reconfigure the logger below
     /// Warning, so the stderr line is the guarantee). Runs after <c>Build()</c> because no
-    /// logger exists yet at service-registration time.
+    /// logger exists yet at service-registration time. The same pass says where each section's
+    /// API key came from, and warns — logger and stderr, once per section — about an
+    /// <c>ApiKeyEnvVar</c> that names a variable set nowhere (STUDIO-49).
     /// </summary>
     private static void WarnIfLlmNotConfigured(IHost host)
     {
@@ -278,19 +281,42 @@ public static partial class RunnerHost
         var profiles = LlmSettings.ProfileNames(configuration);
         if (profiles.Count > 0)
             LogLlmProfiles(logger, profiles);
+        if (profiles.Count > 0 && logger.IsEnabled(LogLevel.Information))
+        {
+            var profilesSection = llmSection.GetSection(ConfigurationKeys.LlmProfiles);
+            foreach (var profile in profiles)
+            {
+                var source = LlmSettings.DescribeApiKey(profilesSection.GetSection(profile));
+                LogLlmProfileKey(logger, profile, source);
+            }
+        }
+
+        // STUDIO-49: an ApiKeyEnvVar naming a variable set nowhere — once per host build and per
+        // section, by its configuration path, never the name it holds (a key pasted in the wrong
+        // field must not reach a log). The calls on that profile answer "API key is required".
+        foreach (var reference in LlmSettings.UnresolvedApiKeyReferences(configuration))
+        {
+            var warning = UnresolvedApiKeyReferenceMessage(reference);
+            Console.Error.WriteLine("WARNING: " + warning);
+            LogApiKeyReferenceUnresolved(logger, warning);
+        }
 
         if (LlmSettings.HasDefault(configuration))
         {
             // One line of truth about what was actually resolved (file + ORKEON_ overlay):
             // when a run behaves as if a setting never arrived — a timeout still at its
-            // default, a temperature the vendor rejects — this line settles where the
-            // chain broke. Never the API key.
-            LogLlmResolved(
-                logger,
-                llmSection["Model"] ?? "(default)",
-                llmSection["BaseUrl"] ?? "(provider default)",
-                llmSection["Temperature"] ?? "(default)",
-                llmSection["TimeoutSeconds"] ?? "(default 30)");
+            // default, a temperature the vendor rejects, a key that never came — this line
+            // settles where the chain broke. Where the key came from, never the key.
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                var model = Shown(llmSection["Model"], "(default)");
+                var baseUrl = Shown(llmSection["BaseUrl"], "(provider default)");
+                var temperature = Shown(llmSection["Temperature"], "(default)");
+                var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
+                var source = LlmSettings.DescribeApiKey(llmSection);
+                LogLlmResolved(logger, model, baseUrl, temperature, timeout, source);
+            }
+
             return;
         }
 
@@ -305,9 +331,25 @@ public static partial class RunnerHost
     private static partial void LogLlmNotConfigured(ILogger logger);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message =
-        "LLM resolved: model={Model} baseUrl={BaseUrl} temperature={Temperature} timeoutSeconds={TimeoutSeconds}")]
+        "LLM resolved: model={Model} baseUrl={BaseUrl} temperature={Temperature} timeoutSeconds={TimeoutSeconds} apiKey={ApiKey}")]
     private static partial void LogLlmResolved(
-        ILogger logger, string model, string baseUrl, string temperature, string timeoutSeconds);
+        ILogger logger, string model, string baseUrl, string temperature, string timeoutSeconds, string apiKey);
+
+    [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "LLM profile {Profile}: apiKey={ApiKey}")]
+    private static partial void LogLlmProfileKey(ILogger logger, string profile, string apiKey);
+
+    [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "{Warning}")]
+    private static partial void LogApiKeyReferenceUnresolved(ILogger logger, string warning);
+
+    /// <summary>What the host says, on its logger and on stderr, of an <c>ApiKeyEnvVar</c> set nowhere — its path, never its value.</summary>
+    private static string UnresolvedApiKeyReferenceMessage(string reference) =>
+        string.Format(CultureInfo.InvariantCulture, UnresolvedApiKeyReferenceFormat, reference);
+
+    private static readonly CompositeFormat UnresolvedApiKeyReferenceFormat =
+        CompositeFormat.Parse(OperatorMessages.LlmApiKeyReferenceUnresolved);
+
+    /// <summary>A configured value for the startup line; blank reads as absent, like <see cref="LlmSettings"/> reads it.</summary>
+    private static string Shown(string? value, string absent) => string.IsNullOrWhiteSpace(value) ? absent : value;
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message =
         "mount {VirtualPath}: --mount replaces the settings entry")]

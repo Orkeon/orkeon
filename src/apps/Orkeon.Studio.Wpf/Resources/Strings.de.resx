@@ -656,7 +656,7 @@
     <value>API-Schlüssel: bleibt außerhalb der Datei — setzen Sie ihn in Ihrer Umgebung: export {0}=&lt;Ihr-Schlüssel&gt;</value>
   </data>
   <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve">
-    <value>Hinweis: Die Orkeon-Laufzeit liest `{0}` nativ; `{1}` wird nur von den Prüfungen `orkeon init` / `orkeon llm` gelesen.</value>
+    <value>Die Einstellungsdatei nennt diese Variable (Llm:ApiKeyEnvVar), und jeder Lauf liest `{0}` aus seiner Umgebung – der Schlüssel selbst kommt nie in die Datei.</value>
   </data>
   <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve">
     <value>ACHTUNG: Der API-Schlüssel steht im Klartext in der erzeugten Datei. Lassen Sie ihn besser weg und setzen Sie {0} in der Umgebung — die Laufzeit liest sie vorrangig vor der Datei.</value>
@@ -741,7 +741,7 @@
     <value>benutzerdefiniert (Host nicht in der Tabelle bekannter Endpunkte)</value>
   </data>
   <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve">
-    <value>Bevorzugen Sie die Umgebungsvariable {0}: Die Laufzeit liest sie vorrangig vor dieser Datei, der Schlüssel muss also nie im Klartext gespeichert werden.</value>
+    <value>Halten Sie den Schlüssel besser aus dieser Datei heraus: Nennen Sie in ApiKeyEnvVar die Umgebungsvariable, die ihn enthält – jeder Lauf liest sie –, oder setzen Sie {0}, das die Laufzeit vorrangig vor dieser Datei liest.</value>
   </data>
   <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>Verbindung wird getestet…</value>
@@ -1580,6 +1580,12 @@
   </data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve">
     <value>Modellkonfiguration</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.llm-profile-key" xml:space="preserve">
+    <value>Schlüssel eines LLM-Profils</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.llm-profiles" xml:space="preserve">
+    <value>Die LLM-Profile</value>
   </data>
   <data name="Studio.Diagnostics.Check.llm-reachability" xml:space="preserve">
     <value>Verbindung zum Modell</value>
@@ -2911,7 +2917,10 @@
     <value>Umbenannt erhält das Profil einen neuen Namen für Teams: Ein Team, das noch profile: {0} schreibt, lädt nicht mehr.</value>
   </data>
   <data name="Studio.Settings.HostKeyHint" xml:space="preserve">
-    <value>In einem Terminal liest orkeon run den Schlüssel dieses Profils aus {0} – die Einstellungsdatei enthält ihn nie.</value>
+    <value>Außerhalb von Studio – in einem Terminal, bei einem geplanten Team – liest jeder Lauf den Schlüssel dieses Profils aus {0}: Die Einstellungsdatei nennt diese Variable (ApiKeyEnvVar), nie den Schlüssel.</value>
+  </data>
+  <data name="Studio.Settings.DefaultKeyVariableWarning" xml:space="preserve">
+    <value>Dieses Profil speichert seinen Schlüssel in {0}, das jeder Lauf als Schlüssel seines Standardprofils liest – gleich welcher Endpunkt. Damit der Schlüssel bei diesem Profil bleibt: Legen Sie es über die Karte „Anderes OpenAI-kompatibles“ neu an (sein Schlüssel kommt dann nach {1}), löschen Sie dieses und entfernen Sie {0} aus Ihrer Benutzerumgebung.</value>
   </data>
   <data name="Studio.Settings.RagLlmDefault" xml:space="preserve">
     <value>default – das als Standard markierte Profil</value>

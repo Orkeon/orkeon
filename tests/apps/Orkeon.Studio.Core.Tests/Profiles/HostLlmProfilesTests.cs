@@ -8,7 +8,9 @@ namespace Orkeon.Studio.Core.Tests.Profiles;
 /// STUDIO-48: Studio's model settings are the host's LLM profiles. Each one that names a provider
 /// is mirrored into <c>Llm:Profiles:&lt;slug&gt;</c> without its key, follows its setting through a
 /// rename and a removal, and reaches a launch with its key through the environment; an entry
-/// written by hand is never touched, and <c>default</c> is refused as a name.
+/// written by hand is never touched, and <c>default</c> is refused as a name. STUDIO-49: each
+/// entry names the variable holding its key (<c>ApiKeyEnvVar</c>), which a run outside Studio
+/// reads, and the elected setting is written whole into the <c>Llm</c> section.
 /// </summary>
 public sealed class HostLlmProfilesTests
 {
@@ -34,12 +36,20 @@ public sealed class HostLlmProfilesTests
 
     private static ModelProfile Echo(string name) => new() { Name = name, Provider = "None" };
 
+    private static ModelProfile Ollama(string name = "Local") => new()
+    {
+        Name = name,
+        Provider = "Ollama",
+        BaseUrl = "http://localhost:11434",
+        Model = "qwen3",
+    };
+
     /// <summary>A settings file with a default, a profile written by hand and the RAG on none.</summary>
     private static AppSettingsDocument HandWrittenDocument() => AppSettingsDocument.Parse("""
         {
           "Llm": {
             "BaseUrl": "http://localhost:11434", "Model": "qwen3",
-            "Profiles": { "local-gpu": { "BaseUrl": "http://localhost:11500", "Model": "qwen3:32b", "MaxRetries": 2 } }
+            "Profiles": { "local-gpu": { "BaseUrl": "http://localhost:11500", "Model": "qwen3:32b", "MaxRetries": 2, "ApiKeyEnvVar": "GPU_BOX_KEY" } }
           }
         }
         """);
@@ -74,9 +84,44 @@ public sealed class HostLlmProfilesTests
         Assert.Equal("deepseek-v4-flash", deepseek?.Model);
         Assert.Equal(600, deepseek?.TimeoutSeconds);
         Assert.False(document.Llm.Profiles.Get("z-ai")?.ThinkingEnabled);
-        Assert.DoesNotContain("ApiKey", document.ToJson(), StringComparison.OrdinalIgnoreCase);
+        // STUDIO-49: each entry names the variable holding its key — a run outside Studio reads
+        // it — and no key is written anywhere.
+        Assert.Equal("DEEPSEEK_API_KEY", deepseek?.ApiKeyEnvVar);
+        Assert.Equal("ZAI_API_KEY", document.Llm.Profiles.Get("z-ai")?.ApiKeyEnvVar);
+        KeyTripwire.AssertNamesNoKey(document.ToJson(), "DEEPSEEK_API_KEY", "ZAI_API_KEY", "GPU_BOX_KEY");
         // The default stays the Llm section's own: a profile is not an election.
         Assert.Equal("qwen3", document.Llm.Model);
+    }
+
+    [Fact]
+    public void A_setting_that_needs_no_key_names_no_variable_and_loses_one_its_entry_had()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        var set = ModelProfileSet.Empty.Upsert(Ollama());
+        HostLlmProfiles.Mirror(document, ModelProfileSet.Empty, set);
+        Assert.Null(document.Llm.Profiles.Get("local")?.ApiKeyEnvVar);
+
+        // An entry carrying a reference its keyless setting does not: rewritten at the next gesture.
+        document.SetString("Llm:Profiles:local:ApiKeyEnvVar", "STALE_KEY");
+        Assert.True(HostLlmProfiles.Mirror(document, set, set.WithStudio("Local")));
+
+        Assert.False(document.ContainsPath("Llm:Profiles:local:ApiKeyEnvVar"));
+    }
+
+    [Fact]
+    public void An_owned_entry_written_before_the_reference_is_healed_at_the_next_gesture()
+    {
+        // A file mirrored by STUDIO-48: the entries name no variable.
+        var (document, set) = TwoSettings();
+        document.Remove("Llm:Profiles:deepseek:ApiKeyEnvVar");
+        document.Remove("Llm:Profiles:z-ai:ApiKeyEnvVar");
+
+        Assert.True(HostLlmProfiles.Mirror(document, set, set.WithStudio("DeepSeek")));
+
+        Assert.Equal("DEEPSEEK_API_KEY", document.Llm.Profiles.Get("deepseek")?.ApiKeyEnvVar);
+        Assert.Equal("ZAI_API_KEY", document.Llm.Profiles.Get("z-ai")?.ApiKeyEnvVar);
+        // Healed once: the next gesture finds nothing to write.
+        Assert.False(HostLlmProfiles.Mirror(document, set, set.WithStudio("Z.AI")));
     }
 
     [Fact]
@@ -91,6 +136,8 @@ public sealed class HostLlmProfilesTests
         Assert.Equal(["local-gpu", "z-ai", "deepseek-raisonneur"], document.Llm.Profiles.Ids);
         Assert.Equal("deepseek-v4-flash", document.Llm.Profiles.Get("deepseek-raisonneur")?.Model);
         Assert.Equal(3, document.GetInt32("Llm:Profiles:deepseek-raisonneur:MaxRetries"));
+        // The reference to the key's variable travels with the entry.
+        Assert.Equal("DEEPSEEK_API_KEY", document.Llm.Profiles.Get("deepseek-raisonneur")?.ApiKeyEnvVar);
     }
 
     [Fact]
@@ -114,6 +161,8 @@ public sealed class HostLlmProfilesTests
         HostLlmProfiles.Mirror(document, set, set.Remove("Z.AI"));
 
         Assert.Equal(["local-gpu", "deepseek"], document.Llm.Profiles.Ids);
+        // Its reference went with it; the one written by hand stays.
+        KeyTripwire.AssertNamesNoKey(document.ToJson(), "DEEPSEEK_API_KEY", "GPU_BOX_KEY");
     }
 
     [Fact]
@@ -126,7 +175,8 @@ public sealed class HostLlmProfilesTests
         HostLlmProfiles.Mirror(document, renamed, removed);
 
         Assert.Equal(["local-gpu"], document.Llm.Profiles.Ids);
-        Assert.Equal("""{"BaseUrl":"http://localhost:11500","Model":"qwen3:32b","MaxRetries":2}""",
+        // Untouched, the reference written by hand included.
+        Assert.Equal("""{"BaseUrl":"http://localhost:11500","Model":"qwen3:32b","MaxRetries":2,"ApiKeyEnvVar":"GPU_BOX_KEY"}""",
             document.GetNode("Llm:Profiles:local-gpu")!.ToJsonString());
         var handWritten = Assert.Single(HostLlmProfiles.HandWritten(document, removed));
         Assert.Equal("local-gpu", handWritten.Id);
@@ -313,9 +363,86 @@ public sealed class HostLlmProfilesTests
     }
 
     [Fact]
-    public void The_terminal_variable_of_a_setting_is_named_after_its_id()
+    public void A_terminal_reads_a_settings_key_from_the_variable_studio_remembers_it_in()
     {
-        Assert.Equal("ORKEON_Llm__Profiles__z-ai__ApiKey", ModelProfile.HostKeyVariable("z-ai"));
+        // STUDIO-49: the variable a run outside Studio reads is the setting's own — the one
+        // Studio remembers the key in —, named by its entry; no second copy under a name of its id.
+        Assert.Equal("ZAI_API_KEY", Zai().ToHostEntry("z-ai").ApiKeyEnvVar);
+        Assert.Null(Ollama().ToHostEntry("local").ApiKeyEnvVar);
+    }
+
+    // ── the election (STUDIO-49, decision 5) ────────────────────────────────
+
+    [Fact]
+    public void The_election_writes_the_setting_whole_and_keeps_what_studio_does_not_model()
+    {
+        var document = AppSettingsDocument.Parse("""
+            {
+              "Llm": {
+                "BaseUrl": "http://localhost:11434", "Model": "qwen3", "Temperature": 0.4,
+                "Thinking": { "Effort": "high" },
+                "ApiKey": "sk-written-by-hand", "MaxRetries": 5, "Grammar": true, "AvailableModels": [ "a", "b" ],
+                "Profiles": { "local-gpu": { "Model": "qwen3:32b" } }
+              }
+            }
+            """);
+
+        Assert.True(HostLlmProfiles.ElectDefault(document, DeepSeek()));
+
+        Assert.Equal("https://api.deepseek.com", document.Llm.BaseUrl);
+        Assert.Equal("deepseek-v4-flash", document.Llm.Model);
+        Assert.Equal("DEEPSEEK_API_KEY", document.Llm.ApiKeyEnvVar);
+        Assert.Equal(600, document.Llm.TimeoutSeconds);
+        // What the setting leaves unset loses its key: the run must not keep the previous election's.
+        Assert.Null(document.Llm.Temperature);
+        Assert.False(document.ContainsPath("Llm:Thinking"));
+        // What Studio does not model stays — the clear-text key is not Studio's to remove.
+        Assert.Equal("sk-written-by-hand", document.Llm.ApiKey);
+        Assert.Equal(5, document.GetInt32("Llm:MaxRetries"));
+        Assert.True(document.GetBoolean("Llm:Grammar"));
+        Assert.Equal(["a", "b"], document.GetStringArray("Llm:AvailableModels"));
+        Assert.Equal(["local-gpu"], document.Llm.Profiles.Ids);
+        Assert.False(HostLlmProfiles.ElectDefault(document, DeepSeek()));
+    }
+
+    [Fact]
+    public void Electing_a_setting_that_needs_no_key_removes_the_previous_reference()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        HostLlmProfiles.ElectDefault(document, Zai());
+
+        HostLlmProfiles.ElectDefault(document, Ollama());
+
+        Assert.Null(document.Llm.ApiKeyEnvVar);
+        Assert.Equal("http://localhost:11434", document.Llm.BaseUrl);
+        Assert.Null(document.Llm.ThinkingEnabled);
+    }
+
+    [Fact]
+    public void A_default_elected_before_the_reference_is_healed_whole_at_the_next_gesture_and_only_then()
+    {
+        // STUDIO-48 wrote the election's model and endpoint alone.
+        var set = ModelProfileSet.Empty.Upsert(DeepSeek()).Upsert(Zai());
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "BaseUrl": "https://api.deepseek.com", "Model": "deepseek-v4-flash" } }""");
+
+        Assert.True(HostLlmProfiles.HealDefault(document, set));
+
+        Assert.Equal("DEEPSEEK_API_KEY", document.Llm.ApiKeyEnvVar);
+        Assert.Equal(600, document.Llm.TimeoutSeconds);
+        // Healed: a field then edited by hand stays — only the election and an edit of the
+        // elected setting write the section.
+        document.Llm.Temperature = 0.2;
+        Assert.False(HostLlmProfiles.HealDefault(document, set));
+        Assert.Equal(0.2, document.Llm.Temperature);
+    }
+
+    [Fact]
+    public void A_set_without_a_default_heals_nothing()
+    {
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "qwen3" } }""");
+
+        Assert.False(HostLlmProfiles.HealDefault(document, ModelProfileSet.Empty));
+        Assert.Equal("""{"Model":"qwen3"}""", document.GetNode("Llm")!.ToJsonString());
     }
 
     [Fact]

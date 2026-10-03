@@ -611,6 +611,8 @@ static Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.HasDefault(Microsoft.Exte
 static Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.ProfileNames(Microsoft.Extensions.Configuration.IConfiguration! configuration) -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.ReadDefault(Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.ReadProfiles(Microsoft.Extensions.Configuration.IConfiguration! configuration) -> System.Collections.Generic.IReadOnlyList<(string! Name, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! Config)>!
+static Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.DescribeApiKey(Microsoft.Extensions.Configuration.IConfigurationSection! section) -> string!
+static Orkeon.Infrastructure.LLMs.Profiles.LlmSettings.UnresolvedApiKeyReferences(Microsoft.Extensions.Configuration.IConfiguration! configuration) -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration.<Clone>$() -> Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration!
 override Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration.Equals(object? obj) -> bool
 *REMOVED*abstract Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.DefaultModel.get -> string!

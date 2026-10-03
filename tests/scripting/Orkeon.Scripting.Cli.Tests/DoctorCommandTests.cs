@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Text.Json;
 using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Commands;
@@ -18,6 +21,7 @@ public sealed class DoctorCommandTests : IDisposable
         "dotnet-runtime",
         "appsettings",
         "llm-config",
+        "llm-profiles",
         "llm-reachability",
         "esbuild",
         "local-embeddings",
@@ -199,5 +203,209 @@ public sealed class DoctorCommandTests : IDisposable
             StringComparison.OrdinalIgnoreCase);
         // The settings file was resolved next to the cwd.
         Assert.Equal("ok", byCheck["appsettings"].GetProperty("status").GetString());
+    }
+
+    // ── STUDIO-49: where each key comes from, never the key ─────────────────
+
+    private static Dictionary<string, JsonElement> ByCheck(JsonDocument doc) =>
+        doc.RootElement.EnumerateArray()
+            .GroupBy(e => e.GetProperty("check").GetString()!)
+            .ToDictionary(g => g.Key, g => g.First());
+
+    private static List<JsonElement> Rows(JsonDocument doc, string check) =>
+        [.. doc.RootElement.EnumerateArray().Where(e => e.GetProperty("check").GetString() == check)];
+
+    [Fact]
+    public async Task LlmConfig_SaysWhereTheDefaultKeyComesFrom_NeverTheKeyNorTheVariable()
+    {
+        var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(variable, "sk-doctor-0123456789");
+        try
+        {
+            using var scratch = new ScriptScratch();
+            scratch.WriteFile("appsettings.json",
+                $$"""{ "Llm": { "Model": "llama3.2", "BaseUrl": "http://localhost:11434", "ApiKeyEnvVar": "{{variable}}" } }""");
+            using var console = new TestConsole();
+
+            await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+
+            using var doc = JsonDocument.Parse(console.Stdout);
+            var detail = ByCheck(doc)["llm-config"].GetProperty("detail").GetString()!;
+            Assert.Contains("API key from the variable named by Llm:ApiKeyEnvVar (process environment)", detail, StringComparison.Ordinal);
+            Assert.DoesNotContain("sk-doctor", console.Stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain(variable, console.Stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
+    [Fact]
+    public async Task LlmReachability_QueriesTheCatalogueWithTheResolvedKey()
+    {
+        var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(variable, "sk-resolved-0123456789");
+        using var server = new CatalogueServer();
+        try
+        {
+            using var scratch = new ScriptScratch();
+            scratch.WriteFile("appsettings.json", $$"""
+                { "Llm": { "Model": "test-model", "BaseUrl": "http://127.0.0.1:{{server.Port}}/v1", "ApiKeyEnvVar": "{{variable}}" } }
+                """);
+            using var console = new TestConsole();
+
+            await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+
+            using var doc = JsonDocument.Parse(console.Stdout);
+            Assert.Equal("ok", ByCheck(doc)["llm-reachability"].GetProperty("status").GetString());
+            Assert.Equal("Bearer sk-resolved-0123456789", Assert.Single(server.Authorizations));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
+    [Fact]
+    public async Task AnUnresolvedDefaultReference_IsAWarningOfLlmConfig()
+    {
+        var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json",
+            $$"""{ "Llm": { "Model": "llama3.2", "BaseUrl": "http://localhost:11434", "ApiKeyEnvVar": "{{variable}}" } }""");
+        using var console = new TestConsole();
+
+        await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var config = ByCheck(doc)["llm-config"];
+        Assert.Equal("warn", config.GetProperty("status").GetString());
+        Assert.Contains("Llm:ApiKeyEnvVar", config.GetProperty("detail").GetString()!, StringComparison.Ordinal);
+        Assert.Contains("not set", config.GetProperty("detail").GetString()!, StringComparison.Ordinal);
+        Assert.DoesNotContain(variable, console.Stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task OneLineCoversTheProfiles_AndEachUnresolvedReferenceIsAWarningLine()
+    {
+        var unset = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        using var scratch = new ScriptScratch();
+        // No default: the run would answer on the echo provider, and reachability is skipped —
+        // this test is about the profiles' lines.
+        scratch.WriteFile("appsettings.json", $$"""
+            {
+              "Llm": {
+                "Profiles": {
+                  "z-ai": { "BaseUrl": "https://api.z.ai/api/paas/v4", "Model": "glm-5", "ApiKeyEnvVar": "{{unset}}" },
+                  "kimi": { "BaseUrl": "https://api.moonshot.ai/v1", "Model": "kimi-k3", "ApiKeyEnvVar": "{{unset}}" },
+                  "inline": { "BaseUrl": "https://api.anthropic.com/v1", "ApiKey": "sk-inline-doctor" },
+                  "local": { "BaseUrl": "http://localhost:11434", "Model": "qwen3" }
+                }
+              }
+            }
+            """);
+        using var console = new TestConsole();
+
+        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+
+        Assert.Equal(Program.ExitOk, exit);
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var profiles = Assert.Single(Rows(doc, "llm-profiles"));
+        var summary = profiles.GetProperty("detail").GetString()!;
+        foreach (var id in new[] { "z-ai", "kimi", "inline", "local" })
+            Assert.Contains(id, summary, StringComparison.Ordinal);
+        Assert.Contains("from configuration (Llm:Profiles:inline:ApiKey)", summary, StringComparison.Ordinal);
+
+        var warnings = Rows(doc, "llm-profile-key");
+        Assert.Equal(2, warnings.Count);
+        Assert.All(warnings, w => Assert.Equal("warn", w.GetProperty("status").GetString()));
+        Assert.Contains(warnings, w => w.GetProperty("detail").GetString()!.Contains("Llm:Profiles:z-ai:ApiKeyEnvVar", StringComparison.Ordinal));
+        Assert.Contains(warnings, w => w.GetProperty("detail").GetString()!.Contains("Llm:Profiles:kimi:ApiKeyEnvVar", StringComparison.Ordinal));
+        Assert.DoesNotContain(unset, console.Stdout, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-inline-doctor", console.Stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AnApiKeyWrittenAsAPlaceholder_FailsLlmConfigWithTheFix()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json",
+            """{ "Llm": { "Model": "deepseek-chat", "BaseUrl": "https://api.deepseek.com", "ApiKey": "${DEEPSEEK_API_KEY}" } }""");
+        using var console = new TestConsole();
+
+        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var config = ByCheck(doc)["llm-config"];
+        Assert.Equal("fail", config.GetProperty("status").GetString());
+        Assert.Contains("\"ApiKeyEnvVar\": \"DEEPSEEK_API_KEY\"", config.GetProperty("detail").GetString()!, StringComparison.Ordinal);
+        Assert.Contains("skipped", ByCheck(doc)["llm-reachability"].GetProperty("detail").GetString()!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A loopback OpenAI-style catalogue (<c>GET /v1/models</c>) recording the
+    /// <c>Authorization</c> header of every request: what the probe presented, not whether a
+    /// vendor accepted it.
+    /// </summary>
+    private sealed class CatalogueServer : IDisposable
+    {
+        private readonly HttpListener _listener = new();
+        private readonly List<string> _authorizations = [];
+        private readonly Task _pump;
+
+        public CatalogueServer()
+        {
+            using (var probe = new TcpListener(IPAddress.Loopback, 0))
+            {
+                probe.Start();
+                Port = ((IPEndPoint)probe.LocalEndpoint).Port;
+                probe.Stop();
+            }
+
+            _listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
+            _listener.Start();
+            _pump = PumpAsync();
+        }
+
+        public int Port { get; }
+
+        public IReadOnlyList<string> Authorizations
+        {
+            get { lock (_authorizations) { return [.. _authorizations]; } }
+        }
+
+        public void Dispose()
+        {
+            _listener.Stop();
+            _pump.GetAwaiter().GetResult();
+            _listener.Close();
+        }
+
+        private async Task PumpAsync()
+        {
+            while (_listener.IsListening)
+            {
+                HttpListenerContext context;
+                try
+                {
+                    context = await _listener.GetContextAsync();
+                }
+                catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException)
+                {
+                    return;
+                }
+
+                lock (_authorizations)
+                    _authorizations.Add(context.Request.Headers["Authorization"] ?? "");
+
+                var body = Encoding.UTF8.GetBytes("""{ "data": [ { "id": "test-model" } ] }""");
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                context.Response.ContentType = "application/json";
+                await context.Response.OutputStream.WriteAsync(body);
+                context.Response.Close();
+            }
+        }
     }
 }

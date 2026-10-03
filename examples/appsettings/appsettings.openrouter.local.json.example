@@ -1,5 +1,5 @@
 {
-  "_comment": "Settings template - OpenRouter (model marketplace, OpenAI-compatible endpoint). Copy this file WITHOUT the .example suffix (-> appsettings.openrouter.local.json), then fill in your key. The ${OPENROUTER_API_KEY} placeholder is NOT expanded automatically: replace it with the plain key, or leave it and override at runtime via the ORKEON_Llm__ApiKey=... environment variable. Identifiers are vendor/model and the vendor prefix is mandatory; suffixes :free / :nitro (throughput) / :floor (price) travel in the identifier. openrouter/auto is usable but drifts (the served model changes without notice) - the response's served_model metadata says who answered. The factory auto-detects OpenRouterLlmProvider from the openrouter.ai host. Cheap text-only alternative: deepseek/deepseek-v4-flash. Not campaigned yet (LLM-09, 2026-09-18).",
+  "_comment": "Settings template - OpenRouter (model marketplace, OpenAI-compatible endpoint). Copy this file WITHOUT the .example suffix (-> appsettings.openrouter.local.json), then set your key in the environment: ApiKeyEnvVar names the variable that holds it (OPENROUTER_API_KEY), which every run reads — a terminal, a scheduled team, the REPL — and the key itself never goes in the file (ORKEON_Llm__ApiKey, when set, wins). Identifiers are vendor/model and the vendor prefix is mandatory; suffixes :free / :nitro (throughput) / :floor (price) travel in the identifier. openrouter/auto is usable but drifts (the served model changes without notice) - the response's served_model metadata says who answered. The factory auto-detects OpenRouterLlmProvider from the openrouter.ai host. Cheap text-only alternative: deepseek/deepseek-v4-flash. Not campaigned yet (LLM-09, 2026-09-18).",
   "_models": [
     "google/gemini-3.7-flash - the fleet's Gemini default under its marketplace id; ctx 1,048,576, 0.75 / 3.75 $/M in/out, text+image+video+file+audio, reasoning + response_format (json_schema) + tools (public catalog GET /api/v1/models, 2026-09-18)",
     "deepseek/deepseek-v4-flash - reasoning model, cheap text-only alternative for the transport comparison (M7/M8)",
@@ -10,7 +10,7 @@
   "Llm": {
     "BaseUrl": "https://openrouter.ai/api/v1",
     "Model": "google/gemini-3.7-flash",
-    "ApiKey": "${OPENROUTER_API_KEY}",
+    "ApiKeyEnvVar": "OPENROUTER_API_KEY",
     "Temperature": 0.2,
     "TimeoutSeconds": 600
   },

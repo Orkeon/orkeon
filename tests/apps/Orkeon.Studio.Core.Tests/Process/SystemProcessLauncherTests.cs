@@ -149,6 +149,40 @@ public sealed class SystemProcessLauncherTests
         Assert.Equal(["[a b]", "[c\"d]", "[e'f]"], lines);
     }
 
+    /// <summary>
+    /// STUDIO-49 (decision 4): a team launched on another setting than the default blanks every
+    /// default field its setting leaves unset — the default's key first. The blank has to reach the
+    /// child as an empty variable masking the inherited one, not vanish and let the parent's value
+    /// through. (Windows builds its environment block differently: the owner's recipe checks it.)
+    /// </summary>
+    [Fact]
+    public async Task A_blank_value_reaches_the_child_as_an_empty_variable_masking_the_inherited_one()
+    {
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
+
+        var name = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(name, "inherited-key");
+        try
+        {
+            var lines = new List<string>();
+            var request = Script($$"""if [ -z "${{{name}}+set}" ]; then echo unset; else echo "set:[${{{name}}}]"; fi""") with
+            {
+                Environment = new Dictionary<string, string>(StringComparer.Ordinal) { [name] = "" },
+            };
+
+            var result = await SystemProcessLauncher.Instance
+                .RunAsync(request, line => lines.Add(line.Text), TestContext.Current.CancellationToken)
+                .WaitAsync(TestTimeout, TestContext.Current.CancellationToken);
+
+            Assert.Equal(RunOutcome.Success, result.Outcome);
+            Assert.Equal(["set:[]"], lines);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(name, null);
+        }
+    }
+
     [Fact]
     public async Task The_exit_code_of_the_child_is_reported()
     {

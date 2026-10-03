@@ -189,7 +189,7 @@ Open a **new** terminal (so the PATH change is picked up), then:
 
 ```bash
 orkeon init      # writes the global config: which LLM, which model, which endpoint
-orkeon doctor    # 9 checks: runtime, config, LLM reachability, esbuild, grammars, …
+orkeon doctor    # 10 checks: runtime, config, LLM profiles, LLM reachability, esbuild, grammars, …
 orkeon run path/to/crew.yaml
 ```
 

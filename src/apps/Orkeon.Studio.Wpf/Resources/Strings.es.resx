@@ -656,7 +656,7 @@
     <value>Clave de API: se mantiene fuera del archivo — defínala en su entorno: export {0}=&lt;su-clave&gt;</value>
   </data>
   <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve">
-    <value>Nota: el runtime de Orkeon lee `{0}` de forma nativa; `{1}` solo la leen las sondas `orkeon init` / `orkeon llm`.</value>
+    <value>El archivo de ajustes nombra esta variable (Llm:ApiKeyEnvVar) y cada ejecución lee `{0}` de su entorno: la clave en sí nunca entra en el archivo.</value>
   </data>
   <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve">
     <value>ATENCIÓN: la clave de API se guarda en texto plano en el archivo generado. Es preferible omitirla y definir {0} en el entorno — el runtime la lee con prioridad sobre el archivo.</value>
@@ -741,7 +741,7 @@
     <value>personalizado (host ausente de la tabla de endpoints conocidos)</value>
   </data>
   <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve">
-    <value>Prefiera la variable de entorno {0}: el runtime la lee con prioridad sobre este archivo, así la clave nunca tiene que guardarse en claro.</value>
+    <value>Es preferible mantener la clave fuera de este archivo: indique en ApiKeyEnvVar la variable de entorno que la contiene —cada ejecución la lee— o defina {0}, que el runtime lee con prioridad sobre este archivo.</value>
   </data>
   <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>Probando la conexión…</value>
@@ -1580,6 +1580,12 @@
   </data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve">
     <value>Configuración del modelo</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.llm-profile-key" xml:space="preserve">
+    <value>La clave de un perfil LLM</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.llm-profiles" xml:space="preserve">
+    <value>Los perfiles LLM</value>
   </data>
   <data name="Studio.Diagnostics.Check.llm-reachability" xml:space="preserve">
     <value>Conexión al modelo</value>
@@ -2911,7 +2917,10 @@
     <value>Al renombrarlo, el perfil recibe un nuevo nombre para los equipos: un equipo que aún escriba profile: {0} dejará de cargarse.</value>
   </data>
   <data name="Studio.Settings.HostKeyHint" xml:space="preserve">
-    <value>En un terminal, orkeon run lee la clave de este perfil en {0}: el archivo de ajustes nunca la contiene.</value>
+    <value>Fuera de Studio —un terminal, un equipo programado—, cada ejecución lee la clave de este perfil en {0}: el archivo de ajustes nombra esa variable (ApiKeyEnvVar), nunca la clave.</value>
+  </data>
+  <data name="Studio.Settings.DefaultKeyVariableWarning" xml:space="preserve">
+    <value>Este perfil guarda su clave en {0}, que toda ejecución lee como la clave de su perfil predeterminado, sea cual sea el endpoint. Para reservar la clave a este perfil: vuelva a crearlo desde la tarjeta «Otro compatible con OpenAI» (su clave irá entonces a {1}), elimine este y quite {0} de su entorno de usuario.</value>
   </data>
   <data name="Studio.Settings.RagLlmDefault" xml:space="preserve">
     <value>default — el perfil marcado por defecto</value>

@@ -97,4 +97,21 @@ public sealed class DiagnosticVerdictTests
         Assert.Equal("The settings file is readable", diagnostic.Checks[0].FriendlyName);
         Assert.Equal("appsettings", diagnostic.Checks[0].Name);
     }
+
+    [Fact]
+    public async Task The_profile_checks_doctor_added_speak_plainly_too()
+    {
+        // STUDIO-49: doctor covers Llm:Profiles in one line, and warns once per profile whose
+        // ApiKeyEnvVar names a variable set nowhere.
+        var launcher = new FakeProcessLauncher();
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(
+            ProcessOutputChannel.StandardOutput,
+            """[{"check":"llm-profiles","status":"ok","detail":"1 profile(s)"},{"check":"llm-profile-key","status":"warn","detail":"Llm:Profiles:z-ai:ApiKeyEnvVar names an environment variable that is not set"}]"""));
+
+        var diagnostic = Create(launcher);
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("The LLM profiles", diagnostic.Checks[0].FriendlyName);
+        Assert.Equal("The key of an LLM profile", diagnostic.Checks[1].FriendlyName);
+    }
 }

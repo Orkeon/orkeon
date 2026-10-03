@@ -81,6 +81,15 @@ public static class ConfigurationKeys
     public const string LlmProfiles = "Profiles";
 
     /// <summary>
+    /// The key, in <see cref="LlmSection"/> and in each of its <see cref="LlmProfiles"/>, that
+    /// names the environment variable holding the section's API key — the name, never the key
+    /// (STUDIO-49). The runtime reads the variable when the configuration resolves no
+    /// <c>ApiKey</c>; Orkeon Studio, <c>orkeon init</c> and <c>orkeon-studio-config</c> write it,
+    /// and <c>orkeon doctor</c> reports it — four projects, one spelling.
+    /// </summary>
+    public const string LlmApiKeyEnvVar = "ApiKeyEnvVar";
+
+    /// <summary>
     /// The MCP section, at the configuration ROOT like <see cref="LlmSection"/>: the servers a
     /// machine declares (<c>MCP:Servers:&lt;id&gt;</c>), the switch (<c>MCP:Enabled</c>) and the
     /// optional outbound server (<c>MCP:Server</c>). Bound by the infrastructure, honoured by the

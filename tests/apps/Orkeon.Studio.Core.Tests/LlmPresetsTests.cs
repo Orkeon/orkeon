@@ -2,6 +2,7 @@ using System.Text.Json;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Core.Tests.Profiles;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -17,7 +18,7 @@ public sealed class LlmPresetsTests
 
     /// <summary>Faithful copy of <c>InitCommand.BuildJson</c> (Orkeon.Scripting.Cli, internal).</summary>
     private static string BuildJsonLikeInitCommand(
-        string provider, string? baseUrl, string? model, string? inlineApiKey)
+        string provider, string? baseUrl, string? model, string? inlineApiKey, string? apiKeyEnvVar = null)
     {
         var root = new Dictionary<string, object?>(StringComparer.Ordinal);
 
@@ -34,6 +35,9 @@ public sealed class LlmPresetsTests
                 ["Model"] = model,
                 ["BaseUrl"] = baseUrl,
             };
+            // STUDIO-49: --api-key-env names the variable, unless it is the native ORKEON_Llm__ApiKey.
+            if (apiKeyEnvVar is not null)
+                llm["ApiKeyEnvVar"] = apiKeyEnvVar;
             if (inlineApiKey is not null)
                 llm["ApiKey"] = inlineApiKey;
             root["Llm"] = llm;
@@ -81,7 +85,8 @@ public sealed class LlmPresetsTests
 
         Assert.Equal(expected, LlmPresets.BuildJson(plan));
         Assert.Equal(LlmPresets.DefaultApiKeyEnv, plan.ApiKeyEnvName);
-        Assert.DoesNotContain("ApiKey", LlmPresets.BuildJson(plan), StringComparison.Ordinal);
+        // The native variable needs no reference: no key, and no ApiKeyEnvVar either.
+        KeyTripwire.AssertNamesNoKey(LlmPresets.BuildJson(plan));
     }
 
     [Fact]
@@ -116,14 +121,37 @@ public sealed class LlmPresetsTests
     }
 
     [Fact]
-    public void A_custom_environment_variable_is_reported_as_not_read_by_the_runtime()
+    public void A_custom_environment_variable_is_named_in_the_file_and_the_runtime_reads_it()
     {
+        // STUDIO-49: the old guidance said such a variable was only read by the probes — the
+        // trap a terminal run fell into. The file now names it, as `orkeon init --api-key-env`.
         var plan = Plan(LlmPresets.OpenAI, new LlmPresetOverrides { ApiKeyEnv = "MY_KEY" });
         var guidance = string.Join(" ", LlmPresets.Guidance(plan));
+        var expected = BuildJsonLikeInitCommand(
+            "openai", LlmEndpoints.OpenAI, ProviderDefaults.ForProvider("openai"), inlineApiKey: null, apiKeyEnvVar: "MY_KEY");
 
         Assert.Equal("MY_KEY", plan.ApiKeyEnvName);
+        Assert.Equal(expected, LlmPresets.BuildJson(plan));
+        KeyTripwire.AssertNamesNoKey(LlmPresets.BuildJson(plan), "MY_KEY");
         Assert.Contains("export MY_KEY=", guidance, StringComparison.Ordinal);
-        Assert.Contains(LlmPresets.DefaultApiKeyEnv, guidance, StringComparison.Ordinal);
+        Assert.Contains("Llm:ApiKeyEnvVar", guidance, StringComparison.Ordinal);
+        Assert.DoesNotContain("only", guidance, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Applying_a_preset_writes_its_reference_and_a_keyless_preset_removes_it()
+    {
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "old", "ApiKeyEnvVar": "OLD_KEY" } }""");
+
+        LlmPresets.Apply(document, Plan(LlmPresets.Custom, new LlmPresetOverrides
+        {
+            BaseUrl = "https://api.deepseek.com", Model = "deepseek-chat", ApiKeyEnv = "DEEPSEEK_API_KEY",
+        }));
+        Assert.Equal("DEEPSEEK_API_KEY", document.Llm.ApiKeyEnvVar);
+
+        LlmPresets.Apply(document, Plan(LlmPresets.Ollama));
+        Assert.Null(document.Llm.ApiKeyEnvVar);
+        Assert.False(document.ContainsPath("Llm:ApiKeyEnvVar"));
     }
 
     [Fact]

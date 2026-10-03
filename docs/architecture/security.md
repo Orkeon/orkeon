@@ -119,6 +119,26 @@ environment variables, which the .NET host reads for every run), grant the fewes
 files are plain JSON: shielded from the VFS tools, **not** from a shell or code tool running
 as the same operating-system user.
 
+### LLM keys: the settings file names the variable
+
+A settings file never has to hold an API key: `ApiKeyEnvVar`, in `Llm` and in each
+`Llm:Profiles:<name>`, names the environment variable that does, and the runner host reads it when
+the configuration resolves no `ApiKey` — in the process environment, then, on Windows, in the user
+scope (`HKCU\Environment`), read and never copied into the run's process, so what a run starts (a
+shell tool, a stdio MCP server, the code sandbox) inherits no key it did not have
+([configuration](../reference/configuration.md#the-api-key-apikey-apikeyenvvar)).
+
+The reference may name **any** variable. A settings file is trusted configuration already: it
+declares the stdio MCP servers whose command the runner starts, and it directs the key to its own
+`BaseUrl`. A hostile file placed beside a crew could name another variable and send it to its
+endpoint — and it could already do worse. Restricting the reference to the provider's conventional
+names would refuse a variable an operator chose, against a risk the file opens otherwise. What the
+reference does guarantee is discretion: no message, log line or `orkeon doctor` row repeats its
+value — a key pasted into `ApiKeyEnvVar` by mistake must not reach a log —, they name its
+configuration path (`Llm:Profiles:z-ai:ApiKeyEnvVar`). A value that cannot be a variable's name (an
+`=`, a space, a line break) refuses the start, by its path; an `ApiKey` written as a `${NAME}`
+placeholder — which nothing ever expanded, so the text went out as the key — refuses it too.
+
 ## Resilience
 
 `ResiliencePolicies` (`Orkeon.Infrastructure.Resilience`) holds the two Polly policies on the execution path:

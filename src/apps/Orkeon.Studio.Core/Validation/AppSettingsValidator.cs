@@ -267,11 +267,13 @@ public sealed class AppSettingsValidator
         if (document.Llm.ApiKey is { Length: > 0 } apiKey
             && !string.Equals(apiKey, LlmPresets.DockerModelRunnerApiKeyPlaceholder, StringComparison.Ordinal))
         {
+            // STUDIO-49: a key the configuration resolves wins, so this one also masks the
+            // variable Llm:ApiKeyEnvVar names — and no election removes it: it is not Studio's.
             messages.Add(ValidationMessage.Information(
                 ValidationCodes.InlineApiKey,
-                "The API key is stored in clear text in this file. Prefer the " +
-                $"{LlmPresets.DefaultApiKeyEnv} environment variable, which the runtime reads " +
-                "with precedence over the file.",
+                "The API key is stored in clear text in this file, and it masks Llm:ApiKeyEnvVar: a key " +
+                "the configuration holds wins over the variable the reference names. Prefer removing it — " +
+                $"name the variable that holds the key in ApiKeyEnvVar, or set {LlmPresets.DefaultApiKeyEnv}.",
                 "Llm:ApiKey"));
         }
     }

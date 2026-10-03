@@ -99,13 +99,27 @@ public sealed class ModelProfileSetTests
     }
 
     [Fact]
-    public void The_environment_overrides_carry_only_what_the_profile_sets()
+    public void The_environment_overrides_lay_every_default_field_blank_when_the_profile_leaves_it_unset()
     {
         var overrides = Profile("A").EnvironmentOverrides();
 
         Assert.Equal("qwen2.5:14b", overrides["ORKEON_Llm__Model"]);
         Assert.Equal("http://localhost:11434/v1", overrides["ORKEON_Llm__BaseUrl"]);
-        Assert.Empty(new ModelProfile { Name = "empty" }.EnvironmentOverrides());
+        // STUDIO-49 (decision 4): a profile laid in place of the default leaves nothing of the
+        // default through — its key, the variable holding it, its timeout: blank reads as absent.
+        Assert.Equal("", overrides["ORKEON_Llm__ApiKey"]);
+        Assert.Equal("", overrides["ORKEON_Llm__ApiKeyEnvVar"]);
+        Assert.Equal("", overrides["ORKEON_Llm__TimeoutSeconds"]);
+
+        var empty = new ModelProfile { Name = "empty" }.EnvironmentOverrides();
+        Assert.Equal(
+            [
+                "ORKEON_Llm__ApiKey", "ORKEON_Llm__ApiKeyEnvVar", "ORKEON_Llm__BaseUrl", "ORKEON_Llm__MaxTokens",
+                "ORKEON_Llm__Model", "ORKEON_Llm__Temperature", "ORKEON_Llm__Thinking__Effort",
+                "ORKEON_Llm__Thinking__Enabled", "ORKEON_Llm__TimeoutSeconds",
+            ],
+            empty.Keys.Order(StringComparer.Ordinal));
+        Assert.All(empty.Values, value => Assert.Equal("", value));
     }
 
     [Fact]
@@ -241,13 +255,13 @@ public sealed class ProfileTemperatureTests
         var fractional = profile with { Temperature = 0.7 };
         Assert.Equal("0.7", fractional.EnvironmentOverrides()["ORKEON_Llm__Temperature"]);
 
-        // No pin, no override: the engine keeps its own default.
+        // No pin: blank, so the engine keeps its own default — not the default setting's pin.
         var unpinned = profile with { Temperature = null };
-        Assert.False(unpinned.EnvironmentOverrides().ContainsKey("ORKEON_Llm__Temperature"));
+        Assert.Equal("", unpinned.EnvironmentOverrides()["ORKEON_Llm__Temperature"]);
     }
 
     [Fact]
-    public void The_thinking_switch_and_effort_ride_the_launch_only_when_pinned()
+    public void The_thinking_switch_and_effort_ride_the_launch_blank_when_unpinned()
     {
         // LLM-11: the knob the run of 2026-09-20 could not reach from Studio.
         var profile = new ModelProfile { Name = "Kimi", Model = "kimi-k2.6", ThinkingEnabled = false, ThinkingEffort = " high " };
@@ -259,20 +273,18 @@ public sealed class ProfileTemperatureTests
         Assert.Equal("true", (profile with { ThinkingEnabled = true }).EnvironmentOverrides()["ORKEON_Llm__Thinking__Enabled"]);
 
         var unpinned = (profile with { ThinkingEnabled = null, ThinkingEffort = "  " }).EnvironmentOverrides();
-        Assert.False(unpinned.ContainsKey("ORKEON_Llm__Thinking__Enabled"));
-        Assert.False(unpinned.ContainsKey("ORKEON_Llm__Thinking__Effort"));
+        Assert.Equal("", unpinned["ORKEON_Llm__Thinking__Enabled"]);
+        Assert.Equal("", unpinned["ORKEON_Llm__Thinking__Effort"]);
     }
 
     [Fact]
-    public void The_pinned_timeout_rides_the_launch_and_a_non_positive_one_does_not()
+    public void The_pinned_timeout_rides_the_launch_and_an_unpinned_one_is_blank()
     {
         var profile = new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", TimeoutSeconds = 180 };
 
         Assert.Equal("180", profile.EnvironmentOverrides()["ORKEON_Llm__TimeoutSeconds"]);
-        Assert.False((profile with { TimeoutSeconds = null }).EnvironmentOverrides()
-            .ContainsKey("ORKEON_Llm__TimeoutSeconds"));
-        Assert.False((profile with { TimeoutSeconds = 0 }).EnvironmentOverrides()
-            .ContainsKey("ORKEON_Llm__TimeoutSeconds"));
+        Assert.Equal("", (profile with { TimeoutSeconds = null }).EnvironmentOverrides()["ORKEON_Llm__TimeoutSeconds"]);
+        Assert.Equal("", (profile with { TimeoutSeconds = 0 }).EnvironmentOverrides()["ORKEON_Llm__TimeoutSeconds"]);
     }
 
     /// <summary>
@@ -280,15 +292,15 @@ public sealed class ProfileTemperatureTests
     /// leaves the engine to send the model's documented maximum (LLM-10).
     /// </summary>
     [Fact]
-    public void The_pinned_max_tokens_ride_the_launch_and_a_non_positive_value_does_not()
+    public void The_pinned_max_tokens_ride_the_launch_and_an_unpinned_cap_is_blank()
     {
         var profile = new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", MaxTokens = 32768 };
 
         Assert.Equal("32768", profile.EnvironmentOverrides()["ORKEON_Llm__MaxTokens"]);
-        Assert.False((profile with { MaxTokens = null }).EnvironmentOverrides()
-            .ContainsKey("ORKEON_Llm__MaxTokens"));
-        Assert.False((profile with { MaxTokens = 0 }).EnvironmentOverrides()
-            .ContainsKey("ORKEON_Llm__MaxTokens"));
+        // Unpinned: blank (STUDIO-49), so the engine sends the model's maximum — not the
+        // default setting's cap.
+        Assert.Equal("", (profile with { MaxTokens = null }).EnvironmentOverrides()["ORKEON_Llm__MaxTokens"]);
+        Assert.Equal("", (profile with { MaxTokens = 0 }).EnvironmentOverrides()["ORKEON_Llm__MaxTokens"]);
     }
 
     [Fact]

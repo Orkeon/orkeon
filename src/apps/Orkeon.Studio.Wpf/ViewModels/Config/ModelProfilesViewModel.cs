@@ -93,6 +93,25 @@ public sealed class ModelProfileItemViewModel : ObservableObject
     public bool IsHostIdIssue => HostProfileText.IsIssue(_host);
 
     /// <summary>
+    /// The expert line of a setting that keeps its key in <c>ORKEON_Llm__ApiKey</c> without being
+    /// the default (STUDIO-49, decision 7): that variable is the runtime's own key of the default,
+    /// so every run of the user reads this key as its default's, whatever the endpoint — and how to
+    /// take it back. The « Compatible OpenAI » card used that variable before; a setting created
+    /// since keeps its key in <see cref="LlmPresets.CustomApiKeyEnv"/>. Null otherwise.
+    /// </summary>
+    public string? DefaultKeyVariableWarning =>
+        !IsDefault && string.Equals(Profile.KeyEnvName?.Trim(), LlmPresets.DefaultApiKeyEnv, StringComparison.OrdinalIgnoreCase)
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.ProfileDefaultKeyVariableWarning],
+                LlmPresets.DefaultApiKeyEnv,
+                LlmPresets.CustomApiKeyEnv)
+            : null;
+
+    /// <summary>Whether that line shows (in expert mode).</summary>
+    public bool HasDefaultKeyVariableWarning => DefaultKeyVariableWarning is not null;
+
+    /// <summary>
     /// What the profile's account has left, when a read of this session told it (STUDIO-35
     /// D-04): the amounts as the provider returned them; null when nothing was read, or the
     /// provider does not tell.
@@ -133,8 +152,9 @@ public sealed class ModelProfileItemViewModel : ObservableObject
     internal void RefreshBalance() =>
         OnPropertiesChanged(nameof(Balance), nameof(HasBalance), nameof(IsBalanceLow), nameof(BalanceTip));
 
-    /// <summary>The language switched: the host profile line says it again.</summary>
-    internal void RefreshHostId() => OnPropertiesChanged(nameof(HostIdText), nameof(HasHostIdText));
+    /// <summary>The language switched: the host profile line and the key warning say it again.</summary>
+    internal void RefreshHostId() =>
+        OnPropertiesChanged(nameof(HostIdText), nameof(HasHostIdText), nameof(DefaultKeyVariableWarning));
 }
 
 /// <summary>
@@ -316,6 +336,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             ShowBalance(null);
             OnPropertyChanged(nameof(RequiresApiKey));
             OnPropertyChanged(nameof(ApiKeyEnvName));
+            OnPropertyChanged(nameof(HostKeyHint));     // the card's own variable (STUDIO-49)
             OnPropertyChanged(nameof(HasStoredKey));
             OnPropertyChanged(nameof(KeyStatusText));
             OnPropertyChanged(nameof(KeyBlockTitle));
@@ -527,13 +548,14 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             : null;
 
     /// <summary>
-    /// The expert line of the key block: the variable a terminal <c>orkeon run</c> reads this
-    /// setting's key from — the settings file never holds it. Null when no crew can name the
-    /// setting, or when it needs no key.
+    /// The expert line of the key block: the variable a run outside Studio — a terminal, a
+    /// scheduled team — reads this setting's key from: the one Studio remembers it in, which the
+    /// settings file names (<c>ApiKeyEnvVar</c>, STUDIO-49) — never the key. Null when no crew can
+    /// name the setting, or when it needs no key.
     /// </summary>
     public string? HostKeyHint =>
-        RequiresApiKey && HostProfile is { IsOffered: true, Id: { } id }
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileHostKeyHint], ModelProfile.HostKeyVariable(id))
+        RequiresApiKey && HostProfile is { IsOffered: true }
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileHostKeyHint], ApiKeyEnvName)
             : null;
 
     private void OnHostProfileChanged() =>
@@ -909,10 +931,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 /// The model-settings tab: the named, reusable model settings of this machine, the default
 /// election, and the profile Studio's own assistant runs on. Every mutation is persisted to
 /// the store immediately (its file is Studio state, like the history); electing a default
-/// additionally mirrors it into the settings document's <c>Llm</c> section, which is what the
-/// CLI reads when it runs outside Studio, and every setting that names a provider is mirrored
-/// into <c>Llm:Profiles:&lt;id&gt;</c>, without its key — the host profile a crew names with
-/// <c>profile: &lt;id&gt;</c> (STUDIO-48). Both writes go through the ordinary dirty/save cycle of
+/// additionally mirrors it — whole — into the settings document's <c>Llm</c> section, which is
+/// what the CLI reads when it runs outside Studio, and every setting that names a provider is
+/// mirrored into <c>Llm:Profiles:&lt;id&gt;</c> — the host profile a crew names with
+/// <c>profile: &lt;id&gt;</c> (STUDIO-48). Neither carries a key: each names the variable that
+/// holds it (<c>ApiKeyEnvVar</c>, STUDIO-49), which a run outside Studio reads. Both writes go through the ordinary dirty/save cycle of
 /// the settings screen. The entries of <c>Llm:Profiles</c> no setting owns are listed read-only,
 /// and the RAG's model (<c>Orkeon:Rag:LlmProfile</c>) is chosen among all of them.
 /// </summary>
@@ -995,15 +1018,24 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// The <c>ORKEON_Llm__*</c> overrides a launch under <paramref name="profile"/> lays over its
     /// child process — the key resolved through the key store (STUDIO-44), so a key held only in
     /// the user scope reaches the child as well as one in Studio's own environment — on top of
-    /// <see cref="LaunchEnvironment"/>, every setting as the host profile a crew may name.
+    /// <see cref="LaunchEnvironment"/>, every setting as the host profile a crew may name. A
+    /// profile that runs in place of the elected default lays every field, blank when it leaves it
+    /// unset (STUDIO-49, decision 4): nothing of the default — its key, the variable holding it —
+    /// reaches another endpoint. The elected default itself lays what it sets: the section already
+    /// is that setting, and a key the file holds there is its own.
     /// </summary>
     public IReadOnlyDictionary<string, string> LaunchEnvironmentOf(ModelProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
+        var isDefault = string.Equals(profile.Name, _set.DefaultProfile, StringComparison.Ordinal);
         var environment = new Dictionary<string, string>(LaunchEnvironment(), StringComparer.Ordinal);
         foreach (var (key, value) in profile.EnvironmentOverrides(_keyStore.Peek))
-            environment[key] = value;
+        {
+            if (!isDefault || value.Length > 0)
+                environment[key] = value;
+        }
+
         return environment;
     }
 
@@ -1272,11 +1304,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
         if (_set.Default is not { } profile)
             return;
 
-        // Mirrored into the Llm section so that a bare orkeon run follows the same election.
-        // The write lands in the settings document and travels through the screen's own edit
-        // then save cycle: Studio never saves the settings file behind the user's back.
-        _llm.Model = profile.Model;
-        _llm.BaseUrl = profile.BaseUrl;
+        // Mirrored into the Llm section so that a bare orkeon run follows the same election —
+        // whole (STUDIO-49): its timeout, its thinking switch and the variable holding its key,
+        // not the model and the endpoint alone. The write lands in the settings document and
+        // travels through the screen's own edit then save cycle: Studio never saves the settings
+        // file behind the user's back.
+        _llm.ElectDefault(profile);
     }
 
     private void Rebuild()

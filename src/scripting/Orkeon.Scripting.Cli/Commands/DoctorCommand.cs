@@ -2,6 +2,7 @@ using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Rag.Onnx.Model;
 using Orkeon.Scripting.Toolchain;
 
@@ -166,6 +168,8 @@ internal static class DoctorCommand
             CheckDotnetRuntime(),
             CheckAppSettings(llm),
             CheckLlmConfig(llm),
+            CheckLlmProfiles(llm),
+            .. CheckLlmProfileKeys(llm),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
             await CheckEsbuildAsync(llm.Configuration, ct).ConfigureAwait(false),
             CheckLocalEmbeddings(),
@@ -183,9 +187,20 @@ internal static class DoctorCommand
         public bool HasLlmSection { get; init; }
         public string? Model { get; init; }
         public string? BaseUrl { get; init; }
+        /// <summary>The default's key as a run resolves it — the configuration, else the variable <c>ApiKeyEnvVar</c> names.</summary>
         public string? ApiKey { get; init; }
+        /// <summary>Where that key comes from (<see cref="LlmSettings.DescribeApiKey(IConfigurationSection)"/>) — never the key.</summary>
+        public string? ApiKeySource { get; init; }
+        /// <summary>Why the <c>Llm</c> section cannot be read: the runner would refuse to start on it.</summary>
+        public string? SettingsError { get; init; }
         public string? ProviderTypeName { get; init; }
         public string? ProviderDisplayName { get; init; }
+        /// <summary>Each profile of <c>Llm:Profiles</c> and where its key comes from.</summary>
+        public IReadOnlyList<(string Name, string ApiKeySource)> Profiles { get; init; } = [];
+        /// <summary>Why <c>Llm:Profiles</c> cannot be read: the runner would refuse to start on it.</summary>
+        public string? ProfilesError { get; init; }
+        /// <summary>The <c>ApiKeyEnvVar</c> paths naming a variable set nowhere (<see cref="LlmSettings.UnresolvedApiKeyReferences(IConfiguration)"/>).</summary>
+        public IReadOnlyList<string> UnresolvedReferences { get; init; } = [];
         /// <summary>The settings file plus the <c>ORKEON_</c> variables, as a runner reads them.</summary>
         public required IConfiguration Configuration { get; init; }
     }
@@ -197,32 +212,38 @@ internal static class DoctorCommand
         var settingsPath = RunnerSettings.ResolveSettingsPath(null, cwd, quiet: true);
 
         var configuration = RunnerSettings.ReadConfiguration(settingsPath);
+        var context = ReadLlmProfiles(new LlmContext { SettingsPath = settingsPath, Configuration = configuration });
+
+        // The runner's own reading (WIN-01): no default — no section, profiles alone, every
+        // value blank — is the echo provider.
+        if (!LlmSettings.HasDefault(configuration))
+            return context;
 
         var section = configuration.GetSection(ConfigurationKeys.LlmSection);
-        if (!section.Exists())
-            return new LlmContext { SettingsPath = settingsPath, HasLlmSection = false, Configuration = configuration };
+        var model = Blank(section["Model"]);
+        var baseUrl = Blank(section["BaseUrl"]);
+        context = context with { HasLlmSection = true, Model = model, BaseUrl = baseUrl };
 
-        var model = section["Model"];
-        var baseUrl = section["BaseUrl"];
-        var context = new LlmContext
+        // The key as a run resolves it (STUDIO-49) — LlmSettings, the reader the runners use,
+        // rather than a second reading of Llm:ApiKey that would miss ApiKeyEnvVar.
+        LlmConfig settings;
+        try
         {
-            SettingsPath = settingsPath,
-            HasLlmSection = true,
-            Configuration = configuration,
-            Model = model,
-            BaseUrl = baseUrl,
-            ApiKey = section["ApiKey"],
-        };
+            settings = LlmSettings.ReadDefault(configuration);
+            context = context with { ApiKey = ApiKeyOf(settings), ApiKeySource = LlmSettings.DescribeApiKey(section) };
+        }
+        catch (InvalidOperationException ex)
+        {
+            return context with { SettingsError = ex.Message };
+        }
 
         // Reuse the factory's own inference (BaseUrl → model → key) instead of duplicating it.
         try
         {
             var config = LlmConfig.Create(model ?? "gpt-4") with
             {
-                BaseUrl = baseUrl is not null ? new Uri(baseUrl) : null,
-#pragma warning disable CS0618 // doctor inspects the raw config, no secret store involved
-                ApiKey = section["ApiKey"],
-#pragma warning restore CS0618
+                BaseUrl = settings.BaseUrl,
+                ApiKey = context.ApiKey,
             };
             using var httpFactory = new CliHttpClientFactory();
             var factory = new LlmProviderFactory(httpFactory, NullLoggerFactory.Instance);
@@ -243,6 +264,34 @@ internal static class DoctorCommand
 
         return context;
     }
+
+    /// <summary>
+    /// The profiles as the runner reads them — validated, so a profile the host would refuse is a
+    /// failed check here — with where each key comes from, and the references set nowhere.
+    /// </summary>
+    private static LlmContext ReadLlmProfiles(LlmContext context)
+    {
+        try
+        {
+            var profiles = LlmSettings.ReadProfiles(context.Configuration);
+            var section = context.Configuration.GetSection(ConfigurationKeys.LlmSection).GetSection(ConfigurationKeys.LlmProfiles);
+            return context with
+            {
+                Profiles = [.. profiles.Select(p => (p.Name, LlmSettings.DescribeApiKey(section.GetSection(p.Name))))],
+                UnresolvedReferences = LlmSettings.UnresolvedApiKeyReferences(context.Configuration),
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            return context with { ProfilesError = ex.Message };
+        }
+    }
+
+#pragma warning disable CS0618 // ApiKey is the field every provider reads.
+    private static string? ApiKeyOf(LlmConfig config) => config.ApiKey;
+#pragma warning restore CS0618
+
+    private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     private static string ToDisplayName(string providerTypeName) =>
         providerTypeName
@@ -300,14 +349,62 @@ internal static class DoctorCommand
             };
         }
 
+        if (llm.SettingsError is { } error)
+        {
+            // The runner refuses to start on this section: a failure, with the key to fix.
+            return new DoctorCheckResult { Check = "llm-config", Status = StatusFail, Detail = error };
+        }
+
+        // STUDIO-49: where the key comes from — the configuration, the variable ApiKeyEnvVar
+        // names, none —, never the key nor the variable's name; a reference set nowhere warns.
+        var unresolved = llm.UnresolvedReferences.Contains(DefaultApiKeyReference, StringComparer.Ordinal);
         var provider = llm.ProviderDisplayName ?? "unrecognised";
         return new DoctorCheckResult
         {
             Check = "llm-config",
-            Status = llm.ProviderDisplayName is not null ? StatusOk : StatusWarn,
-            Detail = $"provider {provider}, model {llm.Model ?? "(default)"}, endpoint {llm.BaseUrl ?? "(provider default)"}",
+            Status = llm.ProviderDisplayName is not null && !unresolved ? StatusOk : StatusWarn,
+            Detail = $"provider {provider}, model {llm.Model ?? "(default)"}, endpoint {llm.BaseUrl ?? "(provider default)"}, " +
+                     $"API key {llm.ApiKeySource}",
         };
     }
+
+    private static readonly CompositeFormat UnresolvedApiKeyReferenceFormat =
+        CompositeFormat.Parse(OperatorMessages.LlmApiKeyReferenceUnresolved);
+
+    /// <summary>The path of the default profile's key reference.</summary>
+    private const string DefaultApiKeyReference = ConfigurationKeys.LlmSection + ":" + ConfigurationKeys.LlmApiKeyEnvVar;
+
+    /// <summary>One line covers <c>Llm:Profiles</c>: each profile a crew may name, and where its key comes from.</summary>
+    private static DoctorCheckResult CheckLlmProfiles(LlmContext llm)
+    {
+        if (llm.ProfilesError is { } error)
+            return new DoctorCheckResult { Check = "llm-profiles", Status = StatusFail, Detail = error };
+
+        if (llm.Profiles.Count == 0)
+            return new DoctorCheckResult { Check = "llm-profiles", Status = StatusOk, Detail = "none configured (Llm:Profiles)" };
+
+        return new DoctorCheckResult
+        {
+            Check = "llm-profiles",
+            Status = StatusOk,
+            Detail = $"{llm.Profiles.Count} profile(s): " +
+                     string.Join("; ", llm.Profiles.Select(p => $"{p.Name} — API key {p.ApiKeySource}")),
+        };
+    }
+
+    /// <summary>
+    /// One warning line per profile whose <c>ApiKeyEnvVar</c> names a variable set nowhere: every
+    /// call on it answers that an API key is required. The path, never the name it holds.
+    /// </summary>
+    private static IEnumerable<DoctorCheckResult> CheckLlmProfileKeys(LlmContext llm) =>
+        llm.UnresolvedReferences
+            .Where(reference => !string.Equals(reference, DefaultApiKeyReference, StringComparison.Ordinal))
+            .Select(reference => new DoctorCheckResult
+            {
+                Check = "llm-profile-key",
+                Status = StatusWarn,
+                Detail = string.Format(CultureInfo.InvariantCulture, UnresolvedApiKeyReferenceFormat, reference),
+            });
 
     private static async Task<DoctorCheckResult> CheckLlmReachabilityAsync(LlmContext llm, CancellationToken ct)
     {
@@ -315,6 +412,9 @@ internal static class DoctorCommand
 
         if (!llm.HasLlmSection)
             return new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = "skipped (no Llm section configured)" };
+
+        if (llm.SettingsError is not null)
+            return new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = "skipped (the Llm section cannot be read — see llm-config)" };
 
         var catalogKey = llm.ProviderTypeName is not null
             ? CatalogKeyByProviderType.GetValueOrDefault(llm.ProviderTypeName)

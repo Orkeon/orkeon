@@ -174,6 +174,96 @@ Migration: rename `FunctionCallingLlm` to `Llm`; an `ILlmProfileRegistry` of you
 keep the agent's provider or its profile, not both; give a MAF agent's tool to the MAF agent itself, or
 hand the MAF agent to an Orkeon agent as a tool (`WithAgentFrameworkTool`).
 
+### Fixed — outside Studio, a run finds the key of its setting: the settings file names the variable, never the key **[breaking]**
+
+Studio remembered a setting's key under the provider's variable (`ZAI_API_KEY`, `DEEPSEEK_API_KEY`),
+in the user scope (STUDIO-44), and the runtime never read those names: it read `Llm:ApiKey` —
+`ORKEON_Llm__ApiKey` — and, for a profile, `ORKEON_Llm__Profiles__<id>__ApiKey`, which only a Studio
+launch set. A terminal `orkeon run`, an `orkeon-host` started by the user, `orkeon-repl` and above all
+a team Studio scheduled (STUDIO-27) ran without a key: every call answered "API key is required", and
+the run exited 2 (STUDIO-49).
+
+- **The file names the variable.** Every section of the `Llm` shape — `Llm` and each
+  `Llm:Profiles:<id>` — gains `ApiKeyEnvVar`: the name of the environment variable that holds its
+  key, never the key. `LlmSettings` reads it when the configuration resolves no `ApiKey` (the file's,
+  `ORKEON_Llm__ApiKey`, `ORKEON_Llm__Profiles__<id>__ApiKey`, a Studio launch's — they still win, so
+  no existing installation changes): in the process environment, then, on Windows, in the user scope
+  where Studio remembers keys — read, never copied into the process, so what a run starts inherits no
+  key it did not have; a user scope that cannot be read counts as an absent variable. A reference
+  that cannot be a variable's name (an `=`, a space, a line break) refuses the host start, naming its
+  path and never its value. `ConfigurationKeys.LlmApiKeyEnvVar` (`Orkeon.Constants.Configuration`,
+  ADR-009) spells it for the runtime, `doctor`, `init` and Studio.
+- **Where each key came from, never the key.** The runner host's `LLM resolved:` line ends with
+  `apiKey=<source>` — `from configuration (Llm:ApiKey)`, `from the variable named by Llm:ApiKeyEnvVar
+  (process environment)` or `(user environment)`, `none` —, one `LLM profile <id>: apiKey=…` line
+  follows per profile, and a reference to a variable set nowhere is warned about once per host build,
+  by its configuration path, on the logger and on stderr (`OperatorMessages.LlmApiKeyReferenceUnresolved`).
+  No message repeats the value of `ApiKeyEnvVar`: it may be a key pasted in the wrong field.
+  `LlmSettings.DescribeApiKey` and `LlmSettings.UnresolvedApiKeyReferences` are the public surface.
+- **Blank reads as absent.** A value left blank in a section of the `Llm` shape — `Thinking:Effort`
+  included — reads as absent, and a section whose every value is blank configures no default: the
+  echo provider, with the WIN-01 warning.
+- **Studio writes the reference, and the default whole.** Each `Llm:Profiles:<id>` entry Studio owns
+  names the setting's variable (none for a setting without a key). The election writes the elected
+  setting into `Llm` whole — `BaseUrl`, `Model`, `ApiKeyEnvVar`, `Temperature`, `TimeoutSeconds`,
+  `MaxTokens`, `Thinking`, a field it leaves unset removing its key — where it wrote the model and the
+  endpoint alone: a team scheduled on DeepSeek ran on the engine's 30 s, not on the 600 s Studio
+  pre-fills. `ApiKey`, `MaxRetries`, `Grammar`, `AvailableModels` and `Profiles` stay. A team launched
+  on another setting than the default lays every modeled `ORKEON_Llm__*` field over its child, its
+  value or blank, `ORKEON_Llm__ApiKeyEnvVar` included: a team on Z.AI whose key is not remembered fails
+  without a key instead of sending the default's DeepSeek key to Z.AI. The editor's expert line names
+  the setting's own variable (`ModelProfile.HostKeyVariable` is gone).
+- **« Other OpenAI-compatible » gets a variable of its own.** A setting created from that card keeps
+  its key in `ORKEON_CUSTOM_LLM_API_KEY` (`LlmPresets.CustomApiKeyEnv`). It used `ORKEON_Llm__ApiKey`,
+  the runtime's own key of the default, which — remembered in the user scope — became the default key
+  of every run of the user and went to another vendor's address. A setting created before keeps its
+  variable, and its card says, in expert mode, what that variable is and how to take it back; nothing
+  migrates on its own.
+- **`orkeon init` and `orkeon-studio-config` write it too.** `orkeon init --api-key-env <name>` writes
+  `Llm:ApiKeyEnvVar: <name>` — nothing for `ORKEON_Llm__ApiKey`, which the runtime reads natively —
+  where it printed that the name was "only used by the probes". The TUI's presets write it, a preset
+  without a key removes it, its LLM form edits it, and its read-only list of profiles shows each one's
+  variable (`key: ZAI_API_KEY`).
+- **The REPL reads what the runners read.** `orkeon-repl` composed the default .NET host alone:
+  neither `ORKEON_Llm__ApiKey` — it read `Llm__ApiKey` — nor the global file `orkeon init` writes
+  reached it. It now reads the `--settings` files — else the global file, which a named file replaces
+  as for `orkeon run` —, then the `ORKEON_` variables, prefix removed, before the command line, and
+  logs once where each key comes from, with the runner's warning. `Orkeon.ConsoleApp` now references
+  `Orkeon.Hosting` for that path (`RunnerSettings.GetGlobalSettingsPath`, code that stays with the
+  runners rather than a copy): the `orkeon-repl` tool package carries four more assemblies —
+  `Orkeon.Hosting`, `Orkeon.Tools.EventHub`, `Orkeon.Constants.Cli` and `CommandLineParser` (MIT),
+  all of which the `orkeon` tool already ships.
+- **`orkeon doctor` reads the key a run would.** `llm-config` says where the default's key comes from,
+  warns when its reference resolves nothing and fails when the section cannot be read; a new
+  `llm-profiles` row covers the profiles, one `llm-profile-key` row warns per profile whose reference
+  resolves nothing, and `llm-reachability` queries the catalogue with the resolved key.
+- The ten `examples/appsettings/*.local.json.example` templates name their variable
+  (`"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`) instead of carrying `"ApiKey": "${DEEPSEEK_API_KEY}"`, which
+  nothing ever expanded.
+
+Documented in [Configuration](docs/reference/configuration.md#the-api-key-apikey-apikeyenvvar),
+[API keys: the variable per provider](docs/reference/llm-providers-comparison.md#api-keys-the-variable-per-provider),
+[CLI](docs/reference/cli.md), [Orkeon Studio](docs/architecture/studio.md),
+[The service host](docs/architecture/service-host.md),
+[Security](docs/architecture/security.md#llm-keys-the-settings-file-names-the-variable) and
+[Limitations](docs/reference/limitations.md).
+
+Breaking: an `ApiKey` written as a `${NAME}` placeholder — the old templates' shape, which went out as
+the key and came back a 401 — refuses the start, naming the fix, and so does an `ApiKeyEnvVar` that
+cannot be a variable's name; a blank value in a section of the `Llm` shape reads as absent, and a
+section whose every value is blank configures no default; a Studio launch on another setting than the
+default blanks every default field its setting does not set; `orkeon doctor` reports ten checks, plus
+one row per unresolved profile reference; new « Other OpenAI-compatible » settings keep their key in
+`ORKEON_CUSTOM_LLM_API_KEY`.
+
+Migration: replace `"ApiKey": "${NAME}"` with `"ApiKeyEnvVar": "NAME"`. A file Studio wrote before
+heals at one gesture: edit then save a model setting — its entries, and the `Llm` section of the
+elected one, are written again with their references. A « Compatible OpenAI » setting that keeps
+`ORKEON_Llm__ApiKey` is created again from its card — its key then goes to
+`ORKEON_CUSTOM_LLM_API_KEY` — and `ORKEON_Llm__ApiKey` removed from the user environment. On Linux and
+macOS, a scheduled team reads the variable from `~/.config/environment.d/*.conf` (the systemd user
+manager) or from a line at the top of the crontab — never from the shell profile.
+
 ### Fixed — a crew's manager applies where its mode uses one and is refused elsewhere, the planner's provider is metered, and a reference that names nothing fails the load **[breaking]**
 
 What a crew wrote about its manager, its planner and its tasks' references was read, then dropped

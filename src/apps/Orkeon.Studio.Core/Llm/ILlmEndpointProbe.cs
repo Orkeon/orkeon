@@ -26,7 +26,7 @@ public sealed record LlmProbeRequest
 
     /// <summary>
     /// API key presented to the endpoint. Resolve it with
-    /// <see cref="LlmApiKeyResolver.Resolve(string?)"/> so a key held only in the
+    /// <see cref="LlmApiKeyResolver.Resolve(string?, string?)"/> so a key held only in the
     /// environment is used exactly as the runtime would use it.
     /// </summary>
     public string? ApiKey { get; init; }

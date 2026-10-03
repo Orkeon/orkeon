@@ -17,7 +17,13 @@ namespace Orkeon.Studio.Core.Tests.Profiles;
 /// <c>Llm:Profiles</c>, an entry written by hand beside them, the RAG on one of them — passes the
 /// profile validation the real runner host runs at start (<c>LlmSettings</c>, GAP-17, and the RAG
 /// profile check of GAP-19), and every profile is built on the key the environment carries: the
-/// one a Studio launch lays over its child, or the one variable a terminal user sets.
+/// one a Studio launch lays over its child, or — STUDIO-49 — the variable Studio remembers it in,
+/// which the file names, for a terminal run or a scheduled team. A team launched on another
+/// setting than the default never receives the default's key.
+/// <para>
+/// The variables these tests set carry a unique name (<c>ORKEON_TEST_&lt;guid&gt;</c>), which the
+/// test's setting takes as its <see cref="ModelProfile.KeyEnvName"/>: the suites run in parallel.
+/// </para>
 /// </summary>
 public sealed class HostLlmProfilesRunnerHostTests : IDisposable
 {
@@ -49,6 +55,35 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
         KeyEnvName = "ZAI_API_KEY",
         ThinkingEnabled = false,
     };
+
+    private static readonly ModelProfile Ollama = new()
+    {
+        Name = "Local",
+        Provider = "Ollama",
+        BaseUrl = "http://localhost:11434",
+        Model = "qwen3",
+    };
+
+    private static string UniqueVariable() => "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+
+    /// <summary>
+    /// Writes the settings file Studio writes once <paramref name="settings"/> exist, the first one
+    /// elected default — its whole entry in <c>Llm</c> (STUDIO-49) — and returns its path.
+    /// </summary>
+    private async Task<(string Path, ModelProfileSet Set)> WriteElectedSettingsAsync(params ModelProfile[] settings)
+    {
+        var document = AppSettingsDocument.Parse("""{ "RaggableTree": { "Enabled": false } }""");
+        var set = settings.Aggregate(ModelProfileSet.Empty, (current, setting) => current.Upsert(setting));
+        HostLlmProfiles.Mirror(document, ModelProfileSet.Empty, set);
+        HostLlmProfiles.ElectDefault(document, set.Default!);
+
+        var path = Path.Combine(_root, AppSettingsDocument.FileName);
+        await AppSettingsFile.SaveAsync(document, path, TestContext.Current.CancellationToken);
+        KeyTripwire.AssertNamesNoKey(
+            await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken),
+            [.. settings.Select(setting => setting.KeyEnvName).OfType<string>()]);
+        return (path, set);
+    }
 
     /// <summary>Writes the settings file the way Studio does, and returns its path.</summary>
     private async Task<(string Path, ModelProfileSet Set)> WriteStudioSettingsAsync()
@@ -99,8 +134,8 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
     public async Task A_file_studio_wrote_starts_the_host_and_a_studio_launch_brings_each_profile_its_key()
     {
         var (settingsPath, set) = await WriteStudioSettingsAsync();
-        Assert.DoesNotContain("ApiKey", await File.ReadAllTextAsync(settingsPath, TestContext.Current.CancellationToken),
-            StringComparison.OrdinalIgnoreCase);
+        KeyTripwire.AssertNamesNoKey(
+            await File.ReadAllTextAsync(settingsPath, TestContext.Current.CancellationToken), "DEEPSEEK_API_KEY", "ZAI_API_KEY");
         var keys = new FakeApiKeyStore();
         keys.Stage("DEEPSEEK_API_KEY", "sk-ds");
         keys.Stage("ZAI_API_KEY", "sk-zai");
@@ -123,19 +158,82 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
     }
 
     [Fact]
-    public async Task A_terminal_run_on_the_same_file_needs_only_the_key_variable_of_each_profile()
+    public async Task A_terminal_run_on_the_same_file_needs_only_the_variable_studio_remembers_each_key_in()
     {
-        var (settingsPath, _) = await WriteStudioSettingsAsync();
-        var terminal = new Dictionary<string, string>(StringComparer.Ordinal)
+        // STUDIO-49: no ORKEON_Llm__* at all — a terminal, a scheduled team: only the provider's
+        // variables, where Studio remembers the keys, which the file names.
+        var deepseekVariable = UniqueVariable();
+        var zaiVariable = UniqueVariable();
+        var (settingsPath, _) = await WriteElectedSettingsAsync(
+            DeepSeek with { KeyEnvName = deepseekVariable }, Zai with { KeyEnvName = zaiVariable });
+        Environment.SetEnvironmentVariable(deepseekVariable, "sk-ds-terminal");
+        Environment.SetEnvironmentVariable(zaiVariable, "sk-zai-terminal");
+        try
         {
-            [ModelProfile.HostKeyVariable("deepseek")] = "sk-ds-terminal",
-        };
+            using var host = Build(settingsPath, new Dictionary<string, string>(StringComparer.Ordinal));
 
-        using var host = Build(settingsPath, terminal);
+            var profiles = host.Services.GetRequiredService<ILlmProfileRegistry>();
+            var deepseek = profiles.Resolve("deepseek").Provider.BaseConfig!;
+            Assert.Equal("sk-ds-terminal", deepseek.ApiKey);
+            Assert.Equal("deepseek-v4-flash", deepseek.Model);
+            Assert.Equal(new Uri("https://api.deepseek.com"), deepseek.BaseUrl);
+            Assert.Equal("sk-zai-terminal", profiles.Resolve("z-ai").Provider.BaseConfig!.ApiKey);
 
-        var deepseek = host.Services.GetRequiredService<ILlmProfileRegistry>().Resolve("deepseek").Provider.BaseConfig!;
-        Assert.Equal("sk-ds-terminal", deepseek.ApiKey);
-        Assert.Equal("deepseek-v4-flash", deepseek.Model);
-        Assert.Equal(new Uri("https://api.deepseek.com"), deepseek.BaseUrl);
+            // The default is the election, written whole: its key the same way, and its 600 s.
+            var elected = profiles.Resolve(null).Provider.BaseConfig!;
+            Assert.Equal("sk-ds-terminal", elected.ApiKey);
+            Assert.Equal(new Uri("https://api.deepseek.com"), elected.BaseUrl);
+            Assert.Equal(600, elected.TimeoutSeconds);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(deepseekVariable, null);
+            Environment.SetEnvironmentVariable(zaiVariable, null);
+        }
+    }
+
+    /// <summary>
+    /// Decision 4, with the real runner host: a team launched on another setting than the default
+    /// lays every default field, blank when its setting leaves it unset — the default's key and
+    /// the variable holding it first. A team on Z.AI whose key is not remembered fails without a
+    /// key instead of sending the DeepSeek key of the default to Z.AI.
+    /// </summary>
+    [Theory]
+    [InlineData("Z.AI", false)]
+    [InlineData("Local", false)]
+    [InlineData("Z.AI", true)]
+    public async Task A_team_launched_on_another_setting_never_receives_the_key_of_the_default(string teamSetting, bool keyRemembered)
+    {
+        var deepseekVariable = UniqueVariable();
+        // Unique, and never set: a machine that really holds ZAI_API_KEY must not answer for Studio.
+        var zaiVariable = UniqueVariable();
+        var (settingsPath, set) = await WriteElectedSettingsAsync(
+            DeepSeek with { KeyEnvName = deepseekVariable }, Zai with { KeyEnvName = zaiVariable }, Ollama);
+        // The default's key, where Studio remembers it: in every process of the user.
+        Environment.SetEnvironmentVariable(deepseekVariable, "sk-ds-default");
+        try
+        {
+            var keys = new FakeApiKeyStore();
+            keys.Stage(deepseekVariable, "sk-ds-default");
+            if (keyRemembered)
+                keys.Stage(zaiVariable, "sk-zai");
+            var team = set.Find(teamSetting)!;
+            var launch = new Dictionary<string, string>(HostLlmProfiles.LaunchEnvironment(set, keys.Peek), StringComparer.Ordinal);
+            foreach (var (key, value) in team.EnvironmentOverrides(keys.Peek))
+                launch[key] = value;
+
+            using var host = Build(settingsPath, launch);
+
+            var runsOn = host.Services.GetRequiredService<ILlmProfileRegistry>().Resolve(null).Provider.BaseConfig!;
+            Assert.Equal(new Uri(team.BaseUrl!), runsOn.BaseUrl);
+            Assert.Equal(team.Model, runsOn.Model);
+            Assert.Equal(keyRemembered ? "sk-zai" : null, runsOn.ApiKey);
+            // What the team's setting leaves unset is not the default's either: no 600 s.
+            Assert.Null(runsOn.TimeoutSeconds);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(deepseekVariable, null);
+        }
     }
 }

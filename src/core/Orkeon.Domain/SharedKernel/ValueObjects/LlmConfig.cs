@@ -40,9 +40,12 @@ public sealed record LlmConfig
     /// without it is treated as unconfigured.
     /// </summary>
     /// <remarks>
-    /// Keep the value out of source and out of crew YAML: bind it from the settings file
-    /// (<c>Llm:ApiKey</c>) or from the environment (<c>ORKEON_Llm__ApiKey</c>), which is
-    /// what the runners already do.
+    /// Keep the value out of source and out of crew YAML: bind it from the environment
+    /// (<c>ORKEON_Llm__ApiKey</c>), or name the variable that holds it in the settings file
+    /// (<c>Llm:ApiKeyEnvVar</c>, and <c>Llm:Profiles:&lt;name&gt;:ApiKeyEnvVar</c> per profile),
+    /// which is what the runners read — a key the configuration resolves first, then the named
+    /// variable, in the process environment and then the user's on Windows (STUDIO-49).
+    /// <c>Llm:ApiKey</c> in clear text in the file works, and is discouraged.
     /// </remarks>
     public string? ApiKey { get; init; }
 

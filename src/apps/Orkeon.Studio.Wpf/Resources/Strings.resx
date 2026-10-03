@@ -245,7 +245,7 @@
   <data name="Studio.Settings.ErrorUnknown" xml:space="preserve"><value>Unknown preset '{0}'. Supported: {1}.</value></data>
   <data name="Studio.Settings.GuidanceNone" xml:space="preserve"><value>No LLM configured: runs will use the &lt;undefined-llm&gt; echo provider. Configure one when you are ready.</value></data>
   <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve"><value>API key: kept out of the file — set it in your environment: export {0}=&lt;your-key&gt;</value></data>
-  <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve"><value>Note: the Orkeon runtime reads `{0}` natively; `{1}` is only read by the `orkeon init` / `orkeon llm` probes.</value></data>
+  <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve"><value>The settings file names this variable (Llm:ApiKeyEnvVar), and every run reads `{0}` from its environment — the key itself never goes in the file.</value></data>
   <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve"><value>WARNING: the API key is stored in plain text in the generated file. Prefer leaving it out and setting {0} in the environment — the runtime reads it with precedence over the file.</value></data>
   <data name="Studio.Settings.Step1Title" xml:space="preserve"><value>Explicit path</value></data>
   <data name="Studio.Settings.Step1Desc" xml:space="preserve"><value>The file passed to the runner with --settings. If it does not exist, resolution stops and the runtime falls back to environment variables only.</value></data>
@@ -276,7 +276,7 @@
   <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve"><value>{0} error(s), {1} warning(s).</value></data>
   <data name="Studio.Settings.NoBaseUrl" xml:space="preserve"><value>No base URL — the runtime falls back to the echo provider.</value></data>
   <data name="Studio.Settings.CustomProvider" xml:space="preserve"><value>custom (host not in the known-endpoint table)</value></data>
-  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve"><value>Prefer the {0} environment variable: the runtime reads it with precedence over this file, so the key never has to be stored in clear text.</value></data>
+  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve"><value>Prefer keeping the key out of this file: name the environment variable that holds it in ApiKeyEnvVar — every run reads it — or set {0}, which the runtime reads with precedence over this file.</value></data>
   <data name="Studio.Settings.Testing" xml:space="preserve"><value>Testing the connection…</value></data>
   <data name="Studio.Settings.ProbeReachable" xml:space="preserve"><value>Endpoint reachable — {0} model(s).</value></data>
   <data name="Studio.Settings.ProbeReachableNoCount" xml:space="preserve"><value>Endpoint reachable.</value></data>
@@ -557,6 +557,8 @@
   <data name="Studio.Diagnostics.Check.dotnet-runtime" xml:space="preserve"><value>The .NET runtime</value></data>
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve"><value>The script compiler (esbuild)</value></data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve"><value>The model configuration</value></data>
+  <data name="Studio.Diagnostics.Check.llm-profile-key" xml:space="preserve"><value>The key of an LLM profile</value></data>
+  <data name="Studio.Diagnostics.Check.llm-profiles" xml:space="preserve"><value>The LLM profiles</value></data>
   <data name="Studio.Diagnostics.Check.llm-reachability" xml:space="preserve"><value>The connection to the model</value></data>
   <data name="Studio.Diagnostics.Check.local-embeddings" xml:space="preserve"><value>Local embeddings</value></data>
   <data name="Studio.Diagnostics.Check.onnx-reranker" xml:space="preserve"><value>The ONNX reranker</value></data>
@@ -1535,7 +1537,10 @@
     <value>Renamed, the setting gets a new crew name: a crew that still writes profile: {0} will no longer load.</value>
   </data>
   <data name="Studio.Settings.HostKeyHint" xml:space="preserve">
-    <value>In a terminal, orkeon run reads this setting's key from {0} — the settings file never holds it.</value>
+    <value>Outside Studio — a terminal, a scheduled team — every run reads this setting's key from {0}: the settings file names that variable (ApiKeyEnvVar), never the key.</value>
+  </data>
+  <data name="Studio.Settings.DefaultKeyVariableWarning" xml:space="preserve">
+    <value>This setting keeps its key in {0}, which every run reads as the key of its default setting, whatever the endpoint. To keep the key to this setting: create it again from the « Other OpenAI-compatible » card (its key then goes to {1}), delete this one, and remove {0} from your user environment.</value>
   </data>
   <data name="Studio.Settings.RagLlmDefault" xml:space="preserve">
     <value>default — the setting marked default</value>

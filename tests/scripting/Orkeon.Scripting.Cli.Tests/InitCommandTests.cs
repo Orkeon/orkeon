@@ -455,7 +455,59 @@ public sealed class InitCommandTests
         var llm = doc.RootElement.GetProperty("Llm");
         Assert.Equal("https://api.mistral.ai/v1", llm.GetProperty("BaseUrl").GetString());
         Assert.False(llm.TryGetProperty("ApiKey", out _));
+        // STUDIO-49: the file names the variable, and the runtime reads it — the key stays out.
+        Assert.Equal("MY_LLM_KEY", llm.GetProperty("ApiKeyEnvVar").GetString());
         Assert.Contains("MY_LLM_KEY", console.Stdout, StringComparison.Ordinal);
+    }
+
+    // --- STUDIO-49: --api-key-env names the variable in the file, the runtime reads it ---
+
+    [Fact]
+    public async Task ApiKeyEnv_IsWrittenAsTheReference_TheRuntimeReads()
+    {
+        using var scratch = new ScriptScratch();
+        var target = Path.Combine(scratch.Root, "appsettings.json");
+        using var console = new TestConsole();
+
+        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        {
+            Provider = "openai",
+            ApiKeyEnv = "OPENAI_API_KEY",
+            OutputPath = target,
+            NoProbe = true,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(target, TestContext.Current.CancellationToken));
+        var llm = doc.RootElement.GetProperty("Llm");
+        Assert.Equal("OPENAI_API_KEY", llm.GetProperty("ApiKeyEnvVar").GetString());
+        Assert.False(llm.TryGetProperty("ApiKey", out _));
+        Assert.Equal(["Model", "BaseUrl", "ApiKeyEnvVar"], llm.EnumerateObject().Select(p => p.Name));
+        // The old note said the variable was only read by the probes — the trap this closes.
+        Assert.DoesNotContain("only", console.Stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("export OPENAI_API_KEY=", console.Stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TheNativeVariable_IsReadWithoutAReference()
+    {
+        using var scratch = new ScriptScratch();
+        var target = Path.Combine(scratch.Root, "appsettings.json");
+        using var console = new TestConsole();
+
+        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        {
+            Provider = "openai",
+            ApiKeyEnv = "ORKEON_Llm__ApiKey",
+            OutputPath = target,
+            NoProbe = true,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(target, TestContext.Current.CancellationToken));
+        var llm = doc.RootElement.GetProperty("Llm");
+        Assert.False(llm.TryGetProperty("ApiKeyEnvVar", out _));
+        Assert.False(llm.TryGetProperty("ApiKey", out _));
     }
 
     [Fact]

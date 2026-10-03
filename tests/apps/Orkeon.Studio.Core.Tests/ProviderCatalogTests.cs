@@ -158,16 +158,35 @@ public sealed class ProviderCatalogTests
         Assert.Equal("sk-secret", overrides["ORKEON_Llm__ApiKey"]);
         Assert.Equal("deepseek-v4-flash", overrides["ORKEON_Llm__Model"]);
         Assert.Equal("https://api.deepseek.com", overrides["ORKEON_Llm__BaseUrl"]);
+        // STUDIO-49: and the variable it names, as the election writes it.
+        Assert.Equal("DEEPSEEK_API_KEY", overrides["ORKEON_Llm__ApiKeyEnvVar"]);
     }
 
     [Fact]
-    public void An_absent_or_empty_key_variable_adds_no_override()
+    public void An_absent_or_empty_key_variable_lays_a_blank_key_never_the_defaults()
     {
+        // STUDIO-49 (decision 4): blank, so the key of the default — the file's, the user
+        // environment's — never reaches this profile's endpoint.
         var profile = new ModelProfile { Name = "p", Model = "m", KeyEnvName = "DEEPSEEK_API_KEY" };
 
-        Assert.False(profile.EnvironmentOverrides(_ => null).ContainsKey("ORKEON_Llm__ApiKey"));
-        Assert.False(profile.EnvironmentOverrides(_ => "  ").ContainsKey("ORKEON_Llm__ApiKey"));
-        Assert.False(new ModelProfile { Name = "p", Model = "m" }
-            .EnvironmentOverrides(_ => "sk").ContainsKey("ORKEON_Llm__ApiKey"));
+        Assert.Equal("", profile.EnvironmentOverrides(_ => null)["ORKEON_Llm__ApiKey"]);
+        Assert.Equal("", profile.EnvironmentOverrides(_ => "  ")["ORKEON_Llm__ApiKey"]);
+        var keyless = new ModelProfile { Name = "p", Model = "m" }.EnvironmentOverrides(_ => "sk");
+        Assert.Equal("", keyless["ORKEON_Llm__ApiKey"]);
+        Assert.Equal("", keyless["ORKEON_Llm__ApiKeyEnvVar"]);
+    }
+
+    [Fact]
+    public void A_new_compatible_openai_setting_keeps_its_key_in_a_variable_of_its_own()
+    {
+        // STUDIO-49 (decision 7): the catch-all used ORKEON_Llm__ApiKey, the runtime's key of the
+        // default — remembered in the user scope, it became the default key of every run.
+        var custom = LlmPresets.ProviderCatalogFor(EnglishStudioStrings.Instance).Single(card => card.Name == LlmPresets.Custom);
+
+        Assert.Equal("ORKEON_CUSTOM_LLM_API_KEY", custom.DefaultApiKeyEnv);
+        Assert.Equal(LlmPresets.CustomApiKeyEnv, custom.DefaultApiKeyEnv);
+        Assert.DoesNotContain(
+            LlmPresets.ProviderCatalogFor(EnglishStudioStrings.Instance),
+            card => string.Equals(card.DefaultApiKeyEnv, LlmPresets.DefaultApiKeyEnv, StringComparison.OrdinalIgnoreCase));
     }
 }

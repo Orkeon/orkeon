@@ -19,7 +19,9 @@ of the standard .NET host sources:
 2. **Environment variables with the `ORKEON_` prefix** (`AddEnvironmentVariables("ORKEON_")`
    in `RunnerHost` and in `orkeon doctor`). Standard .NET mapping: `__` separates levels —
    `ORKEON_Llm__ApiKey` overrides `Llm:ApiKey`, `ORKEON_Orkeon__Rag__Profile` overrides
-   `Orkeon:Rag:Profile`. Env vars are added **after** the file, so they win.
+   `Orkeon:Rag:Profile`. Env vars are added **after** the file, so they win. A key need not
+   come from either layer: the file can name the variable that holds it (`ApiKeyEnvVar`,
+   [below](#the-api-key-apikey-apikeyenvvar)), read when neither resolves an `ApiKey`.
 3. **CLI mount overrides** — each `--mount` argument becomes an in-memory
    `Orkeon:FileSystem:Mounts:<i>` entry (highest precedence), placed **by virtual root**:
    a `--mount` on a root the declared array (layers 1 + 2) already holds is written at the
@@ -43,14 +45,18 @@ over it is an ephemeral layer that lives and dies with one process. `orkeon doct
 `llm-config` check composes exactly like a runner (same resolution chain, same
 `ORKEON_` overlay), so its verdict answers: *what would a run launched from this shell
 use, absent any per-launch overlay?* Orkeon Studio's named model profiles ride layer 2:
-the profile elected as default is copied into the file's `Llm` section (so a manual
-terminal `orkeon run` follows the same election — that is what `llm-config` reflects),
-while a team that elected a different profile receives it as `ORKEON_Llm__*` variables
-on its own launch only — `llm-config` cannot see those, because they exist nowhere
-until that launch starts. Every profile is also written into the file's `Llm:Profiles`,
-without its key, as a host profile a crew can name ([below](#studio-writes-this-section)),
-and every launch from Studio carries them all, keys included, as
-`ORKEON_Llm__Profiles__<id>__*`. No file is ever generated: the composition is in-memory.
+the profile elected as default is written into the file's `Llm` section whole — endpoint,
+model, timeout, thinking switch and the variable that holds its key (`ApiKeyEnvVar`), never
+the key — so a manual terminal `orkeon run` or a scheduled team follows the same election,
+its 600 s and its key included (that is what `llm-config` reflects), while a team that
+elected a different profile receives it as `ORKEON_Llm__*` variables on its own launch
+only — every field the profile models, blank where it sets none, so nothing of the default,
+its key least of all, reaches the team's endpoint; `llm-config` cannot see those, because
+they exist nowhere until that launch starts. Every profile is also written into the file's
+`Llm:Profiles`, naming the variable that holds its key and never the key, as a host profile
+a crew can name ([below](#studio-writes-this-section)), and every launch from Studio carries
+them all, keys included, as `ORKEON_Llm__Profiles__<id>__*`. No file is ever generated: the
+composition is in-memory.
 
 ## LLM provider (`Llm` section)
 
@@ -61,10 +67,11 @@ order: base-URL host patterns (e.g. `deepseek.com` → DeepSeek, `api.x.ai` → 
 API-key shape; default `openai`. A section without `Model` runs on that provider's own default
 model (the *Default (code)* column of the
 [provider comparison](llm-providers-comparison.md#defaults-and-newer-models--catalogue-review-of-2026-09-19)),
-never on OpenAI's pinned onto another vendor. Keys: `Model`, `BaseUrl`, `ApiKey` (prefer
-`ORKEON_Llm__ApiKey` — the variable each provider's key conventionally lives in, and the three
-names confused with it, are in the
-[provider comparison](llm-providers-comparison.md#api-keys-the-variable-per-provider)), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (default 10), and
+never on OpenAI's pinned onto another vendor. Keys: `Model`, `BaseUrl`, `ApiKeyEnvVar` (the
+environment variable that holds the key — [below](#the-api-key-apikey-apikeyenvvar); the variable
+each provider's key conventionally lives in, and the names confused with it, are in the
+[provider comparison](llm-providers-comparison.md#api-keys-the-variable-per-provider)), `ApiKey`
+(the key in clear text — discouraged), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (default 10), and
 `Thinking:{Enabled,Effort}` for thinking-capable providers, and `Grammar` (default `false`):
 set it to `true` only when `BaseUrl` points at a llama.cpp-compatible server (Docker Model
 Runner, `llama-server`) — the one kind of endpoint that honours the GBNF `grammar` field a
@@ -96,11 +103,50 @@ runtime degrades to the echo provider and warns once. See
 [LLM providers](../architecture/llm-providers.md); templates live in
 `examples/appsettings/*.json.example`.
 
+### The API key (`ApiKey`, `ApiKeyEnvVar`)
+
+A section never has to hold its key. `ApiKeyEnvVar` names the environment variable that does —
+the name, never the key — in the `Llm` section and in every profile:
+`"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. A run takes, in this order:
+
+1. **A key the configuration resolves**: `ApiKey` in the file, `ORKEON_Llm__ApiKey`
+   (`ORKEON_Llm__Profiles__<id>__ApiKey` for a profile), or what an Orkeon Studio launch lays over
+   its child. An existing installation keeps the key it had, and the environment still wins over
+   the file.
+2. **Otherwise the variable `ApiKeyEnvVar` names**, read in the process environment, then — on
+   Windows — in the user's persistent scope (`HKCU\Environment`), where Orkeon Studio remembers a
+   key: a terminal opened before the key was remembered, or a scheduled team, finds it all the
+   same. The value is read, never copied into the process, so what the run starts — a shell tool,
+   a stdio MCP server, the code sandbox — inherits no key it did not have. A user scope that cannot
+   be read (the registry refused, a virtual service account) counts as an absent variable. Linux
+   and macOS have no user scope: the process environment alone.
+3. **Otherwise no key**, and every call answers that an API key is required, as without the
+   reference.
+
+The name is read as written: Windows compares variable names without case, Linux with. A
+reference that cannot be a variable's name — an `=`, a space, a line break — refuses the host
+start, naming the configuration path and never the value, which may be a key pasted in the wrong
+field. An `ApiKey` written as a `${NAME}` placeholder — the shape the old `examples/appsettings`
+templates carried, which nothing ever expanded, so the text went out as the key — refuses the start
+too, with the fix: `"ApiKeyEnvVar": "NAME"`. At startup the runner host says where each key came
+from, never the key nor the variable's name — `LLM resolved: … apiKey=from the variable named by
+Llm:ApiKeyEnvVar (user environment)`, then one `LLM profile <id>: apiKey=…` line per profile
+(`from configuration (…:ApiKey)`, `from the variable named by … (process environment)`, `none`) —
+and warns once per section whose reference names a variable set nowhere, by its path, on its
+logger and on stderr; `orkeon doctor` and the REPL say the same. A value left blank reads as
+absent, for every key of the section (`Thinking:Effort` included): a Studio launch blanks the
+default fields its team's setting does not set, and a section whose every value is blank
+configures no default — the echo provider, with its warning. `orkeon init --api-key-env <name>`
+and `orkeon-studio-config` write `Llm:ApiKeyEnvVar`; Orkeon Studio writes it for the elected
+setting and for every profile it owns ([below](#studio-writes-this-section)). The reference may
+name any variable: a settings file is trusted configuration ([Security](../architecture/security.md#llm-keys-the-settings-file-names-the-variable)).
+
 ### Named profiles (`Llm:Profiles`)
 
 A host can offer more than one provider. Each child of `Llm:Profiles` is a **profile**: a
-name, and a provider described with exactly the keys of the `Llm` section (`BaseUrl`, `ApiKey`,
-`Model`, `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, `Thinking`, `Grammar`).
+name, and a provider described with exactly the keys of the `Llm` section (`BaseUrl`,
+`ApiKeyEnvVar`, `ApiKey`, `Model`, `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`,
+`Thinking`, `Grammar`).
 The `Llm` section itself stays the **default** profile — the one every agent runs on unless it
 names another. A crew picks a profile **by name**, never by key or endpoint: `llm: { profile:
 claude }` on the crew, an agent or a task's `llm_override` in YAML, `llm.profile("claude")` on an
@@ -109,16 +155,17 @@ agent and `taskBuilder().withProfile("claude")` on a task in `.ork.ts` ([YAML an
 ```json
 {
   "Llm": {
-    "BaseUrl": "https://api.deepseek.com/v1", "Model": "deepseek-v4-flash",
+    "BaseUrl": "https://api.deepseek.com/v1", "Model": "deepseek-v4-flash", "ApiKeyEnvVar": "DEEPSEEK_API_KEY",
     "Profiles": {
-      "claude": { "BaseUrl": "https://api.anthropic.com/v1", "Model": "claude-sonnet-5" },
+      "claude": { "BaseUrl": "https://api.anthropic.com/v1", "Model": "claude-sonnet-5", "ApiKeyEnvVar": "ANTHROPIC_API_KEY" },
       "local":  { "BaseUrl": "http://localhost:11434", "Model": "qwen3" }
     }
   }
 }
 ```
 
-Keys stay out of files the same way: `ORKEON_Llm__Profiles__claude__ApiKey`. Each profile's
+Keys stay out of files the same way: the profile names its variable (`ApiKeyEnvVar`), and
+`ORKEON_Llm__Profiles__claude__ApiKey` wins over it when set. Each profile's
 provider is built once, on first use, metered like the default one — the run's `cost.updated`
 readings name each call's provider, and Studio's status bar breaks the tokens down per
 provider. The profiles are validated when the host starts: `default` is a reserved name (it
@@ -167,16 +214,36 @@ tab that names a provider is the profile named after it by the folder-name rule 
 « Claude » is `claude`, « Z.AI » is `z-ai` — and its card and its editor show what a crew writes,
 `profile: claude`. Creating, editing, renaming or deleting the setting writes, moves or removes
 its entry: every field the setting pins (`BaseUrl`, `Model`, `Temperature`, `TimeoutSeconds`,
-`MaxTokens`, `Thinking`), never the key, and a key Studio does not model (`MaxRetries`,
+`MaxTokens`, `Thinking`) and the variable Studio remembers its key in (`ApiKeyEnvVar`, none for a
+setting that needs no key), never the key, and a key Studio does not model (`MaxRetries`,
 `Grammar`) stays where it is. A setting without a model (the echo card), or whose name keeps no
 ASCII letter or digit, is offered to no crew; `default`, a name another setting already answers
 to, and a name that would take over an entry written by hand are refused.
 
-- **Keys.** A launch from Studio — a run, a trial, the creation assistant — lays every setting over
-  its child as `ORKEON_Llm__Profiles__<id>__*`, the key resolved like the default profile's, so it
-  never depends on the file having been saved nor on which settings file it reads. `orkeon run`
-  in a terminal reads the same file and needs the key alone, in
-  `ORKEON_Llm__Profiles__<id>__ApiKey`; the editor names that variable in expert mode.
+- **Keys.** The file names the variable Studio remembers each key in — `ApiKeyEnvVar`, the
+  provider's conventional name (`DEEPSEEK_API_KEY`, `ZAI_API_KEY`) — and a run outside Studio reads
+  it ([above](#the-api-key-apikey-apikeyenvvar)): `orkeon run` in a terminal, a scheduled team,
+  `orkeon-host` started by the user, `orkeon-repl`. The editor names that variable in expert mode. A
+  launch from Studio — a run, a trial, the creation assistant — still lays every setting over its
+  child as `ORKEON_Llm__Profiles__<id>__*`, key included, so it never depends on the file having been
+  saved nor on which settings file it reads.
+- **The default.** The elected setting is written into `Llm` whole — every field it pins and its
+  `ApiKeyEnvVar`, a field it leaves unset removing its key; `ApiKey`, `MaxRetries`, `Grammar`,
+  `AvailableModels` and `Profiles` stay. A team launched on another setting lays all those fields
+  over its child as `ORKEON_Llm__*`, value or blank, `ORKEON_Llm__ApiKeyEnvVar` included: a team on
+  Z.AI whose key is not remembered fails without a key rather than send the default's DeepSeek key
+  to Z.AI. A team on the elected setting itself lays what it sets. `orkeon-studio-config` edits
+  `Llm` field by field; an election made in Studio afterwards rewrites the fields it owns.
+- **An older file heals at the next gesture.** An entry Studio owns without its reference, and an
+  `Llm` without the elected setting's, are written again — the whole setting — at the next change
+  on the model settings (edit then save a setting), never at startup.
+- **« Other OpenAI-compatible ».** A setting created from that card keeps its key in
+  `ORKEON_CUSTOM_LLM_API_KEY`, shared by the settings of the card. One created before keeps
+  `ORKEON_Llm__ApiKey` — the runtime's own key of the default: remembered in the user scope, it is
+  the default key of every run of the user, whatever its settings file or its endpoint. Its card says
+  so in expert mode when it is not the default, with the way back: create it again from the card,
+  delete the old one, remove `ORKEON_Llm__ApiKey` from the user environment. Studio never migrates
+  it on its own: it cannot tell its own write from a variable set by hand.
 - **Entries written by hand** — no setting owns them — are listed read-only under the settings,
   and Studio never rewrites nor removes them. Ownership is the setting's name: an id is Studio's
   when a setting of `studio-model-profiles.json` answers to it.
@@ -185,14 +252,15 @@ to, and a name that would take over an entry written by hand are refused.
   setting is deleted. Studio warns, before saving, about a file whose RAG profile names a profile
   the file does not define.
 
-`orkeon-studio-config` shows the section and the RAG's profile read-only.
+`orkeon-studio-config` shows the section — each profile with the variable that holds its key,
+`key: ZAI_API_KEY` — and the RAG's profile read-only.
 
 ## Sections outside the `Orkeon:` prefix
 
 | Section | Configures | Consumer / opt-in |
 |---|---|---|
-| `Llm` | Active LLM provider — the default profile (see above) | `RunnerHost`, the REPL (`LlmSettings.ReadDefault`, the same reader) |
-| `Llm:Profiles:<name>` | Named LLM profiles a crew picks per agent or per task, same keys as `Llm` (see above); Orkeon Studio writes one per model setting, without its key | `RunnerHost`, the REPL (`AddOrkeonLlmProfiles(configuration)`) |
+| `Llm` | Active LLM provider — the default profile (see above); `ApiKeyEnvVar` names the variable holding its key | `RunnerHost`, the REPL (`LlmSettings.ReadDefault`, the same reader) |
+| `Llm:Profiles:<name>` | Named LLM profiles a crew picks per agent or per task, same keys as `Llm` (see above); Orkeon Studio writes one per model setting, naming the variable holding its key, never the key | `RunnerHost`, the REPL (`AddOrkeonLlmProfiles(configuration)`) |
 | `Llm:AvailableModels` | The model list a scripted `/model` REPL command can offer (string array, or one comma-separated string) | `AddOrkeonSessionTools(configuration)` |
 | `Memory:Provider` | TYPE of the application-wide memory provider (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`; unset → in-memory). Its connection is that provider's own section (`Orkeon:Redis`, `Orkeon:Sqlite`, … below). It is also where the memory of a named crew with `memory: true` and no `memoryProvider:` lives — see [Memory system](../architecture/memory-system.md#selection-by-configuration) | `AddOrkeonInfrastructure()` |
 | `RateLimiting` | LLM request throttling: `GlobalRequestsPerMinute`, `ProviderRequestsPerMinute`, `AgentRequestsPerMinute`, `MaxConcurrentRequests`, `QueueLimit` | `AddOrkeonInfrastructure()` (`ILlmRateLimiter`) |

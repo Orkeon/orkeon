@@ -10,8 +10,9 @@ namespace Orkeon.Studio.Config.Views;
 
 /// <summary>
 /// The <c>Llm</c> screen. The provider line is read-only — an <c>appsettings.json</c> has no
-/// provider key, the endpoint decides — and the API key field carries the standing
-/// recommendation to keep the key in <c>ORKEON_Llm__ApiKey</c> instead of the file.
+/// provider key, the endpoint decides — and the API key fields carry the standing
+/// recommendation to name the variable holding the key (<c>Llm:ApiKeyEnvVar</c>, STUDIO-49)
+/// instead of writing the key into the file.
 /// The "Test connection" button runs the optional connectivity probe of SPEC §4.2: it never
 /// blocks the screen, and its verdict changes nothing about what can be saved. Below, the
 /// named profiles of <c>Llm:Profiles</c> and the one the RAG calls, read-only (STUDIO-48).
@@ -23,6 +24,7 @@ internal sealed class LlmSectionView : SectionView
     private readonly TextField _model;
     private readonly TextField _baseUrl;
     private readonly TextField _apiKey;
+    private readonly TextField _apiKeyEnvVar;
     private readonly TextField _temperature;
     private readonly TextField _maxTokens;
     private readonly TextField _timeout;
@@ -49,25 +51,26 @@ internal sealed class LlmSectionView : SectionView
         _model = FormLayout.AddField(this, 0, "Model", _form.Model);
         _baseUrl = FormLayout.AddField(this, 1, "Base URL", _form.BaseUrl);
         _provider = FormLayout.AddText(this, 2, ProviderLine(_form.DetectedProvider));
-        _apiKey = FormLayout.AddField(this, 4, "API key (stored in the file)", _form.ApiKey, secret: true);
-        FormLayout.AddNote(this, 5, LlmForm.ApiKeyRecommendation);
-        _apiKeyWarning = FormLayout.AddText(this, 6, "");
-        _temperature = FormLayout.AddField(this, 8, "Temperature", _form.Temperature);
-        _maxTokens = FormLayout.AddField(this, 9, "Max tokens", _form.MaxTokens);
-        _timeout = FormLayout.AddField(this, 10, "Timeout (seconds)", _form.TimeoutSeconds);
-        _thinking = FormLayout.AddField(this, 11, "Thinking (true / false, blank = provider default)", _form.ThinkingEnabled);
+        _apiKeyEnvVar = FormLayout.AddField(this, 4, "API key variable (Llm:ApiKeyEnvVar)", _form.ApiKeyEnvVar);
+        _apiKey = FormLayout.AddField(this, 5, "API key (stored in the file)", _form.ApiKey, secret: true);
+        FormLayout.AddNote(this, 6, LlmForm.ApiKeyRecommendation);
+        _apiKeyWarning = FormLayout.AddText(this, 7, "");
+        _temperature = FormLayout.AddField(this, 9, "Temperature", _form.Temperature);
+        _maxTokens = FormLayout.AddField(this, 10, "Max tokens", _form.MaxTokens);
+        _timeout = FormLayout.AddField(this, 11, "Timeout (seconds)", _form.TimeoutSeconds);
+        _thinking = FormLayout.AddField(this, 12, "Thinking (true / false, blank = provider default)", _form.ThinkingEnabled);
 
-        _testConnection = new Button { X = FormLayout.Margin, Y = 13, Text = "Test connection" };
+        _testConnection = new Button { X = FormLayout.Margin, Y = 14, Text = "Test connection" };
         _testConnection.Accepting += (_, _) => TestConnection();
         Add(_testConnection);
-        _testResult = FormLayout.AddText(this, 14, "");
+        _testResult = FormLayout.AddText(this, 15, "");
 
-        FormLayout.AddNote(this, 16,
-            "Named profiles (Llm:Profiles) — a crew picks one with llm: { profile: <name> }; keys come from " +
-            "ORKEON_Llm__Profiles__<name>__ApiKey. Read-only here: Studio's model settings write them.");
+        FormLayout.AddNote(this, 17,
+            "Named profiles (Llm:Profiles) — a crew picks one with llm: { profile: <name> }; each names the " +
+            "variable holding its key (key: …). Read-only here: Studio's model settings write them.");
         ProfileLines = ProfileLinesOf(_form);
-        _profiles = FormLayout.AddChoiceList(this, 17, 4, "Profiles in this file", ProfileLines, 0);
-        _ragLlmProfile = FormLayout.AddText(this, 22, _form.RagLlmProfileLine);
+        _profiles = FormLayout.AddChoiceList(this, 18, 4, "Profiles in this file", ProfileLines, 0);
+        _ragLlmProfile = FormLayout.AddText(this, 23, _form.RagLlmProfileLine);
 
         // The provider is inferred from the endpoint, so it follows every keystroke in it.
         _baseUrl.TextChanged += (_, _) =>
@@ -91,6 +94,7 @@ internal sealed class LlmSectionView : SectionView
         _model.Text = _form.Model;
         _baseUrl.Text = _form.BaseUrl;
         _apiKey.Text = _form.ApiKey;
+        _apiKeyEnvVar.Text = _form.ApiKeyEnvVar;
         _temperature.Text = _form.Temperature;
         _maxTokens.Text = _form.MaxTokens;
         _timeout.Text = _form.TimeoutSeconds;
@@ -117,6 +121,7 @@ internal sealed class LlmSectionView : SectionView
         _form.Model = _model.Text ?? "";
         _form.BaseUrl = _baseUrl.Text ?? "";
         _form.ApiKey = _apiKey.Text ?? "";
+        _form.ApiKeyEnvVar = _apiKeyEnvVar.Text ?? "";
         _form.Temperature = _temperature.Text ?? "";
         _form.MaxTokens = _maxTokens.Text ?? "";
         _form.TimeoutSeconds = _timeout.Text ?? "";
@@ -197,6 +202,7 @@ internal sealed class LlmSectionView : SectionView
             _model.Dispose();
             _baseUrl.Dispose();
             _apiKey.Dispose();
+            _apiKeyEnvVar.Dispose();
             _temperature.Dispose();
             _maxTokens.Dispose();
             _timeout.Dispose();

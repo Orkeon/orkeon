@@ -241,6 +241,13 @@
                     </TextBlock>
                     <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,4,0,0" Text="{Binding Endpoint}"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
+                    <!-- STUDIO-49 (decision 7): a setting that keeps its key in ORKEON_Llm__ApiKey
+                         without being the default — every run reads that key as its default's. -->
+                    <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}">
+                      <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource WarningBrush}" Text="{Binding DefaultKeyVariableWarning}"
+                                 Visibility="{Binding HasDefaultKeyVariableWarning, Converter={StaticResource BooleanToVisibility}}"/>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
                                 Visibility="{Binding IsUsedByTeams, Converter={StaticResource BooleanToVisibility}}">
                       <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"

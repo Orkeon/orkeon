@@ -1,5 +1,5 @@
 {
-  "_comment": "Settings template — Z.AI GLM-5.2 with 'medium' reasoning effort (Llm.Thinking.Effort). NB: this is NOT a distinct model, it is glm-5.2 with a reduced thinking budget. Copy this file WITHOUT the .example suffix (-> appsettings.glm-medium.local.json), then fill in your key. The ${ZAI_API_KEY} placeholder is NOT expanded automatically: replace it, or override via ORKEON_Llm__ApiKey=...",
+  "_comment": "Settings template — Z.AI GLM-5.2 with 'medium' reasoning effort (Llm.Thinking.Effort). NB: this is NOT a distinct model, it is glm-5.2 with a reduced thinking budget. Copy this file WITHOUT the .example suffix (-> appsettings.glm-medium.local.json), then set your key in the environment: ApiKeyEnvVar names the variable that holds it (ZAI_API_KEY), which every run reads — a terminal, a scheduled team, the REPL — and the key itself never goes in the file (ORKEON_Llm__ApiKey, when set, wins).",
   "_docs": "https://docs.z.ai/api-reference/introduction",
   "_models": [
     "glm-5.2 — 1M ctx, 128K max output, thinking (reasoning_content) — https://docs.z.ai/guides/llm/glm-5.2"
@@ -7,7 +7,7 @@
   "Llm": {
     "Model": "glm-5.2",
     "BaseUrl": "https://api.z.ai/api/paas/v4",
-    "ApiKey": "${ZAI_API_KEY}",
+    "ApiKeyEnvVar": "ZAI_API_KEY",
     "Temperature": 0.2,
     "TimeoutSeconds": 600,
     "Thinking": {

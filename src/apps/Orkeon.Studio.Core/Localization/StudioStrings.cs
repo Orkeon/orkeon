@@ -669,7 +669,7 @@ public static class StudioStringKeys
     /// <summary>"API key: kept out of the file — set it in your environment: export {0}=&lt;your-key&gt;"</summary>
     public const string PresetGuidanceApiKeyEnv = "Studio.Settings.GuidanceApiKeyEnv";
 
-    /// <summary>"Note: the Orkeon runtime reads `{0}` natively; `{1}` is only read by …"</summary>
+    /// <summary>"The settings file names this variable (Llm:ApiKeyEnvVar), and every run reads `{0}` …"</summary>
     public const string PresetGuidanceNonDefaultEnv = "Studio.Settings.GuidanceNonDefaultEnv";
 
     /// <summary>"WARNING: the API key is stored in plain text in the generated file. …"</summary>
@@ -801,7 +801,7 @@ public static class StudioStringKeys
     /// <summary>"custom (host not in the known-endpoint table)"</summary>
     public const string LlmCustomProvider = "Studio.Settings.CustomProvider";
 
-    /// <summary>"Prefer the {0} environment variable: the runtime reads it with precedence …"</summary>
+    /// <summary>"Prefer keeping the key out of this file: name the environment variable that holds it in ApiKeyEnvVar …"</summary>
     public const string LlmApiKeyRecommendation = "Studio.Settings.ApiKeyRecommendation";
 
     /// <summary>"Testing the connection…"</summary>
@@ -1236,8 +1236,14 @@ public static class StudioStringKeys
     /// <summary>"Renamed, the setting gets a new crew name: a crew that still writes profile: {0} will no longer load."</summary>
     public const string ProfileHostIdRenamed = "Studio.Settings.HostIdRenamed";
 
-    /// <summary>"In a terminal, orkeon run reads this setting's key from {0} — the settings file never holds it."</summary>
+    /// <summary>"Outside Studio — a terminal, a scheduled team — every run reads this setting's key from {0}: …"</summary>
     public const string ProfileHostKeyHint = "Studio.Settings.HostKeyHint";
+
+    /// <summary>
+    /// "This setting keeps its key in {0}, which every run reads as the key of its default setting, …" —
+    /// the expert line of a « Compatible OpenAI » card created before STUDIO-49 (decision 7).
+    /// </summary>
+    public const string ProfileDefaultKeyVariableWarning = "Studio.Settings.DefaultKeyVariableWarning";
 
     /// <summary>"default — the setting marked default" — the first choice of the RAG's model picker.</summary>
     public const string ProfileRagLlmDefault = "Studio.Settings.RagLlmDefault";
@@ -2035,6 +2041,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Check.dotnet-runtime"] = "The .NET runtime",
         ["Studio.Diagnostics.Check.esbuild"] = "The script compiler (esbuild)",
         ["Studio.Diagnostics.Check.llm-config"] = "The model configuration",
+        ["Studio.Diagnostics.Check.llm-profile-key"] = "The key of an LLM profile",
+        ["Studio.Diagnostics.Check.llm-profiles"] = "The LLM profiles",
         ["Studio.Diagnostics.Check.llm-reachability"] = "The connection to the model",
         ["Studio.Diagnostics.Check.local-embeddings"] = "Local embeddings",
         ["Studio.Diagnostics.Check.onnx-reranker"] = "The ONNX reranker",
@@ -2136,8 +2144,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.PresetGuidanceApiKeyEnv] =
             "API key: kept out of the file — set it in your environment: export {0}=<your-key>",
         [StudioStringKeys.PresetGuidanceNonDefaultEnv] =
-            "Note: the Orkeon runtime reads `{0}` natively; " +
-            "`{1}` is only read by the `orkeon init` / `orkeon llm` probes.",
+            "The settings file names this variable (Llm:ApiKeyEnvVar), and every run reads `{0}` from its " +
+            "environment — the key itself never goes in the file.",
         [StudioStringKeys.PresetGuidanceInlineKeyWarning] =
             "WARNING: the API key is stored in plain text in the generated file. " +
             "Prefer leaving it out and setting {0} in the environment — the runtime reads it " +
@@ -2214,8 +2222,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.LlmNoBaseUrl] = "No base URL — the runtime falls back to the echo provider.",
         [StudioStringKeys.LlmCustomProvider] = "custom (host not in the known-endpoint table)",
         [StudioStringKeys.LlmApiKeyRecommendation] =
-            "Prefer the {0} environment variable: the runtime reads it with " +
-            "precedence over this file, so the key never has to be stored in clear text.",
+            "Prefer keeping the key out of this file: name the environment variable that holds it in " +
+            "ApiKeyEnvVar — every run reads it — or set {0}, which the runtime reads with precedence over " +
+            "this file.",
         [StudioStringKeys.LlmTesting] = "Testing the connection…",
 
         [StudioStringKeys.ProbeReachable] = "Endpoint reachable — {0} model(s).",
@@ -2358,7 +2367,13 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileHostIdRenamed] =
             "Renamed, the setting gets a new crew name: a crew that still writes profile: {0} will no longer load.",
         [StudioStringKeys.ProfileHostKeyHint] =
-            "In a terminal, orkeon run reads this setting's key from {0} — the settings file never holds it.",
+            "Outside Studio — a terminal, a scheduled team — every run reads this setting's key from {0}: " +
+            "the settings file names that variable (ApiKeyEnvVar), never the key.",
+        [StudioStringKeys.ProfileDefaultKeyVariableWarning] =
+            "This setting keeps its key in {0}, which every run reads as the key of its default setting, " +
+            "whatever the endpoint. To keep the key to this setting: create it again from the « Other " +
+            "OpenAI-compatible » card (its key then goes to {1}), delete this one, and remove {0} from " +
+            "your user environment.",
         [StudioStringKeys.ProfileRagLlmDefault] = "default — the setting marked default",
 
         [StudioStringKeys.WizardBriefConsigne] = "Standing instruction for every agent: {0}",

@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json.Serialization;
+using Orkeon.Constants.Configuration;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Configuration;
 
@@ -14,7 +15,8 @@ namespace Orkeon.Studio.Core.Profiles;
 /// environment overrides on its own run, and every profile that names a provider is the host
 /// profile <c>Llm:Profiles:&lt;<see cref="HostProfileId"/>&gt;</c> a crew picks per agent or per task
 /// (STUDIO-48, through <see cref="HostLlmProfiles"/>). The API key is deliberately absent: it
-/// stays in the environment, never in this file nor in the settings file.
+/// stays in the environment, never in this file nor in the settings file, which names only the
+/// variable that holds it (<c>ApiKeyEnvVar</c>, STUDIO-49).
 /// </summary>
 public sealed record ModelProfile
 {
@@ -31,9 +33,10 @@ public sealed record ModelProfile
     /// Name of the environment variable holding the API key — never the key itself. Studio
     /// resolves it at probe and launch time and lays the value over the child process as
     /// <c>ORKEON_Llm__ApiKey</c> — and as <c>ORKEON_Llm__Profiles__&lt;id&gt;__ApiKey</c> for the
-    /// host profile (STUDIO-48); the store file only ever carries this name. (Named without
-    /// the "ApiKey" substring on purpose: the store round-trip test forbids it, as a tripwire
-    /// against a literal key ever landing in the file.)
+    /// host profile (STUDIO-48); the settings file names it as the entry's <c>ApiKeyEnvVar</c>, which
+    /// a run outside Studio reads (STUDIO-49); the store file only ever carries this name. (Named
+    /// without the "ApiKey" substring on purpose: the store round-trip test forbids it, as a
+    /// tripwire against a literal key ever landing in the file.)
     /// </summary>
     public string? KeyEnvName { get; init; }
 
@@ -117,8 +120,10 @@ public sealed record ModelProfile
     public static string? HostProfileIdOf(string? name) => FolderSlug.From(name);
 
     /// <summary>
-    /// The <c>Llm:Profiles</c> entry this setting becomes under <paramref name="id"/>: what it
-    /// pins, as the <c>Llm</c> section spells it — never the key.
+    /// The <c>Llm:Profiles</c> entry this setting becomes under <paramref name="id"/> — and, elected,
+    /// the <c>Llm</c> section itself (STUDIO-49): what it pins, as the <c>Llm</c> section spells it,
+    /// and the variable holding its key (<c>ApiKeyEnvVar</c>) — never the key; no variable for a
+    /// setting that needs no key.
     /// </summary>
     public LlmProfileEntry ToHostEntry(string id)
     {
@@ -129,6 +134,7 @@ public sealed record ModelProfile
             Id = id,
             BaseUrl = BaseUrl is { Length: > 0 } ? BaseUrl : null,
             Model = Model is { Length: > 0 } ? Model : null,
+            ApiKeyEnvVar = string.IsNullOrWhiteSpace(KeyEnvName) ? null : KeyEnvName.Trim(),
             Temperature = Temperature,
             TimeoutSeconds = TimeoutSeconds is > 0 ? TimeoutSeconds : null,
             MaxTokens = MaxTokens is > 0 ? MaxTokens : null,
@@ -140,20 +146,34 @@ public sealed record ModelProfile
     /// <summary>
     /// The environment overrides that make a child <c>orkeon run</c> use this profile instead
     /// of the settings file's <c>Llm</c> section — the standard .NET configuration variables,
-    /// which the CLI's host already binds. Empty values are simply not overridden.
+    /// which the CLI's host already binds. Every field Studio models is laid, its value or blank
+    /// (STUDIO-49): a field this profile leaves unset must not fall through to the default's —
+    /// above all its key and the variable that holds it, which belong to another endpoint. A
+    /// blank value reads as absent to the runtime.
     /// </summary>
     public IReadOnlyDictionary<string, string> EnvironmentOverrides() =>
         EnvironmentOverrides(static _ => null);
 
     /// <summary>
-    /// Same overrides, plus <c>ORKEON_Llm__ApiKey</c> resolved from <see cref="KeyEnvName"/>
-    /// through <paramref name="environment"/> when the profile names a key variable and the
-    /// variable holds a value. The key transits only into the child process environment —
+    /// Same overrides, <c>ORKEON_Llm__ApiKey</c> resolved from <see cref="KeyEnvName"/> through
+    /// <paramref name="environment"/> — blank when the profile names no key variable or the
+    /// variable holds no value. The key transits only into the child process environment —
     /// never into a file.
     /// </summary>
     /// <param name="environment">Reads an environment variable by name.</param>
-    public IReadOnlyDictionary<string, string> EnvironmentOverrides(Func<string, string?> environment) =>
-        Overrides(DefaultSectionPrefix, environment);
+    public IReadOnlyDictionary<string, string> EnvironmentOverrides(Func<string, string?> environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+
+        var overrides = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var field in OverriddenFields)
+            overrides[DefaultSectionPrefix + field] = "";
+        foreach (var (key, value) in Overrides(DefaultSectionPrefix, environment))
+            overrides[key] = value;
+        overrides[DefaultSectionPrefix + ConfigurationKeys.LlmApiKeyEnvVar] =
+            string.IsNullOrWhiteSpace(KeyEnvName) ? "" : KeyEnvName.Trim();
+        return overrides;
+    }
 
     /// <summary>
     /// The same overrides for this setting as the host profile <paramref name="id"/>:
@@ -169,17 +189,16 @@ public sealed record ModelProfile
         return Overrides(HostProfilePrefix(id), environment);
     }
 
-    /// <summary>
-    /// The environment variable a terminal <c>orkeon run</c> reads the key of host profile
-    /// <paramref name="id"/> from: the settings file never holds it.
-    /// </summary>
-    public static string HostKeyVariable(string id)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        return HostProfilePrefix(id) + "ApiKey";
-    }
-
     private const string DefaultSectionPrefix = "ORKEON_Llm__";
+
+    /// <summary>
+    /// The fields of the <c>Llm</c> shape a launch lays for its default, each set or blanked —
+    /// every one <see cref="Overrides"/> may write, in the variables' spelling.
+    /// </summary>
+    private static readonly string[] OverriddenFields =
+    [
+        "Model", "BaseUrl", "Temperature", "TimeoutSeconds", "MaxTokens", "Thinking__Enabled", "Thinking__Effort", "ApiKey",
+    ];
 
     private static string HostProfilePrefix(string id) => $"{DefaultSectionPrefix}Profiles__{id.Trim()}__";
 

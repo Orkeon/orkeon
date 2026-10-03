@@ -12,7 +12,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// <summary>
 /// The <c>Llm</c> form (spec §4.1). There is deliberately no provider field: the provider is derived
 /// from the host of <see cref="BaseUrl"/> and shown read-only, and the API key carries the
-/// recommendation to use the <c>ORKEON_Llm__ApiKey</c> environment variable instead of clear text.
+/// recommendation to name the variable holding it (<c>ApiKeyEnvVar</c>) instead of clear text.
 /// <para>
 /// <see cref="TestConnectionCommand"/> is the optional connectivity probe of spec §4.2: it reports
 /// what the endpoint answered and gates nothing — a failed test never stops a save.
@@ -76,6 +76,16 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
     {
         get => Section.ApiKey;
         set => SetValue(Section.ApiKey, Blank(value), v => Section.ApiKey = v);
+    }
+
+    /// <summary>
+    /// The variable holding the default's key (<c>Llm:ApiKeyEnvVar</c>, STUDIO-49) — its name, never
+    /// the key —, which every run reads; the election of a model setting writes it.
+    /// </summary>
+    public string? ApiKeyEnvVar
+    {
+        get => Section.ApiKeyEnvVar;
+        set => SetValue(Section.ApiKeyEnvVar, Blank(value), v => Section.ApiKeyEnvVar = v);
     }
 
     /// <summary>Sampling temperature.</summary>
@@ -165,7 +175,7 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
                 new LlmProbeRequest
                 {
                     BaseUrl = BaseUrl,
-                    ApiKey = LlmApiKeyResolver.Resolve(ApiKey),
+                    ApiKey = LlmApiKeyResolver.Resolve(ApiKey, ApiKeyEnvVar),
                     Model = Model,
                     ThinkingEnabled = Section.ThinkingEnabled,
                     CheckCompletion = true,
@@ -214,18 +224,46 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
 
     /// <summary>
     /// Brings <c>Llm:Profiles</c> in line with a change of Studio's model settings (STUDIO-48,
-    /// <see cref="HostLlmProfiles.Mirror"/>): one edit of the document when anything changed, so
-    /// the write travels through the screen's own edit-then-save cycle like the default's mirror.
+    /// <see cref="HostLlmProfiles.Mirror"/>), and heals a default the election wrote before it
+    /// named its key's variable (STUDIO-49, <see cref="HostLlmProfiles.HealDefault"/>): one edit of
+    /// the document when anything changed, so the write travels through the screen's own
+    /// edit-then-save cycle like the election.
     /// </summary>
     public void MirrorModelProfiles(ModelProfileSet before, ModelProfileSet after, string? renamedFrom = null, string? renamedTo = null)
     {
-        if (!HostLlmProfiles.Mirror(Document, before, after, renamedFrom, renamedTo))
+        ArgumentNullException.ThrowIfNull(after);
+
+        var profilesChanged = HostLlmProfiles.Mirror(Document, before, after, renamedFrom, renamedTo);
+        var defaultHealed = HostLlmProfiles.HealDefault(Document, after);
+        if (!profilesChanged && !defaultHealed)
             return;
 
         // A rename or a removal may have moved the RAG's profile with it.
         OnPropertyChanged(nameof(RagLlmProfile));
+        if (defaultHealed)
+            OnDefaultRewritten();
         NotifyDocumentChanged();
     }
+
+    /// <summary>
+    /// Writes the elected setting into the section, whole (STUDIO-49, decision 5): every field it
+    /// pins — its timeout and thinking switch among them — and the variable holding its key, so a
+    /// run outside Studio follows the election. The keys Studio does not model stay. Through the
+    /// screen's own edit-then-save cycle: Studio never saves the settings file behind the user's back.
+    /// </summary>
+    public void ElectDefault(ModelProfile profile)
+    {
+        if (!HostLlmProfiles.ElectDefault(Document, profile))
+            return;
+
+        OnDefaultRewritten();
+        NotifyDocumentChanged();
+    }
+
+    /// <summary>Every field the election writes says it again — never the whole form, which would read as a new document.</summary>
+    private void OnDefaultRewritten() =>
+        OnPropertiesChanged(
+            nameof(Model), nameof(BaseUrl), nameof(ApiKeyEnvVar), nameof(Temperature), nameof(MaxTokens), nameof(TimeoutSeconds));
 
     /// <summary>The entries of <c>Llm:Profiles</c> no setting of <paramref name="set"/> owns: written by hand, shown read-only.</summary>
     public IReadOnlyList<LlmProfileEntry> HandWrittenProfiles(ModelProfileSet set) => HostLlmProfiles.HandWritten(Document, set);

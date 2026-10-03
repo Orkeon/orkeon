@@ -59,22 +59,22 @@ Runners read their LLM configuration (endpoint, model, API key) from an
 | `appsettings.minimax.local.json.example` | MiniMax (international endpoint; mainland accounts use `api.minimaxi.com`) |
 | `appsettings.openrouter.local.json.example` | OpenRouter (aggregator — `vendor/model` ids) |
 | `appsettings.mammouth.local.json.example` | Mammouth AI (aggregator — bare vendor ids, reached by its host) |
-| `appsettings.local.json.example` | Generic template — points at DeepSeek; switch `BaseUrl` / `Model` / `ApiKey` to any provider |
+| `appsettings.local.json.example` | Generic template — points at DeepSeek; switch `BaseUrl` / `Model` / `ApiKeyEnvVar` to any provider |
 
 Copy the template that matches your provider, drop it to a real `*.local.json`
-(git-ignored), and paste your key:
+(git-ignored), and set your key in the variable it names:
 
 ```bash
 cp examples/appsettings/appsettings.deepseek.local.json.example \
    examples/appsettings/appsettings.deepseek.local.json
-# then edit the file and set your API key
+export DEEPSEEK_API_KEY=sk-...
 ```
 
-> The `${DEEPSEEK_API_KEY}`-style placeholders are **not** expanded by .NET
-> configuration — replace them with the literal key, or leave the file as-is
-> and override via environment variable instead:
-> `export ORKEON_Llm__ApiKey=sk-...` (prefix `ORKEON_`, `__` as section
-> separator).
+> A template keeps the key out of the file: its `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`
+> names the variable that holds it, which every run reads. `ORKEON_Llm__ApiKey`
+> (prefix `ORKEON_`, `__` as section separator), when set, wins over it. An `ApiKey`
+> written `${DEEPSEEK_API_KEY}` — what the templates used to carry, which .NET
+> configuration never expanded — now refuses the start, with the fix.
 
 > If you have Docker Model Runner (or another `localhost:12434` endpoint)
 > running, the default `examples/appsettings/appsettings.json` needs no key and

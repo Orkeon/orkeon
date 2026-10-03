@@ -613,7 +613,8 @@ public class OrderProcessingMessageConsumer : IMessageHandler
     "Model": "gpt-5.6-sol",
     "Temperature": 0.3
     // The API key is NEVER stored here — it comes from the environment as
-    // ORKEON_Llm__ApiKey (OPENAI_API_KEY is not read)
+    // ORKEON_Llm__ApiKey — or from the variable an "ApiKeyEnvVar" entry names,
+    // e.g. "ApiKeyEnvVar": "OPENAI_API_KEY" (a bare OPENAI_API_KEY is not read)
   },
   "Orkeon": {
     "FileSystem": {

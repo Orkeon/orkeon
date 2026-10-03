@@ -9,10 +9,11 @@ namespace Orkeon.Studio.Core.Configuration;
 /// Typed view over <c>Llm:Profiles</c> (GAP-17): the named providers a crew picks with
 /// <c>llm: { profile: &lt;id&gt; }</c>, each of the <c>Llm</c> section's shape. Studio writes the
 /// entries its model settings own (STUDIO-48) — field by field, so a key it does not model
-/// (<c>MaxRetries</c>, <c>Grammar</c>) survives an edit — and never an <c>ApiKey</c>: the key
-/// travels as <c>ORKEON_Llm__Profiles__&lt;id&gt;__ApiKey</c> at launch. Which entries Studio owns
-/// is <c>Orkeon.Studio.Core.Profiles.HostLlmProfiles</c>' business; this view only reads and
-/// writes.
+/// (<c>MaxRetries</c>, <c>Grammar</c>) survives an edit — and never an <c>ApiKey</c>: an entry
+/// names the variable holding its key (<c>ApiKeyEnvVar</c>, STUDIO-49), which a run outside
+/// Studio reads, and a Studio launch lays the key itself as
+/// <c>ORKEON_Llm__Profiles__&lt;id&gt;__ApiKey</c>. Which entries Studio owns is
+/// <c>Orkeon.Studio.Core.Profiles.HostLlmProfiles</c>' business; this view only reads and writes.
 /// <para>
 /// The configuration binder compares keys case-insensitively, so <see cref="Find"/> does too: two
 /// JSON properties spelt <c>claude</c> and <c>Claude</c> are one profile to the runtime, and a
@@ -60,24 +61,14 @@ public sealed class LlmProfilesSection
         if (Find(id) is not { } key)
             return null;
 
-        var path = $"{SectionPath}:{key}";
-        return new LlmProfileEntry
-        {
-            Id = key,
-            BaseUrl = _document.GetString($"{path}:BaseUrl"),
-            Model = _document.GetString($"{path}:Model"),
-            Temperature = _document.GetDouble($"{path}:Temperature"),
-            TimeoutSeconds = _document.GetInt32($"{path}:TimeoutSeconds"),
-            MaxTokens = _document.GetInt32($"{path}:MaxTokens"),
-            ThinkingEnabled = _document.GetBoolean($"{path}:{ConfigurationKeys.ThinkingSection}:Enabled"),
-            ThinkingEffort = _document.GetString($"{path}:{ConfigurationKeys.ThinkingSection}:Effort"),
-        };
+        return ReadEntry(_document, $"{SectionPath}:{key}", key);
     }
 
     /// <summary>
     /// Writes the entry's fields in place under its id: a field left null removes its key, every
-    /// key the entry does not model stays, and no <c>ApiKey</c> is ever written. A differently
-    /// cased twin of the id is renamed onto it first.
+    /// key the entry does not model stays, and no <c>ApiKey</c> is ever written — the entry names
+    /// the variable holding it (<c>ApiKeyEnvVar</c>). A differently cased twin of the id is
+    /// renamed onto it first.
     /// </summary>
     /// <returns>True when the document changed.</returns>
     public bool Set(LlmProfileEntry entry)
@@ -94,16 +85,7 @@ public sealed class LlmProfilesSection
             Rename(existing, id);
 
         var path = $"{SectionPath}:{id}";
-        var thinking = $"{path}:{ConfigurationKeys.ThinkingSection}";
-        _document.SetString($"{path}:BaseUrl", entry.BaseUrl);
-        _document.SetString($"{path}:Model", entry.Model);
-        _document.SetDouble($"{path}:Temperature", entry.Temperature);
-        _document.SetInt32($"{path}:TimeoutSeconds", entry.TimeoutSeconds);
-        _document.SetInt32($"{path}:MaxTokens", entry.MaxTokens);
-        _document.SetBoolean($"{thinking}:Enabled", entry.ThinkingEnabled);
-        _document.SetString($"{thinking}:Effort", entry.ThinkingEffort);
-        if (_document.GetNode(thinking) is JsonObject { Count: 0 })
-            _document.Remove(thinking);
+        WriteEntry(_document, path, entry);
 
         // An entry that pins nothing still exists: the runtime must see the profile, and builds
         // it on its provider's own defaults.
@@ -111,6 +93,41 @@ public sealed class LlmProfilesSection
             _document.SetNode(path, new JsonObject());
 
         return !string.Equals(before, _document.GetNode(SectionPath)?.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>The fields Studio models of the section of the <c>Llm</c> shape at <paramref name="path"/>.</summary>
+    internal static LlmProfileEntry ReadEntry(AppSettingsDocument document, string path, string id) => new()
+    {
+        Id = id,
+        BaseUrl = document.GetString($"{path}:BaseUrl"),
+        Model = document.GetString($"{path}:Model"),
+        ApiKeyEnvVar = document.GetString($"{path}:{ConfigurationKeys.LlmApiKeyEnvVar}"),
+        Temperature = document.GetDouble($"{path}:Temperature"),
+        TimeoutSeconds = document.GetInt32($"{path}:TimeoutSeconds"),
+        MaxTokens = document.GetInt32($"{path}:MaxTokens"),
+        ThinkingEnabled = document.GetBoolean($"{path}:{ConfigurationKeys.ThinkingSection}:Enabled"),
+        ThinkingEffort = document.GetString($"{path}:{ConfigurationKeys.ThinkingSection}:Effort"),
+    };
+
+    /// <summary>
+    /// Writes <paramref name="entry"/>'s fields into the section of the <c>Llm</c> shape at
+    /// <paramref name="path"/>, one by one — a null field removes its key, a key the entry does
+    /// not model stays, an <c>ApiKey</c> is never written. Shared by a profile's entry and the
+    /// default section (the election, STUDIO-49), which have the same shape.
+    /// </summary>
+    internal static void WriteEntry(AppSettingsDocument document, string path, LlmProfileEntry entry)
+    {
+        var thinking = $"{path}:{ConfigurationKeys.ThinkingSection}";
+        document.SetString($"{path}:BaseUrl", entry.BaseUrl);
+        document.SetString($"{path}:Model", entry.Model);
+        document.SetString($"{path}:{ConfigurationKeys.LlmApiKeyEnvVar}", entry.ApiKeyEnvVar);
+        document.SetDouble($"{path}:Temperature", entry.Temperature);
+        document.SetInt32($"{path}:TimeoutSeconds", entry.TimeoutSeconds);
+        document.SetInt32($"{path}:MaxTokens", entry.MaxTokens);
+        document.SetBoolean($"{thinking}:Enabled", entry.ThinkingEnabled);
+        document.SetString($"{thinking}:Effort", entry.ThinkingEffort);
+        if (document.GetNode(thinking) is JsonObject { Count: 0 })
+            document.Remove(thinking);
     }
 
     /// <summary>
@@ -158,8 +175,9 @@ public sealed class LlmProfilesSection
 }
 
 /// <summary>
-/// One <c>Llm:Profiles</c> entry, as far as Studio models it: the fields a model setting pins.
-/// The key is not one of them — it never lives in the file.
+/// One <c>Llm:Profiles</c> entry, as far as Studio models it: the fields a model setting pins,
+/// and the name of the variable holding its key. The key is not one of them — it never lives in
+/// the file.
 /// </summary>
 public sealed record LlmProfileEntry
 {
@@ -174,6 +192,12 @@ public sealed record LlmProfileEntry
 
     /// <summary><c>Model</c>; null leaves the provider's own default.</summary>
     public string? Model { get; init; }
+
+    /// <summary>
+    /// <c>ApiKeyEnvVar</c> (STUDIO-49): the environment variable holding the key — its name,
+    /// never the key — which a run outside Studio reads; null for a setting that needs no key.
+    /// </summary>
+    public string? ApiKeyEnvVar { get; init; }
 
     /// <summary><c>Temperature</c>, when pinned.</summary>
     public double? Temperature { get; init; }

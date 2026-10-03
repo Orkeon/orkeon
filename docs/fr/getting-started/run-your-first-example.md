@@ -60,22 +60,23 @@ Les runners lisent leur configuration LLM (endpoint, modèle, clé API) dans un
 | `appsettings.minimax.local.json.example` | MiniMax (endpoint international ; les comptes de Chine continentale utilisent `api.minimaxi.com`) |
 | `appsettings.openrouter.local.json.example` | OpenRouter (agrégateur — identifiants `vendor/model`) |
 | `appsettings.mammouth.local.json.example` | Mammouth AI (agrégateur — identifiants nus des éditeurs, reconnu par son hôte) |
-| `appsettings.local.json.example` | Gabarit générique — pointe sur DeepSeek ; changez `BaseUrl` / `Model` / `ApiKey` pour tout autre fournisseur |
+| `appsettings.local.json.example` | Gabarit générique — pointe sur DeepSeek ; changez `BaseUrl` / `Model` / `ApiKeyEnvVar` pour tout autre fournisseur |
 
 Copiez le gabarit de votre fournisseur, déposez-le en vrai `*.local.json`
-(git-ignoré) et collez votre clé :
+(git-ignoré) et posez votre clé dans la variable qu'il nomme :
 
 ```bash
 cp examples/appsettings/appsettings.deepseek.local.json.example \
    examples/appsettings/appsettings.deepseek.local.json
-# puis éditez le fichier et renseignez votre clé API
+export DEEPSEEK_API_KEY=sk-...
 ```
 
-> Les placeholders de style `${DEEPSEEK_API_KEY}` ne sont **pas** développés par la
-> configuration .NET — remplacez-les par la clé littérale, ou laissez le fichier
-> tel quel et surchargez via variable d'environnement :
-> `export ORKEON_Llm__ApiKey=sk-...` (préfixe `ORKEON_`, `__` comme séparateur de
-> section).
+> Un gabarit garde la clé hors du fichier : son `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`
+> nomme la variable qui la contient, que chaque run lit. `ORKEON_Llm__ApiKey`
+> (préfixe `ORKEON_`, `__` comme séparateur de section), quand elle est posée,
+> l'emporte sur elle. Une `ApiKey` écrite `${DEEPSEEK_API_KEY}` — ce que portaient
+> les gabarits, et que la configuration .NET n'a jamais développé — refuse
+> désormais le démarrage, avec la correction.
 
 > Si Docker Model Runner (ou un autre endpoint `localhost:12434`) tourne déjà, le
 > `examples/appsettings/appsettings.json` par défaut n'exige ni clé ni copie —

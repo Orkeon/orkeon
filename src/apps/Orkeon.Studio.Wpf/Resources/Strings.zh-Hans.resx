@@ -656,7 +656,7 @@
     <value>API 密钥：不写入文件 — 请在环境中设置：export {0}=&lt;您的密钥&gt;</value>
   </data>
   <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve">
-    <value>注意：Orkeon 运行时原生读取 `{0}`；`{1}` 只被 `orkeon init` / `orkeon llm` 探测读取。</value>
+    <value>设置文件写明此变量（Llm:ApiKeyEnvVar），每次运行都从其环境中读取 `{0}`——密钥本身从不写入文件。</value>
   </data>
   <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve">
     <value>注意：API 密钥以明文形式保存在生成的文件中。建议不要写入，改为在环境中设置 {0} — 运行时优先于文件读取它。</value>
@@ -741,7 +741,7 @@
     <value>自定义（主机不在已知端点表中）</value>
   </data>
   <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve">
-    <value>建议使用环境变量 {0}：运行时优先读取它而不是本文件，密钥就无需明文保存。</value>
+    <value>建议不要把密钥写进此文件：在 ApiKeyEnvVar 中写明保存密钥的环境变量——每次运行都会读取它——或设置 {0}，运行时会优先于此文件读取它。</value>
   </data>
   <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>正在测试连接…</value>
@@ -1580,6 +1580,12 @@
   </data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve">
     <value>模型配置详情</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.llm-profile-key" xml:space="preserve">
+    <value>LLM 配置的密钥</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.llm-profiles" xml:space="preserve">
+    <value>LLM 配置</value>
   </data>
   <data name="Studio.Diagnostics.Check.llm-reachability" xml:space="preserve">
     <value>与模型的连接</value>
@@ -2911,7 +2917,10 @@
     <value>重命名后，此配置在团队中的名称随之改变：仍写 profile: {0} 的团队将无法加载。</value>
   </data>
   <data name="Studio.Settings.HostKeyHint" xml:space="preserve">
-    <value>在终端中，orkeon run 从 {0} 读取此配置的密钥——设置文件从不保存它。</value>
+    <value>在 Studio 之外——终端、计划运行的团队——每次运行都从 {0} 读取此配置的密钥：设置文件只写明该变量（ApiKeyEnvVar），从不保存密钥。</value>
+  </data>
+  <data name="Studio.Settings.DefaultKeyVariableWarning" xml:space="preserve">
+    <value>此配置把密钥保存在 {0} 中，而每次运行都会把它当作默认配置的密钥读取，无论端点是什么。若要让密钥只属于此配置：从“其他 OpenAI 兼容”卡片重新创建它（其密钥将保存到 {1}），删除当前配置，并从用户环境中移除 {0}。</value>
   </data>
   <data name="Studio.Settings.RagLlmDefault" xml:space="preserve">
     <value>default——标为默认的配置</value>

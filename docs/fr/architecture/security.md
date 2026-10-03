@@ -126,6 +126,28 @@ message pourrait demander à l'agent d'exfiltrer le contenu de la boîte. Les fi
 sont du JSON en clair : à l'abri des outils du VFS, **pas** d'un outil shell ou de code qui
 tourne sous le même utilisateur du système.
 
+### Clés LLM : le fichier de réglages nomme la variable
+
+Un fichier de réglages n'a jamais à contenir de clé d'API : `ApiKeyEnvVar`, dans `Llm` et dans
+chaque `Llm:Profiles:<nom>`, nomme la variable d'environnement qui la contient, et l'hôte runner la
+lit quand la configuration ne résout aucune `ApiKey` — dans l'environnement du processus, puis, sous
+Windows, dans la portée Utilisateur (`HKCU\Environment`), lue et jamais recopiée dans le processus
+du run : ce que lance un run (un outil shell, un serveur MCP stdio, le bac à sable de code) n'hérite
+d'aucune clé qu'il n'aurait pas eue ([configuration](../reference/configuration.md#la-clé-dapi-apikey-apikeyenvvar)).
+
+La référence peut nommer **n'importe quelle** variable. Un fichier de réglages est déjà une
+configuration de confiance : il déclare les serveurs MCP stdio dont le runner lance la commande, et
+il dirige la clé vers sa propre `BaseUrl`. Un fichier hostile posé à côté d'une crew pourrait nommer
+une autre variable et l'envoyer à son adresse — il pouvait déjà faire pire. Restreindre la référence
+aux noms conventionnels du fournisseur refuserait une variable choisie par l'opérateur, contre un
+risque que le fichier ouvre déjà autrement. Ce que la référence garantit, c'est la discrétion :
+aucun message, aucune ligne de journal ni aucune ligne d'`orkeon doctor` ne répète sa valeur — une
+clé collée par erreur dans `ApiKeyEnvVar` ne doit pas atteindre un journal —, ils nomment son
+chemin de configuration (`Llm:Profiles:z-ai:ApiKeyEnvVar`). Une valeur qui ne peut pas être un nom
+de variable (un `=`, une espace, un saut de ligne) refuse le démarrage, par son chemin ; une
+`ApiKey` écrite comme un gabarit `${NOM}` — que rien n'a jamais développé, si bien que le texte
+partait comme clé — le refuse aussi.
+
 ## Résilience
 
 `ResiliencePolicies` (`Orkeon.Infrastructure.Resilience`) porte les deux politiques Polly du chemin d'exécution :

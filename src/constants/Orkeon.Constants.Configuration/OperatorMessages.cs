@@ -20,4 +20,15 @@ public static class OperatorMessages
     public const string LlmNotConfigured =
         "No `Llm` section configured — falling back to the echo provider (`<undefined-llm>`). " +
         "Run `orkeon init` to create a configuration, or set `ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`.";
+
+    /// <summary>
+    /// STUDIO-49: a section's <c>ApiKeyEnvVar</c> names an environment variable set nowhere the
+    /// runtime reads, and no key masks it, so every call on that profile answers that an API key
+    /// is required. A composite format whose <c>{0}</c> is the reference's configuration path —
+    /// never the name it holds, which may be a key pasted in the wrong field. The runner host, the
+    /// REPL and <c>orkeon doctor</c> say it.
+    /// </summary>
+    public const string LlmApiKeyReferenceUnresolved =
+        "{0} names an environment variable that is not set: calls on that LLM profile answer that an API key " +
+        "is required. Set the variable — in Orkeon Studio, remember the setting's key again — or remove the reference.";
 }

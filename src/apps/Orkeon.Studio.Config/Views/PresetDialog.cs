@@ -42,10 +42,11 @@ internal sealed class PresetDialog : Window
         _baseUrl = FormLayout.AddField(this, next, "Base URL", _form.BaseUrl);
         _model = FormLayout.AddField(this, next + 1, "Model", _form.Model);
         _apiKey = FormLayout.AddField(this, next + 2, "API key (written to the file)", _form.ApiKey, secret: true);
-        _apiKeyEnv = FormLayout.AddField(this, next + 3, "…or read it from", _form.ApiKeyEnv);
+        _apiKeyEnv = FormLayout.AddField(this, next + 3, "…or the variable holding it", _form.ApiKeyEnv);
         FormLayout.AddNote(this, next + 4, string.Create(
             CultureInfo.InvariantCulture,
-            $"Leave the key empty to keep it out of the file: the runtime reads {LlmPresets.DefaultApiKeyEnv} natively."));
+            $"Leave the key empty to keep it out of the file: the file names the variable (Llm:ApiKeyEnvVar) and " +
+            $"every run reads it — {LlmPresets.DefaultApiKeyEnv}, read natively, needs no reference."));
 
         _problem = FormLayout.AddText(this, next + 6, "");
 

@@ -42,7 +42,7 @@ public class LlmFormTests
               "Llm": {
                 "Model": "qwen3",
                 "Profiles": {
-                  "claude": { "BaseUrl": "https://api.anthropic.com/v1", "Model": "claude-sonnet-5", "MaxRetries": 2 },
+                  "claude": { "BaseUrl": "https://api.anthropic.com/v1", "Model": "claude-sonnet-5", "MaxRetries": 2, "ApiKeyEnvVar": "ANTHROPIC_API_KEY" },
                   "local-gpu": { "BaseUrl": "http://localhost:11500" }
                 }
               },
@@ -52,8 +52,12 @@ public class LlmFormTests
         var form = new LlmForm();
         form.LoadFrom(document);
 
+        // STUDIO-49: each line says where a run reads the profile's key.
         Assert.Equal(
-            ["profile: claude — claude-sonnet-5 · https://api.anthropic.com/v1", "profile: local-gpu — http://localhost:11500"],
+            [
+                "profile: claude — claude-sonnet-5 · https://api.anthropic.com/v1 — key: ANTHROPIC_API_KEY",
+                "profile: local-gpu — http://localhost:11500",
+            ],
             form.Profiles);
         Assert.Equal("Document search (RAG) answers on profile: claude", form.RagLlmProfileLine);
 
@@ -63,7 +67,43 @@ public class LlmFormTests
         Assert.Equal("qwen3:32b", document.Llm.Model);
         Assert.Equal(["claude", "local-gpu"], document.Llm.Profiles.Ids);
         Assert.Equal(2, document.GetInt32("Llm:Profiles:claude:MaxRetries"));
+        Assert.Equal("ANTHROPIC_API_KEY", document.Llm.Profiles.Get("claude")?.ApiKeyEnvVar);
         Assert.Equal("claude", document.Rag.LlmProfile);
+    }
+
+    [Fact]
+    public void The_variable_holding_the_key_is_shown_and_written_as_Llm_ApiKeyEnvVar()
+    {
+        // STUDIO-49: the form edits the reference the runtime reads — the name, never the key.
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "glm-5", "ApiKeyEnvVar": "ZAI_API_KEY" } }""");
+        var form = new LlmForm();
+        form.LoadFrom(document);
+        Assert.Equal("ZAI_API_KEY", form.ApiKeyEnvVar);
+
+        form.ApiKeyEnvVar = " DEEPSEEK_API_KEY ";
+        Assert.Empty(form.ApplyTo(document));
+        Assert.Equal("DEEPSEEK_API_KEY", document.Llm.ApiKeyEnvVar);
+
+        form.ApiKeyEnvVar = "";
+        Assert.Empty(form.ApplyTo(document));
+        Assert.False(document.ContainsPath("Llm:ApiKeyEnvVar"));
+    }
+
+    [Theory]
+    [InlineData("sk live key")]
+    [InlineData("KEY=sk-live")]
+    public void A_reference_that_cannot_be_a_variable_name_is_refused_without_repeating_it(string reference)
+    {
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "glm-5" } }""");
+        var form = new LlmForm();
+        form.LoadFrom(document);
+        form.ApiKeyEnvVar = reference;
+
+        var error = Assert.Single(form.ApplyTo(document));
+
+        Assert.Contains("Llm:ApiKeyEnvVar", error, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk", error, StringComparison.Ordinal);
+        Assert.False(document.ContainsPath("Llm:ApiKeyEnvVar"));
     }
 
     [Fact]
@@ -167,8 +207,9 @@ public class LlmFormTests
     }
 
     [Fact]
-    public void The_api_key_recommendation_names_the_environment_variable_the_runtime_reads()
+    public void The_api_key_recommendation_names_the_reference_and_the_variable_the_runtime_reads()
     {
+        Assert.Contains("Llm:ApiKeyEnvVar", LlmForm.ApiKeyRecommendation);
         Assert.Contains("ORKEON_Llm__ApiKey", LlmForm.ApiKeyRecommendation);
     }
 }
