@@ -266,21 +266,17 @@ public class SimpleTokenCounterAdditionalTests
     }
 
     [Fact]
-    public void ShouldHandleReasonablySizedText_WhenCountTokensPerformance()
+    public void ShouldCountEveryWord_WhenCountTokensOnALargeText()
     {
         // Arrange - Create text with 10,000 words
         var words = Enumerable.Range(1, 10000).Select(i => $"word{i}");
         var text = string.Join(" ", words);
 
         // Act
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var result = _counter.CountTokens(text);
-        stopwatch.Stop();
 
-        // Assert
+        // Assert — the count, not the time it took: a duration measures the machine (GAP-41)
         Assert.Equal(13000, result); // 10000 * 1.3
-        // Performance assertion - should complete in reasonable time (less than 100ms)
-        Assert.True(stopwatch.ElapsedMilliseconds < 100, $"Token counting took too long: {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]

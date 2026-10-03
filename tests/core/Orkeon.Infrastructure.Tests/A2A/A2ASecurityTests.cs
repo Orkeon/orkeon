@@ -9,22 +9,12 @@ using Orkeon.Application.Interfaces.Security;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Infrastructure.Tests.A2A;
 
 public class A2ASecurityTests
 {
-    /// <summary>Asks the OS for a free ephemeral loopback port.</summary>
-    private static int GetFreePort()
-    {
-        using var probe = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
-    }
-
-
     /// <summary>Generates a self-signed PFX, writes it under a temp dir, and returns (dir, fileName).</summary>
     private static (string root, string fileName) WriteSelfSignedPfx()
     {
@@ -337,7 +327,8 @@ public class A2ASecurityTests
     [Fact]
     public async Task Server_StartAsync_ShouldThrow_WhenASchemeIsDeclaredWithoutAValidator()
     {
-        var options = new A2AOptions { Port = GetFreePort() };
+        // Refused before it binds anything: a probed port is enough.
+        var options = A2ALoopback.Options(LoopbackPorts.Probe());
         var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
         await using var server = new A2AServer(options, new StubA2ATaskRouter(), logger: null, security: security);
 
@@ -356,7 +347,6 @@ public class A2ASecurityTests
     public async Task Server_SubmitsATask_OnlyWithAValidatedCredential(string authorization, HttpStatusCode expected)
     {
         var ct = TestContext.Current.CancellationToken;
-        var port = GetFreePort();
         var router = new StubA2ATaskRouter();
         var secrets = new MockSecretProvider();
         secrets.AddSecret("A2A_PEER_KEY", "k-123456");
@@ -365,15 +355,14 @@ public class A2ASecurityTests
             AllowedAuthSchemes = { "Bearer", "ApiKey" },
             ApiKeySecretNames = { "A2A_PEER_KEY" },
         };
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, router, logger: null, security: security,
-            authenticationProviders: [new StubAuthenticationProvider("good-token")], secretProvider: secrets);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(
+            options, router, logger: null, security: security,
+            authenticationProviders: [new StubAuthenticationProvider("good-token")], secretProvider: secrets), ct);
 
         try
         {
-            await server.StartAsync(ct);
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"http://localhost:{port}/a2a/tasks/send")
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{LoopbackPorts.Host}:{port}/a2a/tasks/send")
             {
                 Content = new StringContent(
                     System.Text.Json.JsonSerializer.Serialize(new A2ATaskRequest { Id = "t-1", SkillId = "researcher", Input = "hi" }),
@@ -388,7 +377,7 @@ public class A2ASecurityTests
         }
         finally
         {
-            await server.StopAsync(ct);
+            await server.DisposeAsync();
         }
     }
 
@@ -397,30 +386,28 @@ public class A2ASecurityTests
     {
         // Arrange — RequireMutualTls but the client connects over plain HTTP (no cert).
         // R9.1: a trust anchor is now mandatory to start (fail-closed), hence the pin.
-        var port = GetFreePort();
-        var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
         var security = new A2ASecurityOptions
         {
             RequireMutualTls = true,
             TrustedClientCertificateThumbprints = { "0000000000000000000000000000000000000000" }
         };
-        await using var server = new A2AServer(options, router, logger: null, security: security);
+        var (server, port) = await A2ALoopback.StartAsync(
+            options => new A2AServer(options, router, logger: null, security: security), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
             // Act
-            var response = await client.GetAsync($"http://localhost:{port}/a2a/tasks/some-id", TestContext.Current.CancellationToken);
+            var response = await client.GetAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/some-id", TestContext.Current.CancellationToken);
 
             // Assert — mTLS required, no client cert ⇒ 403 (and the task is NOT processed)
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -428,27 +415,24 @@ public class A2ASecurityTests
     public async Task Server_ShouldReject_WhenAuthSchemeRequiredButHeaderMissing()
     {
         // Arrange
-        var port = GetFreePort();
-        var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
         var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
-        await using var server = new A2AServer(options, router, logger: null, security: security,
-            authenticationProviders: [new StubAuthenticationProvider("good-token")]);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger: null, security: security,
+            authenticationProviders: [new StubAuthenticationProvider("good-token")]), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
             // Act — no Authorization header
-            var response = await client.GetAsync($"http://localhost:{port}/a2a/tasks/some-id", TestContext.Current.CancellationToken);
+            var response = await client.GetAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/some-id", TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -456,27 +440,24 @@ public class A2ASecurityTests
     public async Task Server_ShouldAllowDiscovery_EvenWhenAuthRequired()
     {
         // Arrange — discovery (agent card) must stay public even with auth enabled
-        var port = GetFreePort();
-        var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
         var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
-        await using var server = new A2AServer(options, router, logger: null, security: security,
-            authenticationProviders: [new StubAuthenticationProvider("good-token")]);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger: null, security: security,
+            authenticationProviders: [new StubAuthenticationProvider("good-token")]), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
             // Act
-            var response = await client.GetAsync($"http://localhost:{port}/.well-known/agent.json", TestContext.Current.CancellationToken);
+            var response = await client.GetAsync($"{LoopbackPorts.Host}:{port}/.well-known/agent.json", TestContext.Current.CancellationToken);
 
             // Assert — discovery is reachable without credentials
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -486,18 +467,15 @@ public class A2ASecurityTests
     public async Task GetTask_ShouldReturn501_InsteadOfFabricated200Pending()
     {
         // Arrange — no security, no task persistence
-        var port = GetFreePort();
-        var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
-        await using var server = new A2AServer(options, router);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
             // Act
-            var response = await client.GetAsync($"http://localhost:{port}/a2a/tasks/unknown-task-id", TestContext.Current.CancellationToken);
+            var response = await client.GetAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/unknown-task-id", TestContext.Current.CancellationToken);
 
             // Assert — explicit 501, never a fabricated 200/Pending
             Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
@@ -506,7 +484,7 @@ public class A2ASecurityTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -558,8 +536,9 @@ public class A2ASecurityTests
     public async Task Server_StartAsync_ShouldThrow_WhenMutualTlsRequiredWithoutTrustAnchor()
     {
         // Arrange — RequireMutualTls with neither CAs nor pinned thumbprints: starting must
-        // fail closed instead of silently accepting any date-valid certificate.
-        var options = new A2AOptions { Port = GetFreePort() };
+        // fail closed instead of silently accepting any date-valid certificate. Refused before it
+        // binds anything: a probed port is enough.
+        var options = A2ALoopback.Options(LoopbackPorts.Probe());
         var security = new A2ASecurityOptions { RequireMutualTls = true };
         await using var server = new A2AServer(
             options, new StubA2ATaskRouter(), logger: null, security: security);
@@ -758,12 +737,11 @@ public class A2ASecurityTests
         // VFS is instrumented. On e91ef936 every A2A call re-read and re-imported the PFX
         // (new handler + new client + full handshake per call).
         var (root, fileName) = WriteSelfSignedPfx();
-        var port = GetFreePort();
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter());
+        A2AServer? server = null;
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
+            (server, var port) = await A2ALoopback.StartAsync(
+                options => new A2AServer(options, new StubA2ATaskRouter()), TestContext.Current.CancellationToken);
 
             var countingFs = new CountingFileSystemService(new MockFileSystemService(root));
             var security = new A2ASecurityOptions { ClientCertificatePath = "/" + fileName };
@@ -778,10 +756,10 @@ public class A2ASecurityTests
             // certificate is only consumed on TLS handshakes, which is irrelevant here — the
             // point is the handler construction count).
             var first = await client.SendTaskAsync(
-                new Uri($"http://localhost:{port}"), new A2ATaskRequest { Id = "t1", SkillId = "s", Input = "i" },
+                new Uri($"{LoopbackPorts.Host}:{port}"), new A2ATaskRequest { Id = "t1", SkillId = "s", Input = "i" },
                 TestContext.Current.CancellationToken);
             var second = await client.SendTaskAsync(
-                new Uri($"http://localhost:{port}"), new A2ATaskRequest { Id = "t2", SkillId = "s", Input = "i" },
+                new Uri($"{LoopbackPorts.Host}:{port}"), new A2ATaskRequest { Id = "t2", SkillId = "s", Input = "i" },
                 TestContext.Current.CancellationToken);
 
             // Assert — both calls succeeded and the PFX was read exactly once
@@ -791,7 +769,8 @@ public class A2ASecurityTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            if (server is not null)
+                await server.DisposeAsync();
             Directory.Delete(root, recursive: true);
         }
     }

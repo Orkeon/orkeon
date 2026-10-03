@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter;
+using Orkeon.Tests.Shared.Telemetry;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 
 namespace Orkeon.Infrastructure.Tests.Telemetry;
@@ -184,53 +185,56 @@ public class OpenTelemetryIntegrationTests
     [Fact]
     public async Task ShouldWrapCallsWithSpans_WhenUsingTelemetryChatClient()
     {
-        var activities = new List<Activity>();
-        using var listener = OpenTelemetryIntegrationTestsFixture.CreateActivityListener(activities);
-        ActivitySource.AddActivityListener(listener);
-
+        // The listener hears the whole process: the call runs under a root of this test's own,
+        // and the assertions read a copy of its trace (GAP-41).
+        using var recorder = new ActivityRecorder(OrkeonDiagnostics.LlmSource.Name);
         using var innerClient = OpenTelemetryIntegrationTestsFixture.CreateMockChatClientWithResponse(
             "Test response", inputTokens: 10, outputTokens: 5, totalTokens: 15);
 
         using var metrics = new OrkeonMetrics();
         using var client = OpenTelemetryIntegrationTestsFixture.CreateTelemetryChatClient(innerClient, metrics, "TestProvider");
 
-        var response = await client.GetResponseAsync(
-            [new ChatMessage(ChatRole.User, "Hello")],
-            new ChatOptions { ModelId = TestModelName }, TestContext.Current.CancellationToken);
+        ChatResponse response;
+        ActivityTraceId trace;
+        using (var root = new Activity(nameof(ShouldWrapCallsWithSpans_WhenUsingTelemetryChatClient)))
+        {
+            root.Start();
+            response = await client.GetResponseAsync(
+                [new ChatMessage(ChatRole.User, "Hello")],
+                new ChatOptions { ModelId = TestModelName }, TestContext.Current.CancellationToken);
+            trace = root.TraceId;
+        }
 
         Assert.NotNull(response);
         Assert.Equal("Test response", response.Text);
 
-        var llmActivities = activities
-            .Where(a => a.DisplayName.StartsWith("chat", StringComparison.Ordinal)
-                && a.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider)?.ToString() == "testprovider")
-            .ToList();
-        Assert.Single(llmActivities);
-        Assert.Equal("testprovider", llmActivities[0].GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider));
-        Assert.Equal(TestModelName, llmActivities[0].GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmModel));
+        var llmActivity = Assert.Single(recorder.Snapshot(trace));
+        Assert.StartsWith("chat", llmActivity.DisplayName, StringComparison.Ordinal);
+        Assert.Equal("testprovider", llmActivity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider));
+        Assert.Equal(TestModelName, llmActivity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmModel));
     }
 
     [Fact]
     public async Task ShouldRecordException_WhenInnerClientThrows()
     {
-        var activities = new List<Activity>();
-        using var listener = OpenTelemetryIntegrationTestsFixture.CreateActivityListener(activities);
-        ActivitySource.AddActivityListener(listener);
-
+        using var recorder = new ActivityRecorder(OrkeonDiagnostics.LlmSource.Name);
         using var innerClient = OpenTelemetryIntegrationTestsFixture.CreateMockChatClientWithException(new HttpRequestException("API error"));
 
         using var metrics = new OrkeonMetrics();
         using var client = OpenTelemetryIntegrationTestsFixture.CreateTelemetryChatClient(innerClient, metrics, "TestProvider");
 
-        await Assert.ThrowsAsync<HttpRequestException>(async () => await client.GetResponseAsync(
-            [new ChatMessage(ChatRole.User, "Hello")], cancellationToken: TestContext.Current.CancellationToken));
+        ActivityTraceId trace;
+        using (var root = new Activity(nameof(ShouldRecordException_WhenInnerClientThrows)))
+        {
+            root.Start();
+            await Assert.ThrowsAsync<HttpRequestException>(async () => await client.GetResponseAsync(
+                [new ChatMessage(ChatRole.User, "Hello")], cancellationToken: TestContext.Current.CancellationToken));
+            trace = root.TraceId;
+        }
 
-        var llmActivities = activities
-            .Where(a => a.DisplayName.StartsWith("chat", StringComparison.Ordinal)
-                && a.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider)?.ToString() == "testprovider")
-            .ToList();
-        Assert.Single(llmActivities);
-        Assert.Equal(ActivityStatusCode.Error, llmActivities[0].Status);
+        var llmActivity = Assert.Single(recorder.Snapshot(trace));
+        Assert.Equal("testprovider", llmActivity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider));
+        Assert.Equal(ActivityStatusCode.Error, llmActivity.Status);
     }
 
     [Fact]

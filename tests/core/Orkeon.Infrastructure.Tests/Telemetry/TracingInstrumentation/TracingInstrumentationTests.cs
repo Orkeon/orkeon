@@ -8,8 +8,9 @@ namespace Orkeon.Infrastructure.Tests.Telemetry;
 
 public sealed class TracingInstrumentationTests : IDisposable
 {
+    // A source creates an activity only for a listener that samples it: this one makes the
+    // helpers below return one. The tests read the activity they are handed, nothing it collects.
     private readonly ActivityListener _listener;
-    private readonly List<Activity> _activities = [];
 
     public TracingInstrumentationTests()
     {
@@ -17,7 +18,6 @@ public sealed class TracingInstrumentationTests : IDisposable
         {
             ShouldListenTo = source => source.Name.StartsWith("Orkeon"),
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStarted = activity => _activities.Add(activity)
         };
         ActivitySource.AddActivityListener(_listener);
     }

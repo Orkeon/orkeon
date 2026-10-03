@@ -224,12 +224,13 @@ public class ExecutionMetadataTests
     [Fact]
     public void ShouldCreateCorrectly_WhenCreatingNewWithDefaults()
     {
-        // Act
+        // Act — between two readings of the clock, never within a window of it (GAP-41)
+        var before = DateTime.UtcNow;
         var metadata = ExecutionMetadata.CreateNew();
+        var after = DateTime.UtcNow;
 
         // Assert
-        Assert.True(metadata.StartedAt <= DateTime.UtcNow);
-        Assert.True(metadata.StartedAt > DateTime.UtcNow.AddSeconds(-1));
+        Assert.InRange(metadata.StartedAt, before, after);
         Assert.Null(metadata.CompletedAt);
         Assert.Null(metadata.MaxExecutionTime);
         Assert.NotNull(metadata.ExecutionId);
@@ -476,9 +477,10 @@ public class ExecutionMetadataTests
     [Fact]
     public void ShouldTimedOutExecution_WhenUsingComplexScenario()
     {
-        // Arrange
-        var startedAt = DateTime.UtcNow.AddMinutes(-10);
+        // Arrange — one reading of the clock: two would put the time between them into the
+        // duration, and a busy machine makes that more than the assertion allows (GAP-41)
         var completedAt = DateTime.UtcNow;
+        var startedAt = completedAt.AddMinutes(-10);
         var maxExecutionTime = TimeoutStandard;
 
         var metadata = new ExecutionMetadata(
@@ -495,7 +497,7 @@ public class ExecutionMetadataTests
         // Act & Assert
         Assert.True(metadata.IsComplete);
         Assert.True(metadata.IsTimedOut);
-        Assert.True(Math.Abs((TimeoutExtended - metadata.Duration!.Value).TotalMilliseconds) < 1);
+        Assert.Equal(TimeoutExtended, metadata.Duration);
         Assert.Equal("Execution timed out", metadata.LastError);
     }
 }

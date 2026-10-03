@@ -1,6 +1,6 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -11,25 +11,19 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// </summary>
 internal sealed class CatalogueServer : IDisposable
 {
-    private readonly HttpListener _listener = new();
+    private readonly HttpListener _listener;
     private readonly List<string> _authorizations = [];
     private readonly Task _pump;
 
     public CatalogueServer()
     {
-        using (var probe = new TcpListener(IPAddress.Loopback, 0))
-        {
-            probe.Start();
-            Port = ((IPEndPoint)probe.LocalEndpoint).Port;
-            probe.Stop();
-        }
-
-        _listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
-        _listener.Start();
+        (_listener, var prefix) = LoopbackPorts.StartListener();
+        BaseUrl = new Uri(prefix, "v1").ToString();
         _pump = PumpAsync();
     }
 
-    public int Port { get; }
+    /// <summary>The OpenAI-style base URL a setting names: the catalogue is <c>{BaseUrl}/models</c>.</summary>
+    public string BaseUrl { get; }
 
     public IReadOnlyList<string> Authorizations
     {
@@ -38,9 +32,9 @@ internal sealed class CatalogueServer : IDisposable
 
     public void Dispose()
     {
-        _listener.Stop();
-        _pump.GetAwaiter().GetResult();
+        // Close() alone: after Stop(), it would bind the port again for an instant (GAP-41).
         _listener.Close();
+        _pump.GetAwaiter().GetResult();
     }
 
     private async Task PumpAsync()

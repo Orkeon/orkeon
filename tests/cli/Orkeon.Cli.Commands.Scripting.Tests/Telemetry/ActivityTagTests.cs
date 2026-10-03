@@ -14,6 +14,7 @@ using Orkeon.Scripting;
 using Orkeon.Scripting.Telemetry;
 using Orkeon.Scripting.Toolchain;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tests.Shared.Telemetry;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Telemetry;
 
@@ -24,8 +25,6 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Telemetry;
 public sealed class ActivityTagTests : IDisposable
 {
     private readonly string _tempDir;
-    private readonly List<Activity> _activities = new();
-    private readonly ActivityListener _listener;
 
     public ActivityTagTests()
     {
@@ -34,19 +33,10 @@ public sealed class ActivityTagTests : IDisposable
         File.Copy(
             Path.Combine(AppContext.BaseDirectory, "Fixtures", "echo-args.cmd.ts"),
             Path.Combine(_tempDir, "echo.cmd.ts"));
-
-        _listener = new ActivityListener
-        {
-            ShouldListenTo = s => s.Name == ScriptingActivitySource.Name,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = a => { lock (_activities) _activities.Add(a); },
-        };
-        ActivitySource.AddActivityListener(_listener);
     }
 
     public void Dispose()
     {
-        _listener.Dispose();
         try { Directory.Delete(_tempDir, recursive: true); } catch { /* best effort */ }
     }
 
@@ -67,16 +57,22 @@ public sealed class ActivityTagTests : IDisposable
         console.EnqueueLine("echo hello");
         console.EnqueueLine("exit");
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        await runner.RunAsync(cts.Token);
+        // The listener hears the whole process, and other tests run this very script: the run
+        // happens under a root of this test's own, and the assertions read a copy of its trace
+        // (GAP-41).
+        using var recorder = new ActivityRecorder(ScriptingActivitySource.Name);
+        ActivityTraceId trace;
+        using (var root = new Activity(nameof(Scripted_command_invocation_tags_source_script_path)))
+        {
+            root.Start();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            await runner.RunAsync(cts.Token);
+            trace = root.TraceId;
+        }
 
-        // ActivitySource is process-global; other concurrent tests may emit "cli.command"
-        // spans too. Match on the source tag we expect to single ours out.
-        var tagged = _activities.FirstOrDefault(a =>
-            a.OperationName == "cli.command" &&
-            "script:/cmd/echo.cmd.ts".Equals(a.GetTagItem(CliScriptingTags.CommandSource)?.ToString(), StringComparison.Ordinal));
-        Assert.NotNull(tagged);
-        Assert.Equal("echo", tagged!.GetTagItem(CliScriptingTags.CommandName)?.ToString());
+        var command = Assert.Single(recorder.Snapshot(trace), a => a.OperationName == "cli.command");
+        Assert.Equal("script:/cmd/echo.cmd.ts", command.GetTagItem(CliScriptingTags.CommandSource)?.ToString());
+        Assert.Equal("echo", command.GetTagItem(CliScriptingTags.CommandName)?.ToString());
     }
 
     private sealed class TestRunner : InteractiveRunnerBase

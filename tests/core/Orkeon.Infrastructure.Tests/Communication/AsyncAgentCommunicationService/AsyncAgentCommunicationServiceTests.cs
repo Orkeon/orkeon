@@ -1,6 +1,7 @@
 using Orkeon.Domain.Common;
 using Orkeon.Domain.AgentCommunication;
 using Orkeon.Infrastructure.Communication;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Infrastructure.Tests.Communication;
 
@@ -56,9 +57,10 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         await _service.SendMessageAsync(message2);
         await _service.SendMessageAsync(message3);
 
-        // Act
+        // Act — the messages are already sent: the loop ends at the second one, and the token is
+        // a guard against a hang, never a budget (GAP-41).
         var receivedMessages = new List<AgentMessage>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(Polling.DefaultTimeout);
 
         try
         {
@@ -73,7 +75,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         }
         catch (OperationCanceledException)
         {
-            // Expected when timeout occurs
+            // The guard fired: the count below names what never came
         }
 
         // Assert
@@ -222,9 +224,9 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         await System.Threading.Tasks.Task.WhenAll(sendTasks);
 
-        // Act - Receive messages
+        // Act - Receive messages (the loop ends at the last one; the token only guards a hang)
         var receivedMessages = new List<AgentMessage>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cts = new CancellationTokenSource(Polling.DefaultTimeout);
 
         try
         {
@@ -239,7 +241,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         }
         catch (OperationCanceledException)
         {
-            // Expected if we don't receive all messages in time
+            // The guard fired: the count below names what never came
         }
 
         // Assert
@@ -261,10 +263,10 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         await _service.SendMessageAsync(messageToReceiver1);
         await _service.SendMessageAsync(messageToReceiver2);
 
-        // Act
+        // Act — each receiver ends at its message; the token only guards a hang
         var receiver1Messages = new List<AgentMessage>();
         var receiver2Messages = new List<AgentMessage>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(Polling.DefaultTimeout);
 
         var receiveTask1 = System.Threading.Tasks.Task.Run(async () =>
         {
@@ -370,7 +372,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         await _service.SendMessageAsync(message);
 
         var receivedMessage = await _service.ReceiveMessagesAsync(to)
-            .FirstOrDefaultAsync(TimeSpan.FromSeconds(1));
+            .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
         Assert.NotNull(receivedMessage);
@@ -396,9 +398,9 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
             await _service.SendMessageAsync(message);
         }
 
-        // Receive messages
+        // Receive messages (the loop ends at the last one; the token only guards a hang)
         var receivedMessages = new List<AgentMessage>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        using var cts = new CancellationTokenSource(Polling.DefaultTimeout);
 
         try
         {
@@ -437,9 +439,9 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
             await _service.SendMessageAsync(message);
         }
 
-        // Act
+        // Act (the loop ends at the last message; the token only guards a hang)
         var receivedMessages = new List<AgentMessage>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        using var cts = new CancellationTokenSource(Polling.DefaultTimeout);
 
         try
         {
@@ -473,7 +475,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         // Act
         await _service.SendMessageAsync(message);
         var receivedMessage = await _service.ReceiveMessagesAsync(to)
-            .FirstOrDefaultAsync(TimeSpan.FromSeconds(1));
+            .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
         Assert.NotNull(receivedMessage);
@@ -492,7 +494,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         // Act
         await _service.SendMessageAsync(message);
         var receivedMessage = await _service.ReceiveMessagesAsync(to)
-            .FirstOrDefaultAsync(TimeSpan.FromSeconds(1));
+            .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
         Assert.NotNull(receivedMessage);
@@ -509,41 +511,34 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         var receiver1Messages = new List<AgentMessage>();
         var receiver2Messages = new List<AgentMessage>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        using var cts = new CancellationTokenSource(Polling.DefaultTimeout);
 
-        // Start two receivers for the same agent
-        var receiveTask1 = System.Threading.Tasks.Task.Run(async () =>
+        // Start two receivers for the same agent: the one that takes the message stops the
+        // other, which would otherwise wait for a second message; the token only guards a hang.
+        async System.Threading.Tasks.Task ReceiveOneAsync(List<AgentMessage> received)
         {
             try
             {
                 await foreach (var msg in _service.ReceiveMessagesAsync(to).WithCancellation(cts.Token))
                 {
-                    receiver1Messages.Add(msg);
+                    received.Add(msg);
+                    await cts.CancelAsync();
+                    break;
                 }
             }
             catch (OperationCanceledException) { }
-        }, TestContext.Current.CancellationToken);
+        }
 
-        var receiveTask2 = System.Threading.Tasks.Task.Run(async () =>
-        {
-            try
-            {
-                await foreach (var msg in _service.ReceiveMessagesAsync(to).WithCancellation(cts.Token))
-                {
-                    receiver2Messages.Add(msg);
-                }
-            }
-            catch (OperationCanceledException) { }
-        }, TestContext.Current.CancellationToken);
+        var receiveTask1 = System.Threading.Tasks.Task.Run(() => ReceiveOneAsync(receiver1Messages), TestContext.Current.CancellationToken);
+        var receiveTask2 = System.Threading.Tasks.Task.Run(() => ReceiveOneAsync(receiver2Messages), TestContext.Current.CancellationToken);
 
-        // Act - Send message after receivers are started
-        await System.Threading.Tasks.Task.Delay(50, TestContext.Current.CancellationToken); // Small delay to ensure receivers are listening
+        // Act - Send the message: the channel keeps it until a receiver reads it, listening yet or not
         await _service.SendMessageAsync(message);
 
         await System.Threading.Tasks.Task.WhenAll(receiveTask1, receiveTask2);
 
-        // Assert - At least one receiver should get the message (channels don't duplicate)
-        Assert.True(receiver1Messages.Count > 0 || receiver2Messages.Count > 0);
+        // Assert - Exactly one receiver gets the message (channels don't duplicate)
+        Assert.Equal(1, receiver1Messages.Count + receiver2Messages.Count);
     }
 
     [Fact]
@@ -602,7 +597,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         // Act
         await _service.SendMessageAsync(message);
         var receivedMessage = await _service.ReceiveMessagesAsync(to)
-            .FirstOrDefaultAsync(TimeSpan.FromSeconds(1));
+            .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
         Assert.NotNull(receivedMessage);
@@ -633,9 +628,9 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         await _service.SendMessageAsync(message1);
         await _service.SendMessageAsync(message2);
 
-        // Second receive should work
+        // Second receive should work (it ends at the second message; the token only guards a hang)
         var receivedMessages = new List<AgentMessage>();
-        using var cts2 = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        using var cts2 = new CancellationTokenSource(Polling.DefaultTimeout);
 
         try
         {
@@ -690,7 +685,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         // Act
         await _service.SendMessageAsync(message);
         var receivedMessage = await _service.ReceiveMessagesAsync(agentId)
-            .FirstOrDefaultAsync(TimeSpan.FromSeconds(1));
+            .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
         Assert.NotNull(receivedMessage);
@@ -713,8 +708,9 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         await _service.SendMessageAsync(new AgentMessage(sender1, receiver, MessageType.Task, "S1-M2"));
         await _service.SendMessageAsync(new AgentMessage(sender2, receiver, MessageType.Task, "S2-M2"));
 
+        // Receive (the loop ends at the fourth message; the token only guards a hang)
         var receivedMessages = new List<AgentMessage>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        using var cts = new CancellationTokenSource(Polling.DefaultTimeout);
 
         try
         {

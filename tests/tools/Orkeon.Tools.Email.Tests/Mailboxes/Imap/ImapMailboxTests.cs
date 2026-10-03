@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Network;
 using Orkeon.Tools.Email.Configuration;
 using Orkeon.Tools.Email.Mailboxes;
 using Orkeon.Tools.Email.Mailboxes.Imap;
@@ -148,17 +149,18 @@ public sealed class ImapMailboxTests
     [Fact]
     public async Task Should_report_ServerError_When_nothing_listens_on_the_port()
     {
-        int port;
-        await using (var gone = new FakeImapServer(TestAccounts.Address, TestAccounts.Password))
-            port = gone.Port;
+        // A port bound and listened on by nobody, held for the test (GAP-41): the port a closed
+        // server gives back is anyone's, and a process listening there accepts the connection the
+        // test expects refused.
+        using var refusing = LoopbackPorts.Refusing();
         using var credentials = new CredentialsFixture();
         await using var mailbox = new ImapMailbox(
-            TestAccounts.Loopback(IncomingProtocol.Imap, port), new NetworkMailServiceConnector(), credentials.Provider, credentials.Time);
+            TestAccounts.Loopback(IncomingProtocol.Imap, refusing.Port), new NetworkMailServiceConnector(), credentials.Provider, credentials.Time);
 
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await mailbox.ListFoldersAsync(Token));
 
         Assert.Equal(EmailErrorCode.ServerError, error.Code);
-        Assert.Contains($"The connection to 127.0.0.1:{port} failed", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"The connection to 127.0.0.1:{refusing.Port} failed", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

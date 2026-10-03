@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Hosting.Tests;
 
@@ -37,17 +38,12 @@ public class LlmEndpointProbeTests
     [Fact]
     public async Task RefusedPort_IsUnreachable()
     {
-        // Reserve an ephemeral port, then release it so connections are actively refused.
-        int port;
-        using (var listener = new TcpListener(IPAddress.Loopback, 0))
-        {
-            listener.Start();
-            port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            listener.Stop();
-        }
+        // A port bound and listened on by nobody, held for the test: connections are actively
+        // refused, and no other process can start listening on it meanwhile (GAP-41).
+        using var refusing = LoopbackPorts.Refusing();
 
         var reachable = await RunnerExecution.IsLlmEndpointReachableAsync(
-            $"http://127.0.0.1:{port}/v1", Timeout, TestContext.Current.CancellationToken);
+            $"http://127.0.0.1:{refusing.Port}/v1", Timeout, TestContext.Current.CancellationToken);
 
         Assert.False(reachable);
     }

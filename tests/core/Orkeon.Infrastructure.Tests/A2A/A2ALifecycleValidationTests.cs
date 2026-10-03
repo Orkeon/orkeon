@@ -6,6 +6,7 @@ using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Infrastructure.Tests.A2A;
 
@@ -179,49 +180,46 @@ public class A2ALifecycleValidationTests
     public async Task AgentCard_ShouldListAgent_RegisteredInAnotherScope_OverHttp()
     {
         // Arrange — full stack: DI container with scope validation + real HTTP server.
-        var port = GetFreePort();
+        var (provider, port) = await LoopbackPorts.StartAsync(
+            ServerEnabledOn, static (container, ct) => container.GetRequiredService<IA2AServer>().StartAsync(ct), Ct);
+        using (provider)
+        {
+            var server = provider.GetRequiredService<IA2AServer>();
+            try
+            {
+                using (var pipelineScope = provider.CreateScope())
+                {
+                    var repo = pipelineScope.ServiceProvider.GetRequiredService<IAgentRepository>();
+                    await repo.AddAsync(new AgentBuilder().Role("Researcher").Goal("Research topics").Build(), Ct);
+                }
+
+                // Act — the discovery endpoint resolves the repository in its own request scope.
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                var response = await client.GetAsync($"{LoopbackPorts.Host}:{port}/.well-known/agent.json", Ct);
+                var json = await response.Content.ReadAsStringAsync(Ct);
+
+                // Assert — the agent registered by the pipeline scope is advertised.
+                Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+                Assert.Contains("Researcher", json);
+            }
+            finally
+            {
+                await server.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    /// <summary>A container whose A2A server listens on the loopback, on <paramref name="port"/>.</summary>
+    private static ServiceProvider ServerEnabledOn(int port)
+    {
         var services = NewServices();
         services.AddOrkeonA2A(options =>
         {
             options.EnableServer = true;
+            options.Host = LoopbackPorts.Host;
             options.Port = port;
         });
-        using var provider = services.BuildServiceProvider(s_validateScopes);
-
-        using (var pipelineScope = provider.CreateScope())
-        {
-            var repo = pipelineScope.ServiceProvider.GetRequiredService<IAgentRepository>();
-            await repo.AddAsync(new AgentBuilder().Role("Researcher").Goal("Research topics").Build(), Ct);
-        }
-
-        var server = provider.GetRequiredService<IA2AServer>();
-        try
-        {
-            await server.StartAsync(Ct);
-
-            // Act — the discovery endpoint resolves the repository in its own request scope.
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-            var response = await client.GetAsync($"http://localhost:{port}/.well-known/agent.json", Ct);
-            var json = await response.Content.ReadAsStringAsync(Ct);
-
-            // Assert — the agent registered by the pipeline scope is advertised.
-            Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
-            Assert.Contains("Researcher", json);
-        }
-        finally
-        {
-            await server.StopAsync(CancellationToken.None);
-        }
-    }
-
-    /// <summary>Asks the OS for a free ephemeral loopback port.</summary>
-    private static int GetFreePort()
-    {
-        using var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
+        return services.BuildServiceProvider(s_validateScopes);
     }
 
     // -------------------------------------------------------------------------

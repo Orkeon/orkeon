@@ -351,14 +351,13 @@ public class TrainingTaskTests
     }
 
     [Fact]
-    public void ShouldCreateManyTasks_WhenUsingPerformanceTest()
+    public void ShouldCreateManyTasks_WithUniqueIds()
     {
         // Arrange
         var tasks = new List<TrainingTask>();
         var skills = new List<string> { "Performance", "Testing" };
 
         // Act
-        var startTime = DateTime.UtcNow;
         for (int i = 0; i < 10000; i++)
         {
             tasks.Add(TrainingTask.Create(
@@ -366,11 +365,9 @@ public class TrainingTaskTests
                 $"Output {i}",
                 skills));
         }
-        var elapsed = DateTime.UtcNow - startTime;
 
-        // Assert
+        // Assert — what was created, not the time it took: a duration measures the machine (GAP-41)
         Assert.Equal(10000, tasks.Count);
-        Assert.True(elapsed < TimeSpan.FromSeconds(1), $"Creating 10000 tasks took {elapsed.TotalMilliseconds}ms");
 
         // Verify all IDs are unique
         var uniqueIds = tasks.Select(t => t.Id).Distinct().Count();

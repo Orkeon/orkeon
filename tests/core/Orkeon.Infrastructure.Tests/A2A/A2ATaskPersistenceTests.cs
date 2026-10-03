@@ -5,6 +5,7 @@ using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Checkpointing;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tests.TestDoubles;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Infrastructure.Tests.A2A;
 
@@ -15,16 +16,6 @@ namespace Orkeon.Infrastructure.Tests.A2A;
 /// </summary>
 public class A2ATaskPersistenceTests
 {
-    private static int GetFreePort()
-    {
-        using var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
-    }
-
-
     // ---- Adapter round-trip (no HTTP) ----
 
     [Fact]
@@ -64,12 +55,9 @@ public class A2ATaskPersistenceTests
     [Fact]
     public async Task GetTask_Returns200_AfterSend_WhenStoreRegistered()
     {
-        var port = GetFreePort();
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), taskStore: store);
-
-        await server.StartAsync(TestContext.Current.CancellationToken);
+        var (server, port) = await A2ALoopback.StartAsync(
+            options => new A2AServer(options, new StubA2ATaskRouter(), taskStore: store), TestContext.Current.CancellationToken);
         try
         {
             using var httpClient = new HttpClient();
@@ -78,11 +66,11 @@ public class A2ATaskPersistenceTests
             using var content = new StringContent(body, Encoding.UTF8, "application/json");
 
             var sendResponse = await httpClient.PostAsync(
-                $"http://localhost:{port}/a2a/tasks/send", content, TestContext.Current.CancellationToken);
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/send", content, TestContext.Current.CancellationToken);
             Assert.Equal(System.Net.HttpStatusCode.OK, sendResponse.StatusCode);
 
             var getResponse = await httpClient.GetAsync(
-                $"http://localhost:{port}/a2a/tasks/{taskId}", TestContext.Current.CancellationToken);
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/{taskId}", TestContext.Current.CancellationToken);
 
             Assert.Equal(System.Net.HttpStatusCode.OK, getResponse.StatusCode);
             var payload = JsonSerializer.Deserialize<A2ATaskResponse>(
@@ -94,71 +82,62 @@ public class A2ATaskPersistenceTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
     [Fact]
     public async Task GetTask_Returns404_ForUnknownId_WhenStoreRegistered()
     {
-        var port = GetFreePort();
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), taskStore: store);
-
-        await server.StartAsync(TestContext.Current.CancellationToken);
+        var (server, port) = await A2ALoopback.StartAsync(
+            options => new A2AServer(options, new StubA2ATaskRouter(), taskStore: store), TestContext.Current.CancellationToken);
         try
         {
             using var httpClient = new HttpClient();
             var response = await httpClient.GetAsync(
-                $"http://localhost:{port}/a2a/tasks/unknown-task", TestContext.Current.CancellationToken);
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/unknown-task", TestContext.Current.CancellationToken);
 
             Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
     [Fact]
     public async Task GetTask_Returns501_WithoutStore()
     {
-        var port = GetFreePort();
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter());
-
-        await server.StartAsync(TestContext.Current.CancellationToken);
+        var (server, port) = await A2ALoopback.StartAsync(
+            options => new A2AServer(options, new StubA2ATaskRouter()), TestContext.Current.CancellationToken);
         try
         {
             using var httpClient = new HttpClient();
             var response = await httpClient.GetAsync(
-                $"http://localhost:{port}/a2a/tasks/whatever", TestContext.Current.CancellationToken);
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/whatever", TestContext.Current.CancellationToken);
 
             Assert.Equal(System.Net.HttpStatusCode.NotImplemented, response.StatusCode);
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
     [Fact]
     public async Task CancelTask_Returns404_ForUnknownId_And409_ForAFinishedTask_WhenStoreRegistered()
     {
-        var port = GetFreePort();
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), taskStore: store);
-
-        await server.StartAsync(TestContext.Current.CancellationToken);
+        var (server, port) = await A2ALoopback.StartAsync(
+            options => new A2AServer(options, new StubA2ATaskRouter(), taskStore: store), TestContext.Current.CancellationToken);
         try
         {
             using var httpClient = new HttpClient();
 
             // Unknown id → 404 (no fabricated acknowledgement anymore).
             var unknown = await httpClient.DeleteAsync(
-                $"http://localhost:{port}/a2a/tasks/ghost", TestContext.Current.CancellationToken);
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/ghost", TestContext.Current.CancellationToken);
             Assert.Equal(System.Net.HttpStatusCode.NotFound, unknown.StatusCode);
 
             // A task that already finished cannot be cancelled (GAP-10): 409, and its record
@@ -167,10 +146,10 @@ public class A2ATaskPersistenceTests
             var body = JsonSerializer.Serialize(new { id = taskId, skillId = "researcher", input = "hello" });
             using var content = new StringContent(body, Encoding.UTF8, "application/json");
             await httpClient.PostAsync(
-                $"http://localhost:{port}/a2a/tasks/send", content, TestContext.Current.CancellationToken);
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/send", content, TestContext.Current.CancellationToken);
 
             var cancel = await httpClient.DeleteAsync(
-                $"http://localhost:{port}/a2a/tasks/{taskId}", TestContext.Current.CancellationToken);
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/{taskId}", TestContext.Current.CancellationToken);
             Assert.Equal(System.Net.HttpStatusCode.Conflict, cancel.StatusCode);
 
             var record = await store.GetAsync(taskId, TestContext.Current.CancellationToken);
@@ -179,7 +158,7 @@ public class A2ATaskPersistenceTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 }

@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -7,6 +9,7 @@ using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tests.TestDoubles;
 using static Orkeon.Tests.Shared.Constants.TestEntityIds;
+using Orkeon.Tests.Shared.Network;
 using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Infrastructure.Tests.A2A;
@@ -75,30 +78,41 @@ internal class ThrowingA2ATaskRouter : IA2ATaskRouter
     }
 }
 
+/// <summary>
+/// Router that holds every task until <see cref="Release"/>, deaf to the server's shutdown on
+/// purpose: the request it serves keeps <see cref="A2AServer.StopAsync"/> waiting once the
+/// listener has stopped.
+/// </summary>
+internal sealed class HeldTaskRouter : IA2ATaskRouter
+{
+    private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Completed when a task reached the router.</summary>
+    public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void Release() => _release.TrySetResult();
+
+    public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<AgentSkill>>([]);
+
+    public async Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct = default)
+    {
+        Entered.TrySetResult();
+        await _release.Task;
+        return new A2ATaskResponse { TaskId = request.Id, Status = A2ATaskStatus.Completed, Output = "released" };
+    }
+}
+
 public class A2AServerTests
 {
     private static readonly string[] ResearcherTags = ["researcher"];
     private static readonly string[] WriterTags = ["writer"];
 
-    /// <summary>
-    /// Asks the OS for a free ephemeral port on loopback. Hardcoded ports leak across
-    /// runs on Windows (HTTP.sys namespace reservation) and collide with other processes.
-    /// </summary>
-    private static int GetFreePort()
-    {
-        using var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
-    }
-
-
     [Fact]
     public async Task Server_ShouldNotBeRunning_Initially()
     {
-        // Arrange
-        var options = new A2AOptions { Port = GetFreePort() };
+        // Arrange — never started: the port is never bound
+        var options = new A2AOptions();
         var router = new StubA2ATaskRouter();
 
         // Act
@@ -112,13 +126,11 @@ public class A2AServerTests
     public async Task Server_ShouldThrow_WhenStartedTwice()
     {
         // Arrange
-        var options = new A2AOptions { Port = GetFreePort() };
         var router = new StubA2ATaskRouter();
-        await using var server = new A2AServer(options, router);
+        var (server, _) = await A2ALoopback.StartAsync(options => new A2AServer(options, router), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
             Assert.True(server.IsRunning);
 
             // Act & Assert
@@ -126,7 +138,7 @@ public class A2AServerTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -134,29 +146,27 @@ public class A2AServerTests
     public async Task Server_ShouldStartAndStop()
     {
         // Arrange
-        var options = new A2AOptions { Port = GetFreePort() };
         var router = new StubA2ATaskRouter();
-        await using var server = new A2AServer(options, router);
 
         // Act
-        await server.StartAsync(TestContext.Current.CancellationToken);
-        Assert.True(server.IsRunning);
+        var (server, _) = await A2ALoopback.StartAsync(options => new A2AServer(options, router), TestContext.Current.CancellationToken);
+        await using (server)
+        {
+            Assert.True(server.IsRunning);
 
-        await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.StopAsync(TestContext.Current.CancellationToken);
 
-        // Assert
-        Assert.False(server.IsRunning);
+            // Assert
+            Assert.False(server.IsRunning);
+        }
     }
 
     [Fact]
     public async Task Server_ShouldDisposeCleanly()
     {
         // Arrange
-        var options = new A2AOptions { Port = GetFreePort() };
         var router = new StubA2ATaskRouter();
-        var server = new A2AServer(options, router);
-
-        await server.StartAsync(TestContext.Current.CancellationToken);
+        var (server, _) = await A2ALoopback.StartAsync(options => new A2AServer(options, router), TestContext.Current.CancellationToken);
         Assert.True(server.IsRunning);
 
         // Act
@@ -169,8 +179,8 @@ public class A2AServerTests
     [Fact]
     public async Task Server_StopShouldBeIdempotent()
     {
-        // Arrange
-        var options = new A2AOptions { Port = GetFreePort() };
+        // Arrange — never started: the port is never bound
+        var options = new A2AOptions();
         var router = new StubA2ATaskRouter();
         await using var server = new A2AServer(options, router);
 
@@ -189,23 +199,22 @@ public class A2AServerTests
         // router, and the card publishes what that router answers — never an agent directory
         // the router does not read: the published key and the compared key are one (GAP-10).
         var veille = new AgentSkill { Id = "veille", Name = "veille", Description = "Weekly technology watch." };
-        var port = GetFreePort();
-        await using var server = new A2AServer(new A2AOptions { Port = port }, new StubA2ATaskRouter(skills: [veille]));
-        await server.StartAsync(TestContext.Current.CancellationToken);
+        var (server, port) = await A2ALoopback.StartAsync(
+            options => new A2AServer(options, new StubA2ATaskRouter(skills: [veille])), TestContext.Current.CancellationToken);
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
             using var card = JsonDocument.Parse(await http.GetStringAsync(
-                $"http://localhost:{port}/.well-known/agent.json", TestContext.Current.CancellationToken));
+                $"{LoopbackPorts.Host}:{port}/.well-known/agent.json", TestContext.Current.CancellationToken));
 
             var skill = Assert.Single(card.RootElement.GetProperty("skills").EnumerateArray());
             Assert.Equal("veille", skill.GetProperty("id").GetString());
             Assert.Equal("Weekly technology watch.", skill.GetProperty("description").GetString());
-            Assert.Equal(new Uri($"http://localhost:{port}"), new Uri(card.RootElement.GetProperty("url").GetString()!));
+            Assert.Equal(new Uri($"{LoopbackPorts.Host}:{port}"), new Uri(card.RootElement.GetProperty("url").GetString()!));
         }
         finally
         {
-            await server.StopAsync(CancellationToken.None);
+            await server.DisposeAsync();
         }
     }
 
@@ -279,15 +288,12 @@ public class A2AServerTests
     public async Task ListenLoop_ShouldLogError_WhenHandleRequestAsyncThrows()
     {
         // Arrange
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var router = new ThrowingA2ATaskRouter(throwCount: 1);
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
 
             using var httpClient = new HttpClient();
             var requestBody = JsonSerializer.Serialize(new A2ATaskRequest
@@ -301,7 +307,7 @@ public class A2AServerTests
             // Act — send a request that will cause the router to throw
             try
             {
-                await httpClient.PostAsync($"http://localhost:{port}/a2a/tasks/send", content, TestContext.Current.CancellationToken);
+                await httpClient.PostAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/send", content, TestContext.Current.CancellationToken);
             }
             catch
             {
@@ -324,7 +330,7 @@ public class A2AServerTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -332,15 +338,12 @@ public class A2AServerTests
     public async Task ListenLoop_ShouldContinueListening_WhenHandleRequestAsyncThrows()
     {
         // Arrange — router throws on first call, succeeds on second
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var router = new ThrowingA2ATaskRouter(throwCount: 1);
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
 
             using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(5);
@@ -357,7 +360,7 @@ public class A2AServerTests
             try
             {
                 await httpClient.PostAsync(
-                    $"http://localhost:{port}/a2a/tasks/send",
+                    $"{LoopbackPorts.Host}:{port}/a2a/tasks/send",
                     firstContent, TestContext.Current.CancellationToken);
             }
             catch
@@ -378,7 +381,7 @@ public class A2AServerTests
 
             using var secondContent = new StringContent(secondBody, Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync(
-                $"http://localhost:{port}/a2a/tasks/send",
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/send",
                 secondContent, TestContext.Current.CancellationToken);
 
             // Assert — server continued listening and processed the second request
@@ -390,7 +393,7 @@ public class A2AServerTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -398,15 +401,12 @@ public class A2AServerTests
     public async Task ListenLoop_ShouldSend500Response_WhenHandleRequestAsyncThrows()
     {
         // Arrange
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var router = new ThrowingA2ATaskRouter(throwCount: 1);
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
 
             using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(5);
@@ -421,7 +421,7 @@ public class A2AServerTests
             // Act — send a request that causes the router to throw
             using var requestContent = new StringContent(requestBody, Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync(
-                $"http://localhost:{port}/a2a/tasks/send",
+                $"{LoopbackPorts.Host}:{port}/a2a/tasks/send",
                 requestContent, TestContext.Current.CancellationToken);
 
             // Assert — server should return 500 Internal Server Error
@@ -432,7 +432,72 @@ public class A2AServerTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Stop_DoesNotBindThePortAgain_OnceItsListenerHasStopped()
+    {
+        // GAP-41: under Linux and macOS, HttpListener.Close() after Stop() goes back through its
+        // prefixes and, finding nobody listening on the port any more, binds it for an instant to
+        // remove them. A port another program took meanwhile made StopAsync throw « Address
+        // already in use » (GAP-33); a free one was held again, under another server's start.
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "HTTP.sys binds nothing again when its listener closes.");
+        var router = new HeldTaskRouter();
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router), TestContext.Current.CancellationToken);
+        try
+        {
+            using var http = new HttpClient { Timeout = Polling.DefaultTimeout };
+            using var body = new StringContent(
+                JsonSerializer.Serialize(new A2ATaskRequest { Id = "held-1", SkillId = "researcher", Input = "hold" }),
+                Encoding.UTF8, "application/json");
+#pragma warning disable CA2025 // `sending` is awaited below, inside the scope of `http` and `body`.
+            var sending = http.PostAsync(new Uri(LoopbackPorts.BaseAddress(port), "a2a/tasks/send"), body, TestContext.Current.CancellationToken);
+#pragma warning restore CA2025
+            await router.Entered.Task.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+
+            var stopping = server.StopAsync(CancellationToken.None);
+
+            // The listener has stopped — the held request keeps StopAsync waiting: another
+            // program takes the port.
+            TcpListener? taker = null;
+            await Polling.WaitUntilAsync(() => (taker = TryListen(port)) is not null);
+            using (taker)
+            {
+                router.Release();
+                await stopping.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+
+                // ... and keeps it: what listens on the port is still the program that took it.
+                var accepting = taker!.AcceptTcpClientAsync(TestContext.Current.CancellationToken);
+                using var client = new TcpClient();
+                await client.ConnectAsync(IPAddress.Loopback, port, TestContext.Current.CancellationToken);
+                using var accepted = await accepting.AsTask().WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+                Assert.True(accepted.Connected);
+            }
+
+            // The stop cut the held request; how its client learns it does not matter here.
+            await Record.ExceptionAsync(() => sending);
+        }
+        finally
+        {
+            await server.DisposeAsync();
+        }
+    }
+
+    /// <summary>A listener on 127.0.0.1:<paramref name="port"/>, or null while something else listens there.</summary>
+    private static TcpListener? TryListen(int port)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, port);
+        try
+        {
+            listener.Start();
+            return listener;
+        }
+        catch (SocketException)
+        {
+            listener.Dispose();
+            return null;
         }
     }
 }

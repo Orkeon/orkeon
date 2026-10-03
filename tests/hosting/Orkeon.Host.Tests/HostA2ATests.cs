@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +10,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Host.Tests.Doubles;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Tests.Shared.Network;
 using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Host.Tests;
@@ -21,7 +21,8 @@ namespace Orkeon.Host.Tests;
 /// exactly what a chat message is: under the crew's mounts, inside its concurrency bound,
 /// attributed in the log, stopped by <c>DELETE</c>. The host is the one <c>Program</c> builds —
 /// the runner host plus <see cref="HostServiceRegistration.AddHostServices"/>, scope validation
-/// on — reached over HTTP on a free loopback port; the model is a double.
+/// on — reached over HTTP on a free loopback port, taken through <see cref="LoopbackPorts"/>; the
+/// model is a double.
 /// </summary>
 public sealed class HostA2ATests : IDisposable
 {
@@ -211,10 +212,8 @@ public sealed class HostA2ATests : IDisposable
         // a task is refused with the reason; the run admitted before keeps its grace and still
         // answers the peer that asked, since the server stops after the drain.
         var llm = new HeldLlmProvider("the watch report", held: true);
-        var (host, port) = Build(llm);
-        using var _ = host;
-        await host.StartAsync(Ct);
-        var daemon = new RunningHost(host, port);
+        await using var daemon = await StartAsync(llm);
+        var host = daemon.Host;
         using var http = NewHttp();
 
 #pragma warning disable CA2025 // `sending` is awaited below, inside the scope of `http`.
@@ -292,13 +291,13 @@ public sealed class HostA2ATests : IDisposable
     }
 
     // -------------------------------------------------------------------------
-    // Refused at start (exit 78), before anything listens
+    // Refused at start (exit 78), before anything listens: a probed port is enough
     // -------------------------------------------------------------------------
 
     [Fact]
     public async Task Exposing_a_crew_the_host_does_not_declare_refuses_the_start()
     {
-        using var host = Build(new HeldLlmProvider("unused"), (_, a2a) => a2a["Crews"] = s_veilleAndAnUndeclaredCrew).Host;
+        using var host = Build(new HeldLlmProvider("unused"), LoopbackPorts.Probe(), (_, a2a) => a2a["Crews"] = s_veilleAndAnUndeclaredCrew);
 
         var error = await Assert.ThrowsAsync<HostConfigurationException>(() => host.StartAsync(Ct));
 
@@ -309,7 +308,7 @@ public sealed class HostA2ATests : IDisposable
     [Fact]
     public async Task Enabling_A2A_without_exposing_a_crew_refuses_the_start()
     {
-        using var host = Build(new HeldLlmProvider("unused"), (_, a2a) => a2a.Remove("Crews")).Host;
+        using var host = Build(new HeldLlmProvider("unused"), LoopbackPorts.Probe(), (_, a2a) => a2a.Remove("Crews"));
 
         var error = await Assert.ThrowsAsync<HostConfigurationException>(() => host.StartAsync(Ct));
 
@@ -319,7 +318,7 @@ public sealed class HostA2ATests : IDisposable
     [Fact]
     public async Task Listening_beyond_the_loopback_without_authentication_refuses_the_start()
     {
-        using var host = Build(new HeldLlmProvider("unused"), (_, a2a) => a2a["Host"] = "http://+").Host;
+        using var host = Build(new HeldLlmProvider("unused"), LoopbackPorts.Probe(), (_, a2a) => a2a["Host"] = "http://+");
 
         var error = await Assert.ThrowsAsync<HostConfigurationException>(() => host.StartAsync(Ct));
 
@@ -331,7 +330,7 @@ public sealed class HostA2ATests : IDisposable
     {
         // orkeon-host serves A2A from Orkeon:Host:A2A: an A2A:EnableServer or A2A:Port written
         // after the C# hosts' documentation would otherwise be silently ignored.
-        using var host = Build(new HeldLlmProvider("unused"), (root, _) => root["A2A"] = new { EnableServer = true, Port = 9 }).Host;
+        using var host = Build(new HeldLlmProvider("unused"), LoopbackPorts.Probe(), (root, _) => root["A2A"] = new { EnableServer = true, Port = 9 });
 
         var error = await Assert.ThrowsAsync<HostConfigurationException>(() => host.StartAsync(Ct));
 
@@ -343,8 +342,10 @@ public sealed class HostA2ATests : IDisposable
     [Fact]
     public async Task Without_an_A2A_section_the_host_serves_no_A2A_at_all()
     {
-        var (host, port) = Build(new HeldLlmProvider("unused"), (root, _) => HostSection(root).Remove("A2A"));
-        using var _ = host;
+        // The port the section would have named stays bound, listened on by nobody: a connection
+        // to it is refused unless the host listens there, whoever else runs on the machine.
+        using var refusing = LoopbackPorts.Refusing();
+        using var host = Build(new HeldLlmProvider("unused"), refusing.Port, (root, _) => HostSection(root).Remove("A2A"));
 
         Assert.Null(host.Services.GetService<IA2AServer>());
 
@@ -353,7 +354,7 @@ public sealed class HostA2ATests : IDisposable
         {
             using var http = NewHttp();
             await Assert.ThrowsAsync<HttpRequestException>(
-                () => http.GetAsync(new Uri($"http://localhost:{port}/.well-known/agent.json"), Ct));
+                () => http.GetAsync(new Uri($"{LoopbackPorts.Host}:{refusing.Port}/.well-known/agent.json"), Ct));
         }
         finally
         {
@@ -367,7 +368,7 @@ public sealed class HostA2ATests : IDisposable
         // The host routes crews, not agents: the A2A agent directory (a process-wide store every
         // scope's repository shares) would make each run's agents visible to the next, and keep
         // one entry per conversation, forever. Each run's scope keeps its own repository.
-        using var host = Build(new HeldLlmProvider("unused")).Host;
+        using var host = Build(new HeldLlmProvider("unused"), LoopbackPorts.Probe());
         var scopes = host.Services.GetRequiredService<IServiceScopeFactory>();
         var agent = new AgentBuilder().Role("Helper").Goal("Help").Build();
 
@@ -423,17 +424,17 @@ public sealed class HostA2ATests : IDisposable
 
     /// <summary>
     /// The daemon over two crews — <c>support</c>, and <c>veille</c> with its own <c>/output</c> —
-    /// and an <c>Orkeon:Host:A2A</c> section exposing <c>veille</c> on a free port.
-    /// <paramref name="configure"/> edits the settings root and the A2A section before they are
-    /// written.
+    /// and an <c>Orkeon:Host:A2A</c> section exposing <c>veille</c> on the loopback, on
+    /// <paramref name="port"/>. <paramref name="configure"/> edits the settings root and the A2A
+    /// section before they are written.
     /// </summary>
-    private (IHost Host, int Port) Build(
+    private IHost Build(
         HeldLlmProvider llm,
+        int port,
         Action<Dictionary<string, object?>, Dictionary<string, object?>>? configure = null,
         int veilleMaxRuns = 4,
         SpyFileSystemScope? mounts = null)
     {
-        var port = FreePort();
         var crews = new[]
         {
             new HostedCrewOptions { Name = "support", Path = CrewPath("support") },
@@ -443,6 +444,7 @@ public sealed class HostA2ATests : IDisposable
         var a2a = new Dictionary<string, object?>
         {
             ["Enabled"] = true,
+            ["Host"] = LoopbackPorts.Host,
             ["Port"] = port,
             ["Crews"] = new[] { "veille" },
         };
@@ -476,7 +478,7 @@ public sealed class HostA2ATests : IDisposable
         File.WriteAllText(settings, JsonSerializer.Serialize(root));
 
         var crewPlan = HostCrewMounts.For(crews);
-        var host = RunnerHost.Build(
+        return RunnerHost.Build(
             settings,
             new RunnerMountPlan { CliMounts = [.. crewPlan.Mounts], AllowExternalMounts = true },
             configureLogging: (_, logging) => logging.AddProvider(new LogSink(_log)),
@@ -492,27 +494,20 @@ public sealed class HostA2ATests : IDisposable
                 options.ValidateScopes = true;
                 options.ValidateOnBuild = true;
             }));
-
-        return (host, port);
     }
 
+    /// <summary>
+    /// The daemon of <see cref="Build"/>, started on a free loopback port: a port another process
+    /// takes before the A2A server binds it costs a retry (GAP-41), any other refusal fails here.
+    /// </summary>
     private async Task<RunningHost> StartAsync(
         HeldLlmProvider llm,
         Action<Dictionary<string, object?>, Dictionary<string, object?>>? configure = null,
         int veilleMaxRuns = 4,
         SpyFileSystemScope? mounts = null)
     {
-        var (host, port) = Build(llm, configure, veilleMaxRuns, mounts);
-        try
-        {
-            await host.StartAsync(Ct);
-        }
-        catch
-        {
-            host.Dispose();
-            throw;
-        }
-
+        var (host, port) = await LoopbackPorts.StartAsync(
+            free => Build(llm, free, configure, veilleMaxRuns, mounts), static (built, ct) => built.StartAsync(ct), Ct);
         return new RunningHost(host, port);
     }
 
@@ -520,23 +515,18 @@ public sealed class HostA2ATests : IDisposable
     {
         public IHost Host => host;
 
-        public Uri Url(string path) => new($"http://localhost:{port}{path}");
+        public Uri Url(string path) => new($"{LoopbackPorts.Host}:{port}{path}");
 
         public async ValueTask DisposeAsync()
         {
-            await host.StopAsync(CancellationToken.None);
+            // A test that stops the host itself has waited for that stop already.
+            if (!host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping.IsCancellationRequested)
+                await host.StopAsync(CancellationToken.None);
             host.Dispose();
         }
     }
 
     private static HttpClient NewHttp() => new() { Timeout = TimeSpan.FromSeconds(60) };
-
-    private static int FreePort()
-    {
-        using var probe = new TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        return ((IPEndPoint)probe.LocalEndpoint).Port;
-    }
 
     private static async Task<HttpResponseMessage> PostAsync(
         HttpClient http, RunningHost daemon, string id, string skillId, string input, string? authorization)

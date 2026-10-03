@@ -5,6 +5,7 @@ using Orkeon.Domain.Common;
 using Orkeon.Domain.EventHub;
 using Orkeon.Infrastructure.EventHub;
 using Orkeon.Infrastructure.EventHub.Middleware;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Infrastructure.Tests.EventHub;
 
@@ -106,11 +107,13 @@ public class PipelineOnMailboxTrafficTests
                 () => hub.PostAsync(stranger, new { ok = true }, null, TestContext.Current.CancellationToken));
         }
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        // The hub's own 100 ms timeout decides; the token only guards a hang (GAP-41) — a 200 ms
+        // one raced it, and lost on a busy machine.
+        using var hangGuard = new CancellationTokenSource(Polling.DefaultTimeout);
         var waited = await hub.WaitForAsync(
             new WaitOnMailbox(stranger),
             new FiniteWaitTimeout(TimeSpan.FromMilliseconds(100)),
-            cts.Token);
+            hangGuard.Token);
 
         Assert.Equal(WaitTimedOutMessageFactory.ReservedTopic, waited.Topic);
     }

@@ -12,6 +12,13 @@
   <ItemGroup>
     <!-- Microsoft.Agents.AI (not only the abstractions): AsAIAgent() turns an IChatClient into a ChatClientAgent. -->
     <PackageReference Include="Microsoft.Agents.AI" />
+    <!-- Referenced directly although Microsoft.Agents.AI brings it (GAP-41): IChatClient is used
+         here, and the direct reference eclipses the transitive edge Microsoft.Agents.AI 1.20.0 ->
+         Microsoft.Extensions.VectorData.Abstractions -> Microsoft.Extensions.AI.Abstractions
+         (>= 10.8.2), a version nuget.org never published. To resolve that edge, every restore
+         whose graph changed asked nuget.org for the version list, and failed offline. The
+         resolved version (the central 10.10.0) does not change. -->
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
     <ProjectReference Include="..\..\..\src\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
     <ProjectReference Include="..\..\..\src\interop\Orkeon.Interop.AgentFramework\Orkeon.Interop.AgentFramework.csproj" />
   </ItemGroup>

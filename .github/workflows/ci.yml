@@ -84,7 +84,11 @@ jobs:
         with: { dotnet-version: '10.0.x' }
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.nuget/packages
+          # The restore fills packages/ (RestorePackagesPath, Directory.Build.props), not
+          # ~/.nuget/packages, which keeps only the dotnet tools and the MSBuild SDKs NuGet resolves.
+          path: |
+            packages
+            ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore Orkeon.sln
@@ -134,7 +138,11 @@ jobs:
           dotnet-quality: preview
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.nuget/packages
+          # The restore fills packages/ (RestorePackagesPath, Directory.Build.props), not
+          # ~/.nuget/packages, which keeps only the dotnet tools and the MSBuild SDKs NuGet resolves.
+          path: |
+            packages
+            ~/.nuget/packages
           key: nuget-net11-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
           restore-keys: nuget-net11-${{ runner.os }}-
       - name: Let the 11.x SDK build a 10.0.300-pinned tree (runner only)

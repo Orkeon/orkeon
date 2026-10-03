@@ -216,6 +216,14 @@ living documentation: they live in the maintainers' private governance repositor
 * Follow AAA pattern (Arrange, Act, Assert)
 * Use xUnit and its native assertions only — no mocking framework (Moq, NSubstitute,
   FakeItEasy) and no fluent assertion library (FluentAssertions, Shouldly)
+* Keep a test true under load, when several passes run at once: a test server takes its port
+  through `LoopbackPorts` (`Orkeon.Tests.Shared.Network`), which starts again on another port
+  when the probed one was taken, and listens on `LoopbackPorts.Host` (`127.0.0.1`); an
+  `HttpListener` is never closed with `Close()` after `Stop()`; a span test reads an
+  `ActivityRecorder` (`Orkeon.Tests.Shared.Telemetry`), filtered on the trace of a root it starts
+  or on a tag only it carries; a delay the test must not reach is a hang guard
+  (`Polling.DefaultTimeout`), and no unit test bounds a duration — a timestamp is checked between
+  two readings of the clock, and two concurrent ends come in the order a rendezvous forces
 
 ```csharp
 [Fact]

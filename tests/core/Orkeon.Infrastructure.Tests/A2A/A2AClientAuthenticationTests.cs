@@ -3,6 +3,7 @@ using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Infrastructure.Tests.A2A;
 
@@ -96,12 +97,10 @@ public sealed class A2AClientAuthenticationTests
     public async Task AnOrkeonClient_IsAcceptedByAnOrkeonServerThatRequiresAnApiKey()
     {
         var secrets = Secrets("A2A_PEER_KEY", "k-123456");
-        var port = A2AExecutionTestsPorts.GetFreePort();
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(),
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(
+            options, new StubA2ATaskRouter(),
             security: new A2ASecurityOptions { AllowedAuthSchemes = { "ApiKey" }, ApiKeySecretNames = { "A2A_PEER_KEY" } },
-            secretProvider: secrets);
-        await server.StartAsync(Ct);
+            secretProvider: secrets), Ct);
         try
         {
             var httpFactory = new RealHttpClientFactory();
@@ -112,16 +111,16 @@ public sealed class A2AClientAuthenticationTests
             using var anonymous = new A2AClient(httpFactory, new A2AOptions(), new FakeFileSystemService());
 
             var accepted = await client.SendTaskAsync(
-                new Uri($"http://localhost:{port}"), new A2ATaskRequest { Id = "auth-1", SkillId = "s", Input = "x" }, Ct);
+                new Uri($"{LoopbackPorts.Host}:{port}"), new A2ATaskRequest { Id = "auth-1", SkillId = "s", Input = "x" }, Ct);
             Assert.Equal(A2ATaskStatus.Completed, accepted.Status);
 
             var refused = await Assert.ThrowsAsync<HttpRequestException>(() => anonymous.SendTaskAsync(
-                new Uri($"http://localhost:{port}"), new A2ATaskRequest { Id = "auth-2", SkillId = "s", Input = "x" }, Ct));
+                new Uri($"{LoopbackPorts.Host}:{port}"), new A2ATaskRequest { Id = "auth-2", SkillId = "s", Input = "x" }, Ct));
             Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
         }
         finally
         {
-            await server.StopAsync(CancellationToken.None);
+            await server.DisposeAsync();
         }
     }
 }
@@ -130,16 +129,4 @@ public sealed class A2AClientAuthenticationTests
 internal sealed class RealHttpClientFactory : IHttpClientFactory
 {
     public HttpClient CreateClient(string name) => new();
-}
-
-internal static class A2AExecutionTestsPorts
-{
-    public static int GetFreePort()
-    {
-        using var probe = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
-    }
 }

@@ -5,12 +5,14 @@ using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Services.Security;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Application.Telemetry;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tests.Shared.Telemetry;
 
 namespace Orkeon.Application.Tests.Crew.Execution;
 
@@ -105,32 +107,33 @@ public class ChatClientAgentLoopTests
     {
         // The spans a backend that knows the OpenTelemetry gen_ai conventions expects:
         // invoke_agent {agent} > chat {model} + execute_tool {tool}, with the gen_ai.* names.
-        // A unique role: the ActivityListener is process-global and the suite runs in parallel,
-        // so every assertion below is scoped to this run's trace.
+        // The listener hears the whole process and the suite runs in parallel (GAP-41): the loop
+        // runs under a root of this test's own, and every assertion reads a copy of its trace.
         var tool = new SpyTool("native_tool", result: "ok");
         var agent = new AgentBuilder().Role("Span Agent 7f3e").Goal("Emit spans").MaxIterations(5).WithTool(tool).Build();
         var (loop, client) = BuildLoop(tool);
         client.EnqueueFunctionCall("call-7", "native_tool");
         client.EnqueueText("done", new UsageDetails { InputTokenCount = 11, OutputTokenCount = 3, TotalTokenCount = 14 });
 
-        var spans = new List<System.Diagnostics.Activity>();
-        using var listener = new System.Diagnostics.ActivityListener
+        using var recorder = new ActivityRecorder(
+            OrkeonActivitySources.Agent.Name, OrkeonActivitySources.Llm.Name, OrkeonActivitySources.Tool.Name);
+
+        System.Diagnostics.ActivityTraceId trace;
+        using (var root = new System.Diagnostics.Activity(nameof(EmitsGenAiSpans_ForTheAgentTurn_TheChatCall_AndTheToolCall)))
         {
-            ShouldListenTo = source => source.Name is "Orkeon.Agent" or "Orkeon.Llm" or "Orkeon.Tool",
-            Sample = static (ref System.Diagnostics.ActivityCreationOptions<System.Diagnostics.ActivityContext> _) =>
-                System.Diagnostics.ActivitySamplingResult.AllData,
-            ActivityStopped = spans.Add,
-        };
-        System.Diagnostics.ActivitySource.AddActivityListener(listener);
+            root.Start();
+            await loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            trace = root.TraceId;
+        }
 
-        await loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+        var spans = recorder.Snapshot(trace);
 
-        var agentSpan = Assert.Single(spans, s => s.Source.Name == "Orkeon.Agent" && s.DisplayName == "invoke_agent Span Agent 7f3e");
+        var agentSpan = Assert.Single(spans, s => s.Source.Name == OrkeonActivitySources.Agent.Name);
+        Assert.Equal("invoke_agent Span Agent 7f3e", agentSpan.DisplayName);
         Assert.Equal("invoke_agent", agentSpan.GetTagItem("gen_ai.operation.name"));
         Assert.Equal("Span Agent 7f3e", agentSpan.GetTagItem("gen_ai.agent.name"));
-        spans = spans.Where(s => s.TraceId == agentSpan.TraceId).ToList();
 
-        var chatSpans = spans.Where(s => s.Source.Name == "Orkeon.Llm").ToList();
+        var chatSpans = spans.Where(s => s.Source.Name == OrkeonActivitySources.Llm.Name).ToList();
         Assert.Equal(2, chatSpans.Count);
         Assert.All(chatSpans, s => Assert.Equal(System.Diagnostics.ActivityKind.Client, s.Kind));
         Assert.All(chatSpans, s => Assert.Equal("chat", s.GetTagItem("gen_ai.operation.name")));
@@ -139,7 +142,7 @@ public class ChatClientAgentLoopTests
         Assert.Equal(3L, chatSpans[1].GetTagItem("gen_ai.usage.output_tokens"));
         Assert.NotNull(chatSpans[0].GetTagItem("gen_ai.provider.name"));
 
-        var toolSpan = Assert.Single(spans, s => s.Source.Name == "Orkeon.Tool");
+        var toolSpan = Assert.Single(spans, s => s.Source.Name == OrkeonActivitySources.Tool.Name);
         Assert.Equal("execute_tool native_tool", toolSpan.DisplayName);
         Assert.Equal("execute_tool", toolSpan.GetTagItem("gen_ai.operation.name"));
         Assert.Equal("native_tool", toolSpan.GetTagItem("gen_ai.tool.name"));

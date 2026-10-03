@@ -182,6 +182,54 @@ Migration: a setting the default damaged finds its card again when Studio opens;
 in the editor — the card keeps its key in `ORKEON_CUSTOM_LLM_API_KEY`. A Docker Model Runner setting
 runs at once from Studio, and outside Studio after the first gesture on the model settings.
 
+### Fixed — a stopped A2A server no longer binds its port again, the test suites hold under load, the examples restore offline, and CI's NuGet cache keeps the packages
+
+Under Linux and macOS, `A2AServer.StopAsync` called `HttpListener.Close()` on the listener `Stop()`
+had just stopped. `Close()` goes back through the listener's prefixes and, finding nobody listening on
+the port any more, binds it for an instant to remove them: a port another process had taken in between
+made the stop throw « Address already in use », and a free one was held again, for that instant, under
+whatever started next on it (GAP-41).
+
+- **The stop releases the listener with `Abort()`**, which marks a stopped listener closed without going
+  back through its prefixes; under Windows it frees the HTTP.sys configuration, as `Close()` does.
+- **A test server takes its port through `LoopbackPorts`** (`Orkeon.Tests.Shared.Network`). Thirteen
+  copies of one probe — a port asked of the system, given back, bound later by the server — left it to
+  whoever took it in between, and the A2A suites failed on « Address already in use » when passes ran at
+  once. `StartAsync` and `StartListener` start the server and, when the port turns out to be taken,
+  dispose it and start again on another one — ten attempts, then the last conflict; any other refusal
+  still fails at once. Servers listen, and clients call, on `127.0.0.1` (`localhost` under Windows):
+  `HttpListener` binds the first address its host name resolves to — `::1` for `localhost` on a machine
+  that ranks it first, a port the probe never looked at. `Refusing()` holds a port nobody listens on, for
+  the tests that need a refused connection (an LLM endpoint probe, an IMAP mailbox) and used to count on
+  a port given back staying free. The three HTTP doubles stop their listener with `Close()` alone.
+- **A span test reads an `ActivityRecorder`** (`Orkeon.Tests.Shared.Telemetry`), which adds each
+  activity under a lock and hands out copies; the test keeps to the trace of a root it starts. Three
+  tests walked a list a process-wide listener kept filling from their neighbours' threads — one of the
+  two `Orkeon.Application.Tests` failures that came one pass in three.
+- **A delay a test must not reach is a hang guard, and no unit test bounds a duration.** Eight
+  receptions of messages already sent (budgets of 100 ms to 1 s), five more of 1 s, and a 200 ms token
+  racing the EventHub's own 100 ms timeout now allow 10 s and end on what they wait for. Three assertions
+  that measured the machine — a token count under 100 ms, 10,000 tasks created under 1 s, a kickoff under
+  5 s — are gone, and what those tests check otherwise stays; a timestamp is checked between two readings
+  of the clock, never within a window of it, and a duration a test builds comes from one reading — two
+  put the time between them into a duration expected to the millisecond.
+- **A test that orders two concurrent ends forces that order.** The sequential `asyncExecution` test
+  expecting the hook to hear the synchronous task before the launched one only made the launched task
+  wait for the other to start: under load, its own end reached the hook first. It now waits until the
+  hook has heard the other's end. The hook is unchanged — it hears each task as it ends.
+- **The examples restore offline.** `Microsoft.Agents.AI` 1.20.0 brings an edge to
+  `Microsoft.Extensions.AI.Abstractions (>= 10.8.2)`, a version nuget.org never published: every restore
+  of `examples/interop/agent-framework` whose graph changed asked nuget.org for the version list, and
+  failed without a network. The example references the package directly, at its central version
+  (10.10.0, the one already resolved): a direct reference eclipses the transitive edge, which NuGet no
+  longer resolves. The resolved graph is unchanged.
+- **CI's NuGet cache keeps the packages.** Under Linux a restore fills `<repository>/packages`
+  (`RestorePackagesPath`, `Directory.Build.props`), but the eight `actions/cache` steps kept
+  `~/.nuget/packages`: every run downloaded the whole closure again — TreeSitter and the two ONNX
+  Runtimes alone weigh 1.3 GB. They cache both folders now, keys unchanged.
+
+Nothing breaks.
+
 ### Fixed — the third-party notices list every package the shipped binaries redistribute, generated from the restore and checked by CI
 
 `THIRD-PARTY-NOTICES.md` promised an entry for whatever the packages and the installers

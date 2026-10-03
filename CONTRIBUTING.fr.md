@@ -224,6 +224,15 @@ s'applique à tout l'arbre documentaire sans exception.
 * Utilisez xUnit et ses assertions natives uniquement — pas de framework de mock (Moq,
   NSubstitute, FakeItEasy) ni de bibliothèque d'assertions fluentes (FluentAssertions,
   Shouldly)
+* Gardez un test vrai sous la charge, quand plusieurs passes tournent à la fois : un serveur de
+  test prend son port par `LoopbackPorts` (`Orkeon.Tests.Shared.Network`), qui recommence sur un
+  autre port quand celui de la sonde a été pris, et écoute sur `LoopbackPorts.Host`
+  (`127.0.0.1`) ; un `HttpListener` ne se ferme jamais par `Close()` après `Stop()` ; un test de
+  spans lit un `ActivityRecorder` (`Orkeon.Tests.Shared.Telemetry`), filtré sur la trace d'une
+  racine qu'il démarre ou sur une étiquette qu'il est seul à porter ; un délai que le test ne doit
+  pas atteindre est une garde contre le blocage (`Polling.DefaultTimeout`), et aucun test
+  unitaire ne borne une durée — un horodatage se vérifie entre deux lectures de l'horloge, et
+  deux fins concurrentes viennent dans l'ordre qu'impose un rendez-vous
 
 ```csharp
 [Fact]

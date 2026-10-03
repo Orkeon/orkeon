@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Memory;
 using Orkeon.Infrastructure.DependencyInjection;
@@ -81,15 +80,5 @@ public class OpenTelemetryIntegrationTestsFixture
         var mockClient = new MockChatClient();
         mockClient.SetGetResponseException(exception);
         return mockClient;
-    }
-
-    public static ActivityListener CreateActivityListener(List<Activity> activities)
-    {
-        return new ActivityListener
-        {
-            ShouldListenTo = source => source.Name.StartsWith("Orkeon"),
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStarted = activity => activities.Add(activity)
-        };
     }
 }

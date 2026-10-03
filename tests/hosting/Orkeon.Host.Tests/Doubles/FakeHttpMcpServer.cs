@@ -1,7 +1,7 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Text.Json.Nodes;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Host.Tests.Doubles;
 
@@ -12,7 +12,7 @@ namespace Orkeon.Host.Tests.Doubles;
 /// </summary>
 internal sealed class FakeHttpMcpServer : IAsyncDisposable
 {
-    private readonly HttpListener _listener = new();
+    private readonly HttpListener _listener;
     private readonly string[] _tools;
     private readonly CancellationTokenSource _stop = new();
     private readonly Task _loop;
@@ -20,22 +20,12 @@ internal sealed class FakeHttpMcpServer : IAsyncDisposable
     public FakeHttpMcpServer(params string[] tools)
     {
         _tools = tools;
-        var port = FreePort();
-        Url = new Uri($"http://127.0.0.1:{port}/mcp/");
-        _listener.Prefixes.Add(Url.ToString());
-        _listener.Start();
+        (_listener, Url) = LoopbackPorts.StartListener("/mcp/");
         _loop = Task.Run(ServeAsync);
     }
 
     /// <summary>The endpoint to put under <c>MCP:Servers:&lt;id&gt;:Url</c>.</summary>
     public Uri Url { get; }
-
-    private static int FreePort()
-    {
-        using var probe = new TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        return ((IPEndPoint)probe.LocalEndpoint).Port;
-    }
 
     private async Task ServeAsync()
     {
@@ -119,7 +109,7 @@ internal sealed class FakeHttpMcpServer : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _stop.CancelAsync().ConfigureAwait(false);
-        _listener.Stop();
+        // Close() alone: after Stop(), it would bind the port again for an instant (GAP-41).
         _listener.Close();
         try
         {

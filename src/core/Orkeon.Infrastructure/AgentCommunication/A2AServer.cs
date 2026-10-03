@@ -47,6 +47,8 @@ public partial class A2AServer : IA2AServer, IDisposable
     private readonly A2ACredentialValidator _credentials;
     private readonly ILogger _logger;
 
+    [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed",
+        Justification = "StopAsync releases it with Abort(), the disposal of a listener Stop() has stopped: Close() and Dispose() would bind the port again (GAP-41).")]
     private HttpListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
@@ -167,7 +169,13 @@ public partial class A2AServer : IA2AServer, IDisposable
         // barrier (ProcessContextAsync), so waiting for them cannot throw.
         await Task.WhenAll(_requestsInFlight.Values).ConfigureAwait(false);
 
-        _listener?.Close();
+        // Abort, not Close, on a listener Stop() has already stopped (GAP-41). Under Linux and
+        // macOS, Close() goes back through the prefixes and, finding nobody listening on the port
+        // any more, binds it for an instant to remove them: it threw « Address already in use »
+        // when another process had taken the port meanwhile, and held a free one again under the
+        // next server's start. Abort() only marks the stopped listener closed; under Windows it
+        // frees the HTTP.sys configuration, as Close() does.
+        _listener?.Abort();
         _listener = null;
         _cts?.Dispose();
         _cts = null;

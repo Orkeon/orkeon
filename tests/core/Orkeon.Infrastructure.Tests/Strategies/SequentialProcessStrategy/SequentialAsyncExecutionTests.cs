@@ -155,23 +155,22 @@ public sealed class SequentialAsyncExecutionTests : IDisposable
         var worker = Agent("Worker");
         var archive = AsyncTask("archive");
         var report = SyncTask("report");
-        var reportRan = Signal();
         var archiveOutlivedTheReport = false;
-        _behaviours["report"] = _ =>
-        {
-            reportRan.TrySetResult();
-            return Task.FromResult(Done("the report"));
-        };
+        _behaviours["report"] = _ => Task.FromResult(Done("the report"));
+
+        // archive ends only once the hook has heard the report's end: the two ends come in the
+        // order asserted below, whatever the load (GAP-41). Waiting for the report to start left
+        // archive's end racing the report's, and the hook heard them in either order.
         _behaviours["archive"] = async _ =>
         {
-            archiveOutlivedTheReport = await WithinPatienceAsync(reportRan.Task);
+            archiveOutlivedTheReport = await WithinPatienceAsync(_hook.HeardEndOf(report.Id.Value.ToString()));
             return Done("archived");
         };
 
         var output = await RunAsync([worker], archive, report);
 
         Assert.True(output.Success, output.Error);
-        Assert.True(archiveOutlivedTheReport, "report did not run while archive was in flight");
+        Assert.True(archiveOutlivedTheReport, "report did not run and end while archive was in flight");
 
         // Awaited, never forgotten: its output is in the outcome, its completion was dispatched,
         // and the hook heard it before the crew ended.

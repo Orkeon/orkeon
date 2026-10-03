@@ -11,6 +11,7 @@ using Orkeon.Infrastructure.Checkpointing;
 using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tests.TestDoubles;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Infrastructure.Tests.A2A;
 
@@ -24,15 +25,6 @@ public class A2AExecutionTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
-
-    private static int GetFreePort()
-    {
-        using var probe = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
-    }
 
     private static async Task<(InMemoryAgentRepository Repo, Orkeon.Domain.Agent.Agent Agent)> RepositoryWithAgentAsync()
     {
@@ -53,22 +45,20 @@ public class A2AExecutionTests
         var scopes = new StubServiceScopeFactory()
             .With<IAgentRepository>(repo)
             .With<IAgentExecutionService>(execution);
-        var port = GetFreePort();
-        await using var server = new A2AServer(new A2AOptions { Port = port }, new A2ATaskRouter(scopes));
-        await server.StartAsync(Ct);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, new A2ATaskRouter(scopes)), Ct);
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
 
             // A peer follows the card: it reads the published skill id ...
-            var cardJson = await http.GetStringAsync($"http://localhost:{port}/.well-known/agent.json", Ct);
+            var cardJson = await http.GetStringAsync($"{LoopbackPorts.Host}:{port}/.well-known/agent.json", Ct);
             using var card = JsonDocument.Parse(cardJson);
             var skill = Assert.Single(card.RootElement.GetProperty("skills").EnumerateArray());
             var skillId = skill.GetProperty("id").GetString()!;
 
             // ... and sends a task to it.
             using var body = TaskBody("card-1", skillId, "Summarise this report");
-            using var response = await http.PostAsync($"http://localhost:{port}/a2a/tasks/send", body, Ct);
+            using var response = await http.PostAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/send", body, Ct);
             var result = JsonSerializer.Deserialize<A2ATaskResponse>(
                 await response.Content.ReadAsStringAsync(Ct), s_json)!;
 
@@ -79,7 +69,7 @@ public class A2AExecutionTests
         }
         finally
         {
-            await server.StopAsync(CancellationToken.None);
+            await server.DisposeAsync();
         }
     }
 
@@ -92,23 +82,21 @@ public class A2AExecutionTests
             .With<IAgentRepository>(repo)
             .With<IAgentExecutionService>(execution);
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
-        var port = GetFreePort();
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new A2ATaskRouter(scopes), taskStore: store);
-        await server.StartAsync(Ct);
+        var (server, port) = await A2ALoopback.StartAsync(
+            options => new A2AServer(options, new A2ATaskRouter(scopes), taskStore: store), Ct);
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
             using var body = TaskBody("long-1", agent.Id.ToString(), "A long job");
 #pragma warning disable CA2025 // `sending` is awaited below, inside the scope of `http` and `body`.
-            var sending = http.PostAsync($"http://localhost:{port}/a2a/tasks/send", body, Ct);
+            var sending = http.PostAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/send", body, Ct);
 #pragma warning restore CA2025
 
             // The agent is working: the record says so, and the server still takes requests.
             await execution.Started.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
             Assert.Equal(A2ATaskStatus.Working, (await store.GetAsync("long-1", Ct))!.Status);
 
-            using var cancel = await http.DeleteAsync($"http://localhost:{port}/a2a/tasks/long-1", Ct);
+            using var cancel = await http.DeleteAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/long-1", Ct);
             Assert.Equal(HttpStatusCode.OK, cancel.StatusCode);
 
             using var response = await sending.WaitAsync(TimeSpan.FromSeconds(10), Ct);
@@ -119,26 +107,23 @@ public class A2AExecutionTests
         }
         finally
         {
-            await server.StopAsync(CancellationToken.None);
+            await server.DisposeAsync();
         }
     }
 
     [Fact]
     public async Task Delete_Returns404_ForATaskThatIsNotRunning_WithoutAStore()
     {
-        var port = GetFreePort();
-        await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter());
-        await server.StartAsync(Ct);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, new StubA2ATaskRouter()), Ct);
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-            using var cancel = await http.DeleteAsync($"http://localhost:{port}/a2a/tasks/ghost", Ct);
+            using var cancel = await http.DeleteAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/ghost", Ct);
             Assert.Equal(HttpStatusCode.NotFound, cancel.StatusCode);
         }
         finally
         {
-            await server.StopAsync(CancellationToken.None);
+            await server.DisposeAsync();
         }
     }
 
@@ -158,34 +143,42 @@ public class A2AExecutionTests
     [Fact]
     public async Task AddOrkeonA2A_WithEnableServer_HostsTheServer_StartAndStopFollowTheHost()
     {
-        var port = GetFreePort();
+        var (provider, port) = await LoopbackPorts.StartAsync(
+            ServerEnabledOn,
+            // The generic host starts every IHostedService, then stops them on shutdown.
+            static (container, ct) => Assert.Single(container.GetServices<IHostedService>()).StartAsync(ct),
+            Ct);
+        await using (provider)
+        {
+            var hosted = Assert.Single(provider.GetServices<IHostedService>());
+            var server = provider.GetRequiredService<IA2AServer>();
+            try
+            {
+                Assert.True(server.IsRunning);
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                using var card = await http.GetAsync($"{LoopbackPorts.Host}:{port}/.well-known/agent.json", Ct);
+                Assert.Equal(HttpStatusCode.OK, card.StatusCode);
+            }
+            finally
+            {
+                await hosted.StopAsync(CancellationToken.None);
+            }
+
+            Assert.False(server.IsRunning);
+        }
+    }
+
+    /// <summary>A container whose hosted A2A server listens on the loopback, on <paramref name="port"/>.</summary>
+    private static ServiceProvider ServerEnabledOn(int port)
+    {
         var services = NewServices();
         services.AddOrkeonA2A(o =>
         {
             o.EnableServer = true;
+            o.Host = LoopbackPorts.Host;
             o.Port = port;
         });
-        await using var provider = services.BuildServiceProvider(
-            new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-
-        // The generic host starts every IHostedService, then stops them on shutdown.
-        var hosted = Assert.Single(provider.GetServices<IHostedService>());
-        var server = provider.GetRequiredService<IA2AServer>();
-
-        await hosted.StartAsync(Ct);
-        try
-        {
-            Assert.True(server.IsRunning);
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-            using var card = await http.GetAsync($"http://localhost:{port}/.well-known/agent.json", Ct);
-            Assert.Equal(HttpStatusCode.OK, card.StatusCode);
-        }
-        finally
-        {
-            await hosted.StopAsync(CancellationToken.None);
-        }
-
-        Assert.False(server.IsRunning);
+        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }
 
     [Fact]

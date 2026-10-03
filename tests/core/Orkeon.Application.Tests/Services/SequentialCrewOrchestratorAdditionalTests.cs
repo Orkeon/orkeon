@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.Parsing;
 using Orkeon.Application.Interfaces.Services;
-using System.Diagnostics;
 // Aliases to avoid the name clashes
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using CrewInput = Orkeon.Application.Interfaces.Services.CrewInput;
@@ -656,10 +655,10 @@ public class SequentialCrewOrchestratorAdditionalTests
 
     #endregion
 
-    #region Performance Tests
+    #region Kickoff Output Tests
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldCompleteInReasonableTime_WhenUsingKickoffAsyncWithManyTasks()
+    public async System.Threading.Tasks.Task ShouldReturnAnOutput_WhenUsingKickoffAsyncOnAValidCrew()
     {
         // Arrange
         var repository = new TestCrewRepository();
@@ -668,7 +667,7 @@ public class SequentialCrewOrchestratorAdditionalTests
         var strategyFactory = new TestProcessStrategyFactory();
         var orchestrator = new SequentialCrewOrchestrator(repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
 
-        var crew = DomainCrew.Create("Performance test crew", ProcessType.Sequential);
+        var crew = DomainCrew.Create("Kickoff test crew", ProcessType.Sequential);
 
         // Add required components to make crew valid
         var agentId = AgentId.Create();
@@ -678,18 +677,13 @@ public class SequentialCrewOrchestratorAdditionalTests
 
         repository.AddCrew(crew);
 
-        var input = new CrewInput("Performance test", new Dictionary<string, object>());
-
-        var stopwatch = Stopwatch.StartNew();
+        var input = new CrewInput("Kickoff test", new Dictionary<string, object>());
 
         // Act
         var output = await orchestrator.KickoffAsync(crew.Id, input, TestContext.Current.CancellationToken);
 
-        stopwatch.Stop();
-
-        // Assert
+        // Assert — the output, not the time it took: a duration measures the machine (GAP-41)
         Assert.NotNull(output.FinalOutput);
-        Assert.True(stopwatch.ElapsedMilliseconds < 5000, "Execution took too long");
     }
 
     #endregion

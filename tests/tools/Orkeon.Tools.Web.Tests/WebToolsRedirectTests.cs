@@ -1,11 +1,11 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tests.Shared.Network;
 using Orkeon.Tools.Abstractions.Security;
 using Orkeon.Tools.Web.DependencyInjection;
 using Orkeon.Tools.Web.Tests.Doubles;
@@ -39,7 +39,7 @@ public sealed class WebToolsRedirectTests
         var factory = provider.GetRequiredService<IHttpClientFactory>();
         using var client = factory.CreateClient(WebToolExtensions.HttpClientName);
         using var response = await client.GetAsync(
-            new Uri($"http://127.0.0.1:{server.Port}/redirect"), TestContext.Current.CancellationToken);
+            new Uri(server.BaseAddress, "redirect"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Found, response.StatusCode);
         Assert.DoesNotContain("/secret", server.ServedPaths);
@@ -82,20 +82,18 @@ public sealed class WebToolsRedirectTests
     /// </summary>
     private sealed class RedirectingLoopbackServer : IDisposable
     {
-        private readonly HttpListener _listener = new();
+        private readonly HttpListener _listener;
         private readonly List<string> _servedPaths = [];
         private readonly Task _pump;
 
         public RedirectingLoopbackServer()
         {
-            Port = ReserveLoopbackPort();
-            _listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
-            _listener.Start();
+            (_listener, BaseAddress) = LoopbackPorts.StartListener();
             _pump = PumpAsync();
         }
 
-        /// <summary>Loopback port the server listens on.</summary>
-        public int Port { get; }
+        /// <summary>The loopback address the server listens on, with a final slash.</summary>
+        public Uri BaseAddress { get; }
 
         /// <summary>Snapshot of the paths served so far, oldest first.</summary>
         public IReadOnlyList<string> ServedPaths
@@ -111,23 +109,9 @@ public sealed class WebToolsRedirectTests
 
         public void Dispose()
         {
-            _listener.Stop();
-            _pump.GetAwaiter().GetResult();
+            // Close() alone: after Stop(), it would bind the port again for an instant (GAP-41).
             _listener.Close();
-        }
-
-        /// <summary>
-        /// Asks the OS for a free loopback port and releases it immediately: the
-        /// listener binds it back straight away, and nothing else in this test
-        /// process binds ephemeral ports.
-        /// </summary>
-        private static int ReserveLoopbackPort()
-        {
-            using var probe = new TcpListener(IPAddress.Loopback, 0);
-            probe.Start();
-            var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-            probe.Stop();
-            return port;
+            _pump.GetAwaiter().GetResult();
         }
 
         private async Task PumpAsync()
@@ -157,7 +141,7 @@ public sealed class WebToolsRedirectTests
                 if (path == "/redirect")
                 {
                     context.Response.StatusCode = (int)HttpStatusCode.Found;
-                    context.Response.Headers["Location"] = $"http://127.0.0.1:{Port}/secret";
+                    context.Response.Headers["Location"] = new Uri(BaseAddress, "secret").ToString();
                 }
                 else
                 {

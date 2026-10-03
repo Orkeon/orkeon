@@ -3,6 +3,7 @@ using System.Text.Json;
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Domain.AgentCommunication;
 using Orkeon.Infrastructure.AgentCommunication;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Infrastructure.Tests.A2A;
 
@@ -51,15 +52,6 @@ public sealed class A2AServerProgressTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private static int GetFreePort()
-    {
-        using var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
-    }
-
     private static StringContent TaskBody(string id) => new(
         JsonSerializer.Serialize(new A2ATaskRequest { Id = id, SkillId = "veille", Input = "What changed?" }),
         Encoding.UTF8,
@@ -82,16 +74,14 @@ public sealed class A2AServerProgressTests
     [Fact]
     public async Task SendSubscribe_streams_each_reported_line_as_a_Working_update_before_the_final_state()
     {
-        var port = GetFreePort();
         var router = new ProgressReportingTaskRouter("Running 'veille'…", "✔ Analyst — step 1 done");
-        await using var server = new A2AServer(new A2AOptions { Port = port }, router);
-        await server.StartAsync(Ct);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router), Ct);
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
             using var body = TaskBody("watch-1");
             using var response = await http.PostAsync(
-                new Uri($"http://localhost:{port}/a2a/tasks/sendSubscribe"), body, Ct);
+                new Uri($"{LoopbackPorts.Host}:{port}/a2a/tasks/sendSubscribe"), body, Ct);
             var events = await ReadEventsAsync(response);
 
             Assert.Equal(5, events.Count);
@@ -116,23 +106,21 @@ public sealed class A2AServerProgressTests
         }
         finally
         {
-            await server.StopAsync(CancellationToken.None);
+            await server.DisposeAsync();
         }
     }
 
     [Fact]
     public async Task Send_answers_as_before_and_gives_the_router_no_progress_to_report_to()
     {
-        var port = GetFreePort();
         var router = new ProgressReportingTaskRouter("Running 'veille'…");
-        await using var server = new A2AServer(new A2AOptions { Port = port }, router);
-        await server.StartAsync(Ct);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router), Ct);
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
             using var body = TaskBody("watch-2");
             using var response = await http.PostAsync(
-                new Uri($"http://localhost:{port}/a2a/tasks/send"), body, Ct);
+                new Uri($"{LoopbackPorts.Host}:{port}/a2a/tasks/send"), body, Ct);
             var answer = JsonSerializer.Deserialize<A2ATaskResponse>(await response.Content.ReadAsStringAsync(Ct), s_json)!;
 
             Assert.Equal(A2ATaskStatus.Completed, answer.Status);
@@ -142,7 +130,7 @@ public sealed class A2AServerProgressTests
         }
         finally
         {
-            await server.StopAsync(CancellationToken.None);
+            await server.DisposeAsync();
         }
     }
 }

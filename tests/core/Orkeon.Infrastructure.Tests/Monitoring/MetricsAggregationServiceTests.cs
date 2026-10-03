@@ -17,13 +17,14 @@ public sealed class MetricsAggregationServiceTests : IClassFixture<MetricsAggreg
     [Fact]
     public async Task GetCurrentMetricsAsync_ReturnsDefaultMetrics()
     {
-        // Act
+        // Act — between two readings of the clock, never within a window of it (GAP-41)
+        var before = DateTime.UtcNow;
         var metrics = await _service.GetCurrentMetricsAsync(TestContext.Current.CancellationToken);
+        var after = DateTime.UtcNow;
 
         // Assert
         Assert.NotNull(metrics);
-        Assert.True(metrics.CapturedAt <= DateTime.UtcNow);
-        Assert.True(metrics.CapturedAt > DateTime.UtcNow.AddSeconds(-5));
+        Assert.InRange(metrics.CapturedAt, before, after);
         Assert.Equal(0, metrics.TotalLlmCalls);
         Assert.Equal(0, metrics.TotalToolExecutions);
         Assert.Equal(0, metrics.TotalTaskExecutions);

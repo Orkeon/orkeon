@@ -155,12 +155,14 @@ public class AgentStepTests
     [Fact]
     public void ShouldCalculateCorrectly_WhenUsingDuration()
     {
-        // Arrange & Act
+        // Arrange & Act — the step can last no longer than the time around its creation: a bound
+        // the test reads, not one it guesses (GAP-41)
+        var before = DateTime.UtcNow;
         var step = AgentStep.CreateSuccess("output", null);
+        var after = DateTime.UtcNow;
 
         // Assert
-        Assert.True(step.Duration >= TimeSpan.Zero);
-        Assert.True(step.Duration.TotalMilliseconds < 1000); // Should be very quick
+        Assert.InRange(step.Duration, TimeSpan.Zero, after - before);
     }
 
     [Fact]

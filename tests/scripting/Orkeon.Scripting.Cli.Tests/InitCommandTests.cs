@@ -570,7 +570,7 @@ public sealed class InitCommandTests
             var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
             {
                 Provider = "custom",
-                BaseUrl = $"http://127.0.0.1:{server.Port}/v1",
+                BaseUrl = server.BaseUrl,
                 Model = "test-model",
                 ApiKeyEnv = apiKeyEnv,
                 OutputPath = target,

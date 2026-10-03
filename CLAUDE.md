@@ -121,7 +121,7 @@ Bandwidth on this machine is capped. Never re-download anything that is already 
 
 - `dotnet build`: always pass `--no-restore`, unless a `.csproj`, `Directory.Packages.props` or lock file changed during this task.
 - `dotnet test`: always pass `--no-build` once a build has succeeded in this task.
-- `dotnet restore`: run only when a dependency actually changed. The global package cache is `/home/node/.nuget/packages` — never override it, per-project or otherwise.
+- `dotnet restore`: run only when a dependency actually changed. Under Linux every restore reads and fills `/workspace/packages` (`RestorePackagesPath` in `Directory.Build.props`; a worktree links its `packages` there), never `/home/node/.nuget/packages`: a package found only in the latter is downloaded again. Never override that path, per-project or otherwise. An offline restore passes `-p:NuGetAudit=false`: the audit reads nuget.org's advisories again (650 KiB) whenever their cache has expired — CI keeps the audit.
 - `git clone`: always `--depth 1 --filter=blob:none`. Reuse an existing checkout rather than cloning again.
 - `npm ci`: only when `package-lock.json` changed. Otherwise use `npm install --prefer-offline`.
 - `ollama pull` is forbidden. Run `ollama list` first — models are pre-provisioned.
@@ -320,6 +320,16 @@ test dependencies minimal and the doubles' behavior explicit and debuggable.
   (e.g. `MockTaskRepository` implements `ITaskRepository`).
 - Expose plain fields/properties to inspect recorded calls or configure return values.
 - See `tests/core/Orkeon.Infrastructure.Tests/Doubles/MockTaskRepository.cs` as the reference.
+
+**Tests hold under load** (several passes run at once on one machine — GAP-41): a test server
+takes its port through `LoopbackPorts` (`tests/shared/Orkeon.Tests.Shared/Network/` — `StartAsync`
+and `StartListener` start again on another port when the probed one was taken, `Refusing()` holds
+one nobody listens on) and listens on `LoopbackPorts.Host`, `127.0.0.1` (`localhost` under
+Windows); an `HttpListener` is never `Close()`d after `Stop()` (under Linux and macOS that binds the
+port again); a span test reads an `ActivityRecorder` (`Telemetry/`), filtered on the trace of a root
+it starts or on a tag only it carries; a delay a test must not reach is a hang guard
+(`Polling.DefaultTimeout`), and no unit test bounds a duration — a timestamp is checked between two
+readings of the clock, and two concurrent ends come in the order a rendezvous forces.
 
 **Test categories**: tests needing Docker, a network service or minutes of runtime carry
 `[Trait("Category", "Integration")]` or `[Trait("Category", "Slow")]`. CI (`ci.yml`) runs the

@@ -30,6 +30,9 @@
   </ItemGroup>
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj-linux/</BaseIntermediateOutputPath>
+    <!-- A restore under Linux reads and fills <repository>/packages, never ~/.nuget/packages.
+         The CI caches this folder: the actions/cache step of each of the eight workflows that
+         restore names it (GAP-41) — moving it means changing those steps. -->
     <RestorePackagesPath>$(MSBuildThisFileDirectory)packages</RestorePackagesPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">

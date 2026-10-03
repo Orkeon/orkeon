@@ -248,7 +248,7 @@ public sealed class DoctorCommandTests : IDisposable
         {
             using var scratch = new ScriptScratch();
             scratch.WriteFile("appsettings.json", $$"""
-                { "Llm": { "Model": "test-model", "BaseUrl": "http://127.0.0.1:{{server.Port}}/v1", "ApiKeyEnvVar": "{{variable}}" } }
+                { "Llm": { "Model": "test-model", "BaseUrl": "{{server.BaseUrl}}", "ApiKeyEnvVar": "{{variable}}" } }
                 """);
             using var console = new TestConsole();
 

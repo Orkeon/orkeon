@@ -20,8 +20,10 @@ public class TaskTests
         var description = TaskDescription.From("Implement user authentication");
         var expectedOutput = ExpectedOutput.From("Working login and registration system");
 
-        // Act
+        // Act — between two readings of the clock, never within a window of it (GAP-41)
+        var before = DateTime.UtcNow;
         var task = DomainTask.Create(description, expectedOutput);
+        var after = DateTime.UtcNow;
 
         // Assert
         Assert.NotNull(task);
@@ -32,8 +34,7 @@ public class TaskTests
         Assert.Equal(TaskStatus.Pending, task.Status);
         Assert.False(task.AsyncExecution);
         Assert.False(task.HumanInput);
-        Assert.True(task.CreatedAt <= DateTime.UtcNow);
-        Assert.True(task.CreatedAt >= DateTime.UtcNow.AddSeconds(-1));
+        Assert.InRange(task.CreatedAt, before, after);
     }
 
     [Fact]

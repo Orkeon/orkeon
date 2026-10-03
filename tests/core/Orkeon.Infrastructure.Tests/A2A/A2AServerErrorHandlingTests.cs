@@ -7,6 +7,7 @@ using Orkeon.Domain.AgentCommunication;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tests.TestDoubles;
+using Orkeon.Tests.Shared.Network;
 using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Infrastructure.Tests.A2A;
@@ -40,20 +41,6 @@ internal class ExceptionThrowingTaskRouter<TException> : IA2ATaskRouter
 /// </summary>
 public class A2AServerErrorHandlingTests
 {
-    /// <summary>
-    /// Asks the OS for a free ephemeral port on loopback. Hardcoded ports leak across
-    /// runs on Windows (HTTP.sys namespace reservation) and collide with other processes.
-    /// </summary>
-    private static int GetFreePort()
-    {
-        using var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
-    }
-
-
     private static async Task<HttpResponseMessage> SendTaskRequest(int port, string taskId = "test-err")
     {
         using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
@@ -64,24 +51,20 @@ public class A2AServerErrorHandlingTests
             Input = "test input"
         });
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
-        return await httpClient.PostAsync($"http://localhost:{port}/a2a/tasks/send", content);
+        return await httpClient.PostAsync($"{LoopbackPorts.Host}:{port}/a2a/tasks/send", content);
     }
 
     [Fact]
     public async Task HandleRequest_HttpRequestException_LogsWarningAndReturns502()
     {
         // Arrange
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var exception = new HttpRequestException("Service unavailable", null, HttpStatusCode.ServiceUnavailable);
         var router = new ExceptionThrowingTaskRouter<HttpRequestException>(exception);
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
-
             // Act
             var response = await SendTaskRequest(port);
             await Polling.WaitUntilAsync(() => logger.HasLoggedWarning("HTTP request error"));
@@ -104,7 +87,7 @@ public class A2AServerErrorHandlingTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -112,16 +95,12 @@ public class A2AServerErrorHandlingTests
     public async Task HandleRequest_TimeoutException_LogsWarningAndReturns504()
     {
         // Arrange
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var router = new ExceptionThrowingTaskRouter<TimeoutException>(new TimeoutException("Request timed out"));
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
-
             // Act
             var response = await SendTaskRequest(port);
             await Polling.WaitUntilAsync(() => logger.HasLoggedWarning("timed out"));
@@ -139,7 +118,7 @@ public class A2AServerErrorHandlingTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -147,16 +126,12 @@ public class A2AServerErrorHandlingTests
     public async Task HandleRequest_JsonException_LogsErrorAndReturns400()
     {
         // Arrange
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var router = new ExceptionThrowingTaskRouter<JsonException>(new JsonException("Unexpected JSON token"));
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
-
             // Act
             var response = await SendTaskRequest(port);
             await Polling.WaitUntilAsync(() => logger.HasLoggedError("JSON parse error"));
@@ -174,7 +149,7 @@ public class A2AServerErrorHandlingTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -182,17 +157,13 @@ public class A2AServerErrorHandlingTests
     public async Task HandleRequest_UnexpectedException_LogsErrorAndReturns500()
     {
         // Arrange
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var router = new ExceptionThrowingTaskRouter<InvalidOperationException>(
             new InvalidOperationException("Unexpected logic error"));
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
-
             // Act
             var response = await SendTaskRequest(port);
             await Polling.WaitUntilAsync(() => logger.LogEntries.Any(e => e.LogLevel == LogLevel.Error && e.Message.Contains("A2A request", StringComparison.OrdinalIgnoreCase)));
@@ -212,7 +183,7 @@ public class A2AServerErrorHandlingTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -220,17 +191,13 @@ public class A2AServerErrorHandlingTests
     public async Task HandleRequest_OperationCanceledException_LogsDebug()
     {
         // Arrange
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var router = new ExceptionThrowingTaskRouter<OperationCanceledException>(
             new OperationCanceledException("Cancelled"));
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
-
             // Act — send a request that triggers OperationCanceledException
             try
             {
@@ -257,7 +224,7 @@ public class A2AServerErrorHandlingTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -265,16 +232,12 @@ public class A2AServerErrorHandlingTests
     public async Task HandleRequest_SuccessfulRequest_NoErrorOrWarningLogs()
     {
         // Arrange
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
-        await using var server = new A2AServer(options, router, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
-
             // Act
             var response = await SendTaskRequest(port);
             await Task.Delay(100, TestContext.Current.CancellationToken);
@@ -293,7 +256,7 @@ public class A2AServerErrorHandlingTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 
@@ -301,18 +264,14 @@ public class A2AServerErrorHandlingTests
     public async Task ListenLoop_ContinuesAfterGranularExceptions()
     {
         // Arrange — router throws HttpRequestException on first call, succeeds on second
-        var port = GetFreePort();
         var logger = new TestLogger<A2AServer>();
-        var options = new A2AOptions { Port = port };
         var sequenceRouter = new SequenceTaskRouter(
             new HttpRequestException("Transient error", null, HttpStatusCode.ServiceUnavailable),
             successAfterFailures: true);
-        await using var server = new A2AServer(options, sequenceRouter, logger);
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, sequenceRouter, logger), TestContext.Current.CancellationToken);
 
         try
         {
-            await server.StartAsync(TestContext.Current.CancellationToken);
-
             // First request — triggers HttpRequestException, handled gracefully
             var response1 = await SendTaskRequest(port, "req-1");
             Assert.Equal(HttpStatusCode.BadGateway, response1.StatusCode);
@@ -330,7 +289,7 @@ public class A2AServerErrorHandlingTests
         }
         finally
         {
-            await server.StopAsync(TestContext.Current.CancellationToken);
+            await server.DisposeAsync();
         }
     }
 }
