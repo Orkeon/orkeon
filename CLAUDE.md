@@ -81,6 +81,10 @@ dotnet test --filter "FullyQualifiedName~AgentSelection"
 # Restore dependencies
 dotnet restore Orkeon.sln
 
+# After any package change: regenerate the inventory of THIRD-PARTY-NOTICES.md from the
+# restore (local NuGet cache only, never the network); CI runs it with --check
+python3 scripts/third-party-notices.py
+
 # Package for distribution
 dotnet pack Orkeon.sln --configuration Release --output ./artifacts
 ```
@@ -591,7 +595,7 @@ The repository contains **48 src projects** and **36 test projects**, plus two s
 │   └── scripting-esbuild/        # npm package.json + lockfile bootstrapping esbuild for the scripting DSL
 ├── scripts/
 │   ├── sonar-analyze.sh / .ps1   # SonarQube analysis + report
-│   └── validate-all-examples.sh · check-doc-claims.py · check-docs-parity.sh · lint-example-*.py
+│   └── validate-all-examples.sh · check-doc-claims.py · check-docs-parity.sh · lint-example-*.py · third-party-notices.py
 ├── sonarqube/                    # Generated SonarQube reports (*.md)
 ├── docker-compose.sonarqube.yml
 ├── docs/

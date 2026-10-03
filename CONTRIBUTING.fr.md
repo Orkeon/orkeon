@@ -257,6 +257,13 @@ réponses et inspecter les appels. La référence est
   La gate `file-modes.yml` lit le mode dans l'index git — le seul qu'un clone macOS/Linux
   restaure —, si bien qu'un arbre de travail sur un montage NTFS où tout fichier paraît
   exécutable ne prouve rien.
+* Un changement de paquet — une version de `Directory.Packages.props`, un paquet ajouté à
+  un projet que livrent les outils, les installeurs ou les images de conteneur, ou retiré —
+  change ce que ces binaires redistribuent : après la restauration, lancez
+  `python3 scripts/third-party-notices.py` et commitez `THIRD-PARTY-NOTICES.md` avec. Le
+  `--check` de la CI échoue tant que l'inventaire de ce fichier ne liste pas la nouvelle
+  fermeture, et tant qu'une version qu'une de ses sections manuscrites déclare n'est pas
+  celle livrée.
 * Les messages de commit sont en anglais et suivent la forme `type(scope): summary` de
   l'historique (`feat`, `fix`, `docs`, `test`, `chore`…).
 
@@ -356,9 +363,11 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    `scripts/check-docs-parity.sh`, `scripts/check-doc-claims.py` (qui compare aussi les
    copies manuscrites du lineup NuGet et exécute la moitié « sources » de
    `scripts/check-package-closure.py` ; son énumération des fichiers est testée par
-   `scripts/test-check-doc-claims.py`), `scripts/check-comment-accents.py`, la
-   vérification des typings de scripting (`scripts/check-scripting-typings.sh`), le test
-   de la purge du canal dev (`scripts/test-prune-dev-packages.sh`), les gates des
+   `scripts/test-check-doc-claims.py`), `scripts/check-comment-accents.py`, la gate des
+   notices tierces (`scripts/third-party-notices.py --check`, dont les règles sont testées
+   par `scripts/test-third-party-notices.py`), la vérification des typings de scripting
+   (`scripts/check-scripting-typings.sh`), le test de la purge du canal dev
+   (`scripts/test-prune-dev-packages.sh`), les gates des
    exemples (`scripts/generate-examples-index.sh --check`,
    `scripts/lint-example-configs.py`, `scripts/lint-example-readmes.py`,
    `scripts/test-examples-catalog.py`, la solution d'exemples compilée en `-warnaserror`,

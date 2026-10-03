@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the third-party notices list every package the shipped binaries redistribute, generated from the restore and checked by CI
+
+`THIRD-PARTY-NOTICES.md` promised an entry for whatever the packages and the installers
+redistribute, and had one for 11 of the 162 package versions the shipped applications carry:
+`CommandLineParser`, which both tools and every installer ship, had none (GAP-36, decision 6).
+It also said OpenTelemetry and Gremlin.Net "intentionally get no entry", being "only
+referenced" — the `orkeon` tool ships both.
+
+- **A generated inventory closes the file.** `scripts/third-party-notices.py` reads the
+  restored `project.assets.json` of the six applications the tool packages, the installers
+  and the container images publish — `orkeon`, `orkeon-repl`, `orkeon-host` and the three
+  Orkeon Studio applications the installers add — and the `.nuspec` files of the local NuGet
+  cache: the assets file's `packageFolders`, a Windows path there also tried at its WSL
+  mount, then `NUGET_PACKAGES`, then `~/.nuget/packages`, never the network. It lists every
+  package whose restored target puts a file in the build output (a managed, satellite, native
+  or RID-specific asset; compilers, analyzers and meta-packages put none and are left out):
+  162 versions of 151 packages, each with its license — the SPDX expression, or the file the
+  package names —, its copyright, its project URL, the applications that ship it and the
+  texts it carries. Sorted, and dated nowhere: the same restore writes the same file.
+- **The texts travel with the binaries.** Every license file and every notice the packages
+  ship is copied verbatim (line endings normalised, the NUL that ends an RTF file dropped),
+  each distinct text once: 10 license texts and 10 notices — Gremlin.Net's Apache-2.0
+  `NOTICE`, propagated as §4(d) requires, and the third-party notices of ONNX Runtime,
+  OpenTelemetry, the .NET libraries, Roslyn, ML.Tokenizers and Onigwrap. The file grows from
+  39 KB to 749 KB; the tool packages, the archives, the `.deb` and both MSIs already ship it.
+- **The criterion says what ships.** Criterion (a) states that the tools and the installers
+  redistribute the whole runtime closure of their binaries, and the OpenTelemetry/Gremlin.Net
+  sentence is corrected: both are in the inventory, with their texts. The hand-written
+  sections stay — provenance, decisions, Apache.Arrow's `NOTICE` —, and a package one of them
+  covers points to it.
+- **CI keeps it true.** `ci.yml` runs `python3 scripts/third-party-notices.py --check` after
+  its restore. It fails, package by package, when the closure changed without regeneration;
+  when a version a hand-written section states is no longer the shipped one — it found two,
+  Jint (`4.16.1` stated, `4.16.3` shipped) and Microsoft.Extensions.AI.Abstractions (`10.9.0`,
+  `10.10.0`), both corrected —; and when an installer table, a `PackAsTool` project or a
+  Dockerfile publishes a project the script does not read. A package bump, Dependabot's
+  included, therefore needs the script run and the file committed (CONTRIBUTING says so).
+  `scripts/test-third-party-notices.py` proves the rules on a throw-away tree, before any
+  restore.
+
 ### Fixed — a scheduled team runs as Studio launches it: on its model setting, with its folders
 
 A team Studio scheduled (STUDIO-27) is run by the operating system through its `run.cmd` or `run.sh`,

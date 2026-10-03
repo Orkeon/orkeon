@@ -57,6 +57,10 @@ jobs:
       # or fail it; proved on a scratch repository.
       - name: Test the documentation-claims file enumeration
         run: python3 scripts/test-check-doc-claims.py
+      # The notices generator's rules (closure, package folders, texts, --check) proved on a
+      # throw-away tree of fake assets files and a fake package cache: no restore needed.
+      - name: Test the third-party notices generator
+        run: python3 scripts/test-third-party-notices.py
       # Comment-language invariant: comments are English and never accented. Cheap and
       # build-free like its two neighbours, so it runs before setup-dotnet.
       - name: Check comments carry no accented letter
@@ -84,6 +88,13 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore Orkeon.sln
+      # Third-party notices gate (GAP-36): THIRD-PARTY-NOTICES.md must list every package the
+      # shipped applications redistribute. The script reads the assets files this restore just
+      # wrote and the nuspecs of the package folder they name, never the network, so it runs
+      # here: after the restore, before the build. A package bump (Dependabot's included) fails
+      # it until `python3 scripts/third-party-notices.py` is run and the file committed.
+      - name: Check the third-party notices cover the shipped closure
+        run: python3 scripts/third-party-notices.py --check
       # PUB-18 ratchet: the solution builds at ZERO warnings (2026-06-15 campaign,
       # re-verified 2026-08-18) and -warnaserror keeps it there — any new compiler,
       # analyzer or NuGet-audit warning fails CI. Audit advisories breaking the

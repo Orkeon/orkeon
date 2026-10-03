@@ -248,6 +248,12 @@ project, exposing plain fields or properties to configure answers and inspect ca
   `file-modes.yml` gate reads the mode from the git index — the only one a macOS/Linux
   clone restores — so a working tree on an NTFS mount that shows every file as executable
   proves nothing.
+* A package change — a version in `Directory.Packages.props`, a package added to or
+  removed from a project the tools, the installers or the container images ship — changes
+  what those binaries redistribute: after the restore, run
+  `python3 scripts/third-party-notices.py` and commit `THIRD-PARTY-NOTICES.md` with it.
+  CI's `--check` fails until the inventory there lists the new closure, and until a version
+  a hand-written section of that file states is the shipped one.
 * Commit messages are in English and follow the history's `type(scope): summary` shape
   (`feat`, `fix`, `docs`, `test`, `chore`…).
 
@@ -339,7 +345,9 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    `scripts/check-doc-claims.py` (it also compares the hand-written copies of the NuGet
    lineup and runs the source half of `scripts/check-package-closure.py`; its file
    enumeration is tested by `scripts/test-check-doc-claims.py`),
-   `scripts/check-comment-accents.py`, the scripting typings check
+   `scripts/check-comment-accents.py`, the third-party notices gate
+   (`scripts/third-party-notices.py --check`, its rules tested by
+   `scripts/test-third-party-notices.py`), the scripting typings check
    (`scripts/check-scripting-typings.sh`), the dev-channel prune test
    (`scripts/test-prune-dev-packages.sh`), the examples gates
    (`scripts/generate-examples-index.sh --check`, `scripts/lint-example-configs.py`,
