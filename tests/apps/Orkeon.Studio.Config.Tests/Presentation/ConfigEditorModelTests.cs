@@ -185,6 +185,28 @@ public sealed class ConfigEditorModelTests : IDisposable
     }
 
     [Fact]
+    public async Task The_no_model_preset_clears_the_default_and_keeps_the_named_profiles()
+    {
+        // STUDIO-48: « None » removed the whole Llm section — the named profiles with it, those
+        // written by hand included. It clears the default provider only.
+        var path = PathIn("appsettings.json");
+        await File.WriteAllTextAsync(path, """
+            { "Llm": { "Model": "qwen3", "Profiles": { "claude": { "Model": "claude-sonnet-5" } } } }
+            """, TestContext.Current.CancellationToken);
+        var model = CreateModel();
+        Assert.Null(await model.OpenAsync(path, TestContext.Current.CancellationToken));
+        Assert.True(LlmPresets.TryCreatePlan(LlmPresets.None, overrides: null, out var plan, out _));
+
+        model.ApplyPreset(plan!);
+
+        Assert.Equal("", model.Llm.Model);
+        Assert.Equal(["claude"], model.Document.Llm.Profiles.Ids);
+        Assert.Equal(["profile: claude — claude-sonnet-5"], model.Llm.Profiles);
+        // The default is gone, so the WIN-01 warning says so — the profiles do not make one.
+        Assert.Contains(model.Preflight().Messages, message => message.Code == ValidationCodes.LlmSectionMissing);
+    }
+
+    [Fact]
     public async Task Opening_a_file_that_does_not_exist_is_reported_as_a_message()
     {
         var model = CreateModel();

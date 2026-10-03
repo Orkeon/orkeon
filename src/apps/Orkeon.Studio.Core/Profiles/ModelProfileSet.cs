@@ -93,14 +93,22 @@ public sealed record ModelProfileSet
     public ModelProfileSet WithStudio(string name) =>
         Find(name) is null ? this : this with { StudioProfile = name };
 
-    /// <summary>A unique copy name for duplication: "Name (copy)", "Name (copy 2)", …</summary>
-    public string CopyNameFor(string name, string copySuffix)
+    /// <summary>
+    /// A unique copy name for duplication: "Name (copy)", "Name (copy 2)", … — unique as a name,
+    /// and as whatever else <paramref name="isTaken"/> says a name must not collide on: the host
+    /// profile id it gives (STUDIO-48), which a suffix written in another script, « (副本) », does
+    /// not change.
+    /// </summary>
+    /// <param name="name">The name of the setting being copied.</param>
+    /// <param name="copySuffix">The localized word for « copy ».</param>
+    /// <param name="isTaken">Refuses a candidate the set's names alone would accept; null accepts any.</param>
+    public string CopyNameFor(string name, string copySuffix, Func<string, bool>? isTaken = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(copySuffix);
 
         var candidate = $"{name} ({copySuffix})";
-        for (var i = 2; Find(candidate) is not null; i++)
+        for (var i = 2; Find(candidate) is not null || isTaken?.Invoke(candidate) == true; i++)
             candidate = $"{name} ({copySuffix} {i})";
         return candidate;
     }

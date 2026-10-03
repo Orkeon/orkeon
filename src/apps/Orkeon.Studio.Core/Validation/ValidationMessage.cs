@@ -65,6 +65,12 @@ public static class ValidationCodes
     /// <summary><c>Orkeon:Rag:Profile</c> names no known profile.</summary>
     public const string UnknownRagProfile = "STUDIO-RAG-PROFILE";
 
+    /// <summary>
+    /// <c>Orkeon:Rag:LlmProfile</c> names an LLM profile the file's <c>Llm:Profiles</c> does not
+    /// define (STUDIO-48): the host refuses to start on it.
+    /// </summary>
+    public const string UnknownRagLlmProfile = "STUDIO-RAG-LLM-PROFILE";
+
     /// <summary>No mount is declared.</summary>
     public const string MountsEmpty = "STUDIO-MOUNT-EMPTY";
 

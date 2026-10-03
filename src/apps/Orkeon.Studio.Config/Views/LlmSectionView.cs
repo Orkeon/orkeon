@@ -13,7 +13,8 @@ namespace Orkeon.Studio.Config.Views;
 /// provider key, the endpoint decides — and the API key field carries the standing
 /// recommendation to keep the key in <c>ORKEON_Llm__ApiKey</c> instead of the file.
 /// The "Test connection" button runs the optional connectivity probe of SPEC §4.2: it never
-/// blocks the screen, and its verdict changes nothing about what can be saved.
+/// blocks the screen, and its verdict changes nothing about what can be saved. Below, the
+/// named profiles of <c>Llm:Profiles</c> and the one the RAG calls, read-only (STUDIO-48).
 /// </summary>
 internal sealed class LlmSectionView : SectionView
 {
@@ -30,6 +31,11 @@ internal sealed class LlmSectionView : SectionView
     private readonly Label _apiKeyWarning;
     private readonly Button _testConnection;
     private readonly Label _testResult;
+    private readonly ListView _profiles;
+    private readonly Label _ragLlmProfile;
+
+    /// <summary>The line the profile list shows when the file names no profile.</summary>
+    internal const string NoProfileLine = "(none — every agent runs on the default above)";
 
     /// <summary>Builds the screen over <paramref name="form"/>.</summary>
     /// <param name="form">The section's values, as text.</param>
@@ -55,6 +61,13 @@ internal sealed class LlmSectionView : SectionView
         _testConnection.Accepting += (_, _) => TestConnection();
         Add(_testConnection);
         _testResult = FormLayout.AddText(this, 14, "");
+
+        FormLayout.AddNote(this, 16,
+            "Named profiles (Llm:Profiles) — a crew picks one with llm: { profile: <name> }; keys come from " +
+            "ORKEON_Llm__Profiles__<name>__ApiKey. Read-only here: Studio's model settings write them.");
+        ProfileLines = ProfileLinesOf(_form);
+        _profiles = FormLayout.AddChoiceList(this, 17, 4, "Profiles in this file", ProfileLines, 0);
+        _ragLlmProfile = FormLayout.AddText(this, 22, _form.RagLlmProfileLine);
 
         // The provider is inferred from the endpoint, so it follows every keystroke in it.
         _baseUrl.TextChanged += (_, _) =>
@@ -83,8 +96,20 @@ internal sealed class LlmSectionView : SectionView
         _timeout.Text = _form.TimeoutSeconds;
         _thinking.Text = _form.ThinkingEnabled;
         _provider.Text = ProviderLine(_form.DetectedProvider);
+        ProfileLines = ProfileLinesOf(_form);
+        FormLayout.SetItems(_profiles, ProfileLines);
+        _ragLlmProfile.Text = _form.RagLlmProfileLine;
         RefreshApiKeyWarning();
     }
+
+    /// <summary>The lines the profile list shows, as last loaded.</summary>
+    internal IReadOnlyList<string> ProfileLines { get; private set; }
+
+    /// <summary>The RAG line as shown.</summary>
+    internal string RagLlmProfileText => _ragLlmProfile.Text ?? "";
+
+    private static IReadOnlyList<string> ProfileLinesOf(LlmForm form) =>
+        form.Profiles.Count > 0 ? form.Profiles : [NoProfileLine];
 
     /// <inheritdoc />
     public override void Apply()
@@ -180,6 +205,8 @@ internal sealed class LlmSectionView : SectionView
             _apiKeyWarning.Dispose();
             _testConnection.Dispose();
             _testResult.Dispose();
+            _profiles.Dispose();
+            _ragLlmProfile.Dispose();
         }
 
         base.Dispose(disposing);

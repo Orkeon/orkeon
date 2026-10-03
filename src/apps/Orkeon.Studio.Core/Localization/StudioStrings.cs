@@ -1216,6 +1216,32 @@ public static class StudioStringKeys
     /// <summary>"copy" — suffix of a duplicated profile's name.</summary>
     public const string ProfileCopySuffix = "Studio.Settings.CopySuffix";
 
+    // ── the host LLM profiles (STUDIO-48): what a crew writes to run on a setting ──
+
+    /// <summary>"In a crew file: profile: {0}" — under a setting's name, {0} its host profile id.</summary>
+    public const string ProfileHostId = "Studio.Settings.HostId";
+
+    /// <summary>"A crew would write profile: default, the name reserved for the default setting — choose another name."</summary>
+    public const string ProfileHostIdReserved = "Studio.Settings.HostIdReserved";
+
+    /// <summary>"The setting “{1}” already answers to profile: {0} — choose another name."</summary>
+    public const string ProfileHostIdTakenBySetting = "Studio.Settings.HostIdTakenBySetting";
+
+    /// <summary>"The settings file already defines profile: {0} by hand, and Studio never changes it — choose another name."</summary>
+    public const string ProfileHostIdTakenByFile = "Studio.Settings.HostIdTakenByFile";
+
+    /// <summary>"No crew can name this setting: its name keeps no Latin letter or digit."</summary>
+    public const string ProfileHostIdNone = "Studio.Settings.HostIdNone";
+
+    /// <summary>"Renamed, the setting gets a new crew name: a crew that still writes profile: {0} will no longer load."</summary>
+    public const string ProfileHostIdRenamed = "Studio.Settings.HostIdRenamed";
+
+    /// <summary>"In a terminal, orkeon run reads this setting's key from {0} — the settings file never holds it."</summary>
+    public const string ProfileHostKeyHint = "Studio.Settings.HostKeyHint";
+
+    /// <summary>"default — the setting marked default" — the first choice of the RAG's model picker.</summary>
+    public const string ProfileRagLlmDefault = "Studio.Settings.RagLlmDefault";
+
 
     // ---- Creation wizard (design v3) ----------------------------------------
 
@@ -2026,6 +2052,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-TYPE"] = "A settings field has the wrong type.",
         ["Studio.Diagnostics.Code.STUDIO-LLM-APIKEY"] = "An API key is written inside the file — move it to an environment variable.",
         ["Studio.Diagnostics.Code.STUDIO-RAG-PROFILE"] = "The document-index profile named here is unknown.",
+        ["Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE"] = "The document search names a model profile this file does not define.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY"] = "No folder is allowed yet: add at least one.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT"] = "A folder entry is malformed.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-PATH"] = "An allowed folder does not exist on this machine.",
@@ -2321,6 +2348,18 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileNoneNote] = "Without a model, runs answer as an echo — useful to verify the install.",
         [StudioStringKeys.ProfileKeyMissingTest] = "API key missing — remember it first",
         [StudioStringKeys.ProfileCopySuffix] = "copy",
+        [StudioStringKeys.ProfileHostId] = "In a crew file: profile: {0}",
+        [StudioStringKeys.ProfileHostIdReserved] =
+            "A crew would write profile: default, the name reserved for the default setting — choose another name.",
+        [StudioStringKeys.ProfileHostIdTakenBySetting] = "The setting “{1}” already answers to profile: {0} — choose another name.",
+        [StudioStringKeys.ProfileHostIdTakenByFile] =
+            "The settings file already defines profile: {0} by hand, and Studio never changes it — choose another name.",
+        [StudioStringKeys.ProfileHostIdNone] = "No crew can name this setting: its name keeps no Latin letter or digit.",
+        [StudioStringKeys.ProfileHostIdRenamed] =
+            "Renamed, the setting gets a new crew name: a crew that still writes profile: {0} will no longer load.",
+        [StudioStringKeys.ProfileHostKeyHint] =
+            "In a terminal, orkeon run reads this setting's key from {0} — the settings file never holds it.",
+        [StudioStringKeys.ProfileRagLlmDefault] = "default — the setting marked default",
 
         [StudioStringKeys.WizardBriefConsigne] = "Standing instruction for every agent: {0}",
         [StudioStringKeys.WizardAgentFallback] = "Agent",

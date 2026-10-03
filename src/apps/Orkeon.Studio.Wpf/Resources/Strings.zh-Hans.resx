@@ -2892,4 +2892,43 @@
   <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
     <value>至少要有一个文件夹接收团队的结果。</value>
   </data>
+  <data name="Studio.Settings.HostId" xml:space="preserve">
+    <value>在团队文件中写：profile: {0}</value>
+  </data>
+  <data name="Studio.Settings.HostIdReserved" xml:space="preserve">
+    <value>团队将写成 profile: default，这是默认配置的保留名称——请换一个名称。</value>
+  </data>
+  <data name="Studio.Settings.HostIdTakenBySetting" xml:space="preserve">
+    <value>配置“{1}”已对应 profile: {0}——请换一个名称。</value>
+  </data>
+  <data name="Studio.Settings.HostIdTakenByFile" xml:space="preserve">
+    <value>设置文件中已手动定义了 profile: {0}，Studio 从不修改它——请换一个名称。</value>
+  </data>
+  <data name="Studio.Settings.HostIdNone" xml:space="preserve">
+    <value>任何团队都无法引用此配置：其名称中没有拉丁字母或数字。</value>
+  </data>
+  <data name="Studio.Settings.HostIdRenamed" xml:space="preserve">
+    <value>重命名后，此配置在团队中的名称随之改变：仍写 profile: {0} 的团队将无法加载。</value>
+  </data>
+  <data name="Studio.Settings.HostKeyHint" xml:space="preserve">
+    <value>在终端中，orkeon run 从 {0} 读取此配置的密钥——设置文件从不保存它。</value>
+  </data>
+  <data name="Studio.Settings.RagLlmDefault" xml:space="preserve">
+    <value>default——标为默认的配置</value>
+  </data>
+  <data name="Studio.Settings.HandWrittenTitle" xml:space="preserve">
+    <value>写在设置文件中</value>
+  </data>
+  <data name="Studio.Settings.HandWrittenHint" xml:space="preserve">
+    <value>手动写入设置文件的配置：团队可以引用它们；Studio 只显示，从不修改。</value>
+  </data>
+  <data name="Studio.Settings.RagLlmTitle" xml:space="preserve">
+    <value>文档检索（RAG）使用的模型</value>
+  </data>
+  <data name="Studio.Settings.RagLlmHint" xml:space="preserve">
+    <value>RAG 用于回答、评判和改写查询的配置——即设置文件中的 Orkeon:Rag:LlmProfile；除非另选，否则使用默认配置。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
+    <value>文档检索指定了此文件未定义的模型配置。</value>
+  </data>
 </root>

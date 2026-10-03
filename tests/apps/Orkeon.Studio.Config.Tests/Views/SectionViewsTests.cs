@@ -35,6 +35,27 @@ public class SectionViewsTests
     }
 
     [Fact]
+    public void The_llm_screen_lists_the_named_profiles_read_only()
+    {
+        // STUDIO-48: what the file's Llm:Profiles holds, and the profile the RAG calls.
+        var form = new LlmForm();
+        form.LoadFrom(Orkeon.Studio.Core.Configuration.AppSettingsDocument.Parse("""
+            { "Llm": { "Model": "qwen3", "Profiles": { "claude": { "Model": "claude-sonnet-5" } } },
+              "Orkeon": { "Rag": { "LlmProfile": "claude" } } }
+            """));
+        using var view = new LlmSectionView(form, new FakeLlmEndpointProbe());
+
+        view.Load();
+
+        Assert.Equal(["profile: claude — claude-sonnet-5"], view.ProfileLines);
+        Assert.Equal("Document search (RAG) answers on profile: claude", view.RagLlmProfileText);
+
+        form.LoadFrom(Orkeon.Studio.Core.Configuration.AppSettingsDocument.Parse("""{ "Llm": { "Model": "qwen3" } }"""));
+        view.Load();
+        Assert.Equal([LlmSectionView.NoProfileLine], view.ProfileLines);
+    }
+
+    [Fact]
     public void The_rate_limiting_screen_carries_the_form_values_both_ways()
     {
         var form = new RateLimitingForm();

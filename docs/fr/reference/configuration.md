@@ -53,7 +53,10 @@ recopié dans la section `Llm` du fichier (un `orkeon run` manuel en terminal su
 la même élection — c'est ce que `llm-config` reflète), tandis qu'une équipe qui a élu
 un autre réglage le reçoit en variables `ORKEON_Llm__*` sur son seul lancement —
 `llm-config` ne peut pas les voir, car elles n'existent nulle part tant que ce
-lancement n'a pas démarré. Aucun fichier n'est jamais généré : la composition est en
+lancement n'a pas démarré. Chaque réglage est aussi écrit dans `Llm:Profiles` du fichier,
+sans sa clé, comme profil d'hôte qu'une crew peut nommer ([plus bas](#studio-écrit-cette-section)),
+et chaque lancement depuis Studio les porte tous, clés comprises, en
+`ORKEON_Llm__Profiles__<id>__*`. Aucun fichier n'est jamais généré : la composition est en
 mémoire.
 
 ## Provider LLM (section `Llm`)
@@ -162,12 +165,40 @@ est alors le provider écho, avec l'avertissement habituel. `orkeon-host` peut r
 profils que ses crews peuvent nommer (`Orkeon:Host:LlmProfiles`, plus bas) ; la restriction vaut
 aussi pour le profil RAG et pour celui d'un agent manager.
 
+#### Studio écrit cette section
+
+Les réglages de modèle d'Orkeon Studio sont les profils de l'hôte (STUDIO-48). Chaque réglage de
+l'onglet Modèle d'IA qui nomme un fournisseur est le profil nommé d'après lui par la règle des
+noms de dossier des équipes — « Claude » donne `claude`, « Z.AI » donne `z-ai` —, et sa carte comme
+son éditeur montrent ce qu'une crew écrit, `profile: claude`. Créer, modifier, renommer ou
+supprimer le réglage écrit, déplace ou retire son entrée : chaque champ que le réglage épingle
+(`BaseUrl`, `Model`, `Temperature`, `TimeoutSeconds`, `MaxTokens`, `Thinking`), jamais la clé, et
+une clé que Studio ne modélise pas (`MaxRetries`, `Grammar`) reste où elle est. Un réglage sans
+modèle (la carte écho), ou dont le nom ne garde aucune lettre ni aucun chiffre ASCII, n'est offert
+à aucune crew ; `default`, un nom auquel un autre réglage répond déjà et un nom qui prendrait la
+place d'une entrée écrite à la main sont refusés.
+
+- **Les clés.** Un lancement depuis Studio — un run, un essai, l'assistant de création — pose
+  chaque réglage sur son processus enfant en `ORKEON_Llm__Profiles__<id>__*`, la clé résolue comme
+  celle du profil par défaut : il ne dépend donc ni de l'enregistrement du fichier ni du fichier de
+  réglages qu'il lit. `orkeon run` dans un terminal lit le même fichier et n'a besoin que de la clé,
+  dans `ORKEON_Llm__Profiles__<id>__ApiKey` ; l'éditeur nomme cette variable en mode expert.
+- **Les entrées écrites à la main** — aucun réglage ne les possède — sont listées en lecture seule
+  sous les réglages, et Studio ne les réécrit ni ne les retire jamais. La propriété tient au nom du
+  réglage : un identifiant est à Studio quand un réglage de `studio-model-profiles.json` y répond.
+- **Le profil du RAG** (`Orkeon:Rag:LlmProfile`) se choisit sur le même onglet, en mode expert,
+  parmi les profils ; il suit son réglage lors d'un renommage et revient au défaut quand le réglage
+  est supprimé. Studio avertit, avant d'enregistrer, d'un fichier dont le profil RAG nomme un profil
+  que le fichier ne définit pas.
+
+`orkeon-studio-config` montre la section et le profil du RAG en lecture seule.
+
 ## Sections hors préfixe `Orkeon:`
 
 | Section | Configure | Consommateur / opt-in |
 |---|---|---|
 | `Llm` | Provider LLM actif — le profil par défaut (voir ci-dessus) | `RunnerHost`, le REPL (`LlmSettings.ReadDefault`, le même lecteur) |
-| `Llm:Profiles:<nom>` | Profils LLM nommés qu'une crew choisit par agent ou par tâche, mêmes clés que `Llm` (voir ci-dessus) | `RunnerHost`, le REPL (`AddOrkeonLlmProfiles(configuration)`) |
+| `Llm:Profiles:<nom>` | Profils LLM nommés qu'une crew choisit par agent ou par tâche, mêmes clés que `Llm` (voir ci-dessus) ; Orkeon Studio en écrit un par réglage de modèle, sans sa clé | `RunnerHost`, le REPL (`AddOrkeonLlmProfiles(configuration)`) |
 | `Llm:AvailableModels` | La liste de modèles qu'une commande REPL scriptée `/model` peut proposer (tableau de chaînes, ou une chaîne séparée par des virgules) | `AddOrkeonSessionTools(configuration)` |
 | `Memory:Provider` | TYPE du provider mémoire de l'application (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb` ; absent → in-memory). Sa connexion est la section propre de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, … plus bas). C'est aussi là que vit la mémoire d'une crew nommée avec `memory: true` et sans `memoryProvider:` — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration) | `AddOrkeonInfrastructure()` |
 | `RateLimiting` | Limitation des requêtes LLM : `GlobalRequestsPerMinute`, `ProviderRequestsPerMinute`, `AgentRequestsPerMinute`, `MaxConcurrentRequests`, `QueueLimit` | `AddOrkeonInfrastructure()` (`ILlmRateLimiter`) |
@@ -229,7 +260,7 @@ runner (`orkeon run`, `orkeon-host`).
 | Section | Configure |
 |---|---|
 | `Orkeon:Rag:Profile` | Preset de profil `fast` (défaut) / `balanced` / `quality` / `adaptive` / `corrective` ; toute clé `Orkeon:Rag` surcharge le preset clé par clé |
-| `Orkeon:Rag:LlmProfile` | Le profil LLM de l'hôte (`Llm:Profiles:<nom>`) qu'appelle le sous-système RAG — génération, transformateurs de requête, reranker listwise, évaluateur et vérificateur d'ancrage correctifs, classifieur `llm`, juge d'évaluation ; absent ou `default` : le profil par défaut. Un nom inconnu fait refuser le démarrage de l'hôte en listant les profils connus ; `orkeon rag eval --offline` l'ignore |
+| `Orkeon:Rag:LlmProfile` | Le profil LLM de l'hôte (`Llm:Profiles:<nom>`) qu'appelle le sous-système RAG — génération, transformateurs de requête, reranker listwise, évaluateur et vérificateur d'ancrage correctifs, classifieur `llm`, juge d'évaluation ; absent ou `default` : le profil par défaut. Un nom inconnu fait refuser le démarrage de l'hôte en listant les profils connus ; `orkeon rag eval --offline` l'ignore. Se choisit dans Studio › Réglages › Modèle d'IA (expert) |
 | `Orkeon:Rag:Provider` | TYPE du provider du document store RAG (`RagStoreOptions` — un alias de type de `MemoryProviderFactory`), connecté depuis la section propre de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, …) ; défaut : l'`IMemoryProvider` ambiant |
 | `Orkeon:Rag:Collection` | Collection qu'interroge `rag_search` quand l'agent n'en nomme aucune (non définie : `default`) ; `rag_eval` l'utilise pour un dataset qui ne nomme pas de collection et n'apporte pas de corpus |
 | `Orkeon:Rag:Retrieval` (`TopK`, `CandidateK`, `MinScore`) | Bornes de l'étape de retrieval |

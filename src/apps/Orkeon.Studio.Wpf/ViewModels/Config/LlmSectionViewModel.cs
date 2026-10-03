@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
@@ -186,12 +187,52 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
         return result;
     }
 
-    /// <summary>Removes the whole section, which is how the "None / offline" preset is expressed.</summary>
+    /// <summary>
+    /// Removes the default provider, which is how the "None / offline" preset is expressed. The
+    /// named profiles of <c>Llm:Profiles</c> stay (STUDIO-48): « no model » for the default says
+    /// nothing about them.
+    /// </summary>
     public void RemoveSection()
     {
         Section.Remove();
         Refresh();
     }
+
+    // ── the host LLM profiles (STUDIO-48): Llm:Profiles, and the one the RAG calls ──
+
+    /// <summary>
+    /// The host LLM profile the RAG subsystem calls (<c>Orkeon:Rag:LlmProfile</c>, GAP-19) — one
+    /// of <c>Llm:Profiles</c>, null for the default. It lives under <c>Orkeon:Rag</c> but is chosen
+    /// among this section's profiles, on the model-settings screen; writing the default removes
+    /// the key.
+    /// </summary>
+    public string? RagLlmProfile
+    {
+        get => Document.Rag.LlmProfile;
+        set => SetValue(Document.Rag.LlmProfile, value is { } name && !LlmProfilesSection.IsDefault(name) ? name.Trim() : null, v => Document.Rag.LlmProfile = v);
+    }
+
+    /// <summary>
+    /// Brings <c>Llm:Profiles</c> in line with a change of Studio's model settings (STUDIO-48,
+    /// <see cref="HostLlmProfiles.Mirror"/>): one edit of the document when anything changed, so
+    /// the write travels through the screen's own edit-then-save cycle like the default's mirror.
+    /// </summary>
+    public void MirrorModelProfiles(ModelProfileSet before, ModelProfileSet after, string? renamedFrom = null, string? renamedTo = null)
+    {
+        if (!HostLlmProfiles.Mirror(Document, before, after, renamedFrom, renamedTo))
+            return;
+
+        // A rename or a removal may have moved the RAG's profile with it.
+        OnPropertyChanged(nameof(RagLlmProfile));
+        NotifyDocumentChanged();
+    }
+
+    /// <summary>The entries of <c>Llm:Profiles</c> no setting of <paramref name="set"/> owns: written by hand, shown read-only.</summary>
+    public IReadOnlyList<LlmProfileEntry> HandWrittenProfiles(ModelProfileSet set) => HostLlmProfiles.HandWritten(Document, set);
+
+    /// <summary>The standing a name typed in the profile editor would have, against this document's entries.</summary>
+    public HostProfileCheck CheckHostProfile(string name, string? previousName, bool describesProvider, ModelProfileSet set) =>
+        HostLlmProfiles.Check(name, previousName, describesProvider, set, Document);
 
     /// <inheritdoc />
     protected override void OnSectionChanged() => OnPropertiesChanged(

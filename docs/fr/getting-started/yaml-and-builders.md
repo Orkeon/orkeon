@@ -115,7 +115,9 @@ agent manager, comme tout agent (en C#, un fournisseur posé par `WithManagerLlm
 sous-système RAG tourne sur le profil que nomme `Orkeon:Rag:LlmProfile` ; le planificateur et le
 Guardian restent sur le profil par défaut ([Configuration](../reference/configuration.md#profils-nommés-llmprofiles)).
 En `.ork.ts`, le même choix s'écrit `agentBuilder().llm(llm.profile("claude"))` sur un agent et
-`taskBuilder().withProfile("claude")` sur une tâche.
+`taskBuilder().withProfile("claude")` sur une tâche. Dans Orkeon Studio, chaque réglage de modèle est
+un tel profil : sa carte montre le nom à écrire (`profile: claude`), et Studio l'écrit dans le
+fichier de réglages sans sa clé ([Studio écrit cette section](../reference/configuration.md#studio-écrit-cette-section)).
 
 Le `tools:` d'une tâche s'ajoute aux outils de son agent pour cette tâche seulement : un rédacteur qui détient `file_read` et exécute une tâche déclarant `tools: [file_write]` peut lire et écrire pendant cette tâche, et seulement lire pendant les autres. Il n'y a pas de bloc `circuitBreaker:` — une crew qui en écrit un est refusée au chargement. Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent (`maxIter`, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie) ; un run Graph est borné par `graphConfig` (ci-dessous).
 

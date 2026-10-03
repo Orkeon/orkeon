@@ -155,6 +155,47 @@ public sealed class AppSettingsValidatorTests
     }
 
     /// <summary>VFS-90 D-03: two settings entries of one root, each with an id, are a valid file.</summary>
+    /// <summary>
+    /// STUDIO-48 (GAP-19): <c>Orkeon:Rag:LlmProfile</c> naming a profile the file does not define
+    /// refuses the start of every run — said before the file is written. A warning: the profile can
+    /// come from the launch environment, which is how Studio passes its own model settings.
+    /// </summary>
+    [Fact]
+    public void A_rag_llm_profile_the_file_does_not_define_is_a_warning_listing_the_defined_ones()
+    {
+        var document = AppSettingsDocument.Parse("""
+            {
+              "Llm": { "Model": "qwen3", "Profiles": { "claude": { "Model": "claude-sonnet-5" } } },
+              "Orkeon": { "Rag": { "LlmProfile": "claud" } }
+            }
+            """);
+
+        var message = Find(Validator().Validate(document), ValidationCodes.UnknownRagLlmProfile);
+
+        Assert.NotNull(message);
+        Assert.Equal(ValidationSeverity.Warning, message.Severity);
+        Assert.Contains("'claud'", message.Text, StringComparison.Ordinal);
+        Assert.Contains("default, claude.", message.Text, StringComparison.Ordinal);
+        Assert.Equal("Orkeon:Rag:LlmProfile", message.Path);
+    }
+
+    [Theory]
+    [InlineData("claude")]
+    [InlineData("CLAUDE")]
+    [InlineData("default")]
+    [InlineData("")]
+    public void A_rag_llm_profile_the_file_defines_or_the_default_is_accepted(string profile)
+    {
+        var document = AppSettingsDocument.Parse($$"""
+            {
+              "Llm": { "Model": "qwen3", "Profiles": { "claude": { "Model": "claude-sonnet-5" } } },
+              "Orkeon": { "Rag": { "LlmProfile": "{{profile}}" } }
+            }
+            """);
+
+        Assert.Null(Find(Validator().Validate(document), ValidationCodes.UnknownRagLlmProfile));
+    }
+
     [Fact]
     public void Two_entries_of_one_root_with_ids_validate_without_an_error()
     {

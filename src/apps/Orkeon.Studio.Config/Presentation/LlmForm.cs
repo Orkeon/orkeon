@@ -9,7 +9,10 @@ namespace Orkeon.Studio.Config.Presentation;
 /// <summary>
 /// The <c>Llm</c> section as text fields. There is no provider field to edit: the runtime
 /// infers the dialect from the endpoint, so <see cref="DetectedProvider"/> is shown
-/// read-only next to the base URL.
+/// read-only next to the base URL. The named profiles of <c>Llm:Profiles</c> and the one the
+/// RAG calls are shown read-only too (STUDIO-48): Studio's model settings write the first, its
+/// model screen chooses the second, and this form writes neither — applying it touches the
+/// default provider's keys alone, so every profile, written by hand or not, stays as it is.
 /// </summary>
 internal sealed class LlmForm : ISettingsForm
 {
@@ -45,6 +48,20 @@ internal sealed class LlmForm : ISettingsForm
 
     /// <summary>Provider inferred from <see cref="BaseUrl"/>; never written to the file.</summary>
     public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
+
+    /// <summary>
+    /// The named profiles of <c>Llm:Profiles</c>, one line each — <c>profile: &lt;id&gt; — model ·
+    /// endpoint</c>, what a crew writes and what it gets. Read-only.
+    /// </summary>
+    public IReadOnlyList<string> Profiles { get; private set; } = [];
+
+    /// <summary>The profile <c>Orkeon:Rag:LlmProfile</c> names; empty for the default. Read-only.</summary>
+    public string RagLlmProfile { get; private set; } = "";
+
+    /// <summary>The line saying which profile the document search calls.</summary>
+    public string RagLlmProfileLine => LlmProfilesSection.IsDefault(RagLlmProfile)
+        ? "Document search (RAG) answers on the default profile (the section above)"
+        : string.Create(CultureInfo.InvariantCulture, $"Document search (RAG) answers on profile: {RagLlmProfile}");
 
     /// <summary>
     /// The connectivity probe for what the fields currently hold (SPEC §4.2). The key follows
@@ -99,6 +116,16 @@ internal sealed class LlmForm : ISettingsForm
         MaxTokens = FieldText.FromInt32(section.MaxTokens);
         TimeoutSeconds = FieldText.FromInt32(section.TimeoutSeconds);
         ThinkingEnabled = FieldText.FromBoolean(section.ThinkingEnabled);
+        Profiles =
+        [
+            .. section.Profiles.Ids
+                .Select(section.Profiles.Get)
+                .OfType<LlmProfileEntry>()
+                .Select(entry => entry.Summary.Length > 0
+                    ? string.Create(CultureInfo.InvariantCulture, $"profile: {entry.Id} — {entry.Summary}")
+                    : string.Create(CultureInfo.InvariantCulture, $"profile: {entry.Id}")),
+        ];
+        RagLlmProfile = FieldText.FromString(document.Rag.LlmProfile);
     }
 
     /// <inheritdoc />

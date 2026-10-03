@@ -103,6 +103,32 @@ public partial class CreateTeamWizardTests
         Assert.Equal("sk-assistant", processes.LastRequest!.Environment["ORKEON_Llm__ApiKey"]);
     }
 
+    [Fact]
+    public async Task The_assistant_runs_with_every_setting_as_a_host_profile_its_composed_crew_may_name()
+    {
+        // STUDIO-48: the trial runs the composed crew, and a crew may name any setting by its id.
+        var keys = new FakeApiKeyStore();
+        keys.Stage("DEEPSEEK_API_KEY", "sk-ds");
+        var (vm, processes, profiles) = Build(keyStore: keys);
+        profiles.CommitEdit(
+            new ModelProfile
+            {
+                Name = "DeepSeek", Provider = "DeepSeek", BaseUrl = "https://api.deepseek.com",
+                Model = "deepseek-v4-flash", KeyEnvName = "DEEPSEEK_API_KEY",
+            },
+            previousName: null);
+        processes.OutputToEmit.Add(
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
+
+        FillStepOne(vm);
+        await Compose(vm);
+
+        var environment = processes.LastRequest!.Environment;
+        Assert.Equal("sk-ds", environment["ORKEON_Llm__Profiles__deepseek__ApiKey"]);
+        Assert.Equal("http://localhost:11434/v1", environment["ORKEON_Llm__Profiles__local__BaseUrl"]);
+        Assert.Equal("qwen2.5:14b", environment["ORKEON_Llm__Model"]);   // the assistant's own default, as before
+    }
+
     /// <summary>
     /// STUDIO-45: frequency, source, output and the «describe that result» field are gone from
     /// step 1. The need alone opens «Compose»; what comes in and what comes out is the forge's

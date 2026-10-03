@@ -2403,10 +2403,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         return string.Join(" ", lines);
     }
 
+    /// <summary>
+    /// What the engine runs under: the assistant's profile as its default, and every model setting
+    /// as the host profile a composed crew may name — its trial runs that crew (STUDIO-48).
+    /// </summary>
     private IReadOnlyDictionary<string, string> AssistantEnvironment() =>
         Profiles.Set.Studio is { } studio
             ? Profiles.LaunchEnvironmentOf(studio)
-            : new Dictionary<string, string>(StringComparer.Ordinal);
+            : Profiles.LaunchEnvironment();
 
     [SuppressMessage("Design", "CA1031",
         Justification = "The launch's own fault barrier (STUDIO-13): an exception here used to reach " +

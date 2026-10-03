@@ -33,6 +33,50 @@ public class LlmFormTests
     }
 
     [Fact]
+    public void The_named_profiles_and_the_rag_profile_are_shown_and_never_written()
+    {
+        // STUDIO-48: Llm:Profiles holds Studio's model settings and the entries written by hand;
+        // this editor shows them, the profile the RAG calls with them, and writes none of it.
+        var document = AppSettingsDocument.Parse("""
+            {
+              "Llm": {
+                "Model": "qwen3",
+                "Profiles": {
+                  "claude": { "BaseUrl": "https://api.anthropic.com/v1", "Model": "claude-sonnet-5", "MaxRetries": 2 },
+                  "local-gpu": { "BaseUrl": "http://localhost:11500" }
+                }
+              },
+              "Orkeon": { "Rag": { "LlmProfile": "claude" } }
+            }
+            """);
+        var form = new LlmForm();
+        form.LoadFrom(document);
+
+        Assert.Equal(
+            ["profile: claude — claude-sonnet-5 · https://api.anthropic.com/v1", "profile: local-gpu — http://localhost:11500"],
+            form.Profiles);
+        Assert.Equal("Document search (RAG) answers on profile: claude", form.RagLlmProfileLine);
+
+        form.Model = "qwen3:32b";
+        Assert.Empty(form.ApplyTo(document));
+
+        Assert.Equal("qwen3:32b", document.Llm.Model);
+        Assert.Equal(["claude", "local-gpu"], document.Llm.Profiles.Ids);
+        Assert.Equal(2, document.GetInt32("Llm:Profiles:claude:MaxRetries"));
+        Assert.Equal("claude", document.Rag.LlmProfile);
+    }
+
+    [Fact]
+    public void Without_named_profiles_the_form_says_crews_run_on_the_default()
+    {
+        var form = new LlmForm();
+        form.LoadFrom(AppSettingsDocument.Parse("""{ "Llm": { "Model": "qwen3" } }"""));
+
+        Assert.Empty(form.Profiles);
+        Assert.Equal("Document search (RAG) answers on the default profile (the section above)", form.RagLlmProfileLine);
+    }
+
+    [Fact]
     public void Provider_is_detected_from_the_base_url_and_never_written()
     {
         var form = new LlmForm { BaseUrl = "http://localhost:11434" };

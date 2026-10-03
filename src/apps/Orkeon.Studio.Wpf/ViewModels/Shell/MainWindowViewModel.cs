@@ -693,13 +693,14 @@ public sealed class MainWindowViewModel : ObservableObject
     private string? RestoreArchivedTeam(string teamPath) => Teams.RestoreTeam(teamPath);
 
     /// <summary>
-    /// The environment an adopted team lays over its launches: the sidecar names a model
-    /// profile, the profile store resolves it to <c>ORKEON_Llm__*</c> overrides. Null for a
-    /// target that is not a team or names no (or an unknown) profile — the launch then runs
-    /// on the settings file, like any other.
+    /// The environment a launch lays over its child. Every launch carries the model settings as
+    /// the host profiles a crew may name, keys included (<c>ORKEON_Llm__Profiles__&lt;id&gt;__*</c>,
+    /// STUDIO-48); an adopted team whose sidecar names a model profile also gets that profile as
+    /// its default, the <c>ORKEON_Llm__*</c> overrides. A target that is not a team, or names no
+    /// (or an unknown) profile, runs on the settings file's default.
     /// </summary>
-    private IReadOnlyDictionary<string, string>? TeamEnvironment(string targetPath) =>
+    private IReadOnlyDictionary<string, string> TeamEnvironment(string targetPath) =>
         Settings.Profiles.Set.Find(TeamCatalog.ProfileFor(targetPath)) is { } profile
             ? Settings.Profiles.LaunchEnvironmentOf(profile)
-            : null;
+            : Settings.Profiles.LaunchEnvironment();
 }

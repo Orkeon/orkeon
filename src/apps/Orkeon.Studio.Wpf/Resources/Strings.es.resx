@@ -2892,4 +2892,43 @@
   <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
     <value>Al menos una carpeta debe recibir los resultados del equipo.</value>
   </data>
+  <data name="Studio.Settings.HostId" xml:space="preserve">
+    <value>En el archivo de un equipo: profile: {0}</value>
+  </data>
+  <data name="Studio.Settings.HostIdReserved" xml:space="preserve">
+    <value>Un equipo escribiría profile: default, el nombre reservado al perfil por defecto: elija otro nombre.</value>
+  </data>
+  <data name="Studio.Settings.HostIdTakenBySetting" xml:space="preserve">
+    <value>El perfil «{1}» ya responde a profile: {0}: elija otro nombre.</value>
+  </data>
+  <data name="Studio.Settings.HostIdTakenByFile" xml:space="preserve">
+    <value>El archivo de ajustes ya define profile: {0} a mano, y Studio nunca lo modifica: elija otro nombre.</value>
+  </data>
+  <data name="Studio.Settings.HostIdNone" xml:space="preserve">
+    <value>Ningún equipo puede nombrar este perfil: su nombre no contiene ninguna letra latina ni ningún dígito.</value>
+  </data>
+  <data name="Studio.Settings.HostIdRenamed" xml:space="preserve">
+    <value>Al renombrarlo, el perfil recibe un nuevo nombre para los equipos: un equipo que aún escriba profile: {0} dejará de cargarse.</value>
+  </data>
+  <data name="Studio.Settings.HostKeyHint" xml:space="preserve">
+    <value>En un terminal, orkeon run lee la clave de este perfil en {0}: el archivo de ajustes nunca la contiene.</value>
+  </data>
+  <data name="Studio.Settings.RagLlmDefault" xml:space="preserve">
+    <value>default — el perfil marcado por defecto</value>
+  </data>
+  <data name="Studio.Settings.HandWrittenTitle" xml:space="preserve">
+    <value>Escritos en el archivo de ajustes</value>
+  </data>
+  <data name="Studio.Settings.HandWrittenHint" xml:space="preserve">
+    <value>Perfiles escritos a mano en el archivo de ajustes: los equipos pueden nombrarlos; Studio los muestra y nunca los modifica.</value>
+  </data>
+  <data name="Studio.Settings.RagLlmTitle" xml:space="preserve">
+    <value>Modelo de la búsqueda documental (RAG)</value>
+  </data>
+  <data name="Studio.Settings.RagLlmHint" xml:space="preserve">
+    <value>El perfil con el que el RAG responde, evalúa y reformula las consultas — Orkeon:Rag:LlmProfile en el archivo de ajustes; el perfil por defecto, salvo que elija otro.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
+    <value>La búsqueda documental nombra un perfil de modelo que este archivo no define.</value>
+  </data>
 </root>

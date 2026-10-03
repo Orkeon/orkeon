@@ -47,7 +47,10 @@ the profile elected as default is copied into the file's `Llm` section (so a man
 terminal `orkeon run` follows the same election — that is what `llm-config` reflects),
 while a team that elected a different profile receives it as `ORKEON_Llm__*` variables
 on its own launch only — `llm-config` cannot see those, because they exist nowhere
-until that launch starts. No file is ever generated: the composition is in-memory.
+until that launch starts. Every profile is also written into the file's `Llm:Profiles`,
+without its key, as a host profile a crew can name ([below](#studio-writes-this-section)),
+and every launch from Studio carries them all, keys included, as
+`ORKEON_Llm__Profiles__<id>__*`. No file is ever generated: the composition is in-memory.
 
 ## LLM provider (`Llm` section)
 
@@ -150,12 +153,39 @@ provider, with the usual warning. `orkeon-host` can restrict which profiles its 
 (`Orkeon:Host:LlmProfiles`, below); the restriction applies to the RAG profile and to a manager
 agent's too.
 
+#### Studio writes this section
+
+Orkeon Studio's model settings are the host's profiles (STUDIO-48). Each setting of the AI-model
+tab that names a provider is the profile named after it by the folder-name rule of the teams —
+« Claude » is `claude`, « Z.AI » is `z-ai` — and its card and its editor show what a crew writes,
+`profile: claude`. Creating, editing, renaming or deleting the setting writes, moves or removes
+its entry: every field the setting pins (`BaseUrl`, `Model`, `Temperature`, `TimeoutSeconds`,
+`MaxTokens`, `Thinking`), never the key, and a key Studio does not model (`MaxRetries`,
+`Grammar`) stays where it is. A setting without a model (the echo card), or whose name keeps no
+ASCII letter or digit, is offered to no crew; `default`, a name another setting already answers
+to, and a name that would take over an entry written by hand are refused.
+
+- **Keys.** A launch from Studio — a run, a trial, the creation assistant — lays every setting over
+  its child as `ORKEON_Llm__Profiles__<id>__*`, the key resolved like the default profile's, so it
+  never depends on the file having been saved nor on which settings file it reads. `orkeon run`
+  in a terminal reads the same file and needs the key alone, in
+  `ORKEON_Llm__Profiles__<id>__ApiKey`; the editor names that variable in expert mode.
+- **Entries written by hand** — no setting owns them — are listed read-only under the settings,
+  and Studio never rewrites nor removes them. Ownership is the setting's name: an id is Studio's
+  when a setting of `studio-model-profiles.json` answers to it.
+- **The RAG's profile** (`Orkeon:Rag:LlmProfile`) is chosen on the same tab, in expert mode, among
+  the profiles; it follows its setting through a rename and falls back to the default when the
+  setting is deleted. Studio warns, before saving, about a file whose RAG profile names a profile
+  the file does not define.
+
+`orkeon-studio-config` shows the section and the RAG's profile read-only.
+
 ## Sections outside the `Orkeon:` prefix
 
 | Section | Configures | Consumer / opt-in |
 |---|---|---|
 | `Llm` | Active LLM provider — the default profile (see above) | `RunnerHost`, the REPL (`LlmSettings.ReadDefault`, the same reader) |
-| `Llm:Profiles:<name>` | Named LLM profiles a crew picks per agent or per task, same keys as `Llm` (see above) | `RunnerHost`, the REPL (`AddOrkeonLlmProfiles(configuration)`) |
+| `Llm:Profiles:<name>` | Named LLM profiles a crew picks per agent or per task, same keys as `Llm` (see above); Orkeon Studio writes one per model setting, without its key | `RunnerHost`, the REPL (`AddOrkeonLlmProfiles(configuration)`) |
 | `Llm:AvailableModels` | The model list a scripted `/model` REPL command can offer (string array, or one comma-separated string) | `AddOrkeonSessionTools(configuration)` |
 | `Memory:Provider` | TYPE of the application-wide memory provider (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`; unset → in-memory). Its connection is that provider's own section (`Orkeon:Redis`, `Orkeon:Sqlite`, … below). It is also where the memory of a named crew with `memory: true` and no `memoryProvider:` lives — see [Memory system](../architecture/memory-system.md#selection-by-configuration) | `AddOrkeonInfrastructure()` |
 | `RateLimiting` | LLM request throttling: `GlobalRequestsPerMinute`, `ProviderRequestsPerMinute`, `AgentRequestsPerMinute`, `MaxConcurrentRequests`, `QueueLimit` | `AddOrkeonInfrastructure()` (`ILlmRateLimiter`) |
@@ -217,7 +247,7 @@ requires `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection`), which
 | Section | Configures |
 |---|---|
 | `Orkeon:Rag:Profile` | Profile preset `fast` (default) / `balanced` / `quality` / `adaptive` / `corrective`; any `Orkeon:Rag` key overrides the preset key-by-key |
-| `Orkeon:Rag:LlmProfile` | The host LLM profile (`Llm:Profiles:<name>`) the RAG subsystem calls — generation, query transformers, listwise reranker, corrective evaluator and groundedness checker, `llm` classifier, evaluation judge; unset or `default` is the default profile. An unknown name refuses the host start, listing the known ones; `orkeon rag eval --offline` ignores it |
+| `Orkeon:Rag:LlmProfile` | The host LLM profile (`Llm:Profiles:<name>`) the RAG subsystem calls — generation, query transformers, listwise reranker, corrective evaluator and groundedness checker, `llm` classifier, evaluation judge; unset or `default` is the default profile. An unknown name refuses the host start, listing the known ones; `orkeon rag eval --offline` ignores it. Chosen in Studio › Settings › AI model (expert) |
 | `Orkeon:Rag:Provider` | TYPE of the RAG document-store provider (`RagStoreOptions` — a `MemoryProviderFactory` type alias), connected from that provider's own section (`Orkeon:Redis`, `Orkeon:Sqlite`, …); default is the ambient `IMemoryProvider` |
 | `Orkeon:Rag:Collection` | Collection `rag_search` queries when the agent names none (unset: `default`); `rag_eval` uses it for a dataset that names no collection and brings no corpus |
 | `Orkeon:Rag:Retrieval` (`TopK`, `CandidateK`, `MinScore`) | Retrieval stage bounds |

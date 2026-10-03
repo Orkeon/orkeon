@@ -61,6 +61,7 @@ public sealed class AppSettingsValidator
         "Llm:Thinking:Effort",
         "Orkeon:Rag:Profile",
         "Orkeon:Rag:Provider",
+        RagSection.LlmProfilePath,
     ];
 
     private static readonly string[] NumberFields =
@@ -136,6 +137,7 @@ public sealed class AppSettingsValidator
         ValidateLlm(document, messages);
         ValidateTypes(document, messages);
         ValidateRagProfile(document, messages);
+        ValidateRagLlmProfile(document, messages);
         ValidateMounts(document, messages, scope);
         ValidateMcp(document, messages);
 
@@ -311,6 +313,33 @@ public sealed class AppSettingsValidator
                 $"Unknown RAG profile '{document.Rag.Profile}'. Known profiles: " +
                 $"{string.Join(", ", RagSection.KnownProfiles)}."),
             $"{RagSection.SectionPath}:Profile"));
+    }
+
+    /// <summary>
+    /// <c>Orkeon:Rag:LlmProfile</c> (GAP-19) must name a profile the host defines: an unknown one
+    /// refuses the start of every run. A warning, not an error — like WIN-01, the profile may come
+    /// from the environment the run is launched with (<c>ORKEON_Llm__Profiles__&lt;id&gt;__*</c>,
+    /// which is how Studio passes its own model settings), and Studio sees the file alone.
+    /// </summary>
+    private static void ValidateRagLlmProfile(AppSettingsDocument document, List<ValidationMessage> messages)
+    {
+        if (document.GetNode(RagSection.LlmProfilePath) is not JsonValue
+            || document.Rag.LlmProfile is not { } profile
+            || LlmProfilesSection.IsDefault(profile)
+            || document.Llm.Profiles.Find(profile) is not null)
+        {
+            return;
+        }
+
+        var known = new[] { LlmProfilesSection.DefaultProfile }.Concat(document.Llm.Profiles.Ids);
+        messages.Add(ValidationMessage.Warning(
+            ValidationCodes.UnknownRagLlmProfile,
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"The RAG subsystem names the LLM profile '{profile.Trim()}', which this file does not define: " +
+                $"the host refuses to start unless the environment the run is launched with defines it. " +
+                $"Profiles in this file: {string.Join(", ", known)}."),
+            RagSection.LlmProfilePath));
     }
 
     private void ValidateMounts(

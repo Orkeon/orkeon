@@ -112,7 +112,9 @@ hierarchical crew runs on its manager agent's `llm:` block like any agent (in C#
 with `WithManagerLlm` wins); the RAG subsystem runs on the profile `Orkeon:Rag:LlmProfile` names; the
 planner and the Guardian stay on the default profile ([Configuration](../reference/configuration.md#named-profiles-llmprofiles)).
 In `.ork.ts` the same choice is `agentBuilder().llm(llm.profile("claude"))` on an agent and
-`taskBuilder().withProfile("claude")` on a task.
+`taskBuilder().withProfile("claude")` on a task. In Orkeon Studio, every model setting is such a
+profile: its card shows the name to write (`profile: claude`), and Studio writes it into the
+settings file without its key ([Studio writes this section](../reference/configuration.md#studio-writes-this-section)).
 
 A task's `tools:` add to its agent's own for that task only: a writer that holds `file_read` and runs a task declaring `tools: [file_write]` can read and write during that task, and only read during the others. There is no `circuitBreaker:` block — a crew that writes one is refused at load. What bounds a task at run time is the agent loop (`maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries); a Graph run is bounded by `graphConfig` (below).
 

@@ -1516,4 +1516,43 @@
   <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
     <value>At least one folder must receive the team's results.</value>
   </data>
+  <data name="Studio.Settings.HostId" xml:space="preserve">
+    <value>In a crew file: profile: {0}</value>
+  </data>
+  <data name="Studio.Settings.HostIdReserved" xml:space="preserve">
+    <value>A crew would write profile: default, the name reserved for the default setting — choose another name.</value>
+  </data>
+  <data name="Studio.Settings.HostIdTakenBySetting" xml:space="preserve">
+    <value>The setting “{1}” already answers to profile: {0} — choose another name.</value>
+  </data>
+  <data name="Studio.Settings.HostIdTakenByFile" xml:space="preserve">
+    <value>The settings file already defines profile: {0} by hand, and Studio never changes it — choose another name.</value>
+  </data>
+  <data name="Studio.Settings.HostIdNone" xml:space="preserve">
+    <value>No crew can name this setting: its name keeps no Latin letter or digit.</value>
+  </data>
+  <data name="Studio.Settings.HostIdRenamed" xml:space="preserve">
+    <value>Renamed, the setting gets a new crew name: a crew that still writes profile: {0} will no longer load.</value>
+  </data>
+  <data name="Studio.Settings.HostKeyHint" xml:space="preserve">
+    <value>In a terminal, orkeon run reads this setting's key from {0} — the settings file never holds it.</value>
+  </data>
+  <data name="Studio.Settings.RagLlmDefault" xml:space="preserve">
+    <value>default — the setting marked default</value>
+  </data>
+  <data name="Studio.Settings.HandWrittenTitle" xml:space="preserve">
+    <value>Written in the settings file</value>
+  </data>
+  <data name="Studio.Settings.HandWrittenHint" xml:space="preserve">
+    <value>Profiles written by hand in the settings file: crews can name them; Studio shows them and never changes them.</value>
+  </data>
+  <data name="Studio.Settings.RagLlmTitle" xml:space="preserve">
+    <value>Model of the document search (RAG)</value>
+  </data>
+  <data name="Studio.Settings.RagLlmHint" xml:space="preserve">
+    <value>The profile the RAG answers, judges and rewrites queries with — Orkeon:Rag:LlmProfile in the settings file; the default setting unless you pick another.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
+    <value>The document search names a model profile this file does not define.</value>
+  </data>
 </root>

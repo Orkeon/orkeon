@@ -225,6 +225,20 @@
                       </Border>
                     </StackPanel>
                     <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,0" Text="{Binding Summary}"/>
+                    <!-- STUDIO-48: the name a crew writes to run on this setting — it is the host
+                         profile Llm:Profiles:<id> of the settings file —, or why no crew can. -->
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"
+                               Visibility="{Binding HasHostIdText, Converter={StaticResource BooleanToVisibility}}">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsHostIdIssue}" Value="True">
+                              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
                     <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,4,0,0" Text="{Binding Endpoint}"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
@@ -275,7 +289,57 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+
+          <!-- STUDIO-48: the entries of Llm:Profiles no setting owns, written by hand in the
+               settings file. Read-only: a crew can name them, Studio never changes them. -->
+          <StackPanel Margin="0,8,0,0"
+                      Visibility="{Binding Profiles.HasHandWrittenProfiles, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+              <controls:LucideIcon Kind="file-json-2" Size="13" Foreground="{DynamicResource InkFaintBrush}"
+                                   Margin="0,0,7,0" VerticalAlignment="Center"/>
+              <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
+                         Text="{Binding [Studio.Settings.HandWrittenTitle], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="{Binding [Studio.Settings.HandWrittenHint], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding Profiles.HandWrittenProfiles}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderThickness="1" BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource PaperSunkBrush}"
+                          CornerRadius="11" Padding="14,10" Margin="0,0,0,8">
+                    <StackPanel>
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Id}"/>
+                      <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="0,3,0,0" Text="{Binding Summary}"
+                                 Visibility="{Binding HasSummary, Converter={StaticResource BooleanToVisibility}}"/>
+                      <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </StackPanel>
+      </Border>
+
+      <!-- STUDIO-48 (GAP-19): the profile the document search calls, Orkeon:Rag:LlmProfile,
+           chosen among the host profiles above. Expert, like the RAG settings of the limits tab. -->
+      <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+              Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+        <DockPanel>
+          <ComboBox DockPanel.Dock="Right" Width="260" VerticalAlignment="Center"
+                    ItemsSource="{Binding Profiles.RagProfileChoices}"
+                    SelectedItem="{Binding Profiles.SelectedRagProfile}"
+                    DisplayMemberPath="Label"/>
+          <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="scan-search" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+              <TextBlock Style="{StaticResource CardTitle}"
+                         Text="{Binding [Studio.Settings.RagLlmTitle], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+            <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Settings.RagLlmHint], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </DockPanel>
       </Border>
 
       <!-- API keys: one row per environment variable the profiles resolve. The value goes

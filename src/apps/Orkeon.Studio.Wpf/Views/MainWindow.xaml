@@ -736,6 +736,24 @@
             <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
                        Text="{Binding [Studio.Settings.NameTaken], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding NameCollision, Converter={StaticResource BooleanToVisibility}}"/>
+            <!-- STUDIO-48: the name a crew writes to run on this setting, as the name is typed —
+                 or why none can; « default », or an id another setting or the settings file
+                 already holds, refuses the save. -->
+            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"
+                       Visibility="{Binding HostIdText, Converter={StaticResource StringPresentToVisibility}}">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsHostIdIssue}" Value="True">
+                      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
+                       Text="{Binding HostIdRenamedText}"
+                       Visibility="{Binding HostIdRenamedText, Converter={StaticResource StringPresentToVisibility}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
                        Text="{Binding [Studio.Settings.ProviderLabel], Source={x:Static services:I18n.Instance}}"/>
@@ -922,9 +940,15 @@
                 <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="10,7" Margin="0,9,0,0"
                         Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" TextWrapping="Wrap"
-                             Foreground="{DynamicResource InkFaintBrush}"
-                             Text="{Binding [Studio.Settings.KeyExpertHint], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel>
+                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" TextWrapping="Wrap"
+                               Foreground="{DynamicResource InkFaintBrush}"
+                               Text="{Binding [Studio.Settings.KeyExpertHint], Source={x:Static services:I18n.Instance}}"/>
+                    <!-- STUDIO-48: the variable a terminal orkeon run reads this host profile's key from. -->
+                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" TextWrapping="Wrap" Margin="0,5,0,0"
+                               Foreground="{DynamicResource InkFaintBrush}" Text="{Binding HostKeyHint}"
+                               Visibility="{Binding HostKeyHint, Converter={StaticResource StringPresentToVisibility}}"/>
+                  </StackPanel>
                 </Border>
               </StackPanel>
             </Border>

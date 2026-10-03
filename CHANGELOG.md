@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio's model settings are the host's LLM profiles: a crew names one with `profile:`
+
+Since named profiles (GAP-17), a crew can write `llm: { profile: claude }` — provided the host's
+settings define `Llm:Profiles:claude`, which nothing in Studio wrote: a Studio user who created a
+« Claude » setting and named it in a crew saw the load fail, the error listing `default` alone
+(STUDIO-48).
+
+- **Each setting is a host profile.** Every model setting that names a provider is written into the
+  settings file as `Llm:Profiles:<id>` — its id the name through the teams' folder-name rule
+  (« Claude » → `claude`, « Z.AI » → `z-ai`), its fields (`BaseUrl`, `Model`, `Temperature`,
+  `TimeoutSeconds`, `MaxTokens`, `Thinking`), never its key — and the entry follows the setting
+  through an edit, a rename (the keys Studio does not model travel with it) and a deletion. The card
+  and the editor show what a crew writes (`profile: claude`); the editor refuses `default`, a name
+  another setting already answers to and one an entry written by hand holds, warns that a renamed
+  setting's old name stops loading, and names, in expert mode, the variable a terminal run reads the
+  key from. A setting without a model, or whose name keeps no ASCII letter or digit, is offered to no
+  crew.
+- **Keys through the environment.** Every launch from Studio — a run, a trial, the creation
+  assistant — carries every setting as `ORKEON_Llm__Profiles__<id>__*`, the key resolved through the
+  key store (STUDIO-44), so it never depends on the file having been saved; `orkeon run` in a
+  terminal reads the same file and needs only `ORKEON_Llm__Profiles__<id>__ApiKey`.
+- **Entries written by hand stay as written.** An entry of `Llm:Profiles` no setting owns is listed
+  read-only under the settings, never rewritten nor removed. Choosing « no model » for the default —
+  in Studio or in `orkeon-studio-config` — removed the whole `Llm` section, profiles included; it now
+  clears the default provider and keeps them, and a section holding profiles alone raises the WIN-01
+  warning, as the runtime reads it.
+- **The RAG's profile on the same screen.** An expert card of the AI-model tab chooses
+  `Orkeon:Rag:LlmProfile` (GAP-19) among the profiles; it follows its setting through a rename and
+  falls back to the default when the setting is deleted. The validation warns about a RAG profile the
+  file does not define (`STUDIO-RAG-LLM-PROFILE`), in the five languages.
+- `orkeon-studio-config` shows `Llm:Profiles` and the RAG's profile, read-only.
+- `Orkeon.Constants.Llm` gains `LlmProfileNames.Default` (ADR-009): the reserved name the runtime
+  refuses for a profile, which Studio refuses too; `LlmProfiles.Default` reads it.
+
+Documented in [Configuration](docs/reference/configuration.md#studio-writes-this-section),
+[Orkeon Studio](docs/architecture/studio.md) and
+[YAML and builders](docs/getting-started/yaml-and-builders.md#one-provider-per-agent-profiles).
+
 ### Fixed — a crew's manager runs on the LLM the crew gives it, the RAG subsystem on the profile the host names, a `.ork.ts` task changes profile, and an address is no glob **[breaking]**
 
 Since named profiles, each agent ran on its own; the rest did not follow (GAP-19):

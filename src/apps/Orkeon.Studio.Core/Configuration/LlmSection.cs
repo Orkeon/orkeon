@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Nodes;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Studio.Core.Configuration;
 
@@ -14,13 +16,27 @@ public sealed class LlmSection
 
     private readonly AppSettingsDocument _document;
 
-    internal LlmSection(AppSettingsDocument document) => _document = document;
+    internal LlmSection(AppSettingsDocument document)
+    {
+        _document = document;
+        Profiles = new LlmProfilesSection(document);
+    }
 
     /// <summary>
-    /// True when the section carries at least one key. False is the WIN-01 condition:
-    /// the runtime silently falls back to the <c>&lt;undefined-llm&gt;</c> echo provider.
+    /// The named profiles under <c>Llm:Profiles</c> (GAP-17, STUDIO-48) — part of this section in
+    /// the file, but not part of the default provider it describes.
     /// </summary>
-    public bool Exists => _document.SectionExists(SectionPath);
+    public LlmProfilesSection Profiles { get; }
+
+    /// <summary>
+    /// True when the section describes the default provider: at least one key besides
+    /// <c>Profiles</c>, the runtime's own reading (<c>LlmSettings.HasDefault</c>). False is the
+    /// WIN-01 condition: the runtime silently falls back to the <c>&lt;undefined-llm&gt;</c> echo
+    /// provider — a section holding profiles alone included.
+    /// </summary>
+    public bool Exists =>
+        _document.GetNode(SectionPath) is JsonObject section
+        && section.Any(property => !string.Equals(property.Key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Model identifier (<c>Llm:Model</c>).</summary>
     public string? Model
@@ -73,10 +89,6 @@ public sealed class LlmSection
     }
 
     /// <summary>
-    /// Provider inferred from <see cref="BaseUrl"/> — informational only, never written
-    /// to the file. See <see cref="LlmProviderDetector"/>.
-    /// </summary>
-    /// <summary>
     /// Thinking switch (<c>Llm:Thinking:Enabled</c>): null leaves the provider's default —
     /// on for Kimi K2.6, DeepSeek V4 and GLM. The runner reads the same key (LLM-11).
     /// </summary>
@@ -93,8 +105,35 @@ public sealed class LlmSection
         set => _document.SetString($"{SectionPath}:Thinking:Effort", value);
     }
 
+    /// <summary>
+    /// Provider inferred from <see cref="BaseUrl"/> — informational only, never written
+    /// to the file. See <see cref="LlmProviderDetector"/>.
+    /// </summary>
     public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
 
-    /// <summary>Removes the whole section (the WIN-01 state).</summary>
-    public void Remove() => _document.Remove(SectionPath);
+    /// <summary>
+    /// Removes the default provider — every key of the section but <c>Profiles</c> — which is
+    /// the WIN-01 state. The named profiles stay: choosing « no model » for the default says
+    /// nothing about them, and an entry written by hand is never Studio's to delete (STUDIO-48).
+    /// The section goes entirely only when no profile is left in it.
+    /// </summary>
+    public void Remove()
+    {
+        if (_document.GetNode(SectionPath) is not JsonObject section)
+        {
+            _document.Remove(SectionPath);
+            return;
+        }
+
+        foreach (var key in section
+                     .Select(property => property.Key)
+                     .Where(key => !string.Equals(key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase))
+                     .ToList())
+        {
+            section.Remove(key);
+        }
+
+        if (section.Count == 0)
+            _document.Remove(SectionPath);
+    }
 }

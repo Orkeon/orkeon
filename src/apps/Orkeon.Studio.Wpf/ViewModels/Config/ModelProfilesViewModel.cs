@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using Orkeon.Constants.Llm;
+using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
@@ -21,6 +23,7 @@ public sealed class ModelProfileItemViewModel : ObservableObject
 {
     private readonly BalanceReadings? _balances;
     private readonly IStudioStrings _strings;
+    private readonly HostProfileCheck? _host;
 
     internal ModelProfileItemViewModel(
         ModelProfile profile,
@@ -29,7 +32,8 @@ public sealed class ModelProfileItemViewModel : ObservableObject
         ModelProfilesViewModel owner,
         IReadOnlyList<string>? usedByTeams = null,
         BalanceReadings? balances = null,
-        IStudioStrings? strings = null)
+        IStudioStrings? strings = null,
+        HostProfileCheck? host = null)
     {
         Profile = profile;
         IsDefault = isDefault;
@@ -37,6 +41,7 @@ public sealed class ModelProfileItemViewModel : ObservableObject
         UsedByTeams = usedByTeams ?? [];
         _balances = balances;
         _strings = strings ?? EnglishStudioStrings.Instance;
+        _host = host;
         SetDefaultCommand = new RelayCommand(() => owner.SetDefault(profile.Name));
         EditCommand = new RelayCommand(() => owner.BeginEdit(profile));
         DuplicateCommand = new RelayCommand(() => owner.Duplicate(profile));
@@ -71,6 +76,21 @@ public sealed class ModelProfileItemViewModel : ObservableObject
 
     /// <summary>Whether the "used by" row shows.</summary>
     public bool IsUsedByTeams => UsedByTeams.Count > 0;
+
+    /// <summary>
+    /// The host profile this setting is in the settings file — what a crew writes,
+    /// <c>profile: &lt;id&gt;</c> (STUDIO-48); null when no crew can name it.
+    /// </summary>
+    public string? HostProfileId => _host is { IsOffered: true } host ? host.Id : null;
+
+    /// <summary>The line under the name: the name a crew writes, or why no crew can write one; null for a setting without a model.</summary>
+    public string? HostIdText => HostProfileText.Describe(_host, _strings);
+
+    /// <summary>Whether the line shows.</summary>
+    public bool HasHostIdText => HostIdText is not null;
+
+    /// <summary>Whether the line is a problem — no crew can name this setting — shown in the warning tone.</summary>
+    public bool IsHostIdIssue => HostProfileText.IsIssue(_host);
 
     /// <summary>
     /// What the profile's account has left, when a read of this session told it (STUDIO-35
@@ -112,7 +132,48 @@ public sealed class ModelProfileItemViewModel : ObservableObject
     /// <summary>A read landed, or a threshold moved: the chip says it again.</summary>
     internal void RefreshBalance() =>
         OnPropertiesChanged(nameof(Balance), nameof(HasBalance), nameof(IsBalanceLow), nameof(BalanceTip));
+
+    /// <summary>The language switched: the host profile line says it again.</summary>
+    internal void RefreshHostId() => OnPropertiesChanged(nameof(HostIdText), nameof(HasHostIdText));
 }
+
+/// <summary>
+/// An entry of <c>Llm:Profiles</c> no setting owns — written by hand in the settings file
+/// (STUDIO-48). Read-only by design: a crew can name it, Studio shows it and never changes it,
+/// and the row offers no gesture.
+/// </summary>
+public sealed class HandWrittenProfileViewModel
+{
+    internal HandWrittenProfileViewModel(LlmProfileEntry entry, IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        ArgumentNullException.ThrowIfNull(strings);
+
+        Id = entry.Id;
+        Summary = entry.Summary;
+        HostIdText = HostProfileText.Describe(new HostProfileCheck(HostProfileStatus.Offered, entry.Id), strings)!;
+    }
+
+    /// <summary>The entry's key — the name a crew writes.</summary>
+    public string Id { get; }
+
+    /// <summary>The model and the endpoint the entry names.</summary>
+    public string Summary { get; }
+
+    /// <summary>Whether the summary line shows.</summary>
+    public bool HasSummary => Summary.Length > 0;
+
+    /// <summary>"In a crew file: profile: &lt;id&gt;".</summary>
+    public string HostIdText { get; }
+}
+
+/// <summary>
+/// One choice of the RAG's model picker (<c>Orkeon:Rag:LlmProfile</c>, STUDIO-48): a host profile,
+/// or the default — <paramref name="Id"/> null.
+/// </summary>
+/// <param name="Id">The profile the RAG calls; null for the default profile.</param>
+/// <param name="Label">What the picker shows.</param>
+public sealed record RagProfileChoice(string? Id, string Label);
 
 /// <summary>
 /// The editor overlay for one profile (the new-profile / edit-profile form). Picking a
@@ -149,6 +210,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string _maxTokensText = "";
     private bool? _thinkingEnabled;
     private string _thinkingEffortText = "";
+    private readonly string? _originalHostId;
 
     internal ModelProfileEditorViewModel(
         ModelProfilesViewModel owner,
@@ -191,6 +253,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             new ThinkingChoice(false, strings[StudioStringKeys.ProfileThinkingOff]),
         ];
         _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Title, profile.Provider, StringComparison.Ordinal));
+        // The id crews may already write: the one this setting was offered under when it opened.
+        _originalHostId = previousName is null ? null : owner.OfferedHostId(previousName);
 
         SaveCommand = new RelayCommand(Save, () => CanSave);
         CancelCommand = new RelayCommand(() => _owner.CancelEdit());
@@ -227,6 +291,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(CanSave));
                 OnPropertyChanged(nameof(NameCollision));
+                OnHostProfileChanged();
                 SaveCommand.RaiseCanExecuteChanged();
             }
         }
@@ -263,6 +328,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             OnPropertyChanged(nameof(ShowTestRow));
             OnPropertyChanged(nameof(ShowBalanceRow));
             OnPropertyChanged(nameof(MaxTokensHint));   // an entry can hold on one provider only (LLM-10)
+            OnHostProfileChanged();                     // « no model » is offered to no crew
             OnPropertyChanged(nameof(CanSave));
             SaveCommand.RaiseCanExecuteChanged();
         }
@@ -282,6 +348,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             if (!SetProperty(ref _baseUrl, value))
                 return;
 
+            OnHostProfileChanged();
             SaveCommand.RaiseCanExecuteChanged();
             ClearConnectionTestResult();   // the verdict was about the previous endpoint
         }
@@ -296,6 +363,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             if (!SetProperty(ref _model, value))
                 return;
 
+            OnHostProfileChanged();
             OnPropertyChanged(nameof(MaxTokensHint));   // the hint follows the model, not the provider
             SaveCommand.RaiseCanExecuteChanged();
             ClearConnectionTestResult();   // the test completion ran on the previous model
@@ -418,6 +486,9 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     public bool CanSave =>
         _name.Trim().Length > 0
         && !NameCollision
+        // STUDIO-48: « default » is the Llm section's own name, and an id another setting or a
+        // hand-written entry holds would make two profiles one.
+        && !HostProfile.BlocksSave
         && !(UrlAlwaysVisible
              && (string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_model)))
         // A typed tuning value that does not parse must block the save, not vanish silently.
@@ -427,6 +498,48 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
     /// <summary>True while the typed name already belongs to another profile.</summary>
     public bool NameCollision => _owner.IsNameTaken(_name.Trim(), PreviousName);
+
+    /// <summary>
+    /// What the typed name would make of the setting as a host profile (STUDIO-48): the id a crew
+    /// writes, or why no crew could write one — against the other settings and the entries the
+    /// settings file holds by hand.
+    /// </summary>
+    public HostProfileCheck HostProfile =>
+        _owner.CheckHostProfile(_name, PreviousName, !string.IsNullOrWhiteSpace(_model) || !string.IsNullOrWhiteSpace(_baseUrl));
+
+    /// <summary>
+    /// The line under the name: <c>profile: &lt;id&gt;</c> as typed, or why it cannot be; null for a
+    /// setting without a model, and while the name itself is taken (that line says it).
+    /// </summary>
+    public string? HostIdText => NameCollision ? null : HostProfileText.Describe(HostProfile, _strings);
+
+    /// <summary>Whether that line is a problem rather than the name to write.</summary>
+    public bool IsHostIdIssue => !NameCollision && HostProfileText.IsIssue(HostProfile);
+
+    /// <summary>
+    /// Said when a setting crews could name is renamed under another id: the crews that write the
+    /// old one stop loading. Null otherwise.
+    /// </summary>
+    public string? HostIdRenamedText =>
+        _originalHostId is { } previous
+        && !string.Equals(HostProfile.Id, previous, StringComparison.OrdinalIgnoreCase)
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileHostIdRenamed], previous)
+            : null;
+
+    /// <summary>
+    /// The expert line of the key block: the variable a terminal <c>orkeon run</c> reads this
+    /// setting's key from — the settings file never holds it. Null when no crew can name the
+    /// setting, or when it needs no key.
+    /// </summary>
+    public string? HostKeyHint =>
+        RequiresApiKey && HostProfile is { IsOffered: true, Id: { } id }
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileHostKeyHint], ModelProfile.HostKeyVariable(id))
+            : null;
+
+    private void OnHostProfileChanged() =>
+        OnPropertiesChanged(
+            nameof(HostProfile), nameof(HostIdText), nameof(IsHostIdIssue), nameof(HostIdRenamedText), nameof(HostKeyHint),
+            nameof(CanSave));
 
     /// <summary>
     /// Outcome line of the last connection probe, in the interface's language: the step that
@@ -797,8 +910,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 /// election, and the profile Studio's own assistant runs on. Every mutation is persisted to
 /// the store immediately (its file is Studio state, like the history); electing a default
 /// additionally mirrors it into the settings document's <c>Llm</c> section, which is what the
-/// CLI reads when it runs outside Studio — that write goes through the ordinary dirty/save
-/// cycle of the settings screen.
+/// CLI reads when it runs outside Studio, and every setting that names a provider is mirrored
+/// into <c>Llm:Profiles:&lt;id&gt;</c>, without its key — the host profile a crew names with
+/// <c>profile: &lt;id&gt;</c> (STUDIO-48). Both writes go through the ordinary dirty/save cycle of
+/// the settings screen. The entries of <c>Llm:Profiles</c> no setting owns are listed read-only,
+/// and the RAG's model (<c>Orkeon:Rag:LlmProfile</c>) is chosen among all of them.
 /// </summary>
 public sealed class ModelProfilesViewModel : ObservableObject
 {
@@ -850,6 +966,11 @@ public sealed class ModelProfilesViewModel : ObservableObject
             balances.Changed += (_, _) => RefreshBalances();
             _strings.CultureChanged += (_, _) => RefreshBalances();
         }
+
+        // STUDIO-48: the host profile lines speak the interface's language, and a settings file
+        // opened in place of the previous one brings its own entries and its own RAG choice.
+        _strings.CultureChanged += (_, _) => RefreshHostTexts();
+        _llm.PropertyChanged += OnSettingsDocumentChanged;
     }
 
     /// <summary>The profile cards, rebuilt after every mutation.</summary>
@@ -873,12 +994,65 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// <summary>
     /// The <c>ORKEON_Llm__*</c> overrides a launch under <paramref name="profile"/> lays over its
     /// child process — the key resolved through the key store (STUDIO-44), so a key held only in
-    /// the user scope reaches the child as well as one in Studio's own environment.
+    /// the user scope reaches the child as well as one in Studio's own environment — on top of
+    /// <see cref="LaunchEnvironment"/>, every setting as the host profile a crew may name.
     /// </summary>
     public IReadOnlyDictionary<string, string> LaunchEnvironmentOf(ModelProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        return profile.EnvironmentOverrides(_keyStore.Peek);
+
+        var environment = new Dictionary<string, string>(LaunchEnvironment(), StringComparer.Ordinal);
+        foreach (var (key, value) in profile.EnvironmentOverrides(_keyStore.Peek))
+            environment[key] = value;
+        return environment;
+    }
+
+    /// <summary>
+    /// What every launch lays over its child, whatever profile it runs on (STUDIO-48): each
+    /// setting offered to crews as <c>ORKEON_Llm__Profiles__&lt;id&gt;__*</c>, its key resolved
+    /// through the key store — so a crew that writes <c>profile: claude</c> runs on « Claude »,
+    /// whether or not the settings file was saved since, and whichever file the launch reads.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> LaunchEnvironment() =>
+        HostLlmProfiles.LaunchEnvironment(_set, _keyStore.Peek);
+
+    /// <summary>
+    /// The entries of <c>Llm:Profiles</c> no setting owns — written by hand in the settings file,
+    /// shown read-only (STUDIO-48): Studio never rewrites nor removes them.
+    /// </summary>
+    public ObservableCollection<HandWrittenProfileViewModel> HandWrittenProfiles { get; } = [];
+
+    /// <summary>Whether the « written in the settings file » block shows.</summary>
+    public bool HasHandWrittenProfiles => HandWrittenProfiles.Count > 0;
+
+    /// <summary>
+    /// The choices of the RAG's model (<c>Orkeon:Rag:LlmProfile</c>, GAP-19): the default, every
+    /// setting offered to crews, every entry written by hand — and a name the file holds without
+    /// defining it, so the picker shows what is there (the validation warns about it).
+    /// </summary>
+    public ObservableCollection<RagProfileChoice> RagProfileChoices { get; } = [];
+
+    /// <summary>
+    /// The profile the RAG calls. The default removes the key; a null selection — what a picker
+    /// writes while its list is being rebuilt — changes nothing.
+    /// </summary>
+    public RagProfileChoice? SelectedRagProfile
+    {
+        get
+        {
+            var current = _llm.RagLlmProfile;
+            return LlmProfilesSection.IsDefault(current)
+                ? RagProfileChoices.FirstOrDefault(choice => choice.Id is null)
+                : RagProfileChoices.FirstOrDefault(choice =>
+                    string.Equals(choice.Id, current!.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+        set
+        {
+            if (value is null)
+                return;
+
+            _llm.RagLlmProfile = value.Id;
+        }
     }
 
     /// <summary>Name of the assistant's profile; null while unconfigured.</summary>
@@ -994,7 +1168,11 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
     internal void Duplicate(ModelProfile profile)
     {
-        var name = _set.CopyNameFor(profile.Name, _strings[StudioStringKeys.ProfileCopySuffix]);
+        // A copy is a host profile of its own: its name must not give an id already answered to.
+        var name = _set.CopyNameFor(
+            profile.Name,
+            _strings[StudioStringKeys.ProfileCopySuffix],
+            candidate => CheckHostProfile(candidate, previousName: null, profile.DescribesProvider).BlocksSave);
         Mutate(_set.Upsert(profile with { Name = name }));
     }
 
@@ -1014,7 +1192,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
         var wasDefault = previousName is not null
             && string.Equals(_set.DefaultProfile, previousName, StringComparison.Ordinal);
 
-        Mutate(_set.Upsert(profile, previousName));
+        Mutate(_set.Upsert(profile, previousName), renamedFrom: previousName, renamedTo: profile.Name);
         Editor = null;
 
         if (wasDefault || string.Equals(_set.DefaultProfile, profile.Name, StringComparison.Ordinal))
@@ -1034,6 +1212,14 @@ public sealed class ModelProfilesViewModel : ObservableObject
         _set.Profiles.Any(p =>
             string.Equals(p.Name, name, StringComparison.Ordinal)
             && !string.Equals(p.Name, previousName, StringComparison.Ordinal));
+
+    /// <summary>The standing <paramref name="name"/> would have as a host profile (STUDIO-48).</summary>
+    internal HostProfileCheck CheckHostProfile(string name, string? previousName, bool describesProvider) =>
+        _llm.CheckHostProfile(name, previousName, describesProvider, _set);
+
+    /// <summary>The id the setting <paramref name="name"/> is offered to crews under; null when it is not.</summary>
+    internal string? OfferedHostId(string name) =>
+        HostLlmProfiles.Offered(_set).TryGetValue(name, out var id) ? id : null;
 
     private void BeginCreate()
     {
@@ -1061,9 +1247,13 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
     private Task _persist = Task.CompletedTask;
 
-    private void Mutate(ModelProfileSet set)
+    private void Mutate(ModelProfileSet set, string? renamedFrom = null, string? renamedTo = null)
     {
+        var before = _set;
         _set = set;
+        // STUDIO-48: the settings are the host's profiles — the settings file follows every change
+        // (a rename moves the entry, a removal takes it out, the key never goes in).
+        _llm.MirrorModelProfiles(before, set, renamedFrom, renamedTo);
         Rebuild();
         // Writes are chained so two rapid mutations can never interleave on the file; the
         // store itself is tolerant (a refused write is a lost convenience, said nowhere by
@@ -1092,6 +1282,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private void Rebuild()
     {
         var usage = TeamsByProfile();
+        var standing = HostLlmProfiles.Classify(_set);
 
         Profiles.Clear();
         foreach (var profile in _set.Profiles)
@@ -1103,17 +1294,76 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 this,
                 usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : [],
                 _balances,
-                _strings));
+                _strings,
+                standing.GetValueOrDefault(profile.Name)));
         }
 
         RebuildProfileNames();
         RebuildSecrets();
+        RebuildHostProfiles();
 
         OnPropertyChanged(nameof(HasSecrets));
 
         OnPropertiesChanged(
             nameof(StudioProfileName), nameof(HasStudioProfile),
             nameof(DefaultProfileName), nameof(IsEmpty), nameof(CanDelete), nameof(Set));
+    }
+
+    /// <summary>
+    /// The entries written by hand and the RAG's choices, read from the settings document as it
+    /// stands. The choices are replaced only when they changed: the picker's selection is TwoWay,
+    /// and a list cleared under it is a selection WPF nulls (see <see cref="RebuildProfileNames"/>).
+    /// </summary>
+    private void RebuildHostProfiles()
+    {
+        var handWritten = _llm.HandWrittenProfiles(_set);
+        HandWrittenProfiles.Clear();
+        foreach (var entry in handWritten)
+            HandWrittenProfiles.Add(new HandWrittenProfileViewModel(entry, _strings));
+
+        var choices = new List<RagProfileChoice> { new(null, _strings[StudioStringKeys.ProfileRagLlmDefault]) };
+        choices.AddRange(HostLlmProfiles.Offered(_set).Select(offered =>
+            new RagProfileChoice(offered.Value, string.Create(CultureInfo.InvariantCulture, $"{offered.Value} — {offered.Key}"))));
+        choices.AddRange(handWritten.Select(entry =>
+            new RagProfileChoice(entry.Id, entry.Model is { Length: > 0 } model
+                ? string.Create(CultureInfo.InvariantCulture, $"{entry.Id} — {model}")
+                : entry.Id)));
+        if (_llm.RagLlmProfile is { } current
+            && !LlmProfilesSection.IsDefault(current)
+            && !choices.Any(choice => string.Equals(choice.Id, current.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            choices.Add(new RagProfileChoice(current.Trim(), current.Trim()));
+        }
+
+        if (!RagProfileChoices.SequenceEqual(choices))
+        {
+            RagProfileChoices.Clear();
+            foreach (var choice in choices)
+                RagProfileChoices.Add(choice);
+        }
+
+        OnPropertiesChanged(nameof(HasHandWrittenProfiles), nameof(SelectedRagProfile));
+    }
+
+    /// <summary>The language switched: the host profile lines and the default choice say it again.</summary>
+    private void RefreshHostTexts()
+    {
+        foreach (var row in Profiles)
+            row.RefreshHostId();
+        RebuildHostProfiles();
+    }
+
+    /// <summary>
+    /// The settings document was replaced — a file opened, a new one started —: what the screen
+    /// reads from it is read again. The RAG's profile moved: the picker says it — without touching
+    /// its list, which this very selection may be writing through.
+    /// </summary>
+    private void OnSettingsDocumentChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.PropertyName))
+            Rebuild();
+        else if (e.PropertyName == nameof(LlmSectionViewModel.RagLlmProfile))
+            OnPropertyChanged(nameof(SelectedRagProfile));
     }
 
     /// <summary>

@@ -70,9 +70,11 @@ public static class LlmProfiles
     /// <summary>
     /// The name of the host's default profile — the <c>Llm</c> section. Reserved: a host
     /// cannot define <c>Llm:Profiles:default</c>, and a crew may always name it, to bring an
-    /// agent or a task back to the default under a crew-level profile.
+    /// agent or a task back to the default under a crew-level profile. Declared once in the
+    /// constants satellite (ADR-009): Orkeon Studio writes <c>Llm:Profiles</c> and refuses the
+    /// same name before it does (STUDIO-48).
     /// </summary>
-    public const string Default = "default";
+    public const string Default = Orkeon.Constants.Llm.LlmProfileNames.Default;
 
     /// <summary>Whether <paramref name="name"/> designates the default profile (null, blank or <see cref="Default"/>).</summary>
     /// <param name="name">A profile name, or null.</param>

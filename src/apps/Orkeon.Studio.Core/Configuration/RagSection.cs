@@ -56,6 +56,20 @@ public sealed class RagSection
     public bool HasValidProfile =>
         Profile is not { Length: > 0 } profile || RagProfilePresets.TryParse(profile, out _);
 
+    /// <summary>
+    /// The host LLM profile the RAG subsystem calls (<c>Orkeon:Rag:LlmProfile</c>, GAP-19): one of
+    /// <c>Llm:Profiles</c>, or null for the default profile. A name the host does not define
+    /// refuses its start. Chosen on the model-settings screen (STUDIO-48).
+    /// </summary>
+    public string? LlmProfile
+    {
+        get => _document.GetString(LlmProfilePath);
+        set => _document.SetString(LlmProfilePath, value);
+    }
+
+    /// <summary>Configuration path of <see cref="LlmProfile"/>, spelt after the option it binds.</summary>
+    public const string LlmProfilePath = SectionPath + ":" + nameof(RagOptions.LlmProfile);
+
     /// <summary>Document store provider key (<c>Orkeon:Rag:Provider</c>).</summary>
     public string? Provider
     {
