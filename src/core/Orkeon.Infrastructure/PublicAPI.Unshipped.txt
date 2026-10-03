@@ -719,3 +719,11 @@ Orkeon.Infrastructure.Crew.ManagerLlmResolver.Resolve(Orkeon.Domain.Crew.Crew! c
 [ORKEXP004]static Orkeon.Infrastructure.MCP.McpServiceExtensions.AddOrkeonMcpServer(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpOptions.EnableServer.get -> bool
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpOptions.EnableServer.set -> void
+*REMOVED*[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ATaskRouter.RouteTaskAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse!>!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ATaskRouter.RouteTaskAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest! request, System.IProgress<string!>? progress, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse!>!
+*REMOVED*Orkeon.Infrastructure.Telemetry.TelemetryOptions.ExportToConsole.get -> bool
+*REMOVED*Orkeon.Infrastructure.Telemetry.TelemetryOptions.ExportToConsole.set -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.TelemetryOptions.PrometheusEndpoint.get -> bool
+*REMOVED*Orkeon.Infrastructure.Telemetry.TelemetryOptions.PrometheusEndpoint.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.StdioMcpTransport(Orkeon.Infrastructure.MCP.McpServerConfig! config, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.StdioMcpTransport!>? logger = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.StdioMcpTransport(Orkeon.Infrastructure.MCP.McpServerConfig! config, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.StdioMcpTransport!>? logger = null, string? serverId = null) -> void

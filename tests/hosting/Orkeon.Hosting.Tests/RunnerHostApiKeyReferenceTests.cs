@@ -142,7 +142,7 @@ public sealed class RunnerHostApiKeyReferenceTests : IDisposable
     [Fact]
     public void An_ApiKey_written_as_a_placeholder_refuses_the_host_start_with_the_fix()
     {
-        var error = Assert.Throws<InvalidOperationException>(() => Build("""
+        var error = Assert.Throws<RunnerSettingsException>(() => Build("""
             { "Llm": { "BaseUrl": "https://api.deepseek.com", "ApiKey": "${DEEPSEEK_API_KEY}" } }
             """).Host.Dispose());
 

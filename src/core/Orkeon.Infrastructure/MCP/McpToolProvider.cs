@@ -64,7 +64,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             IMcpTransport transport = config.Transport switch
             {
                 McpTransportType.Stdio => new StdioMcpTransport(config,
-                    _loggerFactory?.CreateLogger<StdioMcpTransport>()),
+                    _loggerFactory?.CreateLogger<StdioMcpTransport>(), serverId),
                 McpTransportType.Sse => new SseMcpTransport(config.Url!,
                     logger: _loggerFactory?.CreateLogger<SseMcpTransport>()),
                 _ => throw new InvalidOperationException($"Unknown transport type: {config.Transport}")

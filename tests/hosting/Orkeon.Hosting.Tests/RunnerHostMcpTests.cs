@@ -68,7 +68,7 @@ public sealed class RunnerHostMcpTests : IDisposable
     {
         var settings = Settings(json);
 
-        var ex = Assert.Throws<InvalidOperationException>(() => RunnerHost.Build(settings, Mounts()));
+        var ex = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, Mounts()));
 
         Assert.Contains("MCP:EnableServer", ex.Message, StringComparison.Ordinal);
         Assert.Contains("orkeon mcp serve", ex.Message, StringComparison.Ordinal);

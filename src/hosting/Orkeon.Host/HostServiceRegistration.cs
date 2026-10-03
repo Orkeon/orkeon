@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Rag.Onnx.DependencyInjection;
@@ -30,7 +31,12 @@ internal static class HostServiceRegistration
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(crewPlan);
 
-        services.Configure<OrkeonHostOptions>(configuration.GetSection(OrkeonHostOptions.SectionName));
+        // The daemon's sections — Orkeon:Host with its A2A, and Discord below — are read once,
+        // here, and their instances are what the services get (GAP-35). Bound lazily, a value the
+        // binder could not convert escaped the start as a crash when the host built its services;
+        // read now, it refuses the start, naming its key (exit 78).
+        var hostSection = HostStartup.ReadSection<OrkeonHostOptions>(configuration, OrkeonHostOptions.SectionName);
+        services.AddSingleton(Options.Create(hostSection));
 
         // The crew→virtual-path map travels with the mounts that made it true: CrewRunner
         // loads a hosted crew by its virtual spelling, never by the operator's disk path.
@@ -41,7 +47,6 @@ internal static class HostServiceRegistration
         // silently truncated their own drain — the docs tell them to scale TimeoutStopSec,
         // and the framework then cut them off underneath it. Budget: the grace, the drain's
         // 5 s teardown wait, and 5 s for the channel to disconnect.
-        var hostSection = configuration.GetSection(OrkeonHostOptions.SectionName).Get<OrkeonHostOptions>() ?? new OrkeonHostOptions();
         services.Configure<Microsoft.Extensions.Hosting.HostOptions>(
             o => o.ShutdownTimeout = hostSection.ShutdownGracePeriod + TimeSpan.FromSeconds(10));
 
@@ -72,8 +77,8 @@ internal static class HostServiceRegistration
         services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
             sp => sp.GetRequiredService<RunProgressHook>());
 
-        services.Configure<Gateway.DiscordChannelOptions>(
-            configuration.GetSection(Gateway.DiscordChannelOptions.SectionName));
+        services.AddSingleton(Options.Create(
+            HostStartup.ReadSection<Gateway.DiscordChannelOptions>(configuration, Gateway.DiscordChannelOptions.SectionName)));
 
         // The MCP connection, the A2A server, the chat channel, the crew host — in that order,
         // which is both start order and stop order reversed.
@@ -106,7 +111,20 @@ internal static class HostServiceRegistration
                 ["A2A:Port"] = a2a.Port.ToString(CultureInfo.InvariantCulture),
             })
             .Build();
-        services.AddOrkeonA2A(a2aConfiguration);
+
+        // Read at start, like the daemon's own sections (GAP-35): AddOrkeonA2A binds the A2A section
+        // and its bearer validators now, and A2A:Security is bound when the server is built — a
+        // value the binder cannot convert crashed the start there. Read here, it refuses it (78).
+        _ = HostStartup.ReadSection<A2ASecurityOptions>(a2aConfiguration, "A2A:Security");
+        try
+        {
+            services.AddOrkeonA2A(a2aConfiguration);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new HostConfigurationException(ex.Message, ex);
+        }
+
         services.TryAddSingleton<IA2AServer, A2AServer>();
     }
 

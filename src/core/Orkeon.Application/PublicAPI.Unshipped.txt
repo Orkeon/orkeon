@@ -1100,3 +1100,7 @@ const Orkeon.Application.Interfaces.ManagerLlm.ProfilePrefix = "profile:" -> str
 const Orkeon.Application.Interfaces.ManagerLlm.ProviderPrefix = "provider:" -> string!
 static Orkeon.Application.Interfaces.ManagerLlm.Describe(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Agent.Agent? managerAgent) -> string!
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter.GetSkillsAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.AgentCommunication.AgentSkill!>!>!
+*REMOVED*[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter.RouteTaskAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse!>!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter.RouteTaskAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest! request, System.IProgress<string!>? progress, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse!>!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskUpdate.Message.get -> string?
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskUpdate.Message.init -> void

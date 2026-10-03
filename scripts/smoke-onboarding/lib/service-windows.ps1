@@ -14,7 +14,8 @@
     - the service account holds Modify on the data directory;
     - it starts, stays up, and stops cleanly with a valid offline configuration;
     - a refused configuration leaves it Stopped — no SCM restart loop — and the
-      refusal message lands in the Application event log.
+      refusal message lands in the Application event log;
+    - with A2A on and its URL reserved, the agent card answers (GAP-35).
 
   The callers decide what to do with the result; nothing here writes to the
   console or exits. Compatible with Windows PowerShell 5.1 and PowerShell 7.
@@ -136,11 +137,15 @@ function Invoke-OrkeonServiceStartStopAssertions {
 # service must end Stopped and STAY Stopped (crash-only recovery never fires on an
 # orderly configuration refusal), and the refusal must land in the Application
 # event log — stderr goes nowhere under the SCM, the log is where the operator reads.
+#
+#   -ExpectInEventLog     a literal text the refusal entry must also carry — the netsh command
+#                         an A2A listener refused by HTTP.sys names (GAP-35).
 function Invoke-OrkeonServiceBrokenConfigAssertions {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$ServiceName,
-        [int]$ObservationSeconds = 20
+        [int]$ObservationSeconds = 20,
+        [string]$ExpectInEventLog
     )
 
     $problems = @()
@@ -180,7 +185,77 @@ function Invoke-OrkeonServiceBrokenConfigAssertions {
         $problems += "no Application event-log Error from 'Orkeon' (or '.NET Runtime') mentioning orkeon-host — the refusal is invisible to the operator"
     } else {
         $notes += "event log ($($entry.ProviderName)): $(($entry.Message -split "`n")[0])"
+        if ($ExpectInEventLog -and -not $entry.Message.Contains($ExpectInEventLog)) {
+            $problems += "the refusal in the event log does not carry '$ExpectInEventLog'"
+        }
     }
 
     return [pscustomobject]@{ Problems = $problems; Notes = $notes }
+}
+
+# Invoke-OrkeonServiceA2ACardAssertions — starts the service with Orkeon:Host:A2A on, requires
+# GET /.well-known/agent.json to answer with the expected skill within the window, then stops it
+# (GAP-35: the listener runs as NT SERVICE\<name>, on the URL install-service.ps1 -A2AUrlPrefix
+# reserved).
+#
+#   -ServiceName          the SCM name (Orkeon)
+#   -CardUrl              the card's address, such as http://localhost:5002/.well-known/agent.json
+#   -SkillId              the skill id the card must list (the exposed crew's name)
+function Invoke-OrkeonServiceA2ACardAssertions {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ServiceName,
+        [Parameter(Mandatory = $true)][string]$CardUrl,
+        [Parameter(Mandatory = $true)][string]$SkillId,
+        [int]$WaitSeconds = 30
+    )
+
+    $problems = @()
+    $notes = @()
+
+    try {
+        Start-Service -Name $ServiceName -ErrorAction Stop
+    } catch {
+        return [pscustomobject]@{ Problems = @("Start-Service failed: $($_.Exception.Message)"); Notes = @() }
+    }
+
+    $card = $null
+    $lastError = $null
+    $deadline = [DateTime]::UtcNow.AddSeconds($WaitSeconds)
+    while ([DateTime]::UtcNow -lt $deadline -and -not $card) {
+        Start-Sleep -Seconds 1
+        if ((Get-Service -Name $ServiceName).Status -eq 'Stopped') { break }
+        try {
+            $card = Invoke-RestMethod -Uri $CardUrl -TimeoutSec 5
+        } catch {
+            $lastError = $_.Exception.Message
+        }
+    }
+
+    if (-not $card) {
+        $status = (Get-Service -Name $ServiceName).Status
+        $problems += "the agent card at $CardUrl never answered (service $status; last error: $lastError)"
+    } elseif (-not ($card.skills | Where-Object { $_.id -eq $SkillId })) {
+        $problems += "the agent card at $CardUrl lists no skill '$SkillId'"
+    } else {
+        $notes += "the agent card at $CardUrl lists the skill '$SkillId'"
+    }
+
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    (Get-Service -Name $ServiceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
+
+    return [pscustomobject]@{ Problems = $problems; Notes = $notes }
+}
+
+# Test-OrkeonUrlReservation — whether HTTP.sys holds a reservation of $Url for $Account
+# (netsh http show urlacl lists the user of each reservation it shows; matched literally, so a
+# localized netsh still answers).
+function Test-OrkeonUrlReservation {
+    param(
+        [Parameter(Mandatory = $true)][string]$Url,
+        [Parameter(Mandatory = $true)][string]$Account
+    )
+
+    $shown = (& netsh.exe http show urlacl url=$Url) -join ' / '
+    return $shown.Contains($Account)
 }

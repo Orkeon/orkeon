@@ -20,11 +20,14 @@
        RELATIVE path — the end-to-end proof that --working-dir moves the daemon
        where the operator's paths are true (a Windows service is born in
        System32) — then stops cleanly;
-    4. a refused configuration (crew path that does not exist) leaves the
+    4. with Orkeon:Host:A2A on the loopback, the URL install-service.ps1
+       -A2AUrlPrefix reserved for NT SERVICE\Orkeon lets the service listen:
+       GET /.well-known/agent.json answers with the crew's skill (GAP-35);
+    5. a refused configuration (crew path that does not exist) leaves the
        service Stopped without an SCM restart loop, and the refusal lands in
        the Application event log, the only place a service operator reads;
-    5. install-service.ps1 -Uninstall removes the service and leaves the
-       operator's ProgramData\Orkeon untouched.
+    6. install-service.ps1 -Uninstall removes the service and the URL
+       reservation, and leaves the operator's ProgramData\Orkeon untouched.
 
   The assertions live in lib\service-windows.ps1, shared with the MSI service
   channel so the two cannot drift. Requires administrator rights (the GitHub
@@ -60,6 +63,8 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib\service-windows.ps1')
 
 $serviceName = 'Orkeon'
+$serviceAccount = "NT SERVICE\$serviceName"
+$a2aPrefix = 'http://localhost:5002/'
 $installRoot = Join-Path $env:ProgramFiles 'Orkeon'
 $dataDir = Join-Path $env:ProgramData 'Orkeon'
 $fixtures = Join-Path $PSScriptRoot 'fixtures'
@@ -112,10 +117,14 @@ try {
 { "Orkeon": { "Host": { "Crews": [ { "Name": "smoke", "Path": "crews/smoke" } ] } } }
 '@
 
-    # -- 3. Register through the bundled script, with a secret ------------------
-    Write-Host "== Registering the service (bundled install-service.ps1)"
+    # -- 3. Register through the bundled script, with a secret and the A2A URL ---
+    Write-Host "== Registering the service (bundled install-service.ps1, -A2AUrlPrefix $a2aPrefix)"
     & (Join-Path $installRoot 'deploy\windows\install-service.ps1') `
-        -EnvironmentSecrets @{ ORKEON_SMOKE = '1' } *>&1 | Tee-Object -FilePath (Join-Path $logDir 'install-service.log')
+        -EnvironmentSecrets @{ ORKEON_SMOKE = '1' } -A2AUrlPrefix $a2aPrefix *>&1 |
+        Tee-Object -FilePath (Join-Path $logDir 'install-service.log')
+    if (-not (Test-OrkeonUrlReservation -Url $a2aPrefix -Account $serviceAccount)) {
+        $problems += "registration: netsh shows no reservation of $a2aPrefix for $serviceAccount"
+    }
 
     Add-Result 'registration' (Invoke-OrkeonServiceRegistrationAssertions `
         -ServiceName $serviceName `
@@ -127,18 +136,31 @@ try {
     Write-Host "== Start / stability / stop (relative crew path through --working-dir)"
     Add-Result 'start-stop' (Invoke-OrkeonServiceStartStopAssertions -ServiceName $serviceName -StabilitySeconds 10)
 
-    # -- 5. Refused configuration: Stopped, no loop, event-log entry ------------
+    # -- 5. A2A on the loopback, through the reserved URL ------------------------
+    Write-Host "== A2A on the loopback (Orkeon:Host:A2A, URL reserved by -A2AUrlPrefix)"
+    Set-Content -LiteralPath (Join-Path $dataDir 'appsettings.json') -Value @'
+{ "Orkeon": { "Host": {
+    "Crews": [ { "Name": "smoke", "Path": "crews/smoke" } ],
+    "A2A": { "Enabled": true, "Crews": [ "smoke" ] } } } }
+'@
+    Add-Result 'a2a' (Invoke-OrkeonServiceA2ACardAssertions -ServiceName $serviceName `
+        -CardUrl "${a2aPrefix}.well-known/agent.json" -SkillId 'smoke')
+
+    # -- 6. Refused configuration: Stopped, no loop, event-log entry ------------
     Write-Host "== Refused configuration (crew path that does not exist)"
     Set-Content -LiteralPath (Join-Path $dataDir 'appsettings.json') -Value @'
 { "Orkeon": { "Host": { "Crews": [ { "Name": "smoke", "Path": "crews/definitely-not-there" } ] } } }
 '@
     Add-Result 'broken-config' (Invoke-OrkeonServiceBrokenConfigAssertions -ServiceName $serviceName -ObservationSeconds 20)
 
-    # -- 6. Uninstall leaves the operator's data alone --------------------------
+    # -- 7. Uninstall removes the reservation, leaves the operator's data alone --
     Write-Host "== Uninstall (-Uninstall)"
     & (Join-Path $installRoot 'deploy\windows\install-service.ps1') -Uninstall *>&1 |
         Tee-Object -FilePath (Join-Path $logDir 'uninstall-service.log')
     if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) { $problems += 'uninstall: service still registered' }
+    if (Test-OrkeonUrlReservation -Url $a2aPrefix -Account $serviceAccount) {
+        $problems += "uninstall: the reservation of $a2aPrefix for $serviceAccount is still there"
+    }
     if (-not (Test-Path (Join-Path $dataDir 'appsettings.json'))) { $problems += 'uninstall: ProgramData\Orkeon was deleted — the operator config must survive' }
 
     if ($problems.Count -gt 0) {
@@ -155,6 +177,9 @@ finally {
     if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
         Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
         sc.exe delete $serviceName | Out-Null
+    }
+    if (Test-OrkeonUrlReservation -Url $a2aPrefix -Account $serviceAccount) {
+        & netsh.exe http delete urlacl url=$a2aPrefix | Out-Null
     }
     if (Test-Path $installRoot) { Remove-Item -Recurse -Force -LiteralPath $installRoot -ErrorAction SilentlyContinue }
     if (Test-Path $dataDir) { Remove-Item -Recurse -Force -LiteralPath $dataDir -ErrorAction SilentlyContinue }

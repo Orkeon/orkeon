@@ -23,7 +23,14 @@ public interface IA2ATaskRouter
     /// Routes a task request to the work its skill names and returns the response.
     /// </summary>
     /// <param name="request">The incoming task request.</param>
+    /// <param name="progress">
+    /// Receives one line per step of the work as it advances — what a peer following the task
+    /// with <c>sendSubscribe</c> reads, each line a <see cref="A2ATaskStatus.Working"/> update
+    /// carrying it as <see cref="A2ATaskUpdate.Message"/>. Null when nobody follows the task
+    /// (<c>send</c>). A router whose work has no steps reports nothing.
+    /// </param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The task response after execution.</returns>
-    System.Threading.Tasks.Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default);
+    System.Threading.Tasks.Task<A2ATaskResponse> RouteTaskAsync(
+        A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct = default);
 }

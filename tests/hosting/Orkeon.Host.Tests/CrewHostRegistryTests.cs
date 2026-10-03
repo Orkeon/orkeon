@@ -26,7 +26,8 @@ public class CrewHostRegistryTests
         var registry = Build(Crew("support"));
 
         Assert.Null(registry.Find("billing"));
-        Assert.Null(registry.TryStart("billing", "discord:thread-1"));
+        Assert.Null(registry.TryStart("billing", "discord:thread-1", out var refusal));
+        Assert.Equal(AdmissionRefusal.UnknownCrew, refusal);
     }
 
     [Fact]
@@ -45,11 +46,39 @@ public class CrewHostRegistryTests
         // "We are busy" is an answer a channel relays to a person. An invisible queue is not.
         var registry = Build(Crew("support", maxRuns: 2));
 
-        Assert.NotNull(registry.TryStart("support", "discord:thread-1"));
-        Assert.NotNull(registry.TryStart("support", "discord:thread-2"));
-        Assert.Null(registry.TryStart("support", "discord:thread-3"));
+        Assert.NotNull(registry.TryStart("support", "discord:thread-1", out var admitted));
+        Assert.Equal(AdmissionRefusal.None, admitted);
+        Assert.NotNull(registry.TryStart("support", "discord:thread-2", out _));
+        Assert.Null(registry.TryStart("support", "discord:thread-3", out var refusal));
+        Assert.Equal(AdmissionRefusal.AtLimit, refusal);
 
         Assert.Equal(2, registry.Running.Count);
+    }
+
+    [Fact]
+    public void Once_admission_is_closed_a_run_is_refused_as_the_host_stopping_even_under_the_bound()
+    {
+        // GAP-35: the drain used to admit what arrived during the grace period — a run that
+        // loaded a crew and called the model, that the drain waited for and then stopped. A run
+        // admitted before the stop keeps its seat, and the drain still reaches it.
+        var registry = Build(Crew("support", maxRuns: 3));
+        var before = registry.TryStart("support", "discord:thread-1", out _)!;
+
+        registry.CloseAdmission();
+
+        Assert.Null(registry.TryStart("support", "a2a:task-2", out var refusal));
+        Assert.Equal(AdmissionRefusal.HostStopping, refusal);
+        Assert.Equal(before.Id, Assert.Single(registry.Running).Id);
+
+        Assert.Equal(1, registry.RequestStopAll());
+        Assert.True(before.StopRequested);
+
+        registry.Finish(before.Id);
+        Assert.Empty(registry.Running);
+
+        // For good: a freed seat does not reopen the door.
+        Assert.Null(registry.TryStart("support", "discord:thread-3", out refusal));
+        Assert.Equal(AdmissionRefusal.HostStopping, refusal);
     }
 
     [Fact]
@@ -57,12 +86,12 @@ public class CrewHostRegistryTests
     {
         var registry = Build(Crew("support", maxRuns: 1));
 
-        var first = registry.TryStart("support", "discord:thread-1")!;
-        Assert.Null(registry.TryStart("support", "discord:thread-2"));
+        var first = registry.TryStart("support", "discord:thread-1", out _)!;
+        Assert.Null(registry.TryStart("support", "discord:thread-2", out _));
 
         registry.Finish(first.Id);
 
-        Assert.NotNull(registry.TryStart("support", "discord:thread-2"));
+        Assert.NotNull(registry.TryStart("support", "discord:thread-2", out _));
     }
 
     [Fact]
@@ -70,8 +99,8 @@ public class CrewHostRegistryTests
     {
         var registry = Build(Crew("support", maxRuns: 1), Crew("billing", maxRuns: 1));
 
-        Assert.NotNull(registry.TryStart("support", "discord:thread-1"));
-        Assert.NotNull(registry.TryStart("billing", "discord:thread-2"));
+        Assert.NotNull(registry.TryStart("support", "discord:thread-1", out _));
+        Assert.NotNull(registry.TryStart("billing", "discord:thread-2", out _));
     }
 
     [Fact]
@@ -79,8 +108,8 @@ public class CrewHostRegistryTests
     {
         var registry = Build(Crew("support", maxRuns: 3));
 
-        var first = registry.TryStart("support", "discord:thread-1")!;
-        var second = registry.TryStart("support", "discord:thread-2")!;
+        var first = registry.TryStart("support", "discord:thread-1", out _)!;
+        var second = registry.TryStart("support", "discord:thread-2", out _)!;
 
         Assert.True(registry.RequestStop(first.Id));
 
@@ -93,7 +122,7 @@ public class CrewHostRegistryTests
     {
         // A user pressing the stop button twice has not done anything wrong.
         var registry = Build(Crew("support"));
-        var run = registry.TryStart("support", "discord:thread-1")!;
+        var run = registry.TryStart("support", "discord:thread-1", out _)!;
 
         Assert.True(registry.RequestStop(run.Id));
         Assert.False(registry.RequestStop(run.Id));
@@ -104,8 +133,8 @@ public class CrewHostRegistryTests
     public void Stopping_everything_reports_how_many_were_asked()
     {
         var registry = Build(Crew("support", maxRuns: 3));
-        registry.TryStart("support", "discord:thread-1");
-        registry.TryStart("support", "discord:thread-2");
+        registry.TryStart("support", "discord:thread-1", out _);
+        registry.TryStart("support", "discord:thread-2", out _);
 
         Assert.Equal(2, registry.RequestStopAll());
         Assert.Equal(0, registry.RequestStopAll());   // nothing left to ask
@@ -118,7 +147,7 @@ public class CrewHostRegistryTests
         // run died at t=0 and the shutdown grace period politely waited for corpses. Stopping
         // a run is the registry's own gesture: RequestStop, or the drain after the grace.
         var registry = Build(Crew("support"));
-        var run = registry.TryStart("support", "discord:thread-1")!;
+        var run = registry.TryStart("support", "discord:thread-1", out _)!;
 
         Assert.False(run.Cancellation.IsCancellationRequested);
         Assert.Equal(1, registry.RequestStopAll());
@@ -132,7 +161,7 @@ public class CrewHostRegistryTests
         // run ends must come back false — not throw ObjectDisposedException out of a Discord
         // button handler, where nothing catches it and the user sees nothing at all.
         var registry = Build(Crew("support"));
-        var run = registry.TryStart("support", "discord:thread-1")!;
+        var run = registry.TryStart("support", "discord:thread-1", out _)!;
 
         // The narrow window: Finish has disposed the source but the stop request still holds
         // a reference to the run (a snapshot in RequestStopAll, a TryGetValue in RequestStop).
@@ -155,7 +184,7 @@ public class CrewHostRegistryTests
         var admitted = 0;
         var tasks = Enumerable.Range(0, 32).Select(i => Task.Run(() =>
         {
-            if (registry.TryStart("support", $"discord:thread-{i}") is not null)
+            if (registry.TryStart("support", $"discord:thread-{i}", out _) is not null)
                 Interlocked.Increment(ref admitted);
         }));
         await Task.WhenAll(tasks);

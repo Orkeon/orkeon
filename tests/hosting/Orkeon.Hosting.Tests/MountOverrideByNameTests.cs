@@ -343,7 +343,7 @@ public sealed class MountOverrideByNameTests : IDisposable
         var idB = MountId.Create();
         var settingsPath = WriteSettings([IdSpec(idA, a, "/output", "rw"), IdSpec(idB, b, "/output", "rw")]);
 
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        var ex = Assert.Throws<RunnerSettingsException>(() =>
             RunnerHost.Build(settingsPath, new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")] }));
 
         Assert.Equal(
@@ -372,7 +372,7 @@ public sealed class MountOverrideByNameTests : IDisposable
         Environment.SetEnvironmentVariable(variable, IdSpec(idB, b, "/output", "rw"));
         try
         {
-            var ex = Assert.Throws<InvalidOperationException>(() =>
+            var ex = Assert.Throws<RunnerSettingsException>(() =>
                 RunnerHost.Build(settingsPath, new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")] }));
             Assert.Contains("nothing selects one", ex.Message, StringComparison.Ordinal);
             Assert.DoesNotContain("Duplicate virtual paths", ex.Message, StringComparison.Ordinal);

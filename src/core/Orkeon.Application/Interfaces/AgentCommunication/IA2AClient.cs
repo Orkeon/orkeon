@@ -100,6 +100,16 @@ public sealed record A2ATaskUpdate
     [JsonPropertyName("partialOutput")]
     public string? PartialOutput { get; init; }
 
+    /// <summary>
+    /// Gets the status message of a <see cref="A2ATaskStatus.Working"/> update: one line of
+    /// progress — "Running 'veille'…", "✔ Analyst — step 1 done" —, what the A2A protocol carries
+    /// as the message of a task status. <see cref="PartialOutput"/> stays the output. Absent from
+    /// the updates that carry none.
+    /// </summary>
+    [JsonPropertyName("message")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Message { get; init; }
+
     /// <summary>Gets the timestamp of the update.</summary>
     [JsonPropertyName("timestamp")]
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;

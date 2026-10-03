@@ -311,6 +311,34 @@ public sealed class RunEventsTests : IDisposable
         Assert.Equal(["agent", "judge", "complete", null, null], operations);
     }
 
+    [Fact]
+    public async Task A_setting_the_host_refuses_closes_the_stream_on_run_finished_with_exit_code_1()
+    {
+        // GAP-35: the refusal escaped as an unhandled exception — run.started went out, then
+        // nothing: the watching process waited for a run.finished that never came.
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript("crew.yaml", TwoTaskCrew);
+        var settings = scratch.WriteFile("refused.json", """{ "RaggableTree": { "Exclude": ["bin"] } }""");
+        using var console = new TestConsole(stdin: string.Empty);
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = crew,
+            SettingsPath = settings,
+            AllowExternalMounts = true,
+            Events = "jsonl",
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var events = console.Stdout
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonDocument.Parse(line).RootElement)
+            .ToList();
+        Assert.Equal(["run.started", "run.finished"], events.Select(e => e.GetProperty("kind").GetString()));
+        Assert.Equal(1, events[1].GetProperty("exitCode").GetInt32());
+        Assert.Contains("ERROR: RaggableTree:Exclude", console.Stderr, StringComparison.Ordinal);
+    }
+
     /// <summary>Two tasks, one agent: two calls to the vendor, one per task.</summary>
     private const string TwoTaskCrew =
         """

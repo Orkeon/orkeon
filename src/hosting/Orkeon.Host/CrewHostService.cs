@@ -85,6 +85,12 @@ internal sealed partial class CrewHostService : BackgroundService
         // drain written there looked graceful and essentially never ran before the host
         // moved on to stopping everything else. StopAsync is awaited by the host, within
         // the ShutdownTimeout this service's options budget.
+        //
+        // Admission closes first (GAP-35): this service stops before the chat channel and the
+        // A2A server — they deliver the answers of the runs in flight —, so a message or a task
+        // arriving during the grace is answered "the host is stopping" instead of starting a run
+        // the drain would wait for, then stop.
+        _registry.CloseAdmission();
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
         await DrainAsync().ConfigureAwait(false);
     }

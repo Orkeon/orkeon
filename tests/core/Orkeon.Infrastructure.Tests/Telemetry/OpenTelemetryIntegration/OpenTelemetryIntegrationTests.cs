@@ -16,8 +16,7 @@ public class OpenTelemetryIntegrationTests
     {
         var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithTelemetry(new Dictionary<string, string?>
         {
-            ["Telemetry:Enabled"] = "true",
-            ["Telemetry:ExportToConsole"] = "false"
+            ["Telemetry:Enabled"] = "true"
         });
         _fixture.WithMockProviders(services);
 

@@ -4,6 +4,7 @@ using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.AgentCommunication;
@@ -534,7 +535,7 @@ public partial class A2AServer : IA2AServer, IDisposable
         try
         {
             await PersistTaskAsync(request, A2ATaskStatus.Working, null, null, ct).ConfigureAwait(false);
-            response = await _taskRouter.RouteTaskAsync(request, execution.Token).ConfigureAwait(false);
+            response = await _taskRouter.RouteTaskAsync(request, progress: null, execution.Token).ConfigureAwait(false);
 
             // Recorded before the task leaves the in-flight registry: a DELETE never finds it
             // gone from the registry yet still Working in the store.
@@ -624,8 +625,29 @@ public partial class A2AServer : IA2AServer, IDisposable
             await WriteSseEvent(writer, workingUpdate).ConfigureAwait(false);
             await PersistTaskAsync(request, A2ATaskStatus.Working, null, null, ct).ConfigureAwait(false);
 
-            // Route the task: the agent runs under the token DELETE /a2a/tasks/{id} cancels.
-            var response = await _taskRouter.RouteTaskAsync(request, executionToken).ConfigureAwait(false);
+            // Route the task: the agent runs under the token DELETE /a2a/tasks/{id} cancels. What the
+            // router reports as the work advances reaches the peer as Working updates, each line as
+            // their message (GAP-35) — written by this method alone: the lines queue, and the queue
+            // closes when the router answers, so a line reported after the answer is dropped instead
+            // of reaching the peer after the final state.
+            var lines = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+            var routing = RouteReportingAsync(request, lines.Writer, executionToken);
+            var peerReads = true;
+            await foreach (var line in lines.Reader.ReadAllAsync(CancellationToken.None).ConfigureAwait(false))
+            {
+                if (peerReads)
+                {
+                    peerReads = await TryWriteProgressAsync(writer, new A2ATaskUpdate
+                    {
+                        TaskId = request.Id,
+                        Status = A2ATaskStatus.Working,
+                        Message = line,
+                        Timestamp = DateTime.UtcNow
+                    }).ConfigureAwait(false);
+                }
+            }
+
+            var response = await routing.ConfigureAwait(false);
             await PersistTaskAsync(request, response.Status, response.Output, response.Error, ct).ConfigureAwait(false);
 
             // Send final update
@@ -647,6 +669,50 @@ public partial class A2AServer : IA2AServer, IDisposable
             await writer.DisposeAsync().ConfigureAwait(false);
             outputStream.Close();
         }
+    }
+
+    /// <summary>
+    /// Routes the task with its progress queued on <paramref name="lines"/>, and closes the queue
+    /// when the router answers — or fails: the stream then stops waiting for lines either way.
+    /// </summary>
+    private async Task<A2ATaskResponse> RouteReportingAsync(
+        A2ATaskRequest request, ChannelWriter<string> lines, CancellationToken executionToken)
+    {
+        try
+        {
+            return await _taskRouter.RouteTaskAsync(request, new QueuedProgress(lines), executionToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            lines.TryComplete();
+        }
+    }
+
+    /// <summary>
+    /// Writes one progress update, or answers false when the peer has gone: progress is best
+    /// effort, like a chat thread's, and the task still runs to its end and is recorded.
+    /// </summary>
+    private static async Task<bool> TryWriteProgressAsync(StreamWriter writer, A2ATaskUpdate update)
+    {
+        try
+        {
+            await WriteSseEvent(writer, update).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or HttpListenerException or ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The router's progress, queued for the stream's one writer. Synchronous on purpose — unlike
+    /// <see cref="Progress{T}"/>, which posts each line to the thread pool and loses their order —
+    /// and inert once the router has answered: the queue is closed, the line goes nowhere.
+    /// </summary>
+    private sealed class QueuedProgress(ChannelWriter<string> lines) : IProgress<string>
+    {
+        public void Report(string value) => _ = lines.TryWrite(value);
     }
 
     private async Task HandleGetTaskAsync(

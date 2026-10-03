@@ -76,6 +76,20 @@ curl -X POST http://localhost:5002/a2a/tasks/send -H 'Content-Type: application/
      -d '{"id":"t-1","skillId":"support","input":"How do I reset my password?"}'
 ```
 
+`send` answers once the run is over. To follow it as it goes, `sendSubscribe` streams server-sent
+events — `curl -N` prints each one as it arrives:
+
+```bash
+curl -N -X POST http://localhost:5002/a2a/tasks/sendSubscribe -H 'Content-Type: application/json' \
+     -d '{"id":"t-2","skillId":"support","input":"How do I reset my password?"}'
+```
+
+The stream opens on `Working`, then carries one `Working` update per line a Discord thread reads —
+`Running 'support'…`, then `✔ <role> — step N done` for each finished task — in its `message`, then
+the final state (`Completed`, the answer in `partialOutput`) and `data: [DONE]`. A task sent while the
+host is stopping starts nothing: it answers `Failed`, "The host is stopping: this run was not
+started. Send it again once the host is back."
+
 The example listens on the loopback, where nothing else can reach it, so it needs no credential.
 To serve peers on other machines, listen on every interface (`"Host": "http://+"`) and require a
 credential — the host refuses to start otherwise:

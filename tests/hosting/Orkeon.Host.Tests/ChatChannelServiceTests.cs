@@ -149,7 +149,7 @@ public sealed class ChatChannelServiceTests
         // The gap this pins closed: the stop BUTTON used to skip the allow list entirely —
         // anyone who could see the thread could kill the run, while typing /stop was gated.
         var (gateway, authorizer, registry, router) = Wiring();
-        var run = registry.TryStart("support", "discord:thread-1")!;
+        var run = registry.TryStart("support", "discord:thread-1", out _)!;
         router.Attach("thread-1", run.Id);
 
         var text = ChatChannelService.HandleCommand(
@@ -163,7 +163,7 @@ public sealed class ChatChannelServiceTests
     public void Stop_from_an_allowed_sender_reaches_the_conversations_run()
     {
         var (gateway, authorizer, registry, router) = Wiring();
-        var run = registry.TryStart("support", "discord:thread-1")!;
+        var run = registry.TryStart("support", "discord:thread-1", out _)!;
         router.Attach("thread-1", run.Id);
 
         var text = ChatChannelService.HandleCommand(
@@ -177,7 +177,7 @@ public sealed class ChatChannelServiceTests
     public void Status_from_an_allowed_sender_reports_the_conversation()
     {
         var (gateway, authorizer, registry, router) = Wiring();
-        var run = registry.TryStart("support", "discord:thread-1")!;
+        var run = registry.TryStart("support", "discord:thread-1", out _)!;
         router.Attach("thread-1", run.Id);
 
         var text = ChatChannelService.HandleCommand(

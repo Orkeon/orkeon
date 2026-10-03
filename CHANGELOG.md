@@ -47,6 +47,86 @@ no history. `orkeon run` had no option naming a profile (STUDIO-50).
   next re-adoption. The scheduled run reads the settings file as saved: save the settings screen after
   creating a setting a team runs on.
 
+### Fixed — hosts: a stopping `orkeon-host` starts no run, a refused setting is one line and an exit code everywhere, `sendSubscribe` streams a run's progress, and stdout carries the protocol alone **[breaking]**
+
+`orkeon-host` and `orkeon` went wrong at three moments their user does not choose (GAP-35): while the host
+stops, when it refuses a setting at start, and when a program reads their output.
+
+- **A stopping host starts nothing.** The drain admitted what arrived during its grace period: a chat
+  message or an A2A task loaded a crew and called the model, the drain waited for it, then stopped it — "The
+  run was stopped." about work that should never have begun, and a stop that lasted the whole grace.
+  `CrewHostService` now closes admission first: from then on a run asked for is refused with "The host is
+  stopping: this run was not started. Send it again once the host is back." — the chat answers it with no
+  acknowledgement and no Stop button, an A2A peer reads it as `Failed`. The runs admitted before keep their
+  grace, `/status` and `/stop` still answer, and the channel and the A2A server still stop after the drain.
+- **A refused setting is one line and an exit code.** `RunnerHost.Build` raises one type,
+  `RunnerSettingsException` (`Orkeon.Hosting`, an `InvalidOperationException`), for every setting it refuses:
+  a retired key, an invalid `Llm:Profiles`, an unknown `Orkeon:Rag:LlmProfile`, `MCP:EnableServer`, mounts it
+  cannot honour, a value the configuration binder cannot convert (the `MCP:Servers` entries are now bound at
+  build too), a settings file it cannot read — named, with the line and the position —, and a
+  `RaggableTree:Embedding:BaseUrl` or `Telemetry:OtlpEndpoint` that is no `http(s)` address, refused by its
+  key instead of a bare `UriFormatException`. A host already built is disposed first. `orkeon run` — YAML,
+  crew directory, declarative `.ork.ts` —, `--validate`, `--list-tools` and `orkeon mcp serve` answer it with
+  `ERROR: <reason>` as the last stderr line and exit `1` (an `--events jsonl` run closes its stream on
+  `run.finished`, exit code 1); a procedural `.ork.ts` with `orkeon run: <reason>` and `orkeon forge` with
+  `orkeon forge: <reason>`, exit `1` both — they were exit `2`. Most of these ended on an unhandled
+  exception, a stack and a core dump (exit 134). `ORKEON_DEBUG=1` prints the exception before the line.
+- **`orkeon-host` refuses before it starts.** Its whole pre-start sequence runs under the exit-78 barrier: the
+  configuration it boots from, its sections — `Orkeon:Host` with its `A2A`, `Orkeon:Host:Discord`, and the
+  `A2A` section —, now read once, at start (a `RunTimeout` or a `Discord:ProgressInterval` of `"abc"` refuses
+  the start by its key; bound lazily, they crashed it once it built its services), and the runner host. A
+  refusal is one line on stderr and in the Windows event log, and systemd does not restart on it.
+- **A2A under the Windows service.** HTTP.sys lets `NT SERVICE\Orkeon` listen only on a URL reserved for it,
+  and its refusal crashed the service, restarted twice in silence. It is now a refused configuration —
+  exit 78 — that names the prefix and, for an access denied, the command to run once as an administrator
+  (`netsh http add urlacl url=<prefix> user="<account>"`). `install-service.ps1 -A2AUrlPrefix <prefix>` makes
+  that reservation when it registers the service, records it under the service key, and `-Uninstall`
+  removes it; the service MSI reserves nothing — it installs before any configuration — and its closing
+  screen gives the step.
+- **`sendSubscribe` streams a run's progress.** A peer following a task read `Working`, then nothing until the
+  final state, while a chat thread watching the same run read a line per finished task.
+  `IA2ATaskRouter.RouteTaskAsync` takes an `IProgress<string>`: the server passes one for `sendSubscribe`
+  only, and each line becomes a `Working` update carrying it in `A2ATaskUpdate.Message` (`message`, omitted
+  when null; `partialOutput` stays the output). One writer drains one queue, so no line follows the final
+  state. `orkeon-host` reports the lines a thread reads; the agent router reports none.
+- **Stdout carries the protocol alone.** `Telemetry:ExportToConsole` attached OpenTelemetry's console
+  exporter, which writes on stdout — into `--events jsonl`, the `--list-tools` manifest, `orkeon mcp serve`,
+  `orkeon forge --events jsonl` and `orkeon email accounts --json`. It is removed, with
+  `Telemetry:PrometheusEndpoint`, which nothing read, and the `OpenTelemetry.Exporter.Console` package; a
+  section that still writes either key, whatever its value, is refused, naming the OTLP collector that
+  replaces it.
+- **`orkeon mcp serve` never starts under itself.** Settings declaring `orkeon mcp serve` under their own
+  `MCP:Servers` made each server start another before answering, until the first gave up after 30 s. A
+  serve now sets `ORKEON_MCP_SERVE` in its environment before it connects its servers, and one that finds
+  it set refuses to start: exit `1`, one line. The stderr of a stdio MCP server is read as it is written —
+  to the log at Debug, under the server's id — so a talkative server no longer blocks, and the last line of
+  a server that stops is joined to the connection error, with its exit code.
+- `docs/tools/inventory.md` said the `rag_*` tools were neither registered nor attachable for a YAML crew:
+  every runner host and the REPL register them, and an agent that lists one receives it.
+
+Documented in [Service host](docs/architecture/service-host.md), [A2A conformance](docs/reference/a2a-conformance.md),
+[CLI](docs/reference/cli.md), [MCP integration](docs/architecture/mcp.md), [Hosting](docs/reference/hosting.md),
+[Configuration](docs/reference/configuration.md), [Opt-in subsystems](docs/reference/opt-in-subsystems.md) and
+[Tool inventory](docs/tools/inventory.md); the [service-host example](examples/service-host/README.md) follows a
+task with `sendSubscribe`.
+
+Breaking: `IA2ATaskRouter.RouteTaskAsync` takes an `IProgress<string>? progress` before its token, with no
+overload left; `RunnerHost.Build` raises `RunnerSettingsException` — still an `InvalidOperationException` — for
+a refused setting, and now for an unreadable settings file and an address that is none; `TelemetryOptions`
+loses `ExportToConsole` and `PrometheusEndpoint`, and both keys are refused; `Orkeon.Infrastructure` and the
+`Orkeon` package no longer depend on `OpenTelemetry.Exporter.Console`; a procedural `.ork.ts` and `orkeon forge`
+exit `1`, no longer `2`, on a refused setting; `orkeon mcp serve` refuses to start under another one; the
+configuration constructor of `StdioMcpTransport` takes an optional `serverId`.
+
+Migration: a router of your own takes the `progress` parameter and reports its steps to it, or ignores it; a
+caller passes `progress: null` before its token. Remove `Telemetry:ExportToConsole` and
+`Telemetry:PrometheusEndpoint` from the settings and point `Telemetry:OtlpEndpoint` (or
+`OTEL_EXPORTER_OTLP_ENDPOINT`) at a collector; a C# host that wants the console exporter references
+`OpenTelemetry.Exporter.Console` itself and adds it to its own `AddOpenTelemetry()`. A script that read exit `2`
+as a refused setting reads `1`. Under the Windows service with A2A, register with `-A2AUrlPrefix`, or run the
+`netsh http add urlacl` the refusal names. Remove an `orkeon mcp serve` entry from the `MCP:Servers` of the
+settings that same serve reads.
+
 ### Added — `orkeon-host` exposes its crews to other agents over A2A: one skill per crew, and a task is a run of that crew **[breaking]**
 
 An A2A peer could not reach a crew `orkeon-host` hosts: no shipped binary called `AddOrkeonA2A`, and a C#

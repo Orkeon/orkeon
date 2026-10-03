@@ -254,8 +254,8 @@ The two shipped composition roots do not register the same suites. Sources:
 the REPL. `orkeon run` builds a different host for a YAML crew (through `RunnerExecution`)
 and for an `.ork.ts` script (directly on `RunnerHost`); where the two differ, the table says
 so. The service host `orkeon-host` builds on the same `RunnerHost`, so it has the
-`RunnerHost` suite — everything in the first column except `semantic_search`, `human_input`
-and the script-only RAG tools. `orkeon mcp serve` builds the host of `orkeon run --list-tools`
+`RunnerHost` suite — everything in the first column except `semantic_search` and
+`human_input`. `orkeon mcp serve` builds the host of `orkeon run --list-tools`
 and serves its tools to an MCP client, `human_input` aside — see
 [MCP integration](../architecture/mcp.md#serving-the-tools-with-orkeon-mcp-serve).
 
@@ -266,7 +266,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 | EventHub (7) | ✅ | ❌ |
 | Analysis (15) | ✅ (unless `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ while RaggableTree is enabled with its default local embedding provider | ✅ |
-| RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ❌ for a YAML crew (neither registered nor attachable); ✅ for an `.ork.ts` script (`tools.ragSearch`, `rag.*`, with the ONNX reranker) | ✅ for scripts (a YAML agent still cannot be given them) |
+| RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ✅ registered by every `RunnerHost` host — `orkeon run` in all its forms, `orkeon-host`, `orkeon mcp serve` —, with the ONNX reranker: a YAML agent that lists one receives it, a script reaches them as `tools.ragSearch` and `rag.*` | ✅ registered, with the ONNX reranker: a YAML agent that lists one receives it |
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ only if `BRAVE_API_KEY` is set | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (host opt-in) | ❌ |

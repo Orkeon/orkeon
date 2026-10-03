@@ -65,7 +65,7 @@ public class A2ATaskRouterTests
             Id = TaskId1,
             SkillId = agent.Id.ToString(),
             Input = "Summarise this report"
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(TaskId1, response.TaskId);
         Assert.Equal(A2ATaskStatus.Completed, response.Status);
@@ -88,7 +88,7 @@ public class A2ATaskRouterTests
             Id = TaskId2,
             SkillId = agent.Id.ToString(),
             Input = "Do it"
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
         Assert.Equal("the model refused", response.Error);
@@ -107,7 +107,7 @@ public class A2ATaskRouterTests
             Id = TaskId3,
             SkillId = agent.Id.ToString(),
             Input = "Do it"
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
         Assert.Contains("provider unreachable", response.Error!);
@@ -126,7 +126,7 @@ public class A2ATaskRouterTests
             Id = "cancel-1",
             SkillId = agent.Id.ToString(),
             Input = "Long job"
-        }, cts.Token);
+        }, progress: null, cts.Token);
         await execution.Started.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
         await cts.CancelAsync();
 
@@ -146,7 +146,7 @@ public class A2ATaskRouterTests
             Id = "exact-1",
             SkillId = "writer",
             Input = "Write"
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
         Assert.Empty(execution.Calls);
@@ -164,7 +164,7 @@ public class A2ATaskRouterTests
             Id = "role-1",
             SkillId = "Researcher",
             Input = "Find papers"
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
         Assert.Contains("/.well-known/agent.json", response.Error!);
@@ -181,7 +181,7 @@ public class A2ATaskRouterTests
             Id = TaskId2,
             SkillId = "01ARZ3NDEKTSV4RRFFQ69G5FAV",
             Input = "Do something"
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(TaskId2, response.TaskId);
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
@@ -200,7 +200,7 @@ public class A2ATaskRouterTests
             Id = "null-1",
             SkillId = agent.Id.ToString(),
             Input = "Do it"
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
         Assert.Contains("AddOrkeonApplication()", response.Error!);
@@ -217,7 +217,7 @@ public class A2ATaskRouterTests
             Id = "none-1",
             SkillId = agent.Id.ToString(),
             Input = "Do it"
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
         Assert.Contains("AddOrkeonApplication()", response.Error!);
@@ -235,7 +235,7 @@ public class A2ATaskRouterTests
             Id = "empty-1",
             SkillId = agent.Id.ToString(),
             Input = "   "
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
         Assert.Empty(execution.Calls);
@@ -249,8 +249,8 @@ public class A2ATaskRouterTests
         var agent = await AddAgentAsync("Researcher");
         var router = RouterWith(FakeAgentExecutionService.Answering("ok"), out var scopes);
 
-        await router.RouteTaskAsync(new A2ATaskRequest { Id = "scope-1", SkillId = agent.Id.ToString(), Input = "a" }, Ct);
-        await router.RouteTaskAsync(new A2ATaskRequest { Id = "scope-2", SkillId = agent.Id.ToString(), Input = "b" }, Ct);
+        await router.RouteTaskAsync(new A2ATaskRequest { Id = "scope-1", SkillId = agent.Id.ToString(), Input = "a" }, progress: null, Ct);
+        await router.RouteTaskAsync(new A2ATaskRequest { Id = "scope-2", SkillId = agent.Id.ToString(), Input = "b" }, progress: null, Ct);
 
         Assert.Equal(2, scopes.CreatedScopeCount);
     }

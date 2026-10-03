@@ -236,10 +236,18 @@ résolvent par scope.
 | Clé | Défaut | Effet |
 |---|---|---|
 | `Enabled` | `true` | `false` n'enregistre que le singleton `OrkeonMetrics` — aucun fournisseur, aucun exportateur. |
-| `OtlpEndpoint` | — | Un point de terminaison OTLP explicite ; il l'emporte sur l'environnement. |
-| `ExportToConsole` | `false` | Ajoute les exportateurs console, pour les traces et les métriques. |
+| `OtlpEndpoint` | — | Un point de terminaison OTLP explicite ; il l'emporte sur l'environnement. Une adresse `http://` ou `https://` : toute autre valeur est refusée, en nommant la clé. |
 | `MaxMemoryMB` | `2048` | Seuil du contrôle de santé `system_resources`. |
-| `PrometheusEndpoint` | `false` | Lié, lu par rien pour l'instant. |
+
+**Clés supprimées (GAP-35).** `ExportToConsole` attachait les exportateurs console d'OpenTelemetry,
+qui écrivent sur stdout — là où `--events jsonl`, le manifeste de `--list-tools` et
+`orkeon mcp serve` parlent à un programme —, et `PrometheusEndpoint` était liée et lue par rien. Les
+deux ont disparu, avec le paquet `OpenTelemetry.Exporter.Console`, et une section qui en écrit encore
+une — quelle que soit sa valeur, `Enabled` à `false` compris — est refusée par une
+`InvalidOperationException` qui nomme la clé et ce qui la remplace : un collecteur OTLP
+(`Telemetry:OtlpEndpoint`, `OTEL_EXPORTER_OTLP_ENDPOINT`, le tableau de bord .NET Aspire). Dans les
+runners, c'est un réglage refusé : code 1, ou 78 pour `orkeon-host`. Un hôte C# qui veut la console
+ajoute l'exportateur à son propre `AddOpenTelemetry()`.
 
 **Où vont les données.** Un `Telemetry:OtlpEndpoint` explicite sert de point de terminaison aux
 exportateurs. Sans lui, un `OTEL_EXPORTER_OTLP_ENDPOINT` non vide attache les exportateurs OTLP sans

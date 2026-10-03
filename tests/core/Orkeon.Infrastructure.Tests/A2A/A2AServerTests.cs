@@ -34,7 +34,7 @@ internal class StubA2ATaskRouter : IA2ATaskRouter
 
     public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default) => Task.FromResult(_skills);
 
-    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
+    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct = default)
     {
         LastRequest = request;
         return Task.FromResult(_response with { TaskId = request.Id });
@@ -60,7 +60,7 @@ internal class ThrowingA2ATaskRouter : IA2ATaskRouter
     public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<AgentSkill>>([]);
 
-    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
+    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct = default)
     {
         var call = Interlocked.Increment(ref _callCount);
         if (call <= _throwCount)

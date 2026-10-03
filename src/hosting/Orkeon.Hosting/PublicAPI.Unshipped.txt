@@ -17,3 +17,9 @@ Orkeon.Hosting.RunnerOptionsBase.LlmProfile.set -> void
 static Orkeon.Hosting.RunnerExecution.EnsureLlmProfileIsKnown(string? llmProfile, string? settingsPath) -> bool
 *REMOVED*static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, Orkeon.Hosting.RunnerMountPlan! mounts, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>? configureLogging = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Action<Microsoft.Extensions.Hosting.IHostBuilder!>? configureBuilder = null) -> Microsoft.Extensions.Hosting.IHost!
 static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, Orkeon.Hosting.RunnerMountPlan! mounts, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>? configureLogging = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Action<Microsoft.Extensions.Hosting.IHostBuilder!>? configureBuilder = null, string? llmProfile = null) -> Microsoft.Extensions.Hosting.IHost!
+Orkeon.Hosting.RunnerSettingsException
+Orkeon.Hosting.RunnerSettingsException.RunnerSettingsException() -> void
+Orkeon.Hosting.RunnerSettingsException.RunnerSettingsException(string! message) -> void
+Orkeon.Hosting.RunnerSettingsException.RunnerSettingsException(string! message, System.Exception! innerException) -> void
+const Orkeon.Hosting.RunnerEnvironment.McpServeVariable = "ORKEON_MCP_SERVE" -> string!
+static Orkeon.Hosting.RunnerEnvironment.StartedByMcpServe.get -> bool

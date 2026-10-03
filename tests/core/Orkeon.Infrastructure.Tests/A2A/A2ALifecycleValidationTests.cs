@@ -166,7 +166,7 @@ public class A2ALifecycleValidationTests
             Id = "cross-scope-1",
             SkillId = agent.Id.ToString(),
             Input = "Find the latest AI papers",
-        }, Ct);
+        }, progress: null, Ct);
 
         // Assert — before R4.6, a fresh per-request scope held an EMPTY instance store
         // and the router could never find pipeline agents; before GAP-10 it answered a

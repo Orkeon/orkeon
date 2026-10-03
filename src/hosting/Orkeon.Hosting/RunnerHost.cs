@@ -123,9 +123,13 @@ public static partial class RunnerHost
     /// unset is unset, the default's key and the variable holding it included —, laid over the
     /// settings file and the <c>ORKEON_</c> environment. Null or <c>default</c> keeps the section.
     /// </param>
-    /// <exception cref="InvalidOperationException">
-    /// <paramref name="llmProfile"/> names a profile the configuration does not define — the message
-    /// lists those it does —, or a setting the host refuses (a mount selection, an LLM profile).
+    /// <exception cref="RunnerSettingsException">
+    /// A setting the host refuses (GAP-35): a key that is no setting any more, an LLM profile it
+    /// cannot build or does not offer (<paramref name="llmProfile"/> included — the message lists
+    /// those the configuration defines), a value the configuration binder cannot convert, a
+    /// settings file it cannot read, an address that is no address, mounts that cannot be
+    /// honoured. The message names the key, or the file and the place in it. A host already
+    /// built is disposed first. Anything else the callbacks raise keeps its own type and its stack.
     /// </exception>
     public static IHost Build(
         string? settingsPath,
@@ -151,13 +155,22 @@ public static partial class RunnerHost
         configureBuilder?.Invoke(builder);
 
         var host = builder.Build();
-
-        LogMountDecisions(host, decisions);
-        WarnIfEmailTokensUnavailable(host, decisions);
-        WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
-        EnsureRagLlmProfileIsKnown(host);
-        ActivateTelemetry(host);
-        return host;
+        try
+        {
+            LogMountDecisions(host, decisions);
+            WarnIfEmailTokensUnavailable(host, decisions);
+            WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
+            EnsureRagLlmProfileIsKnown(host);
+            ActivateTelemetry(host);
+            return host;
+        }
+        catch
+        {
+            // The caller never receives the host to dispose: disposing it here flushes its
+            // console logger, so the refusal the caller writes next is the last line.
+            host.Dispose();
+            throw;
+        }
     }
 
     /// <summary>
@@ -175,13 +188,14 @@ public static partial class RunnerHost
                 host.Services.GetRequiredService<IConfiguration>(),
                 host.Services.GetService<ILlmProfileRegistry>());
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
-            // The caller never receives the host to dispose.
-            host.Dispose();
-            throw;
+            throw Refused(ex);
         }
     }
+
+    /// <summary>A setting a registration or a check refused, as the one type every entry point translates (GAP-35).</summary>
+    private static RunnerSettingsException Refused(InvalidOperationException ex) => new(ex.Message, ex);
 
     /// <summary>
     /// One <c>Information</c> line per decision taken on the settings' mounts: an entry a
@@ -265,8 +279,8 @@ public static partial class RunnerHost
     /// OpenTelemetry creates its tracer and meter providers in a hosted service, and the
     /// runners never start the host -- they resolve services and run one command. Resolving
     /// the two providers here is what creates them: the ActivitySource listeners come alive,
-    /// the exporters (OTLP from the environment or the settings, console) attach, and the
-    /// container disposes them with the host, which flushes the last batch.
+    /// the OTLP exporters (from the environment or the settings) attach, and the container
+    /// disposes them with the host, which flushes the last batch.
     /// </summary>
     private static void ActivateTelemetry(IHost host)
     {
@@ -482,7 +496,7 @@ public static partial class RunnerHost
             mounts.CrewMountReferences,
             settingsPath);
         if (plan.Errors.Count > 0)
-            throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Errors));
+            throw new RunnerSettingsException(string.Join(Environment.NewLine, plan.Errors));
 
         decisions.Plan = plan;
         var withdrawnIndices = new HashSet<int>(plan.WithdrawnIndices());
@@ -539,7 +553,7 @@ public static partial class RunnerHost
     /// (STUDIO-49, decision 4). The profiles stay as declared: the elected one is still offered by its
     /// name. Nothing happens when no snapshot could be read; the build itself reports that file.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The settings and the environment define no such profile.</exception>
+    /// <exception cref="RunnerSettingsException">The settings and the environment define no such profile.</exception>
     private static void ElectLlmProfile(
         Dictionary<string, string?> overrides,
         DeclaredConfiguration declared,
@@ -552,7 +566,7 @@ public static partial class RunnerHost
         var name = llmProfile.Trim();
         var profiles = llm.GetSection(ConfigurationKeys.LlmProfiles).GetChildren().ToList();
         var profile = profiles.FirstOrDefault(p => string.Equals(p.Key, name, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException(UnknownElectedProfileMessage(name, profiles.Select(p => p.Key)));
+            ?? throw new RunnerSettingsException(UnknownElectedProfileMessage(name, profiles.Select(p => p.Key)));
 
         // Case-insensitive like the configuration itself: a default written "model" and a profile
         // written "Model" are one key, and the profile's value must be the one that lands.
@@ -661,7 +675,7 @@ public static partial class RunnerHost
                 && string.Equals(MountSelection.TryGetVirtualRoot(mount), RunnerVirtualRoots.Credentials, StringComparison.Ordinal));
         if (claimed)
         {
-            throw new InvalidOperationException(
+            throw new RunnerSettingsException(
                 $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail accounts there. Mount the folder under another name.");
         }
 
@@ -766,20 +780,22 @@ public static partial class RunnerHost
         public void Dispose() => (_snapshot as IDisposable)?.Dispose();
 
         /// <summary>
-        /// Builds the sources added so far. An unreadable settings file yields an empty
-        /// snapshot: the real Build() a few lines later reports it properly, and placing
-        /// everything from index 0 is correct whenever nothing was declared — which is the
-        /// case that just failed to parse.
+        /// Builds the sources added so far — the first read of the settings, so the place where
+        /// a file the configuration cannot read is refused, naming the file and, for JSON it
+        /// cannot parse, the line and the position (GAP-35). The snapshot used to swallow it on
+        /// the word that "the real Build() a few lines later reports it properly"; that Build()
+        /// threw instead, and nothing caught it.
         /// </summary>
+        /// <exception cref="RunnerSettingsException">A settings file cannot be read.</exception>
         public static DeclaredConfiguration Snapshot(IConfigurationBuilder builder)
         {
             try
             {
                 return new DeclaredConfiguration(builder.Build());
             }
-            catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException)
+            catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException or UnauthorizedAccessException)
             {
-                return new DeclaredConfiguration(null);
+                throw new RunnerSettingsException(RunnerSettings.DescribeUnreadableSettings(ex), ex);
             }
         }
 
@@ -810,6 +826,30 @@ public static partial class RunnerHost
         string? llmLogVirtualPath,
         Action<HostBuilderContext, ILoggingBuilder>? configureLogging,
         Action<HostBuilderContext, IServiceCollection>? configureServices)
+    {
+        // What this host registers reads the settings, and every refusal it raises — a key that
+        // is no setting, a profile it cannot build, a value the binder cannot convert — is the
+        // operator's to fix: one type for all of them, which every entry point translates
+        // (GAP-35). Before, each left the build as a bare InvalidOperationException, and the
+        // runners that caught none crashed on it.
+        try
+        {
+            RegisterRunnerServices(context, services, llmLogVirtualPath, configureLogging);
+        }
+        catch (InvalidOperationException ex) when (ex is not RunnerSettingsException)
+        {
+            throw Refused(ex);
+        }
+
+        // Runner-specific services: the caller's own code, whose exceptions are its own.
+        configureServices?.Invoke(context, services);
+    }
+
+    private static void RegisterRunnerServices(
+        HostBuilderContext context,
+        IServiceCollection services,
+        string? llmLogVirtualPath,
+        Action<HostBuilderContext, ILoggingBuilder>? configureLogging)
     {
         ConfigureRunnerLogging(context, services, configureLogging);
         ConfigureLlmExchangeLogging(context, services, llmLogVirtualPath);
@@ -934,9 +974,6 @@ public static partial class RunnerHost
 
         // The tool registry is AddOrkeonInfrastructure's default ToolRegistry, seeded from every
         // IBaseTool registered above (GAP-11): the runners need nothing of their own.
-
-        // Runner-specific services
-        configureServices?.Invoke(context, services);
     }
 
     /// <summary>
@@ -955,6 +992,10 @@ public static partial class RunnerHost
         if (!McpStartup.IsConfigured(context.Configuration))
             return;
 
+        // Bound here once, so a value the binder cannot convert — a server's Transport — is a
+        // setting the host refuses at build (GAP-35), not an exception out of the connection step
+        // that --list-tools and orkeon-host take before anything else.
+        _ = context.Configuration.GetSection(ConfigurationKeys.McpSection).Get<McpOptions>();
         services.AddOrkeonMcp(context.Configuration);
     }
 
@@ -1071,7 +1112,7 @@ public static partial class RunnerHost
                 // Empty → each provider's own default model (LocalSmartComponents → bge-micro-v2).
                 Model = embeddingSection["Model"] ?? "",
                 ApiKey = embeddingSection["ApiKey"],
-                BaseUrl = embeddingSection["BaseUrl"] is { } embedBaseUrl ? new Uri(embedBaseUrl) : null,
+                BaseUrl = embeddingSection["BaseUrl"] is { } embedBaseUrl ? EmbeddingAddress(embedBaseUrl) : null,
                 Dimensions = int.TryParse(embeddingSection["Dimensions"], out var d) ? d : null,
                 MaxTextChars = int.TryParse(embeddingSection["MaxTextChars"], out var mc) ? mc : null,
             },
@@ -1085,6 +1126,17 @@ public static partial class RunnerHost
         services.AddRaggableTreeWithLogging(options);
         services.AddRaggableTreeTools();
     }
+
+    /// <summary>
+    /// <c>RaggableTree:Embedding:BaseUrl</c> as an address, or a refusal that names the key
+    /// (GAP-35): <c>new Uri(...)</c> let a bare <see cref="UriFormatException"/> out of the build.
+    /// </summary>
+    private static Uri EmbeddingAddress(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            ? uri
+            : throw new InvalidOperationException(
+                $"RaggableTree:Embedding:BaseUrl is '{value}', which is not an address: write the embedding "
+                + "endpoint's http:// or https:// URL, such as http://localhost:11434.");
 
     private static TEnum ParseEnum<TEnum>(string? value, TEnum fallback) where TEnum : struct, Enum
     {

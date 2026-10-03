@@ -39,10 +39,21 @@
     Service name. Defaults to Orkeon, which is what the host reports to the SCM. The virtual
     account is derived from it (NT SERVICE\<ServiceName>).
 
+.PARAMETER A2AUrlPrefix
+    The URL prefix of the A2A listener Orkeon:Host:A2A describes — scheme, host, port and a
+    final slash: http://localhost:5002/ for the default, http://+:5002/ for every interface.
+    HTTP.sys lets an account that is not an administrator listen only on a URL reserved for
+    it, so the script reserves this prefix for NT SERVICE\<ServiceName> (netsh http add
+    urlacl) — an existing reservation of the service's own is kept — and records it under the
+    service key, for -Uninstall to remove. Without it, a service with A2A enabled refuses to
+    start (exit 78) and the event log gives the netsh command to run. Run the script again with
+    the new prefix after changing Host or Port.
+
 .PARAMETER Uninstall
-    Stops and deletes the service, then exits. Leaves the working directory, the settings
-    file and the event-log source in place — the configuration belongs to the operator,
-    mirror of /etc/orkeon surviving a package removal.
+    Stops the service, removes the URL reservation -A2AUrlPrefix recorded, deletes the service,
+    then exits. Leaves the working directory, the settings file and the event-log source in
+    place — the configuration belongs to the operator, mirror of /etc/orkeon surviving a
+    package removal.
 
 .EXAMPLE
     .\install-service.ps1
@@ -54,6 +65,11 @@
     Start-Service -Name Orkeon
 
 .EXAMPLE
+    .\install-service.ps1 -A2AUrlPrefix http://+:5002/
+    # Registers the service and reserves the A2A listener's URL for NT SERVICE\Orkeon, for an
+    # Orkeon:Host:A2A section listening on every interface on port 5002.
+
+.EXAMPLE
     .\install-service.ps1 -Uninstall
 #>
 [CmdletBinding()]
@@ -63,14 +79,44 @@ param(
     [string] $WorkingDirectory = "$env:ProgramData\Orkeon",
     [hashtable] $EnvironmentSecrets,
     [string] $ServiceName = 'Orkeon',
+    [string] $A2AUrlPrefix,
     [switch] $Uninstall
 )
 
 $ErrorActionPreference = 'Stop'
 
+$serviceKey = "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName"
+
+# Where the URL reservation this script made is recorded: a value of the service key, so the
+# reservation leaves with the service — removed by -Uninstall, and by a re-registration, which
+# makes its own (GAP-35).
+$reservationValue = 'A2AUrlPrefix'
+
+function Remove-RecordedUrlReservation {
+    $recorded = (Get-ItemProperty -Path $serviceKey -Name $reservationValue -ErrorAction SilentlyContinue).$reservationValue
+    if (-not $recorded) { return }
+
+    # No 2>&1, as for sc.exe below: netsh writes its failures to stdout.
+    $netshOutput = & netsh.exe http delete urlacl url=$recorded
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "URL reservation $recorded removed."
+    } else {
+        # Said, not thrown: the service is being removed either way, and a reservation removed by
+        # hand in the meantime leaves nothing to undo.
+        $said = ($netshOutput | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ }) -join ' / '
+        Write-Warning "netsh could not remove the URL reservation $recorded (exit $LASTEXITCODE): $said"
+    }
+}
+
+if ($A2AUrlPrefix -and $A2AUrlPrefix -notmatch '^https?://[^/\s]+:\d+/$') {
+    throw ("-A2AUrlPrefix must be the A2A listener's prefix (scheme, host, port and a final slash, " +
+           "such as http://localhost:5002/ or http://+:5002/), the one Orkeon:Host:A2A describes; got '$A2AUrlPrefix'.")
+}
+
 if ($Uninstall) {
     if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
         Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        Remove-RecordedUrlReservation
         sc.exe delete $ServiceName | Out-Null
         Write-Host "Service '$ServiceName' removed. '$WorkingDirectory' and its settings are untouched."
     } else {
@@ -92,6 +138,7 @@ if (-not (Test-Path -LiteralPath $SettingsPath)) {
 if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Write-Host "Service '$ServiceName' already exists; stopping and removing it first."
     Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    Remove-RecordedUrlReservation
     sc.exe delete $ServiceName | Out-Null
     Start-Sleep -Seconds 2
 }
@@ -193,8 +240,32 @@ if (-not [System.Diagnostics.EventLog]::SourceExists('Orkeon')) {
 if ($EnvironmentSecrets -and $EnvironmentSecrets.Count -gt 0) {
     $pairs = @($EnvironmentSecrets.Keys | Sort-Object | ForEach-Object { '{0}={1}' -f $_, $EnvironmentSecrets[$_] })
     New-ItemProperty `
-        -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName" `
+        -Path $serviceKey `
         -Name Environment -PropertyType MultiString -Value $pairs -Force | Out-Null
+}
+
+# The A2A listener's URL, reserved for the service account (GAP-35). HTTP.sys lets an account that
+# is not an administrator listen only on a URL reserved for it, and nothing else reserves it: the
+# MSI installs before any configuration and cannot know Host or Port. This is the one moment an
+# administrator has the hand and the prefix is known. For the service account, never for Everyone.
+if ($A2AUrlPrefix) {
+    $netshOutput = & netsh.exe http add urlacl url=$A2AUrlPrefix "user=$account"
+    if ($LASTEXITCODE -ne 0) {
+        # 183 (ERROR_ALREADY_EXISTS): this exact prefix is reserved already. The service's own
+        # reservation — a re-registration, one made by hand — is what the service needs; another
+        # account's is not, and the service would be refused on it.
+        $shown = (& netsh.exe http show urlacl url=$A2AUrlPrefix) -join ' / '
+        if ($shown -notmatch [regex]::Escape($account)) {
+            $said = ($netshOutput | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ }) -join ' / '
+            throw ("netsh http add urlacl failed for $A2AUrlPrefix (exit $LASTEXITCODE): $said. " +
+                   "If another account holds that prefix, remove its reservation " +
+                   "(netsh http delete urlacl url=$A2AUrlPrefix) or listen on another port.")
+        }
+        Write-Host "URL $A2AUrlPrefix was already reserved for $account."
+    } else {
+        Write-Host "URL $A2AUrlPrefix reserved for $account."
+    }
+    New-ItemProperty -Path $serviceKey -Name $reservationValue -PropertyType String -Value $A2AUrlPrefix -Force | Out-Null
 }
 
 # Restart on failure, twice, then leave it alone: a host that keeps failing is telling the

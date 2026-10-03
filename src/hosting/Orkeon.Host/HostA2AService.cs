@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -93,6 +94,15 @@ internal sealed partial class HostA2AService : IHostedService
             // configuration, refused like the rest — not a crash to restart on in a loop.
             throw new HostConfigurationException($"The A2A server refused its configuration: {ex.Message}", ex);
         }
+        catch (HttpListenerException ex)
+        {
+            // The system refused the listener (GAP-35): HTTP.sys and a URL nobody reserved for the
+            // service's account, a port another process holds. A configuration to fix — exit 78,
+            // the step that fixes it in the event log — not a crash the SCM restarted twice in
+            // silence. Only here: the HttpListenerException the server swallows on stop is the
+            // listener closing, no refusal.
+            throw new HostConfigurationException(ListenerRefusal(a2a.ListenerPrefix, ex), ex);
+        }
 
         _serving = true;
 
@@ -107,6 +117,29 @@ internal sealed partial class HostA2AService : IHostedService
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken) =>
         _serving && _server is not null ? _server.StopAsync(cancellationToken) : Task.CompletedTask;
+
+    /// <summary>
+    /// Why the system refused the listener, and what fixes it. Access denied
+    /// (<see cref="AccessDenied"/>) is HTTP.sys's answer to an account that is not an administrator
+    /// asking for a URL nobody reserved for it — which is what the service account is: the
+    /// refusal names the prefix, the account, and the command an administrator runs once.
+    /// </summary>
+    internal static string ListenerRefusal(string prefix, HttpListenerException ex) =>
+        ex.ErrorCode == AccessDenied
+            ? $"The system refused the A2A listener {prefix} (access denied): HTTP.sys lets an account that is "
+                + $"not an administrator listen only on a URL reserved for it. Reserve it once, as an administrator: "
+                + $"netsh http add urlacl url={prefix} user=\"{ProcessAccount()}\" — install-service.ps1 -A2AUrlPrefix {prefix} "
+                + "does it when it registers the service."
+            : $"The system refused the A2A listener {prefix}: {ex.Message.TrimEnd('.')}. A port under 1024 needs privileges, and a "
+                + $"port another process holds cannot be shared: change {HostA2AOptions.SectionName}:Port, or stop the "
+                + "process that holds it.";
+
+    /// <summary>ERROR_ACCESS_DENIED — HTTP.sys's refusal of a URL reserved for nobody, or for another account.</summary>
+    private const int AccessDenied = 5;
+
+    /// <summary>The account the process runs as, spelled as <c>netsh</c> takes it: <c>NT SERVICE\Orkeon</c> under the SCM.</summary>
+    private static string ProcessAccount() =>
+        OperatingSystem.IsWindows() ? $"{Environment.UserDomainName}\\{Environment.UserName}" : Environment.UserName;
 
     /// <summary>
     /// <c>A2A:EnableServer</c>, <c>A2A:Host</c> and <c>A2A:Port</c> switch a C# host's server; the

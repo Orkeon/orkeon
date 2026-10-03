@@ -117,38 +117,52 @@ public static partial class RunnerExecution
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
         var outputMountPath = DetectOutputMountPath(cliMounts);
 
-        var host = RunnerHost.Build(
-            target.SettingsPath,
-            new RunnerMountPlan
-            {
-                CliMounts = cliMounts,
-                InternalMounts = internalMounts,
-                SelectedMountIds = selection.SelectedMountIds,
-                CrewMountReferences = selection.CrewMountReferences,
-                AllowExternalMounts = opts.EffectiveAllowExternalMounts,
-                LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
-            },
-            configureLogging: verbosity > 0
-                ? (_, b) => ConfigureVerboseLogging(b, verbosity)
-                : null,
-            configureServices: (ctx, services) =>
-            {
-                if (outputMountPath != null)
+        IHost host;
+        try
+        {
+            host = RunnerHost.Build(
+                target.SettingsPath,
+                new RunnerMountPlan
                 {
-                    services.AddScoped<ICrewExecutionHook>(sp =>
-                        new AutoSummaryWriter(
-                            sp.GetRequiredService<IFileSystemService>(),
-                            outputMountPath,
-                            sp.GetRequiredService<ILogger<AutoSummaryWriter>>()));
-                }
-                // Default human-input wiring: registers the `human_input` tool +
-                // AutoApprove provider as a fallback. Interactive runners override
-                // the provider (e.g. TerminalGuiHumanInputProvider) via
-                // configureServices below.
-                services.AddOrkeonHumanInput();
-                configureServices?.Invoke(ctx, services);
-            },
-            llmProfile: opts.LlmProfile);
+                    CliMounts = cliMounts,
+                    InternalMounts = internalMounts,
+                    SelectedMountIds = selection.SelectedMountIds,
+                    CrewMountReferences = selection.CrewMountReferences,
+                    AllowExternalMounts = opts.EffectiveAllowExternalMounts,
+                    LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
+                },
+                configureLogging: verbosity > 0
+                    ? (_, b) => ConfigureVerboseLogging(b, verbosity)
+                    : null,
+                configureServices: (ctx, services) =>
+                {
+                    if (outputMountPath != null)
+                    {
+                        services.AddScoped<ICrewExecutionHook>(sp =>
+                            new AutoSummaryWriter(
+                                sp.GetRequiredService<IFileSystemService>(),
+                                outputMountPath,
+                                sp.GetRequiredService<ILogger<AutoSummaryWriter>>()));
+                    }
+                    // Default human-input wiring: registers the `human_input` tool +
+                    // AutoApprove provider as a fallback. Interactive runners override
+                    // the provider (e.g. TerminalGuiHumanInputProvider) via
+                    // configureServices below.
+                    services.AddOrkeonHumanInput();
+                    configureServices?.Invoke(ctx, services);
+                },
+                llmProfile: opts.LlmProfile);
+        }
+        catch (RunnerSettingsException ex)
+        {
+            // A setting the host refuses — a retired key, an unconvertible value, an unreadable
+            // file, an address that is none — is the operator's to fix: the sentence as the last
+            // stderr line, exit 1 (GAP-35). It used to escape as an unhandled exception: a stack,
+            // a core dump, and on an --events run a stream that never closed.
+            ReportRefusedSettings(ex);
+            errorCode = 1;
+            return false;
+        }
 
         var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(loggerCategory);
 
@@ -158,6 +172,20 @@ public static partial class RunnerExecution
         bootstrap = new HostBootstrap(
             host, logger, target.ConfigPath, target.VirtualConfigPath, target.IsCrewDirectory, cliMounts);
         return true;
+    }
+
+    /// <summary>
+    /// Writes a setting the host refused as one line, <c>ERROR: &lt;reason&gt;</c> — the last on
+    /// stderr, the one the exit code points at. <c>ORKEON_DEBUG=1</c> puts the exception, the
+    /// failure it explains and its stack, before it.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    internal static void ReportRefusedSettings(RunnerSettingsException ex)
+    {
+        ArgumentNullException.ThrowIfNull(ex);
+        if (RunnerEnvironment.DebugDiagnostics)
+            Console.Error.WriteLine(ex.ToString());
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
     }
 
     /// <summary>

@@ -108,6 +108,24 @@ public class ChatGatewayTests
     }
 
     [Fact]
+    public async Task A_message_that_arrives_while_the_host_stops_is_answered_with_that_sentence_and_no_acknowledgement()
+    {
+        // GAP-35: the runner refuses a run once the stop has begun, and the conversation reads
+        // why — no "Working on it…", no Stop button attached to a run that never began.
+        var (gateway, runner, _, router) = Build();
+        runner.Admits = false;
+        runner.Result = new HostedRunResult(HostedRunOutcome.HostStopping, null, CrewRunner.HostStoppingMessage);
+
+        var responder = new RecordingResponder();
+        await gateway.HandleAsync(Message("do the thing"), responder, TestContext.Current.CancellationToken);
+
+        var reply = Assert.Single(responder.Sent);
+        Assert.Equal("complete", reply.Kind);
+        Assert.Equal(CrewRunner.HostStoppingMessage, reply.Text);
+        Assert.Null(router.FindRun("thread-1"));
+    }
+
+    [Fact]
     public async Task A_literal_slash_command_typed_as_text_is_a_prompt_not_a_command()
     {
         // /stop and /status are registered slash commands the platform's client intercepts;
@@ -165,7 +183,7 @@ public class ChatGatewayTests
         // The bug this pins: attaching the run id only when the run *finished* would have made
         // /stop permanently unable to find anything to stop.
         var (gateway, runner, registry, router) = Build();
-        var started = registry.TryStart("support", "test:thread-1")!;
+        var started = registry.TryStart("support", "test:thread-1", out _)!;
         runner.Result = new HostedRunResult(HostedRunOutcome.Completed, started.Id, "done");
 
         string? stopping = null;
@@ -196,7 +214,7 @@ public class ChatGatewayTests
     public async Task Status_reports_what_the_conversation_is_doing()
     {
         var (gateway, runner, registry, _) = Build();
-        var started = registry.TryStart("support", "test:thread-1")!;
+        var started = registry.TryStart("support", "test:thread-1", out _)!;
         runner.Result = new HostedRunResult(HostedRunOutcome.Completed, started.Id, "done");
 
         string? reported = null;

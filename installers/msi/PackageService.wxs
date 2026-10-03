@@ -34,6 +34,12 @@
     Secrets: NONE here, ever — msiexec properties land verbatim in /l*v logs,
     and WriteRegistryValues runs before InstallServices anyway. The documented
     path stays the service's Environment value, set after install.
+    No URL reservation for A2A either (GAP-35): the listener's prefix is the
+    configuration's (Orkeon:Host:A2A Host and Port), which does not exist yet
+    when this package installs. The exit text gives the netsh step, and a
+    service that starts without it refuses with exit 78 and the exact command
+    in the event log. install-service.ps1 -A2AUrlPrefix reserves it for the ZIP
+    channel, the one moment an administrator holds the prefix.
 
   Built by scripts/build-msi-service.ps1, which supplies:
     OrkeonVersion      x.y.z only (MSI ProductVersion accepts no suffix)
@@ -212,7 +218,7 @@
     <ui:WixUI Id="WixUI_Minimal" />
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
-              Value="Create C:\ProgramData\Orkeon\appsettings.json, put secrets in the service's Environment value, then: Start-Service Orkeon" />
+              Value="Create C:\ProgramData\Orkeon\appsettings.json, put secrets in the service's Environment value, then: Start-Service Orkeon. To serve A2A (Orkeon:Host:A2A), first reserve its URL once, as an administrator: netsh http add urlacl url=http://localhost:5002/ user=&quot;NT SERVICE\Orkeon&quot; (http://+:5002/ for every interface)." />
 
   </Package>
 </Wix>

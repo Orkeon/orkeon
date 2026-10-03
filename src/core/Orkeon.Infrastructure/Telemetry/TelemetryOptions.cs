@@ -19,18 +19,6 @@ public class TelemetryOptions
     public string? OtlpEndpoint { get; set; }
 
     /// <summary>
-    /// Gets or sets whether to export telemetry to the console (for development).
-    /// Default is false.
-    /// </summary>
-    public bool ExportToConsole { get; set; }
-
-    /// <summary>
-    /// Gets or sets whether to enable Prometheus metrics endpoint.
-    /// Default is false.
-    /// </summary>
-    public bool PrometheusEndpoint { get; set; }
-
-    /// <summary>
     /// Gets or sets the maximum memory threshold in MB for health checks.
     /// Default is 2048 MB.
     /// </summary>

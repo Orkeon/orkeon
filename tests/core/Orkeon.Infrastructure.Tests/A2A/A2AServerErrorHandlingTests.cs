@@ -27,7 +27,7 @@ internal class ExceptionThrowingTaskRouter<TException> : IA2ATaskRouter
     public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<AgentSkill>>([]);
 
-    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
+    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct = default)
     {
         throw _exception;
     }
@@ -354,7 +354,7 @@ internal class SequenceTaskRouter : IA2ATaskRouter
     public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<AgentSkill>>([]);
 
-    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
+    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct = default)
     {
         var call = Interlocked.Increment(ref _callCount);
         if (call == 1)

@@ -11,6 +11,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Host.Tests.Doubles;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Host.Tests;
 
@@ -203,6 +204,70 @@ public sealed class HostA2ATests : IDisposable
     }
 
     [Fact]
+    public async Task A_task_sent_while_the_host_stops_fails_saying_so_and_the_run_in_flight_still_answers_its_peer()
+    {
+        // GAP-35: the drain admitted what arrived during the grace period — a run that loaded a
+        // crew and called the model for nothing, waited for, then stopped. Once the stop begins,
+        // a task is refused with the reason; the run admitted before keeps its grace and still
+        // answers the peer that asked, since the server stops after the drain.
+        var llm = new HeldLlmProvider("the watch report", held: true);
+        var (host, port) = Build(llm);
+        using var _ = host;
+        await host.StartAsync(Ct);
+        var daemon = new RunningHost(host, port);
+        using var http = NewHttp();
+
+#pragma warning disable CA2025 // `sending` is awaited below, inside the scope of `http`.
+        var sending = SendAsync(http, daemon, "watch-1", "veille", "What changed this week?");
+#pragma warning restore CA2025
+        await llm.Started.Task.WaitAsync(s_wait, Ct);
+
+        var stopping = host.StopAsync(CancellationToken.None);
+        await Polling.WaitUntilAsync(
+            () => Log.Any(line => line.Contains("Stopping: 1 run(s) in flight", StringComparison.Ordinal)), s_wait);
+
+        var late = await SendAsync(http, daemon, "watch-2", "veille", "And what about next week?");
+
+        Assert.Equal(A2ATaskStatus.Failed, late.Status);
+        Assert.Equal(CrewRunner.HostStoppingMessage, late.Error);
+        Assert.DoesNotContain(llm.Prompts, prompt => prompt.Contains("next week", StringComparison.Ordinal));
+
+        llm.Release();
+        var answered = await sending.WaitAsync(s_wait, Ct);
+        Assert.True(A2ATaskStatus.Completed == answered.Status, $"{answered.Status}: {answered.Error} :: {DebugLog}");
+        Assert.Contains("the watch report", answered.Output, StringComparison.Ordinal);
+
+        await stopping.WaitAsync(s_wait, Ct);
+    }
+
+    [Fact]
+    public async Task A_peer_following_a_task_with_sendSubscribe_reads_each_step_before_the_final_state()
+    {
+        // GAP-35: sendSubscribe used to stream Working, then nothing until the final state, while
+        // a chat thread watching the same run read a line per finished task. The peer now reads
+        // the lines the thread reads, as Working updates carrying them as their message.
+        WriteCrew("veille", tasks: 2);
+        await using var daemon = await StartAsync(new HeldLlmProvider("the watch report"));
+        using var http = NewHttp();
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, daemon.Url("/a2a/tasks/sendSubscribe"))
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(new { id = "watch-sse", skillId = "veille", input = "What changed this week?" }),
+                Encoding.UTF8,
+                "application/json"),
+        };
+        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, Ct);
+        var updates = await ReadUpdatesAsync(response);
+
+        var progress = updates.Where(update => update.Message is not null).ToList();
+        Assert.Equal(["Running 'veille'…", "✔ Helper — step 1 done", "✔ Helper — step 2 done"], progress.Select(update => update.Message));
+        Assert.All(progress, update => Assert.Equal(A2ATaskStatus.Working, update.Status));
+        Assert.True(A2ATaskStatus.Completed == updates[^1].Status, $"{updates[^1].Status}: {updates[^1].PartialOutput} :: {DebugLog}");
+        Assert.Contains("the watch report", updates[^1].PartialOutput, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task An_authenticated_peer_runs_an_exposed_crew_and_an_anonymous_one_is_refused()
     {
         var llm = new HeldLlmProvider("the watch report");
@@ -337,7 +402,8 @@ public sealed class HostA2ATests : IDisposable
 
     private string CrewPath(string name) => Path.Combine(_root, "crews", $"{name}.yaml");
 
-    private void WriteCrew(string name) => File.WriteAllText(CrewPath(name), $"""
+    /// <summary>A crew of one agent and <paramref name="tasks"/> sequential tasks, offline.</summary>
+    private void WriteCrew(string name, int tasks = 1) => File.WriteAllText(CrewPath(name), $"""
         name: {name}
         goal: Answer one question offline
         process: sequential
@@ -348,11 +414,9 @@ public sealed class HostA2ATests : IDisposable
             backstory: A minimal test agent.
             maxIter: 1
         tasks:
-          answer:
-            description: Answer the question.
-            expected_output: An answer.
-            agent: helper
-        """);
+
+        """ + string.Concat(Enumerable.Range(1, tasks).Select(index =>
+            $"  answer{index}:\n    description: Answer the question, part {index}.\n    expected_output: An answer.\n    agent: helper\n")));
 
     private static Dictionary<string, object?> HostSection(Dictionary<string, object?> root) =>
         (Dictionary<string, object?>)((Dictionary<string, object?>)root["Orkeon"]!)["Host"]!;
@@ -493,6 +557,25 @@ public sealed class HostA2ATests : IDisposable
         using var response = await PostAsync(http, daemon, id, skillId, input, authorization);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return JsonSerializer.Deserialize<A2ATaskResponse>(await response.Content.ReadAsStringAsync(Ct), s_json)!;
+    }
+
+    /// <summary>The updates of an SSE stream, in order, up to its <c>[DONE]</c>.</summary>
+    private static async Task<IReadOnlyList<A2ATaskUpdate>> ReadUpdatesAsync(HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updates = new List<A2ATaskUpdate>();
+        using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(Ct));
+        while (await reader.ReadLineAsync(Ct) is { } line)
+        {
+            if (!line.StartsWith("data: ", StringComparison.Ordinal))
+                continue;
+            var data = line["data: ".Length..];
+            if (data == "[DONE]")
+                break;
+            updates.Add(JsonSerializer.Deserialize<A2ATaskUpdate>(data, s_json)!);
+        }
+
+        return updates;
     }
 
     /// <summary>Every log line at Information or above, with its category.</summary>

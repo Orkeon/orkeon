@@ -123,7 +123,7 @@ public sealed class RunnerHostLlmProfilesTests : IDisposable
     [Fact]
     public void An_invalid_profile_fails_the_host_build_with_its_key()
     {
-        var error = Assert.Throws<InvalidOperationException>(() => Build(
+        var error = Assert.Throws<RunnerSettingsException>(() => Build(
             """{ "Llm": { "Model": "m", "Profiles": { "claude": { "BaseUrl": "anthropic" } } } }"""));
 
         Assert.Contains("Llm:Profiles:claude:BaseUrl", error.Message, StringComparison.Ordinal);

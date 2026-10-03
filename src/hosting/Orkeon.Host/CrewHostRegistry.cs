@@ -30,6 +30,22 @@ internal sealed record HostedRun
     public bool StopRequested { get; set; }
 }
 
+/// <summary>Why <see cref="CrewHostRegistry.TryStart"/> admitted no run.</summary>
+internal enum AdmissionRefusal
+{
+    /// <summary>The run was admitted.</summary>
+    None,
+
+    /// <summary>The configuration declares no crew by that name.</summary>
+    UnknownCrew,
+
+    /// <summary>The crew already has as many runs in flight as its bound allows.</summary>
+    AtLimit,
+
+    /// <summary>The host is stopping: it admits no run any more (GAP-35).</summary>
+    HostStopping,
+}
+
 /// <summary>
 /// Knows which crews the service hosts and which of their runs are in flight (GATE-02).
 /// <para>
@@ -42,6 +58,7 @@ internal sealed class CrewHostRegistry
 {
     private readonly ConcurrentDictionary<string, HostedRun> _runs = new(StringComparer.Ordinal);
     private readonly Lock _admission = new();
+    private bool _admissionClosed;
     private readonly OrkeonHostOptions _options;
     private readonly TimeProvider _time;
 
@@ -65,15 +82,35 @@ internal sealed class CrewHostRegistry
         _options.Crews.FirstOrDefault(c => string.Equals(c.Name, crewName, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
-    /// Reserves a slot for a run of <paramref name="crewName"/>, or returns null when the crew
-    /// is unknown or already at its concurrency limit. Returning null rather than throwing is
-    /// deliberate: "we are busy" is an answer a channel can relay, not an incident.
+    /// Admits no run any more, for good — the first gesture of a stop (GAP-35). Without it the
+    /// drain admitted what arrived during its grace period: a chat message or an A2A task loaded a
+    /// crew and called the model, the drain waited for it, then stopped it, and the person read
+    /// "The run was stopped." about work that should never have begun. One door for every channel:
+    /// the chat and the A2A server keep running through the drain, to deliver the answers of the
+    /// runs in flight, so they cannot close it themselves. The runs already admitted keep their
+    /// seats and their grace.
     /// </summary>
-    public HostedRun? TryStart(string crewName, string origin)
+    public void CloseAdmission()
+    {
+        lock (_admission)
+            _admissionClosed = true;
+    }
+
+    /// <summary>
+    /// Reserves a slot for a run of <paramref name="crewName"/>, or returns null — saying why —
+    /// when the crew is unknown, already at its concurrency limit, or the host is stopping.
+    /// Returning null rather than throwing is deliberate: "we are busy" is an answer a channel can
+    /// relay, not an incident.
+    /// </summary>
+    /// <param name="crewName">The crew to run.</param>
+    /// <param name="origin">Where the request came from.</param>
+    /// <param name="refusal">Why no run was admitted; <see cref="AdmissionRefusal.None"/> when one was.</param>
+    public HostedRun? TryStart(string crewName, string origin, out AdmissionRefusal refusal)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewName);
         ArgumentException.ThrowIfNullOrWhiteSpace(origin);
 
+        refusal = AdmissionRefusal.UnknownCrew;
         var crew = Find(crewName);
         if (crew is null)
             return null;
@@ -89,9 +126,18 @@ internal sealed class CrewHostRegistry
         // corpses. Stopping a run is the registry's own gesture (RequestStop / the drain).
         lock (_admission)
         {
+            // Under the lock CloseAdmission takes: once the stop has begun, no admission slips in
+            // between this check and the add below.
+            if (_admissionClosed)
+            {
+                refusal = AdmissionRefusal.HostStopping;
+                return null;
+            }
+
             var inFlight = _runs.Values.Count(run =>
                 string.Equals(run.CrewName, crew.Name, StringComparison.OrdinalIgnoreCase));
 
+            refusal = AdmissionRefusal.AtLimit;
             if (inFlight >= crew.Profile.MaxConcurrentRuns)
                 return null;
 
@@ -109,7 +155,10 @@ internal sealed class CrewHostRegistry
                 };
 
                 if (_runs.TryAdd(run.Id, run))
+                {
+                    refusal = AdmissionRefusal.None;
                     return run;
+                }
 
                 run.Cancellation.Dispose();
             }

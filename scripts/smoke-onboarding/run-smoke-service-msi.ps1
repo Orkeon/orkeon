@@ -16,6 +16,10 @@
        ProgramData\Orkeon; the data directory exists with Modify for the
        account (no Environment value: the MSI carries no secrets, ever);
     3. with an offline crew (relative path) it starts, stays up, stops;
+       then, with Orkeon:Host:A2A on every interface (http://+, an API key)
+       and no URL reservation — the MSI makes none — HTTP.sys refuses the
+       listener: the service ends Stopped without a restart loop, and the
+       event log carries the exact netsh command to run (GAP-35);
     4. reinstalling the SAME MSI silently succeeds — the proof that
        FindRelatedProducts is resequenced before LaunchConditions, without
        which every silent upgrade would refuse itself over its own service;
@@ -112,6 +116,23 @@ try {
 { "Orkeon": { "Host": { "Crews": [ { "Name": "smoke", "Path": "crews/smoke" } ] } } }
 '@
     Add-Result 'start-stop' (Invoke-OrkeonServiceStartStopAssertions -ServiceName $serviceName -StabilitySeconds 10)
+
+    # -- 3b. A2A without a URL reservation: refused, with the command to run ----
+    Write-Host "== A2A on http://+ without a URL reservation (refused, exit 78, netsh in the event log)"
+    New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$serviceName" `
+        -Name Environment -PropertyType MultiString -Value @('ORKEON_A2A_PEER_KEY=smoke-key') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $dataDir 'appsettings.json') -Value @'
+{ "A2A": { "Security": { "AllowedAuthSchemes": [ "ApiKey" ], "ApiKeySecretNames": [ "A2A_PEER_KEY" ] } },
+  "Orkeon": { "Host": {
+    "Crews": [ { "Name": "smoke", "Path": "crews/smoke" } ],
+    "A2A": { "Enabled": true, "Host": "http://+", "Crews": [ "smoke" ] } } } }
+'@
+    Add-Result 'a2a-unreserved' (Invoke-OrkeonServiceBrokenConfigAssertions -ServiceName $serviceName -ObservationSeconds 20 `
+        -ExpectInEventLog "netsh http add urlacl url=http://+:5002/ user=`"NT SERVICE\$serviceName`"")
+    Remove-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$serviceName" -Name Environment -ErrorAction SilentlyContinue
+    Set-Content -LiteralPath (Join-Path $dataDir 'appsettings.json') -Value @'
+{ "Orkeon": { "Host": { "Crews": [ { "Name": "smoke", "Path": "crews/smoke" } ] } } }
+'@
 
     # -- 4. Silent reinstall of the same MSI (FindRelatedProducts resequencing) --
     Write-Host "== msiexec /i again (silent same-version upgrade must pass its own guard)"

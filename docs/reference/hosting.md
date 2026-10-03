@@ -224,10 +224,17 @@ while `CrewFactory` and the orchestrator resolve per scope.
 | Key | Default | Effect |
 |---|---|---|
 | `Enabled` | `true` | `false` registers only the `OrkeonMetrics` singleton — no provider, no exporter. |
-| `OtlpEndpoint` | — | An explicit OTLP endpoint; it wins over the environment. |
-| `ExportToConsole` | `false` | Adds the console exporters, for traces and metrics. |
+| `OtlpEndpoint` | — | An explicit OTLP endpoint; it wins over the environment. An `http://` or `https://` address: anything else is refused, naming the key. |
 | `MaxMemoryMB` | `2048` | Threshold of the `system_resources` health check. |
-| `PrometheusEndpoint` | `false` | Bound, read by nothing yet. |
+
+**Removed keys (GAP-35).** `ExportToConsole` attached OpenTelemetry's console exporters, which write
+on stdout — where `--events jsonl`, the `--list-tools` manifest and `orkeon mcp serve` speak to a
+program —, and `PrometheusEndpoint` was bound and read by nothing. Both are gone, with the
+`OpenTelemetry.Exporter.Console` package, and a section that still writes one — whatever its value,
+`Enabled` `false` included — is refused with an `InvalidOperationException` that names the key and
+what replaces it: an OTLP collector (`Telemetry:OtlpEndpoint`, `OTEL_EXPORTER_OTLP_ENDPOINT`, the
+.NET Aspire dashboard). In the runners it is a refused setting: exit 1, or 78 for `orkeon-host`. A C#
+host that wants the console adds the exporter to its own `AddOpenTelemetry()`.
 
 **Where the data goes.** An explicit `Telemetry:OtlpEndpoint` is used as the exporters' endpoint.
 Without one, a non-empty `OTEL_EXPORTER_OTLP_ENDPOINT` attaches the OTLP exporters with no

@@ -48,13 +48,13 @@ internal sealed partial class HostedCrewA2ARouter : IA2ATaskRouter
         Task.FromResult<IReadOnlyList<AgentSkill>>([.. _exposed.Value.Select(ToSkill)]);
 
     /// <inheritdoc />
-    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
+    public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return RouteCoreAsync(request, ct);
+        return RouteCoreAsync(request, progress, ct);
     }
 
-    private async Task<A2ATaskResponse> RouteCoreAsync(A2ATaskRequest request, CancellationToken ct)
+    private async Task<A2ATaskResponse> RouteCoreAsync(A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct)
     {
         // Exactly the published id: a crew the section does not expose is no skill at all, and a
         // case-changed name is not the id the card gave.
@@ -81,6 +81,9 @@ internal sealed partial class HostedCrewA2ARouter : IA2ATaskRouter
                 crew.Name,
                 request.Input,
                 $"a2a:{request.Id}",
+                // A peer following the task (sendSubscribe) reads the lines a chat thread reads —
+                // "Running '<crew>'…", then one per finished task — as they come (GAP-35).
+                onProgress: progress is null ? null : progress.Report,
                 onStarted: runId =>
                 {
                     stop = ct.Register(static state =>
@@ -120,7 +123,8 @@ internal sealed partial class HostedCrewA2ARouter : IA2ATaskRouter
             Error = result.Message,
             Timestamp = DateTime.UtcNow,
         },
-        // Failed, and the two refusals: the crew at its bound (the peer may retry), or gone.
+        // Failed, and the refusals: the crew at its bound (the peer may retry shortly), the host
+        // stopping (the peer may retry once it is back — GAP-35), or a crew gone.
         _ => Failed(request, result.Message),
     };
 

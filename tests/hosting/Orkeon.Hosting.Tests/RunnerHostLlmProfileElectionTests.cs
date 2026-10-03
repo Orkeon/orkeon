@@ -201,7 +201,7 @@ public sealed class RunnerHostLlmProfileElectionTests : IDisposable
     [Fact]
     public void A_host_built_with_an_unknown_id_is_refused_listing_the_profiles_the_settings_define()
     {
-        var error = Assert.Throws<InvalidOperationException>(() => Build("claud"));
+        var error = Assert.Throws<RunnerSettingsException>(() => Build("claud"));
 
         Assert.Contains("--llm-profile names the LLM profile 'claud'", error.Message, StringComparison.Ordinal);
         Assert.Contains("Known profiles: default, b, c.", error.Message, StringComparison.Ordinal);

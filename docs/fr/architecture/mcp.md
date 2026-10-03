@@ -140,7 +140,12 @@ serveur dans un pas de démarrage explicite (`McpStartup`) avant le chargement d
 que les trois voient la même surface d'outils. Un serveur qui ne peut pas être connecté
 (commande inexistante, point de terminaison muet, poignée de main toujours en attente
 après 30 s) coûte une ligne d'erreur qui le nomme, dans le journal et sur stderr, et le run
-continue. Les outils sont enregistrés sous leur propre nom, sans préfixe de serveur, et un
+continue. La sortie d'erreur d'un serveur stdio est lue au fil de l'eau — chaque ligne va au
+journal en Debug (`MCP server '<id>' stderr: …`), si bien qu'un serveur qui y écrit beaucoup
+ne s'y bloque plus — et un serveur qui s'arrête avant de répondre dit pourquoi : son code de
+sortie et la dernière ligne écrite sur sa sortie d'erreur rejoignent cette ligne d'erreur
+(`Transport disconnected: the MCP server exited with code 1; its last line on stderr: …`).
+Les outils sont enregistrés sous leur propre nom, sans préfixe de serveur, et un
 nom déjà tenu par le registre — un outil intégré, un outil de script ou l'outil d'un
 serveur connecté plus tôt — est **refusé** : l'outil MCP n'est pas enregistré, une ligne
 d'erreur nomme le serveur et l'outil (`The tool 'file_read' of MCP server 'x' collides with
@@ -218,8 +223,9 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   `--help` et les erreurs d'usage.
 - **Codes de sortie** : `0` le client a fermé le flux (ou `--help`) ; `1` une erreur d'usage,
   un réglage refusé (`MCP:EnableServer`, un montage déclaré par les réglages qui ne peut pas
-  être monté), un nom de `--tools` que l'hôte n'a pas ; `2` une erreur inattendue. Ctrl+C
-  termine le processus.
+  être monté, tout autre réglage que refuse l'hôte des runners — une ligne `ERROR:` le nomme),
+  un nom de `--tools` que l'hôte n'a pas, un serveur lancé par un autre (plus bas) ; `2` une
+  erreur inattendue. Ctrl+C termine le processus.
 
 Une configuration client — le `claude_desktop_config.json` de Claude Desktop :
 
@@ -235,9 +241,21 @@ Une configuration client — le `claude_desktop_config.json` de Claude Desktop :
 ```
 
 Un client démarre ses serveurs dans un répertoire de travail de son choix : nommez le fichier
-de réglages avec `--settings`, ou comptez sur le fichier par utilisateur d'`orkeon init`. Des
-réglages que lit `orkeon mcp serve` ne doivent pas déclarer `orkeon mcp serve` lui-même sous
-`MCP:Servers` : chaque serveur en démarrerait un autre avant de répondre.
+de réglages avec `--settings`, ou comptez sur le fichier par utilisateur d'`orkeon init`.
+
+**Un serveur ne démarre jamais sous un autre.** Avant de connecter les serveurs MCP de ses
+réglages, un serveur pose `ORKEON_MCP_SERVE` dans son propre environnement — chaque processus
+qu'il lance en hérite, et la variable est retirée quand il s'arrête — et un serveur qui la
+trouve posée refuse de démarrer : code `1`, et une ligne sur stderr, que le serveur qui l'a
+lancé joint à son erreur de connexion
+(``orkeon mcp serve: refused to start: another `orkeon mcp serve` started this one (ORKEON_MCP_SERVE is set), …``).
+Des réglages qui déclarent `orkeon mcp serve` lui-même sous `MCP:Servers` ne coûtent donc
+plus que cette ligne, là où chaque serveur en démarrait un autre avant de répondre, jusqu'à
+ce que le premier abandonne au bout de 30 s : retirez l'entrée, ou déclarez les deux
+serveurs côté client. `orkeon run` et `orkeon-host` ne posent aucun marqueur, et peuvent
+utiliser un `orkeon mcp serve` lancé sur d'autres réglages. Comme `ORKEON_DEBUG`, la variable
+est aussi lue par la couche de configuration `ORKEON_`, comme une clé (`MCP_SERVE`) qui n'est
+aucun réglage.
 
 ## Limites honnêtes
 

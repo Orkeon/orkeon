@@ -41,6 +41,12 @@ internal sealed class McpServeCommandOptions
 /// Until this verb no shipped binary started the server: <c>MCP:EnableServer</c> registered it for
 /// nobody. The verb is the switch now, and the key is refused.
 /// </para>
+/// <para>
+/// A serve never runs under another one (GAP-35): it marks its environment
+/// (<see cref="RunnerEnvironment.McpServeVariable"/>) before it connects the MCP servers of its
+/// settings, and one started by a process so marked refuses at once — settings declaring the verb
+/// under their own <c>MCP:Servers</c> made each server start another before answering.
+/// </para>
 /// </summary>
 internal static class McpCommand
 {
@@ -67,6 +73,22 @@ internal static class McpCommand
     internal static async Task<int> ServeAsync(McpServeCommandOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+
+        // Started by another serve — its settings declare `orkeon mcp serve` under MCP:Servers
+        // (GAP-35): each server started another before answering, until the first gave up after
+        // 30 s. The refusal is one line on stderr, which the parent joins to its connection error.
+        if (RunnerEnvironment.StartedByMcpServe)
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon mcp serve: refused to start: another `orkeon mcp serve` started this one "
+                + $"({RunnerEnvironment.McpServeVariable} is set), its settings declaring it under MCP:Servers. "
+                + "Remove that entry, or declare both servers in the client instead.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        // Marked before the settings' servers are connected, so every process this serve starts
+        // inherits the marker; cleared when it ends, so the process is left as it was found.
+        Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, "1");
         try
         {
             using var host = await BuildHostAsync(options).ConfigureAwait(false);
@@ -86,6 +108,10 @@ internal static class McpCommand
             if (RunnerEnvironment.DebugDiagnostics)
                 await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, null);
         }
     }
 

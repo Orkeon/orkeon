@@ -22,17 +22,26 @@ public static class OpenTelemetryExtensions
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The service collection for chaining.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The section carries a key that is no setting any more (<c>ExportToConsole</c>,
+    /// <c>PrometheusEndpoint</c>), or an <c>OtlpEndpoint</c> that is not an <c>http://</c> or
+    /// <c>https://</c> address.
+    /// </exception>
     public static IServiceCollection AddOrkeonTelemetry(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+        var section = configuration.GetSection("Telemetry");
+        RefuseRemovedKeys(section);
+
         // Bind TelemetryOptions
         services.AddOptions<TelemetryOptions>()
-            .Bind(configuration.GetSection("Telemetry"));
+            .Bind(section);
 
         var options = new TelemetryOptions();
-        configuration.GetSection("Telemetry").Bind(options);
+        section.Bind(options);
+        EnsureEndpointIsAnAddress(options.OtlpEndpoint);
 
         // The standard OpenTelemetry environment is honoured as-is: a host launched by
         // .NET Aspire (or any collector that sets OTEL_EXPORTER_OTLP_ENDPOINT) gets an OTLP
@@ -63,8 +72,8 @@ public static class OpenTelemetryExtensions
                 serviceVersion: OrkeonDiagnostics.ServiceVersion);
         });
 
-        otelBuilder.WithTracing(tracing => ConfigureTracing(tracing, options, otlp));
-        otelBuilder.WithMetrics(metrics => ConfigureMetrics(metrics, options, otlp));
+        otelBuilder.WithTracing(tracing => ConfigureTracing(tracing, otlp));
+        otelBuilder.WithMetrics(metrics => ConfigureMetrics(metrics, otlp));
 
         // Logs follow the same route: with an OTLP endpoint (explicit or from the
         // environment) the structured log records reach the same backend as the spans,
@@ -82,7 +91,54 @@ public static class OpenTelemetryExtensions
         return services;
     }
 
-    private static void ConfigureTracing(TracerProviderBuilder tracing, TelemetryOptions options, OtlpRoute otlp)
+    /// <summary>
+    /// The keys of the section that are no settings any more (GAP-35), each with why. A key still
+    /// written — whatever its value — is refused, naming what replaces it, rather than ignored.
+    /// </summary>
+    private static readonly (string Key, string Why)[] s_removedKeys =
+    [
+        ("ExportToConsole",
+            "the console exporter wrote traces and metrics on stdout, which `--events jsonl`, the `--list-tools` "
+            + "manifest and `orkeon mcp serve` reserve for the program that reads them; a C# host that wants the "
+            + "console adds the exporter to its own AddOpenTelemetry()"),
+        ("PrometheusEndpoint", "nothing ever served a Prometheus endpoint"),
+    ];
+
+    private static void RefuseRemovedKeys(IConfigurationSection section)
+    {
+        foreach (var (key, why) in s_removedKeys)
+        {
+            if (!section.GetSection(key).Exists())
+                continue;
+
+            throw new InvalidOperationException(
+                $"Telemetry:{key} is not a setting any more: {why}. Send the telemetry to an OTLP collector — "
+                + "Telemetry:OtlpEndpoint, the standard OTEL_EXPORTER_OTLP_ENDPOINT, or the .NET Aspire dashboard. "
+                + "Remove the key.");
+        }
+    }
+
+    /// <summary>
+    /// An explicit endpoint must be an address: refused here, by its key, rather than as a bare
+    /// <see cref="UriFormatException"/> when the exporter is built.
+    /// </summary>
+    private static void EnsureEndpointIsAnAddress(string? endpoint)
+    {
+        if (string.IsNullOrEmpty(endpoint))
+            return;
+
+        if (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Telemetry:OtlpEndpoint is '{endpoint}', which is not an address: write the collector's http:// or "
+            + "https:// URL, such as http://localhost:4317.");
+    }
+
+    private static void ConfigureTracing(TracerProviderBuilder tracing, OtlpRoute otlp)
     {
         tracing.AddSource(OrkeonDiagnostics.AllSourceNames);
         tracing.AddHttpClientInstrumentation();
@@ -91,12 +147,9 @@ public static class OpenTelemetryExtensions
             tracing.AddOtlpExporter(exporter => exporter.Endpoint = new Uri(endpoint));
         else if (otlp.Exports)
             tracing.AddOtlpExporter();
-
-        if (options.ExportToConsole)
-            tracing.AddConsoleExporter();
     }
 
-    private static void ConfigureMetrics(MeterProviderBuilder metrics, TelemetryOptions options, OtlpRoute otlp)
+    private static void ConfigureMetrics(MeterProviderBuilder metrics, OtlpRoute otlp)
     {
         metrics.AddMeter(OrkeonMetrics.MeterName);
         metrics.AddRuntimeInstrumentation();
@@ -106,9 +159,6 @@ public static class OpenTelemetryExtensions
             metrics.AddOtlpExporter(exporter => exporter.Endpoint = new Uri(endpoint));
         else if (otlp.Exports)
             metrics.AddOtlpExporter();
-
-        if (options.ExportToConsole)
-            metrics.AddConsoleExporter();
     }
 
     private static void AddOtlpLogging(OpenTelemetryLoggerOptions otelLogging, OtlpRoute otlp)

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Orkeon.Hosting;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -154,6 +155,58 @@ public sealed class McpServeCommandTests
         Assert.Contains("--settings", console.Stderr, StringComparison.Ordinal);
         Assert.Contains("--tools", console.Stderr, StringComparison.Ordinal);
         Assert.Empty(console.Stdout);
+    }
+
+    [Fact]
+    public async Task Started_by_another_serve_it_refuses_with_one_line_and_exit_1()
+    {
+        // GAP-35: settings that declare `orkeon mcp serve` under their own MCP:Servers made every
+        // server start another before answering, until the first gave up after 30 s. The marker
+        // a serve leaves in the environment of what it starts stops the second one at once, and
+        // its one line is what the parent joins to its error. The collection is serial: setting
+        // the process environment here cannot reach a test running beside this one.
+        using var scratch = new ScriptScratch();
+        var settings = scratch.WriteFile("appsettings.json", "{}");
+        using var console = new TestConsole(stdin: ListTools + "\n");
+        Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, "1");
+        try
+        {
+            var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings]);
+
+            Assert.Equal(Program.ExitScriptError, exit);
+            Assert.Empty(console.Stdout);
+            var line = Assert.Single(Lines(console.Stderr));
+            Assert.StartsWith("orkeon mcp serve:", line, StringComparison.Ordinal);
+            Assert.Contains(RunnerEnvironment.McpServeVariable, line, StringComparison.Ordinal);
+            Assert.Contains("MCP:Servers", line, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, null);
+        }
+    }
+
+    [Fact]
+    public async Task It_marks_its_environment_before_it_connects_its_servers_and_clears_it_when_it_ends()
+    {
+        // The server declared here writes the marker it inherited on stderr and leaves: the line
+        // reaches this serve's own stderr through the transport, joined to the connection error.
+        using var scratch = new ScriptScratch();
+        var probe = OperatingSystem.IsWindows()
+            ? new { Command = "powershell.exe", Args = new[] { "-NoProfile", "-NonInteractive", "-Command", "[Console]::Error.WriteLine('marker=' + $env:ORKEON_MCP_SERVE); exit 3" } }
+            : new { Command = "sh", Args = new[] { "-c", "echo \"marker=$ORKEON_MCP_SERVE\" >&2; exit 3" } };
+        var settings = scratch.WriteFile("appsettings.json", JsonSerializer.Serialize(new
+        {
+            MCP = new { Servers = new { probe } },
+        }));
+        using var console = new TestConsole(stdin: string.Empty);
+
+        var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings]);
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains("MCP server 'probe' could not be connected", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("marker=1", console.Stderr, StringComparison.Ordinal);
+        Assert.Null(Environment.GetEnvironmentVariable(RunnerEnvironment.McpServeVariable));
     }
 
     private static List<string> Lines(string text) =>

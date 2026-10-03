@@ -258,8 +258,8 @@ Les deux racines de composition livrées n'enregistrent pas les mêmes suites. S
 le REPL. `orkeon run` construit un hôte différent pour un crew YAML (via `RunnerExecution`)
 et pour un script `.ork.ts` (directement sur `RunnerHost`) ; là où les deux diffèrent, la
 table le dit. L'hôte de service `orkeon-host` s'appuie sur le même `RunnerHost` : il a donc
-la suite de `RunnerHost` — tout ce que liste la première colonne sauf `semantic_search`,
-`human_input` et les tools RAG réservés aux scripts. `orkeon mcp serve` construit l'hôte
+la suite de `RunnerHost` — tout ce que liste la première colonne sauf `semantic_search` et
+`human_input`. `orkeon mcp serve` construit l'hôte
 d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` à part — voir
 [Intégration MCP](../architecture/mcp.md#servir-les-outils-avec-orkeon-mcp-serve).
 
@@ -270,7 +270,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | EventHub (7) | ✅ | ❌ |
 | Analysis (15) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ tant que RaggableTree est actif avec son provider d'embeddings local par défaut | ✅ |
-| RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ❌ pour un crew YAML (ni enregistrés ni attachables) ; ✅ pour un script `.ork.ts` (`tools.ragSearch`, `rag.*`, avec le reranker ONNX) | ✅ pour les scripts (un agent YAML ne peut toujours pas les recevoir) |
+| RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ✅ enregistrés par tout hôte `RunnerHost` — `orkeon run` sous toutes ses formes, `orkeon-host`, `orkeon mcp serve` —, avec le reranker ONNX : un agent YAML qui en liste un le reçoit, un script les atteint par `tools.ragSearch` et `rag.*` | ✅ enregistrés, avec le reranker ONNX : un agent YAML qui en liste un le reçoit |
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ seulement si `BRAVE_API_KEY` est posée | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (opt-in hôte) | ❌ |

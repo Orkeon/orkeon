@@ -147,7 +147,7 @@ public sealed class RunnerHostEmailCredentialsTests : IDisposable
         Directory.CreateDirectory(elsewhere);
         var settings = WriteSettings(OAuthAccount(Path.Combine(_root, "tokens")));
 
-        var error = Assert.Throws<InvalidOperationException>(() => RunnerHost.Build(
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(
             settings,
             new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(elsewhere)}:{RunnerVirtualRoots.Credentials}:rw"] }));
 
@@ -161,7 +161,7 @@ public sealed class RunnerHostEmailCredentialsTests : IDisposable
         Directory.CreateDirectory(elsewhere);
         var settings = WriteSettings(PasswordAccount(Path.Combine(_root, "tokens")));
 
-        var error = Assert.Throws<InvalidOperationException>(() => RunnerHost.Build(
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(
             settings,
             new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(elsewhere)}:{RunnerVirtualRoots.Credentials}:rw"] }));
 

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Hosting;
@@ -29,12 +30,21 @@ internal sealed record HostCommandLine(
 internal sealed record ReservedRootsOutcome(string? Error, string? Warnings);
 
 /// <summary>
-/// Everything the daemon decides before a host exists: what the command line says, and every
-/// reason to refuse a configuration rather than start on it (GATE-01).
+/// What the startup sequence produced: the host to run, or — its refusal already reported — the
+/// exit code to leave with.
+/// </summary>
+/// <param name="Host">The host, built and not started; null when the configuration was refused.</param>
+/// <param name="ExitCode">0 with a host; <see cref="HostConfigurationException.ExitCode"/> after a refusal.</param>
+internal sealed record HostLaunch(IHost? Host, int ExitCode);
+
+/// <summary>
+/// Everything the daemon does before its host starts: what the command line says, the host it
+/// builds, and every reason to refuse a configuration rather than start on it (GATE-01, GAP-35).
 /// <para>
-/// Each check answers with the operator-facing message instead of writing it, so the single
-/// exit path in <c>Program.cs</c> stays one <c>Report</c> + exit 78 — and so a test can hold
-/// the wording without capturing a console.
+/// Each check answers with the operator-facing message instead of writing it, and
+/// <see cref="Prepare"/> hands every refusal to one reporter, so <c>Program.cs</c> stays one
+/// <c>Report</c> + exit 78 — and so a test can drive the whole sequence, and hold the wording,
+/// without a process or a captured console.
 /// </para>
 /// </summary>
 internal static class HostStartup
@@ -91,6 +101,126 @@ internal static class HostStartup
             is [System.Reflection.AssemblyInformationalVersionAttribute info, ..] ? info.InformationalVersion : "unknown";
 
         return $"orkeon-host {version}";
+    }
+
+    /// <summary>
+    /// The whole sequence that precedes the start, under one barrier (GAP-35): the command line,
+    /// the configuration the daemon boots from, the mounts, the runner host and the daemon's own
+    /// sections — <c>Orkeon:Host</c>, its <c>A2A</c> and <c>Discord</c> —, read once, here. Every
+    /// refusal is reported, and answered with exit 78, which the systemd unit excludes from its
+    /// restarts. The runner host used to be built outside the barrier: a typo crashed the daemon,
+    /// restarted every ten seconds; and a <c>Discord</c> value the binder could not convert crashed
+    /// it later still, when the host built its services.
+    /// </summary>
+    /// <param name="args">The process arguments.</param>
+    /// <param name="report">Where a refusal is reported: the startup failure reporter, or a test's sink.</param>
+    /// <param name="configureBuilder">What the binary adds to the host builder: the supervisors' lifetimes.</param>
+    /// <returns>The host, built and not started, or the exit code of a refusal already reported.</returns>
+    public static HostLaunch Prepare(string[] args, Action<string> report, Action<IHostBuilder>? configureBuilder = null)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(report);
+
+        var command = Read(args);
+
+        // Flags that need a value have one, --working-dir is applied (before anything else touches the
+        // disk) and the settings file the operator named really exists.
+        if (ValidateArguments(args, command) is { } argumentError)
+            return Refused(report, argumentError);
+
+        // Each hosted crew's directory is mounted read-only under a NAME — /crews, /crews-1, …
+        // (ADR-008), never identity-mapped: the loader reads through the VFS, and a crew path that
+        // only exists on the physical disk would pass the startup probe and then fail on every
+        // message. The crew definitions are the host's primary input — declared by the operator in
+        // the configuration — so their mounts do not require the external-mounts opt-in any more
+        // than the CLI's own config directory does.
+        HostCrewMountPlan crewPlan;
+        try
+        {
+            var bootConfiguration = StartupProbes.BuildBootConfiguration(command.SettingsPath);
+            crewPlan = HostCrewMounts.For(ReadSection<OrkeonHostOptions>(bootConfiguration, OrkeonHostOptions.SectionName).Crews);
+        }
+        catch (HostConfigurationException ex)
+        {
+            return Refused(report, $"orkeon-host: {ex.Message}");
+        }
+
+        // A malformed operator --mount is a configuration error, refused here rather than at the
+        // first message.
+        if (ValidateMounts(command.Mounts) is { } mountError)
+            return Refused(report, mountError);
+
+        // An operator --mount claiming a root the daemon needs for its own crews would otherwise
+        // surface as a raw "Duplicate virtual paths" exception thrown out of a DI factory (ADR-008,
+        // decision 5). /sandbox is in this list because AddOrkeonFileSystem mounts it unconditionally,
+        // in every host — so the guard has to run even when the daemon hosts no crew of its own.
+        // settingsPath, not just --mount: the daemon is the most settings-driven entry point in the
+        // repo and was the one the guard could not see, so a /crews claimed in appsettings.json met the
+        // host's own crew mount and came back as "Duplicate virtual paths" out of a DI factory.
+        var reservedRoots = CheckReservedRoots(
+            command.Mounts, command.SettingsPath, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]);
+        if (reservedRoots.Error is { } reservedRootsError)
+            return Refused(report, reservedRootsError);
+
+        // Accepted, but the guard still had something to say: re-emitted so the terminal and journald
+        // contracts stay byte-identical to the CLI's.
+        if (reservedRoots.Warnings is { } reservedRootsWarnings)
+            Console.Error.Write(reservedRootsWarnings);
+
+        var mounts = new List<string>(command.Mounts);
+        mounts.AddRange(crewPlan.Mounts);
+
+        try
+        {
+            var host = RunnerHost.Build(
+                command.SettingsPath,
+                new RunnerMountPlan
+                {
+                    CliMounts = mounts,
+                    AllowExternalMounts = crewPlan.Mounts.Count > 0 || args.Contains("--allow-external-mounts", StringComparer.Ordinal),
+                },
+                configureLogging: null,
+                // Everything the daemon adds to the runner host lives in HostServiceRegistration, so a
+                // test builds the very host this binary runs — its sections read there, once.
+                configureServices: (context, services) => services.AddHostServices(context.Configuration, crewPlan),
+                configureBuilder: configureBuilder);
+            return new HostLaunch(host, 0);
+        }
+        catch (RunnerSettingsException ex)
+        {
+            return Refused(report, $"orkeon-host: {ex.Message}");
+        }
+        catch (HostConfigurationException ex)
+        {
+            return Refused(report, $"orkeon-host: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Binds one of the daemon's sections. A value the binder cannot convert — a
+    /// <c>RunTimeout</c> of <c>"abc"</c> — is a refused configuration naming its key (exit 78),
+    /// not an exception escaping the start (GAP-35). Only binding happens here, so only the
+    /// binder's refusal is converted.
+    /// </summary>
+    /// <exception cref="HostConfigurationException">A value of the section cannot be converted.</exception>
+    internal static T ReadSection<T>(IConfiguration configuration, string sectionName)
+        where T : new()
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        try
+        {
+            return configuration.GetSection(sectionName).Get<T>() ?? new T();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new HostConfigurationException(ex.Message, ex);
+        }
+    }
+
+    private static HostLaunch Refused(Action<string> report, string refusal)
+    {
+        report(refusal);
+        return new HostLaunch(null, HostConfigurationException.ExitCode);
     }
 
     /// <summary>Reads the flags the daemon understands out of the raw argument array.</summary>
@@ -282,12 +412,25 @@ internal static class StartupProbes
     /// diagnostic — the file they were looking at had simply never been read.
     /// </para>
     /// </summary>
-    public static IConfigurationRoot BuildBootConfiguration(string? settingsPath) =>
-        new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile(ConventionalNames.SettingsFile, optional: true)
-            .AddJsonFile(settingsPath ?? ConventionalNames.SettingsFile, optional: true)
-            .AddEnvironmentVariables()
-            .AddEnvironmentVariables("ORKEON_")
-            .Build();
+    /// <exception cref="HostConfigurationException">
+    /// A settings file cannot be read: named, with the line and the position of what its JSON gets
+    /// wrong (GAP-35) — it used to escape the start as an unhandled exception.
+    /// </exception>
+    public static IConfigurationRoot BuildBootConfiguration(string? settingsPath)
+    {
+        try
+        {
+            return new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile(ConventionalNames.SettingsFile, optional: true)
+                .AddJsonFile(settingsPath ?? ConventionalNames.SettingsFile, optional: true)
+                .AddEnvironmentVariables()
+                .AddEnvironmentVariables("ORKEON_")
+                .Build();
+        }
+        catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException or UnauthorizedAccessException)
+        {
+            throw new HostConfigurationException(RunnerSettings.DescribeUnreadableSettings(ex), ex);
+        }
+    }
 }

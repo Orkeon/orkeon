@@ -227,11 +227,12 @@ public static partial class RunnerExecution
                 configureLogging: (_, b) => ConfigureStderrOnlyLogging(b),
                 configureServices: configureServices);
         }
-        catch (InvalidOperationException ex)
+        catch (RunnerSettingsException ex)
         {
-            // A setting the host build rejects — a retired key, MCP:EnableServer, an LLM profile
-            // it cannot build — is the operator's to fix: the sentence, not a stack trace.
-            await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
+            // A setting the host build refuses — a retired key, MCP:EnableServer, an LLM profile
+            // it cannot build, a file it cannot read, an address that is none (GAP-35) — is the
+            // operator's to fix: the sentence, not a stack trace.
+            ReportRefusedSettings(ex);
             return null;
         }
 

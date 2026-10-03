@@ -135,7 +135,12 @@ server in an explicit startup step (`McpStartup`) before the crew loads — and 
 `--validate` judges the crew and `--list-tools` prints the manifest, so the three see the
 same tool surface. A server that cannot be connected (a command that does not exist, an
 endpoint that does not answer, a handshake still pending after 30 s) costs one error line
-naming it, on the log and on stderr, and the run goes on. The tools are registered under
+naming it, on the log and on stderr, and the run goes on. A stdio server's own stderr is
+read as it writes it — each line to the log at Debug (`MCP server '<id>' stderr: …`), so a
+server that writes a lot there no longer blocks on it — and a server that stops before
+answering says why: its exit code and the last line it wrote on stderr join that error line
+(`Transport disconnected: the MCP server exited with code 1; its last line on stderr: …`).
+The tools are registered under
 their own names, without a server prefix, and a name the registry already holds — a
 built-in tool, a script tool, or a tool of a server connected earlier — is **refused**: the
 MCP tool is not registered, one error line names the server and the tool (`The tool
@@ -211,8 +216,10 @@ stdout, one per line; closing stdin ends the server.
   goes to stderr — where an MCP client records a server's output —, and so do `--help` and
   the usage errors.
 - **Exit codes**: `0` the client closed the stream (or `--help`); `1` a usage error, a refused
-  setting (`MCP:EnableServer`, a mount the settings declare that cannot be mounted), a
-  `--tools` name the host does not have; `2` an unexpected error. Ctrl+C ends the process.
+  setting (`MCP:EnableServer`, a mount the settings declare that cannot be mounted, any other
+  setting the runner host refuses — one `ERROR:` line names it), a `--tools` name the host does
+  not have, a serve started by another serve (below); `2` an unexpected error. Ctrl+C ends the
+  process.
 
 A client configuration — Claude Desktop's `claude_desktop_config.json`:
 
@@ -228,9 +235,19 @@ A client configuration — Claude Desktop's `claude_desktop_config.json`:
 ```
 
 A client starts its servers in a working directory of its own choosing: name the settings
-file with `--settings`, or rely on the per-user file of `orkeon init`. Settings that
-`orkeon mcp serve` reads must not declare `orkeon mcp serve` itself under `MCP:Servers`:
-each server would start another one before answering.
+file with `--settings`, or rely on the per-user file of `orkeon init`.
+
+**A serve never starts under another one.** Before it connects the MCP servers of its
+settings, a serve sets `ORKEON_MCP_SERVE` in its own environment — every process it starts
+inherits it, and it is cleared when the serve ends — and a serve that finds it set refuses to
+start: exit `1`, and one line on stderr, which the serve that started it joins to its
+connection error
+(``orkeon mcp serve: refused to start: another `orkeon mcp serve` started this one (ORKEON_MCP_SERVE is set), …``).
+Settings that declare `orkeon mcp serve` itself under `MCP:Servers` therefore cost that one line, where each
+server used to start another before answering, until the first gave up after 30 s: remove the
+entry, or declare both servers in the client. `orkeon run` and `orkeon-host` set no marker,
+and can use an `orkeon mcp serve` started on other settings. Like `ORKEON_DEBUG`, the variable
+is also read by the `ORKEON_` configuration layer, as a key (`MCP_SERVE`) no setting is.
 
 ## Honest limitations
 

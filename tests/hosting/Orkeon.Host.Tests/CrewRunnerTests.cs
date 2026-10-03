@@ -214,6 +214,34 @@ tasks:
     }
 
     [Fact]
+    public async Task A_run_asked_for_while_the_host_stops_is_refused_with_its_sentence_without_loading_its_crew()
+    {
+        // GAP-35: once the stop has begun, a run is refused as "the host is stopping" — not
+        // "busy", which tells a person to retry in a moment when the host is going away. The
+        // broken crew proves the refusal comes first: loading it would have answered Failed.
+        var (runner, registry, host) = Build(crewFile: "broken.yaml");
+        using var _ = host;
+        registry.CloseAdmission();
+        var acknowledged = false;
+
+        var result = await runner.RunAsync(
+            "support", "hello", "test:thread-1",
+            onStarted: _ =>
+            {
+                acknowledged = true;
+                return Task.CompletedTask;
+            });
+
+        Assert.Equal(HostedRunOutcome.HostStopping, result.Outcome);
+        Assert.Equal(
+            "The host is stopping: this run was not started. Send it again once the host is back.",
+            result.Message);
+        Assert.Null(result.RunId);
+        Assert.False(acknowledged);
+        Assert.Empty(registry.Running);
+    }
+
+    [Fact]
     public async Task A_stopped_run_says_it_was_stopped()
     {
         var (runner, registry, host) = Build();

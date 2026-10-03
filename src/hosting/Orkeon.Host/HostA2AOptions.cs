@@ -95,6 +95,13 @@ internal sealed record HostA2AOptions
     }
 
     /// <summary>
+    /// The URL prefix the server listens on — <see cref="Host"/>, <see cref="Port"/> and a final
+    /// slash, <c>http://localhost:5002/</c> by default: what HTTP.sys reserves for an account, and
+    /// what a refusal of the listener names (GAP-35).
+    /// </summary>
+    public string ListenerPrefix => $"{Host.TrimEnd('/')}:{Port.ToString(CultureInfo.InvariantCulture)}/";
+
+    /// <summary>
     /// Whether the listener stays on the loopback interface (<c>localhost</c>, <c>127.0.0.1</c>,
     /// <c>[::1]</c>): only then may it serve without authentication.
     /// </summary>

@@ -296,6 +296,24 @@ public sealed class ForgeCommandTests : IDisposable
     }
 
     /// <summary>
+    /// GAP-35: a setting the engine host refuses is a refusal like the others — one line naming
+    /// it, exit 1 — not the "unexpected error" exit 2 it fell into.
+    /// </summary>
+    [Fact]
+    public async Task A_setting_the_engine_host_refuses_exits_one_naming_it()
+    {
+        Directory.CreateDirectory(_workspace);
+        var settings = Path.Combine(_workspace, "refused.json");
+        await File.WriteAllTextAsync(settings, """{ "RaggableTree": { "Exclude": ["bin"] } }""", TestContext.Current.CancellationToken);
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--settings", settings], _workspace);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("orkeon forge: RaggableTree:Exclude", console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A mistyped read folder is refused before anything moves: no session is created for
     /// it, and no host boots to discover an absent mount base the hard way.
     /// </summary>

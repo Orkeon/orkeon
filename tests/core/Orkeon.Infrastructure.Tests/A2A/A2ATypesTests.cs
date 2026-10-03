@@ -70,6 +70,27 @@ public class A2ATypesTests
     }
 
     [Fact]
+    public void A2ATaskUpdate_CarriesItsStatusMessageAsMessage_AndOmitsItWhenThereIsNone()
+    {
+        // GAP-35: a progress line is the status message of a Working update — the A2A status's
+        // message — never mixed into partialOutput, which stays the output.
+        var update = new Orkeon.Application.Interfaces.AgentCommunication.A2ATaskUpdate
+        {
+            TaskId = "task-1",
+            Status = Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus.Working,
+            Message = "✔ Analyst — step 1 done",
+        };
+
+        var json = JsonSerializer.Serialize(update);
+        var back = JsonSerializer.Deserialize<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskUpdate>(json)!;
+
+        Assert.Contains("\"message\":", json, StringComparison.Ordinal);
+        Assert.Equal("✔ Analyst — step 1 done", back.Message);
+        Assert.Null(back.PartialOutput);
+        Assert.DoesNotContain("\"message\"", JsonSerializer.Serialize(update with { Message = null }), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A2AError_ShouldCreateWithCodeAndMessage()
     {
         // Arrange & Act

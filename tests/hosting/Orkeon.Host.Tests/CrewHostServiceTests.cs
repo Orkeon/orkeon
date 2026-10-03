@@ -162,12 +162,41 @@ public sealed class CrewHostServiceTests : IDisposable
         // loaded parallel run made the service stop itself before the run was even started.
         await service.StartAsync(CancellationToken.None);
 
-        var run = registry.TryStart("support", "test:drain")!;
+        var run = registry.TryStart("support", "test:drain", out _)!;
         Assert.False(run.Cancellation.IsCancellationRequested);
 
         await service.StopAsync(CancellationToken.None);
 
         Assert.True(run.Cancellation.IsCancellationRequested);
         Assert.True(run.StopRequested);
+    }
+
+    [Fact]
+    public async Task A_run_asked_for_during_the_drain_is_refused_and_the_drain_ends_with_the_run_admitted_before()
+    {
+        // GAP-35: the drain admitted what arrived during the grace period, waited for it, then
+        // stopped it — the person read "The run was stopped." about work that should never have
+        // begun, and the stop lasted the whole grace. The stop closes admission first.
+        var options = new OrkeonHostOptions
+        {
+            Crews = [Crew()],
+            ShutdownGracePeriod = TimeSpan.FromSeconds(30),
+        };
+        var registry = new CrewHostRegistry(Options.Create(options));
+        using var service = new CrewHostService(registry, Options.Create(options), NullLogger<CrewHostService>.Instance);
+        await service.StartAsync(CancellationToken.None);
+        var before = registry.TryStart("support", "test:before", out _)!;
+
+        var stopping = service.StopAsync(CancellationToken.None);
+
+        Assert.Null(registry.TryStart("support", "test:during", out var refusal));
+        Assert.Equal(AdmissionRefusal.HostStopping, refusal);
+        Assert.False(stopping.IsCompleted);
+
+        // The run admitted before finishes within its grace: the drain ends with it, long before
+        // the 30-second deadline, and never had to stop it.
+        registry.Finish(before.Id);
+        await stopping.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.False(before.StopRequested);
     }
 }

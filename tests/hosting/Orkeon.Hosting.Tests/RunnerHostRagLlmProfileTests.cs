@@ -66,7 +66,7 @@ public sealed class RunnerHostRagLlmProfileTests : IDisposable
     [Fact]
     public void A_rag_profile_the_host_does_not_offer_refuses_the_start_listing_the_known_ones()
     {
-        var error = Assert.Throws<InvalidOperationException>(() => Build("claud"));
+        var error = Assert.Throws<RunnerSettingsException>(() => Build("claud"));
 
         Assert.Contains("Orkeon:Rag:LlmProfile", error.Message, StringComparison.Ordinal);
         Assert.Contains("'claud'", error.Message, StringComparison.Ordinal);

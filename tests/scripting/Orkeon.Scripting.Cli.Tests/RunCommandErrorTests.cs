@@ -51,6 +51,32 @@ public sealed class RunCommandErrorTests
     }
 
     /// <summary>
+    /// GAP-35: a setting the runner host refuses is a configuration error on the procedural
+    /// script path too — one line and exit 1, as for a YAML crew — not an "unexpected error"
+    /// (exit 2) with the exception's type in front of the sentence that says what to fix.
+    /// </summary>
+    [Fact]
+    public async Task A_setting_the_host_refuses_exits_1_with_the_sentence_that_names_it()
+    {
+        using var scratch = new ScriptScratch();
+        var script = scratch.WriteScript("plain.ork.ts", """
+            /// <reference orkeon-script="1.0" />
+            """);
+        var settings = scratch.WriteFile("refused.json", """{ "RaggableTree": { "Exclude": ["bin"] } }""");
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = script,
+            SettingsPath = settings,
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("orkeon run: RaggableTree:Exclude", console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("unexpected error", console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// ADR-008, decision 5, on the scripting path: a user mount claiming a root the runner
     /// needs (/script here, /llm-logs likewise) is a configuration mistake and must read as
     /// one — not as a duplicate-virtual-path exception thrown out of a DI factory.

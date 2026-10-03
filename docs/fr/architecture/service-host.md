@@ -119,7 +119,9 @@ résout dans l'espace de noms puis se fait refuser là, sauf à élargir
 
 `Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Le dossier de chaque crew est **monté automatiquement dans le VFS, en lecture seule, sous un nom** — `/crews`, puis `/crews-1`, `/crews-2`, … pour chaque dossier supplémentaire — et la crew est chargée par cette orthographe virtuelle (`/crews/support.yaml` pour un fichier, `/crews-1` pour un dossier). Le loader lit par le système de fichiers virtuel comme tout le reste du framework, et un chemin qui n'existerait que sur le disque physique passerait la sonde de démarrage puis échouerait à chaque message. Le montage n'est délibérément **pas** identité : un agent qui appelle `list_mounts`, ou qui lit un message de refus d'accès, ne doit jamais recevoir l'organisation disque de l'opérateur ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Un `--mount` à vous qui revendique `/crews*` est refusé au démarrage avec le code de sortie 78. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
 
-La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, deux crews de même nom (sans tenir compte de la casse), un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul ou négatif, un `ShutdownGracePeriod` négatif, une entrée de `LlmProfiles` qui nomme un profil que `Llm:Profiles` ne définit pas, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif, une entrée de `GuildIds` ou une clé de `Routes` qui n'est pas un nombre, ou une entrée de `Routes` ou un `DefaultCrew` qui nomme une crew que l'hôte ne déclare pas ; pour un serveur A2A activé, aucune crew exposée, une crew exposée que l'hôte ne déclare pas, un `Host` ou un `Port` mal formé, ou une écoute au-delà de la boucle locale sans authentification, et — quel que soit l'interrupteur A2A — une clé `A2A:EnableServer`, `A2A:Host` ou `A2A:Port`, que le démon ne lit pas (voir [Autres agents (A2A)](#5-autres-agents-a2a)), refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
+La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, deux crews de même nom (sans tenir compte de la casse), un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul ou négatif, un `ShutdownGracePeriod` négatif, une entrée de `LlmProfiles` qui nomme un profil que `Llm:Profiles` ne définit pas, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif, une entrée de `GuildIds` ou une clé de `Routes` qui n'est pas un nombre, ou une entrée de `Routes` ou un `DefaultCrew` qui nomme une crew que l'hôte ne déclare pas ; pour un serveur A2A activé, aucune crew exposée, une crew exposée que l'hôte ne déclare pas, un `Host` ou un `Port` mal formé, ou une écoute au-delà de la boucle locale sans authentification, et — quel que soit l'interrupteur A2A — une clé `A2A:EnableServer`, `A2A:Host` ou `A2A:Port`, que le démon ne lit pas (voir [Autres agents (A2A)](#5-autres-agents-a2a)), et une écoute que le système refuse — une URL que HTTP.sys n'a réservée pour personne, un port qu'un autre processus tient (voir [Windows](#windows)) ; et, avant tous ceux-là, un réglage que refuse l'hôte des runners — une clé qui n'est plus un réglage (`RaggableTree:Exclude`), un profil LLM qu'il ne sait pas construire, une valeur que le lieur de configuration ne convertit pas (`"RunTimeout": "abc"`), un fichier de réglages qu'il ne peut pas lire, une adresse qui n'en est pas une (`RaggableTree:Embedding:BaseUrl`, `Telemetry:OtlpEndpoint`), refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
+
+Toute la séquence qui précède le démarrage passe sous cette barrière : la configuration d'amorçage du démon, ses propres sections — `Orkeon:Host` avec son `A2A`, `Orkeon:Host:Discord`, et la section `A2A` —, **lues une fois, au démarrage**, et l'hôte des runners lui-même. Chaque refus tient en une ligne qui nomme la clé — ou le fichier, avec la ligne et la position de ce que son JSON a de faux — sur stderr et, sous le SCM de Windows, dans le journal d'événements Application. Une valeur que le lieur ne convertissait pas ne se révélait que plus tard, en plantage quand l'hôte construisait ses services ; une faute de frappe dans les réglages faisait planter le démon d'emblée, et systemd le relançait toutes les dix secondes.
 
 Les crews sont lues **une seule fois**, au démarrage : ni balayage de dossier, ni rechargement. Ajouter une crew, c'est modifier le fichier et redémarrer.
 
@@ -202,7 +204,10 @@ Le canal de chat est une entrée ; [A2A](../reference/a2a-conformance.md) est l'
 - le run échoue → `Failed`, `error` est la phrase qu'un fil de chat reçoit — l'id du run à chercher dans le journal de l'hôte, jamais le détail (chemins, endpoints) que le journal garde ;
 - la crew est à son `MaxConcurrentRuns` — conversations de chat et tâches A2A comptées ensemble → `Failed`, en le disant ; une tâche n'est jamais mise en file ;
 - `DELETE /a2a/tasks/{id}` arrête le run, et la tâche répond `Cancelled` ; un run au-delà de `RunTimeout` répond aussi `Cancelled`, en disant qu'il a expiré ;
+- l'hôte s'arrête → `Failed`, `error` disant « The host is stopping: this run was not started. Send it again once the host is back. » — rien n'a été chargé, aucun modèle appelé ;
 - un `skillId` que la carte ne publie pas → `Failed`, en nommant les compétences publiées ; un `input` vide → `Failed` aussi.
+
+**Suivre une tâche.** `sendSubscribe` diffuse le run en événements server-sent : `Working`, puis une mise à jour `Working` par ligne que lit un fil de chat — `Running '<crew>'…`, puis `✔ <rôle> — step N done` à chaque tâche terminée —, la ligne dans son `message` (`partialOutput` reste la sortie), puis l'état final et `[DONE]`. Rien ne suit l'état final ; un pair qui s'en va en cours de run n'en lit plus rien, et le run va jusqu'à son terme.
 
 `GET /a2a/tasks/{id}` répond `501` : le démon ne garde aucun enregistrement de tâche.
 
@@ -219,7 +224,7 @@ Le canal de chat est une entrée ; [A2A](../reference/a2a-conformance.md) est l'
 
 Un pair envoie alors `Authorization: ApiKey <clé>`, la clé étant la valeur de `ORKEON_A2A_PEER_KEY` dans l'environnement du service.
 
-**Ordre.** Le serveur A2A démarre après la connexion des serveurs MCP — une tâche charge une crew, dont les outils doivent être là — et avant le canal de chat, il s'arrête donc après le drainage : un run en vol pendant le délai de grâce livre encore sa réponse au pair qui l'a demandé.
+**Ordre.** Le serveur A2A démarre après la connexion des serveurs MCP — une tâche charge une crew, dont les outils doivent être là — et avant le canal de chat, il s'arrête donc après le drainage : un run en vol pendant le délai de grâce livre encore sa réponse au pair qui l'a demandé, tandis qu'une tâche arrivée pendant ce délai est refusée — l'hôte s'arrête — et ne lance rien.
 
 ---
 
@@ -242,7 +247,7 @@ journalctl -u orkeon-host -f
 
 Il n'y a délibérément **pas de `WatchdogSec`** : l'intégration systemd de .NET envoie `READY=1` et `STOPPING=1` et aucun battement de watchdog — en armer un ferait tuer par systemd un host sain à son premier battement manqué, jamais envoyé.
 
-`TimeoutStopSec` est délibérément plus long que `ShutdownGracePeriod`, pour que les runs en vol aient leur grâce avant que systemd ne perde patience. **Augmenter l'un sans l'autre rend celui qui reste en arrière dépourvu de sens.** À l'arrêt, le host attend jusqu'à `ShutdownGracePeriod` les runs en vol, puis les arrête tous et leur laisse cinq secondes de plus pour se terminer ; le budget d'arrêt du host générique est fixé à la période de grâce plus dix secondes pour couvrir les deux.
+`TimeoutStopSec` est délibérément plus long que `ShutdownGracePeriod`, pour que les runs en vol aient leur grâce avant que systemd ne perde patience. **Augmenter l'un sans l'autre rend celui qui reste en arrière dépourvu de sens.** À l'arrêt, le host ferme d'abord l'admission : **dès cet instant, plus aucun run ne démarre** — un message de chat ou une tâche A2A arrivé pendant la grâce reçoit « The host is stopping: this run was not started. Send it again once the host is back. », sans accusé de réception ni bouton Stop, et un pair A2A le lit comme `Failed` ; rien n'est chargé, aucun modèle n'est appelé. Il attend ensuite jusqu'à `ShutdownGracePeriod` les runs en vol — le canal et le serveur A2A restent debout pendant ce temps, pour livrer leurs réponses, et `/status` et `/stop` répondent toujours —, puis les arrête tous et leur laisse cinq secondes de plus pour se terminer ; le budget d'arrêt du host générique est fixé à la période de grâce plus dix secondes pour couvrir les deux.
 
 Le journal est discret par défaut : l'hôte des runners journalise au niveau **Warning**, si bien que les lignes Information — chaque crew hébergée au démarrage, chaque run lancé et terminé, la connexion Discord — n'apparaissent qu'une fois le niveau relevé dans les settings, par exemple `"Logging": { "LogLevel": { "Orkeon": "Information" } }`.
 
@@ -307,11 +312,28 @@ de service lit vraiment. `install-service.ps1 -Uninstall` retire le service et
 vous laisse `ProgramData\Orkeon`.
 
 Avec A2A activé, l'écoute passe par HTTP.sys, qui ne laisse un compte non
-administrateur écouter que sur un préfixe d'URL réservé pour lui. Réservez une
-fois, en administrateur, le préfixe que décrit `Orkeon:Host:A2A` —
-`netsh http add urlacl url=http://+:5002/ user="NT SERVICE\Orkeon"` pour toutes
-les interfaces, `http://localhost:5002/` pour le défaut — sinon le démarrage
-échoue sur un *accès refusé*.
+administrateur écouter que sur un préfixe d'URL réservé pour lui : le préfixe que
+décrit `Orkeon:Host:A2A` — `Host`, `Port` et une barre finale,
+`http://localhost:5002/` par défaut, `http://+:5002/` pour toutes les interfaces.
+Le script le réserve en enregistrant le service :
+`install-service.ps1 -A2AUrlPrefix http://+:5002/` lance `netsh http add urlacl`
+pour `NT SERVICE\Orkeon` (une réservation que le service tient déjà est gardée ;
+une réservation tenue par un autre compte fait échouer l'enregistrement), note le
+préfixe sous la clé du service, et `-Uninstall` — ou un nouvel enregistrement —
+la retire. Relancez le script avec le nouveau préfixe après avoir changé `Host`
+ou `Port`. Le MSI ne réserve rien : il s'installe avant toute configuration et ne
+peut donc pas connaître le préfixe — son écran de fin donne l'étape, à lancer une
+fois en administrateur :
+
+```powershell
+netsh http add urlacl url=http://+:5002/ user="NT SERVICE\Orkeon"
+```
+
+Un service démarré sans sa réservation ne plante pas : le démarrage est refusé
+avec le code de sortie 78, et le journal d'événements Application porte la
+commande exacte, préfixe et compte compris. Tout autre refus de l'écoute — un
+port qu'un autre processus tient, un port sous 1024 sans le privilège — nomme le
+préfixe et `Orkeon:Host:A2A:Port`.
 
 ### Conteneur
 

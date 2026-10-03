@@ -535,6 +535,13 @@ internal static class ForgeCommand
                 .ConfigureAwait(false);
             return ExitCancelled;
         }
+        catch (RunnerSettingsException ex)
+        {
+            // A setting the engine host refuses is a refusal like the others, exit 1 (GAP-35) —
+            // not the unexpected error it fell into.
+            await Console.Error.WriteLineAsync($"orkeon forge: {ex.Message}").ConfigureAwait(false);
+            return ExitError;
+        }
 #pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
         catch (Exception ex)
         {

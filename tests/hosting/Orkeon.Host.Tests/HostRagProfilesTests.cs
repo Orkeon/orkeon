@@ -64,7 +64,7 @@ public sealed class HostRagProfilesTests : IDisposable
             }
             """);
 
-        var error = Assert.Throws<InvalidOperationException>(() => RunnerHost.Build(
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(
             settings,
             new RunnerMountPlan { InternalMounts = [$"{FileSystemMount.Quote(_root)}:{RunnerVirtualRoots.Crew}:ro"] },
             configureServices: (context, services) =>

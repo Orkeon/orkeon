@@ -22,6 +22,9 @@ internal enum HostedRunOutcome
     /// <summary>The crew is already at its concurrency limit.</summary>
     Busy,
 
+    /// <summary>The host is stopping: the run was not started (GAP-35).</summary>
+    HostStopping,
+
     /// <summary>Someone asked it to stop, or the host is shutting down.</summary>
     Cancelled,
 
@@ -73,6 +76,13 @@ internal interface ICrewRunner
 /// </summary>
 internal sealed partial class CrewRunner : ICrewRunner
 {
+    /// <summary>
+    /// What a person in a chat thread, or an A2A peer, reads when it asks for a run while the host
+    /// stops: why nothing started, and that the same request will work once the host is back.
+    /// </summary>
+    internal const string HostStoppingMessage =
+        "The host is stopping: this run was not started. Send it again once the host is back.";
+
     private readonly IServiceScopeFactory _scopes;
     private readonly CrewHostRegistry _registry;
     private readonly IHost _host;
@@ -107,7 +117,8 @@ internal sealed partial class CrewRunner : ICrewRunner
     /// <summary>
     /// Runs <paramref name="crewName"/> against <paramref name="prompt"/>, reporting through
     /// <paramref name="onProgress"/> as tasks finish. Refusals come back as results, never as
-    /// exceptions: "unknown crew" and "busy" are answers a channel relays to a person.
+    /// exceptions: "unknown crew", "busy" and "the host is stopping" are answers a channel relays
+    /// to a person.
     /// </summary>
     /// <param name="crewName">Which hosted crew to run.</param>
     /// <param name="prompt">What to run it on.</param>
@@ -136,7 +147,16 @@ internal sealed partial class CrewRunner : ICrewRunner
         if (hosted is null)
             return new HostedRunResult(HostedRunOutcome.UnknownCrew, null, $"No hosted crew named '{crewName}'.");
 
-        var run = _registry.TryStart(crewName, origin);
+        var run = _registry.TryStart(crewName, origin, out var refusal);
+        if (run is null && refusal == AdmissionRefusal.HostStopping)
+        {
+            // The stop has begun (GAP-35): nothing starts, and whoever asked reads why, and that
+            // the same request works once the host is back — not "busy", which tells them to try
+            // again in a moment against a host that is going away.
+            LogRunRefusedWhileStopping(hosted.Name, origin);
+            return new HostedRunResult(HostedRunOutcome.HostStopping, null, HostStoppingMessage);
+        }
+
         if (run is null)
         {
             return new HostedRunResult(
@@ -287,6 +307,9 @@ internal sealed partial class CrewRunner : ICrewRunner
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Run {RunId} started: crew '{CrewName}' from {Origin}")]
     private partial void LogRunStarted(string runId, string crewName, string origin);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "A run of '{CrewName}' from {Origin} was refused: the host is stopping")]
+    private partial void LogRunRefusedWhileStopping(string crewName, string origin);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Run {RunId} of '{CrewName}' finished")]
     private partial void LogRunFinished(string runId, string crewName);

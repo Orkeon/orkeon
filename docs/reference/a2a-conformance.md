@@ -16,7 +16,7 @@ for what interoperates and what does not.
 | v1.0 operation | Orkeon endpoint | Status | Notes |
 |---|---|---|---|
 | Send Message | `POST /a2a/tasks/send` | 🟡 Partial | 0.x-era shape (`A2ATaskRequest`: id/skillId/input/inputMode/metadata), not the v1.0 `Message`/`Part` data model. The `skillId` is the `id` of a skill on the agent card; the agent runs and the response carries its output — see [Task execution](#task-execution). |
-| Send Streaming Message | `POST /a2a/tasks/sendSubscribe` (SSE) | 🟡 Partial | Working → final update → `[DONE]`; no `TaskStatusUpdateEvent`/`TaskArtifactUpdateEvent` typed events. |
+| Send Streaming Message | `POST /a2a/tasks/sendSubscribe` (SSE) | 🟡 Partial | `Working` → one `Working` update per progress line the router reports, the line in `message` → final update → `[DONE]`; no `TaskStatusUpdateEvent`/`TaskArtifactUpdateEvent` typed events, no keep-alive. |
 | Get Task | `GET /a2a/tasks/{id}` | 🟡 Partial | **Real since PUB-08** when task persistence is enabled (`AddOrkeonA2ATaskPersistence()` over a checkpointing `IStateStore`): 200 with the recorded state, 404 for unknown ids. Without the opt-in: explicit `501` (never fabricated state). |
 | List Tasks | — | 🔴 Absent | |
 | Cancel Task | `DELETE /a2a/tasks/{id}` | 🟡 Partial | A task the agent is still working on is **interrupted**: its execution token is cancelled and the submitting request answers `Cancelled`. With persistence, a record left `Working` by a stopped server flips to `Cancelled`; a finished task answers 409 and keeps its state. Unknown ids (or, without persistence, any task not running) answer 404. |
@@ -72,6 +72,16 @@ scope:
   `Cancelled`;
 - no agent publishes that id, the input is empty, or the host registered no
   execution service (`AddOrkeonApplication()` does) → `Failed`, saying which.
+
+**Progress.** `RouteTaskAsync(request, progress, ct)` receives the progress a
+`sendSubscribe` follows — `null` for `send`. Each line the router reports reaches
+the peer, in order, as a `Working` update carrying it as its `message`
+(`partialOutput` stays the output). The stream has one writer: the lines queue,
+and the queue closes when the router answers, so a line reported after that is
+dropped rather than sent after the final state; a peer that leaves mid-task reads
+no more progress, and the task still runs to its end and is recorded.
+`A2ATaskRouter` reports nothing — one agent turn has no step to report;
+`orkeon-host`'s router reports the lines a chat thread reads.
 
 Nothing answers `Completed` without the agent having run. A host that routes
 differently registers its own `IA2ATaskRouter` before calling `AddOrkeonA2A`: the

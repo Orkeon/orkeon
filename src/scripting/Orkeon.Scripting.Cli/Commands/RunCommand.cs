@@ -414,6 +414,15 @@ internal static partial class RunCommand
         {
             exitCode = Program.ExitCancelled;
         }
+        catch (RunnerSettingsException ex)
+        {
+            // A setting the host refuses is a configuration error here as on the YAML path: the
+            // sentence, exit 1 (GAP-35) — not an "unexpected error" with its type in front of it.
+            if (RunnerEnvironment.DebugDiagnostics)
+                await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+            await Console.Error.WriteLineAsync($"orkeon run: {ex.Message}").ConfigureAwait(false);
+            exitCode = Program.ExitScriptError;
+        }
         catch (FileNotFoundException ex)
         {
             await Console.Error.WriteLineAsync($"orkeon run: {ex.Message}").ConfigureAwait(false);

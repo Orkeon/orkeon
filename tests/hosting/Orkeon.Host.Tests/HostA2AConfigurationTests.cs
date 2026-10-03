@@ -119,6 +119,44 @@ public sealed class HostA2AConfigurationTests
     }
 
     [Fact]
+    public async Task A_listener_the_system_refuses_fails_the_start_naming_the_prefix_and_the_reservation()
+    {
+        // GAP-35: under the Windows SCM, HTTP.sys refuses to let NT SERVICE\Orkeon listen on a URL
+        // nobody reserved for it (ERROR_ACCESS_DENIED, 5). That HttpListenerException left the host
+        // as a crash the SCM restarted twice in silence; it is a configuration to fix, and the
+        // refusal says how — the exact prefix, and the command an administrator runs once.
+        await using var server = new RecordingA2AServer
+        {
+            StartFailure = new System.Net.HttpListenerException(5, "Access is denied."),
+        };
+
+        var error = await Assert.ThrowsAsync<HostConfigurationException>(
+            () => Service(Exposing("http://localhost"), server).StartAsync(Ct));
+
+        Assert.Contains("http://localhost:5002/", error.Message, StringComparison.Ordinal);
+        Assert.Contains("netsh http add urlacl url=http://localhost:5002/ user=", error.Message, StringComparison.Ordinal);
+        Assert.Contains("-A2AUrlPrefix", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_port_the_system_will_not_give_fails_the_start_naming_the_prefix()
+    {
+        // Any other refusal of the listener — a port another process holds, a port under 1024
+        // without the privilege — is the configuration too, named, with what to change.
+        await using var server = new RecordingA2AServer
+        {
+            StartFailure = new System.Net.HttpListenerException(183, "Cannot create a file when that file already exists."),
+        };
+
+        var error = await Assert.ThrowsAsync<HostConfigurationException>(
+            () => Service(Exposing("http://localhost"), server).StartAsync(Ct));
+
+        Assert.Contains("http://localhost:5002/", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Host:A2A:Port", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("netsh", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task The_server_it_started_stops_with_the_host_and_a_disabled_section_touches_nothing()
     {
         await using var served = new RecordingA2AServer();

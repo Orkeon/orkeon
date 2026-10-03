@@ -63,7 +63,7 @@ public sealed class HostedCrewA2ARouterTests
             SkillId = "veille",
             Input = "What changed this week?",
             Metadata = new Dictionary<string, string> { ["topic"] = "agents" },
-        }, Ct);
+        }, progress: null, Ct);
 
         Assert.Equal("task-1", response.TaskId);
         Assert.Equal(A2ATaskStatus.Completed, response.Status);
@@ -76,6 +76,7 @@ public sealed class HostedCrewA2ARouterTests
     [Theory]
     [InlineData(nameof(HostedRunOutcome.Failed), A2ATaskStatus.Failed, "The run failed (run run-9). Details are in the host log.")]
     [InlineData(nameof(HostedRunOutcome.Busy), A2ATaskStatus.Failed, "'veille' is already running 4 run(s); try again shortly.")]
+    [InlineData(nameof(HostedRunOutcome.HostStopping), A2ATaskStatus.Failed, CrewRunner.HostStoppingMessage)]
     [InlineData(nameof(HostedRunOutcome.Cancelled), A2ATaskStatus.Cancelled, "The run was stopped.")]
     [InlineData(nameof(HostedRunOutcome.Cancelled), A2ATaskStatus.Cancelled, "The run timed out after 00:30:00.")]
     public async Task A_run_that_did_not_complete_answers_why_and_nothing_else(
@@ -85,11 +86,34 @@ public sealed class HostedCrewA2ARouterTests
         var runner = new ScriptedRunner { Result = new(Enum.Parse<HostedRunOutcome>(outcome), "run-9", message) };
 
         var response = await Router(runner).RouteTaskAsync(
-            new A2ATaskRequest { Id = "task-2", SkillId = "veille", Input = "What changed?" }, Ct);
+            new A2ATaskRequest { Id = "task-2", SkillId = "veille", Input = "What changed?" }, progress: null, Ct);
 
         Assert.Equal(status, response.Status);
         Assert.Equal(message, response.Error);
         Assert.Null(response.Output);
+    }
+
+    [Fact]
+    public async Task The_runs_progress_reaches_the_peer_that_follows_the_task_line_by_line()
+    {
+        // GAP-35: sendSubscribe hands the router a progress; the run's lines — the ones a chat
+        // thread reads — go to it as the run reports them, in order.
+        var runner = new ScriptedRunner
+        {
+            Behaviour = (onProgress, _) =>
+            {
+                onProgress?.Invoke("Running 'veille'…");
+                onProgress?.Invoke("✔ Analyst — step 1 done");
+                return Task.CompletedTask;
+            },
+        };
+        var progress = new RecordingProgress();
+
+        var response = await Router(runner).RouteTaskAsync(
+            new A2ATaskRequest { Id = "task-4", SkillId = "veille", Input = "What changed?" }, progress, Ct);
+
+        Assert.Equal(A2ATaskStatus.Completed, response.Status);
+        Assert.Equal(["Running 'veille'…", "✔ Analyst — step 1 done"], progress.Lines);
     }
 
     [Fact]
@@ -98,7 +122,7 @@ public sealed class HostedCrewA2ARouterTests
         var runner = new ScriptedRunner();
 
         var response = await Router(runner).RouteTaskAsync(
-            new A2ATaskRequest { Id = "task-3", SkillId = "veille", Input = "  " }, Ct);
+            new A2ATaskRequest { Id = "task-3", SkillId = "veille", Input = "  " }, progress: null, Ct);
 
         Assert.Equal(A2ATaskStatus.Failed, response.Status);
         Assert.Empty(runner.Ran);

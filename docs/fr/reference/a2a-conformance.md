@@ -16,7 +16,7 @@ Cette page est la référence de ce qui interopère et de ce qui n'interopère p
 | Opération v1.0 | Endpoint Orkeon | Statut | Notes |
 |---|---|---|---|
 | Send Message | `POST /a2a/tasks/send` | 🟡 Partiel | Forme d'ère 0.x (`A2ATaskRequest` : id/skillId/input/inputMode/metadata), pas le modèle `Message`/`Part` v1.0. Le `skillId` est l'`id` d'une skill de la carte d'agent ; l'agent s'exécute et la réponse porte sa sortie — voir [Exécution des tâches](#exécution-des-tâches). |
-| Send Streaming Message | `POST /a2a/tasks/sendSubscribe` (SSE) | 🟡 Partiel | Working → update final → `[DONE]` ; pas d'événements typés `TaskStatusUpdateEvent`/`TaskArtifactUpdateEvent`. |
+| Send Streaming Message | `POST /a2a/tasks/sendSubscribe` (SSE) | 🟡 Partiel | `Working` → une mise à jour `Working` par ligne de progression que rapporte le routeur, la ligne dans `message` → update final → `[DONE]` ; pas d'événements typés `TaskStatusUpdateEvent`/`TaskArtifactUpdateEvent`, pas de keep-alive. |
 | Get Task | `GET /a2a/tasks/{id}` | 🟡 Partiel | **Réel depuis PUB-08** quand la persistance des tâches est activée (`AddOrkeonA2ATaskPersistence()` sur un `IStateStore` de checkpointing) : 200 avec l'état enregistré, 404 pour un id inconnu. Sans l'opt-in : `501` explicite (jamais d'état fabriqué). |
 | List Tasks | — | 🔴 Absent | |
 | Cancel Task | `DELETE /a2a/tasks/{id}` | 🟡 Partiel | Une tâche sur laquelle l'agent travaille encore est **interrompue** : le jeton de son exécution est annulé et la requête qui l'a soumise répond `Cancelled`. Avec persistance, un enregistrement laissé `Working` par un serveur arrêté passe à `Cancelled` ; une tâche terminée répond 409 et garde son état. Un id inconnu (ou, sans persistance, toute tâche qui ne tourne pas) répond 404. |
@@ -73,6 +73,17 @@ l'`IAgentExecutionService` de l'hôte, résolu dans le scope DI propre à la req
   serveur) → `Cancelled` ;
 - aucun agent ne publie cet id, l'entrée est vide, ou l'hôte n'a enregistré aucun
   service d'exécution (`AddOrkeonApplication()` le fait) → `Failed`, en disant lequel.
+
+**Progression.** `RouteTaskAsync(request, progress, ct)` reçoit la progression que
+suit un `sendSubscribe` — `null` pour `send`. Chaque ligne que rapporte le routeur
+atteint le pair, dans l'ordre, en mise à jour `Working` qui la porte en `message`
+(`partialOutput` reste la sortie). Le flux n'a qu'un écrivain : les lignes font
+la queue, et la file se ferme quand le routeur répond ; une ligne rapportée après
+est donc abandonnée plutôt qu'envoyée après l'état final, et un pair qui s'en va
+en cours de tâche ne lit plus de progression, tandis que la tâche va jusqu'à son
+terme et est enregistrée. `A2ATaskRouter` ne rapporte rien — un tour d'agent n'a
+pas d'étape à rapporter ; le routeur d'`orkeon-host` rapporte les lignes que lit
+un fil de chat.
 
 Rien ne répond `Completed` sans que l'agent ait tourné. Un hôte qui route
 autrement enregistre son propre `IA2ATaskRouter` avant d'appeler `AddOrkeonA2A` :

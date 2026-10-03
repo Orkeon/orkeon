@@ -116,6 +116,38 @@ public static class RunnerSettings
     }
 
     /// <summary>
+    /// What to tell an operator about a settings file the configuration cannot read (GAP-35): the
+    /// file — the runtime's own sentence names it — and, for JSON it cannot parse, why and where,
+    /// the line and the position counted from 1 as an editor counts them. The runner host and
+    /// <c>orkeon-host</c>'s boot configuration say it the same way.
+    /// </summary>
+    /// <param name="ex">What reading the configuration threw.</param>
+    internal static string DescribeUnreadableSettings(Exception ex)
+    {
+        ArgumentNullException.ThrowIfNull(ex);
+
+        System.Text.Json.JsonException? json = null;
+        for (var inner = ex.InnerException; inner is not null && json is null; inner = inner.InnerException)
+            json = inner as System.Text.Json.JsonException;
+
+        if (json is null)
+            return ex.InnerException is { } cause ? $"{ex.Message.TrimEnd('.')}: {cause.Message}" : ex.Message;
+
+        // The parser appends its own 0-based place ("LineNumber: 1 | BytePositionInLine: 26.");
+        // it is said again below, counted from 1.
+        var reason = json.Message;
+        var place = reason.IndexOf(" LineNumber:", StringComparison.Ordinal);
+        if (place >= 0)
+            reason = reason[..place];
+        reason = reason.TrimEnd().TrimEnd('.');
+
+        var where = json.LineNumber is { } line
+            ? string.Create(CultureInfo.InvariantCulture, $" (line {line + 1}, position {(json.BytePositionInLine ?? 0) + 1})")
+            : string.Empty;
+        return $"{ex.Message.TrimEnd('.')}: {reason}{where}.";
+    }
+
+    /// <summary>
     /// Resolves the appsettings.json path using a fallback chain:
     ///   1. Explicit --settings arg
     ///   2. appsettings.json next to config.yaml

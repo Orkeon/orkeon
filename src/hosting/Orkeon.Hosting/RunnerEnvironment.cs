@@ -16,6 +16,23 @@ public static class RunnerEnvironment
     public const string DebugVariable = "ORKEON_DEBUG";
 
     /// <summary>
+    /// Environment variable <c>orkeon mcp serve</c> sets in its own environment before it connects
+    /// the MCP servers of its settings, so every process it starts inherits it — and under which it
+    /// refuses to start (GAP-35). Settings declaring <c>orkeon mcp serve</c> itself under
+    /// <c>MCP:Servers</c> made each server start another before answering, until the first gave up
+    /// after 30 s. Like <see cref="DebugVariable"/>, the <c>ORKEON_</c> configuration layer also
+    /// reads it, as a key (<c>MCP_SERVE</c>) no setting is.
+    /// </summary>
+    public const string McpServeVariable = "ORKEON_MCP_SERVE";
+
+    /// <summary>
+    /// True when an <c>orkeon mcp serve</c> started this process: <see cref="McpServeVariable"/> is
+    /// set, whatever its value.
+    /// </summary>
+    public static bool StartedByMcpServe
+        => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(McpServeVariable));
+
+    /// <summary>
     /// True when <c>ORKEON_DEBUG</c> is set to <c>1</c>, <c>true</c> or <c>yes</c>
     /// (case-insensitive) — the opt-in that turns the runner's user-facing one-line
     /// diagnostics back into full exception dumps (type chain + stack).

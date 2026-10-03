@@ -80,8 +80,14 @@ public partial class A2ATaskRouter : IA2ATaskRouter
     };
 
     /// <inheritdoc />
+    /// <param name="request">The incoming task request.</param>
+    /// <param name="progress">
+    /// Unused: one agent turn has no step to report, so a peer following the task with
+    /// <c>sendSubscribe</c> reads <c>Working</c>, then the final state (GAP-35).
+    /// </param>
+    /// <param name="ct">Cancellation token.</param>
     public Task<A2ATaskResponse> RouteTaskAsync(
-        A2ATaskRequest request, CancellationToken ct = default)
+        A2ATaskRequest request, IProgress<string>? progress, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
