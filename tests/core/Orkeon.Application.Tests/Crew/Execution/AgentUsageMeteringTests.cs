@@ -143,11 +143,11 @@ public sealed class AgentUsageMeteringTests
         var logger = new SpyExecutionLogger();
         var loop = new NativeToolCallingAgentLoop(
             logger, MeteredLlmProvider.Wrap(provider, sink), new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()),
-            [tool], new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null), ToolInvocationPipeline.Unguarded);
+            [tool], new LlmCallGate(logger, new ScriptedBasicLlmProvider()), ToolInvocationPipeline.Unguarded);
 
         var result = await loop.ExecuteAsync(
             new ExecutionInvocationContext(agent, BuildTask(), "system", "user", Context: null, ToolsUsed: [], Stopwatch: System.Diagnostics.Stopwatch.StartNew()),
-            5, TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         Assert.Equal("native answer", result.Output);
         Assert.Equal(2, provider.ReceivedTurns.Count);
@@ -171,7 +171,7 @@ public sealed class AgentUsageMeteringTests
         {
             var (output, _) = await coordinator.ValidateAndParseOutputAsync(
                 new OutputValidationRequest("not json", validation, task, BuildAgent(), "system", "user", []),
-                maxOutputRetries: 1, defaultMaxIterations: 5, TestContext.Current.CancellationToken);
+                maxOutputRetries: 1, TestContext.Current.CancellationToken);
             Assert.Equal("{\"fixed\": true}", output);
         }
 

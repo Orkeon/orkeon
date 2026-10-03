@@ -46,13 +46,13 @@ internal sealed class LegacyTextAgentLoop
     /// </summary>
     internal async System.Threading.Tasks.Task<AgentLoopResult> ExecuteAsync(
         ExecutionInvocationContext invocation,
-        int defaultMaxIterations,
         CancellationToken cancellationToken)
     {
         var agent = invocation.Agent;
         var toolsUsed = invocation.ToolsUsed;
         var sw = invocation.Stopwatch;
-        var maxIter = agent.MaxIterations > 0 ? agent.MaxIterations : defaultMaxIterations;
+        // The number of turns is the agent's, set nowhere else (GAP-38): Agent.Create refuses zero.
+        var maxIter = agent.MaxIterations;
         var conversationBuilder = BuildInitialConversation(invocation.SystemPrompt, invocation.UserPrompt);
 
         // Circuit breaker state
@@ -70,17 +70,9 @@ internal sealed class LegacyTextAgentLoop
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Acquire rate limit lease for the LLM call only — released before tool execution
-            string response;
-            var llmLease = await _llmGate.AcquireLlmLeaseAsync(agent, cancellationToken).ConfigureAwait(false);
-            try
-            {
-                response = await _llmProvider.ChatAsync(conversationBuilder.ToString(), legacyEffectiveConfig, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                llmLease?.Dispose();
-            }
+            // The call's turn in the agent's and the crew's windows (GAP-38) — nothing held past it.
+            await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
+            var response = await _llmProvider.ChatAsync(conversationBuilder.ToString(), legacyEffectiveConfig, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
             ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, response.Length, response);

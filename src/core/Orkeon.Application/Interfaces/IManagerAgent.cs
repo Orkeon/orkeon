@@ -30,10 +30,15 @@ public interface IManagerAgent
     /// <param name="output">What the assigned agent produced.</param>
     /// <param name="originalTask">The task it answers.</param>
     /// <param name="llm">The LLM the crew gives its manager.</param>
+    /// <param name="cancellationToken">
+    /// The run's token (GAP-38): Ctrl+C, <c>RunTimeout</c> and <c>/stop</c> stop a review — and the turn
+    /// it waits for — like any other call of the run.
+    /// </param>
     /// <returns>True when the manager accepts the output.</returns>
     System.Threading.Tasks.Task<bool> ReviewOutputAsync(
         TaskOutput output,
         CrewTask originalTask,
-        ManagerLlm llm
+        ManagerLlm llm,
+        CancellationToken cancellationToken
     );
 }

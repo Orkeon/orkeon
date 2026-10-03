@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs.Adapters;
@@ -48,8 +49,9 @@ public sealed class LlmProfileAccessOptions
 /// <see cref="ILlmProvider"/>, <see cref="IBasicLlmProvider"/> and <see cref="IChatClient"/>) plus
 /// every <see cref="LlmProfileRegistration"/>, each built on first use, once, and held for the
 /// container's lifetime. <c>AddOrkeonLlmProfile</c> meters a registration's provider for the
-/// host's <see cref="ILlmUsageSink"/>; the registry meters the provider an agent carries itself
-/// (<see cref="ForProvider"/>, GAP-34), one of the entrances of the metered path.
+/// host's <see cref="ILlmUsageSink"/> and limits it by its <see cref="ILlmRateLimiter"/>; the
+/// registry does the same to the provider an agent carries itself (<see cref="ForProvider"/>,
+/// GAP-34, GAP-38), one of the entrances of the metered path.
 /// </summary>
 public sealed class LlmProfileRegistry : ILlmProfileRegistry
 {
@@ -133,14 +135,16 @@ public sealed class LlmProfileRegistry : ILlmProfileRegistry
         ArgumentNullException.ThrowIfNull(provider);
         return _ownProviders.GetValue(provider, own =>
             // The agent's own provider is the host's own code, built off the metered path — by
-            // AgentBuilder.WithLlm, or by WithAgentFrameworkAgent: metered here, where the run resolves
-            // it, as the agent's work; a provider metered already is left as it is.
-            Assemble(ManagerLlm.ProviderPrefix + own.Name, MeteredLlmProvider.Wrap(own, _services.GetService<ILlmUsageSink>()), baseConfig: null));
+            // AgentBuilder.WithLlm, or by WithAgentFrameworkAgent: metered and limited here, where the
+            // run resolves it, as the agent's work; a provider metered or limited already is left as it is.
+            Assemble(ManagerLlm.ProviderPrefix + own.Name,
+                LlmProviderEntrance.Enter(own, _services.GetService<ILlmUsageSink>(), _services.GetService<ILlmRateLimiter>()),
+                baseConfig: null));
     }
 
     private LlmProfile Build(LlmProfileRegistration registration) =>
-        // Metered by its registration (AddOrkeonLlmProfile), one of the entrances of the metered
-        // path — a second meter here would count every call twice.
+        // Metered and limited by its registration (AddOrkeonLlmProfile), one of the entrances of the
+        // metered path — a second meter or limiter here would count every call twice.
         Assemble(registration.Name, registration.Provider(_services), registration.BaseConfig);
 
     /// <summary>

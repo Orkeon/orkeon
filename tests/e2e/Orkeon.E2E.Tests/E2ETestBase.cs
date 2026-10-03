@@ -109,7 +109,6 @@ public abstract class E2ETestBase : IDisposable
             .Goal(goal)
             .Backstory(backstory ?? $"A helpful {role.ToLower()} for testing.")
             .MaxIterations(3)
-            .MaxRpm(10)
             .MaxRetryLimit(1)
             .Build();
     }
@@ -135,7 +134,6 @@ public abstract class E2ETestBase : IDisposable
         return new CrewBuilder()
             .Goal(goal)
             .Sequential()
-            .MaxRpm(10)
             .Build();
     }
 

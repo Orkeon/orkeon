@@ -87,6 +87,7 @@ public partial class YamlCrewExporter
             Verbose = config.Verbose ? true : null,
             Memory = config.Memory ? true : null,
             Planning = config.Planning ? true : null,
+            MaxRpm = config.MaxRpm,
             ManagerAgent = config.ManagerAgentId?.ToString(),
             Mounts = MapMounts(config),
         };
@@ -119,6 +120,7 @@ public partial class YamlCrewExporter
             Verbose = config.Verbose ? true : null,
             Memory = config.Memory ? true : null,
             Planning = config.Planning ? true : null,
+            MaxRpm = config.MaxRpm,
             ManagerAgent = config.ManagerAgentId?.ToString(),
             Mounts = MapMounts(config),
             Agents = MapToAgentsDictionary(config.Agents),
@@ -156,8 +158,9 @@ public partial class YamlCrewExporter
             Backstory = string.IsNullOrWhiteSpace(agent.Backstory) ? null : agent.Backstory,
             Tools = agent.Tools.Count > 0 ? new Collection<string>(agent.Tools.ToList()) : null,
             AllowDelegation = agent.AllowDelegation ? null : false,
-            MaxIter = agent.MaxIterations != 20 ? agent.MaxIterations : null,
-            MaxRpm = agent.MaxRPM != 10 ? agent.MaxRPM : null,
+            // Written when it differs from the one default, as the loader reads it back (GAP-38).
+            MaxIter = agent.MaxIterations != Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations ? agent.MaxIterations : null,
+            MaxRpm = agent.MaxRpm,
             Verbose = agent.Verbose ? true : null,
             Llm = MapLlmConfig(agent.LlmConfig),
         };

@@ -54,12 +54,12 @@ public static class CrewConfigurationMapper
             Verbose = crew.Verbose,
             Memory = crew.MemoryEnabled,
             Planning = crew.Planning,
+            MaxRpm = crew.MaxRpm,
             ManagerAgentId = crew.ManagerAgentId,
             Agents = ExportAgents(crew, agents),
             Tasks = ExportTasks(crew, tasks),
             ExecutionConfig = new ExecutionConfig
             {
-                MaxRPM = crew.MaxRpm,
                 DefaultTimeout = TimeSpan.FromMinutes(5),
                 MaxRetries = AgentDefaults.MaxRetryLimit,
                 EnableDebugMode = crew.Verbose,
@@ -120,7 +120,7 @@ public static class CrewConfigurationMapper
             Tools = agent.Tools.Select(tool => tool.Name).ToList(),
             AllowDelegation = agent.AllowDelegation,
             MaxIterations = agent.MaxIterations,
-            MaxRPM = agent.MaxRpm,
+            MaxRpm = agent.MaxRpm,
             Verbose = agent.Verbose,
             LlmConfig = agent.LlmConfig,
             Guardrails = agent.Guardrails,

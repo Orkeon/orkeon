@@ -56,7 +56,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         var assign = await Assert.ThrowsAsync<ArgumentNullException>(
             () => _manager.AssignTaskAsync(task, CreateTestAgents(), CreateTestContext(), null!));
         var review = await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, null!));
+            () => _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, null!, TestContext.Current.CancellationToken));
 
         Assert.Equal("llm", assign.ParamName);
         Assert.Equal("llm", review.ParamName);
@@ -68,7 +68,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         var task = CreateTestTask("Write unit tests");
         _llmProvider.SetupResponse(JsonSerializer.Serialize(new { approved = true }));
 
-        await _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, _llm);
+        await _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, _llm, TestContext.Current.CancellationToken);
         Assert.Null(_llmProvider.LastOptions);
 
         await _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, new ManagerLlm
@@ -76,7 +76,7 @@ public sealed class LlmBasedManagerTests : IDisposable
             ChatClient = _llmProvider,
             Model = "chef-model",
             Name = "profile:b",
-        });
+        }, TestContext.Current.CancellationToken);
         Assert.Equal("chef-model", _llmProvider.LastOptions!.ModelId);
     }
 
@@ -186,7 +186,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result);
@@ -208,7 +208,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result);
@@ -225,7 +225,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("The output looks good and is approved");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result); // Should return true because "approved" is in the response
@@ -245,7 +245,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("The output is rejected and needs more work");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result);
@@ -261,7 +261,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupException(new InvalidOperationException("LLM timeout"));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result);
@@ -329,7 +329,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        await _manager.ReviewOutputAsync(output, task, _llm);
+        await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -450,7 +450,7 @@ public sealed class LlmBasedManagerTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.ReviewOutputAsync(output!, task, _llm));
+            () => _manager.ReviewOutputAsync(output!, task, _llm, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -462,7 +462,7 @@ public sealed class LlmBasedManagerTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.ReviewOutputAsync(output, task!, _llm));
+            () => _manager.ReviewOutputAsync(output, task!, _llm, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -523,7 +523,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result); // Should fall back to keyword parsing, which returns false
@@ -562,7 +562,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("The output is rejected and needs improvement");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result);
@@ -578,7 +578,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("The output is insufficient for the requirements");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result);
@@ -633,6 +633,33 @@ public sealed class LlmBasedManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldStop_WhenTheRunIsCancelledDuringAReview()
+    {
+        // GAP-38: the review takes the run's token — it went out under CancellationToken.None — and a
+        // cancelled run is never an approval by default.
+        var task = CreateTestTask("Test task");
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        _llmProvider.SetupException(new OperationCanceledException(cts.Token));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, _llm, cts.Token));
+    }
+
+    [Fact]
+    public async Task ShouldDefaultToApproval_WhenAReviewTimesOutWhileTheRunGoesOn()
+    {
+        // A cancellation that is not the run's — a timeout the client surfaced — stays a failed
+        // review, approved by default like any other.
+        var task = CreateTestTask("Test task");
+        _llmProvider.SetupException(new OperationCanceledException());
+
+        var result = await _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, _llm, TestContext.Current.CancellationToken);
+
+        Assert.True(result);
+    }
+
+    [Fact]
     public async Task ShouldStillReview_WhenReviewOutputAsyncWithEmptyContent()
     {
         // Arrange
@@ -646,7 +673,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result);
@@ -697,7 +724,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        await _manager.ReviewOutputAsync(output, task, _llm);
+        await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -731,7 +758,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("The output is satisfactory and complete");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result);
@@ -747,7 +774,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("The output meets requirements perfectly");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task, _llm);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result);

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
@@ -23,8 +24,9 @@ public static class LlmProviderRegistrationExtensions
     /// Registers <paramref name="provider"/> as the host's language model on the three surfaces
     /// the runtime consumes — <see cref="ILlmProvider"/>, <see cref="IBasicLlmProvider"/> and
     /// <see cref="IChatClient"/> — all three over one instance, metered for the host's
-    /// <see cref="ILlmUsageSink"/> (<see cref="MeteredLlmProvider"/>). A provider registered any
-    /// other way would spend tokens no meter sees (STUDIO-42).
+    /// <see cref="ILlmUsageSink"/> (<see cref="MeteredLlmProvider"/>) and limited by its
+    /// <see cref="ILlmRateLimiter"/> (<see cref="RateLimitedLlmProvider"/>, GAP-38). A provider
+    /// registered any other way would spend tokens no meter sees (STUDIO-42), past every cap.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="provider">Builds the provider, once, from the container.</param>
@@ -42,7 +44,7 @@ public static class LlmProviderRegistrationExtensions
         ArgumentNullException.ThrowIfNull(provider);
 
         services.AddSingleton<ILlmProvider>(sp =>
-            MeteredLlmProvider.Wrap(provider(sp), sp.GetService<ILlmUsageSink>()));
+            LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>()));
         services.AddSingleton<IBasicLlmProvider>(sp =>
             new LlmProviderAdapter(sp.GetRequiredService<ILlmProvider>()));
         services.AddSingleton<IChatClient>(sp =>
@@ -57,7 +59,7 @@ public static class LlmProviderRegistrationExtensions
     /// Registers a named LLM profile over a provider the factory does not build — a test
     /// double, a Microsoft Agent Framework agent (GAP-17). A crew runs an agent on it with
     /// <c>llm: { profile: &lt;name&gt; }</c>; its provider is built once, on first use, and
-    /// metered like the default one.
+    /// metered and limited like the default one.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="name">The name crews reference; <c>default</c> is reserved.</param>
@@ -77,10 +79,10 @@ public static class LlmProviderRegistrationExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(provider);
 
-        // Metered here, the second entrance of the metered path, like AddOrkeonLlmProvider.
+        // Metered and limited here, the second entrance of the metered path, like AddOrkeonLlmProvider.
         services.AddSingleton(new LlmProfileRegistration(
             name.Trim(),
-            sp => MeteredLlmProvider.Wrap(provider(sp), sp.GetService<ILlmUsageSink>()),
+            sp => LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>()),
             baseConfig));
         services.TryAddSingleton<ILlmProfileRegistry, LlmProfileRegistry>();
         return services;

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Security;
-using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.Security;
 
 namespace Orkeon.Infrastructure.Tests.Security;
@@ -27,12 +27,6 @@ public sealed class LlmRateLimiterTestsFixture : IDisposable
         return this;
     }
 
-    public LlmRateLimiterTestsFixture WithAgentRequestsPerMinute(int value)
-    {
-        _options.AgentRequestsPerMinute = value;
-        return this;
-    }
-
     public LlmRateLimiterTestsFixture WithQueueLimit(int value)
     {
         _options.QueueLimit = value;
@@ -54,10 +48,10 @@ public sealed class LlmRateLimiterTestsFixture : IDisposable
         return _sut;
     }
 
-    public async Task<RateLimitAcquisition> AcquireAsync(string provider, string agentRole)
+    public async Task<RateLimitAcquisition> AcquireAsync(string provider)
     {
         var limiter = _sut ?? Build();
-        return await limiter.AcquireAsync(provider, agentRole);
+        return await limiter.AcquireAsync(provider);
     }
 
     // --- Inspection ---

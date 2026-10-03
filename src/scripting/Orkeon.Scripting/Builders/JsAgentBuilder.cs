@@ -47,7 +47,9 @@ public sealed class JsAgentBuilder
     /// <summary>Whether the captured schema is strict. Defaults to true.</summary>
     internal bool ResponseSchemaStrict { get; private set; } = true;
     internal bool AllowDelegationFlag { get; private set; }
-    internal int MaxIterationsValue { get; private set; } = 20;
+    internal int MaxIterationsValue { get; private set; } = Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations;
+    /// <summary>The <c>.maxRpm(n)</c> received — YAML parity <c>maxRpm:</c> (GAP-38); null sets no limit of its own.</summary>
+    internal int? MaxRpmValue { get; private set; }
     internal bool VerboseFlag { get; private set; }
     internal int ConcurrencyValue { get; private set; } = 1;
     internal JsValue? StateFactory { get; private set; }
@@ -180,6 +182,13 @@ public sealed class JsAgentBuilder
     }
     public JsAgentBuilder allowDelegation(bool value) { AllowDelegationFlag = value; return this; }
     public JsAgentBuilder maxIterations(int value) { MaxIterationsValue = value; return this; }
+
+    /// <summary>
+    /// YAML parity <c>maxRpm:</c> (GAP-38): the model requests this agent may make per minute on the
+    /// declarative shape — each of its turns; the request of too many waits its turn. Left out, no
+    /// limit of its own. Zero or less is refused at <see cref="build"/>.
+    /// </summary>
+    public JsAgentBuilder maxRpm(int value) { MaxRpmValue = value; return this; }
     public JsAgentBuilder verbose() { VerboseFlag = true; return this; }
     public JsAgentBuilder verbose(bool value) { VerboseFlag = value; return this; }
     public JsAgentBuilder withState(JsValue factoryOrSeed) { StateFactory = factoryOrSeed; return this; }
@@ -227,6 +236,12 @@ public sealed class JsAgentBuilder
             throw new InvalidScriptException("agentBuilder() requires .goal(...).");
         if (MaxIterationsValue <= 0)
             throw new InvalidScriptException(".maxIterations must be positive.");
+        if (MaxRpmValue is <= 0)
+        {
+            throw new InvalidScriptException(
+                $"agentBuilder() '{AgentName}': .maxRpm({MaxRpmValue}) — the model requests the agent may make per minute " +
+                "must be 1 or more. Leave .maxRpm(...) out for no limit of its own.");
+        }
         if (ConcurrencyValue <= 0)
             throw new InvalidScriptException(".concurrency must be positive.");
         if (ConcurrencyValue > 1)
@@ -239,6 +254,7 @@ public sealed class JsAgentBuilder
             backstory: string.IsNullOrWhiteSpace(AgentBackstoryText) ? null : DomainAgentBackstory.From(AgentBackstoryText!),
             allowDelegation: AllowDelegationFlag,
             maxIterations: MaxIterationsValue,
+            maxRpm: MaxRpmValue,
             verbose: VerboseFlag);
 
         return new JsAgent(AgentName!, domain, this);

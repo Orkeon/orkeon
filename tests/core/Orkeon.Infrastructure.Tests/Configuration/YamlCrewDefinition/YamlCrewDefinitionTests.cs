@@ -220,7 +220,7 @@ public class YamlCrewDefinitionTests
         Assert.Contains("web_search", agent.Tools);
         Assert.False(agent.AllowDelegation);
         Assert.Equal(30, agent.MaxIterations);
-        Assert.Equal(20, agent.MaxRPM);
+        Assert.Equal(20, agent.MaxRpm);
         Assert.True(agent.Verbose);
     }
 

@@ -46,7 +46,7 @@ public class NativeToolCallingAgentLoopTests
         var logger = new SpyExecutionLogger();
         var provider = new ScriptedFullLlmProvider();
         var strategy = new FakeToolCallingStrategy(new OpenAiShapedToolCallParser());
-        var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null);
+        var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider());
         var loop = new NativeToolCallingAgentLoop(logger, provider, strategy, registeredTools, gate, ToolInvocationPipeline.Unguarded);
         _ = agent;
         return (loop, provider, logger);
@@ -63,7 +63,7 @@ public class NativeToolCallingAgentLoopTests
         var (loop, provider, _) = BuildLoop(agent);
         provider.EnqueueText("plain final answer");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal("plain final answer", result.Output);
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
@@ -86,7 +86,7 @@ public class NativeToolCallingAgentLoopTests
         provider.EnqueueOpenAiToolCall("call-1", "file_write", """{"input":"x"}""");
         provider.EnqueueText("done");
 
-        await loop.ExecuteAsync(BuildInvocation(agent, task), 5, TestContext.Current.CancellationToken);
+        await loop.ExecuteAsync(BuildInvocation(agent, task), TestContext.Current.CancellationToken);
 
         var offered = provider.ReceivedConfigs[0]!.Tools?.Select(t => t.Name).ToList() ?? [];
         if (taskDeclaresTheTool)
@@ -109,7 +109,7 @@ public class NativeToolCallingAgentLoopTests
         var (loop, provider, _) = BuildLoop(agent);
         provider.EnqueueText("   ");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
         Assert.Equal(string.Empty, result.Output);
@@ -133,7 +133,7 @@ public class NativeToolCallingAgentLoopTests
             },
         });
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
         Assert.Equal(string.Empty, result.Output);
@@ -152,7 +152,7 @@ public class NativeToolCallingAgentLoopTests
             RawResponseBody = """{"choices":[{"message":{"content":""}}]}""",
         });
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
         Assert.Equal(FinalAnswerPolicy.EmptyFinalAnswerReason, result.LastError);
@@ -169,7 +169,7 @@ public class NativeToolCallingAgentLoopTests
             RawResponseBody = """{"choices":[{"message":{"content":"answer without calls"}}]}""",
         });
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal("answer without calls", result.Output);
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
@@ -186,7 +186,7 @@ public class NativeToolCallingAgentLoopTests
         provider.EnqueueText("done reading");
 
         var invocation = BuildInvocation(agent, BuildTask());
-        var result = await loop.ExecuteAsync(invocation, 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(invocation, TestContext.Current.CancellationToken);
 
         Assert.Equal("done reading", result.Output);
         Assert.Equal(2, result.IterationsUsed);
@@ -216,7 +216,7 @@ public class NativeToolCallingAgentLoopTests
         provider.EnqueueOpenAiToolCall("call-x", "ghost_tool", "{}");
         provider.EnqueueText("recovered");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal("recovered", result.Output);
         var toolMessage = provider.ReceivedTurns[1].Single(m => m.Role == "tool");
@@ -234,7 +234,7 @@ public class NativeToolCallingAgentLoopTests
         provider.EnqueueText("survived");
 
         var invocation = BuildInvocation(agent, BuildTask());
-        var result = await loop.ExecuteAsync(invocation, 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(invocation, TestContext.Current.CancellationToken);
 
         Assert.Equal("survived", result.Output);
         var usage = Assert.Single(invocation.ToolsUsed);
@@ -253,7 +253,7 @@ public class NativeToolCallingAgentLoopTests
         for (var i = 0; i < 10; i++)
             provider.EnqueueOpenAiToolCall($"call-{i}", "flaky", "{}");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 10, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.CircuitBreakerTripped, result.ExitReason);
         Assert.NotNull(result.LastError);
@@ -272,9 +272,9 @@ public class NativeToolCallingAgentLoopTests
         for (var i = 0; i < 10; i++)
             provider.EnqueueOpenAiToolCall($"call-{i}", "busy", $$"""{"step":"{{i}}"}""");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), defaultMaxIterations: 99, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
-        // The agent's own MaxIterations (3) wins over the orchestrator default (99).
+        // The agent's own MaxIterations (3): the number of turns is set on the agent, nowhere else (GAP-38).
         Assert.Equal(AgentExitReason.MaxIterationsReached, result.ExitReason);
         Assert.Equal(3, result.IterationsUsed);
         Assert.Equal(3, provider.ReceivedTurns.Count);
@@ -291,7 +291,7 @@ public class NativeToolCallingAgentLoopTests
         var provider = new ScriptedFullLlmProvider();
         // A parser that reads the Anthropic body shape.
         var strategy = new FakeToolCallingStrategy(new AnthropicShapedParser());
-        var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null);
+        var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider());
         var loop = new NativeToolCallingAgentLoop(logger, provider, strategy, [tool], gate, ToolInvocationPipeline.Unguarded);
 
         provider.Enqueue(new LlmResponse
@@ -302,7 +302,7 @@ public class NativeToolCallingAgentLoopTests
         });
         provider.EnqueueText("anthropic done");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal("anthropic done", result.Output);
         var assistant = provider.ReceivedTurns[1].Single(m => m.Role == "assistant");
@@ -326,7 +326,7 @@ public class NativeToolCallingAgentLoopTests
         });
         provider.EnqueueText("thought through");
 
-        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         var assistant = provider.ReceivedTurns[1].Single(m => m.Role == "assistant");
         Assert.Equal("chain of thought", assistant.ReasoningContent);
@@ -340,7 +340,7 @@ public class NativeToolCallingAgentLoopTests
         var (loop, provider, _) = BuildLoop(agent, registeredTools: [tool]);
         provider.EnqueueText("done");
 
-        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         var config = Assert.Single(provider.ReceivedConfigs);
         Assert.NotNull(config);
@@ -358,7 +358,7 @@ public class NativeToolCallingAgentLoopTests
         await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, cts.Token));
+            loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), cts.Token));
     }
 
     // GAP-18: an agent without an LLM config used to be sent with OpenAI's default model,
@@ -370,7 +370,7 @@ public class NativeToolCallingAgentLoopTests
         var (loop, provider, _) = BuildLoop(agent);
         provider.EnqueueText("final");
 
-        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Null(agent.LlmConfig);
         Assert.Equal(string.Empty, Assert.Single(provider.ReceivedConfigs)!.Model);

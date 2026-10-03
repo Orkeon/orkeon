@@ -65,7 +65,8 @@ public sealed class GenerationCallFamiliesMeteringTests
         {
             await manager.AssignTaskAsync(task, [BuildAgent("Writer"), BuildAgent("Reviewer")], context, llm);
             await manager.ReviewOutputAsync(
-                new AppTaskOutput(task.Id.ToString(), null, "draft", DateTime.UtcNow, true, TimeSpan.Zero), task, llm);
+                new AppTaskOutput(task.Id.ToString(), null, "draft", DateTime.UtcNow, true, TimeSpan.Zero), task, llm,
+                TestContext.Current.CancellationToken);
         }
 
         Assert.Equal(2, provider.ChatCallCount);

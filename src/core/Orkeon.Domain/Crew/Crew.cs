@@ -7,7 +7,6 @@ using Orkeon.Domain.Task;
 using Orkeon.Domain.Crew.Events;
 using Orkeon.Domain.Crew.ValueObjects;
 using Orkeon.Domain.SharedKernel.ValueObjects;
-using Orkeon.Domain.Constants.Crew;
 
 namespace Orkeon.Domain.Crew;
 
@@ -88,9 +87,13 @@ public sealed class Crew : AggregateRoot<CrewId>
     public CrewStatus Status { get; private set; }
 
     /// <summary>
-    /// Gets the maximum requests per minute.
+    /// The model requests the crew may make per minute, all its agents and its manager together —
+    /// CrewAI's <c>max_rpm</c> (GAP-38): counted over a sliding minute during each of its runs, parallel
+    /// waves, ballots and delegated work included; the request of too many waits its turn. The planner,
+    /// the RAG pipeline, the judges and the scripts' <c>ctx.llm</c> calls count for the host only. Null —
+    /// the default — sets no limit of its own.
     /// </summary>
-    public int MaxRpm { get; private set; } = CrewDefaults.DefaultMaxRpm;
+    public int? MaxRpm { get; private set; }
 
     /// <summary>
     /// Gets whether to share crew information.
@@ -217,7 +220,7 @@ public sealed class Crew : AggregateRoot<CrewId>
             Verbose = options.Verbose,
             Planning = options.Planning,
             Status = CrewStatus.Idle,
-            MaxRpm = options.MaxRpm > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
+            MaxRpm = options.MaxRpm is null or > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
             ShareCrew = options.ShareCrew,
             OutputLogFile = options.OutputLogFile,
             ManagerLlm = options.ManagerLlm,
@@ -258,7 +261,7 @@ public sealed class Crew : AggregateRoot<CrewId>
         ProcessType? processType = null,
         bool verbose = false,
         bool planning = false,
-        int maxRpm = 100,
+        int? maxRpm = null,
         bool shareCrew = true,
         string? outputLogFile = null,
         ILlmProvider? managerLlm = null,
@@ -711,7 +714,7 @@ public sealed class Crew : AggregateRoot<CrewId>
         ProcessType processType,
         bool verbose = false,
         bool planning = false,
-        int maxRpm = 100,
+        int? maxRpm = null,
         bool shareCrew = true,
         string? outputLogFile = null,
         ILlmProvider? managerLlm = null,
@@ -729,7 +732,7 @@ public sealed class Crew : AggregateRoot<CrewId>
             Verbose = verbose,
             Planning = planning,
             Status = status ?? CrewStatus.Idle,
-            MaxRpm = maxRpm > 0 ? maxRpm : 100,
+            MaxRpm = maxRpm is null or > 0 ? maxRpm : null,
             ShareCrew = shareCrew,
             OutputLogFile = outputLogFile,
             ManagerLlm = managerLlm,

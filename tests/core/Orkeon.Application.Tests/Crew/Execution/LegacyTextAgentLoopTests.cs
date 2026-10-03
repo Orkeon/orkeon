@@ -40,7 +40,7 @@ public class LegacyTextAgentLoopTests
     {
         var logger = new SpyExecutionLogger();
         var provider = new ScriptedBasicLlmProvider();
-        var loop = new LegacyTextAgentLoop(logger, provider, new LlmCallGate(logger, provider, rateLimiter: null), ToolInvocationPipeline.Unguarded);
+        var loop = new LegacyTextAgentLoop(logger, provider, new LlmCallGate(logger, provider), ToolInvocationPipeline.Unguarded);
         return (loop, provider);
     }
 
@@ -66,7 +66,7 @@ public class LegacyTextAgentLoopTests
         provider.Enqueue(ToolCallResponse);
         provider.Enqueue("The final answer.");
 
-        await loop.ExecuteAsync(BuildInvocation(agent, task), 5, TestContext.Current.CancellationToken);
+        await loop.ExecuteAsync(BuildInvocation(agent, task), TestContext.Current.CancellationToken);
 
         Assert.Equal(taskDeclaresTheTool ? 1 : 0, echo.Calls.Count);
     }
@@ -82,7 +82,7 @@ public class LegacyTextAgentLoopTests
         provider.Enqueue("The final answer, informed by the tool.");
 
         var invocation = BuildInvocation(agent, BuildTask());
-        var result = await loop.ExecuteAsync(invocation, 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(invocation, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Equal(2, result.IterationsUsed);
@@ -107,7 +107,7 @@ public class LegacyTextAgentLoopTests
         var (loop, provider) = BuildLoop();
         provider.Enqueue("");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
         Assert.Equal(string.Empty, result.Output);
@@ -124,7 +124,7 @@ public class LegacyTextAgentLoopTests
         provider.Enqueue(ToolCallResponse); // echo_tool is not on the agent
         provider.Enqueue("recovered without the tool");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Contains("[Tool 'echo_tool' not found]", provider.ReceivedPrompts[1], StringComparison.Ordinal);
@@ -141,7 +141,7 @@ public class LegacyTextAgentLoopTests
         provider.Enqueue("moving on");
 
         var invocation = BuildInvocation(agent, BuildTask());
-        await loop.ExecuteAsync(invocation, 5, TestContext.Current.CancellationToken);
+        await loop.ExecuteAsync(invocation, TestContext.Current.CancellationToken);
 
         var usage = Assert.Single(invocation.ToolsUsed);
         Assert.False(usage.Success);
@@ -158,7 +158,7 @@ public class LegacyTextAgentLoopTests
         for (var i = 0; i < 10; i++)
             provider.Enqueue(ToolCallResponse);
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 10, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.CircuitBreakerTripped, result.ExitReason);
         Assert.Contains("identical tool call failures", result.Output, StringComparison.Ordinal);
@@ -178,7 +178,7 @@ public class LegacyTextAgentLoopTests
         for (var i = 0; i < 10; i++)
             provider.Enqueue(ToolCallResponse);
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), defaultMaxIterations: 99, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.MaxIterationsReached, result.ExitReason);
         Assert.Equal(3, result.IterationsUsed);
@@ -199,7 +199,7 @@ public class LegacyTextAgentLoopTests
         provider.Enqueue(ToolCallResponse + ToolCallResponse + ToolCallResponse);
         provider.Enqueue("done after trim");
 
-        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Contains("[Context trimmed", provider.ReceivedPrompts[1], StringComparison.Ordinal);
@@ -217,7 +217,7 @@ public class LegacyTextAgentLoopTests
         provider.Enqueue("I would use mentioned_tool for this.");
 
         var invocation = BuildInvocation(agent, BuildTask());
-        var result = await loop.ExecuteAsync(invocation, 5, TestContext.Current.CancellationToken);
+        var result = await loop.ExecuteAsync(invocation, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Equal(1, result.IterationsUsed);
@@ -234,7 +234,7 @@ public class LegacyTextAgentLoopTests
         await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, cts.Token));
+            loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), cts.Token));
     }
 
     // GAP-18: an agent without an LLM config used to be sent with OpenAI's default model,
@@ -245,7 +245,7 @@ public class LegacyTextAgentLoopTests
         var agent = BuildAgent();
         var (loop, provider) = BuildLoop();
 
-        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Null(agent.LlmConfig);
         Assert.Equal(string.Empty, Assert.Single(provider.ReceivedConfigs)!.Model);

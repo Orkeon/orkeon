@@ -17,6 +17,6 @@ public sealed class StubRejectingManagerAgent : IManagerAgent
         DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm) =>
         Task.FromResult(new TaskAssignment(task.Id, availableAgents[0].Id, "first worker", DateTime.UtcNow));
 
-    public Task<bool> ReviewOutputAsync(TaskOutput output, DomainTask originalTask, ManagerLlm llm) =>
+    public Task<bool> ReviewOutputAsync(TaskOutput output, DomainTask originalTask, ManagerLlm llm, CancellationToken cancellationToken) =>
         Task.FromResult(false);
 }

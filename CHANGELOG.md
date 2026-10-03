@@ -230,6 +230,72 @@ whatever started next on it (GAP-41).
 
 Nothing breaks.
 
+### Fixed — model requests are bounded as declared: an agent's and a crew's `maxRpm`, the host's `RateLimiting` on every call **[breaking]**
+
+An author writes `maxRpm: 5` on a YAML agent, `.MaxRpm(5)` in C# or `CrewBuilder.MaxRpm(30)` to stay under a
+provider's quota, and the docs promised a limit: nothing applied it, and the host's own limit did not do what it
+said (GAP-38).
+
+- **`maxRpm` is applied, as CrewAI's `max_rpm`.** An agent's bounds the model requests it makes per minute —
+  each turn of its loop, the tool-free retry, the correction round, a ballot, a delegated colleague's turn
+  (counted for that colleague); a crew's bounds those of all its agents and its manager together, parallel waves,
+  vote candidates and ballots included. Each object that declares one has a sliding window of 60 s: the request
+  of too many waits its turn — it never fails the task —, follows the run's token (Ctrl+C, `RunTimeout`,
+  `/stop`) and counts nothing when cancelled, and one Information line says who waited, how long and under which
+  limit. A crew run from a task counts in its own window. No default: `Agent.MaxRpm` and `Crew.MaxRpm` are
+  `int?`, the 10 and 100 that applied nowhere are gone, and a run that declares nothing waits for nothing.
+- **Every surface declares both levels.** YAML gains the crew's `maxRpm:` (`max_rpm:` accepted — a crew ported
+  from CrewAI lost it without a word), `.ork.ts` gains `agentBuilder().maxRpm(n)` and `crewBuilder().maxRpm(n)`,
+  in YAML parity; the procedural shape, whose `ctx.llm` calls are no agent turns, applies neither and warns once.
+  A `maxRpm` of 0 or less fails the load naming the agent or the crew — it became 10 —, and so does a `maxIter`
+  of 0 or less — it became 15.
+- **`maxIter` is 20 everywhere.** `AgentDefaults.MaxIterations` goes from 15 to 20 — CrewAI's `max_iter` — and is
+  the one default: YAML, `AgentConfiguration` and the DSL read it, and a C# agent without `MaxIterations` takes 20
+  turns too. `ExecutionOrchestrator.MaxIterations` and the loops' default iteration count never applied —
+  `Agent.Create` refuses zero — and are removed: the number of turns is set on the agent.
+- **The host's per-agent cap is each agent's.** `RateLimiting:AgentRequestsPerMinute` was a bucket per role, in a
+  singleton, created once: two teams of `orkeon-host` with a "Researcher" each shared it, from one run to the
+  next. It now bounds each agent instance's own window, with its `maxRpm`, the stricter winning, and a request
+  over it waits instead of failing after the queue.
+- **The global and per-provider caps hold on every call, once.** `GlobalRequestsPerMinute` counted agent turns
+  only: the manager, the planner, the RAG pipeline, the judges and the cognitive memory called the model past it.
+  The limiter now sits at the entrance of each provider, around the token meter — the factory,
+  `AddOrkeonLlmProvider` and `AddOrkeonLlmProfile`, the profile registry's `ForProvider`, the manager's resolver,
+  a C# crew's planner —: every model call of the host takes one lease, the scripts' `ctx.llm` included, and
+  `orkeon run` no longer wraps their provider in a limiter of its own. A provider passed through two entrances
+  takes one lease, a call made inside another limited call takes none (`MaxConcurrentRequests: 1` no longer
+  waits on itself), and a provider that runs its own tools (the Microsoft Agent Framework bridge) is not limited
+  itself: what it calls of Orkeon's model is. A refusal is retried five times on its `RetryAfter`, then the turn
+  fails as a failed call, with the limiter's reason.
+- **The manager's review stops with its run.** It went out under `CancellationToken.None`: Ctrl+C, `RunTimeout` and
+  `/stop` waited for it. `IManagerAgent.ReviewOutputAsync` takes the run's token, and a cancelled review is no
+  longer an approval by default.
+
+Documented in [YAML schema](docs/architecture/yaml-schema.md), [YAML and builders](docs/getting-started/yaml-and-builders.md),
+[Security](docs/architecture/security.md), [Configuration](docs/reference/configuration.md),
+[LLM providers](docs/architecture/llm-providers.md), [Opt-in subsystems](docs/reference/opt-in-subsystems.md),
+[Scripting DSL](docs/reference/scripting-dsl.md), [Process types](docs/orchestration/process-types.md) and
+[Agent Framework interop](docs/reference/agent-framework-interop.md).
+
+Breaking: a declared `maxRpm` makes requests wait; `Agent.MaxRpm`, `Crew.MaxRpm`, `AgentCreateOptions.MaxRpm`,
+`CrewCreateOptions.MaxRpm` and `AgentSpawnRequest.MaxRpm` are `int?`, null by default, `AgentConfiguration.MaxRPM`
+is `int? MaxRpm` and `CrewConfiguration` gains `MaxRpm`; `AgentDefaults.MaxRequestsPerMinute` and
+`CrewDefaults.DefaultMaxRpm` are removed; a `maxRpm` or `maxIter` of 0 or less fails the load; `maxIter` is 20 in
+C# too; the host's per-agent cap holds per agent and waits; every model call of the host counts against
+`RateLimiting`, the manager, the planner and RAG included; `ILlmRateLimiter.AcquireAsync` loses its `agentRole`
+parameter; the `ExecutionOrchestrator` constructors lose their rate limiter and `MaxIterations` is gone;
+`RateLimitingOptions` moves to `Orkeon.Application.Configuration`; `RateLimitedLlmProvider` is built by
+`RateLimitedLlmProvider.Wrap` and loses `AgentBucketCount` and `DefaultMaxAcquireRetries`;
+`IManagerAgent.ReviewOutputAsync` takes a `CancellationToken`; `CrewConfigurationMapper` exports a crew's rate as
+`CrewConfiguration.MaxRpm`, no longer `ExecutionConfig.MaxRPM`.
+
+Migration: remove `maxRpm`, or raise it, where a crew must not wait; read `Agent.MaxRpm` and `Crew.MaxRpm` as
+`int?` (null: no limit of its own) and omit `maxRpm` instead of writing 0. Set `MaxIterations(15)` where a C#
+agent relied on 15, on the agent: `ExecutionOrchestrator.MaxIterations` never applied and is gone. Raise
+`RateLimiting:GlobalRequestsPerMinute` if the manager, the planner or RAG now make a busy host wait. Call
+`AcquireAsync(provider, ct)`; build `ExecutionOrchestrator` without a rate limiter; import `RateLimitingOptions`
+from `Orkeon.Application.Configuration`; a custom `IManagerAgent` takes the token its review is given.
+
 ### Fixed — the third-party notices list every package the shipped binaries redistribute, generated from the restore and checked by CI
 
 `THIRD-PARTY-NOTICES.md` promised an entry for whatever the packages and the installers

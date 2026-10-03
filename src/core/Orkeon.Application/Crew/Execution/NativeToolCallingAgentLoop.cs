@@ -45,14 +45,14 @@ internal sealed class NativeToolCallingAgentLoop
     /// </summary>
     internal async System.Threading.Tasks.Task<AgentLoopResult> ExecuteAsync(
         ExecutionInvocationContext invocation,
-        int defaultMaxIterations,
         CancellationToken cancellationToken)
     {
         var agent = invocation.Agent;
         var task = invocation.Task;
         var toolsUsed = invocation.ToolsUsed;
         var sw = invocation.Stopwatch;
-        var maxIter = agent.MaxIterations > 0 ? agent.MaxIterations : defaultMaxIterations;
+        // The number of turns is the agent's, set nowhere else (GAP-38): Agent.Create refuses zero.
+        var maxIter = agent.MaxIterations;
         var parser = _toolCallingStrategy.Parser;
 
         var availableTools = ResolveNativeTools(agent, task);
@@ -77,18 +77,10 @@ internal sealed class NativeToolCallingAgentLoop
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Acquire rate limit lease for the LLM call only — released before tool execution
-            Domain.SharedKernel.ValueObjects.LlmResponse response;
-            var llmLease = await _llmGate.AcquireLlmLeaseAsync(agent, cancellationToken).ConfigureAwait(false);
-            try
-            {
-                response = await _fullProvider.ChatAsync(
-                    messages.ToArray(), config, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                llmLease?.Dispose();
-            }
+            // The call's turn in the agent's and the crew's windows (GAP-38) — nothing held past it.
+            await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
+            var response = await _fullProvider.ChatAsync(
+                messages.ToArray(), config, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
             ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, response.Content.Length, response.Content);

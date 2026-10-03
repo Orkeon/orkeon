@@ -13,7 +13,6 @@ using Orkeon.Domain.Crew;
 using Orkeon.Domain.Task;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
-using Orkeon.Domain.Constants.Agent;
 
 namespace Orkeon.Infrastructure.Configuration;
 
@@ -259,9 +258,12 @@ public partial class CrewFactory : ICrewFactory
                 .Role(AgentRole.From(agentConfig.Role))
                 .Goal(AgentGoal.From(agentConfig.Goal))
                 .AllowDelegation(agentConfig.AllowDelegation)
-                .MaxIterations(agentConfig.MaxIterations > 0 ? agentConfig.MaxIterations : AgentDefaults.MaxIterations)
-                .MaxRpm(agentConfig.MaxRPM > 0 ? agentConfig.MaxRPM : 10)
+                .MaxIterations(agentConfig.MaxIterations)
                 .Verbose(agentConfig.Verbose);
+
+            // As declared: the validation refused zero and less (GAP-38); none is no limit of its own.
+            if (agentConfig.MaxRpm is { } maxRpm)
+                builder.MaxRpm(maxRpm);
 
             if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
                 builder.Backstory(agentConfig.Backstory);
@@ -395,6 +397,10 @@ public partial class CrewFactory : ICrewFactory
             .EnableMemory(config.Memory)
             .WithAgents(agentMap.Values)
             .WithTasks(taskMap.Values);
+
+        // The crew's maxRpm bounds the model requests of all its agents and its manager (GAP-38).
+        if (config.MaxRpm is { } maxRpm)
+            builder.MaxRpm(maxRpm);
 
         // The graph config is a crew-definition setting that must survive to execution time —
         // the GraphProcessStrategy reads it off the domain crew (P2-O-01).

@@ -200,10 +200,17 @@ members, not through copies of the payload builder:
   none — and a container that registers none fails at its first LLM resolution, naming the
   missing service. Its former fallback, a keyless OpenAI provider, was the REPL's chat client
   (GAP-29).
-- **`RateLimitedLlmProvider`** — routes every call through the `ILlmRateLimiter` (the
-  `RateLimiting` settings block). It wraps the provider handed to the scripting engine,
-  whose `ctx.llm.*` calls bypass the orchestrator's own throttling; it is not meant as a
-  global decorator, or the YAML path would be throttled twice.
+- **`RateLimitedLlmProvider`** — the host's `RateLimiting` at the entrance of each provider:
+  every call takes one lease of the `ILlmRateLimiter` (global, per provider, concurrency) for
+  the time of the call, a stream for its whole enumeration. It is applied with the meter, around
+  it, at the points that meter a provider — the factory, `AddOrkeonLlmProvider` and
+  `AddOrkeonLlmProfile`, the profile registry's `ForProvider`, the manager's resolver, the planner
+  of a C# crew (`LlmProviderEntrance`) — so every model call of the host is limited once, the
+  scripts' `ctx.llm.*` included. A provider already limited is left as it is; a call made inside
+  another limited call takes no lease (under `MaxConcurrentRequests: 1` it would wait on
+  itself); a provider that runs its own tools (`RunsOwnTools`, the Microsoft Agent Framework
+  bridge) is not limited itself — what it calls of Orkeon's model is. A refusal is retried five
+  times on its `RetryAfter`, then the call fails with the limiter's reason (GAP-38).
 - **LLM exchange logging** — `LlmLoggingDelegatingHandler` (`Orkeon.Infrastructure.Logging`)
   captures every HTTP exchange (headers and payload, sanitized by `LogSanitizer`: credential
   headers redacted by name, secrets in bodies by pattern) as JSON Lines plus a structured

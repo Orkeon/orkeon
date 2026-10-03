@@ -38,6 +38,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true: stores each task's result and recalls the closest ones before each task (needs an embedder)
 memoryProvider: string    # needs memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — the type; the host section (Orkeon:Redis, …) gives the connection; unset: the host's default store
 planning: bool            # default: false. true: a step-by-step plan per task, written before the first one and read by each task in its prompt; never reorders the tasks
+maxRpm: int               # default: none — at most N model requests per minute for the crew, all its agents and its manager together; one more waits its turn
 managerAgent: string      # An agent's key. Required when process = "hierarchical": the manager, on its own llm: block; optional when "consensual": the ManagerDecision arbiter; refused by the other processes
 mounts: [string]          # Virtual roots the crew uses ("/output", or "<id>|/output" to pin one settings entry)
 
@@ -48,8 +49,8 @@ agents:
     backstory: string     # Context and expertise (multi-line recommended)
     tools: [string]       # Names of tools registered in IToolRegistry
     allowDelegation: bool # default: true — allows delegation to other agents
-    maxIter: int          # default: 20 — maximum iterations before timeout
-    maxRpm: int           # default: 10 — requests per minute (rate limiting)
+    maxIter: int          # default: 20 — the turns the agent may take on a task
+    maxRpm: int           # default: none — at most N model requests per minute for this agent; one more waits its turn
     verbose: bool         # default: false — detailed logs for this agent
     llm:
       profile: string     # Host LLM profile (Llm:Profiles:<name>) — unset = the host's default provider

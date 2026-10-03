@@ -89,7 +89,6 @@ internal sealed class ChatClientAgentLoop
         string systemPrompt,
         string userPrompt,
         List<Domain.Tools.ToolUsage> toolsUsed,
-        int defaultMaxIterations,
         CancellationToken cancellationToken)
     {
         var messages = new List<ChatMessage>
@@ -99,7 +98,8 @@ internal sealed class ChatClientAgentLoop
         };
 
         var (options, availableTools) = await _optionsComposer.BuildChatOptionsAsync(agent, task, cancellationToken).ConfigureAwait(false);
-        var maxIter = agent.MaxIterations > 0 ? agent.MaxIterations : defaultMaxIterations;
+        // The number of turns is the agent's, set nowhere else (GAP-38): Agent.Create refuses zero.
+        var maxIter = agent.MaxIterations;
 
         // One invoke_agent span per task an agent works on; every chat and execute_tool
         // span below is its child. gen_ai.* names, so the run reads in any backend that
@@ -207,9 +207,10 @@ internal sealed class ChatClientAgentLoop
     }
 
     /// <summary>
-    /// One iteration's chat call, under its rate-limit lease and its chat span. The lease covers
-    /// the LLM call only — it is released before any tool runs, so a tool that starts a nested
-    /// agent (delegate_work) cannot deadlock on it. A failed call comes back as the
+    /// One iteration's chat call, after its turn in the agent's and the crew's windows (GAP-38), under
+    /// its chat span. Nothing is held past the call: a tool that starts a nested agent
+    /// (delegate_work) waits in that agent's window, never on this one. A failed call — the host's
+    /// limiter refusing it at the provider's entrance included — comes back as the
     /// <see cref="AgentExitReason.LlmCallFailed"/> exit instead of a response.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "LLM-11 call fault barrier: whatever the chat client fails with (a timeout, a refused request, a transport fault) is the task's failure reason; a caller's cancellation is filtered out and still propagates.")]
@@ -222,7 +223,7 @@ internal sealed class ChatClientAgentLoop
         int totalTokensUsed,
         CancellationToken cancellationToken)
     {
-        var llmLease = await _llmGate.AcquireLlmLeaseAsync(agent, cancellationToken).ConfigureAwait(false);
+        await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
         using var chatActivity = StartChatActivity(agent, options);
         try
         {
@@ -244,10 +245,6 @@ internal sealed class ChatClientAgentLoop
             chatActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
             chatActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
-        }
-        finally
-        {
-            llmLease?.Dispose();
         }
     }
 
@@ -645,7 +642,7 @@ internal sealed class ChatClientAgentLoop
     }
 
     /// <summary>
-    /// Single tool-free request — extracted so the retry path can reuse the lease/options
+    /// Single tool-free request — extracted so the retry path can reuse the turn/options
     /// dance without duplication.
     /// </summary>
     private async System.Threading.Tasks.Task<(string Text, int Tokens)> SendToolFreeRetryAsync(
@@ -654,16 +651,8 @@ internal sealed class ChatClientAgentLoop
         ChatOptions retryOptions,
         CancellationToken cancellationToken)
     {
-        var lease = await _llmGate.AcquireLlmLeaseAsync(agent, cancellationToken).ConfigureAwait(false);
-        ChatResponse response;
-        try
-        {
-            response = await RespondAsync(messages, retryOptions, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            lease?.Dispose();
-        }
+        await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
+        var response = await RespondAsync(messages, retryOptions, cancellationToken).ConfigureAwait(false);
 
         var text = response.Text ?? string.Empty;
         var tokens = (int)(response.Usage?.TotalTokenCount ?? 0);
@@ -672,7 +661,7 @@ internal sealed class ChatClientAgentLoop
     }
 
     /// <summary>
-    /// One call to the chat client, under the caller's lease: buffered, unless someone reads the
+    /// One call to the chat client, after the caller's turn: buffered, unless someone reads the
     /// turn as it comes — a streamed run (<see cref="CrewStreamScope"/>) or a host's
     /// <see cref="ILlmDeltaSink"/>. Streamed, each text fragment is written to the run's stream as an
     /// <c>llm.delta</c> and handed to the sink as it arrives, and the updates fold into the same

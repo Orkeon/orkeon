@@ -129,6 +129,9 @@ son objectif et ses tâches ; ce qui répond, c'est l'agent MAF.
   outils et les deux remèdes : donner l'outil à l'agent MAF, ou donner l'agent MAF à un agent Orkeon comme
   outil (`WithAgentFrameworkTool`, ci-dessous) — et, pour les outils de délégation, couper la délégation.
   Un même agent Orkeon ne peut pas tenir le même agent MAF des deux façons.
+- **Limites de débit** — chaque tour qu'Orkeon envoie à l'agent MAF compte pour l'agent Orkeon et sa
+  crew, face à leur `maxRpm`. Pour le `RateLimiting` de l'hôte, comptent les appels que l'agent MAF fait
+  au modèle d'Orkeon, pas ceux qu'il fait ailleurs : le pont lui-même ne prend pas de bail (GAP-38).
 - **Une session, chaque message une fois, un appel à la fois** — le fournisseur garde une seule session
   MAF pour toute sa durée de vie, créée au premier usage, si bien qu'un agent MAF doté de mémoire ou de
   fournisseurs de contexte voit une conversation continue. La boucle d'agent renvoie toute la

@@ -53,6 +53,7 @@ public class YamlRoundTripTests
             Verbose = true,
             Memory = true,
             Planning = true,
+            MaxRpm = 30,
             Agents =
             [
                 new AgentConfiguration
@@ -64,7 +65,7 @@ public class YamlRoundTripTests
                     AllowDelegation = false,
                     Verbose = true,
                     MaxIterations = 15,
-                    MaxRPM = 5,
+                    MaxRpm = 5,
                     Tools = ["file_read", "data_query"],
                     LlmConfig = LlmConfig.Create(ModelGpt4o) with {
                         Temperature = 0.3,
@@ -118,7 +119,7 @@ public class YamlRoundTripTests
                     AllowDelegation = true,
                     Verbose = true,
                     MaxIterations = 25,
-                    MaxRPM = 15,
+                    MaxRpm = 15,
                     Tools = ["task_tracker"]
                 },
                 new AgentConfiguration
@@ -130,7 +131,7 @@ public class YamlRoundTripTests
                     AllowDelegation = false,
                     Verbose = false,
                     MaxIterations = 30,
-                    MaxRPM = 20,
+                    MaxRpm = 20,
                     Tools = ["file_read", "file_write", "code_execute"]
                 },
                 new AgentConfiguration
@@ -142,7 +143,7 @@ public class YamlRoundTripTests
                     AllowDelegation = false,
                     Verbose = false,
                     MaxIterations = 10,
-                    MaxRPM = 8,
+                    MaxRpm = 8,
                     Tools = ["test_runner"]
                 }
             ],
@@ -493,7 +494,7 @@ public class YamlRoundTripTests
                     Backstory = "An agent using all default values",
                     AllowDelegation = true,   // default
                     MaxIterations = 20,       // default
-                    MaxRPM = 10,              // default
+                    MaxRpm = null,            // default: no limit of its own (GAP-38)
                     Verbose = false,          // default
                     LlmConfig = null          // no LLM config
                 }
@@ -550,7 +551,7 @@ public class YamlRoundTripTests
                     AllowDelegation = true,
                     Verbose = true,
                     MaxIterations = 25,
-                    MaxRPM = 15,
+                    MaxRpm = 15,
                     Tools = ["task_tracker", "communicator"],
                     LlmConfig = LlmConfig.Create(ModelGpt4o) with {
                         Temperature = 0.5,
@@ -566,7 +567,7 @@ public class YamlRoundTripTests
                     AllowDelegation = false,
                     Verbose = false,
                     MaxIterations = 30,
-                    MaxRPM = 20,
+                    MaxRpm = 20,
                     Tools = ["file_read", "file_write"],
                     LlmConfig = LlmConfig.Create(ModelGpt35Turbo) with {
                         Temperature = 0.2,
@@ -857,6 +858,7 @@ public class YamlRoundTripTests
         Assert.Equal(expected.Verbose, actual.Verbose);
         Assert.Equal(expected.Memory, actual.Memory);
         Assert.Equal(expected.Planning, actual.Planning);
+        Assert.Equal(expected.MaxRpm, actual.MaxRpm);
 
         // Manager agent: verify structurally (both null or both reference the same role)
         if (expected.ManagerAgentId == null)
@@ -925,7 +927,7 @@ public class YamlRoundTripTests
 
         Assert.Equal(expected.AllowDelegation, actual.AllowDelegation);
         Assert.Equal(expected.MaxIterations, actual.MaxIterations);
-        Assert.Equal(expected.MaxRPM, actual.MaxRPM);
+        Assert.Equal(expected.MaxRpm, actual.MaxRpm);
         Assert.Equal(expected.Verbose, actual.Verbose);
 
         // Tools

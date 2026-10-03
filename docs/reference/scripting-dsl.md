@@ -55,7 +55,8 @@ inferred.
 | `llm` | the provider only: an agent configured with `llm.profile("…")` has `ctx.llm` talk to that profile's provider, on the profile's model; otherwise `ctx.llm` uses the host's provider on its configured model (per call: `{ llm: { model } }`) | ✅ an `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — sets the agent's provider (one of the host's profiles), model, temperature and token cap. A string or a plain object is refused by `.llm(...)` |
 | `tools([...])` built-ins by name | ✅ what `ctx.llm.act` may call — a name the host does not offer rejects `act` with an `UnknownToolError`, before any model call | ✅ strict: an unknown name fails the run |
 | `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`) and offered to `ctx.llm.act`, which runs the tool's `execute` in the script | ✅ registered and resolved by name |
-| `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ |
+| `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ — `maxIterations` defaults to 20, as in YAML and C# |
+| `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for this agent, one more waiting its turn (none by default; 0 or less refused at `build()`) | ❌ (warned: `ctx.llm` calls are no agent turns — the host's `RateLimiting` still caps them) | ✅ |
 | `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (per call: `{ responseFormat }`) | ✅ |
 | `body` | ✅ **the whole point** | ❌ never invoked |
 | `withState` → `ctx.state` | ✅ | ❌ |
@@ -76,6 +77,7 @@ inferred.
 | `manager` | ❌ | ✅ — `process("hierarchical")`: the manager assigns and reviews on that agent's `.llm(...)` (`llm.profile("claude")` puts it on that profile); `process("consensual")`: the arbiter of the `ManagerDecision` fallback; the four other processes refuse it when the run adapts the crew, as does an agent of another crew |
 | `memory` | ❌ | ✅ |
 | `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
+| `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for the crew, all its agents and its manager together (none by default; 0 or less refused at `build()`) | ❌ (warned) | ✅ |
 | `budget` | ✅ | ❌ ignored |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 

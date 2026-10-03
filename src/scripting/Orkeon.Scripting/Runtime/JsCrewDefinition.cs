@@ -49,4 +49,10 @@ internal sealed record JsCrewDefinition
     /// first one on the host's default LLM profile, read by each task in its prompt. Off by default.
     /// </summary>
     public bool Planning { get; init; }
+
+    /// <summary>
+    /// YAML parity <c>maxRpm:</c> (GAP-38): the model requests the crew may make per minute on the
+    /// declarative shape, all its agents and its manager together. Null sets no limit of its own.
+    /// </summary>
+    public int? MaxRpm { get; init; }
 }

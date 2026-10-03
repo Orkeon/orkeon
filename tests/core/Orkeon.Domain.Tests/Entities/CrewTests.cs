@@ -49,7 +49,8 @@ public class CrewTests
         Assert.Equal(CrewStatus.Idle, crew.Status);
         Assert.False(crew.Verbose);
         Assert.False(crew.Planning);
-        Assert.Equal(100, crew.MaxRpm);
+        // No limit of its own unless it declares one, as CrewAI's max_rpm (GAP-38).
+        Assert.Null(crew.MaxRpm);
         Assert.True(crew.ShareCrew);
         Assert.Equal("en", crew.Language.Value);
         Assert.False(crew.FullOutput);

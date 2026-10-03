@@ -107,6 +107,13 @@ declare global {
          * profile; skipped, with a warning, on the echo provider. Off by default.
          */
         planning(value?: boolean): this;
+        /**
+         * YAML parity `maxRpm:` — the model requests the crew may make per minute on the declarative
+         * shape, all its agents and its manager together, parallel waves included: the request of too
+         * many waits its turn. Left out, no limit of its own; must be 1 or more. The procedural shape
+         * applies none, and says so.
+         */
+        maxRpm(value: number): this;
         onCrewStart(hook: (ctx: ExecutionContext) => Promise<void> | void): this;
         onCrewComplete(hook: (ctx: ExecutionContext, result: CrewResult) => Promise<void> | void): this;
         /** `message` is the displayed message of the failure — the innermost CLR message, or a script error's own. */

@@ -29,7 +29,7 @@ public sealed class OutputValidationCoordinatorTests
 
         var (output, _) = await coordinator.ValidateAndParseOutputAsync(
             new OutputValidationRequest("not json", validation, task, agent, "system", "user", []),
-            maxOutputRetries: 1, defaultMaxIterations: 5, TestContext.Current.CancellationToken);
+            maxOutputRetries: 1, TestContext.Current.CancellationToken);
 
         Assert.Equal("{\"fixed\": true}", output);
         Assert.Null(agent.LlmConfig);

@@ -41,9 +41,11 @@ public sealed class CrewCreateOptions
     public bool Planning { get; init; }
 
     /// <summary>
-    /// Maximum requests per minute.
+    /// The model requests the crew may make per minute, all its agents and its manager together
+    /// (<see cref="Crew.MaxRpm"/>, GAP-38); null — the default — sets no limit of its own. Zero or
+    /// less is refused.
     /// </summary>
-    public int MaxRpm { get; init; } = CrewDefaults.DefaultMaxRpm;
+    public int? MaxRpm { get; init; }
 
     /// <summary>
     /// Whether to share the crew among agents.

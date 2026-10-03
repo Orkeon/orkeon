@@ -11,7 +11,6 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Services.Security;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
-using Orkeon.Domain.Constants.Agent;
 
 namespace Orkeon.Application.Crew;
 
@@ -37,7 +36,6 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private readonly IEnumerable<Domain.Tools.IBaseTool>? _registeredTools;
     private readonly IOutputValidationPipeline? _validationPipeline;
     private readonly IOutputParserFactory? _parserFactory;
-    private readonly ILlmRateLimiter? _rateLimiter;
     private readonly Domain.SharedKernel.ILlmProvider? _fullProvider;
     private readonly Interfaces.LLM.IToolCallingStrategy? _toolCallingStrategy;
     private readonly IDeliverableResolverFactory? _deliverableResolverFactory;
@@ -47,8 +45,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     // Created lazily after construction completes (the telescoping constructors
     // chain, so readonly dependency fields are only all set at the end of the
     // outermost constructor). Collaborators are stateless besides their injected
-    // dependencies; mutable knobs (MaxIterations / MaxOutputRetries) are passed
-    // per call so live property changes keep their original effect.
+    // dependencies; the mutable MaxOutputRetries is passed per call so a live
+    // property change keeps its effect.
     private LlmCallGate? _llmGate;
     private ChatToolDispatcher? _toolDispatcher;
     private ChatOptionsComposer? _optionsComposer;
@@ -58,7 +56,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private OutputValidationCoordinator? _outputValidation;
 
     private LlmCallGate LlmGate =>
-        _llmGate ??= new LlmCallGate(_logger, _llmProvider, _rateLimiter);
+        _llmGate ??= new LlmCallGate(_logger, _llmProvider, TimeProvider, AgentRequestsPerMinute);
 
     // Wrapped even without callbacks: a streamed run hears each tool call (GAP-32).
     private IToolInvocationPipeline Tools => Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.Wrap(
@@ -81,9 +79,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
     /// <summary>
     /// One agent loop per host profile an agent or a task of this scope named (GAP-17): the
-    /// profile's chat client and its own call gate (rate limits and the <c>gen_ai.provider.name</c>
-    /// of the spans follow the profile's provider), sharing the options composer and the tool
-    /// dispatcher with the default loop.
+    /// profile's chat client and its own call gate (the <c>gen_ai.provider.name</c> of the spans
+    /// follows the profile's provider), sharing the options composer and the tool dispatcher with
+    /// the default loop.
     /// </summary>
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, ChatClientAgentLoop> _profileLoops =
         new(StringComparer.OrdinalIgnoreCase);
@@ -99,7 +97,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private OutputValidationCoordinator OutputValidation =>
         _outputValidation ??= new OutputValidationCoordinator(
             _logger, _validationPipeline, _parserFactory, _llmProvider,
-            _chatClient is null ? null : ChatLoop);
+            _chatClient is null ? null : ChatLoop, LlmGate);
 
     /// <summary>
     /// Maximum number of output validation retries.
@@ -116,9 +114,21 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public Orkeon.Rag.Abstractions.Interfaces.IKnowledgeContextAugmenter? KnowledgeAugmenter { get; set; }
 
     /// <summary>
-    /// Maximum number of iterations for the agent execution loop.
+    /// The clock the agents' and the crews' request windows count on (GAP-38): a request over an
+    /// agent's or a crew's <c>maxRpm</c> waits on it. Set by <c>AddOrkeonApplication</c> from the
+    /// registered <see cref="System.TimeProvider"/>, else <see cref="TimeProvider.System"/>. Read when
+    /// the loops are first built, like <see cref="Callbacks"/>.
     /// </summary>
-    public int MaxIterations { get; set; } = AgentDefaults.MaxIterations;
+    public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+
+    /// <summary>
+    /// The host's cap on the model requests of each agent per minute
+    /// (<c>RateLimiting:AgentRequestsPerMinute</c>, GAP-38): it bounds every agent's window with its own
+    /// <c>maxRpm</c>, the stricter winning, and a request over it waits its turn. Set by
+    /// <c>AddOrkeonApplication</c> when the host registers the <c>RateLimiting</c> options; null — an
+    /// orchestrator built by hand — sets none. Read when the loops are first built.
+    /// </summary>
+    public int? AgentRequestsPerMinute { get; set; }
 
     /// <summary>
     /// The guardian whose <see cref="GuardPhase.Input"/> phase screens the composed user prompt
@@ -228,23 +238,6 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     }
 
     /// <summary>
-    /// Constructor with full dependencies including LLM rate limiter.
-    /// </summary>
-    public ExecutionOrchestrator(
-        ILogger<ExecutionOrchestrator> logger,
-        IBasicLlmProvider llmProvider,
-        IChatClient chatClient,
-        IEnumerable<Domain.Tools.IBaseTool> registeredTools,
-        IOutputValidationPipeline validationPipeline,
-        IOutputParserFactory parserFactory,
-        ILlmRateLimiter rateLimiter,
-        Domain.FileSystem.IFileSystemService fileSystem)
-        : this(logger, llmProvider, chatClient, registeredTools, validationPipeline, parserFactory, fileSystem)
-    {
-        _rateLimiter = rateLimiter;
-    }
-
-    /// <summary>
     /// Constructor with full dependencies including native tool calling support.
     /// When <paramref name="fullProvider"/> and <paramref name="toolCallingStrategy"/> are supplied,
     /// the legacy provider path will prefer native (structured) tool calling over text-based [TOOL_CALL] parsing.
@@ -256,12 +249,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         IEnumerable<Domain.Tools.IBaseTool> registeredTools,
         IOutputValidationPipeline validationPipeline,
         IOutputParserFactory parserFactory,
-        ILlmRateLimiter rateLimiter,
         Domain.SharedKernel.ILlmProvider? fullProvider,
         Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy,
         IDeliverableResolverFactory? deliverableResolverFactory,
         Domain.FileSystem.IFileSystemService fileSystem)
-        : this(logger, llmProvider, chatClient, registeredTools, validationPipeline, parserFactory, rateLimiter, fileSystem)
+        : this(logger, llmProvider, chatClient, registeredTools, validationPipeline, parserFactory, fileSystem)
     {
         _fullProvider = fullProvider;
         _toolCallingStrategy = toolCallingStrategy;
@@ -374,7 +366,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                             // agent's own provider's, when there is one.
                             ChatLoop = llm.Loop,
                         },
-                        MaxOutputRetries, MaxIterations, cancellationToken).ConfigureAwait(false);
+                        MaxOutputRetries, cancellationToken).ConfigureAwait(false);
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
                 var finalOutput = ToolCallTextParser.UnescapeLlmText(validatedOutput);
@@ -490,9 +482,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// Routes execution to the appropriate provider: IChatClient (preferred) or legacy IBasicLlmProvider.
     /// The legacy path prefers native (structured) tool calling when a full provider and a
     /// native-capable strategy are available, and falls back to text-based [TOOL_CALL] parsing otherwise.
-    /// Rate limit leases are acquired/released per-LLM-call inside the iteration loops,
-    /// NOT held across tool execution — this prevents deadlocks when tools (e.g. delegate_work)
-    /// trigger nested agent executions that need the same concurrency slot.
+    /// Each call waits its turn in the agent's and the crew's windows inside the iteration loops
+    /// (GAP-38); nothing is held across tool execution, so a tool that runs a nested agent
+    /// (delegate_work) never waits on its caller.
     /// Returns an <see cref="AgentLoopResult"/> with output text, token count, and structured exit reason.
     /// </summary>
     private async System.Threading.Tasks.Task<AgentLoopResult> ExecuteWithProviderAsync(
@@ -514,7 +506,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         if (profileLoop is not null)
         {
             var profileResult = await profileLoop.ExecuteAsync(
-                agent, task, systemPrompt, userPrompt, toolsUsed, MaxIterations, cancellationToken).ConfigureAwait(false);
+                agent, task, systemPrompt, userPrompt, toolsUsed, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
             ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, profileResult.Output.Length, profileResult.Output);
@@ -524,7 +516,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         if (_chatClient != null)
         {
             var loopResult = await ChatLoop.ExecuteAsync(
-                agent, task, systemPrompt, userPrompt, toolsUsed, MaxIterations, cancellationToken).ConfigureAwait(false);
+                agent, task, systemPrompt, userPrompt, toolsUsed, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
             ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, loopResult.Output.Length, loopResult.Output);
@@ -544,11 +536,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         // Prefer native tool calling when a full provider and strategy are available
         if (_fullProvider != null && _toolCallingStrategy?.SupportsNativeToolCalling == true)
         {
-            return await NativeLoop.ExecuteAsync(invocation, MaxIterations, cancellationToken).ConfigureAwait(false);
+            return await NativeLoop.ExecuteAsync(invocation, cancellationToken).ConfigureAwait(false);
         }
 
         // Existing text-based [TOOL_CALL] fallback
-        return await LegacyLoop.ExecuteAsync(invocation, MaxIterations, cancellationToken).ConfigureAwait(false);
+        return await LegacyLoop.ExecuteAsync(invocation, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -607,15 +599,16 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     }
 
     /// <summary>
-    /// A chat-client loop over <paramref name="profile"/>: its chat client and its own call gate (rate
-    /// limits and the <c>gen_ai.provider.name</c> of the spans follow its provider), sharing the options
-    /// composer and the tool dispatcher with the default loop.
+    /// A chat-client loop over <paramref name="profile"/>: its chat client and its own call gate (the
+    /// <c>gen_ai.provider.name</c> of the spans follows its provider; the agents' and the crews'
+    /// windows are the same whatever the provider), sharing the options composer and the tool
+    /// dispatcher with the default loop.
     /// </summary>
     private ChatClientAgentLoop LoopOver(LlmProfile profile) =>
         new(
             _logger,
             profile.ChatClient,
-            new LlmCallGate(_logger, profile.BasicProvider, _rateLimiter),
+            new LlmCallGate(_logger, profile.BasicProvider, TimeProvider, AgentRequestsPerMinute),
             OptionsComposer,
             ToolDispatcher,
             DeltaSink);

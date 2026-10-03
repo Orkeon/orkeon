@@ -12,6 +12,7 @@ using Orkeon.Application.Services.Monitoring;
 using Orkeon.Application.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using System.Reflection;
 
 namespace Orkeon.Application.DependencyInjection;
@@ -126,8 +127,9 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers the <see cref="IExecutionOrchestrator"/> with a factory that prefers
     /// <see cref="IChatClient"/> when available and falls back to the
-    /// <see cref="IBasicLlmProvider"/>-only constructor. Optionally injects
-    /// <see cref="Interfaces.Security.ILlmRateLimiter"/> to throttle LLM calls.
+    /// <see cref="IBasicLlmProvider"/>-only constructor. The host's clock and per-agent cap reach the
+    /// agents' request windows from here (GAP-38); the host's limiter is applied at the entrance of
+    /// each provider, never by the orchestrator.
     /// </summary>
     /// <remarks>
     /// Extracted from both <see cref="AddOrkeonApplication(IServiceCollection)"/> overloads
@@ -140,7 +142,6 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ExecutionOrchestrator>>();
             var llmProvider = sp.GetRequiredService<IBasicLlmProvider>();
             var chatClient = sp.GetService<IChatClient>();
-            var rateLimiter = sp.GetService<Interfaces.Security.ILlmRateLimiter>();
             // Resolve optional native tool calling dependencies
             var fullProvider = sp.GetService<Domain.SharedKernel.ILlmProvider>();
             var toolCallingStrategy = sp.GetService<Interfaces.LLM.IToolCallingStrategy>();
@@ -154,12 +155,12 @@ public static class ServiceCollectionExtensions
                 var tools = sp.GetServices<Domain.Tools.IBaseTool>();
                 var validationPipeline = sp.GetService<IOutputValidationPipeline>();
                 var parserFactory = sp.GetService<IOutputParserFactory>();
-                if (validationPipeline != null && parserFactory != null && rateLimiter != null)
-                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, validationPipeline, parserFactory, rateLimiter, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem);
-                else if (validationPipeline != null && parserFactory != null)
-                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, validationPipeline, parserFactory, fileSystem);
-                else
-                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, fileSystem);
+                // The full constructor — native tool calling, deliverables — whenever output validation
+                // is registered. It used to also require a rate limiter, which the orchestrator no
+                // longer takes (GAP-38): the limiter is applied at the providers' entrance.
+                orchestrator = validationPipeline != null && parserFactory != null
+                    ? new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, validationPipeline, parserFactory, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem)
+                    : new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, fileSystem);
             }
             else
             {
@@ -189,10 +190,25 @@ public static class ServiceCollectionExtensions
             // GAP-32 — a host that renders the model's text as it arrives (orkeon run --stream, the
             // REPL's console) gets every agent turn streamed to it, not only ctx.llm.* calls.
             orchestrator.DeltaSink = sp.GetService<Interfaces.Ports.ILlmDeltaSink>();
+
+            // GAP-38 — each agent's request window: the host's clock, and its per-agent cap when the
+            // host configures RateLimiting (every shipped host, through AddOrkeonInfrastructure).
+            orchestrator.TimeProvider = sp.GetService<TimeProvider>() ?? TimeProvider.System;
+            orchestrator.AgentRequestsPerMinute = HostAgentRequestsPerMinute(sp);
             return orchestrator;
         });
         return services;
     }
+
+    /// <summary>
+    /// The host's per-agent cap (<c>RateLimiting:AgentRequestsPerMinute</c>), read by the execution
+    /// orchestrator and the manager (GAP-38); null when the host registers no <c>RateLimiting</c>
+    /// options — a container that never asked for the host's limits gets none.
+    /// </summary>
+    internal static int? HostAgentRequestsPerMinute(IServiceProvider services) =>
+        services.GetService<IConfigureOptions<RateLimitingOptions>>() is null
+            ? null
+            : services.GetService<IOptions<RateLimitingOptions>>()?.Value.AgentRequestsPerMinute;
 
     /// <summary>
     /// Registers all ICommandHandler and IQueryHandler implementations from the Application assembly.

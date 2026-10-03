@@ -28,9 +28,12 @@ public class AgentYamlConfig
     public Collection<string>? Tools { get; set; }
     /// <summary>Gets or sets whether the agent allows delegation.</summary>
     public bool? AllowDelegation { get; set; }
-    /// <summary>Gets or sets the maximum iterations.</summary>
+    /// <summary>Gets or sets the maximum iterations; unset, <c>AgentDefaults.MaxIterations</c> (20). Zero or less is refused at load.</summary>
     public int? MaxIter { get; set; }
-    /// <summary>Gets or sets the maximum requests per minute.</summary>
+    /// <summary>
+    /// Gets or sets the model requests the agent may make per minute (<c>maxRpm:</c>, GAP-38); unset, no
+    /// limit of its own. Zero or less is refused at load.
+    /// </summary>
     public int? MaxRpm { get; set; }
     /// <summary>Gets or sets whether verbose mode is enabled.</summary>
     public bool? Verbose { get; set; }
@@ -316,6 +319,12 @@ public class CrewYamlConfig
     /// <summary>Gets or sets whether planning is enabled.</summary>
     public bool? Planning { get; set; }
     /// <summary>
+    /// Gets or sets the model requests the crew may make per minute, all its agents and its manager
+    /// together (<c>maxRpm:</c>, CrewAI's <c>max_rpm</c>, GAP-38); unset, no limit of its own. Zero or
+    /// less is refused at load.
+    /// </summary>
+    public int? MaxRpm { get; set; }
+    /// <summary>
     /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): the hierarchical
     /// manager — required there — or the consensual crew's arbiter of the <c>ManagerDecision</c>
     /// fallback. The four other processes have none, and a key that names no agent fails the load
@@ -381,6 +390,8 @@ public class CrewSettingsYamlConfig
     public string? MemoryProvider { get; set; }
     /// <summary>Gets or sets whether planning is enabled.</summary>
     public bool? Planning { get; set; }
+    /// <summary>Gets or sets the crew's model requests per minute — see <see cref="CrewYamlConfig.MaxRpm"/>.</summary>
+    public int? MaxRpm { get; set; }
     /// <summary>
     /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): Hierarchical (required)
     /// and Consensual (the <c>ManagerDecision</c> arbiter) only — see <see cref="CrewYamlConfig.ManagerAgent"/>.

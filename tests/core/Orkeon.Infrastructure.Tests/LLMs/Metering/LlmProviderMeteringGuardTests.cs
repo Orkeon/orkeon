@@ -14,10 +14,12 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// provider a C# crew gives its planner (<c>Crew.PlanningLlm</c>, GAP-33), and
 /// <c>LlmProfileRegistry.ForProvider</c>, which meters the provider an agent carries itself
 /// (<c>Agent.Llm</c>, GAP-34) — so a provider may be built only in the factory or in the
-/// very statement that hands it to <c>AddOrkeonLlmProvider</c>, and the meter itself is applied
-/// nowhere else (a second meter would count calls twice; at an entrance, <c>Wrap</c> leaves a
-/// provider already metered as it is, and a meter wrapping a provider that answers through
-/// another metered one stays silent on the calls the inner meter counted).
+/// very statement that hands it to <c>AddOrkeonLlmProvider</c>. Each entrance applies the one
+/// function <c>LlmProviderEntrance.Enter</c> — the meter, and the host's limiter around it (GAP-38) —
+/// and neither the meter nor the limiter is applied anywhere else (a second meter would count calls
+/// twice, a second limiter take two leases; at an entrance, a provider already metered or limited is
+/// left as it is, and a meter wrapping a provider that answers through another metered one stays
+/// silent on the calls the inner meter counted).
 /// </summary>
 /// <remarks>
 /// Pragmatic, like the other source guards of this suite: the provider types are discovered
@@ -56,9 +58,15 @@ public sealed partial class LlmProviderMeteringGuardTests
     /// </summary>
     private const string ProfileRegistryFile = "src/core/Orkeon.Infrastructure/LLMs/Profiles/LlmProfileRegistry.cs";
 
-    /// <summary>The five entrances of the metered path, where <c>MeteredLlmProvider.Wrap</c> may be called.</summary>
+    /// <summary>The five entrances of the metered path, where <c>LlmProviderEntrance.Enter</c> may be called.</summary>
     private static readonly IReadOnlySet<string> Entrances =
         new HashSet<string>(StringComparer.Ordinal) { FactoryFile, RegistrationFile, ManagerLlmFile, PlanningLlmFile, ProfileRegistryFile };
+
+    /// <summary>
+    /// The one function the entrances apply (GAP-38): the only place the meter
+    /// (<c>MeteredLlmProvider.Wrap</c>) and the limiter (<c>RateLimitedLlmProvider.Wrap</c>) are applied.
+    /// </summary>
+    private const string EntranceFile = "src/core/Orkeon.Infrastructure/LLMs/LlmProviderEntrance.cs";
 
     /// <summary>
     /// Decorators: each wraps a provider it was handed, already obtained on the path. They
@@ -67,7 +75,7 @@ public sealed partial class LlmProviderMeteringGuardTests
     private static readonly IReadOnlyDictionary<string, string> Decorators = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         [nameof(MeteredLlmProvider)] = "The meter itself.",
-        [nameof(RateLimitedLlmProvider)] = "Throttles the provider the scripted host resolved from DI, metered already.",
+        [nameof(RateLimitedLlmProvider)] = "The host's limiter, applied with the meter by LlmProviderEntrance to a provider already obtained on the path (GAP-38).",
     };
 
     /// <summary>
@@ -118,8 +126,9 @@ public sealed partial class LlmProviderMeteringGuardTests
         if (violations.Count > 0)
         {
             Assert.Fail(
-                "MeteredLlmProvider.Wrap is called off the metered path — a second meter counts the same "
-                + "calls twice (STUDIO-42 D-03):\n - " + string.Join("\n - ", violations));
+                "The meter or the limiter is applied off the metered path — a second meter counts the same "
+                + "calls twice (STUDIO-42 D-03), a second limiter takes two leases (GAP-38). Apply "
+                + "LlmProviderEntrance.Enter at an entrance:\n - " + string.Join("\n - ", violations));
         }
     }
 
@@ -144,6 +153,8 @@ public sealed partial class LlmProviderMeteringGuardTests
                     // new OpenAIProvider(...) in a comment is not a construction.
                     private readonly ILlmProvider _llm = new OpenAIProvider(config, http, strategy, logger);
                     private ILlmProvider Metered(ILlmProvider p, ILlmUsageSink s) => MeteredLlmProvider.Wrap(p, s);
+                    private ILlmProvider Limited(ILlmProvider p, ILlmRateLimiter l) => RateLimitedLlmProvider.Wrap(p, l);
+                    private ILlmProvider Entered(ILlmProvider p) => LlmProviderEntrance.Enter(p, null, null);
                 }
                 """,
         };
@@ -155,7 +166,10 @@ public sealed partial class LlmProviderMeteringGuardTests
         var construction = Assert.Single(constructions);
         Assert.Contains("SummaryService.cs:4", construction, StringComparison.Ordinal);
         Assert.Contains("OpenAIProvider", construction, StringComparison.Ordinal);
-        Assert.Contains("SummaryService.cs:5", Assert.Single(metering), StringComparison.Ordinal);
+        Assert.Equal(3, metering.Count);
+        Assert.Contains("SummaryService.cs:5", metering[0], StringComparison.Ordinal);
+        Assert.Contains("SummaryService.cs:6", metering[1], StringComparison.Ordinal);
+        Assert.Contains("SummaryService.cs:7", metering[2], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -259,13 +273,20 @@ public sealed partial class LlmProviderMeteringGuardTests
         return violations;
     }
 
+    /// <summary>
+    /// The meter or the limiter applied outside <see cref="EntranceFile"/>, and the entrance function
+    /// called outside the <see cref="Entrances"/>, in the order of their files and lines.
+    /// </summary>
     private static List<string> FindOffPathMetering(IReadOnlyDictionary<string, string> sources) =>
         sources
-            .Where(entry => !Entrances.Contains(entry.Key))
+            .OrderBy(entry => entry.Key, StringComparer.Ordinal)
             .SelectMany(entry =>
             {
                 var source = StripComments(entry.Value);
-                return WrapCallRegex().Matches(source)
+                IEnumerable<Match> wraps = entry.Key == EntranceFile ? [] : WrapCallRegex().Matches(source);
+                IEnumerable<Match> entries = Entrances.Contains(entry.Key) ? [] : EnterCallRegex().Matches(source);
+                return wraps.Concat(entries)
+                    .OrderBy(match => match.Index)
                     .Select(match => $"{entry.Key}:{LineOf(source, match.Index)} -> {Collapse(match.Value)}");
             })
             .ToList();
@@ -339,8 +360,11 @@ public sealed partial class LlmProviderMeteringGuardTests
     [GeneratedRegex(@"(?<modifiers>(?:\b(?:public|internal|private|protected|sealed|partial|abstract|static|file)\s+)*)class\s+(?<name>\w+)(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*:\s*(?<bases>[^{;]+)[{;]")]
     private static partial Regex ClassDeclarationRegex();
 
-    [GeneratedRegex(@"\bMeteredLlmProvider\s*\.\s*Wrap\s*\(")]
+    [GeneratedRegex(@"\b(?:MeteredLlmProvider|RateLimitedLlmProvider)\s*\.\s*Wrap\s*\(")]
     private static partial Regex WrapCallRegex();
+
+    [GeneratedRegex(@"\bLlmProviderEntrance\s*\.\s*Enter\s*\(")]
+    private static partial Regex EnterCallRegex();
 
     [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
     private static partial Regex BlockCommentRegex();

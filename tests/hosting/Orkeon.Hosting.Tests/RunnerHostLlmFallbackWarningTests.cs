@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Hosting.Tests.Doubles;
+using Orkeon.Infrastructure.LLMs;
 using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Hosting.Tests;
@@ -83,7 +84,8 @@ public sealed class RunnerHostLlmFallbackWarningTests : IDisposable
             mounts: new RunnerMountPlan(),
             configureLogging: (_, b) => b.SetMinimumLevel(LogLevel.None)));
 
-        Assert.IsType<UndefinedLlmProvider>(host.Services.GetRequiredService<ILlmProvider>());
+        // The echo provider, under the meter and the host's limiter its entrance put around it (GAP-38).
+        Assert.IsType<UndefinedLlmProvider>(MeteredLlmProvider.Unwrap(host.Services.GetRequiredService<ILlmProvider>()));
         var ct = TestContext.Current.CancellationToken;
         Assert.Equal("hello", await host.Services.GetRequiredService<IBasicLlmProvider>().ChatAsync("hello", cancellationToken: ct));
         var answer = await host.Services.GetRequiredService<IChatClient>().GetResponseAsync("hello", cancellationToken: ct);

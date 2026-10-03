@@ -26,6 +26,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true : la crew range le résultat de chaque tâche et rappelle les plus proches avant chaque tâche (embedder requis au kickoff) ; false : rien n'est rangé ni rappelé
 memoryProvider: string    # Exige memory: true (refusé sinon). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning. Le TYPE seul : la connexion vient de la section hôte (Orkeon:Redis, Orkeon:Sqlite, …). Absent : le magasin par défaut de l'hôte (Memory:Provider)
 planning: bool            # default: false. true : avant la première tâche, un planificateur (le profil par défaut de l'hôte) écrit un plan pas à pas par tâche, que la tâche lit dans son prompt, dans chaque mode ; il ne change ni l'ordre ni les agents
+maxRpm: int               # default: aucun — au plus N requêtes au modèle par minute pour toute la crew, tous ses agents et son manager confondus (vagues parallèles comprises) ; une de plus attend son tour. Le max_rpm de CrewAI (max_rpm: est accepté). 0 ou moins fait échouer le chargement
 managerAgent: string      # La clé d'un des agents de la crew (tout autre nom fait échouer le chargement, en les listant). Hiérarchique : le manager — requis (omis, le chargement échoue) ; il assigne et revoit sur son propre bloc llm:, profil et modèle. Consensual : l'arbitre du repli ManagerDecision (inactif, avec un avertissement au début du run, sous un autre repli). Tout autre process : refusé au chargement
 graphConfig: {…}          # Réglages du mode Graph, seul réglage de circuit breaker d'une crew (voir la section dédiée)
 
@@ -62,8 +63,8 @@ agents:
     backstory: string     # Contexte et expertise (multi-ligne recommandé)
     tools: [string]       # Noms d'outils enregistrés dans IToolRegistry (un nom inconnu fait échouer le chargement sous Orkeon:CrewFactory:StrictTools, le défaut des runners)
     allowDelegation: bool # default: true — permet la délégation à d'autres agents
-    maxIter: int          # default: 20 — itérations maximales avant timeout
-    maxRpm: int           # default: 10 — requêtes par minute (rate limiting)
+    maxIter: int          # default: 20 — les tours que l'agent peut prendre sur une tâche (en C# et en .ork.ts aussi). 0 ou moins fait échouer le chargement
+    maxRpm: int           # default: aucun — au plus N requêtes au modèle par minute pour cet agent ; une de plus attend son tour. Le RateLimiting:AgentRequestsPerMinute de l'hôte le borne aussi, le plus strict l'emporte. 0 ou moins fait échouer le chargement
     verbose: bool         # default: false — logs détaillés pour cet agent
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
@@ -141,6 +142,9 @@ identifiants qui sélectionnent la même racine font échouer le chargement. Une
 `asyncExecution: true` d'une tâche aussi, hors `process: sequential` et `process: parallel` : les quatre
 autres modes ordonnent leurs tâches eux-mêmes, et le chargement nomme chaque tâche qui le demande au lieu
 d'ignorer le drapeau (voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
+Un `maxRpm` de 0 ou moins — sur la crew ou sur un agent — et un `maxIter` de 0 ou moins font échouer le
+chargement aussi, en nommant la crew ou l'agent : omettre `maxRpm:`, c'est n'avoir aucune limite, omettre
+`maxIter:`, c'est le défaut (20). Ils étaient remplacés, par 10 et 15, sans un mot.
 
 ## Configuration Guardrails
 

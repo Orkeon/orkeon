@@ -38,6 +38,7 @@ public sealed partial class JsCrewBuilder
     private bool _verbose;
     private bool _memory;
     private bool _planning;
+    private int? _maxRpm;
     private JsValue? _onCrewStart, _onCrewComplete, _onCrewError;
 
     public JsCrewBuilder(
@@ -141,6 +142,13 @@ public sealed partial class JsCrewBuilder
     /// </summary>
     public JsCrewBuilder planning(bool value = true) { _planning = value; return this; }
 
+    /// <summary>
+    /// YAML parity <c>maxRpm:</c> (GAP-38): the model requests the crew may make per minute on the
+    /// declarative shape, all its agents and its manager together; the request of too many waits its
+    /// turn. Left out, no limit of its own. Zero or less is refused at <see cref="build"/>.
+    /// </summary>
+    public JsCrewBuilder maxRpm(int value) { _maxRpm = value; return this; }
+
     public JsCrewBuilder verbose() { _verbose = true; return this; }
     public JsCrewBuilder verbose(bool value) { _verbose = value; return this; }
     public JsCrewBuilder onCrewStart(JsValue hook) { _onCrewStart = hook; return this; }
@@ -151,6 +159,12 @@ public sealed partial class JsCrewBuilder
     {
         if (string.Equals(_process, "hierarchical", StringComparison.Ordinal) && _manager is null)
             throw new InvalidScriptException("crewBuilder().process(\"hierarchical\") requires .manager(agent).");
+        if (_maxRpm is <= 0)
+        {
+            throw new InvalidScriptException(
+                $"crewBuilder() '{_name}': .maxRpm({_maxRpm}) — the model requests the crew may make per minute must be 1 " +
+                "or more. Leave .maxRpm(...) out for no limit of its own.");
+        }
 
         WarnOnAutonomousToolsWithoutSchema();
 
@@ -165,6 +179,7 @@ public sealed partial class JsCrewBuilder
             Verbose = _verbose,
             Memory = _memory,
             Planning = _planning,
+            MaxRpm = _maxRpm,
             Logger = _logger,
             LlmProvider = _llmProvider,
             BuiltInTools = _builtInTools,

@@ -59,7 +59,8 @@ déduit.
 | `llm` | le fournisseur seulement : un agent configuré avec `llm.profile("…")` fait parler `ctx.llm` au fournisseur de ce profil, sur le modèle du profil ; sinon `ctx.llm` utilise le fournisseur de l'hôte sur son modèle configuré (par appel : `{ llm: { model } }`) | ✅ un `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — règle le fournisseur de l'agent (l'un des profils de l'hôte), son modèle, sa température et son plafond de jetons. Une chaîne ou un objet simple est refusé par `.llm(...)` |
 | `tools([...])` intégrés par nom | ✅ ce que `ctx.llm.act` peut appeler — un nom que l'hôte n'offre pas fait rejeter `act` par une `UnknownToolError`, avant tout appel au modèle | ✅ strict : un nom inconnu fait échouer le run |
 | `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) et proposées à `ctx.llm.act`, qui exécute le `execute` de l'outil dans le script | ✅ enregistrées et résolues par nom |
-| `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ |
+| `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ — `maxIterations` vaut 20 par défaut, comme en YAML et en C# |
+| `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour cet agent, une de plus attendant son tour (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit : les appels `ctx.llm` ne sont pas des tours d'agent — le `RateLimiting` de l'hôte les plafonne toujours) | ✅ |
 | `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (par appel : `{ responseFormat }`) | ✅ |
 | `body` | ✅ **tout l'intérêt** | ❌ jamais invoqué |
 | `withState` → `ctx.state` | ✅ | ❌ |
@@ -80,6 +81,7 @@ déduit.
 | `manager` | ❌ | ✅ — `process("hierarchical")` : le manager assigne et revoit sur le `.llm(...)` de cet agent (`llm.profile("claude")` le place sur ce profil) ; `process("consensual")` : l'arbitre du repli `ManagerDecision` ; les quatre autres process le refusent quand le run adapte la crew, de même qu'un agent d'une autre crew |
 | `memory` | ❌ | ✅ |
 | `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
+| `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour la crew, tous ses agents et son manager confondus (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit) | ✅ |
 | `budget` | ✅ | ❌ ignoré |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 

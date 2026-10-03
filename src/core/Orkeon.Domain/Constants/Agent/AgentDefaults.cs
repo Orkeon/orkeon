@@ -12,15 +12,11 @@ public static class AgentDefaults
     public const string UnassignedValue = "Unassigned";
 
     /// <summary>
-    /// Default maximum number of iterations for the agent execution loop.
-    /// Prevents infinite loops when the LLM fails to produce a final answer.
+    /// Default maximum number of iterations for the agent execution loop — CrewAI's <c>max_iter</c>.
+    /// Prevents infinite loops when the LLM fails to produce a final answer. The one default of every
+    /// surface (GAP-38): C#, YAML <c>maxIter:</c> and <c>.ork.ts</c> <c>maxIterations</c> read it.
     /// </summary>
-    public const int MaxIterations = 15;
-
-    /// <summary>
-    /// Default maximum requests per minute for rate-limiting agent LLM calls.
-    /// </summary>
-    public const int MaxRequestsPerMinute = 10;
+    public const int MaxIterations = 20;
 
     /// <summary>
     /// Default maximum number of retry attempts on task execution failure.

@@ -250,9 +250,9 @@ Un **manager** (`IManagerAgent`, implémenté par `LlmBasedManager`) coordonne l
 
 **Interface `IManagerAgent`** (`Orkeon.Application.Interfaces`) :
 - `AssignTaskAsync(task, availableAgents, context, llm)` → `TaskAssignment`
-- `ReviewOutputAsync(output, originalTask, llm)` → `bool` (approuvée ou non)
+- `ReviewOutputAsync(output, originalTask, llm, cancellationToken)` → `bool` (approuvée ou non) ; le jeton est celui du run : Ctrl+C, `RunTimeout` et `/stop` arrêtent une revue
 
-`llm` est le `ManagerLlm` que la stratégie a résolu pour le run (`ManagerLlmResolver`) : le client de chat que le manager interroge, le modèle qu'il demande, et son nom dans le journal (`provider:<nom>` ou `profile:<nom>`).
+`llm` est le `ManagerLlm` que la stratégie a résolu pour le run (`ManagerLlmResolver`) : le client de chat que le manager interroge, le modèle qu'il demande, et son nom dans le journal (`provider:<nom>` ou `profile:<nom>`). Chacun de ses appels attend d'abord son tour dans la fenêtre `maxRpm` de l'agent manager et dans celle de la crew (GAP-38).
 
 ### Configuration YAML
 

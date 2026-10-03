@@ -54,9 +54,13 @@ public sealed class Agent : AggregateRoot<AgentId>
     public int MaxIterations { get; private set; }
 
     /// <summary>
-    /// Gets the maximum requests per minute.
+    /// The model requests this agent may make per minute — CrewAI's <c>max_rpm</c> (GAP-38): each turn
+    /// of its loop, its tool-free retry and correction round, its ballot, its calls as a manager,
+    /// counted over a sliding minute; the request of too many waits its turn, it never fails the task.
+    /// The host's <c>RateLimiting:AgentRequestsPerMinute</c> bounds the agent too, the stricter
+    /// winning. Null — the default — sets no limit of its own.
     /// </summary>
-    public int MaxRpm { get; private set; }
+    public int? MaxRpm { get; private set; }
 
     /// <summary>
     /// Gets whether verbose logging is enabled.
@@ -190,7 +194,7 @@ public sealed class Agent : AggregateRoot<AgentId>
             Backstory = options.Backstory,
             AllowDelegation = options.AllowDelegation,
             MaxIterations = options.MaxIterations > 0 ? options.MaxIterations : throw new ArgumentException("options.MaxIterations must be positive.", nameof(options)),
-            MaxRpm = options.MaxRpm > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
+            MaxRpm = options.MaxRpm is null or > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
             Verbose = options.Verbose,
             Status = AgentStatus.Idle,
             MaxExecutionTime = options.MaxExecutionTime,
@@ -272,7 +276,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         AgentBackstory? backstory = null,
         bool allowDelegation = false,
         int maxIterations = AgentDefaults.MaxIterations,
-        int maxRpm = AgentDefaults.MaxRequestsPerMinute,
+        int? maxRpm = null,
         bool verbose = false,
         TimeSpan? maxExecutionTime = null,
         bool cacheEnabled = true,

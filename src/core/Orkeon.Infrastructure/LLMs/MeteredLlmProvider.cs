@@ -19,7 +19,8 @@ namespace Orkeon.Infrastructure.LLMs;
 /// <c>SequentialCrewOrchestrator</c> the one it gives its planner (GAP-33), and
 /// <c>LlmProfileRegistry.ForProvider</c> the one an agent carries itself (<c>Agent.Llm</c>, GAP-34),
 /// so the chat client adapter, the basic-provider adapter and every direct consumer are covered by
-/// the same wrapper, whoever calls.
+/// the same wrapper, whoever calls. Each of them goes through <see cref="LlmProviderEntrance"/>,
+/// which puts the host's limiter around the meter (<see cref="RateLimitedLlmProvider"/>, GAP-38).
 /// </para>
 /// <para>
 /// A provider that reports no usage is estimated and the event says so
@@ -97,16 +98,18 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     }
 
     /// <summary>
-    /// The provider under the meter, for type inspection only — a caller that must know which
-    /// vendor it talks to (the Anthropic tool-call parser, the retry observer). Calling it
-    /// directly would bypass the meter.
+    /// The provider under the meter — and under the host's limiter around it, the two layers an
+    /// entrance applies (<see cref="LlmProviderEntrance"/>) — for type inspection only: a caller that
+    /// must know which vendor it talks to (the Anthropic tool-call parser, the retry observer).
+    /// Calling it directly would bypass the meter and the limiter.
     /// </summary>
-    /// <param name="provider">A provider, metered or not.</param>
+    /// <param name="provider">A provider, metered or not, limited or not.</param>
     /// <returns>The provider the meter wraps, or <paramref name="provider"/> itself.</returns>
     public static ILlmProvider Unwrap(ILlmProvider provider)
     {
         ArgumentNullException.ThrowIfNull(provider);
-        return provider is MeteredLlmProvider metered ? metered._inner : provider;
+        var underLimiter = RateLimitedLlmProvider.Unwrap(provider);
+        return underLimiter is MeteredLlmProvider metered ? metered._inner : underLimiter;
     }
 
     /// <inheritdoc />

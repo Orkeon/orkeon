@@ -58,6 +58,7 @@ public sealed partial class JsCrew
     internal bool Verbose { get; }
     internal bool Memory { get; }
     internal bool Planning { get; }
+    internal int? MaxRpm { get; }
     /// <summary>Tasks captured by <c>crewBuilder().withTask(...)</c>. Exposed for the
     /// JS→orchestrator adapter.</summary>
     internal IReadOnlyList<JsTask> Tasks => _tasks;
@@ -74,6 +75,7 @@ public sealed partial class JsCrew
         Verbose = definition.Verbose;
         Memory = definition.Memory;
         Planning = definition.Planning;
+        MaxRpm = definition.MaxRpm;
         _logger = definition.Logger ?? NullLogger.Instance;
         _llmProvider = definition.LlmProvider;
         _builtInTools = definition.BuiltInTools;
@@ -372,6 +374,20 @@ public sealed partial class JsCrew
             LogProceduralShapeIgnores(_logger,
                 $"crew '{name}' declares planning(), which this run will not use: the planner plans "
                 + "the tasks of the declarative shape, and the procedural engine runs agents.");
+        }
+
+        // GAP-38: maxRpm bounds agent turns, and ctx.llm calls are no agent turns — they count for the
+        // host's RateLimiting only.
+        var pacedAgents = _agents.Where(agent => agent.Builder.MaxRpmValue is not null).Select(agent => $"'{agent.name}'").ToList();
+        if (MaxRpm is not null || pacedAgents.Count > 0)
+        {
+            var declared = MaxRpm is { } crewLimit
+                ? pacedAgents.Count > 0 ? $"maxRpm({crewLimit}) and agent(s) {string.Join(", ", pacedAgents)} declare maxRpm" : $"maxRpm({crewLimit})"
+                : $"agent(s) {string.Join(", ", pacedAgents)} declare maxRpm";
+            LogProceduralShapeIgnores(_logger,
+                $"crew '{name}' declares {declared}, which this run will not apply: maxRpm bounds the turns of "
+                + "the declarative shape's agents, and ctx.llm calls are no agent turns — the host's RateLimiting "
+                + "still caps them.");
         }
 
         if (!string.Equals(Process, "sequential", StringComparison.Ordinal))

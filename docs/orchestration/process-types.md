@@ -249,9 +249,9 @@ A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates th
 
 **`IManagerAgent` interface** (`Orkeon.Application.Interfaces`):
 - `AssignTaskAsync(task, availableAgents, context, llm)` → `TaskAssignment`
-- `ReviewOutputAsync(output, originalTask, llm)` → `bool` (approved or not)
+- `ReviewOutputAsync(output, originalTask, llm, cancellationToken)` → `bool` (approved or not); the token is the run's: Ctrl+C, `RunTimeout` and `/stop` stop a review
 
-`llm` is the `ManagerLlm` the strategy resolved for the run (`ManagerLlmResolver`): the chat client the manager asks, the model it asks for, and its name in the log (`provider:<name>` or `profile:<name>`).
+`llm` is the `ManagerLlm` the strategy resolved for the run (`ManagerLlmResolver`): the chat client the manager asks, the model it asks for, and its name in the log (`provider:<name>` or `profile:<name>`). Each of its calls first waits its turn in the manager agent's `maxRpm` window and in the crew's (GAP-38).
 
 ### YAML configuration
 

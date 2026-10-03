@@ -71,6 +71,15 @@ public static class CrewDefinitionValidator
         if (string.IsNullOrWhiteSpace(config.Goal))
             errors.Add("Crew goal is required.");
 
+        // A crew's maxRpm bounds its model requests per minute (GAP-38): zero or less would let none
+        // through — it used to be replaced by 100 without a word. Left out, the crew has no limit.
+        if (config.MaxRpm is <= 0)
+        {
+            errors.Add(
+                $"Crew '{config.Name}' maxRpm: {config.MaxRpm} — the model requests the crew may make per minute must be 1 or " +
+                "more. Leave maxRpm: out for no limit of its own.");
+        }
+
         // memory: decides whether the crew remembers, memoryProvider: where (GAP-30): a provider
         // named for a crew without memory would hold nothing.
         if (!config.Memory && !string.IsNullOrWhiteSpace(config.MemoryProvider))
@@ -96,6 +105,29 @@ public static class CrewDefinitionValidator
                 errors.Add($"Agent '{agent.Id}' must have a role.");
             if (string.IsNullOrWhiteSpace(agent.Goal))
                 errors.Add($"Agent '{agent.Id}' must have a goal.");
+            ValidateAgentLimits(agent, errors);
+        }
+    }
+
+    /// <summary>
+    /// An agent's <c>maxRpm</c> and <c>maxIter</c> (GAP-38): zero or less used to be replaced — by 10
+    /// and 15 — without a word. Both are refused, naming the agent; left out, <c>maxRpm</c> is no limit
+    /// of its own and <c>maxIter</c> the default.
+    /// </summary>
+    private static void ValidateAgentLimits(AgentConfiguration agent, List<string> errors)
+    {
+        if (agent.MaxRpm is <= 0)
+        {
+            errors.Add(
+                $"Agent '{agent.Role}' maxRpm: {agent.MaxRpm} — the model requests the agent may make per minute must be 1 or " +
+                "more. Leave maxRpm: out for no limit of its own.");
+        }
+
+        if (agent.MaxIterations <= 0)
+        {
+            errors.Add(
+                $"Agent '{agent.Role}' maxIter: {agent.MaxIterations} — the turns the agent may take on a task must be 1 or " +
+                $"more. Leave maxIter: out for the default ({Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations}).");
         }
     }
 

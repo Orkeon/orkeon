@@ -7,11 +7,6 @@ namespace Orkeon.Domain.Constants.Crew;
 public static class CrewDefaults
 {
     /// <summary>
-    /// Default maximum requests per minute for rate-limiting crew LLM calls.
-    /// </summary>
-    public const int DefaultMaxRpm = 100;
-
-    /// <summary>
     /// Default maximum number of tasks allowed in a crew.
     /// </summary>
     public const int DefaultMaxTasks = 100;

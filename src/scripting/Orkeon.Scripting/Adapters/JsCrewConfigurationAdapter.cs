@@ -86,6 +86,7 @@ public static class JsCrewConfigurationAdapter
             Verbose = crew.Verbose,
             Memory = crew.Memory,
             Planning = crew.Planning,
+            MaxRpm = crew.MaxRpm,
             ManagerAgentId = managerId,
             Agents = agentConfigs,
             Tasks = taskConfigs,
@@ -130,8 +131,7 @@ public static class JsCrewConfigurationAdapter
             Tools = CollectAgentToolNames(builder),
             AllowDelegation = builder.AllowDelegationFlag,
             MaxIterations = builder.MaxIterationsValue,
-            // MaxRPM has no DSL surface yet; keep the loader-equivalent default.
-            MaxRPM = 10,
+            MaxRpm = builder.MaxRpmValue,
             Verbose = builder.VerboseFlag,
             LlmConfig = llmConfig,
         };

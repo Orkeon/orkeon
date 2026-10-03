@@ -48,6 +48,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly ITaskRepository? _taskRepository;
     private readonly ICrewExecutionHook? _executionHook;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
+    private readonly Orkeon.Application.Interfaces.Security.ILlmRateLimiter? _rateLimiter;
+    private readonly TimeProvider _time;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -61,7 +63,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// <paramref name="executionHook"/> — the one the strategies report to — hears a run that fails
     /// before its strategy reported anything, from the orchestrator itself (GAP-32). The
     /// <paramref name="usageSink"/> — the host's token meter — counts the calls of the provider a C#
-    /// crew gives its planner (<c>WithPlanningLlm</c>, GAP-33); without one, nothing is metered here.
+    /// crew gives its planner (<c>WithPlanningLlm</c>, GAP-33), and the <paramref name="rateLimiter"/> —
+    /// the host's <c>RateLimiting</c> — caps them (GAP-38); without them, nothing is metered or limited
+    /// here. The <paramref name="timeProvider"/> is the clock a crew's <c>maxRpm</c> window counts on
+    /// (GAP-38), <see cref="TimeProvider.System"/> when none is given.
     /// </remarks>
 #pragma warning disable S107 // Methods should not have too many parameters — DI constructor with optional services
     public SequentialCrewOrchestrator(
@@ -79,7 +84,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         IMemoryCoordinator? memoryCoordinator = null,
         ITaskRepository? taskRepository = null,
         ICrewExecutionHook? executionHook = null,
-        Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null)
+        Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null,
+        Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null,
+        TimeProvider? timeProvider = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -103,6 +110,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _taskRepository = taskRepository;
         _executionHook = executionHook;
         _usageSink = usageSink;
+        _rateLimiter = rateLimiter;
+        _time = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -347,8 +356,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // Execute according to process type. The plan reaches each task through the run's scope,
             // read where every mode's executions compose their prompt — no strategy carries it. Opened
             // on every run, empty without planning, so a run nested in a task sees its own plan only.
+            // The crew's request window rides the same way (GAP-38): every model call made for one of
+            // its agents or its manager during the run counts in it, a crew run from a task in its own.
             DomainCrewOutput domainOutput;
             using (CrewPlanScope.Begin(plan))
+            using (RequestRates.BeginRun(crew, _time))
             {
                 domainOutput = await ExecuteDomainStrategyAsync(
                     crew, processStrategy, stringVariables, cancellationToken).ConfigureAwait(false);
@@ -419,10 +431,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
         var crewName = crew.Name ?? crew.Id.ToString();
         // The provider C# gave the planner is the host's own code, built off the metered path: it is
-        // metered here, where the run resolves it, unless it already is — the rule of the manager's
-        // (GAP-19, GAP-33). The default profile's comes from the container, metered there.
+        // metered and limited here, where the run resolves it, unless it already is — the rule of the
+        // manager's (GAP-19, GAP-33, GAP-38). The default profile's comes from the container, entered
+        // there. The plan counts for the host only, never in the crew's window: no gate is crossed.
         var planningLlm = crew.PlanningLlm is { } own
-            ? Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(own, _usageSink)
+            ? Orkeon.Infrastructure.LLMs.LlmProviderEntrance.Enter(own, _usageSink, _rateLimiter)
             : DefaultPlanningLlm(crew);
         if (planningLlm.Capabilities.ReplaysPrompt)
         {

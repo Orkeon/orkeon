@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Orkeon.Infrastructure.Configuration;
+using Orkeon.Application.Configuration;
 using LlmRateLimiterSut = Orkeon.Infrastructure.Security.LlmRateLimiter;
 
 namespace Orkeon.Infrastructure.Tests.CovSecurity;
@@ -29,12 +29,11 @@ public sealed class CovSecurity_LlmRateLimiterConcurrencyTests : IDisposable
         {
             GlobalRequestsPerMinute = 100,
             ProviderRequestsPerMinute = 100,
-            AgentRequestsPerMinute = 100,
             MaxConcurrentRequests = 2,
             QueueLimit = 0
         });
 
-        var result = await limiter.AcquireAsync("openai", "researcher", TestContext.Current.CancellationToken);
+        var result = await limiter.AcquireAsync("openai", TestContext.Current.CancellationToken);
 
         Assert.True(result.IsAcquired);
         Assert.NotNull(result.Lease);
@@ -48,17 +47,16 @@ public sealed class CovSecurity_LlmRateLimiterConcurrencyTests : IDisposable
         {
             GlobalRequestsPerMinute = 100,
             ProviderRequestsPerMinute = 100,
-            AgentRequestsPerMinute = 100,
             MaxConcurrentRequests = 1,
             QueueLimit = 0
         });
 
         // First in-flight request takes the only concurrency slot and is held.
-        var held = await limiter.AcquireAsync("openai", "agent1", TestContext.Current.CancellationToken);
+        var held = await limiter.AcquireAsync("openai", TestContext.Current.CancellationToken);
         Assert.True(held.IsAcquired);
 
         // Second request cannot acquire the concurrency permit.
-        var denied = await limiter.AcquireAsync("openai", "agent2", TestContext.Current.CancellationToken);
+        var denied = await limiter.AcquireAsync("openai", TestContext.Current.CancellationToken);
 
         Assert.False(denied.IsAcquired);
         Assert.NotNull(denied.DenialReason);
@@ -75,17 +73,16 @@ public sealed class CovSecurity_LlmRateLimiterConcurrencyTests : IDisposable
         {
             GlobalRequestsPerMinute = 100,
             ProviderRequestsPerMinute = 100,
-            AgentRequestsPerMinute = 100,
             MaxConcurrentRequests = 1,
             QueueLimit = 0
         });
 
-        var first = await limiter.AcquireAsync("openai", "agent1", TestContext.Current.CancellationToken);
+        var first = await limiter.AcquireAsync("openai", TestContext.Current.CancellationToken);
         Assert.True(first.IsAcquired);
         first.Lease!.Dispose();
 
         // After releasing, a new request should succeed again.
-        var second = await limiter.AcquireAsync("openai", "agent2", TestContext.Current.CancellationToken);
+        var second = await limiter.AcquireAsync("openai", TestContext.Current.CancellationToken);
         Assert.True(second.IsAcquired);
         second.Lease!.Dispose();
     }
@@ -98,7 +95,7 @@ public sealed class CovSecurity_LlmRateLimiterConcurrencyTests : IDisposable
         _sut = null; // prevent double dispose
 
         await Assert.ThrowsAsync<ObjectDisposedException>(
-            () => limiter.AcquireAsync("openai", "researcher", TestContext.Current.CancellationToken));
+            () => limiter.AcquireAsync("openai", TestContext.Current.CancellationToken));
     }
 
     [Fact]

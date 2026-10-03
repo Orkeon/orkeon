@@ -245,12 +245,12 @@ public class AgentTurnSecurityTests
         provider.EnqueueText("A summary.");
         var loop = new NativeToolCallingAgentLoop(
             logger, provider, new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()), [tool],
-            new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null), security.Pipeline);
+            new LlmCallGate(logger, new ScriptedBasicLlmProvider()), security.Pipeline);
         var agent = BuildAgent(tool);
 
         var result = await loop.ExecuteAsync(
             new ExecutionInvocationContext(agent, BuildTask(), "system", "user", BuildContext(), [], System.Diagnostics.Stopwatch.StartNew()),
-            5, TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         security.AssertTheCallWentThrough("web_scrape");
@@ -268,13 +268,13 @@ public class AgentTurnSecurityTests
         provider.EnqueueText("Not allowed.");
         var loop = new NativeToolCallingAgentLoop(
             logger, provider, new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()), [tool],
-            new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null),
+            new LlmCallGate(logger, new ScriptedBasicLlmProvider()),
             new ToolInvocationPipeline(FakeGuardianPipeline.BlockingTool("shell")));
         var toolsUsed = new List<ToolUsage>();
 
         await loop.ExecuteAsync(
             new ExecutionInvocationContext(BuildAgent(tool), BuildTask(), "system", "user", BuildContext(), toolsUsed, System.Diagnostics.Stopwatch.StartNew()),
-            5, TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         Assert.Empty(tool.Calls);
         Assert.StartsWith("Error: Blocked by Guardian", provider.ReceivedTurns[1].Single(m => m.Role == "tool").Content, StringComparison.Ordinal);

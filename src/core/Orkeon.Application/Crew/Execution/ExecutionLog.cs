@@ -18,8 +18,8 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent {Role}: tool-free retry still produced tool-call mimicry after escalation; shipping empty so the validation gate flags the run.")]
     internal static partial void LogToolCallMimicryPersisted(ILogger logger, object role);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "LLM rate limit exceeded for agent {AgentRole} on provider {Provider}: {Reason}")]
-    internal static partial void LogRateLimitExceeded(ILogger logger, object agentRole, string provider, string reason);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentRole} waited {Seconds:0.#} s for its model request: {Limit}")]
+    internal static partial void LogWaitedForTurn(ILogger logger, object agentRole, double seconds, string limit);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Error executing task {TaskId} for agent {AgentId}")]
     internal static partial void LogTaskExecutionError(ILogger logger, Exception ex, object taskId, object agentId);

@@ -175,7 +175,7 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
             return Task.FromResult(assignment);
         }
 
-        public Task<bool> ReviewOutputAsync(ApplicationTaskOutput output, DomainTask task, ManagerLlm llm)
+        public Task<bool> ReviewOutputAsync(ApplicationTaskOutput output, DomainTask task, ManagerLlm llm, CancellationToken cancellationToken)
         {
             Reviews.Add((output, task));
             return Task.FromResult(_reviewFunc?.Invoke(output, task) ?? true);

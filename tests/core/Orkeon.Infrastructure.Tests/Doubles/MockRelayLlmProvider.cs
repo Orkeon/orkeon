@@ -14,6 +14,9 @@ public sealed class MockRelayLlmProvider(string name, ILlmProvider inner) : ILlm
     /// <inheritdoc />
     public string Name { get; } = name;
 
+    /// <summary>What the relay declares — <c>RunsOwnTools</c> for a bridge that runs its own tools (GAP-38).</summary>
+    public LlmProviderCapabilities Capabilities { get; init; } = LlmProviderCapabilities.Unknown;
+
     /// <summary>Awaited before the inner call; null awaits nothing.</summary>
     public Func<CancellationToken, Task>? BeforeRelay { get; set; }
 

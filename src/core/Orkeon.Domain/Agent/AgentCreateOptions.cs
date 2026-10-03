@@ -39,9 +39,10 @@ public sealed class AgentCreateOptions
     public int MaxIterations { get; init; } = AgentDefaults.MaxIterations;
 
     /// <summary>
-    /// Maximum requests per minute for rate-limiting agent LLM calls.
+    /// The model requests the agent may make per minute (<see cref="Agent.MaxRpm"/>, GAP-38); null —
+    /// the default — sets no limit of its own. Zero or less is refused.
     /// </summary>
-    public int MaxRpm { get; init; } = AgentDefaults.MaxRequestsPerMinute;
+    public int? MaxRpm { get; init; }
 
     /// <summary>
     /// Whether to enable verbose logging.

@@ -124,6 +124,9 @@ tasks; what answers is the MAF agent.
   before any call. The message names the tools and the two remedies: give the tool to the MAF agent, or
   give the MAF agent to an Orkeon agent as a tool (`WithAgentFrameworkTool`, below) — and, for the
   delegation tools, switch delegation off. One Orkeon agent cannot hold the same MAF agent both ways.
+- **Rate limits** — each turn Orkeon sends the MAF agent counts for the Orkeon agent and its crew,
+  against their `maxRpm`. For the host's `RateLimiting`, what counts is the calls the MAF agent makes to
+  Orkeon's model, not those it makes elsewhere: the bridge itself takes no lease (GAP-38).
 - **One session, each message once, one call at a time** — the provider keeps one MAF session for its
   lifetime, created on first use, so a MAF agent with memory or context providers sees one continuous
   conversation. The agent loop sends the whole conversation on every turn; a call that extends the

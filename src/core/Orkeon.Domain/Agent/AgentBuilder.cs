@@ -19,7 +19,7 @@ public sealed class AgentBuilder
     private AgentBackstory? _backstory;
     private bool _allowDelegation;
     private int _maxIterations = AgentDefaults.MaxIterations;
-    private int _maxRpm = AgentDefaults.MaxRequestsPerMinute;
+    private int? _maxRpm;
     private bool _verbose;
     private TimeSpan? _maxExecutionTime;
     private bool _cacheEnabled = true;
@@ -111,7 +111,10 @@ public sealed class AgentBuilder
         return this;
     }
 
-    /// <summary>Sets the maximum requests per minute for rate-limiting.</summary>
+    /// <summary>
+    /// Sets the model requests the agent may make per minute — CrewAI's <c>max_rpm</c>: the request of
+    /// too many waits its turn (GAP-38). Not called, the agent has no limit of its own.
+    /// </summary>
     public AgentBuilder MaxRpm(int maxRpm)
     {
         _maxRpm = maxRpm;

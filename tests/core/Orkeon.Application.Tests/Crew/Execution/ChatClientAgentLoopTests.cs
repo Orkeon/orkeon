@@ -96,7 +96,7 @@ public class ChatClientAgentLoopTests
     {
         var logger = new SpyExecutionLogger();
         var client = new ScriptedChatClient();
-        var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null);
+        var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider());
         var composer = new ChatOptionsComposer(logger, registeredTools, new FakeFileSystemService(), ToolInvocationPipeline.Unguarded);
         var loop = new ChatClientAgentLoop(logger, client, gate, composer, new ChatToolDispatcher(logger, ToolInvocationPipeline.Unguarded));
         return (loop, client);
@@ -122,7 +122,7 @@ public class ChatClientAgentLoopTests
         using (var root = new System.Diagnostics.Activity(nameof(EmitsGenAiSpans_ForTheAgentTurn_TheChatCall_AndTheToolCall)))
         {
             root.Start();
-            await loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            await loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
             trace = root.TraceId;
         }
 
@@ -167,7 +167,7 @@ public class ChatClientAgentLoopTests
         });
 
         var result = await loop.ExecuteAsync(
-            BuildAgent(5), BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            BuildAgent(5), BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal("final", result.Output);
         Assert.Equal(100, result.TokensUsed);
@@ -188,7 +188,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("DONE");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal("DONE", result.Output);
         Assert.Equal(2, result.IterationsUsed);
@@ -210,7 +210,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("DONE");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal("DONE", result.Output);
         Assert.Equal(3, result.IterationsUsed);
@@ -232,7 +232,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText(broken);
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 6, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(broken, result.Output);
         Assert.Equal(3, result.IterationsUsed);
@@ -251,7 +251,7 @@ public class ChatClientAgentLoopTests
 
         var toolsUsed = new List<ToolUsage>();
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", toolsUsed, 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", toolsUsed, TestContext.Current.CancellationToken);
 
         Assert.Equal("final after fallback", result.Output);
         Assert.Equal(2, result.IterationsUsed);
@@ -276,7 +276,7 @@ public class ChatClientAgentLoopTests
             client.EnqueueFunctionCall($"call-{i}", "flaky");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 10, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.CircuitBreakerTripped, result.ExitReason);
         Assert.Contains("identical tool call failures", result.Output, StringComparison.Ordinal);
@@ -297,7 +297,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("synthesized answer");  // the tool-free retry
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal("synthesized answer", result.Output);
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
@@ -322,7 +322,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("synthesis from gathered context");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 99, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Equal("synthesis from gathered context", result.Output);
@@ -341,7 +341,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText(""); // the synthesis retry also fails
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 99, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         // The iteration budget is the cause and the empty answer its symptom: a failed exit
         // as before, with a reason written for the summary rather than a code (STUDIO-12 C5a).
@@ -364,7 +364,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText(""); // the tool-free retry stays empty
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         // Used to exit Completed with an empty output and LastError = "empty_final_message_after_retry":
         // task.completed success:true, run.finished success:true, exit code 0, no deliverable.
@@ -391,7 +391,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
         Assert.Equal(string.Empty, result.Output);
@@ -409,7 +409,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));   // …which fails
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
         Assert.Equal(KimiTimeout, result.LastError);
@@ -426,7 +426,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
         Assert.Equal(2, result.IterationsUsed);
@@ -448,7 +448,7 @@ public class ChatClientAgentLoopTests
         });
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], 5, cts.Token));
+            loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], cts.Token));
     }
 
     [Fact]
@@ -464,7 +464,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("the answer, at last");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Equal("the answer, at last", result.Output);
@@ -481,7 +481,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("   ");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
         Assert.Equal(string.Empty, result.Output);
@@ -502,7 +502,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("clean final text");                     // escalated retry
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         Assert.Equal("clean final text", result.Output);
         Assert.Equal(4, client.Requests.Count);

@@ -39,8 +39,9 @@ public class AgentTests
         Assert.Equal("Experienced developer with 10+ years", agent.Backstory?.Value);
         Assert.Equal(AgentStatus.Idle, agent.Status);
         Assert.False(agent.AllowDelegation);
-        Assert.Equal(15, agent.MaxIterations);
-        Assert.Equal(10, agent.MaxRpm);
+        // CrewAI's max_iter, the one default of every surface; no maxRpm of its own (GAP-38).
+        Assert.Equal(20, agent.MaxIterations);
+        Assert.Null(agent.MaxRpm);
         Assert.True(agent.CacheEnabled);
     }
 

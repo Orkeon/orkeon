@@ -20,7 +20,7 @@ public sealed class CrewBuilder
     private ProcessType _processType = ProcessType.Sequential;
     private bool _verbose;
     private bool _planning;
-    private int _maxRpm = CrewDefaults.DefaultMaxRpm;
+    private int? _maxRpm;
     private bool _shareCrew = true;
     private string? _outputLogFile;
     private ILlmProvider? _managerLlm;
@@ -177,7 +177,11 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Sets the maximum requests per minute.</summary>
+    /// <summary>
+    /// Sets the model requests the crew may make per minute, all its agents and its manager together —
+    /// CrewAI's <c>max_rpm</c>: the request of too many waits its turn (GAP-38). Not called, the crew has
+    /// no limit of its own.
+    /// </summary>
     public CrewBuilder MaxRpm(int maxRpm)
     {
         _maxRpm = maxRpm;

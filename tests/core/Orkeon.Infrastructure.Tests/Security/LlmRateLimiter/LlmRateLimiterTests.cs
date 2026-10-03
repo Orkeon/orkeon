@@ -2,7 +2,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-using Orkeon.Infrastructure.Configuration;
+using Orkeon.Application.Configuration;
+using Orkeon.Application.Interfaces.Security;
 using LlmRateLimiterSut = Orkeon.Infrastructure.Security.LlmRateLimiter;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 
@@ -27,11 +28,10 @@ public sealed class LlmRateLimiterTests : IDisposable
         {
             GlobalRequestsPerMinute = 60,
             ProviderRequestsPerMinute = 30,
-            AgentRequestsPerMinute = 20,
             QueueLimit = 0
         });
 
-        var result = await limiter.AcquireAsync(ProviderOpenAI, "researcher", TestContext.Current.CancellationToken);
+        var result = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsAcquired);
         Assert.NotNull(result.Lease);
@@ -47,17 +47,16 @@ public sealed class LlmRateLimiterTests : IDisposable
         {
             GlobalRequestsPerMinute = 2,
             ProviderRequestsPerMinute = 100,
-            AgentRequestsPerMinute = 100,
             QueueLimit = 0
         });
 
         // Exhaust global limit
-        var lease1 = await limiter.AcquireAsync(ProviderOpenAI, "agent1", TestContext.Current.CancellationToken);
-        var lease2 = await limiter.AcquireAsync(ProviderOpenAI, "agent2", TestContext.Current.CancellationToken);
+        var lease1 = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
+        var lease2 = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
         Assert.True(lease1.IsAcquired);
         Assert.True(lease2.IsAcquired);
 
-        var result = await limiter.AcquireAsync(ProviderOpenAI, "agent3", TestContext.Current.CancellationToken);
+        var result = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
 
         Assert.False(result.IsAcquired);
         Assert.Contains("Global", result.DenialReason);
@@ -74,16 +73,15 @@ public sealed class LlmRateLimiterTests : IDisposable
         {
             GlobalRequestsPerMinute = 100,
             ProviderRequestsPerMinute = 2,
-            AgentRequestsPerMinute = 100,
             QueueLimit = 0
         });
 
-        var lease1 = await limiter.AcquireAsync(ProviderOpenAI, "agent1", TestContext.Current.CancellationToken);
-        var lease2 = await limiter.AcquireAsync(ProviderOpenAI, "agent2", TestContext.Current.CancellationToken);
+        var lease1 = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
+        var lease2 = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
         Assert.True(lease1.IsAcquired);
         Assert.True(lease2.IsAcquired);
 
-        var result = await limiter.AcquireAsync(ProviderOpenAI, "agent3", TestContext.Current.CancellationToken);
+        var result = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
 
         Assert.False(result.IsAcquired);
         Assert.Contains(ProviderOpenAI, result.DenialReason!);
@@ -93,8 +91,12 @@ public sealed class LlmRateLimiterTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldReturnDenied_WhenOverAgentLimit()
+    public async Task ShouldKeepNoPerAgentBucket_TheAgentsOwnWindowsHoldTheCap()
     {
+        // GAP-38 — this was ShouldReturnDenied_WhenOverAgentLimit: a bucket per role, in this
+        // singleton, shared by every team of the process and created once. AgentRequestsPerMinute
+        // now bounds each agent's own window, where a request waits its turn (AgentAndCrewMaxRpmTests);
+        // the limiter keeps what is common to the process — global, per provider, concurrency.
         var limiter = CreateLimiter(new RateLimitingOptions
         {
             GlobalRequestsPerMinute = 100,
@@ -103,18 +105,13 @@ public sealed class LlmRateLimiterTests : IDisposable
             QueueLimit = 0
         });
 
-        var lease1 = await limiter.AcquireAsync(ProviderOpenAI, "researcher", TestContext.Current.CancellationToken);
-        var lease2 = await limiter.AcquireAsync(ProviderAnthropic, "researcher", TestContext.Current.CancellationToken);
-        Assert.True(lease1.IsAcquired);
-        Assert.True(lease2.IsAcquired);
+        var leases = new List<RateLimitAcquisition>();
+        for (var i = 0; i < 3; i++)
+            leases.Add(await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken));
 
-        var result = await limiter.AcquireAsync(ProviderOpenAI, "researcher", TestContext.Current.CancellationToken);
-
-        Assert.False(result.IsAcquired);
-        Assert.Contains("researcher", result.DenialReason!);
-
-        lease1.Lease!.Dispose();
-        lease2.Lease!.Dispose();
+        Assert.All(leases, lease => Assert.True(lease.IsAcquired));
+        foreach (var lease in leases)
+            lease.Lease!.Dispose();
     }
 
     [Fact]
@@ -124,14 +121,13 @@ public sealed class LlmRateLimiterTests : IDisposable
         {
             GlobalRequestsPerMinute = 1,
             ProviderRequestsPerMinute = 100,
-            AgentRequestsPerMinute = 100,
             QueueLimit = 0
         });
 
-        var lease1 = await limiter.AcquireAsync(ProviderOpenAI, "agent1", TestContext.Current.CancellationToken);
+        var lease1 = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
         Assert.True(lease1.IsAcquired);
 
-        var result = await limiter.AcquireAsync(ProviderOpenAI, "agent2", TestContext.Current.CancellationToken);
+        var result = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
 
         Assert.False(result.IsAcquired);
         Assert.NotNull(result.RetryAfter);
@@ -145,8 +141,8 @@ public sealed class LlmRateLimiterTests : IDisposable
     {
         var limiter = CreateLimiter();
 
-        // Acquire some leases to create provider/agent limiters
-        var result = await limiter.AcquireAsync(ProviderOpenAI, "researcher", TestContext.Current.CancellationToken);
+        // Acquire a lease to create a provider limiter
+        var result = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
         result.Lease?.Dispose();
 
         // Should not throw
@@ -162,14 +158,13 @@ public sealed class LlmRateLimiterTests : IDisposable
         {
             GlobalRequestsPerMinute = 10,
             ProviderRequestsPerMinute = 10,
-            AgentRequestsPerMinute = 10,
             QueueLimit = 0
         });
 
         var leases = new List<IDisposable>();
         for (int i = 0; i < 5; i++)
         {
-            var result = await limiter.AcquireAsync(ProviderOpenAI, "researcher", TestContext.Current.CancellationToken);
+            var result = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
             Assert.True(result.IsAcquired, $"Request {i} should be acquired");
             leases.Add(result.Lease!);
         }
@@ -185,11 +180,10 @@ public sealed class LlmRateLimiterTests : IDisposable
         {
             GlobalRequestsPerMinute = 60,
             ProviderRequestsPerMinute = 30,
-            AgentRequestsPerMinute = 20,
             QueueLimit = 0
         });
 
-        var result = await limiter.AcquireAsync(ProviderOpenAI, "researcher", TestContext.Current.CancellationToken);
+        var result = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
         Assert.True(result.IsAcquired);
 
         // Should not throw when disposed
@@ -206,22 +200,21 @@ public sealed class LlmRateLimiterTests : IDisposable
         {
             GlobalRequestsPerMinute = 100,
             ProviderRequestsPerMinute = 2,
-            AgentRequestsPerMinute = 100,
             QueueLimit = 0
         });
 
         // Exhaust openai limit
-        var l1 = await limiter.AcquireAsync(ProviderOpenAI, "agent1", TestContext.Current.CancellationToken);
-        var l2 = await limiter.AcquireAsync(ProviderOpenAI, "agent2", TestContext.Current.CancellationToken);
+        var l1 = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
+        var l2 = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
         Assert.True(l1.IsAcquired);
         Assert.True(l2.IsAcquired);
 
         // openai should be denied
-        var denied = await limiter.AcquireAsync(ProviderOpenAI, "agent3", TestContext.Current.CancellationToken);
+        var denied = await limiter.AcquireAsync(ProviderOpenAI, TestContext.Current.CancellationToken);
         Assert.False(denied.IsAcquired);
 
         // anthropic should still work (independent provider limiter)
-        var anthropic = await limiter.AcquireAsync(ProviderAnthropic, "agent1", TestContext.Current.CancellationToken);
+        var anthropic = await limiter.AcquireAsync(ProviderAnthropic, TestContext.Current.CancellationToken);
         Assert.True(anthropic.IsAcquired);
 
         l1.Lease!.Dispose();

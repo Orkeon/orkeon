@@ -2,6 +2,7 @@ using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs.ToolCalling;
@@ -13,16 +14,18 @@ namespace Orkeon.Infrastructure.LLMs;
 /// Pure factory pattern - no business logic.
 /// </summary>
 /// <remarks>
-/// The only place a vendor provider is built, and therefore the place it is metered: every
-/// provider comes out wrapped in <see cref="MeteredLlmProvider"/> when the host registered an
-/// <see cref="ILlmUsageSink"/> (STUDIO-42). A provider built anywhere else would spend tokens
-/// no meter sees — an architecture test holds that line.
+/// The only place a vendor provider is built, and therefore the place it is metered and limited:
+/// every provider comes out wrapped in <see cref="MeteredLlmProvider"/> when the host registered an
+/// <see cref="ILlmUsageSink"/> (STUDIO-42), and in the host's <see cref="RateLimitedLlmProvider"/>
+/// when it registered an <see cref="ILlmRateLimiter"/> (GAP-38). A provider built anywhere else
+/// would spend tokens no meter sees, past every cap — an architecture test holds that line.
 /// </remarks>
 public sealed class LlmProviderFactory : ILlmProviderFactory
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILlmUsageSink? _usageSink;
+    private readonly ILlmRateLimiter? _rateLimiter;
     private readonly OpenAIToolCallingStrategy _openAiStrategy;
     private readonly AnthropicToolCallingStrategy _anthropicStrategy;
 
@@ -31,18 +34,24 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="usageSink">
     /// The host's usage receiver: every provider built is metered for it. Null — no host
-    /// listening — builds the providers bare.
+    /// listening — builds the providers unmetered.
+    /// </param>
+    /// <param name="rateLimiter">
+    /// The host's limiter (<c>RateLimiting</c>): every call of a provider built takes one of its
+    /// leases. Null builds the providers unlimited.
     /// </param>
     public LlmProviderFactory(
         IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory,
-        ILlmUsageSink? usageSink = null)
+        ILlmUsageSink? usageSink = null,
+        ILlmRateLimiter? rateLimiter = null)
     {
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         _httpClientFactory = httpClientFactory;
         ArgumentNullException.ThrowIfNull(loggerFactory);
         _loggerFactory = loggerFactory;
         _usageSink = usageSink;
+        _rateLimiter = rateLimiter;
 
         // Create tool calling strategies
         _openAiStrategy = new OpenAIToolCallingStrategy(
@@ -318,10 +327,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     }
 
     /// <summary>
-    /// Meters a freshly built provider (<see cref="MeteredLlmProvider"/>) and wraps it in an
-    /// <see cref="LlmProviderAdapter"/>, whose <see cref="LlmProviderAdapter.UnderlyingProvider"/>
-    /// is then the metered one: every consumer that unwraps the adapter — the chat client, the
-    /// native tool-calling loop, the scripting facade — calls through the meter.
+    /// Meters and limits a freshly built provider (<see cref="LlmProviderEntrance"/>) and wraps it in
+    /// an <see cref="LlmProviderAdapter"/>, whose <see cref="LlmProviderAdapter.UnderlyingProvider"/>
+    /// is then the entered one: every consumer that unwraps the adapter — the chat client, the
+    /// native tool-calling loop, the scripting facade — calls through the meter and the limiter.
     /// </summary>
     /// <remarks>
     /// R10.2/ANT-006: the provider is a disposable, but ownership transfers to the returned
@@ -336,7 +345,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     private LlmProviderAdapter Adapt<TProvider>(Func<ILogger<TProvider>, ILlmProvider> build)
     {
         var provider = build(_loggerFactory.CreateLogger<TProvider>());
-        return new LlmProviderAdapter(MeteredLlmProvider.Wrap(provider, _usageSink));
+        return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, _rateLimiter));
     }
 
     /// <summary>

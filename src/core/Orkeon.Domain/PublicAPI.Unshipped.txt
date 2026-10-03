@@ -91,7 +91,6 @@ Orkeon.Domain.Agent.AgentBuilder.WithTools(params Orkeon.Domain.Tools.IBaseTool!
 Orkeon.Domain.Agent.AgentCreateOptions.Tools.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>?
 *REMOVED*Orkeon.Domain.Agent.AgentSnapshot.Tools.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>?
 *REMOVED*Orkeon.Domain.Agent.AgentSpawnRequest.AgentSpawnRequest(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Common.CrewId! parentCrewId, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 15, int maxRpm = 10, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>? tools = null, Orkeon.Domain.Common.AgentId? requestingAgentId = null, System.Collections.Generic.IReadOnlyDictionary<string!, object!>? metadata = null) -> void
-Orkeon.Domain.Agent.AgentSpawnRequest.AgentSpawnRequest(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Common.CrewId! parentCrewId, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 15, int maxRpm = 10, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools = null, Orkeon.Domain.Common.AgentId? requestingAgentId = null, System.Collections.Generic.IReadOnlyDictionary<string!, object!>? metadata = null) -> void
 *REMOVED*Orkeon.Domain.Agent.AgentSpawnRequest.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.ITool!>!
 Orkeon.Domain.Agent.AgentSpawnRequest.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
 *REMOVED*Orkeon.Domain.Agent.AgentSpawnRequestBuilder.WithTool(Orkeon.Domain.Common.ITool! tool) -> Orkeon.Domain.Agent.AgentSpawnRequestBuilder!
@@ -543,8 +542,6 @@ Orkeon.Domain.Task.CrewTaskSnapshot.Tools.init -> void
 *REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.Equals(Orkeon.Domain.Agent.StepProgressContext? other) -> bool
 *REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
 Orkeon.Domain.Task.CrewTaskBase<TContext>.CrewTaskBase(Orkeon.Domain.Common.TaskId! id, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, Orkeon.Domain.Task.ValueObjects.TaskStatus! status, Orkeon.Domain.Common.AgentId? assignedAgent, Orkeon.Domain.Task.ValueObjects.TaskOutput? output, Orkeon.Domain.Task.ValueObjects.TaskPriority! priority, System.DateTime createdAt, System.DateTime? startedAt, System.DateTime? completedAt, bool asyncExecution, Orkeon.Domain.Task.JsonSchema? outputJson, System.Type? outputPydantic, string? outputFile, bool humanInput, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>? dependencies, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools, TContext? contextData, Orkeon.Domain.Task.ValueObjects.TaskDeliverable? deliverable = null) -> void
-static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 15, int maxRpm = 10, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, string? systemTemplate = null, string? promptTemplate = null, string? responseTemplate = null, int maxRetryLimit = 3, Orkeon.Domain.SharedKernel.ILlmProvider? llm = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools = null, Orkeon.Domain.Agent.GuardrailsConfig? guardrails = null) -> Orkeon.Domain.Agent.Agent!
-static Orkeon.Domain.Crew.Crew.Create(string! goal, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType? processType = null, bool verbose = false, bool planning = false, int maxRpm = 100, bool shareCrew = true, string? outputLogFile = null, Orkeon.Domain.SharedKernel.ILlmProvider? managerLlm = null, Orkeon.Domain.Common.AgentId? managerAgentId = null, string! language = "en", bool fullOutput = false, Orkeon.Domain.SharedKernel.ILlmProvider? planningLlm = null, bool memoryEnabled = false) -> Orkeon.Domain.Crew.Crew!
 *REMOVED*Orkeon.Domain.Tools.IToolRegistry.GetToolsByCapabilityAsync(string! capability) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
 *REMOVED*Orkeon.Domain.Tools.IToolRegistry.GetToolsByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
 *REMOVED*Orkeon.Domain.Common.FlowEventId
@@ -1558,3 +1555,26 @@ static Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.Create(System.Tim
 *REMOVED*const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTemperature = 0.7 -> double
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Temperature.get -> double?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TopP.get -> double?
+*REMOVED*Orkeon.Domain.Agent.Agent.MaxRpm.get -> int
+*REMOVED*Orkeon.Domain.Agent.AgentCreateOptions.MaxRpm.get -> int
+*REMOVED*Orkeon.Domain.Agent.AgentSpawnRequest.MaxRpm.get -> int
+*REMOVED*Orkeon.Domain.Configuration.AgentConfiguration.MaxRPM.get -> int
+*REMOVED*Orkeon.Domain.Configuration.AgentConfiguration.MaxRPM.init -> void
+*REMOVED*Orkeon.Domain.Crew.Crew.MaxRpm.get -> int
+*REMOVED*Orkeon.Domain.Crew.CrewCreateOptions.MaxRpm.get -> int
+*REMOVED*const Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations = 15 -> int
+*REMOVED*const Orkeon.Domain.Constants.Agent.AgentDefaults.MaxRequestsPerMinute = 10 -> int
+*REMOVED*const Orkeon.Domain.Constants.Crew.CrewDefaults.DefaultMaxRpm = 100 -> int
+const Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations = 20 -> int
+Orkeon.Domain.Crew.Crew.MaxRpm.get -> int?
+Orkeon.Domain.Agent.AgentCreateOptions.MaxRpm.get -> int?
+Orkeon.Domain.Agent.AgentSpawnRequest.MaxRpm.get -> int?
+Orkeon.Domain.Agent.Agent.MaxRpm.get -> int?
+Orkeon.Domain.Crew.CrewCreateOptions.MaxRpm.get -> int?
+Orkeon.Domain.Agent.AgentSpawnRequest.AgentSpawnRequest(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Common.CrewId! parentCrewId, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 20, int? maxRpm = null, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools = null, Orkeon.Domain.Common.AgentId? requestingAgentId = null, System.Collections.Generic.IReadOnlyDictionary<string!, object!>? metadata = null) -> void
+Orkeon.Domain.Configuration.AgentConfiguration.MaxRpm.init -> void
+Orkeon.Domain.Configuration.AgentConfiguration.MaxRpm.get -> int?
+Orkeon.Domain.Configuration.CrewConfiguration.MaxRpm.init -> void
+Orkeon.Domain.Configuration.CrewConfiguration.MaxRpm.get -> int?
+static Orkeon.Domain.Crew.Crew.Create(string! goal, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType? processType = null, bool verbose = false, bool planning = false, int? maxRpm = null, bool shareCrew = true, string? outputLogFile = null, Orkeon.Domain.SharedKernel.ILlmProvider? managerLlm = null, Orkeon.Domain.Common.AgentId? managerAgentId = null, string! language = "en", bool fullOutput = false, Orkeon.Domain.SharedKernel.ILlmProvider? planningLlm = null, bool memoryEnabled = false) -> Orkeon.Domain.Crew.Crew!
+static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 20, int? maxRpm = null, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, string? systemTemplate = null, string? promptTemplate = null, string? responseTemplate = null, int maxRetryLimit = 3, Orkeon.Domain.SharedKernel.ILlmProvider? llm = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools = null, Orkeon.Domain.Agent.GuardrailsConfig? guardrails = null) -> Orkeon.Domain.Agent.Agent!

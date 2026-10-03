@@ -216,7 +216,7 @@ public class CrewConfigurationTests
         Assert.Empty(config.Tools);
         Assert.True(config.AllowDelegation);
         Assert.Equal(20, config.MaxIterations);
-        Assert.Equal(10, config.MaxRPM);
+        Assert.Null(config.MaxRpm);
         Assert.False(config.Verbose);
         Assert.Null(config.LlmConfig);
         Assert.Null(config.SystemTemplate);
@@ -241,7 +241,7 @@ public class CrewConfigurationTests
             Tools = tools,
             AllowDelegation = false,
             MaxIterations = 50,
-            MaxRPM = 20,
+            MaxRpm = 20,
             Verbose = true,
             LlmConfig = llmConfig,
             SystemTemplate = "You are a senior developer...",
@@ -258,7 +258,7 @@ public class CrewConfigurationTests
         Assert.Equal(3, config.Tools.Count);
         Assert.False(config.AllowDelegation);
         Assert.Equal(50, config.MaxIterations);
-        Assert.Equal(20, config.MaxRPM);
+        Assert.Equal(20, config.MaxRpm);
         Assert.True(config.Verbose);
         Assert.Equal(llmConfig, config.LlmConfig);
         Assert.Equal("You are a senior developer...", config.SystemTemplate);
@@ -285,13 +285,13 @@ public class CrewConfigurationTests
     [InlineData(5)]
     [InlineData(10)]
     [InlineData(60)]
-    public void ShouldAcceptVariousValues_WhenUsingAgentConfigurationWithMaxRPM(int maxRPM)
+    public void ShouldAcceptVariousValues_WhenUsingAgentConfigurationWithMaxRpm(int maxRpm)
     {
         // Act
-        var config = new AgentConfiguration { MaxRPM = maxRPM };
+        var config = new AgentConfiguration { MaxRpm = maxRpm };
 
         // Assert
-        Assert.Equal(maxRPM, config.MaxRPM);
+        Assert.Equal(maxRpm, config.MaxRpm);
     }
 
     #endregion
@@ -634,12 +634,12 @@ public class CrewConfigurationTests
         var config = new AgentConfiguration
         {
             MaxIterations = -1,
-            MaxRPM = -5
+            MaxRpm = -5
         };
 
-        // Assert - No validation constraints in the record itself
+        // Assert - No validation constraints in the record itself: the crew's validation refuses them (GAP-38)
         Assert.Equal(-1, config.MaxIterations);
-        Assert.Equal(-5, config.MaxRPM);
+        Assert.Equal(-5, config.MaxRpm);
     }
 
     [Fact]

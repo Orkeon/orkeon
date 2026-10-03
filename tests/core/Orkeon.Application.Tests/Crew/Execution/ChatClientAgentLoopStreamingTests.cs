@@ -70,7 +70,7 @@ public class ChatClientAgentLoopStreamingTests
     private static ChatClientAgentLoop BuildLoop(IChatClient client, ILlmDeltaSink? sink)
     {
         var logger = new SpyExecutionLogger();
-        var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null);
+        var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider());
         var composer = new ChatOptionsComposer(logger, [], new FakeFileSystemService(), ToolInvocationPipeline.Unguarded);
         return new ChatClientAgentLoop(logger, client, gate, composer, new ChatToolDispatcher(logger, ToolInvocationPipeline.Unguarded), sink);
     }
@@ -78,7 +78,7 @@ public class ChatClientAgentLoopStreamingTests
     private static System.Threading.Tasks.Task<AgentLoopResult> RunAsync(ChatClientAgentLoop loop) =>
         loop.ExecuteAsync(
             new AgentBuilder().Role("Writer").Goal("Write").MaxIterations(4).Build(),
-            BuildTask(), "system", "user", [], 4, TestContext.Current.CancellationToken);
+            BuildTask(), "system", "user", [], TestContext.Current.CancellationToken);
 
     [Fact]
     public async System.Threading.Tasks.Task A_host_sink_receives_each_fragment_then_the_turns_end_and_the_turn_is_the_fragments()

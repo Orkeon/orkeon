@@ -39,6 +39,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true : range le résultat de chaque tâche et rappelle les plus proches avant chaque tâche (demande un embedder)
 memoryProvider: string    # exige memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — le type ; la section hôte (Orkeon:Redis, …) donne la connexion ; absent : le magasin par défaut de l'hôte
 planning: bool            # default: false. true : un plan pas à pas par tâche, écrit avant la première et lu par chaque tâche dans son prompt ; ne réordonne jamais les tâches
+maxRpm: int               # default: aucun — au plus N requêtes au modèle par minute pour la crew, tous ses agents et son manager confondus ; une de plus attend son tour
 managerAgent: string      # La clé d'un agent. Requis si process = "hierarchical" : le manager, sur son propre bloc llm: ; facultatif si "consensual" : l'arbitre de ManagerDecision ; refusé par les autres process
 mounts: [string]          # Racines virtuelles utilisées par la crew ("/output", ou "<id>|/output" pour épingler une entrée des settings)
 
@@ -49,8 +50,8 @@ agents:
     backstory: string     # Contexte et expertise (multi-ligne recommandé)
     tools: [string]       # Noms d'outils enregistrés dans IToolRegistry
     allowDelegation: bool # default: true — permet la délégation à d'autres agents
-    maxIter: int          # default: 20 — itérations maximales avant timeout
-    maxRpm: int           # default: 10 — requêtes par minute (rate limiting)
+    maxIter: int          # default: 20 — les tours que l'agent peut prendre sur une tâche
+    maxRpm: int           # default: aucun — au plus N requêtes au modèle par minute pour cet agent ; une de plus attend son tour
     verbose: bool         # default: false — logs détaillés pour cet agent
     llm:
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) — absent = le fournisseur par défaut de l'hôte

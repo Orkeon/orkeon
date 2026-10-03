@@ -57,6 +57,7 @@ public sealed partial class YamlCrewMapper
             Memory = settings.Memory ?? false,
             MemoryProvider = settings.MemoryProvider,
             Planning = settings.Planning ?? false,
+            MaxRpm = settings.MaxRpm,
             Agents = mappedAgents,
             Tasks = mappedTasks,
             ManagerAgentId = managerAgentId,
@@ -128,8 +129,8 @@ public sealed partial class YamlCrewMapper
                 Backstory = kvp.Value.Backstory ?? string.Empty,
                 Tools = kvp.Value.Tools ?? [],
                 AllowDelegation = kvp.Value.AllowDelegation ?? true,
-                MaxIterations = kvp.Value.MaxIter ?? 20,
-                MaxRPM = kvp.Value.MaxRpm ?? 10,
+                MaxIterations = kvp.Value.MaxIter ?? Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations,
+                MaxRpm = kvp.Value.MaxRpm,
                 Verbose = kvp.Value.Verbose ?? false,
                 // No model named: the profile's own (GAP-17) — never the framework's default
                 // model, which a block setting only a temperature used to pin on any vendor.
@@ -904,6 +905,9 @@ public sealed record CrewMappingSettings
 
     /// <summary>Whether planning is enabled (<c>crew.planning</c>).</summary>
     public bool? Planning { get; init; }
+
+    /// <summary>The crew's model requests per minute (<c>crew.maxRpm</c>, GAP-38); null for no limit of its own.</summary>
+    public int? MaxRpm { get; init; }
 
     /// <summary>
     /// Key of the crew's manager agent (<c>crew.managerAgent</c>): Hierarchical and Consensual only,

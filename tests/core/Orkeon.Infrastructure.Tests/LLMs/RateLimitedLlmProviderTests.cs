@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
-using Orkeon.Infrastructure.Configuration;
+using Orkeon.Application.Configuration;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.Security;
 using System.Diagnostics.CodeAnalysis;
@@ -29,6 +29,43 @@ public class RateLimitedLlmProviderTests
             new Orkeon.Infrastructure.Tests.Doubles.MockLlmProvider { Capabilities = capabilities }, new AlwaysAcquire());
 
         Assert.Same(capabilities, sut.Capabilities);
+    }
+
+    [Fact]
+    public void Wrap_limits_a_provider_once_and_never_one_that_runs_its_own_tools()
+    {
+        // GAP-38: the entrance limiter. No limiter, nothing to apply; a provider limited already is
+        // left as it is; a provider that runs its own tools is not limited — what it calls of Orkeon's
+        // model is, where that model is.
+        var limiter = new AlwaysAcquire();
+        var plain = new FakeProvider();
+        var bridge = new Orkeon.Infrastructure.Tests.Doubles.MockLlmProvider
+        {
+            Capabilities = new LlmProviderCapabilities { RunsOwnTools = true },
+        };
+
+        var limited = RateLimitedLlmProvider.Wrap(plain, limiter);
+
+        Assert.Same(plain, RateLimitedLlmProvider.Wrap(plain, rateLimiter: null));
+        Assert.IsType<RateLimitedLlmProvider>(limited);
+        Assert.Same(limited, RateLimitedLlmProvider.Wrap(limited, limiter));
+        Assert.Same(bridge, RateLimitedLlmProvider.Wrap(bridge, limiter));
+    }
+
+    [Fact]
+    public async Task A_call_made_inside_a_limited_call_takes_no_lease_of_its_own()
+    {
+        // The mark on the flow: the inner call of a provider that answers through another limited
+        // one is covered by the outer lease — under MaxConcurrentRequests: 1 it would wait on itself.
+        var limiter = new AlwaysAcquire();
+        var inner = RateLimitedLlmProvider.Wrap(new FakeProvider("inner"), limiter);
+        var outer = RateLimitedLlmProvider.Wrap(new Orkeon.Infrastructure.Tests.Doubles.MockRelayLlmProvider("outer", inner), limiter);
+
+        await outer.ChatAsync([LlmMessage.User("hi")], cancellationToken: TestContext.Current.CancellationToken);
+        await inner.ChatAsync([LlmMessage.User("hi")], cancellationToken: TestContext.Current.CancellationToken);
+
+        // One lease for the nested pair, one for the inner provider called on its own.
+        Assert.Equal(2, limiter.AcquireCount);
     }
 
     [Fact]
@@ -76,7 +113,6 @@ public class RateLimitedLlmProviderTests
             MaxConcurrentRequests = 3,
             GlobalRequestsPerMinute = 100_000,
             ProviderRequestsPerMinute = 100_000,
-            AgentRequestsPerMinute = 100_000,
             QueueLimit = 1_000,
         };
         using var realLimiter = new LlmRateLimiter(Options.Create(options), NullLogger<LlmRateLimiter>.Instance);
@@ -96,7 +132,7 @@ public class RateLimitedLlmProviderTests
     {
         var limiter = new DenyThenAcquire(denials: 2);
         var inner = new FakeProvider();
-        var sut = new RateLimitedLlmProvider(inner, limiter, logger: null, maxAcquireRetries: 5);
+        var sut = new RateLimitedLlmProvider(inner, limiter, maxAcquireRetries: 5);
 
         await sut.GenerateAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
 
@@ -109,7 +145,7 @@ public class RateLimitedLlmProviderTests
     {
         var limiter = new AlwaysDeny();
         var inner = new FakeProvider();
-        var sut = new RateLimitedLlmProvider(inner, limiter, logger: null, maxAcquireRetries: 2);
+        var sut = new RateLimitedLlmProvider(inner, limiter, maxAcquireRetries: 2);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GenerateAsync("hi", cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0, inner.GenerateCount);
@@ -171,7 +207,7 @@ public class RateLimitedLlmProviderTests
         public int AcquireCount;
         private readonly IDisposable _lease = (IDisposable?)lease ?? new NoopLease();
 
-        public Task<RateLimitAcquisition> AcquireAsync(string provider, string agentRole, CancellationToken ct = default)
+        public Task<RateLimitAcquisition> AcquireAsync(string provider, CancellationToken ct = default)
         {
             Interlocked.Increment(ref AcquireCount);
             return Task.FromResult(RateLimitAcquisition.Acquired(_lease));
@@ -182,7 +218,7 @@ public class RateLimitedLlmProviderTests
 
     private sealed class AlwaysDeny : ILlmRateLimiter
     {
-        public Task<RateLimitAcquisition> AcquireAsync(string provider, string agentRole, CancellationToken ct = default)
+        public Task<RateLimitAcquisition> AcquireAsync(string provider, CancellationToken ct = default)
             => Task.FromResult(RateLimitAcquisition.Denied("always", TimeSpan.FromMilliseconds(1)));
     }
 
@@ -192,7 +228,7 @@ public class RateLimitedLlmProviderTests
         private int _remaining = denials;
 
         [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The Lease (no-op Dispose) is owned by the returned RateLimitAcquisition; the SUT disposes it after the call.")]
-        public Task<RateLimitAcquisition> AcquireAsync(string provider, string agentRole, CancellationToken ct = default)
+        public Task<RateLimitAcquisition> AcquireAsync(string provider, CancellationToken ct = default)
         {
             Interlocked.Increment(ref AcquireCount);
             return Task.FromResult(Interlocked.Decrement(ref _remaining) >= 0

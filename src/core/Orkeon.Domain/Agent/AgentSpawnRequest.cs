@@ -37,9 +37,10 @@ public sealed record AgentSpawnRequest
     public int MaxIterations { get; }
 
     /// <summary>
-    /// Gets the maximum requests per minute for the spawned agent.
+    /// Gets the model requests the spawned agent may make per minute (<see cref="Agent.MaxRpm"/>);
+    /// null sets no limit of its own.
     /// </summary>
-    public int MaxRpm { get; }
+    public int? MaxRpm { get; }
 
     /// <summary>
     /// Gets whether verbose logging is enabled for the spawned agent.
@@ -90,7 +91,7 @@ public sealed record AgentSpawnRequest
         AgentBackstory? backstory = null,
         bool allowDelegation = false,
         int maxIterations = AgentDefaults.MaxIterations,
-        int maxRpm = AgentDefaults.MaxRequestsPerMinute,
+        int? maxRpm = null,
         bool verbose = false,
         TimeSpan? maxExecutionTime = null,
         bool cacheEnabled = true,
@@ -107,7 +108,7 @@ public sealed record AgentSpawnRequest
             throw new ArgumentException("maxIterations must be positive.", nameof(maxIterations));
 
         if (maxRpm <= 0)
-            throw new ArgumentException("maxRpm must be positive.", nameof(maxRpm));
+            throw new ArgumentException("maxRpm must be positive; leave it null for no limit of its own.", nameof(maxRpm));
 
         Role = role;
         Goal = goal;
@@ -144,7 +145,7 @@ public sealed class AgentSpawnRequestBuilder
     private AgentBackstory? _backstory;
     private bool _allowDelegation;
     private int _maxIterations = AgentDefaults.MaxIterations;
-    private int _maxRpm = AgentDefaults.MaxRequestsPerMinute;
+    private int? _maxRpm;
     private bool _verbose;
     private TimeSpan? _maxExecutionTime;
     private bool _cacheEnabled = true;

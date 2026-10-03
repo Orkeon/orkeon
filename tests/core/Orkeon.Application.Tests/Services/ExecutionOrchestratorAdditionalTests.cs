@@ -16,7 +16,6 @@ using Orkeon.Application.Context;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using Orkeon.Domain.Constants.Agent;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
-using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Application.Tests.Doubles;
 
@@ -173,7 +172,7 @@ public class ExecutionOrchestratorAdditionalTests
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
             Justification = "Lease ownership is transferred to RateLimitAcquisition.Acquired; the orchestrator under test is responsible for disposing it (verified via DisposedLeaseCount).")]
         public System.Threading.Tasks.Task<RateLimitAcquisition> AcquireAsync(
-            string provider, string agentRole, CancellationToken ct = default)
+            string provider, CancellationToken ct = default)
         {
             AcquireCount++;
             if (_shouldAcquire)
@@ -181,8 +180,9 @@ public class ExecutionOrchestratorAdditionalTests
                 var lease = new TrackingLease(() => DisposedLeaseCount++);
                 return System.Threading.Tasks.Task.FromResult(RateLimitAcquisition.Acquired(lease));
             }
+            // Retried after a millisecond: the entrance retries a refusal on its RetryAfter.
             return System.Threading.Tasks.Task.FromResult(
-                RateLimitAcquisition.Denied(_denialReason, TimeoutQuick));
+                RateLimitAcquisition.Denied(_denialReason, TimeSpan.FromMilliseconds(1)));
         }
 
         private class TrackingLease(Action onDispose) : IDisposable
@@ -271,30 +271,29 @@ public class ExecutionOrchestratorAdditionalTests
 
     #region Rate Limiter Tests
 
+    // GAP-38: the host's RateLimiting is applied once, at the entrance of each provider — the
+    // orchestrator takes no limiter and its gate no lease. An agent's turn takes its lease where the
+    // call meets the provider, releases it when the call ends, and a refusal fails the turn.
+
     [Fact]
-    public async System.Threading.Tasks.Task ShouldAcquireAndReleaseRateLimitLease_WhenExecutingSuccessfully()
+    public async System.Threading.Tasks.Task An_agent_turn_takes_and_releases_its_lease_at_the_providers_entrance()
     {
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        using var chatClient = new TestChatClient();
         var rateLimiter = new TestRateLimiter();
-        var validationPipeline = new TestOutputValidationPipeline();
-        var parserFactory = new TestOutputParserFactory();
-
-        chatClient.EnqueueResponse("Task completed successfully");
+        var provider = new ScriptedFullLlmProvider();
+        provider.EnqueueText("Task completed successfully");
+        using var chatClient = new Orkeon.Infrastructure.LLMs.Adapters.LlmProviderToChatClientAdapter(
+            Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider.Wrap(provider, rateLimiter));
 
         var orchestrator = new ExecutionOrchestrator(
             logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
-            validationPipeline, parserFactory, rateLimiter, new FakeFileSystemService());
-
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var context = CreateTestContext();
+            new TestOutputValidationPipeline(), new TestOutputParserFactory(), new FakeFileSystemService());
 
         // Act
-        var result = await orchestrator.ExecuteTaskCoreAsync(agent, task, context, TestContext.Current.CancellationToken);
+        var result = await orchestrator.ExecuteTaskCoreAsync(CreateTestAgent(), CreateTestTask(), CreateTestContext(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -303,61 +302,51 @@ public class ExecutionOrchestratorAdditionalTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldFail_WhenRateLimiterDeniesRequest()
+    public async System.Threading.Tasks.Task A_turn_the_hosts_limiter_refuses_fails_as_a_failed_call_naming_the_reason()
     {
-        // Arrange
+        // Arrange — refused on the first try and on each of the five retries the entrance makes.
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        using var chatClient = new TestChatClient();
         var rateLimiter = new TestRateLimiter();
-        rateLimiter.SetDenied("Quota exhausted for this agent");
-        var validationPipeline = new TestOutputValidationPipeline();
-        var parserFactory = new TestOutputParserFactory();
+        rateLimiter.SetDenied("Quota exhausted for this provider");
+        var provider = new ScriptedFullLlmProvider();
+        using var chatClient = new Orkeon.Infrastructure.LLMs.Adapters.LlmProviderToChatClientAdapter(
+            Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider.Wrap(provider, rateLimiter));
 
         var orchestrator = new ExecutionOrchestrator(
             logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
-            validationPipeline, parserFactory, rateLimiter, new FakeFileSystemService());
-
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var context = CreateTestContext();
+            new TestOutputValidationPipeline(), new TestOutputParserFactory(), new FakeFileSystemService());
 
         // Act
-        var result = await orchestrator.ExecuteTaskCoreAsync(agent, task, context, TestContext.Current.CancellationToken);
+        var result = await orchestrator.ExecuteTaskCoreAsync(CreateTestAgent(), CreateTestTask(), CreateTestContext(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result.Success);
-        Assert.Contains("rate limit exceeded", result.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(Orkeon.Application.Interfaces.Services.AgentExitReason.LlmCallFailed, result.ExitReason);
+        Assert.Contains("Quota exhausted for this provider", result.Error, StringComparison.Ordinal);
+        Assert.Equal(6, rateLimiter.AcquireCount);
+        Assert.Empty(provider.ReceivedTurns);
     }
 
     [Fact]
     public async System.Threading.Tasks.Task ShouldReleaseRateLimitLease_EvenWhenExceptionOccurs()
     {
-        // Arrange — the rate limit lease is now acquired per-LLM-call inside the
-        // iteration loop (not once at the top of ExecuteWithProviderAsync). This
-        // prevents deadlocks when tools like delegate_work trigger nested agent
-        // executions that need the same concurrency slot.
-        //
-        // We test that the lease is still correctly released when the ChatClient
-        // throws an exception after the lease has been acquired.
+        // Arrange — the lease covers the provider call only: a call that throws still releases it,
+        // and nothing is held across a tool (delegate_work runs another agent's turn).
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
         var rateLimiter = new TestRateLimiter();
-
-        using var chatClient = new ThrowingChatClient(new InvalidOperationException("LLM failure"));
+        using var chatClient = new Orkeon.Infrastructure.LLMs.Adapters.LlmProviderToChatClientAdapter(
+            Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider.Wrap(new ThrowingLlmProvider(new InvalidOperationException("LLM failure")), rateLimiter));
 
         var fullOrchestrator = new ExecutionOrchestrator(
             logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
-            new TestOutputValidationPipeline(), new TestOutputParserFactory(), rateLimiter, new FakeFileSystemService());
-
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var context = CreateTestContext();
+            new TestOutputValidationPipeline(), new TestOutputParserFactory(), new FakeFileSystemService());
 
         // Act
-        var result = await fullOrchestrator.ExecuteTaskCoreAsync(agent, task, context, CancellationToken.None);
+        var result = await fullOrchestrator.ExecuteTaskCoreAsync(CreateTestAgent(), CreateTestTask(), CreateTestContext(), CancellationToken.None);
 
         // Assert - lease should be disposed even when the LLM call throws
         Assert.False(result.Success);
@@ -365,26 +354,16 @@ public class ExecutionOrchestratorAdditionalTests
         Assert.Equal(1, rateLimiter.DisposedLeaseCount);
     }
 
-    /// <summary>
-    /// A ChatClient that throws on the first call to GetResponseAsync,
-    /// used to verify that the rate limit lease is released on exception.
-    /// </summary>
-    private class ThrowingChatClient(Exception exception) : Microsoft.Extensions.AI.IChatClient
+    /// <summary>A provider whose every call fails with the exception it was given.</summary>
+    private sealed class ThrowingLlmProvider(Exception exception) : Domain.SharedKernel.ILlmProvider
     {
-        public System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse> GetResponseAsync(
-            IEnumerable<Microsoft.Extensions.AI.ChatMessage> messages,
-            Microsoft.Extensions.AI.ChatOptions? options = null,
-            CancellationToken cancellationToken = default)
-            => throw exception;
+        public string Name => "throwing";
 
-        public IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate> GetStreamingResponseAsync(
-            IEnumerable<Microsoft.Extensions.AI.ChatMessage> messages,
-            Microsoft.Extensions.AI.ChatOptions? options = null,
-            CancellationToken cancellationToken = default)
-            => throw new NotImplementedException();
+        public System.Threading.Tasks.Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
+            System.Threading.Tasks.Task.FromException<LlmResponse>(exception);
 
-        public object? GetService(Type serviceType, object? serviceKey = null) => null;
-        public void Dispose() { }
+        public System.Threading.Tasks.Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
+            System.Threading.Tasks.Task.FromException<LlmResponse>(exception);
     }
 
     #endregion
@@ -606,21 +585,6 @@ public class ExecutionOrchestratorAdditionalTests
         Assert.Equal(5, orchestrator.MaxOutputRetries);
     }
 
-    [Fact]
-    public void ShouldSetMaxIterations_ViaProperty()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
-
-        // Act
-        orchestrator.MaxIterations = 50;
-
-        // Assert
-        Assert.Equal(50, orchestrator.MaxIterations);
-    }
-
     #endregion
 
     #region Fallback Provider Tests
@@ -700,7 +664,7 @@ public class ExecutionOrchestratorAdditionalTests
             });
         var orchestrator = new ExecutionOrchestrator(
             new TestLogger(), new Orkeon.Infrastructure.LLMs.LlmProviderAdapter(metered), chatClient,
-            Array.Empty<IBaseTool>(), validationPipeline, new TestOutputParserFactory(), new TestRateLimiter(),
+            Array.Empty<IBaseTool>(), validationPipeline, new TestOutputParserFactory(),
             fullProvider: null, toolCallingStrategy: null, deliverableResolverFactory: null,
             new FakeFileSystemService());
         var context = CreateTestContext();

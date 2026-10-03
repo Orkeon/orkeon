@@ -203,7 +203,7 @@ public class OrkeonApplicationOptionsTests
         // Assert
         Assert.Equal(RepositoryType.Yaml, opt.CrewRepositoryType);
         Assert.Equal("crews", opt.CrewsPath);
-        Assert.Equal(15, opt.DefaultMaxIterations);
+        Assert.Equal(20, opt.DefaultMaxIterations); // AgentDefaults.MaxIterations, the one default (GAP-38)
         Assert.Equal(384, opt.EmbeddingDimension);
         Assert.Equal("Simple", opt.EmbeddingProvider);
         Assert.Null(opt.OpenAIApiKey);

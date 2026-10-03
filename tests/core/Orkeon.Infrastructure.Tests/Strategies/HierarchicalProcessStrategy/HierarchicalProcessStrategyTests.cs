@@ -98,7 +98,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             return Task.FromResult(assignment);
         }
 
-        public Task<bool> ReviewOutputAsync(ApplicationTaskOutput output, DomainTask task, ManagerLlm llm)
+        public Task<bool> ReviewOutputAsync(ApplicationTaskOutput output, DomainTask task, ManagerLlm llm, CancellationToken cancellationToken)
         {
             if (_reviewOutputFunc != null)
             {

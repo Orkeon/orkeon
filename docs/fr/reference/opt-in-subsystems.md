@@ -259,8 +259,9 @@ tâche, le coût estimé.
   conversion tokens → coût.
 - **Limites connues** : non câblé dans l'exécution des outils — l'hôte interroge le
   limiteur/le tracker autour de ses appels d'outils. Le rate-limiting **LLM**
-  (`ILlmRateLimiter`), lui, reste enregistré par défaut car consommé par
-  l'orchestrateur d'exécution.
+  (`ILlmRateLimiter`), lui, reste enregistré par défaut car il est posé à l'entrée de
+  chaque provider que l'hôte construit ou enregistre — chaque appel au modèle y prend un
+  bail, tour d'agent ou non (GAP-38).
 
 ## Rotation de clés — `AddOrkeonKeyRotation()`
 

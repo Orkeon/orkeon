@@ -176,7 +176,7 @@ public class RateLimitedLlmProviderStreamingTests
         public int AcquireCount;
         private readonly IDisposable _lease = (IDisposable?)lease ?? new NoopLease();
 
-        public Task<RateLimitAcquisition> AcquireAsync(string provider, string agentRole, CancellationToken ct = default)
+        public Task<RateLimitAcquisition> AcquireAsync(string provider, CancellationToken ct = default)
         {
             Interlocked.Increment(ref AcquireCount);
             return Task.FromResult(RateLimitAcquisition.Acquired(_lease));

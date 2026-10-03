@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew;
 using Orkeon.Application.EventHub;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools;
@@ -191,6 +190,12 @@ internal sealed class RunCommandOptions
                 return Path.GetFullPath(dir);
             }
         }
+
+        /// <summary>
+        /// Test seam: services registered last on a procedural script's host, so a hand-written
+        /// double — a counting rate limiter — is the one the host resolves.
+        /// </summary>
+        internal Action<Microsoft.Extensions.Hosting.HostBuilderContext, IServiceCollection>? ConfigureTestServices { get; set; }
 }
 
 /// <summary>
@@ -708,6 +713,7 @@ internal static partial class RunCommand
                 // resolves its tools and sinks from this very host, so the decorated tools,
                 // the delta/usage observer and the hub bridge all flow into ctx.* naturally.
                 observed?.WireServices(services);
+                options.ConfigureTestServices?.Invoke(ctx, services);
             },
             llmProfile: options.LlmProfile);
 
@@ -726,17 +732,10 @@ internal static partial class RunCommand
         var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
         var configuration = host.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
         var tools = host.Services.GetServices<IBaseTool>().ToList();
-        // LLM provider is optional — scripts that never call ctx.llm work without one.
+        // LLM provider is optional — scripts that never call ctx.llm work without one. The host's
+        // provider is limited where the host built it (GAP-38): a dynamic fan-out of ctx.llm.* calls
+        // honours the RateLimiting block with every other model call, one lease each.
         var llmProvider = host.Services.GetService<ILlmProvider>();
-
-        // Scripted ctx.llm.* calls (JsLlmFacade) hit the provider directly, bypassing the
-        // throttling ExecutionOrchestrator applies to the YAML/agent path. Wrap the provider
-        // in the rate-limited decorator so a dynamic fan-out (one spawned agent per command,
-        // fired concurrently) honours the RateLimiting appsettings block instead of opening N
-        // simultaneous sockets. Scoped here on purpose — the YAML path keeps its own limiter,
-        // so we never double-throttle.
-        var llmRateLimiter = host.Services.GetService<ILlmRateLimiter>();
-        llmProvider = WrapWithRateLimiter(llmProvider, llmRateLimiter, loggerFactory, logger);
 
         LogToolsLoaded(logger, tools.Count, llmProvider?.GetType().Name ?? "(none)");
 
@@ -943,31 +942,6 @@ internal static partial class RunCommand
     }
 
     /// <summary>
-    /// Wraps <paramref name="llmProvider"/> in the rate-limited decorator when both a provider and
-    /// a rate limiter are available; otherwise returns the provider unchanged (possibly null).
-    /// </summary>
-    private static ILlmProvider? WrapWithRateLimiter(
-        ILlmProvider? llmProvider,
-        ILlmRateLimiter? llmRateLimiter,
-        ILoggerFactory loggerFactory,
-        ILogger logger)
-    {
-        // Scripted ctx.llm.* calls (JsLlmFacade) hit the provider directly, bypassing the
-        // throttling ExecutionOrchestrator applies to the YAML/agent path. Wrap the provider
-        // in the rate-limited decorator so a dynamic fan-out (one spawned agent per command,
-        // fired concurrently) honours the RateLimiting appsettings block instead of opening N
-        // simultaneous sockets. Scoped here on purpose — the YAML path keeps its own limiter,
-        // so we never double-throttle.
-        if (llmProvider is null || llmRateLimiter is null)
-            return llmProvider;
-
-        LogScriptedLlmRateLimited(logger);
-        return new Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider(
-            llmProvider, llmRateLimiter,
-            loggerFactory.CreateLogger<Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider>());
-    }
-
-    /// <summary>
     /// Resolves the effective Jint sandbox limits for this run: binds the
     /// <c>Orkeon:Scripting:Limits</c> appsettings section over the strict defaults
     /// (the documented opt-in for trusted long runs — e.g. <c>ExecutionTimeout</c>,
@@ -1037,10 +1011,6 @@ internal static partial class RunCommand
     [LoggerMessage(EventId = 1, Level = LogLevel.Information,
         Message = "LLM exchange logging enabled → {LogDir}/llm-exchanges-*.jsonl")]
     static partial void LogLlmLoggingEnabled(ILogger logger, string? logDir);
-
-    [LoggerMessage(EventId = 2, Level = LogLevel.Information,
-        Message = "Scripted LLM calls are rate-limited (RateLimiting appsettings honored).")]
-    static partial void LogScriptedLlmRateLimited(ILogger logger);
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Information,
         Message = "Loaded {ToolCount} tool(s); LLM provider: {Llm}")]

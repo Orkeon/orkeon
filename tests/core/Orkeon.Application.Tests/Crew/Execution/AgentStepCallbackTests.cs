@@ -49,7 +49,7 @@ public class AgentStepCallbackTests
         var logger = new SpyExecutionLogger();
         return new NativeToolCallingAgentLoop(
             logger, provider, new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()), tools,
-            new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null),
+            new LlmCallGate(logger, new ScriptedBasicLlmProvider()),
             StepNotifyingToolInvocationPipeline.Wrap(pipeline ?? ToolInvocationPipeline.Unguarded, callbacks));
     }
 
@@ -70,7 +70,7 @@ public class AgentStepCallbackTests
         var task = BuildTask();
 
         var result = await NativeLoop(provider, [search, scrape], callbacks)
-            .ExecuteAsync(Invocation(agent, task), 5, TestContext.Current.CancellationToken);
+            .ExecuteAsync(Invocation(agent, task), TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Equal(
@@ -96,7 +96,7 @@ public class AgentStepCallbackTests
         var (callbacks, handler) = Callbacks();
 
         await NativeLoop(provider, [shell, broken], callbacks, new ToolInvocationPipeline(FakeGuardianPipeline.BlockingTool("shell")))
-            .ExecuteAsync(Invocation(BuildAgent(shell, broken), BuildTask()), 5, TestContext.Current.CancellationToken);
+            .ExecuteAsync(Invocation(BuildAgent(shell, broken), BuildTask()), TestContext.Current.CancellationToken);
 
         Assert.Empty(shell.Calls);
         Assert.Equal(

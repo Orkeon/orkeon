@@ -257,13 +257,18 @@ public static class InfrastructureExtensions
 
         // The manager of hierarchical and autonomous crews. It has no model of its own: every call
         // names the LLM the crew gives it, which the strategy resolves once per run — Crew.ManagerLlm
-        // (metered like a provider the host registers), else the manager agent's profile and model,
-        // else the default profile (GAP-19).
+        // (metered and limited like a provider the host registers), else the manager agent's profile
+        // and model, else the default profile (GAP-19). Each call first waits its turn in the manager
+        // agent's and the crew's request windows, on the host's clock and per-agent cap (GAP-38).
         services.AddScoped<IManagerAgent, LlmBasedManager>();
         services.TryAddScoped(sp => new ManagerLlmResolver(
             sp.GetRequiredService<IChatClient>(),
             sp.GetService<ILlmProfileRegistry>(),
-            sp.GetService<ILlmUsageSink>()));
+            sp.GetService<ILlmUsageSink>(),
+            sp.GetService<ILlmRateLimiter>(),
+            sp.GetService<TimeProvider>(),
+            sp.GetService<IOptions<RateLimitingOptions>>()?.Value.AgentRequestsPerMinute,
+            sp.GetService<ILogger<ManagerLlmResolver>>()));
 
         // Add Memory Scope (no-op default — strategies require it)
         services.TryAddScoped<Application.Interfaces.Ports.IMemoryScope>(_ => Application.Context.NullMemoryScope.Instance);
@@ -415,8 +420,11 @@ public static class InfrastructureExtensions
         // Tool-level rate limiting and token budget tracking are dormant subsystems
         // (no production consumer) and are opt-in via AddOrkeonToolRateLimiting()
         // (R4.9 — see docs/reference/opt-in-subsystems.md).
-        services.AddOptions<RateLimitingOptions>()
-            .BindConfiguration("RateLimiting");
+        // Every provider entrance resolves the limiter (GAP-38): the section is bound from the
+        // container's configuration when one is registered, and a container without one — a host
+        // composed by hand — keeps the defaults instead of failing to resolve its provider.
+        services.AddOptions<RateLimitingOptions>().Configure<IServiceProvider>((options, sp) =>
+            sp.GetService<IConfiguration>()?.GetSection("RateLimiting").Bind(options));
         services.AddSingleton<ILlmRateLimiter, LlmRateLimiter>();
 
         // Audit trail (P1-2)

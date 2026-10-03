@@ -37,19 +37,31 @@ internal sealed class OutputValidationCoordinator
     private readonly IOutputParserFactory? _parserFactory;
     private readonly IBasicLlmProvider _llmProvider;
     private readonly ChatClientAgentLoop? _chatLoop;
+    private readonly LlmCallGate? _llmGate;
 
+    /// <param name="logger">The orchestrator's logger.</param>
+    /// <param name="validationPipeline">Judges each output; null validates nothing.</param>
+    /// <param name="parserFactory">Parses a valid output into its structured form.</param>
+    /// <param name="llmProvider">Answers the single-shot correction when there is no chat loop.</param>
+    /// <param name="chatLoop">Runs the correction round as a turn of the agent loop.</param>
+    /// <param name="llmGate">
+    /// The turn the single-shot correction waits for in the agent's and the crew's windows (GAP-38);
+    /// a chat loop's correction waits in the loop. Null waits for nothing.
+    /// </param>
     internal OutputValidationCoordinator(
         ILogger logger,
         IOutputValidationPipeline? validationPipeline,
         IOutputParserFactory? parserFactory,
         IBasicLlmProvider llmProvider,
-        ChatClientAgentLoop? chatLoop)
+        ChatClientAgentLoop? chatLoop,
+        LlmCallGate? llmGate = null)
     {
         _logger = logger;
         _validationPipeline = validationPipeline;
         _parserFactory = parserFactory;
         _llmProvider = llmProvider;
         _chatLoop = chatLoop;
+        _llmGate = llmGate;
     }
 
     /// <summary>
@@ -77,7 +89,6 @@ internal sealed class OutputValidationCoordinator
     internal async System.Threading.Tasks.Task<(string output, object? structuredOutput)> ValidateAndParseOutputAsync(
         OutputValidationRequest request,
         int maxOutputRetries,
-        int defaultMaxIterations,
         CancellationToken cancellationToken)
     {
         if (_validationPipeline == null || request.ValidationContext == null)
@@ -100,7 +111,7 @@ internal sealed class OutputValidationCoordinator
 
             LogRetryAttempt(request.Task, retry, pipelineResult, maxOutputRetries);
             var correctionContext = new CorrectionExecutionContext(
-                request.Agent, request.Task, request.SystemPrompt, request.ToolsUsed, defaultMaxIterations,
+                request.Agent, request.Task, request.SystemPrompt, request.ToolsUsed,
                 request.ChatLoop ?? _chatLoop);
             currentOutput = await RetryWithCorrectionAsync(
                 pipelineResult, request.ValidationContext, correctionContext, cancellationToken).ConfigureAwait(false);
@@ -134,7 +145,7 @@ internal sealed class OutputValidationCoordinator
 
     /// <summary>
     /// Cohesive execution inputs for a single correction attempt: the agent, task, system
-    /// prompt, running tool-usage log, and default iteration cap. Mirrors what
+    /// prompt and running tool-usage log. Mirrors what
     /// <see cref="ChatClientAgentLoop.ExecuteAsync"/> consumes (minus the user prompt, built per attempt).
     /// </summary>
     private sealed record CorrectionExecutionContext(
@@ -142,7 +153,6 @@ internal sealed class OutputValidationCoordinator
         CrewTask Task,
         string SystemPrompt,
         List<Domain.Tools.ToolUsage> ToolsUsed,
-        int DefaultMaxIterations,
         ChatClientAgentLoop? ChatLoop);
 
     private async System.Threading.Tasks.Task<string> RetryWithCorrectionAsync(
@@ -157,9 +167,12 @@ internal sealed class OutputValidationCoordinator
         {
             var correctionResult = await context.ChatLoop.ExecuteAsync(
                 context.Agent, context.Task, context.SystemPrompt, correctionPrompt,
-                context.ToolsUsed, context.DefaultMaxIterations, cancellationToken).ConfigureAwait(false);
+                context.ToolsUsed, cancellationToken).ConfigureAwait(false);
             return correctionResult.Output;
         }
+
+        if (_llmGate is not null)
+            await _llmGate.WaitTurnAsync(context.Agent, cancellationToken).ConfigureAwait(false);
 
         var prompt = $"{context.SystemPrompt}\n\n{correctionPrompt}";
         var correctionConfig = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(

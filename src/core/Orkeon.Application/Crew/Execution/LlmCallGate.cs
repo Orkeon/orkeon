@@ -1,54 +1,52 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Application.Interfaces.Security;
 
 namespace Orkeon.Application.Crew.Execution;
 
 /// <summary>
-/// Per-LLM-call rate-limit lease acquisition shared by the three execution loops.
-/// Extracted verbatim from <see cref="ExecutionOrchestrator"/> (R4.1).
-/// Leases are acquired/released per LLM call, NOT held across tool execution —
-/// this prevents deadlocks when tools (e.g. delegate_work) trigger nested agent
-/// executions that need the same concurrency slot.
+/// The point every model call of an agent goes through, shared by the three execution loops and
+/// the correction round: each turn, the tool-free retry, the correction. It waits for the call's
+/// turn in the agent's window and in the crew's (<see cref="RequestRates"/>, GAP-38) and says, on
+/// one Information line, who waited, how long and under which limit. It takes no lease: the host's
+/// <c>RateLimiting</c> is applied once, at the entrance of the provider the call goes to.
 /// </summary>
+/// <remarks>
+/// Nothing is held past the call: a turn waits, then counts, before its call — never across a tool
+/// call, so a tool that runs another agent's turn in the same run (<c>delegate_work</c>) waits in
+/// that agent's window, never on its caller.
+/// </remarks>
 internal sealed class LlmCallGate
 {
     private readonly ILogger _logger;
     private readonly IBasicLlmProvider _llmProvider;
-    private readonly ILlmRateLimiter? _rateLimiter;
+    private readonly TimeProvider _time;
+    private readonly int? _hostAgentLimit;
 
     /// <summary>The provider's own name, for the <c>gen_ai.provider.name</c> attribute of the spans.</summary>
     internal string ProviderName => _llmProvider.Name;
 
-    internal LlmCallGate(ILogger logger, IBasicLlmProvider llmProvider, ILlmRateLimiter? rateLimiter)
+    /// <param name="logger">Where the line of a call that waited goes.</param>
+    /// <param name="llmProvider">The provider the calls go to.</param>
+    /// <param name="time">The clock the windows count on; <see cref="TimeProvider.System"/> when null.</param>
+    /// <param name="hostAgentLimit">The host's per-agent cap (<c>RateLimiting:AgentRequestsPerMinute</c>); null sets none.</param>
+    internal LlmCallGate(ILogger logger, IBasicLlmProvider llmProvider, TimeProvider? time = null, int? hostAgentLimit = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
-        _rateLimiter = rateLimiter;
+        _time = time ?? TimeProvider.System;
+        _hostAgentLimit = hostAgentLimit;
     }
 
     /// <summary>
-    /// Acquires the rate limit lease for a single LLM call.
-    /// Returns the lease (IDisposable) that MUST be disposed after the HTTP call completes
-    /// but BEFORE tool execution begins.
-    /// Returns null if no rate limiter is configured.
+    /// Waits until <paramref name="agent"/> may make one more model call — at once when neither it nor
+    /// the crew in progress declares a limit — and counts the call.
     /// </summary>
-    internal async System.Threading.Tasks.Task<IDisposable?> AcquireLlmLeaseAsync(
-        DomainAgent agent, CancellationToken cancellationToken)
+    /// <exception cref="OperationCanceledException">The call was cancelled while it waited; it counted nothing.</exception>
+    internal async System.Threading.Tasks.Task WaitTurnAsync(DomainAgent agent, CancellationToken cancellationToken)
     {
-        if (_rateLimiter == null) return null;
-
-        var acquisition = await _rateLimiter.AcquireAsync(
-            _llmProvider.Name, agent.Role.Value, cancellationToken).ConfigureAwait(false);
-
-        if (!acquisition.IsAcquired)
-        {
-            ExecutionLog.LogRateLimitExceeded(_logger, agent.Role, _llmProvider.Name, acquisition.DenialReason ?? "unknown");
-            throw new InvalidOperationException(
-                $"LLM rate limit exceeded for agent '{agent.Role}' on provider '{_llmProvider.Name}': {acquisition.DenialReason}");
-        }
-
-        return acquisition.Lease;
+        var turn = await RequestRates.WaitTurnAsync(agent, _hostAgentLimit, _time, cancellationToken).ConfigureAwait(false);
+        if (turn.HasWaited)
+            ExecutionLog.LogWaitedForTurn(_logger, agent.Role, turn.Waited.TotalSeconds, turn.Limit ?? string.Empty);
     }
 }

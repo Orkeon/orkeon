@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Orkeon.Domain.Constants.Rag;
-using Orkeon.Infrastructure.Configuration;
+using Orkeon.Application.Configuration;
 using Orkeon.Infrastructure.Logging;
 using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Studio.Core.Configuration;

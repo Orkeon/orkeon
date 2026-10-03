@@ -252,7 +252,8 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
 - **Known limits**: not wired into tool execution — the host queries the
   limiter/tracker around its tool calls. **LLM** rate-limiting
   (`ILlmRateLimiter`), for its part, remains registered by default because it is
-  consumed by the execution orchestrator.
+  applied at the entrance of every provider the host builds or registers — each model
+  call takes one lease there, an agent's turn or not (GAP-38).
 
 ## Key rotation — `AddOrkeonKeyRotation()`
 

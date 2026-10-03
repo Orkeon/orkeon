@@ -25,6 +25,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true: the crew stores the result of each task and recalls the closest ones before each task (embedder required at kickoff); false: nothing is stored or recalled
 memoryProvider: string    # Requires memory: true (refused otherwise). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning. The TYPE only: the connection comes from the host section (Orkeon:Redis, Orkeon:Sqlite, …). Unset: the host's default store (Memory:Provider)
 planning: bool            # default: false. true: before the first task, a planner (the host's default profile) writes a step-by-step plan per task, which the task reads in its prompt, in every mode; it changes neither the order nor the agents
+maxRpm: int               # default: none — at most N model requests per minute for the whole crew, all its agents and its manager together (parallel waves included); one more waits its turn. CrewAI's max_rpm (max_rpm: is accepted). 0 or less fails the load
 managerAgent: string      # The key of one of the crew's agents (any other name fails the load, listing them). Hierarchical: the manager — required (omitted, the load fails); it assigns and reviews on its own llm: block, profile and model. Consensual: the arbiter of the ManagerDecision fallback (idle, with a warning at the start of the run, under another fallback). Any other process: refused at load
 graphConfig: {…}          # Graph mode settings, the crew's only circuit-breaker setting (see the dedicated section)
 
@@ -61,8 +62,8 @@ agents:
     backstory: string     # Context and expertise (multi-line recommended)
     tools: [string]       # Tool names registered in IToolRegistry (an unknown name fails the load under Orkeon:CrewFactory:StrictTools, the runners' default)
     allowDelegation: bool # default: true — allows delegation to other agents
-    maxIter: int          # default: 20 — maximum iterations before timeout
-    maxRpm: int           # default: 10 — requests per minute (rate limiting)
+    maxIter: int          # default: 20 — the turns the agent may take on a task (C# and .ork.ts too). 0 or less fails the load
+    maxRpm: int           # default: none — at most N model requests per minute for this agent; one more waits its turn. The host's RateLimiting:AgentRequestsPerMinute bounds it too, the stricter winning. 0 or less fails the load
     verbose: bool         # default: false — detailed logs for this agent
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
@@ -137,6 +138,9 @@ does a `circuitBreaker:` key, at the root or on a task: the block was removed (s
 instead of ignoring it. And so does a task's `asyncExecution: true` outside `process: sequential` and
 `process: parallel`: the four other modes order their tasks themselves, and the load names every task
 that asks for it rather than ignore the flag (see [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
+A `maxRpm` of 0 or less — on the crew or on an agent — and a `maxIter` of 0 or less fail the load too,
+naming the crew or the agent: leave `maxRpm:` out for no limit, `maxIter:` out for the default (20). They
+used to be replaced, by 10 and 15, without a word.
 
 ## Guardrails configuration
 

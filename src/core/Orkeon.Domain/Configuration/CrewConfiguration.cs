@@ -27,6 +27,11 @@ public sealed record CrewConfiguration
     public string? MemoryProvider { get; init; }
     /// <summary>Gets a value indicating whether planning is enabled.</summary>
     public bool Planning { get; init; }
+    /// <summary>
+    /// Gets the model requests the crew may make per minute, all its agents and its manager together
+    /// (<c>maxRpm:</c>, GAP-38); null — the default — sets no limit of its own.
+    /// </summary>
+    public int? MaxRpm { get; init; }
     /// <summary>Gets the identifier of the manager agent, or null for no manager.</summary>
     public AgentId? ManagerAgentId { get; init; }
     /// <summary>Gets the execution configuration override, or null to use defaults.</summary>
@@ -74,10 +79,13 @@ public sealed record AgentConfiguration
     public IReadOnlyList<string> Tools { get; init; } = Array.Empty<string>();
     /// <summary>Gets a value indicating whether delegation is allowed.</summary>
     public bool AllowDelegation { get; init; } = true;
-    /// <summary>Gets the maximum number of iterations per task.</summary>
-    public int MaxIterations { get; init; } = 20;
-    /// <summary>Gets the maximum requests per minute.</summary>
-    public int MaxRPM { get; init; } = 10;
+    /// <summary>Gets the maximum number of iterations per task (<c>maxIter:</c>), <see cref="Constants.Agent.AgentDefaults.MaxIterations"/> unless set.</summary>
+    public int MaxIterations { get; init; } = Constants.Agent.AgentDefaults.MaxIterations;
+    /// <summary>
+    /// Gets the model requests the agent may make per minute (<c>maxRpm:</c>, GAP-38); null — the
+    /// default — sets no limit of its own.
+    /// </summary>
+    public int? MaxRpm { get; init; }
     /// <summary>Gets a value indicating whether verbose logging is enabled for this agent.</summary>
     public bool Verbose { get; init; }
     /// <summary>Gets the LLM configuration for this agent, or null to use defaults.</summary>

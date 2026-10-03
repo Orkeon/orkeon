@@ -139,10 +139,10 @@ public class CrewConfigurationMapperTests
         Assert.True(configuration.Memory);
         Assert.True(configuration.Planning);
         Assert.NotNull(configuration.ExecutionConfig);
-        Assert.Equal(20, configuration.ExecutionConfig.MaxRPM);
+        Assert.Equal(20, configuration.MaxRpm);
     }
 
-    // ── GAP-26: a crew's request rate is exported under its own key ────────────────────────
+    // ── GAP-26, GAP-38: a crew's request rate is exported under its own key ────────────────
 
     [Fact]
     public void ToConfiguration_ExportsTheCrewsMaxRpmAsItsOwnKey()
@@ -151,8 +151,17 @@ public class CrewConfigurationMapperTests
 
         var configuration = crew.ToConfiguration([], []);
 
-        // A request rate is not a task concurrency: the export wrote it as MaxConcurrentTasks.
-        Assert.Equal(42, configuration.ExecutionConfig!.MaxRPM);
+        // A request rate is not a task concurrency: the export wrote it as MaxConcurrentTasks. It is
+        // the crew's maxRpm: the key the YAML loader reads back (GAP-38).
+        Assert.Equal(42, configuration.MaxRpm);
+    }
+
+    [Fact]
+    public void ToConfiguration_ExportsNoMaxRpmForACrewWithoutOne()
+    {
+        var configuration = DomainCrew.Create("Goal", ProcessType.Sequential).ToConfiguration([], []);
+
+        Assert.Null(configuration.MaxRpm);
     }
 
     [Fact]
@@ -184,7 +193,7 @@ public class CrewConfigurationMapperTests
 
         // Assert
         Assert.NotNull(configuration.ExecutionConfig);
-        Assert.Equal(15, configuration.ExecutionConfig.MaxRPM);
+        Assert.Equal(15, configuration.MaxRpm);
         Assert.Equal(TimeoutStandard, configuration.ExecutionConfig.DefaultTimeout);
         Assert.Equal(3, configuration.ExecutionConfig.MaxRetries);
         Assert.False(configuration.ExecutionConfig.EnableDebugMode);
@@ -267,7 +276,7 @@ public class CrewConfigurationMapperTests
         Assert.Equal("search", exportedToolName);
         Assert.False(developerConfig.AllowDelegation);
         Assert.Equal(7, developerConfig.MaxIterations);
-        Assert.Equal(42, developerConfig.MaxRPM);
+        Assert.Equal(42, developerConfig.MaxRpm);
         Assert.True(developerConfig.Verbose);
         Assert.NotNull(developerConfig.LlmConfig);
         Assert.Equal(ModelGpt4, developerConfig.LlmConfig.Model);

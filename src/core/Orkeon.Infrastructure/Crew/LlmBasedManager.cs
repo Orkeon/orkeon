@@ -97,11 +97,12 @@ public partial class LlmBasedManager : IManagerAgent
     }
 
     /// <inheritdoc />
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Manager review fault barrier: any LLM/parse failure is logged and defaults the review to approval so a transient model error does not stall the pipeline.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Manager review fault barrier: any LLM/parse failure is logged and defaults the review to approval so a transient model error does not stall the pipeline; the run's own cancellation is rethrown.")]
     public Task<bool> ReviewOutputAsync(
         TaskOutput output,
         CrewTask originalTask,
-        ManagerLlm llm)
+        ManagerLlm llm,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(originalTask);
@@ -119,12 +120,19 @@ public partial class LlmBasedManager : IManagerAgent
 
             try
             {
-                var response = await SendPromptAsync(llm, prompt, CancellationToken.None).ConfigureAwait(false);
+                // The run's token (GAP-38): it used to go out under CancellationToken.None, and Ctrl+C,
+                // RunTimeout and /stop waited for the review — and its turn — to end.
+                var response = await SendPromptAsync(llm, prompt, cancellationToken).ConfigureAwait(false);
                 var approved = ParseReviewResponse(response);
 
                 LogOutputReviewForTask(originalTask.Id, approved ? "Approved" : "Rejected");
 
                 return approved;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The run stops: never an approval by default.
+                throw;
             }
             catch (Exception ex)
             {

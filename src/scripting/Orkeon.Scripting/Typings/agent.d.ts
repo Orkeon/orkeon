@@ -30,7 +30,16 @@ declare global {
          */
         withResponseSchema(name: string, schema: JsonSchema | string, strict?: boolean): this;
         allowDelegation(value: boolean): this;
+        /** The turns the agent may take on a task. Default 20 — YAML parity `maxIter:`. Must be 1 or more. */
         maxIterations(value: number): this;
+        /**
+         * YAML parity `maxRpm:` — the model requests this agent may make per minute, each of its
+         * turns on the declarative shape: the request of too many waits its turn, it never fails the
+         * task. Bounded too by the host's `RateLimiting:AgentRequestsPerMinute`, the stricter winning.
+         * Left out, no limit of its own; must be 1 or more. The procedural shape's `ctx.llm` calls are
+         * no agent turns: it applies none, and says so.
+         */
+        maxRpm(value: number): this;
         verbose(value?: boolean): this;
         concurrency(n: number): this;
         withState<S>(factory: (() => S) | S): AgentBuilder<TIn, TOut, S>;

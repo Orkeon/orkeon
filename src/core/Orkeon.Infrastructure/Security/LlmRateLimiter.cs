@@ -2,8 +2,8 @@ using System.Threading.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Security;
-using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.Constants.Orchestration;
 using static Orkeon.Infrastructure.Constants.Security.RateLimitDefaults;
 using Orkeon.Domain.Constants.Resilience;
@@ -11,15 +11,19 @@ using Orkeon.Domain.Constants.Resilience;
 namespace Orkeon.Infrastructure.Security;
 
 /// <summary>
-/// Rate limiter for LLM API calls using sliding window rate limiters.
-/// Supports global, per-provider, and per-agent rate limits.
+/// The host's limiter of model calls (<c>RateLimiting</c>): sliding windows of a minute for the
+/// process (<see cref="RateLimitingOptions.GlobalRequestsPerMinute"/>) and for each provider
+/// (<see cref="RateLimitingOptions.ProviderRequestsPerMinute"/>), and the in-flight bound
+/// (<see cref="RateLimitingOptions.MaxConcurrentRequests"/>), each holding up to
+/// <see cref="RateLimitingOptions.QueueLimit"/> requests before it refuses. Every model call takes one
+/// lease at the entrance of its provider (<c>RateLimitedLlmProvider</c>). The per-agent cap is not
+/// here: it bounds each agent's own window, where a request waits its turn (GAP-38).
 /// </summary>
 public sealed partial class LlmRateLimiter : ILlmRateLimiter, IDisposable
 {
     private readonly RateLimiter _globalLimiter;
     private readonly ConcurrencyLimiter? _concurrencyLimiter;
     private readonly ConcurrentDictionary<string, RateLimiter> _providerLimiters = new();
-    private readonly ConcurrentDictionary<string, RateLimiter> _agentLimiters = new();
     private readonly RateLimitingOptions _options;
     private readonly ILogger<LlmRateLimiter> _logger;
     private bool _disposed;
@@ -48,11 +52,11 @@ public sealed partial class LlmRateLimiter : ILlmRateLimiter, IDisposable
     /// <inheritdoc />
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
         Justification = "On the success path ownership of the CompositeDisposable (and the acquired leases it wraps) is transferred to the returned RateLimitAcquisition, which the caller disposes to release the rate-limit permits; on every failure path the leases are disposed via DisposeAll before returning.")]
-    public async Task<RateLimitAcquisition> AcquireAsync(string provider, string agentRole, CancellationToken ct = default)
+    public async Task<RateLimitAcquisition> AcquireAsync(string provider, CancellationToken ct = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        var leases = new List<IDisposable>(4);
+        var leases = new List<IDisposable>(3);
 
         // 1. Concurrency gate — blocks until a slot is free (most important for local LLMs)
         if (_concurrencyLimiter != null)
@@ -60,7 +64,7 @@ public sealed partial class LlmRateLimiter : ILlmRateLimiter, IDisposable
             var concurrencyLease = await _concurrencyLimiter.AcquireAsync(1, ct).ConfigureAwait(false);
             if (!concurrencyLease.IsAcquired)
             {
-                LogConcurrencyLimitExceeded(provider, agentRole, _options.MaxConcurrentRequests);
+                LogConcurrencyLimitExceeded(provider, _options.MaxConcurrentRequests);
                 return RateLimitAcquisition.Denied(
                     $"Concurrency limit exceeded (max {_options.MaxConcurrentRequests} in-flight)",
                     concurrencyLease.GetRetryAfter() ?? TimeSpan.FromSeconds(OrchestrationDefaults.ConcurrencyRetryDelaySeconds));
@@ -73,7 +77,7 @@ public sealed partial class LlmRateLimiter : ILlmRateLimiter, IDisposable
         if (!globalLease.IsAcquired)
         {
             DisposeAll(leases);
-            LogGlobalLlmRateLimitExceeded(provider, agentRole);
+            LogGlobalLlmRateLimitExceeded(provider);
             return RateLimitAcquisition.Denied(
                 "Global LLM rate limit exceeded",
                 globalLease.GetRetryAfter() ?? ResilienceDefaults.DefaultRetryInitialDelay);
@@ -86,25 +90,12 @@ public sealed partial class LlmRateLimiter : ILlmRateLimiter, IDisposable
         if (!providerLease.IsAcquired)
         {
             DisposeAll(leases);
-            LogProviderRateLimitExceededFor(provider, agentRole);
+            LogProviderRateLimitExceededFor(provider);
             return RateLimitAcquisition.Denied(
                 $"Provider '{provider}' rate limit exceeded",
                 providerLease.GetRetryAfter() ?? ResilienceDefaults.DefaultRetryInitialDelay);
         }
         leases.Add(providerLease);
-
-        // 4. Per-agent rate limit
-        var agentLimiter = _agentLimiters.GetOrAdd(agentRole, _ => CreateLimiter(_options.AgentRequestsPerMinute));
-        var agentLease = await agentLimiter.AcquireAsync(1, ct).ConfigureAwait(false);
-        if (!agentLease.IsAcquired)
-        {
-            DisposeAll(leases);
-            LogAgentRateLimitExceededFor(provider, agentRole);
-            return RateLimitAcquisition.Denied(
-                $"Agent '{agentRole}' rate limit exceeded",
-                agentLease.GetRetryAfter() ?? ResilienceDefaults.DefaultRetryInitialDelay);
-        }
-        leases.Add(agentLease);
 
         return RateLimitAcquisition.Acquired(new CompositeDisposable([.. leases]));
     }
@@ -138,11 +129,8 @@ public sealed partial class LlmRateLimiter : ILlmRateLimiter, IDisposable
         _globalLimiter.Dispose();
         foreach (var limiter in _providerLimiters.Values)
             limiter.Dispose();
-        foreach (var limiter in _agentLimiters.Values)
-            limiter.Dispose();
 
         _providerLimiters.Clear();
-        _agentLimiters.Clear();
     }
 
     /// <summary>
@@ -166,17 +154,14 @@ public sealed partial class LlmRateLimiter : ILlmRateLimiter, IDisposable
         }
     }
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "LLM concurrency limit exceeded (max {MaxConcurrent}) for provider={Provider}, agent={Agent}")]
-    private partial void LogConcurrencyLimitExceeded(object provider, object agent, int maxConcurrent);
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "LLM concurrency limit exceeded (max {MaxConcurrent}) for provider={Provider}")]
+    private partial void LogConcurrencyLimitExceeded(object provider, int maxConcurrent);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Global LLM rate limit exceeded for provider={Provider}, agent={Agent}")]
-    private partial void LogGlobalLlmRateLimitExceeded(object provider, object agent);
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Global LLM rate limit exceeded for provider={Provider}")]
+    private partial void LogGlobalLlmRateLimitExceeded(object provider);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Provider rate limit exceeded for provider={Provider}, agent={Agent}")]
-    private partial void LogProviderRateLimitExceededFor(object provider, object agent);
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Agent rate limit exceeded for provider={Provider}, agent={Agent}")]
-    private partial void LogAgentRateLimitExceededFor(object provider, object agent);
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Provider rate limit exceeded for provider={Provider}")]
+    private partial void LogProviderRateLimitExceededFor(object provider);
 }
 
 internal static class RateLimitLeaseExtensions

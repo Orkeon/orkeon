@@ -32,6 +32,9 @@ public class MockManagerAgent : IManagerAgent
     public AppTaskOutput? LastReviewedOutput { get; private set; }
     public DomainTask? LastReviewedTask { get; private set; }
 
+    /// <summary>The token the last review was given — the run's (GAP-38).</summary>
+    public CancellationToken LastReviewToken { get; private set; }
+
     /// <summary>The LLM each call was handed, in call order (GAP-19).</summary>
     public List<ManagerLlm> ManagerLlms { get; } = [];
 
@@ -66,9 +69,11 @@ public class MockManagerAgent : IManagerAgent
     public Task<bool> ReviewOutputAsync(
         AppTaskOutput output,
         DomainTask originalTask,
-        ManagerLlm llm)
+        ManagerLlm llm,
+        CancellationToken cancellationToken)
     {
         ReviewOutputCallCount++;
+        LastReviewToken = cancellationToken;
         ManagerLlms.Add(llm);
         LastReviewedOutput = output;
         LastReviewedTask = originalTask;

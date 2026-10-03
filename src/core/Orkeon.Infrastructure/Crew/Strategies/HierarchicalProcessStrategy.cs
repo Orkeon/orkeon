@@ -377,7 +377,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         for (int revision = 0; revision < MaxRevisions; revision++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var approved = await _managerAgent.ReviewOutputAsync(appOutput, task, managerLlm).ConfigureAwait(false);
+            var approved = await _managerAgent.ReviewOutputAsync(appOutput, task, managerLlm, cancellationToken).ConfigureAwait(false);
             if (approved)
             {
                 accepted = true;
