@@ -123,7 +123,7 @@ public partial class CreateTeamWizardTests
     private static (CreateTeamViewModel Vm, FakeProcessLauncher Processes) WizardComposingWithGallery()
     {
         var document = AppSettingsDocument.CreateEmpty();
-        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => { });
         var profiles = new ModelProfilesViewModel(new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe());
         profiles.CommitEdit(
             new ModelProfile { Name = "Local", Provider = "Ollama", Model = "qwen2.5:14b", BaseUrl = "http://localhost:11434/v1" },

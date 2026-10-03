@@ -25,7 +25,7 @@ public sealed class SettingsScreenTests
         IApiKeyStore keyStore, FakeLlmEndpointProbe probe)
     {
         var document = AppSettingsDocument.CreateEmpty();
-        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => { });
         var store = new InMemoryModelProfileStore();
         var profiles = new ModelProfilesViewModel(store, llm, probe: probe, keyStore: keyStore);
         return (profiles, llm, store, document);
@@ -39,7 +39,7 @@ public sealed class SettingsScreenTests
     [Fact]
     public async Task Creating_the_first_profile_elects_it_and_mirrors_it_into_the_llm_section()
     {
-        var (profiles, llm, store, _) = Build();
+        var (profiles, _, store, document) = Build();
 
         profiles.NewProfileCommand.Execute(null);
         profiles.Editor!.Name = "Local rapide";
@@ -48,8 +48,8 @@ public sealed class SettingsScreenTests
         Assert.Null(profiles.Editor);
         Assert.Equal("Local rapide", profiles.DefaultProfileName);
         // The first preset seeded the endpoint; electing the default writes it to the document.
-        Assert.NotNull(llm.Model);
-        Assert.NotNull(llm.BaseUrl);
+        Assert.NotNull(document.Llm.Model);
+        Assert.NotNull(document.Llm.BaseUrl);
         var persisted = (await store.LoadAsync(TestContext.Current.CancellationToken)).Set;
         Assert.Single(persisted.Profiles);
     }
@@ -57,7 +57,7 @@ public sealed class SettingsScreenTests
     [Fact]
     public void Electing_a_default_rewrites_the_llm_section_to_that_profile()
     {
-        var (profiles, llm, _, _) = Build();
+        var (profiles, _, _, document) = Build();
         profiles.CommitEdit(Ollama("Local"), previousName: null);
         profiles.CommitEdit(
             new ModelProfile { Name = "Cloud", Provider = "OpenAI", Model = "gpt-4.1-mini", BaseUrl = "https://api.openai.com/v1" },
@@ -66,8 +66,8 @@ public sealed class SettingsScreenTests
         profiles.SetDefault("Cloud");
 
         Assert.Equal("Cloud", profiles.DefaultProfileName);
-        Assert.Equal("gpt-4.1-mini", llm.Model);
-        Assert.Equal("https://api.openai.com/v1", llm.BaseUrl);
+        Assert.Equal("gpt-4.1-mini", document.Llm.Model);
+        Assert.Equal("https://api.openai.com/v1", document.Llm.BaseUrl);
     }
 
     [Fact]
@@ -820,7 +820,7 @@ public sealed class SettingsRemediationTests
             new UiModeViewModel("novice"));
 
         novice.Mounts.AddMount().PhysicalPath = "/data";
-        novice.Llm.Model = "phi3";
+        novice.Rag.Profile = "quality";
 
         // The edit marked the document dirty; the novice screen saved it by itself.
         Assert.NotEmpty(store.SavedPaths);
@@ -837,7 +837,7 @@ public sealed class SettingsRemediationTests
             new UiModeViewModel("expert"));
 
         expert.Mounts.AddMount().PhysicalPath = "/data";
-        expert.Llm.Model = "phi3";
+        expert.Rag.Profile = "quality";
 
         Assert.True(expert.IsDirty);
         Assert.Empty(expertStore.SavedPaths);

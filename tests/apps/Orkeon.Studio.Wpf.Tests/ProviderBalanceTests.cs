@@ -2,6 +2,7 @@ using System.Globalization;
 using Orkeon.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Llm;
+using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
@@ -479,6 +480,32 @@ public sealed class ProviderBalanceTests
         Assert.Null(rig.Balances.Of(ProviderBalanceAccount.For(OpenAI("Cloud"))));
     }
 
+    /// <summary>
+    /// GAP-36, decision 2: an account is read with its own key and it alone. Without the key of its
+    /// variable, the editor refuses without a request, and the bar asks with no key — the
+    /// default's, remembered in the runtime's own variable, never goes to that account's address.
+    /// </summary>
+    [Fact]
+    public async Task An_account_without_its_key_is_never_read_with_the_defaults()
+    {
+        var rig = new Rig();
+        rig.Keys.Saved.Remove(DeepSeekKeyVariable);
+        rig.Keys.Stage(LlmPresets.DefaultApiKeyEnv, "sk-the-defaults-key");
+        rig.Add(DeepSeek("Rapide"));
+        var bar = rig.Bar();
+        rig.Profiles.BeginEdit(rig.Profiles.Set.Profiles[0]);
+        var editor = rig.Profiles.Editor!;
+
+        await editor.ReadBalanceAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(rig.Probe.Requests);
+        Assert.Equal("API key missing — remember it first", editor.BalanceResult);
+
+        await bar.Balance.RefreshAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(Assert.Single(rig.Probe.Requests).ApiKey);
+    }
+
     [Fact]
     public void A_local_runtime_has_no_balance_line()
     {
@@ -524,7 +551,7 @@ public sealed class ProviderBalanceTests
             Keys.Stage(DeepSeekKeyVariable, Key);
             Balances = new BalanceReadings(Probe, Keys);
             var document = AppSettingsDocument.CreateEmpty();
-            var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+            var llm = new LlmSectionViewModel(() => document, () => { });
             Profiles = new ModelProfilesViewModel(
                 new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe(), keyStore: Keys,
                 balances: Balances, shellOpener: Opener);

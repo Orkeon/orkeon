@@ -55,7 +55,7 @@ public sealed class StatusBarViewModelTests
     private static ModelProfilesViewModel Profiles()
     {
         var document = AppSettingsDocument.CreateEmpty();
-        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => { });
         return new ModelProfilesViewModel(new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe());
     }
 

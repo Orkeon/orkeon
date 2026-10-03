@@ -108,7 +108,7 @@ public sealed class StudioLocalizationSwitchTests
         var strings = new SwitchableStrings();
         strings.SwitchToFrench();
         var document = AppSettingsDocument.CreateEmpty();
-        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe(), strings: strings);
+        var llm = new LlmSectionViewModel(() => document, () => { });
         var profiles = new ModelProfilesViewModel(null, llm, strings, new FakeLlmEndpointProbe());
 
         profiles.NewProfileCommand.Execute(null);

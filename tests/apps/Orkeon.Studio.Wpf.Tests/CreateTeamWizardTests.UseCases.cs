@@ -85,7 +85,7 @@ public partial class CreateTeamWizardTests
         IStudioStrings? strings = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
-        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => { });
         var profiles = new ModelProfilesViewModel(new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe());
         var locator = new OrkeonBinaryLocator(cliInstalled
             ? FakeExecutableProbe.WithOrkeonInstalled()

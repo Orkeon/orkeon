@@ -38,7 +38,7 @@ public partial class CreateTeamWizardTests
         Orkeon.Studio.Core.FileSystem.IDiskEntryProbe? diskEntries = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
-        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => { });
         var profiles = new ModelProfilesViewModel(
             new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe(), keyStore: keyStore);
         if (withAssistant)

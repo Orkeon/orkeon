@@ -16,8 +16,9 @@ namespace Orkeon.Studio.Core.Llm;
 /// <param name="Provider">The provider <see cref="LlmProviderDetector"/> infers from the endpoint.</param>
 /// <param name="Host">The endpoint's host, as <see cref="Uri"/> normalizes it; empty when the endpoint does not parse.</param>
 /// <param name="KeyVariable">
-/// The variable the key is read from: the profile's own, else <see cref="LlmPresets.DefaultApiKeyEnv"/>,
-/// the one the runtime reads when a profile names none.
+/// The variable the key is read from: the profile's own; empty when the profile names none — an
+/// account with no key to present (GAP-36). Never <see cref="LlmPresets.DefaultApiKeyEnv"/> in place
+/// of a missing one: that is the default's key, which no run of another profile reads (STUDIO-49).
 /// </param>
 public sealed record ProviderBalanceAccount(string Provider, string Host, string KeyVariable)
 {
@@ -28,7 +29,7 @@ public sealed record ProviderBalanceAccount(string Provider, string Host, string
     public static ProviderBalanceAccount For(string? baseUrl, string? keyVariable) => new(
         LlmProviderDetector.Detect(baseUrl),
         Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var endpoint) ? endpoint.Host : string.Empty,
-        string.IsNullOrWhiteSpace(keyVariable) ? LlmPresets.DefaultApiKeyEnv : keyVariable.Trim());
+        string.IsNullOrWhiteSpace(keyVariable) ? string.Empty : keyVariable.Trim());
 
     /// <summary>The account a profile runs on.</summary>
     public static ProviderBalanceAccount For(ModelProfile profile)
@@ -94,10 +95,12 @@ public sealed record ProviderBalanceTarget(ProviderBalanceAccount Account, strin
     }
 
     /// <summary>
-    /// The request that reads this account: its endpoint, and the key a run on it would present
-    /// — <paramref name="typedKey"/> first (a key typed in the editor and not yet remembered),
-    /// then the account's variable, then the runtime's own, which a run inherits when the
-    /// profile's variable is empty.
+    /// The request that reads this account: its endpoint, and its key and it alone (GAP-36) —
+    /// <paramref name="typedKey"/> first (a key typed in the editor and not yet remembered), else
+    /// the one remembered under the account's variable. A variable that holds no key, or an
+    /// account that names none, presents none: the runtime's own
+    /// (<see cref="LlmPresets.DefaultApiKeyEnv"/>, the default's key) only when it is the
+    /// account's variable — and the probe then answers without a request.
     /// </summary>
     public LlmProbeRequest RequestWith(IApiKeyStore keys, string? typedKey = null)
     {
@@ -105,10 +108,7 @@ public sealed record ProviderBalanceTarget(ProviderBalanceAccount Account, strin
 
         var key = typedKey is { } typed && !string.IsNullOrWhiteSpace(typed)
             ? typed.Trim()
-            : keys.Peek(Account.KeyVariable)
-              ?? (string.Equals(Account.KeyVariable, LlmPresets.DefaultApiKeyEnv, StringComparison.Ordinal)
-                  ? null
-                  : keys.Peek(LlmPresets.DefaultApiKeyEnv));
+            : Account.KeyVariable.Length > 0 ? keys.Peek(Account.KeyVariable) : null;
 
         return new LlmProbeRequest { BaseUrl = BaseUrl, ApiKey = key };
     }

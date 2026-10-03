@@ -25,9 +25,12 @@ public sealed record LlmProbeRequest
     public string? BaseUrl { get; init; }
 
     /// <summary>
-    /// API key presented to the endpoint. Resolve it with
-    /// <see cref="LlmApiKeyResolver.Resolve(string?, string?)"/> so a key held only in the
-    /// environment is used exactly as the runtime would use it.
+    /// API key presented to the endpoint: the key of the settings being probed, and it alone
+    /// (GAP-36). A model setting presents its own — the one typed, else the one remembered under
+    /// its variable —, never the runtime's <c>ORKEON_Llm__ApiKey</c>, the default's key, unless
+    /// that is its variable; the <c>Llm</c> section of a settings file presents what
+    /// <see cref="LlmApiKeyResolver"/> resolves for it. Null presents none: the profile editor
+    /// refuses before probing a setting that needs a key and has none.
     /// </summary>
     public string? ApiKey { get; init; }
 

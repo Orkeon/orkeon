@@ -734,15 +734,6 @@
   <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve">
     <value>{0} Fehler, {1} Warnung(en).</value>
   </data>
-  <data name="Studio.Settings.NoBaseUrl" xml:space="preserve">
-    <value>Keine Basis-URL — die Laufzeit fällt auf den Echo-Provider zurück.</value>
-  </data>
-  <data name="Studio.Settings.CustomProvider" xml:space="preserve">
-    <value>benutzerdefiniert (Host nicht in der Tabelle bekannter Endpunkte)</value>
-  </data>
-  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve">
-    <value>Halten Sie den Schlüssel besser aus dieser Datei heraus: Nennen Sie in ApiKeyEnvVar die Umgebungsvariable, die ihn enthält – jeder Lauf liest sie –, oder setzen Sie {0}, das die Laufzeit vorrangig vor dieser Datei liest.</value>
-  </data>
   <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>Verbindung wird getestet…</value>
   </data>

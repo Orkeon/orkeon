@@ -734,15 +734,6 @@
   <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve">
     <value>{0} error(es), {1} advertencia(s).</value>
   </data>
-  <data name="Studio.Settings.NoBaseUrl" xml:space="preserve">
-    <value>Sin URL base — el runtime recae en el proveedor de eco.</value>
-  </data>
-  <data name="Studio.Settings.CustomProvider" xml:space="preserve">
-    <value>personalizado (host ausente de la tabla de endpoints conocidos)</value>
-  </data>
-  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve">
-    <value>Es preferible mantener la clave fuera de este archivo: indique en ApiKeyEnvVar la variable de entorno que la contiene —cada ejecución la lee— o defina {0}, que el runtime lee con prioridad sobre este archivo.</value>
-  </data>
   <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>Probando la conexión…</value>
   </data>

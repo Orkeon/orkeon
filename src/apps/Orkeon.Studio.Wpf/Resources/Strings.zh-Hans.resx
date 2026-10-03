@@ -734,15 +734,6 @@
   <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve">
     <value>{0} 个错误、{1} 个警告。</value>
   </data>
-  <data name="Studio.Settings.NoBaseUrl" xml:space="preserve">
-    <value>没有基础 URL——运行时会退回到回显提供方。</value>
-  </data>
-  <data name="Studio.Settings.CustomProvider" xml:space="preserve">
-    <value>自定义（主机不在已知端点表中）</value>
-  </data>
-  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve">
-    <value>建议不要把密钥写进此文件：在 ApiKeyEnvVar 中写明保存密钥的环境变量——每次运行都会读取它——或设置 {0}，运行时会优先于此文件读取它。</value>
-  </data>
   <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>正在测试连接…</value>
   </data>

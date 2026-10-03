@@ -1,96 +1,47 @@
 using Orkeon.Studio.Core.Configuration;
-using Orkeon.Studio.Core.Presets;
-using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
+/// <summary>
+/// What the <c>Llm</c> section's view model keeps once the form no view showed is gone (GAP-36,
+/// decision 4): it reaches the document through a delegate, and the RAG's profile is written like
+/// any field. Its other members — the election, the mirror, the hand-written entries — are the
+/// model-settings screen's, and <c>HostLlmProfilesScreenTests</c> drives them from there.
+/// </summary>
 public sealed class LlmSectionViewModelTests
 {
-    private static (LlmSectionViewModel Section, AppSettingsDocument Document, Func<int> Changes) Build(
-        string json = "{}")
+    [Fact]
+    public void Should_WriteTheRagProfileIntoTheDocument_And_RemoveItForTheDefault()
     {
-        var document = AppSettingsDocument.Parse(json);
+        var document = AppSettingsDocument.Parse("{}");
         var changes = 0;
-        var section = new LlmSectionViewModel(() => document, () => changes++, new FakeLlmEndpointProbe());
-        return (section, document, () => changes);
-    }
+        var section = new LlmSectionViewModel(() => document, () => changes++);
 
-    [Fact]
-    public void Should_WriteIntoTheDocument_When_AFieldIsEdited()
-    {
-        var (section, document, changes) = Build();
+        section.RagLlmProfile = " claude ";
 
-        section.Model = "gpt-4o-mini";
+        Assert.Equal("claude", document.GetString(RagSection.LlmProfilePath));
+        Assert.Equal(1, changes);
 
-        Assert.Equal("gpt-4o-mini", document.GetString("Llm:Model"));
-        Assert.Equal(1, changes());
-    }
+        section.RagLlmProfile = "default";
 
-    [Fact]
-    public void Should_RemoveTheKey_When_AFieldIsCleared()
-    {
-        var (section, document, _) = Build("""{"Llm":{"Model":"m"}}""");
-
-        section.Model = "   ";
-
-        Assert.Null(document.GetNode("Llm:Model"));
-    }
-
-    [Theory]
-    [InlineData("https://api.openai.com/v1", "openai")]
-    [InlineData("https://api.anthropic.com/v1", "anthropic")]
-    [InlineData("http://localhost:11434/v1", LlmProviderDetector.Ollama)]
-    [InlineData("http://localhost:12434/engines/llama.cpp/v1", LlmProviderDetector.DockerModelRunner)]
-    [InlineData("https://my-host.openai.azure.com/", LlmProviderDetector.AzureOpenAI)]
-    [InlineData("https://unknown.example.com/v1", LlmProviderDetector.Custom)]
-    public void Should_DetectTheProvider_From_TheBaseUrlHost(string baseUrl, string expected)
-    {
-        var (section, _, _) = Build();
-
-        section.BaseUrl = baseUrl;
-
-        Assert.Equal(expected, section.DetectedProvider);
-    }
-
-    [Fact]
-    public void Should_ReportNoProvider_When_ThereIsNoBaseUrl()
-    {
-        var (section, _, _) = Build();
-
-        Assert.Equal(LlmProviderDetector.None, section.DetectedProvider);
-    }
-
-    [Fact]
-    public void Should_RecommendTheEnvironmentVariable_For_TheApiKey()
-    {
-        var (section, _, _) = Build();
-
-        Assert.Equal("ORKEON_Llm__ApiKey", LlmSectionViewModel.ApiKeyEnvironmentVariable);
-        Assert.Contains("ORKEON_Llm__ApiKey", section.ApiKeyRecommendation, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Should_FlagAnInlineKey_When_OneIsStoredInTheFile()
-    {
-        var (section, _, _) = Build();
-
-        section.ApiKey = "sk-secret";
-
-        Assert.True(section.HasInlineApiKey);
+        Assert.Null(document.GetNode(RagSection.LlmProfilePath));
+        Assert.Equal(2, changes);
     }
 
     [Fact]
     public void Should_SeeTheNewFile_When_TheDocumentIsSwapped()
     {
-        // The forms reach the document through a delegate, which is what lets "open another file"
-        // keep the bindings the view already holds.
+        // The section reaches the document through a delegate, which is what lets "open another
+        // file" keep the bindings the screen already holds.
         var document = AppSettingsDocument.Parse("""{"Llm":{"Model":"first"}}""");
-        var section = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+        var section = new LlmSectionViewModel(() => document, () => { });
+        Assert.True(section.Exists);
 
-        document = AppSettingsDocument.Parse("""{"Llm":{"Model":"second"}}""");
+        document = AppSettingsDocument.Parse("""{"Orkeon":{"Rag":{"LlmProfile":"second"}}}""");
 
-        Assert.Equal("second", section.Model);
+        Assert.False(section.Exists);
+        Assert.Equal("second", section.RagLlmProfile);
     }
 }
 

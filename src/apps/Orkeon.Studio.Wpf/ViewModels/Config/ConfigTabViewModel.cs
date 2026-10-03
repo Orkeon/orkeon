@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.FileSystem;
-using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Validation;
@@ -54,7 +53,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         Picker = seams.Picker ?? NullPathPicker.Instance;
 
-        Llm = new LlmSectionViewModel(() => _document, MarkDirty, seams.LlmProbe, seams.Dispatcher, _strings);
+        Llm = new LlmSectionViewModel(() => _document, MarkDirty);
         RateLimiting = new RateLimitingSectionViewModel(() => _document, MarkDirty, _strings);
         Rag = new RagSectionViewModel(() => _document, MarkDirty, _strings);
         Logging = new LoggingSectionViewModel(() => _document, MarkDirty);
@@ -98,7 +97,10 @@ public sealed class ConfigTabViewModel : ObservableObject
     /// <summary>The browse dialogs, shared with the mount editor.</summary>
     public IPathPicker Picker { get; }
 
-    /// <summary>The <c>Llm</c> form.</summary>
+    /// <summary>
+    /// The <c>Llm</c> section as the model-settings screen writes it — the election, the mirror of
+    /// the settings into <c>Llm:Profiles</c>, the RAG's profile —: no form edits its fields.
+    /// </summary>
     public LlmSectionViewModel Llm { get; }
 
     /// <summary>The <c>RateLimiting</c> form.</summary>

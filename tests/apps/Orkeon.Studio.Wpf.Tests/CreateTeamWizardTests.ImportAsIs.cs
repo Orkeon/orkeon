@@ -38,7 +38,7 @@ public partial class CreateTeamWizardTests
         FakeUseCaseCli cli, string teamsRoot, UiModeViewModel mode, string language = "fr")
     {
         var document = AppSettingsDocument.CreateEmpty();
-        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => { });
         var profiles = new ModelProfilesViewModel(new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe());
         var locator = new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled());
 

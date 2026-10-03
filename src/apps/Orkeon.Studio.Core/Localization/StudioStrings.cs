@@ -793,16 +793,7 @@ public static class StudioStringKeys
     /// <summary>"{0} error(s), {1} warning(s)."</summary>
     public const string ConfigErrorsWarnings = "Studio.Settings.ErrorsWarnings";
 
-    // ---- Llm section (WPF ViewModel) --------------------------------------
-
-    /// <summary>"No base URL — the runtime falls back to the echo provider."</summary>
-    public const string LlmNoBaseUrl = "Studio.Settings.NoBaseUrl";
-
-    /// <summary>"custom (host not in the known-endpoint table)"</summary>
-    public const string LlmCustomProvider = "Studio.Settings.CustomProvider";
-
-    /// <summary>"Prefer keeping the key out of this file: name the environment variable that holds it in ApiKeyEnvVar …"</summary>
-    public const string LlmApiKeyRecommendation = "Studio.Settings.ApiKeyRecommendation";
+    // ---- the connection test of the profile editor -------------------------
 
     /// <summary>"Testing the connection…"</summary>
     public const string LlmTesting = "Studio.Settings.Testing";
@@ -2219,12 +2210,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ConfigNoProblem] = "No problem found.",
         [StudioStringKeys.ConfigErrorsWarnings] = "{0} error(s), {1} warning(s).",
 
-        [StudioStringKeys.LlmNoBaseUrl] = "No base URL — the runtime falls back to the echo provider.",
-        [StudioStringKeys.LlmCustomProvider] = "custom (host not in the known-endpoint table)",
-        [StudioStringKeys.LlmApiKeyRecommendation] =
-            "Prefer keeping the key out of this file: name the environment variable that holds it in " +
-            "ApiKeyEnvVar — every run reads it — or set {0}, which the runtime reads with precedence over " +
-            "this file.",
         [StudioStringKeys.LlmTesting] = "Testing the connection…",
 
         [StudioStringKeys.ProbeReachable] = "Endpoint reachable — {0} model(s).",

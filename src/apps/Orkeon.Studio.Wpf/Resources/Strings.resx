@@ -274,9 +274,6 @@
   <data name="Studio.Settings.SavedLlmWarning" xml:space="preserve"><value>Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider.</value></data>
   <data name="Studio.Settings.NoProblem" xml:space="preserve"><value>No problem found.</value></data>
   <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve"><value>{0} error(s), {1} warning(s).</value></data>
-  <data name="Studio.Settings.NoBaseUrl" xml:space="preserve"><value>No base URL — the runtime falls back to the echo provider.</value></data>
-  <data name="Studio.Settings.CustomProvider" xml:space="preserve"><value>custom (host not in the known-endpoint table)</value></data>
-  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve"><value>Prefer keeping the key out of this file: name the environment variable that holds it in ApiKeyEnvVar — every run reads it — or set {0}, which the runtime reads with precedence over this file.</value></data>
   <data name="Studio.Settings.Testing" xml:space="preserve"><value>Testing the connection…</value></data>
   <data name="Studio.Settings.ProbeReachable" xml:space="preserve"><value>Endpoint reachable — {0} model(s).</value></data>
   <data name="Studio.Settings.ProbeReachableNoCount" xml:space="preserve"><value>Endpoint reachable.</value></data>

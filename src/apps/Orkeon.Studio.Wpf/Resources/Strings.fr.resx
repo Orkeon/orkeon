@@ -274,9 +274,6 @@
   <data name="Studio.Settings.SavedLlmWarning" xml:space="preserve"><value>Enregistré dans {0}. Avertissement {1} : pas de section Llm, les exécutions utiliseront le provider écho.</value></data>
   <data name="Studio.Settings.NoProblem" xml:space="preserve"><value>Aucun problème détecté.</value></data>
   <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve"><value>{0} erreur(s), {1} avertissement(s).</value></data>
-  <data name="Studio.Settings.NoBaseUrl" xml:space="preserve"><value>Pas d'URL de base — le runtime retombe sur le provider écho.</value></data>
-  <data name="Studio.Settings.CustomProvider" xml:space="preserve"><value>custom (hôte absent de la table des endpoints connus)</value></data>
-  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve"><value>Préférez garder la clé hors de ce fichier : nommez dans ApiKeyEnvVar la variable d'environnement qui la contient — chaque exécution la lit — ou définissez {0}, que le runtime lit avec priorité sur ce fichier.</value></data>
   <data name="Studio.Settings.Testing" xml:space="preserve"><value>Test de la connexion…</value></data>
   <data name="Studio.Settings.ProbeReachable" xml:space="preserve"><value>Point d'accès joignable — {0} modèle(s).</value></data>
   <data name="Studio.Settings.ProbeReachableNoCount" xml:space="preserve"><value>Point d'accès joignable.</value></data>

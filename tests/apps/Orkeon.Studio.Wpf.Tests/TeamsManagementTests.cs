@@ -422,8 +422,7 @@ public sealed class NavigationDraftTests
         bool withAssistant = false, Doubles.FakeProcessLauncher? processes = null)
     {
         var document = Orkeon.Studio.Core.Configuration.AppSettingsDocument.CreateEmpty();
-        var llm = new Orkeon.Studio.Wpf.ViewModels.Config.LlmSectionViewModel(
-            () => document, () => { }, new Doubles.FakeLlmEndpointProbe());
+        var llm = new Orkeon.Studio.Wpf.ViewModels.Config.LlmSectionViewModel(() => document, () => { });
         var profiles = new Orkeon.Studio.Wpf.ViewModels.Config.ModelProfilesViewModel(
             new Orkeon.Studio.Core.Profiles.InMemoryModelProfileStore(), llm,
             probe: new Doubles.FakeLlmEndpointProbe());

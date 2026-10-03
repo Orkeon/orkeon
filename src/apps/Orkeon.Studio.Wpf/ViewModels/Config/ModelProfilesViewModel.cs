@@ -614,7 +614,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>Picks the provider row carried as the command parameter.</summary>
     public RelayCommand SelectProviderCommand { get; }
 
-    /// <summary>Probes the endpoint with the key resolved from the environment.</summary>
+    /// <summary>Probes the endpoint with the setting's own key — never the default's (GAP-36).</summary>
     public AsyncRelayCommand TestConnectionCommand { get; }
 
     /// <summary>The remember-the-key action — stores the draft under the profile's variable, now.</summary>
@@ -849,8 +849,9 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
     /// <summary>
     /// Probes the endpoint, then runs a minimal completion on the profile's model with its
-    /// thinking switch (STUDIO-43), under a deadline of 30 s or the profile's own when shorter.
-    /// Public so tests can await it with a token.
+    /// thinking switch (STUDIO-43), under a deadline of 30 s or the profile's own when shorter —
+    /// with the setting's key and it alone (GAP-36): a setting that needs one and has none is
+    /// refused without a request. Public so tests can await it with a token.
     /// </summary>
     [SuppressMessage("Design", "CA1031",
         Justification = "The test is a convenience that must never fault the command: any unexpected " +
@@ -860,10 +861,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         if (_isTestingConnection)
             return;
 
-        var apiKey = _apiKeyInput.Trim() is { Length: > 0 } typed
-            ? typed
-            : _keyStore.Peek(ApiKeyEnvName) ?? LlmApiKeyResolver.Resolve(null);
-
+        var apiKey = SettingKey;
         if (RequiresApiKey && apiKey is null)
         {
             // The design refuses to probe into a guaranteed 401: name the missing step.
@@ -907,9 +905,20 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Reads the balance of the endpoint being edited, with the key a run would present — the
-    /// one typed here first, then the remembered one — and, like the connection test, refuses
-    /// to ask without a key rather than earn a certain refusal. Public so tests can await it.
+    /// The key this setting presents to a probe (GAP-36): the one typed here, else the one
+    /// remembered under its variable — and nothing for a setting that needs none, not even a draft
+    /// typed for another card. Never the runtime's own variable in place of a missing key: that is
+    /// the default's key, which no run of another setting reads.
+    /// </summary>
+    private string? SettingKey =>
+        !RequiresApiKey ? null
+        : _apiKeyInput.Trim() is { Length: > 0 } typed ? typed
+        : _keyStore.Peek(ApiKeyEnvName);
+
+    /// <summary>
+    /// Reads the balance of the endpoint being edited, with the setting's key and it alone — the
+    /// one typed here first, then the remembered one (GAP-36) — and, like the connection test,
+    /// refuses to ask without a key rather than earn a certain refusal. Public so tests can await it.
     /// </summary>
     public async Task ReadBalanceAsync(CancellationToken cancellationToken)
     {
@@ -918,7 +927,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
         var target = new ProviderBalanceTarget(
             ProviderBalanceAccount.For(BaseUrl, RequiresApiKey ? ApiKeyEnvName : null), BaseUrl, [_name.Trim()]);
-        var typed = _apiKeyInput.Trim();
+        var typed = RequiresApiKey ? _apiKeyInput.Trim() : "";
         if (RequiresApiKey && target.RequestWith(_keyStore, typed).ApiKey is null)
         {
             ShowBalance(null);

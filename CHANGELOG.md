@@ -47,6 +47,36 @@ referenced" — the `orkeon` tool ships both.
   `scripts/test-third-party-notices.py` proves the rules on a throw-away tree, before any
   restore.
 
+### Fixed — Studio's « Test connection » and balance read present the setting's own key, never the default's
+
+A model setting with no key remembered was tested with the key of Studio's own process in
+`ORKEON_Llm__ApiKey` — the default's key —, sent to the setting's address: a « Z.AI » setting without
+its key sent the default's DeepSeek key to Z.AI, and a Docker Model Runner setting carried it too. The
+balance read did the same for an account whose variable held no key — and for a setting that names no
+variable at all (GAP-36).
+
+- **The setting's key, and it alone.** « Test connection » and the balance — the editor's « Read the
+  balance », the profile rows and the status bar — present the key typed and not yet remembered, else
+  the one remembered under the setting's variable. `ORKEON_Llm__ApiKey` serves only a setting whose
+  variable it is (an « Other OpenAI-compatible » setting created before STUDIO-49). A setting that needs
+  a key and has none is refused without a request, with the existing « API key missing — remember it
+  first »; a setting that needs none — Ollama, Docker Model Runner — presents none, not even a key typed
+  for another card; an account whose setting names no variable presents none.
+- The run of the elected default still reads `ORKEON_Llm__ApiKey` first when it is set (STUDIO-49): the
+  test checks the setting's key, and `orkeon doctor`'s `llm-config` row and the run's startup line say
+  where the default's key really comes from.
+- `ProviderBalanceAccount.RequestWith` loses its fallback, and `ProviderBalanceAccount.For` gives a
+  setting that names no variable an account with none (`KeyVariable` empty) where it named
+  `ORKEON_Llm__ApiKey`. The documentation of `LlmProbeRequest.ApiKey` says whose key it is.
+- Nothing changes on screen otherwise. `LlmSectionViewModel` keeps what the settings screen calls — the
+  election, the mirror of the settings into `Llm:Profiles`, the healing of a default, the RAG's profile,
+  the entries written by hand, the check of a name — and loses a form of the `Llm` section and a
+  connection test that no view displayed, with its probe and dispatcher, and three strings no screen
+  showed (`Studio.Settings.NoBaseUrl`, `Studio.Settings.CustomProvider`,
+  `Studio.Settings.ApiKeyRecommendation`, in the five languages).
+
+Documented in [Orkeon Studio](docs/architecture/studio.md).
+
 ### Fixed — a scheduled team runs as Studio launches it: on its model setting, with its folders
 
 A team Studio scheduled (STUDIO-27) is run by the operating system through its `run.cmd` or `run.sh`,

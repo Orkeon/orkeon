@@ -35,7 +35,7 @@ public sealed class HostLlmProfilesScreenTests
     {
         var document = AppSettingsDocument.Parse(json);
         var edits = new List<int>();
-        var llm = new LlmSectionViewModel(() => document, () => edits.Add(edits.Count), new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => edits.Add(edits.Count));
         var keys = new FakeApiKeyStore();
         var profiles = new ModelProfilesViewModel(
             new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe(), keyStore: keys);
@@ -108,7 +108,7 @@ public sealed class HostLlmProfilesScreenTests
             Name = "DeepSeek", Provider = "DeepSeek", BaseUrl = "https://api.deepseek.com", Model = "deepseek-v4-flash",
             KeyEnvName = "DEEPSEEK_API_KEY", TimeoutSeconds = 600,
         }), TestContext.Current.CancellationToken);
-        var llm = new LlmSectionViewModel(() => document, () => edits.Add(edits.Count), new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => edits.Add(edits.Count));
         profiles = new ModelProfilesViewModel(store, llm, probe: new FakeLlmEndpointProbe(), keyStore: new FakeApiKeyStore());
 
         await profiles.InitializeAsync(TestContext.Current.CancellationToken);
@@ -197,7 +197,7 @@ public sealed class HostLlmProfilesScreenTests
             .Upsert(new ModelProfile { Name = "DeepSeek", Provider = "DeepSeek", BaseUrl = "https://api.deepseek.com", Model = "deepseek-chat", KeyEnvName = "DEEPSEEK_API_KEY" })
             .Upsert(new ModelProfile { Name = "Box", Provider = "Other OpenAI-compatible", BaseUrl = "https://llm.example.com/v1", Model = "m", KeyEnvName = LlmPresets.DefaultApiKeyEnv }),
             TestContext.Current.CancellationToken);
-        var llm = new LlmSectionViewModel(() => document, () => edits.Add(edits.Count), new FakeLlmEndpointProbe());
+        var llm = new LlmSectionViewModel(() => document, () => edits.Add(edits.Count));
         var profiles = new ModelProfilesViewModel(store, llm, probe: new FakeLlmEndpointProbe(), keyStore: keys);
         await profiles.InitializeAsync(TestContext.Current.CancellationToken);
 

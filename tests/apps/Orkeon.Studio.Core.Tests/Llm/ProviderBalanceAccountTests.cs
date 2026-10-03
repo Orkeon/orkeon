@@ -71,13 +71,23 @@ public sealed class ProviderBalanceAccountTests
         Assert.Equal(LlmProviderEndpoints.DeepSeek, target.BaseUrl);
     }
 
+    /// <summary>
+    /// A profile that names no variable has no key to present (GAP-36, decision 2): its account
+    /// names none either — not the runtime's own, the default's key, which a run of that profile
+    /// never reads. The real store refuses a blank name: the request must not even ask for one.
+    /// </summary>
     [Fact]
-    public void A_profile_without_a_key_variable_reads_the_one_the_runtime_reads()
+    public void A_profile_without_a_key_variable_has_an_account_without_one_and_presents_no_key()
     {
-        var account = ProviderBalanceAccount.For(Profile("Maison", LlmProviderEndpoints.OpenRouter, keyVariable: null));
+        var environment = new FakeEnvironmentVariables();
+        environment.User[LlmPresets.DefaultApiKeyEnv] = "sk-runtime";
+        var target = Assert.Single(ProviderBalanceTarget.For(
+            [Profile("Maison", LlmProviderEndpoints.OpenRouter, keyVariable: null)]));
 
-        Assert.Equal(LlmPresets.DefaultApiKeyEnv, account.KeyVariable);
-        Assert.Equal(LlmProviderKeys.OpenRouter, account.Provider);
+        Assert.Equal("", target.Account.KeyVariable);
+        Assert.Equal(LlmProviderKeys.OpenRouter, target.Account.Provider);
+        Assert.Null(target.RequestWith(new EnvironmentApiKeyStore(environment)).ApiKey);
+        Assert.Equal("sk-typed", target.RequestWith(new EnvironmentApiKeyStore(environment), typedKey: "sk-typed").ApiKey);
     }
 
     [Theory]
@@ -107,18 +117,32 @@ public sealed class ProviderBalanceAccountTests
     }
 
     /// <summary>
-    /// What a run does too: a profile whose variable is empty lays no key over the child, which
-    /// then reads the runtime's own variable — the balance read presents the key the run would.
+    /// The account's key and it alone (GAP-36, decision 2): a variable that holds no key presents
+    /// none — never the runtime's own, the default's key, which no run of this profile reads
+    /// (STUDIO-49): the read refuses without a request, as the connection test does.
     /// </summary>
     [Fact]
-    public void An_empty_variable_falls_back_to_the_runtimes_own_as_a_run_does()
+    public void An_empty_variable_presents_no_key_even_with_the_runtimes_own_remembered()
     {
         var keys = new FakeApiKeyStore();
         keys.Values[LlmPresets.DefaultApiKeyEnv] = "sk-runtime";
         var target = Assert.Single(ProviderBalanceTarget.For([Profile("Rapide", LlmProviderEndpoints.DeepSeek)]));
 
-        Assert.Equal("sk-runtime", target.RequestWith(keys).ApiKey);
+        Assert.Null(target.RequestWith(keys).ApiKey);
         Assert.Null(target.RequestWith(new FakeApiKeyStore()).ApiKey);
+    }
+
+    /// <summary>The runtime's own variable serves when it is the account's: a profile that keeps its key there.</summary>
+    [Fact]
+    public void An_account_whose_variable_is_the_runtimes_own_presents_it()
+    {
+        var keys = new FakeApiKeyStore();
+        keys.Values[LlmPresets.DefaultApiKeyEnv] = "sk-runtime";
+        var target = Assert.Single(ProviderBalanceTarget.For(
+            [Profile("Maison", LlmProviderEndpoints.DeepSeek, keyVariable: LlmPresets.DefaultApiKeyEnv)]));
+
+        Assert.Equal(LlmPresets.DefaultApiKeyEnv, target.Account.KeyVariable);
+        Assert.Equal("sk-runtime", target.RequestWith(keys).ApiKey);
     }
 
     [Fact]

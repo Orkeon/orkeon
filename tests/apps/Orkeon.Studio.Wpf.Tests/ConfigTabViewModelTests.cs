@@ -117,12 +117,13 @@ public sealed class ConfigTabViewModelTests
         var tab = Build(store, new FakeDirectoryProbe("/data"));
 
         Assert.True(await tab.LoadAsync(path, TestContext.Current.CancellationToken));
-        tab.Llm.Model = "other";
+        tab.Rag.Profile = "quality";
         Assert.True(await tab.SaveAsync(TestContext.Current.CancellationToken));
 
         Assert.Contains("SomeThirdPartySection", store.LastSavedJson!, StringComparison.Ordinal);
         Assert.Contains("\"Flag\": true", store.LastSavedJson!, StringComparison.Ordinal);
-        Assert.Contains("\"other\"", store.LastSavedJson!, StringComparison.Ordinal);
+        Assert.Contains("\"Model\": \"m\"", store.LastSavedJson!, StringComparison.Ordinal);
+        Assert.Contains("\"Profile\": \"quality\"", store.LastSavedJson!, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -185,9 +186,9 @@ public sealed class ConfigTabViewModelTests
     {
         var tab = Build();
 
-        tab.Llm.Model = "gpt-4o-mini";
+        tab.Rag.Profile = "quality";
 
-        Assert.Contains("gpt-4o-mini", tab.RawJson, StringComparison.Ordinal);
+        Assert.Contains("\"Profile\": \"quality\"", tab.RawJson, StringComparison.Ordinal);
         Assert.True(tab.IsDirty);
     }
 
@@ -196,7 +197,7 @@ public sealed class ConfigTabViewModelTests
     {
         var tab = Build(directories: new FakeDirectoryProbe("/data"));
         DeclareAMount(tab);
-        tab.Llm.Model = "m";
+        tab.Rag.Profile = "quality";
 
         await tab.SaveAsync(TestContext.Current.CancellationToken);
 
@@ -251,11 +252,11 @@ public sealed class ConfigTabViewModelTests
     public void Should_ResetTheDocument_When_NewIsRequested()
     {
         var tab = Build();
-        tab.Llm.Model = "m";
+        tab.Rag.Profile = "quality";
 
         tab.NewCommand.Execute(null);
 
-        Assert.False(tab.Llm.Exists);
+        Assert.False(tab.Rag.Exists);
         Assert.False(tab.IsDirty);
     }
     [Fact]
@@ -296,7 +297,8 @@ public sealed class ConfigTabViewModelTests
         Assert.Equal(
             ["/data/factures:/workspace:ro", "/data/out:/output:rw"],
             tab.Mounts.CurrentMountStrings.Select(m => MountDefinition.Parse(m).WithoutId().ToMountString()));
-        Assert.Equal("kimi-k3", tab.Llm.Model);
+        Assert.True(tab.Llm.Exists);
+        Assert.Contains("kimi-k3", tab.RawJson, StringComparison.Ordinal);
         Assert.Equal(GlobalPath, tab.LoadedPath);
         Assert.False(tab.IsDirty);
         Assert.Contains(GlobalPath, tab.StatusMessage!, StringComparison.Ordinal);
@@ -374,7 +376,7 @@ public sealed class MountsEmptyRefusalTests
             SettingsStore = new FakeAppSettingsStore(),
             Directories = new FakeDirectoryProbe("/data"),
         });
-        tab.Llm.Model = "phi3"; // dirty, but no mount declared
+        tab.Rag.Profile = "quality"; // dirty, but no mount declared
 
         Assert.False(await tab.SaveAsync(TestContext.Current.CancellationToken));
 
