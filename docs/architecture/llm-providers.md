@@ -78,16 +78,29 @@ providers): a configuration passed with a call **completes** the one the provide
 it does not replace it. Every field the call leaves unset — null, an empty or blank string, no
 stop sequence — is the provider's: the key, `BaseUrl`, `TimeoutSeconds` (nullable: unset
 everywhere, 30 s), Azure's `ApiVersion`, Anthropic's `WorkspaceId`, `Thinking`, `MaxTokens`,
-`Seed`, `SystemMessage`, `ResponseFormat`, `Cache`, `Tools`, the grammar and the model; custom
-parameters merge, the call's keys winning. Every field the call sets wins. The settings that
-cannot be unset — `Temperature`, `TopP`, the penalties, the tool mode — are the caller's, and
-`MaxRetries` and `Grammar` are read from the provider's configuration when it is built. A call
-cannot unset what its provider sets; it overrides it (`Thinking = { Enabled = false }`,
-`LlmResponseFormat.Text()`). The chat client adapter registered without a base configuration
-starts from the provider's own (`ILlmProvider.BaseConfig`). Before, the providers took a call's
-configuration whole (`config ?? Config`): the planner, the cognitive memory, the context-window
-and RaggableTree summarizers and the agent loops outside the chat client lost the key — "API key
-is required" —, the endpoint and the timeout of the provider they reached (GAP-29).
+`Temperature` and `TopP` (nullable too since GAP-36), `Seed`, `SystemMessage`, `ResponseFormat`,
+`Cache`, `Tools`, the grammar and the model; custom parameters merge, the call's keys winning.
+Every field the call sets wins. The settings that cannot be unset — the penalties (0, every
+vendor's default) and the tool mode — are the caller's, and `MaxRetries` and `Grammar` are read
+from the provider's configuration when it is built. A call cannot unset what its provider sets;
+it overrides it (`Thinking = { Enabled = false }`, `LlmResponseFormat.Text()`). The chat client
+adapter registered without a base configuration starts from the provider's own
+(`ILlmProvider.BaseConfig`). Before, the providers took a call's configuration whole
+(`config ?? Config`): the planner, the cognitive memory, the context-window and RaggableTree
+summarizers and the agent loops outside the chat client lost the key — "API key is required" —,
+the endpoint and the timeout of the provider they reached (GAP-29).
+
+**Sampling: what is set is sent, what is not set is not** (GAP-36). `Temperature` and `TopP`
+are null when nothing sets them — not the call, not the agent, not the task, not the profile —
+and then nothing reaches the wire: the model applies its own default (often 1; the Modelfile's
+on Ollama). Set, they are sent whatever their value. The engine used to take 0.7 and 1.0 for
+"not set": an agent asking for exactly those ran on its profile's, and the 0.7 it pinned on every
+call nobody configured is refused by the default models of OpenAI (`gpt-5.6-sol`) and Anthropic
+(`claude-sonnet-5`). One measured exception: Mistral's dialect writes `top_p: 1` when nothing sets
+one (`AlwaysEmitTopP`). The penalties, the seed and the stop sequences of an agent's configuration
+travel through the chat client too; on the wire, Ollama writes `top_p`, `seed` and `stop` in its
+`options`, and a dialect that has no field for a penalty or a seed says so with the structured
+warning below, never in silence.
 
 Every provider the factory builds is wrapped in `MeteredLlmProvider` (see
 [Decorators and registration](#decorators-and-registration)) and returned behind an
@@ -114,7 +127,8 @@ instead of reading the prompt back as a plan (GAP-31). The decorators a provider
 Anthropic and Ollama write their own dialects, and Qwen overrides the hook for DashScope's
 thinking fields. An option a provider cannot honour produces a structured warning (event id
 `110`, `Option '…' was declared but … does not support it — it was not sent`) — never a
-silent drop. `CapabilityMismatchHint` (OpenAI-compatible providers and Ollama) covers the
+silent drop; since GAP-36 that includes `frequency_penalty` and `presence_penalty` on every
+dialect, and `seed` wherever the dialect does not write it (all but Ollama). `CapabilityMismatchHint` (OpenAI-compatible providers and Ollama) covers the
 per-model side: when a vendor refuses a
 capability the provider declares (a text-only model sent an image, a model without thinking
 or tools), the error says whose assumption was wrong. The mirror-image case —
@@ -124,7 +138,8 @@ a payload the API rejected with a 4xx and re-send it once (generate and chat pat
 streaming never retries). Kimi uses it for Moonshot's `invalid temperature: only 1 is
 allowed for this model` — the mandated value is read from the rejection itself (which
 models mandate it is decided server-side, a hard-coded list would drift) and the
-substitution is logged as a structured warning. Two more dialect seams serve the
+substitution is logged as a structured warning; only a temperature that was set and sent is
+replaced, since one nothing sets is not sent (GAP-36). Two more dialect seams serve the
 aggregators (LLM-09): `ReasoningFieldName` names the vendor field the reasoning trace is
 read from (`reasoning_content` by default, `reasoning` on OpenRouter — the Orkeon metadata
 key stays `reasoning_content`), and `usage.cost` becomes the `cost` metadata wherever a
@@ -164,7 +179,7 @@ members, not through copies of the payload builder:
 |---|---|---|
 | `ApplyProviderSpecificOptions` | writes `thinking` / `reasoning_effort` and `response_format` from the declared capabilities | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (the `reasoning` request object), Together AI (adds `context_length_exceeded_behavior: truncate`) |
 | `MaxTokensFieldName` | `max_tokens` | OpenAI (`max_completion_tokens`) |
-| `AlwaysEmitTopP` | `top_p` omitted when it equals 1 | Mistral (always written) |
+| `AlwaysEmitTopP` | `top_p` written only when set | Mistral (`top_p: 1` when nothing sets one) |
 | `SplitReasoningFromContent` / `EnrichAssistantMessage` | nothing split; `reasoning_content` replayed when `ReplaysReasoningContent` is declared | MiniMax (inline `<think>` block split out, re-inlined on replay) |
 | `ReasoningFieldName` | `reasoning_content` | OpenRouter (`reasoning`) |
 | `CostCurrency` | none | OpenRouter (`USD`) |

@@ -87,6 +87,38 @@ agents:
     }
 
     [Fact]
+    public async Task LlmBlockWithoutTemperatureOrTopP_ShouldSetNeither()
+    {
+        // GAP-36: a block that names no temperature and no top_p sets neither — the profile's
+        // then apply, else the model's own. The loader used to fill in 0.7 and 1.0.
+        var loader = BuildLoader();
+        var yaml = """
+name: c
+goal: g
+llm:
+  maxTokens: 512
+agents:
+  a:
+    role: a
+    goal: g
+  b:
+    role: b
+    goal: g
+    llm:
+      profile: b
+""";
+
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        Assert.All(config.Agents, agent =>
+        {
+            Assert.NotNull(agent.LlmConfig);
+            Assert.Null(agent.LlmConfig!.Temperature);
+            Assert.Null(agent.LlmConfig.TopP);
+        });
+    }
+
+    [Fact]
     public async Task AgentLlmBlockAbsent_ShouldFallBackEntirelyToCrewDefault()
     {
         var loader = BuildLoader();

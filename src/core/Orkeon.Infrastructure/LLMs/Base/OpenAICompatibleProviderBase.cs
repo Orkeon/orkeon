@@ -44,13 +44,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     protected virtual string MaxTokensFieldName => "max_tokens";
 
     /// <summary>
-    /// Whether <c>top_p</c> is written even when it equals 1.0. The base omits it then,
-    /// assuming omission means 1 on the wire — true for most vendors, and required by some
-    /// (OpenAI's reasoning models reject the explicit field). Mistral breaks the assumption
-    /// the other way: its reasoning mode runs an internal top_p default and validates greedy
-    /// sampling against the explicit field, so <c>temperature: 0</c> plus reasoning with no
+    /// Whether <c>top_p</c> is written — as 1 — when nothing sets one. The base omits it then,
+    /// assuming omission means the model's default on the wire — true for most vendors, and
+    /// required by some (OpenAI's reasoning models reject the explicit field). Mistral breaks the
+    /// assumption the other way: its reasoning mode runs an internal top_p default and validates
+    /// greedy sampling against the explicit field, so <c>temperature: 0</c> plus reasoning with no
     /// <c>top_p</c> is refused (<c>"top_p must be 1 when using greedy sampling."</c>,
-    /// 2026-08-30). Omission-when-1 there silently drops a configured value.
+    /// 2026-08-30). A <c>top_p</c> that is set is written everywhere, whatever its value (GAP-36).
     /// </summary>
     protected virtual bool AlwaysEmitTopP => false;
 
@@ -1027,8 +1027,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         {
             ["model"] = ResolveModel(effectiveConfig),
             ["messages"] = messagesList,
-            ["temperature"] = effectiveConfig.Temperature,
         };
+        WriteSamplingOptions(payload, effectiveConfig);
         WriteOutputCap(payload, effectiveConfig);
 
         ApplyOptions(payload, effectiveConfig);
@@ -1170,21 +1170,56 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     }
 
     /// <summary>
-    /// Applies optional sampling/stop parameters that are only emitted when non-default,
-    /// then lets the provider attach any provider-specific extensions.
+    /// Writes the grammar, then lets the provider attach any provider-specific extensions. One
+    /// call for both payload builders: they serve overlapping cases (see ChatAsync's routing), so
+    /// an option present in one and absent from the other would appear or vanish depending on how
+    /// many messages the caller happened to send.
     /// </summary>
     private void ApplyOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
     {
-        if (AlwaysEmitTopP || effectiveConfig.TopP != 1.0)
-            payload["top_p"] = effectiveConfig.TopP;
-        if (effectiveConfig.StopSequences is { Count: > 0 })
-            payload["stop"] = effectiveConfig.StopSequences;
-        // Also emitted by the single-prompt builder. Kept in sync deliberately:
-        // the two builders now serve overlapping cases (see ChatAsync's routing),
-        // so an option present in one and absent from the other would appear or
-        // vanish depending on how many messages the caller happened to send.
         ApplyGrammarOption(payload, effectiveConfig.GrammarGbnf);
         ApplyProviderSpecificOptions(payload, effectiveConfig);
+    }
+
+    /// <summary>
+    /// Why a penalty is not written in this dialect (GAP-36, decision 8): which values a vendor and
+    /// a model accept is not measured, and some fix them (Kimi K3 pins both penalties).
+    /// </summary>
+    private const string PenaltyRemedy =
+        "Orkeon writes no repetition penalty on this API, whose acceptance per vendor and model is unmeasured; remove the setting, or steer repetition in the prompt";
+
+    /// <summary>Why a seed is not written in this dialect (GAP-36, decision 8): only Ollama's carries one.</summary>
+    private const string SeedRemedy =
+        "Orkeon writes a seed on Ollama only; remove the setting, and pin the temperature for steadier answers";
+
+    /// <summary>
+    /// Writes the sampling settings the configuration sets, and only those (GAP-36):
+    /// <c>temperature</c> and <c>top_p</c> whatever their value, <c>stop</c> when there are stop
+    /// sequences. What it leaves unset is not written, and the model applies its own default — but
+    /// <c>top_p</c> on a dialect that needs it (<see cref="AlwaysEmitTopP"/>). The penalties and the
+    /// seed have no field this dialect writes: a configuration that sets one is told, never
+    /// dropped in silence (decision 8). One writer for both payload builders and Azure's stream, so
+    /// the rule cannot drift.
+    /// </summary>
+    /// <param name="payload">The payload dictionary about to be serialized.</param>
+    /// <param name="config">The effective LLM configuration for this call.</param>
+    private protected void WriteSamplingOptions(Dictionary<string, object> payload, LlmConfig config)
+    {
+        if (config.Temperature is { } temperature)
+            payload["temperature"] = temperature;
+        if (config.TopP is { } topP)
+            payload["top_p"] = topP;
+        else if (AlwaysEmitTopP)
+            payload["top_p"] = 1.0;
+        if (config.StopSequences is { Count: > 0 })
+            payload["stop"] = config.StopSequences;
+
+        if (config.FrequencyPenalty != 0.0)
+            LogUnsupportedOption("frequency_penalty", ProviderDisplayName, PenaltyRemedy);
+        if (config.PresencePenalty != 0.0)
+            LogUnsupportedOption("presence_penalty", ProviderDisplayName, PenaltyRemedy);
+        if (config.Seed is not null)
+            LogUnsupportedOption("seed", ProviderDisplayName, SeedRemedy);
     }
 
     /// <summary>
@@ -1522,22 +1557,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         {
             ["model"] = ResolveModel(config),
             ["messages"] = messages,
-            ["temperature"] = config.Temperature,
         };
+        WriteSamplingOptions(payload, config);
         WriteOutputCap(payload, config);
 
-        if (AlwaysEmitTopP || config.TopP != 1.0)
-        {
-            payload["top_p"] = config.TopP;
-        }
-
-        if (config.StopSequences != null && config.StopSequences.Count > 0)
-        {
-            payload["stop"] = config.StopSequences;
-        }
-
-        ApplyGrammarOption(payload, config.GrammarGbnf);
-        ApplyProviderSpecificOptions(payload, config);
+        ApplyOptions(payload, config);
 
         // Inject tools if available and strategy supports it
         if (tools is { Count: > 0 } && _toolCallingStrategy?.SupportsNativeToolCalling == true)

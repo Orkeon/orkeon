@@ -642,7 +642,7 @@
   <data name="Studio.Create.EngineBusy" xml:space="preserve"><value>L'assistant est encore occupé avec « {0} » — arrêtez-le, ou laissez-le finir, avant d'ouvrir une équipe.</value></data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve"><value>Copier</value></data>
   <data name="Studio.Settings.ProfileLblTemperature" xml:space="preserve"><value>Température (optionnel)</value></data>
-  <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Vide : le moteur décide. Certains modèles imposent une valeur — Kimi K3 n'accepte que 1.</value></data>
+  <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Vide : rien n'est envoyé — le modèle applique son propre défaut. Certains modèles imposent une valeur — Kimi K3 n'accepte que 1.</value></data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve"><value>Délai de réponse (s, optionnel)</value></data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Vide : le défaut du moteur, 30 s. Un modèle qui réfléchit avant de répondre demande couramment 600 s.</value></data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve"><value>Dossiers de « {0} »</value></data>

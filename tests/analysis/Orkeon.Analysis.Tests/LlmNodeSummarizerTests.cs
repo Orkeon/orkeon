@@ -74,7 +74,7 @@ public class LlmNodeSummarizerTests
         await summarizer.SummarizeAsync(node, new SummarizationContext(null, [], [], null), CancellationToken.None);
 
         Assert.Equal(string.Empty, llm.LastConfig!.Model);
-        Assert.Equal(0.2, llm.LastConfig.Temperature, precision: 3);
+        Assert.Equal(0.2, Assert.NotNull(llm.LastConfig.Temperature), precision: 3);
         Assert.Equal(120, llm.LastConfig.MaxTokens);
     }
 

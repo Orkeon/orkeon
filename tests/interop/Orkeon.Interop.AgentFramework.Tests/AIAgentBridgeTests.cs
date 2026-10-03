@@ -199,6 +199,30 @@ public sealed class AIAgentBridgeTests
     }
 
     [Fact]
+    public async Task A_temperature_or_a_top_p_set_to_the_old_engine_defaults_is_announced_too()
+    {
+        // GAP-36: 0.7 and 1.0 were taken for "not set", so a crew asking for them heard nothing.
+        var logger = new StructuredLogger<AIAgentLlmProvider>();
+        var provider = new AIAgentLlmProvider(new ScriptedAIAgent(), logger);
+
+        await provider.ChatAsync([User("one turn")], LlmConfig.OnProfile() with { Temperature = 0.7, TopP = 1.0 }, Ct);
+
+        var options = logger.Entries.Where(entry => entry.Level == LogLevel.Warning).Select(w => (string?)w.Fields["Option"]);
+        Assert.Equal(["temperature", "top_p"], options.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_configuration_that_sets_nothing_is_not_announced()
+    {
+        var logger = new StructuredLogger<AIAgentLlmProvider>();
+        var provider = new AIAgentLlmProvider(new ScriptedAIAgent(), logger);
+
+        await provider.ChatAsync([User("one turn")], LlmConfig.OnProfile(), Ct);
+
+        Assert.DoesNotContain(logger.Entries, entry => entry.Level == LogLevel.Warning);
+    }
+
+    [Fact]
     public async Task A_call_that_declares_nothing_warns_nothing()
     {
         var logger = new StructuredLogger<AIAgentLlmProvider>();

@@ -3,7 +3,6 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 
@@ -206,17 +205,21 @@ public sealed partial class AIAgentLlmProvider : ILlmProvider
             LogOptionNotSent(option, Name, OptionRemedy);
     }
 
-    /// <summary>The options <paramref name="config"/> sets beyond a configuration that names nothing (<see cref="LlmConfig.OnProfile"/>).</summary>
+    /// <summary>
+    /// The options <paramref name="config"/> sets beyond a configuration that names nothing
+    /// (<see cref="LlmConfig.OnProfile"/>) — a temperature or a <c>top_p</c> whatever its value: 0.7
+    /// and 1.0 used to be taken for "not set", and said nothing (GAP-36).
+    /// </summary>
     private static List<string> DeclaredOptions(LlmConfig config)
     {
         var options = new List<string>();
         if (!string.IsNullOrWhiteSpace(config.Model))
             options.Add("model");
-        if (config.Temperature != LlmDefaults.DefaultTemperature)
+        if (config.Temperature is not null)
             options.Add("temperature");
         if (config.MaxTokens is not null)
             options.Add("max_tokens");
-        if (config.TopP != 1.0)
+        if (config.TopP is not null)
             options.Add("top_p");
         if (config.FrequencyPenalty != 0.0)
             options.Add("frequency_penalty");

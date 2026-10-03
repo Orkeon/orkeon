@@ -289,7 +289,8 @@ internal static class LlmCommand
             OrkeonVersion: LlmProbeReport.ResolveVersion(),
             Commit: options.Commit ?? "",
             TimestampUtc: DateTimeOffset.UtcNow,
-            Temperature: config.Temperature,
+            // The probe pins its own temperature (BuildConfig): the one the report states.
+            Temperature: options.Temperature,
             ThinkingEffort: config.Thinking?.Effort,
             M7ThinkingEffort: string.IsNullOrWhiteSpace(options.M7Effort) || options.M7Effort == "low"
                 ? null
@@ -357,11 +358,12 @@ internal static class LlmCommand
         // loading, so M1 failed on a timeout and reported it as a provider fault (2026-08-01).
         config = config with { TimeoutSeconds = options.TimeoutSeconds };
 
-        // LlmConfig defaults to 0.7, so the harness was measuring conformance through creative
-        // sampling: three consecutive M2 runs against the same llama3.2 returned ❌ ✅ ❌
-        // (2026-08-01). A flickering verdict is worse than a red one — it invites reading noise
-        // as a defect. LlmConfig.Seed would pin this further, but no HTTP provider puts it on the
-        // wire, and setting a field that goes nowhere is the silent drop this codebase refuses.
+        // Left unset, the temperature is the model's own (GAP-36) — it was the engine's 0.7 —, so
+        // the harness would measure conformance through creative sampling: three consecutive M2
+        // runs against the same llama3.2 returned ❌ ✅ ❌ at 0.7 (2026-08-01). A flickering
+        // verdict is worse than a red one — it invites reading noise as a defect. LlmConfig.Seed
+        // would pin this further, but only Ollama puts it on the wire — every other dialect
+        // answers it with a warning (decision 8) —, so the probe pins the temperature alone.
         config = config with { Temperature = options.Temperature };
 
         if (!string.IsNullOrWhiteSpace(options.BaseUrl))

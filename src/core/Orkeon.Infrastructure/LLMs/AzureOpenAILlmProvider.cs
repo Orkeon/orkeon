@@ -212,9 +212,12 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         var requestPayload = new Dictionary<string, object>
         {
             ["messages"] = new[] { new { role = "user", content = prompt } },
-            ["temperature"] = effectiveConfig.Temperature,
             ["stream"] = true,
         };
+        // The dialect's sampling, as the two buffered builders write it (GAP-36): what the
+        // configuration sets — whatever its value —, nothing it leaves unset. This stream wrote
+        // the temperature always, 0.7 when nothing set one, and dropped top_p and stop.
+        WriteSamplingOptions(requestPayload, effectiveConfig);
         // The cap is resolved like everywhere else (LLM-10): pinned, else the deployment's
         // documented maximum, else the fallback; left out when the vendor documents no cap.
         if (effectiveConfig.ResolveMaxTokens(Name, ResolveModel(effectiveConfig)) is { } cap)

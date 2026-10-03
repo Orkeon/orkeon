@@ -222,12 +222,13 @@ public sealed class LlmSettingsApiKeyReferenceTests
         var profile = Assert.Single(LlmSettings.ReadProfiles(configuration, Empty)).Config;
 
         Assert.Null(KeyOf(config));
-        Assert.Equal(LlmDefaults.DefaultTemperature, config.Temperature);
+        // A blank temperature sets none: the model applies its own (GAP-36).
+        Assert.Null(config.Temperature);
         Assert.Null(config.TimeoutSeconds);
         Assert.Null(config.MaxTokens);
         Assert.Equal(LlmDefaults.DefaultMaxRetries, config.MaxRetries);
         Assert.Null(config.Thinking);
-        Assert.Equal(LlmDefaults.DefaultTemperature, profile.Temperature);
+        Assert.Null(profile.Temperature);
         Assert.Null(profile.TimeoutSeconds);
         Assert.Null(profile.Thinking);
     }

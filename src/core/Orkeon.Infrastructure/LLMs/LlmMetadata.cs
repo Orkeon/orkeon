@@ -93,14 +93,23 @@ public sealed partial class OllamaRequestOptions
         return result;
     }
 
-    /// <summary>Builder for constructing <see cref="OllamaRequestOptions"/> instances.</summary>
+    /// <summary>
+    /// Builder for constructing <see cref="OllamaRequestOptions"/> instances. A setting given as
+    /// null writes nothing, and the model's Modelfile applies its own value (GAP-36).
+    /// </summary>
     public sealed partial class Builder
     {
-        /// <summary>Sets the sampling temperature.</summary>
-        /// <param name="temperature">The temperature value.</param>
+        /// <summary>Sets the sampling temperature; null writes nothing.</summary>
+        /// <param name="temperature">The temperature value, or null.</param>
         /// <returns>This builder.</returns>
-        [DictionaryEntry("temperature")]
-        public partial Builder AddTemperature(double temperature);
+        public Builder AddTemperature(double? temperature)
+        {
+            if (temperature is { } value)
+            {
+                _items["temperature"] = LlmMetadataValue.From(value);
+            }
+            return this;
+        }
 
         /// <summary>
         /// Sets the maximum number of tokens to predict. Nothing pinned (null or non-positive)
@@ -125,17 +134,43 @@ public sealed partial class OllamaRequestOptions
         [DictionaryEntry("top_k")]
         public partial Builder AddTopK(int topK);
 
-        /// <summary>Sets the top-p nucleus sampling parameter.</summary>
-        /// <param name="topP">The top-p value.</param>
+        /// <summary>Sets the top-p nucleus sampling parameter; null writes nothing.</summary>
+        /// <param name="topP">The top-p value, or null.</param>
         /// <returns>This builder.</returns>
-        [DictionaryEntry("top_p")]
-        public partial Builder AddTopP(double topP);
+        public Builder AddTopP(double? topP)
+        {
+            if (topP is { } value)
+            {
+                _items["top_p"] = LlmMetadataValue.From(value);
+            }
+            return this;
+        }
 
-        /// <summary>Sets the random seed for reproducible generation.</summary>
-        /// <param name="seed">The seed value.</param>
+        /// <summary>Sets the random seed for reproducible generation; null writes nothing.</summary>
+        /// <param name="seed">The seed value, or null.</param>
         /// <returns>This builder.</returns>
-        [DictionaryEntry("seed")]
-        public partial Builder AddSeed(int seed);
+        public Builder AddSeed(int? seed)
+        {
+            if (seed is { } value)
+            {
+                _items["seed"] = LlmMetadataValue.From(value);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the stop sequences — the Modelfile's <c>stop</c> parameter; none writes nothing.
+        /// </summary>
+        /// <param name="stopSequences">The stop sequences, or null.</param>
+        /// <returns>This builder.</returns>
+        public Builder AddStop(IReadOnlyList<string>? stopSequences)
+        {
+            if (stopSequences is { Count: > 0 })
+            {
+                _items["stop"] = LlmMetadataValue.From(stopSequences.ToArray());
+            }
+            return this;
+        }
     }
 }
 

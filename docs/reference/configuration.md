@@ -84,7 +84,9 @@ never on OpenAI's pinned onto another vendor. Keys: `Model`, `BaseUrl`, `ApiKeyE
 environment variable that holds the key — [below](#the-api-key-apikey-apikeyenvvar); the variable
 each provider's key conventionally lives in, and the names confused with it, are in the
 [provider comparison](llm-providers-comparison.md#api-keys-the-variable-per-provider)), `ApiKey`
-(the key in clear text — discouraged), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (default 10), and
+(the key in clear text — discouraged), `Temperature` (left out, none is sent and the model applies
+its own — often 1; write `0.7` to keep the engine's former default, GAP-36), `MaxTokens`,
+`TimeoutSeconds`, `MaxRetries` (default 10), and
 `Thinking:{Enabled,Effort}` for thinking-capable providers, and `Grammar` (default `false`):
 set it to `true` only when `BaseUrl` points at a llama.cpp-compatible server (Docker Model
 Runner, `llama-server`) — the one kind of endpoint that honours the GBNF `grammar` field a

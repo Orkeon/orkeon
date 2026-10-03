@@ -25,7 +25,7 @@
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **OpenRouter** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema (par endpoint) | ✓ budget (objet `reasoning`) | ✓ (par modèle) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposé) | ✓ | ✓ |
 | **Mammouth AI** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (non documenté) | ✗ (non documenté) | ✓ (par modèle) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ◐ `Llm:Grammar` | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` sur `/api/generate`) | ✓ | ✓ |
+| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✓ (`options`) | ◐ `Llm:Grammar` | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` sur `/api/generate`) | ✓ | ✓ |
 
 ## Comment lire les colonnes de capacités
 
@@ -75,7 +75,12 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
 - **HuggingFace** : les identifiants de modèle acceptent un suffixe de routage (`:fastest` /
   `:cheapest` / `:preferred` / `:<partner>`) — le seul levier de coût et de latence sur Inference
   Providers.
-- **top_p / stop** : Ollama n'expose que `temperature` + `num_predict` (= max_tokens).
+- **top_p / stop** : écrits seulement s'ils sont fixés, quelle que soit la valeur — `temperature`
+  aussi ; rien de fixé, rien d'écrit, et le modèle applique son propre défaut (GAP-36). Mistral
+  écrit `top_p: 1` quand rien n'en fixe. Ollama les écrit dans ses `options`, avec `seed`. Aucun
+  dialecte n'écrit `frequency_penalty` ni `presence_penalty`, et aucun autre qu'Ollama n'écrit
+  `seed` : en fixer un produit l'avertissement structuré qui le nomme (event id `110`), jamais un
+  abandon silencieux.
 - **Grammaire GBNF** : aucune API de vendeur ne documente de champ `grammar`, donc aucun
   fournisseur ne déclare la capacité (`LlmProviderCapabilities.GbnfGrammar`). **◐ `Llm:Grammar`**
   signifie que le champ n'est écrit — sur les deux points d'accès d'Ollama, et par les deux
@@ -352,6 +357,12 @@ réel ; rien n'est inféré.
 | Anthropic | `claude-sonnet-5` | `temperature` | `1`, ou omettre le champ | `` `temperature` is deprecated for this model.`` (1 et l'omission passent ; 0 et 0.7 non) | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` ou `none` seulement | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `top_p` | `1` explicite quand `temperature` vaut 0 et que le raisonnement est actif (l'omission n'y vaut PAS 1) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
+
+Une température que rien ne fixe ne part pas (GAP-36) : un hôte qui n'en épingle aucune fait
+tourner ces modèles sur leur propre défaut, qu'ils acceptent — `orkeon init` et Studio n'en
+écrivent pas. Un hôte qui en épingle une doit épingler la valeur imposée. Avant GAP-36, le moteur
+envoyait 0,7 quand rien n'était fixé — une valeur que refusent les deux modèles par défaut du
+tableau, `gpt-5.6-sol` et `claude-sonnet-5` (mesuré ci-dessus).
 
 Le contre-exemple qui rend le registre par-modèle : `gpt-4o-mini` — même fournisseur que
 `gpt-5.6-sol` — rejette `reasoning_effort` tout court (`Unrecognized request argument

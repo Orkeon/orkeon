@@ -89,11 +89,11 @@ internal sealed class ChatOptionsComposer
 
     /// <summary>
     /// When the agent carries a per-agent <see cref="Domain.SharedKernel.ValueObjects.LlmConfig"/>,
-    /// apply its fields (Model, Temperature, MaxTokens, TopP, Thinking) onto the chat options
-    /// so the adapter forwards them to the LLM provider on this call only. Experiment 07
-    /// friction #7: prior behavior parsed the YAML but never propagated the override, so a
-    /// supervisor / planner / classifier mix on the same crew all ran on the same crew-default
-    /// model.
+    /// apply what it sets (Model, Temperature, MaxTokens, TopP, the penalties, Seed, StopSequences,
+    /// Thinking…) onto the chat options so the adapter forwards them to the LLM provider on this
+    /// call only. Experiment 07 friction #7: prior behavior parsed the YAML but never propagated
+    /// the override, so a supervisor / planner / classifier mix on the same crew all ran on the
+    /// same crew-default model.
     /// </summary>
     private static void ApplyAgentLlmOverrides(ChatOptions options, DomainAgent agent)
     {
@@ -103,18 +103,27 @@ internal sealed class ChatOptionsComposer
         if (!string.IsNullOrWhiteSpace(llm.Model))
             options.ModelId = llm.Model;
 
-        // The orchestrator only forwards explicit overrides; leave nullable adapter-side
-        // fields untouched when the agent's config matches the LlmConfig default, so the
-        // chat client's own defaults still apply when the YAML omits a field.
-        if (llm.Temperature != Domain.Constants.Llm.LlmDefaults.DefaultTemperature)
-            options.Temperature = (float)llm.Temperature;
-        // A pinned cap is forwarded whatever its value; an unpinned one is null and stays
-        // with the provider, which resolves the model's documented maximum (LLM-10). The
-        // first version compared against the old 4096 default to guess which was which.
+        // What the agent's config sets is forwarded whatever its value; what it leaves unset
+        // (null) stays with the provider — its profile's value, else the model's own. The
+        // temperature and top_p used to be compared with 0.7 and 1.0, the engine's defaults, so
+        // an agent asking for exactly those ran on its profile's (GAP-36), as an output cap
+        // compared with the old 4096 once did (LLM-10).
+        if (llm.Temperature is { } temperature)
+            options.Temperature = (float)temperature;
         if (llm.MaxTokens is > 0)
             options.MaxOutputTokens = llm.MaxTokens;
-        if (llm.TopP != 1.0)
-            options.TopP = (float)llm.TopP;
+        if (llm.TopP is { } topP)
+            options.TopP = (float)topP;
+        // The penalties have no unset value: 0 is every vendor's default, so a penalty is set
+        // when it is not 0. A provider whose dialect cannot send one says so (GAP-36, decision 8).
+        if (llm.FrequencyPenalty != 0.0)
+            options.FrequencyPenalty = (float)llm.FrequencyPenalty;
+        if (llm.PresencePenalty != 0.0)
+            options.PresencePenalty = (float)llm.PresencePenalty;
+        if (llm.Seed is { } seed)
+            options.Seed = seed;
+        if (llm.StopSequences is { Count: > 0 } stopSequences)
+            options.StopSequences = [.. stopSequences];
 
         if (llm.Thinking is not null)
         {

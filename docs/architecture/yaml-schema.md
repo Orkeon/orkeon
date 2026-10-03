@@ -67,9 +67,9 @@ agents:
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
       model: string       # LLM model id — omitted → the profile's own model
-      temperature: float  # default: 0.7 when the block is present
+      temperature: float  # Sent whatever its value — omitted = the profile's, else none is sent and the model applies its own (GAP-36)
       maxTokens: int      # Output token pin — omitted = the model's documented maximum (LLM-10)
-      topP: float         # Nucleus sampling, default: 1.0
+      topP: float         # Nucleus sampling, sent whatever its value — omitted = the profile's, else none is sent (Mistral writes 1)
       thinking:           # Reasoning control (capability-gated per provider)
         enabled: bool
         effort: string    # "low" | "medium" | "high" | "max" (provider-dependent)

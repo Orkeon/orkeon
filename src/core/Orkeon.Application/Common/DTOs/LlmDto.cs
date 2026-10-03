@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 using static Orkeon.Domain.Constants.Llm.LlmDefaults;
 using Orkeon.Domain.Constants.Http;
 using Orkeon.Domain.Constants.Agent;
-using Orkeon.Domain.Constants.Llm;
 
 namespace Orkeon.Application.Common.DTOs;
 
@@ -20,9 +19,9 @@ public sealed record LlmDto
     [JsonPropertyName("model")]
     public required string Model { get; init; }
 
-    /// <summary>Gets or sets the temperature.</summary>
+    /// <summary>Gets or sets the temperature; null when nothing sets one — the model applies its own (GAP-36).</summary>
     [JsonPropertyName("temperature")]
-    public double Temperature { get; init; } = LlmDefaults.DefaultTemperature;
+    public double? Temperature { get; init; }
 
     /// <summary>Gets or sets the max tokens.</summary>
     [JsonPropertyName("max_tokens")]

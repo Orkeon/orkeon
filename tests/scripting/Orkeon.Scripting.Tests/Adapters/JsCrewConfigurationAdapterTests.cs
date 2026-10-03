@@ -159,6 +159,26 @@ public sealed class JsCrewConfigurationAdapterTests
     }
 
     [Fact]
+    public void Adapt_leaves_the_temperature_and_top_p_unset_on_llm_default_()
+    {
+        // GAP-36: llm.default_ sets no sampling — the profile's applies, else the model's own.
+        // The domain's 0.7 and 1.0 used to fill the gap.
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, """
+            const a = agentBuilder().name("a").role("R").goal("G").llm(llm.default_).build();
+            const t = taskBuilder().name("t").agent(a).description("d").expectedOutput("o").build();
+            crewBuilder().name("c").withAgent(a).withTask(t).build();
+            """);
+
+        var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
+
+        var agent = Assert.Single(config.Agents);
+        Assert.NotNull(agent.LlmConfig);
+        Assert.Null(agent.LlmConfig!.Temperature);
+        Assert.Null(agent.LlmConfig.TopP);
+    }
+
+    [Fact]
     public void Adapt_synthesizes_goal_when_script_did_not_call_goal()
     {
         var engine = NewEngine();

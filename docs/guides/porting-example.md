@@ -436,7 +436,7 @@ var host = Host.CreateDefaultBuilder(args)
             context.Configuration["Llm:Model"] ?? "gpt-5.6-sol",
             context.Configuration["Llm:ApiKey"]) with
         {
-            Temperature = context.Configuration.GetValue("Llm:Temperature", 0.7)
+            Temperature = context.Configuration.GetValue<double?>("Llm:Temperature") // absent: none is sent, the model applies its own
         };
         services.AddOrkeonLlmProvider(
             sp => new OpenAIProvider(llm,

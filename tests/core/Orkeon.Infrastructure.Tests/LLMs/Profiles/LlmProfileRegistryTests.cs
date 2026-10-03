@@ -130,11 +130,24 @@ public sealed class LlmProfileRegistryTests
 #pragma warning disable CS0618
         Assert.Equal("sk-ant", claude.ApiKey);
 #pragma warning restore CS0618
-        Assert.Equal(0.2, claude.Temperature, precision: 3);
+        Assert.Equal(0.2, Assert.NotNull(claude.Temperature), precision: 3);
         Assert.Equal(2048, claude.MaxTokens);
         Assert.True(claude.Thinking!.Enabled);
         Assert.Equal("deepseek-chat", LlmSettings.ReadDefault(configuration).Model);
         Assert.True(LlmSettings.HasDefault(configuration));
+    }
+
+    [Fact]
+    public void A_section_without_Temperature_sets_none()
+    {
+        // GAP-36: absent, nothing is sent and the model applies its own. The reader filled in the
+        // engine's 0.7, which the default models of OpenAI and Anthropic refuse.
+        var configuration = Configuration(
+            ("Llm:Model", "gpt-5.6-sol"),
+            ("Llm:Profiles:claude:Model", "claude-sonnet-5"));
+
+        Assert.Null(LlmSettings.ReadDefault(configuration).Temperature);
+        Assert.Null(Assert.Single(LlmSettings.ReadProfiles(configuration)).Config.Temperature);
     }
 
     /// <summary>

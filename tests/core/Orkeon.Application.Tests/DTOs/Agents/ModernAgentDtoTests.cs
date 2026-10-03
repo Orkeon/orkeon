@@ -221,6 +221,15 @@ public class AgentDtoTests
     }
 
     [Fact]
+    public void ShouldLeaveTheTemperatureUnset_WhenUsingLlmWithoutOne()
+    {
+        // GAP-36: an unset temperature is the model's own, never the engine's former 0.7.
+        var llm = new LlmDto { Provider = "OpenAI", Model = ModelGpt4 };
+
+        Assert.Null(llm.Temperature);
+    }
+
+    [Fact]
     public void ShouldBeOptional_WhenUsingCapabilities()
     {
         // Arrange

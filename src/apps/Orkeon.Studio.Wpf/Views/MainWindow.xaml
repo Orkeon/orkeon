@@ -814,7 +814,8 @@
               </StackPanel>
             </Grid>
 
-            <!-- pinned temperature, response budget & timeout: empty = the engine decides.
+            <!-- pinned temperature, response budget & timeout: empty = nothing pinned (no
+                 temperature is sent: the model applies its own, GAP-36).
                  Some models mandate a temperature (Kimi K3: 1); an empty response budget is
                  the model's documented maximum (LLM-10) and the hint under the field says what
                  that is for this model; reasoning models need more than the default 30 s to

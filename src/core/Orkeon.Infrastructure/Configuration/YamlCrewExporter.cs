@@ -4,7 +4,6 @@ using Orkeon.Application.Interfaces.Infrastructure.Serialization;
 using Orkeon.Domain.Configuration;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
-using Orkeon.Domain.Constants.Llm;
 
 namespace Orkeon.Infrastructure.Configuration;
 
@@ -164,20 +163,92 @@ public partial class YamlCrewExporter
         };
     }
 
+    /// <summary>
+    /// An agent's <c>llm:</c> block: everything its configuration sets, and nothing else — what the
+    /// loader reads back (GAP-36). A temperature of 0.7 is written like any other: it was left out
+    /// as "the default", and the round trip held only because the loader filled it back in;
+    /// <c>topP</c>, <c>thinking</c>, the response format and its schema and <c>cache</c> were not
+    /// written at all.
+    /// </summary>
     private static LlmYamlConfig? MapLlmConfig(LlmConfig? llmConfig)
     {
         if (llmConfig == null)
             return null;
 
+        var (responseFormat, responseSchema) = MapResponseFormat(llmConfig.ResponseFormat);
         return new LlmYamlConfig
         {
             Profile = llmConfig.Profile,
             // An empty model is the profile's own (GAP-17): left out, like an unpinned cap.
             Model = string.IsNullOrWhiteSpace(llmConfig.Model) ? null : llmConfig.Model,
-            Temperature = llmConfig.Temperature != LlmDefaults.DefaultTemperature ? llmConfig.Temperature : null,
+            Temperature = llmConfig.Temperature,
             MaxTokens = llmConfig.MaxTokens,   // only a pinned cap is written; null was never one
+            TopP = llmConfig.TopP,
+            Thinking = MapThinking(llmConfig.Thinking),
+            ResponseFormat = responseFormat,
+            ResponseSchema = responseSchema,
+            Cache = MapCache(llmConfig.Cache),
         };
     }
+
+    /// <summary>
+    /// A task's <c>llmOverride:</c> block, field by field (GAP-36); null when the task has none.
+    /// The block has no <c>cache</c> key: a cache request set on the override in code has no YAML
+    /// form.
+    /// </summary>
+    private static LlmOverrideYamlConfig? MapLlmOverride(LlmConfigOverride? llmOverride)
+    {
+        if (llmOverride is null)
+            return null;
+
+        var (responseFormat, responseSchema) = MapResponseFormat(llmOverride.ResponseFormat);
+        return new LlmOverrideYamlConfig
+        {
+            Profile = llmOverride.Profile,
+            ResponseFormat = responseFormat,
+            ResponseSchema = responseSchema,
+            Temperature = llmOverride.Temperature,
+            MaxTokens = llmOverride.MaxTokens,
+            TopP = llmOverride.TopP,
+            Thinking = MapThinking(llmOverride.Thinking),
+        };
+    }
+
+    /// <summary>
+    /// The <c>responseFormat:</c> value and its <c>responseSchema:</c> companion, as the loader
+    /// reads them back. <c>text</c> — the vendor default, which the loader reads as no format — is
+    /// written as nothing.
+    /// </summary>
+    private static (string? Format, ResponseSchemaYamlConfig? Schema) MapResponseFormat(LlmResponseFormat? format)
+    {
+        if (format is null
+            || string.IsNullOrWhiteSpace(format.Type)
+            || string.Equals(format.Type, "text", StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, null);
+        }
+
+        return format.Schema is { } schema
+            ? (format.Type, new ResponseSchemaYamlConfig { Name = schema.Name, Schema = schema.Schema, Strict = schema.Strict })
+            : (format.Type, null);
+    }
+
+    /// <summary>The <c>thinking:</c> block; null when it sets nothing, as the loader reads an empty one.</summary>
+    private static ThinkingYamlConfig? MapThinking(LlmThinkingConfig? thinking) =>
+        thinking is null || (thinking.Enabled is null && string.IsNullOrWhiteSpace(thinking.Effort) && thinking.BudgetTokens is null)
+            ? null
+            : new ThinkingYamlConfig { Enabled = thinking.Enabled, Effort = thinking.Effort, BudgetTokens = thinking.BudgetTokens };
+
+    /// <summary>The <c>cache:</c> block; null when it marks no breakpoint, as the loader reads one.</summary>
+    private static CacheYamlConfig? MapCache(LlmCacheConfig? cache) =>
+        cache is { RequestsAnyBreakpoint: true }
+            ? new CacheYamlConfig
+            {
+                System = cache.CacheSystemPrompt ? true : null,
+                Tools = cache.CacheTools ? true : null,
+                Ttl = cache.Ttl,
+            }
+            : null;
 
     private static Dictionary<string, TaskYamlConfig> MapToTasksDictionary(
         IReadOnlyList<TaskConfiguration> tasks)
@@ -197,6 +268,7 @@ public partial class YamlCrewExporter
                 AsyncExecution = task.AsyncExecution ? true : null,
                 HumanInput = task.HumanInput ? true : null,
                 Context = task.Context.Count > 0 ? task.Context : null,
+                LlmOverride = MapLlmOverride(task.LlmOverride),
             };
         }
         return dict;

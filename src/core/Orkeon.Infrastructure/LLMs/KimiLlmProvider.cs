@@ -55,9 +55,10 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
     /// Self-heals the one rejection Moonshot answers with a hard constraint: when the API
     /// says only a specific temperature is allowed for the resolved model, the request is
     /// re-sent once with that value — and the substitution is logged as a warning, never
-    /// applied silently (the capability doctrine). Any other rejection is handed to the
-    /// base, which knows one more: a catalogue output cap the endpoint refused (LLM-10 —
-    /// Moonshot bounds the cap by <c>window − prompt</c>).
+    /// applied silently (the capability doctrine). Only a temperature the request carried is
+    /// replaced: one nothing sets is not sent (GAP-36), and leaves nothing to retry. Any other
+    /// rejection is handed to the base, which knows one more: a catalogue output cap the
+    /// endpoint refused (LLM-10 — Moonshot bounds the cap by <c>window − prompt</c>).
     /// </summary>
     protected override bool TryAdaptRejectedPayload(
         Dictionary<string, object> payload, HttpStatusCode statusCode, string errorBody, LlmConfig effectiveConfig)
@@ -74,10 +75,11 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
             return base.TryAdaptRejectedPayload(payload, statusCode, errorBody, effectiveConfig);
         }
 
-        // Never loop: if the mandated value is already what we sent, the rejection is
-        // about something else — the base may still know it; otherwise it surfaces.
-        if (payload.TryGetValue("temperature", out var current)
-            && current is double sent && sent.Equals(mandated))
+        // Nothing to replace when no temperature was sent; never loop: if the mandated value is
+        // already what we sent, the rejection is about something else — the base may still know
+        // it; otherwise it surfaces.
+        if (!payload.TryGetValue("temperature", out var current)
+            || (current is double sent && sent.Equals(mandated)))
         {
             return base.TryAdaptRejectedPayload(payload, statusCode, errorBody, effectiveConfig);
         }

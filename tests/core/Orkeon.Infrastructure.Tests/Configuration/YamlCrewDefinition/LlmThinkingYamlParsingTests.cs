@@ -100,7 +100,8 @@ agents:
         var agent = Assert.Single(config.Agents);
         Assert.NotNull(agent.LlmConfig);
         Assert.Null(agent.LlmConfig!.Thinking);
-        Assert.Equal(1.0, agent.LlmConfig.TopP);
+        // No top_p written, none set — the engine's 1.0 no longer fills the gap (GAP-36).
+        Assert.Null(agent.LlmConfig.TopP);
     }
 
     [Fact]

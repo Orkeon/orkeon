@@ -188,7 +188,7 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
                 model = effectiveConfig.Model,
                 prompt = prompt,
                 max_tokens = effectiveConfig.MaxTokens,
-                temperature = (float)effectiveConfig.Temperature
+                temperature = (float?)effectiveConfig.Temperature
             };
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "v1/completions")

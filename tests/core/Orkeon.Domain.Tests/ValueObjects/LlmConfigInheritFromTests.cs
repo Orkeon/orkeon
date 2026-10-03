@@ -9,7 +9,8 @@ namespace Orkeon.Domain.Tests.ValueObjects;
 /// completes the configuration its provider was built with — every field the call leaves unset
 /// takes the provider's value, every field it sets wins. The providers used to take a call's
 /// configuration whole, so a caller that named a temperature lost the key, the endpoint and the
-/// timeout of the provider it reached.
+/// timeout of the provider it reached. GAP-36: the temperature and <c>top_p</c> are inheritable too —
+/// a call that sets neither runs on its provider's, never on an engine default.
 /// </summary>
 public sealed class LlmConfigInheritFromTests
 {
@@ -99,11 +100,16 @@ public sealed class LlmConfigInheritFromTests
             GrammarGbnf = "root ::= \"y\"",
             Thinking = new LlmThinkingConfig { Enabled = true, Effort = "high" },
             ResponseFormat = LlmResponseFormat.Text(),
+            Temperature = 0.3,
+            TopP = 1.0,
         };
 
         var effective = call.InheritFrom(Provider());
 
         Assert.Equal("call-model", effective.Model);
+        // Set is sent, whatever the value: 1.0 is a top_p the call chose, not "unset" (GAP-36).
+        Assert.Equal(0.3, effective.Temperature);
+        Assert.Equal(1.0, effective.TopP);
         Assert.Equal("local", effective.Profile);
         Assert.Equal("sk-call", effective.ApiKey);
         Assert.Equal("CALL_KEY", effective.ApiKeySecretName);
@@ -122,14 +128,25 @@ public sealed class LlmConfigInheritFromTests
     }
 
     [Fact]
-    public void The_sampling_settings_and_the_tool_mode_are_the_callers()
+    public void A_temperature_and_a_top_p_the_call_leaves_unset_are_the_providers()
     {
-        // A caller that builds a configuration owns its sampling: these settings have no "unset"
-        // value, so the call's — its own or the defaults it accepted — is the one sent.
+        // GAP-36: "unset" is representable — null —, so a call that names neither runs on its
+        // provider's, like its output cap and its timeout. OnProfile() carried 0.7 and 1.0, which
+        // replaced the 0.2 and the 0.9 the host had configured.
+        var effective = LlmConfig.OnProfile().InheritFrom(Provider());
+
+        Assert.Equal(0.2, effective.Temperature);
+        Assert.Equal(0.9, effective.TopP);
+    }
+
+    [Fact]
+    public void The_penalties_and_the_tool_mode_are_the_callers()
+    {
+        // These settings have no "unset" value — 0 is every vendor's default, and neither a host
+        // nor a crew sets them —, so the call's is the one sent.
         var effective = (LlmConfig.OnProfile() with { Temperature = 0.3 }).InheritFrom(Provider());
 
         Assert.Equal(0.3, effective.Temperature);
-        Assert.Equal(1.0, effective.TopP);
         Assert.Equal(0.0, effective.FrequencyPenalty);
         Assert.Equal(0.0, effective.PresencePenalty);
         Assert.Equal(ToolCallMode.Auto, effective.ToolMode);

@@ -1837,7 +1837,7 @@
     <value>温度（可选）</value>
   </data>
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve">
-    <value>留空：由引擎决定。有些模型强制取值——Kimi K3 只接受 1。</value>
+    <value>留空：不发送任何值——由模型使用其自身的默认值。有些模型强制取值——Kimi K3 只接受 1。</value>
   </data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve">
     <value>响应超时（秒，可选）</value>

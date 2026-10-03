@@ -57,6 +57,32 @@ public class LlmProviderToChatClientAdapterTests
     }
 
     [Fact]
+    public async Task ShouldCarryTheStopSequencesToTheProvider_WhenGetResponseAsync()
+    {
+        // GAP-36, decision 8: ChatOptions.StopSequences stopped at the adapter.
+        using var adapter = CreateAdapter();
+        var options = new ChatOptions { StopSequences = ["END"] };
+
+        await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "test")], options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["END"], _llmProvider.LastChatConfig!.StopSequences);
+    }
+
+    [Fact]
+    public async Task ShouldLeaveTheSamplingUnset_WhenNeitherTheOptionsNorTheProviderSetIt()
+    {
+        // GAP-36: a provider that declares no configuration gets one that sets no temperature and
+        // no top_p — the provider's own then apply —, never 0.7 and 1.0.
+        using var adapter = CreateAdapter();
+
+        await adapter.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "test")], new ChatOptions { MaxOutputTokens = 100 }, TestContext.Current.CancellationToken);
+
+        Assert.Null(_llmProvider.LastChatConfig!.Temperature);
+        Assert.Null(_llmProvider.LastChatConfig.TopP);
+    }
+
+    [Fact]
     public async Task ShouldMapMultipleRoles_WhenGetResponseAsync()
     {
         _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });

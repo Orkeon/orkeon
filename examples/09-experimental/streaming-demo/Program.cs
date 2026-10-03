@@ -42,7 +42,7 @@ var llmConfig = LlmConfig.Create(llmSection["Model"] ?? "gpt-4o-mini") with
 #pragma warning disable CS0618 // demo wires the key directly from appsettings
     ApiKey = llmSection["ApiKey"],
 #pragma warning restore CS0618
-    Temperature = double.TryParse(llmSection["Temperature"], System.Globalization.CultureInfo.InvariantCulture, out var temperature) ? temperature : 0.7,
+    Temperature = double.TryParse(llmSection["Temperature"], System.Globalization.CultureInfo.InvariantCulture, out var temperature) ? temperature : null, // absent = the model's own
     MaxTokens = int.TryParse(llmSection["MaxTokens"], out var maxTokens) ? maxTokens : null, // absent = the model's documented maximum
 };
 

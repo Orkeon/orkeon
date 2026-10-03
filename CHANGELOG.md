@@ -148,6 +148,58 @@ had just written (STUDIO-53).
   integers, read back as « not set » from the document that had just written them. Studio reads the
   file again before each use, so nothing showed.
 
+### Fixed — a temperature or a `top_p` a crew declares reaches the model whatever its value, one nothing sets is not sent, and what a dialect cannot send is said **[breaking]**
+
+The engine took a temperature of 0.7 and a `top_p` of 1.0 for "not set" (GAP-36, decisions 1 and 8). An agent
+writing `temperature: 0.7` on a profile configured at 0.2 ran at 0.2, in YAML, `.ork.ts` and C# alike; a
+`top_p: 1.0` never left; and a host that set no temperature sent 0.7 on every call — a value the default models
+of OpenAI (`gpt-5.6-sol`) and Anthropic (`claude-sonnet-5`) refuse, which `orkeon init --provider openai` and
+Studio's OpenAI and Anthropic cards choose without writing a temperature.
+
+- **What nothing sets is not sent.** `LlmConfig.Temperature` and `LlmConfig.TopP` are `double?`: null when
+  nothing sets them — not the call, not the agent, not the task, not the profile —, and then no payload carries
+  them: the model applies its own default (often 1; the Modelfile's on Ollama). No producer writes the engine's
+  0.7 and 1.0 any more — the YAML loader, `LlmSettings` (an `Llm` section or a profile without `Temperature`),
+  `LlmConfig.OnProfile()` and `Create`, `CreateValidated` (`double? temperature = null`, `double? topP = null`,
+  ranges checked when set) —, and every payload writer omits what is unset: the OpenAI dialect's two builders,
+  Anthropic, Ollama's three, Azure's stream. Mistral still writes `top_p: 1` when nothing sets one
+  (`AlwaysEmitTopP`, measured); Kimi re-sends its mandated temperature only for a value that was set and
+  refused. The runners' startup line says `temperature=(not set: the model's own)`.
+- **What is set is sent, whatever its value.** The composer forwards an agent's temperature and `top_p` when they
+  are set — it compared them with 0.7 and 1.0 —, and a call's configuration that sets neither runs on its
+  provider's (`LlmConfig.InheritFrom`), like its output cap and its timeout. The penalties keep no unset value:
+  0, every vendor's default.
+- **The export writes what is set.** `YamlCrewExporter` writes an agent's temperature at 0.7 like any other, its
+  `topP`, `thinking`, `responseFormat` and `responseSchema`, `cache` and profile, and a task's `llmOverride` —
+  what the loader reads back.
+- **What a dialect cannot send is said** (decision 8). Ollama writes `top_p`, `seed` and `stop` in its `options`
+  — it dropped a `top_p` a YAML crew declared —, through `OllamaRequestOptions.Builder`, whose `AddTemperature`,
+  `AddTopP` and `AddSeed` take nullable values, with `AddStop`. A `frequency_penalty` or a `presence_penalty`, on
+  every dialect, and a `seed`, everywhere but Ollama, is answered with the structured warning (event 110) naming
+  it — they were dropped in silence. The penalties, the seed and the stop sequences of an agent's `LlmConfig`
+  reach the call (the tool-free retry keeps them, and the agent's model, which it lost); both MEAI adapters carry
+  the stop sequences, and an `IChatClient` wrapped as a provider no longer receives a temperature, a `top_p` or a
+  zero penalty nobody set. The Microsoft Agent Framework bridge announces a temperature or a `top_p` whatever its
+  value.
+- `LlmParameters`, which nothing used and whose 0.7 and 1.0 contradicted the rule, is deleted, with
+  `LlmDefaults.DefaultTemperature`; `LlmDto.Temperature` is nullable. Studio's hint under the temperature field
+  says what an empty one now means, in the five languages.
+
+Documented in [LLM providers](docs/architecture/llm-providers.md),
+[the provider comparison](docs/reference/llm-providers-comparison.md),
+[Configuration](docs/reference/configuration.md#llm-provider-llm-section) and
+[the YAML schema](docs/architecture/yaml-schema.md).
+
+Breaking: a host or a crew that sets no temperature runs on the model's default (often 1) instead of 0.7, and
+one that sets no `top_p` sends none; `LlmConfig.Temperature` and `TopP` are `double?`;
+`LlmConfig.CreateValidated` takes `double? temperature = null` and `double? topP = null`; `LlmParameters` and
+`LlmDefaults.DefaultTemperature` are removed; `LlmDto.Temperature` is `double?`;
+`OllamaRequestOptions.Builder.AddTemperature`, `AddTopP` and `AddSeed` take nullable values.
+
+Migration: write `Llm:Temperature: 0.7` — and `Temperature` in each `Llm:Profiles:<name>` — to keep the former
+sampling; read `LlmConfig.Temperature` and `TopP` as nullable; build an `LlmConfig` where an `LlmParameters` was
+built.
+
 ### Fixed — a scheduled team runs as Studio launches it: on its model setting, with its folders
 
 A team Studio scheduled (STUDIO-27) is run by the operating system through its `run.cmd` or `run.sh`,

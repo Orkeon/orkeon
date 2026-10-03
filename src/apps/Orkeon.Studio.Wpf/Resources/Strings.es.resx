@@ -1837,7 +1837,7 @@
     <value>Temperatura (opcional)</value>
   </data>
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve">
-    <value>Vacío: decide el motor. Algunos modelos imponen un valor — Kimi K3 solo acepta 1.</value>
+    <value>Vacío: no se envía nada — el modelo aplica su propio valor por defecto. Algunos modelos imponen un valor — Kimi K3 solo acepta 1.</value>
   </data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve">
     <value>Tiempo de respuesta (s, opcional)</value>

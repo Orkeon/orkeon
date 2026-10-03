@@ -55,7 +55,7 @@ agents:
     llm:
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) — absent = le fournisseur par défaut de l'hôte
       model: string       # Modèle LLM ("gpt-4", "claude-3-opus", etc.) — absent = le modèle propre du profil
-      temperature: float  # Créativité (0.0-1.0)
+      temperature: float  # Créativité (0.0-2.0) — absente = celle du profil, sinon rien n'est envoyé et le modèle applique la sienne
       maxTokens: int      # Limite de tokens en sortie
 
 tasks:

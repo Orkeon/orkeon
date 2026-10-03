@@ -65,16 +65,20 @@ public sealed class ChatClientToLlmProviderAdapter : ILlmProvider
     private static ChatOptions? MapConfig(LlmConfig? config)
     {
         if (config == null) return null;
+        // What the configuration sets, and only that (GAP-36): an unset temperature or top_p
+        // stays with the client — it received the engine's 0.7 and 1.0 —, a penalty left at 0,
+        // every vendor's default, is sent as nothing, and the stop sequences travel.
         return new ChatOptions
         {
-            Temperature = (float)config.Temperature,
+            Temperature = (float?)config.Temperature,
             MaxOutputTokens = config.MaxTokens,
-            TopP = (float)config.TopP,
-            FrequencyPenalty = (float)config.FrequencyPenalty,
-            PresencePenalty = (float)config.PresencePenalty,
+            TopP = (float?)config.TopP,
+            FrequencyPenalty = config.FrequencyPenalty != 0.0 ? (float)config.FrequencyPenalty : null,
+            PresencePenalty = config.PresencePenalty != 0.0 ? (float)config.PresencePenalty : null,
             // A config that names no model leaves the client on its own (GAP-18).
             ModelId = string.IsNullOrWhiteSpace(config.Model) ? null : config.Model,
-            Seed = config.Seed.HasValue ? (long)config.Seed.Value : null
+            Seed = config.Seed,
+            StopSequences = config.StopSequences is { Count: > 0 } stopSequences ? [.. stopSequences] : null,
         };
     }
 

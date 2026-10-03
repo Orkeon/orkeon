@@ -1182,11 +1182,12 @@ public sealed partial class JsLlmFacade
     /// <remarks>
     /// Call-time settings PATCH the provider's <see cref="ILlmProvider.BaseConfig"/>; they do not
     /// start from a blank one. A provider completes a call's configuration with its own key,
-    /// base URL and timeout (GAP-29), but the settings that have no unset value — the
-    /// temperature, the nucleus and penalty settings — are the call's: built on a blank
+    /// base URL, timeout, temperature and <c>top_p</c> (GAP-29, GAP-36), but the settings that have
+    /// no unset value — the penalties and the tool mode — are the call's: built on a blank
     /// configuration, a script asking for `{ responseFormat: 'json_object' }` would also reset
-    /// the host's temperature. Only a provider that declares no configuration gets one built from
-    /// <see cref="LlmConfig.OnProfile"/>, which names no model (GAP-18).
+    /// penalties the host's provider was built with. Only a provider that declares no
+    /// configuration gets one built from <see cref="LlmConfig.OnProfile"/>, which names no model
+    /// (GAP-18) and no sampling.
     /// </remarks>
     private LlmConfig? ConfigFrom(JsValue? options)
     {

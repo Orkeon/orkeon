@@ -249,6 +249,57 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task ForwardsATemperatureAndATopP_WhateverTheirValue()
+    {
+        // GAP-36: 0.7 and 1.0 were the engine's defaults, so the composer took them for "not set"
+        // and dropped them — an agent asking for 0.7 on a profile configured at 0.2 ran at 0.2.
+        var agent = BuildAgent(LlmConfig.OnProfile() with { Temperature = 0.7, TopP = 1.0 });
+        var composer = BuildComposer();
+
+        var (options, _) = await composer.BuildChatOptionsAsync(agent, BuildTask(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(0.7f, options.Temperature);
+        Assert.Equal(1.0f, options.TopP);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task LeavesTheSamplingToTheProvider_WhenTheAgentConfigSetsNone()
+    {
+        var composer = BuildComposer();
+
+        var (options, _) = await composer.BuildChatOptionsAsync(
+            BuildAgent(LlmConfig.OnProfile("b")), BuildTask(), TestContext.Current.CancellationToken);
+
+        Assert.Null(options.Temperature);
+        Assert.Null(options.TopP);
+        Assert.Null(options.FrequencyPenalty);
+        Assert.Null(options.PresencePenalty);
+        Assert.Null(options.Seed);
+        Assert.Null(options.StopSequences);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ForwardsTheAgentsPenaltiesSeedAndStopSequences()
+    {
+        // GAP-36, decision 8: an agent built in C# could set them; nothing carried them to the call.
+        var agent = BuildAgent(LlmConfig.OnProfile() with
+        {
+            FrequencyPenalty = 0.5,
+            PresencePenalty = -0.25,
+            Seed = 7,
+            StopSequences = ["END"],
+        });
+        var composer = BuildComposer();
+
+        var (options, _) = await composer.BuildChatOptionsAsync(agent, BuildTask(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(0.5f, options.FrequencyPenalty);
+        Assert.Equal(-0.25f, options.PresencePenalty);
+        Assert.Equal(7L, options.Seed);
+        Assert.Equal(["END"], options.StopSequences!);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task DoesNotForwardAnything_WhenTheAgentHasNoLlmConfig()
     {
         var composer = BuildComposer();

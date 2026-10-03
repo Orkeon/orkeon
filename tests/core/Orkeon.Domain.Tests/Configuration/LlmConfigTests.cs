@@ -20,7 +20,7 @@ public class LlmConfigTests
     #region Constructor Tests
 
     [Fact]
-    public void ShouldNameNoModelAndKeepDefaultSampling_WhenCreatedOnProfile()
+    public void ShouldNameNoModelAndSetNoSampling_WhenCreatedOnProfile()
     {
         // Act — the configuration that names no model (GAP-18: LlmConfig.Default() pinned
         // OpenAI's default model here, sent to whatever vendor served the call)
@@ -31,9 +31,11 @@ public class LlmConfigTests
         Assert.Null(config.Profile);
         Assert.Null(config.ApiKey);
         Assert.Null(config.BaseUrl);
-        Assert.Equal(0.7, config.Temperature, precision: 1);
+        // Nothing set: no temperature and no top_p reach the wire, the model applies its own
+        // (GAP-36). They were 0.7 and 1.0, which "not set" could not be told apart from.
+        Assert.Null(config.Temperature);
         Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
-        Assert.Equal(1.0, config.TopP, precision: 1);
+        Assert.Null(config.TopP);
         Assert.Equal(0.0, config.FrequencyPenalty, precision: 1);
         Assert.Equal(0.0, config.PresencePenalty, precision: 1);
         Assert.Null(config.Seed);
@@ -56,7 +58,7 @@ public class LlmConfigTests
         // Assert
         Assert.Equal(ModelGpt35Turbo, config.Model);
         Assert.Null(config.ApiKey);
-        Assert.Equal(0.7, config.Temperature, precision: 1);
+        Assert.Null(config.Temperature);
         Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
     }
 
@@ -69,7 +71,7 @@ public class LlmConfigTests
         // Assert
         Assert.Equal(ModelClaude3, config.Model);
         Assert.Equal(TestApiKey, config.ApiKey);
-        Assert.Equal(0.7, config.Temperature, precision: 1);
+        Assert.Null(config.Temperature);
         Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
     }
 
@@ -131,9 +133,9 @@ public class LlmConfigTests
         Assert.Equal("llama-2-70b", config.Model);
         Assert.Equal(CustomApiKey, config.ApiKey);
         Assert.Equal(new Uri("https://api.custom.com"), config.BaseUrl);
-        Assert.Equal(0.9, config.Temperature, precision: 1);
+        Assert.Equal(0.9, Assert.NotNull(config.Temperature), precision: 1);
         Assert.Equal(8192, config.MaxTokens);
-        Assert.Equal(0.95, config.TopP, precision: 2);
+        Assert.Equal(0.95, Assert.NotNull(config.TopP), precision: 2);
         Assert.Equal(0.5, config.FrequencyPenalty, precision: 1);
         Assert.Equal(0.3, config.PresencePenalty, precision: 1);
         Assert.Equal(12345, config.Seed);
@@ -157,7 +159,7 @@ public class LlmConfigTests
         var config = LlmConfig.OnProfile() with { Temperature = temperature };
 
         // Assert
-        Assert.Equal(temperature, config.Temperature, precision: 1);
+        Assert.Equal(temperature, Assert.NotNull(config.Temperature), precision: 1);
     }
 
     [Theory]
@@ -186,7 +188,7 @@ public class LlmConfigTests
         var config = LlmConfig.OnProfile() with { TopP = topP };
 
         // Assert
-        Assert.Equal(topP, config.TopP, precision: 1);
+        Assert.Equal(topP, Assert.NotNull(config.TopP), precision: 1);
     }
 
     [Theory]
@@ -356,7 +358,7 @@ public class LlmConfigTests
         Assert.Equal("claude", config.Profile);
         Assert.Null(LlmConfig.OnProfile("  ").Profile);
         Assert.Null(config.ApiKey);
-        Assert.Equal(0.7, config.Temperature, precision: 1);
+        Assert.Null(config.Temperature);
         Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
         Assert.Null(config.TimeoutSeconds);   // nothing pinned: the provider's timeout (GAP-29)
         Assert.Equal(LlmDefaults.DefaultMaxRetries, config.MaxRetries); // 10 — drives the HTTP retry budget (Llm:MaxRetries)
@@ -573,9 +575,9 @@ public class LlmConfigTests
         Assert.Equal(CustomModelName, config.Model);
         Assert.Equal("custom-key", config.ApiKey);
         Assert.Equal(new Uri("https://api.custom.com"), config.BaseUrl);
-        Assert.Equal(0.8, config.Temperature, precision: 1);
+        Assert.Equal(0.8, Assert.NotNull(config.Temperature), precision: 1);
         Assert.Equal(2048, config.MaxTokens);
-        Assert.Equal(0.9, config.TopP, precision: 1);
+        Assert.Equal(0.9, Assert.NotNull(config.TopP), precision: 1);
         Assert.Equal(0.2, config.FrequencyPenalty, precision: 1);
         Assert.Equal(0.1, config.PresencePenalty, precision: 1);
         Assert.Equal(42, config.Seed);
@@ -601,7 +603,7 @@ public class LlmConfigTests
 
         // Assert
         Assert.Equal(ModelDefault, config.Model);
-        Assert.Equal(0.7, config.Temperature, precision: 1);
+        Assert.Equal(0.7, Assert.NotNull(config.Temperature), precision: 1);
         Assert.Equal(1500, config.MaxTokens);
         Assert.Equal(0.6, config.PresencePenalty, precision: 1);
         Assert.Contains("Human:", config.StopSequences);
@@ -625,7 +627,7 @@ public class LlmConfigTests
         };
 
         // Assert
-        Assert.Equal(0.2, config.Temperature, precision: 1);
+        Assert.Equal(0.2, Assert.NotNull(config.Temperature), precision: 1);
         Assert.Equal(4096, config.MaxTokens);
         Assert.Contains("```", config.StopSequences);
         Assert.Contains("END_CODE", config.StopSequences);
@@ -648,7 +650,7 @@ public class LlmConfigTests
         Assert.Equal("codellama:13b", config.Model);
         Assert.Equal(new Uri(EndpointOllamaDefault), config.BaseUrl);
         Assert.Null(config.ApiKey);
-        Assert.Equal(0.1, config.Temperature, precision: 1);
+        Assert.Equal(0.1, Assert.NotNull(config.Temperature), precision: 1);
         Assert.Equal(8192, config.MaxTokens);
         Assert.Equal(120, config.TimeoutSeconds);
         Assert.Equal(2, config.MaxRetries);
@@ -668,8 +670,8 @@ public class LlmConfigTests
         };
 
         // Assert
-        Assert.Equal(1.0, config.Temperature, precision: 1);
-        Assert.Equal(0.9, config.TopP, precision: 1);
+        Assert.Equal(1.0, Assert.NotNull(config.Temperature), precision: 1);
+        Assert.Equal(0.9, Assert.NotNull(config.TopP), precision: 1);
         Assert.Equal(0.5, config.FrequencyPenalty, precision: 1);
         Assert.Equal(0.5, config.PresencePenalty, precision: 1);
         Assert.Equal(2048, config.MaxTokens);
@@ -695,9 +697,9 @@ public class LlmConfigTests
         };
 
         // Assert - No validation constraints in the record itself
-        Assert.Equal(-1.0, config.Temperature, precision: 1);
+        Assert.Equal(-1.0, Assert.NotNull(config.Temperature), precision: 1);
         Assert.Equal(-1, config.MaxTokens);
-        Assert.Equal(-1.0, config.TopP, precision: 1);
+        Assert.Equal(-1.0, Assert.NotNull(config.TopP), precision: 1);
         Assert.Equal(-3.0, config.FrequencyPenalty, precision: 1);
         Assert.Equal(3.0, config.PresencePenalty, precision: 1);
         Assert.Equal(0, config.TimeoutSeconds);

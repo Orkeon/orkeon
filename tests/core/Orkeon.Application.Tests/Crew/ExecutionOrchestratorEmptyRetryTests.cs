@@ -16,9 +16,12 @@ public class ExecutionOrchestratorEmptyRetryTests
     {
         var options = new ChatOptions
         {
+            ModelId = "planner-model",
             Temperature = 0.2f,
             MaxOutputTokens = 4096,
             TopP = 0.95f,
+            Seed = 7,
+            StopSequences = ["END"],
             Tools = [],
             ToolMode = ChatToolMode.Auto,
             AdditionalProperties = new AdditionalPropertiesDictionary
@@ -53,6 +56,11 @@ public class ExecutionOrchestratorEmptyRetryTests
         Assert.Equal(0.2f, retry.Temperature);
         Assert.Equal(4096, retry.MaxOutputTokens);
         Assert.Equal(0.95f, retry.TopP);
+        // GAP-36: the retry runs on the agent's model with the seed and stop sequences the
+        // composer forwards — none of them dropped on the way.
+        Assert.Equal("planner-model", retry.ModelId);
+        Assert.Equal(7L, retry.Seed);
+        Assert.Equal(["END"], retry.StopSequences!);
     }
 
     [Fact]

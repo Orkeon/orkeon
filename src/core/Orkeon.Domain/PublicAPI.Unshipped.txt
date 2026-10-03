@@ -1021,7 +1021,7 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TimeoutSeconds.get -> int?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.InheritFrom(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! provider) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResolveTimeoutSeconds() -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTimeoutSeconds = 30 -> int
-static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int? maxTokens = null, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int? timeoutSeconds = null, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double? temperature = null, int? maxTokens = null, double? topP = null, double frequencyPenalty = 0, double presencePenalty = 0, int? timeoutSeconds = null, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 *REMOVED*Orkeon.Domain.Agent.Agent.CollaborateWith(Orkeon.Domain.Common.AgentId! collaboratorId, Orkeon.Domain.Common.TaskId! taskId) -> Orkeon.Domain.Common.CollaborationId!
 *REMOVED*Orkeon.Domain.Agent.Agent.CompleteTask(Orkeon.Domain.Task.ValueObjects.TaskOutput! output) -> void
 *REMOVED*Orkeon.Domain.Agent.Agent.CurrentTask.get -> Orkeon.Domain.Common.TaskId?
@@ -1480,3 +1480,33 @@ static Orkeon.Domain.Agent.AgentLlmRules.OwnToolsRefusal(string! holder, string!
 *REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy.Parallel -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy!
 *REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy.Sequential -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy!
 static Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.Create(System.TimeSpan? defaultTimeout = null, int maxRetries = 3, bool enableDebugMode = false, int maxRPM = 0) -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Deconstruct(out double temperature, out int maxTokens, out double topP, out double frequencyPenalty, out double presencePenalty, out System.Collections.Immutable.ImmutableArray<string!> stopSequences, out int? seed) -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Equals(Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.FrequencyPenalty.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.FrequencyPenalty.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.MaxTokens.get -> int
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.MaxTokens.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.PresencePenalty.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.PresencePenalty.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Seed.get -> int?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Seed.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.StopSequences.get -> System.Collections.Immutable.ImmutableArray<string!>
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.StopSequences.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Temperature.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Temperature.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.TopP.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.TopP.init -> void
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.ToString() -> string!
+*REMOVED*override sealed Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Create(double temperature = 0.7, int maxTokens = 4000, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, System.Collections.Immutable.ImmutableArray<string!> stopSequences = default(System.Collections.Immutable.ImmutableArray<string!>), int? seed = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters? right) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Temperature.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TopP.get -> double
+*REMOVED*const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTemperature = 0.7 -> double
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Temperature.get -> double?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TopP.get -> double?

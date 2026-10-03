@@ -93,7 +93,9 @@ variable d'environnement qui contient la clé — [plus bas](#la-clé-dapi-apike
 variable où vit conventionnellement la clé de chaque fournisseur, et les noms qu'on confond avec
 elle, sont dans le
 [comparatif des fournisseurs](llm-providers-comparison.md#clés-dapi--la-variable-par-fournisseur)), `ApiKey`
-(la clé en clair — déconseillé), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (défaut 10), et
+(la clé en clair — déconseillé), `Temperature` (omise, rien n'est envoyé et le modèle applique la
+sienne — souvent 1 ; écrivez `0.7` pour garder l'ancien défaut du moteur, GAP-36), `MaxTokens`,
+`TimeoutSeconds`, `MaxRetries` (défaut 10), et
 `Thinking:{Enabled,Effort}` pour les providers à raisonnement, et `Grammar` (défaut `false`) :
 ne le passez à `true` que lorsque `BaseUrl` désigne un serveur compatible llama.cpp (Docker
 Model Runner, `llama-server`) — le seul genre de point d'accès qui honore le champ GBNF

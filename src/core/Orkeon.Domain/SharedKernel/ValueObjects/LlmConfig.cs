@@ -63,8 +63,14 @@ public sealed record LlmConfig
 
     /// <summary>Gets the base URL for the LLM provider.</summary>
     public Uri? BaseUrl { get; init; }
-    /// <summary>Gets the sampling temperature (0.0 to 1.0).</summary>
-    public double Temperature { get; init; } = LlmDefaults.DefaultTemperature;
+    /// <summary>
+    /// The sampling temperature (0.0 to 2.0), or null when nothing sets one: the request then
+    /// carries none, and the model applies its own default (GAP-36). Set, it is sent whatever its
+    /// value. It used to default to 0.7, which the composer and the export took for "not set": a
+    /// temperature of 0.7 never reached the model, and one nobody set went out as 0.7 — a value
+    /// the default models of OpenAI and Anthropic refuse.
+    /// </summary>
+    public double? Temperature { get; init; }
     /// <summary>
     /// The output cap pinned on this configuration, or null when nothing pins one — the
     /// request then carries the model's documented maximum, and 4096 only for a model the
@@ -73,8 +79,12 @@ public sealed record LlmConfig
     /// here, so "pinned" and "left to the model" stay distinguishable all the way to the wire.
     /// </summary>
     public int? MaxTokens { get; init; }
-    /// <summary>Gets the nucleus sampling probability.</summary>
-    public double TopP { get; init; } = 1.0;
+    /// <summary>
+    /// The nucleus sampling probability (0.0 to 1.0), or null when nothing sets one: the request
+    /// then carries none — but on Mistral, whose dialect writes 1 (GAP-36). Set, it is sent
+    /// whatever its value; 1.0 used to be taken for "not set".
+    /// </summary>
+    public double? TopP { get; init; }
     /// <summary>Gets the frequency penalty.</summary>
     public double FrequencyPenalty { get; init; }
     /// <summary>Gets the presence penalty.</summary>
@@ -218,12 +228,12 @@ public sealed record LlmConfig
     /// <summary>
     /// This configuration — a call's — completed by <paramref name="provider"/>, the configuration
     /// the provider it reaches was built with (GAP-29). Every field this configuration leaves unset
-    /// takes the provider's value: a null, an empty or blank string — model, key, workspace, API
-    /// version —, no stop sequence. Every field it sets wins. Custom parameters merge, this
-    /// configuration's keys winning. The settings that have no unset value — the temperature, the
-    /// nucleus and penalty settings, the tool mode — are the caller's: a caller that builds a
-    /// configuration owns its sampling. <see cref="MaxRetries"/> and <see cref="GrammarEnabled"/>
-    /// are read from the provider's own configuration when it is built, never from a call.
+    /// takes the provider's value: a null — the temperature and <c>top_p</c> included (GAP-36) —,
+    /// an empty or blank string — model, key, workspace, API version —, no stop sequence. Every
+    /// field it sets wins. Custom parameters merge, this configuration's keys winning. The settings
+    /// that have no unset value — the penalties, whose 0 is every vendor's default, and the tool
+    /// mode — are the caller's. <see cref="MaxRetries"/> and <see cref="GrammarEnabled"/> are read
+    /// from the provider's own configuration when it is built, never from a call.
     /// </summary>
     /// <remarks>
     /// The providers took a call's configuration whole (<c>config ?? Config</c>), so every caller
@@ -245,7 +255,9 @@ public sealed record LlmConfig
             ApiKey = string.IsNullOrEmpty(ApiKey) ? provider.ApiKey : ApiKey,
             ApiKeySecretName = string.IsNullOrWhiteSpace(ApiKeySecretName) ? provider.ApiKeySecretName : ApiKeySecretName,
             BaseUrl = BaseUrl ?? provider.BaseUrl,
+            Temperature = Temperature ?? provider.Temperature,
             MaxTokens = MaxTokens ?? provider.MaxTokens,
+            TopP = TopP ?? provider.TopP,
             Seed = Seed ?? provider.Seed,
             StopSequences = StopSequences is { Count: > 0 } ? StopSequences : provider.StopSequences,
             SystemMessage = string.IsNullOrWhiteSpace(SystemMessage) ? provider.SystemMessage : SystemMessage,
@@ -291,15 +303,17 @@ public sealed record LlmConfig
     }
 
     /// <summary>
-    /// Creates a validated <see cref="LlmConfig"/> with full parameter control.
+    /// Creates a validated <see cref="LlmConfig"/> with full parameter control. A temperature,
+    /// a <c>top_p</c>, an output cap or a timeout left null is not set — the provider's, else the
+    /// model's own, applies (GAP-36) —; one that is set is checked against its range.
     /// </summary>
     /// <remarks>All parameters have defaults; the high count reflects the LLM configuration surface area.</remarks>
 #pragma warning disable S107 // Methods should not have too many parameters — LLM config requires all standard inference parameters
     public static LlmConfig CreateValidated(
         string model,
-        double temperature = LlmDefaults.DefaultTemperature,
+        double? temperature = null,
         int? maxTokens = null,
-        double topP = 1.0,
+        double? topP = null,
         double frequencyPenalty = 0.0,
         double presencePenalty = 0.0,
         int? timeoutSeconds = null,
@@ -309,12 +323,12 @@ public sealed record LlmConfig
 #pragma warning restore S107
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(model);
-        if (temperature < 0.0 || temperature > 2.0)
+        if (temperature is < 0.0 or > 2.0)
             throw new ArgumentOutOfRangeException(nameof(temperature),
                 $"Temperature must be between 0.0 and 2.0, but was {temperature}.");
         if (maxTokens is <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxTokens), "MaxTokens must be positive when pinned; leave it null for the model's documented maximum.");
-        if (topP < 0.0 || topP > 1.0)
+        if (topP is < 0.0 or > 1.0)
             throw new ArgumentOutOfRangeException(nameof(topP),
                 $"TopP must be between 0.0 and 1.0, but was {topP}.");
         if (frequencyPenalty < -2.0 || frequencyPenalty > 2.0)
@@ -342,10 +356,11 @@ public sealed record LlmConfig
 
     /// <summary>
     /// Creates a configuration that pins nothing: no model — the call runs on the model of the
-    /// profile it is sent to — and default sampling. The one configuration that names no model:
-    /// what a crew's <c>llm:</c> block, <c>AgentBuilder.Thinking()</c>, the agent loops and the
-    /// planner start from, so a setting that only changes a temperature or a profile never pulls
-    /// one vendor's model onto another vendor's endpoint (GAP-17, GAP-18).
+    /// profile it is sent to — and no sampling, so the profile's temperature and <c>top_p</c>, else
+    /// the model's own, apply (GAP-36). The one configuration that names no model: what a crew's
+    /// <c>llm:</c> block, <c>AgentBuilder.Thinking()</c>, the agent loops and the planner start
+    /// from, so a setting that only changes a temperature or a profile never pulls one vendor's
+    /// model onto another vendor's endpoint (GAP-17, GAP-18).
     /// </summary>
     /// <param name="profile">The host profile to run on; null for the host's default.</param>
     /// <returns>A configuration on <paramref name="profile"/>'s own model.</returns>

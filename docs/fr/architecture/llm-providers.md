@@ -80,17 +80,31 @@ passée avec un appel **complète** celle avec laquelle le provider a été cons
 remplace pas. Chaque champ que l'appel laisse vide — nul, une chaîne vide ou blanche, aucune
 séquence d'arrêt — est celui du provider : la clé, `BaseUrl`, `TimeoutSeconds` (nullable : vide
 partout, 30 s), l'`ApiVersion` d'Azure, le `WorkspaceId` d'Anthropic, `Thinking`, `MaxTokens`,
-`Seed`, `SystemMessage`, `ResponseFormat`, `Cache`, `Tools`, la grammaire et le modèle ; les
-paramètres personnalisés fusionnent, ceux de l'appel l'emportant. Chaque champ que l'appel fixe
-l'emporte. Les réglages qui ne peuvent pas être vides — `Temperature`, `TopP`, les pénalités, le
-mode d'outil — sont ceux de l'appelant, et `MaxRetries` et `Grammar` se lisent dans la
-configuration du provider quand il est construit. Un appel ne peut pas effacer ce que fixe son
-provider ; il le remplace (`Thinking = { Enabled = false }`, `LlmResponseFormat.Text()`).
-L'adaptateur de client de chat enregistré sans configuration de base part de celle du provider
-(`ILlmProvider.BaseConfig`). Avant, les providers prenaient la configuration d'un appel en entier
-(`config ?? Config`) : le planificateur, la mémoire cognitive, les résumés de fenêtre de contexte
-et de RaggableTree et les boucles d'agent hors du client de chat perdaient la clé — « API key is
-required » —, le point d'accès et le délai du provider qu'ils atteignaient (GAP-29).
+`Temperature` et `TopP` (nullables eux aussi depuis GAP-36), `Seed`, `SystemMessage`,
+`ResponseFormat`, `Cache`, `Tools`, la grammaire et le modèle ; les paramètres personnalisés
+fusionnent, ceux de l'appel l'emportant. Chaque champ que l'appel fixe l'emporte. Les réglages qui
+ne peuvent pas être vides — les pénalités (0, le défaut de chaque vendeur) et le mode d'outil —
+sont ceux de l'appelant, et `MaxRetries` et `Grammar` se lisent dans la configuration du provider
+quand il est construit. Un appel ne peut pas effacer ce que fixe son provider ; il le remplace
+(`Thinking = { Enabled = false }`, `LlmResponseFormat.Text()`). L'adaptateur de client de chat
+enregistré sans configuration de base part de celle du provider (`ILlmProvider.BaseConfig`).
+Avant, les providers prenaient la configuration d'un appel en entier (`config ?? Config`) : le
+planificateur, la mémoire cognitive, les résumés de fenêtre de contexte et de RaggableTree et les
+boucles d'agent hors du client de chat perdaient la clé — « API key is required » —, le point
+d'accès et le délai du provider qu'ils atteignaient (GAP-29).
+
+**Échantillonnage : ce qui est fixé part, ce qui ne l'est pas ne part pas** (GAP-36).
+`Temperature` et `TopP` sont nuls quand rien ne les fixe — ni l'appel, ni l'agent, ni la tâche, ni
+le profil — et rien n'atteint alors le fil : le modèle applique son propre défaut (souvent 1 ;
+celui du Modelfile chez Ollama). Fixés, ils partent quelle que soit leur valeur. Le moteur prenait
+0,7 et 1,0 pour « non fixé » : un agent qui demandait exactement ces valeurs tournait sur celles de
+son profil, et le 0,7 qu'il posait sur chaque appel que personne ne configurait est refusé par les
+modèles par défaut d'OpenAI (`gpt-5.6-sol`) et d'Anthropic (`claude-sonnet-5`). Une exception
+mesurée : le dialecte de Mistral écrit `top_p: 1` quand rien n'en fixe (`AlwaysEmitTopP`). Les
+pénalités, la graine et les séquences d'arrêt de la configuration d'un agent passent elles aussi
+par le client de chat ; sur le fil, Ollama écrit `top_p`, `seed` et `stop` dans ses `options`, et
+un dialecte qui n'a pas de champ pour une pénalité ou une graine le dit par l'avertissement
+structuré décrit plus bas, jamais en silence.
 
 Chaque provider construit par la fabrique est enveloppé dans `MeteredLlmProvider` (voir
 [Décorateurs et enregistrement](#décorateurs-et-enregistrement)) et rendu derrière un
@@ -118,7 +132,9 @@ provider (`MeteredLlmProvider`, `RateLimitedLlmProvider`) transmettent les capac
 Anthropic et Ollama écrivent leur propre dialecte, et Qwen surcharge le hook pour les champs
 de réflexion de DashScope. Une option qu'un provider ne peut pas honorer produit un
 avertissement structuré (event id `110`, `Option '…' was declared but … does not support it —
-it was not sent`) — jamais un abandon silencieux. `CapabilityMismatchHint` (providers compatibles OpenAI et
+it was not sent`) — jamais un abandon silencieux ; depuis GAP-36, cela vaut pour
+`frequency_penalty` et `presence_penalty` dans chaque dialecte, et pour `seed` partout où le
+dialecte ne l'écrit pas (tous sauf Ollama). `CapabilityMismatchHint` (providers compatibles OpenAI et
 Ollama) couvre le versant par modèle : quand un vendeur refuse une capacité que le provider déclare (un modèle texte
 seul qui reçoit une image, un modèle sans réflexion ou sans outils), l'erreur dit quelle
 hypothèse était fausse. Le cas miroir — une contrainte que seul le **serveur** peut énoncer — a son
@@ -127,7 +143,8 @@ provider une chance d'adapter une charge utile refusée en 4xx et de la ré-éme
 fois (chemins generate et chat ; le streaming ne réessaie jamais). Kimi s'en sert pour le
 `invalid temperature: only 1 is allowed for this model` de Moonshot — la valeur imposée est
 lue dans le refus lui-même (quels modèles l'exigent est décidé côté serveur, une liste en
-dur dériverait) et la substitution est journalisée en avertissement structuré. Deux
+dur dériverait) et la substitution est journalisée en avertissement structuré ; seule une
+température fixée et envoyée est remplacée, puisque celle que rien ne fixe ne part pas (GAP-36). Deux
 coutures de dialecte supplémentaires servent les agrégateurs (LLM-09) : `ReasoningFieldName`
 nomme le champ vendeur où la trace de raisonnement est lue (`reasoning_content` par défaut,
 `reasoning` chez OpenRouter — la clé de métadonnée Orkeon reste `reasoning_content`), et
@@ -169,7 +186,7 @@ pas par des copies du constructeur de payload :
 |---|---|---|
 | `ApplyProviderSpecificOptions` | écrit `thinking` / `reasoning_effort` et `response_format` d'après les capacités déclarées | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (l'objet de requête `reasoning`), Together AI (ajoute `context_length_exceeded_behavior: truncate`) |
 | `MaxTokensFieldName` | `max_tokens` | OpenAI (`max_completion_tokens`) |
-| `AlwaysEmitTopP` | `top_p` omis quand il vaut 1 | Mistral (toujours écrit) |
+| `AlwaysEmitTopP` | `top_p` écrit seulement s'il est fixé | Mistral (`top_p: 1` quand rien n'en fixe) |
 | `SplitReasoningFromContent` / `EnrichAssistantMessage` | rien n'est extrait ; `reasoning_content` rejoué quand `ReplaysReasoningContent` est déclaré | MiniMax (bloc `<think>` en ligne extrait, réinséré au rejeu) |
 | `ReasoningFieldName` | `reasoning_content` | OpenRouter (`reasoning`) |
 | `CostCurrency` | aucune | OpenRouter (`USD`) |

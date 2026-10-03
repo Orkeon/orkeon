@@ -483,23 +483,32 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             // maximum (128K on the 5 generation), else the engine fallback (LLM-10).
             ["max_tokens"] = config.ResolveMaxTokens(Name, ResolveModel(config))
                 ?? Orkeon.Domain.Constants.Llm.LlmDefaults.FallbackMaxOutputTokens,
-            ["temperature"] = config.Temperature
         };
+
+        // What the configuration sets, whatever its value, and nothing else (GAP-36): an unset
+        // temperature is the model's own — claude-sonnet-5 refuses any value but 1, and passes
+        // the omission (measured 2026-08-30) — where the engine used to send 0.7.
+        if (config.Temperature is { } temperature)
+        {
+            payload["temperature"] = temperature;
+        }
 
         if (!string.IsNullOrWhiteSpace(systemMessage))
         {
             payload["system"] = systemMessage;
         }
 
-        if (config.TopP != 1.0)
+        if (config.TopP is { } topP)
         {
-            payload["top_p"] = config.TopP;
+            payload["top_p"] = topP;
         }
 
         if (config.StopSequences != null && config.StopSequences.Count > 0)
         {
             payload["stop_sequences"] = config.StopSequences;
         }
+
+        WarnAboutUnsentSampling(config);
 
         // Inject tools if the configured strategy supports native tool calling
         if (config.Tools is { Count: > 0 } && _toolCallingStrategy?.SupportsNativeToolCalling == true)
@@ -518,6 +527,21 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         ApplyCacheBreakpoints(payload, config.Cache);
 
         return payload;
+    }
+
+    /// <summary>
+    /// The Messages API has no repetition penalty and no seed: a configuration that sets one is
+    /// told, never dropped in silence (GAP-36, decision 8).
+    /// </summary>
+    private void WarnAboutUnsentSampling(LlmConfig config)
+    {
+        const string noPenalty = "The Messages API has no repetition penalty; remove the setting";
+        if (config.FrequencyPenalty != 0.0)
+            LogUnsupportedOption("frequency_penalty", noPenalty);
+        if (config.PresencePenalty != 0.0)
+            LogUnsupportedOption("presence_penalty", noPenalty);
+        if (config.Seed is not null)
+            LogUnsupportedOption("seed", "The Messages API takes no seed; remove the setting, and pin the temperature for steadier answers");
     }
 
     /// <summary>

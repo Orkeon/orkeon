@@ -374,7 +374,7 @@ public static partial class RunnerHost
             {
                 var model = Shown(llmSection["Model"], "(default)");
                 var baseUrl = Shown(llmSection["BaseUrl"], "(provider default)");
-                var temperature = Shown(llmSection["Temperature"], "(default)");
+                var temperature = Shown(llmSection["Temperature"], "(not set: the model's own)");
                 var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
                 var source = LlmSettings.DescribeApiKey(keySection);
                 LogLlmResolved(logger, model, baseUrl, temperature, timeout, source);

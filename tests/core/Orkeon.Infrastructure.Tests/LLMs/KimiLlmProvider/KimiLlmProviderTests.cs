@@ -299,7 +299,8 @@ public class KimiLlmProviderTests
 /// Moonshot's hard temperature constraint (400 "invalid temperature: only 1 is allowed
 /// for this model") self-heals: the request is re-sent once with the mandated value.
 /// Which models mandate it is decided server-side, so the constraint is read from the
-/// API's own rejection — no model list to drift.
+/// API's own rejection — no model list to drift. Only a temperature that was set and sent is
+/// replaced: one nothing sets is not sent (GAP-36), and leaves nothing to retry.
 /// </summary>
 public sealed class KimiTemperatureConstraintTests
 {
@@ -307,13 +308,13 @@ public sealed class KimiTemperatureConstraintTests
         """{"error":{"message":"invalid temperature: only 1 is allowed for this model","type":"invalid_request_error"}}""";
 
     private static (KimiLlmProvider Provider, TestHttpMessageHandler Handler) Build(
-        Func<HttpRequestMessage, HttpResponseMessage> responses)
+        Func<HttpRequestMessage, HttpResponseMessage> responses, LlmConfig? configured = null)
     {
         var handler = new TestHttpMessageHandler(responses);
         var factory = new TestHttpClientFactory();
         factory.RegisterClient("KimiLlmProvider", new HttpClient(handler));
         var provider = new KimiLlmProvider(
-            LlmConfig.Create("kimi-k2.6", TestApiKey),
+            configured ?? LlmConfig.Create("kimi-k2.6", TestApiKey) with { Temperature = 0.7 },
             factory,
             resiliencePolicy: null,
             new TestLogger<KimiLlmProvider>());
@@ -357,6 +358,22 @@ public sealed class KimiTemperatureConstraintTests
         Assert.Empty(result.Content);
         Assert.Contains("Kimi API error", result.Metadata["error"].ToString());
         Assert.Equal(2, handler.CapturedRequests.Count); // one adaptation, never a loop
+    }
+
+    [Fact]
+    public async Task A_temperature_that_was_never_sent_leaves_nothing_to_retry()
+    {
+        var (provider, handler) = Build(
+            _ => new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(RejectionBody) },
+            LlmConfig.Create("kimi-k2.6", TestApiKey));
+        using var owned = provider;
+
+        var result = await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Empty(result.Content);
+        var sent = Assert.Single(handler.CapturedRequests);
+        using var doc = JsonDocument.Parse(await sent.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.False(doc.RootElement.TryGetProperty("temperature", out _));
     }
 
     [Fact]

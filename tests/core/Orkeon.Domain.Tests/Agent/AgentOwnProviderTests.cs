@@ -86,7 +86,7 @@ public sealed class AgentOwnProviderTests
         var agent = DomainAgent.Create(Options(Model).WithConfig(LlmConfig.OnProfile(profile) with { Temperature = 0.2 }));
 
         Assert.Same(Model, agent.Llm);
-        Assert.Equal(0.2, agent.LlmConfig!.Temperature, precision: 3);
+        Assert.Equal(0.2, Assert.NotNull(agent.LlmConfig!.Temperature), precision: 3);
     }
 
     [Fact]

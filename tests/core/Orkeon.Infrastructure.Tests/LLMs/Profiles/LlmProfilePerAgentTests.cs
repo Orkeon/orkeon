@@ -167,7 +167,7 @@ public sealed class LlmProfilePerAgentTests
         Assert.Equal(0, run.A.ChatCallCount + run.B.ChatCallCount);
         // No model named: the host's own, never the framework's default model.
         Assert.Equal("host-model", run.Default.LastChatConfig!.Model);
-        Assert.Equal(0.2, run.Default.LastChatConfig.Temperature, precision: 3);
+        Assert.Equal(0.2, Assert.NotNull(run.Default.LastChatConfig.Temperature), precision: 3);
     }
 
     [Fact]

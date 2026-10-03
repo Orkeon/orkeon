@@ -266,11 +266,9 @@ public class YamlRoundTripTests
                     Role = "Default LLM Agent",
                     Goal = "Use default LLM settings",
                     Backstory = "Agent with default parameters",
-                    LlmConfig = LlmConfig.Create(ModelGpt35Turbo) with {
-                        // Temperature=0.7 is the default and MaxTokens is unpinned (null);
-                        // the exporter omits both, the loader restores them (LLM-10)
-                        Temperature = 0.7,
-                    }
+                    // Nothing set but the model: the exporter writes no temperature, no top_p and
+                    // no cap, and the loader reads none back (GAP-36, LLM-10)
+                    LlmConfig = LlmConfig.Create(ModelGpt35Turbo),
                 }
             ],
             Tasks =
@@ -619,6 +617,126 @@ public class YamlRoundTripTests
 
     #endregion
 
+    #region LLM settings: what is set is exported, whatever its value (GAP-36)
+
+    private static CrewConfiguration OneAgentCrew(LlmConfig? llm, LlmConfigOverride? taskOverride = null)
+    {
+        var agentId = AgentId.Create();
+        return new CrewConfiguration
+        {
+            Name = "llm-settings-crew",
+            Goal = "Round-trip the LLM settings",
+            Agents =
+            [
+                new AgentConfiguration
+                {
+                    Id = agentId,
+                    Role = "Tuned Agent",
+                    Goal = "Run on the settings it declares",
+                    LlmConfig = llm,
+                },
+            ],
+            Tasks =
+            [
+                new TaskConfiguration
+                {
+                    Id = TaskId.Create(),
+                    Description = "Answer the question",
+                    ExpectedOutput = "An answer",
+                    AssignedAgentId = agentId,
+                    LlmOverride = taskOverride,
+                },
+            ],
+        };
+    }
+
+    [Fact]
+    public async Task RoundTrip_ATemperatureAtTheOldEngineDefault_IsExportedAndReadBack()
+    {
+        // 0.7 is a value like any other. The exporter left it out as "the default", and the round
+        // trip held only because the loader filled 0.7 back in.
+        var original = OneAgentCrew(LlmConfig.Create(ModelGpt4o) with { Temperature = 0.7, TopP = 1.0 });
+
+        var yaml = _exporter.ExportToString(original);
+        var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        Assert.Contains("temperature: 0.7", yaml, StringComparison.Ordinal);
+        Assert.Contains("topP: 1", yaml, StringComparison.Ordinal);
+        AssertCrewConfigurationsEqual(original, reloaded);
+    }
+
+    [Fact]
+    public async Task RoundTrip_AnAgentThatSetsNoTemperature_ExportsNoneAndReadsBackNone()
+    {
+        var original = OneAgentCrew(LlmConfig.Create(ModelGpt4o));
+
+        var yaml = _exporter.ExportToString(original);
+        var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        // No value is written: an unset key is at most a bare `key:` line, which reads back as null.
+        Assert.DoesNotMatch(@"temperature:[ \t]*\S", yaml);
+        Assert.DoesNotMatch(@"topP:[ \t]*\S", yaml);
+        var llm = Assert.Single(reloaded.Agents).LlmConfig;
+        Assert.NotNull(llm);
+        Assert.Null(llm!.Temperature);
+        Assert.Null(llm.TopP);
+    }
+
+    [Fact]
+    public async Task RoundTrip_EveryLlmSettingOfAnAgent_Survives()
+    {
+        var original = OneAgentCrew(LlmConfig.OnProfile("fast") with
+        {
+            Model = "tuned-model",
+            Temperature = 0.2,
+            MaxTokens = 2048,
+            TopP = 0.9,
+            Thinking = new LlmThinkingConfig { Enabled = true, Effort = "high", BudgetTokens = 4096 },
+            ResponseFormat = LlmResponseFormat.JsonSchema("answer", """{"type":"object"}""", strict: false),
+            Cache = new LlmCacheConfig { CacheSystemPrompt = true, CacheTools = true, Ttl = "1h" },
+        });
+
+        var yaml = _exporter.ExportToString(original);
+        var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        AssertCrewConfigurationsEqual(original, reloaded);
+    }
+
+    [Fact]
+    public async Task RoundTrip_AJsonObjectResponseFormat_Survives()
+    {
+        var original = OneAgentCrew(LlmConfig.OnProfile() with { ResponseFormat = LlmResponseFormat.JsonObject() });
+
+        var yaml = _exporter.ExportToString(original);
+        var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        AssertCrewConfigurationsEqual(original, reloaded);
+    }
+
+    [Fact]
+    public async Task RoundTrip_ATasksLlmOverride_Survives()
+    {
+        var original = OneAgentCrew(
+            LlmConfig.OnProfile(),
+            new LlmConfigOverride
+            {
+                Profile = "fast",
+                ResponseFormat = LlmResponseFormat.JsonSchema("verdict", """{"type":"object"}"""),
+                Temperature = 0.7,
+                MaxTokens = 128,
+                TopP = 1.0,
+                Thinking = new LlmThinkingConfig { Enabled = false },
+            });
+
+        var yaml = _exporter.ExportToString(original);
+        var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(Assert.Single(reloaded.Tasks).LlmOverride);
+        AssertCrewConfigurationsEqual(original, reloaded);
+    }
+
+    #endregion
+
     #region Additional Edge Cases
 
     [Fact]
@@ -826,8 +944,13 @@ public class YamlRoundTripTests
         {
             Assert.NotNull(actual.LlmConfig);
             Assert.Equal(expected.LlmConfig.Model, actual.LlmConfig!.Model);
-            Assert.Equal(expected.LlmConfig.Temperature, actual.LlmConfig.Temperature, precision: 5);
+            Assert.Equal(expected.LlmConfig.Profile, actual.LlmConfig.Profile);
+            Assert.Equal(expected.LlmConfig.Temperature, actual.LlmConfig.Temperature);
             Assert.Equal(expected.LlmConfig.MaxTokens, actual.LlmConfig.MaxTokens);
+            Assert.Equal(expected.LlmConfig.TopP, actual.LlmConfig.TopP);
+            Assert.Equal(expected.LlmConfig.Thinking, actual.LlmConfig.Thinking);
+            Assert.Equal(expected.LlmConfig.ResponseFormat, actual.LlmConfig.ResponseFormat);
+            Assert.Equal(expected.LlmConfig.Cache, actual.LlmConfig.Cache);
         }
     }
 
@@ -864,6 +987,9 @@ public class YamlRoundTripTests
 
         // Context (only check count for basic types; complex objects may not survive YAML round-trip)
         Assert.Equal(expected.Context.Count, actual.Context.Count);
+
+        // The task's llm_override, field by field (GAP-36)
+        Assert.Equal(expected.LlmOverride, actual.LlmOverride);
     }
 
     #endregion

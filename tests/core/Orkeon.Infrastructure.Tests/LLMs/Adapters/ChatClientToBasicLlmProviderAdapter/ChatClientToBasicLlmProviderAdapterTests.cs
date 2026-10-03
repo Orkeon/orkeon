@@ -46,6 +46,34 @@ public sealed class ChatClientToBasicLlmProviderAdapterTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldLeaveTheSamplingToTheClient_WhenTheConfigSetsNone()
+    {
+        // GAP-36: an unset temperature or top_p is the client's own, never 0.7 or 1.0; a penalty
+        // left at 0 is sent as nothing.
+        _mockChatClient.SetGetResponseResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
+
+        await CreateAdapter().ChatAsync("test", LlmConfig.OnProfile(), TestContext.Current.CancellationToken);
+
+        var options = _mockChatClient.LastGetResponseOptions!;
+        Assert.Null(options.Temperature);
+        Assert.Null(options.TopP);
+        Assert.Null(options.FrequencyPenalty);
+        Assert.Null(options.PresencePenalty);
+        Assert.Null(options.StopSequences);
+    }
+
+    [Fact]
+    public async Task ShouldCarryTheStopSequences_WhenChatAsyncWithConfig()
+    {
+        _mockChatClient.SetGetResponseResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
+
+        await CreateAdapter().ChatAsync(
+            "test", LlmConfig.OnProfile() with { StopSequences = ["END"] }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["END"], _mockChatClient.LastGetResponseOptions!.StopSequences!);
+    }
+
+    [Fact]
     public async Task ShouldReturnEmpty_WhenChatAsyncNullResponse()
     {
         _mockChatClient.SetGetResponseResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, (string?)null)));

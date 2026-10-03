@@ -1837,7 +1837,7 @@
     <value>Temperatur (optional)</value>
   </data>
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve">
-    <value>Leer: Die Engine entscheidet. Manche Modelle verlangen einen Wert — Kimi K3 akzeptiert nur 1.</value>
+    <value>Leer: Es wird nichts gesendet — das Modell verwendet seinen eigenen Standardwert. Manche Modelle verlangen einen Wert — Kimi K3 akzeptiert nur 1.</value>
   </data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve">
     <value>Antwort-Timeout (s, optional)</value>

@@ -24,7 +24,7 @@
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **OpenRouter** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema (per endpoint) | ✓ budget (`reasoning` object) | ✓ (per model) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposed) | ✓ | ✓ |
 | **Mammouth AI** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (undocumented) | ✗ (undocumented) | ✓ (per model) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ◐ `Llm:Grammar` | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` on `/api/generate`) | ✓ | ✓ |
+| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✓ (`options`) | ◐ `Llm:Grammar` | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` on `/api/generate`) | ✓ | ✓ |
 
 ## How to read the capability columns
 
@@ -67,7 +67,11 @@ details the `response_format` surfaces.
   Azure resells.
 - **HuggingFace**: model identifiers accept a routing suffix (`:fastest` / `:cheapest` /
   `:preferred` / `:<partner>`) — the only cost and latency lever on Inference Providers.
-- **top_p / stop**: Ollama only exposes `temperature` + `num_predict` (= max_tokens).
+- **top_p / stop**: written only when set, whatever the value — `temperature` too; nothing set,
+  nothing written and the model applies its own default (GAP-36). Mistral writes `top_p: 1` when
+  nothing sets one. Ollama writes them in its `options`, with `seed`. No dialect writes
+  `frequency_penalty` or `presence_penalty`, and none but Ollama writes `seed`: setting one
+  produces the structured warning naming it (event id `110`), never a silent drop.
 - **GBNF grammar**: no vendor API documents a `grammar` field, so no provider declares the
   capability (`LlmProviderCapabilities.GbnfGrammar`). **◐ `Llm:Grammar`** means the field is
   written — on both of Ollama's endpoints, and by both payload builders of the OpenAI-compatible
@@ -331,6 +335,11 @@ breaking the sibling model. Every row below was measured live; nothing is inferr
 | Anthropic | `claude-sonnet-5` | `temperature` | `1`, or omit the field | `` `temperature` is deprecated for this model.`` (1 and omission pass; 0 and 0.7 do not) | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` or `none` only | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `top_p` | explicit `1` when `temperature` is 0 and reasoning is on (omission is NOT 1 there) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
+
+A temperature nothing sets is not sent (GAP-36): a host that pins none runs these models on their
+own default, which they accept — `orkeon init` and Studio write none. A host that pins one must pin
+the mandated value. Before GAP-36 the engine sent 0.7 when nothing was set — a value the two
+default models of the table, `gpt-5.6-sol` and `claude-sonnet-5`, refuse (measured above).
 
 The counter-example that makes the registry per-model: `gpt-4o-mini` — same provider as
 `gpt-5.6-sol` — rejects `reasoning_effort` outright (`Unrecognized request argument supplied:

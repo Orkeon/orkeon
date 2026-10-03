@@ -54,7 +54,7 @@ agents:
     llm:
       profile: string     # Host LLM profile (Llm:Profiles:<name>) — unset = the host's default provider
       model: string       # LLM model ("gpt-4", "claude-3-opus", etc.) — unset = the profile's own model
-      temperature: float  # Creativity (0.0-1.0)
+      temperature: float  # Creativity (0.0-2.0) — unset = the profile's, else none is sent and the model applies its own
       maxTokens: int      # Output token limit
 
 tasks:

@@ -649,6 +649,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             || options.FrequencyPenalty.HasValue
             || options.PresencePenalty.HasValue
             || options.Seed.HasValue
+            || options.StopSequences is { Count: > 0 }
             || (tools != null && tools.Count > 0)
             || ExtractGrammarFromOptions(options) != null
             || ExtractThinkingFromOptions(options) != null
@@ -657,9 +658,10 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Returns a copy of <paramref name="baseConfig"/> with any explicit overrides from
-    /// <paramref name="options"/> (Model, Temperature, MaxTokens, …) and the extracted tool
-    /// schemas applied. Unset values in <paramref name="options"/> leave the base config
-    /// field untouched.
+    /// <paramref name="options"/> (Model, Temperature, MaxTokens, StopSequences, …) and the
+    /// extracted tool schemas applied. Unset values in <paramref name="options"/> leave the base
+    /// config field untouched — an unset temperature or top_p stays unset when the base sets none
+    /// (GAP-36).
     /// </summary>
     private static LlmConfig ApplyOptionsOverrides(
         LlmConfig baseConfig,
@@ -680,6 +682,8 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             FrequencyPenalty = options.FrequencyPenalty ?? baseConfig.FrequencyPenalty,
             PresencePenalty = options.PresencePenalty ?? baseConfig.PresencePenalty,
             Seed = options.Seed.HasValue ? (int)options.Seed.Value : baseConfig.Seed,
+            // GAP-36, decision 8: the stop sequences of the call reach the provider; they were dropped here.
+            StopSequences = options.StopSequences is { Count: > 0 } stopSequences ? [.. stopSequences] : baseConfig.StopSequences,
             Tools = tools ?? baseConfig.Tools,
             ToolMode = toolMode,
             GrammarGbnf = structuredOutput.Grammar ?? (structuredOutput.SchemaFormat is null ? baseConfig.GrammarGbnf : null),

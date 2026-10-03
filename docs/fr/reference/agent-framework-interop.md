@@ -149,7 +149,8 @@ son objectif et ses tâches ; ce qui répond, c'est l'agent MAF.
   fragment, compté une fois.
 - **Options** — le pont n'envoie à l'agent MAF que des messages : les options du `LlmConfig` d'un appel
   (modèle, température, jetons max, top-p, format de réponse, réflexion, grammaire…) ne l'atteignent
-  jamais. Chacune qu'un appel déclare produit un avertissement structuré — `Option '<nom>' was declared
+  jamais. Chacune qu'un appel déclare — une température ou un top-p quelle que soit sa valeur
+  (GAP-36) — produit un avertissement structuré — `Option '<nom>' was declared
   but agent-framework:<nom> does not support it — it was not sent` (événement 110, celui des
   fournisseurs HTTP) —, une fois par run d'une crew et par option, par le logger passé à
   `WithAgentFrameworkAgent`, sinon par l'`ILoggerFactory` qu'expose l'agent MAF (`GetService`), sinon

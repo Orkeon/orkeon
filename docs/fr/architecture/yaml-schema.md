@@ -68,9 +68,9 @@ agents:
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
       model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil
-      temperature: float  # default: 0.7 quand le bloc est présent
+      temperature: float  # Envoyée quelle que soit sa valeur — omise = celle du profil, sinon rien n'est envoyé et le modèle applique la sienne (GAP-36)
       maxTokens: int      # Plafond de tokens en sortie — omis = le maximum documenté du modèle (LLM-10)
-      topP: float         # Nucleus sampling, default: 1.0
+      topP: float         # Nucleus sampling, envoyé quelle que soit sa valeur — omis = celui du profil, sinon rien n'est envoyé (Mistral écrit 1)
       thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
         enabled: bool
         effort: string    # "low" | "medium" | "high" | "max" (selon le provider)

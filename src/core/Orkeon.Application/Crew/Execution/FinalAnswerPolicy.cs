@@ -81,18 +81,23 @@ internal static class FinalAnswerPolicy
     /// Produces a copy of <paramref name="source"/> with tool invocation disabled: empty
     /// <see cref="ChatOptions.Tools"/> and the Orkeon-specific <c>orkeon:tool_mode</c> set to
     /// <see cref="Domain.Tools.Protocol.ToolCallMode.None"/> so the HTTP adapters omit
-    /// <c>tool_choice</c> on the wire.
+    /// <c>tool_choice</c> on the wire. Everything else the turn carried is kept — the agent's
+    /// model, its seed and its stop sequences included (GAP-36): the retry is the same call,
+    /// without tools.
     /// </summary>
     internal static ChatOptions CloneForToolFreeRetry(ChatOptions source)
     {
         var clone = new ChatOptions
         {
+            ModelId = source.ModelId,
             Temperature = source.Temperature,
             MaxOutputTokens = source.MaxOutputTokens,
             TopP = source.TopP,
             TopK = source.TopK,
             FrequencyPenalty = source.FrequencyPenalty,
             PresencePenalty = source.PresencePenalty,
+            Seed = source.Seed,
+            StopSequences = source.StopSequences is null ? null : [.. source.StopSequences],
             ResponseFormat = source.ResponseFormat,
             Tools = [],
             ToolMode = ChatToolMode.None,

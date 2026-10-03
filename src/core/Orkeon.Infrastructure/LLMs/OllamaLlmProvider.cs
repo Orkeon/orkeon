@@ -282,10 +282,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     {
         WarnOnUrlOnlyImages(messages);
 
-        var options = OllamaRequestOptions.CreateBuilder()
-            .AddTemperature(config.Temperature)
-            .AddNumPredict(config.MaxTokens)
-            .Build();
+        var options = BuildOptions(config);
 
         var payload = new Dictionary<string, object>
         {
@@ -805,10 +802,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         var client = CreateHttpClient(effectiveConfig);
 
         // Build payload with stream=true
-        var options = OllamaRequestOptions.CreateBuilder()
-            .AddTemperature(effectiveConfig.Temperature)
-            .AddNumPredict(effectiveConfig.MaxTokens)
-            .Build();
+        var options = BuildOptions(effectiveConfig);
 
         var payload = OllamaRequestPayload.CreateBuilder()
             .AddModel(ResolveModel(effectiveConfig))
@@ -855,15 +849,40 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     }
 
     /// <summary>
+    /// The <c>options</c> of a request, from what the configuration sets (GAP-36):
+    /// <c>temperature</c>, <c>top_p</c>, <c>seed</c> and <c>stop</c> — documented parameters of
+    /// Ollama's Modelfile — whatever their value, and <c>num_predict</c> when a cap is pinned.
+    /// Nothing set, nothing written: the Modelfile's own value applies. A <c>top_p</c> a crew
+    /// declared, a seed and stop sequences were dropped without a word; the penalties are not
+    /// written, and said (decision 8). One writer for the three payloads, so they cannot drift.
+    /// </summary>
+    private OllamaRequestOptions BuildOptions(LlmConfig config)
+    {
+        if (config.FrequencyPenalty != 0.0)
+            LogUnsupportedOption("frequency_penalty", PenaltyRemedyForOllama);
+        if (config.PresencePenalty != 0.0)
+            LogUnsupportedOption("presence_penalty", PenaltyRemedyForOllama);
+
+        return OllamaRequestOptions.CreateBuilder()
+            .AddTemperature(config.Temperature)
+            .AddNumPredict(config.MaxTokens)
+            .AddTopP(config.TopP)
+            .AddSeed(config.Seed)
+            .AddStop(config.StopSequences)
+            .Build();
+    }
+
+    /// <summary>Ollama's own repetition control is a Modelfile parameter, not a request penalty.</summary>
+    private const string PenaltyRemedyForOllama =
+        "Orkeon writes no repetition penalty for Ollama; set repeat_penalty in the model's Modelfile instead";
+
+    /// <summary>
     /// Creates the request payload for Ollama API.
     /// Pure data transformation.
     /// </summary>
     private Dictionary<string, object> CreateRequestPayload(string prompt, LlmConfig config)
     {
-        var options = OllamaRequestOptions.CreateBuilder()
-            .AddTemperature(config.Temperature)
-            .AddNumPredict(config.MaxTokens)
-            .Build();
+        var options = BuildOptions(config);
 
         // Handle system message: prefer typed property, fall back to CustomParameters
         var effectivePrompt = prompt;

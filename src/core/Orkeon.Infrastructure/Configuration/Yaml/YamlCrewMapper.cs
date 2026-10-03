@@ -9,7 +9,6 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.EventHub;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
-using Orkeon.Domain.Constants.Llm;
 
 namespace Orkeon.Infrastructure.Configuration;
 
@@ -133,13 +132,15 @@ public sealed partial class YamlCrewMapper
                 Verbose = kvp.Value.Verbose ?? false,
                 // No model named: the profile's own (GAP-17) — never the framework's default
                 // model, which a block setting only a temperature used to pin on any vendor.
+                // No temperature or top_p named: none set — the profile's, else the model's own
+                // (GAP-36); the loader used to fill in the engine's 0.7 and 1.0.
                 LlmConfig = effectiveLlm != null
                     ? (string.IsNullOrWhiteSpace(effectiveLlm.Model) ? LlmConfig.OnProfile() : LlmConfig.Create(effectiveLlm.Model)) with
                     {
                         Profile = string.IsNullOrWhiteSpace(effectiveLlm.Profile) ? null : effectiveLlm.Profile.Trim(),
-                        Temperature = effectiveLlm.Temperature ?? LlmDefaults.DefaultTemperature,
+                        Temperature = effectiveLlm.Temperature,
                         MaxTokens = effectiveLlm.MaxTokens,   // null = the model's documented maximum (LLM-10)
-                        TopP = effectiveLlm.TopP ?? 1.0,
+                        TopP = effectiveLlm.TopP,
                         Thinking = MapThinking(effectiveLlm.Thinking),
                         ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat, effectiveLlm.ResponseSchema),
                         Cache = MapCache(effectiveLlm.Cache),

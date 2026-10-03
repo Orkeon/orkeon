@@ -750,3 +750,10 @@ Orkeon.Infrastructure.Crew.ManagerLlmResolver.Resolve(Orkeon.Domain.Crew.Crew! c
 *REMOVED*Orkeon.Infrastructure.Memory.ShortTermMemory.ShortTermMemory(int maxItems = 100) -> void
 *REMOVED*Orkeon.Infrastructure.Stubs.NullAgentExecutionService.CanExecuteTaskAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 *REMOVED*Orkeon.Infrastructure.Stubs.NullAgentExecutionService.PlanTaskExecutionAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskExecutionPlan!>!
+*REMOVED*Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddSeed(int seed) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+*REMOVED*Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddTemperature(double temperature) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+*REMOVED*Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddTopP(double topP) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddSeed(int? seed) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddStop(System.Collections.Generic.IReadOnlyList<string!>? stopSequences) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddTemperature(double? temperature) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddTopP(double? topP) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!

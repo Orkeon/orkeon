@@ -217,6 +217,17 @@ public class VoValidationTests
     }
 
     [Fact]
+    public void LlmConfig_CreateValidated_ShouldSetNoTemperatureOrTopP_WhenGivenNone()
+    {
+        // GAP-36: nothing given, nothing set — the wire then carries neither, and the model
+        // applies its own. The factory used to pose the engine's 0.7 and 1.0.
+        var config = LlmConfig.CreateValidated(ModelGpt4);
+
+        Assert.Null(config.Temperature);
+        Assert.Null(config.TopP);
+    }
+
+    [Fact]
     public void LlmConfig_CreateValidated_ShouldRejectInvalidMaxTokens()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>

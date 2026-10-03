@@ -642,7 +642,7 @@
   <data name="Studio.Create.EngineBusy" xml:space="preserve"><value>The assistant is still busy with « {0} » — stop it, or let it finish, before opening a team.</value></data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve"><value>Copy</value></data>
   <data name="Studio.Settings.ProfileLblTemperature" xml:space="preserve"><value>Temperature (optional)</value></data>
-  <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
+  <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Empty: nothing is sent — the model applies its own default. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve"><value>Response timeout (s, optional)</value></data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Empty: the engine's default, 30 s. A model that thinks before it answers routinely needs 600 s.</value></data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve"><value>Folders of “{0}”</value></data>

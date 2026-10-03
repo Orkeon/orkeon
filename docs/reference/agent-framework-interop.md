@@ -142,10 +142,10 @@ tasks; what answers is the MAF agent.
   fragment, counted once.
 - **Options** — the bridge sends the MAF agent messages only: the options of a call's `LlmConfig`
   (model, temperature, max tokens, top-p, response format, thinking, grammar…) never reach it. Each one
-  a call declares is a structured warning — `Option '<name>' was declared but agent-framework:<name>
-  does not support it — it was not sent` (event 110, the HTTP providers' own) — once per crew run
-  and per option, through the logger handed to `WithAgentFrameworkAgent`, else the `ILoggerFactory` the MAF
-  agent exposes (`GetService`), else nowhere. A structured output expected from a MAF agent has the
+  a call declares — a temperature or a top-p whatever its value (GAP-36) — is a structured warning —
+  `Option '<name>' was declared but agent-framework:<name> does not support it — it was not sent`
+  (event 110, the HTTP providers' own) — once per crew run and per option, through the logger handed to
+  `WithAgentFrameworkAgent`, else the `ILoggerFactory` the MAF agent exposes (`GetService`), else nowhere. A structured output expected from a MAF agent has the
   output validation and its correction round as its only guard.
 - It maps the roles `system`, `assistant` and `tool`, and anything else to `user`, reports `Name` =
   `agent-framework:<name or id>`, and relays the MAF usage as the response's token counts.

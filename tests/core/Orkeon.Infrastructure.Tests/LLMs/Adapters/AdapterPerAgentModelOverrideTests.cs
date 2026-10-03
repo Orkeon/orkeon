@@ -69,7 +69,7 @@ public class AdapterPerAgentModelOverrideTests
             new[] { new ChatMessage(ChatRole.User, "hello") }, options, CancellationToken.None);
 
         Assert.Equal("deepseek-v4-flash", capturingProvider.LastConfig!.Model);
-        Assert.Equal(0.1, capturingProvider.LastConfig.Temperature, precision: 3);
+        Assert.Equal(0.1, Assert.NotNull(capturingProvider.LastConfig.Temperature), precision: 3);
     }
 
     /// <summary>
@@ -88,7 +88,7 @@ public class AdapterPerAgentModelOverrideTests
             new[] { new ChatMessage(ChatRole.User, "hello") }, new ChatOptions { Temperature = 0.1f }, CancellationToken.None);
 
         Assert.Equal(string.Empty, capturingProvider.LastConfig!.Model);
-        Assert.Equal(0.1, capturingProvider.LastConfig.Temperature, precision: 3);
+        Assert.Equal(0.1, Assert.NotNull(capturingProvider.LastConfig.Temperature), precision: 3);
     }
 
     private sealed class CapturingLlmProvider : ILlmProvider

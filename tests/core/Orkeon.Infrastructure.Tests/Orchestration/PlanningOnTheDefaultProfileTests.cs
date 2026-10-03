@@ -187,7 +187,7 @@ public sealed partial class PlanningOnTheDefaultProfileTests
         Assert.True(output.Succeeded, output.Error);
         Assert.Equal(["plan@default", "task:outline", "task:draft"], vendor.Calls);
         // The planner's own sampling, on the profile's model.
-        Assert.Equal(0.3, vendor.Provider.LastGenerateConfig!.Temperature, precision: 3);
+        Assert.Equal(0.3, Assert.NotNull(vendor.Provider.LastGenerateConfig!.Temperature), precision: 3);
         Assert.Equal(string.Empty, vendor.Provider.LastGenerateConfig.Model);
     }
 

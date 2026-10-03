@@ -33,14 +33,6 @@ public static class LlmDefaults
     /// </summary>
     public const int FallbackMaxOutputTokens = 4_096;
 
-    // ── Temperature ─────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Default sampling temperature for LLM inference (0.7).
-    /// Balances creativity and determinism; range is 0.0 (deterministic) to 2.0 (very creative).
-    /// </summary>
-    public const double DefaultTemperature = 0.7;
-
     // ── Resilience ──────────────────────────────────────────────────────
 
     /// <summary>
