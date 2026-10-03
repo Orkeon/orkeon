@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Application.Services.Checkpointing;
 
@@ -42,23 +43,22 @@ public static class CheckpointingExtensions
         return services;
     }
 
+    /// <summary>The section bound to <see cref="PostgresStateStoreOptions"/>.</summary>
+    private const string CheckpointingSection = "Orkeon:Checkpointing";
+
     /// <summary>
-    /// Adds session checkpointing services with a PostgreSQL state store.
-    /// Reads the connection string from configuration key "Orkeon:Checkpointing:ConnectionString".
+    /// Adds session checkpointing services with a PostgreSQL state store, configured by the
+    /// <c>Orkeon:Checkpointing</c> section (<c>ConnectionString</c>, <c>SchemaName</c>,
+    /// <c>AutoMigrate</c>, <c>MaxHistoryPerSession</c>) — bound, and judged when the host starts
+    /// (GAP-40): an <c>AutoMigrate</c> or a <c>MaxHistoryPerSession</c> it could not read kept its
+    /// default without a word.
     /// </summary>
     public static IServiceCollection AddOrkeonPostgresCheckpointing(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<PostgresStateStoreOptions>(opts =>
-        {
-            opts.ConnectionString = configuration["Orkeon:Checkpointing:ConnectionString"] ?? "";
-            opts.SchemaName = configuration["Orkeon:Checkpointing:SchemaName"] ?? "orkeon";
-
-            if (bool.TryParse(configuration["Orkeon:Checkpointing:AutoMigrate"], out var autoMigrate))
-                opts.AutoMigrate = autoMigrate;
-
-            if (int.TryParse(configuration["Orkeon:Checkpointing:MaxHistoryPerSession"], out var maxHistory))
-                opts.MaxHistoryPerSession = maxHistory;
-        });
+        ArgumentNullException.ThrowIfNull(configuration);
+        services.AddOptions<PostgresStateStoreOptions>()
+            .Bind(configuration.GetSection(CheckpointingSection))
+            .DeclareSettings(CheckpointingSection);
 
         services.TryAddSingleton<IStateStore, PostgresStateStore>();
         services.TryAddSingleton<ICheckpointManager, CheckpointManager>();

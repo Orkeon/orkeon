@@ -80,6 +80,44 @@ public sealed class HostStartupSequenceTests : IDisposable
         AssertRefused(launch, "Orkeon:Host:Discord:ProgressInterval");
     }
 
+    /// <summary>
+    /// GAP-40 — a setting the daemon reads late, a log level it cannot honour, a section name or a key
+    /// it does not know: reported and 78, before the daemon declares itself ready. It used to start,
+    /// then fail every run that touched the section — or crash on the level, restarted every ten
+    /// seconds by systemd.
+    /// </summary>
+    [Theory]
+    [InlineData(", \"Guardian\": { \"Enabled\": \"oui\" }", "", "Orkeon:Guardian:Enabled")]
+    [InlineData(", \"Guardain\": { \"Enabled\": true }", "", "Orkeon:Guardain")]
+    [InlineData("", ", \"RunTimeoutt\": \"00:10:00\"", "Orkeon:Host:RunTimeoutt")]
+    public void A_setting_judged_at_the_start_is_reported_and_exits_78(string orkeon, string host, string named)
+    {
+        var path = Path.Combine(_scratch, "host.json");
+        File.WriteAllText(path, $$"""
+            {
+              "RaggableTree": { "Enabled": false },
+              "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml" } ]{{host}} }{{orkeon}} }
+            }
+            """);
+
+        AssertRefused(Prepare(path), named);
+    }
+
+    [Fact]
+    public void A_log_level_that_is_none_is_reported_and_exits_78()
+    {
+        var path = Path.Combine(_scratch, "host.json");
+        File.WriteAllText(path, """
+            {
+              "RaggableTree": { "Enabled": false },
+              "Logging": { "LogLevel": { "Orkeon": "Informations" } },
+              "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml" } ] } }
+            }
+            """);
+
+        AssertRefused(Prepare(path), "Logging:LogLevel:Orkeon");
+    }
+
     [Fact]
     public void A_settings_file_that_is_not_JSON_is_reported_naming_it_and_exits_78()
     {

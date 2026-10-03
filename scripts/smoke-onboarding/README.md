@@ -175,7 +175,7 @@ fixtures in `fixtures/`:
 |---------|---------------|
 | `offline-crew.yaml` | One agent, one task, no tools, no network. With no `Llm` section configured the runtime falls back to the `<undefined-llm>` echo provider, which makes the run deterministic (exit 0 + the WIN-01 warning). It is copied into a scratch directory so the settings resolution chain reaches the per-user global config instead of `examples/appsettings/appsettings.json`. |
 | `rag-corpus/*.md` | Two short documents to ingest and query. |
-| `rag-settings.json` | Points the RAG document store at SQLite. The default in-memory store dies with the `rag ingest` process, so a two-process ingest-then-search would always answer "no relevant context". No `Llm` section, on purpose. |
+| `rag-settings.json` | Points the RAG document store at SQLite: `Orkeon:Rag:Provider` names the type, `Orkeon:Sqlite:ConnectionString` the database file, under `/output`. The default in-memory store dies with the `rag ingest` process, so a two-process ingest-then-search would always answer "no relevant context" — which is what the fixture did while it wrote the database under `Orkeon:Rag:ConnectionString`, a key nothing reads since GAP-08 and every host refuses since GAP-40. No `Llm` section, on purpose. |
 
 ### The steps
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.MultiModal;
 using Orkeon.Application.Validation;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Infrastructure.MultiModal;
 
@@ -38,8 +39,9 @@ public static class MultiModalServiceExtensions
     {
         if (configuration != null)
         {
-            services.Configure<MultiModalOptions>(
-                configuration.GetSection("Orkeon:MultiModal"));
+            services.AddOptions<MultiModalOptions>()
+                .Bind(configuration.GetSection("Orkeon:MultiModal"))
+                .DeclareSettings("Orkeon:MultiModal");
         }
         else
         {

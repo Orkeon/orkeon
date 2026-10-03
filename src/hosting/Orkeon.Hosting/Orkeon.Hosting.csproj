@@ -58,5 +58,10 @@
     <!-- orkeon-host connects the configured MCP servers through the same internal step the
          runners use (McpStartup), at its own startup (GAP-11). -->
     <InternalsVisibleTo Include="orkeon-host" />
+    <InternalsVisibleTo Include="Orkeon.Host.Tests" />
+    <!-- orkeon-repl starts behind the runner host's barrier (GAP-40): the start validation, the
+         Logging check and the unreadable-settings wording are the runners' own, not a copy. -->
+    <InternalsVisibleTo Include="Orkeon.ConsoleApp" />
+    <InternalsVisibleTo Include="Orkeon.ConsoleApp.Tests" />
   </ItemGroup>
 </Project>

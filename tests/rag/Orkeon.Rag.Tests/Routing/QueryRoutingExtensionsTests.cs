@@ -89,7 +89,9 @@ public class QueryRoutingExtensionsTests
         using var provider = BuildProvider(
             Config(("Orkeon:Rag:QueryRouting:Classifier", "quantum")));
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        // GAP-40: the options rule refuses the name — at a host's start, and at the first read of the
+        // options in a container no host started.
+        var exception = Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(
             () => provider.GetRequiredService<IQueryComplexityClassifier>());
 
         Assert.Contains("quantum", exception.Message, StringComparison.Ordinal);

@@ -623,6 +623,10 @@ public class OrderProcessingMessageConsumer : IMessageHandler
         "/var/lib/orderflow/data:/data:ro",
         "/var/lib/orderflow/output:/output:rw"
       ]
+    },
+    "Redis": {
+      // La connexion du provider que nomme Memory:Provider plus bas
+      "ConnectionString": "localhost:6379"
     }
   },
   "PathSecurity": {
@@ -634,9 +638,9 @@ public class OrderProcessingMessageConsumer : IMessageHandler
     ]
   },
   "Memory": {
-    // Lu par la factory de providers mémoire (absent → in-memory)
-    "Provider": "Redis",
-    "ConnectionString": "localhost:6379"
+    // Le TYPE du provider mémoire (absent → in-memory) ; sa connexion est sa propre section,
+    // Orkeon:Redis plus haut — un Memory:ConnectionString est refusé au démarrage (GAP-08, GAP-40)
+    "Provider": "Redis"
   }
 }
 ```

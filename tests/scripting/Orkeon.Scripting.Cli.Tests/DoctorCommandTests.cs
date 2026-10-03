@@ -19,6 +19,7 @@ public sealed class DoctorCommandTests : IDisposable
         "appsettings",
         "llm-config",
         "llm-profiles",
+        "runner-settings",
         "llm-reachability",
         "esbuild",
         "local-embeddings",
@@ -131,6 +132,172 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Equal("warn", byCheck["llm-config"].GetProperty("status").GetString());
         Assert.Contains("skipped", byCheck["llm-reachability"].GetProperty("detail").GetString(),
             StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(ScriptScratch scratch)
+    {
+        using var console = new TestConsole();
+        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        {
+            Json = true,
+            WorkingDirectoryOverride = scratch.Root,
+        });
+
+        using var doc = JsonDocument.Parse(console.Stdout);
+        return (exit, [.. doc.RootElement.EnumerateArray().Select(e => (
+            e.GetProperty("check").GetString()!,
+            e.GetProperty("status").GetString()!,
+            e.GetProperty("detail").GetString()!))]);
+    }
+
+    /// <summary>
+    /// GAP-40, decision 8 — <c>doctor</c> judges the file as <c>orkeon run</c> judges it at its start:
+    /// one <c>fail</c> line per refusal, each naming its key, and exit 1. It judged the <c>Llm</c>
+    /// section alone, and said all green on a file the run refused.
+    /// </summary>
+    [Fact]
+    public async Task RunnerSettings_ReportsEveryRefusalOfTheRunsStart_OneLineEach()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            {
+              "RaggableTree": { "Enabled": false },
+              "Orkeon": {
+                "Guardian": { "Enabled": "oui" },
+                "Guardain": { "Enabled": true },
+                "Rag": { "Rerank": { "Kind": "cohere" } }
+              }
+            }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var failures = lines.Where(l => l.Check == "runner-settings").ToList();
+        Assert.Equal(3, failures.Count);
+        Assert.All(failures, l => Assert.Equal("fail", l.Status));
+        Assert.Contains(failures, l => l.Detail.Contains("Orkeon:Guardian:Enabled", StringComparison.Ordinal));
+        Assert.Contains(failures, l => l.Detail.Contains("Orkeon:Guardain", StringComparison.Ordinal));
+        Assert.Contains(failures, l => l.Detail.Contains("Orkeon:Rag:Rerank:Kind", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The file system's sections are judged as a run judges them, though <c>doctor</c> builds its
+    /// host without a mount: a run always mounts, and its start refused what <c>doctor</c> passed.
+    /// </summary>
+    [Fact]
+    public async Task RunnerSettings_JudgesTheSandboxSection_ThoughNothingIsMounted()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Orkeon": { "Sandbox": { "CleanupOrphansOlderThan": "1 day" } } }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var line = Assert.Single(lines, l => l.Check == "runner-settings");
+        Assert.Equal("fail", line.Status);
+        Assert.Contains("Orkeon:Sandbox:CleanupOrphansOlderThan", line.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunnerSettings_ReportsADeclaredMountWhoseFolderIsMissing()
+    {
+        using var scratch = new ScriptScratch();
+        var missing = Path.Combine(scratch.Root, "no-such-folder");
+        scratch.WriteFile("appsettings.json", System.Text.Json.JsonSerializer.Serialize(new
+        {
+            RaggableTree = new { Enabled = false },
+            Orkeon = new { FileSystem = new { Mounts = new[] { $"{missing}:/data:ro" } } },
+        }));
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var line = Assert.Single(lines, l => l.Check == "runner-settings");
+        Assert.Equal("fail", line.Status);
+        Assert.Contains("/data", line.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunnerSettings_IsOk_OnAFileTheRunAccepts_TheOnnxRerankerIncluded()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Orkeon": { "Rag": { "Rerank": { "Kind": "onnx" } } } }
+            """);
+
+        var (_, lines) = await DoctorJsonAsync(scratch);
+
+        var line = Assert.Single(lines, l => l.Check == "runner-settings");
+        Assert.Equal("ok", line.Status);
+        Assert.Contains("orkeon run", line.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunnerSettings_IsSkipped_WhenTheLlmSectionIsAlreadyRefused()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "BaseUrl": "pas une url" } }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var failure = Assert.Single(lines, l => l.Status == "fail");
+        Assert.Equal("llm-config", failure.Check);
+        var runner = Assert.Single(lines, l => l.Check == "runner-settings");
+        Assert.Contains("skipped", runner.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>The swallowed default <c>Llm</c> value is the same refusal in <c>doctor</c> as in a run (decision 4).</summary>
+    [Fact]
+    public async Task LlmConfig_RefusesASwallowedDefaultValue_ByItsKey()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "BaseUrl": "http://localhost:11434", "TimeoutSeconds": "600s" } }
+            """);
+
+        var (_, lines) = await DoctorJsonAsync(scratch);
+
+        var config = Assert.Single(lines, l => l.Check == "llm-config");
+        Assert.Equal("fail", config.Status);
+        Assert.Contains("Llm:TimeoutSeconds", config.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>doctor</c> and <c>orkeon run</c> cannot contradict each other on one file: the refusal the
+    /// run prints as its last line is the line <c>doctor</c> reports.
+    /// </summary>
+    [Fact]
+    public async Task RunnerSettings_SaysWhatTheRunSays_OnTheSameFile()
+    {
+        using var scratch = new ScriptScratch();
+        var settings = scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Orkeon": { "Guardian": { "Enabled": "oui" } } }
+            """);
+        var crew = scratch.WriteScript("crew.yaml", "name: c\ngoal: g\n");
+
+        var (_, lines) = await DoctorJsonAsync(scratch);
+        string runLine;
+        using (var console = new TestConsole())
+        {
+            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            {
+                ScriptPath = crew,
+                SettingsPath = settings,
+                Validate = true,
+                AllowExternalMounts = true,
+            });
+            Assert.Equal(Program.ExitScriptError, exit);
+            runLine = console.Stderr.TrimEnd().Split('\n')[^1].TrimEnd('\r');
+        }
+
+        var doctorLine = Assert.Single(lines, l => l.Check == "runner-settings");
+        Assert.Equal($"ERROR: {doctorLine.Detail}", runLine);
     }
 
     [Fact]

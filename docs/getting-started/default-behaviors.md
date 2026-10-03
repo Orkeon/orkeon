@@ -52,7 +52,7 @@ These are harmless by construction and stay at Debug or emit nothing:
 |---|---|---|
 | Step/task callbacks | `Null*Callback` | No-op observability hooks; Debug by design. |
 | `IMemoryScope` | `NullMemoryScope` | Explicit "no memory in this context" marker — asked for, not fallen into. |
-| `IMemoryProvider` | config-driven factory | Falls back to the in-memory provider when `Memory:Provider` is unset; an **unrecognized** type does warn. |
+| `IMemoryProvider` | config-driven factory | The in-memory provider when `Memory:Provider` is unset; an **unrecognized** type refuses the host's start (GAP-40). |
 
 Fully-functional `TryAdd` defaults (e.g. `IPathValidator → PathValidator`) are not
 listed here on purpose: they are the real implementation, not a stand-in — replace

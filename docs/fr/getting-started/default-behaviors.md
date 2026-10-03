@@ -55,7 +55,7 @@ Inoffensifs par construction, ils restent en Debug ou n'émettent rien :
 |---|---|---|
 | Callbacks step/task | `Null*Callback` | Hooks d'observabilité no-op ; Debug par conception. |
 | `IMemoryScope` | `NullMemoryScope` | Marqueur explicite « pas de mémoire dans ce contexte » — demandé, pas subi. |
-| `IMemoryProvider` | factory pilotée par la config | Repli sur le provider in-memory quand `Memory:Provider` est absent ; un type **non reconnu**, lui, avertit. |
+| `IMemoryProvider` | factory pilotée par la config | Le provider in-memory quand `Memory:Provider` est absent ; un type **non reconnu** refuse le démarrage de l'hôte (GAP-40). |
 
 Les défauts `TryAdd` pleinement fonctionnels (p. ex. `IPathValidator → PathValidator`)
 ne sont volontairement pas listés ici : c'est l'implémentation réelle, pas un

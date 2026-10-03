@@ -7,6 +7,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Orkeon.Infrastructure.Telemetry.HealthChecks;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Infrastructure.Telemetry;
 
@@ -15,6 +16,9 @@ namespace Orkeon.Infrastructure.Telemetry;
 /// </summary>
 public static class OpenTelemetryExtensions
 {
+    /// <summary>The section bound to <see cref="TelemetryOptions"/>.</summary>
+    private const string TelemetrySection = "Telemetry";
+
     /// <summary>
     /// Adds Orkeon telemetry services including OpenTelemetry tracing, metrics, and health checks.
     /// Configuration is read from the "Telemetry" section.
@@ -32,12 +36,14 @@ public static class OpenTelemetryExtensions
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        var section = configuration.GetSection("Telemetry");
+        var section = configuration.GetSection(TelemetrySection);
         RefuseRemovedKeys(section);
 
-        // Bind TelemetryOptions
+        // Bind TelemetryOptions — read below at registration already; declared so its keys are
+        // judged with every other section's at the host's start (GAP-40).
         services.AddOptions<TelemetryOptions>()
-            .Bind(section);
+            .Bind(section)
+            .DeclareSettings(TelemetrySection);
 
         var options = new TelemetryOptions();
         section.Bind(options);

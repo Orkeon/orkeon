@@ -58,8 +58,9 @@ public static partial class LlmSettings
     /// </summary>
     /// <param name="configuration">The host configuration.</param>
     /// <returns>The default profile's configuration.</returns>
-    /// <exception cref="InvalidOperationException">A value cannot be read: an invalid <c>BaseUrl</c>,
-    /// an <c>ApiKeyEnvVar</c> that is no variable name, an <c>ApiKey</c> written as a <c>${NAME}</c> placeholder.</exception>
+    /// <exception cref="InvalidOperationException">A value cannot be read: an invalid <c>BaseUrl</c>, a
+    /// number or a switch that is none, an <c>ApiKeyEnvVar</c> that is no variable name, an <c>ApiKey</c>
+    /// written as a <c>${NAME}</c> placeholder.</exception>
     public static LlmConfig ReadDefault(IConfiguration configuration) =>
         ReadDefault(configuration, LlmKeyEnvironment.Machine);
 
@@ -68,7 +69,7 @@ public static partial class LlmSettings
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(environment);
-        return Read(configuration.GetSection(ConfigurationKeys.LlmSection), strict: false, environment);
+        return Read(configuration.GetSection(ConfigurationKeys.LlmSection), strict: true, environment);
     }
 
     /// <summary>
@@ -166,10 +167,10 @@ public static partial class LlmSettings
         !string.IsNullOrWhiteSpace(section.Value) || section.GetChildren().Any(HoldsValue);
 
     /// <summary>
-    /// Reads one section of the <c>Llm</c> shape. The default section keeps its historical
-    /// leniency — an unreadable number falls back to its default; a profile is
-    /// <paramref name="strict"/>: it is new configuration, and a silent default would run a crew
-    /// on settings its author never wrote. The key settings are new: strict in both.
+    /// Reads one section of the <c>Llm</c> shape, the default as strictly as a profile (GAP-40): a
+    /// number or a switch it cannot read refuses the start, naming its key. The default used to fall
+    /// back on its default for an unreadable number — a <c>TimeoutSeconds</c> of <c>"600s"</c> ran on
+    /// 30 s — and a switch that was no boolean read as unset, in profiles too.
     /// </summary>
     private static LlmConfig Read(IConfigurationSection section, bool strict, LlmKeyEnvironment environment)
     {
@@ -191,7 +192,7 @@ public static partial class LlmSettings
             TimeoutSeconds = ReadInt(section, "TimeoutSeconds", strict),
             Thinking = ReadThinking(section),
             // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
-            GrammarEnabled = bool.TryParse(section[ConfigurationKeys.LlmGrammar], out var grammar) && grammar,
+            GrammarEnabled = ReadBool(section, ConfigurationKeys.LlmGrammar) ?? false,
         };
 
         return ReadInt(section, "MaxRetries", strict) is { } maxRetries
@@ -315,13 +316,24 @@ public static partial class LlmSettings
                 $"{section.Path}:BaseUrl is not an absolute URL: '{raw}'.");
     }
 
+    /// <summary>
+    /// A number of the section, written invariant; blank is unset. A number that parses but is not
+    /// finite — <c>NaN</c>, <c>Infinity</c>, or <c>1e400</c>, which reads as infinity — is refused like
+    /// one that does not parse (GAP-40): JSON writes no such number, and every request failed to
+    /// serialise on it.
+    /// </summary>
     private static double? ReadDouble(IConfigurationSection section, string key, bool strict)
     {
         var raw = section[key];
         if (string.IsNullOrWhiteSpace(raw))
             return null;
         if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
-            return value;
+        {
+            if (double.IsFinite(value))
+                return value;
+            return strict ? throw NotAFiniteNumber(section, key, raw) : null;
+        }
+
         return strict ? throw NotANumber(section, key, raw) : null;
     }
 
@@ -338,13 +350,27 @@ public static partial class LlmSettings
     private static InvalidOperationException NotANumber(IConfigurationSection section, string key, string raw) =>
         new($"{section.Path}:{key} is not a number: '{raw}'.");
 
+    private static InvalidOperationException NotAFiniteNumber(IConfigurationSection section, string key, string raw) =>
+        new($"{section.Path}:{key} is not a finite number: '{raw}'.");
+
+    /// <summary>A switch of the section: <c>true</c> or <c>false</c>, any case; blank is unset.</summary>
+    private static bool? ReadBool(IConfigurationSection section, string key)
+    {
+        var raw = section[key];
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        if (bool.TryParse(raw, out var value))
+            return value;
+        throw new InvalidOperationException($"{section.Path}:{key} is not true or false: '{raw}'.");
+    }
+
     private static LlmThinkingConfig? ReadThinking(IConfigurationSection section)
     {
         // Llm:Thinking:{Enabled,Effort} — forwarded to thinking-capable providers
         // (DeepSeek, Z.AI GLM) as the `thinking` block + `reasoning_effort` field. Blank pins
         // nothing, and a block that pins nothing is no block.
         var thinking = section.GetSection(ConfigurationKeys.ThinkingSection);
-        bool? enabled = bool.TryParse(thinking["Enabled"], out var on) ? on : null;
+        var enabled = ReadBool(thinking, "Enabled");
         var effort = string.IsNullOrWhiteSpace(thinking["Effort"]) ? null : thinking["Effort"];
         if (enabled is null && effort is null)
             return null;

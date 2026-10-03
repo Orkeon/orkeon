@@ -310,8 +310,9 @@ configuration `Orkeon:Rag` surcharge ensuite chaque valeur individuellement.
 | Requiert | rien | `Orkeon.Rag.Onnx` | `Orkeon.Rag.Onnx` | classifieur + client de chat | client de chat (grader/réécriture ; replis heuristiques sans lui) |
 
 `fast` est le défaut prêt à l'emploi parce que `balanced` exige le package ONNX opt-in — en
-faire le défaut ferait échouer bruyamment, dès la première requête, tout hôte se contentant
-d'un `AddOrkeonRag()` nu. On opte pour `balanced` avec une seule ligne de configuration.
+faire le défaut ferait refuser le démarrage, en nommant `onnx`, de tout hôte se contentant d'un
+`AddOrkeonRag()` nu (les options effectives sont jugées au démarrage de l'hôte, GAP-40). On opte
+pour `balanced` avec une seule ligne de configuration.
 
 `IRagProfileResolver` (`ProfileRagPipelineResolver`) mémoïse **un pipeline par nom de
 profil** ; le nom réservé `default` se résout vers l'`IRagPipeline` enregistré par l'hôte,
@@ -476,10 +477,12 @@ sur une crew YAML, un répertoire de crew ou un script `.ork.ts` (avec ou sans `
 et `orkeon-host` ; `orkeon-repl` aussi, et l'hôte C# de
 [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/README.md)
 appelle lui-même `AddOrkeonRag`. `orkeon run --validate` charge la crew sans rien ingérer.
-Rien du sous-système n'est résolu tant qu'une crew ne s'en sert pas : une crew sans
-`rag:`/`knowledge:` ne charge pas de modèle d'embedding pour lui et n'échoue pas sur une
-configuration `Orkeon:Rag` inutilisable (un `Orkeon:Rag:Provider` inconnu fait échouer la
-première ingestion ou recherche, avec la liste des alias). L'ingestion exige un fournisseur
+Rien du sous-système n'est construit tant qu'une crew ne s'en sert pas : une crew sans
+`rag:`/`knowledge:` ne charge pas de modèle d'embedding pour lui. Ses réglages sont pourtant jugés
+au démarrage de l'hôte, qu'une crew s'en serve ou non (GAP-40) : un `Orkeon:Rag:Provider`, un profil,
+un reranker, un transformeur de requête, un ordre de contexte, un classifieur ou une stratégie de
+découpage inconnus refusent le démarrage, avec la liste des noms connus
+([quand un réglage est refusé](../reference/configuration.md#quand-un-réglage-est-refusé)). L'ingestion exige un fournisseur
 d'embeddings : le runner par défaut a celui embarqué (sauf si `RaggableTree:Enabled` vaut
 `false` et que rien d'autre n'est configuré). Les manifestes incrémentaux vont sous
 `/output/rag/manifests` ; sans montage `/output` inscriptible, les collections sont

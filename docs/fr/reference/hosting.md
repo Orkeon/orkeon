@@ -99,7 +99,16 @@ Il compose `Host.CreateDefaultBuilder()` avec :
 - **Services** — `ConfigureRunnerServices` (ci-dessous).
 - **`configureBuilder`** — invoqué en dernier, sur l'`IHostBuilder` lui-même.
 
-Une fois construit, l'hôte journalise les décisions de montage qu'il a prises, avertit (dans le
+Une fois construit, l'hôte juge d'abord ses réglages (GAP-40), que le run s'en serve ou non : chaque
+section qu'une inscription a déclarée — ses options créées, donc converties par le lieur et soumises à
+leurs règles, les noms qu'elles portent compris —, les noms de section sous `Orkeon:` et ses groupes,
+les clés de chaque section déclarée, et `Orkeon:Rag:LlmProfile` contre les profils qu'il offre
+([quand un réglage est refusé](./configuration.md#quand-un-réglage-est-refusé)). Seules les options et
+les fabriques nommées sont créées : aucun magasin, fournisseur, modèle ni connexion. Le premier refus
+est une `RunnerSettingsException` qui nomme sa clé, l'hôte libéré : rien n'est journalisé, averti ni
+démarré.
+
+Ensuite l'hôte journalise les décisions de montage qu'il a prises, avertit (dans le
 journal et sur stderr) quand un compte e-mail OAuth n'a pas de magasin de jetons ou quand il n'y a
 pas de section `Llm` — le runtime se replie alors sur le fournisseur écho —, dit d'où vient la clé
 du défaut et de chaque profil offert aux crews — les profils que cache sa liste blanche

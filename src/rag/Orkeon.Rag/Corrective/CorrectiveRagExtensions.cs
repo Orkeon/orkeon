@@ -51,8 +51,8 @@ public static partial class CorrectiveRagExtensions
         services.AddOptions();
 
         // Same effective-options source as AddOrkeonRag (profile preset +
-        // Orkeon:Rag overrides); TryAdd keeps whichever registered first.
-        services.TryAddSingleton(_ => RagOptionsFactory.Build(configuration));
+        // Orkeon:Rag overrides), registered once, judged when the host starts (GAP-40).
+        services.AddRagOptions(configuration);
 
         services.TryAddSingleton<IRetrievalEvaluator>(CreateRetrievalEvaluator);
         services.TryAddSingleton<IGroundednessChecker>(CreateGroundednessChecker);

@@ -330,7 +330,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
     {
         Directory.CreateDirectory(_workspace);
         var settings = Path.Combine(_workspace, "settings.json");
-        File.WriteAllText(settings, """{ "Llm": { "Provider": "ollama", "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" } }""");
+        File.WriteAllText(settings, """{ "Llm": { "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" } }""");
         var pack = Directory.CreateDirectory(Path.Combine(_workspace, "probe-pack")).FullName;
         File.WriteAllText(Path.Combine(pack, ForgePack.AssistantFileName), ProbeAssistant);
         return (settings, pack);

@@ -30,10 +30,8 @@ public static class ToolRateLimitingExtensions
     /// </remarks>
     public static IServiceCollection AddOrkeonToolRateLimiting(this IServiceCollection services)
     {
-        services.AddOptions<TokenBudgetOptions>()
-            .BindConfiguration("TokenBudget");
-        services.AddOptions<ToolRateLimitOptions>()
-            .BindConfiguration("ToolRateLimiting");
+        services.AddOrkeonSettings<TokenBudgetOptions>("TokenBudget");
+        services.AddOrkeonSettings<ToolRateLimitOptions>("ToolRateLimiting");
 
         services.TryAddSingleton<ITokenBudgetTracker, TokenBudgetTracker>();
         services.TryAddSingleton<IToolRateLimiter, ToolRateLimiter>();

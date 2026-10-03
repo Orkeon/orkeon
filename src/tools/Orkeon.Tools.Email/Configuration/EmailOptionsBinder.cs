@@ -9,8 +9,10 @@ namespace Orkeon.Tools.Email.Configuration;
 /// throws on a value it cannot convert (a misspelt right, a port written in words), and that
 /// exception would surface wherever the options are first read: building the tool list, or the
 /// runner host itself, of a crew that sends no mail. Each account is bound on its own instead,
-/// and one holding such a value is kept, empty, with what is wrong: the account is reported as
-/// misconfigured when a call or <c>orkeon email</c> names it, and the others work.
+/// and one holding such a value — or a key no account carries, which the binder would ignore
+/// (GAP-40) — is kept, empty, with what is wrong: the account is reported as misconfigured when a
+/// call or <c>orkeon email</c> names it, and the others work. This is the one exception to the
+/// rule that a host refuses at its start a setting it cannot honour.
 /// </summary>
 internal static class EmailOptionsBinder
 {
@@ -87,6 +89,7 @@ internal static class EmailOptionsBinder
     private static List<string> Check(IConfigurationSection account)
     {
         var problems = new List<string>();
+        CheckKeys(account, typeof(EmailAccountOptions), prefix: string.Empty, problems);
         foreach (var (key, type) in TypedAccountSettings)
         {
             var value = account[key];
@@ -102,6 +105,29 @@ internal static class EmailOptionsBinder
         }
 
         return problems;
+    }
+
+    /// <summary>
+    /// The keys of <paramref name="section"/> no property of <paramref name="type"/> carries, at any
+    /// depth: <c>Incomming:Port</c> was read as absent, and the account ran on the provider's port.
+    /// </summary>
+    private static void CheckKeys(IConfigurationSection section, Type type, string prefix, List<string> problems)
+    {
+        var properties = type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .ToDictionary(property => property.Name, property => property.PropertyType, StringComparer.OrdinalIgnoreCase);
+        foreach (var child in section.GetChildren())
+        {
+            var key = prefix + child.Key;
+            if (!properties.TryGetValue(child.Key, out var propertyType))
+            {
+                var owner = prefix.Length == 0 ? "an account" : prefix.TrimEnd(':');
+                problems.Add($"{key} is not an account setting: {owner} carries {string.Join(", ", properties.Keys)}");
+                continue;
+            }
+
+            if (propertyType.IsClass && propertyType != typeof(string) && !typeof(System.Collections.IEnumerable).IsAssignableFrom(propertyType))
+                CheckKeys(child, propertyType, key + ":", problems);
+        }
     }
 
     // The converter the configuration binder itself uses, so a value accepted here binds. A

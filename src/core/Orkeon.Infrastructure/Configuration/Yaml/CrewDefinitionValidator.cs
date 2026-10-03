@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces;
+using Orkeon.Application.Memory;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
@@ -89,6 +90,11 @@ public static class CrewDefinitionValidator
                 "remembers, and without memory: true (the default is false) the crew remembers nothing. " +
                 "Add memory: true, or remove memoryProvider:.");
         }
+
+        // A type no provider answers to fails the load, like an unknown tool (GAP-40): it used to run
+        // the crew's memory on the volatile provider, with a warning at its first store.
+        if (!string.IsNullOrWhiteSpace(config.MemoryProvider) && MemoryProviderTypes.Canonical(config.MemoryProvider) is null)
+            errors.Add(MemoryProviderTypes.UnknownMessage("memoryProvider:", config.MemoryProvider.Trim()));
     }
 
     private static void ValidateAgents(CrewConfiguration config, List<string> errors)

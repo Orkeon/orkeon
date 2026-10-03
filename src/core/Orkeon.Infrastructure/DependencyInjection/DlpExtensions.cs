@@ -26,8 +26,7 @@ public static class DlpExtensions
     /// </remarks>
     public static IServiceCollection AddOrkeonDlp(this IServiceCollection services)
     {
-        services.AddOptions<DlpOptions>()
-            .BindConfiguration("Orkeon:Dlp");
+        services.AddOrkeonSettings<DlpOptions>("Orkeon:Dlp");
 
         services.TryAddSingleton<IPiiDetector, PiiDetector>();
         services.TryAddSingleton<IDlpPolicyProvider, DlpPolicyProvider>();

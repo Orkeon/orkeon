@@ -10,6 +10,7 @@ using Orkeon.Infrastructure.Memory.LanceDb;
 using Orkeon.Infrastructure.Memory.Migration;
 using Orkeon.Infrastructure.Memory.Pinecone;
 using Orkeon.Infrastructure.Memory.Sqlite;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Infrastructure.DependencyInjection;
 
@@ -61,7 +62,8 @@ public static class VectorStoreExtensions
     {
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddOptions<ChromaDbOptions>()
-            .Bind(configuration.GetSection(ChromaDbOptions.SectionName));
+            .Bind(configuration.GetSection(ChromaDbOptions.SectionName))
+            .DeclareSettings(ChromaDbOptions.SectionName);
         services.AddOrkeonMemoryProviderFactory();
         services.TryAddSingleton(sp => SharedProvider<ChromaDbMemoryProvider>(sp, "chromadb"));
 
@@ -80,7 +82,8 @@ public static class VectorStoreExtensions
     {
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddOptions<LanceDbOptions>()
-            .Bind(configuration.GetSection(LanceDbOptions.SectionName));
+            .Bind(configuration.GetSection(LanceDbOptions.SectionName))
+            .DeclareSettings(LanceDbOptions.SectionName);
         services.AddOrkeonMemoryProviderFactory();
         services.TryAddSingleton(sp => SharedProvider<LanceDbMemoryProvider>(sp, "lancedb"));
         services.TryAddSingleton<LanceDbMigrationService>();
@@ -97,7 +100,8 @@ public static class VectorStoreExtensions
     {
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddOptions<PineconeOptions>()
-            .Bind(configuration.GetSection(PineconeOptions.SectionName));
+            .Bind(configuration.GetSection(PineconeOptions.SectionName))
+            .DeclareSettings(PineconeOptions.SectionName);
         services.AddOrkeonMemoryProviderFactory();
         services.TryAddSingleton(sp => SharedProvider<PineconeMemoryProvider>(sp, "pinecone"));
 
@@ -114,7 +118,8 @@ public static class VectorStoreExtensions
     {
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddOptions<RedisMemoryOptions>()
-            .Bind(configuration.GetSection(RedisMemoryOptions.SectionName));
+            .Bind(configuration.GetSection(RedisMemoryOptions.SectionName))
+            .DeclareSettings(RedisMemoryOptions.SectionName);
         services.AddOrkeonMemoryProviderFactory();
         services.TryAddSingleton(sp => SharedProvider<RedisMemoryProvider>(sp, "redis"));
 

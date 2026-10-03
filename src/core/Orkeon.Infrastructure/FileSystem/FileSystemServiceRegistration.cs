@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Orkeon.Application.Configuration;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Infrastructure.Configuration;
@@ -15,6 +16,12 @@ namespace Orkeon.Infrastructure.FileSystem;
 /// </summary>
 public static class FileSystemServiceRegistration
 {
+    /// <summary>The section of the mounts.</summary>
+    private const string FileSystemSection = "Orkeon:FileSystem";
+
+    /// <summary>The section of the per-process sandbox root.</summary>
+    private const string SandboxSection = "Orkeon:Sandbox";
+
     /// <summary>
     /// Registers the virtual file system services (registry, service, options) into the DI container.
     /// Reads mount definitions from the "Orkeon:FileSystem" configuration section.
@@ -26,14 +33,19 @@ public static class FileSystemServiceRegistration
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        // 1. Bind FileSystemOptions from configuration section "Orkeon:FileSystem"
-        services.Configure<FileSystemOptions>(configuration.GetSection("Orkeon:FileSystem"));
+        // 1. Bind FileSystemOptions from configuration section "Orkeon:FileSystem" — and
+        //    Orkeon:Sandbox below — judged when the host starts (GAP-40).
+        services.AddOptions<FileSystemOptions>()
+            .Bind(configuration.GetSection(FileSystemSection))
+            .DeclareSettings(FileSystemSection);
 
         // 1b. The sandbox mount travels with the file system, not with a hosted service: the
         //     runners build a host and never start it, so a hosted service provisioned
         //     /sandbox in the daemon alone while every CLI registered the code-execution
         //     subsystem over a virtual root that did not exist.
-        services.Configure<SandboxFileSystemOptions>(configuration.GetSection("Orkeon:Sandbox"));
+        services.AddOptions<SandboxFileSystemOptions>()
+            .Bind(configuration.GetSection(SandboxSection))
+            .DeclareSettings(SandboxSection);
         services.TryAddSingleton<SandboxSession>();
 
         // 1c. …and the session directory has to clear PathValidator too. Resolving a virtual

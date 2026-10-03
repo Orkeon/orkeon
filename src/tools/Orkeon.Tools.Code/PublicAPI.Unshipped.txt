@@ -1,1 +1,8 @@
 #nullable enable
+Orkeon.Tools.Code.ShellToolOptions
+Orkeon.Tools.Code.ShellToolOptions.AllowInterpreters.get -> bool
+Orkeon.Tools.Code.ShellToolOptions.AllowInterpreters.set -> void
+Orkeon.Tools.Code.ShellToolOptions.AllowedCommands.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellToolOptions.ExtraAllowedCommands.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellToolOptions.ShellToolOptions() -> void
+const Orkeon.Tools.Code.ShellToolOptions.SectionName = "Orkeon:Tools:Shell" -> string!

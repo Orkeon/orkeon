@@ -7,6 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — every setting a host cannot honour is refused at its start, naming its key, and `orkeon doctor` judges the file as a run does **[breaking]**
+
+GAP-35 gave a refused setting one line and one exit code, but only some settings were judged at start
+(GAP-40). About thirty sections were read by the first service that needed them: with
+`"Orkeon": { "Guardian": { "Enabled": "oui" } }`, `--validate` answered `VALIDATION OK`, `orkeon run` loaded
+the crew then exited `2` on the binder's sentence, and `orkeon-host` declared itself ready and failed every
+run; a mistake in `Orkeon:Rag` or `Orkeon:CrewMemory` waited for the first run that used it, sometimes after
+model calls. Other values were swallowed, keys and section names written wrong were read as absent, names
+were checked at first use or never, and `orkeon doctor` judged the `Llm` section alone.
+
+- **Every setting a shipped host reads is judged at its start**, whether the run uses it or not. Each
+  section is registered once — bound, validated with `ValidateOnStart`, its shape declared: the new
+  `AddOrkeonSettings<T>(path)` (`Orkeon.Infrastructure.DependencyInjection`), or `DeclareSettings(path)` on an
+  `OptionsBuilder<T>`, `ValidateSettings(...)` for a rule worded by its key, and `DeclareSettingsShape(path,
+  type)` for a section read raw (`SettingsDeclaration`, `Orkeon.Application.Configuration`). `RunnerHost.Build`
+  runs one start validation before anything else — no warning printed, no telemetry started —, which the REPL
+  and `orkeon doctor` share: every declared section's options are created (the binder, the rules, the names
+  they hold), then the section names, then the keys, then `Orkeon:Rag:LlmProfile`; the first refusal is the
+  `RunnerSettingsException`. Nothing is built but options and the named factories: no store, provider, model
+  or connection. `PathSecurity`, `Orkeon:Sandbox`, `RateLimiting`, `Orkeon:Guardian`, `Security:*`,
+  `Orkeon:Tools:Shell` (`ShellToolOptions` — `--list-tools` crashed on its `AllowInterpreters`), `Orkeon:Rag`
+  and its `Ingestion`, `QueryRouting`, `Retrieval:Hybrid` and `WebFallback`, `Orkeon:CrewMemory`, `Memory`,
+  the five memory providers' sections, `Orkeon:Consensus`, `Orkeon:CodeSandbox`, `Orkeon:CostTracking`,
+  `Orkeon:TokenCounter`, `Orkeon:Encryption`, `Orkeon:Embeddings`, `Orkeon:EmbeddingCache`,
+  `Orkeon:Scripting:Limits` and `:Toolchain`, `Orkeon:Cli:Session`: all refuse the start now. The effective
+  `RagOptions` are validated options too (the `Orkeon:Rag:Profile` preset with the section bound over it).
+- **No value is swallowed.** The default `Llm` section is read as strictly as its profiles — a
+  `TimeoutSeconds` of `"600s"` ran on 30 s —, `Thinking:Enabled` and `Grammar` are `true` or `false`
+  everywhere, and a `Temperature` is a finite number, in the default section and every profile: `"NaN"`,
+  `"Infinity"` or `1e400` (read as infinity) passed the strict read, then every request failed to
+  serialise. So is every number a section reads as a float or a double — the binder took `NaN` and the
+  infinities without a word: an `Orkeon:Rag:Generation:Temperature` failed every RAG answer, an
+  `Orkeon:CrewMemory:MinScore` recalled nothing. `RaggableTree:Embedding:Provider` is one of its five
+  names (a number is refused), `Dimensions` and `MaxTextChars` are whole numbers; `LlmLogging` is read
+  strictly under `--llm-log`; a flat `Orkeon:Rag:Retrieval:Hybrid` is a boolean;
+  `Orkeon:Cli:Session:ContextWindowTokens` is a number above zero, which `token_budget` reads from the session
+  options (`CliSessionOptions`); `Orkeon:Checkpointing` is bound by the binder.
+- **No key is ignored.** A key a section the host reads does not carry is refused against the shape its
+  readers declare — the readers of one section together, a sub-section another reader declares included:
+  `Orkeon:Guardian:Enabeld`, `Llm:Provider` (the provider follows from `BaseUrl` and the model). The keys
+  GAP-08 removed — `Memory:ConnectionString`, `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions`,
+  `Orkeon:Pinecone:Environment` — are refused with their migration. A section name under `Orkeon:` and
+  under `Orkeon:Cli`, `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` and `Security` is one of
+  `SettingsSections.Known` (`Orkeon.Constants.Configuration`), the closest proposed
+  (`Orkeon:Guardain` → `Orkeon:Guardian`). The root, `Logging` beyond its levels, `Secrets`, the keys of a
+  dictionary and the keys of a section another host reads stay open. An e-mail account carrying a key no
+  account carries is set aside and reported when named, like an account whose value cannot be read: the
+  e-mail section stays the one exception.
+- **Names are checked against the host's lists.** `Memory:Provider` and `Orkeon:Rag:Provider`, with what the
+  named provider needs (`Orkeon:LanceDb:Endpoint`; `Orkeon:Pinecone:ApiKey` and `IndexName`, or `Host`);
+  the `Rerank:Kind`, `QueryTransform:Mode`, `Context:Ordering` and `Ingestion:DefaultChunkingStrategy` of the
+  effective RAG options, against the factories this host builds — a C# host without the ONNX reranker
+  refuses `balanced` and `quality` at its start, naming `onnx`; `Orkeon:Rag:QueryRouting:Classifier`;
+  `Orkeon:Embeddings:Provider`, `openai` or `ollama` — another name took the OpenAI branch; the rule of
+  `Orkeon:Sqlite:TableName`. `MemoryProviderFactory` no longer falls back on the volatile provider: an
+  unknown type, or `lancedb` without its endpoint, is refused where it is reached, and a YAML crew's
+  `memoryProvider:` that names no provider fails its load, like an unknown tool (`MemoryProviderTypes`,
+  `Orkeon.Application.Memory`, is the one list).
+- **`Logging` is judged before the logger is built.** A level is one of the seven, any case; the console
+  options are bound under the barrier. A level written wrong made the build throw a sentence without the
+  key, past every barrier — `orkeon-host`, restarted by systemd every ten seconds.
+- **`orkeon-repl` starts behind the same barrier** (`ReplStartup`): its registrations, `Logging`, the start
+  validation — one line, `orkeon-repl: <reason>`, exit `1`, no console; a `--settings` file it cannot read is
+  named with the line and the position. It opened on a file `orkeon run` refused.
+- **`orkeon doctor` judges the file as `orkeon run` does.** A `runner-settings` check, after `llm-profiles`,
+  applies the run's guards to the mounts the file declares, then builds the host `orkeon run` builds — the
+  ONNX reranker the CLI adds included, no crew, no MCP connection — and runs its start validation: one `fail`
+  row per refusal, each naming its key, or one `ok` row; skipped when the `Llm` section is already refused.
+  The `--json` schema is unchanged; one check name is added.
+- **The settings files the repository hands out pass that validation**, and a test holds every one of them
+  (`ExampleSettingsTests`: the examples' `appsettings*.json`, the `*.json.example` templates, the smoke
+  fixtures). The `orkeon-host` example named its DeepSeek key under `Llm:ApiKeyEnvironmentVariable`, which
+  nothing reads — the daemon started without its key and every run failed on "API key is required" —: it
+  writes `ApiKeyEnvVar`, and it and the streaming demo lose `Llm:Provider`. The release smokes' RAG fixture
+  wrote its database under `Orkeon:Rag:ConnectionString`, so it stayed in memory and the search process found
+  nothing the ingestion process wrote: it writes `Orkeon:Sqlite:ConnectionString`. The porting guide's
+  `Memory:ConnectionString` is `Orkeon:Redis:ConnectionString`.
+
+Documented in [Configuration](docs/reference/configuration.md#when-a-setting-is-refused), [CLI](docs/reference/cli.md),
+[Service host](docs/architecture/service-host.md), [E-mail](docs/guides/email.md) and the
+[porting example](docs/guides/porting-example.md).
+
+Breaking: a value that cannot be read, a key no section carries or a name the host does not know, in a
+setting a host reads, refuses its start — exit `1` for `orkeon` and `orkeon-repl`, `78` for `orkeon-host`, an
+exception out of `StartAsync` for a C# host (values and names) — whether the run uses the setting or not; the
+default `Llm` section is read as strictly as the profiles; an unknown `Memory:Provider`, or `lancedb` without
+its endpoint, no longer runs on the volatile in-memory provider, and `IMemoryProviderFactory.GetProvider`
+throws on such a type; `Orkeon:Embeddings:Provider` accepts `openai` and `ollama` only; `orkeon doctor` judges
+the file as `orkeon run` does, and may exit `1` on a file it called green; `TokenBudgetTool` takes the session
+options in place of the configuration key it read.
+
+Migration: fix the value, the key or the name the line names. Move a key GAP-08 removed to the section its
+refusal names. A C# host whose profile reranks with `onnx` registers `AddOrkeonOnnxReranker()`, or names
+another profile.
+
 ### Fixed — a crew exported to YAML reads back the same: everything the loader reads, under its author's keys **[breaking]**
 
 `YamlCrewExporter` — the export `AddOrkeonYaml()` registers for a C# host — wrote another crew than the

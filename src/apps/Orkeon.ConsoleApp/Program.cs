@@ -16,6 +16,7 @@ using Orkeon.ConsoleApp.DependencyInjection;
 using Orkeon.ConsoleApp.Registries;
 using Orkeon.ConsoleApp.Runners;
 using Orkeon.ConsoleApp.Services;
+using static Orkeon.Application.Configuration.SettingsDeclarationExtensions;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
@@ -44,20 +45,17 @@ static class Program
         if (!TryResolveReplWrap(args, out var replWordWrap))
             return;
 
-        var scriptedOpts = ScriptedCommandsCliOptions.Parse(args);
-        var globalSettingsPath = GlobalSettingsPathOrNull();
+        // GAP-40: the registrations, Logging and the start validation of the runner host — values,
+        // keys, names, Orkeon:Rag:LlmProfile among them —, under one barrier: a refused setting is
+        // one line and exit 1, before the console opens.
+        var launch = ReplStartup.Prepare(args, effectiveUi, replWordWrap, Console.Error.WriteLine);
+        if (launch.Host is not { } host)
+        {
+            Environment.ExitCode = launch.ExitCode;
+            return;
+        }
 
-        var host = Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((_, builder) => ConfigureAppConfiguration(builder, scriptedOpts, globalSettingsPath))
-            .ConfigureServices((context, services) =>
-                ConfigureServices(context, services, effectiveUi, scriptedOpts, replWordWrap))
-            .Build();
-
-        // GAP-19: a RAG LLM profile (Orkeon:Rag:LlmProfile) the host does not offer refuses the
-        // start, listing the known ones — as the runner host does. The name alone is checked.
-        RagLlm.EnsureProfileIsKnown(
-            host.Services.GetRequiredService<IConfiguration>(),
-            host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>());
+        var scriptedOpts = launch.ScriptedOptions;
 
         // STUDIO-49: where each LLM key comes from, never the key, and one warning per reference
         // to a variable set nowhere — once, as the runner host says it.
@@ -162,7 +160,7 @@ static class Program
     /// The global settings file <c>orkeon init</c> writes, resolved as the runners resolve it;
     /// null where no per-user directory exists (a bare container without <c>HOME</c>).
     /// </summary>
-    static string? GlobalSettingsPathOrNull()
+    internal static string? GlobalSettingsPathOrNull()
     {
         try
         {
@@ -198,6 +196,8 @@ static class Program
         services.AddOrkeonDataTools();
         services.AddOrkeonWebTools();
         services.AddOrkeonCodeTools();
+        // Orkeon:Tools:Shell, bound by the code tools, declared here as orkeon run declares it (GAP-40).
+        Orkeon.Hosting.RunnerHost.DeclareShellSettings(services);
         services.AddOrkeonAbstractionTools();
         // E-mail tools (MAIL): password accounts work here; OAuth accounts need the token store
         // the `orkeon` runners mount, and say so when called from the REPL.
@@ -281,6 +281,8 @@ static class Program
         services.AddScriptHostCrewMounts(scriptedOpts.CrewDirs);
         services.AddSingleton<ScriptedCommandsRunner>();
 
+        // Orkeon:Cli:Tui, read raw below: its keys are judged at the start (GAP-40).
+        services.DeclareSettingsShape(TuiSection, typeof(TuiSettingsShape));
         if (effectiveUi == UiMode.Tui)
         {
             services.AddOrkeonCliTerminalGui(new TerminalGuiOptions
@@ -291,11 +293,20 @@ static class Program
                 Banner = Orkeon.ConsoleApp.Services.TuiFidelityWiring.BuildBannerInfo(context.Configuration),
                 // Boot-time spinner verbs (appsettings). The live /config layer, read via
                 // TuiIntegration.SpinnerVerbs, wins over this when set.
-                SpinnerVerbs = context.Configuration.GetSection("Orkeon:Cli:Tui:SpinnerVerbs")
+                SpinnerVerbs = context.Configuration.GetSection($"{TuiSection}:SpinnerVerbs")
                     .GetChildren().Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v))
                     .Select(v => v!).ToArray() is { Length: > 0 } verbs ? verbs : null,
             });
         }
+    }
+
+    /// <summary>The section of the Terminal.Gui console's own settings.</summary>
+    const string TuiSection = "Orkeon:Cli:Tui";
+
+    /// <summary>The keys of <c>Orkeon:Cli:Tui</c> (GAP-40). Never instantiated: its properties are the keys.</summary>
+    abstract class TuiSettingsShape
+    {
+        public List<string>? SpinnerVerbs { get; set; }
     }
 
     static void ConfigureLogging(IServiceCollection services, UiMode effectiveUi)

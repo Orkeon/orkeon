@@ -31,6 +31,8 @@ public sealed class HostA2ATests : IDisposable
     private static readonly string[] s_apiKeyScheme = ["ApiKey"];
     private static readonly string[] s_peerKeyName = ["A2A_PEER_KEY"];
     private static readonly string[] s_veilleAndAnUndeclaredCrew = ["veille", "billing"];
+    private static readonly string[] s_bearerScheme = ["Bearer"];
+    private static readonly string[] s_tokenAudience = ["api://orkeon"];
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"orkeon-host-a2a-{Guid.NewGuid():N}");
     private readonly List<string> _log = [];
@@ -337,6 +339,40 @@ public sealed class HostA2ATests : IDisposable
         Assert.Contains("A2A:EnableServer", error.Message, StringComparison.Ordinal);
         Assert.Contains("A2A:Port", error.Message, StringComparison.Ordinal);
         Assert.Contains("Orkeon:Host:A2A", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GAP-40 — the bearer validators' sections, <c>A2A:Security:AzureAD</c> and
+    /// <c>A2A:Security:Oidc</c>, are settings the daemon reads: they pass its start validation. Read
+    /// at registration but declared nowhere, the walk of <c>A2A:Security</c> refused them as keys no
+    /// section carries.
+    /// </summary>
+    [Fact]
+    public void The_bearer_sections_of_the_A2A_security_pass_the_start_validation()
+    {
+        using var host = Build(new HeldLlmProvider("unused"), LoopbackPorts.Probe(), (root, _) => root["A2A"] = new
+        {
+            Security = new
+            {
+                AllowedAuthSchemes = s_bearerScheme,
+                AzureAD = new { TenantId = "tenant", ClientId = "client", ValidAudiences = s_tokenAudience },
+                Oidc = new { Authority = "https://login.example.com/realms/orkeon", ClientId = "client", RequireHttpsMetadata = true },
+            },
+        });
+
+        Assert.NotNull(host);
+    }
+
+    [Fact]
+    public void A_key_no_bearer_section_carries_is_refused_by_its_name()
+    {
+        var error = Assert.Throws<RunnerSettingsException>(() => Build(new HeldLlmProvider("unused"), LoopbackPorts.Probe(), (root, _) => root["A2A"] = new
+        {
+            Security = new { Oidc = new { Authorty = "https://login.example.com/realms/orkeon", ClientId = "client" } },
+        }));
+
+        Assert.Contains("A2A:Security:Oidc:Authorty", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Authority", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

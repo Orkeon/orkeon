@@ -106,8 +106,9 @@ Autres clés : `DefaultTopK` (10), `MinSimilarityScore` (0), `VectorWeight` / `F
 Tout chemin qui sélectionne `lancedb` lit cette section (voir [Sélection par configuration](#sélection-par-configuration)).
 `services.AddOrkeonLanceDb(configuration)` expose en plus le `LanceDbMemoryProvider` partagé par sa
 classe, avec `LanceDbMigrationService` ; l'extension ne réassocie pas `IMemoryProvider`. Sans
-`Endpoint`, résoudre cette classe lève `InvalidOperationException` ; sélectionner `lancedb` par type
-journalise un avertissement et retombe sur In-Memory (voir plus bas).
+`Endpoint`, résoudre cette classe lève `InvalidOperationException`, et sélectionner `lancedb` par type
+aussi — `Memory:Provider` et `Orkeon:Rag:Provider` refusent le démarrage de l'hôte en nommant la clé
+(GAP-40) ; il retombait sur In-Memory avec un avertissement (voir plus bas).
 
 ### Limites connues
 
@@ -179,7 +180,7 @@ L'hôte configure chaque provider une fois, dans sa propre section ; tout le res
 | `sqlite` | | `Orkeon:Sqlite` | `ConnectionString` (défaut `Data Source=:memory:` ; une `Data Source` fichier est un chemin virtuel sur un montage inscriptible, ex. `Data Source=/output/orkeon-memory.db`), `TableName` (identifiant validé contre l'injection SQL), `DefaultTopK`, `MinSimilarityScore` |
 | `chromadb` | `chroma` | `Orkeon:ChromaDb` | `BaseUrl` (défaut `http://localhost:8000`), `Tenant`, `Database`, `CollectionName`, `DefaultTopK` |
 | `pinecone` | | `Orkeon:Pinecone` | `ApiKey`, `IndexName` (défaut `orkeon-memories`), `Host` (facultatif, voir le tableau plus haut), `Namespace` (défaut `default`) |
-| `lancedb` | `lance` | `Orkeon:LanceDb` | `Endpoint` (**obligatoire** : sans lui, avertissement explicite et repli In-Memory), `ApiKey`, `TableName`, `Database`, … ([plus haut](#configuration)) |
+| `lancedb` | `lance` | `Orkeon:LanceDb` | `Endpoint` (**obligatoire** : sans lui, le type est refusé — au démarrage de l'hôte pour `Memory:Provider` et `Orkeon:Rag:Provider`), `ApiKey`, `TableName`, `Database`, … ([plus haut](#configuration)) |
 
 ```json
 {
@@ -197,8 +198,12 @@ Les secrets restent côté hôte : un fichier de crew ne porte jamais de chaîne
 distribue **une instance par type** : le provider de l'application, chaque crew qui nomme ce type et
 le store RAG de ce type la partagent — une connexion Redis, un client HTTP, une connexion SQLite. La
 factory possède ces instances et les libère avec le conteneur. Créer un provider ne connecte jamais ;
-la connexion s'ouvre à son premier appel. Un type inconnu retombe sur In-Memory avec un avertissement
-explicite ; `SupportedTypes` liste les alias.
+la connexion s'ouvre à son premier appel. Un type qu'elle ne sert pas est refusé là où il est
+atteint, en nommant les types connus (GAP-40) — il retombait sur In-Memory avec un avertissement, et
+une crew censée se souvenir oubliait à la fin du run ; `SupportedTypes` liste les alias.
+`Memory:Provider` et `Orkeon:Rag:Provider` sont jugés au démarrage de l'hôte, avec ce que le
+fournisseur nommé attend de sa section (`Orkeon:LanceDb:Endpoint` ; `Orkeon:Pinecone:ApiKey` et
+`IndexName`, ou `Host`), et le `memoryProvider:` d'une crew YAML à son chargement.
 
 ### Le provider de l'application
 
@@ -246,7 +251,8 @@ crew sans mémoire est refusé — au chargement (`memoryProvider: 'sqlite' need
 3. Quand `MemoryService` matérialise le système de mémoire de cette crew, il adosse sa mémoire **long
    terme** (la mémoire court terme reste une fenêtre glissante in-process) à :
    - le provider partagé du type que la crew a déclaré, demandé à `MemoryProviderFactory` — connecté depuis
-     la section de l'hôte ; les types inconnus conservent le repli In-Memory-avec-avertissement de la factory ;
+     la section de l'hôte ; un type auquel aucun provider ne répond est refusé — celui d'une crew YAML à
+     son chargement, celui d'une crew C# (`WithMemoryProvider`) au premier usage de sa mémoire (GAP-40) ;
    - sinon, pour une crew **nommée**, le provider par défaut de l'hôte — l'`IMemoryProvider` de
      l'application, dont le type est `Memory:Provider` (In-Memory s'il est absent) ;
    - sinon — une crew construite en C# sans nom — un magasin in-process à elle, qui finit avec le run :

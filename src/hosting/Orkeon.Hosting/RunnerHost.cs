@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using static Orkeon.Application.Configuration.SettingsDeclarationExtensions;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.Llm;
@@ -124,11 +125,14 @@ public static partial class RunnerHost
     /// settings file and the <c>ORKEON_</c> environment. Null or <c>default</c> keeps the section.
     /// </param>
     /// <exception cref="RunnerSettingsException">
-    /// A setting the host refuses (GAP-35): a key that is no setting any more, an LLM profile it
-    /// cannot build or does not offer (<paramref name="llmProfile"/> included — the message lists
-    /// those the configuration defines), a value the configuration binder cannot convert, a
-    /// settings file it cannot read, an address that is no address, mounts that cannot be
-    /// honoured. The message names the key, or the file and the place in it. A host already
+    /// A setting the host refuses (GAP-35, GAP-40): a value the configuration binder cannot convert
+    /// or a rule of its section refuses, a key no section carries — a key that is no setting any
+    /// more among them —, a section or a component's name the host does not know, a log level that
+    /// is none, an LLM profile it cannot build or does not offer (<paramref name="llmProfile"/>
+    /// included — the message lists those the configuration defines), a settings file it cannot
+    /// read, an address that is no address, mounts that cannot be honoured. Every setting the host
+    /// reads is judged, whether the run uses it or not (<see cref="ValidateSettings(IServiceProvider)"/>);
+    /// the first refusal is raised, naming the key, or the file and the place in it. A host already
     /// built is disposed first. Anything else the callbacks raise keeps its own type and its stack.
     /// </exception>
     public static IHost Build(
@@ -147,20 +151,21 @@ public static partial class RunnerHost
         // the kind of decision an operator reading the log must be able to see (STUDIO-15 D-01,
         // VFS-90 D-10).
         var decisions = new MountDecisions();
-        var builder = Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration((_, b) => ConfigureAppConfiguration(b, settingsPath, mounts, llmProfile, decisions))
-            .ConfigureServices((context, services) =>
-                ConfigureRunnerServices(context, services, mounts.LlmLogVirtualPath, configureLogging, configureServices));
+        var builder = CreateBuilder(settingsPath, mounts, configureLogging, configureServices, llmProfile, decisions);
 
         configureBuilder?.Invoke(builder);
 
         var host = builder.Build();
         try
         {
+            // First, before a warning is printed or the telemetry starts (GAP-40): a host refused
+            // on its settings says nothing else.
+            if (ValidateSettings(host.Services) is [var refusal, ..])
+                throw new RunnerSettingsException(refusal);
+
             LogMountDecisions(host, decisions);
             WarnIfEmailTokensUnavailable(host, decisions);
             WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
-            EnsureRagLlmProfileIsKnown(host);
             ActivateTelemetry(host);
             return host;
         }
@@ -174,24 +179,84 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// GAP-19: <c>Orkeon:Rag:LlmProfile</c> names one of the host's LLM profiles — the daemon's
-    /// <c>Orkeon:Host:LlmProfiles</c> allow-list applied —, and a name the host does not offer
-    /// refuses the start here, listing the ones it does, like an invalid <c>Llm:Profiles</c> entry,
-    /// rather than the first RAG query of a run. Only the name is checked: the profile's provider
-    /// is built at the first RAG call that needs a model (GAP-02).
+    /// The builder of a runner host: the configuration every runner composes, then the runner's
+    /// services, then the caller's. One composition for <see cref="Build"/> and for
+    /// <see cref="ValidateSettings(string?, Action{HostBuilderContext, IServiceCollection}?)"/>, so
+    /// <c>orkeon doctor</c> judges the host a run builds, not a copy of it.
     /// </summary>
-    private static void EnsureRagLlmProfileIsKnown(IHost host)
+    private static IHostBuilder CreateBuilder(
+        string? settingsPath,
+        RunnerMountPlan mounts,
+        Action<HostBuilderContext, ILoggingBuilder>? configureLogging,
+        Action<HostBuilderContext, IServiceCollection>? configureServices,
+        string? llmProfile,
+        MountDecisions decisions) =>
+        Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration((_, b) => ConfigureAppConfiguration(b, settingsPath, mounts, llmProfile, decisions))
+            .ConfigureServices((context, services) =>
+                ConfigureRunnerServices(context, services, mounts.LlmLogVirtualPath, configureLogging, configureServices));
+
+    /// <summary>
+    /// The start validation of a built host (GAP-40), shared by <see cref="Build"/>, the REPL and
+    /// <c>orkeon doctor</c>: every refusal, in order, each one sentence naming its key — the values
+    /// of every declared section (the binder, its rules, the names they hold), the section names
+    /// under <c>Orkeon:</c> and the groups, the keys of every section the host reads, and
+    /// <c>Orkeon:Rag:LlmProfile</c> against the profiles the host offers (GAP-19). Empty when the
+    /// host may start. Reads options and builds the named factories only: no store, provider, model
+    /// or connection is created.
+    /// </summary>
+    /// <param name="services">The built container.</param>
+    internal static IReadOnlyList<string> ValidateSettings(IServiceProvider services)
     {
+        ArgumentNullException.ThrowIfNull(services);
+
+        var refusals = SettingsValidation.Refusals(services).ToList();
         try
         {
             RagLlm.EnsureProfileIsKnown(
-                host.Services.GetRequiredService<IConfiguration>(),
-                host.Services.GetService<ILlmProfileRegistry>());
+                services.GetRequiredService<IConfiguration>(),
+                services.GetService<ILlmProfileRegistry>());
         }
         catch (InvalidOperationException ex)
         {
-            throw Refused(ex);
+            refusals.Add(ex.Message);
         }
+
+        return refusals;
+    }
+
+    /// <summary>
+    /// What <c>orkeon doctor</c> asks (GAP-40): the start validation of the host <c>orkeon run</c>
+    /// builds on <paramref name="settingsPath"/> with <paramref name="configureServices"/> — no crew,
+    /// no command-line mount, no MCP connection —, every refusal at once. A refusal the build itself
+    /// raises (a key retired, a file it cannot read, a log level) stops it and is the only one, as a
+    /// run reports it. The host is disposed: nothing is printed, no telemetry starts.
+    /// </summary>
+    /// <param name="settingsPath">The settings file a run would read, or null.</param>
+    /// <param name="configureServices">What the runner adds to the host, as for a run.</param>
+    internal static IReadOnlyList<string> ValidateSettings(
+        string? settingsPath,
+        Action<HostBuilderContext, IServiceCollection>? configureServices)
+    {
+        IHost host;
+        try
+        {
+            host = CreateBuilder(
+                    settingsPath,
+                    new RunnerMountPlan(),
+                    (_, logging) => logging.ClearProviders(),
+                    configureServices,
+                    llmProfile: null,
+                    new MountDecisions())
+                .Build();
+        }
+        catch (RunnerSettingsException ex)
+        {
+            return [ex.Message];
+        }
+
+        using (host)
+            return ValidateSettings(host.Services);
     }
 
     /// <summary>A setting a registration or a check refused, as the one type every entry point translates (GAP-35).</summary>
@@ -909,10 +974,20 @@ public static partial class RunnerHost
         // intentional degrade. Fail loading with an explicit "unknown tool(s): …; available: …"
         // message rather than silently dropping the tool (the library default stays lenient).
         // A host can still opt back out via "Orkeon:CrewFactory:StrictTools": false.
+        services.DeclareSettingsShape(CrewFactorySection, typeof(CrewFactorySettingsShape));
         var strictTools = context.Configuration.GetValue(
-            "Orkeon:CrewFactory:StrictTools", defaultValue: true);
+            $"{CrewFactorySection}:StrictTools", defaultValue: true);
         services.Configure<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>(
             o => o.StrictTools = strictTools);
+
+        // The .ork.ts sandbox limits and the esbuild toolchain, read when a script crew loads and
+        // at its first transpilation — bound here and judged at the host's start (GAP-40).
+        services.AddOptions<Orkeon.Scripting.Configuration.ScriptingLimitsOptions>()
+            .Bind(context.Configuration.GetSection(Orkeon.Scripting.Configuration.ScriptingLimitsOptions.SectionName))
+            .DeclareSettings(Orkeon.Scripting.Configuration.ScriptingLimitsOptions.SectionName);
+        services.AddOptions<Orkeon.Scripting.Configuration.ScriptingToolchainOptions>()
+            .Bind(context.Configuration.GetSection(Orkeon.Scripting.Configuration.ScriptingToolchainOptions.SectionName))
+            .DeclareSettings(Orkeon.Scripting.Configuration.ScriptingToolchainOptions.SectionName);
 
         // Per-tool-call permission gate — config opt-in:
         // Orkeon:Security:PermissionGate:Enabled = true. No-op otherwise.
@@ -923,6 +998,9 @@ public static partial class RunnerHost
         services.AddOrkeonDataTools();
         services.AddOrkeonWebTools();
         services.AddOrkeonCodeTools();
+        // Orkeon.Tools.Code binds Orkeon:Tools:Shell and validates it at start, but cannot declare
+        // it: it does not see Orkeon.Application. Declared here, its keys are judged too (GAP-40).
+        DeclareShellSettings(services);
         services.AddOrkeonAbstractionTools();
         // Session primitives (session_store/session_snip/token_budget/
         // memory_store/session_cost/session_stats) — previously REPL-only
@@ -974,6 +1052,8 @@ public static partial class RunnerHost
         // the filesystem-backed tools cannot even be constructed.
         if (HasMounts(ConfigurationKeys.FileSystemMounts) || HasMounts(ConfigurationKeys.FileSystemInternalMounts))
             services.AddOrkeonFileSystem(context.Configuration);
+        else
+            DeclareFileSystemSettings(context, services);
 
         bool HasMounts(string key)
         {
@@ -1022,19 +1102,61 @@ public static partial class RunnerHost
     /// surface every run had before — and the servers are connected by
     /// <see cref="McpStartup"/>, not by a hosted service, because the runners never start the
     /// host. A section that still carries the removed <c>MCP:EnableServer</c> fails the host
-    /// first, servers declared or not (GAP-24).
+    /// first, servers declared or not (GAP-24). <c>AddOrkeonMcp</c> binds the section and has it
+    /// judged at the host's start (GAP-40) — a server's <c>Transport</c> the binder cannot convert
+    /// refuses the start, not the connection step that <c>--list-tools</c> and <c>orkeon-host</c>
+    /// take before anything else. Its keys, and those of <c>MCP:Server</c> that <c>orkeon mcp
+    /// serve</c> reads, are judged whether servers are declared or not: the section is the host's.
     /// </summary>
     private static void RegisterMcp(HostBuilderContext context, IServiceCollection services)
     {
         McpStartup.RefuseServerSwitch(context.Configuration);
+        services.DeclareSettingsShape(ConfigurationKeys.McpSection, typeof(McpOptions));
+        services.DeclareSettingsShape($"{ConfigurationKeys.McpSection}:Server", typeof(McpServerOptions));
         if (!McpStartup.IsConfigured(context.Configuration))
             return;
 
-        // Bound here once, so a value the binder cannot convert — a server's Transport — is a
-        // setting the host refuses at build (GAP-35), not an exception out of the connection step
-        // that --list-tools and orkeon-host take before anything else.
-        _ = context.Configuration.GetSection(ConfigurationKeys.McpSection).Get<McpOptions>();
         services.AddOrkeonMcp(context.Configuration);
+    }
+
+    /// <summary>
+    /// Declares <c>Orkeon:Tools:Shell</c>, which <c>AddOrkeonCodeTools</c> binds and validates at
+    /// start (GAP-40): its values and its keys are judged with every section's. The REPL declares it
+    /// the same way.
+    /// </summary>
+    internal static void DeclareShellSettings(IServiceCollection services) =>
+        services.AddOptions<Orkeon.Tools.Code.ShellToolOptions>().DeclareSettings(Orkeon.Tools.Code.ShellToolOptions.SectionName);
+
+    /// <summary>
+    /// <c>Orkeon:FileSystem</c> and <c>Orkeon:Sandbox</c>, which <c>AddOrkeonFileSystem</c> binds and
+    /// declares, judged when nothing is mounted too (GAP-40): a run always mounts — its crew, its
+    /// output —, but <c>orkeon doctor</c> builds the host without a mount and must refuse what the run
+    /// refuses. Bound here only when <c>AddOrkeonFileSystem</c> is not called: a list bound twice holds
+    /// its entries twice.
+    /// </summary>
+    private static void DeclareFileSystemSettings(HostBuilderContext context, IServiceCollection services)
+    {
+        services.AddOptions<Orkeon.Infrastructure.Configuration.FileSystemOptions>()
+            .Bind(context.Configuration.GetSection(FileSystemSection))
+            .DeclareSettings(FileSystemSection);
+        services.AddOptions<Orkeon.Infrastructure.Sandbox.SandboxFileSystemOptions>()
+            .Bind(context.Configuration.GetSection(SandboxSection))
+            .DeclareSettings(SandboxSection);
+    }
+
+    /// <summary>The section of the mounts.</summary>
+    private const string FileSystemSection = "Orkeon:FileSystem";
+
+    /// <summary>The section of the per-process sandbox root.</summary>
+    private const string SandboxSection = "Orkeon:Sandbox";
+
+    /// <summary>The section of the crew factory's switches.</summary>
+    private const string CrewFactorySection = "Orkeon:CrewFactory";
+
+    /// <summary>The keys of <c>Orkeon:CrewFactory</c> a runner reads (GAP-40). Never instantiated: its properties are the keys.</summary>
+    private abstract class CrewFactorySettingsShape
+    {
+        public bool StrictTools { get; set; }
     }
 
     private static void ConfigureRunnerLogging(
@@ -1042,6 +1164,12 @@ public static partial class RunnerHost
         IServiceCollection services,
         Action<HostBuilderContext, ILoggingBuilder>? configureLogging)
     {
+        // The levels and the console options of `Logging`, judged here, under the barrier, before
+        // the host builds its logger from them (GAP-40): a level the logging configuration does not
+        // know threw from the build, a sentence without the key, past every barrier — and systemd
+        // restarted orkeon-host on it every ten seconds.
+        SettingsValidation.CheckLogging(context.Configuration);
+
         // Logging (customizable, sensible default)
         if (configureLogging != null)
         {
@@ -1077,18 +1205,54 @@ public static partial class RunnerHost
         // logger writes through IFileSystemService. Resolving it to a full physical path
         // here is what used to force the identity mount (ADR-008).
         var logDir = llmLogVirtualPath;
-        var llmLogSection = context.Configuration.GetSection("LlmLogging");
-        // Bind known properties from the "LlmLogging" config section.
-        // The section is optional; absent keys keep their defaults
-        // (FullEmbeddingLog=true, LogStreamingExchanges=true,
-        // MaxBodyLengthChars=0/no truncation).
+        // The "LlmLogging" section, read with --llm-log only. Optional; absent keys keep their
+        // defaults (FullEmbeddingLog=true, LogStreamingExchanges=true, MaxBodyLengthChars=0/no
+        // truncation), and a value that is none refuses the start, naming its key (GAP-40): it
+        // used to fall back on the default in silence. Its keys are judged too.
+        services.DeclareSettingsShape(LlmLoggingSection, typeof(LlmLoggingSettingsShape));
+        var llmLogSection = context.Configuration.GetSection(LlmLoggingSection);
         var llmOpts = new LlmLoggingOptions
         {
-            FullEmbeddingLog = !bool.TryParse(llmLogSection["FullEmbeddingLog"], out var fullEmbed) || fullEmbed,
-            LogStreamingExchanges = !bool.TryParse(llmLogSection["LogStreamingExchanges"], out var logStream) || logStream,
-            MaxBodyLengthChars = int.TryParse(llmLogSection["MaxBodyLengthChars"], out var maxLen) ? maxLen : 0,
+            FullEmbeddingLog = ReadBool(llmLogSection, "FullEmbeddingLog") ?? true,
+            LogStreamingExchanges = ReadBool(llmLogSection, "LogStreamingExchanges") ?? true,
+            MaxBodyLengthChars = ReadInt(llmLogSection, "MaxBodyLengthChars") ?? 0,
         };
         services.AddLlmExchangeLogging(logDir, llmOpts);
+    }
+
+    /// <summary>The section of the LLM exchange logging (<c>--llm-log</c>).</summary>
+    private const string LlmLoggingSection = "LlmLogging";
+
+    /// <summary>The keys of <c>LlmLogging</c> (GAP-40). Never instantiated: its properties are the keys.</summary>
+    private abstract class LlmLoggingSettingsShape
+    {
+        public bool FullEmbeddingLog { get; set; }
+
+        public bool LogStreamingExchanges { get; set; }
+
+        public int MaxBodyLengthChars { get; set; }
+    }
+
+    /// <summary>A switch of a section read raw: <c>true</c> or <c>false</c>, any case; blank is unset; anything else is refused by its key.</summary>
+    private static bool? ReadBool(IConfigurationSection section, string key)
+    {
+        var raw = section[key];
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        return bool.TryParse(raw, out var value)
+            ? value
+            : throw new InvalidOperationException($"{section.Path}:{key} is '{raw}', which is not true or false.");
+    }
+
+    /// <summary>A whole number of a section read raw, written invariant; blank is unset; anything else is refused by its key.</summary>
+    private static int? ReadInt(IConfigurationSection section, string key)
+    {
+        var raw = section[key];
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        return int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : throw new InvalidOperationException($"{section.Path}:{key} is '{raw}', which is not a whole number.");
     }
 
     /// <summary>
@@ -1134,26 +1298,32 @@ public static partial class RunnerHost
                 "Enabled and Embedding. What an index covers (exclude, root_alias, enrich_with_llm, " +
                 "languages) is an argument of each index_codebase call. Remove the key.");
 
-        if (section.Exists() && !section.GetValue("Enabled", defaultValue: true))
-            return;
-
+        // The keys under Embedding are judged with every declared section's (GAP-40), and its
+        // values read strictly here, the section enabled or not: a provider written wrong ran the
+        // local embeddings, and a number that was none the provider's default, in silence.
+        services.DeclareSettingsShape("RaggableTree", typeof(RaggableTreeSettingsShape));
         var embeddingSection = section.GetSection("Embedding");
         // Default to on-device local embeddings (zero-config BGE-micro-v2, no network) so
         // codebase_search works out of the box; a host can override to OpenAI/Ollama via config.
-        var provider = ParseEnum(embeddingSection["Provider"], EmbeddingProviderKind.LocalSmartComponents);
+        var provider = EmbeddingProvider(embeddingSection);
+        var embedding = new EmbeddingOptions
+        {
+            Provider = provider,
+            // Empty → each provider's own default model (LocalSmartComponents → bge-micro-v2).
+            Model = embeddingSection["Model"] ?? "",
+            ApiKey = embeddingSection["ApiKey"],
+            BaseUrl = embeddingSection["BaseUrl"] is { } embedBaseUrl ? EmbeddingAddress(embedBaseUrl) : null,
+            Dimensions = ReadInt(embeddingSection, "Dimensions"),
+            MaxTextChars = ReadInt(embeddingSection, "MaxTextChars"),
+        };
+
+        if (section.Exists() && !section.GetValue("Enabled", defaultValue: true))
+            return;
+
         var options = new RaggableTreeOptions
         {
             Enabled = true,
-            Embedding = new EmbeddingOptions
-            {
-                Provider = provider,
-                // Empty → each provider's own default model (LocalSmartComponents → bge-micro-v2).
-                Model = embeddingSection["Model"] ?? "",
-                ApiKey = embeddingSection["ApiKey"],
-                BaseUrl = embeddingSection["BaseUrl"] is { } embedBaseUrl ? EmbeddingAddress(embedBaseUrl) : null,
-                Dimensions = int.TryParse(embeddingSection["Dimensions"], out var d) ? d : null,
-                MaxTextChars = int.TryParse(embeddingSection["MaxTextChars"], out var mc) ? mc : null,
-            },
+            Embedding = embedding,
         };
 
         // Pre-register the on-device provider explicitly when selected, so resolution never relies
@@ -1176,12 +1346,47 @@ public static partial class RunnerHost
                 $"RaggableTree:Embedding:BaseUrl is '{value}', which is not an address: write the embedding "
                 + "endpoint's http:// or https:// URL, such as http://localhost:11434.");
 
-    private static TEnum ParseEnum<TEnum>(string? value, TEnum fallback) where TEnum : struct, Enum
+    /// <summary>
+    /// <c>RaggableTree:Embedding:Provider</c>: one of the provider names, any case, the local
+    /// embeddings when blank (GAP-40). A name written wrong — or a number, which the enum parser took
+    /// — used to run the local embeddings without a word.
+    /// </summary>
+    private static EmbeddingProviderKind EmbeddingProvider(IConfigurationSection embedding)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return fallback;
+        var raw = embedding["Provider"];
+        if (string.IsNullOrWhiteSpace(raw))
+            return EmbeddingProviderKind.LocalSmartComponents;
 
-        return Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) ? parsed : fallback;
+        var names = Enum.GetNames<EmbeddingProviderKind>();
+        var name = names.FirstOrDefault(known => string.Equals(known, raw.Trim(), StringComparison.OrdinalIgnoreCase));
+        return name is not null
+            ? Enum.Parse<EmbeddingProviderKind>(name)
+            : throw new InvalidOperationException(
+                $"{embedding.Path}:Provider is '{raw}', which is not an embedding provider: write one of {string.Join(", ", names)}.");
+    }
+
+    /// <summary>The keys of <c>RaggableTree</c> (GAP-15, GAP-40). Never instantiated: its properties are the keys.</summary>
+    private abstract class RaggableTreeSettingsShape
+    {
+        public bool Enabled { get; set; }
+
+        public RaggableTreeEmbeddingShape? Embedding { get; set; }
+    }
+
+    /// <summary>The keys of <c>RaggableTree:Embedding</c>.</summary>
+    private abstract class RaggableTreeEmbeddingShape
+    {
+        public string? Provider { get; set; }
+
+        public string? Model { get; set; }
+
+        public string? ApiKey { get; set; }
+
+        public string? BaseUrl { get; set; }
+
+        public int? Dimensions { get; set; }
+
+        public int? MaxTextChars { get; set; }
     }
 
     private static void RegisterLlmProvider(HostBuilderContext context, IServiceCollection services)

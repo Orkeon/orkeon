@@ -39,8 +39,26 @@ public class CrewMemoryDeclarationValidationTests
         Assert.Contains("memory: true", error, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GAP-40, decision 6 — a provider type no provider answers to fails the load, like an unknown
+    /// tool, with the known types: it used to run the crew's memory on the volatile provider.
+    /// </summary>
+    [Fact]
+    public void A_memory_provider_no_provider_answers_to_is_refused_with_the_known_types()
+    {
+        var result = CrewDefinitionValidator.Validate(Config(memory: true, memoryProvider: "redsi"));
+
+        Assert.False(result.IsValid);
+        var error = Assert.Single(result.Errors);
+        Assert.Contains("memoryProvider", error, StringComparison.Ordinal);
+        Assert.Contains("redsi", error, StringComparison.Ordinal);
+        Assert.Contains("redis", error, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(true, "sqlite")]
+    [InlineData(true, "SQLite")]
+    [InlineData(true, "chroma")]
     [InlineData(true, null)]
     [InlineData(false, null)]
     public void Memory_with_or_without_a_provider_and_no_memory_at_all_are_accepted(bool memory, string? memoryProvider)

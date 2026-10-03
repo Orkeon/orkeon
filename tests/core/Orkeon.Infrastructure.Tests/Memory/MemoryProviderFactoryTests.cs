@@ -78,21 +78,20 @@ public sealed class MemoryProviderFactoryTests : IDisposable
             factory.SupportedTypes);
     }
 
+    /// <summary>
+    /// GAP-40, decision 6 — a type the factory does not serve is refused where it is reached, with the
+    /// types it serves: it used to run on the volatile in-memory provider, with a warning, and a crew
+    /// meant to remember forgot at the end of the run.
+    /// </summary>
     [Fact]
-    public void GetProvider_UnknownType_ShouldLogWarning_AndFallBackToTheSharedInMemoryProvider()
+    public void GetProvider_UnknownType_ShouldBeRefused_NamingTheSupportedTypes_NotFallBack()
     {
-        using var recorder = new CapturingLoggerFactory();
-        using var factory = CreateFactory(loggerFactory: recorder);
+        using var factory = CreateFactory();
 
-        var provider = factory.GetProvider("cosmosdb");
+        var error = Assert.Throws<InvalidOperationException>(() => factory.GetProvider("cosmosdb"));
 
-        Assert.IsType<InMemoryProvider>(provider);
-        Assert.Same(factory.GetProvider("inmemory"), provider);
-        Assert.Contains(
-            recorder.Entries,
-            e => e.Level == LogLevel.Warning
-                 && e.Message.Contains("not recognized", StringComparison.OrdinalIgnoreCase)
-                 && e.Message.Contains("cosmosdb", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("cosmosdb", error.Message, StringComparison.Ordinal);
+        Assert.Contains("sqlite", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -114,18 +113,13 @@ public sealed class MemoryProviderFactoryTests : IDisposable
     }
 
     [Fact]
-    public void GetProvider_LanceDb_WithoutEndpoint_ShouldLogWarning_AndFallBack()
+    public void GetProvider_LanceDb_WithoutEndpoint_ShouldBeRefused_NamingTheEndpoint_NotFallBack()
     {
-        using var recorder = new CapturingLoggerFactory();
-        using var factory = CreateFactory(loggerFactory: recorder);
+        using var factory = CreateFactory();
 
-        var provider = factory.GetProvider("lancedb");
+        var error = Assert.Throws<InvalidOperationException>(() => factory.GetProvider("lancedb"));
 
-        Assert.IsType<InMemoryProvider>(provider);
-        Assert.Contains(
-            recorder.Entries,
-            e => e.Level == LogLevel.Warning
-                 && e.Message.Contains("Orkeon:LanceDb:Endpoint", StringComparison.Ordinal));
+        Assert.Contains("Orkeon:LanceDb:Endpoint", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -333,42 +327,4 @@ public sealed class MemoryProviderFactoryTests : IDisposable
 
     private static HttpResponseMessage ChromaCollectionResponse() =>
         Json("{\"id\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\"name\":\"orkeon_memories\"}");
-
-    private sealed class CapturingLoggerFactory : ILoggerFactory
-    {
-        private readonly List<LogRecord> _entries = [];
-
-        public IReadOnlyList<LogRecord> Entries => _entries;
-
-        public void AddProvider(ILoggerProvider provider) { }
-
-        public ILogger CreateLogger(string categoryName) => new CapturingLogger(_entries);
-
-        public void Dispose() { }
-
-        private sealed class CapturingLogger(List<LogRecord> entries) : ILogger
-        {
-            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
-
-            public bool IsEnabled(LogLevel logLevel) => true;
-
-            public void Log<TState>(
-                LogLevel logLevel,
-                EventId eventId,
-                TState state,
-                Exception? exception,
-                Func<TState, Exception?, string> formatter)
-            {
-                entries.Add(new LogRecord(logLevel, formatter(state, exception)));
-            }
-        }
-
-        private sealed class NullScope : IDisposable
-        {
-            public static readonly NullScope Instance = new();
-            public void Dispose() { }
-        }
-    }
-
-    private sealed record LogRecord(LogLevel Level, string Message);
 }

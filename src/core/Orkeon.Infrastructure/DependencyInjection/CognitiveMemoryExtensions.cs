@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Infrastructure.Memory.Cognitive;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Infrastructure.DependencyInjection;
 
@@ -22,7 +23,8 @@ public static class CognitiveMemoryExtensions
     {
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddOptions<CognitiveMemoryOptions>()
-            .Bind(configuration.GetSection("Orkeon:CognitiveMemory"));
+            .Bind(configuration.GetSection("Orkeon:CognitiveMemory"))
+            .DeclareSettings("Orkeon:CognitiveMemory");
 
         services.TryAddSingleton<MemoryAnalyzer>();
         services.TryAddSingleton<ContradictionDetector>();

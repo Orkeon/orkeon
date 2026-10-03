@@ -146,8 +146,7 @@ public static class InfrastructureExtensions
     {
         // Add path security options (configurable via appsettings.json "PathSecurity" section)
         // Registered first because IPathValidator is needed by many downstream services.
-        services.AddOptions<PathSecurityOptions>()
-            .BindConfiguration("PathSecurity");
+        services.AddOrkeonSettings<PathSecurityOptions>("PathSecurity");
 
         // Add path validator — TryAdd so a host override registered before
         // AddOrkeonInfrastructure() is respected regardless of registration order.
@@ -188,34 +187,34 @@ public static class InfrastructureExtensions
         // of the application-wide provider (unset → in-memory), exactly like a crew's
         // memoryProvider: and Orkeon:Rag:Provider — and it is where the memory of a named crew
         // that declares no memoryProvider: lives (GAP-30).
+        // Each section is bound from the container's configuration, when there is one — without,
+        // the provider keeps its defaults, as the in-memory baseline always has —, and judged at
+        // the host's start (GAP-40): the SQLite table name is checked there, not at the first store.
         services.AddOrkeonMemoryProviderFactory();
-        services.BindMemorySection<Memory.RedisMemoryOptions>(Memory.RedisMemoryOptions.SectionName);
-        services.BindMemorySection<Memory.Sqlite.SqliteMemoryOptions>(Memory.Sqlite.SqliteMemoryOptions.SectionName);
-        services.BindMemorySection<Memory.ChromaDb.ChromaDbOptions>(Memory.ChromaDb.ChromaDbOptions.SectionName);
-        services.BindMemorySection<Memory.Pinecone.PineconeOptions>(Memory.Pinecone.PineconeOptions.SectionName);
-        services.BindMemorySection<Memory.LanceDb.LanceDbOptions>(Memory.LanceDb.LanceDbOptions.SectionName);
+        services.AddOrkeonSettings<Memory.RedisMemoryOptions>(Memory.RedisMemoryOptions.SectionName);
+        services.AddOrkeonSettings<Memory.Sqlite.SqliteMemoryOptions>(Memory.Sqlite.SqliteMemoryOptions.SectionName)
+            .ValidateSettings(options => Memory.Sqlite.SqliteMemoryOptions.TableNameProblem(options.TableName));
+        services.AddOrkeonSettings<Memory.ChromaDb.ChromaDbOptions>(Memory.ChromaDb.ChromaDbOptions.SectionName);
+        services.AddOrkeonSettings<Memory.Pinecone.PineconeOptions>(Memory.Pinecone.PineconeOptions.SectionName);
+        services.AddOrkeonSettings<Memory.LanceDb.LanceDbOptions>(Memory.LanceDb.LanceDbOptions.SectionName);
 
         // The bounds of what a crew with memory: true recalls before each task (GAP-30): bound here,
         // where every host composes its memory, from the container's configuration.
-        services.BindMemorySection<CrewMemoryOptions>(CrewMemoryOptions.SectionName);
+        services.AddOrkeonSettings<CrewMemoryOptions>(CrewMemoryOptions.SectionName);
+
+        // Memory:Provider names the TYPE of the application-wide provider, judged at start against the
+        // types the factory serves, with what the named provider needs from its own section (GAP-40):
+        // an unknown type, or LanceDB without its endpoint, used to run on the volatile provider.
+        services.AddOrkeonSettings<Memory.MemorySectionOptions>(Memory.MemorySectionOptions.SectionName)
+            .ValidateSettings((options, provider) =>
+                MemoryProviderTypes.Problem(VectorStoreExtensions.MemoryProviderKey, options.Provider, provider.Configuration())
+                    is { } problem ? [problem] : []);
 
         services.AddSingleton<Orkeon.Domain.Memory.IMemoryProvider>(sp =>
             sp.GetRequiredService<Application.Interfaces.Ports.IMemoryProviderFactory>()
-                .GetProvider(sp.GetService<IConfiguration>()?[VectorStoreExtensions.MemoryProviderKey] ?? string.Empty));
+                .GetProvider(sp.GetRequiredService<IOptions<Memory.MemorySectionOptions>>().Value.Provider ?? string.Empty));
 
         return services;
-    }
-
-    /// <summary>
-    /// Binds a memory provider's section from the container's <see cref="IConfiguration"/> when
-    /// one is registered; without configuration the provider keeps its defaults, as the in-memory
-    /// baseline always has.
-    /// </summary>
-    private static void BindMemorySection<TOptions>(this IServiceCollection services, string sectionName)
-        where TOptions : class
-    {
-        services.AddOptions<TOptions>().Configure<IServiceProvider>((options, sp) =>
-            sp.GetService<IConfiguration>()?.GetSection(sectionName).Bind(options));
     }
 
     private static IServiceCollection AddOrkeonSerializationAndEmbeddings(this IServiceCollection services)
@@ -303,6 +302,7 @@ public static class InfrastructureExtensions
         // anywhere — it is an explicit, opt-in test double only.
         services.TryAddSingleton<Application.Interfaces.Ports.IEmbeddingProvider>(
             DefaultEmbeddingProviderResolver.Resolve);
+        DefaultEmbeddingProviderResolver.AddEmbeddingSettings(services);
 
         // ILlmCache — no-op cache that always misses
         services.TryAddSingleton<Application.Interfaces.Infrastructure.Caching.ILlmCache, Stubs.NullLlmCache>();
@@ -393,17 +393,14 @@ public static class InfrastructureExtensions
         // === Phase 2: Security Core ===
 
         // Prompt injection defense (P0-5)
-        services.AddOptions<PromptSecurityOptions>()
-            .BindConfiguration("Security:Prompt");
-        services.AddOptions<ToolResultSecurityOptions>()
-            .BindConfiguration("Security:ToolResults");
+        services.AddOrkeonSettings<PromptSecurityOptions>("Security:Prompt");
+        services.AddOrkeonSettings<ToolResultSecurityOptions>("Security:ToolResults");
         services.AddSingleton<IPromptSanitizer, PromptSanitizer>();
         // Applied to every tool result by the tool-invocation pipeline (GAP-09).
         services.AddSingleton<IToolResultSanitizer, ToolResultSanitizer>();
 
         // SSRF protection (P0-7)
-        services.AddOptions<UrlSecurityOptions>()
-            .BindConfiguration("Security:Url");
+        services.AddOrkeonSettings<UrlSecurityOptions>("Security:Url");
         services.TryAddSingleton<IUrlValidator, UrlValidator>();
         services.AddSingleton<HttpHeaderSanitizer>();
 
@@ -411,24 +408,20 @@ public static class InfrastructureExtensions
         // Tool-level rate limiting and token budget tracking are dormant subsystems
         // (no production consumer) and are opt-in via AddOrkeonToolRateLimiting()
         // (R4.9 — see docs/reference/opt-in-subsystems.md).
-        // Every provider entrance resolves the limiter (GAP-38): the section is bound from the
-        // container's configuration when one is registered, and a container without one — a host
-        // composed by hand — keeps the defaults instead of failing to resolve its provider.
-        services.AddOptions<RateLimitingOptions>().Configure<IServiceProvider>((options, sp) =>
-            sp.GetService<IConfiguration>()?.GetSection("RateLimiting").Bind(options));
+        // Every provider entrance resolves the limiter (GAP-38); a container without a configuration
+        // — a host composed by hand — keeps the defaults instead of failing to resolve its provider.
+        services.AddOrkeonSettings<RateLimitingOptions>("RateLimiting");
         services.AddSingleton<ILlmRateLimiter, LlmRateLimiter>();
 
         // Audit trail (P1-2)
-        services.AddOptions<AuditOptions>()
-            .BindConfiguration("Security:Audit");
+        services.AddOrkeonSettings<AuditOptions>("Security:Audit");
         services.AddSingleton<IAuditSink, StructuredLogAuditSink>();
         services.AddSingleton<IAuditSink, InMemoryAuditSink>();
         services.AddSingleton<IAuditLogger, AuditLogger>();
 
         // Secure credentials (P1-8)
         // LogSanitizer is a static class - used directly, no DI needed
-        services.AddOptions<VaultOptions>()
-            .BindConfiguration("Security:Vault");
+        services.AddOrkeonSettings<VaultOptions>("Security:Vault");
         services.TryAddSingleton<ISecretProvider>(BuildChainedSecretProvider);
 
         return services;
@@ -625,10 +618,8 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonCostTracking(this IServiceCollection services)
     {
-        services.AddOptions<CostTrackingOptions>()
-            .BindConfiguration("Orkeon:CostTracking");
-        services.AddOptions<TokenCounterOptions>()
-            .BindConfiguration("Orkeon:TokenCounter");
+        services.AddOrkeonSettings<CostTrackingOptions>("Orkeon:CostTracking");
+        services.AddOrkeonSettings<TokenCounterOptions>("Orkeon:TokenCounter");
 
         services.TryAddSingleton<IModelPricingRegistry, ModelPricingRegistry>();
         services.TryAddSingleton<ICostBudgetManager, CostBudgetManager>();
@@ -645,8 +636,7 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonConsensus(this IServiceCollection services)
     {
-        services.AddOptions<ConsensualProcessOptions>()
-            .BindConfiguration("Orkeon:Consensus");
+        services.AddOrkeonSettings<ConsensualProcessOptions>("Orkeon:Consensus");
 
         // Voting mechanism selection (R3.3 — MORT-001): the configured ConsensusType picks
         // the dedicated strategy; the default (Majority) preserves the historical behavior.
@@ -675,10 +665,8 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonCodeSandbox(this IServiceCollection services)
     {
-        services.AddOptions<SandboxOptions>()
-            .BindConfiguration("Orkeon:CodeSandbox");
-        services.AddOptions<DockerSandboxOptions>()
-            .BindConfiguration("Orkeon:CodeSandbox:Docker");
+        services.AddOrkeonSettings<SandboxOptions>("Orkeon:CodeSandbox");
+        services.AddOrkeonSettings<DockerSandboxOptions>("Orkeon:CodeSandbox:Docker");
 
         services.TryAddSingleton<ICodeSecurityAnalyzer, RoslynCodeSecurityAnalyzer>();
 
@@ -726,8 +714,7 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonGuardian(this IServiceCollection services)
     {
-        services.AddOptions<GuardianOptions>()
-            .BindConfiguration("Orkeon:Guardian");
+        services.AddOrkeonSettings<GuardianOptions>("Orkeon:Guardian");
 
         // Policy engine (singleton) - uses the default policy from options
         services.TryAddSingleton<GuardianPolicyEngine>(sp =>

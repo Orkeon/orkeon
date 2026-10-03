@@ -10,6 +10,7 @@ using Orkeon.Infrastructure.Persistence;
 using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Security.Auth;
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
@@ -24,6 +25,12 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 [Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class A2AExtensions
 {
+    /// <summary>The section bound to <see cref="A2AOptions"/>.</summary>
+    private const string A2ASection = "A2A";
+
+    /// <summary>The section bound to <see cref="A2ASecurityOptions"/>.</summary>
+    private const string A2ASecuritySection = "A2A:Security";
+
     /// <summary>
     /// Adds A2A agent-to-agent protocol services to the DI container.
     /// Reads configuration from the "A2A" section.
@@ -33,11 +40,16 @@ public static class A2AExtensions
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        services.Configure<A2AOptions>(configuration.GetSection("A2A"));
+        // Bound, and judged when the host starts (GAP-40).
+        services.AddOptions<A2AOptions>()
+            .Bind(configuration.GetSection(A2ASection))
+            .DeclareSettings(A2ASection);
 
         // Security options bind unconditionally: the client honours mTLS / server-cert
         // validation, and the server enforces mTLS / auth schemes when the server is enabled.
-        services.Configure<A2ASecurityOptions>(configuration.GetSection("A2A:Security"));
+        services.AddOptions<A2ASecurityOptions>()
+            .Bind(configuration.GetSection(A2ASecuritySection))
+            .DeclareSettings(A2ASecuritySection);
 
         // Bearer-token validators for A2A:Security:AllowedAuthSchemes = ["Bearer"] (GAP-09):
         // registered only for the sections that are filled in. Without one, a server that
@@ -81,6 +93,11 @@ public static class A2AExtensions
     /// </summary>
     private static void AddBearerValidators(IServiceCollection services, IConfigurationSection security)
     {
+        // Read here, at registration; their keys are judged with the rest of A2A:Security at the
+        // host's start (GAP-40) — undeclared, a correct AzureAD or Oidc section was refused there.
+        services.DeclareSettingsShape($"{A2ASecuritySection}:AzureAD", typeof(AzureAdOptions));
+        services.DeclareSettingsShape($"{A2ASecuritySection}:Oidc", typeof(OidcOptions));
+
         var azureAd = security.GetSection("AzureAD").Get<AzureAdOptions>();
         if (azureAd is { TenantId.Length: > 0, ClientId.Length: > 0 })
             services.AddSingleton<IAuthenticationProvider>(new AzureAdAuthProvider(azureAd));

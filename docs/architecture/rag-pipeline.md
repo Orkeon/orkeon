@@ -307,8 +307,9 @@ configuration section.
 | Needs | nothing | `Orkeon.Rag.Onnx` | `Orkeon.Rag.Onnx` | classifier + chat client | chat client (grader/rewrite; heuristic fallbacks without one) |
 
 `fast` is the out-of-the-box default because `balanced` requires the opt-in ONNX
-package — defaulting to it would make every bare `AddOrkeonRag()` host fail
-loudly at first query. Opt into `balanced` with one configuration line.
+package — defaulting to it would make every bare `AddOrkeonRag()` host refuse to
+start, naming `onnx` (the effective options are judged at the host's start, GAP-40).
+Opt into `balanced` with one configuration line.
 
 `IRagProfileResolver` (`ProfileRagPipelineResolver`) memoizes **one pipeline per
 profile name**; the reserved name `default` resolves to the host's registered
@@ -472,10 +473,12 @@ agents:
 without `--events`), and `orkeon-host`; so does `orkeon-repl`, and the C# host
 of [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/README.md)
 calls `AddOrkeonRag` itself. `orkeon run --validate` loads the crew without
-ingesting anything. Nothing of the subsystem is resolved until a crew uses it:
-a crew without `rag:`/`knowledge:` neither loads an embedding model for it nor
-fails on an unusable `Orkeon:Rag` configuration (an unknown `Orkeon:Rag:Provider`
-fails the first ingestion or retrieval, with the list of aliases). Ingestion
+ingesting anything. Nothing of the subsystem is built until a crew uses it: a
+crew without `rag:`/`knowledge:` loads no embedding model for it. Its settings are
+judged at the host's start, though, whether a crew uses them or not (GAP-40): an
+unknown `Orkeon:Rag:Provider`, profile, reranker, query transformer, context
+ordering, classifier or chunking strategy refuses the start, with the list of known
+names ([when a setting is refused](../reference/configuration.md#when-a-setting-is-refused)). Ingestion
 needs an embedding provider: the default runner has the on-device one (unless
 `RaggableTree:Enabled` is `false` and nothing else is configured). The
 incremental manifests land under `/output/rag/manifests`; without a writable

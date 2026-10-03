@@ -71,6 +71,56 @@ a crew can name ([below](#studio-writes-this-section)), and every launch from St
 them all, keys included, as `ORKEON_Llm__Profiles__<id>__*`. No file is ever generated: the
 composition is in-memory.
 
+## When a setting is refused
+
+Every shipped host — `orkeon run` in every form (`--validate`, `--list-tools`, `mcp serve`, the
+forge, `rag`, `email`), `orkeon-host` and `orkeon-repl` — judges every setting it reads **at its
+start**, whether the run uses it or not (GAP-40): before the crew loads, before any model is called,
+before a warning is printed or the telemetry starts. A refusal is one line naming the key — exit code
+`1` for `orkeon` and `orkeon-repl`, `78` for `orkeon-host` — and `orkeon doctor` reports the same
+refusals on the same file, one `runner-settings` row each. What is refused:
+
+- **A value** the configuration binder cannot convert (`"Orkeon:Guardian:Enabled": "oui"`), or that
+  a rule of its section refuses (`Orkeon:Rag:Retrieval:TopK` at `0`, an `Orkeon:Sqlite:TableName`
+  SQLite cannot be given). The `Llm` section is read as strictly as its profiles: a
+  `TimeoutSeconds` of `"600s"` is refused, where it used to run on 30 s, `Thinking:Enabled` and
+  `Grammar` are `true` or `false`, and a `Temperature` is a finite number — `NaN`, `Infinity` or
+  `1e400` (which reads as infinity) parsed, then failed every request, since JSON writes no such
+  number. So is every number a section reads as a float or a double (`Orkeon:Rag:Generation:Temperature`,
+  `Orkeon:CrewMemory:MinScore`, …), which the binder takes as `NaN` or infinity without a word. A
+  `Logging` level is one of `Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None`,
+  any case.
+- **A key** no section carries, against the shape its readers declare — the readers of one section
+  together, a sub-section another reader declares included: `Orkeon:Guardian:Enabeld`,
+  `Llm:Provider` (nothing reads it: the provider follows from `BaseUrl` and the model). A key GAP-08
+  removed — `Memory:ConnectionString`, `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions`,
+  `Orkeon:Pinecone:Environment` — is refused with its migration. A section name under `Orkeon:` and
+  under the groups `Orkeon:Cli`, `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` and `Security`
+  must be one Orkeon reads (`SettingsSections`); the refusal proposes the closest
+  (`Orkeon:Guardain` → `Orkeon:Guardian`). Keys and section names are compared without case, as the
+  configuration reads them: `ORKEON_LLM__APIKEY` is `Llm:ApiKey`, and `"llm": { "apikey": … }` too.
+- **A name** a component is chosen by, against the names this host knows, listed in the refusal:
+  `Memory:Provider` and `Orkeon:Rag:Provider`, with what the named provider needs
+  (`Orkeon:LanceDb:Endpoint` for `lancedb`; `Orkeon:Pinecone:ApiKey` and `IndexName`, or `Host`, for
+  `pinecone`); `Orkeon:Rag:Profile`; the `Rerank:Kind`, `QueryTransform:Mode`, `Context:Ordering`
+  and `Ingestion:DefaultChunkingStrategy` of the effective RAG options — profile plus overrides, so
+  a host without the ONNX reranker refuses `balanced` and `quality`, naming `onnx`;
+  `Orkeon:Rag:QueryRouting:Classifier`; `Orkeon:Embeddings:Provider`;
+  `RaggableTree:Embedding:Provider`. A YAML crew's `memoryProvider:` is checked when the crew loads.
+
+**What stays open**: the configuration root — it also holds the environment variables without a
+prefix, and nothing tells a misspelt section there from a variable of the machine —, `Logging`
+beyond its levels, `Secrets`, the keys of a dictionary (`Llm:Profiles:<name>`, `MCP:Servers:<id>`,
+`…:Env:<VAR>`, `Orkeon:Consensus:RoleWeights:<role>`, `Orkeon:Tools:Email:Accounts:<name>`) and the
+indices of a list, and the keys of a section this host does not read — `orkeon run` leaves
+`Orkeon:Host` to the daemon, which judges it. **The e-mail accounts are the exception**: an account
+holding a value or a key that cannot be read is set aside and reported when a call or
+`orkeon email` names it, and the others keep working ([e-mail](../guides/email.md)).
+
+A C# host that starts (`StartAsync`, a .NET Aspire AppHost) refuses the values and the names its
+Orkeon registrations bind — each is registered with `ValidateOnStart` —; the keys of its sections
+stay its own. A container built by hand and never started judges nothing until an option is read.
+
 ## LLM provider (`Llm` section)
 
 The `Llm` section is read by `RunnerHost.RegisterLlmProvider` and turned into an
@@ -302,9 +352,9 @@ to, and a name that would take over an entry written by hand are refused.
 | `Llm` | Active LLM provider — the default profile (see above); `ApiKeyEnvVar` names the variable holding its key | `RunnerHost`, the REPL (`LlmSettings.ReadDefault`, the same reader) |
 | `Llm:Profiles:<name>` | Named LLM profiles a crew picks per agent or per task, same keys as `Llm` (see above); Orkeon Studio writes one per model setting, naming the variable holding its key, never the key | `RunnerHost`, the REPL (`AddOrkeonLlmProfiles(configuration)`) |
 | `Llm:AvailableModels` | The model list a scripted `/model` REPL command can offer (string array, or one comma-separated string) | `AddOrkeonSessionTools(configuration)` |
-| `Memory:Provider` | TYPE of the application-wide memory provider (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`; unset → in-memory). Its connection is that provider's own section (`Orkeon:Redis`, `Orkeon:Sqlite`, … below). It is also where the memory of a named crew with `memory: true` and no `memoryProvider:` lives — see [Memory system](../architecture/memory-system.md#selection-by-configuration) | `AddOrkeonInfrastructure()` |
+| `Memory:Provider` | TYPE of the application-wide memory provider (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`, or an alias: `in-memory`, `chroma`, `lance`; unset → in-memory). Its connection is that provider's own section (`Orkeon:Redis`, `Orkeon:Sqlite`, … below). It is also where the memory of a named crew with `memory: true` and no `memoryProvider:` lives — see [Memory system](../architecture/memory-system.md#selection-by-configuration). Another name, `lancedb` without `Orkeon:LanceDb:Endpoint` or `pinecone` without `Orkeon:Pinecone:ApiKey` (or `Host`) refuses the start: it no longer runs on the volatile provider ([when a setting is refused](#when-a-setting-is-refused)) | `AddOrkeonInfrastructure()` |
 | `RateLimiting` | The host's caps on model calls: every model call of the host counts once, at the entrance of its provider — agent turns, the manager, the planner, RAG, the judges, the cognitive memory, scripts' `ctx.llm` (embeddings do not) — against `GlobalRequestsPerMinute`, `ProviderRequestsPerMinute`, `MaxConcurrentRequests` and `QueueLimit`; `AgentRequestsPerMinute` caps each agent instance in its own window, with its `maxRpm`, the stricter winning, and a request over it waits its turn ([security](../architecture/security.md)) | `AddOrkeonInfrastructure()` (`ILlmRateLimiter`; `RateLimitingOptions` in `Orkeon.Application.Configuration`) |
-| `LlmLogging` | LLM exchange capture tuning: `FullEmbeddingLog` (default `true`), `LogStreamingExchanges` (`true`), `MaxBodyLengthChars` (`0` = no truncation) | `RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`, only when the run passes `--llm-log` |
+| `LlmLogging` | LLM exchange capture tuning: `FullEmbeddingLog` (default `true`), `LogStreamingExchanges` (`true`), `MaxBodyLengthChars` (`0` = no truncation). A switch that is not `true` or `false`, a length that is no whole number, or another key refuses the start of a run passing `--llm-log` | `RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`, only when the run passes `--llm-log` |
 | `PathSecurity` | Physical path validation: `DefaultWorkspaceRoot`, `AdditionalAllowedDirectories`, `AdditionalBlockedExtensions`, `ResolveSymlinks`, `MaxFileSizeBytes` | `AddOrkeonInfrastructure()` (`IPathValidator`) |
 | `Telemetry` | OpenTelemetry export: `Enabled`, `OtlpEndpoint` (an `http://` or `https://` address, refused by its key otherwise), `MaxMemoryMB` (the standard `OTEL_EXPORTER_OTLP_ENDPOINT` also works in the runners). `ExportToConsole` and `PrometheusEndpoint` are removed and refused, naming the OTLP collector that replaces them: the console exporter wrote on the stdout a program reads, and nothing served Prometheus (GAP-35) | `AddOrkeonTelemetry(configuration)` — called by `AddOrkeonInfrastructure(configuration)` and `RunnerHost` |
 | `A2A` | A2A server/client: `EnableServer`, `Port`, `Host`, `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl`, `TimeoutSeconds`; `EnableServer` also registers the hosted service that starts the server with the generic host | opt-in `AddOrkeonA2A(configuration)`. `orkeon-host` reads the card's identity and `A2A:Security` here, and refuses `EnableServer`, `Host` and `Port` at start — its listener is `Orkeon:Host:A2A`, below; see [A2A conformance](./a2a-conformance.md#activation) |
@@ -312,7 +362,7 @@ to, and a name that would take over an entry written by hand are refused.
 | `MCP` | MCP client connections (`MCP:Servers:<id>`), the switch `MCP:Enabled` (default `true`), and `MCP:Server` (`Name`, `Version`) — how the server of `orkeon mcp serve` introduces itself (it exposes tools only). `MCP:EnableServer` is removed: a section that still carries it is refused at startup, naming `orkeon mcp serve` (GAP-24) | `RunnerHost` (`orkeon run`, `orkeon-host`, `orkeon mcp serve`) when `MCP:Servers` declares at least one server and `MCP:Enabled` is not `false` — the servers are connected before the crew loads (STUDIO-21), by `orkeon-host` once at startup, before its first message (GAP-11), and by `orkeon mcp serve` before it serves; `MCP:Server` by `AddOrkeonMcpServer`, which `orkeon mcp serve` calls; library hosts call `AddOrkeonMcp(configuration)` or the `AddOrkeonInfrastructure(configuration)` overload — see [MCP integration](../architecture/mcp.md) |
 | `Secrets:<NAME>` | Second stop of the secret chain after `ORKEON_<NAME>` (`ConfigurationSecretProvider`), e.g. `Secrets:TAVILY_API_KEY` for `web_search` | `AddOrkeonInfrastructure()` |
 | `Evaluation` | `EnableLlmJudge` (default `false`): the default `IEvaluationSuite` also runs the coherence, fluency and groundedness LLM judges over the registered `IChatClient` | `AddOrkeonInfrastructure(configuration)`, or `AddOrkeonEvaluation(configuration)` (idempotent: a second call registers no evaluator twice) |
-| `RaggableTree` | Codebase indexing: `Enabled`, `Embedding` (`Provider`, `Model`, `ApiKey`, `BaseUrl`, `Dimensions`, `MaxTextChars`) — nothing else: any other key fails the host at startup; what an index covers is set per `index_codebase` call | **opt-out in runner hosts**: `RunnerHost` registers it by default, `RaggableTree:Enabled = false` disables; library consumers call `AddRaggableTree(options)` explicitly |
+| `RaggableTree` | Codebase indexing: `Enabled`, `Embedding` (`Provider` — `None`, `OpenAI`, `Ollama`, `Onnx` or `LocalSmartComponents`, any case, the last by default —, `Model`, `ApiKey`, `BaseUrl`, `Dimensions`, `MaxTextChars`, both whole numbers) — nothing else: any other key, another provider name or a number fails the host at startup; what an index covers is set per `index_codebase` call | **opt-out in runner hosts**: `RunnerHost` registers it by default, `RaggableTree:Enabled = false` disables; library consumers call `AddRaggableTree(options)` explicitly |
 | `ToolRateLimiting` | Per-tool rate limits: `GlobalToolRequestsPerMinute`, `DefaultToolRequestsPerMinute`, `ToolSpecificLimits` | opt-in `AddOrkeonToolRateLimiting()` (binds from the registered `IConfiguration`; see [opt-in subsystems](./opt-in-subsystems.md)) |
 | `TokenBudget` | Token budgets: `MaxTokensPerAgent`, `MaxTokensPerCrew`, `MaxCostPerCrew` | idem |
 | `Security:Audit` | Audit sinks: `Enabled`, `MinSeverity`, `EnabledCategories`, `AuditDirectory`, `RetentionDays` | `AddOrkeonInfrastructure()` |
@@ -341,7 +391,7 @@ to, and a name that would take over an entry written by hand are refused.
 
 | Section | Configures | Consumer | Opt-in |
 |---|---|---|---|
-| `Orkeon:Embeddings` | Embedding provider selection (`Provider`, `Model`, `Dimension`, `BatchSize`, `EnableCache`) | `DefaultEmbeddingProviderResolver` | bound by `AddOrkeonVectorSearch(configuration)` (called by `AddOrkeonInfrastructure(configuration)`) |
+| `Orkeon:Embeddings` | Embedding provider selection (`Provider` — `openai`, any M.E.AI embedding generator the host registers, or `ollama`; another name refuses the start —, `Model`, `Dimension`, `BatchSize`, `EnableCache`) | `DefaultEmbeddingProviderResolver`, when no local or code-analysis provider is registered | bound by `AddOrkeonInfrastructure()`, and by `AddOrkeonVectorSearch(configuration)` (called by `AddOrkeonInfrastructure(configuration)`) |
 | `Orkeon:EmbeddingCache` | Embedding cache (`SlidingExpirationMinutes`, `MaxCacheSizeBytes`) | idem | idem |
 | `Orkeon:VectorSearch` | Vector search options (`DefaultMetric`, `DefaultTopK`, `DefaultMinScore`, `PreferVectorSearch`) | idem | idem |
 | `Orkeon:Redis` | Redis memory provider: `ConnectionString` (default `localhost:6379`), `KeyPrefix` (default `orkeon:memory:`). The connection opens on first use | `MemoryProviderFactory` — every path selecting `redis`: `Memory:Provider`, a crew's `memoryProvider:`, `Orkeon:Rag:Provider`, `AddOrkeonRedisMemory` | bound by `AddOrkeonInfrastructure()` |

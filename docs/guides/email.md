@@ -269,13 +269,15 @@ the message itself is sent.
 ## Settings reference
 
 Everything lives under `Orkeon:Tools:Email`. Nothing is validated when a host starts — the
-runner only reads whether an OAuth account needs the token store. An account is validated the
+runner only reads whether an OAuth account needs the token store: the e-mail section is the one
+exception to [the rule](../reference/configuration.md#when-a-setting-is-refused) that a host
+refuses at its start every setting it cannot honour. An account is validated the
 first time a tool or a command uses it, and every problem of its declaration is reported at
 once, so a broken e-mail section never breaks a crew that sends no mail. A value that cannot
-even be read — a misspelt right, a port written in words — sets that one account aside the
-same way, and is reported first — except an unreadable `Screening:WithholdRejected`, which
-turns withholding on and sets every account aside until it is fixed. `orkeon email accounts`
-shows those problems without connecting.
+even be read — a misspelt right, a port written in words — or a key no account carries
+(`Incomming:Port`) sets that one account aside the same way, and is reported first — except an
+unreadable `Screening:WithholdRejected`, which turns withholding on and sets every account aside
+until it is fixed. `orkeon email accounts` shows those problems without connecting.
 
 | Key | Meaning | Default |
 |---|---|---|

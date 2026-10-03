@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Routing;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Rag.DependencyInjection;
 
@@ -45,11 +46,28 @@ public static partial class QueryRoutingExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddOptions();
-        services.Configure<QueryRoutingOptions>(configuration.GetSection(QueryRoutingSectionKey));
+        // Bound, and the classifier's name judged when the host starts (GAP-40), not at the first
+        // classification.
+        services.AddOptions<QueryRoutingOptions>()
+            .Bind(configuration.GetSection(QueryRoutingSectionKey))
+            .DeclareSettings(QueryRoutingSectionKey)
+            .ValidateSettings(ClassifierProblem);
 
         services.TryAddSingleton<IQueryComplexityClassifier>(CreateClassifier);
 
         return services;
+    }
+
+    /// <summary>What a host says of a classifier name it does not know, or null when it knows it.</summary>
+    private static string? ClassifierProblem(QueryRoutingOptions options)
+    {
+        var name = options.Classifier?.Trim();
+        return string.IsNullOrEmpty(name)
+               || string.Equals(name, QueryRoutingOptions.HeuristicClassifier, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(name, QueryRoutingOptions.LlmClassifier, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : $"{QueryRoutingSectionKey}:Classifier is '{options.Classifier}', which is not a query-complexity classifier: " +
+              $"write {QueryRoutingOptions.HeuristicClassifier} or {QueryRoutingOptions.LlmClassifier}.";
     }
 
     private static IQueryComplexityClassifier CreateClassifier(IServiceProvider serviceProvider)

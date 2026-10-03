@@ -49,24 +49,24 @@ public sealed class MemoryProviderCrewWiringTests : IDisposable
         return crewId;
     }
 
+    /// <summary>
+    /// GAP-40, decision 6 — a crew whose provider type no provider answers to (a C# crew's
+    /// <c>WithMemoryProvider</c>; a YAML crew's is refused at its load) is refused at the first use of
+    /// its memory, naming the type: it used to store and search the volatile in-memory provider, with
+    /// a warning, and forget at the end of the run.
+    /// </summary>
     [Fact]
-    public async Task UnknownProvider_ShouldFallBackToInMemory_WithWarning_NotThrow()
+    public async Task UnknownProvider_ShouldBeRefusedAtFirstUse_NotFallBackToInMemory()
     {
-        using var recorder = new CapturingLoggerFactory();
-        using var factory = new MemoryProviderFactory(new FakeFileSystemService(), _httpClientFactory, loggerFactory: recorder);
+        using var factory = new MemoryProviderFactory(new FakeFileSystemService(), _httpClientFactory);
         var (service, registry) = NewService(factory);
         using var _ = service;
         var crewId = CrewOf(registry, "cosmosdb");
 
-        await service.SaveMemoryAsync(crewId, Insight(), TestContext.Current.CancellationToken);
-        var results = await service.SearchMemoryAsync(crewId, "insight", 5, cancellationToken: TestContext.Current.CancellationToken);
+        var error = await Assert.ThrowsAnyAsync<InvalidOperationException>(() =>
+            service.SaveMemoryAsync(crewId, Insight(), TestContext.Current.CancellationToken));
 
-        Assert.Contains(
-            recorder.Entries,
-            e => e.Level == LogLevel.Warning
-                 && e.Message.Contains("not recognized", StringComparison.OrdinalIgnoreCase)
-                 && e.Message.Contains("cosmosdb", StringComparison.OrdinalIgnoreCase));
-        Assert.Single(results);
+        Assert.Contains("cosmosdb", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

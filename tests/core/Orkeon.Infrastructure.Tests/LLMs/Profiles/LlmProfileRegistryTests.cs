@@ -189,6 +189,76 @@ public sealed class LlmProfileRegistryTests
         Assert.Contains(expected, error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GAP-40, decision 4 — the default section is read as strictly as a profile, and a switch is a
+    /// boolean everywhere: a <c>TimeoutSeconds</c> of <c>"600s"</c> ran on 30 s, a temperature that
+    /// was none on the default, and <c>"yes"</c> read as « not set », in silence.
+    /// </summary>
+    [Theory]
+    [InlineData("Llm:TimeoutSeconds", "600s")]
+    [InlineData("Llm:Temperature", "warm")]
+    [InlineData("Llm:MaxRetries", "a few")]
+    [InlineData("Llm:Thinking:Enabled", "yes")]
+    [InlineData("Llm:Grammar", "yes")]
+    public void A_default_value_that_is_none_is_refused_by_its_key(string key, string value)
+    {
+        var configuration = Configuration(("Llm:BaseUrl", "http://localhost:11434"), (key, value));
+
+        var error = Assert.Throws<InvalidOperationException>(() => LlmSettings.ReadDefault(configuration));
+
+        Assert.Contains(key, error.Message, StringComparison.Ordinal);
+        Assert.Contains(value, error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Llm:Profiles:a:Grammar", "yes")]
+    [InlineData("Llm:Profiles:a:Thinking:Enabled", "on")]
+    public void A_profile_switch_that_is_no_boolean_fails_the_host_start_with_its_key(string key, string value)
+    {
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            new ServiceCollection().AddOrkeonLlmProfiles(Configuration(("Llm:Profiles:a:BaseUrl", "http://localhost:11434"), (key, value))));
+
+        Assert.Contains(key, error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GAP-40 — a number that parses but is not finite: <c>"NaN"</c>, <c>"Infinity"</c>, and
+    /// <c>1e400</c>, which the parser rounds to infinity. The strict read took it, and every request
+    /// then failed to serialise: JSON writes no such number. Refused at the start, by its key, in the
+    /// default section and in a profile alike.
+    /// </summary>
+    [Theory]
+    [InlineData("Llm:Temperature", "NaN")]
+    [InlineData("Llm:Temperature", "Infinity")]
+    [InlineData("Llm:Temperature", "-Infinity")]
+    [InlineData("Llm:Temperature", "1e400")]
+    [InlineData("Llm:Profiles:a:Temperature", "NaN")]
+    [InlineData("Llm:Profiles:a:Temperature", "1e400")]
+    public void A_temperature_that_is_no_finite_number_is_refused_by_its_key(string key, string value)
+    {
+        var configuration = Configuration(
+            ("Llm:BaseUrl", "http://localhost:11434"), ("Llm:Profiles:a:BaseUrl", "http://localhost:11434"), (key, value));
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+        {
+            _ = LlmSettings.ReadDefault(configuration);
+            new ServiceCollection().AddOrkeonLlmProfiles(configuration);
+        });
+
+        Assert.Contains(key, error.Message, StringComparison.Ordinal);
+        Assert.Contains(value, error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_switch_is_read_whatever_its_case()
+    {
+        var config = LlmSettings.ReadDefault(Configuration(
+            ("Llm:BaseUrl", "http://localhost:11434"), ("Llm:Grammar", "TRUE"), ("Llm:Thinking:Enabled", "False")));
+
+        Assert.True(config.GrammarEnabled);
+        Assert.False(config.Thinking!.Enabled);
+    }
+
     [Fact]
     public async Task A_configured_profile_is_built_by_the_provider_factory()
     {

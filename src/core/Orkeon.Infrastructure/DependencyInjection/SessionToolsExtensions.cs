@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.CostTracking;
@@ -58,6 +59,10 @@ public static class SessionToolsExtensions
                     && !string.IsNullOrWhiteSpace(model) ? model : null,
                 availableModels));
         services.TryAddSingleton<ICategoryMemoryStore, InMemoryCategoryMemoryStore>();
+
+        // The context window token_budget reports, bound and judged at the host's start (GAP-40).
+        services.AddOrkeonSettings<CliSessionOptions>(CliSessionOptions.SectionName)
+            .ValidateSettings(CliSessionOptions.ContextWindowProblem);
 
         // Cost-tracking substrate — not registered elsewhere. Both the
         // pricing registry and the manager resolve IOptions<CostTrackingOptions> + ILogger.

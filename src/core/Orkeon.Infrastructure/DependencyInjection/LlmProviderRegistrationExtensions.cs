@@ -2,6 +2,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
@@ -10,6 +11,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.LLMs.Profiles;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Infrastructure.DependencyInjection;
 
@@ -104,6 +106,10 @@ public static class LlmProviderRegistrationExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        // The keys of the whole Llm section, judged at the host's start with every declared
+        // section's (GAP-40): the default's, the profiles', AvailableModels.
+        services.DeclareSettingsShape(ConfigurationKeys.LlmSection, typeof(LlmSectionShape));
 
         foreach (var (name, config) in LlmSettings.ReadProfiles(configuration))
         {

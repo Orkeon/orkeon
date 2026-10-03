@@ -806,3 +806,20 @@ Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http
 *REMOVED*Orkeon.Infrastructure.Stubs.NullYamlDiffService.ApplyDiffAsync(string! baseContent, Orkeon.Domain.Configuration.ConfigurationDiff! diff, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 *REMOVED*Orkeon.Infrastructure.Stubs.NullYamlDiffService.CompareYamlAsync(string! yaml1, string! yaml2, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Configuration.ConfigurationDiff!>!
 *REMOVED*Orkeon.Infrastructure.Stubs.NullYamlDiffService.NullYamlDiffService(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Stubs.NullYamlDiffService!>! logger) -> void
+Orkeon.Infrastructure.DependencyInjection.SettingsServiceCollectionExtensions
+Orkeon.Infrastructure.Memory.MemorySectionOptions
+Orkeon.Infrastructure.Memory.MemorySectionOptions.MemorySectionOptions() -> void
+Orkeon.Infrastructure.Memory.MemorySectionOptions.Provider.get -> string?
+Orkeon.Infrastructure.Memory.MemorySectionOptions.Provider.set -> void
+Orkeon.Infrastructure.Session.CliSessionOptions
+Orkeon.Infrastructure.Session.CliSessionOptions.CliSessionOptions() -> void
+Orkeon.Infrastructure.Session.CliSessionOptions.ContextWindowTokens.get -> int?
+Orkeon.Infrastructure.Session.CliSessionOptions.ContextWindowTokens.set -> void
+Orkeon.Infrastructure.Tools.TokenBudgetTool.TokenBudgetTool(Orkeon.Application.Interfaces.Ports.ISessionBufferService! buffer, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Session.CliSessionOptions!>? session = null) -> void
+const Orkeon.Infrastructure.Memory.MemorySectionOptions.SectionName = "Memory" -> string!
+const Orkeon.Infrastructure.Session.CliSessionOptions.DefaultContextWindowTokens = 200000 -> int
+const Orkeon.Infrastructure.Session.CliSessionOptions.SectionName = "Orkeon:Cli:Session" -> string!
+static Orkeon.Infrastructure.DependencyInjection.SettingsServiceCollectionExtensions.AddOrkeonSettings<TOptions>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! sectionPath) -> Microsoft.Extensions.Options.OptionsBuilder<TOptions!>!
+static Orkeon.Infrastructure.Memory.Sqlite.SqliteMemoryOptions.TableNameProblem(string? tableName) -> string?
+static Orkeon.Infrastructure.Session.CliSessionOptions.ContextWindowProblem(Orkeon.Infrastructure.Session.CliSessionOptions! options) -> string?
+*REMOVED*Orkeon.Infrastructure.Tools.TokenBudgetTool.TokenBudgetTool(Orkeon.Application.Interfaces.Ports.ISessionBufferService! buffer, Microsoft.Extensions.Configuration.IConfiguration? configuration = null) -> void

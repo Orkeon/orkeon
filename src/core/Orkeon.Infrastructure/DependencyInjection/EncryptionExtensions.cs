@@ -21,8 +21,7 @@ public static class EncryptionExtensions
     /// </remarks>
     public static IServiceCollection AddOrkeonEncryption(this IServiceCollection services)
     {
-        services.AddOptions<AesEncryptionOptions>()
-            .BindConfiguration("Orkeon:Encryption");
+        services.AddOrkeonSettings<AesEncryptionOptions>("Orkeon:Encryption");
 
         services.TryAddSingleton<IEncryptionProvider, AesEncryptionProvider>();
 

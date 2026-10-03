@@ -137,16 +137,23 @@ public sealed class RunnerHostRagTests : IDisposable
         Assert.Contains("[1] (collection: product-kb, source: /kb/", prompt, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GAP-40, decision 1 — an unknown RAG store alias refuses the start, whether the crew uses the RAG
+    /// or not: the settings file belongs to the machine, and a mistake in it is fixed once, before any
+    /// model is called. It used to wait for the first crew that queried the RAG — after the crews that
+    /// did not had run.
+    /// </summary>
     [Fact]
-    public async Task A_crew_without_knowledge_runs_even_with_an_unknown_rag_store_alias()
+    public async Task An_unknown_rag_store_alias_refuses_the_start_even_for_a_crew_without_knowledge()
     {
         WriteSettings("{ \"RaggableTree\": { \"Enabled\": false }, \"Orkeon\": { \"Rag\": { \"Provider\": \"mongodb\" } } }");
         using var chat = new CapturingChatClient();
 
         var (exit, stderr) = await RunAsync("plain.yaml", chat);
 
-        Assert.True(exit == 0, stderr);
-        Assert.NotEmpty(chat.Prompts);
+        Assert.True(exit == 1, stderr);
+        Assert.Contains("Orkeon:Rag:Provider", stderr, StringComparison.Ordinal);
+        Assert.Empty(chat.Prompts);
     }
 
     [Fact]

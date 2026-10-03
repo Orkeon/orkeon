@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Orkeon.Domain.Memory;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Retrieval;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Rag.DependencyInjection;
 
@@ -54,10 +55,13 @@ public static class HybridRetrievalExtensions
         var section = configuration.GetSection(HybridSectionKey);
 
         services.AddOptions();
-        services.Configure<HybridRetrievalOptions>(section);
-
-        // Flat shorthand: `Orkeon:Rag:Retrieval:Hybrid = true` (the section itself
-        // carries a scalar value instead of children).
+        // Flat shorthand: `Orkeon:Rag:Retrieval:Hybrid = true` (the section itself carries a scalar
+        // value instead of children). A scalar that is no boolean refuses the host's start (GAP-40):
+        // it used to leave the default mode on in silence.
+        services.AddOptions<HybridRetrievalOptions>()
+            .Bind(section)
+            .DeclareSettings(HybridSectionKey)
+            .ValidateSettings(_ => FlatValueProblem(section));
         if (bool.TryParse(section.Value, out var flat))
             services.Configure<HybridRetrievalOptions>(options => options.Enabled = flat);
 
@@ -82,6 +86,13 @@ public static class HybridRetrievalExtensions
 
         return services;
     }
+
+    /// <summary>What a host says of a flat value of the section that is no boolean, or null.</summary>
+    private static string? FlatValueProblem(IConfigurationSection section) =>
+        section.Value is not { } value || string.IsNullOrWhiteSpace(value) || bool.TryParse(value, out _)
+            ? null
+            : $"{HybridSectionKey} is '{value}', which is not true or false: write true or false, or the section " +
+              $"form {HybridSectionKey}:Enabled.";
 
     private static int? LastDocumentStoreIndex(IServiceCollection services)
     {

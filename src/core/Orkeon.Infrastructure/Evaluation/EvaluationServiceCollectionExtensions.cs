@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Orkeon.Application.Evaluation;
 using Orkeon.Infrastructure.Evaluation.Evaluators;
 using Orkeon.Infrastructure.Evaluation.LlmJudge;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Infrastructure.Evaluation;
 
@@ -33,7 +34,7 @@ public static class EvaluationServiceCollectionExtensions
     {
         var options = services.AddOptions<EvaluationOptions>();
         if (configuration != null)
-            options.Bind(configuration.GetSection(SectionName));
+            options.Bind(configuration.GetSection(SectionName)).DeclareSettings(SectionName);
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IEvaluator, FormatComplianceEvaluator>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IEvaluator, SchemaComplianceEvaluator>());

@@ -288,4 +288,21 @@ public sealed class SessionBufferAndToolsTests
         Assert.True(used >= 1000);
         Assert.Equal(window - used, available);
     }
+
+    /// <summary>
+    /// GAP-40 — the window comes from the session settings the host bound and judged at its start;
+    /// it was read at each call, and a value that was none became the default in silence.
+    /// </summary>
+    [Fact]
+    public async Task TokenBudget_reports_the_window_of_the_session_settings()
+    {
+        var buffer = new InMemorySessionBufferService();
+        var session = Microsoft.Extensions.Options.Options.Create(
+            new Orkeon.Infrastructure.Session.CliSessionOptions { ContextWindowTokens = 32_000 });
+        using var tool = new TokenBudgetTool(buffer, configuration: null, session);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("token_budget", new Dictionary<string, object?>()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(32_000, Convert.ToInt32(ResultDict(resp)["context_window_tokens"]));
+    }
 }

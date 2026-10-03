@@ -158,7 +158,9 @@ public static class ServiceCollectionExtensions
             // subsystem get null here and prompt composition stays unchanged. With it,
             // the augmenter is resolved at the first agent that carries a knowledge
             // attachment (GAP-02): every runner registers the subsystem, and a crew
-            // without knowledge: must neither pay for it nor fail on its configuration.
+            // without knowledge: must not pay for it. Its configuration is judged at the
+            // host's start (GAP-40): a value it cannot read is refused there, and nothing
+            // is built before the first use.
             orchestrator.KnowledgeAugmenter = DeferredKnowledgeContextAugmenter.For(sp);
 
             // GAP-09 — the input phase and the single tool-invocation point. Both are on by

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Orkeon.Constants.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -246,6 +247,45 @@ public static partial class RunnerExecution
             host.Dispose();
             throw;
         }
+    }
+
+    /// <summary>
+    /// The guards <see cref="TryBuildHost"/> applies to the settings file itself, before any host
+    /// (GAP-40) — the mounts it declares claim no root <c>orkeon run</c> keeps for itself, appear once
+    /// per root or are told apart by their ids, and exist on the disk —, run with no crew and no
+    /// <c>--mount</c>, as <c>orkeon doctor</c> asks. They write their refusal on stderr, which is
+    /// captured here: the refusal comes back as one line, null when the file passes.
+    /// </summary>
+    /// <param name="settingsPath">The settings file a run would read, or null.</param>
+    internal static string? CheckSettingsMounts(string? settingsPath)
+    {
+        var realError = Console.Error;
+        using var capture = new StringWriter(CultureInfo.InvariantCulture);
+        bool passed;
+        Console.SetError(capture);
+        try
+        {
+            string[] none = [];
+            passed = EnsureVirtualRootsAreUnique(none, settingsPath)
+                && EnsureReservedRootsAreFree(
+                    none, settingsPath, RunnerVirtualRoots.Crew, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
+                && EnsureMountSelectionIsResolvable(none, [], CrewMountDeclarations.None, settingsPath, out var selection)
+                && EnsureMountSourcesExist(none, settingsPath, selection);
+        }
+        finally
+        {
+            Console.SetError(realError);
+        }
+
+        if (passed)
+            return null;
+
+        // "ERROR: …" and the indented detail lines below it, as one sentence.
+        var lines = capture.ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line => line.StartsWith("ERROR: ", StringComparison.Ordinal) ? line["ERROR: ".Length..] : line);
+        var refusal = string.Join(' ', string.Join(' ', lines).Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return refusal.Length > 0 ? refusal : "the mounts the settings declare cannot be honoured.";
     }
 
     /// <summary>

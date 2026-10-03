@@ -4,3 +4,6 @@ const Orkeon.Constants.Configuration.ConfigurationKeys.LlmGrammar = "Grammar" ->
 const Orkeon.Constants.Configuration.ConfigurationKeys.LlmProfiles = "Profiles" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.LlmApiKeyEnvVar = "ApiKeyEnvVar" -> string!
 const Orkeon.Constants.Configuration.OperatorMessages.LlmApiKeyReferenceUnresolved = "{0} names an environment variable that is not set: calls on that LLM profile answer that an API key is required. Set the variable — in Orkeon Studio, remember the setting's key again — or remove the reference." -> string!
+Orkeon.Constants.Configuration.SettingsSections
+static Orkeon.Constants.Configuration.SettingsSections.Containers.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.Configuration.SettingsSections.Known.get -> System.Collections.Generic.IReadOnlyList<string!>!

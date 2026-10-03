@@ -104,8 +104,9 @@ Other keys: `DefaultTopK` (10), `MinSimilarityScore` (0), `VectorWeight` / `Full
 Every path that selects `lancedb` reads this section (see [Selection by configuration](#selection-by-configuration)).
 `services.AddOrkeonLanceDb(configuration)` also exposes the shared `LanceDbMemoryProvider` by its
 class, with `LanceDbMigrationService`; it does not rebind `IMemoryProvider`. Without `Endpoint`,
-resolving that class throws `InvalidOperationException`; selecting `lancedb` by type logs a warning
-and falls back to In-Memory (see below).
+resolving that class throws `InvalidOperationException`, and so does selecting `lancedb` by type —
+`Memory:Provider` and `Orkeon:Rag:Provider` refuse the host's start, naming the key (GAP-40); it used
+to fall back to In-Memory with a warning (see below).
 
 ### Known limitations
 
@@ -177,7 +178,7 @@ The host configures each provider once, in its own section; everything else name
 | `sqlite` | | `Orkeon:Sqlite` | `ConnectionString` (default `Data Source=:memory:`, a file `Data Source` is a virtual path on a writable mount, e.g. `Data Source=/output/orkeon-memory.db`), `TableName` (identifier validated against SQL injection), `DefaultTopK`, `MinSimilarityScore` |
 | `chromadb` | `chroma` | `Orkeon:ChromaDb` | `BaseUrl` (default `http://localhost:8000`), `Tenant`, `Database`, `CollectionName`, `DefaultTopK` |
 | `pinecone` | | `Orkeon:Pinecone` | `ApiKey`, `IndexName` (default `orkeon-memories`), `Host` (optional, see the table above), `Namespace` (default `default`) |
-| `lancedb` | `lance` | `Orkeon:LanceDb` | `Endpoint` (**required**: without it, explicit warning and In-Memory fallback), `ApiKey`, `TableName`, `Database`, … ([above](#configuration)) |
+| `lancedb` | `lance` | `Orkeon:LanceDb` | `Endpoint` (**required**: without it, the type is refused — at the host's start for `Memory:Provider` and `Orkeon:Rag:Provider`), `ApiKey`, `TableName`, `Database`, … ([above](#configuration)) |
 
 ```json
 {
@@ -195,8 +196,12 @@ Secrets stay on the host: a crew file never carries a connection string or an AP
 hands out **one instance per type**: the application-wide provider, every crew naming that type
 and the RAG store of that type share it — one Redis connection, one HTTP client, one SQLite
 connection. The factory owns these instances and disposes them with the container. Creating a
-provider never connects; the connection opens on its first call. An unknown type falls back to
-In-Memory with an explicit warning; `SupportedTypes` lists the aliases.
+provider never connects; the connection opens on its first call. A type it does not serve is refused
+where it is reached, naming the known ones (GAP-40) — it used to fall back to In-Memory with a
+warning, and a crew meant to remember forgot at the end of the run; `SupportedTypes` lists the
+aliases. `Memory:Provider` and `Orkeon:Rag:Provider` are judged at the host's start, with what the
+named provider needs from its section (`Orkeon:LanceDb:Endpoint`; `Orkeon:Pinecone:ApiKey` and
+`IndexName`, or `Host`), and a YAML crew's `memoryProvider:` when the crew loads.
 
 ### The application-wide provider
 
@@ -243,7 +248,8 @@ crew without memory is refused — at load (`memoryProvider: 'sqlite' needs memo
 3. When `MemoryService` materializes that crew's memory system, it backs the crew's **long-term** memory
    (short-term memory stays an in-process sliding window) with:
    - the shared provider of the type the crew declared, from `MemoryProviderFactory` — connected from the
-     host's section; unknown types keep the factory's In-Memory-with-warning fallback;
+     host's section; a type no provider answers to is refused — a YAML crew's at its load, a C# crew's
+     (`WithMemoryProvider`) at the first use of its memory (GAP-40);
    - else, for a **named** crew, the host's default provider — the application-wide `IMemoryProvider`,
      whose type is `Memory:Provider` (In-Memory when unset);
    - else — a crew built in C# without a name — an in-process store of its own, which ends with the run:

@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Memory;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
 using Orkeon.Infrastructure.Memory.ChromaDb;
@@ -25,22 +26,14 @@ namespace Orkeon.Infrastructure.Memory;
 /// <para>
 /// HTTP-backed providers (ChromaDB, Pinecone, LanceDB) get a named client from
 /// <see cref="IHttpClientFactory"/>, whose handler rotation re-observes DNS changes on their
-/// endpoints. An unrecognized type, and LanceDB without an endpoint, resolve to the shared
-/// in-memory provider with an explicit warning — never a silent fallback.
+/// endpoints. A type it does not serve, and LanceDB without an endpoint, are refused where they are
+/// reached (GAP-40): they used to run on the volatile in-memory provider, with a warning, and a crew
+/// that was meant to remember forgot at the end of the run. A host's start refuses them before, for
+/// <c>Memory:Provider</c> and <c>Orkeon:Rag:Provider</c>.
 /// </para>
 /// </remarks>
-public sealed partial class MemoryProviderFactory : IMemoryProviderFactory, IDisposable
+public sealed class MemoryProviderFactory : IMemoryProviderFactory, IDisposable
 {
-    private const string InMemoryType = "inmemory";
-    private const string RedisType = "redis";
-    private const string SqliteType = "sqlite";
-    private const string ChromaDbType = "chromadb";
-    private const string PineconeType = "pinecone";
-    private const string LanceDbType = "lancedb";
-
-    private static readonly string[] s_supportedTypes =
-        [InMemoryType, "in-memory", RedisType, SqliteType, ChromaDbType, "chroma", PineconeType, LanceDbType, "lance"];
-
     private readonly IFileSystemService _fileSystem;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly MemoryProviderSettings _settings;
@@ -55,7 +48,7 @@ public sealed partial class MemoryProviderFactory : IMemoryProviderFactory, IDis
     /// <param name="fileSystem">Virtual file system governing the SQLite database file path (VFS-70 / 2F-A). Required.</param>
     /// <param name="httpClientFactory">Source of the HTTP clients of the ChromaDB, Pinecone and LanceDB providers.</param>
     /// <param name="settings">The host's per-provider sections; <see langword="null"/> runs every provider on its defaults.</param>
-    /// <param name="loggerFactory">Optional logger factory, for the providers and the fallback warnings.</param>
+    /// <param name="loggerFactory">Optional logger factory, for the providers.</param>
     public MemoryProviderFactory(
         IFileSystemService fileSystem,
         IHttpClientFactory httpClientFactory,
@@ -71,65 +64,45 @@ public sealed partial class MemoryProviderFactory : IMemoryProviderFactory, IDis
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<string> SupportedTypes => s_supportedTypes;
+    public IReadOnlyList<string> SupportedTypes => MemoryProviderTypes.Supported;
 
     /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="providerType"/> names no type the factory serves, or <c>lancedb</c> without
+    /// <c>Orkeon:LanceDb:Endpoint</c> — the message names the type and the known ones.
+    /// </exception>
     public IMemoryProvider GetProvider(string providerType)
     {
-#pragma warning disable CA1308 // lowercase is the required switch-key form, not a comparison normalization
-        var requested = (providerType ?? string.Empty).Trim().ToLowerInvariant();
-#pragma warning restore CA1308
-        var canonical = Canonicalize(requested);
+        var canonical = MemoryProviderTypes.Canonical(providerType)
+            ?? throw new InvalidOperationException(MemoryProviderTypes.UnknownMessage("The memory provider type", (providerType ?? string.Empty).Trim()));
 
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-
-            if (canonical is null)
-            {
-                LogUnknownProviderType(Logger, string.IsNullOrEmpty(providerType) ? requested : providerType);
-                return GetOrCreateLocked(InMemoryType);
-            }
-
             return GetOrCreateLocked(canonical);
         }
     }
-
-    private static string? Canonicalize(string type) => type switch
-    {
-        InMemoryType or "in-memory" or "" => InMemoryType,
-        RedisType => RedisType,
-        SqliteType => SqliteType,
-        ChromaDbType or "chroma" => ChromaDbType,
-        PineconeType => PineconeType,
-        LanceDbType or "lance" => LanceDbType,
-        _ => null,
-    };
-
-    private ILogger Logger =>
-        (ILogger?)_loggerFactory?.CreateLogger<MemoryProviderFactory>()
-        ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
     private IMemoryProvider GetOrCreateLocked(string canonicalType)
     {
         if (_providers.TryGetValue(canonicalType, out var existing))
             return existing;
 
-        var created = canonicalType switch
+        IMemoryProvider created = canonicalType switch
         {
-            RedisType => new RedisMemoryProvider(
+            MemoryProviderTypes.Redis => new RedisMemoryProvider(
                 Options.Create(_settings.Redis), _loggerFactory?.CreateLogger<RedisMemoryProvider>()),
-            SqliteType => new SqliteMemoryProvider(
+            MemoryProviderTypes.Sqlite => new SqliteMemoryProvider(
                 Options.Create(_settings.Sqlite), _fileSystem, _loggerFactory?.CreateLogger<SqliteMemoryProvider>()),
-            ChromaDbType => new ChromaDbMemoryProvider(
+            MemoryProviderTypes.ChromaDb => new ChromaDbMemoryProvider(
                 _httpClientFactory.CreateClient(nameof(ChromaDbMemoryProvider)),
                 Options.Create(_settings.ChromaDb),
                 _loggerFactory?.CreateLogger<ChromaDbMemoryProvider>()),
-            PineconeType => new PineconeMemoryProvider(
+            MemoryProviderTypes.Pinecone => new PineconeMemoryProvider(
                 _httpClientFactory.CreateClient(nameof(PineconeMemoryProvider)),
                 Options.Create(_settings.Pinecone),
                 _loggerFactory?.CreateLogger<PineconeMemoryProvider>()),
-            LanceDbType => CreateLanceDbLocked(),
+            MemoryProviderTypes.LanceDb => CreateLanceDb(),
             _ => new InMemoryProvider(_loggerFactory?.CreateLogger<InMemoryProvider>()),
         };
 
@@ -137,12 +110,13 @@ public sealed partial class MemoryProviderFactory : IMemoryProviderFactory, IDis
         return created;
     }
 
-    private IMemoryProvider CreateLanceDbLocked()
+    private LanceDbMemoryProvider CreateLanceDb()
     {
         if (string.IsNullOrWhiteSpace(_settings.LanceDb.Endpoint))
         {
-            LogLanceDbMissingEndpoint(Logger);
-            return GetOrCreateLocked(InMemoryType);
+            throw new InvalidOperationException(
+                $"The memory provider type 'lancedb' needs {LanceDbOptions.SectionName}:Endpoint, the LanceDB " +
+                "Cloud/Enterprise REST endpoint (with its ApiKey): set it, or name another provider.");
         }
 
         return new LanceDbMemoryProvider(
@@ -167,16 +141,4 @@ public sealed partial class MemoryProviderFactory : IMemoryProviderFactory, IDis
         foreach (var provider in owned)
             (provider as IDisposable)?.Dispose();
     }
-
-    // --- source-generated logging ---
-
-    [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
-        Message = "Memory provider type 'lancedb' needs the LanceDB Cloud/Enterprise REST endpoint in '" +
-            LanceDbOptions.SectionName + ":Endpoint' (plus an ApiKey). Falling back to the in-memory provider (volatile).")]
-    static partial void LogLanceDbMissingEndpoint(ILogger logger);
-
-    [LoggerMessage(EventId = 2, Level = LogLevel.Warning,
-        Message = "Memory provider type '{ProviderType}' is not recognized; falling back to the in-memory provider (volatile). " +
-            "Supported types: inmemory, redis, sqlite, chromadb, pinecone, lancedb.")]
-    static partial void LogUnknownProviderType(ILogger logger, string providerType);
 }

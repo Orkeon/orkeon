@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Rag.Onnx.DependencyInjection;
@@ -37,6 +38,12 @@ internal static class HostServiceRegistration
         // read now, it refuses the start, naming its key (exit 78).
         var hostSection = HostStartup.ReadSection<OrkeonHostOptions>(configuration, OrkeonHostOptions.SectionName);
         services.AddSingleton(Options.Create(hostSection));
+
+        // Their keys are judged with every section the runner host reads (GAP-40): a key the daemon
+        // does not know — Orkeon:Host:RunTimeoutt — refuses the start (exit 78), where it used to be
+        // read as absent. orkeon run leaves them to the daemon.
+        services.DeclareSettingsShape(OrkeonHostOptions.SectionName, typeof(OrkeonHostOptions));
+        services.DeclareSettingsShape(Gateway.DiscordChannelOptions.SectionName, typeof(Gateway.DiscordChannelOptions));
 
         // The crew→virtual-path map travels with the mounts that made it true: CrewRunner
         // loads a hosted crew by its virtual spelling, never by the operator's disk path.

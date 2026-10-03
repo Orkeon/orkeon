@@ -27,7 +27,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
     {
         Directory.CreateDirectory(_workspace);
         var path = Path.Combine(_workspace, "settings.json");
-        File.WriteAllText(path, """{ "Llm": { "Provider": "ollama", "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" } }""");
+        File.WriteAllText(path, """{ "Llm": { "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" } }""");
         return path;
     }
 

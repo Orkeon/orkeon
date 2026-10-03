@@ -20,6 +20,8 @@ using Orkeon.Rag.Pipeline;
 using Orkeon.Rag.Stores;
 using Orkeon.Rag.Validation;
 using Orkeon.Rag.WebFallback;
+using Orkeon.Application.Configuration;
+using Orkeon.Application.Memory;
 
 namespace Orkeon.Rag.DependencyInjection;
 
@@ -64,12 +66,24 @@ public static class RagServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddOptions();
-        services.Configure<RagStoreOptions>(configuration.GetSection(RagSectionKey));
-        services.Configure<RagIngestionOptions>(configuration.GetSection(IngestionSectionKey));
+
+        // Every section the subsystem reads is bound here and judged when the host starts (GAP-40),
+        // whether a run queries the RAG or not: the store's provider against the memory types and
+        // what the named one needs, the default chunking strategy against the factory below. They
+        // used to be judged at the first ingestion or query.
+        services.AddOptions<RagStoreOptions>()
+            .Bind(configuration.GetSection(RagSectionKey))
+            .DeclareSettings(RagSectionKey)
+            .ValidateSettings(options =>
+                MemoryProviderTypes.Problem($"{RagSectionKey}:Provider", options.Provider, configuration));
+        services.AddOptions<RagIngestionOptions>()
+            .Bind(configuration.GetSection(IngestionSectionKey))
+            .DeclareSettings(IngestionSectionKey)
+            .ValidateSettings((options, provider) => ChunkingStrategyProblem(options, provider));
 
         // Effective query-pipeline options (RagOptions v2, plan §8.1): the
         // Orkeon:Rag:Profile preset overridden key by key from Orkeon:Rag.
-        services.TryAddSingleton(_ => RagOptionsFactory.Build(configuration));
+        services.AddRagOptions(configuration);
 
         // Named-component factories (chunkers/transformers/rerankers register by name).
         // The chunking factory ships pre-populated with the four canonical strategies
@@ -212,6 +226,23 @@ public static class RagServiceCollectionExtensions
             sp.GetService<ILogger<RagCollectionsBootstrapper>>()));
 
         return services;
+    }
+
+    /// <summary>
+    /// What a host says of a default chunking strategy its factory does not offer (GAP-40), against the
+    /// factory it registered — none when it registered none.
+    /// </summary>
+    private static IEnumerable<string> ChunkingStrategyProblem(RagIngestionOptions options, IServiceProvider provider)
+    {
+        var factory = provider.GetService<ChunkingStrategyFactory>();
+        if (factory is null || factory.IsKnown(options.DefaultChunkingStrategy ?? string.Empty))
+            return [];
+
+        return
+        [
+            $"{IngestionSectionKey}:DefaultChunkingStrategy is '{options.DefaultChunkingStrategy}', which is not a chunking " +
+            $"strategy this host offers: write one of {string.Join(", ", factory.KnownNames)}.",
+        ];
     }
 
     /// <summary>

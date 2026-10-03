@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Rag.Corrective;
 using Orkeon.Rag.Validation;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Rag.WebFallback;
 
@@ -32,7 +33,9 @@ public static class WebFallbackExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.Configure<WebSearchRetrieverOptions>(configuration.GetSection(WebSearchRetrieverOptions.SectionKey));
+        services.AddOptions<WebSearchRetrieverOptions>()
+            .Bind(configuration.GetSection(WebSearchRetrieverOptions.SectionKey))
+            .DeclareSettings(WebSearchRetrieverOptions.SectionKey);
 
         services.AddHttpClient(WebSearchDocumentRetriever.SearchClientName);
 

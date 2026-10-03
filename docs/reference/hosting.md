@@ -94,7 +94,15 @@ It composes `Host.CreateDefaultBuilder()` with:
 - **Services** — `ConfigureRunnerServices` (below).
 - **`configureBuilder`** — invoked last, on the `IHostBuilder` itself.
 
-Once built, the host logs the mount decisions it took, warns (on the log and on stderr) when
+Once built, the host first judges its settings (GAP-40), whether the run uses them or not: every
+section a registration declared — its options created, so the binder converts them and their rules
+run, the names they hold among them —, the section names under `Orkeon:` and its groups, the keys of
+every declared section, and `Orkeon:Rag:LlmProfile` against the profiles it offers
+([when a setting is refused](./configuration.md#when-a-setting-is-refused)). Only options and the
+named factories are created: no store, provider, model or connection. The first refusal is a
+`RunnerSettingsException` naming its key, the host disposed: nothing is logged, warned or started.
+
+Then the host logs the mount decisions it took, warns (on the log and on stderr) when
 an OAuth e-mail account has no token store or when there is no `Llm` section — the runtime
 then falls back to the echo provider —, says where the key of the default and of each profile
 offered to crews comes from — the profiles its allow-list hides (`LlmProfileAccessOptions`, which

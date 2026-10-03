@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Infrastructure.DependencyInjection;
 
 namespace Orkeon.Infrastructure.LLMs.Embeddings;
 
@@ -12,6 +13,9 @@ namespace Orkeon.Infrastructure.LLMs.Embeddings;
 /// </summary>
 public static class VectorSearchServiceExtensions
 {
+    /// <summary>The section bound to <see cref="VectorSearchOptions"/>.</summary>
+    private const string VectorSearchSectionKey = "Orkeon:VectorSearch";
+
     /// <summary>
     /// Adds Orkeon vector search services including embedding providers and configuration.
     /// </summary>
@@ -20,9 +24,18 @@ public static class VectorSearchServiceExtensions
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        services.Configure<EmbeddingOptions>(configuration.GetSection("Orkeon:Embeddings"));
-        services.Configure<VectorSearchOptions>(configuration.GetSection("Orkeon:VectorSearch"));
-        services.Configure<EmbeddingCacheOptions>(configuration.GetSection("Orkeon:EmbeddingCache"));
+        // Bound from the configuration handed in, and judged when the host starts (GAP-40): a
+        // provider other than openai or ollama took the OpenAI branch below without a word.
+        services.AddOptions<EmbeddingOptions>()
+            .Bind(configuration.GetSection(DefaultEmbeddingProviderResolver.EmbeddingsSectionKey))
+            .DeclareSettings(DefaultEmbeddingProviderResolver.EmbeddingsSectionKey)
+            .ValidateSettings(DefaultEmbeddingProviderResolver.ProviderProblem);
+        services.AddOptions<VectorSearchOptions>()
+            .Bind(configuration.GetSection(VectorSearchSectionKey))
+            .DeclareSettings(VectorSearchSectionKey);
+        services.AddOptions<EmbeddingCacheOptions>()
+            .Bind(configuration.GetSection(DefaultEmbeddingProviderResolver.EmbeddingCacheSectionKey))
+            .DeclareSettings(DefaultEmbeddingProviderResolver.EmbeddingCacheSectionKey);
 
         // Concrete providers. OpenAIEmbeddingProvider needs an M.E.AI
         // IEmbeddingGenerator<string, Embedding<float>>, which this method does not register
@@ -49,10 +62,10 @@ public static class VectorSearchServiceExtensions
         {
             var options = sp.GetRequiredService<IOptions<EmbeddingOptions>>().Value;
 #pragma warning disable CA1308 // lowercase is the normalized provider-name token driving the switch, not a comparison normalization
-            IEmbeddingProvider provider = options.Provider.ToLowerInvariant() switch
+            IEmbeddingProvider provider = options.Provider.Trim().ToLowerInvariant() switch
 #pragma warning restore CA1308
             {
-                "ollama" => sp.GetRequiredService<OllamaEmbeddingProvider>(),
+                DefaultEmbeddingProviderResolver.OllamaProvider => sp.GetRequiredService<OllamaEmbeddingProvider>(),
                 _ => sp.GetService<OpenAIEmbeddingProvider>()
                      ?? (IEmbeddingProvider)new UnconfiguredEmbeddingProvider(),
             };

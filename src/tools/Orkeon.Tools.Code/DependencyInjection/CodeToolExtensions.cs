@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 
@@ -41,39 +42,39 @@ public static class CodeToolExtensions
         //  - `Orkeon:Tools:Shell:AllowedCommands` — full REPLACEMENT, verbatim. Per the
         //    ctor contract it cancels AllowInterpreters and re-enables the git read-only
         //    subcommand restriction. Extras still union on top of it.
+        //
+        // The section is bound once, from the container's configuration when there is one, and
+        // validated when a host starts (GAP-40): read inside the factory, an AllowInterpreters the
+        // binder could not convert was an exception out of the registry, under --list-tools too.
+        services.AddOptions<ShellToolOptions>()
+            .Configure<IServiceProvider>((options, provider) =>
+                provider.GetService<IConfiguration>()?.GetSection(ShellToolOptions.SectionName).Bind(options))
+            .ValidateOnStart();
         services.AddTransient<IBaseTool>(sp =>
         {
             var fs = sp.GetRequiredService<IFileSystemService>();
             var logger = sp.GetService<ILogger<ShellCommandTool>>();
-            var configuration = sp.GetService<IConfiguration>();
-            var allowInterpreters = configuration
-                ?.GetValue("Orkeon:Tools:Shell:AllowInterpreters", false) ?? false;
-            var replacement = ReadCommandList(configuration, "Orkeon:Tools:Shell:AllowedCommands");
-            var extras = ReadCommandList(configuration, "Orkeon:Tools:Shell:ExtraAllowedCommands");
-            return new ShellCommandTool(fs, allowedCommands: replacement, blockedPatterns: null, logger,
-                allowInterpreters: allowInterpreters, extraAllowedCommands: extras);
+            var shell = sp.GetRequiredService<IOptions<ShellToolOptions>>().Value;
+            return new ShellCommandTool(fs, allowedCommands: CommandList(shell.AllowedCommands), blockedPatterns: null, logger,
+                allowInterpreters: shell.AllowInterpreters, extraAllowedCommands: CommandList(shell.ExtraAllowedCommands));
         });
         // SecureCodeInterpreterTool is registered via AddOrkeonCodeSandbox() in InfrastructureExtensions
         return services;
     }
 
     /// <summary>
-    /// Reads a string-array config section into an allowlist, mapping an absent or empty
-    /// section to <c>null</c> — never an empty array, which the ShellCommandTool ctor
-    /// would take as "custom allowlist with zero entries" and block every command.
+    /// A bound command list as an allowlist, its blank entries dropped and an empty list mapped to
+    /// <c>null</c> — never an empty array, which the ShellCommandTool ctor would take as "custom
+    /// allowlist with zero entries" and block every command.
     /// </summary>
     [SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
         Justification = "null is a third state here, not the absence of a value: the ShellCommandTool ctor reads null as " +
                         "\"no custom allowlist, keep the built-in read-only default\" and an empty array as \"custom allowlist " +
                         "with zero entries\", which blocks every command. Returning an empty array would silently disable the " +
                         "shell tool on any host whose configuration omits the section.")]
-    private static string[]? ReadCommandList(IConfiguration? configuration, string key)
+    private static string[]? CommandList(IEnumerable<string> commands)
     {
-        var values = configuration?.GetSection(key).GetChildren()
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Select(v => v!)
-            .ToArray();
+        var values = commands.Where(v => !string.IsNullOrWhiteSpace(v)).ToArray();
         return values is { Length: > 0 } ? values : null;
     }
 }

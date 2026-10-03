@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Rag.Onnx.Model;
@@ -49,9 +50,13 @@ internal sealed record DoctorCheckResult
 /// works and what is missing, as a ✅/⚠️/❌ table or <c>--json</c> for CI. Exit codes are
 /// stable: 0 = everything green or warnings only, 1 = at least one failing check.
 /// Reuses the existing plumbing (<see cref="RunnerSettings"/>, <see cref="LlmCatalogClient"/>,
-/// <see cref="RunnerExecution.IsLlmEndpointReachableAsync"/>, <see cref="EsbuildTranspiler"/>)
-/// — no duplicated HTTP client and no duplicated resolution chain. The only mutating check
-/// (workspace write) cleans up after itself.
+/// <see cref="RunnerExecution.IsLlmEndpointReachableAsync"/>, <see cref="EsbuildTranspiler"/>,
+/// <see cref="RunnerHost"/>) — no duplicated HTTP client, no duplicated resolution chain and no
+/// second judgement of the settings: <c>runner-settings</c> builds the host <c>orkeon run</c> builds
+/// and passes its start validation (GAP-40). Two checks touch the disk, outside the working
+/// directory but for the first: the workspace write, which cleans up after itself, and
+/// <c>runner-settings</c>, whose host creates its sandbox directory under the temp directory and
+/// deletes it — and, when an e-mail account signs in with OAuth, the token directory a run creates.
 /// </summary>
 internal static class DoctorCommand
 {
@@ -170,6 +175,7 @@ internal static class DoctorCommand
             CheckLlmConfig(llm),
             CheckLlmProfiles(llm),
             .. CheckLlmProfileKeys(llm),
+            .. CheckRunnerSettings(llm),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
             await CheckEsbuildAsync(llm.Configuration, ct).ConfigureAwait(false),
             CheckLocalEmbeddings(),
@@ -405,6 +411,40 @@ internal static class DoctorCommand
                 Status = StatusWarn,
                 Detail = string.Format(CultureInfo.InvariantCulture, UnresolvedApiKeyReferenceFormat, reference),
             });
+
+    /// <summary>
+    /// GAP-40: what <c>orkeon run</c> refuses at its start on the same settings file, judged by the
+    /// same construction — the guards the run applies to the file's mounts, then the host it builds
+    /// (<see cref="RunCommand.AddCliRagServices"/> included, so the ONNX reranker is offered) and its
+    /// start validation. One <c>fail</c> line per refusal, each naming its key; one <c>ok</c> line
+    /// otherwise. A refusal the build itself raises is the only line, as the run reports it. Skipped
+    /// when the <c>Llm</c> section is already refused: the run stops on it first, and the line above
+    /// says why.
+    /// </summary>
+    private static IEnumerable<DoctorCheckResult> CheckRunnerSettings(LlmContext llm)
+    {
+        const string Check = "runner-settings";
+
+        if (llm.SettingsError is not null || llm.ProfilesError is not null)
+        {
+            var see = llm.SettingsError is not null ? "llm-config" : "llm-profiles";
+            return [new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = $"skipped (the Llm section is refused — see {see})" }];
+        }
+
+        if (RunnerExecution.CheckSettingsMounts(llm.SettingsPath) is { } mounts)
+            return [new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = mounts }];
+
+        var refusals = RunnerHost.ValidateSettings(llm.SettingsPath, (_, services) =>
+        {
+            services.AddOrkeonHumanInput();
+            services.AddSemanticSearchTool();
+            RunCommand.AddCliRagServices(services);
+        });
+        if (refusals.Count == 0)
+            return [new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = "the settings pass the start validation of orkeon run" }];
+
+        return refusals.Select(refusal => new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = refusal });
+    }
 
     private static async Task<DoctorCheckResult> CheckLlmReachabilityAsync(LlmContext llm, CancellationToken ct)
     {

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Constants.Configuration;
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Application.Configuration;
 namespace Orkeon.Infrastructure.MCP;
 
 /// <summary>
@@ -12,6 +13,9 @@ namespace Orkeon.Infrastructure.MCP;
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class McpServiceExtensions
 {
+    /// <summary>The section bound to <see cref="McpServerOptions"/>: <c>MCP:Server</c>.</summary>
+    internal const string ServerSection = ConfigurationKeys.McpSection + ":Server";
+
     /// <summary>
     /// Adds the MCP client: binds <see cref="McpOptions"/> from the
     /// <see cref="ConfigurationKeys.McpSection"/> section and registers <see cref="McpToolProvider"/>.
@@ -25,7 +29,11 @@ public static class McpServiceExtensions
         ArgumentNullException.ThrowIfNull(configuration);
         var section = configuration.GetSection(ConfigurationKeys.McpSection);
         RefuseServerSwitch(section);
-        services.Configure<McpOptions>(section);
+        // Bound, and judged when the host starts (GAP-40): a server's Transport the binder cannot
+        // convert refuses the start, not the connection step.
+        services.AddOptions<McpOptions>()
+            .Bind(section)
+            .DeclareSettings(ConfigurationKeys.McpSection);
         services.AddSingleton<McpToolProvider>();
         return services;
     }
@@ -46,7 +54,9 @@ public static class McpServiceExtensions
         ArgumentNullException.ThrowIfNull(configuration);
         var section = configuration.GetSection(ConfigurationKeys.McpSection);
         RefuseServerSwitch(section);
-        services.Configure<McpServerOptions>(section.GetSection("Server"));
+        services.AddOptions<McpServerOptions>()
+            .Bind(section.GetSection("Server"))
+            .DeclareSettings(ServerSection);
         services.TryAddSingleton<McpServer>();
         return services;
     }

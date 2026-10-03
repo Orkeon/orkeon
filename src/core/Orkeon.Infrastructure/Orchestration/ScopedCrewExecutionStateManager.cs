@@ -7,6 +7,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Common;
 using Orkeon.Infrastructure.Constants.Orchestration;
 using Orkeon.Domain.Constants.Crew;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Infrastructure.Orchestration;
 
@@ -542,6 +543,9 @@ public static class StateManagementExtensions
         return services;
     }
 
+    /// <summary>The section bound to <see cref="CrewExecutionStatePersistenceOptions"/>.</summary>
+    private const string PersistenceSection = "Orkeon:ExecutionState:Persistence";
+
     /// <summary>
     /// Enables durable persistence of crew execution states from configuration.
     /// Binds the <c>Orkeon:ExecutionState:Persistence</c> section
@@ -554,7 +558,8 @@ public static class StateManagementExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddOptions<CrewExecutionStatePersistenceOptions>()
-            .Bind(configuration.GetSection("Orkeon:ExecutionState:Persistence"));
+            .Bind(configuration.GetSection(PersistenceSection))
+            .DeclareSettings(PersistenceSection);
 
         return services;
     }

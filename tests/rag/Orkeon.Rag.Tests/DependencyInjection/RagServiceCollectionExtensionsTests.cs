@@ -262,7 +262,9 @@ public class RagServiceCollectionExtensionsTests
             .Build();
 
         using var chat = new FakeChatClient();
-        using var provider = BuildProvider(chat, configuration: configuration);
+        // balanced reranks with onnx: the host offers it, as the binaries do (GAP-40).
+        using var provider = BuildProvider(chat, services =>
+            services.AddSingleton<Orkeon.Rag.Reranking.IRerankerRegistrar>(new StubOnnxRerankerRegistrar()), configuration);
 
         var ingestion = provider
             .GetRequiredService<Microsoft.Extensions.Options.IOptions<RagIngestionOptions>>().Value;
@@ -321,8 +323,10 @@ public class RagServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddOrkeonRag_UnknownProvider_FailsLoudly_WithTheAliasList()
+    public void AddOrkeonRag_UnknownProvider_IsRefused_WithTheAliasList_AtTheStartAndAtFirstUse()
     {
+        // GAP-40: the options rule refuses the name — at a host's start (IStartupValidator), and at
+        // the first read of the options in a container no host started.
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -341,7 +345,9 @@ public class RagServiceCollectionExtensionsTests
         services.AddOrkeonRag(configuration);
 
         using var provider = services.BuildServiceProvider();
-        var ex = Assert.Throws<InvalidOperationException>(
+        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(
+            () => provider.GetRequiredService<Microsoft.Extensions.Options.IStartupValidator>().Validate());
+        var ex = Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(
             () => provider.GetRequiredService<IDocumentStore>());
 
         Assert.Contains("mongodb", ex.Message, StringComparison.Ordinal);
@@ -357,9 +363,9 @@ public class RagServiceCollectionExtensionsTests
     public async Task AddOrkeonRag_UnknownProvider_DoesNotFailTheCrewSideServicesUntilTheyAreUsed()
     {
         // GAP-02: every runner now registers the subsystem, and the crew factory and the
-        // execution orchestrator resolve these two services for every crew. A store alias
-        // nobody uses must not fail a crew that declares no rag:/knowledge: — the failure
-        // belongs to the first ingestion or retrieval.
+        // execution orchestrator resolve these two services for every crew: they resolve without
+        // the store. A host refuses the alias at its start (GAP-40); in a container no host
+        // started, the failure belongs to the first ingestion or retrieval.
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -381,7 +387,7 @@ public class RagServiceCollectionExtensionsTests
         var bootstrapper = provider.GetRequiredService<IRagCollectionsBootstrapper>();
         Assert.NotNull(provider.GetRequiredService<IKnowledgeContextAugmenter>());
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => bootstrapper.PrepareAsync(
+        var ex = await Assert.ThrowsAsync<Microsoft.Extensions.Options.OptionsValidationException>(() => bootstrapper.PrepareAsync(
             new Orkeon.Domain.Configuration.RagCrewConfig
             {
                 Collections = new Dictionary<string, Orkeon.Domain.Configuration.RagCollectionConfig>

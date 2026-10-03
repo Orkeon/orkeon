@@ -281,13 +281,16 @@ le courrier envoyé, et une boîte POP3 n'a pas de dossier Envoyés). Quand aucu
 ## Référence des réglages
 
 Tout se trouve sous `Orkeon:Tools:Email`. Rien n'est validé au démarrage d'un hôte — le runner lit
-seulement si un compte OAuth a besoin du magasin de jetons. Un compte est validé la première fois
+seulement si un compte OAuth a besoin du magasin de jetons : la section e-mail est la seule exception
+à [la règle](../reference/configuration.md#quand-un-réglage-est-refusé) qui veut qu'un hôte refuse à
+son démarrage tout réglage qu'il ne sait pas honorer. Un compte est validé la première fois
 qu'un outil ou une commande s'en sert, et tous les problèmes de sa déclaration sont signalés d'un
 coup : une section e-mail cassée ne casse donc jamais un crew qui n'envoie pas de courrier. Une
-valeur qui ne se lit même pas — un droit mal orthographié, un port écrit en toutes lettres — met
-ce seul compte de côté de la même façon, et est signalée en premier — sauf un
-`Screening:WithholdRejected` illisible, qui active la rétention et met tous les comptes de côté
-tant qu'il n'est pas corrigé. `orkeon email accounts` montre ces problèmes sans se connecter.
+valeur qui ne se lit même pas — un droit mal orthographié, un port écrit en toutes lettres — ou une
+clé qu'aucun compte ne porte (`Incomming:Port`) met ce seul compte de côté de la même façon, et est
+signalée en premier — sauf un `Screening:WithholdRejected` illisible, qui active la rétention et met
+tous les comptes de côté tant qu'il n'est pas corrigé. `orkeon email accounts` montre ces problèmes
+sans se connecter.
 
 | Clé | Rôle | Défaut |
 |---|---|---|

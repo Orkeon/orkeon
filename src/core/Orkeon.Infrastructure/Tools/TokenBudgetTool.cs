@@ -1,8 +1,9 @@
-using Orkeon.Constants.Configuration;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Tools;
+using Orkeon.Infrastructure.Session;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -37,9 +38,10 @@ public sealed class TokenBudgetResponse
 /// session (backs SessionCompact + <c>/compact</c>).
 /// </summary>
 /// <remarks>
-/// The domain <c>ILlmProvider</c> exposes no context-window API, so the window
-/// and model name are read from configuration: <c>Orkeon:Cli:Session:ContextWindowTokens</c>
-/// (default 200000) and <c>Llm:Model</c>. Used tokens come from the buffer's heuristic.
+/// The domain <c>ILlmProvider</c> exposes no context-window API, so the window and model name come
+/// from the settings: <c>Orkeon:Cli:Session:ContextWindowTokens</c> (<see cref="CliSessionOptions"/>,
+/// default 200000, judged at the host's start) and <c>Llm:Model</c>. Used tokens come from the
+/// buffer's heuristic.
 /// </remarks>
 public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetResponse>
 {
@@ -52,23 +54,29 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
-    private const int DefaultContextWindow = 200_000;
-
     private readonly ISessionBufferService _buffer;
     private readonly IConfiguration? _configuration;
+    private readonly int _contextWindow;
 
     /// <summary>Creates the tool with its backing service(s).</summary>
-    public TokenBudgetTool(ISessionBufferService buffer, IConfiguration? configuration = null)
+    /// <param name="buffer">The session buffer whose tokens are counted.</param>
+    /// <param name="configuration">The host configuration, for <c>Llm:Model</c>; null reports the model as unknown.</param>
+    /// <param name="session">The session settings, for the context window; null budgets against the default.</param>
+    public TokenBudgetTool(
+        ISessionBufferService buffer,
+        IConfiguration? configuration = null,
+        IOptions<CliSessionOptions>? session = null)
     {
         _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
         _configuration = configuration;
+        _contextWindow = session?.Value.ContextWindowTokens ?? CliSessionOptions.DefaultContextWindowTokens;
     }
 
     /// <inheritdoc />
     protected override Task<TokenBudgetResponse> ExecuteTypedAsync(
         TokenBudgetRequest request, CancellationToken cancellationToken)
     {
-        var contextWindow = ReadInt(ConfigurationKeys.CliSessionContextWindowTokens, DefaultContextWindow);
+        var contextWindow = _contextWindow;
         var model = _configuration?["Llm:Model"] ?? "unknown";
         var used = _buffer.EstimateTokenCount();
 
@@ -79,11 +87,5 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
             AvailableTokens = Math.Max(0, contextWindow - used),
             Model = model,
         });
-    }
-
-    private int ReadInt(string key, int fallback)
-    {
-        var raw = _configuration?[key];
-        return int.TryParse(raw, out var value) && value > 0 ? value : fallback;
     }
 }

@@ -51,9 +51,42 @@ public sealed class RunnerSettingsRefusalExitTests : IDisposable
             data.Add(mode, """{ "RaggableTree": { "Embedding": { "Provider": "Ollama", "BaseUrl": "pas une url" } } }""", "RaggableTree:Embedding:BaseUrl");
             data.Add(mode, """{ "RaggableTree": { "Enabled": false }, "Telemetry": { "OtlpEndpoint": "::" } }""", "Telemetry:OtlpEndpoint");
             data.Add(mode, """{ "RaggableTree": { "Enabled": false }, "Telemetry": { "ExportToConsole": true } }""", "Telemetry:ExportToConsole");
+
+            // GAP-40: sections read late — at the launch, at the first RAG query — are judged at the
+            // start, before the crew loads: --validate said VALIDATION OK on them, a run exited 2.
+            data.Add(mode, """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Guardian": { "Enabled": "oui" } } }""", "Orkeon:Guardian:Enabled");
+            data.Add(mode, """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Rag": { "Retrieval": { "TopK": "many" } } } }""", "Orkeon:Rag:Retrieval:TopK");
         }
 
+        // --list-tools built every tool, and the shell tool read its switch then: an unhandled exception.
+        data.Add("list-tools", """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Tools": { "Shell": { "AllowInterpreters": "yes" } } } }""", "Orkeon:Tools:Shell:AllowInterpreters");
         return data;
+    }
+
+    /// <summary>
+    /// GAP-40, decision 6 — a crew's <c>memoryProvider:</c> that names no provider fails its load,
+    /// like an unknown tool: it used to run the crew's memory on the volatile provider.
+    /// </summary>
+    [Fact]
+    public async Task A_crew_naming_an_unknown_memory_provider_fails_its_validation()
+    {
+        var settings = Path.Combine(_root, "refused.json");
+        await File.WriteAllTextAsync(settings, """{ "RaggableTree": { "Enabled": false } }""", TestContext.Current.CancellationToken);
+        var crew = Path.Combine(_root, "crew.yaml");
+        await File.WriteAllTextAsync(crew, Crew + "\nmemory: true\nmemoryProvider: \"redsi\"\n", TestContext.Current.CancellationToken);
+        var options = new TestOptions
+        {
+            ConfigPath = crew,
+            SettingsPath = settings,
+            AllowExternalMounts = true,
+            Validate = true,
+        };
+
+        var (exit, _, stderr) = await CaptureAsync(() => RunnerExecution.RunOneShotAsync(options, "Orkeon.Hosting.Tests"));
+
+        Assert.True(exit == 1, $"exit {exit} — stderr: {stderr}");
+        Assert.Contains("redsi", stderr, StringComparison.Ordinal);
+        Assert.Contains("redis", stderr, StringComparison.Ordinal);
     }
 
     [Theory]

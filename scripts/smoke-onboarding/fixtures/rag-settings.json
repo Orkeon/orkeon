@@ -1,8 +1,10 @@
 {
-  "_comment": "RAG settings for the released-artifact smokes (WIN-06 / LIN-02). No `Llm` section on purpose: retrieval must work offline, and its absence keeps the WIN-01 echo fallback in play. The SQLite document store is what makes a two-process ingest-then-search meaningful — the default in-memory store dies with the `rag ingest` process, so `rag search` would always answer 'no relevant context'. `Data Source` is a VIRTUAL path: /output is the auto-injected rw mount (./.orkeon under the working directory).",
+  "_comment": "RAG settings for the released-artifact smokes (WIN-06 / LIN-02). No `Llm` section on purpose: retrieval must work offline, and its absence keeps the WIN-01 echo fallback in play. The SQLite document store is what makes a two-process ingest-then-search meaningful — the default in-memory store dies with the `rag ingest` process, so `rag search` would always answer 'no relevant context'. Orkeon:Rag:Provider names the store's type; its database is Orkeon:Sqlite:ConnectionString, the SQLite provider's own section (GAP-08). `Data Source` is a VIRTUAL path: /output is the auto-injected rw mount (./.orkeon under the working directory).",
   "Orkeon": {
     "Rag": {
-      "Provider": "sqlite",
+      "Provider": "sqlite"
+    },
+    "Sqlite": {
       "ConnectionString": "Data Source=/output/smoke-rag.db"
     }
   }

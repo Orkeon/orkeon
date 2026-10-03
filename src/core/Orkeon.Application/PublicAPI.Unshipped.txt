@@ -2399,3 +2399,26 @@ Orkeon.Application.Interfaces.IManagerAgent.ReviewOutputAsync(Orkeon.Application
 *REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskStatusFlags.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskStatusFlags.Equals(Orkeon.Application.Services.StateManagement.TaskStatusFlags? other) -> bool
 *REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskStatusFlags.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Configuration.SettingsDeclaration
+Orkeon.Application.Configuration.SettingsDeclaration.Evaluate.get -> System.Action<System.IServiceProvider!>?
+Orkeon.Application.Configuration.SettingsDeclaration.Path.get -> string!
+Orkeon.Application.Configuration.SettingsDeclaration.SettingsDeclaration(string! path, System.Type! shape) -> void
+Orkeon.Application.Configuration.SettingsDeclaration.SettingsDeclaration(string! path, System.Type! shape, System.Action<System.IServiceProvider!>? evaluate) -> void
+Orkeon.Application.Configuration.SettingsDeclaration.Shape.get -> System.Type!
+Orkeon.Application.Configuration.SettingsDeclarationExtensions
+Orkeon.Application.Memory.MemoryProviderTypes
+const Orkeon.Application.Memory.MemoryProviderTypes.ChromaDb = "chromadb" -> string!
+const Orkeon.Application.Memory.MemoryProviderTypes.InMemory = "inmemory" -> string!
+const Orkeon.Application.Memory.MemoryProviderTypes.LanceDb = "lancedb" -> string!
+const Orkeon.Application.Memory.MemoryProviderTypes.Pinecone = "pinecone" -> string!
+const Orkeon.Application.Memory.MemoryProviderTypes.Redis = "redis" -> string!
+const Orkeon.Application.Memory.MemoryProviderTypes.Sqlite = "sqlite" -> string!
+static Orkeon.Application.Configuration.SettingsDeclarationExtensions.DeclareSettings<TOptions>(this Microsoft.Extensions.Options.OptionsBuilder<TOptions!>! builder, string! sectionPath) -> Microsoft.Extensions.Options.OptionsBuilder<TOptions!>!
+static Orkeon.Application.Configuration.SettingsDeclarationExtensions.DeclareSettingsShape(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! sectionPath, System.Type! shape) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Application.Configuration.SettingsDeclarationExtensions.IsDeclared(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! sectionPath, System.Type! shape) -> bool
+static Orkeon.Application.Configuration.SettingsDeclarationExtensions.ValidateSettings<TOptions>(this Microsoft.Extensions.Options.OptionsBuilder<TOptions!>! builder, System.Func<TOptions!, System.IServiceProvider!, System.Collections.Generic.IEnumerable<string!>!>! problems) -> Microsoft.Extensions.Options.OptionsBuilder<TOptions!>!
+static Orkeon.Application.Configuration.SettingsDeclarationExtensions.ValidateSettings<TOptions>(this Microsoft.Extensions.Options.OptionsBuilder<TOptions!>! builder, System.Func<TOptions!, string?>! problem) -> Microsoft.Extensions.Options.OptionsBuilder<TOptions!>!
+static Orkeon.Application.Memory.MemoryProviderTypes.Canonical(string? type) -> string?
+static Orkeon.Application.Memory.MemoryProviderTypes.Problem(string! key, string? type, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> string?
+static Orkeon.Application.Memory.MemoryProviderTypes.Supported.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Application.Memory.MemoryProviderTypes.UnknownMessage(string! key, string! type) -> string!

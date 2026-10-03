@@ -15,6 +15,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.Communication;
 using Orkeon.Scripting;
 using Orkeon.Scripting.Toolchain;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Cli.Commands.Scripting.DependencyInjection;
 
@@ -43,11 +44,13 @@ public static class ScriptingCliServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Bind the full configuration record; fall back to defaults when no IConfiguration is supplied.
+        // Bind the full configuration record — judged when the host starts (GAP-40) —; fall back to
+        // defaults when no IConfiguration is supplied.
         if (configuration is not null)
         {
-            var section = configuration.GetSection(ScriptCommandsConfiguration.SectionName);
-            services.Configure<ScriptCommandsConfiguration>(section.Bind);
+            services.AddOptions<ScriptCommandsConfiguration>()
+                .Bind(configuration.GetSection(ScriptCommandsConfiguration.SectionName))
+                .DeclareSettings(ScriptCommandsConfiguration.SectionName);
         }
         else
         {
@@ -203,8 +206,9 @@ public static class ScriptingCliServiceCollectionExtensions
         // facade at its crews; the ConsoleApp bootstrap also appends mounted crew dirs.
         if (configuration is not null)
         {
-            var shSection = configuration.GetSection(ScriptHostFacadeOptions.SectionName);
-            services.Configure<ScriptHostFacadeOptions>(shSection.Bind);
+            services.AddOptions<ScriptHostFacadeOptions>()
+                .Bind(configuration.GetSection(ScriptHostFacadeOptions.SectionName))
+                .DeclareSettings(ScriptHostFacadeOptions.SectionName);
         }
         else
         {

@@ -39,6 +39,31 @@ public sealed class EmailOptionsBinderTests
         Assert.False(options.AccountProblems.ContainsKey("sound"));
     }
 
+    /// <summary>
+    /// GAP-40 — a key no account carries was read as absent: <c>Incomming:Port</c> left the account on
+    /// its provider's port. It sets the account aside like a value the binder cannot convert, naming the
+    /// key and the keys of its level — the e-mail exception to the start refusal of every other setting.
+    /// </summary>
+    [Theory]
+    [InlineData("Incomming:Port", "993", "Incomming is not an account setting", "Incoming")]
+    [InlineData("Incoming:Prot", "993", "Incoming:Prot is not an account setting", "Port")]
+    [InlineData("Send:AllowedRecipient:0", "*", "Send:AllowedRecipient is not an account setting", "AllowedRecipients")]
+    public void Should_set_aside_an_account_carrying_a_key_no_account_carries(string key, string value, string problem, string known)
+    {
+        var options = Bind(new Dictionary<string, string?>
+        {
+            ["Accounts:a:Provider"] = "Gmail",
+            ["Accounts:a:Address"] = "me@gmail.com",
+            ["Accounts:a:Rights"] = "Read",
+            [$"Accounts:a:{key}"] = value,
+        });
+
+        var reported = Assert.Single(options.AccountProblems["a"]);
+        Assert.StartsWith(problem, reported, StringComparison.Ordinal);
+        Assert.Contains(known, reported, StringComparison.Ordinal);
+        Assert.Null(options.Accounts["a"].Address);
+    }
+
     [Theory]
     [InlineData("Provider", "Yahoo", "Provider 'Yahoo' is not one of Custom, Gmail, Outlook")]
     [InlineData("Provider", "", "Provider '' is not one of Custom, Gmail, Outlook")]

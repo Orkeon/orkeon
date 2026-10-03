@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Rag.Embeddings;
 using AnalysisEmbeddingProvider = Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider;
 
@@ -59,6 +60,39 @@ public static partial class DefaultEmbeddingProviderResolver
     private const string DefaultOllamaBaseUrl = "http://localhost:11434/";
 #pragma warning restore S1075
 
+    /// <summary>The <c>Orkeon:Embeddings:Provider</c> of an Ollama endpoint.</summary>
+    internal const string OllamaProvider = "ollama";
+
+    /// <summary>The <c>Orkeon:Embeddings:Provider</c> of an OpenAI-compatible endpoint: any M.E.AI embedding generator.</summary>
+    internal const string OpenAiProvider = "openai";
+
+    /// <summary>
+    /// Registers the two sections the remote branch reads — <c>Orkeon:Embeddings</c> and
+    /// <c>Orkeon:EmbeddingCache</c> — bound, and judged when a host starts (GAP-40): a provider name
+    /// other than <c>openai</c> or <c>ollama</c> took the OpenAI branch without a word.
+    /// </summary>
+    internal static void AddEmbeddingSettings(IServiceCollection services)
+    {
+        services.AddOrkeonSettings<EmbeddingOptions>(EmbeddingsSectionKey)
+            .ValidateSettings(ProviderProblem);
+        services.AddOrkeonSettings<EmbeddingCacheOptions>(EmbeddingCacheSectionKey);
+    }
+
+    /// <summary>
+    /// What a host says of an <c>Orkeon:Embeddings:Provider</c> it cannot build, or null when it can:
+    /// <c>openai</c> — any M.E.AI embedding generator the host registers — or <c>ollama</c>.
+    /// </summary>
+    internal static string? ProviderProblem(EmbeddingOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var provider = options.Provider?.Trim();
+        return string.Equals(provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(provider, OllamaProvider, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : $"{EmbeddingsSectionKey}:Provider is '{options.Provider}', which is not an embedding provider: write " +
+              $"{OpenAiProvider} (any M.E.AI embedding generator the host registers) or {OllamaProvider}.";
+    }
+
     /// <summary>
     /// Resolves the default <see cref="IEmbeddingProvider"/> for the given container.
     /// Never throws at resolution time for the "nothing configured" case — the
@@ -102,20 +136,19 @@ public static partial class DefaultEmbeddingProviderResolver
         IServiceProvider serviceProvider,
         ILogger? logger)
     {
-        var configuration = serviceProvider.GetService<IConfiguration>();
-        var section = configuration?.GetSection(EmbeddingsSectionKey);
+        var section = serviceProvider.GetService<IConfiguration>()?.GetSection(EmbeddingsSectionKey);
         if (section is null || !section.Exists())
             return null;
 
-        var options = section.Get<EmbeddingOptions>() ?? new EmbeddingOptions();
+        // The sections as the host bound and judged them (GAP-40), not a second binding of their own.
+        var options = serviceProvider.GetRequiredService<IOptions<EmbeddingOptions>>().Value;
 
         var provider = CreateRemoteProvider(serviceProvider, options, logger);
 
         if (options.EnableCache)
         {
-            var cacheOptions = configuration!.GetSection(EmbeddingCacheSectionKey).Get<EmbeddingCacheOptions>()
-                ?? new EmbeddingCacheOptions();
-            provider = new CachedEmbeddingProvider(provider, Options.Create(cacheOptions));
+            provider = new CachedEmbeddingProvider(
+                provider, serviceProvider.GetRequiredService<IOptions<EmbeddingCacheOptions>>());
         }
 
         return provider;
@@ -127,10 +160,10 @@ public static partial class DefaultEmbeddingProviderResolver
         ILogger? logger)
     {
 #pragma warning disable CA1308 // lowercase is the normalized provider-name token driving the switch, not a comparison normalization
-        var providerToken = options.Provider.ToLowerInvariant();
+        var providerToken = options.Provider.Trim().ToLowerInvariant();
 #pragma warning restore CA1308
 
-        if (providerToken == "ollama")
+        if (providerToken == OllamaProvider)
         {
             // Prefer the typed-client instance when AddOrkeonVectorSearch() registered it.
             var registered = serviceProvider.GetService<OllamaEmbeddingProvider>();

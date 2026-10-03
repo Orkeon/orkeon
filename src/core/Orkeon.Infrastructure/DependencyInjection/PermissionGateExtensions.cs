@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Infrastructure.Security;
 
@@ -15,6 +16,9 @@ namespace Orkeon.Infrastructure.DependencyInjection;
 /// </summary>
 public static class PermissionGateExtensions
 {
+    /// <summary>The section the gate is configured by.</summary>
+    private const string SectionName = "Orkeon:Security:PermissionGate";
+
     /// <summary>
     /// Registers <see cref="ModePermissionGate"/> as the <see cref="IPermissionGate"/> when
     /// the <c>Orkeon:Security:PermissionGate</c> section enables it. <c>Interactive</c>
@@ -28,7 +32,10 @@ public static class PermissionGateExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var section = configuration.GetSection("Orkeon:Security:PermissionGate");
+        // Read here, at registration, so its values refuse the start already; its keys are judged
+        // with every declared section's (GAP-40), whether the gate is on or not.
+        services.DeclareSettingsShape(SectionName, typeof(PermissionGateSettingsShape));
+        var section = configuration.GetSection(SectionName);
         if (!section.GetValue("Enabled", false))
             return services;
 
@@ -36,4 +43,12 @@ public static class PermissionGateExtensions
         services.TryAddSingleton<IPermissionGate>(_ => new ModePermissionGate(interactive));
         return services;
     }
+}
+
+/// <summary>The keys of <c>Orkeon:Security:PermissionGate</c> (GAP-40). Never instantiated: its properties are the keys.</summary>
+internal abstract class PermissionGateSettingsShape
+{
+    public bool Enabled { get; set; }
+
+    public bool Interactive { get; set; }
 }

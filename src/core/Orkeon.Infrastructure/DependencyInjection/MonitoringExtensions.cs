@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Monitoring;
 using Orkeon.Infrastructure.Monitoring;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Infrastructure.DependencyInjection;
 
@@ -34,7 +35,8 @@ public static class MonitoringExtensions
         if (configuration != null)
         {
             services.AddOptions<MonitoringOptions>()
-                .Bind(configuration.GetSection("Orkeon:Monitoring"));
+                .Bind(configuration.GetSection("Orkeon:Monitoring"))
+                .DeclareSettings("Orkeon:Monitoring");
         }
         else
         {
