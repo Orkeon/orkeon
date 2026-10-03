@@ -4,8 +4,9 @@
 The generator reads restored `project.assets.json` files and a NuGet cache; CI runs it for
 real only after its restore. These tests run before any restore: each one builds a
 throw-away tree -- two applications with their assets files, a package cache holding
-nuspecs, license files and notices -- and drives the script's main() against it. Standard
-library only, like the script under test.
+nuspecs, license files, notices and runtime packs, and as a test needs them Dockerfiles, a
+.dockerignore, a Directory.Packages.props, publish folders -- and drives the script's main()
+against it. Standard library only, like the script under test.
 
 Usage:
   python3 scripts/test-third-party-notices.py
@@ -54,6 +55,21 @@ Hand-written introduction, kept as it is.
 MIT_CRLF = "\ufeffMIT License\r\n\r\nCopyright (c) Alpha\r\n\r\nPermission is hereby granted.\r\n"
 NOTICE = "Beta Project\nCopyright 2020 The Beta Foundation.\n\nA line quoting ````code````.\n"
 RTF = "{\\rtf1\\ansi Gamma notices\\par\n}\n\x00"
+# A runtime pack's root, as a self-contained publish leaves it in the cache. CRLF on purpose:
+# the copy is byte for byte, never normalised like the inventory's texts.
+RUNTIME_PACK_FILES = {
+    "LICENSE.TXT": b"The MIT License (MIT)\r\n\r\nCopyright (c) .NET Foundation and Contributors\r\n",
+    "THIRD-PARTY-NOTICES.TXT": b".NET Runtime uses third-party libraries.\r\n\r\nLicense notice for zlib\r\n",
+    "Icon.png": b"\x89PNG\r\n\x1a\n",
+    "PACKAGE.md": b"## About\n",
+}
+NETCORE_LINUX = "Microsoft.NETCore.App.Runtime.linux-x64"
+DOCKER_BUILD = ("FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build\nCOPY . .\n"
+                "RUN dotnet publish src/apps/One/One.csproj \\\n      -c Release -o /app\n")
+DOCKER_RUNTIME = "FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime\nCOPY --from=build /app .\n"
+DOCKER_NOTICES = "COPY LICENSE.md THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon/\n"
+IGNORE_MD = "**/bin\n*.md\n!README.md\n"
+IGNORE_KEPT = IGNORE_MD + "!LICENSE.md\n!THIRD-PARTY-NOTICES.md\n"
 
 
 def _nuspec(package_id: str, version: str, license_xml: str = "", copyright_: str = "",
@@ -73,6 +89,22 @@ def _nuspec(package_id: str, version: str, license_xml: str = "", copyright_: st
 def _expression(spdx: str) -> str:
     return (f'<license type="expression">{spdx}</license>'
             f"<licenseUrl>https://licenses.nuget.org/{spdx}</licenseUrl>")
+
+
+def _deps(*packs: str, rid: str = "linux-x64") -> str:
+    """The *.deps.json of a publish bundling these runtime packs ("<pack>/<version>")."""
+    target = f".NETCoreApp,Version=v10.0/{rid}"
+    libraries = {"App/1.0.0": {"type": "project", "serviceable": False, "sha512": ""}}
+    libraries.update({f"runtimepack.{pack}": {"type": "runtimepack", "serviceable": False, "sha512": ""}
+                      for pack in packs})
+    return json.dumps({"runtimeTarget": {"name": target, "signature": ""},
+                       "targets": {target: {key: {} for key in libraries}},
+                       "libraries": libraries}, indent=2)
+
+
+def _props(*pins: tuple[str, str]) -> str:
+    items = "".join(f'\n    <PackageVersion Include="{i}" Version="{v}" />' for i, v in pins)
+    return f"<Project>\n  <ItemGroup>{items}\n  </ItemGroup>\n</Project>\n"
 
 
 class Fixture:
@@ -148,6 +180,37 @@ class Fixture:
             path = (self.root / csproj).parent / "obj-linux" / "project.assets.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(self.assets[app], indent=2), encoding="utf-8")
+
+    def runtime_pack(self, pack: str, version: str, files: dict[str, bytes] | None = None,
+                     cache: Path | None = None) -> Path:
+        """A runtime pack where a self-contained publish restores it: a package folder, with
+        the nuspec under the pack's own casing."""
+        folder = (self.cache if cache is None else cache) / pack.lower() / version
+        folder.mkdir(parents=True)
+        (folder / f"{pack}.nuspec").write_text(_nuspec(pack, version, _expression("MIT")), encoding="utf-8")
+        for name, data in (RUNTIME_PACK_FILES if files is None else files).items():
+            (folder / name).write_bytes(data)
+        return folder
+
+    def published(self, name: str, *packs: str, rid: str = "linux-x64",
+                  included: list[tuple[str, str]] | None = None) -> Path:
+        """The folder `dotnet publish -o` wrote: a deps.json bundling these runtime packs, a
+        runtimeconfig.json listing `included` as bundled frameworks (self-contained), or
+        naming its shared framework when there are none (framework-dependent)."""
+        folder = self.root / "publish" / name
+        folder.mkdir(parents=True)
+        (folder / f"{name}.deps.json").write_text(_deps(*packs, rid=rid), encoding="utf-8")
+        options = ({"includedFrameworks": [{"name": n, "version": v} for n, v in included]} if included
+                   else {"framework": {"name": "Microsoft.NETCore.App", "version": "10.0.0"}})
+        (folder / f"{name}.runtimeconfig.json").write_text(
+            json.dumps({"runtimeOptions": {"tfm": "net10.0", **options}}, indent=2), encoding="utf-8")
+        return folder
+
+    def runtime_notices(self, publish: Path, to: Path,
+                        env: dict[str, str] | None = None) -> tuple[int, str, str]:
+        """--runtime-notices for application one, with no NUGET_PACKAGES unless `env` says."""
+        return self.run("--runtime-notices", str(publish), "--project", str(self.root / APPS[0][1]),
+                        "--to", str(to), env={} if env is None else env)
 
     def run(self, *argv: str, env: dict[str, str] | None = None) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
@@ -354,6 +417,176 @@ class GeneratorTests(unittest.TestCase):
         code, _, err = self.fx.run()
         self.assertEqual(2, code)
         self.assertIn("markers are incomplete or out of order", err)
+
+    # --- what the container images carry --------------------------------------------------
+
+    def test_an_image_that_does_not_copy_the_notices_fails_and_so_does_its_context(self) -> None:
+        self.fx.write("deploy/Dockerfile.host", DOCKER_BUILD + DOCKER_RUNTIME)
+        self.fx.write(".dockerignore", IGNORE_MD)
+        self.fx.run()
+        code, _, err = self.fx.run("--check")
+        self.assertEqual(1, code)
+        self.assertIn("deploy/Dockerfile.host publishes an application, and its image does not copy "
+                      "LICENSE.md and THIRD-PARTY-NOTICES.md to /usr/share/doc/orkeon/", err)
+        self.assertIn(".dockerignore keeps LICENSE.md and THIRD-PARTY-NOTICES.md out of the build "
+                      "context of deploy/Dockerfile.host", err)
+
+    def test_an_image_that_copies_both_files_from_its_context_passes(self) -> None:
+        self.fx.write(".dockerignore", IGNORE_KEPT)
+        self.fx.write("Dockerfile", DOCKER_BUILD + DOCKER_RUNTIME + DOCKER_NOTICES)
+        # The exec form, and one file at a time to a file destination, land the same files.
+        self.fx.write("deploy/Dockerfile.host", DOCKER_BUILD + DOCKER_RUNTIME
+                      + 'COPY ["LICENSE.md", "/usr/share/doc/orkeon/"]\n'
+                      + "COPY --chmod=644 ./THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon/THIRD-PARTY-NOTICES.md\n")
+        # An image that publishes no application redistributes none of it: not checked.
+        self.fx.write("Dockerfile.runners", "FROM busybox\nRUN true\n")
+        self.fx.run()
+        self.assertEqual((0, ""), self.fx.run("--check")[0::2])
+
+    def test_only_a_copy_the_final_image_inherits_counts(self) -> None:
+        self.fx.write(".dockerignore", IGNORE_KEPT)
+        # Copied in the build stage: the image never sees it.
+        self.fx.write("Dockerfile.runners", DOCKER_BUILD + DOCKER_NOTICES + DOCKER_RUNTIME)
+        self.fx.run()
+        code, _, err = self.fx.run("--check")
+        self.assertEqual(1, code)
+        self.assertIn("Dockerfile.runners publishes an application, and its image does not copy", err)
+        # Copied in the stage the final one is built FROM, as Dockerfile.runners does: inherited.
+        self.fx.write("Dockerfile.runners", DOCKER_BUILD + DOCKER_RUNTIME + DOCKER_NOTICES
+                      + "FROM runtime AS local-llm\nRUN true\n\nFROM runtime\n")
+        self.assertEqual((0, ""), self.fx.run("--check")[0::2])
+        # A directory destination without its slash makes a file of that name: nothing lands.
+        self.fx.write("Dockerfile.runners", DOCKER_BUILD + DOCKER_RUNTIME
+                      + "COPY LICENSE.md /usr/share/doc/orkeon\nCOPY THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon\n")
+        self.assertEqual(1, self.fx.run("--check")[0])
+
+    def test_a_dockerignore_that_keeps_one_of_them_out_fails(self) -> None:
+        self.fx.write("Dockerfile.runners", DOCKER_BUILD + DOCKER_RUNTIME + DOCKER_NOTICES)
+        self.fx.write(".dockerignore", IGNORE_MD + "!LICENSE.md\n")
+        self.fx.run()
+        code, _, err = self.fx.run("--check")
+        self.assertEqual(1, code)
+        self.assertIn(".dockerignore keeps THIRD-PARTY-NOTICES.md out of the build context of "
+                      "Dockerfile.runners: add !THIRD-PARTY-NOTICES.md", err)
+        self.assertNotIn("does not copy", err)
+
+    def test_the_dockerignore_patterns_read_as_docker_reads_them(self) -> None:
+        excludes = tpn.dockerignore_excludes
+        self.assertTrue(excludes("*.md\n", "LICENSE.md"))
+        self.assertTrue(excludes("**/*.md\n", "LICENSE.md"))
+        self.assertTrue(excludes("/LICENSE.md\n", "LICENSE.md"))
+        self.assertTrue(excludes("LICEN?E.[mM]d\n", "LICENSE.md"))
+        self.assertFalse(excludes("*.md\n!LICENSE.md\n", "LICENSE.md"))
+        self.assertTrue(excludes("!LICENSE.md\n*.md\n", "LICENSE.md"))  # the last match decides
+        self.assertFalse(excludes("# *.md\ndocs/*.md\nLICENSE.mdx\n", "LICENSE.md"))
+
+    # --- the .NET runtime a self-contained publish bundles --------------------------------
+
+    def test_a_self_contained_publish_gets_its_runtime_pack_notices_byte_for_byte(self) -> None:
+        pack = self.fx.runtime_pack(NETCORE_LINUX, "10.0.9")
+        to = self.fx.root / "stage" / "licenses"
+        code, out, err = self.fx.runtime_notices(self.fx.published("orkeon", f"{NETCORE_LINUX}/10.0.9"), to)
+        self.assertEqual(0, code, err)
+        self.assertEqual([NETCORE_LINUX], [p.name for p in to.iterdir()])
+        copied = to / NETCORE_LINUX
+        self.assertEqual(["LICENSE.TXT", "THIRD-PARTY-NOTICES.TXT"], sorted(p.name for p in copied.iterdir()))
+        for name in ("LICENSE.TXT", "THIRD-PARTY-NOTICES.TXT"):
+            self.assertEqual((pack / name).read_bytes(), (copied / name).read_bytes())
+        self.assertIn(f"{NETCORE_LINUX} 10.0.9", out)
+
+    def test_two_packs_give_two_folders_and_one_pack_twice_one_copy(self) -> None:
+        netcore, desktop = "Microsoft.NETCore.App.Runtime.win-x64", "Microsoft.WindowsDesktop.App.Runtime.win-x64"
+        for pack in (netcore, desktop):
+            self.fx.runtime_pack(pack, "10.0.9")
+        to = self.fx.root / "stage" / "licenses"
+        studio = self.fx.published("studio", f"{netcore}/10.0.9", f"{desktop}/10.0.9", rid="win-x64")
+        cli = self.fx.published("orkeon", f"{netcore}/10.0.9", rid="win-x64")
+        (cli / "orkeon.other.deps.json").write_text(_deps(f"{netcore}/10.0.9", rid="win-x64"), encoding="utf-8")
+        self.assertEqual(0, self.fx.runtime_notices(studio, to)[0])
+        code, out, err = self.fx.runtime_notices(cli, to)
+        self.assertEqual(0, code, err)
+        self.assertEqual(1, out.count(f"{netcore} 10.0.9:"))
+        self.assertEqual([netcore, desktop], sorted(p.name for p in to.iterdir()))
+        for pack in (netcore, desktop):
+            self.assertEqual(["LICENSE.TXT", "THIRD-PARTY-NOTICES.TXT"], sorted(p.name for p in (to / pack).iterdir()))
+
+    def test_a_framework_dependent_publish_copies_nothing(self) -> None:
+        to = self.fx.root / "stage" / "licenses"
+        code, out, err = self.fx.runtime_notices(self.fx.published("orkeon-slim"), to)
+        self.assertEqual((0, ""), (code, err))
+        self.assertFalse(to.exists())
+        self.assertIn("nothing to copy", out)
+
+    def test_a_runtime_pack_is_looked_for_where_the_inventory_looks(self) -> None:
+        # Not in the assets file's folder: NUGET_PACKAGES, then the home cache.
+        elsewhere = self.fx.root / "elsewhere"
+        self.fx.runtime_pack(NETCORE_LINUX, "10.0.9", cache=elsewhere)
+        publish = self.fx.published("orkeon", f"{NETCORE_LINUX}/10.0.9")
+        code, _, err = self.fx.runtime_notices(publish, self.fx.root / "a", env={"NUGET_PACKAGES": str(elsewhere)})
+        self.assertEqual(0, code, err)
+        (self.fx.home / ".nuget").mkdir()
+        elsewhere.rename(self.fx.home / ".nuget" / "packages")
+        code, _, err = self.fx.runtime_notices(publish, self.fx.root / "b")
+        self.assertEqual(0, code, err)
+        self.assertTrue((self.fx.root / "b" / NETCORE_LINUX / "LICENSE.TXT").is_file())
+
+    def test_a_pack_in_no_folder_stops_the_packaging_and_says_how_to_get_it(self) -> None:
+        code, _, err = self.fx.runtime_notices(
+            self.fx.published("orkeon", "Microsoft.NETCore.App.Runtime.osx-arm64/10.0.9", rid="osx-arm64"),
+            self.fx.root / "licenses")
+        self.assertEqual(2, code)
+        self.assertIn("Microsoft.NETCore.App.Runtime.osx-arm64 10.0.9", err)
+        self.assertIn("dotnet publish", err)
+        self.assertIn("restore", err)
+        self.assertFalse((self.fx.root / "licenses").exists())
+
+    def test_a_pack_without_its_license_and_notices_stops_the_packaging(self) -> None:
+        self.fx.runtime_pack(NETCORE_LINUX, "10.0.9", {"Icon.png": b"\x89PNG", "PACKAGE.md": b"# x\n"})
+        code, _, err = self.fx.runtime_notices(
+            self.fx.published("orkeon", f"{NETCORE_LINUX}/10.0.9"), self.fx.root / "licenses")
+        self.assertEqual(2, code)
+        self.assertIn(f"{NETCORE_LINUX} 10.0.9: no license or notices file", err)
+
+    def test_a_folder_dotnet_publish_did_not_write_is_refused(self) -> None:
+        empty = self.fx.root / "publish" / "empty"
+        empty.mkdir(parents=True)
+        code, _, err = self.fx.runtime_notices(empty, self.fx.root / "licenses")
+        self.assertEqual(2, code)
+        self.assertIn("no *.deps.json", err)
+
+    def test_a_bundled_framework_the_deps_file_does_not_name_is_copied_all_the_same(self) -> None:
+        # The deps.json form is the SDK's; should it ever change, the runtimeconfig.json still
+        # says what is bundled, and a self-contained publish never passes for a
+        # framework-dependent one.
+        self.fx.runtime_pack(NETCORE_LINUX, "10.0.9")
+        to = self.fx.root / "licenses"
+        code, _, err = self.fx.runtime_notices(
+            self.fx.published("orkeon", included=[("Microsoft.NETCore.App", "10.0.9")]), to)
+        self.assertEqual(0, code, err)
+        self.assertTrue((to / NETCORE_LINUX / "THIRD-PARTY-NOTICES.TXT").is_file())
+
+    # --- the central pins -----------------------------------------------------------------
+
+    def test_a_shipped_package_below_its_central_pin_fails_naming_the_apps_and_both_versions(self) -> None:
+        self.fx.package("Markdig", "1.3.2", _nuspec("Markdig", "1.3.2", _expression("BSD-2-Clause")), {},
+                        apps=("two",))
+        self.fx.package("Iota", "10.0.9", _nuspec("Iota", "10.0.9", _expression("MIT")), {}, apps=("one", "two"))
+        self.fx.save_assets()
+        self.fx.write("Directory.Packages.props", _props(("Markdig", "1.4.0"), ("Iota", "10.0.12")))
+        self.fx.run()
+        code, _, err = self.fx.run("--check")
+        self.assertEqual(1, code)
+        self.assertIn("two ships Markdig 1.3.2, below the 1.4.0 Directory.Packages.props pins", err)
+        self.assertIn("one, two ship Iota 10.0.9, below the 10.0.12 Directory.Packages.props pins", err)
+
+    def test_a_version_at_or_above_its_pin_passes_and_an_unpinned_package_is_ignored(self) -> None:
+        self.fx.package("Kappa", "10.0.12", _nuspec("Kappa", "10.0.12", _expression("MIT")), {})
+        self.fx.save_assets()
+        self.fx.write("Directory.Packages.props", _props(
+            ("Alpha.Lib", "1.0"), ("Beta", "1.9.0"), ("Kappa", "10.0.9"), ("Unshipped", "9.0.0"),
+            ("Gamma", "4.*"), ("Zeta.Native", "[2.0.0,3.0.0)")))
+        self.fx.run()
+        self.assertEqual((0, ""), self.fx.run("--check")[0::2])
 
 
 if __name__ == "__main__":

@@ -47,7 +47,7 @@
                         .msi filename
     HostPublishDir     <full-archive tree>\libexec\orkeon-host
     StageRoot          the full-archive tree root (LICENSE.md,
-                        THIRD-PARTY-NOTICES.md, VERSION,
+                        THIRD-PARTY-NOTICES.md, licenses\, VERSION,
                         appsettings.sample.json)
 
   Same WiX v5.0.2 doctrine as Package.wxs (see its header: v5 pinned in
@@ -124,6 +124,7 @@
         <Directory Id="LibexecFolder" Name="libexec">
           <Directory Id="HostFolder" Name="orkeon-host" />
         </Directory>
+        <Directory Id="LicensesFolder" Name="licenses" />
       </Directory>
     </StandardDirectory>
     <StandardDirectory Id="CommonAppDataFolder">
@@ -149,6 +150,15 @@
       <Files Include="$(var.StageRoot)\THIRD-PARTY-NOTICES.md" />
       <Files Include="$(var.StageRoot)\VERSION" />
       <Files Include="$(var.StageRoot)\appsettings.sample.json" />
+    </ComponentGroup>
+
+    <!-- The self-contained host bundles the .NET runtime: the license and the third-party
+         notices of its runtime pack, copied from the pack by package-installers.sh, go with
+         it, under licenses\ beside THIRD-PARTY-NOTICES.md. The whole folder, as the archive
+         has it: the full archive's may also hold the Windows Desktop runtime's, which the
+         host does not bundle; a notice too many costs nothing, a missing one does. -->
+    <ComponentGroup Id="RuntimeLicensesComponents" Directory="LicensesFolder">
+      <Files Include="$(var.StageRoot)\licenses\**" />
     </ComponentGroup>
 
     <!--
@@ -209,6 +219,7 @@
     <Feature Id="ServiceHostFeature" Title="Orkeon Service Host" Level="1">
       <ComponentGroupRef Id="HostPayloadComponents" />
       <ComponentGroupRef Id="RootDocsComponents" />
+      <ComponentGroupRef Id="RuntimeLicensesComponents" />
       <ComponentRef Id="HostServiceComponent" />
       <ComponentRef Id="DataFolderComponent" />
       <ComponentRef Id="EventLogSourceComponent" />

@@ -293,6 +293,10 @@ published to GHCR) has the **`orkeon` CLI as its default entry point**, ships th
 .NET required. The service host is not in it: it has its own image, built from
 `deploy/Dockerfile.host` (see [the service host](../architecture/service-host.md)).
 
+Every image keeps the license and the notices of what it redistributes under
+`/usr/share/doc/orkeon/` (`LICENSE.md`, `THIRD-PARTY-NOTICES.md`), the path the Debian
+package uses; the .NET runtime is the one of Microsoft's base image, which carries its own.
+
 ### The `/workspace` convention
 
 Mount your project directory at `/workspace` and reference everything from

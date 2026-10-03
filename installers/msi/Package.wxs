@@ -129,7 +129,9 @@
       (pruned self-contained publish, WIN-04),
       libexec\orkeon-studio\** (WPF Orkeon Studio, STUDIO-07),
       libexec\esbuild-bin\esbuild.exe, README.md,
-      LICENSE.md, VERSION, appsettings.sample.json. <Files> auto-generates one
+      LICENSE.md, THIRD-PARTY-NOTICES.md, licenses\** (the license and
+      notices of the bundled .NET and Windows Desktop runtimes),
+      VERSION, appsettings.sample.json. <Files> auto-generates one
       Component per file and mirrors the subfolders (bin\, libexec\,
       libexec\orkeon\, libexec\esbuild-bin\) as child Directory elements of
       INSTALLFOLDER, with per-path stable GUIDs — and those GUIDs stay stable

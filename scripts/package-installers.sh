@@ -25,6 +25,9 @@
 # Version resolution: --version > git describe (v-stripped) > src/Directory.Build.props.
 # esbuild is fetched per-RID straight from the npm registry (no npm/node needed);
 # the version comes from tools/scripting-esbuild/package-lock.json.
+#
+# Requires python3: scripts/third-party-notices.py copies the license and notices of
+# the .NET runtime every self-contained publish bundles into licenses/<pack>/.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -45,10 +48,17 @@ while [[ $# -gt 0 ]]; do
     --app-set) APP_SET="$2"; shift 2 ;;
     --keep-stage) KEEP_STAGE="$2"; shift 2 ;;
     -c|--configuration) CONFIG="$2"; shift 2 ;;
-    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
+
+# Checked before the first publish, not after minutes of them: no payload leaves without
+# the notices of the runtime it bundles.
+command -v python3 >/dev/null 2>&1 || {
+  echo "python3 is required: scripts/third-party-notices.py copies the .NET runtime's license and notices into every payload." >&2
+  exit 1
+}
 
 case "$APP_SET" in
   full|cli) ;;
@@ -248,6 +258,15 @@ for RID in $RIDS; do
       -p:Version="$VERSION" -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o "$ROOT/libexec/$name" --nologo -v quiet
+
+    # A self-contained publish bundles the .NET runtime, whose license and third-party
+    # notices are those of the runtime packs it was published from -- whatever SDK the
+    # release runs. Copied byte for byte to licenses/<pack>/; a pack missing from the
+    # cache, or without its notices, stops the packaging here.
+    if [[ "$selfcontained" == "true" ]]; then
+      python3 "$REPO_ROOT/scripts/third-party-notices.py" --runtime-notices "$ROOT/libexec/$name" \
+        --project "$REPO_ROOT/$csproj" --to "$ROOT/licenses"
+    fi
 
     # Launcher wrapper
     if [[ "$RID" == win-* ]]; then

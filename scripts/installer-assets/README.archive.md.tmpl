@@ -72,6 +72,9 @@ libexec/esbuild-bin/esbuild   shared esbuild binary used to transpile .ork.ts sc
 deploy/                  service-host deployment assets (systemd unit, SCM registration script) — multi-app archive only
 VERSION                  plain-text version string (drives the Add/Remove Programs entry)
 appsettings.sample.json  reference-only config sample, see "First run" above
+LICENSE.md               Orkeon's license (MIT)
+THIRD-PARTY-NOTICES.md   the notices of the third-party components this archive redistributes
+licenses/                the license and third-party notices of the bundled .NET runtime, one folder per runtime pack
 ```
 
 The `bin/` launchers set `ORKEON_ESBUILD_PATH` to the bundled esbuild
@@ -81,4 +84,6 @@ directly from `libexec/`, either export `ORKEON_ESBUILD_PATH`, or have
 
 ## License
 
-MIT — see LICENSE.md.
+MIT — see LICENSE.md. The third-party components this archive redistributes keep their
+own licenses: THIRD-PARTY-NOTICES.md lists them with their notices, and `licenses/`
+holds those of the .NET runtime the self-contained applications bundle.

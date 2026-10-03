@@ -26,6 +26,10 @@ RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj -c Releas
 FROM mcr.microsoft.com/dotnet/runtime:10.0@sha256:8a153b5889d796b6450295b383596b13308c24c230515f8a7770ce1b94e0c460 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
+# The image redistributes the publish's whole package closure and the model weights it
+# embeds: their notices go with it, at the Debian package's path. The .NET runtime is the
+# base image's, which carries its own.
+COPY LICENSE.md THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon/
 
 # Run as the non-root `app` user built into the GA runtime image
 # (the minimal runtime:10.0 image has no `adduser`).

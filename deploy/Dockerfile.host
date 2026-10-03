@@ -23,6 +23,10 @@ FROM mcr.microsoft.com/dotnet/runtime:10.0@sha256:8a153b5889d796b6450295b383596b
 WORKDIR /opt/orkeon
 
 COPY --from=build /app .
+# The image redistributes the publish's whole package closure and the model weights it
+# embeds: their notices go with it, at the Debian package's path. The .NET runtime is the
+# base image's, which carries its own.
+COPY LICENSE.md THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon/
 
 # A daemon running someone else's prompts through tools should not be root while doing it.
 RUN useradd --system --create-home --home-dir /var/lib/orkeon orkeon \

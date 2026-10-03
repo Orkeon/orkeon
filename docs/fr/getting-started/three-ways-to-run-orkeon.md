@@ -311,6 +311,10 @@ publiée sur GHCR) a le **CLI `orkeon` comme point d'entrée par défaut**, emba
 requis. L'hôte de service n'y est pas : il a sa propre image, construite depuis
 `deploy/Dockerfile.host` (voir [l'hôte de service](../architecture/service-host.md)).
 
+Chaque image garde la licence et les notices de ce qu'elle redistribue sous
+`/usr/share/doc/orkeon/` (`LICENSE.md`, `THIRD-PARTY-NOTICES.md`), le chemin du paquet
+Debian ; le runtime .NET est celui de l'image de base de Microsoft, qui porte les siennes.
+
 ### La convention `/workspace`
 
 Montez votre répertoire de projet sur `/workspace` et référencez tout depuis là.

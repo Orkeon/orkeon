@@ -332,7 +332,7 @@ process holds, a port under 1024 without the privilege — names the prefix and
 
 ### Container
 
-[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). The token is passed by name at run time, never baked into a layer. The image exposes no port and declares no `HEALTHCHECK`: the daemon's only HTTP surface is the A2A server, off by default. To expose crews from a container, set `Orkeon:Host:A2A:Host` to `http://+` — the loopback of a container is unreachable from outside it, so `A2A:Security` must declare an authentication scheme — and publish the port (`-p 5002:5002`).
+[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). The token is passed by name at run time, never baked into a layer. The image keeps the license and the third-party notices of what it redistributes under `/usr/share/doc/orkeon/` (`LICENSE.md`, `THIRD-PARTY-NOTICES.md`); the .NET runtime is the base image's, which carries its own. The image exposes no port and declares no `HEALTHCHECK`: the daemon's only HTTP surface is the A2A server, off by default. To expose crews from a container, set `Orkeon:Host:A2A:Host` to `http://+` — the loopback of a container is unreachable from outside it, so `A2A:Security` must declare an authentication scheme — and publish the port (`-p 5002:5002`).
 
 ---
 

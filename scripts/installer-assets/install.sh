@@ -101,6 +101,10 @@ rm -rf "$LIB_DIR"
 mkdir -p "$LIB_DIR"
 cp -R "$SRC/bin" "$SRC/libexec" "$LIB_DIR/"
 [ -f "$SRC/LICENSE.md" ]               && cp "$SRC/LICENSE.md" "$LIB_DIR/"
+# The notices go wherever the bits they cover go: the packages' and, under
+# licenses/, the bundled .NET runtime's.
+[ -f "$SRC/THIRD-PARTY-NOTICES.md" ]   && cp "$SRC/THIRD-PARTY-NOTICES.md" "$LIB_DIR/"
+[ -d "$SRC/licenses" ]                 && cp -R "$SRC/licenses" "$LIB_DIR/"
 [ -f "$SRC/README.md" ]                && cp "$SRC/README.md" "$LIB_DIR/"
 [ -f "$SRC/VERSION" ]                  && cp "$SRC/VERSION" "$LIB_DIR/"
 [ -f "$SRC/appsettings.sample.json" ]  && cp "$SRC/appsettings.sample.json" "$LIB_DIR/"

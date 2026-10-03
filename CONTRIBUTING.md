@@ -252,8 +252,18 @@ project, exposing plain fields or properties to configure answers and inspect ca
   removed from a project the tools, the installers or the container images ship — changes
   what those binaries redistribute: after the restore, run
   `python3 scripts/third-party-notices.py` and commit `THIRD-PARTY-NOTICES.md` with it.
-  CI's `--check` fails until the inventory there lists the new closure, and until a version
-  a hand-written section of that file states is the shipped one.
+  CI's `--check` fails until the inventory there lists the new closure, until a version a
+  hand-written section of that file states is the shipped one, and until every shipped
+  package resolves at least to the version `Directory.Packages.props` pins. A pin holds for
+  direct references only: a package an application gets transitively, below its pin, needs a
+  direct reference in a project that application builds on (`Orkeon.Cli.TerminalGui` holds
+  the ones `Terminal.Gui` brings to the Studio TUIs).
+* A Dockerfile that publishes an application copies `LICENSE.md` and
+  `THIRD-PARTY-NOTICES.md` into the image it produces, under `/usr/share/doc/orkeon/`, and
+  `.dockerignore` keeps both in the build context: `--check` fails otherwise. The installers
+  copy the notices of the .NET runtime they bundle at packaging time
+  (`scripts/third-party-notices.py --runtime-notices`, which `scripts/package-installers.sh`
+  and its `.ps1` mirror call, so both need Python 3).
 * Commit messages are in English and follow the history's `type(scope): summary` shape
   (`feat`, `fix`, `docs`, `test`, `chore`…).
 

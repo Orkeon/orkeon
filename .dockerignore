@@ -14,4 +14,7 @@ _site
 sonarqube
 *.md
 !README.md
+# Every image copies these two into /usr/share/doc/orkeon/: the notices go with the bits.
+!LICENSE.md
+!THIRD-PARTY-NOTICES.md
 !src/*/*/README.md

@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — every published artefact carries the notices of what it redistributes, and the Studio TUIs ship the pinned package versions
+
+`THIRD-PARTY-NOTICES.md` covered every package the shipped applications redistribute, and
+travelled with the tool packages, the archives, the `.deb` and both MSIs — but not with the
+container images, not for the .NET runtime the self-contained installers bundle, and not for the
+`esbuild` binary (GAP-45). The two Studio TUIs, meanwhile, shipped older package versions than the
+CLI, the REPL and the host.
+
+- **The images carry the license and the notices.** `Dockerfile.runners` (the published
+  `ghcr.io/orkeon/orkeon-runners` and its `local-llm` variant), `deploy/Dockerfile.host` and the
+  root `Dockerfile` copy `LICENSE.md` and `THIRD-PARTY-NOTICES.md` to `/usr/share/doc/orkeon/`, the
+  Debian package's path, and `.dockerignore` no longer keeps them out of the build context. An
+  image's .NET runtime is its Microsoft base image's, which carries its own notices.
+- **The bundled .NET runtime ships with its own notices.** After each self-contained publish —
+  `orkeon`, `orkeon-host`, the Orkeon Studio applications —, `scripts/package-installers.sh` and
+  its `.ps1` mirror run `python3 scripts/third-party-notices.py --runtime-notices <publish>
+  --project <csproj> --to <payload>/licenses`, which copies byte for byte the license and the
+  third-party notices of the runtime packs the publish's `deps.json` names, found where the
+  inventory looks: `licenses/Microsoft.NETCore.App.Runtime.<rid>/`, plus
+  `licenses/Microsoft.WindowsDesktop.App.Runtime.win-x64/` beside Studio on Windows. A pack
+  missing, or without its notices, stops the packaging; a framework-dependent publish has none to
+  copy. The `.deb` installs them under `/usr/share/doc/orkeon/licenses/`, the service MSI under
+  `licenses\` (its build script requires the folder), the CLI MSI with the rest of the tree, and
+  the archives' `install.sh` and `install.ps1` copy them with `THIRD-PARTY-NOTICES.md` into the
+  installed tree — they copied `LICENSE.md` alone. The packaging scripts need Python 3.
+- **`esbuild` has its section.** Section 12 gives the MIT license of the TypeScript transpiler the
+  archives, the `.deb`, the CLI MSI and the `orkeon-runners` image ship, at the version
+  `tools/scripting-esbuild/package-lock.json` locks.
+- **The Studio TUIs ship the pinned versions.** `orkeon-studio-config` and `orkeon-studio-run` got
+  `Markdig` and ten `Microsoft.Extensions.*` packages from `Terminal.Gui` alone, at its minimums
+  (1.3.2 and 10.0.11), while `Directory.Packages.props` pins 1.4.0 and 10.0.12: central management
+  pins direct references only. `Orkeon.Cli.TerminalGui` now references the five `Terminal.Gui` asks
+  for — `Markdig`, `Microsoft.Extensions.Configuration`, `.Configuration.Binder` (10.0.12, a new
+  central pin), `.Configuration.Json` and `.Options` —, their dependencies follow, and the
+  inventory loses its eleven older rows: 151 versions, one per package.
+- **`--check` keeps it so.** It also fails now when a Dockerfile that publishes an application does
+  not copy both files into the image it produces (a copy in a stage the image does not inherit
+  does not count), when the build's ignore file keeps either out of the context, and when a
+  shipped package resolves below the version `Directory.Packages.props` pins, naming the
+  applications and both versions. `scripts/test-third-party-notices.py` proves the new rules and
+  the new mode on throw-away trees.
+
+Documented in [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md), [the
+service host](docs/architecture/service-host.md), the archives' `README.md` and `CONTRIBUTING.md`.
+
 ### Fixed — a YAML agent's `guardrails:` reach its prompt, before its task's, and an unknown preset fails the load **[breaking]**
 
 The guardrails a YAML agent declares — a `preset`, `rules`, `toolRules` — were read onto the crew's

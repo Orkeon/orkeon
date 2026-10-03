@@ -70,6 +70,8 @@ fi
 
 [[ -x "$SRC_STAGE/libexec/orkeon/orkeon" ]] || { echo "Missing apphost $SRC_STAGE/libexec/orkeon/orkeon" >&2; exit 1; }
 [[ -f "$SRC_STAGE/libexec/esbuild-bin/esbuild" ]] || { echo "Missing $SRC_STAGE/libexec/esbuild-bin/esbuild" >&2; exit 1; }
+# The notices of the .NET runtime the payload bundles: package-installers.sh copies them there.
+[[ -d "$SRC_STAGE/licenses" ]] || { echo "Missing $SRC_STAGE/licenses, the .NET runtime's license and notices (staging tree predates GAP-45?)" >&2; exit 1; }
 
 if [[ -z "$VERSION" ]]; then
   [[ -f "$SRC_STAGE/VERSION" ]] || { echo "No VERSION marker in $SRC_STAGE; pass --version." >&2; exit 1; }
@@ -146,6 +148,8 @@ Comment: The payload bundles third-party components whose licenses require an
  machine-learning model weights it redistributes.
  Their notices are reproduced verbatim in
  /usr/share/doc/orkeon/THIRD-PARTY-NOTICES.md.
+ The .NET runtime it bundles ships with the license and the third-party notices
+ of its runtime pack, under /usr/share/doc/orkeon/licenses/.
 
 Files: *
 Copyright: 2024 Orkeon Contributors
@@ -176,6 +180,9 @@ EOF
 # cross-encoder), whose attribution obligations attach to what is installed, not to the
 # repository the package was built from.
 cp "$REPO_ROOT/THIRD-PARTY-NOTICES.md" "$PKG_DIR/usr/share/doc/orkeon/THIRD-PARTY-NOTICES.md"
+# And the self-contained payloads bundle the .NET runtime: the license and the notices of
+# its runtime pack, which package-installers.sh copied from the pack the publish used.
+cp -R "$SRC_STAGE/licenses" "$PKG_DIR/usr/share/doc/orkeon/licenses"
 
 # SOURCE_DATE_EPOCH keeps the changelog stamp reproducible when CI sets it.
 if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then

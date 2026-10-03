@@ -17,6 +17,10 @@
   archive; 'cli' ships the `orkeon` onboarding binary plus the Orkeon Studio
   apps for the platform (win-x64: orkeon-studio; linux-*: orkeon-studio-config +
   orkeon-studio-run; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
+.NOTES
+  Requires Python 3 (`python` on PATH): scripts/third-party-notices.py copies the
+  license and notices of the .NET runtime every self-contained publish bundles into
+  licenses\<pack>\.
 #>
 [CmdletBinding()]
 param(
@@ -37,6 +41,15 @@ if (-not $Out) { $Out = Join-Path $RepoRoot 'artifacts\installers' }
 $unixRids = $Rids | Where-Object { $_ -notlike 'win-*' }
 if ($unixRids -and -not $Force) {
     throw "Unix RIDs ($($unixRids -join ', ')) would lose executable bits when archived on Windows. Build them with scripts/package-installers.sh (Linux/WSL/CI), or pass -Force."
+}
+
+# Checked before the first publish, not after minutes of them: no payload leaves without
+# the notices of the runtime it bundles (mirrors package-installers.sh). Run, not just
+# found: the Microsoft Store alias named python only prints a hint and exits 9009.
+$Python = Get-Command python -ErrorAction SilentlyContinue
+if ($Python) { & $Python.Source -c 'import sys; sys.exit(sys.version_info[0] != 3)' 2>$null }
+if (-not $Python -or $LASTEXITCODE -ne 0) {
+    throw "Python 3 is required: scripts/third-party-notices.py copies the .NET runtime's license and notices into every payload. Install it from https://www.python.org/downloads/, make sure 'python' on PATH runs it, then run this script again."
 }
 
 # --- Version -----------------------------------------------------------------
@@ -136,6 +149,18 @@ foreach ($rid in $Rids) {
             -p:ErrorOnDuplicatePublishOutputFiles=false `
             -o (Join-Path $root "libexec\$($app.Name)") --nologo -v quiet
         if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $($app.Name) ($rid)" }
+
+        # A self-contained publish bundles the .NET runtime: copy the license and notices of
+        # the runtime packs it was published from to licenses\<pack>\, byte for byte. A pack
+        # missing from the cache, or without its notices, stops the packaging here (mirrors
+        # package-installers.sh).
+        if ($app.SelfContained) {
+            & $Python.Source (Join-Path $RepoRoot 'scripts\third-party-notices.py') `
+                --runtime-notices (Join-Path $root "libexec\$($app.Name)") `
+                --project (Join-Path $RepoRoot $app.Csproj) `
+                --to (Join-Path $root 'licenses')
+            if ($LASTEXITCODE -ne 0) { throw "Copying the .NET runtime's notices failed for $($app.Name) ($rid)" }
+        }
 
         if ($rid -like 'win-*') {
             (Get-Content (Join-Path $Assets 'wrapper.cmd.tmpl') -Raw).

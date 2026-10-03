@@ -36,13 +36,30 @@ but for normalised line endings, each distinct text once. The hand-written secti
 markers stay as they are; a package one of them covers points to it, and the version such a
 section states must be the shipped one.
 
+What else must hold, checked in both modes (GAP-45): every container image that publishes an
+application copies LICENSE.md and the notices to /usr/share/doc/orkeon/ in the image it
+produces, and the ignore file of its build leaves both in the context; and no shipped package
+resolves below the version Directory.Packages.props pins -- central management pins direct
+references only, so an application that gets a package transitively ships whatever its
+dependencies ask for.
+
+The .NET runtime a self-contained publish bundles is not a package of the closure: its runtime
+packs carry their own license and third-party notices, and `--runtime-notices` copies them,
+byte for byte, next to it at packaging time (scripts/package-installers.{sh,ps1}). It reads the
+runtime packs the publish's *.deps.json names, finds them in the folders the inventory reads,
+and copies the license and notice files of each pack's root to `<to>/<pack>/`. A
+framework-dependent publish bundles none: nothing to copy.
+
 Usage (from anywhere; the paths are the repository's):
   python3 scripts/third-party-notices.py            # rewrite the generated section
   python3 scripts/third-party-notices.py --check    # exit 1 while it is stale (CI, after restore)
   python3 scripts/third-party-notices.py --list     # print the closure, one package per line
+  python3 scripts/third-party-notices.py --runtime-notices <published dir> --project <csproj> \\
+      --to <payload>/licenses                       # after a `dotnet publish`
 
-Exit codes: 0 up to date; 1 stale, or a hand-written section or a shipping recipe disagrees;
-2 the restore this reads is missing (no assets file, a package in no folder).
+Exit codes: 0 up to date (or copied); 1 stale, or a hand-written section, a shipping recipe, an
+image or a pin disagrees; 2 what this reads is missing (no assets file, a package or a runtime
+pack in no folder, a runtime pack without its license and notices, no *.deps.json).
 """
 
 from __future__ import annotations
@@ -52,12 +69,14 @@ import difflib
 import hashlib
 import json
 import os
+import posixpath
 import re
+import shutil
 import sys
 import textwrap
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 NOTICES_FILE = "THIRD-PARTY-NOTICES.md"
@@ -77,16 +96,26 @@ SHIPPED_APPS: list[tuple[str, str]] = [
     ("orkeon-studio-run", "src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj"),
 ]
 
+# The container images. Each one ships what it publishes, so it carries the license and the
+# notices too, at the Debian package's path (image_drift).
+DOTNET_PUBLISH = re.compile(r"dotnet publish\s+(\S+\.csproj)")
+IMAGE_RECIPES = ["Dockerfile", "Dockerfile.runners", "deploy/Dockerfile.host"]
+IMAGE_DOC_DIR = "/usr/share/doc/orkeon"
+IMAGE_NOTICES = ("LICENSE.md", NOTICES_FILE)
+
 # The recipes that put a project's publish output in something this repository distributes,
 # and how each one names the project.
 SHIPPING_RECIPES: list[tuple[str, re.Pattern[str]]] = [
     ("scripts/package-installers.sh", re.compile(r'^\s*"[\w.-]+\|([^|"]+\.csproj)\|', re.M)),
     ("scripts/package-installers.ps1", re.compile(r"Csproj\s*=\s*'([^']+\.csproj)'")),
-    ("Dockerfile", re.compile(r"dotnet publish\s+(\S+\.csproj)")),
-    ("Dockerfile.runners", re.compile(r"dotnet publish\s+(\S+\.csproj)")),
-    ("deploy/Dockerfile.host", re.compile(r"dotnet publish\s+(\S+\.csproj)")),
+    *((dockerfile, DOTNET_PUBLISH) for dockerfile in IMAGE_RECIPES),
 ]
 PACK_AS_TOOL = re.compile(r"<PackAsTool>\s*true\s*</PackAsTool>", re.I)
+CENTRAL_PINS = "Directory.Packages.props"
+# A pin is one version: a range or a floating version pins none, and is left out.
+PLAIN_VERSION = re.compile(r"\d+(?:\.\d+){0,3}(?:-[0-9A-Za-z.-]+)?")
+# How a publish's *.deps.json names a runtime pack it bundles (the SDK's DependencyContextBuilder).
+RUNTIME_PACK_LIBRARY = re.compile(r"^runtimepack\.(.+)/([^/]+)$")
 PRUNED_DIRS = {"bin", "obj", "obj-linux", "node_modules", "TestResults"}
 
 BEGIN_MARKER = ("<!-- BEGIN GENERATED INVENTORY: written by scripts/third-party-notices.py, "
@@ -110,7 +139,8 @@ WIDTH = 90
 
 
 class RestoreMissing(Exception):
-    """What this script reads -- an assets file, a package -- is not on this machine."""
+    """What this script reads -- an assets file, a package, a runtime pack and its notices --
+    is not on this machine."""
 
 
 @dataclass
@@ -548,6 +578,246 @@ def shipping_drift(root: Path, apps: list[tuple[str, str]]) -> list[str]:
     return problems
 
 
+def dockerfile_instructions(text: str) -> list[tuple[str, str]]:
+    """A Dockerfile's instructions as (KEYWORD, arguments): comments and blank lines dropped,
+    continuation lines joined."""
+    instructions: list[tuple[str, str]] = []
+    pending = ""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.endswith("\\"):
+            pending += stripped[:-1] + " "
+            continue
+        keyword, *arguments = (pending + stripped).split(None, 1)
+        instructions.append((keyword.upper(), arguments[0] if arguments else ""))
+        pending = ""
+    return instructions
+
+
+def image_stages(instructions: list[tuple[str, str]]) -> list[list[tuple[str, str]]]:
+    """The stages the image of a plain `docker build` is made of: the last one, the stage it
+    is built FROM, and so on down to a base image."""
+    stages: list[tuple[str, str, list[tuple[str, str]]]] = []
+    for keyword, arguments in instructions:
+        if keyword == "FROM":
+            words = [w for w in arguments.split() if not w.startswith("--")]
+            name = words[2].lower() if len(words) > 2 and words[1].upper() == "AS" else ""
+            stages.append((name, words[0].lower() if words else "", []))
+        elif stages:
+            stages[-1][2].append((keyword, arguments))
+    chain: list[list[tuple[str, str]]] = []
+    index = len(stages) - 1
+    while index >= 0:
+        _, base, body = stages[index]
+        chain.append(body)
+        index = max((i for i in range(index) if stages[i][0] and stages[i][0] == base), default=-1)
+    return chain
+
+
+def landed_in(stages: list[list[tuple[str, str]]], directory: str) -> set[str]:
+    """The names of the files the COPY instructions of these stages put in `directory`: a
+    destination ending with a slash receives each source under its own name, any other one is
+    the file's own path."""
+    landed: set[str] = set()
+    for body in stages:
+        for keyword, arguments in body:
+            if keyword != "COPY":
+                continue
+            words = arguments.split()
+            while words and words[0].startswith("--"):
+                words.pop(0)
+            paths = words
+            if words and words[0].startswith("["):
+                try:
+                    paths = [str(p) for p in json.loads(" ".join(words))]
+                except ValueError:
+                    pass
+            *sources, destination = paths or [""]
+            for source in sources:
+                target = PurePosixPath(destination + PurePosixPath(source).name
+                                       if destination.endswith("/") else destination)
+                if target.parent == PurePosixPath(directory):
+                    landed.add(target.name)
+    return landed
+
+
+def _ignore_pattern(pattern: str) -> re.Pattern[str]:
+    """A .dockerignore pattern as a regular expression: `**` any number of directories, `*`
+    and `?` within one path segment, `[...]` a character class."""
+    out, i = [], 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif pattern.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif pattern[i] in "*?":
+            out.append("[^/]*" if pattern[i] == "*" else "[^/]")
+            i += 1
+        elif pattern[i] == "[" and "]" in pattern[i + 1:]:
+            end = pattern.index("]", i + 1)
+            out.append(pattern[i:end + 1])
+            i = end + 1
+        else:
+            out.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile("".join(out))
+
+
+def dockerignore_excludes(rules: str, path: str) -> bool:
+    """Whether a .dockerignore keeps `path`, a file at the root of the build context, out of
+    that context: the last pattern that matches it decides, a `!` pattern bringing it back."""
+    excluded = False
+    for line in rules.splitlines():
+        pattern = line.strip()
+        if not pattern or pattern.startswith("#"):
+            continue
+        negated = pattern.startswith("!")
+        pattern = posixpath.normpath(pattern[1:].strip() if negated else pattern).lstrip("/")
+        if _ignore_pattern(pattern).fullmatch(path):
+            excluded = not negated
+    return excluded
+
+
+def image_drift(root: Path) -> list[str]:
+    """An image recipe that publishes an application without putting LICENSE.md and the
+    notices in the image it produces, or whose build context leaves them out (the ignore file
+    next to the Dockerfile, else the root .dockerignore): its COPY would fail."""
+    problems: list[str] = []
+    kept_out: dict[str, tuple[list[str], list[str]]] = {}
+    for recipe in IMAGE_RECIPES:
+        path = root / recipe
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if not DOTNET_PUBLISH.search(text):
+            continue
+        landed = landed_in(image_stages(dockerfile_instructions(text)), IMAGE_DOC_DIR)
+        missing = [name for name in IMAGE_NOTICES if name not in landed]
+        if missing:
+            problems.append(f"{recipe} publishes an application, and its image does not copy "
+                            f"{' and '.join(missing)} to {IMAGE_DOC_DIR}/")
+        ignore = path.with_name(path.name + ".dockerignore")
+        if not ignore.is_file():
+            ignore = root / ".dockerignore"
+        if ignore.is_file():
+            rules = ignore.read_text(encoding="utf-8")
+            names = [name for name in IMAGE_NOTICES if dockerignore_excludes(rules, name)]
+            if names:
+                kept_out.setdefault(ignore.relative_to(root).as_posix(), (names, []))[1].append(recipe)
+    for ignore, (names, recipes) in kept_out.items():
+        problems.append(f"{ignore} keeps {' and '.join(names)} out of the build context of "
+                        f"{_series(recipes)}: add {', '.join('!' + n for n in names)} after the "
+                        f"pattern that excludes them")
+    return problems
+
+
+def central_pins(root: Path) -> dict[str, str]:
+    """The version Directory.Packages.props pins for each package, keyed by id lowercase."""
+    path = root / CENTRAL_PINS
+    if not path.is_file():
+        return {}
+    pins: dict[str, str] = {}
+    for element in ET.parse(path).getroot().iter():
+        package_id, version = element.get("Include"), (element.get("Version") or "").strip()
+        if _local(element.tag) == "PackageVersion" and package_id and PLAIN_VERSION.fullmatch(version):
+            pins[package_id.lower()] = version
+    return pins
+
+
+def _comparable(version: str) -> tuple:
+    """version_key with the release padded to four numbers: NuGet reads 1.4 as 1.4.0.0."""
+    numbers, final, pre = version_key(version)
+    return numbers + (0,) * (4 - len(numbers)), final, pre
+
+
+def pin_drift(root: Path, packages: list[Package]) -> list[str]:
+    """A shipped package version below the one Directory.Packages.props pins."""
+    pins = central_pins(root)
+    problems = []
+    for package in packages:
+        pin = pins.get(package.id.lower())
+        if pin is not None and _comparable(package.version) < _comparable(pin):
+            verb = "ships" if len(package.apps) == 1 else "ship"
+            problems.append(f"{', '.join(package.apps)} {verb} {package.id} {package.version}, below the "
+                            f"{pin} {CENTRAL_PINS} pins -- a pin holds for direct references only: "
+                            f"reference it directly in a project they build on")
+    return problems
+
+
+# --- the .NET runtime of a self-contained publish --------------------------------------------
+
+def runtime_packs(publish_dir: Path) -> list[tuple[str, str]]:
+    """The runtime packs a publish bundles, (pack, version): the `runtimepack` libraries of
+    its *.deps.json, none for a framework-dependent publish. A framework its
+    *.runtimeconfig.json says is bundled (`includedFrameworks`) and the deps.json does not
+    name is `<framework>.Runtime.<rid>` all the same, so a self-contained publish never
+    passes for a framework-dependent one."""
+    deps = sorted(publish_dir.glob("*.deps.json"))
+    if not deps:
+        raise RestoreMissing(f"{publish_dir.as_posix()}: no *.deps.json -- pass the folder "
+                             f"`dotnet publish -o` wrote")
+    packs: dict[str, tuple[str, str]] = {}
+    rid = ""
+    for path in deps:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+        rid = rid or ((data.get("runtimeTarget") or {}).get("name") or "").partition("/")[2]
+        for key, library in (data.get("libraries") or {}).items():
+            match = RUNTIME_PACK_LIBRARY.match(key)
+            if match and library.get("type") == "runtimepack":
+                packs.setdefault(match.group(1).lower(), (match.group(1), match.group(2)))
+    for path in sorted(publish_dir.glob("*.runtimeconfig.json")):
+        options = json.loads(path.read_text(encoding="utf-8-sig")).get("runtimeOptions") or {}
+        for framework in options.get("includedFrameworks") or []:
+            pack = f"{framework.get('name')}.Runtime.{rid}"
+            packs.setdefault(pack.lower(), (pack, str(framework.get("version"))))
+    return sorted(packs.values(), key=lambda p: (p[0].lower(), p[1]))
+
+
+def copy_runtime_notices(publish_dir: Path, project: Path, to: Path, extra: list[Path],
+                         env: dict[str, str], home: Path, platform: str = sys.platform) -> list[str]:
+    """Copy, byte for byte, the license and notice files at the root of each runtime pack the
+    publish bundles to `<to>/<pack>/`, from the folders the inventory reads: the project's
+    restored packageFolders, NUGET_PACKAGES, ~/.nuget/packages. One line per pack copied."""
+    packs = runtime_packs(publish_dir)
+    if not packs:
+        return []
+    data = json.loads(assets_file(project.parent, platform).read_text(encoding="utf-8"))
+    folders = package_folders(list(data.get("packageFolders") or {}), extra, env, home)
+    found: list[tuple[str, str, Path, list[str]]] = []
+    for pack, version in packs:
+        base = next((folder / pack.lower() / version.lower() for folder in folders
+                     if any(p.suffix.lower() == ".nuspec"
+                            for p in _files(folder / pack.lower() / version.lower()))), None)
+        if base is None:
+            searched = ", ".join(f.as_posix() for f in folders) or "none exists"
+            raise RestoreMissing(f"{pack} {version}: the runtime pack {publish_dir.as_posix()} bundles "
+                                 f"is in no package folder ({searched}) -- `dotnet publish` the "
+                                 f"project for that runtime identifier, or restore it with `-r`, "
+                                 f"on this machine first")
+        names = sorted((p.name for p in _files(base) if LICENSE_FILE.match(p.name) or NOTICE_FILE.match(p.name)),
+                       key=lambda n: (n.lower(), n))
+        if not names:
+            raise RestoreMissing(f"{pack} {version}: no license or notices file at the root of "
+                                 f"{base.as_posix()} -- a runtime does not ship without its notices")
+        found.append((pack, version, base, names))
+    lines = []
+    for pack, version, base, names in found:
+        target = to / pack
+        target.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            shutil.copyfile(base / name, target / name)
+        lines.append(f"{pack} {version}: {', '.join(names)} -> {target.as_posix()}/")
+    return lines
+
+
+def _files(directory: Path) -> list[Path]:
+    return [p for p in directory.iterdir() if p.is_file()] if directory.is_dir() else []
+
+
 # --- entry point -----------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None, root: Path = ROOT,
@@ -558,12 +828,36 @@ def main(argv: list[str] | None = None, root: Path = ROOT,
     mode.add_argument("--check", action="store_true",
                       help="exit 1 when the generated section of THIRD-PARTY-NOTICES.md is stale")
     mode.add_argument("--list", action="store_true", help="print the closure and exit")
+    mode.add_argument("--runtime-notices", type=Path, metavar="PUBLISHED_DIR",
+                      help="copy the license and notices of the runtime packs this publish "
+                           "bundles to --to (needs --project and --to)")
+    parser.add_argument("--project", type=Path, metavar="CSPROJ",
+                        help="--runtime-notices: the project published, whose restore names the "
+                             "package folders")
+    parser.add_argument("--to", type=Path, metavar="DIR",
+                        help="--runtime-notices: where each pack's files go, as <DIR>/<pack>/")
     parser.add_argument("--packages", action="append", type=Path, default=[], metavar="DIR",
                         help="a package folder to search before the assets file's own (repeatable)")
     args = parser.parse_args(argv)
     apps = SHIPPED_APPS if apps is None else apps
     env = dict(os.environ) if env is None else env
     home = Path.home() if home is None else home
+
+    if args.runtime_notices is not None:
+        if args.project is None or args.to is None:
+            parser.error("--runtime-notices needs --project and --to")
+        try:
+            copied = copy_runtime_notices(args.runtime_notices, args.project, args.to, args.packages,
+                                          env, home, platform)
+        except RestoreMissing as error:
+            print(f"third-party-notices: {error}", file=sys.stderr)
+            return 2
+        if not copied:
+            print(f"third-party-notices: {args.runtime_notices.as_posix()} bundles no .NET runtime "
+                  f"(a framework-dependent publish): nothing to copy.")
+        for line in copied:
+            print(f"third-party-notices: {line}")
+        return 0
 
     try:
         packages = inventory(root, apps, args.packages, env, home, platform)
@@ -584,7 +878,8 @@ def main(argv: list[str] | None = None, root: Path = ROOT,
     except ValueError as error:
         print(f"third-party-notices: {error}", file=sys.stderr)
         return 2
-    problems = hand_written_drift(updated, packages) + shipping_drift(root, apps)
+    problems = (hand_written_drift(updated, packages) + shipping_drift(root, apps)
+                + image_drift(root) + pin_drift(root, packages))
 
     if args.check:
         problems = staleness(document, section) + problems

@@ -337,7 +337,7 @@ préfixe et `Orkeon:Host:A2A:Port`.
 
 ### Conteneur
 
-[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). Le jeton est passé par nom à l'exécution, jamais gravé dans une couche. L'image n'expose aucun port et ne déclare aucun `HEALTHCHECK` : la seule surface HTTP du daemon est le serveur A2A, éteint par défaut. Pour exposer des crews depuis un conteneur, réglez `Orkeon:Host:A2A:Host` sur `http://+` — la boucle locale d'un conteneur est injoignable de l'extérieur, donc `A2A:Security` doit déclarer un schéma d'authentification — et publiez le port (`-p 5002:5002`).
+[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). Le jeton est passé par nom à l'exécution, jamais gravé dans une couche. L'image garde la licence et les notices tierces de ce qu'elle redistribue sous `/usr/share/doc/orkeon/` (`LICENSE.md`, `THIRD-PARTY-NOTICES.md`) ; le runtime .NET est celui de l'image de base, qui porte les siennes. L'image n'expose aucun port et ne déclare aucun `HEALTHCHECK` : la seule surface HTTP du daemon est le serveur A2A, éteint par défaut. Pour exposer des crews depuis un conteneur, réglez `Orkeon:Host:A2A:Host` sur `http://+` — la boucle locale d'un conteneur est injoignable de l'extérieur, donc `A2A:Security` doit déclarer un schéma d'authentification — et publiez le port (`-p 5002:5002`).
 
 ---
 

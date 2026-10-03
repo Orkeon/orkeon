@@ -313,6 +313,11 @@ COPY --from=build /app/runners ./runners
 # Bundled esbuild binary, exposed to every app via ORKEON_ESBUILD_PATH.
 COPY --from=build /app/esbuild-bin ./esbuild-bin
 ENV ORKEON_ESBUILD_PATH=/app/esbuild-bin/esbuild
+# The license, and the notices of what this image redistributes -- both runners' package
+# closure, the model weights they embed, esbuild -- at the Debian package's path. Copied in
+# this stage, so the default image and local-llm both inherit them. The .NET runtime is the
+# base image's, which carries its own.
+COPY LICENSE.md THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon/
 
 # Example crew definitions (config.yaml + README) and the shared appsettings.
 # Only the numbered categories plus appsettings/ are shipped — others/, _legacy/

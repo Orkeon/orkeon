@@ -182,10 +182,12 @@ if (Test-Path -LiteralPath $InstallDir) {
 # rest so -Uninstall keeps working later even if the extracted archive is
 # long gone (the ARP UninstallString points at this copy). appsettings.sample
 # .json (when the archive ships one) is reference-only -- real user config
-# always lives under %APPDATA%\Orkeon, never here.
+# always lives under %APPDATA%\Orkeon, never here. The third-party notices and
+# licenses\ (the bundled .NET runtime's license and notices) go wherever the
+# bits they cover go, as in an MSI install.
 if (Test-Path -LiteralPath $InstallDir) { Remove-Item -LiteralPath $InstallDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-foreach ($item in 'bin', 'libexec', 'README.md', 'LICENSE.md', 'install.ps1', 'VERSION', 'appsettings.sample.json') {
+foreach ($item in 'bin', 'libexec', 'README.md', 'LICENSE.md', 'THIRD-PARTY-NOTICES.md', 'licenses', 'install.ps1', 'VERSION', 'appsettings.sample.json') {
     $p = Join-Path $src $item
     if (Test-Path -LiteralPath $p) { Copy-Item -LiteralPath $p -Destination $InstallDir -Recurse -Force }
 }

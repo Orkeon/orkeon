@@ -262,8 +262,18 @@ réponses et inspecter les appels. La référence est
   change ce que ces binaires redistribuent : après la restauration, lancez
   `python3 scripts/third-party-notices.py` et commitez `THIRD-PARTY-NOTICES.md` avec. Le
   `--check` de la CI échoue tant que l'inventaire de ce fichier ne liste pas la nouvelle
-  fermeture, et tant qu'une version qu'une de ses sections manuscrites déclare n'est pas
-  celle livrée.
+  fermeture, tant qu'une version qu'une de ses sections manuscrites déclare n'est pas
+  celle livrée, et tant qu'un paquet livré se résout sous la version qu'épingle
+  `Directory.Packages.props`. Un épinglage ne vaut que pour une référence directe : un
+  paquet qu'une application ne reçoit que transitivement, sous son épinglage, demande une
+  référence directe dans un projet sur lequel elle repose (`Orkeon.Cli.TerminalGui` porte
+  celles que `Terminal.Gui` apporte aux TUI de Studio).
+* Un `Dockerfile` qui publie une application copie `LICENSE.md` et `THIRD-PARTY-NOTICES.md`
+  dans l'image qu'il produit, sous `/usr/share/doc/orkeon/`, et `.dockerignore` garde les
+  deux dans le contexte de build : sinon, le `--check` échoue. Les installeurs copient les
+  notices du runtime .NET qu'ils embarquent au moment de l'empaquetage
+  (`scripts/third-party-notices.py --runtime-notices`, qu'appellent
+  `scripts/package-installers.sh` et son miroir `.ps1`, qui demandent donc Python 3).
 * Les messages de commit sont en anglais et suivent la forme `type(scope): summary` de
   l'historique (`feat`, `fix`, `docs`, `test`, `chore`…).
 
