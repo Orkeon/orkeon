@@ -59,15 +59,4 @@ public sealed class CrewMemoryDeclarationTests
 
         Assert.False(crew.MemoryEnabled);
     }
-
-    [Fact]
-    public void Memory_cannot_be_turned_off_under_a_declared_provider()
-    {
-        var crew = new CrewBuilder().Goal("Watch the contracts").EnableMemory().WithMemoryProvider("sqlite").Build();
-
-        var error = Assert.Throws<InvalidOperationException>(() => crew.UpdateConfiguration(memoryEnabled: false));
-
-        Assert.Contains("sqlite", error.Message, StringComparison.Ordinal);
-        Assert.True(crew.MemoryEnabled);
-    }
 }

@@ -12,7 +12,7 @@
 - **Agents**: 5 -- US Tax Specialist, EU Tax Specialist, APAC Tax Specialist, Strategy Consolidator, Senior Tax Advisor (human)
 - **Tools**: `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `SQLite` (versioned configurations)
-- **Key features**: IConfigurationVersioning (planned), IConfigurationDiffService (planned), IYamlDiffService, HumanInputContext, batch execution
+- **Key features**: IConfigurationVersioning (planned), IConfigurationDiffService (planned), HumanInputContext, batch execution
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites

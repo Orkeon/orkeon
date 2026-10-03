@@ -61,29 +61,16 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds Orkeon Application layer with custom configuration.
+    /// Adds Orkeon Application layer with custom configuration. <paramref name="configure"/> is
+    /// registered as is (GAP-37): it composes with a <c>Configure&lt;OrkeonApplicationOptions&gt;</c>
+    /// registered before or after it, each applied in registration order.
     /// </summary>
     public static IServiceCollection AddOrkeonApplication(
         this IServiceCollection services,
         Action<OrkeonApplicationOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        var options = new OrkeonApplicationOptions();
-        configure(options);
-
-        services.Configure<OrkeonApplicationOptions>(opt =>
-        {
-            opt.DefaultMaxIterations = options.DefaultMaxIterations;
-            opt.EmbeddingDimension = options.EmbeddingDimension;
-            opt.CrewRepositoryType = options.CrewRepositoryType;
-            opt.CrewsPath = options.CrewsPath;
-            opt.EmbeddingProvider = options.EmbeddingProvider;
-            opt.OpenAIApiKey = options.OpenAIApiKey;
-            opt.OpenAIEmbeddingModel = options.OpenAIEmbeddingModel;
-            opt.AzureOpenAIEndpoint = options.AzureOpenAIEndpoint;
-            opt.AzureOpenAIDeploymentName = options.AzureOpenAIDeploymentName;
-            opt.AgentSelectionStrategy = options.AgentSelectionStrategy;
-        });
+        services.Configure(configure);
 
         // Delegate every shared registration (CQRS handlers, validators, domain event
         // handlers, execution pipeline, memory services) to the base

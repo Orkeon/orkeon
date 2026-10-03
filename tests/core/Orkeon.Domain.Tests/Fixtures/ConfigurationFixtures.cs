@@ -163,28 +163,6 @@ public static class ConfigurationFixtures
     }
 
     /// <summary>
-    /// Creates a default ExecutionConfig.
-    /// </summary>
-    public static ExecutionConfig CreateDefaultExecutionConfig()
-    {
-        return new ExecutionConfig();
-    }
-
-    /// <summary>
-    /// Creates a custom ExecutionConfig.
-    /// </summary>
-    public static ExecutionConfig CreateCustomExecutionConfig()
-    {
-        return new ExecutionConfig
-        {
-            DefaultTimeout = TimeSpan.FromSeconds(600),
-            MaxRetries = 5,
-            EnableDebugMode = false
-        };
-    }
-
-
-    /// <summary>
     /// Test data for configuration validation.
     /// </summary>
     public static class TestData

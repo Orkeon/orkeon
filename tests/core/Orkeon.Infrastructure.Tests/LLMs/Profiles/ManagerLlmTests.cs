@@ -390,4 +390,36 @@ public sealed partial class ManagerLlmTests
 
         Assert.Equal("provider:vendor-c", ManagerLlm.Describe(crew, chef));
     }
+
+    // GAP-37: the crew export, removed, was the only test of the three names below.
+
+    [Fact]
+    public void A_manager_agent_on_a_profile_is_named_by_its_profile()
+    {
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead the team").WithLlmConfig(LlmConfig.OnProfile("claude")).Build();
+        var crew = new CrewBuilder().Goal("Ship the article").Hierarchical(chef).WithAgent(chef).Build();
+
+        Assert.Equal("profile:claude", ManagerLlm.Describe(crew, chef));
+    }
+
+    [Fact]
+    public void A_manager_agent_that_names_no_profile_is_named_by_the_default_profile()
+    {
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead the team").Build();
+        var crew = new CrewBuilder().Goal("Ship the article").Hierarchical(chef).WithAgent(chef).Build();
+
+        Assert.Equal("profile:default", ManagerLlm.Describe(crew, chef));
+    }
+
+    [Fact]
+    public void The_provider_the_crew_gives_its_manager_is_named_whichever_mode()
+    {
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead the team").WithLlmConfig(LlmConfig.OnProfile("claude")).Build();
+        var provider = new MockLlmProvider { Name = "anthropic" };
+        var hierarchical = new CrewBuilder().Goal("Ship the article").Hierarchical(chef).WithManagerLlm(provider).WithAgent(chef).Build();
+        var autonomous = new CrewBuilder().Goal("Ship the article").Process(ProcessType.Autonomous).WithManagerLlm(provider).WithAgent(chef).Build();
+
+        Assert.Equal("provider:anthropic", ManagerLlm.Describe(hierarchical, chef));
+        Assert.Equal("provider:anthropic", ManagerLlm.Describe(autonomous, managerAgent: null));
+    }
 }

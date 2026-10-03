@@ -315,40 +315,4 @@ public class InterfaceRecordsTests
         Assert.Equal(2, v.Errors.Count);
         Assert.Empty(v.Parameters);
     }
-
-    // ══════════════ ITemplateInstantiator — InstantiationValidation ══════════════
-
-    [Fact]
-    public void ShouldCreateValidInstantiation_WhenCallingValidFactory()
-    {
-        // Act
-        var v = InstantiationValidation.Valid();
-
-        // Assert
-        Assert.True(v.IsValid);
-        Assert.Empty(v.Errors);
-        Assert.Empty(v.MissingParameters);
-    }
-
-    [Fact]
-    public void ShouldCreateInvalidInstantiation_WhenCallingInvalidFactory()
-    {
-        // Act
-        var v = InstantiationValidation.Invalid("param 'role' required");
-
-        // Assert
-        Assert.False(v.IsValid);
-        Assert.Single(v.Errors);
-    }
-
-    // ══════════════ TemplateType enum ══════════════
-
-    [Theory]
-    [InlineData(TemplateType.Agent)]
-    [InlineData(TemplateType.Task)]
-    [InlineData(TemplateType.Both)]
-    public void ShouldContainExpectedValue_WhenCheckingTemplateTypeEnum(TemplateType type)
-    {
-        Assert.True(Enum.IsDefined<TemplateType>(type));
-    }
 }

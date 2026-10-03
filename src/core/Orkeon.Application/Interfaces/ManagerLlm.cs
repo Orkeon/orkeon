@@ -31,7 +31,7 @@ public sealed class ManagerLlm
     /// </summary>
     public string? Model { get; init; }
 
-    /// <summary>What the manager runs on, as the log and the crew's metadata name it (<see cref="Describe"/>).</summary>
+    /// <summary>What the manager runs on, as the log names it (<see cref="Describe"/>).</summary>
     public required string Name { get; init; }
 
     /// <summary>

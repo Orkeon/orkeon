@@ -34,8 +34,6 @@ public sealed record CrewConfiguration
     public int? MaxRpm { get; init; }
     /// <summary>Gets the identifier of the manager agent, or null for no manager.</summary>
     public AgentId? ManagerAgentId { get; init; }
-    /// <summary>Gets the execution configuration override, or null to use defaults.</summary>
-    public ExecutionConfig? ExecutionConfig { get; init; }
     /// <summary>Gets the graph-specific configuration (only used when Process is Graph), or null for defaults.</summary>
     public GraphConfig? GraphConfig { get; init; }
     /// <summary>
@@ -60,8 +58,6 @@ public sealed record CrewConfiguration
     /// wrote no block.
     /// </summary>
     public IReadOnlyList<Orkeon.Domain.FileSystem.MountReference>? Mounts { get; init; }
-    /// <summary>Gets additional metadata for this crew configuration.</summary>
-    public Dictionary<string, object> Metadata { get; init; } = [];
 }
 
 /// <summary>Configuration for agent setup.</summary>

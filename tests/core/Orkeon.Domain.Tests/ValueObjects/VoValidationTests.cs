@@ -286,41 +286,6 @@ public class VoValidationTests
     }
 
     // ────────────────────────────────────────────
-    // ExecutionConfig
-    // ────────────────────────────────────────────
-
-    [Fact]
-    public void ExecutionConfig_Create_ShouldAcceptValidValues()
-    {
-        var config = ExecutionConfig.Create(maxRetries: 2, maxRPM: 100);
-        Assert.Equal(2, config.MaxRetries);
-        Assert.Equal(100, config.MaxRPM);
-    }
-
-    [Fact]
-    public void ExecutionConfig_Create_ShouldRejectNegativeMaxRetries()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ExecutionConfig.Create(maxRetries: -1));
-    }
-
-    [Fact]
-    public void ExecutionConfig_Create_ShouldRejectNegativeMaxRPM()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ExecutionConfig.Create(maxRPM: -1));
-    }
-
-    [Fact]
-    public void ExecutionConfig_Create_ShouldRejectNonPositiveTimeout()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ExecutionConfig.Create(defaultTimeout: TimeSpan.Zero));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ExecutionConfig.Create(defaultTimeout: TimeSpan.FromSeconds(-1)));
-    }
-
-    // ────────────────────────────────────────────
     // ContentPart subtypes
     // ────────────────────────────────────────────
 

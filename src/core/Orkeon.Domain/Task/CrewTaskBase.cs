@@ -194,67 +194,6 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     }
 
     /// <summary>
-    /// Restore constructor: rehydrates a task from persistence without raising domain events.
-    /// </summary>
-#pragma warning disable S107 // Restore constructor requires all persisted state; by design
-    protected CrewTaskBase(
-        TaskId id,
-        TaskDescription description,
-        ExpectedOutput expectedOutput,
-        TaskStatus status,
-        AgentId? assignedAgent,
-        TaskOutput? output,
-        TaskPriority priority,
-        DateTime createdAt,
-        DateTime? startedAt,
-        DateTime? completedAt,
-        bool asyncExecution,
-        JsonSchema? outputJson,
-        Type? outputPydantic,
-        string? outputFile,
-        bool humanInput,
-        IEnumerable<TaskId>? dependencies,
-        IEnumerable<IBaseTool>? tools,
-        TContext? contextData,
-        TaskDeliverable? deliverable = null) : base(id)
-    {
-        _dependencies = [];
-        _tools = [];
-        _dependencyManager = new TaskDependencyManager(_dependencies);
-
-        ArgumentNullException.ThrowIfNull(description);
-
-        Description = description;
-        ArgumentNullException.ThrowIfNull(expectedOutput);
-        ExpectedOutput = expectedOutput;
-        Status = status;
-        AssignedAgent = assignedAgent;
-        Output = output;
-        Priority = priority ?? TaskPriority.Normal;
-        CreatedAt = createdAt;
-        StartedAt = startedAt;
-        CompletedAt = completedAt;
-        AsyncExecution = asyncExecution;
-        OutputJson = outputJson;
-        OutputPydantic = outputPydantic;
-        OutputFile = outputFile;
-        Deliverable = deliverable;
-        HumanInput = humanInput;
-
-        var metadata = new TaskContextMetadata(Id, AgentId.Create(), typeof(TContext).Name);
-        _context = new TypedTaskContext<TContext>(contextData ?? new TContext(), metadata);
-
-        if (dependencies != null)
-            _dependencies.AddRange(dependencies);
-
-        if (tools != null)
-            _tools.AddRange(tools);
-
-        // No domain events raised — this is a restore from persistence
-    }
-#pragma warning restore S107
-
-    /// <summary>
     /// Updates the task context.
     /// </summary>
     public void UpdateContext(Action<TContext> updateAction)
@@ -471,35 +410,6 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     {
         ArgumentNullException.ThrowIfNull(output);
         return TaskOutputValidator.ValidateOutput(output, OutputJson, OutputPydantic);
-    }
-
-    /// <summary>
-    /// Updates task configuration.
-    /// </summary>
-    public void UpdateConfiguration(
-        bool? asyncExecution = null,
-        JsonSchema? outputJson = null,
-        Type? outputPydantic = null,
-        string? outputFile = null,
-        bool? humanInput = null)
-    {
-        if (Status != TaskStatus.Pending)
-            throw new InvalidOperationException("Cannot update configuration after task has started.");
-
-        if (asyncExecution.HasValue)
-            AsyncExecution = asyncExecution.Value;
-
-        if (outputJson != null)
-            OutputJson = outputJson;
-
-        if (outputPydantic != null)
-            OutputPydantic = outputPydantic;
-
-        if (outputFile != null)
-            OutputFile = outputFile;
-
-        if (humanInput.HasValue)
-            HumanInput = humanInput.Value;
     }
 
     /// <summary>

@@ -278,8 +278,6 @@ Orkeon.Domain.Task.CrewTaskBase<TContext>.AddTool(Orkeon.Domain.Tools.IBaseTool!
 Orkeon.Domain.Task.CrewTaskBase<TContext>.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
 Orkeon.Domain.Task.CrewTaskBuilder.WithTool(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Task.CrewTaskBuilder!
 Orkeon.Domain.Task.CrewTaskBuilder.WithTools(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> Orkeon.Domain.Task.CrewTaskBuilder!
-Orkeon.Domain.Task.CrewTaskSnapshot.Tools.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>?
-Orkeon.Domain.Task.CrewTaskSnapshot.Tools.init -> void
 *REMOVED*Orkeon.Domain.Agent.Agent.StepCallback.get -> Orkeon.Domain.Agent.IStepCallback?
 *REMOVED*Orkeon.Domain.Agent.AgentBuilder.WithStepCallback(Orkeon.Domain.Agent.IStepCallback! stepCallback) -> Orkeon.Domain.Agent.AgentBuilder!
 *REMOVED*Orkeon.Domain.Agent.AgentCreateOptions.StepCallback.get -> Orkeon.Domain.Agent.IStepCallback?
@@ -545,7 +543,6 @@ Orkeon.Domain.Task.CrewTaskSnapshot.Tools.init -> void
 *REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.Equals(Orkeon.Domain.Agent.StepProgressContext? other) -> bool
 *REMOVED*virtual Orkeon.Domain.Agent.StepProgressContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
-Orkeon.Domain.Task.CrewTaskBase<TContext>.CrewTaskBase(Orkeon.Domain.Common.TaskId! id, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, Orkeon.Domain.Task.ValueObjects.TaskStatus! status, Orkeon.Domain.Common.AgentId? assignedAgent, Orkeon.Domain.Task.ValueObjects.TaskOutput? output, Orkeon.Domain.Task.ValueObjects.TaskPriority! priority, System.DateTime createdAt, System.DateTime? startedAt, System.DateTime? completedAt, bool asyncExecution, Orkeon.Domain.Task.JsonSchema? outputJson, System.Type? outputPydantic, string? outputFile, bool humanInput, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>? dependencies, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools, TContext? contextData, Orkeon.Domain.Task.ValueObjects.TaskDeliverable? deliverable = null) -> void
 *REMOVED*Orkeon.Domain.Tools.IToolRegistry.GetToolsByCapabilityAsync(string! capability) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
 *REMOVED*Orkeon.Domain.Tools.IToolRegistry.GetToolsByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
 *REMOVED*Orkeon.Domain.Common.FlowEventId
@@ -1528,7 +1525,6 @@ static Orkeon.Domain.Agent.AgentLlmRules.OwnToolsRefusal(string! holder, string!
 *REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy.Mixed -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy!
 *REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy.Parallel -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy!
 *REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy.Sequential -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionStrategy!
-static Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.Create(System.TimeSpan? defaultTimeout = null, int maxRetries = 3, bool enableDebugMode = false, int maxRPM = 0) -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig!
 *REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters
 *REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Deconstruct(out double temperature, out int maxTokens, out double topP, out double frequencyPenalty, out double presencePenalty, out System.Collections.Immutable.ImmutableArray<string!> stopSequences, out int? seed) -> void
 *REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters.Equals(Orkeon.Domain.SharedKernel.ValueObjects.LlmParameters? other) -> bool
@@ -1582,3 +1578,382 @@ Orkeon.Domain.Configuration.CrewConfiguration.MaxRpm.init -> void
 Orkeon.Domain.Configuration.CrewConfiguration.MaxRpm.get -> int?
 static Orkeon.Domain.Crew.Crew.Create(string! goal, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType? processType = null, bool verbose = false, bool planning = false, int? maxRpm = null, bool shareCrew = true, string? outputLogFile = null, Orkeon.Domain.SharedKernel.ILlmProvider? managerLlm = null, Orkeon.Domain.Common.AgentId? managerAgentId = null, string! language = "en", bool fullOutput = false, Orkeon.Domain.SharedKernel.ILlmProvider? planningLlm = null, bool memoryEnabled = false) -> Orkeon.Domain.Crew.Crew!
 static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 20, int? maxRpm = null, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, string? systemTemplate = null, string? promptTemplate = null, string? responseTemplate = null, int maxRetryLimit = 3, Orkeon.Domain.SharedKernel.ILlmProvider? llm = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools = null, Orkeon.Domain.Agent.GuardrailsConfig? guardrails = null) -> Orkeon.Domain.Agent.Agent!
+*REMOVED*Orkeon.Domain.Agent.Agent.RegisterCancellation(System.Threading.CancellationTokenSource! cts) -> void
+*REMOVED*Orkeon.Domain.Agent.Agent.StopAsync(string! reason = "Agent stopped") -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Agent.Agent.UpdateConfiguration(bool? allowDelegation = null, int? maxIterations = null, int? maxRpm = null, bool? verbose = null) -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.AgentTemplateDefinition() -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.AllowDelegation.get -> bool
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.AllowDelegation.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Backstory.get -> string!
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Backstory.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.DefaultParameters.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.DefaultParameters.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Goal.get -> string!
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Goal.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Id.get -> Orkeon.Domain.Common.AgentTemplateId!
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Id.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.MaxIterations.get -> int
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.MaxIterations.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Name.get -> string!
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Name.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.RequiredTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.RequiredTools.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Role.get -> string!
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Role.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Skills.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Skills.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Verbose.get -> bool
+*REMOVED*Orkeon.Domain.Agent.AgentTemplateDefinition.Verbose.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.<Clone>$() -> Orkeon.Domain.Agent.Composition.AgentTemplate!
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.AgentTemplate() -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.AllowDelegation.get -> bool
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.AllowDelegation.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.Equals(Orkeon.Domain.Agent.Composition.AgentTemplate? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.Goal.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.Goal.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.RequiredSkills.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.RequiredSkills.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.RequiredTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.RequiredTools.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.Role.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Composition.AgentTemplate.Role.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.<Clone>$() -> Orkeon.Domain.Agent.Composition.CrewTemplate!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.CrewTemplate() -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.DefaultSettings.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.DefaultSettings.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Description.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Description.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Equals(Orkeon.Domain.Agent.Composition.CrewTemplate? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Goal.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Goal.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Id.get -> Orkeon.Domain.Common.CrewTemplateId!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Id.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Name.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Name.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.ProcessType.get -> Orkeon.Domain.SharedKernel.ValueObjects.ProcessType!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.ProcessType.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.RequiredAgents.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Composition.AgentTemplate!>!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.RequiredAgents.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.Tags.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.TaskTemplates.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Composition.TaskTemplate!>!
+*REMOVED*Orkeon.Domain.Agent.Composition.CrewTemplate.TaskTemplates.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.<Clone>$() -> Orkeon.Domain.Agent.Composition.TaskTemplate!
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.Dependencies.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.Dependencies.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.Description.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.Description.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.Equals(Orkeon.Domain.Agent.Composition.TaskTemplate? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.ExpectedOutput.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.ExpectedOutput.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.Parameters.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.Parameters.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.RequiredRole.get -> string?
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.RequiredRole.init -> void
+*REMOVED*Orkeon.Domain.Agent.Composition.TaskTemplate.TaskTemplate() -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentKilledEvent
+*REMOVED*Orkeon.Domain.Agent.Events.AgentKilledEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentKilledEvent.AgentId.init -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentKilledEvent.AgentKilledEvent() -> void
+*REMOVED*Orkeon.Domain.Agent.Events.AgentKilledEvent.Equals(Orkeon.Domain.Agent.Events.AgentKilledEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.Events.AgentKilledEvent.Reason.get -> string!
+*REMOVED*Orkeon.Domain.Agent.Events.AgentKilledEvent.Reason.init -> void
+*REMOVED*Orkeon.Domain.Common.AgentTemplateId
+*REMOVED*Orkeon.Domain.Common.AgentTemplateId.AgentTemplateId() -> void
+*REMOVED*Orkeon.Domain.Common.ConfigurationVersionId
+*REMOVED*Orkeon.Domain.Common.ConfigurationVersionId.ConfigurationVersionId() -> void
+*REMOVED*Orkeon.Domain.Common.CrewTemplateId
+*REMOVED*Orkeon.Domain.Common.CrewTemplateId.CrewTemplateId() -> void
+*REMOVED*Orkeon.Domain.Common.TaskTemplateId
+*REMOVED*Orkeon.Domain.Common.TaskTemplateId.TaskTemplateId() -> void
+*REMOVED*Orkeon.Domain.Configuration.ChangeType
+*REMOVED*Orkeon.Domain.Configuration.ChangeType.Added = 0 -> Orkeon.Domain.Configuration.ChangeType
+*REMOVED*Orkeon.Domain.Configuration.ChangeType.Modified = 1 -> Orkeon.Domain.Configuration.ChangeType
+*REMOVED*Orkeon.Domain.Configuration.ChangeType.None = 3 -> Orkeon.Domain.Configuration.ChangeType
+*REMOVED*Orkeon.Domain.Configuration.ChangeType.Removed = 2 -> Orkeon.Domain.Configuration.ChangeType
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationChange
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationChange.ConfigurationChange(Orkeon.Domain.Configuration.ConfigurationChange! original) -> void
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationChange.ConfigurationChange(string! propertyPath, object? oldValue, object? newValue, Orkeon.Domain.Configuration.ChangeType type, string? description = null) -> void
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationChange.Description.get -> string?
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationChange.NewValue.get -> object?
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationChange.OldValue.get -> object?
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationChange.PropertyPath.get -> string!
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationChange.Type.get -> Orkeon.Domain.Configuration.ChangeType
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationDiff
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationDiff.AddChange(Orkeon.Domain.Configuration.ConfigurationChange! change) -> void
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationDiff.Changes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Configuration.ConfigurationChange!>!
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationDiff.ComparedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationDiff.ConfigurationDiff(Orkeon.Domain.Configuration.ConfigurationDiff! original) -> void
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationDiff.ConfigurationDiff(string! configurationName, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Configuration.ConfigurationChange!>? changes = null) -> void
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationDiff.ConfigurationName.get -> string!
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationDiff.HasChanges.get -> bool
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.ConfigurationName.get -> string!
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.ConfigurationVersion(Orkeon.Domain.Configuration.ConfigurationVersion! original) -> void
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.ConfigurationVersion(string! configurationName, string! version, string! content, string? createdBy = null, string? description = null, System.Collections.Generic.Dictionary<string!, object!>? metadata = null, bool isActive = false) -> void
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.Content.get -> string!
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.CreatedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.CreatedBy.get -> string?
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.Description.get -> string?
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.Id.get -> Orkeon.Domain.Common.ConfigurationVersionId!
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.IsActive.get -> bool
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.IsActive.init -> void
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Configuration.ConfigurationVersion.Version.get -> string!
+*REMOVED*Orkeon.Domain.Configuration.CrewConfiguration.ExecutionConfig.get -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig?
+*REMOVED*Orkeon.Domain.Configuration.CrewConfiguration.ExecutionConfig.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CrewConfiguration.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Configuration.CrewConfiguration.Metadata.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.<Clone>$() -> Orkeon.Domain.Configuration.RollbackOptions!
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.Comment.get -> string?
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.Comment.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.CreateBackup.get -> bool
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.CreateBackup.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.Equals(Orkeon.Domain.Configuration.RollbackOptions? other) -> bool
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.Metadata.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.RollbackOptions() -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.TargetVersionId.get -> Orkeon.Domain.Common.ConfigurationVersionId!
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.TargetVersionId.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.ValidateBeforeRollback.get -> bool
+*REMOVED*Orkeon.Domain.Configuration.RollbackOptions.ValidateBeforeRollback.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.<Clone>$() -> Orkeon.Domain.Configuration.RollbackResult!
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.BackupVersionId.get -> Orkeon.Domain.Common.ConfigurationVersionId?
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.BackupVersionId.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.CurrentVersionId.get -> Orkeon.Domain.Common.ConfigurationVersionId!
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.CurrentVersionId.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.Equals(Orkeon.Domain.Configuration.RollbackResult? other) -> bool
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.Error.get -> string?
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.Error.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.PreviousVersionId.get -> Orkeon.Domain.Common.ConfigurationVersionId!
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.PreviousVersionId.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.RollbackResult() -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.RolledBackAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.RolledBackAt.init -> void
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.Success.get -> bool
+*REMOVED*Orkeon.Domain.Configuration.RollbackResult.Success.init -> void
+*REMOVED*Orkeon.Domain.Crew.Crew.SetKillAllStrategy(System.Func<System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.AgentId!>!, string!, System.Threading.Tasks.Task!>! killAllFunc) -> void
+*REMOVED*Orkeon.Domain.Crew.Crew.StopAllAgentsAsync(string! reason = "Crew stopped all agents") -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Domain.Crew.Crew.UpdateConfiguration(Orkeon.Domain.Crew.CrewConfigurationUpdate! update) -> void
+*REMOVED*Orkeon.Domain.Crew.Crew.UpdateConfiguration(bool? verbose = null, bool? planning = null, int? maxRpm = null, bool? shareCrew = null, string? outputLogFile = null, string? language = null, bool? fullOutput = null, bool? memoryEnabled = null) -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.CrewConfigurationUpdate() -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.FullOutput.get -> bool?
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.FullOutput.init -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.Language.get -> string?
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.Language.init -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.MaxRpm.get -> int?
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.MaxRpm.init -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.MemoryEnabled.get -> bool?
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.MemoryEnabled.init -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.OutputLogFile.get -> string?
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.OutputLogFile.init -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.Planning.get -> bool?
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.Planning.init -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.ShareCrew.get -> bool?
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.ShareCrew.init -> void
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.Verbose.get -> bool?
+*REMOVED*Orkeon.Domain.Crew.CrewConfigurationUpdate.Verbose.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.DefaultTimeout.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.DefaultTimeout.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.EnableDebugMode.get -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.EnableDebugMode.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.Equals(Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.ExecutionConfig() -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.ExecutorSettings.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.ExecutorSettings.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.MaxRPM.get -> int
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.MaxRPM.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.MaxRetries.get -> int
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.MaxRetries.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskBase<TContext>.UpdateConfiguration(bool? asyncExecution = null, Orkeon.Domain.Task.JsonSchema? outputJson = null, System.Type? outputPydantic = null, string? outputFile = null, bool? humanInput = null) -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.<Clone>$() -> Orkeon.Domain.Task.CrewTaskSnapshot!
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.AssignedAgent.get -> Orkeon.Domain.Common.AgentId?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.AssignedAgent.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.AsyncExecution.get -> bool
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.AsyncExecution.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.CompletedAt.get -> System.DateTime?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.CompletedAt.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.ContextValues.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.ContextValues.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.CreatedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.CreatedAt.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.CrewTaskSnapshot() -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Dependencies.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Dependencies.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Description.get -> Orkeon.Domain.Task.ValueObjects.TaskDescription!
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Description.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Equals(Orkeon.Domain.Task.CrewTaskSnapshot? other) -> bool
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.ExpectedOutput.get -> Orkeon.Domain.Task.ValueObjects.ExpectedOutput!
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.ExpectedOutput.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.HumanInput.get -> bool
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.HumanInput.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Id.get -> Orkeon.Domain.Common.TaskId!
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Id.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Output.get -> Orkeon.Domain.Task.ValueObjects.TaskOutput?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Output.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.OutputFile.get -> string?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.OutputFile.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.OutputJson.get -> Orkeon.Domain.Task.JsonSchema?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.OutputJson.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.OutputPydantic.get -> System.Type?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.OutputPydantic.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Priority.get -> Orkeon.Domain.Task.ValueObjects.TaskPriority!
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Priority.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.StartedAt.get -> System.DateTime?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.StartedAt.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Status.get -> Orkeon.Domain.Task.ValueObjects.TaskStatus!
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.Status.init -> void
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.<Clone>$() -> Orkeon.Domain.Task.ExecutionTimePolicy!
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.BlockedTaskScheduleThreshold.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.DeadlineForDeprioritization.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.Equals(Orkeon.Domain.Task.ExecutionTimePolicy? other) -> bool
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.ExecutionTimePolicy(System.TimeSpan? maxExecutionTime = null, System.TimeSpan? deadlineForDeprioritization = null, System.TimeSpan? blockedTaskScheduleThreshold = null) -> void
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.IsOverdue(System.TimeSpan elapsed) -> bool
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.MaxExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.ShouldDeprioritize(System.TimeSpan elapsed) -> bool
+*REMOVED*Orkeon.Domain.Task.ExecutionTimePolicy.ShouldScheduleBlockedTask(System.TimeSpan elapsed) -> bool
+*REMOVED*Orkeon.Domain.Task.RetryPolicy
+*REMOVED*Orkeon.Domain.Task.RetryPolicy.<Clone>$() -> Orkeon.Domain.Task.RetryPolicy!
+*REMOVED*Orkeon.Domain.Task.RetryPolicy.Equals(Orkeon.Domain.Task.RetryPolicy? other) -> bool
+*REMOVED*Orkeon.Domain.Task.RetryPolicy.MaxRetries.get -> int
+*REMOVED*Orkeon.Domain.Task.RetryPolicy.PriorityEscalationThreshold.get -> int
+*REMOVED*Orkeon.Domain.Task.RetryPolicy.RetryPolicy(int maxRetries = 3, int priorityEscalationThreshold = 2) -> void
+*REMOVED*Orkeon.Domain.Task.RetryPolicy.ShouldEscalatePriority(int currentRetries) -> bool
+*REMOVED*Orkeon.Domain.Task.RetryPolicy.ShouldRetry(int currentRetries) -> bool
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.<Clone>$() -> Orkeon.Domain.Task.TaskTemplateDefinition!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.AgentRole.get -> string?
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.AgentRole.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.DefaultParameters.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.DefaultParameters.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Dependencies.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Dependencies.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Description.get -> string!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Description.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Equals(Orkeon.Domain.Task.TaskTemplateDefinition? other) -> bool
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.EstimatedDuration.get -> System.TimeSpan?
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.EstimatedDuration.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.ExpectedOutput.get -> string!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.ExpectedOutput.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Id.get -> Orkeon.Domain.Common.TaskTemplateId!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Id.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Name.get -> string!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.Name.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.OutputSchema.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.OutputSchema.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.RequiredSkills.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.RequiredSkills.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.RequiredTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.RequiredTools.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskTemplateDefinition.TaskTemplateDefinition() -> void
+*REMOVED*const Orkeon.Domain.Constants.Llm.EmbeddingDefaults.DefaultOpenAIModel = "text-embedding-ada-002" -> string!
+*REMOVED*const Orkeon.Domain.Constants.Llm.EmbeddingDefaults.FallbackProvider = "Simple" -> string!
+*REMOVED*override Orkeon.Domain.Agent.Composition.AgentTemplate.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.Composition.AgentTemplate.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.Composition.AgentTemplate.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Agent.Composition.CrewTemplate.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.Composition.CrewTemplate.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.Composition.CrewTemplate.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Agent.Composition.TaskTemplate.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.Composition.TaskTemplate.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.Composition.TaskTemplate.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentKilledEvent.<Clone>$() -> Orkeon.Domain.Agent.Events.AgentKilledEvent!
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentKilledEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentKilledEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.Events.AgentKilledEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationChange.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationChange.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationChange.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationDiff.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationDiff.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationDiff.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationVersion.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationVersion.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Configuration.ConfigurationVersion.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Configuration.RollbackOptions.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Configuration.RollbackOptions.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Configuration.RollbackOptions.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Configuration.RollbackResult.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Configuration.RollbackResult.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Configuration.RollbackResult.ToString() -> string!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.CrewTaskSnapshot.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.CrewTaskSnapshot.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.CrewTaskSnapshot.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.ExecutionTimePolicy.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.ExecutionTimePolicy.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.ExecutionTimePolicy.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.RetryPolicy.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.RetryPolicy.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.RetryPolicy.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.TaskTemplateDefinition.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.TaskTemplateDefinition.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.TaskTemplateDefinition.ToString() -> string!
+*REMOVED*override sealed Orkeon.Domain.Agent.Events.AgentKilledEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Composition.AgentTemplate.operator !=(Orkeon.Domain.Agent.Composition.AgentTemplate? left, Orkeon.Domain.Agent.Composition.AgentTemplate? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Composition.AgentTemplate.operator ==(Orkeon.Domain.Agent.Composition.AgentTemplate? left, Orkeon.Domain.Agent.Composition.AgentTemplate? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Composition.CrewTemplate.operator !=(Orkeon.Domain.Agent.Composition.CrewTemplate? left, Orkeon.Domain.Agent.Composition.CrewTemplate? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Composition.CrewTemplate.operator ==(Orkeon.Domain.Agent.Composition.CrewTemplate? left, Orkeon.Domain.Agent.Composition.CrewTemplate? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Composition.TaskTemplate.operator !=(Orkeon.Domain.Agent.Composition.TaskTemplate? left, Orkeon.Domain.Agent.Composition.TaskTemplate? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Composition.TaskTemplate.operator ==(Orkeon.Domain.Agent.Composition.TaskTemplate? left, Orkeon.Domain.Agent.Composition.TaskTemplate? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Events.AgentKilledEvent.operator !=(Orkeon.Domain.Agent.Events.AgentKilledEvent? left, Orkeon.Domain.Agent.Events.AgentKilledEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.Events.AgentKilledEvent.operator ==(Orkeon.Domain.Agent.Events.AgentKilledEvent? left, Orkeon.Domain.Agent.Events.AgentKilledEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationChange.Added(string! propertyPath, object? value) -> Orkeon.Domain.Configuration.ConfigurationChange!
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationChange.Modified(string! propertyPath, object? oldValue, object? newValue) -> Orkeon.Domain.Configuration.ConfigurationChange!
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationChange.Removed(string! propertyPath, object? value) -> Orkeon.Domain.Configuration.ConfigurationChange!
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationChange.operator !=(Orkeon.Domain.Configuration.ConfigurationChange? left, Orkeon.Domain.Configuration.ConfigurationChange? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationChange.operator ==(Orkeon.Domain.Configuration.ConfigurationChange? left, Orkeon.Domain.Configuration.ConfigurationChange? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationDiff.NoChanges(string! configurationName) -> Orkeon.Domain.Configuration.ConfigurationDiff!
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationDiff.operator !=(Orkeon.Domain.Configuration.ConfigurationDiff? left, Orkeon.Domain.Configuration.ConfigurationDiff? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationDiff.operator ==(Orkeon.Domain.Configuration.ConfigurationDiff? left, Orkeon.Domain.Configuration.ConfigurationDiff? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationVersion.Create(string! name, string! version, string! content) -> Orkeon.Domain.Configuration.ConfigurationVersion!
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationVersion.operator !=(Orkeon.Domain.Configuration.ConfigurationVersion? left, Orkeon.Domain.Configuration.ConfigurationVersion? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.ConfigurationVersion.operator ==(Orkeon.Domain.Configuration.ConfigurationVersion? left, Orkeon.Domain.Configuration.ConfigurationVersion? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.RollbackOptions.operator !=(Orkeon.Domain.Configuration.RollbackOptions? left, Orkeon.Domain.Configuration.RollbackOptions? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.RollbackOptions.operator ==(Orkeon.Domain.Configuration.RollbackOptions? left, Orkeon.Domain.Configuration.RollbackOptions? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.RollbackResult.CreateFailure(string! error) -> Orkeon.Domain.Configuration.RollbackResult!
+*REMOVED*static Orkeon.Domain.Configuration.RollbackResult.CreateSuccess(Orkeon.Domain.Common.ConfigurationVersionId! currentVersionId, Orkeon.Domain.Common.ConfigurationVersionId! previousVersionId, Orkeon.Domain.Common.ConfigurationVersionId? backupVersionId = null) -> Orkeon.Domain.Configuration.RollbackResult!
+*REMOVED*static Orkeon.Domain.Configuration.RollbackResult.operator !=(Orkeon.Domain.Configuration.RollbackResult? left, Orkeon.Domain.Configuration.RollbackResult? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.RollbackResult.operator ==(Orkeon.Domain.Configuration.RollbackResult? left, Orkeon.Domain.Configuration.RollbackResult? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig? left, Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig? left, Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.CrewTask.Restore(Orkeon.Domain.Task.CrewTaskSnapshot! snapshot) -> Orkeon.Domain.Task.CrewTask!
+*REMOVED*static Orkeon.Domain.Task.CrewTaskSnapshot.operator !=(Orkeon.Domain.Task.CrewTaskSnapshot? left, Orkeon.Domain.Task.CrewTaskSnapshot? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.CrewTaskSnapshot.operator ==(Orkeon.Domain.Task.CrewTaskSnapshot? left, Orkeon.Domain.Task.CrewTaskSnapshot? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.ExecutionTimePolicy.operator !=(Orkeon.Domain.Task.ExecutionTimePolicy? left, Orkeon.Domain.Task.ExecutionTimePolicy? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.ExecutionTimePolicy.operator ==(Orkeon.Domain.Task.ExecutionTimePolicy? left, Orkeon.Domain.Task.ExecutionTimePolicy? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.RetryPolicy.operator !=(Orkeon.Domain.Task.RetryPolicy? left, Orkeon.Domain.Task.RetryPolicy? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.RetryPolicy.operator ==(Orkeon.Domain.Task.RetryPolicy? left, Orkeon.Domain.Task.RetryPolicy? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.TaskTemplateDefinition.operator !=(Orkeon.Domain.Task.TaskTemplateDefinition? left, Orkeon.Domain.Task.TaskTemplateDefinition? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.TaskTemplateDefinition.operator ==(Orkeon.Domain.Task.TaskTemplateDefinition? left, Orkeon.Domain.Task.TaskTemplateDefinition? right) -> bool
+*REMOVED*static readonly Orkeon.Domain.Constants.Task.TaskDefaults.DefaultBlockedTaskScheduleThreshold -> System.TimeSpan
+*REMOVED*static readonly Orkeon.Domain.Constants.Task.TaskDefaults.DefaultDeadlineForDeprioritization -> System.TimeSpan
+*REMOVED*static readonly Orkeon.Domain.Constants.Task.TaskDefaults.DefaultMaxExecutionTime -> System.TimeSpan
+*REMOVED*static readonly Orkeon.Domain.Constants.Task.TaskDefaults.DefaultOperationTimeout -> System.TimeSpan
+*REMOVED*static readonly Orkeon.Domain.Task.ExecutionTimePolicy.Default -> Orkeon.Domain.Task.ExecutionTimePolicy!
+*REMOVED*static readonly Orkeon.Domain.Task.RetryPolicy.Default -> Orkeon.Domain.Task.RetryPolicy!
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationChange.<Clone>$() -> Orkeon.Domain.Configuration.ConfigurationChange!
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationChange.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationChange.Equals(Orkeon.Domain.Configuration.ConfigurationChange? other) -> bool
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationChange.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationDiff.<Clone>$() -> Orkeon.Domain.Configuration.ConfigurationDiff!
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationDiff.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationDiff.Equals(Orkeon.Domain.Configuration.ConfigurationDiff? other) -> bool
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationDiff.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationVersion.<Clone>$() -> Orkeon.Domain.Configuration.ConfigurationVersion!
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationVersion.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationVersion.Equals(Orkeon.Domain.Configuration.ConfigurationVersion? other) -> bool
+*REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationVersion.PrintMembers(System.Text.StringBuilder! builder) -> bool

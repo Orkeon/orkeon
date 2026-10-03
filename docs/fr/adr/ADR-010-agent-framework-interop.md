@@ -98,7 +98,7 @@ Application ou Infrastructure pour elle », ne tient plus :
   sur un profil de l'hôte, jamais les deux — `Agent.Create` et `AgentBuilder.Build()` refusent les deux.
   `LlmProviderCapabilities.RunsOwnTools`, que déclare `AIAgentLlmProvider` : un agent dont le
   fournisseur propre fait ses propres outils se voit refuser outils Orkeon et délégation à sa création,
-  et `AddTool` comme `UpdateConfiguration` gardent la règle.
+  et `AddTool` garde la règle.
 - **Application.** `ILlmProfileRegistry.ForProvider(fournisseur)` construit le client du fournisseur
   propre d'un agent, une fois par instance, compté. L'orchestrateur y fait tourner les tours de l'agent,
   leur correction et son bulletin, après le profil que nomme le `llm_override` d'une tâche et avant le

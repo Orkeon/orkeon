@@ -26,7 +26,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     private readonly List<KnowledgeAttachment> _knowledgeAttachments;
     private readonly AgentToolManager _toolManager;
     private Func<ICrewTask, IEnumerable<AgentId>, CancellationToken, System.Threading.Tasks.Task<AgentId?>>? _agentSelectionFunc;
-    private CancellationTokenSource? _lifecycleCts;
 
     /// <summary>
     /// Gets the agent's role.
@@ -479,49 +478,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     }
 
     /// <summary>
-    /// Updates the agent's configuration.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">
-    /// The agent is working, or delegation is switched on for an agent whose own provider runs its own
-    /// tools (GAP-34): the delegation tools would never be called.
-    /// </exception>
-    public void UpdateConfiguration(
-        bool? allowDelegation = null,
-        int? maxIterations = null,
-        int? maxRpm = null,
-        bool? verbose = null)
-    {
-        if (Status != AgentStatus.Idle)
-            throw new InvalidOperationException("Cannot update configuration while agent is working.");
-
-        if (allowDelegation == true && Llm is { Capabilities.RunsOwnTools: true } llm)
-        {
-            throw new InvalidOperationException(AgentLlmRules.OwnToolsRefusal(
-                $"Agent '{Role.Value}'", llm.Name, AgentLlmRules.DelegationTools));
-        }
-
-        if (allowDelegation.HasValue)
-            AllowDelegation = allowDelegation.Value;
-
-        if (maxIterations.HasValue)
-        {
-            if (maxIterations.Value <= 0)
-                throw new ArgumentException("Max iterations must be positive.", nameof(maxIterations));
-            MaxIterations = maxIterations.Value;
-        }
-
-        if (maxRpm.HasValue)
-        {
-            if (maxRpm.Value <= 0)
-                throw new ArgumentException("Max RPM must be positive.", nameof(maxRpm));
-            MaxRpm = maxRpm.Value;
-        }
-
-        if (verbose.HasValue)
-            Verbose = verbose.Value;
-    }
-
-    /// <summary>
     /// Updates the agent's tool access policy.
     /// This controls which tools the agent can access.
     /// </summary>
@@ -579,37 +535,6 @@ public sealed class Agent : AggregateRoot<AgentId>
         }
 
         return DelegationDecision.NoDelegation();
-    }
-
-    /// <summary>
-    /// Registers a cancellation token source for lifecycle management.
-    /// </summary>
-    public void RegisterCancellation(CancellationTokenSource cts)
-    {
-        ArgumentNullException.ThrowIfNull(cts);
-        _lifecycleCts = cts;
-    }
-
-    /// <summary>
-    /// Stops the agent by cancelling its lifecycle token.
-    /// </summary>
-    public async System.Threading.Tasks.Task StopAsync(string reason = "Agent stopped")
-    {
-        if (_lifecycleCts is null)
-            throw new InvalidOperationException("Agent has no registered cancellation token. Call RegisterCancellation first.");
-
-        if (!_lifecycleCts.IsCancellationRequested)
-        {
-            await _lifecycleCts.CancelAsync().ConfigureAwait(false);
-            Status = AgentStatus.Idle;
-            _currentTasks.Clear();
-
-            RaiseDomainEvent(new AgentKilledEvent
-            {
-                AgentId = Id,
-                Reason = reason
-            });
-        }
     }
 
     private void ValidateCanExecute(ICrewTask task)

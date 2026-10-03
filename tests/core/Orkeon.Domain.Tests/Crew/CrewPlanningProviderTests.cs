@@ -56,27 +56,6 @@ public sealed class CrewPlanningProviderTests
         Assert.Same(provider, crew.PlanningLlm);
     }
 
-    [Fact]
-    public void Planning_cannot_be_turned_off_under_a_planning_provider()
-    {
-        var crew = new CrewBuilder().Goal("Write the report").Planning().WithPlanningLlm(new StubLlmProvider()).Build();
-
-        var error = Assert.Throws<InvalidOperationException>(() => crew.UpdateConfiguration(planning: false));
-
-        Assert.Contains("WithPlanningLlm", error.Message, StringComparison.Ordinal);
-        Assert.True(crew.Planning);
-    }
-
-    [Fact]
-    public void Planning_turns_off_on_a_crew_that_plans_on_the_default_profile()
-    {
-        var crew = new CrewBuilder().Goal("Write the report").Planning().Build();
-
-        crew.UpdateConfiguration(planning: false);
-
-        Assert.False(crew.Planning);
-    }
-
     private sealed class StubLlmProvider : ILlmProvider
     {
         public string Name => "StubLlm";

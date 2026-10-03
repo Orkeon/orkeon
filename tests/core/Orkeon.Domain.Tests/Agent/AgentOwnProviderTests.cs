@@ -160,20 +160,6 @@ public sealed class AgentOwnProviderTests
         AssertNamesTheRemedies(error.Message);
         Assert.Empty(agent.Tools);
     }
-
-    [Fact]
-    public void UpdateConfiguration_refuses_to_switch_delegation_on_for_such_an_agent()
-    {
-        var agent = DomainAgent.Create(Options(Bridge));
-
-        var error = Assert.Throws<InvalidOperationException>(() => agent.UpdateConfiguration(allowDelegation: true));
-
-        Assert.Contains("delegate_work_to_coworker", error.Message, StringComparison.Ordinal);
-        Assert.False(agent.AllowDelegation);
-        // Switching it off, or changing anything else, stays allowed.
-        agent.UpdateConfiguration(allowDelegation: false, maxIterations: 3);
-        Assert.Equal(3, agent.MaxIterations);
-    }
 }
 
 /// <summary>Option helpers for <see cref="AgentOwnProviderTests"/>: <see cref="AgentCreateOptions"/> is a class.</summary>

@@ -36,9 +36,6 @@ public class CrewConfigurationTests
         Assert.False(config.Memory);
         Assert.False(config.Planning);
         Assert.Null(config.ManagerAgentId);
-        Assert.Null(config.ExecutionConfig);
-        Assert.NotNull(config.Metadata);
-        Assert.Empty(config.Metadata);
     }
 
     [Fact]
@@ -55,12 +52,6 @@ public class CrewConfigurationTests
             new TaskConfiguration { Id = TaskId.Create(), Description = TaskId.Create() },
             new TaskConfiguration { Id = TaskId.Create(), Description = TaskId.Create() }
         };
-        var executionConfig = new ExecutionConfig { MaxRPM = 5 };
-        var metadata = new Dictionary<string, object>
-        {
-            { "project", "Orkeon" },
-            { "version", "1.0" }
-        };
 
         // Act
         var config = new CrewConfiguration
@@ -74,8 +65,6 @@ public class CrewConfigurationTests
             Memory = true,
             Planning = true,
             ManagerAgentId = AgentId.Create(),
-            ExecutionConfig = executionConfig,
-            Metadata = metadata
         };
 
         // Assert
@@ -90,9 +79,6 @@ public class CrewConfigurationTests
         Assert.True(config.Memory);
         Assert.True(config.Planning);
         Assert.NotNull(config.ManagerAgentId);
-        Assert.Equal(executionConfig, config.ExecutionConfig);
-        Assert.Equal(metadata, config.Metadata);
-        Assert.Equal(2, config.Metadata.Count);
     }
 
     [Theory]
@@ -172,29 +158,6 @@ public class CrewConfigurationTests
         Assert.Contains(task2, config.Tasks);
         Assert.Equal(task1.Id, config.Tasks[0].Id);
         Assert.Equal(task2.Id, config.Tasks[1].Id);
-    }
-
-    [Fact]
-    public void ShouldSupportInitialization_WhenUsingCrewConfigurationUsingMetadata()
-    {
-        // Act
-        var config = new CrewConfiguration
-        {
-            Metadata = new Dictionary<string, object>
-            {
-                { "environment", "development" },
-                { "priority", "high" },
-                { "startDate", DateTime.UtcNow },
-                { "tags", SprintFeatureTags }
-            }
-        };
-
-        // Assert
-        Assert.Equal(4, config.Metadata.Count);
-        Assert.Equal("development", config.Metadata["environment"]);
-        Assert.Equal("high", config.Metadata["priority"]);
-        Assert.IsType<DateTime>(config.Metadata["startDate"]);
-        Assert.IsType<string[]>(config.Metadata["tags"]);
     }
 
     #endregion
@@ -650,13 +613,11 @@ public class CrewConfigurationTests
         {
             Agents = null!,
             Tasks = null!,
-            Metadata = null!
         };
 
         // Assert
         Assert.Null(config.Agents);
         Assert.Null(config.Tasks);
-        Assert.Null(config.Metadata);
     }
 
     [Fact]

@@ -927,7 +927,7 @@ Deux inerties plus petites, à nommer plutôt qu'à laisser découvrir : `CrewBu
 |---|---|---|
 | Réveil de crew | Implicite via `PendingWaits` du snapshot | Pas de double déclaration `wait` + `wakeup` ; évite la désynchro |
 | Boot après crash | Lazy (index uniquement, crews dormantes) | Cohérent avec « le message est le seul déclencheur » |
-| Granularité sommeil | Crew entière | Simplifie le contrat, évite `IAgentLifecycleManager` |
+| Granularité sommeil | Crew entière | Simplifie le contrat, évite un cycle de vie par agent |
 | Timeout Forever | Autorisé sur `wait_for_event` / `receive_message` / `subscribe` uniquement | Send avec Forever bloquerait la chaîne d'appel |
 | Persistance v1 | SQLite single-node | Cohérent avec `SqliteStateStore` / `SqliteMemoryProvider` existants, pas de dépendance externe |
 | Distribué | Reporté en v2 derrière le même port | Stabilité > expressivité ; permet d'évoluer sans casser l'API |

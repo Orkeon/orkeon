@@ -30,7 +30,7 @@ public class ToolCallProtocolTests
     public void ShouldSetProperties_WhenUsingToolCallProtocolUsingConstructorWithAllParameters()
     {
         // Arrange
-        var version = ConfigurationVersionId.Create();
+        var version = "1.0";
         var format = "xml";
         var supportedTools = new[] { ToolFileRead, ToolWebScrape, "Calculator" };
         var options = ToolCallOptions.Default();

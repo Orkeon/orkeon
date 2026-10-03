@@ -55,18 +55,6 @@ public sealed class TrainingObjectiveId : EntityId<TrainingObjectiveId> { }
 public sealed class TrainingStepId : EntityId<TrainingStepId> { }
 /// <summary>Strongly-typed identifier for TrainingTask entities.</summary>
 public sealed class TrainingTaskId : EntityId<TrainingTaskId> { }
-/// <summary>Strongly-typed identifier for CrewTemplate entities.</summary>
-public sealed class CrewTemplateId : EntityId<CrewTemplateId> { }
-
-// -- Configuration ----------------------------------------------------------
-/// <summary>Strongly-typed identifier for ConfigurationVersion entities.</summary>
-public sealed class ConfigurationVersionId : EntityId<ConfigurationVersionId> { }
-
-// -- Templates --------------------------------------------------------------
-/// <summary>Strongly-typed identifier for AgentTemplate entities.</summary>
-public sealed class AgentTemplateId : EntityId<AgentTemplateId> { }
-/// <summary>Strongly-typed identifier for TaskTemplate entities.</summary>
-public sealed class TaskTemplateId : EntityId<TaskTemplateId> { }
 
 // -- Tools ------------------------------------------------------------------
 /// <summary>Strongly-typed identifier for ToolCallRequest entities.</summary>

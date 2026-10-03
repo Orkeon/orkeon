@@ -78,14 +78,3 @@ public sealed record AgentCapabilitiesUpdatedEvent : DomainEvent
     /// <summary>Gets the tools that were removed.</summary>
     public required IReadOnlyList<string> RemovedTools { get; init; }
 }
-
-/// <summary>
-/// Event raised when an agent is killed (emergency stop).
-/// </summary>
-public sealed record AgentKilledEvent : DomainEvent
-{
-    /// <summary>Gets the agent identifier.</summary>
-    public required AgentId AgentId { get; init; }
-    /// <summary>Gets the kill reason.</summary>
-    public required string Reason { get; init; }
-}

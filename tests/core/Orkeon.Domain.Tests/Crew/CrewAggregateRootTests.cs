@@ -276,62 +276,6 @@ public class CrewAggregateRootTests
 
     #endregion
 
-    #region Configuration Boundary Tests
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    public void ShouldThrow_WhenUpdatingConfigurationWithNegativeMaxRpm(int maxRpm)
-    {
-        // Arrange
-        var crew = DomainCrew.Create("Test");
-
-        // Act & Assert
-        Assert.Throws<ArgumentException>(
-            () => crew.UpdateConfiguration(new CrewConfigurationUpdate { MaxRpm = maxRpm }));
-    }
-
-    [Fact]
-    public void ShouldUpdateLanguage_WhenValidLanguageProvided()
-    {
-        // Arrange
-        var crew = DomainCrew.Create("Test");
-
-        // Act
-        crew.UpdateConfiguration(new CrewConfigurationUpdate { Language = "ja" });
-
-        // Assert
-        Assert.Equal("ja", crew.Language.Value);
-    }
-
-    [Fact]
-    public void ShouldNotChangeLanguage_WhenNullLanguageProvided()
-    {
-        // Arrange
-        var crew = DomainCrew.Create("Test", language: "fr");
-
-        // Act
-        crew.UpdateConfiguration(new CrewConfigurationUpdate { Language = null });
-
-        // Assert
-        Assert.Equal("fr", crew.Language.Value);
-    }
-
-    [Fact]
-    public void ShouldUpdateOutputLogFile_WhenPathProvided()
-    {
-        // Arrange
-        var crew = DomainCrew.Create("Test");
-
-        // Act
-        crew.UpdateConfiguration(new CrewConfigurationUpdate { OutputLogFile = "/var/log/output.txt" });
-
-        // Assert
-        Assert.Equal("/var/log/output.txt", crew.OutputLogFile);
-    }
-
-    #endregion
-
     #region Agent Management Edge Cases
 
     [Fact]

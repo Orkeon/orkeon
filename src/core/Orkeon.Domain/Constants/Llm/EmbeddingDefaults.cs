@@ -33,12 +33,6 @@ public static class EmbeddingDefaults
     /// </summary>
     public const string DefaultProvider = "openai";
 
-    /// <summary>
-    /// Fallback embedding provider name used when no external provider is configured ("Simple").
-    /// Used in <c>OrkeonApplicationOptions</c> development/stub mode.
-    /// </summary>
-    public const string FallbackProvider = "Simple";
-
     // ── Models ────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -46,12 +40,6 @@ public static class EmbeddingDefaults
     /// Used in <c>EmbeddingOptions</c>.
     /// </summary>
     public const string DefaultModel = "text-embedding-3-small";
-
-    /// <summary>
-    /// Legacy OpenAI embedding model name ("text-embedding-ada-002").
-    /// Retained for backward-compatibility scenarios (e.g. Azure OpenAI deployments).
-    /// </summary>
-    public const string DefaultOpenAIModel = "text-embedding-ada-002";
 
     // ── Batch ─────────────────────────────────────────────────────────────
 

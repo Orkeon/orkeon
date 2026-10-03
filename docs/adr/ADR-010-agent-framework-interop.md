@@ -94,7 +94,7 @@ holds:
   CrewAI's `llm` given as an object. An agent runs on its own provider or on a host profile, never
   both — `Agent.Create` and `AgentBuilder.Build()` refuse both. `LlmProviderCapabilities.RunsOwnTools`,
   declared by `AIAgentLlmProvider`: an agent whose own provider runs its own tools is refused Orkeon
-  tools and delegation when it is created, and `AddTool` and `UpdateConfiguration` keep the rule.
+  tools and delegation when it is created, and `AddTool` keeps the rule.
 - **Application.** `ILlmProfileRegistry.ForProvider(provider)` builds the client of an agent's own
   provider, once per instance, metered. The orchestrator runs on it the agent's turns, their
   correction round and its ballot, after the profile a task's `llm_override` names and before the

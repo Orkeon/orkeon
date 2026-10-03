@@ -71,10 +71,6 @@ public sealed record CrewDto
     [JsonPropertyName("performance_metrics")]
     public PerformanceMetricsDto? PerformanceMetrics { get; init; }
 
-    /// <summary>Gets or sets the execution history.</summary>
-    [JsonPropertyName("execution_history")]
-    public ImmutableList<ExecutionHistoryDto> ExecutionHistory { get; init; } = [];
-
     /// <summary>Gets or sets the created at.</summary>
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;

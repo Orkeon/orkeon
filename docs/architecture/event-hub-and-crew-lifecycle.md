@@ -927,7 +927,7 @@ Two smaller inertias worth naming rather than discovering: `CrewBuilder.OnEvent`
 |---|---|---|
 | Crew wake-up | Implicit via the snapshot's `PendingWaits` | No double `wait` + `wakeup` declaration; avoids desynchronization |
 | Boot after crash | Lazy (index only, crews asleep) | Consistent with "the message is the only trigger" |
-| Sleep granularity | Whole crew | Simplifies the contract, avoids `IAgentLifecycleManager` |
+| Sleep granularity | Whole crew | Simplifies the contract, avoids a per-agent lifecycle |
 | Forever timeout | Allowed on `wait_for_event` / `receive_message` / `subscribe` only | Send with Forever would block the call chain |
 | v1 persistence | Single-node SQLite | Consistent with the existing `SqliteStateStore` / `SqliteMemoryProvider`, no external dependency |
 | Distributed | Deferred to v2 behind the same port | Stability > expressiveness; allows evolving without breaking the API |

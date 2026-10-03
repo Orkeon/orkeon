@@ -49,6 +49,82 @@ entries by their keys.
 
 Migration: call `Serialize` where you called `SerializeWithoutNulls`.
 
+### Removed — public surfaces nothing called, continued: a task state machine and queue, aggregate restores and mutators, an agent stop switch, two ports nothing resolved; `AddOrkeonApplication(o => …)` no longer resets a setting **[breaking]**
+
+Public types and members that no run, host or REPL called are deleted rather than kept (GAP-37, after
+GAP-26). Only a C# host could see them: the CLI, `orkeon-host`, the REPL and Studio behave as before.
+
+- **Application options.** `AddOrkeonApplication(o => …)` registers the lambda as is
+  (`services.Configure(configure)`). It applied it to a fresh instance and copied ten fields back:
+  `EnableDebugLogging` and `DefaultTimeout` were lost, and a strategy a
+  `services.Configure<OrkeonApplicationOptions>(…)` had set before it was reset to `FirstFit`. The two
+  routes the documentation gives now compose, in either order. `OrkeonApplicationOptions` keeps
+  `AgentSelectionStrategy`, the only setting anything read; `CrewRepositoryType` (with the
+  `RepositoryType` enum), `CrewsPath`, `DefaultMaxIterations`, `EmbeddingDimension`,
+  `EmbeddingProvider`, `OpenAIApiKey`, `OpenAIEmbeddingModel`, `AzureOpenAIEndpoint`,
+  `AzureOpenAIDeploymentName`, `EnableDebugLogging` and `DefaultTimeout` are removed — no section bound
+  them, nothing read them —, with the constants only they used (`PathDefaults`,
+  `EmbeddingDefaults.FallbackProvider` and `DefaultOpenAIModel`).
+- **A task state machine and a task queue no mode runs.** `TaskStateManager`
+  (`Orkeon.Application.Services.StateManagement`, with `StateTransitionResult<TState>`,
+  `TaskStateEvent`, `TaskReadinessFlags`, `TaskStatusFlags`, `TaskAction`, `PriorityAdjustment` and a
+  second `TaskExecutionContext` — `Orkeon.Domain.Agent.TaskExecutionContext` stays) and what it alone
+  used (`RetryPolicy`, `ExecutionTimePolicy`, three delays of `TaskDefaults`): a run moves its tasks
+  through their lifecycle itself (GAP-21). `AsyncTaskPipeline<T>`, `CrewTaskPipeline`, `ITaskQueue<T>`
+  and `WorkItem<T>`: no mode queued a task through them.
+- **Aggregate restores.** `CrewTask.Restore` (both overloads), `CrewTaskSnapshot`, the restore
+  constructors of `CrewTask` and `CrewTaskBase<TContext>`, and `Crew.Restore` had no caller — no
+  repository persists the aggregates —, and the snapshot lost a task's deliverable, LLM override and
+  guardrails, as `AgentSnapshot` lost an agent's `LlmConfig` (GAP-26).
+- **The crew export.** `CrewConfigurationMapper.ToConfiguration`, the class's last method, ran only in
+  its tests. `CrewConfiguration.ExecutionConfig` and `CrewConfiguration.Metadata`, set by no loader
+  (YAML, `.ork.ts`) and read by no run, go with it, and so do the `ExecutionConfig` record and
+  `TaskDefaults.DefaultOperationTimeout`. `ManagerLlm.Describe`, which the export called, stays: the
+  manager's resolver names the manager's LLM with it.
+- **Settings DTOs and an execution history.** `Orkeon.Application.Common.DTOs.CrewSettingsDto`, with
+  `CallbackConfigDto`, `MemoryConfigDto`, `MemoryLimitsDto`, `MemoryCleanupDto`, `VectorConfigDto`,
+  `RetryConfigDto` and `TimeoutConfigDto`, had no user; `CrewDto.ExecutionHistory`
+  (`ExecutionHistoryDto`) was filled by nothing.
+- **Aggregate mutators.** `Agent.UpdateConfiguration`, `Crew.UpdateConfiguration` (both overloads, with
+  `CrewConfigurationUpdate`) and `CrewTaskBase<TContext>.UpdateConfiguration` had no caller, and every
+  new rule had to be copied into them (GAP-30, GAP-31, GAP-33, GAP-34) or they bypassed it. The rules
+  stay where a crew, an agent and a task are built: a memory provider needs memory, a planning provider
+  needs planning, an agent whose provider runs its own tools is refused delegation.
+- **The agent stop switch.** `IAgentLifecycleManager` with `AgentLifecycleState` and
+  `AgentLifecycleManager` — registered by `AddOrkeonInfrastructure()`, resolved by nothing since
+  GAP-26 —, `Agent.RegisterCancellation`, `Agent.StopAsync`, `AgentKilledEvent` (30 domain events
+  remain), `Crew.SetKillAllStrategy` and `Crew.StopAllAgentsAsync`. A run stops through its cancellation
+  token (`orkeon run`, `orkeon-host`'s `/stop`).
+- **Two ports nothing resolved.** `IYamlDiffService` and `ITemplateInstantiator`, their stubs
+  (`NullYamlDiffService`, `NullTemplateInstantiator`) and their registrations: the documentation
+  invited a host to replace them, but nothing called them, so a host's own implementation never ran.
+  The types only they used go too: `ConfigurationDiff`, `ConfigurationChange`, `ChangeType`,
+  `ConfigurationVersion`, `RollbackOptions`, `RollbackResult` and `ConfigurationVersionId`;
+  `InstantiationValidation`, `TemplateType`, `InstantiationPreview`, `AgentTemplateDefinition`,
+  `TaskTemplateDefinition`, `CrewTemplate`, `AgentTemplate`, `TaskTemplate` and their ids
+  (`AgentTemplateId`, `TaskTemplateId`, `CrewTemplateId`), `InvalidTemplateParameters`,
+  `ResolvedTemplateParameters` and `TemplateConfiguration`. `TemplateInstantiationParameters` and
+  `TemplateParameterValue`, which `ITemplateEngine` uses, stay.
+- **A package reference nothing used.** `Orkeon.Tools.Abstractions` no longer references
+  `Microsoft.Extensions.AI`: the nine tool families, `Orkeon.Interop.AgentFramework`, four test projects
+  and the `local-embeddings` example no longer restore it through it. `Orkeon.Infrastructure` keeps it,
+  so the binaries and the `Orkeon` package — the only one `Orkeon.Tools.Abstractions` ships in — still
+  carry it.
+
+Documented in [Default behaviors](docs/getting-started/default-behaviors.md),
+[Events, CQRS and Observability](docs/architecture/domain-events.md),
+[EventHub & Crew Lifecycle](docs/architecture/event-hub-and-crew-lifecycle.md) and
+[ADR-010](docs/adr/ADR-010-agent-framework-interop.md).
+
+Breaking: every type and member listed above is removed. `AddOrkeonApplication(Action<OrkeonApplicationOptions>)`
+keeps its signature; a strategy configured before it is no longer reset.
+
+Migration: remove the assignments of the removed settings (they had no effect); build a crew through
+the loaders (YAML, `.ork.ts`) or the builders (`CrewBuilder`, `AgentBuilder`, `CrewTaskBuilder`), its
+settings given at construction, without `Restore` or `UpdateConfiguration`; stop a run through its
+cancellation token; remove any registration of `IYamlDiffService` or `ITemplateInstantiator` (nothing
+called them).
+
 ### Fixed — every published artefact carries the notices of what it redistributes, and the Studio TUIs ship the pinned package versions
 
 `THIRD-PARTY-NOTICES.md` covered every package the shipped applications redistribute, and

@@ -130,61 +130,6 @@ public class MiscDTOsTests
         Assert.Equal(3, proto.MaxRetries);
     }
 
-    // ══════════════ CrewSettingsDto ══════════════
-
-    [Fact]
-    public void ShouldSetCrewSettingsDefaults_WhenConstructing()
-    {
-        // Act
-        var settings = new CrewSettingsDto();
-
-        // Assert
-        Assert.Null(settings.MaxRpm);
-        Assert.False(settings.ShareCrew);
-        Assert.Null(settings.MaxIterations);
-        Assert.False(settings.MemoryEnabled);
-        Assert.False(settings.CacheEnabled);
-        Assert.Equal("en", settings.Language);
-        Assert.Empty(settings.CustomOptions);
-    }
-
-    [Fact]
-    public void ShouldSetMemoryConfigDefaults_WhenConstructing()
-    {
-        // Act
-        var config = new MemoryConfigDto();
-
-        // Assert
-        Assert.Equal("InMemory", config.Provider);
-        Assert.Null(config.ConnectionString);
-    }
-
-    [Fact]
-    public void ShouldSetVectorConfigDefaults_WhenConstructing()
-    {
-        // Act
-        var config = new VectorConfigDto();
-
-        // Assert
-        Assert.Equal(1536, config.Dimension);
-        Assert.Equal("cosine", config.SimilarityMetric);
-        Assert.Equal(0.7, config.MinSimilarity);
-        Assert.Equal(10, config.MaxResults);
-    }
-
-    [Fact]
-    public void ShouldSetRetryConfigDefaults_WhenConstructing()
-    {
-        // Act
-        var config = new RetryConfigDto();
-
-        // Assert
-        Assert.Equal(3, config.MaxAttempts);
-        Assert.Equal(TimeSpan.FromSeconds(1), config.RetryDelay);
-        Assert.False(config.UseExponentialBackoff);
-        Assert.Equal(2.0, config.BackoffMultiplier);
-    }
-
     // ══════════════ LlmResponseMetadata ══════════════
 
     [Fact]

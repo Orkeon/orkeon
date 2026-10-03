@@ -14,8 +14,8 @@ namespace Orkeon.Domain.Tests.Agent;
 
 /// <summary>
 /// Additional tests for Agent aggregate root covering gaps identified in Phase 1 audit.
-/// Focuses on: ToolAccessPolicy, UpdateConfiguration edge cases,
-/// status transitions, delegation strategy, and lifecycle management.
+/// Focuses on: ToolAccessPolicy, status transitions, delegation strategy, and creation
+/// with templates.
 /// </summary>
 public class AgentAggregateRootTests
 {
@@ -345,101 +345,6 @@ public class AgentAggregateRootTests
         // Assert
         Assert.NotNull(agent.Llm);
         Assert.Equal("StubLlm", agent.Llm.Name);
-    }
-
-    #endregion
-
-    #region UpdateConfiguration Validation Tests
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(0)]
-    [InlineData(-100)]
-    public void ShouldThrow_WhenUpdatingConfigurationWithNonPositiveMaxIterations(int maxIterations)
-    {
-        // Arrange
-        var agent = CreateIdleAgent();
-
-        // Act & Assert
-        var ex = Assert.Throws<ArgumentException>(
-            () => agent.UpdateConfiguration(maxIterations: maxIterations));
-        Assert.Contains("must be positive", ex.Message);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(0)]
-    [InlineData(-50)]
-    public void ShouldThrow_WhenUpdatingConfigurationWithNonPositiveMaxRpm(int maxRpm)
-    {
-        // Arrange
-        var agent = CreateIdleAgent();
-
-        // Act & Assert
-        var ex = Assert.Throws<ArgumentException>(
-            () => agent.UpdateConfiguration(maxRpm: maxRpm));
-        Assert.Contains("must be positive", ex.Message);
-    }
-
-    [Fact]
-    public void ShouldPreserveUnchangedValues_WhenUpdatingConfigurationPartially()
-    {
-        // Arrange
-        var agent = DomainAgent.Create(
-            role: AgentRole.From("Agent"),
-            goal: AgentGoal.From("Goal"),
-            allowDelegation: true,
-            maxIterations: 20,
-            maxRpm: 50,
-            verbose: true);
-
-        // Act - only update maxRpm
-        agent.UpdateConfiguration(maxRpm: 100);
-
-        // Assert - other values unchanged
-        Assert.True(agent.AllowDelegation);
-        Assert.Equal(20, agent.MaxIterations);
-        Assert.Equal(100, agent.MaxRpm); // changed
-        Assert.True(agent.Verbose);
-    }
-
-    #endregion
-
-    #region StopAsync Edge Cases
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldUseDefaultReason_WhenStoppingWithoutReason()
-    {
-        // Arrange
-        var agent = CreateIdleAgent();
-        using var cts = new CancellationTokenSource();
-        agent.RegisterCancellation(cts);
-        agent.ClearDomainEvents();
-
-        // Act
-        await agent.StopAsync();
-
-        // Assert
-        var killedEvent = Assert.Single(agent.DomainEvents.OfType<AgentKilledEvent>());
-        Assert.Equal("Agent stopped", killedEvent.Reason);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldCancelToken_WhenStopping()
-    {
-        // Arrange
-        var agent = CreateIdleAgent();
-        using var cts = new CancellationTokenSource();
-        agent.RegisterCancellation(cts);
-
-        // Pre-condition
-        Assert.False(cts.IsCancellationRequested);
-
-        // Act
-        await agent.StopAsync("Shutting down");
-
-        // Assert
-        Assert.True(cts.IsCancellationRequested);
     }
 
     #endregion

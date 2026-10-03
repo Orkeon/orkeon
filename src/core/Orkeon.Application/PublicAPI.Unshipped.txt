@@ -1881,3 +1881,521 @@ Orkeon.Application.Crew.Execution.RequestTurn.RequestTurn(System.TimeSpan Waited
 static Orkeon.Application.Crew.Execution.RequestRates.BeginRun(Orkeon.Domain.Crew.Crew! crew, System.TimeProvider! time) -> System.IDisposable!
 static Orkeon.Application.Crew.Execution.RequestRates.WaitTurnAsync(Orkeon.Domain.Agent.Agent? agent, int? hostAgentLimit, System.TimeProvider! time, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Application.Crew.Execution.RequestTurn>!
 Orkeon.Application.Interfaces.IManagerAgent.ReviewOutputAsync(Orkeon.Application.Execution.TaskOutput! output, Orkeon.Domain.Task.CrewTask! originalTask, Orkeon.Application.Interfaces.ManagerLlm! llm, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.<Clone>$() -> Orkeon.Application.Common.DTOs.CallbackConfigDto!
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.CallbackConfigDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.CustomSettings.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.CustomSettings.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.Equals(Orkeon.Application.Common.DTOs.CallbackConfigDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.NotifyOnCompletion.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.NotifyOnCompletion.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.NotifyOnFailure.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.NotifyOnFailure.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.WebhookUrl.get -> System.Uri?
+*REMOVED*Orkeon.Application.Common.DTOs.CallbackConfigDto.WebhookUrl.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.<Clone>$() -> Orkeon.Application.Common.DTOs.CrewSettingsDto!
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.CacheEnabled.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.CacheEnabled.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.CallbackConfig.get -> Orkeon.Application.Common.DTOs.CallbackConfigDto?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.CallbackConfig.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.CrewSettingsDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.CustomOptions.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.CustomOptions.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.EnableMemorySharing.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.EnableMemorySharing.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.EnableOutputCaching.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.EnableOutputCaching.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.Equals(Orkeon.Application.Common.DTOs.CrewSettingsDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.Language.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.Language.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxExecutionTime.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxExecutionTime.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxExecutionTimeSeconds.get -> int?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxExecutionTimeSeconds.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxIterations.get -> int?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxIterations.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxParallelAgents.get -> int?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxParallelAgents.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxRpm.get -> double?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MaxRpm.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MemoryConfig.get -> Orkeon.Application.Common.DTOs.MemoryConfigDto?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MemoryConfig.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MemoryEnabled.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.MemoryEnabled.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.OutputLogFile.get -> string?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.OutputLogFile.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.RetryConfig.get -> Orkeon.Application.Common.DTOs.RetryConfigDto?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.RetryConfig.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.ShareCrew.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.ShareCrew.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.TimeoutConfig.get -> Orkeon.Application.Common.DTOs.TimeoutConfigDto?
+*REMOVED*Orkeon.Application.Common.DTOs.CrewSettingsDto.TimeoutConfig.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.<Clone>$() -> Orkeon.Application.Common.DTOs.ExecutionHistoryDto!
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.CompletedAt.get -> System.DateTime?
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.CompletedAt.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.CrewId.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.CrewId.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Duration.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Duration.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Equals(Orkeon.Application.Common.DTOs.ExecutionHistoryDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.ErrorSummary.get -> string?
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.ErrorSummary.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.ExecutionHistoryDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Id.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Id.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Metadata.get -> System.Collections.Immutable.ImmutableDictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Metadata.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.PerformanceMetrics.get -> Orkeon.Application.Common.DTOs.PerformanceMetricsDto?
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.PerformanceMetrics.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.StartedAt.get -> System.DateTime
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.StartedAt.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Status.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Status.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.SuccessRate.get -> double
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.SuccessRate.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.TasksCompleted.get -> int
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.TasksCompleted.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.TasksFailed.get -> int
+*REMOVED*Orkeon.Application.Common.DTOs.ExecutionHistoryDto.TasksFailed.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.<Clone>$() -> Orkeon.Application.Common.DTOs.MemoryCleanupDto!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.AutoCleanup.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.AutoCleanup.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.CleanupInterval.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.CleanupInterval.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.Equals(Orkeon.Application.Common.DTOs.MemoryCleanupDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.MemoryCleanupDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.MinRelevanceScore.get -> double?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.MinRelevanceScore.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.RetentionPeriod.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryCleanupDto.RetentionPeriod.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.<Clone>$() -> Orkeon.Application.Common.DTOs.MemoryConfigDto!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.Cleanup.get -> Orkeon.Application.Common.DTOs.MemoryCleanupDto?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.Cleanup.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.ConnectionString.get -> string?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.ConnectionString.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.Equals(Orkeon.Application.Common.DTOs.MemoryConfigDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.Limits.get -> Orkeon.Application.Common.DTOs.MemoryLimitsDto?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.Limits.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.MemoryConfigDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.Provider.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.Provider.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.VectorConfig.get -> Orkeon.Application.Common.DTOs.VectorConfigDto?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryConfigDto.VectorConfig.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.<Clone>$() -> Orkeon.Application.Common.DTOs.MemoryLimitsDto!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.Equals(Orkeon.Application.Common.DTOs.MemoryLimitsDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MaxEpisodicItems.get -> int?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MaxEpisodicItems.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MaxLongTermItems.get -> int?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MaxLongTermItems.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MaxMemorySize.get -> long?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MaxMemorySize.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MaxShortTermItems.get -> int?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MaxShortTermItems.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryLimitsDto.MemoryLimitsDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.<Clone>$() -> Orkeon.Application.Common.DTOs.RetryConfigDto!
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.BackoffMultiplier.get -> double
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.BackoffMultiplier.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.Equals(Orkeon.Application.Common.DTOs.RetryConfigDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.MaxAttempts.get -> int
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.MaxAttempts.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.MaxRetryDelay.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.MaxRetryDelay.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.RetryConfigDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.RetryDelay.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.RetryDelay.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.UseExponentialBackoff.get -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.RetryConfigDto.UseExponentialBackoff.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.<Clone>$() -> Orkeon.Application.Common.DTOs.TimeoutConfigDto!
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.CrewTimeout.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.CrewTimeout.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.Equals(Orkeon.Application.Common.DTOs.TimeoutConfigDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.LlmTimeout.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.LlmTimeout.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.MemoryTimeout.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.MemoryTimeout.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.TaskTimeout.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.TaskTimeout.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.TimeoutConfigDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.ToolTimeout.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Common.DTOs.TimeoutConfigDto.ToolTimeout.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.<Clone>$() -> Orkeon.Application.Common.DTOs.VectorConfigDto!
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.Dimension.get -> int
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.Dimension.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.Equals(Orkeon.Application.Common.DTOs.VectorConfigDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.MaxResults.get -> int
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.MaxResults.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.MinSimilarity.get -> double
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.MinSimilarity.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.SimilarityMetric.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.SimilarityMetric.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.VectorConfigDto.VectorConfigDto() -> void
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Builder
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Builder.AddError(string! parameter, string! error) -> Orkeon.Application.Common.InvalidTemplateParameters.Builder!
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Builder.AddMissingError(string! parameter) -> Orkeon.Application.Common.InvalidTemplateParameters.Builder!
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Builder.AddRangeError(string! parameter, object! min, object! max, object! actual) -> Orkeon.Application.Common.InvalidTemplateParameters.Builder!
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Builder.AddTypeError(string! parameter, System.Type! expectedType, System.Type! actualType) -> Orkeon.Application.Common.InvalidTemplateParameters.Builder!
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Builder.Build() -> Orkeon.Application.Common.InvalidTemplateParameters!
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Count.get -> int
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Errors.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.GetError(string! parameter) -> string?
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.HasError(string! parameter) -> bool
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.Parameters.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Application.Common.InvalidTemplateParameters.ToDictionary() -> System.Collections.Generic.Dictionary<string!, string!>!
+*REMOVED*Orkeon.Application.Common.ResolvedTemplateParameters
+*REMOVED*Orkeon.Application.Common.ResolvedTemplateParameters.Builder
+*REMOVED*Orkeon.Application.Common.ResolvedTemplateParameters.Builder.Add(string! key, object! value) -> Orkeon.Application.Common.ResolvedTemplateParameters.Builder!
+*REMOVED*Orkeon.Application.Common.ResolvedTemplateParameters.Builder.Build() -> Orkeon.Application.Common.ResolvedTemplateParameters!
+*REMOVED*Orkeon.Application.Common.ResolvedTemplateParameters.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Common.ResolvedTemplateParameters.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Application.Common.ResolvedTemplateParameters.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.Builder
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.Builder.Add(string! key, object! value) -> Orkeon.Application.Common.TemplateConfiguration.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.Builder.AddEnvironment(string! environment) -> Orkeon.Application.Common.TemplateConfiguration.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.Builder.AddTemplate(string! templateId) -> Orkeon.Application.Common.TemplateConfiguration.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.Builder.AddVersion(string! version) -> Orkeon.Application.Common.TemplateConfiguration.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.Builder.Build() -> Orkeon.Application.Common.TemplateConfiguration!
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Application.Common.TemplateConfiguration.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.AzureOpenAIDeploymentName.get -> string?
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.AzureOpenAIDeploymentName.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.AzureOpenAIEndpoint.get -> System.Uri?
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.AzureOpenAIEndpoint.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.CrewRepositoryType.get -> Orkeon.Application.Configuration.RepositoryType
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.CrewRepositoryType.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.CrewsPath.get -> string!
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.CrewsPath.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.DefaultMaxIterations.get -> int
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.DefaultMaxIterations.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.DefaultTimeout.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.DefaultTimeout.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EmbeddingDimension.get -> int
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EmbeddingDimension.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EmbeddingProvider.get -> string!
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EmbeddingProvider.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EnableDebugLogging.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EnableDebugLogging.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.OpenAIApiKey.get -> string?
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.OpenAIApiKey.set -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.OpenAIEmbeddingModel.get -> string!
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.OpenAIEmbeddingModel.set -> void
+*REMOVED*Orkeon.Application.Configuration.RepositoryType
+*REMOVED*Orkeon.Application.Configuration.RepositoryType.Json = 1 -> Orkeon.Application.Configuration.RepositoryType
+*REMOVED*Orkeon.Application.Configuration.RepositoryType.Yaml = 0 -> Orkeon.Application.Configuration.RepositoryType
+*REMOVED*Orkeon.Application.Constants.Configuration.PathDefaults
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>.AsyncTaskPipeline(int capacity = 100, int maxConcurrency = -1, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.AsyncTaskPipeline<T>!>? logger = null) -> void
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>.CompleteAdding() -> void
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>.Count.get -> int
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>.DequeueAllAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<T>!
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>.Dispose() -> void
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>.EnqueueAsync(T item, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>.IsCompleted.get -> bool
+*REMOVED*Orkeon.Application.Crew.AsyncTaskPipeline<T>.ProcessAsync<TResult>(System.Func<T, System.Threading.CancellationToken, System.Threading.Tasks.Task<TResult>!>! processor, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<TResult>!>!
+*REMOVED*Orkeon.Application.Crew.CrewConfigurationMapper
+*REMOVED*Orkeon.Application.Crew.CrewTaskPipeline
+*REMOVED*Orkeon.Application.Crew.CrewTaskPipeline.CrewTaskPipeline(int capacity = 100, int maxConcurrency = -1, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.CrewTaskPipeline!>? logger = null) -> void
+*REMOVED*Orkeon.Application.Crew.CrewTaskPipeline.EnqueueTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+*REMOVED*Orkeon.Application.Crew.DTOs.CrewDto.ExecutionHistory.get -> System.Collections.Immutable.ImmutableList<Orkeon.Application.Common.DTOs.ExecutionHistoryDto!>!
+*REMOVED*Orkeon.Application.Crew.DTOs.CrewDto.ExecutionHistory.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Infrastructure.IYamlDiffService
+*REMOVED*Orkeon.Application.Interfaces.Infrastructure.IYamlDiffService.ApplyDiffAsync(string! baseContent, Orkeon.Domain.Configuration.ConfigurationDiff! diff, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Infrastructure.IYamlDiffService.CompareYamlAsync(string! yaml1, string! yaml2, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Configuration.ConfigurationDiff!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITaskQueue<T>
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITaskQueue<T>.CompleteAdding() -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITaskQueue<T>.Count.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITaskQueue<T>.DequeueAllAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<T>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITaskQueue<T>.EnqueueAsync(T item, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITaskQueue<T>.IsCompleted.get -> bool
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator.ComposeCrewAsync(Orkeon.Domain.Agent.Composition.CrewTemplate! crewTemplate, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator.ComposeCrewAsync(string! name, System.Collections.Generic.IEnumerable<(string! agentTemplate, Orkeon.Application.Common.TemplateInstantiationParameters! parameters)>! agents, System.Collections.Generic.IEnumerable<(string! taskTemplate, Orkeon.Application.Common.TemplateInstantiationParameters! parameters)>! tasks, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType? processType = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator.InstantiateAgentAsync(Orkeon.Domain.Agent.AgentTemplateDefinition! templateDefinition, Orkeon.Application.Common.TemplateInstantiationParameters! parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Agent.Agent!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator.InstantiateAgentAsync(string! templateName, Orkeon.Application.Common.TemplateInstantiationParameters! parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Agent.Agent!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator.InstantiateTaskAsync(Orkeon.Domain.Task.TaskTemplateDefinition! templateDefinition, Orkeon.Application.Common.TemplateInstantiationParameters! parameters, Orkeon.Domain.Agent.Agent? assignedAgent = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Task.CrewTask!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator.InstantiateTaskAsync(string! templateName, Orkeon.Application.Common.TemplateInstantiationParameters! parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Task.CrewTask!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator.PreviewInstantiationAsync(string! templateName, Orkeon.Application.Interfaces.Ports.TemplateType templateType, Orkeon.Application.Common.TemplateInstantiationParameters! parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ports.InstantiationPreview!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateInstantiator.ValidateInstantiationAsync(string! templateName, Orkeon.Application.Interfaces.Ports.TemplateType templateType, Orkeon.Application.Common.TemplateInstantiationParameters! parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ports.InstantiationValidation!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.Configuration.get -> Orkeon.Application.Common.TemplateConfiguration!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.Configuration.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.InstantiationPreview() -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.RenderedContent.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.RenderedContent.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.ResolvedParameters.get -> Orkeon.Application.Common.ResolvedTemplateParameters!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.ResolvedParameters.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.TemplateName.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.TemplateName.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationPreview.Warnings.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.Errors.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.Errors.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.InstantiationValidation() -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.InvalidParameters.get -> Orkeon.Application.Common.InvalidTemplateParameters!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.InvalidParameters.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.IsValid.get -> bool
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.IsValid.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.MissingParameters.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.MissingParameters.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.InstantiationValidation.Warnings.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateType
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateType.Agent = 0 -> Orkeon.Application.Interfaces.Ports.TemplateType
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateType.Both = 2 -> Orkeon.Application.Interfaces.Ports.TemplateType
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateType.Task = 1 -> Orkeon.Application.Interfaces.Ports.TemplateType
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.CompletionSource.get -> System.Threading.Tasks.TaskCompletionSource<object?>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.CompletionSource.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.Deconstruct(out T Task, out string! Id, out System.Collections.Generic.HashSet<string!>! Dependencies, out System.Threading.Tasks.TaskCompletionSource<object?>! CompletionSource) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.Dependencies.get -> System.Collections.Generic.HashSet<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.Dependencies.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.Id.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.Id.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.Task.get -> T
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.Task.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.WorkItem(Orkeon.Application.Interfaces.Ports.WorkItem<T>! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.WorkItem<T>.WorkItem(T Task, string! Id, System.Collections.Generic.HashSet<string!>! Dependencies, System.Threading.Tasks.TaskCompletionSource<object?>! CompletionSource) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentLifecycleState
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentLifecycleState.Killed = 4 -> Orkeon.Application.Interfaces.Services.AgentLifecycleState
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentLifecycleState.Registered = 1 -> Orkeon.Application.Interfaces.Services.AgentLifecycleState
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentLifecycleState.Running = 2 -> Orkeon.Application.Interfaces.Services.AgentLifecycleState
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentLifecycleState.StopRequested = 3 -> Orkeon.Application.Interfaces.Services.AgentLifecycleState
+*REMOVED*Orkeon.Application.Interfaces.Services.AgentLifecycleState.Unknown = 0 -> Orkeon.Application.Interfaces.Services.AgentLifecycleState
+*REMOVED*Orkeon.Application.Interfaces.Services.IAgentLifecycleManager
+*REMOVED*Orkeon.Application.Interfaces.Services.IAgentLifecycleManager.GetState(Orkeon.Domain.Common.AgentId! agentId) -> Orkeon.Application.Interfaces.Services.AgentLifecycleState
+*REMOVED*Orkeon.Application.Interfaces.Services.IAgentLifecycleManager.IsRegistered(Orkeon.Domain.Common.AgentId! agentId) -> bool
+*REMOVED*Orkeon.Application.Interfaces.Services.IAgentLifecycleManager.Kill(Orkeon.Domain.Common.AgentId! agentId, string! reason) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.IAgentLifecycleManager.KillAll(string! reason) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.IAgentLifecycleManager.Register(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationTokenSource! cts) -> void
+*REMOVED*Orkeon.Application.Interfaces.Services.IAgentLifecycleManager.StopGracefulAsync(Orkeon.Domain.Common.AgentId! agentId, System.TimeSpan? timeout = null) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Services.StateManagement.PriorityAdjustment
+*REMOVED*Orkeon.Application.Services.StateManagement.PriorityAdjustment.Decrease = 0 -> Orkeon.Application.Services.StateManagement.PriorityAdjustment
+*REMOVED*Orkeon.Application.Services.StateManagement.PriorityAdjustment.Increase = 2 -> Orkeon.Application.Services.StateManagement.PriorityAdjustment
+*REMOVED*Orkeon.Application.Services.StateManagement.PriorityAdjustment.None = 1 -> Orkeon.Application.Services.StateManagement.PriorityAdjustment
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.Deconstruct(out TState FromState, out TState ToState, out System.Enum! Event, out bool IsValid, out string? ErrorMessage) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.ErrorMessage.get -> string?
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.ErrorMessage.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.Event.get -> System.Enum!
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.Event.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.FromState.get -> TState
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.FromState.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.IsValid.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.IsValid.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.StateChanged.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.StateTransitionResult(Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>! original) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.StateTransitionResult(TState FromState, TState ToState, System.Enum! Event, bool IsValid, string? ErrorMessage = null) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.ToState.get -> TState
+*REMOVED*Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.ToState.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.CheckPrerequisites = 14 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.ContinueExecution = 3 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.FinalizeOutput = 6 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.MarkFinalFailure = 15 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.NoAction = 0 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.Pause = 4 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.RequestReview = 7 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.Resume = 5 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.Schedule = 1 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.ScheduleRetry = 8 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.StartExecution = 2 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.Unblock = 9 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.WaitForAgent = 10 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.WaitForPrerequisites = 11 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.WaitForReview = 13 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskAction.WaitToResume = 12 -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.AgentAvailable.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.AgentAvailable.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.CanResume.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.CanResume.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.CanRetry.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.CanRetry.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.Deconstruct(out bool AgentAvailable, out bool PrerequisitesMet, out bool CanResume, out bool CanRetry, out bool OutputValid, out bool RequiresReview, out bool ShouldPause, out bool IsNearCompletion, out bool IsNearDeadline, out int RetryCount, out System.TimeSpan ExecutionTime) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.ExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.ExecutionTime.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.IsNearCompletion.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.IsNearCompletion.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.IsNearDeadline.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.IsNearDeadline.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.OutputValid.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.OutputValid.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.PrerequisitesMet.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.PrerequisitesMet.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.Readiness.get -> Orkeon.Application.Services.StateManagement.TaskReadinessFlags!
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.RequiresReview.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.RequiresReview.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.RetryCount.get -> int
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.RetryCount.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.ShouldPause.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.ShouldPause.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.StatusFlags.get -> Orkeon.Application.Services.StateManagement.TaskStatusFlags!
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.TaskExecutionContext(Orkeon.Application.Services.StateManagement.TaskExecutionContext! original) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.TaskExecutionContext(Orkeon.Application.Services.StateManagement.TaskReadinessFlags! readiness, Orkeon.Application.Services.StateManagement.TaskStatusFlags! status, int retryCount = 0, System.TimeSpan executionTime = default(System.TimeSpan)) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskExecutionContext.TaskExecutionContext(bool AgentAvailable, bool PrerequisitesMet, bool CanResume, bool CanRetry, bool OutputValid, bool RequiresReview, bool ShouldPause, bool IsNearCompletion, bool IsNearDeadline, int RetryCount = 0, System.TimeSpan ExecutionTime = default(System.TimeSpan)) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.AgentAvailable.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.AgentAvailable.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.CanResume.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.CanResume.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.CanRetry.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.CanRetry.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.Deconstruct(out bool AgentAvailable, out bool PrerequisitesMet, out bool CanResume, out bool CanRetry) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.PrerequisitesMet.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.PrerequisitesMet.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.TaskReadinessFlags(Orkeon.Application.Services.StateManagement.TaskReadinessFlags! original) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskReadinessFlags.TaskReadinessFlags(bool AgentAvailable, bool PrerequisitesMet, bool CanResume, bool CanRetry) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.ApproveReview = 9 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Block = 6 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Cancel = 12 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Complete = 4 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Fail = 5 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Pause = 2 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.RejectReview = 10 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.RequestReview = 8 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Reset = 13 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Resume = 3 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Retry = 11 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Schedule = 0 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Start = 1 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateEvent.Unblock = 7 -> Orkeon.Application.Services.StateManagement.TaskStateEvent
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateManager
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateManager.DetermineNextAction(Orkeon.Domain.Task.ValueObjects.TaskStatus! currentState, Orkeon.Application.Services.StateManagement.TaskExecutionContext! context) -> Orkeon.Application.Services.StateManagement.TaskAction
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateManager.TaskStateManager(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.StateManagement.TaskStateManager!>! logger) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateManager.TaskStateManager(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.StateManagement.TaskStateManager!>! logger, Orkeon.Domain.Task.RetryPolicy! retryPolicy, Orkeon.Domain.Task.ExecutionTimePolicy! executionTimePolicy) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStateManager.TransitionTaskState(Orkeon.Domain.Task.ValueObjects.TaskStatus! currentState, Orkeon.Application.Services.StateManagement.TaskStateEvent stateEvent, Orkeon.Application.Services.StateManagement.TaskExecutionContext! context) -> Orkeon.Application.Services.StateManagement.StateTransitionResult<Orkeon.Domain.Task.ValueObjects.TaskStatus!>!
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.Deconstruct(out bool OutputValid, out bool RequiresReview, out bool ShouldPause, out bool IsNearCompletion, out bool IsNearDeadline) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.IsNearCompletion.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.IsNearCompletion.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.IsNearDeadline.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.IsNearDeadline.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.OutputValid.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.OutputValid.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.RequiresReview.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.RequiresReview.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.ShouldPause.get -> bool
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.ShouldPause.init -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.TaskStatusFlags(Orkeon.Application.Services.StateManagement.TaskStatusFlags! original) -> void
+*REMOVED*Orkeon.Application.Services.StateManagement.TaskStatusFlags.TaskStatusFlags(bool OutputValid, bool RequiresReview, bool ShouldPause, bool IsNearCompletion, bool IsNearDeadline) -> void
+*REMOVED*const Orkeon.Application.Constants.Configuration.PathDefaults.DefaultCrewsPath = "crews" -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.CallbackConfigDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.CallbackConfigDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.CallbackConfigDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.CrewSettingsDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.CrewSettingsDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.CrewSettingsDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.ExecutionHistoryDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.ExecutionHistoryDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.ExecutionHistoryDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryCleanupDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryCleanupDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryCleanupDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryConfigDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryConfigDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryConfigDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryLimitsDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryLimitsDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryLimitsDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.RetryConfigDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.RetryConfigDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.RetryConfigDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.TimeoutConfigDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.TimeoutConfigDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.TimeoutConfigDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Common.DTOs.VectorConfigDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.VectorConfigDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.VectorConfigDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.WorkItem<T>.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.WorkItem<T>.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.WorkItem<T>.ToString() -> string!
+*REMOVED*override Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.ToString() -> string!
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskExecutionContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskExecutionContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskExecutionContext.ToString() -> string!
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskReadinessFlags.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskReadinessFlags.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskReadinessFlags.ToString() -> string!
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskStatusFlags.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskStatusFlags.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Services.StateManagement.TaskStatusFlags.ToString() -> string!
+*REMOVED*static Orkeon.Application.Common.DTOs.CallbackConfigDto.operator !=(Orkeon.Application.Common.DTOs.CallbackConfigDto? left, Orkeon.Application.Common.DTOs.CallbackConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.CallbackConfigDto.operator ==(Orkeon.Application.Common.DTOs.CallbackConfigDto? left, Orkeon.Application.Common.DTOs.CallbackConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.CrewSettingsDto.operator !=(Orkeon.Application.Common.DTOs.CrewSettingsDto? left, Orkeon.Application.Common.DTOs.CrewSettingsDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.CrewSettingsDto.operator ==(Orkeon.Application.Common.DTOs.CrewSettingsDto? left, Orkeon.Application.Common.DTOs.CrewSettingsDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.ExecutionHistoryDto.operator !=(Orkeon.Application.Common.DTOs.ExecutionHistoryDto? left, Orkeon.Application.Common.DTOs.ExecutionHistoryDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.ExecutionHistoryDto.operator ==(Orkeon.Application.Common.DTOs.ExecutionHistoryDto? left, Orkeon.Application.Common.DTOs.ExecutionHistoryDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.MemoryCleanupDto.operator !=(Orkeon.Application.Common.DTOs.MemoryCleanupDto? left, Orkeon.Application.Common.DTOs.MemoryCleanupDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.MemoryCleanupDto.operator ==(Orkeon.Application.Common.DTOs.MemoryCleanupDto? left, Orkeon.Application.Common.DTOs.MemoryCleanupDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.MemoryConfigDto.operator !=(Orkeon.Application.Common.DTOs.MemoryConfigDto? left, Orkeon.Application.Common.DTOs.MemoryConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.MemoryConfigDto.operator ==(Orkeon.Application.Common.DTOs.MemoryConfigDto? left, Orkeon.Application.Common.DTOs.MemoryConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.MemoryLimitsDto.operator !=(Orkeon.Application.Common.DTOs.MemoryLimitsDto? left, Orkeon.Application.Common.DTOs.MemoryLimitsDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.MemoryLimitsDto.operator ==(Orkeon.Application.Common.DTOs.MemoryLimitsDto? left, Orkeon.Application.Common.DTOs.MemoryLimitsDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.RetryConfigDto.operator !=(Orkeon.Application.Common.DTOs.RetryConfigDto? left, Orkeon.Application.Common.DTOs.RetryConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.RetryConfigDto.operator ==(Orkeon.Application.Common.DTOs.RetryConfigDto? left, Orkeon.Application.Common.DTOs.RetryConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.TimeoutConfigDto.operator !=(Orkeon.Application.Common.DTOs.TimeoutConfigDto? left, Orkeon.Application.Common.DTOs.TimeoutConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.TimeoutConfigDto.operator ==(Orkeon.Application.Common.DTOs.TimeoutConfigDto? left, Orkeon.Application.Common.DTOs.TimeoutConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.VectorConfigDto.operator !=(Orkeon.Application.Common.DTOs.VectorConfigDto? left, Orkeon.Application.Common.DTOs.VectorConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.VectorConfigDto.operator ==(Orkeon.Application.Common.DTOs.VectorConfigDto? left, Orkeon.Application.Common.DTOs.VectorConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.InvalidTemplateParameters.CreateBuilder() -> Orkeon.Application.Common.InvalidTemplateParameters.Builder!
+*REMOVED*static Orkeon.Application.Common.InvalidTemplateParameters.Empty.get -> Orkeon.Application.Common.InvalidTemplateParameters!
+*REMOVED*static Orkeon.Application.Common.InvalidTemplateParameters.FromDictionary(System.Collections.Generic.Dictionary<string!, string!>! errors) -> Orkeon.Application.Common.InvalidTemplateParameters!
+*REMOVED*static Orkeon.Application.Common.ResolvedTemplateParameters.CreateBuilder() -> Orkeon.Application.Common.ResolvedTemplateParameters.Builder!
+*REMOVED*static Orkeon.Application.Common.ResolvedTemplateParameters.Empty.get -> Orkeon.Application.Common.ResolvedTemplateParameters!
+*REMOVED*static Orkeon.Application.Common.ResolvedTemplateParameters.FromInstantiationParameters(Orkeon.Application.Common.TemplateInstantiationParameters! original, System.Collections.Generic.Dictionary<string!, object!>? additionalResolved = null) -> Orkeon.Application.Common.ResolvedTemplateParameters!
+*REMOVED*static Orkeon.Application.Common.TemplateConfiguration.CreateBuilder() -> Orkeon.Application.Common.TemplateConfiguration.Builder!
+*REMOVED*static Orkeon.Application.Common.TemplateConfiguration.Empty.get -> Orkeon.Application.Common.TemplateConfiguration!
+*REMOVED*static Orkeon.Application.Common.TemplateConfiguration.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>! dictionary) -> Orkeon.Application.Common.TemplateConfiguration!
+*REMOVED*static Orkeon.Application.Crew.CrewConfigurationMapper.ToConfiguration(this Orkeon.Domain.Crew.Crew! crew, System.Collections.Generic.IEnumerable<Orkeon.Domain.Agent.Agent!>! agents, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.CrewTask!>! tasks) -> Orkeon.Domain.Configuration.CrewConfiguration!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.InstantiationValidation.Invalid(params string![]! errors) -> Orkeon.Application.Interfaces.Ports.InstantiationValidation!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.InstantiationValidation.Valid() -> Orkeon.Application.Interfaces.Ports.InstantiationValidation!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.WorkItem<T>.Create(T task, string! id) -> Orkeon.Application.Interfaces.Ports.WorkItem<T>!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.WorkItem<T>.Create(T task, string! id, System.Collections.Generic.IEnumerable<string!>! dependencies) -> Orkeon.Application.Interfaces.Ports.WorkItem<T>!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.WorkItem<T>.operator !=(Orkeon.Application.Interfaces.Ports.WorkItem<T>? left, Orkeon.Application.Interfaces.Ports.WorkItem<T>? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.WorkItem<T>.operator ==(Orkeon.Application.Interfaces.Ports.WorkItem<T>? left, Orkeon.Application.Interfaces.Ports.WorkItem<T>? right) -> bool
+*REMOVED*static Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.operator !=(Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>? left, Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>? right) -> bool
+*REMOVED*static Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.operator ==(Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>? left, Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>? right) -> bool
+*REMOVED*static Orkeon.Application.Services.StateManagement.TaskExecutionContext.operator !=(Orkeon.Application.Services.StateManagement.TaskExecutionContext? left, Orkeon.Application.Services.StateManagement.TaskExecutionContext? right) -> bool
+*REMOVED*static Orkeon.Application.Services.StateManagement.TaskExecutionContext.operator ==(Orkeon.Application.Services.StateManagement.TaskExecutionContext? left, Orkeon.Application.Services.StateManagement.TaskExecutionContext? right) -> bool
+*REMOVED*static Orkeon.Application.Services.StateManagement.TaskReadinessFlags.operator !=(Orkeon.Application.Services.StateManagement.TaskReadinessFlags? left, Orkeon.Application.Services.StateManagement.TaskReadinessFlags? right) -> bool
+*REMOVED*static Orkeon.Application.Services.StateManagement.TaskReadinessFlags.operator ==(Orkeon.Application.Services.StateManagement.TaskReadinessFlags? left, Orkeon.Application.Services.StateManagement.TaskReadinessFlags? right) -> bool
+*REMOVED*static Orkeon.Application.Services.StateManagement.TaskStateManager.GetPriorityAdjustment(Orkeon.Domain.Task.ValueObjects.TaskStatus! currentState, Orkeon.Application.Services.StateManagement.TaskExecutionContext! context) -> Orkeon.Application.Services.StateManagement.PriorityAdjustment
+*REMOVED*static Orkeon.Application.Services.StateManagement.TaskStateManager.GetPriorityAdjustment(Orkeon.Domain.Task.ValueObjects.TaskStatus! currentState, Orkeon.Application.Services.StateManagement.TaskExecutionContext! context, Orkeon.Domain.Task.RetryPolicy! retryPolicy, Orkeon.Domain.Task.ExecutionTimePolicy! executionTimePolicy) -> Orkeon.Application.Services.StateManagement.PriorityAdjustment
+*REMOVED*static Orkeon.Application.Services.StateManagement.TaskStatusFlags.operator !=(Orkeon.Application.Services.StateManagement.TaskStatusFlags? left, Orkeon.Application.Services.StateManagement.TaskStatusFlags? right) -> bool
+*REMOVED*static Orkeon.Application.Services.StateManagement.TaskStatusFlags.operator ==(Orkeon.Application.Services.StateManagement.TaskStatusFlags? left, Orkeon.Application.Services.StateManagement.TaskStatusFlags? right) -> bool
+*REMOVED*virtual Orkeon.Application.Crew.AsyncTaskPipeline<T>.Dispose(bool disposing) -> void
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.WorkItem<T>.<Clone>$() -> Orkeon.Application.Interfaces.Ports.WorkItem<T>!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.WorkItem<T>.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.WorkItem<T>.Equals(Orkeon.Application.Interfaces.Ports.WorkItem<T>? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.WorkItem<T>.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.<Clone>$() -> Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>!
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.Equals(Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>? other) -> bool
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.StateTransitionResult<TState>.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskExecutionContext.<Clone>$() -> Orkeon.Application.Services.StateManagement.TaskExecutionContext!
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskExecutionContext.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskExecutionContext.Equals(Orkeon.Application.Services.StateManagement.TaskExecutionContext? other) -> bool
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskExecutionContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskReadinessFlags.<Clone>$() -> Orkeon.Application.Services.StateManagement.TaskReadinessFlags!
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskReadinessFlags.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskReadinessFlags.Equals(Orkeon.Application.Services.StateManagement.TaskReadinessFlags? other) -> bool
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskReadinessFlags.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskStatusFlags.<Clone>$() -> Orkeon.Application.Services.StateManagement.TaskStatusFlags!
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskStatusFlags.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskStatusFlags.Equals(Orkeon.Application.Services.StateManagement.TaskStatusFlags? other) -> bool
+*REMOVED*virtual Orkeon.Application.Services.StateManagement.TaskStatusFlags.PrintMembers(System.Text.StringBuilder! builder) -> bool

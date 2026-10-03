@@ -59,7 +59,6 @@ public class CrewDtoTests
         Assert.True(dto.Tasks.IsEmpty);
         Assert.Null(dto.MemoryConfiguration);
         Assert.Null(dto.PerformanceMetrics);
-        Assert.True(dto.ExecutionHistory.IsEmpty);
         Assert.Null(dto.StartedAt);
         Assert.Null(dto.CompletedAt);
         Assert.True(dto.Metadata.IsEmpty);
@@ -413,52 +412,6 @@ public class CrewDtoTests
     }
 
     [Fact]
-    public void ShouldAcceptImmutableList_WhenUsingExecutionHistory()
-    {
-        // Arrange
-        var history = ImmutableList<ExecutionHistoryDto>.Empty
-            .Add(new ExecutionHistoryDto
-            {
-                Id = "exec-1",
-                CrewId = CrewId1,
-                Status = Completed,
-                StartedAt = DateTime.UtcNow.AddHours(-2),
-                CompletedAt = DateTime.UtcNow.AddHours(-1),
-                TasksCompleted = 10,
-                TasksFailed = 0,
-                SuccessRate = 1.0
-            })
-            .Add(new ExecutionHistoryDto
-            {
-                Id = "exec-2",
-                CrewId = CrewId1,
-                Status = Failed,
-                StartedAt = DateTime.UtcNow.AddDays(-1),
-                CompletedAt = DateTime.UtcNow.AddDays(-1).AddHours(1),
-                TasksCompleted = 8,
-                TasksFailed = 2,
-                SuccessRate = 0.8
-            });
-
-        // Act
-        var dto = new CrewDto
-        {
-            Id = CrewId1,
-            Name = "Crew",
-            Description = "Description",
-            ProcessType = "Sequential",
-            Status = "Ready",
-            Verbosity = "Normal",
-            ExecutionHistory = history
-        };
-
-        // Assert
-        Assert.Equal(2, dto.ExecutionHistory.Count);
-        Assert.Equal("exec-1", dto.ExecutionHistory[0].Id);
-        Assert.Equal("exec-2", dto.ExecutionHistory[1].Id);
-    }
-
-    [Fact]
     public void ShouldAcceptImmutableDictionary_WhenUsingMetadata()
     {
         // Arrange
@@ -617,16 +570,6 @@ public class CrewDtoTests
             Throughput = 100.0
         };
 
-        var executionHistory = ImmutableList<ExecutionHistoryDto>.Empty.Add(new ExecutionHistoryDto
-        {
-            Id = "exec-1",
-            CrewId = "crew-complete",
-            Status = Completed,
-            TasksCompleted = 5,
-            TasksFailed = 0,
-            SuccessRate = 1.0
-        });
-
         var metadata = ImmutableDictionary<string, object>.Empty.Add("key", "value");
 
         // Act
@@ -646,7 +589,6 @@ public class CrewDtoTests
             Tasks = tasks,
             MemoryConfiguration = memoryConfig,
             PerformanceMetrics = performanceMetrics,
-            ExecutionHistory = executionHistory,
             StartedAt = DateTime.UtcNow.AddMinutes(-30),
             CompletedAt = DateTime.UtcNow,
             Metadata = metadata
@@ -667,7 +609,6 @@ public class CrewDtoTests
         Assert.Single(dto.Tasks);
         Assert.NotNull(dto.MemoryConfiguration);
         Assert.NotNull(dto.PerformanceMetrics);
-        Assert.Single(dto.ExecutionHistory);
         Assert.NotNull(dto.StartedAt);
         Assert.NotNull(dto.CompletedAt);
         Assert.Single(dto.Metadata);
@@ -736,7 +677,6 @@ public class CrewDtoTests
         Assert.Equal(0, dto.TaskCount);
         Assert.True(dto.Agents.IsEmpty);
         Assert.True(dto.Tasks.IsEmpty);
-        Assert.True(dto.ExecutionHistory.IsEmpty);
     }
 
     [Fact]

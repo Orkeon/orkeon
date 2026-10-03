@@ -23,7 +23,6 @@ public sealed class Crew : AggregateRoot<CrewId>
     private readonly CrewMemberManager _memberManager;
     private readonly CrewTaskManager _taskManager;
     private ProcessId? _currentProcessId;
-    private Func<IEnumerable<AgentId>, string, System.Threading.Tasks.Task>? _killAllFunc;
 
     /// <summary>
     /// Gets the crew's goal.
@@ -530,50 +529,6 @@ public sealed class Crew : AggregateRoot<CrewId>
     }
 
     /// <summary>
-    /// Updates crew configuration using an options object.
-    /// </summary>
-    public void UpdateConfiguration(CrewConfigurationUpdate update)
-    {
-        ArgumentNullException.ThrowIfNull(update);
-
-        if (update.Verbose.HasValue)
-            Verbose = update.Verbose.Value;
-
-        if (update.Planning.HasValue)
-        {
-            if (!update.Planning.Value && PlanningLlm is not null)
-                throw new InvalidOperationException(PlanningProviderWithoutPlanning);
-            Planning = update.Planning.Value;
-        }
-
-        if (update.MaxRpm.HasValue)
-        {
-            if (update.MaxRpm.Value <= 0)
-                throw new ArgumentException("Max RPM must be positive.", nameof(update));
-            MaxRpm = update.MaxRpm.Value;
-        }
-
-        if (update.ShareCrew.HasValue)
-            ShareCrew = update.ShareCrew.Value;
-
-        if (update.OutputLogFile != null)
-            OutputLogFile = update.OutputLogFile;
-
-        if (!string.IsNullOrWhiteSpace(update.Language))
-            Language = LanguageCode.From(update.Language);
-
-        if (update.FullOutput.HasValue)
-            FullOutput = update.FullOutput.Value;
-
-        if (update.MemoryEnabled.HasValue)
-        {
-            if (!update.MemoryEnabled.Value && !string.IsNullOrWhiteSpace(MemoryProvider))
-                throw new InvalidOperationException(ProviderWithoutMemory(MemoryProvider));
-            MemoryEnabled = update.MemoryEnabled.Value;
-        }
-    }
-
-    /// <summary>
     /// The refusal of a memory provider named for a crew whose memory is off (GAP-30), with the
     /// remedy in both spellings.
     /// </summary>
@@ -613,35 +568,6 @@ public sealed class Crew : AggregateRoot<CrewId>
         $"The {processType.Value} process reads no manager LLM, yet the crew is given one (CrewBuilder.WithManagerLlm): " +
         "its provider would never be called. Remove it, or use the Hierarchical process — the manager assigns and " +
         "reviews on it — or the Autonomous one — the manager hands the tasks out on it.";
-
-    /// <summary>
-    /// Updates crew configuration.
-    /// Convenience overload that delegates to <see cref="UpdateConfiguration(CrewConfigurationUpdate)"/>.
-    /// </summary>
-#pragma warning disable S107 // Backward-compatible overload; use UpdateConfiguration(CrewConfigurationUpdate) instead
-    public void UpdateConfiguration(
-        bool? verbose = null,
-        bool? planning = null,
-        int? maxRpm = null,
-        bool? shareCrew = null,
-        string? outputLogFile = null,
-        string? language = null,
-        bool? fullOutput = null,
-        bool? memoryEnabled = null)
-    {
-        UpdateConfiguration(new CrewConfigurationUpdate
-        {
-            Verbose = verbose,
-            Planning = planning,
-            MaxRpm = maxRpm,
-            ShareCrew = shareCrew,
-            OutputLogFile = outputLogFile,
-            Language = language,
-            FullOutput = fullOutput,
-            MemoryEnabled = memoryEnabled
-        });
-    }
-#pragma warning restore S107
 
     /// <summary>
     /// Sets the manager agent, one of the crew's agents: the hierarchical manager, or the consensual
@@ -702,69 +628,4 @@ public sealed class Crew : AggregateRoot<CrewId>
             throw new InvalidOperationException("Crew is already executing");
         }
     }
-
-    /// <summary>
-    /// Restores a Crew aggregate from persisted state without raising domain events.
-    /// For use by repositories when reconstituting from storage.
-    /// </summary>
-#pragma warning disable S107 // Rehydration factory; parameters map 1:1 to persisted columns
-    internal static Crew Restore(
-        CrewId id,
-        CrewGoal goal,
-        ProcessType processType,
-        bool verbose = false,
-        bool planning = false,
-        int? maxRpm = null,
-        bool shareCrew = true,
-        string? outputLogFile = null,
-        ILlmProvider? managerLlm = null,
-        AgentId? managerAgentId = null,
-        string language = "en",
-        bool fullOutput = false,
-        ILlmProvider? planningLlm = null,
-        bool memoryEnabled = false,
-        CrewStatus? status = null)
-    {
-        var crew = new Crew(id)
-        {
-            Goal = goal,
-            ProcessType = processType ?? ProcessType.Sequential,
-            Verbose = verbose,
-            Planning = planning,
-            Status = status ?? CrewStatus.Idle,
-            MaxRpm = maxRpm is null or > 0 ? maxRpm : null,
-            ShareCrew = shareCrew,
-            OutputLogFile = outputLogFile,
-            ManagerLlm = managerLlm,
-            ManagerAgentId = managerAgentId,
-            Language = !string.IsNullOrWhiteSpace(language) ? LanguageCode.From(language) : LanguageCode.Default,
-            FullOutput = fullOutput,
-            PlanningLlm = planningLlm,
-            MemoryEnabled = memoryEnabled
-        };
-
-        return crew;
-    }
-#pragma warning restore S107
-
-    /// <summary>
-    /// Injects the kill-all delegate from the Application layer.
-    /// </summary>
-    public void SetKillAllStrategy(Func<IEnumerable<AgentId>, string, System.Threading.Tasks.Task> killAllFunc)
-    {
-        ArgumentNullException.ThrowIfNull(killAllFunc);
-        _killAllFunc = killAllFunc;
-    }
-
-    /// <summary>
-    /// Stops all agents in this crew.
-    /// </summary>
-    public async System.Threading.Tasks.Task StopAllAgentsAsync(string reason = "Crew stopped all agents")
-    {
-        if (_killAllFunc is not null)
-        {
-            await _killAllFunc(_agents.AsReadOnly(), reason).ConfigureAwait(false);
-        }
-    }
-
 }

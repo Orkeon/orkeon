@@ -1,4 +1,3 @@
-using Orkeon.Application.Configuration;
 using Orkeon.Application.Memory;
 using Orkeon.Domain.Crew;
 using Orkeon.Application.Interfaces;
@@ -98,32 +97,11 @@ public class InfrastructureExtensionsTests
     }
 
     [Fact]
-    public void ShouldRegisterEmbeddingServiceWithDefaultDimension_WhenAddOrkeonInfrastructure()
+    public void ShouldRegisterEmbeddingService_WhenAddOrkeonInfrastructure()
     {
         // Arrange
         var services = new ServiceCollection();
         services.AddLogging();
-
-        // Act
-        services.AddOrkeonInfrastructure();
-        var serviceProvider = services.BuildServiceProvider();
-
-        // Assert
-        var embeddingService = serviceProvider.GetService<Orkeon.Domain.Memory.IEmbeddingService>();
-        Assert.NotNull(embeddingService);
-        Assert.IsType<DomainEmbeddingServiceAdapter>(embeddingService);
-    }
-
-    [Fact]
-    public void ShouldRegisterEmbeddingServiceWithCustomDimension_WhenAddOrkeonInfrastructure()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.Configure<OrkeonApplicationOptions>(options =>
-        {
-            options.EmbeddingDimension = 768;
-        });
 
         // Act
         services.AddOrkeonInfrastructure();
@@ -283,10 +261,6 @@ public class InfrastructureExtensionsTests
         services.AddLogging();
         services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(
             new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
-        services.Configure<OrkeonApplicationOptions>(options =>
-        {
-            options.EmbeddingDimension = 512;
-        });
 
         // Act
         services.AddOrkeonInfrastructure();
@@ -383,46 +357,6 @@ public class InfrastructureExtensionsTests
 
         var processFactory = services.FirstOrDefault(s => s.ServiceType == typeof(IProcessStrategyFactory));
         Assert.Equal(ServiceLifetime.Scoped, processFactory?.Lifetime);
-    }
-
-    [Fact]
-    public void ShouldUseCorrectEmbeddingDimension_WhenAddOrkeonInfrastructureWithCustomOptions()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.Configure<OrkeonApplicationOptions>(options =>
-        {
-            options.EmbeddingDimension = 1024;
-        });
-
-        // Act
-        services.AddOrkeonInfrastructure();
-        var serviceProvider = services.BuildServiceProvider();
-
-        // Assert - The embedding service should be created with the custom dimension
-        var embeddingService = serviceProvider.GetService<Orkeon.Domain.Memory.IEmbeddingService>();
-        Assert.NotNull(embeddingService);
-        // Since we can't directly check the dimension, at least verify it was created
-        Assert.IsType<DomainEmbeddingServiceAdapter>(embeddingService);
-    }
-
-    [Fact]
-    public void ShouldUseDefaultEmbeddingDimension_WhenAddOrkeonInfrastructureWithNullOptions()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddLogging();
-        // Don't configure options, so they will be null
-
-        // Act
-        services.AddOrkeonInfrastructure();
-        var serviceProvider = services.BuildServiceProvider();
-
-        // Assert - Should use default dimension of 384
-        var embeddingService = serviceProvider.GetService<Orkeon.Domain.Memory.IEmbeddingService>();
-        Assert.NotNull(embeddingService);
-        Assert.IsType<DomainEmbeddingServiceAdapter>(embeddingService);
     }
 
     [Fact]

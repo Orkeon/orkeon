@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Common.CQRS;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.DependencyInjection;
@@ -69,13 +70,10 @@ public class ServiceCollectionExtensionsTests
         var services = CreateServiceCollectionWithRequiredDeps();
 
         // Act
-        services.AddOrkeonApplication(opt => { opt.DefaultMaxIterations = 5; });
+        services.AddOrkeonApplication(opt => { opt.AgentSelectionStrategy = AgentSelectionStrategyKind.Skill; });
 
-        // Assert — the Configure<OrkeonApplicationOptions> call was registered
-        Assert.Contains(services, sd =>
-            sd.ServiceType.IsGenericType &&
-            sd.ServiceType.GetGenericTypeDefinition() == typeof(Microsoft.Extensions.Options.IConfigureOptions<>) &&
-            sd.ServiceType.GetGenericArguments()[0] == typeof(OrkeonApplicationOptions));
+        // Assert — the value the container resolves, not a registered descriptor
+        Assert.Equal(AgentSelectionStrategyKind.Skill, ResolvedStrategy(services));
     }
 
     [Fact]
@@ -85,7 +83,7 @@ public class ServiceCollectionExtensionsTests
         var services = CreateServiceCollectionWithRequiredDeps();
 
         // Act
-        services.AddOrkeonApplication(opt => { opt.DefaultMaxIterations = 5; });
+        services.AddOrkeonApplication(opt => { opt.AgentSelectionStrategy = AgentSelectionStrategyKind.Skill; });
 
         // Assert
         Assert.Contains(services, sd =>
@@ -126,7 +124,7 @@ public class ServiceCollectionExtensionsTests
         var services = CreateServiceCollectionWithRequiredDeps();
 
         // Act
-        services.AddOrkeonApplication(opt => { opt.DefaultMaxIterations = 5; });
+        services.AddOrkeonApplication(opt => { opt.AgentSelectionStrategy = AgentSelectionStrategyKind.Skill; });
 
         // Assert — at least one ICommandHandler registration must exist through the options path.
         Assert.Contains(services, sd =>
@@ -142,7 +140,7 @@ public class ServiceCollectionExtensionsTests
         var services = CreateServiceCollectionWithRequiredDeps();
 
         // Act
-        services.AddOrkeonApplication(opt => { opt.DefaultMaxIterations = 5; });
+        services.AddOrkeonApplication(opt => { opt.AgentSelectionStrategy = AgentSelectionStrategyKind.Skill; });
 
         // Assert — at least one ICommandValidator registration must exist through the options path.
         Assert.Contains(services, sd =>
@@ -241,6 +239,46 @@ public class ServiceCollectionExtensionsTests
         Assert.NotNull(orch1);
         Assert.NotNull(orch2);
         Assert.Equal(orch1.GetType(), orch2.GetType());
+    }
+
+    // ── GAP-37: the lambda is registered as is, so it composes with Configure<…> in both orders ──
+
+    [Fact]
+    public void AddOrkeonApplication_WithALambda_KeepsTheStrategyConfiguredBefore()
+    {
+        var services = CreateServiceCollectionWithRequiredDeps();
+        services.Configure<OrkeonApplicationOptions>(o => o.AgentSelectionStrategy = AgentSelectionStrategyKind.Skill);
+
+        services.AddOrkeonApplication(o => { });
+
+        Assert.Equal(AgentSelectionStrategyKind.Skill, ResolvedStrategy(services));
+    }
+
+    [Fact]
+    public void AddOrkeonApplication_AppliesTheLambda()
+    {
+        var services = CreateServiceCollectionWithRequiredDeps();
+
+        services.AddOrkeonApplication(o => o.AgentSelectionStrategy = AgentSelectionStrategyKind.Embedding);
+
+        Assert.Equal(AgentSelectionStrategyKind.Embedding, ResolvedStrategy(services));
+    }
+
+    [Fact]
+    public void AddOrkeonApplication_WithALambda_YieldsToAConfigureRegisteredAfter()
+    {
+        var services = CreateServiceCollectionWithRequiredDeps();
+        services.AddOrkeonApplication(o => o.AgentSelectionStrategy = AgentSelectionStrategyKind.Embedding);
+
+        services.Configure<OrkeonApplicationOptions>(o => o.AgentSelectionStrategy = AgentSelectionStrategyKind.Skill);
+
+        Assert.Equal(AgentSelectionStrategyKind.Skill, ResolvedStrategy(services));
+    }
+
+    private static AgentSelectionStrategyKind ResolvedStrategy(ServiceCollection services)
+    {
+        using var provider = services.BuildServiceProvider();
+        return provider.GetRequiredService<IOptions<OrkeonApplicationOptions>>().Value.AgentSelectionStrategy;
     }
 
     // Helper to provide minimal required dependencies

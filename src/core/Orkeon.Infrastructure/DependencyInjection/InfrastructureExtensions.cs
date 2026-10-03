@@ -307,12 +307,6 @@ public static class InfrastructureExtensions
         // ILlmCache — no-op cache that always misses
         services.TryAddSingleton<Application.Interfaces.Infrastructure.Caching.ILlmCache, Stubs.NullLlmCache>();
 
-        // IYamlDiffService — no-op YAML diff
-        services.TryAddSingleton<Application.Interfaces.Infrastructure.IYamlDiffService, Stubs.NullYamlDiffService>();
-
-        // ITemplateInstantiator — throws NotSupportedException if actually used
-        services.TryAddSingleton<Application.Interfaces.Ports.ITemplateInstantiator, Stubs.NullTemplateInstantiator>();
-
         // === Agent selection (R3.5) ===
         // Register both real selection strategies so they can be resolved by configuration.
         services.TryAddSingleton<Application.Services.AgentSelection.EmbeddingBasedSelectionStrategy>();
@@ -390,9 +384,6 @@ public static class InfrastructureExtensions
         services.AddScoped<ICrewRepository, InMemoryCrewRepository>();
         services.AddScoped<ITaskRepository, InMemoryTaskRepository>();
         services.AddScoped<IAgentMemoryStoreRepository, InMemoryAgentMemoryStoreRepository>();
-
-        // Agent lifecycle manager (kill switch)
-        services.AddSingleton<Orkeon.Application.Interfaces.Services.IAgentLifecycleManager, AgentLifecycleManager>();
 
         return services;
     }
