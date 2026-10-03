@@ -30,6 +30,7 @@ Orkeon.Infrastructure.Consensus.AgentBallotCollector.CollectAsync(Orkeon.Applica
 Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy.ConsensualProcessStrategy(Orkeon.Application.Interfaces.IVotingStrategy! votingStrategy, Orkeon.Application.Interfaces.IBallotCollector! ballotCollector, Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies! dependencies, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy!>! logger, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Consensus.ConsensualProcessOptions!>! options, Orkeon.Application.Crew.ICrewExecutionHook? hook = null) -> void
 *REMOVED*Orkeon.Infrastructure.Configuration.RagYamlConfig.Provider.get -> string?
 *REMOVED*Orkeon.Infrastructure.Configuration.RagYamlConfig.Provider.set -> void
+*REMOVED*Orkeon.Infrastructure.Serialization.YamlDotNetSerializer.SerializeWithoutNulls<T>(T obj) -> string!
 *REMOVED*Orkeon.Infrastructure.Memory.Base.MemoryProviderBase.Configuration.get -> Orkeon.Domain.Memory.MemoryProviderConfig?
 *REMOVED*Orkeon.Infrastructure.Memory.Base.MemoryProviderBase.Configuration.set -> void
 *REMOVED*Orkeon.Infrastructure.Memory.MemoryProviderFactory.Create(Orkeon.Application.Memory.MemoryProviderConfigDto! config, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> Orkeon.Domain.Memory.IMemoryProvider!

@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a crew exported to YAML reads back the same: everything the loader reads, under its author's keys **[breaking]**
+
+`YamlCrewExporter` — the export `AddOrkeonYaml()` registers for a C# host — wrote another crew than the
+one it was given, without a word (GAP-39). Reloaded, the crew answered without its knowledge and its
+guardrails, the framework no longer wrote its deliverables, its EventHub door followed the host's policy
+instead of what it declared, and every agent and task had been renamed.
+
+- **Everything the loader reads is written.** The crew's `memoryProvider`, `graphConfig`, `rag`
+  (collections, their sources as written, their chunking, `defaults.profile`) and `links` — an empty
+  `links: []` stays a closed door, an absent block stays absent —, an agent's `guardrails` and
+  `knowledge` (the short form for an attachment that only names its collection), a task's `deliverable`
+  and `guardrails`: each was lost. What the loader transformed is written as the configuration carries
+  it: a guardrails `preset:` as the header, rules and tool rules it brought, the crew's `llm:` under each
+  agent, `anchors:` as their text. `ExportToDirectoryAsync` writes the crew keys from the same mapping as
+  `ExportToString`, where it kept a copy of its own.
+- **Under the author's keys.** `AgentConfiguration.Key` and `TaskConfiguration.Key` keep the key an agent
+  or a task has in its crew file — the mapping key, or the file name in the per-entity layout; the YAML
+  loader sets them, a configuration built in code or by a `.ork.ts` script has none. The export writes
+  each entry, and each `agent:`, `dependencies:` and `managerAgent:`, under that key, where it wrote a
+  fresh identifier (`01J9…`) nobody could read; a configuration without keys keeps its identifiers. Two
+  entries under one name, or a reference that names no entry, fail the export with an
+  `InvalidOperationException` naming them: the loader would refuse the file.
+- **No key nobody set.** `YamlDotNetSerializer.Serialize` no longer writes a null property as an empty
+  `key:` line — an exported crew of three agents carried dozens —, the form the forge already used through
+  `SerializeWithoutNulls`, which is gone. A value set to its default, `false` or `0`, is still written.
+- **The validator names an agent or a task by its key.** `Invalid crew configuration: Agent 'researcher'
+  must have a goal.`, where `orkeon run` named `Agent '01J9…'`, an identifier the author never wrote; a
+  configuration built in code is named by its identifier, as before.
+
+The round trip is proven on a canonical projection of the configuration, by two witness crews that set
+every key the YAML models read — a key added to a model fails the test until a witness sets it, and the
+round trip then makes the export write it —, and by every crew of `examples/`. The second export of a
+reloaded crew is the first, byte for byte.
+
+Documented in [YAML schema](docs/architecture/yaml-schema.md#export).
+
+Breaking: `YamlDotNetSerializer.SerializeWithoutNulls` is removed and `Serialize` omits null properties;
+the export writes agents and tasks under their keys; the validator's messages name a loaded crew's
+entries by their keys.
+
+Migration: call `Serialize` where you called `SerializeWithoutNulls`.
+
 ### Fixed — every published artefact carries the notices of what it redistributes, and the Studio TUIs ship the pinned package versions
 
 `THIRD-PARTY-NOTICES.md` covered every package the shipped applications redistribute, and

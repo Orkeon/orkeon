@@ -1,0 +1,89 @@
+# Round-trip witness (GAP-39), with sequential.yaml — see its header. A hierarchical crew: its
+# manager is one of its agents (managerAgent:), and no task may ask for asyncExecution here. Its
+# crew-level llm: sets every key; the agents override some of them.
+name: review-board
+goal: Review a supplier proposal and decide on it
+process: hierarchical
+managerAgent: lead
+
+llm:
+  profile: smart
+  model: board-model
+  temperature: 0.7
+  max_tokens: 8192
+  top_p: 0.95
+  thinking:
+    enabled: true
+    effort: medium
+    budgetTokens: 1024
+  response_format: json_schema
+  response_schema:
+    name: verdict
+    schema: '{"type":"object","properties":{"approved":{"type":"boolean"}}}'
+    strict: true
+  cache:
+    system: true
+    tools: false
+    ttl: 5m
+
+rag:
+  collections:
+    proposals:
+      sources: [./proposals/]
+
+agents:
+  lead:
+    role: Board lead
+    goal: Assign the reviews and decide
+    llm:
+      profile: default
+      temperature: 0.3
+      thinking:
+        effort: high
+      responseFormat: text
+    guardrails:
+      preset: creative
+      header: "Ignored: a preset brings its own header"
+      toolRules:
+        file_read: [Read the proposal only.]
+
+  reviewer:
+    role: Reviewer
+    goal: Review the proposal against the policy
+    backstory: Former auditor.
+    knowledge: [proposals]
+    llm:
+      thinking:
+        enabled: false
+
+tasks:
+  review:
+    description: Review the proposal against the purchasing policy.
+    expectedOutput: A list of objections, each citing the policy.
+    agent: reviewer
+    deliverable:
+      path: /output/review.md
+      source: tool_call
+      format: markdown
+      sanitize: true
+    guardrails:
+      header: "REVIEW RULES:"
+      rules: [Quote the policy clause behind each objection.]
+
+  decide:
+    description: Decide on the proposal from the review.
+    expectedOutput: A verdict, approved or rejected, with its reasons.
+    agent: lead
+    dependencies: [review]
+    deliverable:
+      path: /output/verdict.json
+      source: structured_output
+      format: json
+      schema_path: /schemas/verdict.json
+
+  archive:
+    description: Archive the decision.
+    expectedOutput: Nothing to keep beyond the verdict.
+    deliverable:
+      path: /output/archive.txt
+      source: none

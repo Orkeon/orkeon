@@ -842,17 +842,9 @@ public class YamlCrewDefinitionTests
         var yaml = exporter.ExportToString(originalConfig);
         var reloadedConfig = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
-        Assert.Equal(originalConfig.Name, reloadedConfig.Name);
-        Assert.Equal(originalConfig.Goal, reloadedConfig.Goal);
-        Assert.Equal(originalConfig.Process, reloadedConfig.Process);
-        Assert.Equal(originalConfig.Agents.Count, reloadedConfig.Agents.Count);
-        Assert.Equal(originalConfig.Tasks.Count, reloadedConfig.Tasks.Count);
-        Assert.NotNull(reloadedConfig.Agents[0].Id);
-        Assert.Equal(originalConfig.Agents[0].Role, reloadedConfig.Agents[0].Role);
-        Assert.Equal(originalConfig.Agents[0].Goal, reloadedConfig.Agents[0].Goal);
-        Assert.NotNull(reloadedConfig.Tasks[0].Id);
-        Assert.Equal(originalConfig.Tasks[0].Description, reloadedConfig.Tasks[0].Description);
-        Assert.Equal(originalConfig.Tasks[0].ExpectedOutput, reloadedConfig.Tasks[0].ExpectedOutput);
+        // Everything the configuration carries, not a handful of fields (GAP-39). Built in code, it has
+        // no keys: each entry comes back under its identifier.
+        CrewConfigurationProjection.AssertEqual(originalConfig, reloadedConfig);
     }
 
     #endregion

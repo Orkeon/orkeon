@@ -6,7 +6,9 @@ namespace Orkeon.Application.Interfaces.Infrastructure.Serialization;
 public interface IYamlSerializer
 {
     /// <summary>
-    /// Serializes an object to YAML string.
+    /// Serializes an object to a YAML string, without the properties left null: a key nobody set is
+    /// not written — a reader takes an absent key for a null one —, and a value set to its default
+    /// (<c>false</c>, <c>0</c>) still is.
     /// </summary>
     /// <typeparam name="T">The type of object to serialize.</typeparam>
     /// <param name="obj">The object to serialize.</param>

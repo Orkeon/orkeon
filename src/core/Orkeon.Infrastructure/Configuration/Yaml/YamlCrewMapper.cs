@@ -124,6 +124,7 @@ public sealed partial class YamlCrewMapper
             result.Add(new AgentConfiguration
             {
                 Id = agentId,
+                Key = kvp.Key,
                 Role = kvp.Value.Role ?? kvp.Key,
                 Goal = kvp.Value.Goal ?? string.Empty,
                 Backstory = kvp.Value.Backstory ?? string.Empty,
@@ -198,6 +199,7 @@ public sealed partial class YamlCrewMapper
             result.Add(new TaskConfiguration
             {
                 Id = taskNameToId[kvp.Key],
+                Key = kvp.Key,
                 Description = kvp.Value.Description ?? string.Empty,
                 ExpectedOutput = kvp.Value.ExpectedOutput ?? string.Empty,
                 AssignedAgentId = assignedAgentId,

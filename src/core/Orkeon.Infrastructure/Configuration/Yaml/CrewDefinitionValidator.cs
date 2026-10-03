@@ -99,12 +99,13 @@ public static class CrewDefinitionValidator
             return;
         }
 
+        // An agent goes by its key — the one its author wrote —, else its identifier (GAP-39).
         foreach (var agent in config.Agents)
         {
             if (string.IsNullOrWhiteSpace(agent.Role))
-                errors.Add($"Agent '{agent.Id}' must have a role.");
+                errors.Add($"Agent '{CrewEntryNames.Of(agent)}' must have a role.");
             if (string.IsNullOrWhiteSpace(agent.Goal))
-                errors.Add($"Agent '{agent.Id}' must have a goal.");
+                errors.Add($"Agent '{CrewEntryNames.Of(agent)}' must have a goal.");
             ValidateAgentLimits(agent, errors);
         }
     }
@@ -119,14 +120,14 @@ public static class CrewDefinitionValidator
         if (agent.MaxRpm is <= 0)
         {
             errors.Add(
-                $"Agent '{agent.Role}' maxRpm: {agent.MaxRpm} — the model requests the agent may make per minute must be 1 or " +
+                $"Agent '{CrewEntryNames.Of(agent)}' maxRpm: {agent.MaxRpm} — the model requests the agent may make per minute must be 1 or " +
                 "more. Leave maxRpm: out for no limit of its own.");
         }
 
         if (agent.MaxIterations <= 0)
         {
             errors.Add(
-                $"Agent '{agent.Role}' maxIter: {agent.MaxIterations} — the turns the agent may take on a task must be 1 or " +
+                $"Agent '{CrewEntryNames.Of(agent)}' maxIter: {agent.MaxIterations} — the turns the agent may take on a task must be 1 or " +
                 $"more. Leave maxIter: out for the default ({Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations}).");
         }
     }
@@ -154,19 +155,23 @@ public static class CrewDefinitionValidator
     private static void ValidateSingleTask(
         TaskConfiguration task, HashSet<AgentId> agentIds, HashSet<TaskId> taskIds, List<string> errors)
     {
+        // A task goes by its key, else its identifier (GAP-39); a reference it cannot resolve names no
+        // entry, so it keeps its identifier.
+        var name = CrewEntryNames.Of(task);
+
         if (string.IsNullOrWhiteSpace(task.Description))
-            errors.Add($"Task '{task.Id}' must have a description.");
+            errors.Add($"Task '{name}' must have a description.");
 
         if (string.IsNullOrWhiteSpace(task.ExpectedOutput))
-            errors.Add($"Task '{task.Id}' must have an expected output.");
+            errors.Add($"Task '{name}' must have an expected output.");
 
         if (task.AssignedAgentId != null && !agentIds.Contains(task.AssignedAgentId))
-            errors.Add($"Task '{task.Id}' references unknown agent '{task.AssignedAgentId}'.");
+            errors.Add($"Task '{name}' references unknown agent '{task.AssignedAgentId}'.");
 
         foreach (var dep in task.Dependencies)
         {
             if (!taskIds.Contains(dep))
-                errors.Add($"Task '{task.Id}' references unknown dependency '{dep}'.");
+                errors.Add($"Task '{name}' references unknown dependency '{dep}'.");
         }
     }
 

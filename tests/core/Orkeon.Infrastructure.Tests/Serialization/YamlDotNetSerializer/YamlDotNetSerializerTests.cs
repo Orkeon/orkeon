@@ -256,6 +256,22 @@ isActive: true";
         Assert.Null(deserialized.OptionalValue);
     }
 
+    /// <summary>
+    /// GAP-39, decision 3: one way to write YAML — a key nobody set is not written (it read back as
+    /// null anyway), and a value set to its default still is: <c>false</c> and <c>0</c> are choices.
+    /// </summary>
+    [Fact]
+    public void ShouldOmitNullKeysAndKeepDefaults_WhenSerialize()
+    {
+        var yaml = _serializer.Serialize(new NullableTestObject { RequiredName = "Required" })
+                   + _serializer.Serialize(new TestObject { Name = "n", Value = 0, IsActive = false });
+
+        Assert.DoesNotContain("optionalName", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("optionalValue", yaml, StringComparison.Ordinal);
+        Assert.Contains("value: 0", yaml, StringComparison.Ordinal);
+        Assert.Contains("isActive: false", yaml, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ShouldEscapeCorrectly_WhenSerializeWithSpecialCharacters()
     {

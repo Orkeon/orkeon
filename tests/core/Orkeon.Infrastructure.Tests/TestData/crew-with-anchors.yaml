@@ -1,7 +1,8 @@
 # Fixture for YamlAnchorPreprocessorTests: a crew configuration in the exact shape the
 # preprocessor exists for - a top-level `anchors` mapping of reusable prompt fragments,
 # aliased from inside the `|` literal blocks of several agent backstories, where native
-# YamlDotNet anchor resolution never looks.
+# YamlDotNet anchor resolution never looks. The export round trip reads it as a crew too
+# (YamlCrewExportRoundTripTests), so its tasks are keyed, as a crew's always are.
 anchors:
   fqn_sourcing: &fqn_sourcing |
     <fqn_sourcing>
@@ -66,6 +67,7 @@ agents:
         *exact_numbers
 
 tasks:
-  - description: Produce the analysis report.
+  report:
+    description: Produce the analysis report.
     expected_output: A report citing every symbol it names.
     agent: analyst

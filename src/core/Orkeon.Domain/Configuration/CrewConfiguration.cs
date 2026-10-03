@@ -69,6 +69,13 @@ public sealed record AgentConfiguration
 {
     /// <summary>Gets the unique identifier of this agent configuration.</summary>
     public AgentId Id { get; init; } = AgentId.Create();
+    /// <summary>
+    /// Gets the key the agent has in its crew file — <c>researcher</c> under <c>agents:</c>, or the
+    /// file name in the per-entity layout —, the name its author gave it and every reference uses
+    /// (GAP-39). The YAML loader sets it; null for a configuration built in code or by a
+    /// <c>.ork.ts</c> script. The export writes the agent under it, and the validator names it.
+    /// </summary>
+    public string? Key { get; init; }
     /// <summary>Gets the role of the agent.</summary>
     public string Role { get; init; } = string.Empty;
     /// <summary>Gets the goal of the agent.</summary>
@@ -110,6 +117,13 @@ public sealed record TaskConfiguration
 {
     /// <summary>Gets the unique identifier of this task configuration.</summary>
     public TaskId Id { get; init; } = TaskId.Create();
+    /// <summary>
+    /// Gets the key the task has in its crew file — <c>collect</c> under <c>tasks:</c>, or the file
+    /// name in the per-entity layout —, the name its author gave it and every <c>dependencies:</c>
+    /// uses (GAP-39). The YAML loader sets it; null for a configuration built in code or by a
+    /// <c>.ork.ts</c> script. The export writes the task under it, and the validator names it.
+    /// </summary>
+    public string? Key { get; init; }
     /// <summary>Gets the task description.</summary>
     public string Description { get; init; } = string.Empty;
     /// <summary>Gets the expected output description.</summary>

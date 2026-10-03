@@ -95,12 +95,12 @@ public sealed class MaxRpmYamlTests
     }
 
     [Theory]
-    [InlineData("", "    maxRpm: 0", "Researcher", "maxRpm")]
-    [InlineData("", "    maxRpm: -1", "Researcher", "maxRpm")]
+    [InlineData("", "    maxRpm: 0", "researcher", "maxRpm")]
+    [InlineData("", "    maxRpm: -1", "researcher", "maxRpm")]
     [InlineData("maxRpm: 0", "", "paced", "maxRpm")]
     [InlineData("max_rpm: -1", "", "paced", "maxRpm")]
-    [InlineData("", "    maxIter: 0", "Researcher", "maxIter")]
-    [InlineData("", "    maxIter: -3", "Researcher", "maxIter")]
+    [InlineData("", "    maxIter: 0", "researcher", "maxIter")]
+    [InlineData("", "    maxIter: -3", "researcher", "maxIter")]
     public async Task Zero_or_less_is_refused_at_load_naming_the_agent_or_the_crew(
         string crewLine, string researcherLines, string named, string key)
     {

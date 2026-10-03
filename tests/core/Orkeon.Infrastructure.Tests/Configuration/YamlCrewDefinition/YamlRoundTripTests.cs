@@ -14,8 +14,10 @@ namespace Orkeon.Infrastructure.Tests.Configuration;
 /// Comprehensive round-trip tests for YAML configuration: export -> import fidelity.
 /// Uses real YamlDotNetSerializer (no mocks) to validate actual serialization behavior.
 ///
-/// Note: The loader generates new ULID-based IDs on each load, so round-trip comparisons
-/// match agents by Role and tasks by Description rather than by Id.
+/// Note: these configurations are built in code and have no keys. The export writes each agent and
+/// task under its identifier, which the reload keeps as its key, so the canonical projection
+/// (<see cref="CrewConfigurationProjection"/>, GAP-39) matches each entry to its reloaded self and
+/// compares everything the configuration carries, in order.
 /// </summary>
 public class YamlRoundTripTests
 {
@@ -92,7 +94,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -178,7 +180,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -236,7 +238,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -289,7 +291,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -342,7 +344,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     #endregion
@@ -383,7 +385,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -420,7 +422,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -468,7 +470,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -517,7 +519,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     #endregion
@@ -610,10 +612,10 @@ public class YamlRoundTripTests
         var config2 = await _loader.LoadFromStringAsync(yaml2, TestContext.Current.CancellationToken);
 
         // Assert: The configurations from both cycles should be structurally equivalent
-        AssertCrewConfigurationsEqual(config1, config2);
+        CrewConfigurationProjection.AssertEqual(config1, config2);
 
         // Also verify the first cycle matches the original structurally
-        AssertCrewConfigurationsEqual(original, config1);
+        CrewConfigurationProjection.AssertEqual(original, config1);
     }
 
     #endregion
@@ -663,7 +665,7 @@ public class YamlRoundTripTests
 
         Assert.Contains("temperature: 0.7", yaml, StringComparison.Ordinal);
         Assert.Contains("topP: 1", yaml, StringComparison.Ordinal);
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -674,9 +676,9 @@ public class YamlRoundTripTests
         var yaml = _exporter.ExportToString(original);
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
-        // No value is written: an unset key is at most a bare `key:` line, which reads back as null.
-        Assert.DoesNotMatch(@"temperature:[ \t]*\S", yaml);
-        Assert.DoesNotMatch(@"topP:[ \t]*\S", yaml);
+        // No key is written at all (GAP-39): it read back as null either way.
+        Assert.DoesNotContain("temperature", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("topP", yaml, StringComparison.Ordinal);
         var llm = Assert.Single(reloaded.Agents).LlmConfig;
         Assert.NotNull(llm);
         Assert.Null(llm!.Temperature);
@@ -700,7 +702,7 @@ public class YamlRoundTripTests
         var yaml = _exporter.ExportToString(original);
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -711,7 +713,7 @@ public class YamlRoundTripTests
         var yaml = _exporter.ExportToString(original);
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -733,7 +735,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         Assert.NotNull(Assert.Single(reloaded.Tasks).LlmOverride);
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     #endregion
@@ -791,7 +793,7 @@ public class YamlRoundTripTests
         var reloadedBoss = reloaded.Agents.FirstOrDefault(a => a.Role == "Boss");
         Assert.NotNull(reloadedBoss);
         Assert.Equal(reloadedBoss.Id, reloaded.ManagerAgentId);
-        AssertCrewConfigurationsEqual(original, reloaded);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     [Fact]
@@ -833,165 +835,7 @@ public class YamlRoundTripTests
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         // Assert
-        AssertCrewConfigurationsEqual(original, reloaded);
-    }
-
-    #endregion
-
-    #region Deep Comparison Helper
-
-    /// <summary>
-    /// Deep comparison of two CrewConfiguration objects.
-    /// Compares all fields that are expected to survive a YAML round-trip.
-    /// Since the loader generates new IDs on each load, agents are matched by Role
-    /// and tasks by Description. Structural relationships (agent assignments, dependencies)
-    /// are verified via cross-referencing.
-    /// </summary>
-    private static void AssertCrewConfigurationsEqual(
-        CrewConfiguration expected,
-        CrewConfiguration actual)
-    {
-        // Crew-level fields
-        Assert.Equal(expected.Name, actual.Name);
-        Assert.Equal(expected.Goal, actual.Goal);
-        Assert.Equal(expected.Process, actual.Process);
-        Assert.Equal(expected.Verbose, actual.Verbose);
-        Assert.Equal(expected.Memory, actual.Memory);
-        Assert.Equal(expected.Planning, actual.Planning);
-        Assert.Equal(expected.MaxRpm, actual.MaxRpm);
-
-        // Manager agent: verify structurally (both null or both reference the same role)
-        if (expected.ManagerAgentId == null)
-        {
-            Assert.Null(actual.ManagerAgentId);
-        }
-        else
-        {
-            Assert.NotNull(actual.ManagerAgentId);
-            var expectedManager = expected.Agents.FirstOrDefault(a => a.Id == expected.ManagerAgentId);
-            var actualManager = actual.Agents.FirstOrDefault(a => a.Id == actual.ManagerAgentId);
-            Assert.NotNull(expectedManager);
-            Assert.NotNull(actualManager);
-            Assert.Equal(expectedManager.Role, actualManager.Role);
-        }
-
-        // Agents — match by Role
-        Assert.Equal(expected.Agents.Count, actual.Agents.Count);
-        foreach (var expectedAgent in expected.Agents)
-        {
-            var actualAgent = actual.Agents.FirstOrDefault(a => a.Role == expectedAgent.Role);
-            Assert.NotNull(actualAgent);
-            AssertAgentsEqual(expectedAgent, actualAgent);
-        }
-
-        // Build agent ID mapping (expected -> actual) by Role
-        var agentIdMap = new Dictionary<AgentId, AgentId>();
-        foreach (var expectedAgent in expected.Agents)
-        {
-            var actualAgent = actual.Agents.First(a => a.Role == expectedAgent.Role);
-            agentIdMap[expectedAgent.Id] = actualAgent.Id;
-        }
-
-        // Tasks — match by Description
-        Assert.Equal(expected.Tasks.Count, actual.Tasks.Count);
-
-        // Build task ID mapping (expected -> actual) by Description
-        var taskIdMap = new Dictionary<TaskId, TaskId>();
-        foreach (var expectedTask in expected.Tasks)
-        {
-            var actualTask = actual.Tasks.First(t => t.Description == expectedTask.Description);
-            taskIdMap[expectedTask.Id] = actualTask.Id;
-        }
-
-        foreach (var expectedTask in expected.Tasks)
-        {
-            var actualTask = actual.Tasks.First(t => t.Description == expectedTask.Description);
-            AssertTasksEqual(expectedTask, actualTask, agentIdMap, taskIdMap);
-        }
-    }
-
-    private static void AssertAgentsEqual(
-        AgentConfiguration expected,
-        AgentConfiguration actual)
-    {
-        // ID is not compared (loader generates new IDs)
-        Assert.Equal(expected.Role, actual.Role);
-        Assert.Equal(expected.Goal, actual.Goal);
-
-        // Backstory: empty string and empty-after-export are equivalent
-        // The exporter maps empty/whitespace backstory to null,
-        // and the loader maps null backstory to empty string
-        Assert.Equal(
-            string.IsNullOrWhiteSpace(expected.Backstory) ? string.Empty : expected.Backstory,
-            actual.Backstory);
-
-        Assert.Equal(expected.AllowDelegation, actual.AllowDelegation);
-        Assert.Equal(expected.MaxIterations, actual.MaxIterations);
-        Assert.Equal(expected.MaxRpm, actual.MaxRpm);
-        Assert.Equal(expected.Verbose, actual.Verbose);
-
-        // Tools
-        Assert.Equal(expected.Tools.Count, actual.Tools.Count);
-        for (int i = 0; i < expected.Tools.Count; i++)
-        {
-            Assert.Equal(expected.Tools[i], actual.Tools[i]);
-        }
-
-        // LLM Config
-        if (expected.LlmConfig == null)
-        {
-            Assert.Null(actual.LlmConfig);
-        }
-        else
-        {
-            Assert.NotNull(actual.LlmConfig);
-            Assert.Equal(expected.LlmConfig.Model, actual.LlmConfig!.Model);
-            Assert.Equal(expected.LlmConfig.Profile, actual.LlmConfig.Profile);
-            Assert.Equal(expected.LlmConfig.Temperature, actual.LlmConfig.Temperature);
-            Assert.Equal(expected.LlmConfig.MaxTokens, actual.LlmConfig.MaxTokens);
-            Assert.Equal(expected.LlmConfig.TopP, actual.LlmConfig.TopP);
-            Assert.Equal(expected.LlmConfig.Thinking, actual.LlmConfig.Thinking);
-            Assert.Equal(expected.LlmConfig.ResponseFormat, actual.LlmConfig.ResponseFormat);
-            Assert.Equal(expected.LlmConfig.Cache, actual.LlmConfig.Cache);
-        }
-    }
-
-    private static void AssertTasksEqual(
-        TaskConfiguration expected,
-        TaskConfiguration actual,
-        Dictionary<AgentId, AgentId> agentIdMap,
-        Dictionary<TaskId, TaskId> taskIdMap)
-    {
-        // ID is not compared directly (loader generates new IDs)
-        Assert.Equal(expected.Description, actual.Description);
-        Assert.Equal(expected.ExpectedOutput, actual.ExpectedOutput);
-        Assert.Equal(expected.AsyncExecution, actual.AsyncExecution);
-        Assert.Equal(expected.HumanInput, actual.HumanInput);
-        Assert.Equal(expected.Tools, actual.Tools);
-
-        // Assigned agent: verify via role mapping
-        if (expected.AssignedAgentId == null)
-        {
-            Assert.Null(actual.AssignedAgentId);
-        }
-        else
-        {
-            Assert.NotNull(actual.AssignedAgentId);
-            Assert.Equal(agentIdMap[expected.AssignedAgentId], actual.AssignedAgentId);
-        }
-
-        // Dependencies: verify count and mapped IDs
-        Assert.Equal(expected.Dependencies.Count, actual.Dependencies.Count);
-        for (int i = 0; i < expected.Dependencies.Count; i++)
-        {
-            Assert.Equal(taskIdMap[expected.Dependencies[i]], actual.Dependencies[i]);
-        }
-
-        // Context (only check count for basic types; complex objects may not survive YAML round-trip)
-        Assert.Equal(expected.Context.Count, actual.Context.Count);
-
-        // The task's llm_override, field by field (GAP-36)
-        Assert.Equal(expected.LlmOverride, actual.LlmOverride);
+        CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
     #endregion

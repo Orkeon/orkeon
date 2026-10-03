@@ -270,6 +270,10 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarEnabled.init -> void
 *REMOVED*static Orkeon.Domain.Task.TaskExecutionStateMachine.CreateBuilder(Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy? circuitPolicy = null) -> Orkeon.Domain.Common.StateMachine.StateMachineBuilder<Orkeon.Domain.Task.TaskExecutionState, Orkeon.Domain.Task.TaskExecutionEvent>!
 Orkeon.Domain.Configuration.TaskConfiguration.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Configuration.TaskConfiguration.Tools.init -> void
+Orkeon.Domain.Configuration.AgentConfiguration.Key.get -> string?
+Orkeon.Domain.Configuration.AgentConfiguration.Key.init -> void
+Orkeon.Domain.Configuration.TaskConfiguration.Key.get -> string?
+Orkeon.Domain.Configuration.TaskConfiguration.Key.init -> void
 Orkeon.Domain.Task.CrewTaskBase<TContext>.AddTool(Orkeon.Domain.Tools.IBaseTool! tool) -> void
 Orkeon.Domain.Task.CrewTaskBase<TContext>.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
 Orkeon.Domain.Task.CrewTaskBuilder.WithTool(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Task.CrewTaskBuilder!

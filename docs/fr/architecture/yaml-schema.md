@@ -7,8 +7,8 @@ Ce document est la **source unique de vérité** pour le schéma YAML d'Orkeon. 
 ## Schéma de configuration complet
 
 La structure YAML suit ce schéma. **Nommage des clés** : le loader (`YamlDotNetSerializer`)
-reconnaît les clés en camelCase (la forme canonique, celle qu'écrit `YamlCrewExporter`) et se
-rabat sur le snake_case pour la même propriété — `expectedOutput` et `expected_output`,
+reconnaît les clés en camelCase (la forme canonique, celle qu'écrit `YamlCrewExporter` — voir
+[Export](#export)) et se rabat sur le snake_case pour la même propriété — `expectedOutput` et `expected_output`,
 `llm_override` et `llmOverride` sont équivalents partout. Une clé qui ne correspond à aucune
 propriété est **ignorée en silence** (une clé mal orthographiée se lit comme absente), sauf dans
 les entrées `knowledge:`, qui émettent un warning. Les mêmes modèles servent le format mono-fichier
@@ -45,7 +45,7 @@ mounts:                   # Les racines virtuelles que la crew utilise (optionne
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # une racine épinglée à UNE entrée des settings par son identifiant, quand plusieurs la déclarent
 
 rag:                      # Configuration RAG au niveau crew (optionnel)
-  provider: string        # Enregistré sur RagCrewConfig, pas encore consommé — le store est Orkeon:Rag:Provider (ou le provider mémoire ambiant)
+  provider: string        # Supprimée : le chargement avertit et l'ignore — le magasin est celui de l'hôte, Orkeon:Rag:Provider
   collections:
     <nom_collection>:
       sources: [string]   # Fichiers, globs, répertoires ou URL — relatifs au dossier de la crew sauf s'ils sont absolus — ingérés à la création de la crew
@@ -54,7 +54,7 @@ rag:                      # Configuration RAG au niveau crew (optionnel)
         max_tokens: int   # default: 512 — tokens par chunk (×4 caractères)
         overlap: int      # default: 64 — recouvrement de tokens entre chunks
   defaults:
-    profile: string       # Enregistré sur RagCrewConfig, pas encore consommé
+    profile: string       # Le profil de récupération de chaque attachement de connaissance qui n'en nomme pas (voir Configuration Knowledge & RAG)
 
 agents:
   <agent_id>:             # Clé = identifiant unique de l'agent
@@ -96,7 +96,7 @@ agents:
       - collection: string       # Forme longue (clé requise)
         top_k: int               # default: 5 — chunks retenus par requête
         min_score: float         # Score de pertinence minimal dans [0, 1]
-        profile: string          # Enregistré sur KnowledgeAttachment, pas encore consommé par l'augmenter
+        profile: string          # Le profil de récupération de cet attachement — sinon rag.defaults.profile, sinon Orkeon:Rag:Profile (voir Configuration Knowledge & RAG)
         max_context_tokens: int  # default: 2000 — plafond de tokens de contexte injectés
 
 tasks:
@@ -145,6 +145,9 @@ d'ignorer le drapeau (voir [Tâches asynchrones](../orchestration/process-types.
 Un `maxRpm` de 0 ou moins — sur la crew ou sur un agent — et un `maxIter` de 0 ou moins font échouer le
 chargement aussi, en nommant la crew ou l'agent : omettre `maxRpm:`, c'est n'avoir aucune limite, omettre
 `maxIter:`, c'est le défaut (20). Ils étaient remplacés, par 10 et 15, sans un mot.
+
+Un message nomme un agent ou une tâche par sa clé — `Agent 'researcher' must have a goal.` —, une
+configuration bâtie en code par son identifiant.
 
 ## Configuration Guardrails
 
@@ -285,6 +288,31 @@ servent (voir [FSM](../orchestration/fsm.md)).
 > - **Default** : MaxToolCalls=15, MaxDelegationDepth=2, MaxWallTime=5min, MaxTokens=16000, MaxSpawns=3
 > - **Permissive** : MaxToolCalls=50, MaxDelegationDepth=4, MaxWallTime=15min, MaxTokens=64000, MaxSpawns=10
 
+## Export
+
+`YamlCrewExporter` — qu'enregistre `AddOrkeonYaml()` — réécrit une `CrewConfiguration` en YAML :
+`ExportToString`, `ExportToFileAsync`, ou `ExportToDirectoryAsync` pour le triplet plat `crew.yaml` +
+`agents.yaml` + `tasks.yaml`. Rechargé, le fichier donne la même configuration — chaque clé que lit le
+chargeur — et son propre export est le même texte, octet pour octet. Les clés sont écrites en
+camelCase, et une clé que rien ne fixe n'est pas écrite du tout.
+
+- **Sous les clés de l'auteur.** Une crew chargée depuis le YAML garde la clé de chaque agent et de
+  chaque tâche (`researcher`, `collect`) : l'export écrit chacun sous elle, et chaque référence —
+  `agent:`, `dependencies:`, `managerAgent:` — par elle. Une configuration bâtie en C# ou par un script
+  `.ork.ts` n'a pas de clés : ses agents et ses tâches sont écrits sous leurs identifiants. Deux entrées
+  sous un même nom, ou une référence qui ne nomme aucune entrée, font échouer l'export par une
+  `InvalidOperationException` qui les nomme : le chargeur refuserait le fichier.
+- **Ce que le chargeur a fait de votre fichier, pas votre fichier.** L'export écrit ce que porte la
+  configuration : un `preset:` de guardrails revient sous la forme du `header`, des `rules` et des
+  `toolRules` qu'il a apportés, le `llm:` de crew sous la forme du bloc que chaque agent en a reçu, sous
+  chaque agent, et les `anchors:` sous la forme du texte qu'elles remplaçaient. Un attachement de
+  connaissance qui ne nomme que sa collection est écrit en forme courte, tout autre en forme longue.
+- **Une source relative suit le fichier.** Une source de `rag:` est écrite telle quelle : `./data/faq.md`
+  se lit donc par rapport au dossier d'où le fichier exporté est chargé (voir
+  [Configuration Knowledge & RAG](#configuration-knowledge--rag)) — exportez à côté des données, ou
+  écrivez des sources absolues. Le dossier d'où la crew a été lue n'est pas une clé, et n'est pas écrit ;
+  rien de ce pour quoi le schéma ci-dessus n'a pas de clé ne l'est non plus.
+
 ## Modèles YAML
 
 Les modèles YAML incluent :
@@ -300,7 +328,7 @@ Tous vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrast
 - `LinkYamlConfig` (l'ACL `links:` de crew)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges)
-- `RagYamlConfig` (provider, collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
+- `RagYamlConfig` (collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`
 
 Il n'existe pas d'objet « configuration prédéfinie » au niveau du framework : un hôte compose ses réglages via `AddOrkeonInfrastructure` / `AddOrkeonApplication` et son `appsettings.json`.

@@ -1,0 +1,160 @@
+# Round-trip witness (GAP-39), with hierarchical.yaml: between them they set every key the crew
+# loader reads, and YamlCrewExportRoundTripTests holds them to it against the YAML models — a key
+# added to a model fails the guard until a witness sets it, and the round trip then makes the export
+# write it. A sequential crew, the mode that honours asyncExecution; no sequential crew may name a
+# manager, so managerAgent lives in hierarchical.yaml. Keys mix camelCase and snake_case: the export
+# writes camelCase, and the configurations compared are the same either way.
+anchors:
+  sourcing: &sourcing |
+    Every finding names the page it comes from.
+
+name: supplier-watch
+goal: Watch the suppliers and report what changed this week
+process: sequential
+verbose: true
+memory: true
+memoryProvider: Sqlite
+planning: true
+
+# Read in every mode, applied by process: graph alone — the file is what the round trip proves.
+graphConfig:
+  maxRetryCycles: 3
+  circuitBreakerPreset: permissive
+  maxTransitions: 40
+  maxStateVisits: 12
+  maxTotalDurationSeconds: 900
+
+# The crew's default, merged field by field under each agent's own llm: — researcher completes it,
+# writer takes it whole. The export writes the merged block under each agent.
+llm:
+  profile: fast
+  temperature: 0.2
+  thinking:
+    effort: low
+
+mounts:
+  - /output
+  - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data
+
+links:
+  - to: pricing-crew
+    direction: outbound
+    allowedTopics: [prices, stock]
+  - to: client:studio
+    direction: inbound
+  - to: audit-crew
+    direction: both
+    allowed_topics: [findings]
+
+rag:
+  collections:
+    catalogue:
+      sources: ["./data/catalogue/**/*.pdf", /kb/faq.md]
+      chunking:
+        strategy: recursive
+        max_tokens: 256
+        overlap: 32
+    contracts:
+      sources: [./data/contracts/]
+  defaults:
+    profile: balanced
+
+agents:
+  researcher:
+    role: Supplier researcher
+    goal: Find what changed at each supplier
+    backstory: |
+      Ten years in procurement; reads the contract before the press release.
+
+      *sourcing
+    tools: [web_search, file_read]
+    allowDelegation: false
+    maxIter: 12
+    maxRpm: 30
+    verbose: true
+    llm:
+      model: research-model
+      maxTokens: 4096
+      topP: 0.9
+      thinking:
+        enabled: true
+        budget_tokens: 2048
+      responseFormat: json_schema
+      responseSchema:
+        name: findings
+        schema: '{"type":"object","properties":{"supplier":{"type":"string"}}}'
+        strict: false
+      cache:
+        system: true
+        tools: true
+        ttl: 1h
+    guardrails:
+      preset: analysis
+      rules:
+        - Cite the page each finding comes from.
+      toolRules:
+        web_search:
+          - Search the supplier's own site first.
+    knowledge:
+      - catalogue
+      - collection: contracts
+        top_k: 8
+        min_score: 0.35
+        profile: quality
+        max_context_tokens: 1500
+
+  writer:
+    role: Report writer
+    goal: Write the weekly report
+    guardrails:
+      header: "HOUSE RULES:"
+      rules: [Write in plain English., Keep it to one page.]
+
+tasks:
+  collect:
+    description: Collect this week's changes at every supplier.
+    expected_output: One finding per change, with its source.
+    agent: researcher
+    tools: [http_api]
+    asyncExecution: true
+    humanInput: true
+    context:
+      region: EMEA
+      quarter: 3
+      suppliers: [acme, globex]
+      thresholds: {price: 5, delay: 2}
+    deliverable:
+      path: /output/findings.json
+      source: structured_output
+      format: json
+      sanitize: false
+      schemaInline: '{"type":"array","items":{"type":"object"}}'
+    llm_override:
+      profile: precise
+      temperature: 0.0
+      max_tokens: 1024
+      top_p: 1.0
+      thinking:
+        enabled: false
+        effort: high
+        budgetTokens: 512
+      response_format: json_schema
+      response_schema:
+        name: finding_list
+        schema: '{"type":"array"}'
+        strict: true
+    guardrails:
+      preset: strict
+
+  report:
+    description: Write the weekly report from the findings.
+    expectedOutput: A one-page report.
+    agent: writer
+    dependencies: [collect]
+    deliverable:
+      path: /output/report.md
+      source: final_message
+    guardrails:
+      rules: [Name every supplier you mention.]
+      toolRules:
+        file_write: [Write /output/report.md only.]
