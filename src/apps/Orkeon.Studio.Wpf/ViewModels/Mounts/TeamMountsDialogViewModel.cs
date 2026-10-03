@@ -95,20 +95,27 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
     private readonly Action<string, IReadOnlyList<string>> _saveMounts;
+    private readonly Func<TeamLauncherContext>? _launcherContext;
     private string _teamDirectory = "";
     private string _teamName = "";
     private Action? _onSaved;
     private bool _isOpen;
 
-    /// <summary>Builds the modal; <paramref name="saveMounts"/> defaults to the real catalog.</summary>
+    /// <summary>
+    /// Builds the modal; <paramref name="saveMounts"/> defaults to the real catalog. With
+    /// <paramref name="launcherContext"/>, a save writes the team's launchers again (STUDIO-50): a
+    /// scheduled run takes the folders the team has now.
+    /// </summary>
     public TeamMountsDialogViewModel(
         IStudioStrings? strings = null,
         Action<string, IReadOnlyList<string>>? saveMounts = null,
-        Func<IReadOnlyList<string>>? declaredMounts = null)
+        Func<IReadOnlyList<string>>? declaredMounts = null,
+        Func<TeamLauncherContext>? launcherContext = null)
     {
         _strings = strings ?? EnglishStudioStrings.Instance;
         _declaredMounts = declaredMounts ?? (() => []);
         _saveMounts = saveMounts ?? TeamCatalog.SaveMounts;
+        _launcherContext = launcherContext;
         SaveCommand = new RelayCommand(Save);
         CancelCommand = new RelayCommand(Close);
         AddCommand = new RelayCommand(() => AddRequested?.Invoke(this, EventArgs.Empty));
@@ -236,6 +243,10 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     private void Save()
     {
         _saveMounts(_teamDirectory, MountsToSave());
+        // The launchers follow the sidecar (STUDIO-50): the folders the operating system's
+        // scheduled run mounts are the ones a Studio launch now passes.
+        if (_launcherContext is { } context)
+            TeamLaunchers.Regenerate(_teamDirectory, context());
         var onSaved = _onSaved;
         Close();
         onSaved?.Invoke();

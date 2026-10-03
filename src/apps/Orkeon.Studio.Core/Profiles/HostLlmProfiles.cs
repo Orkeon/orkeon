@@ -108,6 +108,31 @@ public static class HostLlmProfiles
             .ToDictionary(entry => entry.Key, entry => entry.Value.Id!, StringComparer.Ordinal);
 
     /// <summary>
+    /// The setting names whose host profile differs between <paramref name="before"/> and
+    /// <paramref name="after"/> (STUDIO-50): offered on one side only, or under another id — a
+    /// setting created, removed, renamed, switched to « no model ». A team whose companion file
+    /// names one of them now runs elsewhere outside Studio, and its launchers say so again.
+    /// </summary>
+    /// <param name="before">The settings before the change.</param>
+    /// <param name="after">The settings after it.</param>
+    public static IReadOnlySet<string> MovedNames(ModelProfileSet before, ModelProfileSet after)
+    {
+        ArgumentNullException.ThrowIfNull(before);
+        ArgumentNullException.ThrowIfNull(after);
+
+        var was = Offered(before);
+        var now = Offered(after);
+        var moved = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var name in was.Keys.Concat(now.Keys))
+        {
+            if (!string.Equals(was.GetValueOrDefault(name), now.GetValueOrDefault(name), StringComparison.OrdinalIgnoreCase))
+                moved.Add(name);
+        }
+
+        return moved;
+    }
+
+    /// <summary>
     /// The entries of <paramref name="document"/>'s <c>Llm:Profiles</c> no setting of
     /// <paramref name="set"/> owns — written by hand —, in document order.
     /// </summary>

@@ -128,6 +128,11 @@ public static partial class RunnerExecution
             var cwd = Directory.GetCurrentDirectory();
             var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, cwd);
 
+            // The tool list does not depend on the model, but an --llm-profile the settings do
+            // not define is refused here as on a run, rather than ignored in silence (STUDIO-50).
+            if (!EnsureLlmProfileIsKnown(opts.LlmProfile, settingsPath))
+                return 1;
+
             using var host = await BuildToolHostAsync(
                 settingsPath,
                 cwd,

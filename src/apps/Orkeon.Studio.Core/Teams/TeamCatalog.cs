@@ -32,7 +32,10 @@ public sealed record StudioTeamMetadata
     [JsonPropertyName("description")]
     public string? Description { get; init; }
 
-    /// <summary>Name of the model profile this team runs on.</summary>
+    /// <summary>
+    /// Name of the model profile this team runs on — its host profile is the
+    /// <c>--llm-profile</c> of the team's launchers (STUDIO-50, <see cref="TeamLaunchers"/>).
+    /// </summary>
     [JsonPropertyName("profile")]
     public string? Profile { get; init; }
 
@@ -47,7 +50,8 @@ public sealed record StudioTeamMetadata
     /// <summary>
     /// The folders this team may see, as mount strings (<c>physical:virtual:rights</c>).
     /// A Studio-side concept, like <see cref="Profile"/>: Studio lays them on its launches
-    /// as <c>--mount</c> arguments; a bare <c>orkeon run</c> in a terminal does not read them.
+    /// as <c>--mount</c> arguments and writes them into the team's launchers (STUDIO-50); a bare
+    /// <c>orkeon run</c> in a terminal does not read them.
     /// <para>
     /// Raw, as written in the file. A physical segment starting with <c>./</c> is relative to
     /// the team folder (<see cref="TeamMountPaths"/>): <c>./output:/output:rw</c> is the

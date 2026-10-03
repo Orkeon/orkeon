@@ -221,6 +221,12 @@ est alors le provider écho, avec l'avertissement habituel. `orkeon-host` peut r
 profils que ses crews peuvent nommer (`Orkeon:Host:LlmProfiles`, plus bas) ; la restriction vaut
 aussi pour le profil RAG et pour celui d'un agent manager.
 
+**Un run sur un autre profil.** `orkeon run --llm-profile <id>` élit un profil comme défaut du run
+([CLI](./cli.md#orkeon-run)) : pour ce run, la section `Llm` est ce profil, en entier — ce qu'il laisse
+vide reste vide, sa clé est la sienne —, et chaque rôle ci-dessus qui tourne sur le défaut tourne
+dessus. Un identifiant que la configuration ne définit pas refuse le run, en listant ceux qu'elle
+définit. C'est ce qu'Orkeon Studio écrit dans les lanceurs d'une équipe planifiée.
+
 #### Studio écrit cette section
 
 Les réglages de modèle d'Orkeon Studio sont les profils de l'hôte (STUDIO-48). Chaque réglage de
@@ -254,6 +260,11 @@ place d'une entrée écrite à la main sont refusés.
   référence, et une section `Llm` sans celle du réglage élu, sont réécrites — le réglage entier — au
   changement suivant sur les réglages de modèle (modifier puis enregistrer un réglage), jamais au
   démarrage.
+- **Une équipe planifiée.** Les lanceurs d'une équipe que Studio a adoptée portent le réglage de
+  l'équipe en `--llm-profile <id>` — son entrée ici —, si bien que l'exécution que planifie le système
+  d'exploitation le prend, comme un lancement depuis Studio
+  ([Studio](../architecture/studio.md#une-équipe-planifiée-tourne-comme-studio-la-lance-studio-50)).
+  Cette exécution lit ce fichier tel qu'enregistré, les clés là où il les nomme.
 - **« Autre compatible OpenAI ».** Un réglage créé depuis cette carte range sa clé dans
   `ORKEON_CUSTOM_LLM_API_KEY`, partagée par les réglages de la carte. Un réglage créé avant garde
   `ORKEON_Llm__ApiKey` — la clé native du défaut pour le runtime : mémorisée en portée Utilisateur,

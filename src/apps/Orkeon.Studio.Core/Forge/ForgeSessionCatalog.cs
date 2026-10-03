@@ -75,14 +75,39 @@ public sealed record TeamForgeRecord(Guid? SessionId, bool HasInstalledSchedule)
 }
 
 /// <summary>
+/// What a team's launchers carry of its <c>forge.json</c> (STUDIO-50,
+/// <see cref="ForgeSessionCatalog.ReadTeamLaunchRecord"/>): the crew's format, and the sample
+/// inputs of the brief the team was built against — what <c>forge promote</c> pre-fills in
+/// <c>run.cmd</c>/<c>run.sh</c>, and Studio keeps when it writes them again.
+/// </summary>
+public sealed record TeamLaunchRecord
+{
+    /// <summary>No record, or one that could not be read.</summary>
+    public static TeamLaunchRecord None { get; } = new();
+
+    /// <summary>The record's <c>format</c> — <c>yaml</c> or <c>script</c> —; null when absent.</summary>
+    public string? Format { get; init; }
+
+    /// <summary>Whether the crew is a script (<c>crew/crew.ork.ts</c>), which takes no sample inputs.</summary>
+    public bool IsScript => string.Equals(Format, "script", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The brief's sample <c>-V</c> variables, in the record's order; empty when none.</summary>
+    public IReadOnlyList<KeyValuePair<string, string>> SampleVariables { get; init; } = [];
+
+    /// <summary>The brief's sample initial context; null when none.</summary>
+    public string? SampleInitialContext { get; init; }
+}
+
+/// <summary>
 /// Reads the workspace's forge sessions straight off the disk —
 /// <c>.orkeon/forge/&lt;slug&gt;/session.json</c>, the layout SPEC-ORKEON-FORGE §4.1 fixes.
 /// Tolerant: a corrupt session appears with what could be read, never blocks the list (the
 /// CLI's own <c>forge list</c> discipline). Reading is all it did until <c>Delete</c>, which
 /// discards an abandoned draft — the one write, and it removes rather than produces. The file shape is re-declared
 /// here because Studio.Core does not reference the CLI; <c>ForgeSessionCatalogTests</c>
-/// pins it against a verbatim fixture — and so is the <c>id</c> of a team's <c>forge.json</c>,
-/// the one field of that record Studio reads.
+/// pins it against a verbatim fixture — and so are the fields of a team's <c>forge.json</c>
+/// Studio reads: its <c>id</c>, its installed schedule, its promotion date, and what its
+/// launchers carry (STUDIO-50).
 /// </summary>
 [SuppressVfsCompliance(
     "EXCEPTION-BOOTSTRAP: Studio is a host application reading — and, for an abandoned draft, " +
@@ -198,6 +223,55 @@ public static class ForgeSessionCatalog
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             return TeamForgeRecord.None;
+        }
+    }
+
+    /// <summary>
+    /// What <paramref name="teamDirectory"/>'s <c>forge.json</c> gives its launchers (STUDIO-50): the
+    /// crew's format and the brief's sample inputs (<c>brief.sample.variables</c>,
+    /// <c>brief.sample.initialContext</c>). Read-only and tolerant like <see cref="ReadTeamRecord"/>:
+    /// an absent or unreadable record is <see cref="TeamLaunchRecord.None"/>, a field of another shape
+    /// is no field.
+    /// </summary>
+    public static TeamLaunchRecord ReadTeamLaunchRecord(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        try
+        {
+            var path = Path.Combine(teamDirectory, TeamRecordFileName);
+            if (!File.Exists(path))
+                return TeamLaunchRecord.None;
+
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return TeamLaunchRecord.None;
+
+            var sample = root.TryGetProperty("brief", out var brief) && brief.ValueKind == JsonValueKind.Object
+                && brief.TryGetProperty("sample", out var found) && found.ValueKind == JsonValueKind.Object
+                ? found
+                : (JsonElement?)null;
+            var variables = new List<KeyValuePair<string, string>>();
+            if (sample is { } inputs && inputs.TryGetProperty("variables", out var declared) && declared.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var variable in declared.EnumerateObject())
+                {
+                    if (variable.Value.ValueKind == JsonValueKind.String)
+                        variables.Add(new KeyValuePair<string, string>(variable.Name, variable.Value.GetString()!));
+                }
+            }
+
+            return new TeamLaunchRecord
+            {
+                Format = ReadString(root, "format"),
+                SampleVariables = variables,
+                SampleInitialContext = sample is { } context ? ReadString(context, "initialContext") : null,
+            };
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return TeamLaunchRecord.None;
         }
     }
 

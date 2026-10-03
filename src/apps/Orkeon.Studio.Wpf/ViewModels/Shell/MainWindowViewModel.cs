@@ -152,6 +152,26 @@ public sealed class MainWindowViewModel : ObservableObject
             // STUDIO-35 D-06: Settings › Studio, written into ui-preferences.json by merge.
             new StudioSettingsViewModel(Balances, ui.PersistStudio, strings));
 
+        // STUDIO-50: what a team's launchers are written against — the run the operating system
+        // schedules is the run Studio launches: the model settings, the folders the settings
+        // declare, and the settings file those settings are written into, read at each write.
+        Func<TeamLauncherContext> launcherContext = () => new TeamLauncherContext
+        {
+            Profiles = Settings.Profiles.Set,
+            DeclaredMounts = declaredMounts(),
+            SettingsPath = Config.Location.EffectivePath,
+        };
+        // A setting created, removed, renamed or offered no more: the teams naming it run
+        // elsewhere outside Studio, and their launchers say so again.
+        Settings.Profiles.HostProfilesChanged += (_, e) =>
+        {
+            foreach (var team in TeamCatalog.List(teamsHome, TeamListFilter.All))
+            {
+                if (team.Profile is { } setting && e.Names.Contains(setting))
+                    TeamLaunchers.Regenerate(team.Path, launcherContext());
+            }
+        };
+
         CreateTeam = new CreateTeamViewModel(
             Settings.Profiles,
             new CreateTeamDependencies
@@ -162,6 +182,7 @@ public sealed class MainWindowViewModel : ObservableObject
                 WorkspaceDirectory = forgeHome,
                 TeamsRoot = teamsRoot,
                 DeclaredMounts = declaredMounts,
+                LauncherContext = launcherContext,
                 Chat = this.Chat,
                 // « Open the folder » in the wizard's header (STUDIO-14, D-15) — the same
                 // opener the team cards use, gated the same way.
@@ -260,7 +281,7 @@ public sealed class MainWindowViewModel : ObservableObject
         // a declaration made every team re-declare its mounts from scratch.
         _picker = picker ?? NullPathPicker.Instance;
         AllowedFolders = new AllowedFolderChooserViewModel(declaredMounts, strings);
-        TeamMounts = new TeamMountsDialogViewModel(strings, declaredMounts: declaredMounts);
+        TeamMounts = new TeamMountsDialogViewModel(strings, declaredMounts: declaredMounts, launcherContext: launcherContext);
         Teams.MountsRequested += (_, e) =>
             TeamMounts.Open(e.Card.Summary.Path, e.Card.Name, e.Card.Mounts,
                 onSaved: () => { Teams.Refresh(); Launch.RefreshTeamDescription(); });

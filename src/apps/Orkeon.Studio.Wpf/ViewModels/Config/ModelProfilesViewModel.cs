@@ -15,6 +15,19 @@ using System.Globalization;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
+/// Payload of <see cref="ModelProfilesViewModel.HostProfilesChanged"/> (STUDIO-50): the setting
+/// names whose host profile the change moved (<see cref="HostLlmProfiles.MovedNames"/>).
+/// </summary>
+public sealed class HostProfilesChangedEventArgs(IReadOnlySet<string> names) : EventArgs
+{
+    /// <summary>The names, as a team's companion file holds them.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
+    public IReadOnlySet<string> Names { get; } = names;
+}
+
+/// <summary>
 /// One profile card on the model-settings tab. A thin projection over
 /// <see cref="ModelProfile"/>; the commands are handed in by the list so every mutation goes
 /// through one place.
@@ -999,6 +1012,13 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// <summary>The profile cards, rebuilt after every mutation.</summary>
     public ObservableCollection<ModelProfileItemViewModel> Profiles { get; } = [];
 
+    /// <summary>
+    /// Raised after a change of the settings moved the host profile of some setting names — one
+    /// created, removed, renamed, switched to « no model » (STUDIO-50): a team whose companion file
+    /// names one of them runs elsewhere outside Studio, and the window writes its launchers again.
+    /// </summary>
+    public event EventHandler<HostProfilesChangedEventArgs>? HostProfilesChanged;
+
     /// <summary>The profile names, for the assistant picker.</summary>
     public ObservableCollection<string> ProfileNames { get; } = [];
 
@@ -1287,6 +1307,9 @@ public sealed class ModelProfilesViewModel : ObservableObject
         // (a rename moves the entry, a removal takes it out, the key never goes in).
         _llm.MirrorModelProfiles(before, set, renamedFrom, renamedTo);
         Rebuild();
+        // STUDIO-50: the launchers of the teams naming a moved setting say it again.
+        if (HostLlmProfiles.MovedNames(before, set) is { Count: > 0 } moved)
+            HostProfilesChanged?.Invoke(this, new HostProfilesChangedEventArgs(moved));
         // Writes are chained so two rapid mutations can never interleave on the file; the
         // store itself is tolerant (a refused write is a lost convenience, said nowhere by
         // design — the profile set lives on in memory for the session).

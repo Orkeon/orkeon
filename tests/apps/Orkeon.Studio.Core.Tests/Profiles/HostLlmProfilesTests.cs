@@ -459,6 +459,23 @@ public sealed class HostLlmProfilesTests
         Assert.Equal("claude-2", ModelProfile.HostProfileIdOf(name));
     }
 
+    /// <summary>
+    /// STUDIO-50: the names a team's companion file may hold whose host profile moved — created,
+    /// removed, renamed, switched to « no model » — and only those: an edit that keeps the id moves
+    /// nothing, since a launcher names the id alone.
+    /// </summary>
+    [Fact]
+    public void The_moved_names_are_those_whose_host_profile_appeared_went_or_changed_id()
+    {
+        var set = ModelProfileSet.Empty.Upsert(DeepSeek()).Upsert(Zai());
+
+        Assert.Empty(HostLlmProfiles.MovedNames(set, set.Upsert(Zai() with { Model = "glm-6" })));
+        Assert.Equal(["Local"], HostLlmProfiles.MovedNames(set, set.Upsert(Ollama())));
+        Assert.Equal(["Z.AI"], HostLlmProfiles.MovedNames(set, set.Remove("Z.AI")));
+        Assert.Equal(["GLM", "Z.AI"], HostLlmProfiles.MovedNames(set, set.Upsert(Zai("GLM"), previousName: "Z.AI")).Order(StringComparer.Ordinal));
+        Assert.Equal(["Z.AI"], HostLlmProfiles.MovedNames(set, set.Upsert(Echo("Z.AI"), previousName: "Z.AI")));
+    }
+
     [Fact]
     public void The_id_is_derived_and_never_stored()
     {

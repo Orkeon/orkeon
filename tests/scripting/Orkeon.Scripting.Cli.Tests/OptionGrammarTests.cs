@@ -79,6 +79,29 @@ public sealed class OptionGrammarTests
         Assert.Equal(["01J9Z3K4M5N6P7Q8R9S0T1V2W3"], RunCommand.ToRunnerOptions(parsed.Value).MountIds);
     }
 
+    /// <summary>
+    /// STUDIO-50: <c>--llm-profile</c> takes one id, is spelled by the shared constant — the one
+    /// Studio writes into a team's launchers — and reaches the shared runner, whose own grammar
+    /// (<see cref="Orkeon.Hosting.RunnerOptionsBase"/>) reads it the same way.
+    /// </summary>
+    [Fact]
+    public void Llm_profile_takes_one_id_and_is_carried_to_the_shared_runner_options()
+    {
+        var parsed = Assert.IsType<Parsed<RunCommandOptions>>(
+            Parse<RunCommandOptions>("crew.yaml", "--llm-profile", "z-ai"));
+
+        Assert.Equal("z-ai", parsed.Value.LlmProfile);
+        Assert.Equal("z-ai", RunCommand.ToRunnerOptions(parsed.Value).LlmProfile);
+        Assert.Equal("llm-profile", Orkeon.Constants.Cli.RunOptionNames.LlmProfile);
+        Assert.Equal(
+            "z-ai",
+            Assert.IsType<Parsed<SharedRunnerOptions>>(Parse<SharedRunnerOptions>("--llm-profile", "z-ai")).Value.LlmProfile);
+        Assert.Null(Assert.IsType<Parsed<RunCommandOptions>>(Parse<RunCommandOptions>("crew.yaml")).Value.LlmProfile);
+    }
+
+    /// <summary>The shared runner's option grammar, as a parser target.</summary>
+    private sealed class SharedRunnerOptions : Orkeon.Hosting.RunnerOptionsBase;
+
     [Fact]
     public void The_same_rule_governs_var()
     {

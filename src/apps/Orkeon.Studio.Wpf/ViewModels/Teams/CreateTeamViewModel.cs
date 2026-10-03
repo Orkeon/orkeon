@@ -332,6 +332,13 @@ public sealed record CreateTeamDependencies
     /// (STUDIO-47); the real disk when null.
     /// </summary>
     public IDiskEntryProbe? DiskEntries { get; init; }
+
+    /// <summary>
+    /// What an adopted team's launchers are written against (STUDIO-50): the model settings, the
+    /// settings' folders and the settings file. When null, the wizard's own settings and the
+    /// declared folders, and no settings file — the run then resolves its own.
+    /// </summary>
+    public Func<TeamLauncherContext>? LauncherContext { get; init; }
 }
 
 /// <summary>
@@ -346,6 +353,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 {
     private readonly ForgeClient _client;
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
+    private readonly Func<TeamLauncherContext> _launcherContext;
     /// <summary>Agent-addressed roots the user dropped; nothing will be bound to them at save.</summary>
     private readonly HashSet<string> _droppedDerivedRoots = new(StringComparer.Ordinal);
     private readonly IUiDispatcher _dispatcher;
@@ -395,6 +403,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         var wired = dependencies ?? new CreateTeamDependencies();
         Profiles = profiles;
         _declaredMounts = wired.DeclaredMounts ?? (() => []);
+        _launcherContext = wired.LauncherContext
+            ?? (() => new TeamLauncherContext { Profiles = Profiles.Set, DeclaredMounts = _declaredMounts() });
         _client = wired.Client ?? ForgeClient.ForCurrentMachine();
         _dispatcher = wired.Dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = wired.Strings ?? EnglishStudioStrings.Instance;
@@ -2555,6 +2565,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                         Schedule = schedule,
                         Mounts = mounts.Count > 0 ? mounts : null,
                     });
+                    // STUDIO-50: the launchers the engine just wrote mount the team's own folders
+                    // and nothing else; written again from the sidecar, the run the operating
+                    // system schedules takes the team's setting and every folder a Studio launch
+                    // gives it.
+                    TeamLaunchers.Regenerate(promotion.Path, _launcherContext());
                     TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));
                     // A session folder the engine could not rename after the team is said, not
                     // dropped (STUDIO-26, D-05) — read now: the reset below replaces the model.

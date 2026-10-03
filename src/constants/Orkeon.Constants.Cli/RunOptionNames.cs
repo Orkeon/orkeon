@@ -34,6 +34,12 @@ public static class RunOptionNames
     /// <summary>Allow mounts whose base path sits outside the workspace root.</summary>
     public const string AllowExternalMounts = "allow-external-mounts";
 
+    /// <summary>
+    /// The host LLM profile (<c>Llm:Profiles:&lt;id&gt;</c>) the run takes as its default
+    /// (STUDIO-50) — what Orkeon Studio writes into a team's launchers for the team's model setting.
+    /// </summary>
+    public const string LlmProfile = "llm-profile";
+
     /// <summary>Verbosity level.</summary>
     public const string Verbose = "verbose";
 

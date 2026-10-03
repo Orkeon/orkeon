@@ -98,7 +98,8 @@ public static partial class RunnerExecution
                 cliMounts, target.SettingsPath,
                 target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
             || !EnsureMountSelectionIsResolvable(cliMounts, opts.MountIds, crewMounts, target.SettingsPath, out var selection)
-            || !EnsureMountSourcesExist(cliMounts, target.SettingsPath, selection))
+            || !EnsureMountSourcesExist(cliMounts, target.SettingsPath, selection)
+            || !EnsureLlmProfileIsKnown(opts.LlmProfile, target.SettingsPath))
         {
             errorCode = 1;
             return false;
@@ -146,7 +147,8 @@ public static partial class RunnerExecution
                 // configureServices below.
                 services.AddOrkeonHumanInput();
                 configureServices?.Invoke(ctx, services);
-            });
+            },
+            llmProfile: opts.LlmProfile);
 
         var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(loggerCategory);
 
@@ -511,6 +513,44 @@ public static partial class RunnerExecution
 
         plan = resolved;
         return true;
+    }
+
+    /// <summary>
+    /// Refuses an <c>--llm-profile</c> the configuration does not define (STUDIO-50) in one line —
+    /// the sentence a crew naming an unknown profile fails its load with, listing the profiles the
+    /// settings file and the <c>ORKEON_</c> environment define — before any host is built. Null,
+    /// blank and <c>default</c> elect nothing and always pass. A settings file that cannot be read
+    /// passes too: the host build reports it, with its path and the parse position.
+    /// <para>
+    /// The host refuses the same id the same way (<see cref="RunnerHost.Build"/>): this is the
+    /// runners' one line, that the closed net for a host built without the guard.
+    /// </para>
+    /// </summary>
+    /// <param name="llmProfile">The <c>--llm-profile</c> value, or null.</param>
+    /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
+    /// <returns>True when the run may go on.</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    public static bool EnsureLlmProfileIsKnown(string? llmProfile, string? settingsPath)
+    {
+        if (llmProfile is null || Application.Interfaces.Ports.LlmProfiles.IsDefault(llmProfile))
+            return true;
+
+        IReadOnlyList<string> known;
+        try
+        {
+            known = Infrastructure.LLMs.Profiles.LlmSettings.ProfileNames(RunnerSettings.ReadConfiguration(settingsPath));
+        }
+        catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException)
+        {
+            return true;
+        }
+
+        var name = llmProfile.Trim();
+        if (known.Contains(name, StringComparer.OrdinalIgnoreCase))
+            return true;
+
+        Console.Error.WriteLine("ERROR: " + RunnerHost.UnknownElectedProfileMessage(name, known));
+        return false;
     }
 
     /// <summary>

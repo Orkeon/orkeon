@@ -117,12 +117,23 @@ public static partial class RunnerHost
     /// for <c>UseSystemd()</c> and <c>UseWindowsService()</c>: a long-lived daemon needs to
     /// tell its supervisor it is up, and that is decided on the builder, not in the services.
     /// </param>
+    /// <param name="llmProfile">
+    /// The host LLM profile the run takes as its default (<c>--llm-profile</c>, STUDIO-50): the
+    /// <c>Llm</c> section becomes <c>Llm:Profiles:&lt;id&gt;</c>, whole — a field the profile leaves
+    /// unset is unset, the default's key and the variable holding it included —, laid over the
+    /// settings file and the <c>ORKEON_</c> environment. Null or <c>default</c> keeps the section.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="llmProfile"/> names a profile the configuration does not define — the message
+    /// lists those it does —, or a setting the host refuses (a mount selection, an LLM profile).
+    /// </exception>
     public static IHost Build(
         string? settingsPath,
         RunnerMountPlan mounts,
         Action<HostBuilderContext, ILoggingBuilder>? configureLogging = null,
         Action<HostBuilderContext, IServiceCollection>? configureServices = null,
-        Action<IHostBuilder>? configureBuilder = null)
+        Action<IHostBuilder>? configureBuilder = null,
+        string? llmProfile = null)
     {
         ArgumentNullException.ThrowIfNull(mounts);
 
@@ -133,7 +144,7 @@ public static partial class RunnerHost
         // VFS-90 D-10).
         var decisions = new MountDecisions();
         var builder = Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration((_, b) => ConfigureAppConfiguration(b, settingsPath, mounts, decisions))
+            .ConfigureAppConfiguration((_, b) => ConfigureAppConfiguration(b, settingsPath, mounts, llmProfile, decisions))
             .ConfigureServices((context, services) =>
                 ConfigureRunnerServices(context, services, mounts.LlmLogVirtualPath, configureLogging, configureServices));
 
@@ -143,7 +154,7 @@ public static partial class RunnerHost
 
         LogMountDecisions(host, decisions);
         WarnIfEmailTokensUnavailable(host, decisions);
-        WarnIfLlmNotConfigured(host);
+        WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
         EnsureRagLlmProfileIsKnown(host);
         ActivateTelemetry(host);
         return host;
@@ -226,6 +237,9 @@ public static partial class RunnerHost
 
         /// <summary>Why the OAuth accounts of the settings have no token store in this run, when they have none.</summary>
         public string? EmailTokensUnavailable { get; set; }
+
+        /// <summary>The profile <c>--llm-profile</c> elected as the run's default, by its key in the settings; null when none.</summary>
+        public string? ElectedLlmProfile { get; set; }
     }
 
     /// <summary>
@@ -268,9 +282,11 @@ public static partial class RunnerHost
     /// Warning, so the stderr line is the guarantee). Runs after <c>Build()</c> because no
     /// logger exists yet at service-registration time. The same pass says where each section's
     /// API key came from, and warns — logger and stderr, once per section — about an
-    /// <c>ApiKeyEnvVar</c> that names a variable set nowhere (STUDIO-49).
+    /// <c>ApiKeyEnvVar</c> that names a variable set nowhere (STUDIO-49). A run that elected a
+    /// profile (<c>--llm-profile</c>, STUDIO-50) says which, and tells the default's key by that
+    /// profile's path: the section is the profile, warned about once.
     /// </summary>
-    private static void WarnIfLlmNotConfigured(IHost host)
+    private static void WarnIfLlmNotConfigured(IHost host, string? electedProfile)
     {
         var configuration = host.Services.GetRequiredService<IConfiguration>();
         var logger = host.Services
@@ -281,6 +297,15 @@ public static partial class RunnerHost
         var profiles = LlmSettings.ProfileNames(configuration);
         if (profiles.Count > 0)
             LogLlmProfiles(logger, profiles);
+
+        // STUDIO-50: the Llm section IS the elected profile for this run, so its key is told by
+        // the profile's own path — the one the settings were written with — and a reference that
+        // resolves nothing is warned about once, there.
+        var keySection = electedProfile is null
+            ? llmSection
+            : llmSection.GetSection(ConfigurationKeys.LlmProfiles).GetSection(electedProfile);
+        if (electedProfile is not null)
+            LogLlmProfileElected(logger, electedProfile);
         if (profiles.Count > 0 && logger.IsEnabled(LogLevel.Information))
         {
             var profilesSection = llmSection.GetSection(ConfigurationKeys.LlmProfiles);
@@ -294,8 +319,12 @@ public static partial class RunnerHost
         // STUDIO-49: an ApiKeyEnvVar naming a variable set nowhere — once per host build and per
         // section, by its configuration path, never the name it holds (a key pasted in the wrong
         // field must not reach a log). The calls on that profile answer "API key is required".
+        var defaultReference = $"{ConfigurationKeys.LlmSection}:{ConfigurationKeys.LlmApiKeyEnvVar}";
         foreach (var reference in LlmSettings.UnresolvedApiKeyReferences(configuration))
         {
+            if (electedProfile is not null && string.Equals(reference, defaultReference, StringComparison.OrdinalIgnoreCase))
+                continue;
+
             var warning = UnresolvedApiKeyReferenceMessage(reference);
             Console.Error.WriteLine("WARNING: " + warning);
             LogApiKeyReferenceUnresolved(logger, warning);
@@ -313,7 +342,7 @@ public static partial class RunnerHost
                 var baseUrl = Shown(llmSection["BaseUrl"], "(provider default)");
                 var temperature = Shown(llmSection["Temperature"], "(default)");
                 var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
-                var source = LlmSettings.DescribeApiKey(llmSection);
+                var source = LlmSettings.DescribeApiKey(keySection);
                 LogLlmResolved(logger, model, baseUrl, temperature, timeout, source);
             }
 
@@ -340,6 +369,9 @@ public static partial class RunnerHost
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "{Warning}")]
     private static partial void LogApiKeyReferenceUnresolved(ILogger logger, string warning);
+
+    [LoggerMessage(EventId = 12, Level = LogLevel.Information, Message = "LLM profile {Profile} elected as the run's default (--llm-profile)")]
+    private static partial void LogLlmProfileElected(ILogger logger, string profile);
 
     /// <summary>What the host says, on its logger and on stderr, of an <c>ApiKeyEnvVar</c> set nowhere — its path, never its value.</summary>
     private static string UnresolvedApiKeyReferenceMessage(string reference) =>
@@ -419,12 +451,14 @@ public static partial class RunnerHost
     /// <param name="settingsPath">Resolved appsettings.json path, or null.</param>
     /// <param name="mounts">The VFS surface: agent-facing mounts (the crew mount included),
     /// Internal mounts, the selection inputs, the external-mounts opt-in.</param>
+    /// <param name="llmProfile">The profile <c>--llm-profile</c> elects as the run's default, or null.</param>
     /// <param name="decisions">Receives what was decided, for the caller to log once a logger
     /// exists.</param>
     private static void ConfigureAppConfiguration(
         IConfigurationBuilder builder,
         string? settingsPath,
         RunnerMountPlan mounts,
+        string? llmProfile,
         MountDecisions decisions)
     {
         if (settingsPath != null && File.Exists(settingsPath))
@@ -434,6 +468,8 @@ public static partial class RunnerHost
 
         var overrides = new Dictionary<string, string?>();
         using var declared = DeclaredConfiguration.Snapshot(builder);
+
+        ElectLlmProfile(overrides, declared, llmProfile, decisions);
 
         var declaredMounts = declared.Entries(ConfigurationKeys.FileSystemMounts);
         var plan = MountSelection.Resolve(
@@ -492,6 +528,64 @@ public static partial class RunnerHost
         if (overrides.Count > 0)
             builder.AddInMemoryCollection(overrides);
     }
+
+    /// <summary>
+    /// <c>--llm-profile</c> (STUDIO-50): the <c>Llm</c> section becomes the profile the run elects —
+    /// every key the section declares besides <c>Profiles</c> unset, the profile's own keys written
+    /// over them —, in the in-memory source laid last. Every reader of the section then reads the
+    /// profile: the default provider, the startup line, the endpoint probe before a kickoff. A field
+    /// the profile leaves unset stays unset, so neither the default's key nor the variable holding
+    /// it ever reaches the profile's endpoint — the rule a Studio launch on a team's setting follows
+    /// (STUDIO-49, decision 4). The profiles stay as declared: the elected one is still offered by its
+    /// name. Nothing happens when no snapshot could be read; the build itself reports that file.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The settings and the environment define no such profile.</exception>
+    private static void ElectLlmProfile(
+        Dictionary<string, string?> overrides,
+        DeclaredConfiguration declared,
+        string? llmProfile,
+        MountDecisions decisions)
+    {
+        if (llmProfile is null || LlmProfiles.IsDefault(llmProfile) || declared.Section(ConfigurationKeys.LlmSection) is not { } llm)
+            return;
+
+        var name = llmProfile.Trim();
+        var profiles = llm.GetSection(ConfigurationKeys.LlmProfiles).GetChildren().ToList();
+        var profile = profiles.FirstOrDefault(p => string.Equals(p.Key, name, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException(UnknownElectedProfileMessage(name, profiles.Select(p => p.Key)));
+
+        // Case-insensitive like the configuration itself: a default written "model" and a profile
+        // written "Model" are one key, and the profile's value must be the one that lands.
+        var election = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in llm.AsEnumerable(makePathsRelative: true))
+        {
+            if (value is not null && !IsProfilesKey(key))
+                election[$"{ConfigurationKeys.LlmSection}:{key}"] = null;
+        }
+
+        foreach (var (key, value) in profile.AsEnumerable(makePathsRelative: true))
+        {
+            if (value is not null)
+                election[$"{ConfigurationKeys.LlmSection}:{key}"] = value;
+        }
+
+        foreach (var (key, value) in election)
+            overrides[key] = value;
+        decisions.ElectedLlmProfile = profile.Key;
+
+        static bool IsProfilesKey(string key) =>
+            string.Equals(key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith(ConfigurationKeys.LlmProfiles + ConfigurationPath.KeyDelimiter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// What a run says of an <c>--llm-profile</c> the configuration does not define: the sentence a
+    /// crew naming an unknown profile fails its load with, the known profiles listed. One wording
+    /// for the runners' guard (<see cref="RunnerExecution.EnsureLlmProfileIsKnown"/>) and for a host
+    /// built without it.
+    /// </summary>
+    internal static string UnknownElectedProfileMessage(string name, IEnumerable<string> known) =>
+        LlmProfiles.UnknownMessage(name, "--llm-profile", known);
 
     /// <summary>
     /// Writes every <c>--mount</c> into the agent-facing section: at the index of the declared

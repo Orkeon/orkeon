@@ -69,6 +69,16 @@ internal sealed class RunCommandOptions
         internal bool EffectiveAllowExternalMounts
             => AllowExternalMounts || RunnerEnvironment.AllowExternalMounts;
 
+        /// <summary>
+        /// The host LLM profile the run takes as its default (STUDIO-50): <c>Llm:Profiles:&lt;id&gt;</c>
+        /// becomes the <c>Llm</c> section for this run, whole. Null keeps the settings' default.
+        /// </summary>
+        [Option(RunOptionNames.LlmProfile, Required = false, Default = null,
+            HelpText = "Run on the host LLM profile <id> (Llm:Profiles:<id> in the settings) as this run's default: "
+                       + "the Llm section becomes that profile, whole, for every call that names no profile of its own. "
+                       + "An id the settings do not define is refused, listing the ones they do.")]
+        public string? LlmProfile { get; set; }
+
         /// <summary>Verbosity level 0-2 (aligned with YAML runner).</summary>
         [Option('v', "verbose", Required = false, Default = 0,
             HelpText = "Verbosity level: 0=quiet, 1=LLM & tool exchanges, 2=full debug.")]
@@ -198,7 +208,7 @@ internal sealed class RunCommandOptions
 ///   which evaluates the script and emits its <c>result</c> value as JSON.</description></item>
 /// </list>
 /// Both paths share the same host bootstrap surface: <c>--settings</c>, <c>--mount</c>,
-/// <c>--allow-external-mounts</c>, <c>--llm-log[-path]</c>, <c>--verbose</c>.
+/// <c>--allow-external-mounts</c>, <c>--llm-profile</c>, <c>--llm-log[-path]</c>, <c>--verbose</c>.
 /// </summary>
 internal static partial class RunCommand
 {
@@ -565,6 +575,7 @@ internal static partial class RunCommand
             Mounts = options.Mounts,
             MountIds = options.MountIds,
             AllowExternalMounts = options.AllowExternalMounts,
+            LlmProfile = options.LlmProfile,
             Verbose = options.Verbose,
             LlmLogEnabled = options.LlmLogEnabled,
             LlmLogPath = options.LlmLogPath,
@@ -633,6 +644,11 @@ internal static partial class RunCommand
         if (selection is null)
             return Program.ExitScriptError;
 
+        // Same guard as the YAML runner (STUDIO-50): an --llm-profile the settings do not
+        // define is one line naming the ones they do, not an exception out of the host build.
+        if (!RunnerExecution.EnsureLlmProfileIsKnown(options.LlmProfile, settingsPath))
+            return Program.ExitScriptError;
+
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
         // the source through the same IFileSystemService the tools will see. We add it as
         // an "allowed-external" mount regardless of cwd because the script is the input.
@@ -683,7 +699,8 @@ internal static partial class RunCommand
                 // resolves its tools and sinks from this very host, so the decorated tools,
                 // the delta/usage observer and the hub bridge all flow into ctx.* naturally.
                 observed?.WireServices(services);
-            });
+            },
+            llmProfile: options.LlmProfile);
 
         var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Scripting.Cli");
         if (llmLogPath != null)

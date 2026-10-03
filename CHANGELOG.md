@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a scheduled team runs as Studio launches it: on its model setting, with its folders
+
+A team Studio scheduled (STUDIO-27) is run by the operating system through its `run.cmd` or `run.sh`,
+and `forge promote` writes those launchers with the folders inside the team and nothing else. A team
+adopted on « Z.AI », with a folder of the user's bound in Studio, ran fine from Studio and, scheduled,
+on the default profile without that folder — and Studio never saw it: a run the system starts is in
+no history. `orkeon run` had no option naming a profile (STUDIO-50).
+
+- **`orkeon run --llm-profile <id>`** elects one of the host's profiles — `Llm:Profiles:<id>`, which
+  Studio writes for each model setting (STUDIO-48) — as the run's default: the `Llm` section becomes
+  that profile, whole, for the run. Every field it pins is taken, one it leaves unset stays unset, and
+  its key is its own (`ApiKey`, or the variable its `ApiKeyEnvVar` names), never the default's. Every
+  call that names no profile of its own runs on it — agents, tasks, the hierarchical manager, the
+  planner, the RAG without `Orkeon:Rag:LlmProfile`, a script's `llm.default_` —, the endpoint probe
+  before a kickoff and the startup line included (`LLM profile <id> elected as the run's default
+  (--llm-profile)`, its key's source told by the profile's own path). The profiles stay offered by
+  name, `default` elects nothing, and the id is matched without regard to case. An id the settings
+  and the `ORKEON_` environment do not define is refused in one line with exit 1 before any host,
+  listing the ones they do — as a crew naming an unknown profile fails its load — on the YAML and
+  crew-directory paths, a declarative or procedural `.ork.ts`, `--validate` and `--list-tools`
+  (`RunnerExecution.EnsureLlmProfileIsKnown`); a host built without that guard refuses it too
+  (`RunnerHost.Build(…, llmProfile)`). The name is `RunOptionNames.LlmProfile`
+  (`Orkeon.Constants.Cli`), which the runners declare and Studio writes.
+- **Studio writes a team's launchers again from its companion file** (`TeamLaunchers`): the team's
+  setting as `--llm-profile` — its host profile; a team on no setting, on one renamed or removed since,
+  or on one offered to no crew runs on the default, as Studio launches it —, its folders as a Studio
+  launch passes them — a settings declaration by `--mount-id`, the team's own folders by `--mount`
+  anchored to the launcher's folder —, the settings file the settings screen writes as `--settings`,
+  the brief's sample inputs and the engine's header (`forge rename` reads it). At adoption, at each save
+  of « Change the folders », and when a setting a team names is created, renamed, removed or offered
+  to crews no more. Never a key. An edit made by hand in a launcher is written over at the next of
+  those changes, and its second line says so. The launcher names are `ConventionalNames.WindowsTeamLauncher`
+  and `PosixTeamLauncher` (`Orkeon.Constants.FileSystem`), shared by both writers.
+- **Installed schedules keep working.** The registration the operating system holds runs the launcher
+  by its path and passes it nothing (the task's `Command`, the unit's `ExecStart`, the cron line): a
+  launcher written again is what the next scheduled run executes, and nothing is reinstalled. A team
+  adopted before this version keeps the launchers the engine wrote until one of those changes, or its
+  next re-adoption. The scheduled run reads the settings file as saved: save the settings screen after
+  creating a setting a team runs on.
+
 ### Added — `orkeon-host` exposes its crews to other agents over A2A: one skill per crew, and a task is a run of that crew **[breaking]**
 
 An A2A peer could not reach a crew `orkeon-host` hosts: no shipped binary called `AddOrkeonA2A`, and a C#

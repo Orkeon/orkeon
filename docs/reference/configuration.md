@@ -207,6 +207,12 @@ provider, with the usual warning. `orkeon-host` can restrict which profiles its 
 (`Orkeon:Host:LlmProfiles`, below); the restriction applies to the RAG profile and to a manager
 agent's too.
 
+**One run on another profile.** `orkeon run --llm-profile <id>` elects one profile as the run's
+default ([CLI](./cli.md#orkeon-run)): for that run the `Llm` section is that profile, whole — what it
+leaves unset is unset, its key is its own —, and every role above that runs on the default runs on
+it. An id the configuration does not define refuses the run, listing the ones it does. It is what
+Orkeon Studio writes into a scheduled team's launchers.
+
 #### Studio writes this section
 
 Orkeon Studio's model settings are the host's profiles (STUDIO-48). Each setting of the AI-model
@@ -237,6 +243,10 @@ to, and a name that would take over an entry written by hand are refused.
 - **An older file heals at the next gesture.** An entry Studio owns without its reference, and an
   `Llm` without the elected setting's, are written again — the whole setting — at the next change
   on the model settings (edit then save a setting), never at startup.
+- **A scheduled team.** The launchers of a team Studio adopted carry the team's setting as
+  `--llm-profile <id>` — its entry here —, so the run the operating system schedules takes it, as a
+  launch from Studio does ([Studio](../architecture/studio.md#a-scheduled-team-runs-as-studio-launches-it-studio-50)).
+  That run reads this file as saved, keys where it names them.
 - **« Other OpenAI-compatible ».** A setting created from that card keeps its key in
   `ORKEON_CUSTOM_LLM_API_KEY`, shared by the settings of the card. One created before keeps
   `ORKEON_Llm__ApiKey` — the runtime's own key of the default: remembered in the user scope, it is

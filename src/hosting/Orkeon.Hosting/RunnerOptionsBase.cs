@@ -62,6 +62,16 @@ public abstract class RunnerOptionsBase
     public bool EffectiveAllowExternalMounts
         => AllowExternalMounts || RunnerEnvironment.AllowExternalMounts;
 
+    /// <summary>
+    /// The host LLM profile the run takes as its default (STUDIO-50): <c>Llm:Profiles:&lt;id&gt;</c>
+    /// becomes the <c>Llm</c> section for this run, whole. Null keeps the settings' default.
+    /// </summary>
+    [Option(RunOptionNames.LlmProfile, Required = false, Default = null,
+        HelpText = "Run on the host LLM profile <id> (Llm:Profiles:<id> in the settings) as this run's default: "
+                   + "the Llm section becomes that profile, whole, for every call that names no profile of its own. "
+                   + "An id the settings do not define is refused, listing the ones they do.")]
+    public string? LlmProfile { get; set; }
+
     /// <summary>Verbosity level 0-2.</summary>
     [Option('v', "verbose", Required = false, Default = 0,
         HelpText = "Verbosity level: 0=quiet, 1=LLM & tool exchanges, 2=full debug.")]

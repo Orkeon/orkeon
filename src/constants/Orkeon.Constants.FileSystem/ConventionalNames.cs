@@ -49,6 +49,20 @@ public static class ConventionalNames
     public const string TeamSidecarFile = "studio-team.json";
 
     /// <summary>
+    /// A promoted team's launcher on Windows, at the root of its folder — what its scheduled task
+    /// runs. Written by <c>orkeon forge promote</c>, and written again by Orkeon Studio for the teams
+    /// it adopts, from their sidecar (STUDIO-50): two writers, and a launcher written under another
+    /// name is one the operating system never runs.
+    /// </summary>
+    public const string WindowsTeamLauncher = "run.cmd";
+
+    /// <summary>
+    /// The same launcher everywhere else — what the systemd user unit and the cron line run. Same
+    /// two writers as <see cref="WindowsTeamLauncher"/>.
+    /// </summary>
+    public const string PosixTeamLauncher = "run.sh";
+
+    /// <summary>
     /// The flat YAML crew layout: a directory holding these three files is a crew, as opposed to
     /// the multi-file layout with its <c>agents/</c> and <c>tasks/</c> sub-folders.
     /// <para>

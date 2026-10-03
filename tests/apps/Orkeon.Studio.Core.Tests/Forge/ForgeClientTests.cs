@@ -510,6 +510,50 @@ public sealed class ForgeSessionCatalogTests : IDisposable
     }
 
     /// <summary>
+    /// STUDIO-50: what a team's launchers carry of its <c>forge.json</c> — the crew's format and
+    /// the brief's sample inputs, in the record's order — read the way the id is: absent, broken
+    /// or of another shape, nothing, never a throw.
+    /// </summary>
+    [Fact]
+    public void The_format_and_the_sample_inputs_a_team_folder_carries_are_read_from_its_forge_json()
+    {
+        var team = Path.Combine(_workspace, "teams", "veille");
+        Directory.CreateDirectory(team);
+        var record = Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName);
+
+        Assert.Same(TeamLaunchRecord.None, ForgeSessionCatalog.ReadTeamLaunchRecord(team));
+
+        // Verbatim shape of the CLI's forge.json, brief included — the drift pin.
+        File.WriteAllText(record, """
+            {"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","title":"Veille","format":"yaml",
+             "promotedAt":"2026-08-19T08:00:00Z",
+             "brief":{"need":"n","language":"fr","goal":"Veille fournisseurs",
+                      "sample":{"variables":{"supplier_url":"https://exemple.fr/offres","date":"2026-08-26"},
+                                "initialContext":"Premier essai"}}}
+            """);
+        var read = ForgeSessionCatalog.ReadTeamLaunchRecord(team);
+        Assert.False(read.IsScript);
+        Assert.Equal(
+            [new("supplier_url", "https://exemple.fr/offres"), new KeyValuePair<string, string>("date", "2026-08-26")],
+            read.SampleVariables);
+        Assert.Equal("Premier essai", read.SampleInitialContext);
+
+        File.WriteAllText(record, """{"v":1,"slug":"veille","format":"script"}""");
+        read = ForgeSessionCatalog.ReadTeamLaunchRecord(team);
+        Assert.True(read.IsScript);
+        Assert.Empty(read.SampleVariables);
+        Assert.Null(read.SampleInitialContext);
+
+        File.WriteAllText(record, """{"v":1,"brief":{"sample":{"variables":["not","an","object"],"initialContext":3}}}""");
+        read = ForgeSessionCatalog.ReadTeamLaunchRecord(team);
+        Assert.Empty(read.SampleVariables);
+        Assert.Null(read.SampleInitialContext);
+
+        File.WriteAllText(record, "{ not json");
+        Assert.Same(TeamLaunchRecord.None, ForgeSessionCatalog.ReadTeamLaunchRecord(team));
+    }
+
+    /// <summary>
     /// FORGE-09: « Modify » on a team no session points at runs <c>forge reopen</c> on the
     /// folder — and nothing else: the verb starts no cycle, and the engine refuses every
     /// cycle option on it, so the request's other fields never reach the argv.
