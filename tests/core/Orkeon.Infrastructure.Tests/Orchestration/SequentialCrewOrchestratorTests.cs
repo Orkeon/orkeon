@@ -781,24 +781,51 @@ public class SequentialCrewOrchestratorTests
 
     #region LLM usage attribution (STUDIO-42)
 
+    /// <summary>
+    /// GAP-33: the provider C# gives the planner (<c>WithPlanningLlm</c>) is metered where the run
+    /// resolves it, as the manager's is (GAP-19). The crew is handed a bare provider and the
+    /// orchestrator the host's sink — this test used to meter the provider itself, which proved
+    /// nothing: the planner's calls never reached the meter.
+    /// </summary>
     [Fact]
     public async Task The_planning_call_is_metered_as_planning_work_for_the_crew()
     {
-        var repository = new TestCrewRepository();
-        // The planner reads the crew's tasks and agents (GAP-31): the orchestrator is given both.
-        var unitOfWork = new NullUnitOfWork();
-        var tasks = new Orkeon.Infrastructure.Persistence.Task.InMemoryTaskRepository(unitOfWork);
-        var agents = new InMemoryAgentRepository(unitOfWork);
-        var orchestrator = new SequentialCrewOrchestrator(
-            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
-            agentRepository: agents, taskRepository: tasks);
-        var agent = new AgentBuilder().Role("Writer").Goal("Write the report").Build();
-        var task = new CrewTaskBuilder().Description("Write the report").ExpectedOutput("A report").AssignTo(agent).Build();
-        await agents.AddAsync(agent, TestContext.Current.CancellationToken);
-        await tasks.AddAsync(task, TestContext.Current.CancellationToken);
-        var agentId = agent.Id;
-        var taskId = task.Id;
-        var provider = new MockLlmProvider();
+        var (orchestrator, repository, crewOf) = await PlannedCrewAsync();
+        var provider = PlanningProvider();
+        var sink = new MockLlmUsageSink();
+        var crew = crewOf(provider);
+        repository.AddCrew(crew);
+
+        await orchestrator(sink).KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, provider.GenerateCallCount);
+        var usage = Assert.Single(sink.Recorded);
+        Assert.Equal(Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning, usage.OperationType);
+        Assert.Equal(crew.Id.ToString(), usage.CrewId);
+        Assert.Equal(provider.Name, usage.Provider);
+        Assert.Equal(100, usage.PromptTokens + usage.CompletionTokens);
+    }
+
+    [Fact]
+    public async Task A_planning_provider_metered_already_is_read_once_per_call()
+    {
+        // A provider taken from the host's container is metered there: the run's meter must not
+        // count its calls a second time.
+        var (orchestrator, repository, crewOf) = await PlannedCrewAsync();
+        var provider = PlanningProvider();
+        var sink = new MockLlmUsageSink();
+        var crew = crewOf(Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(provider, sink));
+        repository.AddCrew(crew);
+
+        await orchestrator(sink).KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, provider.GenerateCallCount);
+        Assert.Single(sink.Recorded);
+    }
+
+    private static MockLlmProvider PlanningProvider()
+    {
+        var provider = new MockLlmProvider { Name = "planner-vendor" };
         provider.SetGenerateFunc((_, _) => new LlmResponse
         {
             Content = """{"plans":[{"task":1,"plan":"1. Write the report."}]}""",
@@ -806,25 +833,43 @@ public class SequentialCrewOrchestratorTests
             CompletionTokens = 20,
             TokensUsed = 100,
         });
-        var sink = new MockLlmUsageSink();
-        var crew = DomainCrew.Create(new CrewCreateOptions
-        {
-            Goal = "Planned crew",
-            ProcessType = ProcessType.Sequential,
-            Planning = true,
-            PlanningLlm = Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(provider, sink),
-        });
-        crew.AddAgent(agentId);
-        crew.AddTask(taskId);
-        repository.AddCrew(crew);
+        return provider;
+    }
 
-        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+    /// <summary>
+    /// An orchestrator over a crew of one writer and one task, the crew built on the planning
+    /// provider it is given: the planner reads the crew's tasks and agents (GAP-31), so the
+    /// orchestrator is given both repositories.
+    /// </summary>
+    private static async Task<(Func<MockLlmUsageSink, SequentialCrewOrchestrator> Orchestrator, TestCrewRepository Repository, Func<Orkeon.Domain.SharedKernel.ILlmProvider, DomainCrew> CrewOf)> PlannedCrewAsync()
+    {
+        var repository = new TestCrewRepository();
+        var unitOfWork = new NullUnitOfWork();
+        var tasks = new Orkeon.Infrastructure.Persistence.Task.InMemoryTaskRepository(unitOfWork);
+        var agents = new InMemoryAgentRepository(unitOfWork);
+        var agent = new AgentBuilder().Role("Writer").Goal("Write the report").Build();
+        var task = new CrewTaskBuilder().Description("Write the report").ExpectedOutput("A report").AssignTo(agent).Build();
+        await agents.AddAsync(agent, TestContext.Current.CancellationToken);
+        await tasks.AddAsync(task, TestContext.Current.CancellationToken);
 
-        Assert.Equal(1, provider.GenerateCallCount);
-        var usage = Assert.Single(sink.Recorded);
-        Assert.Equal(Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning, usage.OperationType);
-        Assert.Equal(crew.Id.ToString(), usage.CrewId);
-        Assert.Equal(100, usage.PromptTokens + usage.CompletionTokens);
+        return (
+            sink => new SequentialCrewOrchestrator(
+                repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
+                agentRepository: agents, taskRepository: tasks, usageSink: sink),
+            repository,
+            planningLlm =>
+            {
+                var crew = DomainCrew.Create(new CrewCreateOptions
+                {
+                    Goal = "Planned crew",
+                    ProcessType = ProcessType.Sequential,
+                    Planning = true,
+                    PlanningLlm = planningLlm,
+                });
+                crew.AddAgent(agent.Id);
+                crew.AddTask(task.Id);
+                return crew;
+            });
     }
 
     [Fact]

@@ -64,7 +64,7 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 
 `planning: true` (YAML), `.Planning(true)` (C#) ou `crewBuilder().planning()` (`.ork.ts`) — le `planning=True` de CrewAI, coupé par défaut. Avant la première tâche, un planificateur écrit un **plan pas à pas pour chaque tâche**, et chaque tâche lit ensuite son propre plan dans son prompt.
 
-- **Sur quel modèle** — le fournisseur que fixe `CrewBuilder.WithPlanningLlm` (C#), sinon le **profil par défaut** de l'hôte — la section `Llm` : le planificateur y reste, quels que soient les profils que nomment les agents. Un appel par run, à la température 0,3, compté sous `operation: planning` dans `cost.updated`, et annulé avec le run.
+- **Sur quel modèle** — le fournisseur que fixe `CrewBuilder.WithPlanningLlm` (C# ; il exige `.Planning()` : un fournisseur de planification sur une crew qui ne planifie pas est refusé à sa construction), sinon le **profil par défaut** de l'hôte — la section `Llm` : le planificateur y reste, quels que soient les profils que nomment les agents. Un appel par run, à la température 0,3, compté sous `operation: planning` dans `cost.updated` — le fournisseur C# comme un fournisseur que l'hôte enregistre —, et annulé avec le run.
 - **Ce qu'il lit** — le but de la crew, une ligne sur la façon dont le mode ordonne les tâches et choisit leurs agents, les variables du run (`initial_context` compris), et chaque tâche **par numéro**, dans l'ordre où le run les prend : sa description et sa sortie attendue avec les variables dedans, telles que son agent les lit ; ses dépendances, par numéro ; et son agent — rôle, but, noms des outils qu'il tient pour la tâche — là où le mode exécute une tâche sur l'agent qu'elle nomme (Sequential, Parallel, Graph). Ailleurs, le planificateur apprend ce que fait le mode à la place — « confié par le manager » (Hierarchical, Autonomous), « chaque agent répond » (Consensual), « choisi au run » (une tâche qui ne nomme pas d'agent) —, et les agents de la crew sont listés une fois. Jamais un identifiant : le planificateur répond par numéro. Borné (`PlanningDefaults`) : une description à 1 500 caractères, une sortie attendue à 500, le but d'un agent à 300, 15 noms d'outils par agent, les variables à 2 000 en tout — un texte coupé finit par ` […]`. Ni backstory, ni connaissance, ni mémoire.
 - **Ce qu'il écrit** — `{"plans": [{"task": 1, "plan": "1. …"}]}` : au plus 8 étapes numérotées par tâche, qui nomment les outils à employer là où un outil aide. La forme de la réponse est contrainte autant que le fournisseur le peut (`json_schema`, sinon `json_object`, sinon le prompt seul) et lue avec tolérance — un bloc entre ```` ``` ```` ou une phrase autour de l'objet.
 - **Où il va** — dans le prompt utilisateur de la tâche, après la tâche (description, sortie attendue, livrable) et avant les variables de contexte, sous *Plan for this task, from the crew's planner — follow it where it helps; the task above prevails:*, coupé à 2 000 caractères. Le Guardian le filtre avec le reste du prompt, et le plan de chaque tâche est journalisé sur une ligne en `Information` (`--verbose 1`). La tâche elle-même n'est jamais modifiée : la requête de connaissance, le souvenir rangé et les prompts du manager lisent la tâche, pas son plan. Le run tient son plan dans une portée à lui (`CrewPlanScope`), lue là où les exécutions de chaque mode composent leur prompt — deux runs d'une même crew ne lisent jamais le plan l'un de l'autre.
@@ -91,6 +91,7 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 | **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
 | **Retry automatique** | — | Jusqu'à 2 ré-exécutions après revue | — | Rounds de vote | ✅ `maxRetryCycles` | Une délégation à un pair |
 | **`asyncExecution: true` d'une tâche** | ✅ Tourne pendant les tâches suivantes | Refusé au chargement | Accepté, sans effet propre | Refusé au chargement | Refusé au chargement | Refusé au chargement |
+| **Manager** (`managerAgent:` ; `WithManagerLlm` en C#) | Refusé au chargement | ✅ Un agent (requis) ou, en C#, un LLM : il assigne et relit | Refusé au chargement | ✅ Un agent : l'arbitre de `ManagerDecision` (un LLM est refusé) | Refusé au chargement | Un LLM seulement : le profil par défaut, ou `WithManagerLlm` en C# (un agent est refusé) |
 | **`planning: true` : chaque tâche lit son plan** | ✅ | ✅ Le travailleur, chaque révision | ✅ | ✅ Chaque candidate | ✅ Chaque essai | ✅ Celui qui la prend, le pair |
 | **Complexité** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
 | **Coût LLM relatif** | Bas | Moyen | Bas | Élevé | Bas à moyen | Moyen |
@@ -218,7 +219,8 @@ var crew = new CrewBuilder()
 
 Un **manager** (`IManagerAgent`, implémenté par `LlmBasedManager`) coordonne les workers. Pour chaque tâche, il choisit un worker via `AssignTaskAsync()`, le worker exécute, puis le manager **revoit la sortie** avec `ReviewOutputAsync()`.
 
-- La crew nomme son manager : `managerAgent:` en YAML (`crewBuilder().manager(agent)` en `.ork.ts`, `.Hierarchical(manager)` / `.WithManager(agent)` en C#) — cet agent est retiré du pool de workers. En C#, `.WithManagerLlm(fournisseur)` (le `manager_llm` de CrewAI) donne au manager un fournisseur à lui : une telle crew se passe d'agent manager, et chaque agent est alors un worker. Une crew qui n'a ni l'un ni l'autre est refusée à sa construction.
+- La crew nomme son manager : `managerAgent:` en YAML (`crewBuilder().manager(agent)` en `.ork.ts`, `.Hierarchical(manager)` / `.WithManager(agent)` en C#) — cet agent est retiré du pool de workers. En C#, `.WithManagerLlm(fournisseur)` (le `manager_llm` de CrewAI) donne au manager un fournisseur à lui : une telle crew se passe d'agent manager, et chaque agent est alors un worker. Une crew qui n'a ni l'un ni l'autre est refusée à sa construction, et un `managerAgent:` qui ne nomme aucun agent de la crew fait échouer le chargement, en listant ses agents.
+- Un manager n'a de sens qu'à deux autres endroits : un agent manager arbitre le vote d'une crew Consensual, un LLM manager distribue les tâches d'une crew Autonomous. Sequential, Parallel et Graph n'ont pas de manager, Autonomous pas d'agent manager et Consensual pas de LLM manager : une telle crew est refusée à son chargement ou à sa construction, le message nommant la clé et le mode — l'agent n'aurait été qu'un worker de plus, le fournisseur jamais appelé.
 - Les décisions du manager passent par **le LLM que la crew lui donne**, résolu une fois par run : le fournisseur posé par `WithManagerLlm` (C# ; compté comme un fournisseur que l'hôte enregistre), sinon le bloc `llm:` de l'agent manager — son profil et son modèle, un modèle non précisé étant celui du profil (`llm: { profile: claude }`) — sinon le **profil par défaut** de l'hôte. Un profil que l'hôte n'offre pas fait échouer le chargement de la crew, comme pour tout agent. Les appels sont comptabilisés sous le rôle du manager (`operation: manager`). Le YAML n'a pas de clé `manager_llm` : le bloc `llm:` de l'agent manager en tient lieu.
 - Assignation : le LLM manager répond en JSON ; une réponse illisible retombe sur une heuristique rôle/mots-clés, une erreur du LLM sur le premier worker. L'`agent:` d'une tâche n'est pas consulté.
 - Revue : jusqu'à **3 revues par tâche**, donc au plus **2 ré-exécutions** (chacune avec une variable de contexte `revision_feedback`). Un troisième rejet conserve la dernière sortie, préfixée `[NEEDS REVISION]` et marquée en échec — et la tâche fait échouer la crew. Une revue qui échoue vaut approbation.
@@ -258,7 +260,7 @@ Un **manager** (`IManagerAgent`, implémenté par `LlmBasedManager`) coordonne l
 name: "delivery-team"
 goal: "Démo hiérarchique"
 process: hierarchical
-managerAgent: lead          # l'id de l'agent manager (il n'existe pas de clé manager_llm)
+managerAgent: lead          # la clé de l'agent manager sous agents: (il n'existe pas de clé manager_llm)
 llm:                        # LLM par défaut de la crew, appliqué aux agents qui n'en ont pas
   model: gpt-4o
 agents:
@@ -400,7 +402,7 @@ Tâche N ──┬── Agent A → réponse A ──┐                   ┌�
 - **Qui le remplit** : l'agent votant lui-même, via `IAgentExecutionService` — sa propre configuration LLM, et ses jetons comptés dans la télémétrie de la tâche. On lui demande un objet JSON (format de réponse `json_object`) : `{"ranking": ["B", "A"], "abstain": false, "confidence": 0.8, "justification": "…"}`. Une réponse qui n'est pas cet objet, un classement qui ne nomme aucune étiquette proposée, une exécution de bulletin en échec ou `"abstain": true` est une **abstention** : elle est journalisée et ne fait jamais échouer la tâche.
 - **Ce qui est compté** : `Majority`, `SuperMajority`, `Unanimity` et `WeightedConsensus` comptent le premier choix ; `BordaCount` compte le classement entier. La `confidence` du bulletin est lue avec `UseWeightedVotes`.
 - **Égalités** : une égalité en tête n'est pas un consensus. Deux agents ne peuvent désigner que l'autre, leur vote est donc toujours à égalité — une crew consensuelle a besoin de trois agents ou plus pour trancher par le vote.
-- **Le manager** : le `managerAgent` d'une crew (`CrewBuilder.WithManager` en C#) ne répond ni ne vote ; il arbitre seulement en `ManagerDecision`.
+- **Le manager** : le `managerAgent` d'une crew (`.manager(agent)` en `.ork.ts`, `CrewBuilder.WithManager` en C#) ne répond ni ne vote ; il arbitre seulement en `ManagerDecision`. Sous un autre repli — `AcceptBestScore`, le défaut, ou `Fail` — il ne décide rien, et le run le dit par un avertissement à son début qui nomme l'agent et le repli de l'hôte : posez `Orkeon:Consensus:FallbackStrategy: ManagerDecision`, ou retirez `managerAgent:` pour que l'agent réponde et vote. Une crew consensuelle ne lit pas de LLM manager : `WithManagerLlm` (C#) est refusé.
 
 **Replis**, après `MaxVotingRounds` rounds sans consensus :
 
@@ -417,7 +419,7 @@ Le résultat retenu est celui de la tâche : s'il est en échec, la crew échoue
 ```yaml
 name: review-board
 process: consensual
-managerAgent: chair             # l'arbitre de FallbackStrategy: ManagerDecision
+managerAgent: chair             # l'arbitre sous FallbackStrategy: ManagerDecision (inactif, avec un avertissement, sous un autre repli)
 ```
 
 ### Types de consensus disponibles
@@ -586,7 +588,7 @@ graphConfig:
 
 ### Principe
 
-Pour chaque tâche, le LLM manager (`LlmBasedManager`, comme en Hierarchical — sur le fournisseur que pose `CrewBuilder.WithManagerLlm` en C#, sinon sur le profil par défaut de l'hôte : une crew autonome n'a pas d'agent manager) choisit l'agent qui la **réclame**. Quand l'exécution de cet agent échoue et que l'agent autorise la délégation, la tâche est **déléguée à un pair** via le canal A2A (`IAgentChannel`), sous un budget enfant dérivé. Sans pair dans la crew, l'échec est maintenu. Un **budget multi-dimensionnel** (5 axes) borne le run. L'API est expérimentale (`ORKEXP002`, voir les [API expérimentales](../reference/experimental-apis.md)).
+Pour chaque tâche, le LLM manager (`LlmBasedManager`, comme en Hierarchical — sur le fournisseur que pose `CrewBuilder.WithManagerLlm` en C#, sinon sur le profil par défaut de l'hôte : une crew autonome n'a pas d'agent manager, et `managerAgent:` est refusé au chargement) choisit l'agent qui la **réclame**. Quand l'exécution de cet agent échoue et que l'agent autorise la délégation, la tâche est **déléguée à un pair** via le canal A2A (`IAgentChannel`), sous un budget enfant dérivé. Sans pair dans la crew, l'échec est maintenu. Un **budget multi-dimensionnel** (5 axes) borne le run. L'API est expérimentale (`ORKEXP002`, voir les [API expérimentales](../reference/experimental-apis.md)).
 
 ### Mécanisme interne
 

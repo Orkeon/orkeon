@@ -90,11 +90,11 @@ internal sealed record ForgeBlueprintTask
 
 /// <summary>
 /// The team plan the assistant submits through <c>blueprint_submit</c> (SPEC-ORKEON-FORGE
-/// §7.3). Structural rules live here; referential rules split by necessity: what survives
-/// the mapping (cycles, empties, manager id) belongs to the shared
-/// <c>CrewDefinitionValidator</c>, while by-key references are checked pre-mapping in
-/// <c>ForgeBlueprintCompiler.Validate</c> — the mapper erases an unresolvable name, so the
-/// shared validator can no longer see it.
+/// §7.3). Structural rules live here, and so do the by-key references — the manager, each
+/// task's agent and dependencies — checked before compilation: the YAML mapper refuses a
+/// reference that names nothing, and a manager in a mode that has none (GAP-33), by an
+/// exception that would end the session. What survives the mapping (cycles, empties, the
+/// hierarchical manager requirement) belongs to the shared <c>CrewDefinitionValidator</c>.
 /// </summary>
 internal sealed record ForgeBlueprint
 {
@@ -110,7 +110,10 @@ internal sealed record ForgeBlueprint
     [JsonPropertyName("tasks")]
     public IReadOnlyList<ForgeBlueprintTask>? Tasks { get; init; }
 
-    /// <summary>Key of the manager agent, hierarchical crews only.</summary>
+    /// <summary>
+    /// Key of the manager agent, hierarchical or consensual crews only: it assigns each task and
+    /// reviews its output, or arbitrates the vote.
+    /// </summary>
     [JsonPropertyName("manager")]
     public string? Manager { get; init; }
 
@@ -172,9 +175,59 @@ internal sealed record ForgeBlueprint
         ValidateCrew(errors);
         ValidateEntities(errors, Agents, "agents", static a => a.Key, ValidateAgent);
         ValidateEntities(errors, Tasks, "tasks", static t => t.Key, ValidateTask);
+        ValidateReferences(errors);
 
         return errors;
     }
+
+    /// <summary>
+    /// The by-key references of the plan, before compilation (GAP-33): the manager names an agent
+    /// of a hierarchical or consensual crew; each task's agent and dependencies name an agent and a
+    /// task of the plan. The YAML mapper refuses each of these by an exception, and
+    /// <see cref="ForgeBlueprintCompiler.Compile"/> is called un-guarded by the render stage, the
+    /// validate stage and an edited plan's check — so they are errors here, where
+    /// <c>blueprint_submit</c> answers the model and the repair loop can act on them (the unknown
+    /// <c>process</c> precedent, <see cref="ValidateCrew"/>).
+    /// </summary>
+    private void ValidateReferences(List<string> errors)
+    {
+        var agentKeys = KeysOf(Agents, static a => a.Key);
+        var taskKeys = KeysOf(Tasks, static t => t.Key);
+
+        if (!string.IsNullOrWhiteSpace(Manager))
+        {
+            var process = string.IsNullOrWhiteSpace(Crew?.Process) ? "sequential" : Crew.Process.Trim();
+            if (IsKnownProcess(process) && !Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.From(process).AcceptsManagerAgent)
+            {
+                errors.Add(
+                    $"'manager' is '{Manager}', but 'crew.process' is '{process}', which has no manager: the agent would only be "
+                    + "one more worker. Remove 'manager', or use 'hierarchical' (the manager assigns each task and reviews its "
+                    + "output) or 'consensual' (it arbitrates the vote when it fails).");
+            }
+
+            if (!agentKeys.Contains(Manager))
+                errors.Add($"'manager' names agent '{Manager}', which does not exist. Agents: {Listed(agentKeys)}.");
+        }
+
+        for (var i = 0; i < (Tasks?.Count ?? 0); i++)
+        {
+            var task = Tasks![i];
+            if (!string.IsNullOrWhiteSpace(task.Agent) && !agentKeys.Contains(task.Agent))
+                errors.Add($"tasks[{i}] ('{task.Key}'): 'agent' names '{task.Agent}', which does not exist. Agents: {Listed(agentKeys)}.");
+
+            foreach (var dependency in task.Dependencies ?? [])
+            {
+                if (!taskKeys.Contains(dependency))
+                    errors.Add($"tasks[{i}] ('{task.Key}'): depends on '{dependency}', which does not exist. Tasks: {Listed(taskKeys)}.");
+            }
+        }
+    }
+
+    /// <summary>The keys an entity list declares, in its order, blanks left out.</summary>
+    private static List<string> KeysOf<T>(IReadOnlyList<T>? entities, Func<T, string?> keyOf) =>
+        [.. (entities ?? []).Select(keyOf).Where(static key => !string.IsNullOrWhiteSpace(key)).Select(static key => key!).Distinct(StringComparer.Ordinal)];
+
+    private static string Listed(List<string> keys) => keys.Count == 0 ? "none" : string.Join(", ", keys);
 
     /// <summary>Crew-level rules: a short display name, a goal, and a known orchestration mode.</summary>
     private void ValidateCrew(List<string> errors)

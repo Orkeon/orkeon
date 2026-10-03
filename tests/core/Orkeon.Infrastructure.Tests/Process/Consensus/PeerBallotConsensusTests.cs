@@ -284,6 +284,61 @@ public sealed class PeerBallotConsensusTests
         Assert.Equal(0, _execution.ExecuteTaskCallCount);
     }
 
+    /// <summary>
+    /// GAP-33, decision 5 — the manager of a consensual crew neither answers nor votes: it decides
+    /// only under the ManagerDecision fallback, a host setting (AcceptBestScore by default). On any
+    /// other fallback it does nothing, and the run says so at its start, naming the agent, the host's
+    /// fallback and the two remedies.
+    /// </summary>
+    [Theory]
+    [InlineData(ConsensusFallback.AcceptBestScore)]
+    [InlineData(ConsensusFallback.Fail)]
+    public async Task A_manager_that_decides_nothing_on_this_host_is_named_in_a_warning_at_the_start(ConsensusFallback fallback)
+    {
+        var chair = Agent("chair");
+        var logger = new Orkeon.Infrastructure.Tests.TestDoubles.TestLogger<ConsensualProcessStrategy>();
+
+        await Strategy(Options(ConsensusType.Majority, rounds: 1, fallback: fallback), logger)
+            .ExecuteConsensualAsync(BuildCrew([Agent("alpha"), Agent("beta"), Agent("gamma"), chair], chair), ct: TestContext.Current.CancellationToken);
+
+        var warning = Assert.Single(logger.LogEntries, e => e.LogLevel == Microsoft.Extensions.Logging.LogLevel.Warning
+            && e.Message.Contains("chair", StringComparison.Ordinal));
+        Assert.Contains(fallback.ToString(), warning.Message, StringComparison.Ordinal);
+        Assert.Contains("FallbackStrategy", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("ManagerDecision", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("managerAgent", warning.Message, StringComparison.Ordinal);
+        // Said once, before the agents ran: the first entry of the run that is a warning.
+        Assert.Same(warning, logger.LogEntries.First(e => e.LogLevel == Microsoft.Extensions.Logging.LogLevel.Warning));
+    }
+
+    [Fact]
+    public async Task A_manager_that_arbitrates_under_ManagerDecision_draws_no_warning()
+    {
+        var chair = Agent("chair");
+        _ballots.Vote = request => request.Voter.Id == chair.Id
+            ? FakeBallotCollector.InShownOrder(request)
+            : Ballot.Abstention("undecided");
+        var logger = new Orkeon.Infrastructure.Tests.TestDoubles.TestLogger<ConsensualProcessStrategy>();
+
+        await Strategy(Options(ConsensusType.Majority, rounds: 1, fallback: ConsensusFallback.ManagerDecision), logger)
+            .ExecuteConsensualAsync(BuildCrew([Agent("alpha"), Agent("beta"), chair], chair), ct: TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(logger.LogEntries, e => e.LogLevel == Microsoft.Extensions.Logging.LogLevel.Warning
+            && e.Message.Contains("chair", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_crew_without_a_manager_draws_no_warning()
+    {
+        var logger = new Orkeon.Infrastructure.Tests.TestDoubles.TestLogger<ConsensualProcessStrategy>();
+
+        await Strategy(Options(ConsensusType.Majority, rounds: 1, fallback: ConsensusFallback.AcceptBestScore), logger)
+            .ExecuteConsensualAsync(BuildCrew([Agent("alpha"), Agent("beta"), Agent("gamma")]), ct: TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(logger.LogEntries, e => e.LogLevel == Microsoft.Extensions.Logging.LogLevel.Warning
+            && e.Message.Contains("ManagerDecision", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task Ballots_run_under_the_crew_id()
     {
@@ -420,12 +475,13 @@ public sealed class PeerBallotConsensusTests
         return builder.Build();
     }
 
-    private ConsensualProcessStrategy Strategy(ConsensualProcessOptions options) => new(
+    private ConsensualProcessStrategy Strategy(
+        ConsensualProcessOptions options, Microsoft.Extensions.Logging.ILogger<ConsensualProcessStrategy>? logger = null) => new(
         new VotingStrategyFactory(Microsoft.Extensions.Options.Options.Create(options)).Create(options.VotingOptions.ConsensusType),
         _ballots,
         new CrewStrategyDependencies(_tasks, _agents, _execution, new MockMemoryScope()),
         _coordinator ?? _memory,
-        NullLogger<ConsensualProcessStrategy>.Instance,
+        logger ?? NullLogger<ConsensualProcessStrategy>.Instance,
         Microsoft.Extensions.Options.Options.Create(options));
 
     private Task<DomainCrewOutput> RunAsync(ConsensualProcessOptions options, params DomainAgent[] agents) =>

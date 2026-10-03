@@ -184,7 +184,7 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
         + "description, expectedOutput, agent: an agent key, dependencies: array of task keys, "
         + "deliverable: a virtual path under one of the brief's output folders}, required, at least "
         + "one, unique keys); manager "
-        + "(an agent key, hierarchical only); rationale (string: why this shape, in plain words).";
+        + "(an agent key, hierarchical or consensual only); rationale (string: why this shape, in plain words).";
 
     /// <inheritdoc />
     public override ToolSchema Schema => new(
@@ -195,7 +195,7 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
             ["crew"] = new("object", "{name, goal, process, verbose, memory}.", Required: true),
             ["agents"] = new("array", "{key, role, goal, backstory, tools, allowDelegation, maxIterations}.", Required: true),
             ["tasks"] = new("array", "{key, description, expectedOutput, agent, dependencies, deliverable}.", Required: true),
-            ["manager"] = new("string", "Manager agent key, hierarchical crews only.", Required: false),
+            ["manager"] = new("string", "Manager agent key, hierarchical or consensual crews only.", Required: false),
             ["rationale"] = new("string", "Why this shape of team, in plain words.", Required: false),
         });
 

@@ -10,7 +10,7 @@ Les trois entités principales sont construites via des builders fluides défini
 
 - `AgentBuilder` (`Orkeon.Domain.Agent`) : configure rôle, objectif, backstory, outils, contraintes d'exécution, templates de prompt, politique d'accès outils
 - `CrewTaskBuilder` (`Orkeon.Domain.Task`) : configure description, résultat attendu, priorité, dépendances, schéma JSON de sortie, mode async (`.Async()` — honoré par une crew séquentielle, refusé par `CrewBuilder.Build()` hors Sequential et Parallel), intervention humaine
-- `CrewBuilder` (`Orkeon.Domain.Crew`) : configure nom, objectif, process type, agents, tasks, planification, mémoire, callbacks, agents dynamiques, et le manager d'une crew hiérarchique — un agent (`.Hierarchical(manager)`, `.WithManager(agent)`), ou un fournisseur à lui (`.WithManagerLlm(fournisseur)`, le `manager_llm` de CrewAI : le manager assigne et revoit dessus, la crew se passe alors d'agent manager et chaque agent travaille)
+- `CrewBuilder` (`Orkeon.Domain.Crew`) : configure nom, objectif, process type, agents, tasks, planification (`.Planning()`, sur le fournisseur que pose `.WithPlanningLlm(fournisseur)` — refusé sans `.Planning()`), mémoire, callbacks, agents dynamiques, et le manager d'une crew hiérarchique — un agent (`.Hierarchical(manager)`, `.WithManager(agent)`), ou un fournisseur à lui (`.WithManagerLlm(fournisseur)`, le `manager_llm` de CrewAI : le manager assigne et revoit dessus, la crew se passe alors d'agent manager et chaque agent travaille). Un agent manager est aussi l'arbitre d'une crew consensuelle ; un LLM manager distribue aussi les tâches d'une crew autonome. `Build()` refuse l'un ou l'autre dans un process qui n'en a pas
 
 Chaque builder délègue en interne aux méthodes factory `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` et lève une `BuilderValidationException` si les champs obligatoires sont absents.
 
@@ -39,7 +39,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true : range le résultat de chaque tâche et rappelle les plus proches avant chaque tâche (demande un embedder)
 memoryProvider: string    # exige memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — le type ; la section hôte (Orkeon:Redis, …) donne la connexion ; absent : le magasin par défaut de l'hôte
 planning: bool            # default: false. true : un plan pas à pas par tâche, écrit avant la première et lu par chaque tâche dans son prompt ; ne réordonne jamais les tâches
-managerAgent: string      # Requis si process = "hierarchical" : le manager, sur son propre bloc llm:
+managerAgent: string      # La clé d'un agent. Requis si process = "hierarchical" : le manager, sur son propre bloc llm: ; facultatif si "consensual" : l'arbitre de ManagerDecision ; refusé par les autres process
 mounts: [string]          # Racines virtuelles utilisées par la crew ("/output", ou "<id>|/output" pour épingler une entrée des settings)
 
 agents:
@@ -62,8 +62,8 @@ tasks:
   <task_id>:              # Clé = identifiant unique de la tâche
     description: string   # Description détaillée de la tâche (requis)
     expectedOutput: string # Format/contenu attendu en résultat (requis)
-    agent: string         # ID de l'agent assigné à la tâche
-    dependencies: [string] # IDs des tâches prérequises (garantit l'ordre)
+    agent: string         # Clé de l'agent assigné à la tâche (une clé inconnue fait échouer le chargement)
+    dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue fait échouer le chargement)
     asyncExecution: bool  # default: false — sequential : tourne pendant les tâches suivantes, une dépendante l'attend ; parallel : sans effet propre ; autres modes : true fait échouer le chargement
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte

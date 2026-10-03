@@ -219,9 +219,10 @@ public class CrewBuilderTests
     }
 
     [Fact]
-    public void Build_WithPlanningLlm_EnablesPlanning()
+    public void Build_WithPlanningAndAPlanningLlm_PlansOnThatProvider()
     {
-        // Arrange
+        // Arrange — WithPlanningLlm chooses the provider, Planning() switches the planner on: a
+        // planning provider without planning is refused (GAP-33, CrewPlanningProviderTests).
         var planningLlm = new StubLlmProvider();
 
         // Act
@@ -276,14 +277,17 @@ public class CrewBuilderTests
     [InlineData("Autonomous")]
     public void Build_RefusesAnAsyncTask_InAModeThatOrdersItsTasksItself(string process)
     {
+        // A manager only where the mode takes one (GAP-33): the refusal under test is the only one.
+        var mode = ProcessType.From(process);
         var manager = CreateAgent("Manager", "Lead");
         var builder = new CrewBuilder()
             .Goal("Watch the market")
-            .Process(ProcessType.From(process))
-            .WithManager(manager)
+            .Process(mode)
             .WithAgent(CreateAgent())
             .WithTask(CreateTask("Write the report"))
             .WithTask(t => t.Description("Gather the facts").ExpectedOutput("The facts").Async());
+        if (mode.AcceptsManagerAgent)
+            builder.WithAgent(manager).WithManager(manager);
 
         var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
 

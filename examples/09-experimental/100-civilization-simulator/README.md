@@ -9,7 +9,7 @@
 ## Architecture
 
 - **Process**: `sequential` (turns led by the game master + A2A inter-factions)
-- **Agents**: 8 — Game Master (manager), Realm Leader + General + Scholar, Forest Chief + Shaman, Merchant Guild Master, Historian-Chronicler (observer)
+- **Agents**: 8 — Game Master (runs the turns through its own tasks), Realm Leader + General + Scholar, Forest Chief + Shaman, Merchant Guild Master, Historian-Chronicler (observer)
 - **Tools**: `json_tool`, `file_write`
 - **Memory**: `SQLite` (composite: ShortTerm current turn + LongTerm civilization history + Episodic landmark events, planned)
 - **Key features**: A2A protocol (diplomacy), Composite memory 3-layer (planned), ObserverAgent (chronicler), AgentCard + AgentSkill, CrewHooks

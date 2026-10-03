@@ -56,12 +56,16 @@ public sealed class CrewCreateOptions
     public string? OutputLogFile { get; init; }
 
     /// <summary>
-    /// Optional LLM provider for the manager agent.
+    /// Optional provider the crew's manager runs on (C# <c>WithManagerLlm</c>): read by the
+    /// Hierarchical and Autonomous processes only — <see cref="Crew.Create(CrewCreateOptions)"/>
+    /// refuses it in the four others (GAP-33).
     /// </summary>
     public ILlmProvider? ManagerLlm { get; init; }
 
     /// <summary>
-    /// Optional manager agent ID for hierarchical process.
+    /// Optional manager agent: the hierarchical manager, or the consensual crew's arbiter of the
+    /// <c>ManagerDecision</c> fallback — <see cref="Crew.Create(CrewCreateOptions)"/> refuses it in
+    /// the four other processes, which have none (GAP-33).
     /// </summary>
     public Common.AgentId? ManagerAgentId { get; init; }
 
@@ -76,7 +80,10 @@ public sealed class CrewCreateOptions
     public bool FullOutput { get; init; }
 
     /// <summary>
-    /// Optional LLM provider the crew plans on; null plans on the host's default LLM profile.
+    /// Optional LLM provider the crew plans on, metered like a provider the host registers; null
+    /// plans on the host's default LLM profile. Requires <see cref="Planning"/>:
+    /// <see cref="Crew.Create(CrewCreateOptions)"/> refuses a planning provider for a crew that does
+    /// not plan (GAP-33).
     /// </summary>
     public ILlmProvider? PlanningLlm { get; init; }
 

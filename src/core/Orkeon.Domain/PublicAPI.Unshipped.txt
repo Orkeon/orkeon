@@ -1081,6 +1081,8 @@ Orkeon.Domain.Task.CrewTaskBase<TContext>.Reopen() -> void
 Orkeon.Domain.Task.CrewTaskBase<TContext>.Start() -> void
 Orkeon.Domain.Task.Events.TaskStartedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId?
 Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.AcceptsAsyncExecution.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.AcceptsManagerAgent.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.AcceptsManagerLlm.get -> bool
 *REMOVED*Orkeon.Domain.Crew.CrewPlanner.CreatePlanAsync(Orkeon.Domain.Crew.PlanningContext! context, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! tasks, Orkeon.Domain.Crew.CrewInput! input) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.ExecutionPlan!>!
 *REMOVED*Orkeon.Domain.Crew.DefaultPlanningStrategy
 *REMOVED*Orkeon.Domain.Crew.DefaultPlanningStrategy.CreatePlanAsync(Orkeon.Domain.Crew.PlanningContext! context, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! tasks, Orkeon.Domain.Crew.CrewInput! input) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.ExecutionPlan!>!

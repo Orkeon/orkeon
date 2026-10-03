@@ -22,11 +22,15 @@ public class AsyncExecutionYamlTests
     private static YamlCrewDefinitionLoader BuildLoader(FakeFileSystemService? fs = null)
         => new(new YamlDotNetSerializer(), fs ?? new FakeFileSystemService(), NullLogger<YamlCrewDefinitionLoader>.Instance);
 
+    /// <summary>
+    /// The crew in <paramref name="process"/>, its boss named manager only where the mode has one
+    /// (GAP-33): elsewhere a manager is refused too, and the refusal under test must be the only one.
+    /// </summary>
     private static string Crew(string process, string gatherAsync) => $$"""
 name: watch
 goal: Watch the market
 process: {{process}}
-managerAgent: boss
+{{(ProcessType.From(process).AcceptsManagerAgent ? "managerAgent: boss" : "")}}
 agents:
   boss: { role: Boss, goal: Lead the work }
   analyst: { role: Analyst, goal: Analyze }

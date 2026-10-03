@@ -1012,8 +1012,9 @@ public class CrewTests
     [Fact]
     public void ChangeProcessType_ShouldTurnHierarchicalWithoutAManagerAgent_WhenTheCrewHasAManagerLlm()
     {
-        // GAP-19: the manager LLM manages; no agent has to be named.
-        var crew = DomainCrew.Create("Test", ProcessType.Sequential, managerLlm: new StubLlmProvider());
+        // GAP-19: the manager LLM manages; no agent has to be named. Created autonomous — the other
+        // mode that reads a manager LLM: a sequential crew refuses one (GAP-33).
+        var crew = DomainCrew.Create("Test", ProcessType.Autonomous, managerLlm: new StubLlmProvider());
         crew.AddAgent(AgentId.Create());
 
         crew.ChangeProcessType(ProcessType.Hierarchical);
@@ -1079,9 +1080,10 @@ public class CrewTests
         var agentId = AgentId.Create();
         crew.AddAgent(agentId);
 
-        // Act & Assert
+        // Act & Assert — only the hierarchical and consensual modes have a manager agent (GAP-33)
         var ex = Assert.Throws<InvalidOperationException>(() => crew.SetManagerAgent(agentId));
-        Assert.Contains("only applicable for hierarchical", ex.Message);
+        Assert.Contains("Hierarchical", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Consensual", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

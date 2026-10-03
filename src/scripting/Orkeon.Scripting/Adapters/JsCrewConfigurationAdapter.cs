@@ -39,6 +39,7 @@ public static class JsCrewConfigurationAdapter
 
         var process = ParseProcessType(crew.Process);
         RefuseAsyncExecutionTheModeIgnores(process, crew);
+        RefuseManagerTheModeHasNoneOf(process, crew);
 
         var agentMap = new Dictionary<JsAgent, AgentId>(ReferenceEqualityComparer.Instance);
         var agentConfigs = new List<AgentConfiguration>();
@@ -55,13 +56,27 @@ public static class JsCrewConfigurationAdapter
         foreach (var jsTask in jsTasks)
             taskMap[jsTask] = TaskId.Create();
 
+        RefuseReferencesOutsideTheCrew(crew, jsTasks, agentMap, taskMap);
+
         var taskConfigs = new List<TaskConfiguration>();
         foreach (var jsTask in jsTasks)
             taskConfigs.Add(BuildTaskConfiguration(taskMap[jsTask], jsTask, agentMap, taskMap));
 
         AgentId? managerId = null;
-        if (crew.Manager is { } mgr && agentMap.TryGetValue(mgr, out var mid))
+        if (crew.Manager is { } mgr)
+        {
+            // The manager joins its crew at build — unless it already belongs to another one. Kept,
+            // a manager outside the crew was erased here without a word (GAP-33).
+            if (!agentMap.TryGetValue(mgr, out var mid))
+            {
+                throw new InvalidOperationException(
+                    $".manager({mgr.name}) names an agent that is not in crew '{crew.name}': an agent belongs to one crew, " +
+                    "and this one is held by another crew or was removed from this one. " +
+                    $"Its agents: {Names(crew.agents.Select(a => a.name))}. A crew's manager is one of its own agents.");
+            }
+
             managerId = mid;
+        }
 
         return new CrewConfiguration
         {
@@ -491,6 +506,65 @@ public static class JsCrewConfigurationAdapter
             $" .asyncExecution(), which .process(\"{crew.Process}\") does not honour: that mode orders its tasks itself. " +
             "Remove .asyncExecution(), or use .process(\"sequential\") (an async task runs alongside the tasks after it) " +
             "or .process(\"parallel\") (the tasks whose context is ready already run at once).");
+    }
+
+    /// <summary>
+    /// The YAML rule (GAP-33), in the script's own words: <c>crewBuilder().manager(agent)</c> means
+    /// something in <c>.process("hierarchical")</c> — the manager assigns each task and reviews its
+    /// output — and <c>.process("consensual")</c> — it arbitrates the vote under the ManagerDecision
+    /// fallback. The four other modes have none: carried to them, the agent ran tasks like any other.
+    /// </summary>
+    private static void RefuseManagerTheModeHasNoneOf(ProcessType process, JsCrew crew)
+    {
+        if (crew.Manager is null || process.AcceptsManagerAgent)
+            return;
+
+        throw new InvalidOperationException(
+            $".manager({crew.Manager.name}) is set, but .process(\"{crew.Process}\") has no manager: the agent would only be one " +
+            "more worker. Remove .manager(...), or use .process(\"hierarchical\") (the manager assigns each task and reviews " +
+            "its output) or .process(\"consensual\") (it arbitrates the vote when it fails, under the host's " +
+            "Orkeon:Consensus:FallbackStrategy: ManagerDecision)." +
+            (process == ProcessType.Autonomous
+                ? " An autonomous crew's manager is an LLM: the host's default profile."
+                : string.Empty));
+    }
+
+    /// <summary>
+    /// A task's <c>.agent(...)</c> and the tasks of its <c>.withContext(...)</c> must be in the crew
+    /// (GAP-33, decision 6): erased, the task ran on another agent, or without waiting for — and
+    /// reading — what it cited. Every faulty reference is named at once, with what the crew has.
+    /// </summary>
+    private static void RefuseReferencesOutsideTheCrew(
+        JsCrew crew,
+        IReadOnlyList<JsTask> tasks,
+        Dictionary<JsAgent, AgentId> agentMap,
+        Dictionary<JsTask, TaskId> taskMap)
+    {
+        var unknownAgents = new List<string>();
+        var unknownContexts = new List<string>();
+        foreach (var task in tasks)
+        {
+            if (task.AssignedAgent is { } agent && !agentMap.ContainsKey(agent))
+                unknownAgents.Add($"task '{task.name}' calls .agent({agent.name}), an agent that is not in the crew");
+
+            foreach (var context in task.Context.Where(context => !taskMap.ContainsKey(context)))
+                unknownContexts.Add($"task '{task.name}' calls .withContext({context.name}), a task that is not in the crew");
+        }
+
+        if (unknownAgents.Count == 0 && unknownContexts.Count == 0)
+            return;
+
+        throw new InvalidOperationException(
+            $"Crew '{crew.name}': {string.Join("; ", unknownAgents.Concat(unknownContexts))}." +
+            (unknownAgents.Count > 0 ? $" Its agents: {Names(crew.agents.Select(a => a.name))} — add the agent with .withAgent(...)." : string.Empty) +
+            (unknownContexts.Count > 0 ? $" Its tasks: {Names(tasks.Select(t => t.name))} — add the task with .withTask(...)." : string.Empty));
+    }
+
+    /// <summary>Names for a message, in the crew's order: <c>none</c> when there are none.</summary>
+    private static string Names(IEnumerable<string> names)
+    {
+        var list = string.Join(", ", names);
+        return list.Length == 0 ? "none" : list;
     }
 
     /// <summary>

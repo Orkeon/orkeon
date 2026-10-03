@@ -166,8 +166,10 @@ public sealed class CrewBuilder
     }
 
     /// <summary>
-    /// Sets the LLM provider the crew plans on, instead of the host's default profile; planning
-    /// itself is switched on by <see cref="Planning"/>.
+    /// Sets the LLM provider the crew plans on, instead of the host's default profile; its calls are
+    /// metered like those of a provider the host registers, as the planning work of the crew. Planning
+    /// itself is switched on by <see cref="Planning"/>: <see cref="Build"/> refuses a planning
+    /// provider for a crew that does not plan (GAP-33).
     /// </summary>
     public CrewBuilder WithPlanningLlm(ILlmProvider planningLlm)
     {
@@ -225,7 +227,11 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Sets the manager agent for hierarchical process.</summary>
+    /// <summary>
+    /// Sets the crew's manager agent: the hierarchical manager — it assigns each task and reviews its
+    /// output — or the consensual crew's arbiter of the <c>ManagerDecision</c> fallback. It runs no
+    /// task. The other processes have no manager agent: <see cref="Build"/> refuses one there (GAP-33).
+    /// </summary>
     public CrewBuilder WithManager(DomainAgent managerAgent)
     {
         ArgumentNullException.ThrowIfNull(managerAgent);
@@ -233,7 +239,10 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Sets the manager agent ID for hierarchical process.</summary>
+    /// <summary>
+    /// Sets the crew's manager agent by its id — see <see cref="WithManager"/>: Hierarchical and
+    /// Consensual only.
+    /// </summary>
     public CrewBuilder WithManagerId(AgentId managerAgentId)
     {
         _managerAgentId = managerAgentId;
@@ -245,7 +254,8 @@ public sealed class CrewBuilder
     /// manager assigns and reviews on it (and the autonomous one hands the tasks out on it), in place
     /// of the manager agent's <c>llm:</c> profile or the host's default; its calls are metered like
     /// those of a provider the host registers (GAP-19). A hierarchical crew given one needs no
-    /// manager agent: every agent is then a worker.
+    /// manager agent: every agent is then a worker. The other processes never call it:
+    /// <see cref="Build"/> refuses it there (GAP-33).
     /// </summary>
     public CrewBuilder WithManagerLlm(ILlmProvider managerLlm)
     {
@@ -281,8 +291,14 @@ public sealed class CrewBuilder
     /// </summary>
     /// <exception cref="BuilderValidationException">
     /// Thrown when <see cref="Goal(string)"/> has not been set, when a Hierarchical process
-    /// is configured without a manager agent or manager LLM, or when a task asks for asynchronous
-    /// execution in a process that does not honour it (<see cref="ProcessType.AcceptsAsyncExecution"/>).
+    /// is configured without a manager agent or manager LLM, when a task asks for asynchronous
+    /// execution in a process that does not honour it (<see cref="ProcessType.AcceptsAsyncExecution"/>),
+    /// or when a manager agent or a manager LLM is set for a process that has none
+    /// (<see cref="ProcessType.AcceptsManagerAgent"/>, <see cref="ProcessType.AcceptsManagerLlm"/>).
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown by <see cref="Crew.Create(CrewCreateOptions)"/> for a memory provider without
+    /// <see cref="EnableMemory"/>, or a planning provider without <see cref="Planning"/>.
     /// </exception>
     public Crew Build()
     {
@@ -322,6 +338,30 @@ public sealed class CrewBuilder
                 $" for asynchronous execution (.Async()), which the {_processType.Value} process does not honour: " +
                 "it orders its tasks itself. Use .Sequential() — an async task runs alongside the tasks after it — " +
                 "or .Parallel(), or drop .Async().");
+        }
+
+        // 4c. A manager where the mode uses one, never elsewhere (GAP-33): the four modes without a
+        //     manager agent ran it as one more worker, and only two modes ever call a manager LLM.
+        if (_managerAgentId is not null && !_processType.AcceptsManagerAgent)
+        {
+            throw new BuilderValidationException(
+                "Crew",
+                $"A manager agent is set (.WithManager, .WithManagerId or .Hierarchical(manager)), but the {_processType.Value} " +
+                "process has no manager: the agent would only be one more worker. Remove it, or use .Hierarchical(manager) — " +
+                "it assigns each task and reviews its output — or .Consensual() — it arbitrates when the vote fails " +
+                "(Orkeon:Consensus:FallbackStrategy: ManagerDecision)." +
+                (_processType == ProcessType.Autonomous
+                    ? " An autonomous crew's manager is an LLM: the host's default profile, or the provider .WithManagerLlm(provider) sets."
+                    : string.Empty));
+        }
+
+        if (_managerLlm is not null && !_processType.AcceptsManagerLlm)
+        {
+            throw new BuilderValidationException(
+                "Crew",
+                $".WithManagerLlm(provider) is set, but the {_processType.Value} process never calls a manager LLM. Remove it, " +
+                "or use .Hierarchical() — the manager assigns and reviews on it — or the Autonomous process — the manager " +
+                "hands the tasks out on it.");
         }
 
         // 5. Create the crew

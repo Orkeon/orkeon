@@ -8,7 +8,6 @@ verbose: true
 memory: true
 memoryProvider: "Redis"
 planning: false
-managerAgent: "home_supervisor"
 
 agents:
   home_supervisor:

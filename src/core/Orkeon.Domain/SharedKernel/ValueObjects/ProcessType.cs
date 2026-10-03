@@ -36,6 +36,21 @@ public sealed record ProcessType
     /// refused when it is loaded or built.
     /// </summary>
     public bool AcceptsAsyncExecution => this == Sequential || this == Parallel;
+    /// <summary>
+    /// Whether a crew run in this mode has a manager agent (GAP-33). In <see cref="Hierarchical"/>
+    /// the agent assigns each task and reviews its output; in <see cref="Consensual"/> it arbitrates
+    /// the <c>ManagerDecision</c> fallback. In both it runs no task itself. The four other modes have
+    /// no manager agent — the agent would be one more worker —, so a crew naming one for them is
+    /// refused when it is loaded or built.
+    /// </summary>
+    public bool AcceptsManagerAgent => this == Hierarchical || this == Consensual;
+    /// <summary>
+    /// Whether a crew run in this mode reads a manager LLM — the provider C# gives the crew with
+    /// <c>CrewBuilder.WithManagerLlm</c> (GAP-33). <see cref="Hierarchical"/> assigns and reviews on
+    /// it; <see cref="Autonomous"/> hands its tasks out on it. The four other modes never call it, so
+    /// a crew given one for them is refused when it is built.
+    /// </summary>
+    public bool AcceptsManagerLlm => this == Hierarchical || this == Autonomous;
     /// <summary>Returns the string representation.</summary>
     public override string ToString() => Value;
     /// <summary>Implicitly converts to string.</summary>

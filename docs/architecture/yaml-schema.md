@@ -25,7 +25,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true: the crew stores the result of each task and recalls the closest ones before each task (embedder required at kickoff); false: nothing is stored or recalled
 memoryProvider: string    # Requires memory: true (refused otherwise). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning. The TYPE only: the connection comes from the host section (Orkeon:Redis, Orkeon:Sqlite, …). Unset: the host's default store (Memory:Provider)
 planning: bool            # default: false. true: before the first task, a planner (the host's default profile) writes a step-by-step plan per task, which the task reads in its prompt, in every mode; it changes neither the order nor the agents
-managerAgent: string      # Hierarchical: the manager — required (omitted, the load fails); it assigns and reviews on its own llm: block, profile and model. Consensual: the arbiter of the ManagerDecision fallback
+managerAgent: string      # The key of one of the crew's agents (any other name fails the load, listing them). Hierarchical: the manager — required (omitted, the load fails); it assigns and reviews on its own llm: block, profile and model. Consensual: the arbiter of the ManagerDecision fallback (idle, with a warning at the start of the run, under another fallback). Any other process: refused at load
 graphConfig: {…}          # Graph mode settings, the crew's only circuit-breaker setting (see the dedicated section)
 
 llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
@@ -101,8 +101,8 @@ tasks:
   <task_id>:              # Key = unique task identifier
     description: string   # Detailed task description (required)
     expectedOutput: string # Expected result format/content (required)
-    agent: string         # Key of the agent assigned to the task (a key matching no agent leaves the task unassigned)
-    dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key is ignored; a cycle fails the load)
+    agent: string         # Key of the agent assigned to the task (a key matching no agent fails the load, listing the crew's agents)
+    dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key fails the load, listing the crew's tasks; so does a cycle)
     asyncExecution: bool  # default: false — sequential: runs alongside the next tasks, a dependant waits for it; parallel: no effect of its own; other modes: true fails the load
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data

@@ -64,7 +64,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 
 `planning: true` (YAML), `.Planning(true)` (C#) or `crewBuilder().planning()` (`.ork.ts`) — CrewAI's `planning=True`, off by default. Before the first task, a planner writes a **step-by-step plan for each task**, and each task then reads its own plan in its prompt.
 
-- **On which model** — the provider `CrewBuilder.WithPlanningLlm` sets (C#), else the host's **default profile** — the `Llm` section: the planner stays there whatever profiles the agents name. One call per run, at temperature 0.3, metered as `operation: planning` in `cost.updated`, and cancelled with the run.
+- **On which model** — the provider `CrewBuilder.WithPlanningLlm` sets (C#; it needs `.Planning()`: a planning provider for a crew that does not plan is refused when the crew is built), else the host's **default profile** — the `Llm` section: the planner stays there whatever profiles the agents name. One call per run, at temperature 0.3, metered as `operation: planning` in `cost.updated` — the C# provider like a provider the host registers —, and cancelled with the run.
 - **What it reads** — the crew's goal, a line on how the mode orders the tasks and picks their agents, the run's variables (`initial_context` included), and each task **by number**, in the order the run takes them: its description and expected output with the variables in them, as its agent reads them; its dependencies, by number; and its agent — role, goal, the names of the tools it holds for the task — where the mode runs a task on the agent it names (Sequential, Parallel, Graph). Elsewhere the planner is told what the mode does instead — "assigned by the manager" (Hierarchical, Autonomous), "every agent answers" (Consensual), "chosen at run time" (a task that names no agent) — and the crew's agents are listed once. Never an id: the planner answers by number. Bounded (`PlanningDefaults`): a description to 1,500 characters, an expected output to 500, an agent's goal to 300, 15 tool names per agent, the variables to 2,000 in all — a cut text ends with ` […]`. No backstory, knowledge or memory.
 - **What it writes** — `{"plans": [{"task": 1, "plan": "1. …"}]}`: at most 8 numbered steps per task, naming the tools to use where a tool helps. The reply's shape is constrained as far as the provider can (`json_schema`, else `json_object`, else the prompt alone) and read tolerantly — a fence or a sentence around the object.
 - **Where it goes** — into the task's user prompt, after the task (description, expected output, deliverable) and before the context variables, under *Plan for this task, from the crew's planner — follow it where it helps; the task above prevails:*, cut at 2,000 characters. The Guardian screens it with the rest of the prompt, and each task's plan is logged on one line at `Information` (`--verbose 1`). The task itself is never changed: the knowledge query, the stored memory and the manager's prompts read the task, not its plan. The run holds its plan in a scope of its own (`CrewPlanScope`), read where every mode's executions compose their prompt — two runs of one crew never read each other's.
@@ -91,6 +91,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 | **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
 | **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | ✅ `maxRetryCycles` | One delegation to a peer |
 | **A task's `asyncExecution: true`** | ✅ Runs alongside the next tasks | Refused at load | Accepted, no effect of its own | Refused at load | Refused at load | Refused at load |
+| **Manager** (`managerAgent:`; C# `WithManagerLlm`) | Refused at load | ✅ An agent (required) or, in C#, an LLM: it assigns and reviews | Refused at load | ✅ An agent: the `ManagerDecision` arbiter (an LLM is refused) | Refused at load | An LLM only: the default profile, or C# `WithManagerLlm` (an agent is refused) |
 | **`planning: true`: each task reads its plan** | ✅ | ✅ The worker, each revision | ✅ | ✅ Each candidate | ✅ Each attempt | ✅ The claimer, the peer |
 | **Complexity** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
 | **Relative LLM cost** | Low | Medium | Low | High | Low to medium | Medium |
@@ -217,7 +218,8 @@ var crew = new CrewBuilder()
 
 A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates the workers. For each task it picks a worker via `AssignTaskAsync()`, the worker executes, then the manager **reviews the output** with `ReviewOutputAsync()`.
 
-- The crew names its manager: `managerAgent:` in YAML (`crewBuilder().manager(agent)` in `.ork.ts`, `.Hierarchical(manager)` / `.WithManager(agent)` in C#) — that agent is removed from the worker pool. In C#, `.WithManagerLlm(provider)` (CrewAI's `manager_llm`) gives the manager a provider of its own: such a crew needs no manager agent, and every agent is then a worker. A crew with neither is refused when it is built.
+- The crew names its manager: `managerAgent:` in YAML (`crewBuilder().manager(agent)` in `.ork.ts`, `.Hierarchical(manager)` / `.WithManager(agent)` in C#) — that agent is removed from the worker pool. In C#, `.WithManagerLlm(provider)` (CrewAI's `manager_llm`) gives the manager a provider of its own: such a crew needs no manager agent, and every agent is then a worker. A crew with neither is refused when it is built, and a `managerAgent:` that names no agent of the crew fails the load, listing its agents.
+- A manager means something in two other places only: a manager agent arbitrates a Consensual crew's vote, a manager LLM hands an Autonomous crew's tasks out. Sequential, Parallel and Graph have no manager, Autonomous no manager agent and Consensual no manager LLM: such a crew is refused when it is loaded or built, the message naming the key and the mode — the agent would only have been one more worker, the provider never called.
 - The manager's decisions go through **the LLM the crew gives it**, resolved once per run: the provider `WithManagerLlm` set (C#; metered like a provider the host registers), else the manager agent's own `llm:` block — its profile and model, a model left unset being the profile's own (`llm: { profile: claude }`) — else the host's **default profile**. A profile the host does not offer fails the crew load, like any agent's. The calls are metered under the manager's role (`operation: manager`). YAML has no `manager_llm` key: the manager agent's `llm:` block is the way.
 - Assignment: the manager LLM answers with JSON; an unparseable answer falls back to a role/keyword heuristic, an LLM error to the first worker. A task's `agent:` is not consulted.
 - Review: up to **3 reviews per task**, so at most **2 re-executions** (each with a `revision_feedback` context variable). A third rejection keeps the last output, prefixed `[NEEDS REVISION]` and marked failed — and the task fails the crew. A review that errors counts as an approval.
@@ -257,7 +259,7 @@ A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates th
 name: "delivery-team"
 goal: "Hierarchical demo"
 process: hierarchical
-managerAgent: lead          # the id of the managing agent (there is no manager_llm key)
+managerAgent: lead          # the key of the managing agent under agents: (there is no manager_llm key)
 llm:                        # crew-default LLM applied to agents without their own
   model: gpt-4o
 agents:
@@ -399,7 +401,7 @@ Task N ──┬── Agent A → answer A ──┐                ┌── A
 - **Who casts it**: the voting agent itself, through `IAgentExecutionService` — its own LLM configuration, and its tokens counted in the task's telemetry. It is asked for a JSON object (response format `json_object`): `{"ranking": ["B", "A"], "abstain": false, "confidence": 0.8, "justification": "…"}`. A reply that is not that object, a ranking that names no offered label, a ballot execution that failed, or `"abstain": true` is an **abstention**: it is logged and never fails the task.
 - **What is counted**: `Majority`, `SuperMajority`, `Unanimity` and `WeightedConsensus` count the first choice; `BordaCount` counts the whole ranking. The ballot's `confidence` is read with `UseWeightedVotes`.
 - **Ties**: a tie at the top is no consensus. Two agents can only name each other, so their vote always ties — a consensual crew needs three agents or more to decide by vote.
-- **The manager**: a crew's `managerAgent` (`CrewBuilder.WithManager` in C#) neither answers nor votes; it only arbitrates under `ManagerDecision`.
+- **The manager**: a crew's `managerAgent` (`.manager(agent)` in `.ork.ts`, `CrewBuilder.WithManager` in C#) neither answers nor votes; it only arbitrates under `ManagerDecision`. Under another fallback — `AcceptBestScore`, the default, or `Fail` — it decides nothing, and the run says so with a warning at its start that names the agent and the host's fallback: set `Orkeon:Consensus:FallbackStrategy: ManagerDecision`, or remove `managerAgent:` so that the agent answers and votes. A consensual crew reads no manager LLM: C# `WithManagerLlm` is refused.
 
 **Fallbacks**, after `MaxVotingRounds` rounds without consensus:
 
@@ -416,7 +418,7 @@ The retained result is the task's result: when it failed, the crew fails and the
 ```yaml
 name: review-board
 process: consensual
-managerAgent: chair             # the arbiter of FallbackStrategy: ManagerDecision
+managerAgent: chair             # the arbiter under FallbackStrategy: ManagerDecision (idle, with a warning, under another fallback)
 ```
 
 ### Available consensus types
@@ -585,7 +587,7 @@ graphConfig:
 
 ### Principle
 
-For each task, the manager LLM (`LlmBasedManager`, as in Hierarchical — on the provider `CrewBuilder.WithManagerLlm` sets in C#, else on the host's default profile: an autonomous crew has no manager agent) picks the agent that **claims** it. When that agent's execution fails and the agent allows delegation, the task is **delegated to a peer** over the A2A channel (`IAgentChannel`), under a derived child budget. With no peer in the crew, the failure stands. A **multi-dimensional budget** (5 axes) bounds the run. The API is experimental (`ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md)).
+For each task, the manager LLM (`LlmBasedManager`, as in Hierarchical — on the provider `CrewBuilder.WithManagerLlm` sets in C#, else on the host's default profile: an autonomous crew has no manager agent, and `managerAgent:` is refused at load) picks the agent that **claims** it. When that agent's execution fails and the agent allows delegation, the task is **delegated to a peer** over the A2A channel (`IAgentChannel`), under a derived child budget. With no peer in the crew, the failure stands. A **multi-dimensional budget** (5 axes) bounds the run. The API is experimental (`ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md)).
 
 ### Internal mechanism
 

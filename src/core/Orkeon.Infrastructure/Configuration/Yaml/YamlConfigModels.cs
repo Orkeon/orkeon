@@ -315,7 +315,12 @@ public class CrewYamlConfig
     public string? MemoryProvider { get; set; }
     /// <summary>Gets or sets whether planning is enabled.</summary>
     public bool? Planning { get; set; }
-    /// <summary>Gets or sets the manager agent identifier for hierarchical process.</summary>
+    /// <summary>
+    /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): the hierarchical
+    /// manager — required there — or the consensual crew's arbiter of the <c>ManagerDecision</c>
+    /// fallback. The four other processes have none, and a key that names no agent fails the load
+    /// (GAP-33).
+    /// </summary>
     public string? ManagerAgent { get; set; }
     /// <summary>Gets or sets the graph-specific configuration (only used when process is "graph").</summary>
     public GraphYamlConfig? GraphConfig { get; set; }
@@ -376,7 +381,10 @@ public class CrewSettingsYamlConfig
     public string? MemoryProvider { get; set; }
     /// <summary>Gets or sets whether planning is enabled.</summary>
     public bool? Planning { get; set; }
-    /// <summary>Gets or sets the manager agent identifier.</summary>
+    /// <summary>
+    /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): Hierarchical (required)
+    /// and Consensual (the <c>ManagerDecision</c> arbiter) only — see <see cref="CrewYamlConfig.ManagerAgent"/>.
+    /// </summary>
     public string? ManagerAgent { get; set; }
     /// <summary>Gets or sets the graph-specific configuration (only used when process is "graph").</summary>
     public GraphYamlConfig? GraphConfig { get; set; }

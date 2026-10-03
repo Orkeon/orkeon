@@ -239,21 +239,23 @@ public class CrewAggregateRootTests
     #region Validation Tests with Hierarchical Constraints
 
     [Fact]
-    public void ShouldReturnInvalid_WhenHierarchicalCrewHasNoManager()
+    public void ShouldBeValid_WhenAHierarchicalCrewTurnsSequentialAndItsManagerBecomesAWorker()
     {
-        // Arrange
-        var managerLlm = new StubLlmProvider();
-        var crew = DomainCrew.Create("Hierarchical", ProcessType.Hierarchical, managerLlm: managerLlm);
-        crew.AddAgent(AgentId.Create());
+        // Arrange — GAP-33: a sequential crew has no manager; turning sequential drops the manager
+        // agent, which stays a member of the crew, hence a worker.
+        var manager = AgentId.Create();
+        var crew = DomainCrew.Create("Hierarchical", ProcessType.Hierarchical, managerAgentId: manager);
+        crew.AddAgent(manager);
         crew.AddTask(TaskId.Create());
-        // Manager is auto-set to first agent, so remove it manually via process type change
         crew.ChangeProcessType(ProcessType.Sequential);
 
-        // Act - verify sequential has no manager validation issue
+        // Act
         var result = crew.Validate();
 
         // Assert
         Assert.True(result.IsValid);
+        Assert.Null(crew.ManagerAgentId);
+        Assert.Contains(manager, crew.Agents);
     }
 
     [Fact]

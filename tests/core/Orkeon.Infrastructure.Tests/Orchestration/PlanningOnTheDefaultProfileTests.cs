@@ -116,13 +116,15 @@ public sealed partial class PlanningOnTheDefaultProfileTests
     private static List<(int Number, string Description)> NumberedTasks(string planningPrompt) =>
         [.. PlannedTaskHeading().Matches(planningPrompt).Select(m => (int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture), m.Groups[2].Value))];
 
-    private static ServiceProvider Host(MockLlmProvider @default, RecordingLoggerFactory? logs = null)
+    private static ServiceProvider Host(MockLlmProvider @default, RecordingLoggerFactory? logs = null, MockLlmUsageSink? sink = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
         services.AddLogging();
         if (logs is not null)
             services.AddSingleton<ILoggerFactory>(logs);
+        if (sink is not null)
+            services.AddSingleton<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>(sink);
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService()
             .AddMount("/output", FileAccessRights.Read | FileAccessRights.Write | FileAccessRights.Create));
         services.AddOrkeonLlmProvider(_ => @default, LlmConfig.Create("host-model"));
@@ -148,9 +150,10 @@ public sealed partial class PlanningOnTheDefaultProfileTests
         return await sp.GetRequiredService<ICrewOrchestrationService>().KickoffAsync(crew.Id, Input(), cancellationToken);
     }
 
-    private static async Task<CrewOutput> RunBuiltAsync(MockLlmProvider @default, Func<CrewBuilder, CrewBuilder> planning)
+    private static async Task<CrewOutput> RunBuiltAsync(
+        MockLlmProvider @default, Func<CrewBuilder, CrewBuilder> planning, MockLlmUsageSink? sink = null)
     {
-        await using var container = Host(@default);
+        await using var container = Host(@default, sink: sink);
         await using var scope = container.CreateAsyncScope();
         var sp = scope.ServiceProvider;
 
@@ -201,16 +204,26 @@ public sealed partial class PlanningOnTheDefaultProfileTests
     }
 
     [Fact]
-    public async Task A_planning_provider_set_in_csharp_keeps_the_hand()
+    public async Task A_planning_provider_set_in_csharp_keeps_the_hand_and_is_metered_once_as_planning_work()
     {
+        // GAP-33: the provider WithPlanningLlm sets was called as it was — the meter never saw its
+        // tokens, neither in cost.updated nor in run.finished. It is metered where the run resolves
+        // it now, like the manager's (GAP-19).
         var planner = new Vendor("planner");
         var @default = new Vendor("default");
+        var sink = new MockLlmUsageSink();
 
-        var output = await RunBuiltAsync(@default.Provider, crew => crew.Planning().WithPlanningLlm(planner.Provider));
+        var output = await RunBuiltAsync(@default.Provider, crew => crew.Planning().WithPlanningLlm(planner.Provider), sink);
 
         Assert.True(output.Succeeded, output.Error);
         Assert.Equal(["plan@planner"], planner.Calls);
         Assert.Equal(["task:outline", "task:draft"], @default.Calls);
+        var planning = Assert.Single(sink.Recorded, e => e.Provider == "planner");
+        Assert.Equal(Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning, planning.OperationType);
+        Assert.Equal(15, planning.PromptTokens + planning.CompletionTokens);
+        Assert.NotNull(planning.CrewId);
+        // The tasks' calls, on the host's default profile, are metered once each as ever.
+        Assert.Equal(2, sink.Recorded.Count(e => e.Provider == "default"));
     }
 
     [Fact]

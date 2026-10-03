@@ -84,6 +84,13 @@ declare global {
         /** A built task (`taskBuilder()…build()`); a builder callback is refused. */
         withTask(task: Task<unknown, unknown>): this;
         withTasks(tasks: readonly Task<unknown, unknown>[]): this;
+        /**
+         * The crew's manager, one of its agents — YAML `managerAgent:`. `process("hierarchical")`
+         * requires one: it assigns each task and reviews its output, on its own `.llm(...)`.
+         * `process("consensual")` may have one: it arbitrates the vote when the host's fallback is
+         * `ManagerDecision`. Neither runs a task. The four other processes have no manager agent:
+         * the crew is refused when it is loaded.
+         */
         manager(agent: Agent<unknown, unknown>): this;
         budget(opts: ExecutionBudget): this;
         verbose(value?: boolean): this;

@@ -12,9 +12,14 @@ namespace Orkeon.Scripting.Tests.Adapters;
 /// </summary>
 public sealed class JsCrewAsyncExecutionAdapterTests
 {
+    /// <summary>
+    /// The crew in <paramref name="process"/>, its boss named manager only where the mode has one
+    /// (GAP-33): elsewhere a manager is refused too, and the refusal under test must be the only one.
+    /// </summary>
     private static JsCrew BuildCrew(string process, string asyncExecution)
     {
         var engine = new JsEngineFactory().Create();
+        var manager = Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.From(process).AcceptsManagerAgent ? ".manager(boss)" : "";
         return (JsCrew)engine.Evaluate($$"""
             const boss = agentBuilder().name("boss").role("Boss").goal("Lead the work").build();
             const analyst = agentBuilder().name("analyst").role("Analyst").goal("Analyze").build();
@@ -34,7 +39,7 @@ public sealed class JsCrewAsyncExecutionAdapterTests
             crewBuilder()
                 .name("watch").goal("Watch the market")
                 .process("{{process}}")
-                .manager(boss)
+                {{manager}}
                 .withAgents([boss, analyst])
                 .withTasks([gather, write])
                 .build();

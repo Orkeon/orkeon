@@ -30,8 +30,8 @@ internal static class ForgeBlueprintCompiler
 {
     /// <summary>
     /// Compiles <paramref name="blueprint"/> (structurally valid — run
-    /// <see cref="ForgeBlueprint.Validate"/> first) into the loader's DTO form and the
-    /// domain configuration. The verdict is a separate step (<see cref="Validate"/>), so a
+    /// <see cref="ForgeBlueprint.Validate"/> first: the mapper refuses a reference that names
+    /// nothing by an exception) into the loader's DTO form and the domain configuration. The verdict is a separate step (<see cref="Validate"/>), so a
     /// render and its validation always look at the same compilation.
     /// </summary>
     public static ForgeCompilation Compile(ForgeBlueprint blueprint, IReadOnlyList<ForgeFolder>? folders = null)
@@ -111,12 +111,12 @@ internal static class ForgeBlueprintCompiler
     }
 
     /// <summary>
-    /// The full validation verdict on a compiled blueprint: unknown tools, key references,
-    /// then the shared rules. The by-key reference checks live here of necessity, not
-    /// convenience — <c>YamlCrewMapper</c> maps an unresolvable <c>agent:</c> or dependency
-    /// name to null/nothing, so by the time <c>CrewDefinitionValidator</c> looks, the error
-    /// has been erased; only the pre-mapping side can still see it. No errors = fit to run;
-    /// warnings never block.
+    /// The full validation verdict on a compiled blueprint: deliverables outside the confirmed
+    /// folders, unknown tools, then the shared rules. The by-key references — the manager, each
+    /// task's agent and dependencies — are checked before compilation
+    /// (<see cref="ForgeBlueprint.Validate"/>): <c>YamlCrewMapper</c> refuses one that names
+    /// nothing, and a manager in a mode that has none, by an exception (GAP-33). No errors = fit
+    /// to run; warnings never block.
     /// </summary>
     public static ForgeValidationVerdict Validate(
         ForgeCompilation compilation,
@@ -142,21 +142,6 @@ internal static class ForgeBlueprintCompiler
                     errors.Add($"{ForgeErrorCodes.ToolUnknown}: agent '{key}' names tool '{tool}', which is not in the catalogue.");
             }
         }
-
-        foreach (var (key, task) in compilation.Tasks)
-        {
-            if (task.Agent is { } agent && !compilation.Agents.ContainsKey(agent))
-                errors.Add($"Task '{key}' names agent '{agent}', which does not exist.");
-
-            foreach (var dependency in task.Dependencies ?? [])
-            {
-                if (!compilation.Tasks.ContainsKey(dependency))
-                    errors.Add($"Task '{key}' depends on '{dependency}', which does not exist.");
-            }
-        }
-
-        if (compilation.Settings.ManagerAgent is { } manager && !compilation.Agents.ContainsKey(manager))
-            errors.Add($"'manager' names agent '{manager}', which does not exist.");
 
         var shared = CrewDefinitionValidator.Validate(compilation.Configuration);
         errors.AddRange(shared.Errors);

@@ -6,13 +6,15 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
 /// Architecture guard (STUDIO-42 D-04): an LLM provider reaches the runtime on the metered
-/// path, or its calls escape the token meter. The path has three entrances — the provider
+/// path, or its calls escape the token meter. The path has four entrances — the provider
 /// factory, which meters every vendor provider it builds, <c>AddOrkeonLlmProvider</c> (with its named-profile twin <c>AddOrkeonLlmProfile</c>),
-/// which meters a provider registered by hand, and <c>ManagerLlmResolver</c>, which meters the
-/// provider a C# crew gives its manager (<c>Crew.ManagerLlm</c>, GAP-19) — so a provider may be
-/// built only in the factory or in the very statement that hands it to <c>AddOrkeonLlmProvider</c>,
-/// and the meter itself is applied nowhere else (a second meter would count calls twice; at an
-/// entrance, <c>Wrap</c> leaves a provider already metered as it is).
+/// which meters a provider registered by hand, <c>ManagerLlmResolver</c>, which meters the
+/// provider a C# crew gives its manager (<c>Crew.ManagerLlm</c>, GAP-19), and
+/// <c>SequentialCrewOrchestrator</c>, which meters the provider a C# crew gives its planner
+/// (<c>Crew.PlanningLlm</c>, GAP-33) — so a provider may be built only in the factory or in the
+/// very statement that hands it to <c>AddOrkeonLlmProvider</c>, and the meter itself is applied
+/// nowhere else (a second meter would count calls twice; at an entrance, <c>Wrap</c> leaves a
+/// provider already metered as it is).
 /// </summary>
 /// <remarks>
 /// Pragmatic, like the other source guards of this suite: the provider types are discovered
@@ -35,6 +37,17 @@ public sealed partial class LlmProviderMeteringGuardTests
     /// resolves it.
     /// </summary>
     private const string ManagerLlmFile = "src/core/Orkeon.Infrastructure/Crew/ManagerLlmResolver.cs";
+
+    /// <summary>
+    /// The planner's entrance (GAP-33): a provider C# hands a crew for its planner
+    /// (<c>WithPlanningLlm</c>) is built by the host's own code too, and is metered where the run
+    /// resolves it, under the planning attribution already open there.
+    /// </summary>
+    private const string PlanningLlmFile = "src/core/Orkeon.Infrastructure/Orchestration/SequentialCrewOrchestrator.cs";
+
+    /// <summary>The four entrances of the metered path, where <c>MeteredLlmProvider.Wrap</c> may be called.</summary>
+    private static readonly IReadOnlySet<string> Entrances =
+        new HashSet<string>(StringComparer.Ordinal) { FactoryFile, RegistrationFile, ManagerLlmFile, PlanningLlmFile };
 
     /// <summary>
     /// Decorators: each wraps a provider it was handed, already obtained on the path. They
@@ -236,7 +249,7 @@ public sealed partial class LlmProviderMeteringGuardTests
 
     private static List<string> FindOffPathMetering(IReadOnlyDictionary<string, string> sources) =>
         sources
-            .Where(entry => entry.Key != FactoryFile && entry.Key != RegistrationFile && entry.Key != ManagerLlmFile)
+            .Where(entry => !Entrances.Contains(entry.Key))
             .SelectMany(entry =>
             {
                 var source = StripComments(entry.Value);

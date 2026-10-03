@@ -68,7 +68,10 @@ public sealed class Crew : AggregateRoot<CrewId>
     public string? MemoryProvider { get; private set; }
 
     /// <summary>
-    /// Gets the manager agent ID for hierarchical process.
+    /// Gets the crew's manager agent, one of its agents: the hierarchical manager — it assigns each
+    /// task and reviews its output — or the consensual crew's arbiter of the <c>ManagerDecision</c>
+    /// fallback. Neither runs a task. Null in the four other modes, which have no manager agent
+    /// (<see cref="ProcessType.AcceptsManagerAgent"/>, GAP-33).
     /// </summary>
     public AgentId? ManagerAgentId { get; private set; }
 
@@ -104,6 +107,7 @@ public sealed class Crew : AggregateRoot<CrewId>
     /// <c>manager_llm</c>): the hierarchical manager assigns and reviews on it, and the autonomous
     /// one hands the tasks out on it, in place of the manager agent's <c>llm:</c> profile or the
     /// host's default (GAP-19). A crew with one needs no manager agent: every agent is then a worker.
+    /// Set only in those two modes (<see cref="ProcessType.AcceptsManagerLlm"/>, GAP-33).
     /// </summary>
     public ILlmProvider? ManagerLlm { get; private set; }
 
@@ -118,8 +122,9 @@ public sealed class Crew : AggregateRoot<CrewId>
     public bool FullOutput { get; private set; }
 
     /// <summary>
-    /// Gets the provider the crew plans on (C# <c>WithPlanningLlm</c>); null plans on the host's
-    /// default LLM profile.
+    /// Gets the provider the crew plans on (C# <c>WithPlanningLlm</c>), metered like a provider the
+    /// host registers; null plans on the host's default LLM profile. Set only with
+    /// <see cref="Planning"/>: a crew that does not plan refuses one (GAP-33).
     /// </summary>
     public ILlmProvider? PlanningLlm { get; private set; }
 
@@ -193,6 +198,16 @@ public sealed class Crew : AggregateRoot<CrewId>
 
         if (!options.MemoryEnabled && !string.IsNullOrWhiteSpace(options.MemoryProvider))
             throw new ArgumentException(ProviderWithoutMemory(options.MemoryProvider), nameof(options));
+
+        if (!options.Planning && options.PlanningLlm is not null)
+            throw new ArgumentException(PlanningProviderWithoutPlanning, nameof(options));
+
+        // A manager where the mode uses one, never elsewhere (GAP-33): kept, it would be ignored.
+        if (options.ManagerAgentId is not null && !options.ProcessType.AcceptsManagerAgent)
+            throw new ArgumentException(ManagerAgentTheModeHasNoneOf(options.ProcessType), nameof(options));
+
+        if (options.ManagerLlm is not null && !options.ProcessType.AcceptsManagerLlm)
+            throw new ArgumentException(ManagerLlmTheModeNeverCalls(options.ProcessType), nameof(options));
 
         var crew = new Crew(CrewId.Create())
         {
@@ -307,11 +322,14 @@ public sealed class Crew : AggregateRoot<CrewId>
             Reason = reason
         });
 
-        // A manager agent that leaves is replaced by the first agent left — unless the crew has a
-        // manager LLM, which then manages on its own (GAP-19).
-        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == agentId)
+        // A hierarchical manager agent that leaves is replaced by the first agent left — unless the
+        // crew has a manager LLM, which then manages on its own (GAP-19). A consensual crew's
+        // arbiter that leaves leaves the crew without one: the manager is a member (GAP-33).
+        if (ManagerAgentId == agentId)
         {
-            ManagerAgentId = ManagerLlm == null ? _memberManager.FirstOrDefault() : null;
+            ManagerAgentId = ProcessType == ProcessType.Hierarchical && ManagerLlm == null
+                ? _memberManager.FirstOrDefault()
+                : null;
         }
     }
 
@@ -459,21 +477,43 @@ public sealed class Crew : AggregateRoot<CrewId>
     }
 
     /// <summary>
-    /// Changes the process type.
+    /// Changes the process type, and with it the crew's manager (GAP-33): in a mode with a manager
+    /// agent (<see cref="ProcessType.AcceptsManagerAgent"/>) the manager is
+    /// <paramref name="managerAgentId"/>, one of the crew's agents; in a mode without one the crew
+    /// keeps no manager agent — the agent that was one stays a member, hence a worker — and refuses
+    /// one passed with the change. A crew with a manager LLM turns only to a mode that reads it
+    /// (<see cref="ProcessType.AcceptsManagerLlm"/>).
     /// </summary>
+    /// <param name="newProcessType">The mode the crew turns to.</param>
+    /// <param name="managerAgentId">
+    /// The manager agent in the new mode — required by <see cref="ProcessType.Hierarchical"/> unless
+    /// the crew has a manager LLM, optional in <see cref="ProcessType.Consensual"/> (its arbiter),
+    /// refused elsewhere.
+    /// </param>
     public void ChangeProcessType(ProcessType newProcessType, AgentId? managerAgentId = null)
     {
+        ArgumentNullException.ThrowIfNull(newProcessType);
+
         if (Status == CrewStatus.Executing)
             throw new InvalidOperationException("Cannot change process type while crew is executing.");
+
+        if (managerAgentId is not null && !newProcessType.AcceptsManagerAgent)
+            throw new InvalidOperationException(ManagerAgentTheModeHasNoneOf(newProcessType));
+
+        if (ManagerLlm is not null && !newProcessType.AcceptsManagerLlm)
+            throw new InvalidOperationException(ManagerLlmTheModeNeverCalls(newProcessType));
 
         if (newProcessType == ProcessType.Hierarchical)
         {
             // A crew with a manager LLM needs no manager agent (GAP-19).
             if ((managerAgentId == null && ManagerLlm == null) || !_memberManager.Any())
                 throw new InvalidOperationException("Hierarchical process requires a manager agent.");
-
-            ManagerAgentId = managerAgentId;
         }
+
+        if (managerAgentId is not null && !_memberManager.Contains(managerAgentId))
+            throw new InvalidOperationException($"Agent {managerAgentId} is not in this crew.");
+
+        ManagerAgentId = newProcessType.AcceptsManagerAgent ? managerAgentId : null;
 
         var oldProcessType = ProcessType;
         ProcessType = newProcessType;
@@ -497,7 +537,11 @@ public sealed class Crew : AggregateRoot<CrewId>
             Verbose = update.Verbose.Value;
 
         if (update.Planning.HasValue)
+        {
+            if (!update.Planning.Value && PlanningLlm is not null)
+                throw new InvalidOperationException(PlanningProviderWithoutPlanning);
             Planning = update.Planning.Value;
+        }
 
         if (update.MaxRpm.HasValue)
         {
@@ -536,6 +580,38 @@ public sealed class Crew : AggregateRoot<CrewId>
         "in YAML, CrewBuilder.EnableMemory() in C# — or remove the provider (memoryProvider:, WithMemoryProvider).";
 
     /// <summary>
+    /// The refusal of a planning provider given to a crew that does not plan (GAP-33): the provider is
+    /// what the planner runs on, the switch is <see cref="Planning"/>.
+    /// </summary>
+    private const string PlanningProviderWithoutPlanning =
+        "The crew is given a planning provider (CrewBuilder.WithPlanningLlm, CrewCreateOptions.PlanningLlm) but does " +
+        "not plan: the provider is what the planner runs on, and a crew without planning makes no plan. Switch " +
+        "planning on — .Planning() in C#, planning: true in YAML — or remove the provider.";
+
+    /// <summary>
+    /// The refusal of a manager agent named for a mode that has none (GAP-33), with the two modes that
+    /// use one — and, for an autonomous crew, what its manager is instead.
+    /// </summary>
+    private static string ManagerAgentTheModeHasNoneOf(ProcessType processType) =>
+        $"The {processType.Value} process has no manager agent, yet the crew names one: in that mode the agent " +
+        "would only be one more worker. Remove the manager, or use the Hierarchical process — the manager assigns " +
+        "each task and reviews its output — or the Consensual one — it arbitrates when the vote fails " +
+        "(Orkeon:Consensus:FallbackStrategy: ManagerDecision)." +
+        (processType == ProcessType.Autonomous
+            ? " An autonomous crew's manager is an LLM: the host's default profile, or the provider " +
+              "CrewBuilder.WithManagerLlm sets in C#."
+            : string.Empty);
+
+    /// <summary>
+    /// The refusal of a manager LLM given to a crew whose mode never calls it (GAP-33), with the two
+    /// modes that read one.
+    /// </summary>
+    private static string ManagerLlmTheModeNeverCalls(ProcessType processType) =>
+        $"The {processType.Value} process reads no manager LLM, yet the crew is given one (CrewBuilder.WithManagerLlm): " +
+        "its provider would never be called. Remove it, or use the Hierarchical process — the manager assigns and " +
+        "reviews on it — or the Autonomous one — the manager hands the tasks out on it.";
+
+    /// <summary>
     /// Updates crew configuration.
     /// Convenience overload that delegates to <see cref="UpdateConfiguration(CrewConfigurationUpdate)"/>.
     /// </summary>
@@ -565,14 +641,15 @@ public sealed class Crew : AggregateRoot<CrewId>
 #pragma warning restore S107
 
     /// <summary>
-    /// Sets the manager agent for hierarchical process.
+    /// Sets the manager agent, one of the crew's agents: the hierarchical manager, or the consensual
+    /// crew's arbiter. A mode without a manager agent refuses it (GAP-33).
     /// </summary>
     public void SetManagerAgent(AgentId agentId)
     {
         ArgumentNullException.ThrowIfNull(agentId);
 
-        if (ProcessType != ProcessType.Hierarchical)
-            throw new InvalidOperationException("Manager agent is only applicable for hierarchical process.");
+        if (!ProcessType.AcceptsManagerAgent)
+            throw new InvalidOperationException(ManagerAgentTheModeHasNoneOf(ProcessType));
 
         if (!_memberManager.Contains(agentId))
             throw new InvalidOperationException($"Agent {agentId} is not in this crew.");
@@ -597,7 +674,8 @@ public sealed class Crew : AggregateRoot<CrewId>
         if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == null && ManagerLlm == null)
             validationResult.AddError(nameof(ManagerAgentId), "Hierarchical process requires a manager agent or a manager LLM.");
 
-        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId != null && !_memberManager.Contains(ManagerAgentId))
+        // In both modes with a manager agent — the hierarchical manager, the consensual arbiter (GAP-33).
+        if (ProcessType.AcceptsManagerAgent && ManagerAgentId != null && !_memberManager.Contains(ManagerAgentId))
             validationResult.AddError(nameof(ManagerAgentId), "Manager agent must be a member of the crew.");
 
         return validationResult;

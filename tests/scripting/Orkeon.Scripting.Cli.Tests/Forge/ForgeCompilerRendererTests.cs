@@ -43,11 +43,11 @@ public class ForgeBlueprintCompilerTests
     }
 
     [Fact]
-    public void A_ghost_agent_reference_is_caught_before_the_mapping_erases_it()
+    public void A_ghost_agent_reference_is_refused_before_the_compilation()
     {
-        // YamlCrewMapper maps an unresolvable `agent:` to AssignedAgentId = null, so the
-        // shared validator cannot see the mistake — the pre-mapping check is the only one
-        // that still can. Same story for a ghost dependency.
+        // GAP-33: the mapper no longer erases a reference that names nothing, it refuses it — by an
+        // exception, which would end the session in the render or validate stage. The plan's own
+        // check names it first, where blueprint_submit answers the model. Same for a ghost dependency.
         var json = """
             {
               "crew": { "name": "x", "goal": "g" },
@@ -56,15 +56,14 @@ public class ForgeBlueprintCompilerTests
             }
             """;
 
-        var compilation = ForgeBlueprintCompiler.Compile(Parse(json));
-        var verdict = ForgeBlueprintCompiler.Validate(compilation, ForgeDocuments.KnownTools);
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
 
-        Assert.Contains(verdict.Errors, e => e.Contains("'ghost'", StringComparison.Ordinal));
-        Assert.Contains(verdict.Errors, e => e.Contains("'nowhere'", StringComparison.Ordinal));
+        Assert.Contains(errors, e => e.Contains("'ghost'", StringComparison.Ordinal) && e.Contains("Agents: a", StringComparison.Ordinal));
+        Assert.Contains(errors, e => e.Contains("'nowhere'", StringComparison.Ordinal) && e.Contains("Tasks: t", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void A_ghost_manager_is_caught_too()
+    public void A_ghost_manager_is_refused_before_the_compilation_too()
     {
         var json = """
             {
@@ -75,10 +74,79 @@ public class ForgeBlueprintCompilerTests
             }
             """;
 
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+
+        Assert.Contains(errors, e => e.Contains("'phantom'", StringComparison.Ordinal) && e.Contains("Agents: a", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("sequential")]
+    [InlineData("parallel")]
+    [InlineData("graph")]
+    [InlineData("autonomous")]
+    [InlineData(null)]
+    public void A_manager_in_a_mode_without_one_is_refused_before_the_compilation(string? process)
+    {
+        // GAP-33: the mapper refuses the manager of a mode that has none. Before the compilation, the
+        // plan says so in words the assistant can act on.
+        var processJson = process is null ? "" : $""", "process": "{process}" """;
+        var json = $$"""
+            {
+              "crew": { "name": "x", "goal": "g"{{processJson}} },
+              "agents": [ { "key": "chef", "role": "Chef", "goal": "g" }, { "key": "a", "role": "r", "goal": "g" } ],
+              "tasks": [ { "key": "t", "description": "d", "expectedOutput": "o", "agent": "a" } ],
+              "manager": "chef"
+            }
+            """;
+
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+
+        var error = Assert.Single(errors);
+        Assert.Contains("'manager'", error, StringComparison.Ordinal);
+        Assert.Contains($"'{process ?? "sequential"}'", error, StringComparison.Ordinal);
+        Assert.Contains("hierarchical", error, StringComparison.Ordinal);
+        Assert.Contains("consensual", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_consensual_plan_keeps_its_manager_as_the_crews_arbiter()
+    {
+        var json = """
+            {
+              "crew": { "name": "x", "goal": "g", "process": "consensual" },
+              "agents": [ { "key": "chair", "role": "Chair", "goal": "g" }, { "key": "a", "role": "r", "goal": "g" } ],
+              "tasks": [ { "key": "t", "description": "d", "expectedOutput": "o", "agent": "a" } ],
+              "manager": "chair"
+            }
+            """;
+
         var compilation = ForgeBlueprintCompiler.Compile(Parse(json));
         var verdict = ForgeBlueprintCompiler.Validate(compilation, ForgeDocuments.KnownTools);
 
-        Assert.Contains(verdict.Errors, e => e.Contains("'phantom'", StringComparison.Ordinal));
+        Assert.Empty(verdict.Errors);
+        Assert.Equal(compilation.Configuration.Agents.Single(a => a.Role == "Chair").Id, compilation.Configuration.ManagerAgentId);
+    }
+
+    [Fact]
+    public void An_edited_plan_with_a_misplaced_manager_is_a_repairable_error_not_an_exception()
+    {
+        // The arbitration's edit and `forge resume --edit` validate a hand-amended plan in full: a
+        // manager on a sequential crew is a recoverable FORGE-BLUEPRINT-INVALID, never a throw of
+        // the compilation that ends the session.
+        var json = ForgeDocuments.ValidBlueprint.Replace(
+            "\"tasks\": [", "\"manager\": \"redacteur\",\n  \"tasks\": [", StringComparison.Ordinal);
+        using var output = new StringWriter();
+
+        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output));
+
+        Assert.Null(edited);
+        using var line = System.Text.Json.JsonDocument.Parse(Assert.Single(
+            output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)));
+        var error = line.RootElement;
+        Assert.Equal("error", error.GetProperty("kind").GetString());
+        Assert.Equal(ForgeErrorCodes.BlueprintInvalid, error.GetProperty("code").GetString());
+        Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.Contains("'redacteur'", error.GetProperty("message").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]

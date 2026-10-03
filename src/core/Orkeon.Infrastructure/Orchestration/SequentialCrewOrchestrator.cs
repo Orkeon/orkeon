@@ -47,6 +47,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly IMemoryCoordinator? _memoryCoordinator;
     private readonly ITaskRepository? _taskRepository;
     private readonly ICrewExecutionHook? _executionHook;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -58,7 +59,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// <paramref name="taskRepository"/> and <paramref name="agentRepository"/> show the crew's planner
     /// its tasks and agents (GAP-31): a crew with <c>planning: true</c> needs both. The
     /// <paramref name="executionHook"/> — the one the strategies report to — hears a run that fails
-    /// before its strategy reported anything, from the orchestrator itself (GAP-32).
+    /// before its strategy reported anything, from the orchestrator itself (GAP-32). The
+    /// <paramref name="usageSink"/> — the host's token meter — counts the calls of the provider a C#
+    /// crew gives its planner (<c>WithPlanningLlm</c>, GAP-33); without one, nothing is metered here.
     /// </remarks>
 #pragma warning disable S107 // Methods should not have too many parameters — DI constructor with optional services
     public SequentialCrewOrchestrator(
@@ -75,7 +78,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
         IMemoryCoordinator? memoryCoordinator = null,
         ITaskRepository? taskRepository = null,
-        ICrewExecutionHook? executionHook = null)
+        ICrewExecutionHook? executionHook = null,
+        Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -98,6 +102,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _memoryCoordinator = memoryCoordinator;
         _taskRepository = taskRepository;
         _executionHook = executionHook;
+        _usageSink = usageSink;
     }
 
     /// <summary>
@@ -391,10 +396,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// <summary>
     /// The crew's plan when it asks for one (<c>planning: true</c>, <c>.Planning(true)</c>,
     /// <c>crewBuilder().planning()</c>): one step-by-step plan per task, made by the crew's planning
-    /// provider when C# set one (<c>WithPlanningLlm</c>), else by the host's default profile — where
-    /// the planner stays (GAP-29, GAP-19) — from what the crew declares: its goal, the run's
-    /// variables, each task by number with its description, expected output, dependencies and agent
-    /// (GAP-31). <see cref="DomainExecutionPlan.Empty"/> when the crew does not plan.
+    /// provider when C# set one (<c>WithPlanningLlm</c>, metered here as the host's own — GAP-33),
+    /// else by the host's default profile — where the planner stays (GAP-29, GAP-19) — from what
+    /// the crew declares: its goal, the run's variables, each task by number with its description,
+    /// expected output, dependencies and agent (GAP-31). <see cref="DomainExecutionPlan.Empty"/>
+    /// when the crew does not plan.
     /// </summary>
     /// <remarks>
     /// The plan is advice (decision 2.5): a reply the planner cannot read twice, a task it leaves
@@ -412,7 +418,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             return DomainExecutionPlan.Empty;
 
         var crewName = crew.Name ?? crew.Id.ToString();
-        var planningLlm = crew.PlanningLlm ?? DefaultPlanningLlm(crew);
+        // The provider C# gave the planner is the host's own code, built off the metered path: it is
+        // metered here, where the run resolves it, unless it already is — the rule of the manager's
+        // (GAP-19, GAP-33). The default profile's comes from the container, metered there.
+        var planningLlm = crew.PlanningLlm is { } own
+            ? Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(own, _usageSink)
+            : DefaultPlanningLlm(crew);
         if (planningLlm.Capabilities.ReplaysPrompt)
         {
             LogPlanningSkippedOnEcho(crewName);
@@ -493,7 +504,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     : null))
             .ToList();
 
-        var managerRunsNoTask = crew.ProcessType == ProcessType.Hierarchical || crew.ProcessType == ProcessType.Consensual;
+        // The modes with a manager agent are the modes where it runs no task (GAP-33).
+        var managerRunsNoTask = crew.ProcessType.AcceptsManagerAgent;
         var workers = agents.Values
             .Where(agent => !(managerRunsNoTask && agent.Id == crew.ManagerAgentId))
             .Select(agent => Sheet(agent, agent.Tools))

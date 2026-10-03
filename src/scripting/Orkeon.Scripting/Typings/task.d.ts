@@ -12,9 +12,16 @@ declare global {
     interface TaskBuilder<TIn = unknown, TOut = unknown> {
         name(value: string): this;
         description(value: string): this;
-        /** The built agent that performs this task. */
+        /**
+         * The built agent that performs this task, one of the crew's (`withAgent`): an agent the
+         * crew does not hold is refused when the crew is loaded.
+         */
         agent(agent: Agent<TIn, TOut>): this;
         expectedOutput(value: string): this;
+        /**
+         * A task this one waits for and reads, one of the crew's (`withTask`): a task the crew does
+         * not hold is refused when the crew is loaded.
+         */
         withContext(task: Task<unknown, unknown>): this;
         withContexts(tasks: readonly Task<unknown, unknown>[]): this;
         expect(schema: JsonSchema): this;

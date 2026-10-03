@@ -25,7 +25,7 @@ aussi — et route selon ce qu'il trouve.
 | le fichier finit par | `await crew.run()` | `globalThis.crew = crew` |
 | moteur | `ScriptHost.RunFromFileAsync` — le propre `await crew.run()` du script | runner partagé → `JsCrewConfigurationAdapter` → `ICrewOrchestrationService` |
 | exécute les `.body()` d'agent | oui, un par agent, dans l'ordre de déclaration | **non — ignoré** |
-| honore `withTask` / `process` / `manager` | **non — ignoré** | oui |
+| honore `withTask` / `process` / `manager` | **non — ignoré** | oui — `manager` là où le process en a un (`hierarchical`, `consensual`), refusé ailleurs |
 | `orkeon run --validate` | échoue (*did not assign globalThis.crew*) — **après avoir exécuté le script** : le charger l'évalue, `await crew.run()` compris | fonctionne — le script est évalué, la crew n'est pas exécutée |
 
 Ce sont des opposés, pas des variantes. La boucle procédurale (en JavaScript depuis SCR-25,
@@ -77,7 +77,7 @@ déduit.
 | `withAgent(s)` — un agent construit ; tout le reste est refusé | ✅ | ✅ |
 | `withTask(s)` — une tâche construite ; tout le reste est refusé | ❌ ignoré | ✅ **tout l'intérêt** |
 | `process` | ❌ tag de télémétrie seulement | ✅ (`"graph"` choisit la stratégie de reprise-et-routage du domaine, pas une topologie dessinée par le script — voir plus bas) |
-| `manager` | ❌ | ✅ — le manager hiérarchique assigne et revoit sur le `.llm(...)` de cet agent : `llm.profile("claude")` le place sur ce profil |
+| `manager` | ❌ | ✅ — `process("hierarchical")` : le manager assigne et revoit sur le `.llm(...)` de cet agent (`llm.profile("claude")` le place sur ce profil) ; `process("consensual")` : l'arbitre du repli `ManagerDecision` ; les quatre autres process le refusent quand le run adapte la crew, de même qu'un agent d'une autre crew |
 | `memory` | ❌ | ✅ |
 | `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
 | `budget` | ✅ | ❌ ignoré |
@@ -128,6 +128,11 @@ les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'atten
 `.process("parallel")` elle n'a pas d'effet propre ; sous les quatre autres modes la crew est
 refusée quand le run l'adapte, en nommant la tâche (voir
 [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
+
+L'`agent` d'une tâche et les tâches de son `withContext(s)` sont ceux de la crew (`withAgent(s)`,
+`withTask(s)`) : un agent ou une tâche que la crew ne tient pas est refusé quand le run adapte la
+crew, le message nommant la tâche, l'appel et ce que la crew a — la tâche tournait sur un autre
+agent, ou sans attendre ce qu'elle citait.
 
 ### `toolBuilder()`
 

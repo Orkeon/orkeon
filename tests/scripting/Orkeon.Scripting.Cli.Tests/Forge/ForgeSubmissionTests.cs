@@ -73,6 +73,24 @@ public class ForgeSubmissionTests
     }
 
     [Fact]
+    public async Task A_blueprint_with_a_manager_on_a_sequential_crew_is_rejected_for_the_model_to_repair()
+    {
+        // GAP-33: a manager means something in a hierarchical or consensual crew only. The rejection
+        // goes back to the model as the tool result, and nothing reaches the box.
+        var box = new ForgeSubmissionBox();
+        var tool = new BlueprintSubmitTool(box);
+        var json = ForgeDocuments.ValidBlueprint.Replace(
+            "\"tasks\": [", "\"manager\": \"redacteur\",\n  \"tasks\": [", StringComparison.Ordinal);
+
+        var rejected = await tool.ExecuteAsync(json, TestContext.Current.CancellationToken);
+
+        Assert.StartsWith("REJECTED", rejected.Output, StringComparison.Ordinal);
+        Assert.Contains("'manager'", rejected.Output, StringComparison.Ordinal);
+        Assert.Contains("'sequential'", rejected.Output, StringComparison.Ordinal);
+        Assert.Equal((null, null), box.Take());
+    }
+
+    [Fact]
     public void The_box_resets_and_takes_atomically()
     {
         var box = new ForgeSubmissionBox();

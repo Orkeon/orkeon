@@ -26,7 +26,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true : la crew range le résultat de chaque tâche et rappelle les plus proches avant chaque tâche (embedder requis au kickoff) ; false : rien n'est rangé ni rappelé
 memoryProvider: string    # Exige memory: true (refusé sinon). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning. Le TYPE seul : la connexion vient de la section hôte (Orkeon:Redis, Orkeon:Sqlite, …). Absent : le magasin par défaut de l'hôte (Memory:Provider)
 planning: bool            # default: false. true : avant la première tâche, un planificateur (le profil par défaut de l'hôte) écrit un plan pas à pas par tâche, que la tâche lit dans son prompt, dans chaque mode ; il ne change ni l'ordre ni les agents
-managerAgent: string      # Hiérarchique : le manager — requis (omis, le chargement échoue) ; il assigne et revoit sur son propre bloc llm:, profil et modèle. Consensual : l'arbitre du repli ManagerDecision
+managerAgent: string      # La clé d'un des agents de la crew (tout autre nom fait échouer le chargement, en les listant). Hiérarchique : le manager — requis (omis, le chargement échoue) ; il assigne et revoit sur son propre bloc llm:, profil et modèle. Consensual : l'arbitre du repli ManagerDecision (inactif, avec un avertissement au début du run, sous un autre repli). Tout autre process : refusé au chargement
 graphConfig: {…}          # Réglages du mode Graph, seul réglage de circuit breaker d'une crew (voir la section dédiée)
 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
@@ -102,8 +102,8 @@ tasks:
   <task_id>:              # Clé = identifiant unique de la tâche
     description: string   # Description détaillée de la tâche (requis)
     expectedOutput: string # Format/contenu attendu en résultat (requis)
-    agent: string         # Clé de l'agent assigné à la tâche (une clé qui ne désigne aucun agent laisse la tâche non assignée)
-    dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue est ignorée ; un cycle fait échouer le chargement)
+    agent: string         # Clé de l'agent assigné à la tâche (une clé qui ne désigne aucun agent fait échouer le chargement, en listant les agents de la crew)
+    dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue fait échouer le chargement, en listant les tâches de la crew ; un cycle aussi)
     asyncExecution: bool  # default: false — sequential : tourne pendant les tâches suivantes, une dépendante l'attend ; parallel : sans effet propre ; autres modes : true fait échouer le chargement
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte

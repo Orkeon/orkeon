@@ -10,7 +10,7 @@ The three main entities are built via fluent builders defined in the Domain laye
 
 - `AgentBuilder` (`Orkeon.Domain.Agent`): configures role, goal, backstory, tools, execution constraints, prompt templates, tool access policy
 - `CrewTaskBuilder` (`Orkeon.Domain.Task`): configures description, expected output, priority, dependencies, output JSON schema, async mode (`.Async()` — honoured by a sequential crew, refused by `CrewBuilder.Build()` outside Sequential and Parallel), human intervention
-- `CrewBuilder` (`Orkeon.Domain.Crew`): configures name, goal, process type, agents, tasks, planning, memory, callbacks, dynamic agents, and the manager of a hierarchical crew — an agent (`.Hierarchical(manager)`, `.WithManager(agent)`), or a provider of its own (`.WithManagerLlm(provider)`, CrewAI's `manager_llm`: the manager assigns and reviews on it, the crew then needs no manager agent and every agent works)
+- `CrewBuilder` (`Orkeon.Domain.Crew`): configures name, goal, process type, agents, tasks, planning (`.Planning()`, on the provider `.WithPlanningLlm(provider)` sets — refused without `.Planning()`), memory, callbacks, dynamic agents, and the manager of a hierarchical crew — an agent (`.Hierarchical(manager)`, `.WithManager(agent)`), or a provider of its own (`.WithManagerLlm(provider)`, CrewAI's `manager_llm`: the manager assigns and reviews on it, the crew then needs no manager agent and every agent works). A manager agent is also a consensual crew's arbiter; a manager LLM also hands an autonomous crew's tasks out. `Build()` refuses either in a process that has none
 
 Each builder internally delegates to the factory methods `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` and throws a `BuilderValidationException` if the required fields are missing.
 
@@ -38,7 +38,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true: stores each task's result and recalls the closest ones before each task (needs an embedder)
 memoryProvider: string    # needs memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — the type; the host section (Orkeon:Redis, …) gives the connection; unset: the host's default store
 planning: bool            # default: false. true: a step-by-step plan per task, written before the first one and read by each task in its prompt; never reorders the tasks
-managerAgent: string      # Required when process = "hierarchical": the manager, on its own llm: block
+managerAgent: string      # An agent's key. Required when process = "hierarchical": the manager, on its own llm: block; optional when "consensual": the ManagerDecision arbiter; refused by the other processes
 mounts: [string]          # Virtual roots the crew uses ("/output", or "<id>|/output" to pin one settings entry)
 
 agents:
@@ -61,8 +61,8 @@ tasks:
   <task_id>:              # Key = unique task identifier
     description: string   # Detailed task description (required)
     expectedOutput: string # Expected output format/content (required)
-    agent: string         # ID of the agent assigned to the task
-    dependencies: [string] # IDs of prerequisite tasks (guarantees ordering)
+    agent: string         # Key of the agent assigned to the task (an unknown key fails the load)
+    dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key fails the load)
     asyncExecution: bool  # default: false — sequential: runs alongside the next tasks, a dependant waits for it; parallel: no effect of its own; other modes: true fails the load
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data

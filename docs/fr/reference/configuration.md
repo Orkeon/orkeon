@@ -158,7 +158,8 @@ Qui tourne sur quel profil :
   construit au premier appel RAG qui en a besoin, jamais au démarrage.
 - **Le planificateur, le Guardian, les juges d'`Evaluation` et les analyses de la mémoire
   cognitive** restent sur le profil par défaut : ce sont des services de l'hôte, pas des rôles de
-  crew (`CrewBuilder.WithPlanningLlm` garde la main en C#).
+  crew (`CrewBuilder.WithPlanningLlm` garde la main en C#, avec `.Planning()`, ses appels comptés
+  comme ceux de l'hôte).
 
 Une section qui ne contient que `Profiles` ne configure aucun fournisseur par défaut — le défaut
 est alors le provider écho, avec l'avertissement habituel. `orkeon-host` peut restreindre les

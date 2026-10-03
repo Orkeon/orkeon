@@ -7,8 +7,8 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 namespace Orkeon.Infrastructure.Configuration;
 
 /// <summary>
-/// Validates a mapped <see cref="CrewConfiguration"/> (basic fields, agents, tasks,
-/// hierarchical-process rules) and detects circular task dependencies. Extracted from
+/// Validates a mapped <see cref="CrewConfiguration"/> (basic fields, agents, tasks, the manager
+/// and the modes that have one) and detects circular task dependencies. Extracted from
 /// <see cref="YamlCrewDefinitionLoader"/> (R4.2 god-file decomposition) so the validation
 /// and cycle-detection logic is testable in isolation.
 /// </summary>
@@ -26,6 +26,7 @@ public static class CrewDefinitionValidator
         ValidateAgents(config, errors);
         ValidateTasks(config, errors);
         ValidateHierarchicalProcess(config, errors);
+        ValidateManagerMode(config, errors);
         ValidateConsensualManager(config, errors);
         ValidateAsyncExecution(config, errors);
         ValidateMounts(config, errors);
@@ -158,6 +159,25 @@ public static class CrewDefinitionValidator
         var agentIds = config.Agents?.Select(a => a.Id).ToHashSet() ?? [];
         if (!agentIds.Contains(config.ManagerAgentId))
             errors.Add($"Manager agent '{config.ManagerAgentId}' is not defined in agents.");
+    }
+
+    /// <summary>
+    /// A manager agent means something in Hierarchical and Consensual only (GAP-33): elsewhere it would
+    /// run tasks like any other agent. The YAML and <c>.ork.ts</c> loaders refuse it first, naming the
+    /// key as the author wrote it; this covers a configuration built in code, naming the agent by its
+    /// role.
+    /// </summary>
+    private static void ValidateManagerMode(CrewConfiguration config, List<string> errors)
+    {
+        if (config.ManagerAgentId is null || config.Process.AcceptsManagerAgent)
+            return;
+
+        var manager = config.Agents?.FirstOrDefault(a => a.Id == config.ManagerAgentId);
+        var named = manager is null ? $"'{config.ManagerAgentId}'" : $"'{manager.Role}'";
+        errors.Add(
+            $"Manager agent {named} is set, but the {config.Process.Value} process has no manager: the agent would only be " +
+            "one more worker. Remove it, or use the Hierarchical process (the manager assigns each task and reviews its " +
+            "output) or the Consensual one (it arbitrates the vote under the ManagerDecision fallback).");
     }
 
     /// <summary>

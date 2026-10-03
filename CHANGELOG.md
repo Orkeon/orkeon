@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a crew's manager applies where its mode uses one and is refused elsewhere, the planner's provider is metered, and a reference that names nothing fails the load **[breaking]**
+
+What a crew wrote about its manager, its planner and its tasks' references was read, then dropped
+without a word (GAP-33):
+
+- **A manager where the mode uses one.** A manager agent means something in two modes: Hierarchical —
+  it assigns each task and reviews its output — and Consensual — it arbitrates the vote under the
+  `ManagerDecision` fallback. On a `sequential`, `parallel`, `graph` or `autonomous` crew,
+  `managerAgent:` (`.manager(agent)` in `.ork.ts`; `.WithManager(agent)`, `.WithManagerId(id)` or
+  `.Hierarchical(agent)` in C#) was kept, then ignored: the agent ran tasks like any other. In C#,
+  `.WithManagerLlm(provider)` on a `sequential`, `parallel`, `graph` or `consensual` crew was never
+  called. Both are refused now — by the YAML loader, the `.ork.ts` adapter, `CrewDefinitionValidator`,
+  `CrewBuilder.Build()` and `Crew.Create(CrewCreateOptions)` — with a message that names the key and
+  the mode and says what to do: remove the manager, or use `hierarchical` or `consensual` (an
+  autonomous crew's manager is an LLM: the default profile, or `WithManagerLlm` in C#). Two predicates
+  of the `ProcessType` value object carry the rule, `AcceptsManagerAgent` and `AcceptsManagerLlm`, and
+  the domain keeps it: `Crew.SetManagerAgent` accepts a consensual crew (it refused every mode but
+  Hierarchical); `ChangeProcessType` sets the agent passed in a mode with a manager agent, drops the
+  crew's manager — still a member, hence a worker — when it turns to a mode without one, refuses an
+  agent passed with such a mode, and refuses to turn a crew with a manager LLM to a mode that never
+  calls it; `Validate` checks that a consensual crew's manager is a member, and a consensual crew
+  whose manager leaves has no arbiter left. Examples 86 and 100 declared a manager their mode
+  ignored: it is gone, and the agent keeps its tasks.
+- **A manager or a task reference that names nothing fails the load.** A `managerAgent:` that named no
+  agent — a typo — was erased: a hierarchical crew was told it "requires a manager agent", a
+  consensual crew lost its arbiter. A task's `agent:` or dependency that named nothing was erased the
+  same way: the task ran on another agent, or without waiting for what it cited. Each fails the YAML
+  load now, naming what was written and listing the crew's agents or tasks, every faulty reference
+  at once. In `.ork.ts`, a task whose `.agent(...)` or `.withContext(...)` is not in the crew, and a
+  `.manager(...)` another crew holds, fail the adaptation the same way. The forge checks its plan's
+  manager — its key and the mode — and each task's agent and dependencies before it compiles
+  (`ForgeBlueprint.Validate`): the loader's refusals come back to the assistant as repairable errors
+  (`blueprint_submit`, the validate stage, an edited plan) instead of ending the session, and its
+  `manager` field says "hierarchical or consensual".
+- **A consensual manager says when it decides nothing.** The manager of a consensual crew neither
+  answers nor votes: it arbitrates only when the host's fallback is `ManagerDecision`, and the
+  default is `AcceptBestScore`. Under any other fallback the run now warns at its start, naming the
+  agent and the host's fallback, with the two remedies — `Orkeon:Consensus:FallbackStrategy:
+  ManagerDecision`, or no `managerAgent:` so that the agent answers and votes. Example 17's README
+  says when its moderator decides.
+- **The planner's provider is metered.** The provider C# gives the planner
+  (`CrewBuilder.WithPlanningLlm`) was called as it was: its tokens reached neither `cost.updated` nor
+  `run.finished`, although the documentation said "metered as `operation: planning`".
+  `SequentialCrewOrchestrator` now meters it where the run resolves it, under the planning
+  attribution — a provider already metered is read once per call —, through a new optional last
+  constructor parameter, `ILlmUsageSink? usageSink`, which the container fills; the metering guard
+  declares it the fourth entrance of the metered path. A planning provider without `.Planning()` was
+  lost without a word: `Crew.Create` refuses it — from `CrewBuilder.Build()` and `CrewCreateOptions`
+  alike —, and `UpdateConfiguration(planning: false)` refuses to switch off a crew that carries one.
+
+Documented in [Process types](docs/orchestration/process-types.md), [Autonomous](docs/orchestration/autonomous.md),
+[YAML schema](docs/architecture/yaml-schema.md), [YAML and builders](docs/getting-started/yaml-and-builders.md),
+[Scripting DSL](docs/reference/scripting-dsl.md), [Configuration](docs/reference/configuration.md) and
+[Limitations](docs/reference/limitations.md).
+
+Breaking: a manager agent on a sequential, parallel, graph or autonomous crew, a manager LLM on a
+sequential, parallel, graph or consensual crew, a `managerAgent:`, task `agent:` or dependency that
+names nothing, a `.ork.ts` task whose agent or context task is not in its crew, and
+`WithPlanningLlm` without `Planning` no longer load or build; `Crew.SetManagerAgent`,
+`Crew.ChangeProcessType` and `Crew.UpdateConfiguration` follow the same rules.
+
+Migration: remove a manager the mode does not use — the agent keeps its tasks — or turn the crew
+`hierarchical` or `consensual`; fix the key a reference names — the message lists the crew's agents
+or tasks; add the agent or task a `.ork.ts` reference cites to the crew (`withAgent`, `withTask`);
+call `.Planning()` on a crew given `WithPlanningLlm`, or remove the provider.
+
 ### Added — Studio's model settings are the host's LLM profiles: a crew names one with `profile:`
 
 Since named profiles (GAP-17), a crew can write `llm: { profile: claude }` — provided the host's

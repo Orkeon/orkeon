@@ -1,6 +1,6 @@
 # 17. Simulation de Débat Scientifique
 
-> Three agents embody opposing scientific positions, supervised by a Moderator Manager. A structured communication protocol prevents loops and forces convergence toward a balanced synthesis with citations.
+> Three agents embody opposing scientific positions and vote on one another's answers; a moderator arbitrates a vote that ends without consensus. A structured communication protocol prevents loops and forces convergence toward a balanced synthesis with citations.
 
 ## Quality
 
@@ -9,11 +9,24 @@
 ## Architecture
 
 - **Process**: `Consensual`
-- **Agents**: 4 — Moderateur (Manager), Defenseur Position A (Worker), Defenseur Position B (Worker), Voix Moderee (Worker)
+- **Agents**: 4 — Moderateur (`managerAgent:`, the arbiter — see below), Defenseur Position A (Worker), Defenseur Position B (Worker), Voix Moderee (Worker)
 - **Tools**: `web_scrape`, `http_api`, `json_tool`
 - **Memory**: `InMemory`
 - **Key features**: Communication `Consensus` protocol, configurable iteration limit, `IContextWindowManager`
 - **Runner**: `standard`
+
+**The moderator decides only when the vote does not.** It is the crew's `managerAgent:`, and in a
+consensual crew the manager neither answers nor votes: the three debaters answer each task and rank
+one another's answers. The moderator steps in only when a task ends its voting rounds without a
+consensus **and** the host's fallback is `ManagerDecision` — then it picks the answer among the last
+round's. That fallback is a host setting, `AcceptBestScore` by default:
+
+```json
+{ "Orkeon": { "Consensus": { "FallbackStrategy": "ManagerDecision" } } }
+```
+
+On the default fallback the moderator decides nothing, and the run says so with a warning at its
+start ([Consensual mode](../../../docs/orchestration/process-types.md#4-consensual--voting-and-consensus)).
 
 ## Prerequisites
 
@@ -37,6 +50,6 @@ orkeon run examples/02-science-research/17-scientific-debate/config.yaml \
 
 ## What this example demonstrates
 
-- Consensual process with manager-moderated scientific debate
+- Consensual process: the debaters vote, the moderator arbitrates a vote without consensus (under the `ManagerDecision` fallback)
 - Anti-loop protocol ensuring debates converge to actionable synthesis
 - Multi-perspective evidence evaluation with balanced synthesis output

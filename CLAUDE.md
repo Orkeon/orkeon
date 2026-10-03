@@ -256,6 +256,8 @@ Each provider declares an `LlmProviderCapabilities` (Domain value object, expose
 
 In every mode a failed task fails the crew and its dependants are skipped (`CrewRunOutcome`, shared by the six strategies), so `orkeon run` exits 2; Graph sizes its circuit breaker from the crew (`tasks × (1 + maxRetryCycles)` visits) unless `graphConfig` sets explicit bounds.
 
+A manager agent (`managerAgent:`, `.manager(agent)`, `WithManager`) exists in Hierarchical (assigns and reviews) and Consensual (the `ManagerDecision` arbiter; a warning at run start when the host's fallback is another) only, a manager LLM (C# `WithManagerLlm`) in Hierarchical and Autonomous only: elsewhere both are refused at load and build (`ProcessType.AcceptsManagerAgent` / `AcceptsManagerLlm`). A `managerAgent:`, task `agent:` or dependency that names nothing fails the load; `WithPlanningLlm` needs `.Planning()` and is metered by `SequentialCrewOrchestrator` (GAP-33).
+
 **Autonomous Orchestration** (key components):
 - `AgentExecutionBudget` (Domain) — 5-dimension budget: tool calls, delegation depth, wall time, tokens, spawned agents. Thread-safe, presets (Strict/Default/Permissive), child budget derivation.
 - `IAgentChannel` (Application) — Bidirectional A2A communication (request/response + broadcast)

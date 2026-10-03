@@ -397,9 +397,9 @@ public partial class CrewFactory : ICrewFactory
         if (!string.IsNullOrWhiteSpace(config.Name))
             builder.Name(config.Name);
 
-        // A consensual crew's manager is the arbiter of the ManagerDecision fallback (GAP-04).
-        if ((config.Process == ProcessType.Hierarchical || config.Process == ProcessType.Consensual)
-            && config.ManagerAgentId is not null
+        // The manager, as configured: the validation refused it in a mode that has none (GAP-33), and
+        // the builder would too. A consensual crew's manager is the arbiter of ManagerDecision (GAP-04).
+        if (config.ManagerAgentId is not null
             && agentMap.TryGetValue(config.ManagerAgentId.ToString(), out var managerAgent))
         {
             builder.WithManager(managerAgent);

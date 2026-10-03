@@ -9,7 +9,7 @@
 ## Architecture
 
 - **Process**: `parallel`
-- **Agents**: 5 — Home Supervisor (manager), Heating, Lighting, Security, Energy
+- **Agents**: 5 — Home Supervisor (coordinates the subsystems through its own tasks), Heating, Lighting, Security, Energy
 - **Tools**: `http_api`, `json_tool`
 - **Memory**: `Redis` (shared real-time state)
 - **Key features**: A2A protocol (AgentCard, AgentSkill), Broadcast communication, agent discovery, conflict resolution

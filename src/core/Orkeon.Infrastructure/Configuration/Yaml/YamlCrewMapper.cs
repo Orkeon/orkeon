@@ -40,10 +40,13 @@ public sealed partial class YamlCrewMapper
 
         var process = ParseProcessType(settings.Process);
         RefuseAsyncExecutionTheModeIgnores(process, settings.Process, tasks);
+        RefuseManagerTheModeHasNoneOf(process, settings.Process, settings.ManagerAgent);
 
         var mappedAgents = agents != null
             ? MapAgents(agents, settings.CrewDefaultLlm, out var agentNameMap)
             : MapAgentsEmpty(out agentNameMap);
+        var managerAgentId = ResolveManagerAgentId(settings.ManagerAgent, agentNameMap);
+        var mappedTasks = tasks != null ? MapTasks(tasks, agentNameMap) : [];
 
         return new CrewConfiguration
         {
@@ -55,8 +58,8 @@ public sealed partial class YamlCrewMapper
             MemoryProvider = settings.MemoryProvider,
             Planning = settings.Planning ?? false,
             Agents = mappedAgents,
-            Tasks = tasks != null ? MapTasks(tasks, agentNameMap) : [],
-            ManagerAgentId = ResolveAgentId(settings.ManagerAgent, agentNameMap),
+            Tasks = mappedTasks,
+            ManagerAgentId = managerAgentId,
             GraphConfig = MapGraphConfig(settings.GraphConfig),
             Rag = MapRag(settings.Rag),
             Links = MapLinks(settings.Name ?? string.Empty, settings.Links),
@@ -150,6 +153,11 @@ public sealed partial class YamlCrewMapper
         return result;
     }
 
+    /// <summary>
+    /// Maps the tasks, resolving each <c>agent:</c> and dependency by its key. A reference that names
+    /// nothing — a typo — fails the load, every one named at once with what the crew has (GAP-33,
+    /// decision 6): erased, it let the task run on another agent, or without waiting for what it cited.
+    /// </summary>
     private List<TaskConfiguration> MapTasks(
         Dictionary<string, TaskYamlConfig> tasks, Dictionary<string, AgentId> agentNameMap)
     {
@@ -162,16 +170,26 @@ public sealed partial class YamlCrewMapper
 
         // Second pass: build TaskConfigurations with resolved references
         var result = new List<TaskConfiguration>();
+        var unknownAgents = new List<string>();
+        var unknownDependencies = new List<string>();
         foreach (var kvp in tasks)
         {
             var dependencies = new List<TaskId>();
-            if (kvp.Value.Dependencies != null)
+            foreach (var dep in kvp.Value.Dependencies ?? [])
             {
-                foreach (var dep in kvp.Value.Dependencies)
-                {
-                    if (taskNameToId.TryGetValue(dep, out var depId))
-                        dependencies.Add(depId);
-                }
+                if (taskNameToId.TryGetValue(dep, out var depId))
+                    dependencies.Add(depId);
+                else
+                    unknownDependencies.Add($"task '{kvp.Key}' depends on '{dep}', which is no task of the crew");
+            }
+
+            AgentId? assignedAgentId = null;
+            if (!string.IsNullOrWhiteSpace(kvp.Value.Agent))
+            {
+                if (agentNameMap.TryGetValue(kvp.Value.Agent, out var agentId))
+                    assignedAgentId = agentId;
+                else
+                    unknownAgents.Add($"task '{kvp.Key}' names agent: {kvp.Value.Agent}, which is no agent of the crew");
             }
 
             result.Add(new TaskConfiguration
@@ -179,8 +197,7 @@ public sealed partial class YamlCrewMapper
                 Id = taskNameToId[kvp.Key],
                 Description = kvp.Value.Description ?? string.Empty,
                 ExpectedOutput = kvp.Value.ExpectedOutput ?? string.Empty,
-                AssignedAgentId = kvp.Value.Agent != null && agentNameMap.TryGetValue(kvp.Value.Agent, out var agentId)
-                    ? agentId : null,
+                AssignedAgentId = assignedAgentId,
                 Dependencies = dependencies,
                 Tools = kvp.Value.Tools ?? (IReadOnlyList<string>)Array.Empty<string>(),
                 AsyncExecution = kvp.Value.AsyncExecution ?? false,
@@ -192,7 +209,23 @@ public sealed partial class YamlCrewMapper
             });
         }
 
+        if (unknownAgents.Count > 0 || unknownDependencies.Count > 0)
+        {
+            var faults = string.Join("; ", unknownAgents.Concat(unknownDependencies));
+            var known = (unknownAgents.Count > 0 ? $" Its agents: {Known(agentNameMap.Keys)}." : string.Empty)
+                + (unknownDependencies.Count > 0 ? $" Its tasks: {Known(taskNameToId.Keys)}." : string.Empty);
+            throw new InvalidOperationException(
+                $"A task reference names nothing: {faults}.{known} Name an agent or a task by its key.");
+        }
+
         return result;
+    }
+
+    /// <summary>The keys a crew declares, in its order, for a message: <c>none</c> when it has none.</summary>
+    private static string Known(IEnumerable<string> keys)
+    {
+        var list = string.Join(", ", keys);
+        return list.Length == 0 ? "none" : list;
     }
 
     /// <summary>
@@ -704,10 +737,50 @@ public sealed partial class YamlCrewMapper
         };
     }
 
-    private static AgentId? ResolveAgentId(string? name, Dictionary<string, AgentId> agentNameMap)
+    /// <summary>
+    /// The agent <c>managerAgent:</c> names, by its key. A name the crew does not have — a typo —
+    /// fails the load, listing its agents (GAP-33, decision 4): erased, it told a hierarchical crew it
+    /// "requires a manager agent", and took a consensual crew's arbiter away without a word.
+    /// </summary>
+    private static AgentId? ResolveManagerAgentId(string? name, Dictionary<string, AgentId> agentNameMap)
     {
-        if (name == null) return null;
-        return agentNameMap.TryGetValue(name, out var id) ? id : null;
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        if (agentNameMap.TryGetValue(name, out var id))
+            return id;
+
+        throw new InvalidOperationException(
+            $"managerAgent: {name} names no agent of the crew. Its agents: {Known(agentNameMap.Keys)}. " +
+            "Name the manager by its key under agents:.");
+    }
+
+    /// <summary>
+    /// <c>managerAgent:</c> means something in two modes only (GAP-33): Hierarchical — the manager
+    /// assigns each task and reviews its output — and Consensual — it arbitrates the vote under the
+    /// <c>ManagerDecision</c> fallback. In the four others the agent was read, then ran tasks like any
+    /// other: the load fails, naming the key and the process as the crew file writes them.
+    /// </summary>
+    /// <param name="process">The crew's process.</param>
+    /// <param name="writtenProcess">The process as the crew file spells it, for the message.</param>
+    /// <param name="managerAgent">The crew's <c>managerAgent:</c>.</param>
+    private static void RefuseManagerTheModeHasNoneOf(ProcessType process, string? writtenProcess, string? managerAgent)
+    {
+        if (process.AcceptsManagerAgent || string.IsNullOrWhiteSpace(managerAgent))
+            return;
+
+        var mode = string.IsNullOrWhiteSpace(writtenProcess)
+            ? "the crew's process — sequential, the default when process: is absent —"
+            : $"process: {writtenProcess.Trim()}";
+        throw new InvalidOperationException(
+            $"managerAgent: {managerAgent} is set, but {mode} has no manager: the agent would only be one more worker. " +
+            "Remove managerAgent:, or use process: hierarchical (the manager assigns each task and reviews its output) or " +
+            "process: consensual (it arbitrates the vote when it fails, under the host's Orkeon:Consensus:FallbackStrategy: " +
+            "ManagerDecision)." +
+            (process == ProcessType.Autonomous
+                ? " An autonomous crew's manager is an LLM: the host's default profile (in C#, the provider " +
+                  "CrewBuilder.WithManagerLlm sets)."
+                : string.Empty));
     }
 
     /// <summary>
@@ -791,7 +864,10 @@ public sealed record CrewMappingSettings
     /// <summary>Whether planning is enabled (<c>crew.planning</c>).</summary>
     public bool? Planning { get; init; }
 
-    /// <summary>Name of the manager agent for hierarchical crews (<c>crew.manager_agent</c>).</summary>
+    /// <summary>
+    /// Key of the crew's manager agent (<c>crew.managerAgent</c>): Hierarchical and Consensual only,
+    /// and one of the crew's agents (GAP-33).
+    /// </summary>
     public string? ManagerAgent { get; init; }
 
     /// <summary>Crew-level graph orchestration configuration (<c>crew.graph</c>).</summary>

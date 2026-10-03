@@ -181,6 +181,14 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         // runs, not after it paid for every round (GAP-04).
         var arbiter = await ResolveArbiterAsync(crew, ct).ConfigureAwait(false);
 
+        // On any other fallback the crew's manager decides nothing — it neither answers nor votes —:
+        // the crew stays valid (another host may arbitrate), and the run says so once (GAP-33).
+        if (arbiter is null && crew.ManagerAgentId is { } idleManager)
+        {
+            var manager = await _agentRepository.GetByIdAsync(idleManager, ct).ConfigureAwait(false);
+            LogManagerDecidesNothing(crew.Name ?? crew.Id.ToString(), manager?.Role.Value ?? idleManager.ToString(), _options.FallbackStrategy);
+        }
+
         // Load all agents. A declared manager arbitrates; it neither answers nor votes.
         var agents = new List<DomainAgent>();
         foreach (var agentId in crew.Agents)
@@ -755,6 +763,13 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Starting consensual execution for crew {CrewId}")]
     private partial void LogStartingConsensualExecutionForCrew(CrewId crewId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message =
+        "Crew '{Crew}': its manager agent '{Manager}' will decide nothing on this host. A consensual crew's manager neither " +
+        "answers nor votes: it arbitrates only under the ManagerDecision fallback, and this host's " +
+        "Orkeon:Consensus:FallbackStrategy is {Fallback}. Set Orkeon:Consensus:FallbackStrategy: ManagerDecision for it to " +
+        "arbitrate, or remove managerAgent: so that the agent answers and votes.")]
+    private partial void LogManagerDecidesNothing(string crew, string manager, ConsensusFallback fallback);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Task {TaskId} not found, skipping")]
     private partial void LogTaskNotFoundSkipping(TaskId taskId);

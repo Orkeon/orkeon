@@ -24,7 +24,7 @@ what it finds.
 | the file ends with | `await crew.run()` | `globalThis.crew = crew` |
 | engine | `ScriptHost.RunFromFileAsync` — the script's own `await crew.run()` | shared runner → `JsCrewConfigurationAdapter` → `ICrewOrchestrationService` |
 | runs agent `.body()` | yes, one per agent, in declaration order | **no — ignored** |
-| honours `withTask` / `process` / `manager` | **no — ignored** | yes |
+| honours `withTask` / `process` / `manager` | **no — ignored** | yes — `manager` where the process has one (`hierarchical`, `consensual`), refused elsewhere |
 | `orkeon run --validate` | fails (*did not assign globalThis.crew*) — **after running the script**: loading it evaluates it, `await crew.run()` included | works — the script is evaluated, the crew is not run |
 
 They are opposites, not variants. The procedural run loop (JavaScript since SCR-25,
@@ -73,7 +73,7 @@ inferred.
 | `withAgent(s)` — a built agent; anything else is refused | ✅ | ✅ |
 | `withTask(s)` — a built task; anything else is refused | ❌ ignored | ✅ **the whole point** |
 | `process` | ❌ telemetry tag only | ✅ (`"graph"` selects the domain's retry-and-route strategy, not a script-drawn topology — see below) |
-| `manager` | ❌ | ✅ — the hierarchical manager assigns and reviews on that agent's `.llm(...)`: `llm.profile("claude")` puts it on that profile |
+| `manager` | ❌ | ✅ — `process("hierarchical")`: the manager assigns and reviews on that agent's `.llm(...)` (`llm.profile("claude")` puts it on that profile); `process("consensual")`: the arbiter of the `ManagerDecision` fallback; the four other processes refuse it when the run adapts the crew, as does an agent of another crew |
 | `memory` | ❌ | ✅ |
 | `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
 | `budget` | ✅ | ❌ ignored |
@@ -122,6 +122,11 @@ the tasks after it, and a task that lists it in `withContext` waits for it; unde
 `.process("parallel")` it has no effect of its own; under the four other modes the crew is refused
 when the run adapts it, naming the task (see
 [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
+
+A task's `agent` and the tasks of its `withContext(s)` are the crew's own (`withAgent(s)`,
+`withTask(s)`): one the crew does not hold is refused when the run adapts the crew, naming the
+task, the call and what the crew has — the task used to run on another agent, or without waiting for
+what it cited.
 
 ### `toolBuilder()`
 

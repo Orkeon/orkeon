@@ -146,7 +146,7 @@ Who runs on which profile:
   built at the first RAG call that needs it, never at start-up.
 - **The planner, the Guardian, the `Evaluation` judges and the cognitive memory's analyses** stay
   on the default profile: they are host services, not crew roles (`CrewBuilder.WithPlanningLlm`
-  keeps the hand in C#).
+  keeps the hand in C#, with `.Planning()`, its calls metered like the host's own).
 
 A section holding `Profiles` alone configures no default provider — the default is then the echo
 provider, with the usual warning. `orkeon-host` can restrict which profiles its crews may name

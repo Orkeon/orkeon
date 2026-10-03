@@ -52,6 +52,40 @@ public class ProcessTypeTests
         Assert.Equal(accepts, ProcessType.From(value).AcceptsAsyncExecution);
     }
 
+    /// <summary>
+    /// GAP-33 — a manager agent means something in two modes: Hierarchical (it assigns each task
+    /// and reviews its output) and Consensual (it arbitrates the ManagerDecision fallback). The four
+    /// others have no manager agent: one named for them would be one more worker.
+    /// </summary>
+    [Theory]
+    [InlineData("Hierarchical", true)]
+    [InlineData("Consensual", true)]
+    [InlineData("Sequential", false)]
+    [InlineData("Parallel", false)]
+    [InlineData("Graph", false)]
+    [InlineData("Autonomous", false)]
+    public void Only_hierarchical_and_consensual_accept_a_manager_agent(string value, bool accepts)
+    {
+        Assert.Equal(accepts, ProcessType.From(value).AcceptsManagerAgent);
+    }
+
+    /// <summary>
+    /// GAP-33 — a manager LLM (C# <c>WithManagerLlm</c>) is read by Hierarchical (the manager assigns
+    /// and reviews on it) and Autonomous (the manager hands the tasks out on it); the four others
+    /// never call it.
+    /// </summary>
+    [Theory]
+    [InlineData("Hierarchical", true)]
+    [InlineData("Autonomous", true)]
+    [InlineData("Sequential", false)]
+    [InlineData("Parallel", false)]
+    [InlineData("Graph", false)]
+    [InlineData("Consensual", false)]
+    public void Only_hierarchical_and_autonomous_accept_a_manager_llm(string value, bool accepts)
+    {
+        Assert.Equal(accepts, ProcessType.From(value).AcceptsManagerLlm);
+    }
+
     [Fact]
     public void ShouldReturnCorrectValue_WhenCheckingIsDefault()
     {

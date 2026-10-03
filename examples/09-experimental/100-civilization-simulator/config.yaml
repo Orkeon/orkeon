@@ -9,7 +9,6 @@ verbose: true
 memory: true
 memoryProvider: "SQLite"
 planning: true
-managerAgent: "game_master"
 
 agents:
   game_master:
