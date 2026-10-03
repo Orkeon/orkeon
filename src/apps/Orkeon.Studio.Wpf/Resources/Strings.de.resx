@@ -1320,6 +1320,9 @@
   <data name="Studio.Create.SessionNotRenamed" xml:space="preserve">
     <value>Seine Werkstatt-Sitzung behält ihren bisherigen Ordnernamen — {0}</value>
   </data>
+  <data name="Studio.Create.LauncherTooLong" xml:space="preserve">
+    <value>Seine run.cmd startet unter Windows nichts: Der Befehl ist {0} Zeichen lang, mehr als die {1}, die Windows annimmt (längste Option: {2}).</value>
+  </data>
   <data name="Studio.Create.NameTakenTeam" xml:space="preserve">
     <value>Dieser Name ist vergeben: Der Ordner {1} unter „Meine Teams“ enthält bereits das Team „{0}“.</value>
   </data>

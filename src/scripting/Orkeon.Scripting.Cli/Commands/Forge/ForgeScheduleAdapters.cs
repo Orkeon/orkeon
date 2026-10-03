@@ -21,6 +21,12 @@ internal sealed record ForgeScheduleProbe
     /// <summary>The launcher the registration runs, as the OS reports it; null when it could not be read.</summary>
     public string? Launcher { get; init; }
 
+    /// <summary>
+    /// Whether the registration runs <see cref="Launcher"/> the way an earlier version registered it
+    /// — a Windows task naming <c>run.cmd</c> as its command (STUDIO-51) —: to reinstall.
+    /// </summary>
+    public bool Outdated { get; init; }
+
     /// <summary>Why the OS could not be asked; null when it answered.</summary>
     public string? Refusal { get; init; }
 }
@@ -123,7 +129,8 @@ internal static class ForgeScheduleAdapters
 /// <c>schedule/windows-task.xml</c> — <c>schtasks /Create /TN "Orkeon &lt;team&gt;" /XML … /F</c>,
 /// read back with <c>/Query … /XML</c>, removed with <c>/Delete … /F</c>. The XML names no
 /// principal, so the task runs as the user who registered it, only while that user is logged
-/// on: no password is asked, nothing is elevated.
+/// on: no password is asked, nothing is elevated. Its action runs <c>cmd.exe</c> on the launcher
+/// (<see cref="TaskCommand"/>, <see cref="TaskArguments"/>).
 /// </summary>
 internal sealed class WindowsTaskScheduleAdapter(IForgeOsCommands commands) : IForgeScheduleAdapter
 {
@@ -135,6 +142,23 @@ internal sealed class WindowsTaskScheduleAdapter(IForgeOsCommands commands) : IF
 
     /// <summary>The task a team called <paramref name="artifactName"/> registers.</summary>
     public static string TaskName(string artifactName) => $"Orkeon {artifactName}";
+
+    /// <summary>
+    /// The program a task runs: <c>cmd.exe</c> itself, under the variable the Task Scheduler
+    /// expands (STUDIO-51, decision 6). A task naming <c>run.cmd</c> as its command had the
+    /// Scheduler compose <c>cmd /c</c>'s line, whose quotes <c>cmd</c> keeps or strips by what the
+    /// path holds — a <c>&amp;</c>, a <c>(</c> or a <c>^</c> could keep the team from starting.
+    /// </summary>
+    public const string TaskCommand = @"%SystemRoot%\System32\cmd.exe";
+
+    /// <summary>
+    /// The arguments of a task running <paramref name="launcher"/>: <c>/d</c> no AutoRun command of
+    /// the registry, <c>/v:off</c> a <c>!</c> of the path kept, <c>/s</c> the first and the last
+    /// quote of the command removed and they alone — the path keeps the two others, whatever it
+    /// holds. The launcher's path stays the only thing the task names: written again, it needs no
+    /// reinstall.
+    /// </summary>
+    public static string TaskArguments(string launcher) => $"/d /v:off /s /c \"\"{launcher}\"\"";
 
     /// <inheritdoc />
     public ForgePromotePlatform Family => ForgePromotePlatform.Windows;
@@ -194,24 +218,59 @@ internal sealed class WindowsTaskScheduleAdapter(IForgeOsCommands commands) : IF
     }
 
     /// <summary>
-    /// The task's definition as <c>/Query /XML</c> printed it: the command it runs, and whether it is
-    /// enabled. The declaration says UTF-16 whatever the bytes were; parsed from a string, it is
-    /// not consulted.
+    /// The batch file <c>cmd /s /c</c> runs from <paramref name="arguments"/>: what follows
+    /// <c>/c</c>, its first and last quote removed — <c>/s</c> — then its own quotes; null when the
+    /// arguments run nothing.
     /// </summary>
-    private static ForgeScheduleProbe ReadTask(string xml)
+    private static string? LauncherIn(string? arguments)
+    {
+        if (arguments is null)
+            return null;
+
+        var slashC = arguments.IndexOf("/c ", StringComparison.OrdinalIgnoreCase);
+        if (slashC < 0)
+            return null;
+
+        var line = arguments[(slashC + 3)..].Trim();
+        if (line.Length >= 2 && line[0] == '"' && line[^1] == '"')
+            line = line[1..^1];
+
+        return line.Trim().Trim('"');
+    }
+
+    /// <summary>
+    /// The task's definition as <c>/Query /XML</c> printed it: the launcher it runs, and whether it is
+    /// enabled. The launcher is read in the arguments of <c>cmd.exe</c> — the command compared once
+    /// its variables are expanded, without regard to case —; a task whose command is the launcher
+    /// itself, as an earlier version registered it, gives that launcher and reads
+    /// <see cref="ForgeScheduleProbe.Outdated"/>. The declaration says UTF-16 whatever the bytes were;
+    /// parsed from a string, it is not consulted.
+    /// </summary>
+    internal static ForgeScheduleProbe ReadTask(string xml)
     {
         try
         {
             var task = XDocument.Parse(xml);
-            var command = task.Descendants().FirstOrDefault(e => e.Name.LocalName == "Command")?.Value.Trim().Trim('"');
+            var exec = task.Descendants().FirstOrDefault(e => e.Name.LocalName == "Exec");
+            var command = exec?.Elements().FirstOrDefault(e => e.Name.LocalName == "Command")?.Value.Trim();
+            var arguments = exec?.Elements().FirstOrDefault(e => e.Name.LocalName == "Arguments")?.Value.Trim();
             var enabled = task.Descendants()
                 .FirstOrDefault(e => e.Name.LocalName == "Settings")?
                 .Elements()
                 .FirstOrDefault(e => e.Name.LocalName == "Enabled")?.Value.Trim();
+
+            var runsCmd = command is not null && string.Equals(
+                Environment.ExpandEnvironmentVariables(command),
+                Environment.ExpandEnvironmentVariables(TaskCommand),
+                StringComparison.OrdinalIgnoreCase);
+            var launcher = runsCmd ? LauncherIn(arguments) : command?.Trim('"');
             return new ForgeScheduleProbe
             {
                 Exists = true,
-                Launcher = command is { Length: > 0 } ? command : null,
+                Launcher = launcher is { Length: > 0 } ? launcher : null,
+                Outdated = !runsCmd
+                    || launcher is not { Length: > 0 }
+                    || !string.Equals(arguments, TaskArguments(launcher), StringComparison.OrdinalIgnoreCase),
                 Enabled = !string.Equals(enabled, "false", StringComparison.OrdinalIgnoreCase),
             };
         }
@@ -393,20 +452,57 @@ internal sealed class SystemdUserScheduleAdapter(IForgeOsCommands commands, stri
     {
         try
         {
-            if (!File.Exists(service))
-                return null;
-
-            const string key = "ExecStart=";
-            return File.ReadLines(service)
-                .Select(line => line.Trim())
-                .Where(line => line.StartsWith(key, StringComparison.Ordinal))
-                .Select(line => line[key.Length..].Trim().Trim('"'))
-                .FirstOrDefault(value => value.Length > 0);
+            return File.Exists(service) ? ExecStartLauncher(File.ReadAllText(service)) : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// <c>ExecStart</c>'s value running <paramref name="launcher"/> (STUDIO-51, decision 6): one
+    /// quoted word in which systemd reads a backslash and a quote as C escapes, a <c>%</c> as a
+    /// specifier and a <c>$</c> as a variable — all four escaped, so a path holding them runs.
+    /// </summary>
+    public static string ExecStartValue(string launcher)
+    {
+        ArgumentNullException.ThrowIfNull(launcher);
+        return "\"" + launcher
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal)
+            .Replace("%", "%%", StringComparison.Ordinal)
+            .Replace("$", "$$", StringComparison.Ordinal) + "\"";
+    }
+
+    /// <summary>
+    /// The launcher the <c>ExecStart</c> of <paramref name="unit"/> runs, its quoting undone
+    /// (<see cref="ExecStartValue"/>); null when it names none. An earlier version wrote the path
+    /// between quotes, unescaped: it reads the same for every path that line could run.
+    /// </summary>
+    internal static string? ExecStartLauncher(string unit)
+    {
+        const string key = "ExecStart=";
+        var value = unit.ReplaceLineEndings("\n").Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith(key, StringComparison.Ordinal))
+            .Select(line => line[key.Length..].Trim())
+            .FirstOrDefault(value => value.Length > 0);
+        if (value is null || value[0] != '"')
+            return value;
+
+        var launcher = new System.Text.StringBuilder();
+        for (var i = 1; i < value.Length && value[i] != '"'; i++)
+        {
+            if (value[i] == '\\' && i + 1 < value.Length && value[i + 1] is '\\' or '"')
+                i++;
+            else if (value[i] is '%' or '$' && i + 1 < value.Length && value[i + 1] == value[i])
+                i++;
+
+            launcher.Append(value[i]);
+        }
+
+        return launcher.Length > 0 ? launcher.ToString() : null;
     }
 }
 
@@ -432,13 +528,14 @@ internal sealed class CronScheduleAdapter(IForgeOsCommands commands) : IForgeSch
     public static string Marker(string tag) => $"# {tag}";
 
     /// <summary>
-    /// A launcher path as a cron command spells it: a <c>%</c> is cron's line separator, so it is
-    /// escaped — the one character a double-quoted path cannot carry into a crontab as it is.
+    /// The command of a cron line running <paramref name="launcher"/> (STUDIO-51, decision 6):
+    /// between single quotes — the <c>/bin/sh</c> cron hands it to expands nothing there, a quote
+    /// closed, escaped and reopened —, and every <c>%</c> escaped: it is cron's line separator.
     /// </summary>
-    public static string EscapePercent(string path)
+    public static string Command(string launcher)
     {
-        ArgumentNullException.ThrowIfNull(path);
-        return path.Replace("%", "\\%", StringComparison.Ordinal);
+        ArgumentNullException.ThrowIfNull(launcher);
+        return ("'" + launcher.Replace("'", "'\\''", StringComparison.Ordinal) + "'").Replace("%", "\\%", StringComparison.Ordinal);
     }
 
     /// <inheritdoc />
@@ -538,12 +635,40 @@ internal sealed class CronScheduleAdapter(IForgeOsCommands commands) : IForgeSch
         return IsTagged(job, tag) ? job : $"{job} {Marker(tag)}";
     }
 
-    /// <summary>The launcher a cron line runs: its first double-quoted token, unescaped.</summary>
-    private static string? QuotedPath(string line)
+    /// <summary>
+    /// The launcher a cron line runs: its first quoted word, its quoting undone
+    /// (<see cref="Command"/>) — or, on a line an earlier version wrote, its first double-quoted
+    /// token. A <c>\%</c> is a <c>%</c> either way.
+    /// </summary>
+    internal static string? QuotedPath(string line)
     {
-        var open = line.IndexOf('"', StringComparison.Ordinal);
-        var close = open < 0 ? -1 : line.IndexOf('"', open + 1);
-        return close > open + 1 ? line[(open + 1)..close].Replace("\\%", "%", StringComparison.Ordinal) : null;
+        var open = line.IndexOfAny(['\'', '"']);
+        if (open < 0)
+            return null;
+
+        if (line[open] == '"')
+        {
+            var close = line.IndexOf('"', open + 1);
+            return close > open + 1 ? line[(open + 1)..close].Replace("\\%", "%", StringComparison.Ordinal) : null;
+        }
+
+        // Single-quoted stretches joined by \' — a quote closed, escaped and reopened.
+        var launcher = new System.Text.StringBuilder();
+        while (true)
+        {
+            var close = line.IndexOf('\'', open + 1);
+            if (close < 0)
+                return null;
+
+            launcher.Append(line, open + 1, close - open - 1);
+            if (string.CompareOrdinal(line, close + 1, "\\''", 0, 3) != 0)
+                break;
+
+            launcher.Append('\'');
+            open = close + 3;
+        }
+
+        return launcher.Length > 0 ? launcher.ToString().Replace("\\%", "%", StringComparison.Ordinal) : null;
     }
 
     /// <summary>

@@ -16,6 +16,8 @@ static Orkeon.Hosting.RunnerSettings.ComposeSources(Microsoft.Extensions.Configu
 *REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.UnregisterToolAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Hosting.RunnerOptionsBase.LlmProfile.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.LlmProfile.set -> void
+Orkeon.Hosting.RunnerArguments
+static Orkeon.Hosting.RunnerArguments.Parse<TOptions>(CommandLine.Parser! parser, System.Collections.Generic.IEnumerable<string!>! arguments) -> CommandLine.ParserResult<TOptions>!
 static Orkeon.Hosting.RunnerExecution.EnsureLlmProfileIsKnown(string? llmProfile, string? settingsPath) -> bool
 *REMOVED*static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, Orkeon.Hosting.RunnerMountPlan! mounts, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>? configureLogging = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Action<Microsoft.Extensions.Hosting.IHostBuilder!>? configureBuilder = null) -> Microsoft.Extensions.Hosting.IHost!
 static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, Orkeon.Hosting.RunnerMountPlan! mounts, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>? configureLogging = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Action<Microsoft.Extensions.Hosting.IHostBuilder!>? configureBuilder = null, string? llmProfile = null) -> Microsoft.Extensions.Hosting.IHost!

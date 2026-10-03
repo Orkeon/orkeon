@@ -2568,11 +2568,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                     // STUDIO-50: the launchers the engine just wrote mount the team's own folders
                     // and nothing else; written again from the sidecar, the run the operating
                     // system schedules takes the team's setting and every folder a Studio launch
-                    // gives it.
-                    TeamLaunchers.Regenerate(promotion.Path, _launcherContext());
+                    // gives it. STUDIO-51: a run.cmd that launches nothing is said below.
+                    var launchers = TeamLaunchers.Regenerate(promotion.Path, _launcherContext());
                     TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));
-                    // A session folder the engine could not rename after the team is said, not
-                    // dropped (STUDIO-26, D-05) — read now: the reset below replaces the model.
+                    // The engine's last warning is said, not dropped (STUDIO-26, D-05) — read now:
+                    // the reset below replaces the model.
                     var warning = _model.LastWarning;
                     // The tunnel ends here (STUDIO-20): the team lives in My teams now, so the
                     // wizard goes back to a blank step 1 — the same slate as « Start over » — and
@@ -2580,8 +2580,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                     // keeps it: a fresh model has no finished status to paint over it.
                     ResetToStepOne();
                     StatusMessage = scheduleStopped
-                        ? AdoptedLine(adopted, warning) + " " + _strings[StudioStringKeys.WizardScheduleStopped]
-                        : AdoptedLine(adopted, warning);
+                        ? AdoptedLine(adopted, warning, launchers) + " " + _strings[StudioStringKeys.WizardScheduleStopped]
+                        : AdoptedLine(adopted, warning, launchers);
                     adoptedPath = promotion.Path;
                 }
                 else
@@ -3242,16 +3242,36 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The one line an adoption leaves (STUDIO-20) — followed, when the engine could not rename
-    /// the session folder after the team, by the reason it gave (STUDIO-26, D-05): said, never
-    /// dropped, and never a failure — the team is saved, and linked to its session by the id.
+    /// The one line an adoption leaves (STUDIO-20) — followed by the engine's last warning, in the
+    /// sentence of its code: the session folder the engine could not rename after the team
+    /// (STUDIO-26, D-05); the engine's own words for a code this screen has no sentence for — a
+    /// schedule still installed (STUDIO-51). Then, when the <c>run.cmd</c> Studio just wrote
+    /// launches nothing — the team's command is longer than <c>cmd</c> holds —, that (STUDIO-51):
+    /// the engine's word on its own launchers is left out once Studio's replace them. Said, never
+    /// a failure: the team is saved.
     /// </summary>
-    private string AdoptedLine(string adopted, ForgeWarningInfo? warning)
+    private string AdoptedLine(string adopted, ForgeWarningInfo? warning, TeamLaunchersResult launchers)
     {
         var line = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardAdoptedLine], adopted);
-        return warning is null
-            ? line
-            : line + " " + string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardSessionNotRenamed], warning.Message);
+        var replaced = launchers.Outcome is TeamLaunchersOutcome.Written or TeamLaunchersOutcome.Unchanged;
+        if (warning is not null && !(replaced && warning.Code == ForgeWarningCodes.LauncherTooLong))
+        {
+            line += " " + (warning.Code == ForgeWarningCodes.SessionNotRenamed
+                ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardSessionNotRenamed], warning.Message)
+                : warning.Message);
+        }
+
+        if (launchers.WindowsRefusal is { } refusal)
+        {
+            line += " " + string.Format(
+                CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.WizardLauncherTooLong],
+                refusal.Length,
+                TeamLauncherScript.WindowsCommandLimit,
+                refusal.LongestOption);
+        }
+
+        return line;
     }
 
     // ── STUDIO-13 — failure card ─────────────────────────────────────────────

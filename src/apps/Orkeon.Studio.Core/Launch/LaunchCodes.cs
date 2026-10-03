@@ -18,6 +18,9 @@ public static class LaunchCodes
     /// <summary>A <c>--mount</c> entry is empty.</summary>
     public const string EmptyMount = "STUDIO-LAUNCH-MOUNT";
 
+    /// <summary>A <c>--mount</c> entry starts with <c>-</c>, which the CLI reads as an option (STUDIO-51).</summary>
+    public const string MountStartsWithDash = "STUDIO-LAUNCH-MOUNT-DASH";
+
     /// <summary>A <c>--mount-id</c> value that is empty or not a mount id (VFS-90).</summary>
     public const string InvalidMountId = "STUDIO-LAUNCH-MOUNT-ID";
 

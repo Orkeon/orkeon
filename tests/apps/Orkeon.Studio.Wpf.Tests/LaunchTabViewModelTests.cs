@@ -508,7 +508,7 @@ public sealed class LaunchTabViewModelTests
         // BUS-06: the screen watches the run rather than tailing it, so the protocol flags
         // are part of a normal launch. Turning the option off gives the old argv back.
         Assert.Equal(
-            ["run", "/crews/team.yaml", "--events", "jsonl", "--client", "studio"],
+            ["run", "/crews/team.yaml", "--events", "jsonl", "--client=studio"],
             launcher.LastRequest!.Arguments);
     }
 

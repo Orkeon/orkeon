@@ -102,6 +102,35 @@ public sealed class OptionGrammarTests
     /// <summary>The shared runner's option grammar, as a parser target.</summary>
     private sealed class SharedRunnerOptions : Orkeon.Hosting.RunnerOptionsBase;
 
+    /// <summary>
+    /// STUDIO-51, decision 7: a single-value option written <c>--option=value</c> — how the team
+    /// launchers and Studio write one — is read by both grammars, cut at the first <c>=</c> and the
+    /// rest kept as it is: a value starting with a dash stays the option's value, where
+    /// <c>--initial-context "- x"</c> is an unknown option. Read the way <c>orkeon run</c> reads its
+    /// arguments (<see cref="Orkeon.Hosting.RunnerArguments"/>), a line break stays too.
+    /// </summary>
+    [Fact]
+    public void Both_grammars_read_a_single_value_option_attached_with_an_equals_sign()
+    {
+        string[] attached = ["--settings=C:\\a=b\\appsettings.json", "--llm-profile=z-ai", "--initial-context=- x = y"];
+
+        var run = Assert.IsType<Parsed<RunCommandOptions>>(Parse<RunCommandOptions>(["crew.yaml", .. attached])).Value;
+        var shared = Assert.IsType<Parsed<SharedRunnerOptions>>(Parse<SharedRunnerOptions>(attached)).Value;
+        using var parser = new Parser(s => s.HelpWriter = null);
+        var bullets = Assert.IsType<Parsed<RunCommandOptions>>(
+            Orkeon.Hosting.RunnerArguments.Parse<RunCommandOptions>(parser, ["crew.yaml", "--initial-context=- un\n- deux"])).Value;
+        Assert.Equal("- un\n- deux", bullets.InitialContext);
+
+        foreach (var (settings, profile, context) in new[] { (run.SettingsPath, run.LlmProfile, run.InitialContext), (shared.SettingsPath, shared.LlmProfile, shared.InitialContext) })
+        {
+            Assert.Equal("C:\\a=b\\appsettings.json", settings);
+            Assert.Equal("z-ai", profile);
+            Assert.Equal("- x = y", context);
+        }
+
+        Assert.Contains("UnknownOptionError", ErrorTags(Parse<SharedRunnerOptions>("--initial-context", "- x")));
+    }
+
     [Fact]
     public void The_same_rule_governs_var()
     {

@@ -42,6 +42,55 @@ now carries them, before its task's.
 Migration: write `analysis`, `strict` or `creative` — or remove the preset; keep one key per tool in
 `toolRules`.
 
+### Fixed — a team's launchers hand the run its path and its inputs as they are: one composer for `forge promote` and Studio
+
+`cmd` reads a team's `run.cmd` first and `orkeon` splits what it hands over second; both writers of the
+launchers — `forge promote` and Studio (STUDIO-50) — wrote for one of those readings, and neither told
+`cmd` the file is UTF-8 (STUDIO-51). A Windows profile with an accent (`C:\Users\Zoé`) turned
+`--settings` into `C:\Users\Zo├®\…` and the run went on without its settings file; French sample inputs
+arrived as `├ëconomie`; written without Studio, `seuil=10%` lost its `%`; a team folder in a OneDrive
+« R&D » folder cut the command; and a sample input holding a quote then `&` — text the forge's model
+writes — ran what followed as a command at each scheduled run.
+
+- **One composer writes both launchers** (`TeamLauncherScript`, `Orkeon.Domain.FileSystem`): the writers
+  say what to launch, it writes the text, and `forge rename` still finds the header
+  (`TeamLauncherScript.Header` replaces `ForgePromoter.LauncherHeader` and `TeamLaunchers.Header`). Each
+  value is written for the runner first, then for `cmd` — every `%` doubled; a value without a quote
+  between `cmd`'s quotes end to end; a value with one outside them, each quote and operator escaped; the
+  stretch carrying `%~dp0` always between quotes —: every value reaches the run as written, whatever
+  the team's path holds. A line break is a space in `run.cmd` — a comment line says so — and is kept in
+  `run.sh`.
+- **`run.cmd`'s frame**: UTF-8 without a BOM, named so by both writers; ASCII up to `chcp 65001`, the
+  caller's code page captured and given back before `orkeon` starts; `setlocal EnableExtensions
+  DisableDelayedExpansion` whatever the registry says; the command in a block ended by `exit /b`, which
+  keeps `orkeon`'s exit code and never lets `cmd` read the file again — a launcher written again during
+  a run is not read from the middle.
+- **Beyond 8 191 characters** once expanded, `run.cmd` launches nothing: it prints the length, the bound
+  and the longest option on stderr, and exits 1; `run.sh` stays complete. `forge promote` says so with a
+  `warning` (`FORGE-LAUNCHER-TOO-LONG`) and succeeds. Studio's adoption line says it —
+  `TeamLaunchers.Regenerate` returns a `TeamLaunchersResult` (written, unchanged, no team, disk refused,
+  and the Windows launcher's refusal) instead of a `bool` — and says the engine's last warning in the
+  sentence of its code: `FORGE-SCHEDULE-STILL-INSTALLED` no longer reads as a session folder not renamed.
+- **A single-value option is `--option=value`** wherever a program writes `orkeon run`'s line — the
+  launchers and Studio's `RunArgumentsBuilder` —: an initial context starting with `-`, a bullet list,
+  had the run refused as an unknown option. `orkeon run` reads an attached value as written, a line
+  break and a leading space included (`RunnerArguments`, `Orkeon.Hosting`: CommandLineParser 2.9.1
+  refuses those attached). Studio refuses a variable name or a mount starting with `-` before the launch
+  (`STUDIO-LAUNCH-VAR`, `STUDIO-LAUNCH-MOUNT-DASH`).
+- **The scheduled task runs `cmd.exe /d /v:off /s /c ""<team>\run.cmd""`**, a quoting that does not
+  depend on what the path holds; systemd's `ExecStart` escapes the path (`\\`, `\"`, `%%`, `$$`) and the
+  cron line puts it between single quotes (`\%` for a `%`). `forge schedule --check` reads a task of the
+  former form `stale` (reason `outdated`), and an install writes former artifacts again first.
+- **The command line Studio shows and copies** — the preview, « Copy the command », the history, a
+  failure report — is a line for `cmd` under Windows, each argument written by the composer: pasted, it
+  launches what Studio launches. PowerShell is not covered.
+
+Migration: a team scheduled on Windows before this version reads « Schedule to reinstall » once — the
+card's « Install the schedule » (`forge schedule`) sets it right. The launchers of a team adopted before
+take the new form at the next change of its setting or its folders, or at the next `forge promote`.
+`TeamLaunchers.Regenerate` returns `TeamLaunchersResult` — read its `Outcome`; `ForgePromoter.LauncherHeader`
+is `TeamLauncherScript.Header`.
+
 ### Fixed — the third-party notices list every package the shipped binaries redistribute, generated from the restore and checked by CI
 
 `THIRD-PARTY-NOTICES.md` promised an entry for whatever the packages and the installers

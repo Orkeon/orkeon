@@ -4,6 +4,7 @@ using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Scripting.Cli.Commands.Forge;
 using Orkeon.Scripting.Cli.Tests.Doubles;
+using static Orkeon.Scripting.Cli.Tests.Forge.ScheduleForms;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -130,13 +131,12 @@ public sealed class ForgeRenameTests : IDisposable
         Assert.Equal(
             ["cron.txt", "orkeon-veille-du-matin.service", "orkeon-veille-du-matin.timer", "windows-task.xml"],
             Directory.GetFiles(schedule).Select(Path.GetFileName).Order(StringComparer.Ordinal));
-        Assert.Contains($"ExecStart=\"{Path.Combine(Renamed, "run.sh")}\"",
+        Assert.Contains($"ExecStart={SystemdQuoted(Path.Combine(Renamed, "run.sh"))}\n",
             await File.ReadAllTextAsync(Path.Combine(schedule, "orkeon-veille-du-matin.service"), TestContext.Current.CancellationToken),
             StringComparison.Ordinal);
-        Assert.Contains($"<Command>{Path.Combine(Renamed, "run.cmd")}</Command>",
-            await File.ReadAllTextAsync(Path.Combine(schedule, "windows-task.xml"), TestContext.Current.CancellationToken),
-            StringComparison.Ordinal);
-        Assert.Contains($"\"{Path.Combine(Renamed, "run.sh")}\" # orkeon:veille-du-matin",
+        Assert.Equal(Path.Combine(Renamed, "run.cmd"),
+            TaskRuns(await File.ReadAllTextAsync(Path.Combine(schedule, "windows-task.xml"), TestContext.Current.CancellationToken)));
+        Assert.Contains($"{CronQuoted(Path.Combine(Renamed, "run.sh"))} # orkeon:veille-du-matin",
             await File.ReadAllTextAsync(Path.Combine(schedule, "cron.txt"), TestContext.Current.CancellationToken),
             StringComparison.Ordinal);
         foreach (var file in Directory.GetFiles(schedule))
@@ -534,16 +534,15 @@ public sealed class ForgeRenameTests : IDisposable
     private bool IsRegistered(FakeScheduleOs os, ForgePromotePlatform platform, string name, string team) => platform switch
     {
         ForgePromotePlatform.Windows =>
-            os.Tasks.TryGetValue($"Orkeon {name}", out var xml)
-            && xml.Contains($"<Command>{Path.Combine(team, "run.cmd")}</Command>", StringComparison.Ordinal),
+            os.Tasks.TryGetValue($"Orkeon {name}", out var xml) && TaskRuns(xml) == Path.Combine(team, "run.cmd"),
         ForgePromotePlatform.Linux =>
             os.EnabledUnits.Contains($"orkeon-{name}.timer")
             && File.ReadAllText(Path.Combine(UnitDirectory, $"orkeon-{name}.service"))
-                .Contains($"ExecStart=\"{Path.Combine(team, "run.sh")}\"", StringComparison.Ordinal),
+                .Contains($"ExecStart={SystemdQuoted(Path.Combine(team, "run.sh"))}\n", StringComparison.Ordinal),
         _ =>
             (os.Crontab ?? "").Split('\n').Any(line =>
                 CronScheduleAdapter.IsTagged(line, $"orkeon:{name}")
-                && line.Contains($"\"{Path.Combine(team, "run.sh")}\"", StringComparison.Ordinal)),
+                && line.Contains($" {CronQuoted(Path.Combine(team, "run.sh"))} ", StringComparison.Ordinal)),
     };
 
     private static int RegistrationCount(FakeScheduleOs os, ForgePromotePlatform platform) => platform switch

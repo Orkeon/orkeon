@@ -39,7 +39,7 @@ public class RunClientTests
     {
         // They come last so the command a user reads still opens with what they chose.
         Assert.Equal(
-            ["run", "/ws/crew.yaml", "--events", "jsonl", "--stream", "--client", "studio"],
+            ["run", "/ws/crew.yaml", "--events", "jsonl", "--stream", "--client=studio"],
             RunArgumentsBuilder.Build(Target, new RunLaunchOptions
             {
                 Events = true,

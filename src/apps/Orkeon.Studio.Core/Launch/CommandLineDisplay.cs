@@ -1,4 +1,5 @@
 using System.Text;
+using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Studio.Core.Launch;
 
@@ -11,13 +12,23 @@ public enum CommandLineQuotingStyle
     /// <summary>POSIX shell quoting (single quotes).</summary>
     Posix,
 
-    /// <summary>Windows command-line quoting (double quotes, backslash escapes).</summary>
+    /// <summary>
+    /// A line for the <c>cmd</c> prompt: the C runtime's quoting, then <c>cmd</c>'s — carets and
+    /// percents (STUDIO-51). PowerShell reads such a line otherwise.
+    /// </summary>
     Windows,
 }
 
 /// <summary>
 /// Renders an argument list as the command line a user would type. Display only: the
 /// process runner passes the argument list itself, so nothing is ever quoted twice.
+/// <para>
+/// « Copy the command » pastes it into a terminal: under Windows a line for the <c>cmd</c> prompt,
+/// each argument written by the composer of the team launchers
+/// (<see cref="TeamLauncherScript.QuoteForCmdPrompt"/>, STUDIO-51) — a value with <c>&amp;</c> or
+/// <c>%PATH%</c> reaches the run as it is, a line break as a space —; elsewhere a line for
+/// <c>sh</c>, between single quotes.
+/// </para>
 /// </summary>
 public static class CommandLineDisplay
 {
@@ -50,7 +61,7 @@ public static class CommandLineDisplay
         ArgumentNullException.ThrowIfNull(argument);
 
         return Resolve(style) == CommandLineQuotingStyle.Windows
-            ? QuoteWindows(argument)
+            ? TeamLauncherScript.QuoteForCmdPrompt(argument)
             : QuotePosix(argument);
     }
 
@@ -68,45 +79,9 @@ public static class CommandLineDisplay
             return argument;
 
         // Single quotes suppress every expansion; a literal quote closes, escapes, reopens.
-        return "'" + argument.Replace("'", "'\\''", StringComparison.Ordinal) + "'";
+        return TeamLauncherScript.QuoteForPosixShell(argument);
     }
 
     private static bool IsPosixSafe(char character) =>
         char.IsAsciiLetterOrDigit(character) || PosixSafeCharacters.Contains(character, StringComparison.Ordinal);
-
-    private static string QuoteWindows(string argument)
-    {
-        if (argument.Length > 0 && !argument.Any(c => c is ' ' or '\t' or '\n' or '\v' or '"'))
-            return argument;
-
-        var builder = new StringBuilder("\"");
-
-        for (var i = 0; i < argument.Length; i++)
-        {
-            var backslashes = 0;
-            while (i < argument.Length && argument[i] == '\\')
-            {
-                backslashes++;
-                i++;
-            }
-
-            if (i == argument.Length)
-            {
-                // Trailing backslashes must not escape the closing quote.
-                builder.Append('\\', backslashes * 2);
-                break;
-            }
-
-            if (argument[i] == '"')
-            {
-                builder.Append('\\', (backslashes * 2) + 1).Append('"');
-            }
-            else
-            {
-                builder.Append('\\', backslashes).Append(argument[i]);
-            }
-        }
-
-        return builder.Append('"').ToString();
-    }
 }

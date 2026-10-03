@@ -1,5 +1,6 @@
 using Orkeon.Domain.Common;
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 
@@ -66,13 +67,103 @@ public partial class CreateTeamWizardTests
 
             Assert.Equal("Z.AI", TeamCatalog.Describe(promoted).Profile);
             var posix = await File.ReadAllTextAsync(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), TestContext.Current.CancellationToken);
-            Assert.Contains("--llm-profile 'z-ai'", posix, StringComparison.Ordinal);
+            Assert.Contains("--llm-profile='z-ai'", posix, StringComparison.Ordinal);
             Assert.Contains($"--mount-id '{docs.Id}'", posix, StringComparison.Ordinal);
             Assert.Contains("Orkeon Studio writes this file again", posix, StringComparison.Ordinal);
             var windows = await File.ReadAllTextAsync(Path.Combine(promoted, TeamLaunchers.WindowsLauncherName), TestContext.Current.CancellationToken);
-            Assert.Contains("--llm-profile \"z-ai\"", windows, StringComparison.Ordinal);
+            Assert.Contains("--llm-profile=\"z-ai\"", windows, StringComparison.Ordinal);
             Assert.Contains($"--mount-id \"{docs.Id}\"", windows, StringComparison.Ordinal);
             Assert.DoesNotContain("ZAI_API_KEY", posix + windows, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-51: the adoption line says the engine's last warning in the sentence of its code — a
+    /// schedule still installed in the engine's own words, never as a session folder the engine
+    /// could not rename.
+    /// </summary>
+    [Fact]
+    public async Task A_warning_the_wizard_has_no_sentence_for_is_said_in_the_engines_words()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            var (vm, processes) = await ReadyToAdoptAsync(root);
+            vm.TeamName = "Ma veille";
+            var promoted = Path.Combine(root, "ma-veille");
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh"}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"warning","code":"FORGE-SCHEDULE-STILL-INSTALLED","message":"The team is no longer scheduled, but 'Orkeon ma-veille' still runs it."}"""),
+                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.Null(vm.Failure);
+            Assert.Equal(
+                "Team “Ma veille” is saved in My teams. The team is no longer scheduled, but 'Orkeon ma-veille' still runs it.",
+                vm.StatusMessage);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-51, decision 8: a team whose command is longer than a <c>cmd</c> command holds is
+    /// adopted — its <c>run.cmd</c> launches nothing and says why, its <c>run.sh</c> is complete —
+    /// and the adoption line says it once, in Studio's words: the engine's warning about the
+    /// launchers it wrote is left out, Studio's own replaced them.
+    /// </summary>
+    [Fact]
+    public async Task An_adopted_team_whose_run_cmd_launches_nothing_says_it_once()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            var (vm, processes) = await ReadyToAdoptAsync(root);
+            vm.TeamName = "Veille longue";
+            var promoted = Path.Combine(root, "veille-longue");
+            var context = string.Concat(Enumerable.Repeat("abcdefghij", 900));
+            processes.WhileRunning = () =>
+            {
+                Directory.CreateDirectory(Path.Combine(promoted, "crew"));
+                File.WriteAllText(Path.Combine(promoted, "crew", "config.yaml"), "name: veille\n");
+                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\nexec orkeon run \"$DIR/crew\"\n");
+                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.WindowsLauncherName), "@echo off\r\norkeon run \"%~dp0crew\"\r\n");
+                File.WriteAllText(
+                    Path.Combine(promoted, ForgeSessionCatalog.TeamRecordFileName),
+                    $$"""{"v":1,"slug":"veille","format":"yaml","brief":{"sample":{"initialContext":"{{context}}"} } }""");
+            };
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh"}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"warning","code":"FORGE-LAUNCHER-TOO-LONG","message":"The engine's own words about its launchers."}"""),
+                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.Null(vm.Failure);
+            Assert.StartsWith(
+                "Team “Veille longue” is saved in My teams. Its run.cmd launches nothing on Windows: its command is ",
+                vm.StatusMessage,
+                StringComparison.Ordinal);
+            Assert.EndsWith(" characters long, over the 8191 Windows accepts (longest option: --initial-context).", vm.StatusMessage, StringComparison.Ordinal);
+            Assert.DoesNotContain("engine's own words", vm.StatusMessage, StringComparison.Ordinal);
+            Assert.Contains(context,
+                await File.ReadAllTextAsync(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), TestContext.Current.CancellationToken),
+                StringComparison.Ordinal);
         }
         finally
         {

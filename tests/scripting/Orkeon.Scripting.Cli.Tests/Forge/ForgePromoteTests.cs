@@ -1,7 +1,10 @@
 using System.Reflection;
 using System.Text.Json;
+using CommandLine;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Commands.Forge;
+using Orkeon.Tests.Shared.Launchers;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -146,7 +149,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Contains("exec orkeon", posix, StringComparison.Ordinal);
         Assert.Contains("run \"$DIR/crew\"", posix, StringComparison.Ordinal);
         Assert.Contains("--var 'supplier_url=https://exemple.fr/offres'", posix, StringComparison.Ordinal);
-        Assert.Contains("--initial-context 'Premier essai'", posix, StringComparison.Ordinal);
+        Assert.Contains("--initial-context='Premier essai'", posix, StringComparison.Ordinal);
         Assert.DoesNotContain("--settings", posix, StringComparison.Ordinal);
         Assert.Contains("adapt them", posix, StringComparison.Ordinal);
 
@@ -268,7 +271,7 @@ public sealed class ForgePromoteTests : IDisposable
         ForgePromoter.Promote(session, Destination, schedule: null, settings, copySettings: false,
             ForgePromotePlatform.Linux, Now);
         Assert.False(File.Exists(Path.Combine(Destination, ForgePromoter.SettingsFileName)));
-        Assert.Contains($"--settings '{settings}'",
+        Assert.Contains($"--settings='{settings}'",
             File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName)), StringComparison.Ordinal);
 
         // With it: the copy travels and the scripts anchor to the folder.
@@ -277,7 +280,7 @@ public sealed class ForgePromoteTests : IDisposable
             ForgePromotePlatform.Linux, Now);
         Assert.Equal("""{ "Llm": { "ApiKey": "secret" } }""",
             File.ReadAllText(Path.Combine(second, ForgePromoter.SettingsFileName)));
-        Assert.Contains("--settings \"$DIR/appsettings.json\"",
+        Assert.Contains("--settings=\"$DIR/appsettings.json\"",
             File.ReadAllText(Path.Combine(second, ForgePromoter.PosixLauncherName)), StringComparison.Ordinal);
     }
 
@@ -492,8 +495,10 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Contains("--mount \"\\\"$DIR/output\\\":/output:rw\"", posix, StringComparison.Ordinal);
         Assert.Equal(1, posix.Split("--mount").Length - 1);
 
+        // On Windows the anchor stays between cmd's quotes, the mount grammar's own outside them
+        // (STUDIO-51): a team folder holding '&' no longer cuts the command.
         var windows = File.ReadAllText(Path.Combine(Destination, ForgePromoter.WindowsLauncherName));
-        Assert.Contains("--mount \"\\\"%~dp0output\\\":/output:rw\"", windows, StringComparison.Ordinal);
+        Assert.Contains("--mount ^\"\\\"%~dp0output\\\":/output:rw^\"", windows, StringComparison.Ordinal);
 
         // And the card says where the mounts land, so the folder explains itself.
         var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
@@ -579,7 +584,7 @@ public sealed class ForgePromoteTests : IDisposable
     [Fact]
     public void The_launcher_mount_survives_the_shell_and_the_grammar()
     {
-        Assert.SkipWhen(OperatingSystem.IsWindows(), "The POSIX launcher needs a POSIX shell.");
+        Assert.SkipUnless(PosixLauncherShell.IsAvailable, "The POSIX launcher needs a POSIX shell at /bin/sh.");
 
         var session = ReadySession();
         session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
@@ -596,7 +601,7 @@ public sealed class ForgePromoteTests : IDisposable
             ForgePromotePlatform.Linux, Now);
 
         var launcher = Path.Combine(awkward, ForgePromoter.PosixLauncherName);
-        var argv = RunThroughShell(launcher);
+        var argv = PosixLauncherShell.Run(launcher, _workspace).ToList();
 
         var mountIndex = argv.IndexOf("--mount");
         Assert.True(mountIndex >= 0, $"the launcher passed no --mount: {string.Join(' ', argv)}");
@@ -607,37 +612,6 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Equal("/output", mount.VirtualPath);
         Assert.Equal(Path.Combine(awkward, "output"), Path.TrimEndingDirectorySeparator(mount.BasePath));
         Assert.Equal(Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, mount.DefaultRights);
-    }
-
-    /// <summary>
-    /// Runs a generated <c>run.sh</c> with a stub <c>orkeon</c> on PATH that prints one
-    /// argument per line, and returns the argument vector the real CLI would have received.
-    /// </summary>
-    private List<string> RunThroughShell(string launcherPath)
-    {
-        var binDir = Path.Combine(_workspace, "stub-bin");
-        Directory.CreateDirectory(binDir);
-        var stub = Path.Combine(binDir, "orkeon");
-        File.WriteAllText(stub, "#!/usr/bin/env sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done\n");
-        if (!OperatingSystem.IsWindows())
-            File.SetUnixFileMode(stub, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-
-        var startInfo = new System.Diagnostics.ProcessStartInfo("/bin/sh")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        startInfo.ArgumentList.Add(launcherPath);
-        startInfo.Environment["PATH"] = binDir + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
-
-        using var process = System.Diagnostics.Process.Start(startInfo)!;
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        Assert.True(process.ExitCode == 0, $"launcher exited {process.ExitCode}: {stderr}");
-        return [.. stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)];
     }
 
     [Fact]
@@ -659,16 +633,152 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.DoesNotContain("--mount", posix, StringComparison.Ordinal);
     }
 
+    // ── STUDIO-51: the launchers hand the runner what the brief says ──
+
     /// <summary>
-    /// STUDIO-50: Orkeon Studio writes the launchers of the teams it adopts again, with this very
-    /// header — its suite pins the same literal (<c>TeamLaunchersTests</c>) — so <c>forge rename</c>
-    /// finds the team's name in the launchers of both writers, under the names both share
+    /// What a profile under <c>C:\Users\Zoé</c> with a team in a OneDrive « R&amp;D » folder makes
+    /// <c>%~dp0</c>: every character <c>cmd</c> or the runner could misread.
+    /// </summary>
+    private const string HostileLauncherFolder = @"C:\Users\Zoé\R&D 100%\équipe\";
+
+    /// <summary>
+    /// A brief the engine's model wrote in French: a <c>%</c>, a trailing backslash, a quote then an
+    /// operator, a context of two bullet lines — it starts with a dash — and a folder <c>/données</c>.
+    /// </summary>
+    private ForgeSession HostileSampleSession(string initialContext = "- puce un\n- puce deux")
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BriefFileName, JsonSerializer.Deserialize<JsonElement>(
+            $$"""
+            {"need":"n","language":"fr",
+             "sample":{"variables":{"seuil":"10%","dossier":"C:\\temp\\","titre":"dit \"oui\" & part"},
+                       "initialContext":{{JsonSerializer.Serialize(initialContext)}} } }
+            """));
+        session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList
+        {
+            Folders = [new ForgeFolder { Path = "/données", Role = ForgeFolders.OutputRole, Purpose = "Les rapports" }],
+        });
+        return session;
+    }
+
+    /// <summary>The run options the runner's own reading (<see cref="RunnerArguments"/>) gives <paramref name="options"/>; its errors said when it refuses them.</summary>
+    private static RunnerOptions ParseRun(IEnumerable<string> options)
+    {
+        using var parser = new Parser(s => s.HelpWriter = null);
+        var result = RunnerArguments.Parse<RunnerOptions>(parser, options);
+        if (result is NotParsed<RunnerOptions> refused)
+            Assert.Fail($"the runner refuses [{string.Join(" | ", options)}]: {string.Join(", ", refused.Errors.Select(e => e.Tag))}");
+
+        return ((Parsed<RunnerOptions>)result).Value;
+    }
+
+    /// <summary>The runner's option grammar, as a parser target.</summary>
+    private sealed class RunnerOptions : RunnerOptionsBase;
+
+    /// <summary>
+    /// STUDIO-51: <c>run.cmd</c>, read by <c>cmd</c> from a folder holding <c>&amp;</c>, <c>%</c>,
+    /// spaces and accents, then split by the C runtime, hands the runner's grammar the sample as
+    /// the brief wrote it: <c>10%</c> keeps its <c>%</c>, <c>C:\temp\</c> its backslash, the quote
+    /// and the <c>&amp;</c> stay in their value, the context starting with a dash is the value of
+    /// <c>--initial-context</c> — its line break a space, which the file says —, and the folder
+    /// <c>/données</c> arrives whole.
+    /// </summary>
+    [Fact]
+    public void The_windows_launcher_hands_the_runner_the_sample_as_the_brief_wrote_it()
+    {
+        ForgePromoter.Promote(HostileSampleSession(), Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Windows, Now);
+
+        var runCmd = File.ReadAllText(Path.Combine(Destination, ForgePromoter.WindowsLauncherName));
+        var argv = CrtArgv.Split(CmdBatchModel.OrkeonLine(runCmd, HostileLauncherFolder)!);
+
+        Assert.Equal(["orkeon", "run", HostileLauncherFolder + "crew"], argv.Take(3));
+        var options = ParseRun(argv.Skip(3));
+        Assert.Equal(["seuil=10%", @"dossier=C:\temp\", "titre=dit \"oui\" & part"], options.Variables);
+        Assert.Equal("- puce un - puce deux", options.InitialContext);
+        Assert.Equal([$"\"{HostileLauncherFolder}données\":/données:rw"], options.Mounts);
+        Assert.Contains("\r\nrem A line break in a value below is written as a space", runCmd, StringComparison.Ordinal);
+    }
+
+    /// <summary>STUDIO-51: <c>run.sh</c>, through a real shell from a folder a shell would read, hands the sample over exactly.</summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public void The_posix_launcher_hands_the_runner_the_sample_exactly()
+    {
+        Assert.SkipUnless(PosixLauncherShell.IsAvailable, "The POSIX launcher needs a POSIX shell at /bin/sh.");
+
+        var team = Path.Combine(_workspace, "R&D 100% $x \"y\"", "ma-veille");
+        ForgePromoter.Promote(HostileSampleSession(), team, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var argv = PosixLauncherShell.Run(Path.Combine(team, ForgePromoter.PosixLauncherName), _workspace);
+
+        Assert.Equal(["run", Path.Combine(team, "crew")], argv.Take(2));
+        var options = ParseRun(argv.Skip(2));
+        Assert.Equal(["seuil=10%", @"dossier=C:\temp\", "titre=dit \"oui\" & part"], options.Variables);
+        Assert.Equal("- puce un\n- puce deux", options.InitialContext);
+        Assert.Equal([$"\"{Path.Combine(team, "données")}\":/données:rw"], options.Mounts);
+    }
+
+    /// <summary>
+    /// STUDIO-51, decision 8: a sample longer than a <c>cmd</c> command holds — 8 191 characters once
+    /// expanded — gives a <c>run.cmd</c> that launches nothing and says why, and a complete
+    /// <c>run.sh</c>. The promotion succeeds and says it, on the stream and on stderr: Linux and
+    /// macOS lose nothing.
+    /// </summary>
+    [Fact]
+    public async Task A_command_too_long_for_cmd_is_announced_and_the_promotion_succeeds()
+    {
+        var context = HostileLauncherInputs.Long();
+        HostileSampleSession(context);
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(["promote", "veille", "--to", Destination, "--events", "jsonl"], _workspace);
+
+        Assert.Equal(0, exitCode);
+        var warning = Assert.Single(Events(console.Stdout), e => e.GetProperty("kind").GetString() == "warning");
+        // The literal Studio's adoption reads too (ForgeWarningCodes.LauncherTooLong).
+        Assert.Equal("FORGE-LAUNCHER-TOO-LONG", warning.GetProperty("code").GetString());
+        Assert.Equal(ForgeErrorCodes.LauncherTooLong, warning.GetProperty("code").GetString());
+        var message = warning.GetProperty("message").GetString();
+        Assert.Contains("8191", message, StringComparison.Ordinal);
+        Assert.Contains("--initial-context", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("abcdefghij", message, StringComparison.Ordinal);
+        Assert.Contains(message!, console.Stderr, StringComparison.Ordinal);
+
+        Assert.Null(CmdBatchModel.OrkeonLine(
+            await File.ReadAllTextAsync(Path.Combine(Destination, ForgePromoter.WindowsLauncherName), TestContext.Current.CancellationToken),
+            HostileLauncherFolder));
+        Assert.Contains(context,
+            await File.ReadAllTextAsync(Path.Combine(Destination, ForgePromoter.PosixLauncherName), TestContext.Current.CancellationToken),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>STUDIO-51, decision 4: both launchers are UTF-8 without a BOM, named so — <c>cmd</c> reads a BOM as text.</summary>
+    [Fact]
+    public void Both_launchers_are_utf8_without_a_bom()
+    {
+        ForgePromoter.Promote(HostileSampleSession(), Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Windows, Now);
+
+        foreach (var launcher in new[] { ForgePromoter.WindowsLauncherName, ForgePromoter.PosixLauncherName })
+        {
+            var bytes = File.ReadAllBytes(Path.Combine(Destination, launcher));
+            Assert.False(bytes is [0xEF, 0xBB, 0xBF, ..], $"{launcher} starts with a BOM");
+            Assert.Contains("10%", new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes), StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-50, STUDIO-51: Orkeon Studio writes the launchers of the teams it adopts again through
+    /// the same composer (<see cref="TeamLauncherScript"/>), so <c>forge rename</c> finds the team's
+    /// name in the header of both writers' launchers, under the names both share
     /// (<c>ConventionalNames</c>).
     /// </summary>
     [Fact]
     public void The_launcher_header_and_names_are_the_ones_Studio_writes_too()
     {
-        Assert.Equal("Generated by Orkeon Forge for the team 'veille-docs'.", ForgePromoter.LauncherHeader("veille-docs"));
+        Assert.Equal("Generated by Orkeon Forge for the team 'veille-docs'.", TeamLauncherScript.Header("veille-docs"));
         Assert.Equal("run.cmd", ForgePromoter.WindowsLauncherName);
         Assert.Equal("run.sh", ForgePromoter.PosixLauncherName);
     }

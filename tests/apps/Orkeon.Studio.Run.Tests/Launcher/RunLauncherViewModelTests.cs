@@ -66,8 +66,9 @@ public class RunLauncherViewModelTests
 
         var arguments = launcher.BuildArguments();
 
-        Assert.Contains("--inputs", arguments);
-        Assert.DoesNotContain("--initial-context", arguments);
+        // A single-value option is one argument, --option=value (STUDIO-51, decision 7).
+        Assert.Contains("--inputs={\"topic\":\"x\"}", arguments);
+        Assert.DoesNotContain(arguments, argument => argument.StartsWith("--initial-context", StringComparison.Ordinal));
         Assert.False(launcher.IsOptionAvailable(RunOption.Variables));
         Assert.True(launcher.IsOptionAvailable(RunOption.Inputs));
     }
@@ -173,7 +174,7 @@ public class RunLauncherViewModelTests
         var recorded = Assert.Single(fixture.History.Recorded);
         Assert.Equal(crew, recorded.Target);
         Assert.Equal("/etc/orkeon/appsettings.json", recorded.SettingsPath);
-        Assert.Equal(["run", crew, "--settings", "/etc/orkeon/appsettings.json"], recorded.Arguments);
+        Assert.Equal(["run", crew, "--settings=/etc/orkeon/appsettings.json"], recorded.Arguments);
         Assert.Equal(OrkeonExitCodes.Success, recorded.ExitCode);
     }
 

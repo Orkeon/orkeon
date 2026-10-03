@@ -118,6 +118,13 @@ internal static class ForgeScheduleReasons
     /// <summary>Stale: it fires while the folder declares no schedule any more.</summary>
     public const string Undeclared = "undeclared";
 
+    /// <summary>
+    /// Stale: it runs the folder's launcher the way an earlier version registered it — a Windows
+    /// task whose command is <c>run.cmd</c> itself, whose quotes <c>cmd /c</c> keeps or strips by
+    /// what the path holds (STUDIO-51).
+    /// </summary>
+    public const string Outdated = "outdated";
+
     /// <summary>Stale: the OS holds it disabled.</summary>
     public const string Disabled = "disabled";
 }
@@ -455,6 +462,8 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
 
         if (!SameNames(installed.Names, Adapter.NamesFor(ForgePromoter.ArtifactName(teamDirectory))))
             return ForgeScheduleReasons.Renamed;
+        if (probe.Outdated)
+            return ForgeScheduleReasons.Outdated;
         if (expression is null)
             return ForgeScheduleReasons.Undeclared;
         if (!string.Equals(installed.Expression, expression, StringComparison.OrdinalIgnoreCase))

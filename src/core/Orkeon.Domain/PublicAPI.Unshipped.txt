@@ -26,6 +26,54 @@ Orkeon.Domain.FileSystem.FolderSlug
 const Orkeon.Domain.FileSystem.FolderSlug.MaxLength = 64 -> int
 const Orkeon.Domain.FileSystem.FolderSlug.TeamFallback = "equipe" -> string!
 static Orkeon.Domain.FileSystem.FolderSlug.From(string? text) -> string?
+Orkeon.Domain.FileSystem.TeamLauncherArgument
+static Orkeon.Domain.FileSystem.TeamLauncherArgument.Assign(string! option, Orkeon.Domain.FileSystem.TeamLauncherArgument! value) -> Orkeon.Domain.FileSystem.TeamLauncherArgument!
+static Orkeon.Domain.FileSystem.TeamLauncherArgument.Assign(string! option, string! value) -> Orkeon.Domain.FileSystem.TeamLauncherArgument!
+static Orkeon.Domain.FileSystem.TeamLauncherArgument.InTeam(string! before, string! relative, string! after) -> Orkeon.Domain.FileSystem.TeamLauncherArgument!
+static Orkeon.Domain.FileSystem.TeamLauncherArgument.Literal(string! text) -> Orkeon.Domain.FileSystem.TeamLauncherArgument!
+static Orkeon.Domain.FileSystem.TeamLauncherArgument.Word(string! text) -> Orkeon.Domain.FileSystem.TeamLauncherArgument!
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.<Clone>$() -> Orkeon.Domain.FileSystem.TeamLauncherCommandLength!
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.Deconstruct(out int Length, out string! LongestOption) -> void
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.Equals(Orkeon.Domain.FileSystem.TeamLauncherCommandLength? other) -> bool
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.Fits.get -> bool
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.Length.get -> int
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.Length.init -> void
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.LongestOption.get -> string!
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.LongestOption.init -> void
+Orkeon.Domain.FileSystem.TeamLauncherCommandLength.TeamLauncherCommandLength(int Length, string! LongestOption) -> void
+override Orkeon.Domain.FileSystem.TeamLauncherCommandLength.Equals(object? obj) -> bool
+override Orkeon.Domain.FileSystem.TeamLauncherCommandLength.GetHashCode() -> int
+override Orkeon.Domain.FileSystem.TeamLauncherCommandLength.ToString() -> string!
+static Orkeon.Domain.FileSystem.TeamLauncherCommandLength.operator !=(Orkeon.Domain.FileSystem.TeamLauncherCommandLength? left, Orkeon.Domain.FileSystem.TeamLauncherCommandLength? right) -> bool
+static Orkeon.Domain.FileSystem.TeamLauncherCommandLength.operator ==(Orkeon.Domain.FileSystem.TeamLauncherCommandLength? left, Orkeon.Domain.FileSystem.TeamLauncherCommandLength? right) -> bool
+Orkeon.Domain.FileSystem.TeamLauncherScript
+const Orkeon.Domain.FileSystem.TeamLauncherScript.WindowsCommandLimit = 8191 -> int
+static Orkeon.Domain.FileSystem.TeamLauncherScript.Header(string! teamName) -> string!
+static Orkeon.Domain.FileSystem.TeamLauncherScript.MeasureWindows(Orkeon.Domain.FileSystem.TeamLauncherSpec! spec) -> Orkeon.Domain.FileSystem.TeamLauncherCommandLength!
+static Orkeon.Domain.FileSystem.TeamLauncherScript.Posix(Orkeon.Domain.FileSystem.TeamLauncherSpec! spec) -> string!
+static Orkeon.Domain.FileSystem.TeamLauncherScript.QuoteForCmdPrompt(string! argument) -> string!
+static Orkeon.Domain.FileSystem.TeamLauncherScript.QuoteForPosixShell(string! argument) -> string!
+static Orkeon.Domain.FileSystem.TeamLauncherScript.Windows(Orkeon.Domain.FileSystem.TeamLauncherSpec! spec) -> string!
+Orkeon.Domain.FileSystem.TeamLauncherSpec
+Orkeon.Domain.FileSystem.TeamLauncherSpec.<Clone>$() -> Orkeon.Domain.FileSystem.TeamLauncherSpec!
+Orkeon.Domain.FileSystem.TeamLauncherSpec.Equals(Orkeon.Domain.FileSystem.TeamLauncherSpec? other) -> bool
+Orkeon.Domain.FileSystem.TeamLauncherSpec.IsScript.get -> bool
+Orkeon.Domain.FileSystem.TeamLauncherSpec.IsScript.init -> void
+Orkeon.Domain.FileSystem.TeamLauncherSpec.Segments.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.TeamLauncherArgument!>!>!
+Orkeon.Domain.FileSystem.TeamLauncherSpec.Segments.init -> void
+Orkeon.Domain.FileSystem.TeamLauncherSpec.TeamDirectory.get -> string!
+Orkeon.Domain.FileSystem.TeamLauncherSpec.TeamDirectory.init -> void
+Orkeon.Domain.FileSystem.TeamLauncherSpec.TeamLauncherSpec() -> void
+Orkeon.Domain.FileSystem.TeamLauncherSpec.TeamName.get -> string!
+Orkeon.Domain.FileSystem.TeamLauncherSpec.TeamName.init -> void
+Orkeon.Domain.FileSystem.TeamLauncherSpec.WrittenByStudio.get -> bool
+Orkeon.Domain.FileSystem.TeamLauncherSpec.WrittenByStudio.init -> void
+override Orkeon.Domain.FileSystem.TeamLauncherSpec.Equals(object? obj) -> bool
+override Orkeon.Domain.FileSystem.TeamLauncherSpec.GetHashCode() -> int
+override Orkeon.Domain.FileSystem.TeamLauncherSpec.ToString() -> string!
+static Orkeon.Domain.FileSystem.TeamLauncherSpec.operator !=(Orkeon.Domain.FileSystem.TeamLauncherSpec? left, Orkeon.Domain.FileSystem.TeamLauncherSpec? right) -> bool
+static Orkeon.Domain.FileSystem.TeamLauncherSpec.operator ==(Orkeon.Domain.FileSystem.TeamLauncherSpec? left, Orkeon.Domain.FileSystem.TeamLauncherSpec? right) -> bool
 *REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.get -> double
 *REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.init -> void
 *REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Default() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!

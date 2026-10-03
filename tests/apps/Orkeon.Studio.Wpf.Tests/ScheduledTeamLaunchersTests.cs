@@ -88,13 +88,13 @@ public sealed class ScheduledTeamLaunchersTests : IDisposable
 
         // The team names « DeepSeek »: created, the setting is the host profile its run takes.
         window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
-        Assert.Contains("--llm-profile 'deepseek'", Posix(), StringComparison.Ordinal);
-        Assert.Contains($"--settings '{_settingsPath}'", Posix(), StringComparison.Ordinal);
-        Assert.Contains("--llm-profile \"deepseek\"", Windows(), StringComparison.Ordinal);
+        Assert.Contains("--llm-profile='deepseek'", Posix(), StringComparison.Ordinal);
+        Assert.Contains($"--settings='{_settingsPath}'", Posix(), StringComparison.Ordinal);
+        Assert.Contains("--llm-profile=\"deepseek\"", Windows(), StringComparison.Ordinal);
 
         // Another setting changes nothing for this team.
         window.Settings.Profiles.CommitEdit(Zai, previousName: null);
-        Assert.Contains("--llm-profile 'deepseek'", Posix(), StringComparison.Ordinal);
+        Assert.Contains("--llm-profile='deepseek'", Posix(), StringComparison.Ordinal);
 
         // Removed, the setting is gone: the team runs on the default, as Studio then launches it.
         window.Settings.Profiles.Delete("DeepSeek");
@@ -126,7 +126,7 @@ public sealed class ScheduledTeamLaunchersTests : IDisposable
 
         var posix = Posix();
         Assert.Contains("--mount \"\\\"$DIR/output\\\":/output:rw\" \"\\\"$DIR/rapports\\\":/rapports:rw\"", posix, StringComparison.Ordinal);
-        Assert.Contains("--llm-profile 'deepseek'", posix, StringComparison.Ordinal);
-        Assert.Contains("\"\\\"%~dp0rapports\\\":/rapports:rw\"", Windows(), StringComparison.Ordinal);
+        Assert.Contains("--llm-profile='deepseek'", posix, StringComparison.Ordinal);
+        Assert.Contains("^\"\\\"%~dp0rapports\\\":/rapports:rw^\"", Windows(), StringComparison.Ordinal);
     }
 }

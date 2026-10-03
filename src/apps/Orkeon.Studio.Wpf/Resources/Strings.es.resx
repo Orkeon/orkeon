@@ -1320,6 +1320,9 @@
   <data name="Studio.Create.SessionNotRenamed" xml:space="preserve">
     <value>Su sesión del taller conserva su antiguo nombre de carpeta — {0}</value>
   </data>
+  <data name="Studio.Create.LauncherTooLong" xml:space="preserve">
+    <value>Su run.cmd no inicia nada en Windows: su comando tiene {0} caracteres, más de los {1} que acepta Windows (opción más larga: {2}).</value>
+  </data>
   <data name="Studio.Create.NameTakenTeam" xml:space="preserve">
     <value>Este nombre ya está ocupado: la carpeta {1} de Mis equipos ya contiene el equipo « {0} ».</value>
   </data>

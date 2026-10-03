@@ -1,6 +1,9 @@
 using System.Text.Json;
+using System.Xml.Linq;
 using Orkeon.Scripting.Cli.Commands.Forge;
 using Orkeon.Scripting.Cli.Tests.Doubles;
+using Orkeon.Tests.Shared.Launchers;
+using static Orkeon.Scripting.Cli.Tests.Forge.ScheduleForms;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -233,7 +236,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.Equal(3, lines.Length);
         Assert.Equal("MAILTO=me@example.org", lines[0]);
         Assert.Equal("15 3 * * 1 /usr/local/bin/backup # orkeon:ma-veille-copy", lines[1]);
-        Assert.Equal($"30 7 * * * \"{Path.Combine(Team, "run.sh")}\" # orkeon:ma-veille", lines[2]);
+        Assert.Equal($"30 7 * * * {CronQuoted(Path.Combine(Team, "run.sh"))} # orkeon:ma-veille", lines[2]);
 
         Assert.Equal(0, (await RunAsync(host, "unschedule", Team)).ExitCode);
         Assert.Equal(mine, os.Crontab);
@@ -264,7 +267,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         var (os, host) = Machine(ForgePromotePlatform.Linux);
 
         Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
-        Assert.Contains($"ExecStart=\"{Path.Combine(Team, "run.sh")}\"",
+        Assert.Contains($"ExecStart={SystemdQuoted(Path.Combine(Team, "run.sh"))}\n",
             await File.ReadAllTextAsync(Path.Combine(UnitDirectory, "orkeon-ma-veille.service"), TestContext.Current.CancellationToken),
             StringComparison.Ordinal);
         Assert.Equal(
@@ -316,7 +319,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
         Assert.Contains(os.Invocations, i => i.Arguments.SequenceEqual(
             ["/Create", "/TN", "Orkeon ma-veille", "/XML", Path.Combine(Team, "schedule", "windows-task.xml"), "/F"]));
-        Assert.Contains($"<Command>{Path.Combine(Team, "run.cmd")}</Command>", os.Tasks["Orkeon ma-veille"], StringComparison.Ordinal);
+        Assert.Equal(Path.Combine(Team, "run.cmd"), TaskRuns(os.Tasks["Orkeon ma-veille"]));
 
         os.Invocations.Clear();
         Assert.Equal(0, (await RunAsync(host, "schedule", Team, "--check")).ExitCode);
@@ -583,10 +586,150 @@ public sealed class ForgeSchedulingTests : IDisposable
 
         var schedule = Path.Combine(copy, ForgePromoter.ScheduleDirectoryName);
         Assert.False(File.Exists(Path.Combine(schedule, "orkeon-ma-veille.service")));
-        Assert.Contains($"ExecStart=\"{Path.Combine(copy, "run.sh")}\"",
+        Assert.Contains($"ExecStart={SystemdQuoted(Path.Combine(copy, "run.sh"))}\n",
             await File.ReadAllTextAsync(Path.Combine(schedule, "orkeon-ma-veille-copy.service"), TestContext.Current.CancellationToken),
             StringComparison.Ordinal);
         Assert.Contains("orkeon-ma-veille-copy.timer", os.EnabledUnits);
+    }
+
+    // ── STUDIO-51: the line that runs a scheduled launcher ──
+
+    /// <summary>
+    /// Decision 6: the task runs <c>cmd.exe</c> itself — <c>/d</c> no AutoRun command, <c>/v:off</c>
+    /// a <c>!</c> kept, <c>/s</c> the first and the last quote removed and they alone — on the
+    /// launcher's path, its one argument: the model of that reading gives the path back whole,
+    /// whatever it holds. Nothing to reinstall when the launcher is written again.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(HostileLauncherInputs.LauncherDirectoryData), MemberType = typeof(HostileLauncherInputs))]
+    public void The_task_runs_cmd_on_the_launcher_whatever_its_path_holds(string directory)
+    {
+        var launcher = directory + "run.cmd";
+        Assert.True(ForgeSchedule.TryParse("daily@07:30", out var daily, out _));
+
+        var xml = ForgePromoter.WindowsTaskDefinition("equipe", launcher, daily!, Now);
+
+        var exec = XDocument.Parse(xml).Descendants().Single(e => e.Name.LocalName == "Exec");
+        Assert.Equal(@"%SystemRoot%\System32\cmd.exe", exec.Elements().Single(e => e.Name.LocalName == "Command").Value);
+        var arguments = exec.Elements().Single(e => e.Name.LocalName == "Arguments").Value;
+        Assert.Equal($"/d /v:off /s /c \"\"{launcher}\"\"", arguments);
+        Assert.Equal(launcher, CmdBatchModel.SlashCProgram(arguments));
+
+        var probe = WindowsTaskScheduleAdapter.ReadTask(xml);
+        Assert.Equal(launcher, probe.Launcher);
+        Assert.False(probe.Outdated);
+    }
+
+    /// <summary>
+    /// A task an earlier version registered — <c>run.cmd</c> as its command, whose quotes
+    /// <c>cmd /c</c> keeps or strips by what the path holds — reads « to reinstall », which Studio's
+    /// card offers; installing again writes the current form.
+    /// </summary>
+    [Fact]
+    public async Task A_task_of_the_former_form_reads_to_reinstall_and_installing_again_writes_the_current_one()
+    {
+        PromoteScheduled(Team, ForgePromotePlatform.Windows);
+        var (os, host) = Machine(ForgePromotePlatform.Windows);
+        Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
+        os.Tasks["Orkeon ma-veille"] = FormerTask(Path.Combine(Team, "run.cmd"));
+
+        var check = Assert.Single((await RunAsync(host, "schedule", Team, "--check")).Events);
+        Assert.Equal("stale", check.GetProperty("state").GetString());
+        Assert.Equal(ForgeScheduleReasons.Outdated, check.GetProperty("reason").GetString());
+
+        Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
+        Assert.True(IsRegistered(os, ForgePromotePlatform.Windows, "ma-veille", Team));
+        Assert.Equal("installed", Assert.Single((await RunAsync(host, "schedule", Team, "--check")).Events).GetProperty("state").GetString());
+    }
+
+    /// <summary>
+    /// The <c>schedule/</c> an earlier version wrote — the task's command, <c>ExecStart</c> and the
+    /// cron line unescaped — is written again before an install, for a folder whose path systemd,
+    /// cron and the shell would each misread.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Families))]
+    public async Task Artifacts_of_the_former_form_are_written_again_before_an_install(string family)
+    {
+        var platform = Platform(family);
+        var team = Path.Combine(_workspace, "R&D 100% $x", "ma-veille");
+        PromoteScheduled(team, platform);
+        var schedule = Path.Combine(team, ForgePromoter.ScheduleDirectoryName);
+        var cancellation = TestContext.Current.CancellationToken;
+        await File.WriteAllTextAsync(Path.Combine(schedule, "windows-task.xml"), FormerTask(Path.Combine(team, "run.cmd")), cancellation);
+        await File.WriteAllTextAsync(Path.Combine(schedule, "orkeon-ma-veille.service"),
+            $"[Unit]\nDescription=Orkeon crew 'ma-veille'\n\n[Service]\nType=oneshot\nExecStart=\"{Path.Combine(team, "run.sh")}\"\n", cancellation);
+        await File.WriteAllTextAsync(Path.Combine(schedule, "cron.txt"),
+            $"30 7 * * * \"{Path.Combine(team, "run.sh").Replace("%", "\\%", StringComparison.Ordinal)}\" # orkeon:ma-veille\n", cancellation);
+        var (os, host) = Machine(platform);
+
+        Assert.Equal(0, (await RunAsync(host, "schedule", team)).ExitCode);
+
+        Assert.True(IsRegistered(os, platform, "ma-veille", team));
+    }
+
+    /// <summary>
+    /// Decision 6, systemd: <c>ExecStart</c> escapes what systemd reads in a quoted word — a
+    /// backslash and a quote as in C, <c>%</c> as a specifier, <c>$</c> as a variable — and the
+    /// adapter reads the launcher back, from the former, unescaped form too.
+    /// </summary>
+    [Fact]
+    public void The_service_escapes_the_launcher_for_systemd_and_reads_it_back()
+    {
+        const string Launcher = "/home/zoé/R&D 100%/$x \"y\" a\\b/équipe/run.sh";
+
+        var unit = ForgePromoter.SystemdService("equipe", Launcher);
+
+        Assert.Contains("\nExecStart=\"/home/zoé/R&D 100%%/$$x \\\"y\\\" a\\\\b/équipe/run.sh\"\n", unit, StringComparison.Ordinal);
+        Assert.Equal(Launcher, SystemdUserScheduleAdapter.ExecStartLauncher(unit));
+        Assert.Equal("/home/zoé/équipe/run.sh", SystemdUserScheduleAdapter.ExecStartLauncher("[Service]\nExecStart=\"/home/zoé/équipe/run.sh\"\n"));
+    }
+
+    /// <summary>
+    /// Decision 6, cron: the line puts the launcher between single quotes — the shell cron hands it
+    /// to expands nothing there — and escapes every <c>%</c>, cron's line separator; the adapter
+    /// reads it back, and the former double-quoted line too.
+    /// </summary>
+    [Fact]
+    public void The_cron_line_quotes_the_launcher_for_the_shell_and_reads_it_back()
+    {
+        const string Launcher = "/home/zoé/R&D 100%/$x \"y\" o'b/équipe/run.sh";
+        Assert.True(ForgeSchedule.TryParse("hourly", out var hourly, out _));
+
+        var job = CronJob(ForgePromoter.CronFile("equipe", Launcher, hourly!));
+
+        Assert.Equal("0 * * * * '/home/zoé/R&D 100\\%/$x \"y\" o'\\''b/équipe/run.sh' # orkeon:equipe", job);
+        Assert.Equal(Launcher, CronScheduleAdapter.QuotedPath(job));
+        Assert.Equal("/home/zoé/100%/run.sh", CronScheduleAdapter.QuotedPath("0 * * * * \"/home/zoé/100\\%/run.sh\" # orkeon:equipe"));
+    }
+
+    /// <summary>The cron command, as cron hands it to <c>/bin/sh</c>, runs the launcher of a folder the shell would misread.</summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public void The_cron_command_runs_the_launcher_through_the_shell()
+    {
+        Assert.SkipUnless(PosixLauncherShell.IsAvailable, "cron's shell is /bin/sh.");
+        var team = Path.Combine(_workspace, "R&D 100% $x \"y\" o'b `z`", "équipe");
+        Directory.CreateDirectory(team);
+        var launcher = Path.Combine(team, "run.sh");
+        File.WriteAllText(launcher, "#!/bin/sh\nprintf 'ran:%s' \"$0\"\n");
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(launcher, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Assert.True(ForgeSchedule.TryParse("hourly", out var hourly, out _));
+
+        // cron: five fields, then the command — an escaped % is a %, the rest goes to /bin/sh -c.
+        var job = CronJob(ForgePromoter.CronFile("equipe", launcher, hourly!));
+        var command = string.Join(' ', job.Split(' ').Skip(5)).Replace("\\%", "%", StringComparison.Ordinal);
+        var startInfo = new System.Diagnostics.ProcessStartInfo("/bin/sh") { RedirectStandardOutput = true, RedirectStandardError = true };
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add(command);
+        using var process = System.Diagnostics.Process.Start(startInfo)!;
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        Assert.True(process.ExitCode == 0, error);
+        Assert.Equal("ran:" + launcher, output);
     }
 
     // ── the grammar ──
@@ -671,16 +814,15 @@ public sealed class ForgeSchedulingTests : IDisposable
     private bool IsRegistered(FakeScheduleOs os, ForgePromotePlatform platform, string name, string team) => platform switch
     {
         ForgePromotePlatform.Windows =>
-            os.Tasks.TryGetValue($"Orkeon {name}", out var xml)
-            && xml.Contains($"<Command>{Path.Combine(team, "run.cmd")}</Command>", StringComparison.Ordinal),
+            os.Tasks.TryGetValue($"Orkeon {name}", out var xml) && TaskRuns(xml) == Path.Combine(team, "run.cmd"),
         ForgePromotePlatform.Linux =>
             os.EnabledUnits.Contains($"orkeon-{name}.timer")
             && File.ReadAllText(Path.Combine(UnitDirectory, $"orkeon-{name}.service"))
-                .Contains($"ExecStart=\"{Path.Combine(team, "run.sh")}\"", StringComparison.Ordinal),
+                .Contains($"ExecStart={SystemdQuoted(Path.Combine(team, "run.sh"))}\n", StringComparison.Ordinal),
         _ =>
             (os.Crontab ?? "").Split('\n').Any(line =>
                 CronScheduleAdapter.IsTagged(line, $"orkeon:{name}")
-                && line.Contains($"\"{Path.Combine(team, "run.sh")}\"", StringComparison.Ordinal)),
+                && line.Contains($" {CronQuoted(Path.Combine(team, "run.sh"))} ", StringComparison.Ordinal)),
     };
 
     private static int RegistrationCount(FakeScheduleOs os, ForgePromotePlatform platform) => platform switch

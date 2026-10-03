@@ -1260,6 +1260,13 @@ public static class StudioStringKeys
     /// </summary>
     public const string WizardSessionNotRenamed = "Studio.Create.SessionNotRenamed";
 
+    /// <summary>
+    /// "Its run.cmd launches nothing on Windows: its command is {0} characters long, over the {1}
+    /// Windows accepts (longest option: {2})." — after the adopted line, when the launchers Studio
+    /// wrote again hold a command longer than a cmd command holds (STUDIO-51).
+    /// </summary>
+    public const string WizardLauncherTooLong = "Studio.Create.LauncherTooLong";
+
     /// <summary>"This name is taken: the folder {1} in My teams already holds the team “{0}”." (STUDIO-26, D-07)</summary>
     public const string WizardNameTakenTeam = "Studio.Create.NameTakenTeam";
 
@@ -2366,6 +2373,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardPromoteFailed] = "The save failed — the engine refused the promotion: {0}",
         [StudioStringKeys.WizardAdoptedLine] = "Team “{0}” is saved in My teams.",
         [StudioStringKeys.WizardSessionNotRenamed] = "Its workshop session keeps its former folder name — {0}",
+        [StudioStringKeys.WizardLauncherTooLong] = "Its run.cmd launches nothing on Windows: its command is {0} characters long, over the {1} Windows accepts (longest option: {2}).",
         [StudioStringKeys.WizardNameTakenTeam] = "This name is taken: the folder {1} in My teams already holds the team “{0}”.",
         [StudioStringKeys.WizardNameTakenFolder] = "This name is taken: the folder {0} already exists in My teams, and holds no team.",
         [StudioStringKeys.WizardNameTakenFile] = "This name is taken: a file named {0} sits where its folder would go in My teams.",

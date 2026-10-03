@@ -204,6 +204,14 @@ internal static class ForgeErrorCodes
     /// <summary>The promotion could not write its folder; the session stays Ready, retryable.</summary>
     public const string PromoteFailed = "FORGE-PROMOTE-FAILED";
 
+    /// <summary>
+    /// A <c>warning</c> of <c>forge promote</c> (STUDIO-51): the team's <c>orkeon</c> command is
+    /// longer than the 8 191 characters a <c>cmd</c> command holds once expanded, so its
+    /// <c>run.cmd</c> launches nothing and says why when it is run; <c>run.sh</c> is complete. The
+    /// promotion succeeds: Linux and macOS lose nothing.
+    /// </summary>
+    public const string LauncherTooLong = "FORGE-LAUNCHER-TOO-LONG";
+
     /// <summary>A command was asked of a session that is not where that command applies.</summary>
     public const string InvalidState = "FORGE-INVALID-STATE";
 

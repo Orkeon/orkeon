@@ -1369,6 +1369,17 @@ internal static class ForgeCommand
             events.Warning(ForgeErrorCodes.ScheduleStillInstalled, stillInstalled);
         }
 
+        // STUDIO-51: a run.cmd that launches nothing — the command is longer than cmd holds — is
+        // said, and the promotion stands: run.sh is complete, and run.cmd says why each time it is
+        // run. On stderr too when stdout carries the stream: a person reads stderr.
+        if (result.WindowsLauncherTooLong is { } tooLong)
+        {
+            var warning = ForgePromoter.LauncherTooLongWarning(tooLong);
+            events.Warning(ForgeErrorCodes.LauncherTooLong, warning);
+            if (options.Events)
+                await Console.Error.WriteLineAsync($"orkeon forge: {warning}").ConfigureAwait(false);
+        }
+
         // The promotion is written: the session folder follows the team's (D-02). Outside the
         // guard above on purpose — nothing that happens from here may read as a failed
         // promotion: a move the disk refuses is a warning on the stream, and the command succeeds.

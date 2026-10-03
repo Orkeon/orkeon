@@ -1320,6 +1320,9 @@
   <data name="Studio.Create.SessionNotRenamed" xml:space="preserve">
     <value>其工坊会话保留原来的文件夹名称——{0}</value>
   </data>
+  <data name="Studio.Create.LauncherTooLong" xml:space="preserve">
+    <value>它的 run.cmd 在 Windows 上不会启动任何内容：其命令长 {0} 个字符，超过 Windows 接受的 {1} 个（最长的选项：{2}）。</value>
+  </data>
   <data name="Studio.Create.NameTakenTeam" xml:space="preserve">
     <value>此名称已被占用：我的团队中的文件夹 {1} 已包含团队“{0}”。</value>
   </data>

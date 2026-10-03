@@ -470,6 +470,7 @@
 <data name="Studio.Create.Save" xml:space="preserve"><value>Enregistrer dans mes équipes</value></data>
 <data name="Studio.Create.AdoptedLine" xml:space="preserve"><value>L'équipe « {0} » est enregistrée dans Mes équipes.</value></data>
 <data name="Studio.Create.SessionNotRenamed" xml:space="preserve"><value>Sa session d'atelier garde son ancien nom de dossier — {0}</value></data>
+<data name="Studio.Create.LauncherTooLong" xml:space="preserve"><value>Son run.cmd ne lance rien sous Windows : sa commande compte {0} caractères, au-delà des {1} qu'accepte Windows (option la plus longue : {2}).</value></data>
 <data name="Studio.Create.NameTakenTeam" xml:space="preserve"><value>Ce nom est déjà pris : le dossier {1} de Mes équipes contient déjà l'équipe « {0} ».</value></data>
 <data name="Studio.Create.NameTakenFolder" xml:space="preserve"><value>Ce nom est déjà pris : le dossier {0} existe déjà dans Mes équipes, et ne contient aucune équipe.</value></data>
 <data name="Studio.Create.NameTakenFile" xml:space="preserve"><value>Ce nom est déjà pris : un fichier nommé {0} occupe, dans Mes équipes, la place de son dossier.</value></data>

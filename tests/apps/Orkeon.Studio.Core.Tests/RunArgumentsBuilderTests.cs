@@ -1,3 +1,5 @@
+using CommandLine;
+using Orkeon.Hosting;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Validation;
@@ -6,7 +8,9 @@ namespace Orkeon.Studio.Core.Tests;
 
 /// <summary>
 /// The argument list handed to the <c>orkeon</c> process, checked string by string against
-/// what a user would type, and the refusal of options that belong to the other dialect.
+/// what a user would type, and the refusal of options that belong to the other dialect. A
+/// single-value option is one argument, <c>--option=value</c> (STUDIO-51, decision 7): a value
+/// starting with a dash stays the option's value.
 /// </summary>
 public sealed class RunArgumentsBuilderTests
 {
@@ -19,29 +23,29 @@ public sealed class RunArgumentsBuilderTests
     private static readonly string[] FullYamlArguments =
     [
         "run", "/crews/crew.yaml",
-        "--settings", "/etc/orkeon/appsettings.json",
+        "--settings=/etc/orkeon/appsettings.json",
         // One -V / one --mount flag with the values in sequence: the CLI parser
         // rejects a repeated option, so the builder never emits the flag twice.
         "-V", "TOPIC=quantum computing", "DEPTH=3",
-        "--initial-context", "Focus on 2026 papers",
+        "--initial-context=Focus on 2026 papers",
         "--mount", "/srv/data:/workspace:ro", "/srv/out:/output:rw",
         "--allow-external-mounts",
         "--verbose", "2",
         "--llm-log",
-        "--llm-log-path", "/var/log/orkeon",
+        "--llm-log-path=/var/log/orkeon",
         "--validate",
     ];
 
     private static readonly string[] FullScriptArguments =
     [
         "run", "/crews/crew.ork.ts",
-        "--settings", "/etc/orkeon/appsettings.json",
-        "--inputs", "{\"topic\":\"rag\"}",
+        "--settings=/etc/orkeon/appsettings.json",
+        "--inputs={\"topic\":\"rag\"}",
         "--verbose", "1",
     ];
 
     private static readonly string[] InputsFileArguments =
-        ["run", "/crews/crew.ork.ts", "--inputs-file", "/crews/inputs.json"];
+        ["run", "/crews/crew.ork.ts", "--inputs-file=/crews/inputs.json"];
 
     private static readonly string[] EmptyVariableArguments =
         ["run", "/crews/crew.yaml", "-V", "TOPIC="];
@@ -49,12 +53,12 @@ public sealed class RunArgumentsBuilderTests
     private static readonly string[] BothInputChannelsArguments =
     [
         "run", "/crews/crew.ork.ts",
-        "--inputs", "{}",
-        "--inputs-file", "/crews/inputs.json",
+        "--inputs={}",
+        "--inputs-file=/crews/inputs.json",
     ];
 
     private static readonly string[] LlmLogPathArguments =
-        ["run", "/crews/crew.yaml", "--llm-log-path", "/var/log/orkeon"];
+        ["run", "/crews/crew.yaml", "--llm-log-path=/var/log/orkeon"];
 
     private static RunTarget YamlTarget(string path = "/crews/crew.yaml") => new()
     {
@@ -158,8 +162,49 @@ public sealed class RunArgumentsBuilderTests
     {
         var arguments = RunArgumentsBuilder.Build(YamlTarget(), new RunLaunchOptions { SettingsPath = "   " });
 
-        Assert.DoesNotContain("--settings", arguments);
+        Assert.DoesNotContain(arguments, argument => argument.StartsWith("--settings", StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// STUDIO-51, decision 7: an initial context starting with a dash — a bullet list — is the
+    /// value of its option for the runner's own grammar (<see cref="RunnerOptionsBase"/>), which
+    /// read <c>--initial-context "- point un"</c> as an unknown option and refused the run.
+    /// </summary>
+    [Fact]
+    public void A_value_starting_with_a_dash_stays_the_value_of_its_option()
+    {
+        var arguments = RunArgumentsBuilder.Build(
+            YamlTarget(),
+            new RunLaunchOptions { SettingsPath = "/etc/orkeon/appsettings.json", InitialContext = "- point un\n- point deux" });
+
+        Assert.Equal(["run", "/crews/crew.yaml", "--settings=/etc/orkeon/appsettings.json", "--initial-context=- point un\n- point deux"], arguments);
+        using var parser = new Parser(s => s.HelpWriter = null);
+        var options = Assert.IsType<Parsed<RunnerOptions>>(RunnerArguments.Parse<RunnerOptions>(parser, arguments.Skip(2))).Value;
+        Assert.Equal("- point un\n- point deux", options.InitialContext);
+        Assert.Equal("/etc/orkeon/appsettings.json", options.SettingsPath);
+    }
+
+    /// <summary>
+    /// STUDIO-51, decision 7: a variable or a mount the runner would read as an option — a
+    /// sequence value starting with a dash — is refused before the launch, against its option.
+    /// </summary>
+    [Fact]
+    public void A_variable_name_or_a_mount_starting_with_a_dash_is_refused()
+    {
+        var options = new RunLaunchOptions { Variables = [new RunVariable("-x", "1")], Mounts = ["-d:/x:ro"] };
+
+        var messages = RunArgumentsBuilder.Validate(YamlTarget(), options);
+
+        Assert.Equal(2, messages.Count);
+        Assert.All(messages, message => Assert.Equal(ValidationSeverity.Error, message.Severity));
+        Assert.Contains(messages, message => message.Code == LaunchCodes.InvalidVariable && message.Path == "-V");
+        Assert.Contains(messages, message => message.Code == LaunchCodes.MountStartsWithDash && message.Path == "--mount"
+            && message.Text.Contains("'-d:/x:ro'", StringComparison.Ordinal));
+        Assert.Throws<InvalidOperationException>(() => RunArgumentsBuilder.Build(YamlTarget(), options));
+    }
+
+    /// <summary>The runner's option grammar, as a parser target.</summary>
+    private sealed class RunnerOptions : RunnerOptionsBase;
 
     [Fact]
     public void Yaml_options_are_refused_on_a_script_target()

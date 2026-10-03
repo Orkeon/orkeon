@@ -1,5 +1,6 @@
 using CommandLine;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Commands;
 
 [assembly: SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: CLI entrypoint resolves user-supplied script paths before any VFS mounts exist.")]
@@ -95,7 +96,11 @@ internal static class Program
         return await RunAsync(args).ConfigureAwait(false);
     }
 
-    /// <summary>Parses the `run` option grammar and executes it.</summary>
+    /// <summary>
+    /// Parses the `run` option grammar and executes it. A single-value option written
+    /// <c>--option=value</c> — how the team launchers and Studio write one — is read with its value
+    /// as written, a line break and a leading space included (<see cref="RunnerArguments"/>).
+    /// </summary>
     private static async Task<int> RunAsync(string[] args)
     {
         using var parser = new Parser(s =>
@@ -104,7 +109,7 @@ internal static class Program
             s.CaseInsensitiveEnumValues = true;
         });
 
-        return await parser.ParseArguments<RunCommandOptions>(args)
+        return await RunnerArguments.Parse<RunCommandOptions>(parser, args)
             .MapResult(
                 async (RunCommandOptions o) => await RunCommand.ExecuteAsync(o).ConfigureAwait(false),
                 _ => Task.FromResult(ExitScriptError))

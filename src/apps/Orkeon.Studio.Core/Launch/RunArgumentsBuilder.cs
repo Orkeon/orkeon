@@ -96,14 +96,19 @@ public static class RunArgumentsBuilder
         AppendValue(arguments, RunOption.Client, options.ClientName);
     }
 
-    /// <summary>Appends the option and its value; an absent or blank value appends nothing.</summary>
+    /// <summary>
+    /// Appends the option and its value as ONE argument, <c>--option=value</c> (STUDIO-51,
+    /// decision 7): the runner's grammar reads a separate value starting with <c>-</c> — a bullet
+    /// list as initial context — as the next option and refuses the run; attached, it cuts at the
+    /// first <c>=</c> and keeps the rest as it is. An absent or blank value appends nothing — the
+    /// grammar refuses <c>--option=</c>.
+    /// </summary>
     private static void AppendValue(List<string> arguments, RunOption option, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return;
 
-        arguments.Add(RunOptionAvailability.ToCommandLineName(option));
-        arguments.Add(value);
+        arguments.Add(RunOptionAvailability.ToCommandLineName(option) + "=" + value);
     }
 
     /// <summary>Appends the bare flag when it is set.</summary>
@@ -183,6 +188,16 @@ public static class RunArgumentsBuilder
                 messages.Add(ValidationMessage.Error(
                     LaunchCodes.EmptyMount,
                     string.Create(CultureInfo.InvariantCulture, $"The --mount entry at index {i} is empty."),
+                    RunOptionAvailability.ToCommandLineName(RunOption.Mounts)));
+            }
+            else if (effective.Mounts[i].StartsWith('-'))
+            {
+                // A value after --mount that starts with '-' is read as the next option (STUDIO-51).
+                messages.Add(ValidationMessage.Error(
+                    LaunchCodes.MountStartsWithDash,
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"The --mount entry at index {i} ('{effective.Mounts[i]}') starts with '-', which the CLI reads as an option: a mount starts with its folder."),
                     RunOptionAvailability.ToCommandLineName(RunOption.Mounts)));
             }
         }
@@ -271,6 +286,17 @@ public static class RunArgumentsBuilder
                     string.Create(
                         CultureInfo.InvariantCulture,
                         $"Variable name '{key}' contains '=', which separates the name from the value in -V KEY=VALUE."),
+                    RunOptionAvailability.ToCommandLineName(RunOption.Variables));
+            }
+            else if (key.StartsWith('-'))
+            {
+                // A value after -V that starts with '-' is read as the next option (STUDIO-51); a
+                // variable is named after a {name} of the crew, which never starts with one.
+                yield return ValidationMessage.Error(
+                    LaunchCodes.InvalidVariable,
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"Variable name '{key}' starts with '-', which the CLI reads as an option."),
                     RunOptionAvailability.ToCommandLineName(RunOption.Variables));
             }
         }
