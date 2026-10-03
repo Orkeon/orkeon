@@ -23,10 +23,13 @@ public interface IProcessStrategy
     /// Executes tasks in a hierarchical manner with a manager.
     /// </summary>
     /// <param name="crew">The crew to execute.</param>
-    /// <param name="managerAgentId">The manager agent identifier.</param>
+    /// <param name="managerAgentId">
+    /// The manager agent identifier — removed from the workers; null when the crew's manager is its
+    /// <see cref="Crew.ManagerLlm"/> alone, every agent then working (GAP-19).
+    /// </param>
     /// <param name="inputVariables">Optional user-supplied input variables for template interpolation in task descriptions.</param>
     /// <param name="cancellationToken">Cancellation token. Implementations should propagate it to every internal await (agent execution, LLM HTTP calls, etc.).</param>
-    Task<CrewOutput> ExecuteHierarchicalAsync(Crew crew, AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default);
+    Task<CrewOutput> ExecuteHierarchicalAsync(Crew crew, AgentId? managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Executes tasks in parallel.

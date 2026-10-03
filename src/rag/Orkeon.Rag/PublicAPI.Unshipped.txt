@@ -8,3 +8,6 @@ Orkeon.Rag.Evaluation.RagEvalRunRequest.DefaultCollection.init -> void
 *REMOVED*Orkeon.Rag.DependencyInjection.RagStoreOptions.ProviderOptions.get -> System.Collections.Generic.Dictionary<string!, string!>!
 *REMOVED*Orkeon.Rag.Ingestion.RagCollectionsBootstrapper.RagCollectionsBootstrapper(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Ingestion.RagCollectionsBootstrapper!>? logger = null) -> void
 Orkeon.Rag.Ingestion.RagCollectionsBootstrapper.RagCollectionsBootstrapper(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Ingestion.RagCollectionsBootstrapper!>? logger = null) -> void
+Orkeon.Rag.DependencyInjection.RagLlm
+const Orkeon.Rag.DependencyInjection.RagLlm.ProfileKey = "Orkeon:Rag:LlmProfile" -> string!
+static Orkeon.Rag.DependencyInjection.RagLlm.EnsureProfileIsKnown(Microsoft.Extensions.Configuration.IConfiguration! configuration, Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles) -> void

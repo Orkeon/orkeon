@@ -54,6 +54,12 @@ static class Program
                 ConfigureServices(context, services, effectiveUi, scriptedOpts, replWordWrap))
             .Build();
 
+        // GAP-19: a RAG LLM profile (Orkeon:Rag:LlmProfile) the host does not offer refuses the
+        // start, listing the known ones — as the runner host does. The name alone is checked.
+        RagLlm.EnsureProfileIsKnown(
+            host.Services.GetRequiredService<IConfiguration>(),
+            host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>());
+
         await RunHostAsync(host, effectiveUi, scriptedOpts);
     }
 

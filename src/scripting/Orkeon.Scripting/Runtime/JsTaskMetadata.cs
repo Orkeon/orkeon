@@ -6,7 +6,7 @@ namespace Orkeon.Scripting.Runtime;
 /// <summary>
 /// Bundles the DSL-only metadata attached to a <see cref="JsTask"/> by
 /// <c>taskBuilder()</c> (assigned agent, dependency tasks, JSON-schema expectations,
-/// task-level tools, deliverable spec and response format). Introduced to keep the
+/// task-level tools, deliverable spec, response format and LLM profile). Introduced to keep the
 /// <see cref="JsTask"/> constructor below the parameter-count threshold while grouping
 /// these cohesive, mostly-optional attributes.
 /// </summary>
@@ -26,6 +26,9 @@ internal sealed record JsTaskMetadata
 
     /// <summary>Whether the captured schema is strict. Defaults to true.</summary>
     public bool ResponseSchemaStrict { get; init; } = true;
+
+    /// <summary>The host LLM profile captured by <c>taskBuilder().withProfile(name)</c> (GAP-19).</summary>
+    public string? Profile { get; init; }
 
     /// <summary>YAML parity <c>humanInput: true</c> — the task pauses for the human-input provider.</summary>
     public bool HumanInput { get; init; }

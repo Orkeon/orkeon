@@ -217,8 +217,8 @@ var crew = new CrewBuilder()
 
 A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates the workers. For each task it picks a worker via `AssignTaskAsync()`, the worker executes, then the manager **reviews the output** with `ReviewOutputAsync()`.
 
-- The crew must name its manager: `managerAgent:` in YAML (or `.Hierarchical(manager)` / `.WithManagerId(...)`); without one the run fails with "Hierarchical process requires a manager agent". That agent is removed from the worker pool.
-- The manager's decisions go through the **host's registered LLM** (`IChatClient` when present, else `IBasicLlmProvider` — the `Llm` section in a runner host), not through the manager agent's own `llm:` block; they are metered under the manager's role.
+- The crew names its manager: `managerAgent:` in YAML (`crewBuilder().manager(agent)` in `.ork.ts`, `.Hierarchical(manager)` / `.WithManager(agent)` in C#) — that agent is removed from the worker pool. In C#, `.WithManagerLlm(provider)` (CrewAI's `manager_llm`) gives the manager a provider of its own: such a crew needs no manager agent, and every agent is then a worker. A crew with neither is refused when it is built.
+- The manager's decisions go through **the LLM the crew gives it**, resolved once per run: the provider `WithManagerLlm` set (C#; metered like a provider the host registers), else the manager agent's own `llm:` block — its profile and model, a model left unset being the profile's own (`llm: { profile: claude }`) — else the host's **default profile**. A profile the host does not offer fails the crew load, like any agent's. The calls are metered under the manager's role (`operation: manager`). YAML has no `manager_llm` key: the manager agent's `llm:` block is the way.
 - Assignment: the manager LLM answers with JSON; an unparseable answer falls back to a role/keyword heuristic, an LLM error to the first worker. A task's `agent:` is not consulted.
 - Review: up to **3 reviews per task**, so at most **2 re-executions** (each with a `revision_feedback` context variable). A third rejection keeps the last output, prefixed `[NEEDS REVISION]` and marked failed — and the task fails the crew. A review that errors counts as an approval.
 - A task assigned to an agent the crew does not carry never runs, and fails the crew. A task whose dependency failed is skipped without asking the manager.
@@ -228,7 +228,7 @@ A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates th
 ### Internal mechanism
 
 ```
-                  ┌─── Manager (host LLM) ───┐
+                  ┌─ Manager (crew's LLM) ───┐
                   │   AssignTaskAsync()       │
                   │   ReviewOutputAsync()     │
                   └────────┬──────────────────┘
@@ -246,8 +246,10 @@ A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates th
 **Key classes**: `HierarchicalProcessStrategy`, `IManagerAgent`, `LlmBasedManager`, `TaskAssignment` (`TaskId`, `AssignedAgent`, `Reason`, `AssignedAt`)
 
 **`IManagerAgent` interface** (`Orkeon.Application.Interfaces`):
-- `AssignTaskAsync(task, availableAgents, context)` → `TaskAssignment`
-- `ReviewOutputAsync(output, originalTask)` → `bool` (approved or not)
+- `AssignTaskAsync(task, availableAgents, context, llm)` → `TaskAssignment`
+- `ReviewOutputAsync(output, originalTask, llm)` → `bool` (approved or not)
+
+`llm` is the `ManagerLlm` the strategy resolved for the run (`ManagerLlmResolver`): the chat client the manager asks, the model it asks for, and its name in the log (`provider:<name>` or `profile:<name>`).
 
 ### YAML configuration
 
@@ -262,6 +264,9 @@ agents:
   lead:
     role: "Tech Lead"
     goal: "Coordinate the delivery"
+    llm:                    # the manager assigns and reviews on this LLM:
+      profile: claude       # one of the host's profiles (Llm:Profiles:claude),
+      model: claude-sonnet-5  # on this model (unset, the crew's gpt-4o would apply)
   dev:
     role: "Senior Developer"
     goal: "Write production code"
@@ -580,7 +585,7 @@ graphConfig:
 
 ### Principle
 
-For each task, the manager LLM (`LlmBasedManager`, as in Hierarchical) picks the agent that **claims** it. When that agent's execution fails and the agent allows delegation, the task is **delegated to a peer** over the A2A channel (`IAgentChannel`), under a derived child budget. With no peer in the crew, the failure stands. A **multi-dimensional budget** (5 axes) bounds the run. The API is experimental (`ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md)).
+For each task, the manager LLM (`LlmBasedManager`, as in Hierarchical — on the provider `CrewBuilder.WithManagerLlm` sets in C#, else on the host's default profile: an autonomous crew has no manager agent) picks the agent that **claims** it. When that agent's execution fails and the agent allows delegation, the task is **delegated to a peer** over the A2A channel (`IAgentChannel`), under a derived child budget. With no peer in the crew, the failure stands. A **multi-dimensional budget** (5 axes) bounds the run. The API is experimental (`ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md)).
 
 ### Internal mechanism
 

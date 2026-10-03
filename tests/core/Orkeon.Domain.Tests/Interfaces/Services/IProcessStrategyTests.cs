@@ -16,7 +16,7 @@ public class IProcessStrategyTests
     private class TestProcessStrategy : IProcessStrategy
     {
         private readonly Func<Orkeon.Domain.Crew.Crew, Task<CrewOutput>>? _sequentialFunc;
-        private readonly Func<Orkeon.Domain.Crew.Crew, AgentId, Task<CrewOutput>>? _hierarchicalFunc;
+        private readonly Func<Orkeon.Domain.Crew.Crew, AgentId?, Task<CrewOutput>>? _hierarchicalFunc;
         private readonly Func<Orkeon.Domain.Crew.Crew, Task<CrewOutput>>? _parallelFunc;
 
         public int SequentialCallCount { get; private set; }
@@ -30,7 +30,7 @@ public class IProcessStrategyTests
 
         public TestProcessStrategy(
             Func<Orkeon.Domain.Crew.Crew, Task<CrewOutput>>? sequentialFunc = null,
-            Func<Orkeon.Domain.Crew.Crew, AgentId, Task<CrewOutput>>? hierarchicalFunc = null,
+            Func<Orkeon.Domain.Crew.Crew, AgentId?, Task<CrewOutput>>? hierarchicalFunc = null,
             Func<Orkeon.Domain.Crew.Crew, Task<CrewOutput>>? parallelFunc = null)
         {
             _sequentialFunc = sequentialFunc;
@@ -50,7 +50,7 @@ public class IProcessStrategyTests
             return CreateDefaultOutput("Sequential execution completed");
         }
 
-        public async System.Threading.Tasks.Task<CrewOutput> ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew crew, AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        public async System.Threading.Tasks.Task<CrewOutput> ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew crew, AgentId? managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             HierarchicalCallCount++;
             LastHierarchicalCrew = crew;

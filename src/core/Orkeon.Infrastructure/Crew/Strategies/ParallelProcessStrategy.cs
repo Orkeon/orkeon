@@ -93,7 +93,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     }
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId? managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException(
             "Hierarchical execution is not supported by ParallelProcessStrategy. " +

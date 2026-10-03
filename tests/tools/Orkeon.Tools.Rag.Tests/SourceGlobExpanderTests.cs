@@ -51,6 +51,41 @@ public class SourceGlobExpanderTests
         Assert.False(SourceGlobExpander.HasWildcard("/docs/a.md"));
     }
 
+    [Theory]
+    [InlineData("https://exemple.test/page?id=1")]
+    [InlineData("http://exemple.test/search?q=*")]
+    [InlineData("HTTPS://exemple.test/a*b/page")]
+    public void An_http_address_is_never_a_pattern_whatever_it_carries(string address)
+    {
+        // GAP-19, decision 5: the '?' of a query string made rag_ingest and rag.ingest walk the VFS.
+        Assert.True(SourceGlobExpander.IsWebAddress(address));
+        Assert.False(SourceGlobExpander.HasWildcard(address));
+    }
+
+    [Theory]
+    [InlineData("/workspace/docs/*.md")]
+    [InlineData("docs/report-?.pdf")]
+    [InlineData("ftp://exemple.test/files/*.txt")]
+    [InlineData("")]
+    public void Only_an_absolute_http_address_is_one(string location)
+    {
+        Assert.False(SourceGlobExpander.IsWebAddress(location));
+    }
+
+    [Fact]
+    public async Task ExpandAsync_hands_addresses_over_as_written_without_asking_the_file_system()
+    {
+        var fileSystem = new ThrowingFileSystemService();
+
+        var result = await SourceGlobExpander.ExpandAsync(
+            fileSystem,
+            ["https://exemple.test/page?id=1", "http://exemple.test/a*b"],
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(["https://exemple.test/page?id=1", "http://exemple.test/a*b"], result.Select(s => s.Location));
+        Assert.Equal(0, fileSystem.CallCount);
+    }
+
     [Fact]
     public async Task ExpandAsync_KeepsPlainLocations_ExpandsGlobs_Deduplicates_AndSorts()
     {

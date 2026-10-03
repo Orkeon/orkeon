@@ -25,7 +25,7 @@ public static class CrewDefinitionValidator
         ValidateCrewBasicFields(config, errors);
         ValidateAgents(config, errors);
         ValidateTasks(config, errors);
-        ValidateHierarchicalProcess(config, errors, warnings);
+        ValidateHierarchicalProcess(config, errors);
         ValidateConsensualManager(config, errors);
         ValidateAsyncExecution(config, errors);
         ValidateMounts(config, errors);
@@ -137,15 +137,21 @@ public static class CrewDefinitionValidator
         }
     }
 
-    private static void ValidateHierarchicalProcess(
-        CrewConfiguration config, List<string> errors, List<string> warnings)
+    /// <summary>
+    /// A hierarchical crew read from a configuration names its manager, one of its agents: the
+    /// manager assigns and reviews on that agent's <c>llm:</c> block (GAP-19). Only C# can give a
+    /// manager a provider of its own instead (<c>CrewBuilder.WithManagerLlm</c>); this used to warn
+    /// that the first agent would manage, and the crew builder then refused the crew.
+    /// </summary>
+    private static void ValidateHierarchicalProcess(CrewConfiguration config, List<string> errors)
     {
         if (config.Process != ProcessType.Hierarchical)
             return;
 
         if (config.ManagerAgentId == null)
         {
-            warnings.Add("Hierarchical process without an explicit manager agent. The first agent will be used as manager.");
+            errors.Add("Hierarchical process requires a manager agent: name one of the crew's agents as its manager "
+                + "(managerAgent: in YAML, .manager(agent) in .ork.ts). It assigns and reviews on that agent's llm: block.");
             return;
         }
 

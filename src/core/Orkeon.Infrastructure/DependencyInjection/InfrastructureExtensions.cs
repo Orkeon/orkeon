@@ -255,19 +255,15 @@ public static class InfrastructureExtensions
         // Add async agent communication service
         services.AddSingleton<Orkeon.Application.Interfaces.Services.IAgentCommunicationService, Communication.AsyncAgentCommunicationService>();
 
-        // Add Manager Agent for hierarchical process
-        // Prefer IChatClient when available, fall back to IBasicLlmProvider-only constructor
-        services.AddScoped<IManagerAgent>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<LlmBasedManager>>();
-            var llmProvider = sp.GetRequiredService<IBasicLlmProvider>();
-            var chatClient = sp.GetService<IChatClient>();
-            if (chatClient != null)
-            {
-                return new LlmBasedManager(logger, llmProvider, chatClient);
-            }
-            return new LlmBasedManager(logger, llmProvider);
-        });
+        // The manager of hierarchical and autonomous crews. It has no model of its own: every call
+        // names the LLM the crew gives it, which the strategy resolves once per run — Crew.ManagerLlm
+        // (metered like a provider the host registers), else the manager agent's profile and model,
+        // else the default profile (GAP-19).
+        services.AddScoped<IManagerAgent, LlmBasedManager>();
+        services.TryAddScoped(sp => new ManagerLlmResolver(
+            sp.GetRequiredService<IChatClient>(),
+            sp.GetService<ILlmProfileRegistry>(),
+            sp.GetService<ILlmUsageSink>()));
 
         // Add Memory Scope (no-op default — strategies require it)
         services.TryAddScoped<Application.Interfaces.Ports.IMemoryScope>(_ => Application.Context.NullMemoryScope.Instance);

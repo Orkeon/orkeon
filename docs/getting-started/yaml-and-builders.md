@@ -10,7 +10,7 @@ The three main entities are built via fluent builders defined in the Domain laye
 
 - `AgentBuilder` (`Orkeon.Domain.Agent`): configures role, goal, backstory, tools, execution constraints, prompt templates, tool access policy
 - `CrewTaskBuilder` (`Orkeon.Domain.Task`): configures description, expected output, priority, dependencies, output JSON schema, async mode (`.Async()` — honoured by a sequential crew, refused by `CrewBuilder.Build()` outside Sequential and Parallel), human intervention
-- `CrewBuilder` (`Orkeon.Domain.Crew`): configures name, goal, process type, agents, tasks, planning, memory, callbacks, dynamic agents
+- `CrewBuilder` (`Orkeon.Domain.Crew`): configures name, goal, process type, agents, tasks, planning, memory, callbacks, dynamic agents, and the manager of a hierarchical crew — an agent (`.Hierarchical(manager)`, `.WithManager(agent)`), or a provider of its own (`.WithManagerLlm(provider)`, CrewAI's `manager_llm`: the manager assigns and reviews on it, the crew then needs no manager agent and every agent works)
 
 Each builder internally delegates to the factory methods `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` and throws a `BuilderValidationException` if the required fields are missing.
 
@@ -38,7 +38,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true: stores each task's result and recalls the closest ones before each task (needs an embedder)
 memoryProvider: string    # needs memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — the type; the host section (Orkeon:Redis, …) gives the connection; unset: the host's default store
 planning: bool            # default: false. true: a step-by-step plan per task, written before the first one and read by each task in its prompt; never reorders the tasks
-managerAgent: string      # Required when process = "hierarchical"
+managerAgent: string      # Required when process = "hierarchical": the manager, on its own llm: block
 mounts: [string]          # Virtual roots the crew uses ("/output", or "<id>|/output" to pin one settings entry)
 
 agents:
@@ -107,9 +107,12 @@ tasks:
 
 A profile the host does not define fails the crew load, and the message lists the profiles it
 offers — exactly like an unknown tool. A `llm:` block that names no `model` runs on the profile's
-own model (the host's for the default profile), never on a framework default. Only the agents'
-turns change provider: the hierarchical manager, the planner, the Guardian and the RAG pipelines
-stay on the default profile. In `.ork.ts` the same choice is `agentBuilder().llm(llm.profile("claude"))`.
+own model (the host's for the default profile), never on a framework default. The manager of a
+hierarchical crew runs on its manager agent's `llm:` block like any agent (in C#, a provider set
+with `WithManagerLlm` wins); the RAG subsystem runs on the profile `Orkeon:Rag:LlmProfile` names; the
+planner and the Guardian stay on the default profile ([Configuration](../reference/configuration.md#named-profiles-llmprofiles)).
+In `.ork.ts` the same choice is `agentBuilder().llm(llm.profile("claude"))` on an agent and
+`taskBuilder().withProfile("claude")` on a task.
 
 A task's `tools:` add to its agent's own for that task only: a writer that holds `file_read` and runs a task declaring `tools: [file_write]` can read and write during that task, and only read during the others. There is no `circuitBreaker:` block — a crew that writes one is refused at load. What bounds a task at run time is the agent loop (`maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries); a Graph run is bounded by `graphConfig` (below).
 

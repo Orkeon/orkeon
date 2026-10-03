@@ -30,6 +30,7 @@ public sealed class JsTaskBuilder
     private string? _responseSchemaName;
     private JsValue? _responseSchema;
     private bool _responseSchemaStrict = true;
+    private string? _profile;
 
     public JsTaskBuilder name(string value) { _name = value; return this; }
     public JsTaskBuilder description(string value) { _description = value; return this; }
@@ -135,6 +136,21 @@ public sealed class JsTaskBuilder
     }
 
     /// <summary>
+    /// YAML parity <c>llm_override: { profile }</c> — runs this task alone on one of the host's named
+    /// LLM profiles (<c>Llm:Profiles:&lt;name&gt;</c>), on that profile's own model; <c>"default"</c>
+    /// brings it back to the host's default (GAP-19). The adapter carries the name to the task's
+    /// <see cref="Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride"/>, and a name the host
+    /// does not offer fails the load, listing the known ones — like a YAML task.
+    /// </summary>
+    public JsTaskBuilder withProfile(JsValue name)
+    {
+        if (name is null || !name.IsString() || string.IsNullOrWhiteSpace(name.AsString()))
+            throw new InvalidScriptException(".withProfile(name) takes the profile name as a non-empty string.");
+        _profile = name.AsString().Trim();
+        return this;
+    }
+
+    /// <summary>
     /// First-class deliverable contract — mirrors YAML's <c>deliverable: { ... }</c>
     /// block. Expected shape:
     /// <code>{ path: string, source: 'final_message' | 'structured_output' | 'tool_call' | 'none',
@@ -177,6 +193,7 @@ public sealed class JsTaskBuilder
             ResponseSchemaName = _responseSchemaName,
             ResponseSchema = _responseSchema,
             ResponseSchemaStrict = _responseSchemaStrict,
+            Profile = _profile,
             HumanInput = _humanInput,
             AsyncExecution = _asyncExecution,
             Tools = _tools,

@@ -156,7 +156,7 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
             _reviewFunc = reviewFunc;
         }
 
-        public Task<TaskAssignment> AssignTaskAsync(DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context)
+        public Task<TaskAssignment> AssignTaskAsync(DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm)
         {
             TaskAssignment assignment;
             if (_assignFunc != null)
@@ -175,7 +175,7 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
             return Task.FromResult(assignment);
         }
 
-        public Task<bool> ReviewOutputAsync(ApplicationTaskOutput output, DomainTask task)
+        public Task<bool> ReviewOutputAsync(ApplicationTaskOutput output, DomainTask task, ManagerLlm llm)
         {
             Reviews.Add((output, task));
             return Task.FromResult(_reviewFunc?.Invoke(output, task) ?? true);
@@ -250,6 +250,7 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
             _agentRepository,
             _logger,
             managerAgent ?? new TestManagerAgent(),
+            Orkeon.Infrastructure.Tests.Doubles.TestManagerLlm.Resolver(),
             executionService ?? new TestAgentExecutionService(),
             _memoryScope,
             new Orkeon.Infrastructure.Tests.Doubles.MockMemoryCoordinator());

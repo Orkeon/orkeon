@@ -173,7 +173,7 @@ public sealed class DerivedContextTests : IDisposable
         var crew = LifecycleFixture.Build(
             new CrewBuilder().Goal("Write").Process(ProcessType.Autonomous), [first, peer], [outline, draft]);
         var strategy = new AutonomousProcessStrategy(
-            Dependencies(), new InMemoryAgentChannel(NullLogger<InMemoryAgentChannel>.Instance), manager,
+            Dependencies(), new InMemoryAgentChannel(NullLogger<InMemoryAgentChannel>.Instance), manager, TestManagerLlm.Resolver(),
             NullLogger<AutonomousProcessStrategy>.Instance);
 
         var output = await strategy.ExecuteAutonomousAsync(

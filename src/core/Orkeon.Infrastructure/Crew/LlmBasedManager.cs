@@ -16,64 +16,48 @@ using Orkeon.Infrastructure.Constants.Scoring;
 namespace Orkeon.Infrastructure.Crew;
 
 /// <summary>
-/// LLM-based manager agent that assigns tasks and reviews outputs using a language model.
+/// LLM-based manager agent that assigns tasks and reviews outputs using a language model — the one
+/// the crew gives its manager (<see cref="ManagerLlm"/>), which every call names: the manager has no
+/// model of its own, so it never falls back on the host's default in silence (GAP-19).
 /// </summary>
 public partial class LlmBasedManager : IManagerAgent
 {
     private readonly ILogger<LlmBasedManager> _logger;
-    private readonly IBasicLlmProvider _llmProvider;
-    private readonly IChatClient? _chatClient;
 
     /// <summary>Initializes a new instance of <see cref="LlmBasedManager"/>.</summary>
     /// <param name="logger">The logger.</param>
-    /// <param name="llmProvider">The LLM provider for task assignment decisions.</param>
-    public LlmBasedManager(
-        ILogger<LlmBasedManager> logger,
-        IBasicLlmProvider llmProvider)
+    public LlmBasedManager(ILogger<LlmBasedManager> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
-        ArgumentNullException.ThrowIfNull(llmProvider);
-        _llmProvider = llmProvider;
-    }
-
-    /// <summary>
-    /// Constructor that accepts IChatClient for the new M.E.AI integration path.
-    /// When both are provided, IChatClient is preferred over IBasicLlmProvider.
-    /// </summary>
-    public LlmBasedManager(
-        ILogger<LlmBasedManager> logger,
-        IBasicLlmProvider llmProvider,
-        IChatClient chatClient)
-        : this(logger, llmProvider)
-    {
-        ArgumentNullException.ThrowIfNull(chatClient);
-        _chatClient = chatClient;
     }
 
     /// <inheritdoc />
     public Task<TaskAssignment> AssignTaskAsync(
         CrewTask task,
         IReadOnlyList<DomainAgent> availableAgents,
-        SimpleExecutionContext context)
+        SimpleExecutionContext context,
+        ManagerLlm llm)
     {
         ArgumentNullException.ThrowIfNull(task);
         // Validate inputs
         ArgumentNullException.ThrowIfNull(availableAgents);
+        ArgumentNullException.ThrowIfNull(llm);
 
         if (availableAgents.Count == 0)
         {
             throw new InvalidOperationException("No available agents to assign task");
         }
 
-        return AssignTaskCoreAsync(task, availableAgents, context);
+        return AssignTaskCoreAsync(task, availableAgents, context, llm);
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Manager fault barrier: any LLM/parse failure during assignment is logged and converted into a deterministic fallback assignment so the crew can still proceed (cancellation is rethrown).")]
     private async Task<TaskAssignment> AssignTaskCoreAsync(
         CrewTask task,
         IReadOnlyList<DomainAgent> availableAgents,
-        SimpleExecutionContext context)
+        SimpleExecutionContext context,
+        ManagerLlm llm)
     {
         LogManagerAssigningTask(task.Description.Value);
 
@@ -85,7 +69,7 @@ public partial class LlmBasedManager : IManagerAgent
 
         try
         {
-            var response = await SendPromptAsync(prompt, context?.CancellationToken ?? CancellationToken.None).ConfigureAwait(false);
+            var response = await SendPromptAsync(llm, prompt, context?.CancellationToken ?? CancellationToken.None).ConfigureAwait(false);
             var assignment = ParseAssignmentResponse(response, task, availableAgents);
 
             LogTaskAssignedToAgentWith(assignment.TaskId, assignment.AssignedAgent, assignment.Reason);
@@ -116,10 +100,12 @@ public partial class LlmBasedManager : IManagerAgent
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Manager review fault barrier: any LLM/parse failure is logged and defaults the review to approval so a transient model error does not stall the pipeline.")]
     public Task<bool> ReviewOutputAsync(
         TaskOutput output,
-        CrewTask originalTask)
+        CrewTask originalTask,
+        ManagerLlm llm)
     {
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(originalTask);
+        ArgumentNullException.ThrowIfNull(llm);
         return ReviewOutputCoreAsync();
 
         async Task<bool> ReviewOutputCoreAsync()
@@ -133,7 +119,7 @@ public partial class LlmBasedManager : IManagerAgent
 
             try
             {
-                var response = await SendPromptAsync(prompt, CancellationToken.None).ConfigureAwait(false);
+                var response = await SendPromptAsync(llm, prompt, CancellationToken.None).ConfigureAwait(false);
                 var approved = ParseReviewResponse(response);
 
                 LogOutputReviewForTask(originalTask.Id, approved ? "Approved" : "Rejected");
@@ -445,18 +431,15 @@ public partial class LlmBasedManager : IManagerAgent
         s_approvalKeywords.Any(k => text.Contains(k, StringComparison.Ordinal));
 
     /// <summary>
-    /// Sends a prompt to the LLM, preferring IChatClient when available.
+    /// Sends a prompt to the LLM the crew gives its manager, on the model it names — none leaves
+    /// the model to the provider, the profile's own (GAP-18).
     /// </summary>
-    private async Task<string> SendPromptAsync(string prompt, CancellationToken cancellationToken)
+    private static async Task<string> SendPromptAsync(ManagerLlm llm, string prompt, CancellationToken cancellationToken)
     {
-        if (_chatClient != null)
-        {
-            var messages = new List<ChatMessage> { new(ChatRole.User, prompt) };
-            var chatResponse = await _chatClient.GetResponseAsync(messages, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return chatResponse.Text ?? string.Empty;
-        }
-
-        return await _llmProvider.ChatAsync(prompt, null, cancellationToken).ConfigureAwait(false);
+        var messages = new List<ChatMessage> { new(ChatRole.User, prompt) };
+        var options = string.IsNullOrWhiteSpace(llm.Model) ? null : new ChatOptions { ModelId = llm.Model };
+        var chatResponse = await llm.ChatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+        return chatResponse.Text ?? string.Empty;
     }
 
     private static double CalculateAgentScore(DomainAgent agent, CrewTask task)

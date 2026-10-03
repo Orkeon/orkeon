@@ -101,7 +101,7 @@ public class ProcessStrategyFactoryTests
             var mockManagerAgent = new MockManagerAgent();
             var hierarchicalStrategy = new HierarchicalProcessStrategy(
                 mockTaskRepo, mockAgentRepo, hierarchicalLogger,
-                mockManagerAgent, mockExecutionService, mockMemoryScope, new MockMemoryCoordinator());
+                mockManagerAgent, TestManagerLlm.Resolver(), mockExecutionService, mockMemoryScope, new MockMemoryCoordinator());
             serviceProvider.RegisterService<HierarchicalProcessStrategy>(hierarchicalStrategy);
         }
 
@@ -137,6 +137,9 @@ public class ProcessStrategyFactoryTests
         // The hierarchical (GAP-30) and consensual (GAP-20) strategies store the result a run keeps;
         // AddOrkeonApplication registers the coordinator.
         services.AddSingleton<Orkeon.Application.Interfaces.Services.IMemoryCoordinator>(new MockMemoryCoordinator());
+        // The hierarchical and autonomous strategies resolve the LLM their crew gives its manager
+        // (GAP-19); AddOrkeonInfrastructure registers the resolver.
+        services.AddSingleton(TestManagerLlm.Resolver());
         services.AddTransient<AgentDelegationToolsProvider>();
         services.AddTransient<CrewStrategyDependencies>();
 

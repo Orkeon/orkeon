@@ -422,18 +422,19 @@ public class CrewTests
     }
 
     [Fact]
-    public void ShouldSetFirstAgentAsManager_WhenAddingAgentToHierarchicalCrewWithNoManager()
+    public void ShouldKeepEveryAgentAWorker_WhenAddingAgentsToACrewItsManagerLlmManages()
     {
-        // Arrange
-        var managerLlm = new StubLlmProvider();
-        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: managerLlm);
-        var agentId = AgentId.Create();
+        // GAP-19: a crew given a manager LLM (WithManagerLlm, CrewAI's manager_llm) needs no manager
+        // agent. The first agent added used to be made manager — and was lost as a worker.
+        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: new StubLlmProvider());
+        var first = AgentId.Create();
+        var second = AgentId.Create();
 
-        // Act
-        crew.AddAgent(agentId);
+        crew.AddAgent(first);
+        crew.AddAgent(second);
 
-        // Assert
-        Assert.Equal(agentId, crew.ManagerAgentId);
+        Assert.Null(crew.ManagerAgentId);
+        Assert.Equal([first, second], crew.Agents);
     }
 
     [Fact]
@@ -497,12 +498,11 @@ public class CrewTests
     [Fact]
     public void ShouldReassignManager_WhenRemovingManagerAgentFromHierarchicalCrew()
     {
-        // Arrange
-        var managerLlm = new StubLlmProvider();
-        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: managerLlm);
+        // Arrange — a crew managed by an agent, with no manager LLM to fall back on
         var agent1 = AgentId.Create();
         var agent2 = AgentId.Create();
-        crew.AddAgent(agent1); // becomes manager
+        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerAgentId: agent1);
+        crew.AddAgent(agent1);
         crew.AddAgent(agent2);
 
         // Act
@@ -510,6 +510,22 @@ public class CrewTests
 
         // Assert
         Assert.Equal(agent2, crew.ManagerAgentId);
+    }
+
+    [Fact]
+    public void ShouldLeaveItsManagerLlmManaging_WhenRemovingTheManagerAgentOfACrewThatHasOne()
+    {
+        // GAP-19: the manager LLM manages on its own; no worker is promoted in the agent's place.
+        var agent1 = AgentId.Create();
+        var agent2 = AgentId.Create();
+        var crew = DomainCrew.Create(
+            "Hierarchical test", ProcessType.Hierarchical, managerLlm: new StubLlmProvider(), managerAgentId: agent1);
+        crew.AddAgent(agent1);
+        crew.AddAgent(agent2);
+
+        crew.RemoveAgent(agent1, "Reassigned");
+
+        Assert.Null(crew.ManagerAgentId);
     }
 
     #endregion
@@ -710,24 +726,34 @@ public class CrewTests
     }
 
     [Fact]
-    public void ShouldThrowInvalidOperationException_WhenStartingHierarchicalExecutionWithoutManager()
+    public void ShouldStartHierarchicalExecution_WhenItsManagerLlmManagesWithoutAManagerAgent()
     {
-        // Arrange
-        var managerLlm = new StubLlmProvider();
-        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: managerLlm);
+        // GAP-19: the test this replaces could not build the crew it was named after — AddAgent
+        // made the first agent manager. A crew managed by its manager LLM validates and starts.
+        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: new StubLlmProvider());
         crew.AddAgent(AgentId.Create());
         crew.AddTask(TaskId.Create());
-        // The first agent auto-becomes manager, so let's remove that assignment
-        // Actually, AddAgent sets manager for hierarchical crews. So this test needs a different approach.
-        // We test via ChangeProcessType to hierarchical with manager provided (P1-03 fix requires both).
-        var crew2 = DomainCrew.Create("Test");
-        var agent = AgentId.Create();
-        crew2.AddAgent(agent);
-        crew2.AddTask(TaskId.Create());
-        crew2.ChangeProcessType(ProcessType.Hierarchical, agent);
-        // ChangeProcessType now requires managerAgentId AND members (P1-03 fix).
-        Assert.Equal(ProcessType.Hierarchical, crew2.ProcessType);
-        Assert.Equal(agent, crew2.ManagerAgentId);
+
+        Assert.True(crew.Validate().IsValid, crew.Validate().ToString());
+        crew.ValidateCanKickoff();
+        crew.StartExecution();
+
+        Assert.Equal(CrewStatus.Executing, crew.Status);
+        Assert.Null(crew.ManagerAgentId);
+    }
+
+    [Fact]
+    public void ShouldRefuseHierarchicalExecution_WhenItsManagerAgentIsNoMember()
+    {
+        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerAgentId: AgentId.Create());
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+
+        var validation = crew.Validate();
+
+        Assert.False(validation.IsValid);
+        Assert.Contains(validation.Errors, e => e.ErrorMessage.Contains("member", StringComparison.Ordinal));
+        Assert.Throws<InvalidOperationException>(crew.ValidateCanKickoff);
     }
 
     #endregion
@@ -981,6 +1007,19 @@ public class CrewTests
             () => crew.ChangeProcessType(ProcessType.Hierarchical, managerAgentId: null)
         );
         Assert.Contains("manager agent", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ChangeProcessType_ShouldTurnHierarchicalWithoutAManagerAgent_WhenTheCrewHasAManagerLlm()
+    {
+        // GAP-19: the manager LLM manages; no agent has to be named.
+        var crew = DomainCrew.Create("Test", ProcessType.Sequential, managerLlm: new StubLlmProvider());
+        crew.AddAgent(AgentId.Create());
+
+        crew.ChangeProcessType(ProcessType.Hierarchical);
+
+        Assert.Equal(ProcessType.Hierarchical, crew.ProcessType);
+        Assert.Null(crew.ManagerAgentId);
     }
 
     [Fact]

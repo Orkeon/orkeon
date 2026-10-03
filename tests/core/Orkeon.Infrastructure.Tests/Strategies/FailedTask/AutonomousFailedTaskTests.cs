@@ -119,6 +119,7 @@ public sealed class AutonomousFailedTaskTests : IDisposable
             _fixture.Dependencies,
             _channel,
             _manager,
+            TestManagerLlm.Resolver(),
             NullLogger<AutonomousProcessStrategy>.Instance,
             _fixture.Hook);
 

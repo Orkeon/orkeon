@@ -25,6 +25,13 @@ declare global {
          * one server-side. Implies `json_schema`. `strict` defaults to true.
          */
         withResponseSchema(name: string, schema: JsonSchema | string, strict?: boolean): this;
+        /**
+         * YAML parity `llm_override: { profile }` — runs this task alone on one of the host's
+         * named LLM profiles (`Llm:Profiles:<name>`), on that profile's own model; its agent's
+         * other tasks stay where they were. `"default"` brings the task back to the host's default
+         * profile. A name the host does not offer fails the load, listing the known ones.
+         */
+        withProfile(name: string): this;
         /** YAML parity `humanInput: true` — the task pauses for the human-input provider. */
         humanInput(value?: boolean): this;
         /**

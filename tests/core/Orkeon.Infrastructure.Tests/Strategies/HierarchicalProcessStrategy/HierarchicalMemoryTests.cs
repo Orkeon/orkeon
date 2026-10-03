@@ -147,7 +147,7 @@ public sealed class HierarchicalMemoryTests : IDisposable
         _registry.Record(crew.Id, crew.MemoryProvider, crew.Name, crew.MemoryEnabled);
 
         var strategy = new HierarchicalProcessStrategy(
-            _tasks, _agents, NullLogger<HierarchicalProcessStrategy>.Instance, _manager, _execution, new MockMemoryScope(), _coordinator);
+            _tasks, _agents, NullLogger<HierarchicalProcessStrategy>.Instance, _manager, TestManagerLlm.Resolver(), _execution, new MockMemoryScope(), _coordinator);
         var output = await strategy.ExecuteHierarchicalAsync(crew, lead.Id, cancellationToken: TestContext.Current.CancellationToken);
         return (output, worker);
     }

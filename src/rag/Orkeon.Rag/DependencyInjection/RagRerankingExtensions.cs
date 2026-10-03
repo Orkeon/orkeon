@@ -19,7 +19,7 @@ public static class RagRerankingExtensions
     /// Registers the singleton <see cref="RerankerFactory"/> pre-populated with
     /// <c>none</c>/<c>noop</c> (<see cref="NoopReranker"/>) and
     /// <c>llm</c>/<c>listwise</c> (<see cref="LlmListwiseReranker"/> — resolves the
-    /// host's <see cref="IChatClient"/> lazily, at first <c>Create("llm")</c>).
+    /// subsystem's <see cref="IChatClient"/> (<see cref="RagLlm"/>) lazily, at first <c>Create("llm")</c>).
     /// Called by <c>AddOrkeonRag</c>; safe to call directly and idempotent
     /// (<c>TryAdd</c> — a host-registered factory wins).
     /// </summary>
@@ -35,7 +35,7 @@ public static class RagRerankingExtensions
             factory.Register(
                 LlmListwiseReranker.RerankerName,
                 () => new LlmListwiseReranker(
-                    sp.GetRequiredService<IChatClient>(),
+                    RagLlm.ChatClient(sp),
                     sp.GetService<ILogger<LlmListwiseReranker>>()),
                 "listwise");
 

@@ -645,6 +645,49 @@ public class CrewConfigurationMapperTests
         Assert.False(configuration.ExecutionConfig.EnableDebugMode);
     }
 
+    // ── GAP-19: the export names the LLM the crew's manager runs on ──────────────────────
+
+    private static object ManagerLlmOf(CrewConfiguration configuration) =>
+        configuration.ExecutionConfig!.ExecutorSettings["ManagerLlm"];
+
+    [Fact]
+    public void ToConfiguration_NamesTheManagerAgentsProfile()
+    {
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead").WithLlmConfig(LlmConfig.OnProfile("claude")).Build();
+        var crew = new Orkeon.Domain.Crew.CrewBuilder().Goal("Ship").Hierarchical(chef).WithAgent(chef).Build();
+
+        Assert.Equal("profile:claude", ManagerLlmOf(crew.ToConfiguration([chef], [])));
+    }
+
+    [Fact]
+    public void ToConfiguration_NamesTheDefaultProfile_ForAManagerAgentThatNamesNone()
+    {
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead").Build();
+        var crew = new Orkeon.Domain.Crew.CrewBuilder().Goal("Ship").Hierarchical(chef).WithAgent(chef).Build();
+
+        Assert.Equal("profile:default", ManagerLlmOf(crew.ToConfiguration([chef], [])));
+    }
+
+    [Fact]
+    public void ToConfiguration_NamesTheProviderTheCrewGivesItsManager_WhicheverMode()
+    {
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead").WithLlmConfig(LlmConfig.OnProfile("claude")).Build();
+        var provider = new Orkeon.Tests.Shared.Doubles.StubLlmProvider { Name = "anthropic" };
+        var hierarchical = new Orkeon.Domain.Crew.CrewBuilder().Goal("Ship").Hierarchical(chef).WithManagerLlm(provider).WithAgent(chef).Build();
+        var autonomous = new Orkeon.Domain.Crew.CrewBuilder().Goal("Ship").Process(ProcessType.Autonomous).WithManagerLlm(provider).WithAgent(chef).Build();
+
+        Assert.Equal("provider:anthropic", ManagerLlmOf(hierarchical.ToConfiguration([chef], [])));
+        Assert.Equal("provider:anthropic", ManagerLlmOf(autonomous.ToConfiguration([chef], [])));
+    }
+
+    [Fact]
+    public void ToConfiguration_NamesNoManagerLlm_ForAModeWithoutAManager()
+    {
+        var crew = DomainCrew.Create("Goal", ProcessType.Sequential);
+
+        Assert.Equal(string.Empty, ManagerLlmOf(crew.ToConfiguration([], [])));
+    }
+
     [Fact]
     public void ShouldReturnEmptyCollections_WhenUsingToConfigurationWithoutAgentsAndTasks()
     {

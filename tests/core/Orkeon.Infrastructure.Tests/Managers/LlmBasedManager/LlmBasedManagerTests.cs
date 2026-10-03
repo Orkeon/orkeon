@@ -1,4 +1,6 @@
+using Microsoft.Extensions.AI;
 using Orkeon.Application.Context;
+using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Agent;
@@ -16,37 +18,66 @@ using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 
 namespace Orkeon.Infrastructure.Tests.Managers;
 
-public class LlmBasedManagerTests
+public sealed class LlmBasedManagerTests : IDisposable
 {
     private static readonly string[] s_codeTools = ["CodeGenerator", "Formatter"];
 
-    private readonly TestLlmProvider _llmProvider;
+    private readonly TestManagerChatClient _llmProvider;
+    private readonly ManagerLlm _llm;
     private readonly TestLogger<LlmBasedManager> _logger;
     private readonly LlmBasedManager _manager;
 
     public LlmBasedManagerTests()
     {
-        _llmProvider = new TestLlmProvider();
+        _llmProvider = new TestManagerChatClient();
+        // The LLM a crew gives its manager (GAP-19): the manager has none of its own.
+        _llm = new ManagerLlm { ChatClient = _llmProvider, Name = "profile:default" };
         _logger = new TestLogger<LlmBasedManager>();
-        _manager = new LlmBasedManager(_logger, _llmProvider);
+        _manager = new LlmBasedManager(_logger);
     }
+
+    public void Dispose() => _llmProvider.Dispose();
 
     [Fact]
     public void ShouldThrowArgumentNullException_WhenConstructorWithNullLogger()
     {
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(
-            () => new LlmBasedManager(null!, _llmProvider));
+            () => new LlmBasedManager(null!));
         Assert.Equal("logger", exception.ParamName);
     }
 
     [Fact]
-    public void ShouldThrowArgumentNullException_WhenConstructorWithNullLlmProvider()
+    public async Task ShouldThrowArgumentNullException_WhenAskedWithoutTheCrewsLlm()
     {
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(
-            () => new LlmBasedManager(_logger, null!));
-        Assert.Equal("llmProvider", exception.ParamName);
+        // GAP-19: every call names the LLM the crew gives its manager — there is no default to fall back on.
+        var task = CreateTestTask("Write unit tests");
+
+        var assign = await Assert.ThrowsAsync<ArgumentNullException>(
+            () => _manager.AssignTaskAsync(task, CreateTestAgents(), CreateTestContext(), null!));
+        var review = await Assert.ThrowsAsync<ArgumentNullException>(
+            () => _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, null!));
+
+        Assert.Equal("llm", assign.ParamName);
+        Assert.Equal("llm", review.ParamName);
+    }
+
+    [Fact]
+    public async Task ShouldAskForTheModelTheCrewNames_AndNoneWhenItNamesNone()
+    {
+        var task = CreateTestTask("Write unit tests");
+        _llmProvider.SetupResponse(JsonSerializer.Serialize(new { approved = true }));
+
+        await _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, _llm);
+        Assert.Null(_llmProvider.LastOptions);
+
+        await _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, new ManagerLlm
+        {
+            ChatClient = _llmProvider,
+            Model = "chef-model",
+            Name = "profile:b",
+        });
+        Assert.Equal("chef-model", _llmProvider.LastOptions!.ModelId);
     }
 
     [Fact]
@@ -65,7 +96,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.NotNull(assignment);
@@ -87,7 +118,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("This is not valid JSON");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.NotNull(assignment);
@@ -107,7 +138,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupException(new InvalidOperationException("LLM service unavailable"));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.NotNull(assignment);
@@ -132,7 +163,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.NotNull(assignment);
@@ -155,7 +186,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.True(result);
@@ -177,7 +208,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.False(result);
@@ -194,7 +225,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("The output looks good and is approved");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.True(result); // Should return true because "approved" is in the response
@@ -214,7 +245,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("The output is rejected and needs more work");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.False(result);
@@ -230,7 +261,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupException(new InvalidOperationException("LLM timeout"));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.True(result);
@@ -254,7 +285,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        await _manager.AssignTaskAsync(task, agents, context);
+        await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -276,7 +307,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        await _manager.AssignTaskAsync(task, agents, context);
+        await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -298,7 +329,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        await _manager.ReviewOutputAsync(output, task);
+        await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -320,7 +351,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("Invalid response to force fallback");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         // Manager agent should be selected due to delegation capability
@@ -343,7 +374,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        await _manager.AssignTaskAsync(task, agents, context);
+        await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.True(_logger.HasLoggedInformation("assigned to agent"));
@@ -360,7 +391,7 @@ public class LlmBasedManagerTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _manager.AssignTaskAsync(task, agents, context));
+            () => _manager.AssignTaskAsync(task, agents, context, _llm));
     }
 
     [Fact]
@@ -373,7 +404,7 @@ public class LlmBasedManagerTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.AssignTaskAsync(task!, agents, context));
+            () => _manager.AssignTaskAsync(task!, agents, context, _llm));
     }
 
     [Fact]
@@ -386,7 +417,7 @@ public class LlmBasedManagerTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.AssignTaskAsync(task, agents!, context));
+            () => _manager.AssignTaskAsync(task, agents!, context, _llm));
     }
 
     [Fact]
@@ -404,7 +435,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var result = await _manager.AssignTaskAsync(task, agents, context!);
+        var result = await _manager.AssignTaskAsync(task, agents, context!, _llm);
 
         // Assert
         Assert.NotNull(result);
@@ -419,7 +450,7 @@ public class LlmBasedManagerTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.ReviewOutputAsync(output!, task));
+            () => _manager.ReviewOutputAsync(output!, task, _llm));
     }
 
     [Fact]
@@ -431,7 +462,7 @@ public class LlmBasedManagerTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.ReviewOutputAsync(output, task!));
+            () => _manager.ReviewOutputAsync(output, task!, _llm));
     }
 
     [Fact]
@@ -449,7 +480,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.NotNull(assignment);
@@ -471,7 +502,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.NotNull(assignment);
@@ -492,7 +523,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.False(result); // Should fall back to keyword parsing, which returns false
@@ -514,7 +545,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse(response);
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.Equal(agents[0].Id, assignment.AssignedAgent);
@@ -531,7 +562,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("The output is rejected and needs improvement");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.False(result);
@@ -547,7 +578,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("The output is insufficient for the requirements");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.False(result);
@@ -569,7 +600,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("This is not valid JSON to force fallback");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         // Developer should be selected due to word matching
@@ -598,7 +629,7 @@ public class LlmBasedManagerTests
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => _manager.AssignTaskAsync(task, agents, context));
+            () => _manager.AssignTaskAsync(task, agents, context, _llm));
     }
 
     [Fact]
@@ -615,7 +646,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.False(result);
@@ -637,7 +668,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        await _manager.AssignTaskAsync(task, agents, context);
+        await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -666,7 +697,7 @@ public class LlmBasedManagerTests
         }));
 
         // Act
-        await _manager.ReviewOutputAsync(output, task);
+        await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -684,7 +715,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("Invalid response");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         Assert.Equal(agents[0].Id, assignment.AssignedAgent);
@@ -700,7 +731,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("The output is satisfactory and complete");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.True(result);
@@ -716,7 +747,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("The output meets requirements perfectly");
 
         // Act
-        var result = await _manager.ReviewOutputAsync(output, task);
+        var result = await _manager.ReviewOutputAsync(output, task, _llm);
 
         // Assert
         Assert.True(result);
@@ -735,7 +766,7 @@ public class LlmBasedManagerTests
         _llmProvider.SetupResponse("This is not valid JSON to force fallback");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
 
         // Assert
         // Agent with tools should get bonus score
@@ -851,13 +882,16 @@ public class LlmBasedManagerTests
 }
 
 // Test doubles
-public class TestLlmProvider : IBasicLlmProvider
+
+/// <summary>
+/// The chat client a test hands the manager as its crew's LLM: answers the configured text (or
+/// throws the configured exception) and records the prompt and the options of the last call.
+/// </summary>
+public sealed class TestManagerChatClient : IChatClient
 {
     private string _response = "";
     private Exception? _exception;
     private string _lastPrompt = "";
-
-    public string Name => "TestLlmProvider";
 
     public void SetupResponse(string response)
     {
@@ -873,26 +907,33 @@ public class TestLlmProvider : IBasicLlmProvider
 
     public string GetLastPrompt() => _lastPrompt;
 
-    public Task<string> ChatAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
+    /// <summary>The options of the last call; null when the manager named no model.</summary>
+    public ChatOptions? LastOptions { get; private set; }
+
+    public Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
-        _lastPrompt = prompt;
+        _lastPrompt = string.Join("\n", messages.Select(m => m.Text));
+        LastOptions = options;
 
         if (_exception != null)
         {
             throw _exception;
         }
 
-        return Task.FromResult(_response);
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, _response)));
     }
 
-    public Task<string> GenerateAsync(string prompt, CancellationToken cancellationToken = default)
-    {
-        return ChatAsync(prompt, null, cancellationToken);
-    }
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The manager asks for whole answers.");
 
-    public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
+    public object? GetService(Type serviceType, object? serviceKey = null) =>
+        serviceType == typeof(IChatClient) ? this : null;
+
+    public void Dispose()
     {
-        return Task.FromResult(true);
+        // Nothing to release.
     }
 }
 

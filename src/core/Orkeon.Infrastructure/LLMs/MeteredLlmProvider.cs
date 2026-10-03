@@ -13,10 +13,10 @@ namespace Orkeon.Infrastructure.LLMs;
 /// <para>
 /// It used to be the callers' job. Two of them did it — the agent loop and the scripting
 /// facade — and every other caller, from the hierarchical manager to the RAG pipelines, spent
-/// tokens the meter never saw. <see cref="LlmProviderFactory"/> wraps every provider it builds
-/// and <c>AddOrkeonLlmProvider</c> every provider registered by hand, so the chat client
-/// adapter, the basic-provider adapter and every direct consumer are covered by the same
-/// wrapper, whoever calls.
+/// tokens the meter never saw. <see cref="LlmProviderFactory"/> wraps every provider it builds,
+/// <c>AddOrkeonLlmProvider</c> every provider registered by hand, and <c>ManagerLlmResolver</c> the
+/// provider a C# crew gives its manager (GAP-19), so the chat client adapter, the basic-provider
+/// adapter and every direct consumer are covered by the same wrapper, whoever calls.
 /// </para>
 /// <para>
 /// A provider that reports no usage is estimated and the event says so

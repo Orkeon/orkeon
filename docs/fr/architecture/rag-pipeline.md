@@ -90,6 +90,18 @@ L'hôte doit fournir un `IEmbeddingProvider` et un `IChatClient` ;
 résolution pour les embeddings : provider local/Analysis enregistré dans le conteneur →
 configuration `Orkeon:Embeddings` → échec explicite au premier usage, jamais en silence).
 
+**Quel modèle le sous-système interroge** (GAP-19) : le profil par défaut de l'hôte, sauf si
+`Orkeon:Rag:LlmProfile` nomme un autre de ses profils (`Llm:Profiles:<nom>`, via
+`ILlmProfileRegistry`). Alors la génération citée, les transformateurs de requête, le reranker
+listwise, l'évaluateur et le vérificateur d'ancrage du graphe correctif, le classifieur `llm` et
+le juge d'évaluation appellent tous ce profil — un seul profil pour tout le sous-système, quel
+que soit le profil RAG (`Orkeon:Rag:Profile`) d'une requête. Le client de chat du profil est
+résolu au premier appel RAG qui a besoin d'un modèle, jamais au simple chargement d'une crew ;
+`RagLlm.EnsureProfileIsKnown`, que l'hôte runner et le REPL appellent une fois le conteneur
+construit, ne vérifie que le nom et refuse un profil que l'hôte n'offre pas — liste blanche
+`Orkeon:Host:LlmProfiles` d'`orkeon-host` comprise — en listant les profils connus.
+`orkeon rag eval --offline` ignore la clé : le stub extractif répond à la place de tout modèle.
+
 Démos exécutables, entièrement offline : [`rag/basic-ingestion`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/basic-ingestion/README.md),
 [`rag/hybrid-retrieval`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/hybrid-retrieval/README.md),
 [`rag/custom-reranker`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/custom-reranker/README.md),
@@ -208,7 +220,8 @@ Les transformers déclarent comment leurs textes de sortie se combinent à l'ét
 | `Replacement` | `hyde` | Le ou les textes de substitution sont les sondes de retrieval **à la place de** la question — la génération et les citations utilisent toujours la question originale |
 
 Intégrés enregistrés par `AddOrkeonRag` : `none`, `multi-query`, `rag-fusion`, `hyde`. Ceux
-qui s'appuient sur un LLM résolvent l'`IChatClient` de l'hôte paresseusement ; le parsing
+qui s'appuient sur un LLM résolvent le client de chat du sous-système (celui du profil par
+défaut, ou celui que nomme `Orkeon:Rag:LlmProfile`) paresseusement ; le parsing
 des variantes du LLM est tolérant, et une sortie vide dégrade vers la requête originale.
 
 ### Assemblage anti-Lost-in-the-Middle
@@ -337,6 +350,7 @@ Liée par-dessus le preset sélectionné — chaque clé est une surcharge indiv
 |---|---|---|
 | `Orkeon:Rag:Profile` | `fast` | Preset : `fast` / `balanced` / `quality` / `adaptive` / `corrective` (un nom inconnu échoue bruyamment) |
 | `Orkeon:Rag:Collection` | — | La collection qu'interroge `rag_search` quand l'agent n'en nomme aucune (non définie : `default`), et celle qu'évalue `rag_eval` quand ni l'appel ni le dataset n'en nomment et que le dataset n'apporte pas de corpus. `rag.query`/`rag.ingest` et `knowledge:` nomment toujours la leur |
+| `Orkeon:Rag:LlmProfile` | profil par défaut | Le profil LLM de l'hôte (`Llm:Profiles:<nom>`) auquel va chaque appel de modèle du sous-système — génération, transformateurs, reranker listwise, évaluateur et vérificateur d'ancrage correctifs, classifieur `llm`, juge d'évaluation ; un nom inconnu fait refuser le démarrage de l'hôte en listant les profils connus |
 | `Orkeon:Rag:Provider` | ambiant | Type du provider de document store (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance` ; un type inconnu échoue bruyamment) ; non défini = `IMemoryProvider` ambiant. La connexion est la section hôte propre de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), et le store partage avec la mémoire des crews l'instance de ce type que tient la factory |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks conservés pour l'assemblage du contexte (le `RagQuery.TopN` de l'appelant l'emporte) |
 | `Orkeon:Rag:Retrieval:CandidateK` | 50 | Étage large de la cascade (toujours ≥ TopN final) |
@@ -417,7 +431,11 @@ renvoyée vers une adresse interne.
   bruyamment plutôt que de mélanger en silence des vecteurs incompatibles.
 - Les sources en glob (`*`, `**`, `?`) sont dépliées via le VFS par `SourceGlobExpander` sur
   chaque surface consommatrice (scripting `rag.ingest`, outil `rag_ingest`, CLI
-  `orkeon rag ingest`, corpus du harnais d'évaluation, et le bloc `rag:` de la crew). Le bloc
+  `orkeon rag ingest`, corpus du harnais d'évaluation, et le bloc `rag:` de la crew). Une
+  adresse `http://` / `https://` n'est jamais un motif : le `?` de sa chaîne de requête ou un
+  `*` en font partie, et elle atteint `WebPageLoader` telle qu'écrite, sans que le VFS soit
+  consulté (`SourceGlobExpander.IsWebAddress`, une seule règle pour toutes les surfaces —
+  GAP-19). Le bloc
   de crew accepte aussi un répertoire, qui vaut tous les fichiers qu'il contient, et résout un
   chemin relatif contre le dossier de la crew — tout cela décidé dans
   `RagCollectionsBootstrapper`, qui avertit, en nommant la collection, d'un motif ou d'un
@@ -499,7 +517,7 @@ chargement.
 | Outil | Paramètres | Comportement |
 |---|---|---|
 | `rag_search` | `question` (obligatoire), `top_k` (défaut 3), `collection` (défaut `Orkeon:Rag:Collection`, sinon `default`) | `IRagPipeline.QueryAsync` → réponse + bloc `Sources:` avec scores ; `collection = "raggable-tree"` route vers l'index de code RaggableTree quand il est enregistré |
-| `rag_ingest` | `collection`, `sources` (chemins / globs) — tous deux obligatoires ; `chunking_strategy`, `reindex` | `IIngestionPipeline` avec dépliage des globs ; affiche le rapport d'ingestion |
+| `rag_ingest` | `collection`, `sources` (chemins / globs / adresses http(s)) — tous deux obligatoires ; `chunking_strategy`, `reindex` | `IIngestionPipeline` avec dépliage des globs ; affiche le rapport d'ingestion |
 | `rag_eval` | `dataset` (obligatoire), `collection`, `profile` (défaut `default`), `compare`, `k` (défaut 5), `use_llm_judge`, `reindex` | Le harnais offline ci-dessous |
 
 Un agent de crew qui liste l'un des trois outils (`tools: [rag_search]`) le reçoit partout

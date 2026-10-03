@@ -32,6 +32,9 @@ public class MockManagerAgent : IManagerAgent
     public AppTaskOutput? LastReviewedOutput { get; private set; }
     public DomainTask? LastReviewedTask { get; private set; }
 
+    /// <summary>The LLM each call was handed, in call order (GAP-19).</summary>
+    public List<ManagerLlm> ManagerLlms { get; } = [];
+
     // --- Configuration ---
     public void SetAssignResult(TaskAssignment result) => _assignResult = result;
 
@@ -49,9 +52,11 @@ public class MockManagerAgent : IManagerAgent
     public Task<TaskAssignment> AssignTaskAsync(
         DomainTask task,
         IReadOnlyList<DomainAgent> availableAgents,
-        SimpleExecutionContext context)
+        SimpleExecutionContext context,
+        ManagerLlm llm)
     {
         AssignTaskCallCount++;
+        ManagerLlms.Add(llm);
         LastAssignedTask = task;
         LastAvailableAgents = availableAgents;
         LastAssignContext = context;
@@ -60,9 +65,11 @@ public class MockManagerAgent : IManagerAgent
 
     public Task<bool> ReviewOutputAsync(
         AppTaskOutput output,
-        DomainTask originalTask)
+        DomainTask originalTask,
+        ManagerLlm llm)
     {
         ReviewOutputCallCount++;
+        ManagerLlms.Add(llm);
         LastReviewedOutput = output;
         LastReviewedTask = originalTask;
         return Task.FromResult(_reviewResults.TryDequeue(out var next) ? next : _reviewResult);

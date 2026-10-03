@@ -38,7 +38,8 @@ namespace Orkeon.Rag.DependencyInjection;
 /// type fails loudly with the list of supported types. The host must provide an <see cref="IEmbeddingProvider"/> and an
 /// <see cref="IChatClient"/> for the query pipeline — <c>AddOrkeonInfrastructure()</c>
 /// registers semantic-first defaults for both; without them the pipelines fail loudly
-/// at resolution. Named <see cref="IChunkingStrategy"/> implementations register on
+/// at resolution. Every model call of the subsystem goes to that chat client, or to the host
+/// profile <c>Orkeon:Rag:LlmProfile</c> names (<see cref="RagLlm"/>, GAP-19). Named <see cref="IChunkingStrategy"/> implementations register on
 /// the <see cref="ChunkingStrategyFactory"/>.
 /// </remarks>
 public static class RagServiceCollectionExtensions
@@ -189,7 +190,7 @@ public static class RagServiceCollectionExtensions
             options => CreateStagedPipeline(sp, options),
             sp.GetRequiredService<IRagPipeline>,
             sp.GetRequiredService<IQueryComplexityClassifier>,
-            sp.GetRequiredService<IChatClient>,
+            () => RagLlm.ChatClient(sp),
             options => CreateCorrectivePipeline(sp, options),
             sp.GetService<ILoggerFactory>()));
 
@@ -237,7 +238,7 @@ public static class RagServiceCollectionExtensions
         => new(
             sp.GetRequiredService<IDocumentStore>(),
             sp.GetRequiredService<IEmbeddingProvider>(),
-            sp.GetRequiredService<IChatClient>(),
+            RagLlm.ChatClient(sp),
             options,
             new StagedRagPipelineDependencies
             {
@@ -260,7 +261,7 @@ public static class RagServiceCollectionExtensions
         => new(
             sp.GetRequiredService<IDocumentStore>(),
             sp.GetRequiredService<IEmbeddingProvider>(),
-            sp.GetRequiredService<IChatClient>(),
+            RagLlm.ChatClient(sp),
             sp.GetRequiredService<IRetrievalEvaluator>(),
             options,
             new CorrectiveRagPipelineDependencies

@@ -126,7 +126,10 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
                 continue;
 
             var source = written.Trim();
-            if (IsWebAddress(source))
+            // An http(s) address is neither a pattern nor a path relative to the crew's folder:
+            // it reaches the web loader as written — the expander's rule, the one every
+            // ingestion surface applies (GAP-19).
+            if (SourceGlobExpander.IsWebAddress(source))
             {
                 Add(source);
                 continue;
@@ -185,11 +188,6 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
         var entry = await _fileSystem.TryGetEntryAsync(probe, cancellationToken).ConfigureAwait(false);
         return entry?.Kind == VirtualEntryKind.Directory;
     }
-
-    /// <summary>An absolute http(s) address — never a path, whatever characters it carries.</summary>
-    private static bool IsWebAddress(string source) =>
-        Uri.TryCreate(source, UriKind.Absolute, out var uri)
-        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     /// <summary><c>./data/faq.txt</c> under <c>/crew</c> is <c>/crew/data/faq.txt</c>.</summary>
     private static string Anchor(string relative, string crewDirectory)

@@ -35,6 +35,7 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
         new CrewStrategyDependencies(_taskRepo, _agentRepo, _execService, _memoryScope),
         _channel,
         _manager,
+        TestManagerLlm.Resolver(),
         NullLogger<AutonomousProcessStrategy>.Instance);
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
     [InlineData("executionService")]
     [InlineData("channel")]
     [InlineData("managerAgent")]
+    [InlineData("managerLlm")]
     [InlineData("memoryScope")]
     [InlineData("logger")]
     public void Constructor_NullArgument_Throws(string paramName)
@@ -89,6 +91,7 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
                 paramName == "memoryScope" ? null! : _memoryScope),
             paramName == "channel" ? null! : _channel,
             paramName == "managerAgent" ? null! : _manager,
+            paramName == "managerLlm" ? null! : TestManagerLlm.Resolver(),
             paramName == "logger" ? null! : NullLogger<AutonomousProcessStrategy>.Instance));
         Assert.Equal(paramName, ex.ParamName);
     }

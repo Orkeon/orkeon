@@ -6,11 +6,13 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
 /// Architecture guard (STUDIO-42 D-04): an LLM provider reaches the runtime on the metered
-/// path, or its calls escape the token meter. The path has two entrances — the provider
-/// factory, which meters every vendor provider it builds, and <c>AddOrkeonLlmProvider</c> (with its named-profile twin <c>AddOrkeonLlmProfile</c>),
-/// which meters a provider registered by hand — so a provider may be built only in the
-/// factory or in the very statement that hands it to <c>AddOrkeonLlmProvider</c>, and the
-/// meter itself is applied nowhere else (a second meter would count calls twice).
+/// path, or its calls escape the token meter. The path has three entrances — the provider
+/// factory, which meters every vendor provider it builds, <c>AddOrkeonLlmProvider</c> (with its named-profile twin <c>AddOrkeonLlmProfile</c>),
+/// which meters a provider registered by hand, and <c>ManagerLlmResolver</c>, which meters the
+/// provider a C# crew gives its manager (<c>Crew.ManagerLlm</c>, GAP-19) — so a provider may be
+/// built only in the factory or in the very statement that hands it to <c>AddOrkeonLlmProvider</c>,
+/// and the meter itself is applied nowhere else (a second meter would count calls twice; at an
+/// entrance, <c>Wrap</c> leaves a provider already metered as it is).
 /// </summary>
 /// <remarks>
 /// Pragmatic, like the other source guards of this suite: the provider types are discovered
@@ -26,6 +28,13 @@ public sealed partial class LlmProviderMeteringGuardTests
 
     /// <summary>The DI entrance of the metered path.</summary>
     private const string RegistrationFile = "src/core/Orkeon.Infrastructure/DependencyInjection/LlmProviderRegistrationExtensions.cs";
+
+    /// <summary>
+    /// The crew entrance (GAP-19): a provider C# hands a crew for its manager is built by the
+    /// host's own code, outside the factory and the registration, and is metered where the run
+    /// resolves it.
+    /// </summary>
+    private const string ManagerLlmFile = "src/core/Orkeon.Infrastructure/Crew/ManagerLlmResolver.cs";
 
     /// <summary>
     /// Decorators: each wraps a provider it was handed, already obtained on the path. They
@@ -77,7 +86,7 @@ public sealed partial class LlmProviderMeteringGuardTests
     }
 
     [Fact]
-    public void The_meter_is_applied_only_at_the_two_entrances_of_the_path()
+    public void The_meter_is_applied_only_at_the_entrances_of_the_path()
     {
         var violations = FindOffPathMetering(ReadSources());
 
@@ -227,7 +236,7 @@ public sealed partial class LlmProviderMeteringGuardTests
 
     private static List<string> FindOffPathMetering(IReadOnlyDictionary<string, string> sources) =>
         sources
-            .Where(entry => entry.Key != FactoryFile && entry.Key != RegistrationFile)
+            .Where(entry => entry.Key != FactoryFile && entry.Key != RegistrationFile && entry.Key != ManagerLlmFile)
             .SelectMany(entry =>
             {
                 var source = StripComments(entry.Value);

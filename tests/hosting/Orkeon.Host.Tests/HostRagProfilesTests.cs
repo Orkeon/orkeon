@@ -43,4 +43,35 @@ public sealed class HostRagProfilesTests : IDisposable
         Assert.True(rerankers.IsKnown("onnx"), "known: " + string.Join(", ", rerankers.KnownNames));
         Assert.Equal("onnx", rerankers.Create("onnx").Name);
     }
+
+    [Fact]
+    public void The_hosts_allow_list_applies_to_the_rag_llm_profile()
+    {
+        // GAP-19: Orkeon:Host:LlmProfiles decides which profiles answer, for the RAG subsystem as
+        // for the crews — a RAG profile it leaves out refuses the start.
+        var settings = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(settings, """
+            {
+              "Llm": {
+                "BaseUrl": "https://api.deepseek.com/v1", "ApiKey": "sk-ds", "Model": "deepseek-chat",
+                "Profiles": {
+                  "claude": { "BaseUrl": "https://api.anthropic.com/v1", "ApiKey": "sk-ant", "Model": "claude-sonnet-5" },
+                  "local": { "BaseUrl": "http://localhost:11434", "Model": "qwen3" }
+                }
+              },
+              "Orkeon": { "Host": { "LlmProfiles": ["claude"] }, "Rag": { "LlmProfile": "local" } },
+              "RaggableTree": { "Enabled": false }
+            }
+            """);
+
+        var error = Assert.Throws<InvalidOperationException>(() => RunnerHost.Build(
+            settings,
+            new RunnerMountPlan { InternalMounts = [$"{FileSystemMount.Quote(_root)}:{RunnerVirtualRoots.Crew}:ro"] },
+            configureServices: (context, services) =>
+                services.AddHostServices(context.Configuration, HostCrewMounts.For([]))));
+
+        Assert.Contains("Orkeon:Rag:LlmProfile", error.Message, StringComparison.Ordinal);
+        Assert.Contains("'local'", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Known profiles: default, claude.", error.Message, StringComparison.Ordinal);
+    }
 }

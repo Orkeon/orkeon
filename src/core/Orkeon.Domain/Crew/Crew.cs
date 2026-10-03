@@ -100,7 +100,10 @@ public sealed class Crew : AggregateRoot<CrewId>
     public string? OutputLogFile { get; private set; }
 
     /// <summary>
-    /// Gets the manager LLM for hierarchical process.
+    /// Gets the provider the crew's manager runs on (C# <c>WithManagerLlm</c>, CrewAI's
+    /// <c>manager_llm</c>): the hierarchical manager assigns and reviews on it, and the autonomous
+    /// one hands the tasks out on it, in place of the manager agent's <c>llm:</c> profile or the
+    /// host's default (GAP-19). A crew with one needs no manager agent: every agent is then a worker.
     /// </summary>
     public ILlmProvider? ManagerLlm { get; private set; }
 
@@ -282,8 +285,9 @@ public sealed class Crew : AggregateRoot<CrewId>
             AgentId = agentId
         });
 
-        // If hierarchical and no manager set, first agent becomes manager
-        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == null)
+        // A hierarchical crew with no manager at all takes its first agent as manager. A crew given
+        // a manager LLM has one: every agent it adds is a worker (GAP-19).
+        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == null && ManagerLlm == null)
         {
             ManagerAgentId = agentId;
         }
@@ -303,10 +307,11 @@ public sealed class Crew : AggregateRoot<CrewId>
             Reason = reason
         });
 
-        // If removed agent was manager, assign new manager
+        // A manager agent that leaves is replaced by the first agent left — unless the crew has a
+        // manager LLM, which then manages on its own (GAP-19).
         if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == agentId)
         {
-            ManagerAgentId = _memberManager.FirstOrDefault();
+            ManagerAgentId = ManagerLlm == null ? _memberManager.FirstOrDefault() : null;
         }
     }
 
@@ -353,8 +358,8 @@ public sealed class Crew : AggregateRoot<CrewId>
         if (!_taskManager.Any())
             throw new InvalidOperationException("Cannot execute crew without tasks.");
 
-        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == null)
-            throw new InvalidOperationException("Hierarchical process requires a manager agent.");
+        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == null && ManagerLlm == null)
+            throw new InvalidOperationException("Hierarchical process requires a manager agent or a manager LLM.");
 
         _currentProcessId = ProcessId.Create();
         Status = CrewStatus.Executing;
@@ -463,7 +468,8 @@ public sealed class Crew : AggregateRoot<CrewId>
 
         if (newProcessType == ProcessType.Hierarchical)
         {
-            if (managerAgentId == null || !_memberManager.Any())
+            // A crew with a manager LLM needs no manager agent (GAP-19).
+            if ((managerAgentId == null && ManagerLlm == null) || !_memberManager.Any())
                 throw new InvalidOperationException("Hierarchical process requires a manager agent.");
 
             ManagerAgentId = managerAgentId;
@@ -587,10 +593,11 @@ public sealed class Crew : AggregateRoot<CrewId>
         if (!_taskManager.Any())
             validationResult.AddError(nameof(Tasks), "Crew must have at least one task.");
 
-        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == null)
-            validationResult.AddError(nameof(ManagerAgentId), "Hierarchical process requires a manager agent.");
+        // The manager is an agent of the crew, or the crew's manager LLM (GAP-19).
+        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == null && ManagerLlm == null)
+            validationResult.AddError(nameof(ManagerAgentId), "Hierarchical process requires a manager agent or a manager LLM.");
 
-        if (ProcessType == ProcessType.Hierarchical && !_memberManager.Contains(ManagerAgentId!))
+        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId != null && !_memberManager.Contains(ManagerAgentId))
             validationResult.AddError(nameof(ManagerAgentId), "Manager agent must be a member of the crew.");
 
         return validationResult;
@@ -612,12 +619,6 @@ public sealed class Crew : AggregateRoot<CrewId>
         if (Status == CrewStatus.Executing)
         {
             throw new InvalidOperationException("Crew is already executing");
-        }
-
-        if (ProcessType == ProcessType.Hierarchical && ManagerAgentId == null && ManagerLlm == null)
-        {
-            throw new InvalidOperationException(
-                "Hierarchical process requires either a manager agent or manager LLM");
         }
     }
 

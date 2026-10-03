@@ -73,7 +73,7 @@ inferred.
 | `withAgent(s)` — a built agent; anything else is refused | ✅ | ✅ |
 | `withTask(s)` — a built task; anything else is refused | ❌ ignored | ✅ **the whole point** |
 | `process` | ❌ telemetry tag only | ✅ (`"graph"` selects the domain's retry-and-route strategy, not a script-drawn topology — see below) |
-| `manager` | ❌ | ✅ |
+| `manager` | ❌ | ✅ — the hierarchical manager assigns and reviews on that agent's `.llm(...)`: `llm.profile("claude")` puts it on that profile |
 | `memory` | ❌ | ✅ |
 | `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
 | `budget` | ✅ | ❌ ignored |
@@ -108,8 +108,11 @@ now builds on its own.
 
 Declarative only — the procedural engine never reads tasks. Carried to the crew:
 `description`, `agent` (a built agent), `expectedOutput`, `withContext(s)` (this is what builds
-the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `deliverable`, `withResponseFormat(type)` and
-`withResponseSchema(name, schema, strict?)`. Accepted but not acted on: `name` (a task
+the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `deliverable`, `withResponseFormat(type)`,
+`withResponseSchema(name, schema, strict?)` and `withProfile(name)` (YAML `llm_override: { profile }`:
+this task alone runs on one of the host's profiles, on that profile's own model, and `"default"`
+brings it back to the host's default; a name the host does not offer fails the load, listing the
+known ones). Accepted but not acted on: `name` (a task
 configuration has no name; it only names the task in a load error) and `expect` (recorded in the
 task context when there is no `deliverable`, never validated). `withTaskTool` is gone: nothing ever
 read it, and `tools` covers it.

@@ -89,6 +89,19 @@ The host must provide an `IEmbeddingProvider` and an `IChatClient`;
 order for embeddings: container-registered local/Analysis provider →
 `Orkeon:Embeddings` configuration → fail-fast at first use, never silently).
 
+**Which model the subsystem asks** (GAP-19): the host's default profile, unless
+`Orkeon:Rag:LlmProfile` names another of its profiles (`Llm:Profiles:<name>`,
+through `ILlmProfileRegistry`). Then grounded generation, the query transformers,
+the listwise reranker, the corrective graph's evaluator and groundedness checker,
+the `llm` classifier and the evaluation judge all call that profile — one profile
+for the whole subsystem, whatever RAG profile (`Orkeon:Rag:Profile`) a query runs
+on. The profile's chat client is resolved at the first RAG call that needs a model,
+never when a crew merely loads; `RagLlm.EnsureProfileIsKnown`, which the runner
+host and the REPL call once the container is built, checks the name alone and
+refuses one the host does not offer — `orkeon-host`'s `Orkeon:Host:LlmProfiles`
+allow-list included — listing the known ones. `orkeon rag eval --offline` ignores
+the key: the extractive stub answers in place of every model.
+
 Runnable, fully offline demos: [`rag/basic-ingestion`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/basic-ingestion/README.md),
 [`rag/hybrid-retrieval`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/hybrid-retrieval/README.md),
 [`rag/custom-reranker`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/custom-reranker/README.md),
@@ -207,7 +220,8 @@ Transformers declare how their output texts combine at the `fuse` stage
 | `Replacement` | `hyde` | The substitute text(s) are the retrieval probes **instead of** the question — generation and citations always use the original question |
 
 Built-ins registered by `AddOrkeonRag`: `none`, `multi-query`, `rag-fusion`,
-`hyde`. The LLM-backed ones resolve the host's `IChatClient` lazily; parsing of
+`hyde`. The LLM-backed ones resolve the subsystem's chat client (the default
+profile's, or the one `Orkeon:Rag:LlmProfile` names) lazily; parsing of
 the LLM's variants is tolerant, and an empty output degrades to the original
 query.
 
@@ -333,6 +347,7 @@ Bound over the selected preset — every key is an individual override.
 |---|---|---|
 | `Orkeon:Rag:Profile` | `fast` | Preset: `fast` / `balanced` / `quality` / `adaptive` / `corrective` (unknown fails loudly) |
 | `Orkeon:Rag:Collection` | — | The collection `rag_search` queries when the agent names none (unset: `default`), and the one `rag_eval` evaluates when neither the call nor the dataset names one and the dataset brings no corpus. `rag.query`/`rag.ingest` and `knowledge:` always name theirs |
+| `Orkeon:Rag:LlmProfile` | default profile | The host LLM profile (`Llm:Profiles:<name>`) every model call of the subsystem goes to — generation, transformers, listwise reranker, corrective evaluator and groundedness checker, `llm` classifier, evaluation judge; an unknown name refuses the host start, listing the known ones |
 | `Orkeon:Rag:Provider` | ambient | Document-store provider type (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance`; unknown fails loudly); unset = ambient `IMemoryProvider`. The connection is that provider's own host section (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), and the store shares the factory's instance of that type with crew memory |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks kept for context assembly (call-site `RagQuery.TopN` wins) |
 | `Orkeon:Rag:Retrieval:CandidateK` | 50 | Wide stage of the cascade (always ≥ final TopN) |
@@ -412,7 +427,10 @@ redirect, so an approved URL cannot be bounced to an internal address.
 - Glob sources (`*`, `**`, `?`) are expanded through the VFS by
   `SourceGlobExpander` at every consuming surface (scripting `rag.ingest`,
   `rag_ingest` tool, CLI `orkeon rag ingest`, eval harness corpus, and the crew
-  `rag:` block). The crew block also takes a directory, which stands for every
+  `rag:` block). An `http://` / `https://` address is never a pattern: the `?` of
+  its query string or a `*` stay part of it, and it reaches `WebPageLoader` as
+  written, without the VFS being asked (`SourceGlobExpander.IsWebAddress`, one
+  rule for every surface — GAP-19). The crew block also takes a directory, which stands for every
   file below it, and resolves a relative path against the crew's folder — all
   of it decided in `RagCollectionsBootstrapper`, which warns, naming the
   collection, about a pattern or a directory that yields no file (GAP-27).
@@ -495,7 +513,7 @@ warning at load.
 | Tool | Parameters | Behaviour |
 |---|---|---|
 | `rag_search` | `question` (required), `top_k` (default 3), `collection` (default `Orkeon:Rag:Collection`, else `default`) | `IRagPipeline.QueryAsync` → answer + `Sources:` block with scores; `collection = "raggable-tree"` routes to the RaggableTree code index when one is registered |
-| `rag_ingest` | `collection`, `sources` (paths / globs) — both required; `chunking_strategy`, `reindex` | `IIngestionPipeline` with glob expansion; prints the ingestion report |
+| `rag_ingest` | `collection`, `sources` (paths / globs / http(s) addresses) — both required; `chunking_strategy`, `reindex` | `IIngestionPipeline` with glob expansion; prints the ingestion report |
 | `rag_eval` | `dataset` (required), `collection`, `profile` (default `default`), `compare`, `k` (default 5), `use_llm_judge`, `reindex` | The offline harness below |
 
 A crew agent that lists one of the three tools (`tools: [rag_search]`) receives it

@@ -2,6 +2,7 @@ using Orkeon.Constants.FileSystem;
 using System.Collections.Immutable;
 using System.Globalization;
 using CommandLine;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Orkeon.Domain.FileSystem;
@@ -9,6 +10,7 @@ using Orkeon.Hosting;
 using Orkeon.Rag.Abstractions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Rag.DependencyInjection;
 using Orkeon.Rag.Evaluation;
 using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Tools.Rag;
@@ -65,8 +67,9 @@ internal sealed class RagIngestCommandOptions : RagCommandOptionsBase
 
     /// <summary>Source paths and/or glob patterns; several go space-separated after ONE flag.</summary>
     [Option("source", Required = true,
-        HelpText = "Source path or glob pattern (e.g. \"./docs/**/*.md\"). Several sources go space-separated " +
-                   "after ONE --source (the flag cannot be repeated). Globs are resolved through the virtual file system.")]
+        HelpText = "Source path, glob pattern (e.g. \"./docs/**/*.md\") or http(s) address. Several sources go space-separated " +
+                   "after ONE --source (the flag cannot be repeated). Globs are resolved through the virtual file system; " +
+                   "an address reaches the web loader as written.")]
     public IEnumerable<string> Sources { get; set; } = [];
 
     /// <summary>Optional chunking strategy name.</summary>
@@ -519,7 +522,14 @@ internal static class RagCommand
                 // required by the balanced/quality profiles, loaded lazily at
                 // first use — profiles that never rerank pay nothing.
                 services.AddOrkeonOnnxReranker();
-            });
+            },
+            // --offline: the extractive stub answers in place of every model — the profile
+            // Orkeon:Rag:LlmProfile names included, which is then neither checked nor
+            // resolved (GAP-19). The override comes last, so it wins over the settings.
+            configureBuilder: options is RagEvalCommandOptions { Offline: true }
+                ? builder => builder.ConfigureAppConfiguration((_, configuration) =>
+                    configuration.AddInMemoryCollection([new KeyValuePair<string, string?>(RagLlm.ProfileKey, string.Empty)]))
+                : null);
     }
 
     /// <summary>True when the Docker-style mount string claims <paramref name="virtualRoot"/>.</summary>
@@ -545,10 +555,16 @@ internal static class RagCommand
     /// <summary>
     /// Maps a user-supplied source (relative path, absolute path under the cwd, or an
     /// already-virtual path) onto a virtual path/glob resolvable by the VFS. Anything
-    /// outside every mount is refused with an actionable message.
+    /// outside every mount is refused with an actionable message; an http(s) address is
+    /// handed over as written.
     /// </summary>
     internal static string ToVirtualSource(string raw, string cwd, IReadOnlyList<MountInfo> mounts)
     {
+        // An http(s) address is no path: it reaches the web loader as written (GAP-19). It used
+        // to come out as "/workspace/https://…", a path no loader reads.
+        if (SourceGlobExpander.IsWebAddress(raw))
+            return raw.Trim();
+
         var pattern = raw.Replace('\\', '/');
         if (pattern.StartsWith("./", StringComparison.Ordinal))
             pattern = pattern[2..];

@@ -173,4 +173,43 @@ public sealed class RagEvalCommandTests
 
         Assert.Equal(Program.ExitScriptError, exit);
     }
+
+    [Fact]
+    public async Task Eval_Offline_IgnoresTheRagLlmProfile_ThatAnOnlineRunRefuses()
+    {
+        // GAP-19: Orkeon:Rag:LlmProfile names a profile the host does not offer. Online, the host
+        // refuses to start, naming the key; --offline, the extractive stub answers in place of every
+        // model — that profile's included — so the key is neither checked nor resolved.
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json",
+            """{ "Orkeon": { "Rag": { "LlmProfile": "nope" } }, "RaggableTree": { "Enabled": false } }""");
+        var harness = new FakeRagEvalHarness();
+
+        using (var console = new TestConsole())
+        {
+            var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+            {
+                Dataset = "golden.yaml",
+                WorkingDirectoryOverride = scratch.Root,
+                ConfigureTestServices = (_, s) => s.AddSingleton<IRagEvalHarness>(harness),
+            });
+
+            Assert.Equal(Program.ExitScriptError, exit);
+            Assert.Contains("Orkeon:Rag:LlmProfile", console.Stderr, StringComparison.Ordinal);
+            Assert.Contains("'nope'", console.Stderr, StringComparison.Ordinal);
+        }
+
+        using (var console = new TestConsole())
+        {
+            var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+            {
+                Dataset = "golden.yaml",
+                Offline = true,
+                WorkingDirectoryOverride = scratch.Root,
+                ConfigureTestServices = (_, s) => s.AddSingleton<IRagEvalHarness>(harness),
+            });
+
+            Assert.Equal(Program.ExitOk, exit);
+        }
+    }
 }

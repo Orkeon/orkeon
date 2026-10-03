@@ -1223,3 +1223,9 @@ Orkeon.Domain.Crew.ExecutionStatus.Cancelled = 3 -> Orkeon.Domain.Crew.Execution
 Orkeon.Domain.Crew.ExecutionStatus.Failed = 2 -> Orkeon.Domain.Crew.ExecutionStatus
 Orkeon.Domain.Configuration.RagCrewConfig.CrewDirectory.get -> string?
 Orkeon.Domain.Configuration.RagCrewConfig.CrewDirectory.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.ManagerLlm.get -> string?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.ManagerLlm.init -> void
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.Create(int maxConcurrentTasks = 10, System.TimeSpan? defaultTimeout = null, int maxRetries = 3, bool enableDebugMode = false, bool enableAsyncExecution = true, int maxRPM = 0, string? managerLlm = null) -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig!
+static Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig.Create(int maxConcurrentTasks = 10, System.TimeSpan? defaultTimeout = null, int maxRetries = 3, bool enableDebugMode = false, bool enableAsyncExecution = true, int maxRPM = 0) -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig!
+*REMOVED*Orkeon.Domain.Crew.IProcessStrategy.ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Common.AgentId! managerAgentId, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
+Orkeon.Domain.Crew.IProcessStrategy.ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Common.AgentId? managerAgentId, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!

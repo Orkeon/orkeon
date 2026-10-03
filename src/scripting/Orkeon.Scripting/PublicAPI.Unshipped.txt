@@ -69,3 +69,4 @@ Orkeon.Scripting.Exceptions.UnknownToolException.UnknownToolException(string! ag
 Orkeon.Scripting.Exceptions.UnknownToolException.UnknownToolException(string! message) -> void
 Orkeon.Scripting.Exceptions.UnknownToolException.UnknownToolException(string! message, System.Exception! innerException) -> void
 *REMOVED*Orkeon.Scripting.Runtime.JsCrewResult.artifacts.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
+Orkeon.Scripting.Builders.JsTaskBuilder.withProfile(Jint.Native.JsValue! name) -> Orkeon.Scripting.Builders.JsTaskBuilder!

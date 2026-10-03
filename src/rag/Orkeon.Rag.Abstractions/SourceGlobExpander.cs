@@ -12,15 +12,33 @@ namespace Orkeon.Rag.Abstractions;
 /// Shared by every ingestion surface (agent tool <c>rag_ingest</c>, CLI
 /// <c>orkeon rag ingest</c>, scripting <c>rag.ingest</c>), so glob semantics stay
 /// identical across them. Locations without wildcards pass through untouched —
-/// URLs, inline references, and plain file paths are the loaders' business.
+/// inline references and plain file paths are the loaders' business — and so does
+/// every http(s) address, whatever it carries: the <c>?</c> of a query string or a
+/// <c>*</c> is part of it, never a pattern (GAP-19).
 /// </summary>
 public static class SourceGlobExpander
 {
     private static readonly char[] WildcardChars = ['*', '?'];
 
-    /// <summary>True when <paramref name="location"/> contains a glob wildcard.</summary>
+    /// <summary>
+    /// True when <paramref name="location"/> is a glob pattern: it contains a wildcard and is no
+    /// http(s) address (<see cref="IsWebAddress"/>).
+    /// </summary>
     public static bool HasWildcard(string location)
-        => !string.IsNullOrEmpty(location) && location.IndexOfAny(WildcardChars) >= 0;
+        => !string.IsNullOrEmpty(location)
+           && location.IndexOfAny(WildcardChars) >= 0
+           && !IsWebAddress(location);
+
+    /// <summary>
+    /// True when <paramref name="location"/> is an absolute <c>http://</c> or <c>https://</c>
+    /// address — never a path nor a pattern, whatever characters it carries. The one rule every
+    /// ingestion surface applies (GAP-19): such a source reaches the web loader as written, and
+    /// the virtual file system is never asked about it.
+    /// </summary>
+    public static bool IsWebAddress(string location)
+        => !string.IsNullOrWhiteSpace(location)
+           && Uri.TryCreate(location.Trim(), UriKind.Absolute, out var uri)
+           && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     /// <summary>
     /// Expands each location into one or more <see cref="SourceDescriptor"/>s.

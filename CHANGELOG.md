@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a crew's manager runs on the LLM the crew gives it, the RAG subsystem on the profile the host names, a `.ork.ts` task changes profile, and an address is no glob **[breaking]**
+
+Since named profiles, each agent ran on its own; the rest did not follow (GAP-19):
+
+- **The manager runs on the LLM the crew gives it.** A hierarchical crew whose `managerAgent` carried
+  `llm: { profile: claude }` had its tasks assigned and reviewed on the host's default profile: the
+  manager agent's `llm:` block was read, set on the agent and ignored. In C#,
+  `CrewBuilder.WithManagerLlm(provider)` was validated — it spares a crew its manager agent — then never
+  read; worse, `Crew.AddAgent` made the first agent of such a crew its manager, taking it out of the
+  workers. The manager now runs, resolved once per run by `ManagerLlmResolver`, on `Crew.ManagerLlm`
+  when C# set one (CrewAI's `manager_llm`, metered like a provider the host registers), else on its
+  manager agent's `llm:` block — profile and model, a model left unset being the profile's own —, else
+  on the default profile, and the run logs which (`provider:<name>`, `profile:<name>`). A crew given a
+  manager LLM needs no manager agent: every agent works, and `Crew.Validate`, `StartExecution` and
+  `ChangeProcessType` accept it. An autonomous crew hands its tasks out on `Crew.ManagerLlm` too. The
+  export's `ExecutorSettings["ManagerLlm"]` names that LLM (it carried a CLR type name), the unused
+  `ExecutionConfig.ManagerLlm` string is gone, and a YAML or `.ork.ts` hierarchical crew without
+  `managerAgent` fails its load naming the key — it was announced to "use the first agent as manager",
+  then refused by the builder, asking for a manager LLM a configuration cannot carry.
+- **The RAG subsystem runs on `Orkeon:Rag:LlmProfile`.** Grounded generation, the query transformers
+  (`multi-query`, `rag-fusion`, `hyde`), the listwise reranker, the corrective graph's evaluator and
+  groundedness checker, the `llm` classifier and the evaluation judge all took the container's chat
+  client — the default profile. They now call the host profile `Orkeon:Rag:LlmProfile` names
+  (`RagOptions.LlmProfile`; unset, the default), resolved at the first RAG call that needs a model. A
+  name the host does not offer — `orkeon-host`'s `Orkeon:Host:LlmProfiles` allow-list included —
+  refuses the start of the runner hosts and the REPL, listing the known ones
+  (`RagLlm.EnsureProfileIsKnown`); `orkeon rag eval --offline` ignores the key, its stub answering in
+  place of every model.
+- **A `.ork.ts` task changes profile like a YAML task.** `taskBuilder().withProfile(name)` sets the
+  task's `llm_override` profile (alongside `withResponseFormat` when both are given); a name the host
+  does not offer fails the load, listing the known ones. `task.d.ts` declares it.
+- **An address is not a glob.** `SourceGlobExpander` took the `?` of a query string, or a `*`, in an
+  `http(s)://` source for a wildcard: `rag_ingest` and `rag.ingest` walked the virtual file system for
+  it and failed ("No mount for virtual path '/https:/…'"), and `orkeon rag ingest --source` turned it
+  into `/workspace/https://…`. An absolute http(s) address now reaches the web loader as written, on
+  every surface — the crew `rag:` block included, which shares the rule (`SourceGlobExpander.IsWebAddress`).
+
+The planner and the Guardian stay on the default profile: they are host services, not crew roles
+(`CrewBuilder.WithPlanningLlm` keeps the hand in C#).
+
+Documented in [Configuration](docs/reference/configuration.md#named-profiles-llmprofiles),
+[Process types](docs/orchestration/process-types.md), [Autonomous](docs/orchestration/autonomous.md),
+[RAG pipeline](docs/architecture/rag-pipeline.md), [Scripting DSL](docs/reference/scripting-dsl.md),
+[YAML and builders](docs/getting-started/yaml-and-builders.md), [YAML schema](docs/architecture/yaml-schema.md),
+[Service host](docs/architecture/service-host.md), [CLI](docs/reference/cli.md) and
+[LLM response format](docs/guides/llm-response-format.md).
+
+Breaking: `IManagerAgent.AssignTaskAsync` and `ReviewOutputAsync` take the crew's `ManagerLlm`, and
+`LlmBasedManager` has no model of its own (constructor `(ILogger)`); `HierarchicalProcessStrategy` and
+`AutonomousProcessStrategy` take a `ManagerLlmResolver`; `IProcessStrategy.ExecuteHierarchicalAsync`
+takes a nullable manager agent id; `ExecutionConfig.ManagerLlm` and the `managerLlm` parameter of
+`ExecutionConfig.Create` are removed; a hierarchical configuration without `managerAgent` fails its
+validation.
+
+Migration: an `IManagerAgent` of your own sends its prompts to `llm.ChatClient`, on `llm.Model` when it
+is set; a strategy built by hand takes `new ManagerLlmResolver(defaultChatClient, profiles, usageSink)` —
+`AddOrkeonInfrastructure()` registers one; a crew that relied on its first agent managing names it with
+`managerAgent:`; instead of `ExecutionConfig.ManagerLlm`, give the manager agent an `llm:` block, or a C#
+crew `WithManagerLlm`.
+
 ### Fixed — what a crew writes is what runs: an unknown tool fails `act`, `CrewResult` declares what it serves, `rag:` sources expand, and a forge trial reads the folders and profiles it is given **[breaking]**
 
 Four things a user wrote were ignored without a word, plus a fifth found since (GAP-27):

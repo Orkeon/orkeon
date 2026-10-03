@@ -162,8 +162,9 @@ public static class JsCrewConfigurationAdapter
 
     /// <summary>
     /// Materialises <c>taskBuilder().withResponseFormat(...)</c> / <c>.withResponseSchema(...)</c>
-    /// into a <see cref="LlmConfigOverride"/>. Returns <c>null</c> for the no-op cases
-    /// (unset, or <c>"text"</c> which is the provider default).
+    /// and <c>.withProfile(name)</c> (GAP-19) into a <see cref="LlmConfigOverride"/> — the
+    /// <c>llm_override</c> a YAML task writes. Returns <c>null</c> when the task sets neither (a
+    /// format of <c>"text"</c> is the provider default, and sets nothing).
     /// </summary>
     private static LlmConfigOverride? BuildTaskLlmOverride(JsTask jsTask)
     {
@@ -173,7 +174,10 @@ public static class JsCrewConfigurationAdapter
             jsTask.ResponseSchema,
             jsTask.ResponseSchemaStrict);
 
-        return format is null ? null : LlmConfigOverride.ForResponseFormat(format);
+        if (format is null && jsTask.ProfileValue is null)
+            return null;
+
+        return new LlmConfigOverride { ResponseFormat = format, Profile = jsTask.ProfileValue };
     }
 
     /// <summary>

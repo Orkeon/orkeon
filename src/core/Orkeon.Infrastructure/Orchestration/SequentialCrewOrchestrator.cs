@@ -546,9 +546,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // (the strategy runs its voting pipeline over the crew's tasks — R3.3).
             "Consensual" => await processStrategy.ExecuteSequentialAsync(crew, stringVariables, cancellationToken).ConfigureAwait(false),
             "Parallel" => await processStrategy.ExecuteParallelAsync(crew, stringVariables, cancellationToken).ConfigureAwait(false),
+            // The manager is the crew's manager agent, or its manager LLM alone (GAP-19): the crew
+            // validated before the run that it has one or the other.
             "Hierarchical" => await processStrategy.ExecuteHierarchicalAsync(
                 crew,
-                crew.ManagerAgentId ?? throw new InvalidOperationException("Hierarchical process requires a manager agent"),
+                crew.ManagerAgentId,
                 stringVariables,
                 cancellationToken).ConfigureAwait(false),
             "Autonomous" => await processStrategy.ExecuteAutonomousAsync(crew, AgentExecutionBudget.Permissive, stringVariables, cancellationToken).ConfigureAwait(false),

@@ -81,7 +81,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             _reviewOutputFunc = reviewOutputFunc;
         }
 
-        public Task<TaskAssignment> AssignTaskAsync(DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context)
+        public Task<TaskAssignment> AssignTaskAsync(DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm)
         {
             if (_assignTaskFunc != null)
             {
@@ -98,7 +98,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             return Task.FromResult(assignment);
         }
 
-        public Task<bool> ReviewOutputAsync(ApplicationTaskOutput output, DomainTask task)
+        public Task<bool> ReviewOutputAsync(ApplicationTaskOutput output, DomainTask task, ManagerLlm llm)
         {
             if (_reviewOutputFunc != null)
             {
@@ -221,6 +221,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             agentRepository,
             _logger,
             _managerAgent,
+            TestManagerLlm.Resolver(),
             _executionService,
             _memoryScope,
             new MockMemoryCoordinator());
@@ -233,7 +234,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new HierarchicalProcessStrategy(null!, new MinimalAgentRepository(_agents), _logger, _managerAgent, _executionService, _memoryScope, new MockMemoryCoordinator()));
+            new HierarchicalProcessStrategy(null!, new MinimalAgentRepository(_agents), _logger, _managerAgent, TestManagerLlm.Resolver(), _executionService, _memoryScope, new MockMemoryCoordinator()));
         Assert.Equal("taskRepository", ex.ParamName);
     }
 
@@ -242,7 +243,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), null!, _logger, _managerAgent, _executionService, _memoryScope, new MockMemoryCoordinator()));
+            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), null!, _logger, _managerAgent, TestManagerLlm.Resolver(), _executionService, _memoryScope, new MockMemoryCoordinator()));
         Assert.Equal("agentRepository", ex.ParamName);
     }
 
@@ -251,7 +252,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), null!, _managerAgent, _executionService, _memoryScope, new MockMemoryCoordinator()));
+            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), null!, _managerAgent, TestManagerLlm.Resolver(), _executionService, _memoryScope, new MockMemoryCoordinator()));
         Assert.Equal("logger", ex.ParamName);
     }
 
@@ -260,8 +261,17 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, null!, _executionService, _memoryScope, new MockMemoryCoordinator()));
+            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, null!, TestManagerLlm.Resolver(), _executionService, _memoryScope, new MockMemoryCoordinator()));
         Assert.Equal("managerAgent", ex.ParamName);
+    }
+
+    [Fact]
+    public void ShouldThrow_WhenConstructorWithNullManagerLlm()
+    {
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentNullException>(() =>
+            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, _managerAgent, null!, _executionService, _memoryScope, new MockMemoryCoordinator()));
+        Assert.Equal("managerLlm", ex.ParamName);
     }
 
     [Fact]
@@ -269,7 +279,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, _managerAgent, null!, _memoryScope, new MockMemoryCoordinator()));
+            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, _managerAgent, TestManagerLlm.Resolver(), null!, _memoryScope, new MockMemoryCoordinator()));
         Assert.Equal("executionService", ex.ParamName);
     }
 
@@ -278,7 +288,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, _managerAgent, _executionService, null!, new MockMemoryCoordinator()));
+            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, _managerAgent, TestManagerLlm.Resolver(), _executionService, null!, new MockMemoryCoordinator()));
         Assert.Equal("memoryScope", ex.ParamName);
     }
 
@@ -286,7 +296,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     public void ShouldThrow_WhenConstructorWithNullMemoryCoordinator()
     {
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, _managerAgent, _executionService, _memoryScope, null!));
+            new HierarchicalProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _logger, _managerAgent, TestManagerLlm.Resolver(), _executionService, _memoryScope, null!));
         Assert.Equal("memoryCoordinator", ex.ParamName);
     }
 
@@ -299,6 +309,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             new MinimalAgentRepository(_agents),
             _logger,
             _managerAgent,
+            TestManagerLlm.Resolver(),
             _executionService,
             _memoryScope,
             new MockMemoryCoordinator());
@@ -323,14 +334,16 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldThrow_WhenExecuteHierarchicalAsyncWithNullManagerAgent()
+    public async Task ShouldThrow_WhenExecuteHierarchicalAsyncWithNeitherAManagerAgentNorAManagerLlm()
     {
-        // Arrange
+        // GAP-19: no manager agent is the crew whose manager LLM manages alone. Without that LLM
+        // either, there is no manager at all, and the run says what it needs.
         var crew = CreateSimpleCrew();
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _strategy.ExecuteHierarchicalAsync(crew, null!, cancellationToken: TestContext.Current.CancellationToken));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _strategy.ExecuteHierarchicalAsync(crew, null, cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("manager agent or a manager LLM", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -433,6 +446,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             new MinimalAgentRepository(_agents),
             _logger,
             customManager,
+            TestManagerLlm.Resolver(),
             _executionService,
             _memoryScope,
             new MockMemoryCoordinator());
@@ -494,6 +508,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             new MinimalAgentRepository(_agents),
             _logger,
             _managerAgent,
+            TestManagerLlm.Resolver(),
             meteredExecution,
             _memoryScope,
             new MockMemoryCoordinator());
@@ -539,6 +554,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             new MinimalAgentRepository(_agents),
             _logger,
             customManager,
+            TestManagerLlm.Resolver(),
             _executionService,
             _memoryScope,
             new MockMemoryCoordinator());
@@ -626,6 +642,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             new MinimalAgentRepository(_agents),
             _logger,
             customManager,
+            TestManagerLlm.Resolver(),
             _executionService,
             _memoryScope,
             new MockMemoryCoordinator());
@@ -679,6 +696,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             new MinimalAgentRepository(_agents),
             _logger,
             _managerAgent,
+            TestManagerLlm.Resolver(),
             customExecutionService,
             _memoryScope,
             new MockMemoryCoordinator());
@@ -745,6 +763,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             new MinimalAgentRepository(_agents),
             _logger,
             _managerAgent,
+            TestManagerLlm.Resolver(),
             customExecutionService,
             _memoryScope,
             new MockMemoryCoordinator());
@@ -945,6 +964,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             new MinimalAgentRepository(_agents),
             _logger,
             _managerAgent,
+            TestManagerLlm.Resolver(),
             _executionService,
             _memoryScope,
             new MockMemoryCoordinator(),

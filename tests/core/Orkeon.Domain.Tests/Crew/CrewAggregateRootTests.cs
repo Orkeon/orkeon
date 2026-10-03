@@ -333,29 +333,25 @@ public class CrewAggregateRootTests
     #region Agent Management Edge Cases
 
     [Fact]
-    public void ShouldAutoSetManagerToFirstAgent_WhenAddingToHierarchicalCrewWithNoManager()
+    public void ShouldNotMakeAnAgentManager_WhenAddingToAHierarchicalCrewItsManagerLlmManages()
     {
-        // Arrange
-        var managerLlm = new StubLlmProvider();
-        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: managerLlm);
+        // GAP-19: a crew given a manager LLM has no manager agent; every agent it adds is a worker.
+        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: new StubLlmProvider());
         var agentId = AgentId.Create();
 
-        // Act
         crew.AddAgent(agentId);
 
-        // Assert
-        Assert.Equal(agentId, crew.ManagerAgentId);
+        Assert.Null(crew.ManagerAgentId);
     }
 
     [Fact]
     public void ShouldReassignManager_WhenRemovingCurrentManagerFromHierarchicalCrew()
     {
-        // Arrange
-        var managerLlm = new StubLlmProvider();
-        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: managerLlm);
+        // Arrange — managed by an agent, with no manager LLM to fall back on
         var agent1 = AgentId.Create();
         var agent2 = AgentId.Create();
-        crew.AddAgent(agent1); // Becomes manager
+        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerAgentId: agent1);
+        crew.AddAgent(agent1);
         crew.AddAgent(agent2);
 
         // Pre-condition
@@ -371,10 +367,9 @@ public class CrewAggregateRootTests
     [Fact]
     public void ShouldClearManager_WhenRemovingOnlyAgentFromHierarchicalCrew()
     {
-        // Arrange
-        var managerLlm = new StubLlmProvider();
-        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerLlm: managerLlm);
+        // Arrange — managed by its only agent
         var agentId = AgentId.Create();
+        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerAgentId: agentId);
         crew.AddAgent(agentId);
 
         // Act

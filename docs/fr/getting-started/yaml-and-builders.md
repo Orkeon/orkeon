@@ -10,7 +10,7 @@ Les trois entités principales sont construites via des builders fluides défini
 
 - `AgentBuilder` (`Orkeon.Domain.Agent`) : configure rôle, objectif, backstory, outils, contraintes d'exécution, templates de prompt, politique d'accès outils
 - `CrewTaskBuilder` (`Orkeon.Domain.Task`) : configure description, résultat attendu, priorité, dépendances, schéma JSON de sortie, mode async (`.Async()` — honoré par une crew séquentielle, refusé par `CrewBuilder.Build()` hors Sequential et Parallel), intervention humaine
-- `CrewBuilder` (`Orkeon.Domain.Crew`) : configure nom, objectif, process type, agents, tasks, planification, mémoire, callbacks, agents dynamiques
+- `CrewBuilder` (`Orkeon.Domain.Crew`) : configure nom, objectif, process type, agents, tasks, planification, mémoire, callbacks, agents dynamiques, et le manager d'une crew hiérarchique — un agent (`.Hierarchical(manager)`, `.WithManager(agent)`), ou un fournisseur à lui (`.WithManagerLlm(fournisseur)`, le `manager_llm` de CrewAI : le manager assigne et revoit dessus, la crew se passe alors d'agent manager et chaque agent travaille)
 
 Chaque builder délègue en interne aux méthodes factory `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` et lève une `BuilderValidationException` si les champs obligatoires sont absents.
 
@@ -39,7 +39,7 @@ verbose: bool             # default: false
 memory: bool              # default: false. true : range le résultat de chaque tâche et rappelle les plus proches avant chaque tâche (demande un embedder)
 memoryProvider: string    # exige memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — le type ; la section hôte (Orkeon:Redis, …) donne la connexion ; absent : le magasin par défaut de l'hôte
 planning: bool            # default: false. true : un plan pas à pas par tâche, écrit avant la première et lu par chaque tâche dans son prompt ; ne réordonne jamais les tâches
-managerAgent: string      # Requis si process = "hierarchical"
+managerAgent: string      # Requis si process = "hierarchical" : le manager, sur son propre bloc llm:
 mounts: [string]          # Racines virtuelles utilisées par la crew ("/output", ou "<id>|/output" pour épingler une entrée des settings)
 
 agents:
@@ -110,9 +110,12 @@ tasks:
 Un profil que l'hôte ne définit pas fait échouer le chargement de la crew, et le message liste
 les profils offerts — exactement comme un outil inconnu. Un bloc `llm:` qui ne nomme pas de
 `model` tourne sur le modèle propre du profil (celui de l'hôte pour le profil par défaut), jamais
-sur un défaut du framework. Seuls les tours des agents changent de fournisseur : le manager
-hiérarchique, le planificateur, le Guardian et les pipelines RAG restent sur le profil par défaut.
-En `.ork.ts`, le même choix s'écrit `agentBuilder().llm(llm.profile("claude"))`.
+sur un défaut du framework. Le manager d'une crew hiérarchique tourne sur le bloc `llm:` de son
+agent manager, comme tout agent (en C#, un fournisseur posé par `WithManagerLlm` l'emporte) ; le
+sous-système RAG tourne sur le profil que nomme `Orkeon:Rag:LlmProfile` ; le planificateur et le
+Guardian restent sur le profil par défaut ([Configuration](../reference/configuration.md#profils-nommés-llmprofiles)).
+En `.ork.ts`, le même choix s'écrit `agentBuilder().llm(llm.profile("claude"))` sur un agent et
+`taskBuilder().withProfile("claude")` sur une tâche.
 
 Le `tools:` d'une tâche s'ajoute aux outils de son agent pour cette tâche seulement : un rédacteur qui détient `file_read` et exécute une tâche déclarant `tools: [file_write]` peut lire et écrire pendant cette tâche, et seulement lire pendant les autres. Il n'y a pas de bloc `circuitBreaker:` — une crew qui en écrit un est refusée au chargement. Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent (`maxIter`, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie) ; un run Graph est borné par `graphConfig` (ci-dessous).
 

@@ -77,7 +77,7 @@ déduit.
 | `withAgent(s)` — un agent construit ; tout le reste est refusé | ✅ | ✅ |
 | `withTask(s)` — une tâche construite ; tout le reste est refusé | ❌ ignoré | ✅ **tout l'intérêt** |
 | `process` | ❌ tag de télémétrie seulement | ✅ (`"graph"` choisit la stratégie de reprise-et-routage du domaine, pas une topologie dessinée par le script — voir plus bas) |
-| `manager` | ❌ | ✅ |
+| `manager` | ❌ | ✅ — le manager hiérarchique assigne et revoit sur le `.llm(...)` de cet agent : `llm.profile("claude")` le place sur ce profil |
 | `memory` | ❌ | ✅ |
 | `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
 | `budget` | ✅ | ❌ ignoré |
@@ -115,7 +115,10 @@ Déclaratif uniquement — le moteur procédural ne lit jamais les tâches. Tran
 `description`, `agent` (un agent construit), `expectedOutput`, `withContext(s)` (c'est ce qui
 construit le DAG), `tools` (ajoutés aux outils de l'agent pour cette tâche seulement, sans jamais
 les remplacer), `humanInput`, `asyncExecution`, `deliverable`,
-`withResponseFormat(type)` et `withResponseSchema(name, schema, strict?)`. Acceptés mais sans
+`withResponseFormat(type)`, `withResponseSchema(name, schema, strict?)` et `withProfile(nom)` (le
+`llm_override: { profile }` du YAML : cette tâche seule tourne sur un des profils de l'hôte, sur le
+modèle propre de ce profil, et `"default"` la ramène au défaut de l'hôte ; un nom que l'hôte
+n'offre pas fait échouer le chargement en listant les profils connus). Acceptés mais sans
 effet : `name` (une configuration de tâche n'a pas de nom ; il ne sert qu'à nommer la tâche dans
 une erreur de chargement) et `expect` (consigné dans le contexte de la tâche en l'absence de
 `deliverable`, jamais validé). `withTaskTool` a disparu : rien ne le lisait, et `tools` le couvre.

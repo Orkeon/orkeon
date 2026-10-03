@@ -133,7 +133,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     /// <inheritdoc />
     public Task<DomainCrewOutput> ExecuteHierarchicalAsync(
         DomainCrew crew,
-        AgentId managerAgentId,
+        AgentId? managerAgentId,
         IReadOnlyDictionary<string, string>? inputVariables = null,
         CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Use HierarchicalProcessStrategy for hierarchical orchestration.");

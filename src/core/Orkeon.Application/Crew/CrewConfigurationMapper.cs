@@ -231,10 +231,28 @@ public static class CrewConfigurationMapper
                 EnableDebugMode = crew.Verbose,
                 ExecutorSettings = new Dictionary<string, object>
                 {
-                    ["ManagerLlm"] = crew.ManagerLlm?.GetType().Name ?? string.Empty
+                    ["ManagerLlm"] = ManagerLlmOf(crew, agents)
                 }
             }
         };
+    }
+
+    /// <summary>
+    /// What the crew's manager runs on (GAP-19) — <c>provider:&lt;name&gt;</c> for the provider C# set
+    /// with <c>WithManagerLlm</c>, else <c>profile:&lt;name&gt;</c> for its manager agent's profile —, or
+    /// empty for a crew whose mode has no manager (an autonomous crew's manager has no agent).
+    /// </summary>
+    private static string ManagerLlmOf(DomainCrew crew, IEnumerable<DomainAgent> agents)
+    {
+        if (crew.ProcessType == ProcessType.Autonomous)
+            return Interfaces.ManagerLlm.Describe(crew, managerAgent: null);
+        if (crew.ProcessType != ProcessType.Hierarchical)
+            return string.Empty;
+
+        var managerAgent = crew.ManagerAgentId is { } managerId
+            ? agents.FirstOrDefault(agent => agent.Id == managerId)
+            : null;
+        return Interfaces.ManagerLlm.Describe(crew, managerAgent);
     }
 
     private static List<AgentConfiguration> ExportAgents(DomainCrew crew, IEnumerable<DomainAgent> agents)

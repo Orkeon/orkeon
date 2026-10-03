@@ -7,6 +7,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Configuration;
+using Orkeon.Rag.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Rag.Corrective;
@@ -59,7 +60,7 @@ public static partial class CorrectiveRagExtensions
         services.TryAddSingleton(serviceProvider => new CorrectiveRagPipeline(
             serviceProvider.GetRequiredService<IDocumentStore>(),
             serviceProvider.GetRequiredService<IEmbeddingProvider>(),
-            serviceProvider.GetRequiredService<IChatClient>(),
+            RagLlm.ChatClient(serviceProvider),
             serviceProvider.GetRequiredService<IRetrievalEvaluator>(),
             serviceProvider.GetRequiredService<RagOptions>(),
             new CorrectiveRagPipelineDependencies
@@ -74,7 +75,7 @@ public static partial class CorrectiveRagExtensions
 
     private static IRetrievalEvaluator CreateRetrievalEvaluator(IServiceProvider serviceProvider)
     {
-        var chatClient = serviceProvider.GetService<IChatClient>();
+        var chatClient = RagLlm.Find(serviceProvider);
         if (chatClient is null)
         {
             var logger = serviceProvider.GetService<ILogger<LlmRetrievalEvaluator>>();
@@ -91,7 +92,7 @@ public static partial class CorrectiveRagExtensions
 
     private static IGroundednessChecker CreateGroundednessChecker(IServiceProvider serviceProvider)
     {
-        var chatClient = serviceProvider.GetService<IChatClient>();
+        var chatClient = RagLlm.Find(serviceProvider);
         if (chatClient is null)
         {
             var logger = serviceProvider.GetService<ILogger<LlmGroundednessChecker>>();

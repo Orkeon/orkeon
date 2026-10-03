@@ -1,4 +1,3 @@
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -29,10 +28,10 @@ public static class RagEvaluationExtensions
             new RagEvalReportWriter(sp.GetRequiredService<IFileSystemService>()));
 
         // The judge chat client is optional: absent, every run uses (and labels)
-        // the deterministic heuristic judge.
+        // the deterministic heuristic judge. Present, it is the subsystem's (RagLlm, GAP-19).
         services.TryAddSingleton<IRagEvaluator>(sp => new RagEvaluator(
             sp.GetRequiredService<IRagProfileResolver>(),
-            sp.GetService<IChatClient>(),
+            RagLlm.Find(sp),
             sp.GetService<ILogger<RagEvaluator>>()));
 
         services.TryAddSingleton<IRagEvalHarness>(sp => new RagEvalHarness(

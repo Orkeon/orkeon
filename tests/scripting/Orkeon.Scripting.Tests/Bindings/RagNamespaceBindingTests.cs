@@ -103,6 +103,24 @@ public sealed class RagNamespaceBindingTests
     }
 
     [Fact]
+    public async Task Ingest_HandsAnHttpAddressOverAsWritten_WithoutTheVirtualFileSystem()
+    {
+        // GAP-19, decision 5: the '?' of a query string made the address a glob, walked through the VFS.
+        var fileSystem = new ThrowingFileSystemService();
+        var pipeline = new FakeIngestionPipeline();
+        using var engine = CreateEngine(ingest: pipeline, fileSystem: fileSystem);
+
+        await Task.Run(() => engine.Evaluate(
+            "rag.ingest({ collection: 'web', sources: ['https://exemple.test/page?id=1', 'http://exemple.test/a*b'] })")
+            .UnwrapIfPromise());
+
+        Assert.Equal(
+            ["https://exemple.test/page?id=1", "http://exemple.test/a*b"],
+            pipeline.LastRequest!.Sources.Select(s => s.Location));
+        Assert.Equal(0, fileSystem.CallCount);
+    }
+
+    [Fact]
     public async Task Query_MapsQuestion_Collection_AndTopN_AndReturnsCitations()
     {
         var pipeline = new FakeRagPipeline

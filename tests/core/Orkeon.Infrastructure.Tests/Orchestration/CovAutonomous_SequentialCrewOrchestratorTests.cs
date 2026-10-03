@@ -124,7 +124,7 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Sequential"; return Out(crew); }
 
-        public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId mgr, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
+        public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId? mgr, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Hierarchical"; return Out(crew); }
 
         public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
@@ -158,7 +158,7 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
             => AnswerAsync(vars);
 
-        public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId mgr, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
+        public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId? mgr, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
             => AnswerAsync(vars);
 
         public Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)

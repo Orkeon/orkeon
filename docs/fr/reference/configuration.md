@@ -111,7 +111,7 @@ un nom, et un fournisseur décrit avec exactement les clés de la section `Llm` 
 `Grammar`). La section `Llm` elle-même reste le profil **par défaut** — celui de tout agent qui
 n'en nomme pas d'autre. Une crew choisit un profil **par son nom**, jamais par une clé ou une URL :
 `llm: { profile: claude }` sur la crew, un agent ou le `llm_override` d'une tâche en YAML,
-`llm.profile("claude")` en `.ork.ts` ([YAML et builders](../getting-started/yaml-and-builders.md#un-fournisseur-par-agent-profils)).
+`llm.profile("claude")` sur un agent et `taskBuilder().withProfile("claude")` sur une tâche en `.ork.ts` ([YAML et builders](../getting-started/yaml-and-builders.md#un-fournisseur-par-agent-profils)).
 
 ```json
 {
@@ -138,11 +138,29 @@ précisé est celui du profil, sur tous les chemins** : un bloc `llm:` YAML ou `
 ne configure aucun modèle, le planificateur, les boucles d'agent hors client de chat et les appels
 d'analyse de la mémoire cognitive laissent tous le modèle au fournisseur qu'ils atteignent, qui
 envoie le modèle que son profil configure, sinon son propre défaut — jamais un modèle vide, jamais
-celui d'OpenAI sur un autre vendeur. Seuls les tours des agents changent de fournisseur : le manager hiérarchique, le planificateur, le Guardian, les
-pipelines RAG et les juges LLM restent sur le profil par défaut. Une section qui ne contient que
-`Profiles` ne configure aucun fournisseur par défaut — le défaut est alors le provider écho, avec
-l'avertissement habituel. `orkeon-host` peut restreindre les profils que ses crews peuvent nommer
-(`Orkeon:Host:LlmProfiles`, plus bas).
+celui d'OpenAI sur un autre vendeur.
+
+Qui tourne sur quel profil :
+
+- **Les tours d'un agent** — sur son profil `llm:`, ou le `llm_override` de sa tâche pour cette
+  tâche (`taskBuilder().withProfile(nom)` en `.ork.ts`).
+- **Le manager** d'une crew hiérarchique (et celui qui distribue les tâches d'une crew autonome) —
+  sur le LLM que la crew lui donne : en C#, le fournisseur que pose `CrewBuilder.WithManagerLlm`,
+  compté comme celui de l'hôte ; sinon le bloc `llm:` de son agent manager, profil et modèle ; sinon
+  le profil par défaut.
+- **Le sous-système RAG** — génération citée, transformateurs de requête, reranker listwise,
+  évaluateur et vérificateur d'ancrage du graphe correctif, classifieur `llm` et juge d'évaluation —
+  sur le profil que nomme `Orkeon:Rag:LlmProfile` (absent : le défaut). Un nom que l'hôte n'offre
+  pas fait refuser le démarrage de l'hôte, en listant ceux qu'il offre ; le fournisseur du profil est
+  construit au premier appel RAG qui en a besoin, jamais au démarrage.
+- **Le planificateur, le Guardian, les juges d'`Evaluation` et les analyses de la mémoire
+  cognitive** restent sur le profil par défaut : ce sont des services de l'hôte, pas des rôles de
+  crew (`CrewBuilder.WithPlanningLlm` garde la main en C#).
+
+Une section qui ne contient que `Profiles` ne configure aucun fournisseur par défaut — le défaut
+est alors le provider écho, avec l'avertissement habituel. `orkeon-host` peut restreindre les
+profils que ses crews peuvent nommer (`Orkeon:Host:LlmProfiles`, plus bas) ; la restriction vaut
+aussi pour le profil RAG et pour celui d'un agent manager.
 
 ## Sections hors préfixe `Orkeon:`
 
@@ -211,6 +229,7 @@ runner (`orkeon run`, `orkeon-host`).
 | Section | Configure |
 |---|---|
 | `Orkeon:Rag:Profile` | Preset de profil `fast` (défaut) / `balanced` / `quality` / `adaptive` / `corrective` ; toute clé `Orkeon:Rag` surcharge le preset clé par clé |
+| `Orkeon:Rag:LlmProfile` | Le profil LLM de l'hôte (`Llm:Profiles:<nom>`) qu'appelle le sous-système RAG — génération, transformateurs de requête, reranker listwise, évaluateur et vérificateur d'ancrage correctifs, classifieur `llm`, juge d'évaluation ; absent ou `default` : le profil par défaut. Un nom inconnu fait refuser le démarrage de l'hôte en listant les profils connus ; `orkeon rag eval --offline` l'ignore |
 | `Orkeon:Rag:Provider` | TYPE du provider du document store RAG (`RagStoreOptions` — un alias de type de `MemoryProviderFactory`), connecté depuis la section propre de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, …) ; défaut : l'`IMemoryProvider` ambiant |
 | `Orkeon:Rag:Collection` | Collection qu'interroge `rag_search` quand l'agent n'en nomme aucune (non définie : `default`) ; `rag_eval` l'utilise pour un dataset qui ne nomme pas de collection et n'apporte pas de corpus |
 | `Orkeon:Rag:Retrieval` (`TopK`, `CandidateK`, `MinScore`) | Bornes de l'étape de retrieval |
@@ -272,7 +291,7 @@ variables d'environnement qui les contiennent. Parcours par fournisseur et table
 
 | Section | Configure | Consommateur |
 |---|---|---|
-| `Orkeon:Host` | Le démon : `Crews` (chacune `Name` — unique, sans tenir compte de la casse — `Path`, `Profile:MaxConcurrentRuns` défaut 4, `Mounts` — l'espace de montages propre à la crew), `RunTimeout` (30 min), `ShutdownGracePeriod` (20 s), `LlmProfiles` (la liste blanche des `Llm:Profiles` que les crews hébergées peuvent nommer ; absente, tous sont offerts, `["default"]` n'offre que le défaut ; une entrée qui nomme un profil non défini refuse le démarrage) | `Orkeon.Host` — voir [Hôte de service](../architecture/service-host.md) |
+| `Orkeon:Host` | Le démon : `Crews` (chacune `Name` — unique, sans tenir compte de la casse — `Path`, `Profile:MaxConcurrentRuns` défaut 4, `Mounts` — l'espace de montages propre à la crew), `RunTimeout` (30 min), `ShutdownGracePeriod` (20 s), `LlmProfiles` (la liste blanche des `Llm:Profiles` que les crews hébergées peuvent nommer — leurs agents, tâches et managers — et `Orkeon:Rag:LlmProfile` aussi ; absente, tous sont offerts, `["default"]` n'offre que le défaut ; une entrée qui nomme un profil non défini, ou un profil RAG que la liste écarte, refuse le démarrage) | `Orkeon.Host` — voir [Hôte de service](../architecture/service-host.md) |
 | `Orkeon:Host:Discord` | Canal Discord : `Enabled`, `TokenEnvironmentVariable` (`ORKEON_DISCORD_TOKEN`), `AllowedUserIds`, `GuildIds`, `ProgressInterval` (2 s), `Routes` (identifiant de salon Discord → nom de crew : un fil ouvert dans ce salon démarre cette crew), `DefaultCrew` (la crew qu'atteint un salon sans route ; la première crew déclarée si absent). Une route vers une crew non déclarée, une clé de route qui n'est pas un identifiant de salon ou un `DefaultCrew` inconnu refusent le démarrage | idem |
 
 ### Multi-modal

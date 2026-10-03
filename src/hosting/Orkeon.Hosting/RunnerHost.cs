@@ -143,8 +143,32 @@ public static partial class RunnerHost
         LogMountDecisions(host, decisions);
         WarnIfEmailTokensUnavailable(host, decisions);
         WarnIfLlmNotConfigured(host);
+        EnsureRagLlmProfileIsKnown(host);
         ActivateTelemetry(host);
         return host;
+    }
+
+    /// <summary>
+    /// GAP-19: <c>Orkeon:Rag:LlmProfile</c> names one of the host's LLM profiles — the daemon's
+    /// <c>Orkeon:Host:LlmProfiles</c> allow-list applied —, and a name the host does not offer
+    /// refuses the start here, listing the ones it does, like an invalid <c>Llm:Profiles</c> entry,
+    /// rather than the first RAG query of a run. Only the name is checked: the profile's provider
+    /// is built at the first RAG call that needs a model (GAP-02).
+    /// </summary>
+    private static void EnsureRagLlmProfileIsKnown(IHost host)
+    {
+        try
+        {
+            RagLlm.EnsureProfileIsKnown(
+                host.Services.GetRequiredService<IConfiguration>(),
+                host.Services.GetService<ILlmProfileRegistry>());
+        }
+        catch (InvalidOperationException)
+        {
+            // The caller never receives the host to dispose.
+            host.Dispose();
+            throw;
+        }
     }
 
     /// <summary>

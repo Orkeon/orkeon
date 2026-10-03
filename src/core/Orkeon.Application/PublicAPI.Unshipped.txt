@@ -1083,3 +1083,18 @@ Orkeon.Application.Crew.ExecutionOrchestrator.DeltaSink.set -> void
 static Orkeon.Application.Crew.Execution.CrewStreamScope.Begin(System.Threading.Channels.ChannelWriter<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>? writer) -> System.IDisposable!
 static Orkeon.Application.Crew.Execution.CrewStreamScope.IsOpen.get -> bool
 static Orkeon.Application.Crew.Execution.CrewStreamScope.Write(Orkeon.Application.Interfaces.Services.CrewExecutionEvent! executionEvent) -> void
+*REMOVED*Orkeon.Application.Interfaces.IManagerAgent.AssignTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! availableAgents, Orkeon.Application.Context.SimpleExecutionContext! context) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.TaskAssignment!>!
+*REMOVED*Orkeon.Application.Interfaces.IManagerAgent.ReviewOutputAsync(Orkeon.Application.Execution.TaskOutput! output, Orkeon.Domain.Task.CrewTask! originalTask) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Interfaces.IManagerAgent.AssignTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! availableAgents, Orkeon.Application.Context.SimpleExecutionContext! context, Orkeon.Application.Interfaces.ManagerLlm! llm) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.TaskAssignment!>!
+Orkeon.Application.Interfaces.IManagerAgent.ReviewOutputAsync(Orkeon.Application.Execution.TaskOutput! output, Orkeon.Domain.Task.CrewTask! originalTask, Orkeon.Application.Interfaces.ManagerLlm! llm) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Interfaces.ManagerLlm
+Orkeon.Application.Interfaces.ManagerLlm.ChatClient.get -> Microsoft.Extensions.AI.IChatClient!
+Orkeon.Application.Interfaces.ManagerLlm.ChatClient.init -> void
+Orkeon.Application.Interfaces.ManagerLlm.ManagerLlm() -> void
+Orkeon.Application.Interfaces.ManagerLlm.Model.get -> string?
+Orkeon.Application.Interfaces.ManagerLlm.Model.init -> void
+Orkeon.Application.Interfaces.ManagerLlm.Name.get -> string!
+Orkeon.Application.Interfaces.ManagerLlm.Name.init -> void
+const Orkeon.Application.Interfaces.ManagerLlm.ProfilePrefix = "profile:" -> string!
+const Orkeon.Application.Interfaces.ManagerLlm.ProviderPrefix = "provider:" -> string!
+static Orkeon.Application.Interfaces.ManagerLlm.Describe(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Agent.Agent? managerAgent) -> string!

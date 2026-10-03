@@ -38,6 +38,9 @@ public sealed class JsTask
     /// <summary>Whether the captured schema is strict.</summary>
     internal bool ResponseSchemaStrict { get; }
 
+    /// <summary>The host LLM profile captured by <c>taskBuilder().withProfile(name)</c>; <c>null</c> when unset (GAP-19).</summary>
+    internal string? ProfileValue { get; }
+
     /// <summary>YAML parity <c>humanInput</c> flag captured by <c>taskBuilder().humanInput(...)</c>.</summary>
     internal bool HumanInputFlag { get; }
 
@@ -68,6 +71,7 @@ public sealed class JsTask
         ResponseSchemaName = metadata.ResponseSchemaName;
         ResponseSchema = metadata.ResponseSchema;
         ResponseSchemaStrict = metadata.ResponseSchemaStrict;
+        ProfileValue = metadata.Profile;
         HumanInputFlag = metadata.HumanInput;
         AsyncExecutionFlag = metadata.AsyncExecution;
         Tools = metadata.Tools;

@@ -100,8 +100,8 @@ name, and a provider described with exactly the keys of the `Llm` section (`Base
 `Model`, `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, `Thinking`, `Grammar`).
 The `Llm` section itself stays the **default** profile — the one every agent runs on unless it
 names another. A crew picks a profile **by name**, never by key or endpoint: `llm: { profile:
-claude }` on the crew, an agent or a task's `llm_override` in YAML, `llm.profile("claude")` in
-`.ork.ts` ([YAML and builders](../getting-started/yaml-and-builders.md#one-provider-per-agent-profiles)).
+claude }` on the crew, an agent or a task's `llm_override` in YAML, `llm.profile("claude")` on an
+agent and `taskBuilder().withProfile("claude")` on a task in `.ork.ts` ([YAML and builders](../getting-started/yaml-and-builders.md#one-provider-per-agent-profiles)).
 
 ```json
 {
@@ -127,11 +127,28 @@ profiles the host offers. **A model left unset is the profile's own, on every pa
 `llm.default_` on a host that configures no model, the planner, the agent loops outside the chat
 client and the cognitive memory's analysis calls all leave the model to the provider they reach,
 which sends the model its profile configures, else its own default — never an empty one, never
-OpenAI's on another vendor. Only the agents' own turns change provider: the hierarchical manager,
-the planner, the Guardian, the RAG pipelines and the LLM judges stay on the default profile. A
-section holding `Profiles` alone configures no default provider — the default is then the echo
+OpenAI's on another vendor.
+
+Who runs on which profile:
+
+- **An agent's turns** — on its own `llm:` profile, or its task's `llm_override` for that task
+  (`taskBuilder().withProfile(name)` in `.ork.ts`).
+- **The manager** of a hierarchical crew (and the one that hands an autonomous crew's tasks out) —
+  on the LLM the crew gives it: in C# the provider `CrewBuilder.WithManagerLlm` sets, metered like
+  the host's own; else its manager agent's `llm:` block, profile and model; else the default profile.
+- **The RAG subsystem** — grounded generation, query transformers, the listwise reranker, the
+  corrective graph's evaluator and groundedness checker, the `llm` classifier and the evaluation
+  judge — on the profile `Orkeon:Rag:LlmProfile` names (unset: the default). A name the host does
+  not offer refuses the start of the host, listing the ones it does; the profile's provider is
+  built at the first RAG call that needs it, never at start-up.
+- **The planner, the Guardian, the `Evaluation` judges and the cognitive memory's analyses** stay
+  on the default profile: they are host services, not crew roles (`CrewBuilder.WithPlanningLlm`
+  keeps the hand in C#).
+
+A section holding `Profiles` alone configures no default provider — the default is then the echo
 provider, with the usual warning. `orkeon-host` can restrict which profiles its crews may name
-(`Orkeon:Host:LlmProfiles`, below).
+(`Orkeon:Host:LlmProfiles`, below); the restriction applies to the RAG profile and to a manager
+agent's too.
 
 ## Sections outside the `Orkeon:` prefix
 
@@ -200,6 +217,7 @@ requires `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection`), which
 | Section | Configures |
 |---|---|
 | `Orkeon:Rag:Profile` | Profile preset `fast` (default) / `balanced` / `quality` / `adaptive` / `corrective`; any `Orkeon:Rag` key overrides the preset key-by-key |
+| `Orkeon:Rag:LlmProfile` | The host LLM profile (`Llm:Profiles:<name>`) the RAG subsystem calls — generation, query transformers, listwise reranker, corrective evaluator and groundedness checker, `llm` classifier, evaluation judge; unset or `default` is the default profile. An unknown name refuses the host start, listing the known ones; `orkeon rag eval --offline` ignores it |
 | `Orkeon:Rag:Provider` | TYPE of the RAG document-store provider (`RagStoreOptions` — a `MemoryProviderFactory` type alias), connected from that provider's own section (`Orkeon:Redis`, `Orkeon:Sqlite`, …); default is the ambient `IMemoryProvider` |
 | `Orkeon:Rag:Collection` | Collection `rag_search` queries when the agent names none (unset: `default`); `rag_eval` uses it for a dataset that names no collection and brings no corpus |
 | `Orkeon:Rag:Retrieval` (`TopK`, `CandidateK`, `MinScore`) | Retrieval stage bounds |
@@ -260,7 +278,7 @@ key-by-key table: [E-mail tools](../guides/email.md).
 
 | Section | Configures | Consumer |
 |---|---|---|
-| `Orkeon:Host` | The daemon: `Crews` (each `Name` — unique, case-insensitively — `Path`, `Profile:MaxConcurrentRuns` default 4, `Mounts` — the per-crew mount namespace), `RunTimeout` (30 min), `ShutdownGracePeriod` (20 s), `LlmProfiles` (the allow-list of `Llm:Profiles` the hosted crews may name; unset offers them all, `["default"]` the default alone; an entry naming an undefined profile refuses the start) | `Orkeon.Host` — see [Service host](../architecture/service-host.md) |
+| `Orkeon:Host` | The daemon: `Crews` (each `Name` — unique, case-insensitively — `Path`, `Profile:MaxConcurrentRuns` default 4, `Mounts` — the per-crew mount namespace), `RunTimeout` (30 min), `ShutdownGracePeriod` (20 s), `LlmProfiles` (the allow-list of `Llm:Profiles` the hosted crews may name — their agents, tasks and managers — and `Orkeon:Rag:LlmProfile` too; unset offers them all, `["default"]` the default alone; an entry naming an undefined profile, or a RAG profile the list leaves out, refuses the start) | `Orkeon.Host` — see [Service host](../architecture/service-host.md) |
 | `Orkeon:Host:Discord` | Discord channel: `Enabled`, `TokenEnvironmentVariable` (`ORKEON_DISCORD_TOKEN`), `AllowedUserIds`, `GuildIds`, `ProgressInterval` (2 s), `Routes` (Discord channel id → crew name: a thread opened in that channel starts that crew), `DefaultCrew` (the crew an unrouted channel reaches; the first declared crew when unset). A route to an undeclared crew, a route key that is not a channel id, or an unknown `DefaultCrew` refuses the start | idem |
 
 ### Multi-modal

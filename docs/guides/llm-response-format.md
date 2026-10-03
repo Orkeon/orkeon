@@ -243,7 +243,7 @@ The cascade is fused exactly once per turn (`LlmConfigResolver.Resolve`), in 3 c
 
 The 6 process strategies (Sequential, Hierarchical, Autonomous, Graph, Parallel, Consensual) run tasks through `IAgentExecutionService.ExecuteTaskAsync`, which delegates to `ExecutionOrchestrator.ExecuteTaskCoreAsync` — they get the cascade for free.
 
-`LlmBasedManager` (manager LLM in Hierarchical mode) does not apply a task override: it has no `task` in scope, so its calls run on the provider's own configuration.
+`LlmBasedManager` (manager LLM in Hierarchical mode) does not apply a task override: its calls run on the LLM the crew gives its manager — the provider `WithManagerLlm` sets, else the manager agent's profile and model, else the default profile — with that provider's own configuration for everything else (no response format, no task override).
 
 ## Reference
 

@@ -229,6 +229,20 @@ public sealed class RagCommandTests
         Assert.Equal(expected, RagCommand.ToVirtualSource(raw, "/tmp/corpus", mounts));
     }
 
+    [Theory]
+    [InlineData("https://exemple.test/page?id=1")]
+    [InlineData("http://exemple.test/docs/*.html")]
+    public void ToVirtualSource_HandsAnHttpAddressOverAsWritten(string address)
+    {
+        // GAP-19, decision 5: an address became "/workspace/https://…", a path no loader reads.
+        var mounts = new List<Orkeon.Domain.FileSystem.MountInfo>
+        {
+            new("/workspace", Orkeon.Domain.FileSystem.FileAccessRights.Read, []),
+        };
+
+        Assert.Equal(address, RagCommand.ToVirtualSource(address, "/tmp/corpus", mounts));
+    }
+
     [Fact]
     public void ToVirtualSource_RebasesAbsolutePathsUnderTheCwd_AndRejectsForeignOnes()
     {

@@ -56,15 +56,16 @@ public sealed class GenerationCallFamiliesMeteringTests
         var sink = new MockLlmUsageSink();
         var metered = MeteredLlmProvider.Wrap(provider, sink);
         using var chatClient = new LlmProviderToChatClientAdapter(metered);
-        var manager = new LlmBasedManager(NullLogger<LlmBasedManager>.Instance, new LlmProviderAdapter(metered), chatClient);
+        var manager = new LlmBasedManager(NullLogger<LlmBasedManager>.Instance);
+        var llm = new ManagerLlm { ChatClient = chatClient, Name = "profile:default" };
         var task = BuildTask();
         var context = BuildContext();
 
         using (LlmUsageScope.Begin(crewId: context.CrewId.ToString()))
         {
-            await manager.AssignTaskAsync(task, [BuildAgent("Writer"), BuildAgent("Reviewer")], context);
+            await manager.AssignTaskAsync(task, [BuildAgent("Writer"), BuildAgent("Reviewer")], context, llm);
             await manager.ReviewOutputAsync(
-                new AppTaskOutput(task.Id.ToString(), null, "draft", DateTime.UtcNow, true, TimeSpan.Zero), task);
+                new AppTaskOutput(task.Id.ToString(), null, "draft", DateTime.UtcNow, true, TimeSpan.Zero), task, llm);
         }
 
         Assert.Equal(2, provider.ChatCallCount);

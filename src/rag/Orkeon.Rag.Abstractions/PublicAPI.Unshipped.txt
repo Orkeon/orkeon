@@ -1,3 +1,6 @@
 #nullable enable
 Orkeon.Rag.Abstractions.Models.Citation.Content.get -> string?
 Orkeon.Rag.Abstractions.Models.Citation.Content.init -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.LlmProfile.get -> string?
+Orkeon.Rag.Abstractions.Options.RagOptions.LlmProfile.set -> void
+static Orkeon.Rag.Abstractions.SourceGlobExpander.IsWebAddress(string! location) -> bool

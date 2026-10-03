@@ -19,7 +19,8 @@ namespace Orkeon.Tools.Rag;
 /// counters (added / unchanged / re-ingested). Glob patterns in <c>sources</c>
 /// are expanded through the virtual file system when one is available
 /// (<see cref="SourceGlobExpander"/>) — same semantics as the CLI and scripting
-/// surfaces.
+/// surfaces; an http(s) address reaches the web loader as written, its <c>?</c> or
+/// <c>*</c> no pattern (GAP-19).
 /// </summary>
 public class RagIngestTool : IBaseTool
 {
@@ -32,7 +33,7 @@ public class RagIngestTool : IBaseTool
     /// <inheritdoc />
     public string Description =>
         "Ingest documents into a knowledge collection so they become searchable via rag_search. " +
-        "Accepts file paths and glob patterns; unchanged sources are skipped (incremental).";
+        "Accepts file paths, glob patterns and http(s) addresses; unchanged sources are skipped (incremental).";
 
     /// <inheritdoc />
     public ToolSchema Schema => new(
@@ -46,7 +47,7 @@ public class RagIngestTool : IBaseTool
                 Required: true),
             ["sources"] = new ParameterSchema(
                 "array",
-                "File paths and/or glob patterns to ingest (e.g. '/workspace/docs/**/*.md')",
+                "File paths, glob patterns or http(s) addresses to ingest (e.g. '/workspace/docs/**/*.md')",
                 Required: true),
             ["chunking_strategy"] = new ParameterSchema(
                 "string",

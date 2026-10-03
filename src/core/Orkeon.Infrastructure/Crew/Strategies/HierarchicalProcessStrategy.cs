@@ -29,6 +29,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     private readonly IAgentRepository _agentRepository;
     private readonly ILogger<HierarchicalProcessStrategy> _logger;
     private readonly IManagerAgent _managerAgent;
+    private readonly ManagerLlmResolver _managerLlm;
     private readonly IAgentExecutionService _executionService;
     private readonly IMemoryScope _memoryScope;
     private readonly IMemoryCoordinator _memoryCoordinator;
@@ -38,11 +39,18 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     /// <summary>The role a skipped task reports: the manager was never asked to assign it.</summary>
     private const string UnassignedRole = "unassigned";
 
+    /// <summary>The role the manager answers to when the crew's manager LLM manages without an agent.</summary>
+    private const string ManagerRole = "manager";
+
     /// <summary>Initializes a new instance of <see cref="HierarchicalProcessStrategy"/>.</summary>
     /// <param name="taskRepository">The task repository.</param>
     /// <param name="agentRepository">The agent repository.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="managerAgent">The manager agent responsible for task delegation and review.</param>
+    /// <param name="managerLlm">
+    /// Resolves, once per run, the LLM the crew gives its manager — <c>Crew.ManagerLlm</c>, else the
+    /// manager agent's profile and model, else the host's default profile (GAP-19).
+    /// </param>
     /// <param name="executionService">The agent execution service.</param>
     /// <param name="memoryScope">The memory scope.</param>
     /// <param name="memoryCoordinator">
@@ -54,12 +62,13 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     /// Delivers the events of the tasks and agents as the run moves them (GAP-21); the container
     /// always provides one. Without it they are moved and saved, their events left queued.
     /// </param>
-#pragma warning disable S107 // DI constructor: the four collaborators of every strategy, the manager, the memory, the hook and the dispatcher
+#pragma warning disable S107 // DI constructor: the four collaborators of every strategy, the manager and its LLM, the memory, the hook and the dispatcher
     public HierarchicalProcessStrategy(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,
         ILogger<HierarchicalProcessStrategy> logger,
         IManagerAgent managerAgent,
+        ManagerLlmResolver managerLlm,
         IAgentExecutionService executionService,
         IMemoryScope memoryScope,
         IMemoryCoordinator memoryCoordinator,
@@ -75,6 +84,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         _logger = logger;
         ArgumentNullException.ThrowIfNull(managerAgent);
         _managerAgent = managerAgent;
+        ArgumentNullException.ThrowIfNull(managerLlm);
+        _managerLlm = managerLlm;
         ArgumentNullException.ThrowIfNull(executionService);
         _executionService = executionService;
         ArgumentNullException.ThrowIfNull(memoryScope);
@@ -95,20 +106,19 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     }
 
     /// <inheritdoc />
-    public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId? managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(crew);
-        ArgumentNullException.ThrowIfNull(managerAgentId);
         return ExecuteHierarchicalCoreAsync(crew, managerAgentId, inputVariables, cancellationToken);
     }
 
     private async Task<DomainCrewOutput> ExecuteHierarchicalCoreAsync(
         DomainCrew crew,
-        AgentId managerAgentId,
+        AgentId? managerAgentId,
         IReadOnlyDictionary<string, string>? inputVariables,
         CancellationToken cancellationToken)
     {
-        LogStartingHierarchicalExecutionForCrew(crew.Id, managerAgentId);
+        LogStartingHierarchicalExecutionForCrew(crew.Id);
 
         var startTime = DateTime.UtcNow;
         var results = new List<DomainTaskOutput>();
@@ -121,17 +131,29 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         // watcher's screen frozen on nothing at all.
         try
         {
-            var managerAgent = await _agentRepository.GetByIdAsync(managerAgentId, cancellationToken).ConfigureAwait(false)
-                ?? throw new InvalidOperationException($"Manager agent {managerAgentId} not found");
+            // The manager is the crew's manager agent — removed from the workers — or, when C# gave
+            // the crew a manager LLM and no agent, that LLM alone: every agent then works (GAP-19).
+            var managerAgent = managerAgentId is null
+                ? null
+                : await _agentRepository.GetByIdAsync(managerAgentId, cancellationToken).ConfigureAwait(false)
+                    ?? throw new InvalidOperationException($"Manager agent {managerAgentId} not found");
+            if (managerAgent is null && crew.ManagerLlm is null)
+                throw new InvalidOperationException(
+                    "Hierarchical process requires a manager agent or a manager LLM (CrewBuilder.WithManagerLlm).");
 
-            var workerAgents = await GetWorkerAgentsAsync(crew, managerAgent).ConfigureAwait(false);
+            var workerAgents = await GetWorkerAgentsAsync(crew, managerAgent?.Id).ConfigureAwait(false);
 
             if (workerAgents.Count == 0)
                 throw new InvalidOperationException("No worker agents available for hierarchical execution");
 
+            // The LLM the crew gives its manager, once for the run: never the default in silence.
+            var managerLlm = _managerLlm.Resolve(crew, managerAgent);
+            var managerRole = managerAgent?.Role.Value ?? ManagerRole;
+            LogManagerLlm(crew.Id, managerRole, managerLlm.Name);
+
             // The manager hands out the work: its assignments and reviews are metered under its
             // role (STUDIO-42). Each worker's execution opens its own scope and names itself.
-            using var managerUsageScope = LlmUsageScope.Begin(agentId: managerAgent.Role.Value);
+            using var managerUsageScope = LlmUsageScope.Begin(agentId: managerRole);
 
             var variables = inputVariables != null
                 ? new Dictionary<string, string>(inputVariables)
@@ -188,13 +210,13 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 var cacheMissBefore = tokenTally.CacheMissTokens;
 
                 var processed = await ProcessSingleTaskAsync(
-                    task, workerAgents, context, applicationTaskOutputs, tokenTally, outcome, cancellationToken).ConfigureAwait(false);
+                    task, workerAgents, managerLlm, context, applicationTaskOutputs, tokenTally, outcome, cancellationToken).ConfigureAwait(false);
 
                 if (processed.Assignee is null)
                 {
                     // The manager named an agent the crew does not carry: the task never ran,
                     // and a crew with a task that never ran did not complete.
-                    await outcome.RecordFailureAsync(task, managerAgent.Role.Value,
+                    await outcome.RecordFailureAsync(task, managerRole,
                         $"the manager assigned it to agent {processed.AssignedAgentId}, who is not a worker of this crew").ConfigureAwait(false);
                     continue;
                 }
@@ -230,7 +252,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             }
 
             return await BuildCrewOutputAsync(
-                outcome, results, taskSnapshots, workerAgents, managerAgent, crew, startTime, tokenTally)
+                outcome, results, taskSnapshots, workerAgents, managerAgent, managerLlm, crew, startTime, tokenTally)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
@@ -255,12 +277,12 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         }
     }
 
-    private async Task<List<DomainAgent>> GetWorkerAgentsAsync(DomainCrew crew, DomainAgent managerAgent)
+    private async Task<List<DomainAgent>> GetWorkerAgentsAsync(DomainCrew crew, AgentId? managerAgentId)
     {
         var workerAgents = new List<DomainAgent>();
         foreach (var agentId in crew.Agents)
         {
-            if (agentId == managerAgent.Id)
+            if (agentId == managerAgentId)
                 continue;
 
             var agent = await _agentRepository.GetByIdAsync(agentId).ConfigureAwait(false);
@@ -286,6 +308,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     private async Task<ProcessedTask> ProcessSingleTaskAsync(
         CrewTask task,
         List<DomainAgent> workerAgents,
+        ManagerLlm managerLlm,
         SimpleExecutionContext context,
         List<ApplicationTaskOutput> applicationTaskOutputs,
         TokenUsageTally tokenTally,
@@ -294,7 +317,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     {
         LogManagerProcessingTask(task.Id);
 
-        var assignment = await _managerAgent.AssignTaskAsync(task, workerAgents, context).ConfigureAwait(false);
+        var assignment = await _managerAgent.AssignTaskAsync(task, workerAgents, context, managerLlm).ConfigureAwait(false);
         LogManagerAssignedTaskToAgent(assignment.TaskId, assignment.AssignedAgent, assignment.Reason);
 
         var assignedAgent = workerAgents.FirstOrDefault(a => a.Id == assignment.AssignedAgent);
@@ -312,7 +335,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         await outcome.RecordStartAsync(task, assignedAgent).ConfigureAwait(false);
 
         var (domainOutput, appOutput, error) = await ExecuteWithRevisionLoopAsync(
-            assignedAgent, task, task.Id, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
+            assignedAgent, task, task.Id, managerLlm, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
 
         // Derived, never rebuilt: a context's init settings survive from task to task (GAP-30).
         var updatedContext = context with { PreviousOutputs = applicationTaskOutputs };
@@ -320,14 +343,17 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         return new ProcessedTask(assignedAgent, assignment.AssignedAgent, domainOutput, appOutput, updatedContext, error);
     }
 
+#pragma warning disable S107 // the task, who runs it and who reviews it, its context and the run's tallies
     private async Task<(DomainTaskOutput Domain, ApplicationTaskOutput Application, string? Error)> ExecuteWithRevisionLoopAsync(
         DomainAgent assignedAgent,
         CrewTask task,
         TaskId taskId,
+        ManagerLlm managerLlm,
         SimpleExecutionContext context,
         List<ApplicationTaskOutput> applicationTaskOutputs,
         TokenUsageTally tokenTally,
         CancellationToken cancellationToken)
+#pragma warning restore S107
     {
         // An attempt is not the task's result until the manager accepts it: every attempt runs
         // without storing (it still recalls — it answers the task), and the accepted output is
@@ -351,7 +377,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         for (int revision = 0; revision < MaxRevisions; revision++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var approved = await _managerAgent.ReviewOutputAsync(appOutput, task).ConfigureAwait(false);
+            var approved = await _managerAgent.ReviewOutputAsync(appOutput, task, managerLlm).ConfigureAwait(false);
             if (approved)
             {
                 accepted = true;
@@ -479,15 +505,18 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             structuredOutput: result.StructuredOutput);
     }
 
+#pragma warning disable S107 // the run's outcome and outputs, who managed it and on what, and its tallies
     private async Task<DomainCrewOutput> BuildCrewOutputAsync(
         CrewRunOutcome outcome,
         List<DomainTaskOutput> results,
         List<TaskExecutionSnapshot> taskSnapshots,
         List<DomainAgent> workerAgents,
-        DomainAgent managerAgent,
+        DomainAgent? managerAgent,
+        ManagerLlm managerLlm,
         DomainCrew crew,
         DateTime startTime,
         TokenUsageTally tokenTally)
+#pragma warning restore S107
     {
         var finalOutput = string.Join("\n\n", results.Select(r => r.Output));
         var totalExecutionTime = DateTime.UtcNow - startTime;
@@ -497,12 +526,13 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         else
             LogHierarchicalExecutionCompletedForCrew(crew.Id, totalExecutionTime);
 
-        var metadata = tokenTally
-            .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()
-                .Add("process_type", "hierarchical")
-                .Add("manager_agent", managerAgent.Id.ToString())
-                .Add("worker_count", workerAgents.Count))
-            .Build();
+        var metadataBuilder = Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()
+            .Add("process_type", "hierarchical")
+            .Add("manager_llm", managerLlm.Name)
+            .Add("worker_count", workerAgents.Count);
+        if (managerAgent is not null)
+            metadataBuilder = metadataBuilder.Add("manager_agent", managerAgent.Id.ToString());
+        var metadata = tokenTally.WriteTo(metadataBuilder).Build();
 
         // A task the manager kept rejecting, or whose worker failed, fails the crew (GAP-03):
         // "[NEEDS REVISION]" used to sit in a crew reported as completed.
@@ -524,8 +554,11 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     public Task<DomainCrewOutput> ExecuteAutonomousAsync(DomainCrew crew, AgentExecutionBudget budget, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Use AutonomousProcessStrategy for autonomous orchestration.");
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Starting hierarchical execution for crew {CrewId} with manager {ManagerId}")]
-    private partial void LogStartingHierarchicalExecutionForCrew(CrewId crewId, AgentId managerId);
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Starting hierarchical execution for crew {CrewId}")]
+    private partial void LogStartingHierarchicalExecutionForCrew(CrewId crewId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Crew {CrewId}: the manager ({Manager}) assigns and reviews on {ManagerLlm}")]
+    private partial void LogManagerLlm(CrewId crewId, string manager, string managerLlm);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Manager processing task {TaskId}")]
     private partial void LogManagerProcessingTask(TaskId taskId);

@@ -90,6 +90,7 @@ public sealed class HierarchicalFailedTaskTests : IDisposable
             _fixture.Dependencies.AgentRepository,
             NullLogger<HierarchicalProcessStrategy>.Instance,
             _manager,
+            TestManagerLlm.Resolver(),
             _fixture.Execution,
             _fixture.MemoryScope,
             new MockMemoryCoordinator(),

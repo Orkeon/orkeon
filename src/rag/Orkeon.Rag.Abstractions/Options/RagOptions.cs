@@ -27,6 +27,15 @@ public sealed class RagOptions
     /// <summary>Default collection queried when the call site names none.</summary>
     public string? Collection { get; set; }
 
+    /// <summary>
+    /// The host LLM profile (<c>Llm:Profiles:&lt;name&gt;</c>) every model call of the subsystem goes
+    /// to — grounded generation, the query transformers, the listwise reranker, the corrective
+    /// graph's evaluator and groundedness checker, the <c>llm</c> classifier and the evaluation judge
+    /// (GAP-19). Null, blank or <c>default</c> is the host's default profile. A host key: one profile
+    /// for the whole subsystem, which no preset sets.
+    /// </summary>
+    public string? LlmProfile { get; set; }
+
     /// <summary>Retrieval stage options.</summary>
     public RagRetrievalOptions Retrieval { get; set; } = new();
 

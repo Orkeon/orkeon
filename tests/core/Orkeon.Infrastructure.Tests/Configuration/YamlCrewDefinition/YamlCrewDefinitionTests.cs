@@ -530,13 +530,15 @@ public class YamlCrewDefinitionTests
     }
 
     [Fact]
-    public void ShouldReturnWarning_WhenValidateHierarchicalWithoutManager()
+    public void ShouldReturnError_WhenValidateHierarchicalWithoutManager()
     {
+        // The warning this replaces promised "the first agent will be used as manager"; the crew
+        // builder then refused the crew, asking for a manager LLM a configuration cannot carry.
         var config = CreateValidConfig() with { Process = ProcessType.Hierarchical, ManagerAgentId = null };
         var result = _loader.Validate(config);
-        Assert.True(result.IsValid);
-        Assert.NotEmpty(result.Warnings);
-        Assert.Contains(result.Warnings, w => w.Contains("manager", StringComparison.OrdinalIgnoreCase));
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("managerAgent", StringComparison.Ordinal));
+        Assert.Empty(result.Warnings);
     }
 
     [Fact]

@@ -14,9 +14,9 @@ namespace Orkeon.Hosting.Tests.Doubles;
 public sealed class StubRejectingManagerAgent : IManagerAgent
 {
     public Task<TaskAssignment> AssignTaskAsync(
-        DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context) =>
+        DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm) =>
         Task.FromResult(new TaskAssignment(task.Id, availableAgents[0].Id, "first worker", DateTime.UtcNow));
 
-    public Task<bool> ReviewOutputAsync(TaskOutput output, DomainTask originalTask) =>
+    public Task<bool> ReviewOutputAsync(TaskOutput output, DomainTask originalTask, ManagerLlm llm) =>
         Task.FromResult(false);
 }

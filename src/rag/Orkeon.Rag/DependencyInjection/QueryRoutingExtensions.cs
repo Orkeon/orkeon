@@ -68,7 +68,7 @@ public static partial class QueryRoutingExtensions
                 return new HeuristicQueryComplexityClassifier();
 
             case QueryRoutingOptions.LlmClassifier:
-                var chatClient = serviceProvider.GetService<IChatClient>();
+                var chatClient = RagLlm.Find(serviceProvider);
                 if (chatClient is null)
                 {
                     var logger = serviceProvider.GetService<ILogger<LlmQueryComplexityClassifier>>();

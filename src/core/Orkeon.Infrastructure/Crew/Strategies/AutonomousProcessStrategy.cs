@@ -52,6 +52,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     private readonly IAgentExecutionService _executionService;
     private readonly IAgentChannel _channel;
     private readonly IManagerAgent _managerAgent;
+    private readonly ManagerLlmResolver _managerLlm;
     private readonly IMemoryScope _memoryScope;
     private readonly CrewHookDispatcher _hooks;
     private readonly ILogger<AutonomousProcessStrategy> _logger;
@@ -64,12 +65,18 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
     /// <param name="channel">The A2A channel agents register on.</param>
     /// <param name="managerAgent">Scores which agent claims an unassigned task.</param>
+    /// <param name="managerLlm">
+    /// Resolves, once per run, the LLM the manager hands the tasks out on: the crew's
+    /// <c>ManagerLlm</c> (C# <c>WithManagerLlm</c>), else the host's default profile — an autonomous
+    /// crew has no manager agent (GAP-19).
+    /// </param>
     /// <param name="logger">The logger.</param>
     /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
     public AutonomousProcessStrategy(
         CrewStrategyDependencies dependencies,
         IAgentChannel channel,
         IManagerAgent managerAgent,
+        ManagerLlmResolver managerLlm,
         ILogger<AutonomousProcessStrategy> logger,
         ICrewExecutionHook? hook = null)
     {
@@ -82,6 +89,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         _channel = channel;
         ArgumentNullException.ThrowIfNull(managerAgent);
         _managerAgent = managerAgent;
+        ArgumentNullException.ThrowIfNull(managerLlm);
+        _managerLlm = managerLlm;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);
@@ -93,7 +102,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         => throw new NotSupportedException("Use ExecuteAutonomousAsync for autonomous orchestration.");
 
     /// <inheritdoc />
-    public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    public Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId? managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Use ExecuteAutonomousAsync for autonomous orchestration.");
 
     /// <inheritdoc />
@@ -140,6 +149,10 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 
             if (agents.Count == 0)
                 throw new InvalidOperationException("No agents available for autonomous execution.");
+
+            // The LLM the manager hands the tasks out on, once for the run (GAP-19).
+            var managerLlm = _managerLlm.Resolve(crew, managerAgent: null);
+            LogManagerLlm(crew.Id, managerLlm.Name);
 
             // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
             // Thread-safe: A2A channel handlers record delegated executions concurrently.
@@ -189,6 +202,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                     {
                         Outcome = outcome,
                         Takeovers = takeovers,
+                        ManagerLlm = managerLlm,
                     },
                     cancellationToken)
                     .ConfigureAwait(false);
@@ -397,6 +411,9 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         public required CrewRunOutcome Outcome { get; init; }
 
         public required System.Collections.Concurrent.ConcurrentDictionary<Guid, Takeover> Takeovers { get; init; }
+
+        /// <summary>The LLM the manager hands this task out on (GAP-19).</summary>
+        public required ManagerLlm ManagerLlm { get; init; }
     }
 
     /// <summary>
@@ -427,7 +444,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         var context = new SimpleExecutionContext(
             crewId, variables, _memoryScope, previousOutputs, cancellationToken);
 
-        var assignment = await _managerAgent.AssignTaskAsync(task, agents, context).ConfigureAwait(false);
+        var assignment = await _managerAgent.AssignTaskAsync(task, agents, context, taskContext.ManagerLlm).ConfigureAwait(false);
         var agent = agents.FirstOrDefault(a => a.Id == assignment.AssignedAgent)
                     ?? agents[0]; // fallback to first
 
@@ -634,6 +651,10 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Starting autonomous execution for crew {CrewId} (budget: {MaxToolCalls} tool calls, depth {MaxDepth})")]
     private partial void LogStartingAutonomousExecution(CrewId crewId, int maxToolCalls, int maxDepth);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Crew {CrewId}: the manager hands the tasks out on {ManagerLlm}")]
+    private partial void LogManagerLlm(CrewId crewId, string managerLlm);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Task {TaskId} not found, skipping")]
     private partial void LogTaskNotFound(TaskId taskId);

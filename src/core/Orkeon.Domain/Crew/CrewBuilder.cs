@@ -240,7 +240,13 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Sets the manager LLM for hierarchical process.</summary>
+    /// <summary>
+    /// Sets the provider the crew's manager runs on — CrewAI's <c>manager_llm</c>. The hierarchical
+    /// manager assigns and reviews on it (and the autonomous one hands the tasks out on it), in place
+    /// of the manager agent's <c>llm:</c> profile or the host's default; its calls are metered like
+    /// those of a provider the host registers (GAP-19). A hierarchical crew given one needs no
+    /// manager agent: every agent is then a worker.
+    /// </summary>
     public CrewBuilder WithManagerLlm(ILlmProvider managerLlm)
     {
         _managerLlm = managerLlm;

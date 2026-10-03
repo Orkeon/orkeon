@@ -18,8 +18,6 @@ public sealed record ExecutionConfig
     public bool EnableAsyncExecution { get; init; } = true;
     /// <summary>Gets the maximum requests per minute for the crew.</summary>
     public int MaxRPM { get; init; }
-    /// <summary>Gets the LLM identifier for the manager agent.</summary>
-    public string? ManagerLlm { get; init; }
     /// <summary>Gets additional executor-specific settings.</summary>
     public IReadOnlyDictionary<string, object> ExecutorSettings { get; init; } = new Dictionary<string, object>();
 
@@ -30,8 +28,7 @@ public sealed record ExecutionConfig
         int maxRetries = AgentDefaults.MaxRetryLimit,
         bool enableDebugMode = false,
         bool enableAsyncExecution = true,
-        int maxRPM = 0,
-        string? managerLlm = null)
+        int maxRPM = 0)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxConcurrentTasks);
         ArgumentOutOfRangeException.ThrowIfNegative(maxRetries);
@@ -49,7 +46,6 @@ public sealed record ExecutionConfig
             EnableDebugMode = enableDebugMode,
             EnableAsyncExecution = enableAsyncExecution,
             MaxRPM = maxRPM,
-            ManagerLlm = managerLlm
         };
     }
 }

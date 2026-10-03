@@ -558,7 +558,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
     /// <inheritdoc />
     public Task<DomainCrewOutput> ExecuteHierarchicalAsync(
-        DomainCrew crew, AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        DomainCrew crew, AgentId? managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException(
             "Hierarchical execution is not supported by GraphProcessStrategy. " +

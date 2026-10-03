@@ -91,6 +91,7 @@ public sealed class HierarchicalLifecycleTests : IDisposable
             _fixture.Agents,
             NullLogger<HierarchicalProcessStrategy>.Instance,
             _manager,
+            TestManagerLlm.Resolver(),
             _fixture.Execution,
             _fixture.MemoryScope,
             new MockMemoryCoordinator(),

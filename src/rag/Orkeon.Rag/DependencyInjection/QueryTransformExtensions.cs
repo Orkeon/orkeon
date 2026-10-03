@@ -20,7 +20,7 @@ public static class QueryTransformExtensions
     /// <summary>
     /// Registers the singleton <see cref="QueryTransformerFactory"/> pre-populated
     /// via <see cref="QueryTransformFactoryDefaults"/>. The LLM-backed transformers
-    /// resolve the host's <see cref="IChatClient"/> lazily, at first
+    /// resolve the subsystem's <see cref="IChatClient"/> (<see cref="RagLlm"/>) lazily, at first
     /// <c>Create(mode)</c> — <c>none</c> needs no chat client at all. Called by
     /// <c>AddOrkeonRag</c>; safe to call directly and idempotent (<c>TryAdd</c> —
     /// a host-registered factory wins).
@@ -30,7 +30,7 @@ public static class QueryTransformExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.TryAddSingleton(sp => QueryTransformFactoryDefaults.CreateDefault(
-            () => sp.GetRequiredService<IChatClient>(),
+            () => RagLlm.ChatClient(sp),
             sp.GetService<ILoggerFactory>()));
 
         return services;

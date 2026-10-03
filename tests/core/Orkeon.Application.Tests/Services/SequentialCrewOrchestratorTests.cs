@@ -228,7 +228,7 @@ public class SequentialCrewOrchestratorTests
             return CreateOutput(crew);
         }
 
-        public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, Orkeon.Domain.Common.AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, Orkeon.Domain.Common.AgentId? managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             LastReceivedVariables = inputVariables;
             ExecutedTasks.Add($"Hierarchical execution: {crew.Goal}");

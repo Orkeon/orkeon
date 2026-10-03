@@ -82,8 +82,11 @@ public class ForgeBlueprintCompilerTests
     }
 
     [Fact]
-    public void Warnings_pass_through_without_blocking()
+    public void A_hierarchical_blueprint_without_a_manager_is_refused_before_its_trial()
     {
+        // GAP-19: it passed with a warning — "the first agent will be used as manager" — and its
+        // trial then failed, the crew builder refusing a hierarchical crew without a manager. It is
+        // an error now, which the repair prompt carries.
         var json = """
             {
               "crew": { "name": "x", "goal": "g", "process": "hierarchical" },
@@ -95,8 +98,9 @@ public class ForgeBlueprintCompilerTests
         var compilation = ForgeBlueprintCompiler.Compile(Parse(json));
         var verdict = ForgeBlueprintCompiler.Validate(compilation, ForgeDocuments.KnownTools);
 
-        Assert.Empty(verdict.Errors);
-        Assert.NotEmpty(verdict.Warnings);   // hierarchical without a manager is a warning
+        var error = Assert.Single(verdict.Errors);
+        Assert.Contains("requires a manager agent", error, StringComparison.Ordinal);
+        Assert.Empty(verdict.Warnings);
     }
 }
 
