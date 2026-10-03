@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommandLine;
 using Orkeon.Scripting.Cli.Commands;
 
@@ -130,6 +131,74 @@ public sealed class OptionGrammarTests
 
         Assert.Contains("UnknownOptionError", ErrorTags(Parse<SharedRunnerOptions>("--initial-context", "- x")));
     }
+
+    /// <summary>
+    /// STUDIO-51: <c>orkeon run</c> reads its arguments through
+    /// <see cref="Orkeon.Hosting.RunnerArguments"/>, which sets aside only an attached value
+    /// CommandLineParser refuses alone. Over a corpus of what the runner is handed today — the shapes
+    /// the docs show, the launchers and Studio write, and what the grammar refuses —, both readings
+    /// give the same options, every one of them, or the same errors: nothing that parses today parses
+    /// otherwise.
+    /// </summary>
+    [Theory]
+    [InlineData("crew.yaml")]
+    [InlineData("crew.yaml", "--settings", "/etc/orkeon/appsettings.json")]
+    [InlineData("crew.yaml", "-s", "appsettings.json")]
+    [InlineData("crew.yaml", "--settings=/etc/orkeon/appsettings.json")]
+    [InlineData("crew.yaml", "--mount", "a:/x:ro", "\"C:\\src\\\":/workspace:ro", "\"/data/odd:name\":/data:ro")]
+    [InlineData("crew.yaml", "--mount-id", "01J9Z3K4M5N6P7Q8R9S0T1V2W3", "01J9Z3K4M5N6P7Q8R9S0T1V2W4")]
+    [InlineData("crew.yaml", "--var", "TOPIC=quantum computing", "DEPTH=3", "--initial-context", "Focus on 2026 papers")]
+    [InlineData("crew.yaml", "-V", "a=1", "--initial-context=- puce")]
+    [InlineData("crew.yaml", "--initial-context", "Premier essai\nDeuxième ligne")]
+    [InlineData("crew.yaml", "--initial-context", " commence par une espace")]
+    [InlineData("crew.yaml", "--initial-context=Économie 日本語 🚀 = 10%")]
+    [InlineData("crew.yaml", "--verbose", "2", "--llm-log", "--llm-log-path", "/var/log/orkeon", "--validate")]
+    [InlineData("crew.yaml", "-v", "1", "--llm-log-path=/var/log/orkeon")]
+    [InlineData("crew.ork.ts", "--inputs", "{\"topic\":\"rag\"}", "--inputs-file", "/crews/inputs.json")]
+    [InlineData("crew.ork.ts", "--inputs={\"a\":\"b=c\"}", "--memory-limit-mb", "200")]
+    [InlineData("crew.yaml", "--events", "jsonl", "--stream", "--client", "studio")]
+    [InlineData("crew.yaml", "--events", "jsonl", "--client=studio")]
+    [InlineData("crew.yaml", "--llm-profile", "z-ai", "--allow-external-mounts")]
+    [InlineData("--list-tools")]
+    [InlineData("crew.yaml", "--initial-context=")]
+    [InlineData("crew.yaml", "--initial-context", "- puce")]
+    [InlineData("crew.yaml", "--mount", "a:/x:ro", "--mount", "b:/y:rw")]
+    [InlineData("crew.yaml", "--nope")]
+    [InlineData("crew.yaml", "--settings")]
+    [InlineData("crew.yaml", "--verbose", "deux")]
+    public void What_the_parser_reads_alone_the_runner_reads_the_same(params string[] arguments)
+    {
+        static Parser RunParser() => new(s =>
+        {
+            s.HelpWriter = null;
+            s.CaseInsensitiveEnumValues = true;
+        });
+
+        using var stock = RunParser();
+        using var runner = RunParser();
+
+        Assert.Equal(
+            Describe(stock.ParseArguments<RunCommandOptions>(arguments)),
+            Describe(Orkeon.Hosting.RunnerArguments.Parse<RunCommandOptions>(runner, arguments)));
+    }
+
+    /// <summary>A parse as text: every option's value, or every error.</summary>
+    private static string Describe(ParserResult<RunCommandOptions> result) => result switch
+    {
+        Parsed<RunCommandOptions> parsed => string.Join('\n', typeof(RunCommandOptions).GetProperties()
+            .OrderBy(property => property.Name, StringComparer.Ordinal)
+            .Select(property => $"{property.Name}={Text(property.GetValue(parsed.Value))}")),
+        NotParsed<RunCommandOptions> refused => "refused: " + string.Join(", ", refused.Errors.Select(e => e.Tag)),
+        _ => "?",
+    };
+
+    private static string Text(object? value) => value switch
+    {
+        null => "<null>",
+        string text => text,
+        IEnumerable<string> values => "[" + string.Join('|', values) + "]",
+        _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? "",
+    };
 
     [Fact]
     public void The_same_rule_governs_var()

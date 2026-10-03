@@ -71,12 +71,14 @@ writes — ran what followed as a command at each scheduled run.
   `TeamLaunchers.Regenerate` returns a `TeamLaunchersResult` (written, unchanged, no team, disk refused,
   and the Windows launcher's refusal) instead of a `bool` — and says the engine's last warning in the
   sentence of its code: `FORGE-SCHEDULE-STILL-INSTALLED` no longer reads as a session folder not renamed.
-- **A single-value option is `--option=value`** wherever a program writes `orkeon run`'s line — the
-  launchers and Studio's `RunArgumentsBuilder` —: an initial context starting with `-`, a bullet list,
-  had the run refused as an unknown option. `orkeon run` reads an attached value as written, a line
-  break and a leading space included (`RunnerArguments`, `Orkeon.Hosting`: CommandLineParser 2.9.1
-  refuses those attached). Studio refuses a variable name or a mount starting with `-` before the launch
-  (`STUDIO-LAUNCH-VAR`, `STUDIO-LAUNCH-MOUNT-DASH`).
+- **`orkeon run --option=value` takes any value.** An initial context starting with `-` — a bullet list
+  — had the run refused as an unknown option, and written `--initial-context=…` it was refused as soon
+  as it held a line break or started with a space: CommandLineParser 2.9.1 reads an attached value only
+  when it matches `^([^=]+)=([^ ].*)$`. `orkeon run` now reads an attached value as written, cut at the
+  first `=` — several lines, a leading dash or space included (`RunnerArguments`, `Orkeon.Hosting`) —,
+  and what parsed before parses the same. The launchers and Studio's `RunArgumentsBuilder` write every
+  single-value option that way; Studio refuses a variable name or a mount starting with `-` before the
+  launch (`STUDIO-LAUNCH-VAR`, `STUDIO-LAUNCH-MOUNT-DASH`).
 - **The scheduled task runs `cmd.exe /d /v:off /s /c ""<team>\run.cmd""`**, a quoting that does not
   depend on what the path holds; systemd's `ExecStart` escapes the path (`\\`, `\"`, `%%`, `$$`) and the
   cron line puts it between single quotes (`\%` for a `%`). `forge schedule --check` reads a task of the
