@@ -36,6 +36,14 @@ internal sealed record HostedCrewOptions
 
     /// <summary>How it behaves under the host.</summary>
     public CrewHostingProfile Profile { get; init; } = CrewHostingProfile.Default;
+
+    /// <summary>
+    /// What the crew does, in a sentence: the description of its skill on the A2A agent card
+    /// when <c>Orkeon:Host:A2A</c> exposes it (GAP-23). Read from the configuration, never from
+    /// the crew definition — the card is built without loading a crew. Optional.
+    /// </summary>
+    public string? Description { get; init; }
+
     /// <summary>
     /// The folders this host grants THIS crew, as mount strings
     /// (<c>&lt;physical&gt;:&lt;virtual&gt;:&lt;rights&gt;</c>).
@@ -74,7 +82,7 @@ internal sealed record OrkeonHostOptions
     /// <summary>Configuration section this binds to.</summary>
     public const string SectionName = "Orkeon:Host";
 
-    /// <summary>The crews the service hosts. rc.2 hosts one; the shape already allows more.</summary>
+    /// <summary>The crews the service hosts, each reached by the chat rooms that route to it and, when exposed, over A2A.</summary>
     public IReadOnlyList<HostedCrewOptions> Crews { get; init; } = [];
 
     /// <summary>
@@ -97,6 +105,11 @@ internal sealed record OrkeonHostOptions
     /// <c>["default"]</c> offers it alone. Every entry must name a defined profile.
     /// </summary>
     public IReadOnlyList<string>? LlmProfiles { get; init; }
+
+    /// <summary>
+    /// The crews other agents may run over A2A (<c>Orkeon:Host:A2A</c>, GAP-23). Off by default.
+    /// </summary>
+    public HostA2AOptions A2A { get; init; } = new();
 }
 
 /// <summary>

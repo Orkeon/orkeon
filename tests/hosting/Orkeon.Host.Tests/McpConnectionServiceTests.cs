@@ -74,9 +74,10 @@ public sealed class McpConnectionServiceTests : IDisposable
 
         services.AddHostLifetimeServices();
 
+        // The whole order, the A2A server included, is HostA2AConfigurationTests' (GAP-23).
         Assert.Equal(
-            [typeof(McpConnectionService), typeof(Gateway.ChatChannelService), typeof(CrewHostService)],
-            services.Where(d => d.ServiceType == typeof(IHostedService)).Select(d => d.ImplementationType));
+            typeof(McpConnectionService),
+            services.First(d => d.ServiceType == typeof(IHostedService)).ImplementationType);
     }
 
     /// <summary>

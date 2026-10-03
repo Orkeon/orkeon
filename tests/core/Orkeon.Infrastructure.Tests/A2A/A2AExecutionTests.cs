@@ -54,7 +54,7 @@ public class A2AExecutionTests
             .With<IAgentRepository>(repo)
             .With<IAgentExecutionService>(execution);
         var port = GetFreePort();
-        await using var server = new A2AServer(new A2AOptions { Port = port }, new A2ATaskRouter(scopes), scopes);
+        await using var server = new A2AServer(new A2AOptions { Port = port }, new A2ATaskRouter(scopes));
         await server.StartAsync(Ct);
         try
         {
@@ -94,7 +94,7 @@ public class A2AExecutionTests
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
         var port = GetFreePort();
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new A2ATaskRouter(scopes), scopes, taskStore: store);
+            new A2AOptions { Port = port }, new A2ATaskRouter(scopes), taskStore: store);
         await server.StartAsync(Ct);
         try
         {
@@ -128,8 +128,7 @@ public class A2AExecutionTests
     {
         var port = GetFreePort();
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(),
-            new StubServiceScopeFactory().With<IAgentRepository>(new InMemoryAgentRepository(new NullUnitOfWork())));
+            new A2AOptions { Port = port }, new StubA2ATaskRouter());
         await server.StartAsync(Ct);
         try
         {

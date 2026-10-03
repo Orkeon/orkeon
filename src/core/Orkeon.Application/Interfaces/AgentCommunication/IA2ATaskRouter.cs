@@ -1,15 +1,26 @@
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Domain.AgentCommunication;
 
 namespace Orkeon.Application.Interfaces.AgentCommunication;
 
 /// <summary>
-/// Routes incoming A2A task requests to the appropriate local agent based on the requested skill.
+/// Routes incoming A2A task requests to the local work their skill names, and lists those
+/// skills. The agent card publishes exactly what <see cref="GetSkillsAsync"/> returns, so the key
+/// a peer reads on the card is the key the router compares.
 /// </summary>
 [Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public interface IA2ATaskRouter
 {
     /// <summary>
-    /// Routes a task request to a matching local agent and returns the response.
+    /// The skills this router answers, as the agent card publishes them: a request whose
+    /// <c>skillId</c> is not the <see cref="AgentSkill.Id"/> of one of them is refused.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The skills, in the order the card lists them.</returns>
+    System.Threading.Tasks.Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Routes a task request to the work its skill names and returns the response.
     /// </summary>
     /// <param name="request">The incoming task request.</param>
     /// <param name="ct">Cancellation token.</param>

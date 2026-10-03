@@ -1,5 +1,9 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Orkeon.Application.Interfaces.AgentCommunication;
+using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Rag.Onnx.DependencyInjection;
 
 namespace Orkeon.Host;
@@ -13,8 +17,9 @@ internal static class HostServiceRegistration
 {
     /// <summary>
     /// The daemon's own registrations on top of <c>RunnerHost</c>'s: its options, the crew
-    /// registry and runner, the per-run progress hook, the chat channel, and the hosted
-    /// services (<see cref="AddHostLifetimeServices"/>).
+    /// registry and runner, the per-run progress hook, the chat channel, the A2A server when
+    /// <c>Orkeon:Host:A2A</c> turns it on, and the hosted services
+    /// (<see cref="AddHostLifetimeServices"/>).
     /// </summary>
     public static IServiceCollection AddHostServices(
         this IServiceCollection services,
@@ -55,6 +60,11 @@ internal static class HostServiceRegistration
         services.AddSingleton<CrewRunner>();
         services.AddSingleton<ICrewRunner>(sp => sp.GetRequiredService<CrewRunner>());
 
+        // Other agents run the exposed crews over A2A (GAP-23) — only when the operator turns it
+        // on: a daemon must not open a port nobody asked for.
+        if (hostSection.A2A.Enabled)
+            services.AddHostA2A(configuration, hostSection.A2A);
+
         // One progress hook per run scope: the strategies dispatch task completions into it,
         // and CrewRunner wires its callback to the conversation watching the run. This is
         // what makes "reports progress as tasks finish" true rather than documented.
@@ -65,10 +75,39 @@ internal static class HostServiceRegistration
         services.Configure<Gateway.DiscordChannelOptions>(
             configuration.GetSection(Gateway.DiscordChannelOptions.SectionName));
 
-        // The MCP connection, the chat channel, the crew host — in that order, which is both
-        // start order and stop order reversed.
+        // The MCP connection, the A2A server, the chat channel, the crew host — in that order,
+        // which is both start order and stop order reversed.
         services.AddHostLifetimeServices();
         return services;
+    }
+
+    /// <summary>
+    /// The A2A server of the exposed crews (GAP-23). The host's router first: it is what the
+    /// card lists and what a task runs through, and <c>AddOrkeonA2A</c> registers its own agent
+    /// router — and the process-wide agent directory that router reads, which would share every
+    /// run's agents with the next — only when no router is.
+    /// </summary>
+    private static void AddHostA2A(this IServiceCollection services, IConfiguration configuration, HostA2AOptions a2a)
+    {
+        services.AddSingleton<IA2ATaskRouter, HostedCrewA2ARouter>();
+
+        // The A2A section as the daemon means it: the listener from Orkeon:Host:A2A, and no
+        // EnableServer — which would register a hosted service starting a second server, at the
+        // wrong place in the start order; HostA2AService starts the one registered below. The rest
+        // of the section is read as written: the card's identity, A2A:Security and the bearer
+        // validators its AzureAD/Oidc subsections declare. An EnableServer, Host or Port the
+        // operator wrote under A2A is refused at start (HostA2AService), not overridden in silence.
+        var a2aConfiguration = new ConfigurationBuilder()
+            .AddConfiguration(configuration)
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["A2A:EnableServer"] = "false",
+                ["A2A:Host"] = a2a.Host,
+                ["A2A:Port"] = a2a.Port.ToString(CultureInfo.InvariantCulture),
+            })
+            .Build();
+        services.AddOrkeonA2A(a2aConfiguration);
+        services.TryAddSingleton<IA2AServer, A2AServer>();
     }
 
     /// <summary>
@@ -77,6 +116,9 @@ internal static class HostServiceRegistration
     /// <item><see cref="McpConnectionService"/> first, so the MCP servers' tools are in the
     /// registry before the channel can deliver a message that loads a crew, and so the servers
     /// stay connected until every run has drained (GAP-11);</item>
+    /// <item><see cref="HostA2AService"/>, after MCP for the same reason — a task loads a crew —
+    /// and before the chat channel and the crew host, so it stops after the drain and a run in
+    /// flight still answers the peer that asked for it (GAP-23);</item>
     /// <item>the chat channel before the crew host, so it stops after it — the drain must run
     /// while the channel can still deliver, or the grace period keeps runs alive to produce
     /// answers nobody can receive;</item>
@@ -87,6 +129,7 @@ internal static class HostServiceRegistration
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<McpConnectionService>();
+        services.AddHostedService<HostA2AService>();
         services.AddHostedService<Gateway.ChatChannelService>();
         services.AddHostedService<CrewHostService>();
         return services;

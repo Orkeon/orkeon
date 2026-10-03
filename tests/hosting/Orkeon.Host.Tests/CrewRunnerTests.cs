@@ -9,6 +9,7 @@ using Orkeon.Application.DependencyInjection;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Host.Tests.Doubles;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
@@ -260,24 +261,6 @@ tasks:
 
         Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
         Assert.Contains(progress, line => line.Contains("Echoist", StringComparison.Ordinal));
-    }
-
-    /// <summary>
-    /// Observes what the runner entered as the ambient mount set for a run.
-    /// </summary>
-    private sealed class SpyFileSystemScope : IFileSystemScope
-    {
-        private readonly AsyncLocalFileSystemScope _inner = new();
-
-        public List<IReadOnlyList<string>> Entered { get; } = [];
-
-        public FileSystemRegistry? Current => _inner.Current;
-
-        public IDisposable Enter(FileSystemRegistry registry)
-        {
-            Entered.Add([.. registry.GetAllMountsInternal().Select(m => m.VirtualPath)]);
-            return _inner.Enter(registry);
-        }
     }
 
     /// <summary>

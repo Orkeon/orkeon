@@ -546,7 +546,7 @@ The repository contains **48 src projects** and **36 test projects**, plus two s
 │   ├── hosting/
 │   │   ├── Orkeon.Hosting/       # Shared runner host (RunnerHost/RunnerExecution, semantic_search opt-in; exports OpenTelemetry per OTEL_EXPORTER_OTLP_ENDPOINT)
 │   │   ├── Orkeon.Hosting.Aspire/ # .NET Aspire AppHost integration (AddOrkeonHost, AddOrkeonCrewRun — ADR-011)
-│   │   └── Orkeon.Host/          # Service host daemon `orkeon-host` (crew registry, chat gateway, Discord channel — GATE)
+│   │   └── Orkeon.Host/          # Service host daemon `orkeon-host` (crew registry, chat gateway, Discord channel — GATE; A2A server, one skill per exposed crew — GAP-23)
 │   ├── plugins/
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
 │   ├── interop/

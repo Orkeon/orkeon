@@ -3,9 +3,8 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.AgentCommunication;
-using Orkeon.Domain.Agent;
+using Orkeon.Domain.AgentCommunication;
 using Orkeon.Infrastructure.AgentCommunication;
-using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tests.TestDoubles;
 using Orkeon.Tests.Shared.Timing;
@@ -24,6 +23,9 @@ internal class ExceptionThrowingTaskRouter<TException> : IA2ATaskRouter
     {
         _exception = exception;
     }
+
+    public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<AgentSkill>>([]);
 
     public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
     {
@@ -51,13 +53,6 @@ public class A2AServerErrorHandlingTests
         return port;
     }
 
-    /// <summary>
-    /// ANT-001: the server resolves the scoped <see cref="IAgentRepository"/> through a
-    /// per-request DI scope; the stub factory hands a shared in-memory repository to every scope.
-    /// </summary>
-    private static StubServiceScopeFactory AgentScopes()
-        => new StubServiceScopeFactory()
-            .With<IAgentRepository>(new InMemoryAgentRepository(new NullUnitOfWork()));
 
     private static async Task<HttpResponseMessage> SendTaskRequest(int port, string taskId = "test-err")
     {
@@ -81,8 +76,7 @@ public class A2AServerErrorHandlingTests
         var options = new A2AOptions { Port = port };
         var exception = new HttpRequestException("Service unavailable", null, HttpStatusCode.ServiceUnavailable);
         var router = new ExceptionThrowingTaskRouter<HttpRequestException>(exception);
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {
@@ -122,8 +116,7 @@ public class A2AServerErrorHandlingTests
         var logger = new TestLogger<A2AServer>();
         var options = new A2AOptions { Port = port };
         var router = new ExceptionThrowingTaskRouter<TimeoutException>(new TimeoutException("Request timed out"));
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {
@@ -158,8 +151,7 @@ public class A2AServerErrorHandlingTests
         var logger = new TestLogger<A2AServer>();
         var options = new A2AOptions { Port = port };
         var router = new ExceptionThrowingTaskRouter<JsonException>(new JsonException("Unexpected JSON token"));
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {
@@ -195,8 +187,7 @@ public class A2AServerErrorHandlingTests
         var options = new A2AOptions { Port = port };
         var router = new ExceptionThrowingTaskRouter<InvalidOperationException>(
             new InvalidOperationException("Unexpected logic error"));
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {
@@ -234,8 +225,7 @@ public class A2AServerErrorHandlingTests
         var options = new A2AOptions { Port = port };
         var router = new ExceptionThrowingTaskRouter<OperationCanceledException>(
             new OperationCanceledException("Cancelled"));
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {
@@ -279,8 +269,7 @@ public class A2AServerErrorHandlingTests
         var logger = new TestLogger<A2AServer>();
         var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {
@@ -318,8 +307,7 @@ public class A2AServerErrorHandlingTests
         var sequenceRouter = new SequenceTaskRouter(
             new HttpRequestException("Transient error", null, HttpStatusCode.ServiceUnavailable),
             successAfterFailures: true);
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, sequenceRouter, scopes, logger);
+        await using var server = new A2AServer(options, sequenceRouter, logger);
 
         try
         {
@@ -362,6 +350,9 @@ internal class SequenceTaskRouter : IA2ATaskRouter
         _firstCallException = firstCallException;
         _successAfterFailures = successAfterFailures;
     }
+
+    public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<AgentSkill>>([]);
 
     public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
     {

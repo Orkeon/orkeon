@@ -3,8 +3,9 @@
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
 
 **Orkeon.Host** is the service host daemon: a long-running process that holds a crew
-registry, exposes a chat gateway, and drives channels (Discord today). Its assembly — and
-the launcher in the archives — is named `orkeon-host`.
+registry, exposes a chat gateway, drives channels (Discord today) and, when
+`Orkeon:Host:A2A` turns it on, serves the crews it exposes to other agents over A2A. Its
+assembly — and the launcher in the archives — is named `orkeon-host`.
 
 ## Distribution
 

@@ -6,9 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Application.Interfaces.Security;
-using Orkeon.Domain.Agent;
 using Orkeon.Infrastructure.AgentCommunication;
-using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
 
@@ -26,13 +24,6 @@ public class A2ASecurityTests
         return port;
     }
 
-    /// <summary>
-    /// ANT-001: the server resolves the scoped <see cref="IAgentRepository"/> through a
-    /// per-request DI scope; the stub factory hands a shared in-memory repository to every scope.
-    /// </summary>
-    private static StubServiceScopeFactory AgentScopes()
-        => new StubServiceScopeFactory()
-            .With<IAgentRepository>(new InMemoryAgentRepository(new NullUnitOfWork()));
 
     /// <summary>Generates a self-signed PFX, writes it under a temp dir, and returns (dir, fileName).</summary>
     private static (string root, string fileName) WriteSelfSignedPfx()
@@ -348,7 +339,7 @@ public class A2ASecurityTests
     {
         var options = new A2AOptions { Port = GetFreePort() };
         var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
-        await using var server = new A2AServer(options, new StubA2ATaskRouter(), AgentScopes(), logger: null, security: security);
+        await using var server = new A2AServer(options, new StubA2ATaskRouter(), logger: null, security: security);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => server.StartAsync(TestContext.Current.CancellationToken));
@@ -375,7 +366,7 @@ public class A2ASecurityTests
             ApiKeySecretNames = { "A2A_PEER_KEY" },
         };
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, router, AgentScopes(), logger: null, security: security,
+            new A2AOptions { Port = port }, router, logger: null, security: security,
             authenticationProviders: [new StubAuthenticationProvider("good-token")], secretProvider: secrets);
 
         try
@@ -409,13 +400,12 @@ public class A2ASecurityTests
         var port = GetFreePort();
         var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
         var security = new A2ASecurityOptions
         {
             RequireMutualTls = true,
             TrustedClientCertificateThumbprints = { "0000000000000000000000000000000000000000" }
         };
-        await using var server = new A2AServer(options, router, scopes, logger: null, security: security);
+        await using var server = new A2AServer(options, router, logger: null, security: security);
 
         try
         {
@@ -441,9 +431,8 @@ public class A2ASecurityTests
         var port = GetFreePort();
         var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
         var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
-        await using var server = new A2AServer(options, router, scopes, logger: null, security: security,
+        await using var server = new A2AServer(options, router, logger: null, security: security,
             authenticationProviders: [new StubAuthenticationProvider("good-token")]);
 
         try
@@ -470,9 +459,8 @@ public class A2ASecurityTests
         var port = GetFreePort();
         var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
         var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
-        await using var server = new A2AServer(options, router, scopes, logger: null, security: security,
+        await using var server = new A2AServer(options, router, logger: null, security: security,
             authenticationProviders: [new StubAuthenticationProvider("good-token")]);
 
         try
@@ -501,8 +489,7 @@ public class A2ASecurityTests
         var port = GetFreePort();
         var options = new A2AOptions { Port = port };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes);
+        await using var server = new A2AServer(options, router);
 
         try
         {
@@ -562,7 +549,7 @@ public class A2ASecurityTests
     private static A2AServer CreateServerWithTrust(A2ASecurityOptions security)
     {
         var server = new A2AServer(
-            new A2AOptions(), new StubA2ATaskRouter(), AgentScopes(), logger: null, security: security);
+            new A2AOptions(), new StubA2ATaskRouter(), logger: null, security: security);
         server.InitializeMutualTlsTrust();
         return server;
     }
@@ -575,7 +562,7 @@ public class A2ASecurityTests
         var options = new A2AOptions { Port = GetFreePort() };
         var security = new A2ASecurityOptions { RequireMutualTls = true };
         await using var server = new A2AServer(
-            options, new StubA2ATaskRouter(), AgentScopes(), logger: null, security: security);
+            options, new StubA2ATaskRouter(), logger: null, security: security);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -773,7 +760,7 @@ public class A2ASecurityTests
         var (root, fileName) = WriteSelfSignedPfx();
         var port = GetFreePort();
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), AgentScopes());
+            new A2AOptions { Port = port }, new StubA2ATaskRouter());
         try
         {
             await server.StartAsync(TestContext.Current.CancellationToken);

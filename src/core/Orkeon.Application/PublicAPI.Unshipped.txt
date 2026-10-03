@@ -1098,3 +1098,4 @@ Orkeon.Application.Interfaces.ManagerLlm.Name.init -> void
 const Orkeon.Application.Interfaces.ManagerLlm.ProfilePrefix = "profile:" -> string!
 const Orkeon.Application.Interfaces.ManagerLlm.ProviderPrefix = "provider:" -> string!
 static Orkeon.Application.Interfaces.ManagerLlm.Describe(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Agent.Agent? managerAgent) -> string!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter.GetSkillsAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.AgentCommunication.AgentSkill!>!>!

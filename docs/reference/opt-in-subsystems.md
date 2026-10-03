@@ -131,17 +131,21 @@ partial (flagged case by case below).
   service: a generic host starts the server with itself and stops it on shutdown — no
   host code resolves `IA2AServer` or calls `StartAsync`. A process that never runs the
   host never starts it.
-- **Execution**: the router runs the agent whose id equals the request's `skillId` (the
-  `id` the agent card publishes) through `IAgentExecutionService`, so the host also calls
-  `AddOrkeonApplication()`; without it, a task answers `Failed` and says so.
+- **Execution**: the card lists the skills of the registered router
+  (`IA2ATaskRouter.GetSkillsAsync`) — the default one, one skill per available agent — and
+  the router runs the agent whose id equals the request's `skillId` (the `id` the card
+  publishes) through `IAgentExecutionService`, so the host also calls
+  `AddOrkeonApplication()`; without it, a task answers `Failed` and says so. A host that
+  routes differently registers its own `IA2ATaskRouter` first: the default router, and the
+  agent directory below, are registered only when no router is.
 - **Dependencies**: the extension itself registers (TryAdd) `IHttpClientFactory`,
-  `IDomainEventDispatcher`, `IUnitOfWork`, as well as the A2A agent directory
-  (`IAgentRegistrationStore` singleton + `IAgentRepository` scoped, see below)
-  when the host has not already wired them via `AddOrkeonInfrastructure()`.
+  `IDomainEventDispatcher`, `IUnitOfWork`, as well as — with the default router — the A2A
+  agent directory (`IAgentRegistrationStore` singleton + `IAgentRepository` scoped, see
+  below) when the host has not already wired them via `AddOrkeonInfrastructure()`.
 - **Agent repository lifecycle (R4.6 / ANT-001, "scoped per request" decision)**:
-  - `IAgentRepository` is **scoped**; the server and the router (singletons) never
-    capture it — they open a **DI scope per A2A request** via
-    `IServiceScopeFactory` and resolve the repository inside it. Resolution passes with
+  - `IAgentRepository` is **scoped**; the router (a singleton) never captures it — it
+    opens a **DI scope per A2A request** (the card, each task) via
+    `IServiceScopeFactory` and resolves the repository inside it. Resolution passes with
     `ValidateScopes = true` (default in Development).
   - A scoped repository keeps nothing between two requests: registrations live
     in `IAgentRegistrationStore`, a **thread-safe singleton backing store**
@@ -158,8 +162,11 @@ partial (flagged case by case below).
     `AddOrkeonInfrastructure()` and after any custom repository (recommended order,
     see [Principle](#principle)); a custom repository registered *after* `AddOrkeonA2A(...)`
     wins (last registration).
-- **What the shipped binaries do not do**: no shipped host (`orkeon run`, `orkeon-host`,
-  the REPL) calls `AddOrkeonA2A` yet. See [A2A conformance — Task execution](./a2a-conformance.md#task-execution)
+- **Shipped binaries**: `orkeon-host` calls `AddOrkeonA2A` when `Orkeon:Host:A2A:Enabled`
+  is set, after registering its own router — one skill per crew the section exposes, a task
+  being a run of that crew — so its runs keep their per-scope agent repository (see
+  [Service host](../architecture/service-host.md#5-other-agents-a2a)); `orkeon run` and the
+  REPL do not call it. See [A2A conformance — Task execution](./a2a-conformance.md#task-execution)
   and [Activation](./a2a-conformance.md#activation).
 - **Known limits**: the in-memory store is local to the process — for a multi-instance
   agent directory, provide a custom `IAgentRepository` backed by external shared

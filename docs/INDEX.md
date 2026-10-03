@@ -95,7 +95,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [Examples catalog](./reference/examples-catalog.md) | Editorial map of `examples/` (9 business categories + RAG/RaggableTree/scripting showcases); the generated `examples/INDEX.md` is the authoritative inventory |
 | [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `doctor`) with options and examples, plus `orkeon-repl` |
 | [Configuration reference](./reference/configuration.md) | The single map of the `appsettings.json` sections (`Llm`, `Orkeon:*`, `MCP`), sources and precedence, opt-in column |
-| [Limits and constraints](./reference/limitations.md) | Known constraints of the current version, including what ships but is not wired yet (MCP and `rag_*` tools in crews, A2A) |
+| [Limits and constraints](./reference/limitations.md) | Known constraints of the current version, including what ships but is not wired yet |
 | [A2A conformance matrix](./reference/a2a-conformance.md) | Honest position vs the A2A v1.0 spec: operations, data model, bindings, security — what interoperates and what does not |
 | [Experimental APIs](./reference/experimental-apis.md) | `[Experimental]` surfaces (A2A, Autonomous, corrective RAG, MCP), `ORKEXP001–004` diagnostic IDs, how to opt in |
 | [Example data policy](./reference/example-data-policy.md) | Why examples ship config not datasets, how to mount your own input (`/data:ro`, `/output:rw`), and contributor rules for bundled sample fixtures |

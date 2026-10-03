@@ -243,7 +243,7 @@ GenAI conventions — see [Opt-in subsystems](opt-in-subsystems.md#traces-and-me
 
 The section also registers three health checks — `llm_provider`, `memory_provider` (which reads a key
 that does not exist: every provider serves it, Pinecone and ChromaDB included),
-`system_resources` — which no shipped runner exposes: neither `orkeon` nor `orkeon-host` serves HTTP.
+`system_resources` — which no shipped runner exposes: `orkeon` serves no HTTP, and the only HTTP surface of `orkeon-host` is its opt-in A2A server (`Orkeon:Host:A2A`), which serves no health endpoint.
 
 ## .NET Aspire — `Orkeon.Hosting.Aspire`
 

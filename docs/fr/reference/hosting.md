@@ -256,7 +256,7 @@ et de métriques suivent les conventions GenAI d'OpenTelemetry — voir
 
 La section enregistre aussi trois contrôles de santé — `llm_provider`, `memory_provider` (qui lit une
 clé absente : chaque provider le sert, Pinecone et ChromaDB compris),
-`system_resources` — qu'aucun runner livré n'expose : ni `orkeon` ni `orkeon-host` ne servent de HTTP.
+`system_resources` — qu'aucun runner livré n'expose : `orkeon` ne sert aucun HTTP, et la seule surface HTTP d'`orkeon-host` est son serveur A2A opt-in (`Orkeon:Host:A2A`), qui ne sert aucun point de santé.
 
 ## .NET Aspire — `Orkeon.Hosting.Aspire`
 

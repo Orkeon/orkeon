@@ -44,16 +44,18 @@ internal interface ICrewRunner
 {
     /// <summary>
     /// Runs <paramref name="crewName"/> and reports as it goes. Deliberately takes no
-    /// cancellation token: a hosted run is stopped through the registry (a Stop press, the
-    /// drain, its own deadline), never by a caller's ambient token — linking the two is how
-    /// SIGTERM used to kill every run at t=0 while the grace period waited for corpses.
+    /// cancellation token: a hosted run is stopped through the registry (a Stop press, a
+    /// <c>DELETE</c> of its A2A task, the drain, its own deadline), never by a caller's ambient
+    /// token — linking the two is how SIGTERM used to kill every run at t=0 while the grace
+    /// period waited for corpses.
     /// </summary>
     Task<HostedRunResult> RunAsync(
         string crewName,
         string prompt,
         string origin,
         Action<string>? onProgress = null,
-        Func<string, Task>? onStarted = null);
+        Func<string, Task>? onStarted = null,
+        IReadOnlyDictionary<string, string>? variables = null);
 }
 
 /// <summary>
@@ -116,12 +118,17 @@ internal sealed partial class CrewRunner : ICrewRunner
     /// alone finishes. A caller that only learned the id at the end could never stop the run it
     /// started, which is what <c>/stop</c> is for.
     /// </param>
+    /// <param name="variables">
+    /// The run's input variables, besides the prompt — what an A2A task's <c>metadata</c> carries
+    /// (GAP-23); a chat message has none.
+    /// </param>
     public async Task<HostedRunResult> RunAsync(
         string crewName,
         string prompt,
         string origin,
         Action<string>? onProgress = null,
-        Func<string, Task>? onStarted = null)
+        Func<string, Task>? onStarted = null,
+        IReadOnlyDictionary<string, string>? variables = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewName);
 
@@ -135,7 +142,7 @@ internal sealed partial class CrewRunner : ICrewRunner
             return new HostedRunResult(
                 HostedRunOutcome.Busy,
                 null,
-                $"'{hosted.Name}' is already running {hosted.Profile.MaxConcurrentRuns} conversation(s); try again shortly.");
+                $"'{hosted.Name}' is already running {hosted.Profile.MaxConcurrentRuns} run(s); try again shortly.");
         }
 
         LogRunStarted(run.Id, hosted.Name, origin);
@@ -192,8 +199,11 @@ internal sealed partial class CrewRunner : ICrewRunner
 
             onProgress?.Invoke($"Running '{hosted.Name}'…");
 
+            var input = variables is { Count: > 0 }
+                ? Application.Interfaces.Services.CrewInput.WithStringVariables(prompt, variables)
+                : Application.Interfaces.Services.CrewInput.Empty(prompt);
             var output = await orchestrator
-                .KickoffAsync(crew.Id, Application.Interfaces.Services.CrewInput.Empty(prompt), run.Cancellation.Token)
+                .KickoffAsync(crew.Id, input, run.Cancellation.Token)
                 .ConfigureAwait(false);
 
             // KickoffAsync never throws — its fault barrier converts everything into an

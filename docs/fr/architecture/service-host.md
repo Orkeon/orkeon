@@ -2,7 +2,7 @@
 
 # Le host de service et la passerelle de chat
 
-**Périmètre** : `orkeon-host` — le daemon qui héberge des crews, et la passerelle qui permet de les atteindre depuis un canal de chat.
+**Périmètre** : `orkeon-host` — le daemon qui héberge des crews, la passerelle qui permet de les atteindre depuis un canal de chat, et le serveur A2A qui permet à d'autres agents de les lancer.
 **Public** : qui installe et exploite Orkeon sur un serveur.
 
 Jusqu'ici, Orkeon s'exécutait depuis un terminal ou s'embarquait dans un programme. Les deux supposent un humain devant un écran, sur la même machine, le temps d'un processus. Le host de service lève les trois hypothèses ; le canal Discord donne le premier endroit où l'on peut lui parler depuis là où l'on est déjà.
@@ -11,7 +11,7 @@ Jusqu'ici, Orkeon s'exécutait depuis un terminal ou s'embarquait dans un progra
 
 ## 1. Ce que c'est, et ce que ce n'est pas
 
-**C'est** un processus long-vivant qui héberge une ou plusieurs crews, isole chaque run, borne la concurrence, répond à un canal de chat, et s'arrête sans abandonner le travail en vol.
+**C'est** un processus long-vivant qui héberge une ou plusieurs crews, isole chaque run, borne la concurrence, répond à un canal de chat et — quand la configuration expose des crews — à des pairs A2A, et s'arrête sans abandonner le travail en vol.
 
 **Ce n'est pas un ordonnanceur.** Orkeon n'en livre aucun, délibérément. Une crew qui doit tourner chaque matin est lancée par le système, à partir de l'artefact que produit `orkeon forge promote --schedule` — tâche Windows, timer systemd ou ligne cron —, que `orkeon forge schedule` installe (Orkeon Studio demande d'abord son accord à l'utilisateur) et que `orkeon forge unschedule` retire. Le host en pose la fondation ; il ne prétend pas l'être, et aucune partie de ce document ne doit se lire autrement.
 
@@ -42,9 +42,16 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
         {
           "Name": "veille",
           "Path": "/srv/orkeon/crews/veille",
+          "Description": "Weekly technology watch: what changed, with sources.",
           "Mounts": [ "/srv/orkeon/out/veille:/output:rw" ]
         }
       ],
+
+      "A2A": {
+        "Enabled": true,
+        "Port": 5002,
+        "Crews": [ "veille" ]
+      },
 
       "Discord": {
         "Enabled": true,
@@ -112,7 +119,7 @@ résout dans l'espace de noms puis se fait refuser là, sauf à élargir
 
 `Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Le dossier de chaque crew est **monté automatiquement dans le VFS, en lecture seule, sous un nom** — `/crews`, puis `/crews-1`, `/crews-2`, … pour chaque dossier supplémentaire — et la crew est chargée par cette orthographe virtuelle (`/crews/support.yaml` pour un fichier, `/crews-1` pour un dossier). Le loader lit par le système de fichiers virtuel comme tout le reste du framework, et un chemin qui n'existerait que sur le disque physique passerait la sonde de démarrage puis échouerait à chaque message. Le montage n'est délibérément **pas** identité : un agent qui appelle `list_mounts`, ou qui lit un message de refus d'accès, ne doit jamais recevoir l'organisation disque de l'opérateur ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Un `--mount` à vous qui revendique `/crews*` est refusé au démarrage avec le code de sortie 78. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
 
-La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, deux crews de même nom (sans tenir compte de la casse), un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul ou négatif, un `ShutdownGracePeriod` négatif, une entrée de `LlmProfiles` qui nomme un profil que `Llm:Profiles` ne définit pas, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif, une entrée de `GuildIds` ou une clé de `Routes` qui n'est pas un nombre, ou une entrée de `Routes` ou un `DefaultCrew` qui nomme une crew que l'hôte ne déclare pas refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
+La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, deux crews de même nom (sans tenir compte de la casse), un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul ou négatif, un `ShutdownGracePeriod` négatif, une entrée de `LlmProfiles` qui nomme un profil que `Llm:Profiles` ne définit pas, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif, une entrée de `GuildIds` ou une clé de `Routes` qui n'est pas un nombre, ou une entrée de `Routes` ou un `DefaultCrew` qui nomme une crew que l'hôte ne déclare pas ; pour un serveur A2A activé, aucune crew exposée, une crew exposée que l'hôte ne déclare pas, un `Host` ou un `Port` mal formé, ou une écoute au-delà de la boucle locale sans authentification, et — quel que soit l'interrupteur A2A — une clé `A2A:EnableServer`, `A2A:Host` ou `A2A:Port`, que le démon ne lit pas (voir [Autres agents (A2A)](#5-autres-agents-a2a)), refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
 
 Les crews sont lues **une seule fois**, au démarrage : ni balayage de dossier, ni rechargement. Ajouter une crew, c'est modifier le fichier et redémarrer.
 
@@ -132,7 +139,7 @@ configuration et lus par personne — un exploitant pouvait les basculer sans ri
 tout. Une surface de configuration qui ne fait rien est pire qu'absente : le host livre le seul
 bouton qui fonctionne.
 
-Une requête au-delà du plafond est **refusée avec une réponse**, pas mise en file : « on est occupé, réessayez » est quelque chose qu'un canal relaie à une personne ; une file d'attente invisible ne l'est pas.
+Une requête au-delà du plafond est **refusée avec une réponse**, pas mise en file : « on est occupé, réessayez » est quelque chose qu'un canal relaie à une personne ; une file d'attente invisible ne l'est pas. Le plafond est celui de la crew, quel que soit le chemin par lequel les runs arrivent : conversations de chat et tâches A2A le partagent.
 
 ---
 
@@ -177,7 +184,46 @@ Les deux chemins sont gardés par `AllowedUserIds`. Bouton compris : un clic de 
 
 ---
 
-## 5. L'installer
+## 5. Autres agents (A2A)
+
+Le canal de chat est une entrée ; [A2A](../reference/a2a-conformance.md) est l'autre. Activé, l'hôte sert une carte d'agent et reçoit des tâches d'autres agents — un autre processus Orkeon, ou tout client du même dialecte REST — et **chaque crew qu'il expose est une compétence**. Une tâche est un **run de cette crew**, exactement ce qu'est un message de chat : l'`input` de la tâche est le besoin du run, et il passe par le même runner — sous les montages de la crew, dans son `MaxConcurrentRuns`, sous `RunTimeout`, journalisé avec son origine (`a2a:<id de tâche>`), drainé à l'arrêt.
+
+| Clé `Orkeon:Host:A2A` | Défaut | Effet |
+|---|---|---|
+| `Enabled` | `false` | Sert les crews exposées en A2A. Éteint, l'hôte n'écoute sur aucun port. |
+| `Host`, `Port` | `http://localhost`, `5002` | L'écoute. `http://+` écoute sur toutes les interfaces. |
+| `Crews` | aucune | Les crews que d'autres agents peuvent lancer, par nom. Exposer est un choix par crew, comme une route de salon : une crew laissée de côté est invisible — absente de la carte, et une tâche qui la nomme échoue comme toute compétence inconnue. |
+
+**Ce qu'un pair voit.** `GET /.well-known/agent.json` liste une compétence par crew exposée : son `id` et son `name` sont le `Name` de la crew tel que `Orkeon:Host:Crews` le déclare, sa `description` la clé `Description` de la crew quand la configuration en donne une. La carte vient de la configuration, pas de crews chargées : le démon charge une crew neuve à chaque run et n'en garde aucune entre deux, il n'y a donc pas d'annuaire d'agents à lire — et il n'en tient aucun. L'identité de la carte se lit dans `A2A`, comme pour tout serveur A2A Orkeon (`AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl`).
+
+**Ce que fait une tâche.** `POST /a2a/tasks/send` (ou `sendSubscribe`) dont le `skillId` est un id publié — exactement, casse comprise — lance cette crew sur `input` ; les `metadata` de la requête deviennent les variables du run. La réponse :
+
+- le run se termine → `Completed`, `output` est la réponse de la crew ;
+- le run échoue → `Failed`, `error` est la phrase qu'un fil de chat reçoit — l'id du run à chercher dans le journal de l'hôte, jamais le détail (chemins, endpoints) que le journal garde ;
+- la crew est à son `MaxConcurrentRuns` — conversations de chat et tâches A2A comptées ensemble → `Failed`, en le disant ; une tâche n'est jamais mise en file ;
+- `DELETE /a2a/tasks/{id}` arrête le run, et la tâche répond `Cancelled` ; un run au-delà de `RunTimeout` répond aussi `Cancelled`, en disant qu'il a expiré ;
+- un `skillId` que la carte ne publie pas → `Failed`, en nommant les compétences publiées ; un `input` vide → `Failed` aussi.
+
+`GET /a2a/tasks/{id}` répond `501` : le démon ne garde aucun enregistrement de tâche.
+
+**Sécurité.** La section `A2A:Security` du même fichier s'applique telle qu'écrite — `ApiKey` (les clés acceptées nommées par `ApiKeySecretNames`, lues dans `ORKEON_<NOM>`), `Bearer` (Azure AD ou OIDC), mTLS — voir [Sécurité](security.md#tls-mutuel-a2a). La carte reste publique ; les points de tâche exigent l'identifiant. Le démarrage est refusé avec le code de sortie 78 quand la section n'expose aucune crew, ou une crew que `Orkeon:Host:Crews` ne déclare pas ; quand `Host` n'est pas un nom d'hôte `http://` ou `https://` ou que `Port` sort de 1–65535 ; et quand l'hôte écoute au-delà de la boucle locale (tout sauf `localhost`, une adresse `127.x.x.x` ou `[::1]`) alors que `A2A:Security` ne déclare ni schéma d'authentification ni mTLS. `A2A:EnableServer`, `A2A:Host` et `A2A:Port` — les interrupteurs des hôtes C# — sont refusés aussi, en nommant leur remplaçant sous `Orkeon:Host:A2A` : le démon ne lit que la sienne.
+
+```json
+{
+  "A2A": {
+    "Security": { "AllowedAuthSchemes": [ "ApiKey" ], "ApiKeySecretNames": [ "A2A_PEER_KEY" ] }
+  },
+  "Orkeon": { "Host": { "A2A": { "Enabled": true, "Host": "http://+", "Port": 5002, "Crews": [ "veille" ] } } }
+}
+```
+
+Un pair envoie alors `Authorization: ApiKey <clé>`, la clé étant la valeur de `ORKEON_A2A_PEER_KEY` dans l'environnement du service.
+
+**Ordre.** Le serveur A2A démarre après la connexion des serveurs MCP — une tâche charge une crew, dont les outils doivent être là — et avant le canal de chat, il s'arrête donc après le drainage : un run en vol pendant le délai de grâce livre encore sa réponse au pair qui l'a demandé.
+
+---
+
+## 6. L'installer
 
 ### systemd
 
@@ -260,23 +306,30 @@ d'événements Application** (source `Orkeon`), le seul endroit qu'un exploitant
 de service lit vraiment. `install-service.ps1 -Uninstall` retire le service et
 vous laisse `ProgramData\Orkeon`.
 
+Avec A2A activé, l'écoute passe par HTTP.sys, qui ne laisse un compte non
+administrateur écouter que sur un préfixe d'URL réservé pour lui. Réservez une
+fois, en administrateur, le préfixe que décrit `Orkeon:Host:A2A` —
+`netsh http add urlacl url=http://+:5002/ user="NT SERVICE\Orkeon"` pour toutes
+les interfaces, `http://localhost:5002/` pour le défaut — sinon le démarrage
+échoue sur un *accès refusé*.
+
 ### Conteneur
 
-[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). Le jeton est passé par nom à l'exécution, jamais gravé dans une couche. L'image n'expose aucun port et ne déclare aucun `HEALTHCHECK` : le daemon ne sert pas de HTTP.
+[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). Le jeton est passé par nom à l'exécution, jamais gravé dans une couche. L'image n'expose aucun port et ne déclare aucun `HEALTHCHECK` : la seule surface HTTP du daemon est le serveur A2A, éteint par défaut. Pour exposer des crews depuis un conteneur, réglez `Orkeon:Host:A2A:Host` sur `http://+` — la boucle locale d'un conteneur est injoignable de l'extérieur, donc `A2A:Security` doit déclarer un schéma d'authentification — et publiez le port (`-p 5002:5002`).
 
 ---
 
-## 6. Ce qui est livré, et ce qui ne l'est pas
+## 7. Ce qui est livré, et ce qui ne l'est pas
 
-**Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, et le canal Discord avec les slash-commands enregistrées `/status` et `/stop` et le bouton d'arrêt — un seul chemin autorisé pour les trois.
+**Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, le canal Discord avec les slash-commands enregistrées `/status` et `/stop` et le bouton d'arrêt — un seul chemin autorisé pour les trois — et le serveur A2A opt-in, une compétence par crew exposée.
 
-**Non livré**, et sous-entendu nulle part : un ordonnanceur, le rechargement à chaud de la configuration, l'ajout ou le retrait de crews hébergées pendant que le démon tourne, tout canal autre que Discord, et toute surface HTTP — ni API, ni endpoint de santé (les contrôles de santé qu'enregistre la télémétrie ne sont exposés par rien). Une fonction des runners reste aussi hors du daemon : l'outil `semantic_search` n'est pas enregistré (les serveurs MCP de la section `MCP` sont connectés au démarrage, comme pour un run — voir [Intégration MCP](mcp.md)). Les ports sont écrits de sorte que le protocole JSONL du bus d'événements en soit une implémentation légitime — le modèle ne se referme pas sur le chat — mais ce canal-là n'est pas écrit.
+**Non livré**, et sous-entendu nulle part : un ordonnanceur, le rechargement à chaud de la configuration, l'ajout ou le retrait de crews hébergées pendant que le démon tourne, tout canal de chat autre que Discord, et toute surface HTTP au-delà du serveur A2A — ni API, ni endpoint de santé (les contrôles de santé qu'enregistre la télémétrie ne sont exposés par rien), ni enregistrement de tâche A2A (`GET /a2a/tasks/{id}` répond `501`). Une fonction des runners reste aussi hors du daemon : l'outil `semantic_search` n'est pas enregistré (les serveurs MCP de la section `MCP` sont connectés au démarrage, comme pour un run — voir [Intégration MCP](mcp.md)). Les ports sont écrits de sorte que le protocole JSONL du bus d'événements en soit une implémentation légitime — le modèle ne se referme pas sur le chat — mais ce canal-là n'est pas écrit.
 
 **Une chose ne peut pas être vérifiée en CI** : le critère de succès de la spec elle-même — lancer une crew depuis un vrai fil Discord, voir la progression, l'interrompre par bouton, avec le service en daemon systemd. Cela exige un compte Discord et un serveur, donc une action propriétaire. Ce que la CI tient, c'est tout ce qui borde la socket : la traduction des messages, les deux limites de la plateforme, l'autorisation, le routage, le throttling et l'isolation.
 
 ---
 
-## 7. Voir aussi
+## 8. Voir aussi
 
 - [Le bus d'événements du run](run-event-bus.md) — le protocole qu'un processus observateur lit, et la forme sur laquelle les ports de la passerelle ont été écrits.
 - [EventHub et cycle de vie des crews](event-hub-and-crew-lifecycle.md) — le messaging inter-crews et son ACL.

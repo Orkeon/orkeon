@@ -119,17 +119,24 @@ public static class A2AExtensions
         services.TryAddScoped<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher, DomainEventDispatcher>();
         services.TryAddScoped<IUnitOfWork, InMemoryUnitOfWork>();
 
-        // R4.6 / ANT-001 — A2A agent directory lifecycle (decision: "scoped per request"):
-        // the registrations live in a thread-safe SINGLETON backing store that persists
-        // across A2A requests, while IAgentRepository stays SCOPED and hydrates from that
-        // store on every request. A2AServer/A2ATaskRouter never capture the scoped
-        // repository: they open a scope per request via IServiceScopeFactory.
-        services.TryAddSingleton<IAgentRegistrationStore, InMemoryAgentRegistrationStore>();
-        RegisterSharedStoreAgentRepository(services);
+        // The default router runs agents found by id, and the agent directory is where it
+        // finds them. A host that routes differently registered its own router first and keeps
+        // its own repository (GAP-23: orkeon-host routes crews, and the process-wide store
+        // would share every run's agents with the next — one entry per run, forever).
+        if (!services.Any(d => d.ServiceType == typeof(IA2ATaskRouter)))
+        {
+            // R4.6 / ANT-001 — A2A agent directory lifecycle (decision: "scoped per request"):
+            // the registrations live in a thread-safe SINGLETON backing store that persists
+            // across A2A requests, while IAgentRepository stays SCOPED and hydrates from that
+            // store on every request. A2ATaskRouter never captures the scoped repository: it
+            // opens a scope per request via IServiceScopeFactory.
+            services.TryAddSingleton<IAgentRegistrationStore, InMemoryAgentRegistrationStore>();
+            RegisterSharedStoreAgentRepository(services);
+            services.AddSingleton<IA2ATaskRouter, A2ATaskRouter>();
+        }
 
         services.TryAddSingleton<IA2AAgentDiscovery, A2AAgentDiscovery>();
         services.TryAddSingleton<IA2AClient, A2AClient>();
-        services.TryAddSingleton<IA2ATaskRouter, A2ATaskRouter>();
 
         if (enableServer)
         {

@@ -2,10 +2,8 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.AgentCommunication;
-using Orkeon.Domain.Agent;
 using Orkeon.Domain.AgentCommunication;
 using Orkeon.Infrastructure.AgentCommunication;
-using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tests.TestDoubles;
 using static Orkeon.Tests.Shared.Constants.TestEntityIds;
@@ -19,10 +17,11 @@ namespace Orkeon.Infrastructure.Tests.A2A;
 internal class StubA2ATaskRouter : IA2ATaskRouter
 {
     private readonly A2ATaskResponse _response;
+    private readonly IReadOnlyList<AgentSkill> _skills;
 
     public A2ATaskRequest? LastRequest { get; private set; }
 
-    public StubA2ATaskRouter(A2ATaskResponse? response = null)
+    public StubA2ATaskRouter(A2ATaskResponse? response = null, IReadOnlyList<AgentSkill>? skills = null)
     {
         _response = response ?? new A2ATaskResponse
         {
@@ -30,7 +29,10 @@ internal class StubA2ATaskRouter : IA2ATaskRouter
             Status = A2ATaskStatus.Completed,
             Output = "Stub output"
         };
+        _skills = skills ?? [];
     }
+
+    public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default) => Task.FromResult(_skills);
 
     public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
     {
@@ -54,6 +56,9 @@ internal class ThrowingA2ATaskRouter : IA2ATaskRouter
     {
         _throwCount = throwCount;
     }
+
+    public Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<AgentSkill>>([]);
 
     public Task<A2ATaskResponse> RouteTaskAsync(A2ATaskRequest request, CancellationToken ct = default)
     {
@@ -88,13 +93,6 @@ public class A2AServerTests
         return port;
     }
 
-    /// <summary>
-    /// ANT-001: the server resolves the scoped <see cref="IAgentRepository"/> through a
-    /// per-request DI scope; the stub factory hands a shared in-memory repository to every scope.
-    /// </summary>
-    private static StubServiceScopeFactory AgentScopes()
-        => new StubServiceScopeFactory()
-            .With<IAgentRepository>(new InMemoryAgentRepository(new NullUnitOfWork()));
 
     [Fact]
     public async Task Server_ShouldNotBeRunning_Initially()
@@ -102,10 +100,9 @@ public class A2AServerTests
         // Arrange
         var options = new A2AOptions { Port = GetFreePort() };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
 
         // Act
-        await using var server = new A2AServer(options, router, scopes);
+        await using var server = new A2AServer(options, router);
 
         // Assert
         Assert.False(server.IsRunning);
@@ -117,8 +114,7 @@ public class A2AServerTests
         // Arrange
         var options = new A2AOptions { Port = GetFreePort() };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes);
+        await using var server = new A2AServer(options, router);
 
         try
         {
@@ -140,8 +136,7 @@ public class A2AServerTests
         // Arrange
         var options = new A2AOptions { Port = GetFreePort() };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes);
+        await using var server = new A2AServer(options, router);
 
         // Act
         await server.StartAsync(TestContext.Current.CancellationToken);
@@ -159,8 +154,7 @@ public class A2AServerTests
         // Arrange
         var options = new A2AOptions { Port = GetFreePort() };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
-        var server = new A2AServer(options, router, scopes);
+        var server = new A2AServer(options, router);
 
         await server.StartAsync(TestContext.Current.CancellationToken);
         Assert.True(server.IsRunning);
@@ -178,8 +172,7 @@ public class A2AServerTests
         // Arrange
         var options = new A2AOptions { Port = GetFreePort() };
         var router = new StubA2ATaskRouter();
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes);
+        await using var server = new A2AServer(options, router);
 
         // Act — stop without start should not throw
         await server.StopAsync(TestContext.Current.CancellationToken);
@@ -187,6 +180,58 @@ public class A2AServerTests
 
         // Assert
         Assert.False(server.IsRunning);
+    }
+
+    [Fact]
+    public async Task TheCard_PublishesTheSkillsItsRouterAnswers()
+    {
+        // GAP-23: a host that routes differently (orkeon-host routes crews) registers its own
+        // router, and the card publishes what that router answers — never an agent directory
+        // the router does not read: the published key and the compared key are one (GAP-10).
+        var veille = new AgentSkill { Id = "veille", Name = "veille", Description = "Weekly technology watch." };
+        var port = GetFreePort();
+        await using var server = new A2AServer(new A2AOptions { Port = port }, new StubA2ATaskRouter(skills: [veille]));
+        await server.StartAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            using var card = JsonDocument.Parse(await http.GetStringAsync(
+                $"http://localhost:{port}/.well-known/agent.json", TestContext.Current.CancellationToken));
+
+            var skill = Assert.Single(card.RootElement.GetProperty("skills").EnumerateArray());
+            Assert.Equal("veille", skill.GetProperty("id").GetString());
+            Assert.Equal("Weekly technology watch.", skill.GetProperty("description").GetString());
+            Assert.Equal(new Uri($"http://localhost:{port}"), new Uri(card.RootElement.GetProperty("url").GetString()!));
+        }
+        finally
+        {
+            await server.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Theory]
+    [InlineData("http://+")]
+    [InlineData("http://*")]
+    public void TheCardUrl_OfAWildcardListener_IsTheAddressThePeerReachedTheCardAt(string host)
+    {
+        // A wildcard listens on every interface and names no address a peer can call: the card
+        // endpoint used to throw on it (UriFormatException), so a server listening beyond the
+        // loopback served no card at all.
+        var url = A2AServer.CardUrl(
+            new A2AOptions { Host = host, Port = 5002 },
+            new Uri("http://10.0.0.7:5002/.well-known/agent.json"));
+
+        Assert.Equal(new Uri("http://10.0.0.7:5002/"), url);
+    }
+
+    [Fact]
+    public void TheCardUrl_OfANamedListener_IsTheListener()
+    {
+        var url = A2AServer.CardUrl(
+            new A2AOptions { Host = "https://a2a.example.org", Port = 8443 },
+            new Uri("http://10.0.0.7:8443/.well-known/agent.json"));
+
+        Assert.Equal(new Uri("https://a2a.example.org:8443"), url);
     }
 
     [Fact]
@@ -238,8 +283,7 @@ public class A2AServerTests
         var logger = new TestLogger<A2AServer>();
         var options = new A2AOptions { Port = port };
         var router = new ThrowingA2ATaskRouter(throwCount: 1);
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {
@@ -292,8 +336,7 @@ public class A2AServerTests
         var logger = new TestLogger<A2AServer>();
         var options = new A2AOptions { Port = port };
         var router = new ThrowingA2ATaskRouter(throwCount: 1);
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {
@@ -359,8 +402,7 @@ public class A2AServerTests
         var logger = new TestLogger<A2AServer>();
         var options = new A2AOptions { Port = port };
         var router = new ThrowingA2ATaskRouter(throwCount: 1);
-        var scopes = AgentScopes();
-        await using var server = new A2AServer(options, router, scopes, logger);
+        await using var server = new A2AServer(options, router, logger);
 
         try
         {

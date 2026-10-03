@@ -55,11 +55,14 @@ est la première marche naturelle quand cette surface sera promue.
 
 ## Exécution des tâches
 
-`A2ATaskRouter`, l'`IA2ATaskRouter` que l'opt-in enregistre, exécute l'agent que
-la requête désigne. La carte liste une skill par agent disponible (id → `id`,
-rôle → `name`, objectif → `description`, `text/plain` en entrée et en sortie), et
-le `skillId` de la requête doit égaler **exactement** l'un de ces ids — le rôle
-n'est pas une clé, et `writer` ne sélectionne jamais `Ghostwriter`. L'agent
+Le routeur décide de ce que publie la carte : `GET /.well-known/agent.json` liste
+les skills de l'`IA2ATaskRouter` enregistré (`GetSkillsAsync`), de sorte que la clé
+qu'un pair lit est la clé que le routeur compare. `A2ATaskRouter`, le routeur que
+l'opt-in enregistre, exécute l'agent que la requête désigne. Il liste une skill par
+agent disponible (id → `id`, rôle → `name`, objectif → `description`, `text/plain`
+en entrée et en sortie), et le `skillId` de la requête doit égaler **exactement**
+l'un de ces ids — le rôle n'est pas une clé, et `writer` ne sélectionne jamais
+`Ghostwriter`. L'agent
 travaille alors sur une tâche ad hoc dont la description est l'`input` de la
 requête (ses `metadata` deviennent les variables de la tâche), via
 l'`IAgentExecutionService` de l'hôte, résolu dans le scope DI propre à la requête :
@@ -72,16 +75,24 @@ l'`IAgentExecutionService` de l'hôte, résolu dans le scope DI propre à la req
   service d'exécution (`AddOrkeonApplication()` le fait) → `Failed`, en disant lequel.
 
 Rien ne répond `Completed` sans que l'agent ait tourné. Un hôte qui route
-autrement enregistre son propre `IA2ATaskRouter` avant d'appeler `AddOrkeonA2A`
-(le défaut est enregistré en `TryAdd`, c'est donc celui de l'hôte qui l'emporte).
+autrement enregistre son propre `IA2ATaskRouter` avant d'appeler `AddOrkeonA2A` :
+le routeur par défaut n'est enregistré que si aucun ne l'est, et avec lui
+l'annuaire d'agents où il les trouve (l'`IAgentRegistrationStore` partagé par tout
+le processus, voir [Sous-systèmes opt-in](./opt-in-subsystems.md)) — un hôte doté
+de son propre routeur garde son propre `IAgentRepository`. C'est ce que fait
+`orkeon-host` : une skill par crew qu'il expose, une tâche étant un run de cette
+crew — voir [Hôte de service](../architecture/service-host.md#5-autres-agents-a2a).
 Les requêtes sont servies en parallèle : un `DELETE` atteint une tâche sur
 laquelle l'agent travaille encore.
 
 ## Activation
 
-Aucun binaire livré n'active encore A2A : `orkeon run`, `orkeon-host` et le REPL
-n'appellent pas `AddOrkeonA2A` (l'exposition dans `orkeon-host` attend le routage
-par équipe). Un hôte qui embarque s'y inscrit avec `AddOrkeonA2A(configuration)`
+`orkeon-host` active A2A pour les crews qu'expose `Orkeon:Host:A2A` — `Enabled`,
+`Host`, `Port` et `Crews`, sa propre section ; une skill par crew exposée, une
+tâche étant un run de cette crew sous ses montages et sa borne de concurrence —
+voir [Hôte de service](../architecture/service-host.md#5-autres-agents-a2a).
+`orkeon run` et le REPL ne le font pas : un run unique n'a rien à écouter.
+Un hôte qui embarque s'y inscrit avec `AddOrkeonA2A(configuration)`
 (sections `A2A` et `A2A:Security`) ou `AddOrkeonA2A(configure, configureSecurity)`,
 plus `AddOrkeonA2ATaskPersistence()` pour des enregistrements de tâche durables.
 Avec `EnableServer`, l'extension enregistre aussi un service hébergé : un hôte
@@ -96,6 +107,10 @@ le mTLS sans ancre de confiance) fait échouer le démarrage de l'hôte. Voir
 | `Host`, `Port` | `http://localhost`, `5002` | Le préfixe d'écoute. |
 | `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl` | `Orkeon`, `Orkeon A2A Agent`, `1.0.0`, —, — | La carte d'agent. |
 | `TimeoutSeconds` | `30` | Timeout des requêtes du client. |
+
+`orkeon-host` prend son écoute dans `Orkeon:Host:A2A` et refuse `A2A:EnableServer`,
+`A2A:Host` et `A2A:Port` au démarrage ; il lit le reste de la section — l'identité
+de la carte, et `A2A:Security` — comme ci-dessus.
 
 `A2A:Security` porte `ClientCertificatePath`/`ClientCertificatePassword` (le
 certificat propre du client), `TrustedCertificateAuthorities`,
@@ -116,8 +131,9 @@ aucun outil d'agent livré n'en appelle un.
 - **Orkeon ↔ Orkeon** entre processus/hôtes : le fil fonctionne de bout en bout —
   carte, envoi (l'agent s'exécute), streaming, statut, annulation (le travail en
   cours s'arrête), mTLS et identifiants bearer/clé d'API des deux côtés — avec un
-  statut de tâche durable via l'opt-in de persistance. Reste l'hébergement : un
-  hôte C# l'active ; aucun binaire livré ne le fait encore.
+  statut de tâche durable via l'opt-in de persistance. Un hôte C# l'active pour
+  ses agents, `orkeon-host` pour les crews qu'il expose (sans enregistrement de
+  tâche : son `GET` répond `501`).
 - **Orkeon ↔ agents tiers v1.0** : pas encore — attendre (ou contribuer à)
   l'alignement sur le binding HTTP+JSON suivi par la suite de PUB-08.
 

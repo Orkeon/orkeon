@@ -39,6 +39,21 @@ public class A2ATaskRouterTests
     }
 
     [Fact]
+    public async Task GetSkillsAsync_ListsOneSkillPerAvailableAgent_KeyedByTheIdItRoutes()
+    {
+        // The card publishes these (GAP-23): the id a peer reads is the id RouteTaskAsync compares.
+        var agent = await AddAgentAsync("Researcher");
+        var router = RouterWith(FakeAgentExecutionService.Answering("unused"), out _);
+
+        var skill = Assert.Single(await router.GetSkillsAsync(Ct));
+
+        Assert.Equal(agent.Id.ToString(), skill.Id);
+        Assert.Equal("Researcher", skill.Name);
+        Assert.Equal("Act as Researcher", skill.Description);
+        Assert.Equal("researcher", Assert.Single(skill.Tags));
+    }
+
+    [Fact]
     public async Task RouteTaskAsync_RunsTheMatchedAgent_AndReturnsItsOutput()
     {
         var agent = await AddAgentAsync("Researcher");

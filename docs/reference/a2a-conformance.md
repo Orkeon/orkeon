@@ -55,11 +55,13 @@ step when this surface is promoted.
 
 ## Task execution
 
-`A2ATaskRouter`, the `IA2ATaskRouter` the opt-in registers, runs the agent the
-request names. The card lists one skill per available agent (id → `id`, role →
-`name`, goal → `description`, `text/plain` in and out), and the request's
-`skillId` must equal one of those ids **exactly** — the role is not a key, and
-`writer` never selects `Ghostwriter`. The agent then works on an ad hoc task whose
+The router decides what the card publishes: `GET /.well-known/agent.json` lists
+the skills of the registered `IA2ATaskRouter` (`GetSkillsAsync`), so the key a peer
+reads is the key the router compares. `A2ATaskRouter`, the router the opt-in
+registers, runs the agent the request names. It lists one skill per available
+agent (id → `id`, role → `name`, goal → `description`, `text/plain` in and out),
+and the request's `skillId` must equal one of those ids **exactly** — the role is
+not a key, and `writer` never selects `Ghostwriter`. The agent then works on an ad hoc task whose
 description is the request's `input` (its `metadata` become the task variables),
 through the host's `IAgentExecutionService`, resolved in the request's own DI
 scope:
@@ -72,14 +74,22 @@ scope:
   execution service (`AddOrkeonApplication()` does) → `Failed`, saying which.
 
 Nothing answers `Completed` without the agent having run. A host that routes
-differently registers its own `IA2ATaskRouter` before calling `AddOrkeonA2A` (the
-default is registered with `TryAdd`, so the host's wins). Requests are served
-concurrently, so a `DELETE` reaches a task the agent is still working on.
+differently registers its own `IA2ATaskRouter` before calling `AddOrkeonA2A`: the
+default router is registered only when none is, and with it the agent directory
+it finds agents in (the process-wide `IAgentRegistrationStore`, see
+[Opt-in subsystems](./opt-in-subsystems.md)) — a host with its own router keeps
+its own `IAgentRepository`. `orkeon-host` does exactly
+that: one skill per crew it exposes, a task being a run of that crew — see
+[Service host](../architecture/service-host.md#5-other-agents-a2a). Requests are
+served concurrently, so a `DELETE` reaches a task the agent is still working on.
 
 ## Activation
 
-No shipped binary turns A2A on yet: `orkeon run`, `orkeon-host` and the REPL do
-not call `AddOrkeonA2A` (exposing it in `orkeon-host` waits on per-crew routing).
+`orkeon-host` turns A2A on for the crews `Orkeon:Host:A2A` exposes — `Enabled`,
+`Host`, `Port` and `Crews`, its own section; one skill per exposed crew, a task
+being a run of that crew under its mounts and concurrency bound — see
+[Service host](../architecture/service-host.md#5-other-agents-a2a). `orkeon run`
+and the REPL do not: a single run has nothing to listen for.
 An embedding host opts in with `AddOrkeonA2A(configuration)` (sections `A2A` and
 `A2A:Security`) or `AddOrkeonA2A(configure, configureSecurity)`, plus
 `AddOrkeonA2ATaskPersistence()` for durable task records. With `EnableServer`,
@@ -94,6 +104,10 @@ anchor) fails the host's start. See [Opt-in subsystems](./opt-in-subsystems.md).
 | `Host`, `Port` | `http://localhost`, `5002` | The listener prefix. |
 | `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl` | `Orkeon`, `Orkeon A2A Agent`, `1.0.0`, —, — | The agent card. |
 | `TimeoutSeconds` | `30` | Client request timeout. |
+
+`orkeon-host` takes its listener from `Orkeon:Host:A2A` and refuses
+`A2A:EnableServer`, `A2A:Host` and `A2A:Port` at start; it reads the rest of the
+section — the card's identity, and `A2A:Security` — as above.
 
 `A2A:Security` carries `ClientCertificatePath`/`ClientCertificatePassword` (the
 client's own certificate), `TrustedCertificateAuthorities`,
@@ -114,8 +128,8 @@ shipped agent tool calls one.
 - **Orkeon ↔ Orkeon** across processes/hosts: the wire works end to end — card,
   send (the agent runs), stream, status, cancel (in-flight work stops), mTLS and
   bearer/API-key credentials on both sides — with durable task status under the
-  persistence opt-in. What remains is hosting: a C# host enables it; no shipped
-  binary does yet.
+  persistence opt-in. A C# host enables it for its agents, `orkeon-host` for the
+  crews it exposes (without task records: its `GET` answers `501`).
 - **Orkeon ↔ third-party v1.0 agents**: not yet — wait for (or contribute to)
   the HTTP+JSON binding alignment tracked by the PUB-08 follow-up.
 

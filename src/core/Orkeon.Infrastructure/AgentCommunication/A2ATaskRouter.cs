@@ -2,6 +2,7 @@ using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Agent;
+using Orkeon.Domain.AgentCommunication;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
@@ -15,8 +16,9 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 
 /// <summary>
 /// Runs an incoming A2A task with the local agent it names (GAP-10). The request's
-/// <c>skillId</c> must equal, exactly, a skill <c>id</c> of the agent card — the agent's id
-/// (<c>GET /.well-known/agent.json</c> lists one skill per available agent). The task is an
+/// <c>skillId</c> must equal, exactly, a skill <c>id</c> of the agent card — the agent's id:
+/// <see cref="GetSkillsAsync"/> lists one skill per available agent, and the card publishes
+/// what it lists (<c>GET /.well-known/agent.json</c>). The task is an
 /// ad hoc <see cref="CrewTask"/> whose description is the request's <c>input</c>; the agent runs
 /// it through <see cref="IAgentExecutionService"/>, and the response carries what it produced:
 /// <c>Completed</c> with its output, <c>Failed</c> with its error, <c>Cancelled</c> when the
@@ -24,9 +26,10 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// <para>
 /// R4.6 / ANT-001: this router is a singleton, so it never captures the scoped
 /// <see cref="IAgentRepository"/> or <see cref="IAgentExecutionService"/>. It opens a DI scope
-/// per routed task via <see cref="IServiceScopeFactory"/> and resolves both inside it. The
-/// repository hydrates from the shared <c>IAgentRegistrationStore</c> singleton, so agents
-/// registered by other scopes (e.g. the execution pipeline) are visible here.
+/// per request — the card's listing, each routed task — via <see cref="IServiceScopeFactory"/>
+/// and resolves them inside it. The repository hydrates from the shared
+/// <c>IAgentRegistrationStore</c> singleton, so agents registered by other scopes (e.g. the
+/// execution pipeline) are visible here.
 /// </para>
 /// </summary>
 [Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
@@ -38,7 +41,7 @@ public partial class A2ATaskRouter : IA2ATaskRouter
     private readonly ILogger _logger;
 
     /// <summary>Initializes a new instance of <see cref="A2ATaskRouter"/>.</summary>
-    /// <param name="scopeFactory">Factory used to open one DI scope per routed task (the scoped <see cref="IAgentRepository"/> and <see cref="IAgentExecutionService"/> are resolved inside it).</param>
+    /// <param name="scopeFactory">Factory used to open one DI scope per request — the card's listing, each routed task (the scoped <see cref="IAgentRepository"/> and <see cref="IAgentExecutionService"/> are resolved inside it).</param>
     /// <param name="logger">Optional logger.</param>
     public A2ATaskRouter(
         IServiceScopeFactory scopeFactory,
@@ -48,6 +51,33 @@ public partial class A2ATaskRouter : IA2ATaskRouter
         _scopeFactory = scopeFactory;
         _logger = logger ?? NullLogger<A2ATaskRouter>.Instance;
     }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// One skill per available agent: its id (<c>id</c>), its role (<c>name</c>, and as a
+    /// lowercase tag), its goal (<c>description</c>), plain text in and out.
+    /// </remarks>
+    public async Task<IReadOnlyList<AgentSkill>> GetSkillsAsync(CancellationToken ct = default)
+    {
+        // ANT-001: the repository is scoped; a singleton reads it in a scope of its own.
+        var scope = _scopeFactory.CreateAsyncScope();
+        await using (scope.ConfigureAwait(false))
+        {
+            var agents = await scope.ServiceProvider.GetRequiredService<IAgentRepository>()
+                .GetAvailableAgentsAsync(ct).ConfigureAwait(false);
+            return [.. agents.Select(ToSkill)];
+        }
+    }
+
+    private static AgentSkill ToSkill(Orkeon.Domain.Agent.Agent agent) => new()
+    {
+        Id = agent.Id.ToString(),
+        Name = agent.Role.Value,
+        Description = agent.Goal.Value,
+#pragma warning disable CA1308 // lowercase is the required wire/storage form, not a comparison normalization
+        Tags = [agent.Role.Value.ToLowerInvariant()],
+#pragma warning restore CA1308
+    };
 
     /// <inheritdoc />
     public Task<A2ATaskResponse> RouteTaskAsync(

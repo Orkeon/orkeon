@@ -1,8 +1,8 @@
 # Host a crew as a service (configuration example)
 
 `appsettings.host.json` is a complete configuration for `orkeon-host`: one hosted crew, a
-Discord channel, mounts, and an LLM provider. Copy it, fill in the three things only you know,
-and the daemon runs.
+Discord channel, the same crew offered to other agents over A2A, mounts, and an LLM provider.
+Copy it, fill in the three things only you know, and the daemon runs.
 
 Full explanation: [The service host and the chat gateway](../../docs/architecture/service-host.md).
 
@@ -62,6 +62,33 @@ button, reports progress every couple of seconds, and delivers the answer. `/sta
 the same stop with a different finger, allow-list check included. Commands registered
 globally can take up to an hour to appear on Discord's side — list your server in
 `Discord:GuildIds` to get them immediately.
+
+## Reaching the crew from another agent (A2A)
+
+`Orkeon:Host:A2A` exposes `support` to other agents: the daemon serves an agent card listing one
+skill per exposed crew, and a task sent to that skill is a run of the crew — the same run a Discord
+thread starts, under the same mounts and the same `MaxConcurrentRuns`. A crew left out of
+`A2A:Crews` is invisible to peers.
+
+```bash
+curl http://localhost:5002/.well-known/agent.json
+curl -X POST http://localhost:5002/a2a/tasks/send -H 'Content-Type: application/json' \
+     -d '{"id":"t-1","skillId":"support","input":"How do I reset my password?"}'
+```
+
+The example listens on the loopback, where nothing else can reach it, so it needs no credential.
+To serve peers on other machines, listen on every interface (`"Host": "http://+"`) and require a
+credential — the host refuses to start otherwise:
+
+```json
+"A2A": {
+  "Security": { "AllowedAuthSchemes": ["ApiKey"], "ApiKeySecretNames": ["A2A_PEER_KEY"] }
+}
+```
+
+at the top level of the file, next to `Llm`, with the key itself in `ORKEON_A2A_PEER_KEY`; a peer
+then sends `Authorization: ApiKey <key>`. Remove the `A2A` block under `Orkeon:Host` to keep the
+daemon off the network altogether.
 
 ## What this does not do
 

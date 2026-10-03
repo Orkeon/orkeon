@@ -40,7 +40,8 @@ internal sealed record ReservedRootsOutcome(string? Error, string? Warnings);
 internal static class HostStartup
 {
     private const string HelpText = """
-    orkeon-host — the Orkeon service host: hosts crews as a daemon and answers chat channels.
+    orkeon-host — the Orkeon service host: hosts crews as a daemon and answers chat channels
+    and, when enabled, A2A peers.
 
     Usage:
       orkeon-host [--settings <file>] [--working-dir <dir>] [--mount <physical>:<virtual>:<ro|rw|rwnd>]... [--allow-external-mounts]
@@ -61,8 +62,9 @@ internal static class HostStartup
       -h, --help                Show this help and exit.
           --version             Show the version and exit.
 
-    Configuration lives under Orkeon:Host (crews, RunTimeout, ShutdownGracePeriod) and
-    Orkeon:Host:Discord. Secrets are named by environment variable, never written in files.
+    Configuration lives under Orkeon:Host (crews, RunTimeout, ShutdownGracePeriod),
+    Orkeon:Host:Discord and Orkeon:Host:A2A. Secrets are named by environment variable,
+    never written in files.
     Documentation: docs/architecture/service-host.md
     """;
 

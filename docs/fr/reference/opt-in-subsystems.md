@@ -136,17 +136,22 @@ partiel (signalé au cas par cas ci-dessous).
   un hôte générique démarre le serveur avec lui et l'arrête à l'extinction — aucun code
   de l'hôte ne résout `IA2AServer` ni n'appelle `StartAsync`. Un processus qui ne fait
   jamais tourner l'hôte ne le démarre jamais.
-- **Exécution** : le routeur exécute l'agent dont l'id égale le `skillId` de la requête
-  (l'`id` que publie la carte d'agent) via `IAgentExecutionService` ; l'hôte appelle donc
-  aussi `AddOrkeonApplication()` — sans lui, une tâche répond `Failed` et le dit.
+- **Exécution** : la carte liste les skills du routeur enregistré
+  (`IA2ATaskRouter.GetSkillsAsync`) — celui par défaut, une skill par agent disponible — et
+  le routeur exécute l'agent dont l'id égale le `skillId` de la requête (l'`id` que publie
+  la carte) via `IAgentExecutionService` ; l'hôte appelle donc aussi
+  `AddOrkeonApplication()` — sans lui, une tâche répond `Failed` et le dit. Un hôte qui
+  route autrement enregistre d'abord son propre `IA2ATaskRouter` : le routeur par défaut, et
+  l'annuaire d'agents ci-dessous, ne sont enregistrés que si aucun routeur ne l'est.
 - **Dépendances** : l'extension enregistre elle-même (TryAdd) `IHttpClientFactory`,
-  `IDomainEventDispatcher`, `IUnitOfWork`, ainsi que l'annuaire d'agents A2A
-  (`IAgentRegistrationStore` singleton + `IAgentRepository` scoped, voir ci-dessous)
-  lorsque l'hôte ne les a pas déjà câblés via `AddOrkeonInfrastructure()`.
+  `IDomainEventDispatcher`, `IUnitOfWork`, ainsi que — avec le routeur par défaut —
+  l'annuaire d'agents A2A (`IAgentRegistrationStore` singleton + `IAgentRepository`
+  scoped, voir ci-dessous) lorsque l'hôte ne les a pas déjà câblés via
+  `AddOrkeonInfrastructure()`.
 - **Cycle de vie du dépôt d'agents (R4.6 / ANT-001, décision « scoped par requête »)** :
-  - `IAgentRepository` est **scoped** ; le serveur et le routeur (singletons) ne le
-    capturent jamais — ils ouvrent un **scope DI par requête A2A** via
-    `IServiceScopeFactory` et résolvent le dépôt dedans. La résolution passe avec
+  - `IAgentRepository` est **scoped** ; le routeur (un singleton) ne le capture jamais —
+    il ouvre un **scope DI par requête A2A** (la carte, chaque tâche) via
+    `IServiceScopeFactory` et résout le dépôt dedans. La résolution passe avec
     `ValidateScopes = true` (défaut en Development).
   - Un dépôt scoped ne conserve rien entre deux requêtes : les enregistrements vivent
     dans `IAgentRegistrationStore`, un **backing store singleton thread-safe**
@@ -163,8 +168,11 @@ partiel (signalé au cas par cas ci-dessous).
     `AddOrkeonInfrastructure()` et après un éventuel dépôt custom (ordre recommandé,
     cf. [Principe](#principe)) ; un dépôt custom enregistré *après* `AddOrkeonA2A(...)`
     gagne (dernier enregistrement).
-- **Ce que les binaires livrés ne font pas** : aucun hôte livré (`orkeon run`, `orkeon-host`,
-  le REPL) n'appelle encore `AddOrkeonA2A`. Voir [Conformité A2A — Exécution des tâches](./a2a-conformance.md#exécution-des-tâches)
+- **Binaires livrés** : `orkeon-host` appelle `AddOrkeonA2A` quand `Orkeon:Host:A2A:Enabled`
+  est posé, après avoir enregistré son propre routeur — une skill par crew que la section
+  expose, une tâche étant un run de cette crew — de sorte que ses runs gardent leur dépôt
+  d'agents par scope (voir [Hôte de service](../architecture/service-host.md#5-autres-agents-a2a)) ;
+  `orkeon run` et le REPL ne l'appellent pas. Voir [Conformité A2A — Exécution des tâches](./a2a-conformance.md#exécution-des-tâches)
   et [Activation](./a2a-conformance.md#activation).
 - **Limites connues** : le store in-memory est local au processus — pour un annuaire
   d'agents multi-instances, fournir un `IAgentRepository` custom adossé à un stockage

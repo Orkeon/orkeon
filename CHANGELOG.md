@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon-host` exposes its crews to other agents over A2A: one skill per crew, and a task is a run of that crew **[breaking]**
+
+An A2A peer could not reach a crew `orkeon-host` hosts: no shipped binary called `AddOrkeonA2A`, and a C#
+host that did served a router running agents found by id in a directory the daemon never fills — it loads
+a fresh crew for every message — so its card had no skill (GAP-23).
+
+- **One skill per exposed crew.** `Orkeon:Host:A2A` — `Enabled` (off by default), `Host`
+  (`http://localhost`), `Port` (5002) and `Crews`, the crews other agents may run (none by default:
+  exposing is a choice per crew, like a chat route) — turns the A2A server on. The card lists one skill
+  per exposed crew — its id and name the crew's `Name`, its description the crew's new `Description`
+  key —, built from the configuration without loading a crew; a crew left out is absent from it.
+- **A task is a run of the crew**, exactly what a chat message is: `POST /a2a/tasks/send` (or
+  `sendSubscribe`) on a published id — compared exactly — runs that crew through `CrewRunner` on the
+  task's `input`, its `metadata` as the run's variables: under the crew's mounts, inside its
+  `MaxConcurrentRuns` — chat conversations and A2A tasks counted together, a task over the bound
+  answering `Failed`, never queued —, under `RunTimeout`, logged with its origin `a2a:<task id>`.
+  `Completed` carries the crew's answer; a failed run answers `Failed` with the sentence a chat thread
+  gets (the run id; the detail stays in the host log); `DELETE /a2a/tasks/{id}` stops the run
+  (`Cancelled`); a skill id the card does not publish answers `Failed`, naming the published ones.
+- **Refused at start (exit 78)**: an enabled section that exposes no crew, or a crew
+  `Orkeon:Host:Crews` does not declare; a malformed `Host` or `Port`; a listener beyond the loopback
+  while `A2A:Security` declares neither an authentication scheme nor mutual TLS; and the C# hosts'
+  `A2A:EnableServer`, `A2A:Host` and `A2A:Port`, which the daemon does not read. A server refusing its
+  `A2A:Security` (a scheme without its validator) is a refused configuration too, not a crash to
+  restart on. The rest of the `A2A` section — the card's identity, `A2A:Security` and its bearer
+  validators — applies as written. The server starts after the MCP servers are connected and before
+  the chat channel, so it stops after the drain: a run in flight still answers the peer that asked.
+- **The card publishes what the router answers.** `IA2ATaskRouter` gains `GetSkillsAsync`, and
+  `A2AServer` builds the card from it rather than from the agent directory: a host that routes
+  differently — the daemon routes crews — publishes exactly the ids its router compares.
+  `A2ATaskRouter` lists one skill per available agent, as the card did. `AddOrkeonA2A` registers its
+  agent router — and the process-wide agent directory that router reads — only when no router is
+  registered yet: a host with its own router keeps its own per-scope `IAgentRepository` (the daemon's
+  runs would otherwise have shared their agents with each other, one entry per run, forever). A
+  wildcard listener (`http://+`) no longer makes the card endpoint throw: the card advertises the
+  address the peer reached it at.
+
+Documented in [Service host](docs/architecture/service-host.md#5-other-agents-a2a),
+[A2A conformance](docs/reference/a2a-conformance.md#activation), [Configuration](docs/reference/configuration.md),
+[Opt-in subsystems](docs/reference/opt-in-subsystems.md) and [Limitations](docs/reference/limitations.md); the
+[service-host example](examples/service-host/README.md) exposes its crew on the loopback.
+
+Breaking: `IA2ATaskRouter` declares `GetSkillsAsync`; the two `A2AServer` constructors no longer take an
+`IServiceScopeFactory`; after a router of the host's, `AddOrkeonA2A` no longer registers the agent
+directory (`IAgentRegistrationStore`) nor swaps the host's `IAgentRepository` for
+`SharedStoreAgentRepository`; `orkeon-host` refuses `A2A:EnableServer`, `A2A:Host` and `A2A:Port`,
+which it ignored.
+
+Migration: implement `GetSkillsAsync` on a router of your own — the skills its `RouteTaskAsync` answers,
+keyed by the id it compares; drop the scope factory from `new A2AServer(...)`; a host router that reads
+the agents other scopes register adds `IAgentRegistrationStore` and `SharedStoreAgentRepository` itself;
+in `orkeon-host`'s settings, write the listener under `Orkeon:Host:A2A`.
+
 ### Fixed — a crew's manager applies where its mode uses one and is refused elsewhere, the planner's provider is metered, and a reference that names nothing fails the load **[breaking]**
 
 What a crew wrote about its manager, its planner and its tasks' references was read, then dropped

@@ -282,6 +282,26 @@ public class A2ALifecycleValidationTests
     }
 
     [Fact]
+    public void AddOrkeonA2A_AfterAHostsOwnRouter_KeepsTheHostsRepository_AndRegistersNoDirectory()
+    {
+        // GAP-23: the directory is what the default router finds agents in. A host that routes
+        // differently (orkeon-host routes crews) has no use for it, and upgrading its per-scope
+        // repository to the process-wide store would share every run's agents with the next —
+        // and keep one entry per run, forever.
+        var services = NewServices();
+        services.AddOrkeonInfrastructure();
+        services.AddSingleton<IA2ATaskRouter, StubA2ATaskRouter>();
+
+        services.AddOrkeonA2A();
+
+        var repository = Assert.Single(services, d => d.ServiceType == typeof(IAgentRepository));
+        Assert.Equal(typeof(InMemoryAgentRepository), repository.ImplementationType);
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(IAgentRegistrationStore));
+        var router = Assert.Single(services, d => d.ServiceType == typeof(IA2ATaskRouter));
+        Assert.Equal(typeof(StubA2ATaskRouter), router.ImplementationType);
+    }
+
+    [Fact]
     public void AddOrkeonA2A_ShouldBeIdempotent_ForAgentRepositoryRegistration()
     {
         // Arrange

@@ -1,10 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using Orkeon.Application.Interfaces.AgentCommunication;
-using Orkeon.Domain.Agent;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Checkpointing;
-using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tests.TestDoubles;
 
@@ -26,9 +24,6 @@ public class A2ATaskPersistenceTests
         return port;
     }
 
-    private static StubServiceScopeFactory AgentScopes()
-        => new StubServiceScopeFactory()
-            .With<IAgentRepository>(new InMemoryAgentRepository(new NullUnitOfWork()));
 
     // ---- Adapter round-trip (no HTTP) ----
 
@@ -72,7 +67,7 @@ public class A2ATaskPersistenceTests
         var port = GetFreePort();
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), AgentScopes(), taskStore: store);
+            new A2AOptions { Port = port }, new StubA2ATaskRouter(), taskStore: store);
 
         await server.StartAsync(TestContext.Current.CancellationToken);
         try
@@ -109,7 +104,7 @@ public class A2ATaskPersistenceTests
         var port = GetFreePort();
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), AgentScopes(), taskStore: store);
+            new A2AOptions { Port = port }, new StubA2ATaskRouter(), taskStore: store);
 
         await server.StartAsync(TestContext.Current.CancellationToken);
         try
@@ -131,7 +126,7 @@ public class A2ATaskPersistenceTests
     {
         var port = GetFreePort();
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), AgentScopes());
+            new A2AOptions { Port = port }, new StubA2ATaskRouter());
 
         await server.StartAsync(TestContext.Current.CancellationToken);
         try
@@ -154,7 +149,7 @@ public class A2ATaskPersistenceTests
         var port = GetFreePort();
         var store = new StateStoreA2ATaskStore(new InMemoryStateStore());
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), AgentScopes(), taskStore: store);
+            new A2AOptions { Port = port }, new StubA2ATaskRouter(), taskStore: store);
 
         await server.StartAsync(TestContext.Current.CancellationToken);
         try

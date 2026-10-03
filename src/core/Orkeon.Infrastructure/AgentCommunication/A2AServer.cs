@@ -7,14 +7,11 @@ using System.Text.Json;
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.AgentCommunication;
-using Orkeon.Domain.Agent;
 using Orkeon.Infrastructure.Constants.Llm;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.Constants.Serialization;
-using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
@@ -34,11 +31,9 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// execution runs under (GAP-10).
 /// </para>
 /// <para>
-/// R4.6 / ANT-001: this server is a singleton, so it never captures the scoped
-/// <see cref="IAgentRepository"/> (captive dependency). It opens a DI scope per
-/// incoming request via <see cref="IServiceScopeFactory"/> and resolves the
-/// repository inside that scope; the repository hydrates from the shared
-/// <c>IAgentRegistrationStore</c> singleton, which persists across requests.
+/// The card publishes the skills of its router (<see cref="IA2ATaskRouter.GetSkillsAsync"/>):
+/// the key a peer reads is the key the router compares, whatever the router routes — agents
+/// for the default one, crews for <c>orkeon-host</c>'s (GAP-23).
 /// </para>
 /// </summary>
 [Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
@@ -47,7 +42,6 @@ public partial class A2AServer : IA2AServer, IDisposable
     private readonly A2AOptions _options;
     private readonly A2ASecurityOptions _security;
     private readonly IA2ATaskRouter _taskRouter;
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IA2ATaskStore? _taskStore;
     private readonly A2ACredentialValidator _credentials;
     private readonly ILogger _logger;
@@ -72,15 +66,12 @@ public partial class A2AServer : IA2AServer, IDisposable
         MaxDepth = SerializationDefaults.JsonMaxDepth
     };
 
-    private static readonly string[] s_textPlainModes = ["text/plain"];
-
     /// <inheritdoc />
     public bool IsRunning { get; private set; }
 
     /// <summary>Initializes a new instance of <see cref="A2AServer"/>.</summary>
     /// <param name="options">A2A server options.</param>
-    /// <param name="taskRouter">The task router handling submitted tasks.</param>
-    /// <param name="scopeFactory">Factory used to open one DI scope per incoming request (the scoped <see cref="IAgentRepository"/> is resolved inside it).</param>
+    /// <param name="taskRouter">The task router handling submitted tasks, and listing the skills the card publishes.</param>
     /// <param name="logger">Optional logger.</param>
     /// <param name="security">Optional A2A security options.</param>
     /// <param name="taskStore">Optional task persistence (lifts the 501 on GET /a2a/tasks/{id} — see AddOrkeonA2ATaskPersistence).</param>
@@ -89,13 +80,12 @@ public partial class A2AServer : IA2AServer, IDisposable
     public A2AServer(
         IOptions<A2AOptions> options,
         IA2ATaskRouter taskRouter,
-        IServiceScopeFactory scopeFactory,
         ILogger<A2AServer>? logger = null,
         IOptions<A2ASecurityOptions>? security = null,
         IA2ATaskStore? taskStore = null,
         IEnumerable<IAuthenticationProvider>? authenticationProviders = null,
         ISecretProvider? secretProvider = null)
-        : this(options?.Value ?? new A2AOptions(), taskRouter, scopeFactory, logger,
+        : this(options?.Value ?? new A2AOptions(), taskRouter, logger,
                security?.Value, taskStore, authenticationProviders, secretProvider)
     {
     }
@@ -104,7 +94,6 @@ public partial class A2AServer : IA2AServer, IDisposable
     public A2AServer(
         A2AOptions options,
         IA2ATaskRouter taskRouter,
-        IServiceScopeFactory scopeFactory,
         ILogger<A2AServer>? logger = null,
         A2ASecurityOptions? security = null,
         IA2ATaskStore? taskStore = null,
@@ -115,8 +104,6 @@ public partial class A2AServer : IA2AServer, IDisposable
         _security = security ?? new A2ASecurityOptions();
         ArgumentNullException.ThrowIfNull(taskRouter);
         _taskRouter = taskRouter;
-        ArgumentNullException.ThrowIfNull(scopeFactory);
-        _scopeFactory = scopeFactory;
         _taskStore = taskStore;
         _credentials = new A2ACredentialValidator(_security, authenticationProviders ?? [], secretProvider);
         _logger = logger ?? NullLogger<A2AServer>.Instance;
@@ -485,35 +472,15 @@ public partial class A2AServer : IA2AServer, IDisposable
 
     private async Task HandleAgentCardAsync(HttpListenerContext context, CancellationToken ct)
     {
-        // ANT-001: resolve the scoped repository in a dedicated scope per request —
-        // a singleton must never hold on to a scoped service (captive dependency).
-        // The repository hydrates from the shared registration store, so agents
-        // registered by other scopes (e.g. the execution pipeline) are listed here.
-        IReadOnlyList<DomainAgent> agents;
-        var scope = _scopeFactory.CreateAsyncScope();
-        await using (scope.ConfigureAwait(false))
-        {
-            var agentRepository = scope.ServiceProvider.GetRequiredService<IAgentRepository>();
-            agents = await agentRepository.GetAvailableAgentsAsync(ct).ConfigureAwait(false);
-        }
-
-        var skills = agents.Select(a => new AgentSkill
-        {
-            Id = a.Id.ToString(),
-            Name = a.Role.Value,
-            Description = a.Goal.Value,
-#pragma warning disable CA1308 // lowercase is the required wire/storage form, not a comparison normalization
-            Tags = [a.Role.Value.ToLowerInvariant()],
-#pragma warning restore CA1308
-            InputModes = s_textPlainModes,
-            OutputModes = s_textPlainModes
-        }).ToList();
+        // The skills the router answers, and nothing else: a card listed from anywhere else
+        // would publish ids no request can reach (GAP-10, GAP-23).
+        var skills = await _taskRouter.GetSkillsAsync(ct).ConfigureAwait(false);
 
         var card = new AgentCard
         {
             Name = _options.AgentName,
             Description = _options.AgentDescription,
-            Url = new Uri($"{_options.Host.TrimEnd('/')}:{_options.Port}"),
+            Url = CardUrl(_options, context.Request.Url),
             Version = _options.AgentVersion,
             Provider = !string.IsNullOrEmpty(_options.Organization)
                 ? new AgentProvider
@@ -526,6 +493,24 @@ public partial class A2AServer : IA2AServer, IDisposable
         };
 
         await WriteJsonResponse(context.Response, 200, card, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The address the card advertises: the configured listener — or, when that listener is
+    /// a wildcard (<c>http://+</c>, <c>http://*</c>: every interface, an address no peer can
+    /// call), the address the peer reached the card at. A wildcard used to make the card
+    /// endpoint throw, so a server listening beyond the loopback served no card at all.
+    /// </summary>
+    /// <param name="options">The server's options.</param>
+    /// <param name="reachedAt">The URL of the card request, as the peer addressed it.</param>
+    internal static Uri? CardUrl(A2AOptions options, Uri? reachedAt)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (Uri.TryCreate($"{options.Host.TrimEnd('/')}:{options.Port}", UriKind.Absolute, out var configured))
+            return configured;
+
+        return reachedAt is null ? null : new Uri(reachedAt.GetLeftPart(UriPartial.Authority));
     }
 
     private async Task HandleSendTaskAsync(HttpListenerContext context, CancellationToken ct)

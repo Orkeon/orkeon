@@ -1,8 +1,6 @@
 using System.Net;
 using Orkeon.Application.Interfaces.AgentCommunication;
-using Orkeon.Domain.Agent;
 using Orkeon.Infrastructure.AgentCommunication;
-using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
@@ -99,10 +97,8 @@ public sealed class A2AClientAuthenticationTests
     {
         var secrets = Secrets("A2A_PEER_KEY", "k-123456");
         var port = A2AExecutionTestsPorts.GetFreePort();
-        var scopes = new StubServiceScopeFactory()
-            .With<IAgentRepository>(new InMemoryAgentRepository(new NullUnitOfWork()));
         await using var server = new A2AServer(
-            new A2AOptions { Port = port }, new StubA2ATaskRouter(), scopes,
+            new A2AOptions { Port = port }, new StubA2ATaskRouter(),
             security: new A2ASecurityOptions { AllowedAuthSchemes = { "ApiKey" }, ApiKeySecretNames = { "A2A_PEER_KEY" } },
             secretProvider: secrets);
         await server.StartAsync(Ct);
