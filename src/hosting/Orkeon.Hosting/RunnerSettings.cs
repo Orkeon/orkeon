@@ -99,21 +99,68 @@ public static class RunnerSettings
     }
 
     /// <summary>
-    /// The configuration a runner reads before its host exists: the settings file at
+    /// The configuration a runner reads before its host exists, composed by
+    /// <see cref="ComposeSources(IConfigurationBuilder, string?)"/> exactly as the runner host
+    /// composes it: the environment variables without a prefix, the settings file at
     /// <paramref name="settingsPath"/> (when it exists), then the <c>ORKEON_</c> environment
-    /// variables — the same two sources, in the same order, as the runner host. For the CLI
-    /// paths that need a setting without building a host, such as the esbuild toolchain
-    /// (<c>Orkeon:Scripting:Toolchain</c>) that <c>orkeon doctor</c> and <c>orkeon forge</c> probe.
+    /// variables. For the CLI paths that read a setting without building a host: <c>orkeon
+    /// doctor</c>, whose verdict is then the one a run would reach, <c>orkeon forge</c>, the probe of
+    /// <c>orkeon init</c>, the esbuild toolchain (<c>Orkeon:Scripting:Toolchain</c>).
     /// </summary>
     /// <param name="settingsPath">Resolved settings path (<see cref="ResolveSettingsPath"/>), or <see langword="null"/>.</param>
-    public static IConfiguration ReadConfiguration(string? settingsPath)
+    public static IConfiguration ReadConfiguration(string? settingsPath) =>
+        ComposeSources(new ConfigurationBuilder(), settingsPath).Build();
+
+    /// <summary>
+    /// <see cref="ComposeSources(IConfigurationBuilder, IEnumerable{string}, bool)"/> over the one
+    /// settings file a runner resolved: read when it exists, none otherwise.
+    /// </summary>
+    /// <param name="builder">The configuration builder, emptied first.</param>
+    /// <param name="settingsPath">Resolved settings path (<see cref="ResolveSettingsPath"/>), or <see langword="null"/>.</param>
+    /// <returns><paramref name="builder"/>, for chaining.</returns>
+    public static IConfigurationBuilder ComposeSources(IConfigurationBuilder builder, string? settingsPath) =>
+        ComposeSources(builder, settingsPath is not null && File.Exists(settingsPath) ? [settingsPath] : [], optional: true);
+
+    /// <summary>
+    /// The settings sources of every Orkeon host, in their one order (GAP-36): the environment
+    /// variables without a prefix, the lowest layer — where the standard <c>OTEL_*</c> variables a
+    /// collector or a .NET Aspire AppHost sets reach the OpenTelemetry exporter —, then the settings
+    /// files, then the <c>ORKEON_</c> variables, prefix removed, which win. Whatever
+    /// <paramref name="builder"/> held is removed first: the default host lays the
+    /// <c>appsettings.json</c> and <c>appsettings.{Environment}.json</c> of the current directory —
+    /// since .NET 10, <c>&lt;application&gt;.settings.json</c> and its environment twin too — and
+    /// its user secrets under the file the resolution chain chose: keys, profiles, MCP servers,
+    /// mounts that file never declared, which no diagnostic saw. The runner host, the REPL and
+    /// <see cref="ReadConfiguration"/> compose with this method, so <c>orkeon doctor</c> reads what a
+    /// run reads. No source watches its file: a run never reloads its settings.
+    /// </summary>
+    /// <param name="builder">The configuration builder, typically a host's app configuration; emptied first.</param>
+    /// <param name="settingsFiles">The settings files, in the order they are laid; a relative path is read from the current directory.</param>
+    /// <param name="optional">
+    /// Whether a file that does not exist is skipped, or refused when the configuration is built —
+    /// the REPL's <c>--settings</c> files.
+    /// </param>
+    /// <returns><paramref name="builder"/>, for chaining.</returns>
+    public static IConfigurationBuilder ComposeSources(IConfigurationBuilder builder, IEnumerable<string> settingsFiles, bool optional)
     {
-        var builder = new ConfigurationBuilder();
-        if (settingsPath is not null && File.Exists(settingsPath))
-            builder.AddJsonFile(settingsPath, optional: true);
-        builder.AddEnvironmentVariables("ORKEON_");
-        return builder.Build();
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(settingsFiles);
+
+        builder.Sources.Clear();
+        builder.AddEnvironmentVariables();
+        foreach (var file in settingsFiles)
+        {
+            // Absolute: a bare configuration builder reads a relative file from the binary's own
+            // folder, and the host's from its content root; the operator meant the current directory.
+            builder.AddJsonFile(Path.GetFullPath(file), optional, reloadOnChange: false);
+        }
+
+        builder.AddEnvironmentVariables(OrkeonEnvironmentPrefix);
+        return builder;
     }
+
+    /// <summary>The prefix of the environment variables every Orkeon host reads as configuration, prefix removed.</summary>
+    private const string OrkeonEnvironmentPrefix = "ORKEON_";
 
     /// <summary>
     /// What to tell an operator about a settings file the configuration cannot read (GAP-35): the

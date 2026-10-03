@@ -84,10 +84,13 @@ un répertoire au lieu de sonder le disque, donc un chemin physique qu'on lui pa
 
 Il compose `Host.CreateDefaultBuilder()` avec :
 
-- **Configuration d'application** — par-dessus les sources du builder par défaut
-  (`appsettings.json` et `appsettings.{Environment}.json` depuis la racine de contenu, variables
-  d'environnement sans préfixe), le fichier `settingsPath` s'il existe, puis l'environnement
-  préfixé `ORKEON_` (`ORKEON_Llm__Model` remplace `Llm:Model`), puis une couche en mémoire qui
+- **Configuration d'application** — les sources du builder par défaut retirées, celles de chaque
+  hôte Orkeon (`RunnerSettings.ComposeSources`, que composent aussi
+  `RunnerSettings.ReadConfiguration` — `orkeon doctor`, la sonde d'`orkeon init` — et le REPL) : les
+  variables d'environnement sans préfixe, le fichier `settingsPath` s'il existe, puis
+  l'environnement préfixé `ORKEON_` (`ORKEON_Llm__Model` remplace `Llm:Model`). Ni
+  l'`appsettings.json` et l'`appsettings.{Environment}.json` de la racine de contenu — le
+  répertoire courant —, ni les secrets utilisateur (GAP-36). Puis une couche en mémoire qui
   porte les décisions de montage : les valeurs `--mount` placées par racine virtuelle, les
   montages internes, le montage `/credentials` des jetons OAuth e-mail, et les entrées
   `PathSecurity:AdditionalAllowedDirectories` qui laissent le validateur de chemins atteindre les
@@ -98,7 +101,9 @@ Il compose `Host.CreateDefaultBuilder()` avec :
 
 Une fois construit, l'hôte journalise les décisions de montage qu'il a prises, avertit (dans le
 journal et sur stderr) quand un compte e-mail OAuth n'a pas de magasin de jetons ou quand il n'y a
-pas de section `Llm` — le runtime se replie alors sur le fournisseur écho — et résout les
+pas de section `Llm` — le runtime se replie alors sur le fournisseur écho —, dit d'où vient la clé
+du défaut et de chaque profil offert aux crews — les profils que cache sa liste blanche
+(`LlmProfileAccessOptions`, que lie `orkeon-host`) sur une ligne à part, jamais signalés — et résout les
 fournisseurs de traces et de métriques OpenTelemetry, parce que les runners ne *démarrent* jamais
 l'hôte et que ces fournisseurs n'existeraient sinon jamais (voir [Télémétrie](#télémétrie)).
 
@@ -252,9 +257,12 @@ ajoute l'exportateur à son propre `AddOpenTelemetry()`.
 **Où vont les données.** Un `Telemetry:OtlpEndpoint` explicite sert de point de terminaison aux
 exportateurs. Sans lui, un `OTEL_EXPORTER_OTLP_ENDPOINT` non vide attache les exportateurs OTLP sans
 aucun réglage propre à Orkeon — l'exportateur lit alors lui-même le point de terminaison, le
-protocole et les en-têtes dans l'environnement standard `OTEL_EXPORTER_OTLP_*`, ce qui permet à un
-processus lancé par .NET Aspire de rapporter sans rien configurer. Sans l'un ni l'autre, rien n'est
-exporté.
+protocole et les en-têtes dans les variables standard `OTEL_EXPORTER_OTLP_*`, ce qui permet à un
+processus lancé par .NET Aspire de rapporter sans rien configurer. Il les lit dans la configuration
+de l'hôte, par sa couche de variables d'environnement sans préfixe : la raison pour laquelle chaque
+hôte Orkeon garde cette couche, sous son fichier de réglages
+([d'où viennent les réglages](./configuration.md#doù-viennent-les-réglages)). Sans l'un ni l'autre,
+rien n'est exporté.
 
 **Ce qui est exporté.** Les traces des sources d'activité `Orkeon.Crew`, `Orkeon.Agent`,
 `Orkeon.Task`, `Orkeon.Llm`, `Orkeon.Tool`, `Orkeon.Memory` et `Orkeon.EventHub` plus

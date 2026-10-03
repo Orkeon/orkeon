@@ -550,4 +550,123 @@ public sealed class InitCommandTests
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.False(File.Exists(target));
     }
+
+    // ── GAP-36, decision 3: the probe presents the key the run presents ─────
+
+    /// <summary>
+    /// Runs <c>orkeon init --provider custom</c> against <paramref name="server"/> with the probe on,
+    /// <c>ORKEON_Llm__ApiKey</c> set to <paramref name="nativeKey"/> for the call (null: unset) and
+    /// restored after it — it belongs to every process of the machine.
+    /// </summary>
+    private static async Task<(int Exit, string Stdout, string Stderr, string Target)> InitWithProbeAsync(
+        ScriptScratch scratch, CatalogueServer server, string apiKeyEnv, string? nativeKey)
+    {
+        var target = Path.Combine(scratch.Root, "appsettings.json");
+        var saved = Environment.GetEnvironmentVariable("ORKEON_Llm__ApiKey");
+        Environment.SetEnvironmentVariable("ORKEON_Llm__ApiKey", nativeKey);
+        try
+        {
+            using var console = new TestConsole();
+            var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+            {
+                Provider = "custom",
+                BaseUrl = $"http://127.0.0.1:{server.Port}/v1",
+                Model = "test-model",
+                ApiKeyEnv = apiKeyEnv,
+                OutputPath = target,
+            });
+            return (exit, console.Stdout, console.Stderr, target);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ORKEON_Llm__ApiKey", saved);
+        }
+    }
+
+    [Fact]
+    public async Task TheProbe_PresentsTheKeyARunPresents_AndSaysWhereItComesFrom()
+    {
+        // A run takes the key the configuration resolves — ORKEON_Llm__ApiKey — before the variable
+        // the file names: the probe read that variable first, in the process alone.
+        var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(variable, "sk-named-variable-k2");
+        try
+        {
+            using var scratch = new ScriptScratch();
+            using var server = new CatalogueServer();
+
+            var (exit, stdout, stderr, _) = await InitWithProbeAsync(scratch, server, variable, nativeKey: "sk-native-k1");
+
+            Assert.Equal(Program.ExitOk, exit);
+            Assert.Equal("Bearer sk-native-k1", Assert.Single(server.Authorizations));
+            Assert.Contains("API key from configuration (Llm:ApiKey)", stdout, StringComparison.Ordinal);
+            Assert.Contains("Probe OK", stdout, StringComparison.Ordinal);
+            foreach (var text in new[] { stdout, stderr })
+            {
+                Assert.DoesNotContain("sk-native-k1", text, StringComparison.Ordinal);
+                Assert.DoesNotContain("sk-named-variable-k2", text, StringComparison.Ordinal);
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
+    [Fact]
+    public async Task TheProbe_ReadsTheVariableTheFileNames_WhenTheConfigurationResolvesNoKey()
+    {
+        var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(variable, "sk-named-variable-k2");
+        try
+        {
+            using var scratch = new ScriptScratch();
+            using var server = new CatalogueServer();
+
+            var (exit, stdout, _, _) = await InitWithProbeAsync(scratch, server, variable, nativeKey: null);
+
+            Assert.Equal(Program.ExitOk, exit);
+            Assert.Equal("Bearer sk-named-variable-k2", Assert.Single(server.Authorizations));
+            Assert.Contains("API key from the variable named by Llm:ApiKeyEnvVar (process environment)", stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain("sk-named-variable-k2", stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
+    [Fact]
+    public async Task AReferenceSetNowhere_IsWarnedBeforeTheProbe_InTheSharedWording()
+    {
+        var unset = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        using var scratch = new ScriptScratch();
+        using var server = new CatalogueServer();
+
+        var (exit, stdout, stderr, _) = await InitWithProbeAsync(scratch, server, unset, nativeKey: null);
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains(
+            "WARNING: Llm:ApiKeyEnvVar names an environment variable that is not set: calls on that LLM profile answer that an API key is required.",
+            stderr, StringComparison.Ordinal);
+        // The probe still runs — the run would, keyless — and presents no key.
+        Assert.Equal("", Assert.Single(server.Authorizations));
+        Assert.Contains("API key none — the variable named by Llm:ApiKeyEnvVar is not set", stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AnLlmSectionARunRefuses_FailsTheProbeWithTheReadersMessage_AndTheFileIsWritten()
+    {
+        using var scratch = new ScriptScratch();
+        using var server = new CatalogueServer();
+
+        // A space: no variable's name — a key or a sentence pasted in the wrong field.
+        var (exit, _, stderr, target) = await InitWithProbeAsync(scratch, server, "NOT A NAME", nativeKey: null);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.True(File.Exists(target));
+        Assert.Contains("Llm:ApiKeyEnvVar is not the name of an environment variable", stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at ", stderr, StringComparison.Ordinal);
+        Assert.Empty(server.Authorizations);
+    }
 }

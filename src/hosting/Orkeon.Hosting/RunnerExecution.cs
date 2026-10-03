@@ -546,7 +546,8 @@ public static partial class RunnerExecution
     /// <summary>
     /// Refuses an <c>--llm-profile</c> the configuration does not define (STUDIO-50) in one line —
     /// the sentence a crew naming an unknown profile fails its load with, listing the profiles the
-    /// settings file and the <c>ORKEON_</c> environment define — before any host is built. Null,
+    /// configuration a run reads defines (<see cref="RunnerSettings.ReadConfiguration"/>) — before
+    /// any host is built. Null,
     /// blank and <c>default</c> elect nothing and always pass. A settings file that cannot be read
     /// passes too: the host build reports it, with its path and the parse position.
     /// <para>

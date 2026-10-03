@@ -77,6 +77,53 @@ variable at all (GAP-36).
 
 Documented in [Orkeon Studio](docs/architecture/studio.md).
 
+### Fixed — `orkeon init`'s probe presents the key a run presents, a run reads no settings file but the one it resolved, and `orkeon-host` names only the profiles it offers **[breaking]**
+
+Three tools said something other than what a run does (GAP-36, decisions 3, 5 and 7).
+
+- **`orkeon init`'s probe presents the run's key.** It read the variable `-k` names, in its own process
+  alone — before `ORKEON_Llm__ApiKey`, the key a run takes first, and never in the Windows user scope,
+  where Orkeon Studio remembers a key: a key Studio remembered failed the probe that the run then
+  passed, and with both set the probe tested a key the run would not send. It now reads the file it
+  has just written as `orkeon doctor` does (`RunnerSettings.ReadConfiguration`, then
+  `LlmSettings.ReadDefault`): the key the configuration resolves, else the variable
+  `Llm:ApiKeyEnvVar` names, in the process then in the user scope, presented to the endpoint the run
+  calls. It says where the key comes from (`Probing <endpoint> — API key from the variable named by
+  Llm:ApiKeyEnvVar (user environment)`), never the key; a reference that resolves nothing is warned
+  about first, in the runners' words (`OperatorMessages.LlmApiKeyReferenceUnresolved`); and a section
+  a run would refuse — a reference that is no variable's name, an `ApiKey` written `${NAME}`, a
+  `BaseUrl` that is no address — fails the probe with the reader's message and exit 1, the file written.
+- **A run reads the settings file it resolved, and no other.** The runner hosts were the default .NET
+  host plus the resolved file and the `ORKEON_` layer: under the file lay the `appsettings.json` and
+  `appsettings.{Environment}.json` of the current directory — since .NET 10, `<binary>.settings.json`
+  and its environment twin too — and, in `Development`, the user secrets. The folder a terminal
+  happened to be in could add profiles, MCP servers or mounts to a run, and `orkeon doctor`, which read
+  the file and `ORKEON_` alone, never saw them; the REPL did the same, its `--settings` files under the
+  bare variables. Every host now composes the same layers, in one place
+  (`RunnerSettings.ComposeSources`): the environment variables without a prefix — the lowest layer, kept
+  because the OpenTelemetry exporter reads the `OTEL_EXPORTER_OTLP_ENDPOINT` a .NET Aspire AppHost sets
+  through it, which `OpenTelemetryIntegrationTests` now proves —, the resolved file (for the REPL, its
+  `--settings` files, else the global file), then `ORKEON_`; the REPL's command line stays last.
+  `RunnerSettings.ReadConfiguration` — `orkeon doctor`, `orkeon forge`, the `--llm-profile` guard,
+  `init`'s probe — composes the same layers: a bare `Llm__ApiKey` that changed the run changes the
+  verdict too. `orkeon-host` reads `./appsettings.json` as its settings file when `--settings` names
+  none, as its help says — by resolution now, which its reserved-root guard reads too —, never under
+  the file `--settings` names. No source watches its file: the default host's watcher over the
+  current directory's tree went with its files. The REPL project's own `appsettings.json`, never
+  shipped, is deleted.
+  **Migration:** a setting that came from an `appsettings.json` of the current directory moves into the
+  settings file the run resolves (the `appsettings` row of `orkeon doctor` names it) or the one
+  `--settings` names; `orkeon-host --settings <file>` no longer reads `./appsettings.json` beside it; a
+  bare variable that overrode a REPL settings file (`Llm__Model`) takes the `ORKEON_` prefix
+  (`ORKEON_Llm__Model`), which wins over the file in every host.
+- **`orkeon-host` names the profiles it offers.** Under its allow-list (`Orkeon:Host:LlmProfiles`), the
+  startup line `LLM profiles offered to crews besides the default` listed every profile of the file,
+  and a hidden profile whose key reference resolved nothing was warned about, on the log and on stderr,
+  although no crew can name it. The lines now follow the registry (`ILlmProfileRegistry.Names`, the
+  list applied): the profiles offered, each with where its key comes from, a warning for those alone,
+  and one Information line naming the hidden ones (`LLM profiles hidden from crews by the host's
+  allow-list: …`). Without a list — `orkeon run`, the REPL — nothing changes.
+
 ### Fixed — a scheduled team runs as Studio launches it: on its model setting, with its folders
 
 A team Studio scheduled (STUDIO-27) is run by the operating system through its `run.cmd` or `run.sh`,

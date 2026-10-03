@@ -201,7 +201,7 @@ internal static class DoctorCommand
         public string? ProfilesError { get; init; }
         /// <summary>The <c>ApiKeyEnvVar</c> paths naming a variable set nowhere (<see cref="LlmSettings.UnresolvedApiKeyReferences(IConfiguration)"/>).</summary>
         public IReadOnlyList<string> UnresolvedReferences { get; init; } = [];
-        /// <summary>The settings file plus the <c>ORKEON_</c> variables, as a runner reads them.</summary>
+        /// <summary>The variables without a prefix, the settings file, the <c>ORKEON_</c> variables: what a runner reads.</summary>
         public required IConfiguration Configuration { get; init; }
     }
 

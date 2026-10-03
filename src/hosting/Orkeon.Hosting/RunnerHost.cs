@@ -299,6 +299,13 @@ public static partial class RunnerHost
     /// <c>ApiKeyEnvVar</c> that names a variable set nowhere (STUDIO-49). A run that elected a
     /// profile (<c>--llm-profile</c>, STUDIO-50) says which, and tells the default's key by that
     /// profile's path: the section is the profile, warned about once.
+    /// <para>
+    /// The profiles are those the host offers crews (GAP-36): <see cref="ILlmProfileRegistry.Names"/>,
+    /// a host's allow-list applied — <c>orkeon-host</c>'s <c>Orkeon:Host:LlmProfiles</c> —, the file's
+    /// when no registry is registered. A profile the list hides is named on a line of its own, so the
+    /// operator sees the list at work, and never warned about: no crew can name it. Without a list,
+    /// every profile of the file is offered.
+    /// </para>
     /// </summary>
     private static void WarnIfLlmNotConfigured(IHost host, string? electedProfile)
     {
@@ -308,22 +315,28 @@ public static partial class RunnerHost
             .CreateLogger("Orkeon.Hosting.RunnerHost");
 
         var llmSection = configuration.GetSection(ConfigurationKeys.LlmSection);
-        var profiles = LlmSettings.ProfileNames(configuration);
-        if (profiles.Count > 0)
-            LogLlmProfiles(logger, profiles);
+        var profilesSection = llmSection.GetSection(ConfigurationKeys.LlmProfiles);
+        var defined = LlmSettings.ProfileNames(configuration);
+        var offered = OfferedProfiles(host, defined);
+        var hidden = defined.Where(name => !offered.Contains(name, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (offered.Count > 0)
+            LogLlmProfiles(logger, offered);
+        if (hidden.Count > 0)
+            LogLlmProfilesHidden(logger, hidden);
 
         // STUDIO-50: the Llm section IS the elected profile for this run, so its key is told by
         // the profile's own path — the one the settings were written with — and a reference that
         // resolves nothing is warned about once, there.
         var keySection = electedProfile is null
             ? llmSection
-            : llmSection.GetSection(ConfigurationKeys.LlmProfiles).GetSection(electedProfile);
+            : profilesSection.GetSection(electedProfile);
         if (electedProfile is not null)
             LogLlmProfileElected(logger, electedProfile);
-        if (profiles.Count > 0 && logger.IsEnabled(LogLevel.Information))
+        if (logger.IsEnabled(LogLevel.Information))
         {
-            var profilesSection = llmSection.GetSection(ConfigurationKeys.LlmProfiles);
-            foreach (var profile in profiles)
+            // The file's profiles the host offers: one a C# host registers in code has no section
+            // to tell its key by.
+            foreach (var profile in offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)))
             {
                 var source = LlmSettings.DescribeApiKey(profilesSection.GetSection(profile));
                 LogLlmProfileKey(logger, profile, source);
@@ -333,10 +346,17 @@ public static partial class RunnerHost
         // STUDIO-49: an ApiKeyEnvVar naming a variable set nowhere — once per host build and per
         // section, by its configuration path, never the name it holds (a key pasted in the wrong
         // field must not reach a log). The calls on that profile answer "API key is required".
+        // A hidden profile's is no reason to warn, unless the run elected it as its default.
         var defaultReference = $"{ConfigurationKeys.LlmSection}:{ConfigurationKeys.LlmApiKeyEnvVar}";
+        var silenced = hidden
+            .Where(name => !string.Equals(name, electedProfile, StringComparison.OrdinalIgnoreCase))
+            .Select(name => $"{profilesSection.Path}:{name}:{ConfigurationKeys.LlmApiKeyEnvVar}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var reference in LlmSettings.UnresolvedApiKeyReferences(configuration))
         {
             if (electedProfile is not null && string.Equals(reference, defaultReference, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (silenced.Contains(reference))
                 continue;
 
             var warning = UnresolvedApiKeyReferenceMessage(reference);
@@ -367,8 +387,27 @@ public static partial class RunnerHost
         LogLlmNotConfigured(logger);
     }
 
+    /// <summary>
+    /// The profiles the host offers crews: the registry's names — a host's allow-list applied —, else
+    /// the file's. A registry the container cannot build is a setting the host refuses (GAP-35).
+    /// </summary>
+    private static IReadOnlyList<string> OfferedProfiles(IHost host, IReadOnlyList<string> defined)
+    {
+        try
+        {
+            return host.Services.GetService<ILlmProfileRegistry>()?.Names ?? defined;
+        }
+        catch (InvalidOperationException ex) when (ex is not RunnerSettingsException)
+        {
+            throw Refused(ex);
+        }
+    }
+
     [LoggerMessage(EventId = 9, Level = LogLevel.Information, Message = "LLM profiles offered to crews besides the default: {Profiles}")]
     private static partial void LogLlmProfiles(ILogger logger, IReadOnlyList<string> profiles);
+
+    [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "LLM profiles hidden from crews by the host's allow-list: {Profiles}")]
+    private static partial void LogLlmProfilesHidden(ILogger logger, IReadOnlyList<string> profiles);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = LlmNotConfiguredMessage)]
     private static partial void LogLlmNotConfigured(ILogger logger);
@@ -420,9 +459,11 @@ public static partial class RunnerHost
     private const string PathSecurityWhitelistSection = "PathSecurity:AdditionalAllowedDirectories";
 
     /// <summary>
-    /// Composes the configuration a runner host reads its mounts from: the settings file, the
-    /// <c>ORKEON_</c> environment, then this method's own in-memory source, which is added
-    /// last and therefore wins on an identical key.
+    /// Composes the configuration a runner host reads its mounts from: the sources every Orkeon
+    /// host reads (<see cref="RunnerSettings.ComposeSources(IConfigurationBuilder, string?)"/> — the
+    /// environment without a prefix, the settings file, the <c>ORKEON_</c> environment; never the
+    /// default host's files of the current directory, nor its user secrets), then this method's own
+    /// in-memory source, which is added last and therefore wins on an identical key.
     /// <para>
     /// A <c>--mount</c> is placed <b>by virtual root</b> (STUDIO-15 D-01). On a root the
     /// declared array — settings file AND environment, read from the builder's own snapshot —
@@ -475,10 +516,7 @@ public static partial class RunnerHost
         string? llmProfile,
         MountDecisions decisions)
     {
-        if (settingsPath != null && File.Exists(settingsPath))
-            builder.AddJsonFile(settingsPath, optional: true);
-
-        builder.AddEnvironmentVariables("ORKEON_");
+        RunnerSettings.ComposeSources(builder, settingsPath);
 
         var overrides = new Dictionary<string, string?>();
         using var declared = DeclaredConfiguration.Snapshot(builder);

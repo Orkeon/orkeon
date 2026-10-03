@@ -1,6 +1,8 @@
 #nullable enable
 *REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetToolsAsync(System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>! tools) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
 static Orkeon.Hosting.RunnerSettings.ReadConfiguration(string? settingsPath) -> Microsoft.Extensions.Configuration.IConfiguration!
+static Orkeon.Hosting.RunnerSettings.ComposeSources(Microsoft.Extensions.Configuration.IConfigurationBuilder! builder, string? settingsPath) -> Microsoft.Extensions.Configuration.IConfigurationBuilder!
+static Orkeon.Hosting.RunnerSettings.ComposeSources(Microsoft.Extensions.Configuration.IConfigurationBuilder! builder, System.Collections.Generic.IEnumerable<string!>! settingsFiles, bool optional) -> Microsoft.Extensions.Configuration.IConfigurationBuilder!
 *REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry
 *REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.ClearAsync() -> System.Threading.Tasks.Task!
 *REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetAllToolsAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!

@@ -7,7 +7,7 @@ namespace Orkeon.ConsoleApp;
 ///   <item><description><c>--commands-dir &lt;path&gt;</c> (repeatable) — physical directories scanned for <c>*.cmd.ts</c>; routed through <c>CliCommandMountBootstrapper</c>.</description></item>
 ///   <item><description><c>--no-script-commands</c> — disables discovery entirely.</description></item>
 ///   <item><description><c>--strict-commands</c> — sets <c>FailFastOnInvalidScript=true + ContinueOnConflict=false</c>.</description></item>
-///   <item><description><c>--settings &lt;path&gt;</c> (repeatable) — extra JSON config files layered over the app's own <c>appsettings.json</c> (LLM/limits/etc.), mirroring <c>Scripting.Cli</c>'s <c>-s</c> flag.</description></item>
+///   <item><description><c>--settings &lt;path&gt;</c> (repeatable) — the JSON settings files the REPL reads (LLM/limits/etc.), the later ones winning, in place of the global file <c>orkeon init</c> writes — mirroring <c>Scripting.Cli</c>'s <c>-s</c> flag.</description></item>
 ///   <item><description><c>--mount &lt;physical:virtual:rights&gt;</c> (repeatable) — VFS mounts appended to <c>Orkeon:FileSystem:Mounts</c> so the agent has a <c>/workspace</c> (etc.) to read/edit, mirroring <c>Scripting.Cli</c>'s <c>-m</c> flag.</description></item>
 ///   <item><description><c>--crews-dir &lt;path&gt;</c> (repeatable) — physical directories holding <c>&lt;name&gt;/crew.ork.ts</c> crews; mounted read-only and registered with the <c>script-host</c> so commands can resolve crews by name (e.g. <c>assistant</c> → <c>main-loop</c>).</description></item>
 /// </list>

@@ -9,8 +9,12 @@ détail de chacun.
 
 ## D'où viennent les réglages
 
-Les hôtes runner (`RunnerHost.Build`, utilisé par `orkeon run` et les runners YAML)
-empilent, au-dessus des sources standard de l'hôte .NET :
+Chaque hôte Orkeon — les hôtes runner (`RunnerHost.Build`, utilisé par `orkeon run`, les runners
+YAML et `orkeon-host`) et le REPL — compose les mêmes couches, et elles seules
+(`RunnerSettings.ComposeSources`). Sous toutes se trouvent les **variables d'environnement sans
+préfixe** : le `OTEL_EXPORTER_OTLP_ENDPOINT` standard que pose un collecteur ou un AppHost .NET
+Aspire atteint par elles l'exportateur OpenTelemetry ([télémétrie](./hosting.md#télémétrie)), et
+un `Llm__Model` nu est lu aussi, sous chacune des couches qui suivent :
 
 1. **Un `appsettings.json` résolu** — chaîne de résolution (`RunnerSettings.ResolveSettingsPath`) :
    `--settings <chemin>` explicite → `appsettings.json` à côté de la config de crew →
@@ -18,8 +22,8 @@ empilent, au-dessus des sources standard de l'hôte .NET :
    dans ce dépôt ; `_shared/appsettings.json` est un repli déprécié) → la config globale
    par utilisateur écrite par `orkeon init`. Aucun fichier trouvé ⇒ variables
    d'environnement uniquement.
-2. **Les variables d'environnement préfixées `ORKEON_`** (`AddEnvironmentVariables("ORKEON_")`
-   dans `RunnerHost` et dans `orkeon doctor`). Mapping .NET standard : `__` sépare les
+2. **Les variables d'environnement préfixées `ORKEON_`** (`AddEnvironmentVariables("ORKEON_")`,
+   pour chaque hôte et pour `orkeon doctor`). Mapping .NET standard : `__` sépare les
    niveaux — `ORKEON_Llm__ApiKey` surcharge `Llm:ApiKey`, `ORKEON_Orkeon__Rag__Profile`
    surcharge `Orkeon:Rag:Profile`. Les variables sont ajoutées **après** le fichier :
    elles gagnent. Une clé n'a pas à venir de l'une ou l'autre couche : le fichier peut nommer la
@@ -27,7 +31,7 @@ empilent, au-dessus des sources standard de l'hôte .NET :
    quand aucune ne résout d'`ApiKey`.
 3. **Les surcharges CLI de montage** — chaque argument `--mount` devient une entrée
    mémoire `Orkeon:FileSystem:Mounts:<i>` (précédence maximale), placée **par racine
-   virtuelle** : un `--mount` sur une racine que le tableau déclaré (couches 1 + 2) tient
+   virtuelle** : un `--mount` sur une racine que le tableau déclaré (les couches ci-dessus) tient
    déjà est écrit à l'index de la première entrée et **remplace toutes les entrées déclarées
    de cette racine** pour le run ; un `--mount` sur une racine neuve est ajouté après le plus
    haut index déclaré. Le montage `/crew` (ou `/script`) du runner et les `InternalMounts`
@@ -39,6 +43,16 @@ empilent, au-dessus des sources standard de l'hôte .NET :
    à son propre index, son chemin de base n'est pas mis en liste blanche et son dossier
    n'est pas sondé.
 
+**Rien d'autre n'est lu.** L'hôte .NET par défaut posait aussi, sous le fichier résolu,
+l'`appsettings.json` et l'`appsettings.{Environment}.json` du **répertoire courant** — depuis .NET 10,
+le `<binaire>.settings.json` et son jumeau d'environnement aussi (`orkeon.settings.json`) — et, en
+`Development`, ses secrets utilisateur : un fichier d'un autre projet — le dossier où se trouvait
+un terminal — ajoutait au run les profils, serveurs MCP ou montages qu'il déclarait, et aucun
+diagnostic ne les voyait. Ils ne sont plus lus (GAP-36). `orkeon-host` lit `./appsettings.json`
+comme **son** fichier de réglages, quand `--settings` n'en nomme aucun, jamais sous celui qu'il
+nomme ; le REPL lit ses fichiers `--settings`, sinon le fichier global, puis sa ligne de commande,
+en dernier ([CLI](./cli.md#orkeon-repl--la-console-interactive-séparée)).
+
 Le même préfixe `ORKEON_` alimente aussi `EnvironmentSecretProvider` (résolution de
 secrets, p. ex. `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY` ; la clé Tavily de l'outil
 `web_search` est `ORKEON_TAVILY_API_KEY`). Le second maillon de cette chaîne est la
@@ -48,7 +62,8 @@ l'emportant quand les deux existent.
 **Ce que cela signifie en pratique.** Le fichier est la base durable et partagée ; tout
 ce qui se pose dessus est un calque éphémère qui vit et meurt avec un processus. La
 vérification `llm-config` d'`orkeon doctor` compose exactement comme un runner (même
-chaîne de résolution, même surcouche `ORKEON_`) : son verdict répond à la question
+chaîne de résolution, mêmes couches : les variables sans préfixe, le fichier, la surcouche
+`ORKEON_`) : son verdict répond à la question
 *qu'utiliserait un run lancé depuis ce shell, sans calque propre au lancement ?* Les
 réglages nommés d'Orkeon Studio empruntent la couche 2 : le réglage élu par défaut est
 écrit en entier dans la section `Llm` du fichier — adresse, modèle, délai, interrupteur de
@@ -141,10 +156,12 @@ la forme que portaient les anciens gabarits d'`examples/appsettings`, que rien n
 si bien que le texte partait comme clé — refuse aussi le démarrage, avec la correction :
 `"ApiKeyEnvVar": "NOM"`. Au démarrage, l'hôte runner dit d'où vient chaque clé, jamais la clé ni le
 nom de la variable — `LLM resolved: … apiKey=from the variable named by Llm:ApiKeyEnvVar (user
-environment)`, puis une ligne `LLM profile <id>: apiKey=…` par profil (`from configuration
-(…:ApiKey)`, `from the variable named by … (process environment)`, `none`) — et avertit une fois
-par section dont la référence nomme une variable posée nulle part, par son chemin, sur son journal
-et sur stderr ; `orkeon doctor` et le REPL disent la même chose. Une valeur vide se lit comme
+environment)`, puis une ligne `LLM profile <id>: apiKey=…` par profil offert aux crews (`from
+configuration (…:ApiKey)`, `from the variable named by … (process environment)`, `none`) — et
+avertit une fois par section dont la référence nomme une variable posée nulle part, par son chemin,
+sur son journal et sur stderr ; `orkeon doctor`, la sonde d'`orkeon init` et le REPL disent la même
+chose. Un profil que cache la liste blanche d'`orkeon-host` est nommé sur une ligne à part et jamais
+signalé : aucune crew ne peut le nommer ([hôte de service](../architecture/service-host.md)). Une valeur vide se lit comme
 absente, pour chaque clé de la section (`Thinking:Effort` comprise) : un lancement Studio vide les
 champs du défaut que le réglage de son équipe ne fixe pas, et une section dont toutes les valeurs
 sont vides ne configure aucun défaut — le provider écho, avec son avertissement.

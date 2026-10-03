@@ -8,23 +8,27 @@ registration — see [Opt-in subsystems](./opt-in-subsystems.md) for each one's 
 
 ## Where settings are read from
 
-Runner hosts (`RunnerHost.Build`, used by `orkeon run` and the YAML runners) layer, on top
-of the standard .NET host sources:
+Every Orkeon host — the runner hosts (`RunnerHost.Build`, used by `orkeon run`, the YAML runners
+and `orkeon-host`) and the REPL — composes the same layers, and those alone
+(`RunnerSettings.ComposeSources`). Under everything lie the **environment variables without a
+prefix**: the standard `OTEL_EXPORTER_OTLP_ENDPOINT` a collector or a .NET Aspire AppHost sets
+reaches the OpenTelemetry exporter through them ([telemetry](./hosting.md#telemetry)), and a bare
+`Llm__Model` is read too, below every layer that follows:
 
 1. **One resolved `appsettings.json`** — resolution chain (`RunnerSettings.ResolveSettingsPath`):
    explicit `--settings <path>` → `appsettings.json` next to the crew config →
    `appsettings/appsettings.json` walking up the directory tree (`examples/appsettings/appsettings.json`
    in this repository; `_shared/appsettings.json` is a deprecated fallback) → the global
    per-user config written by `orkeon init`. No file found ⇒ environment variables only.
-2. **Environment variables with the `ORKEON_` prefix** (`AddEnvironmentVariables("ORKEON_")`
-   in `RunnerHost` and in `orkeon doctor`). Standard .NET mapping: `__` separates levels —
+2. **Environment variables with the `ORKEON_` prefix** (`AddEnvironmentVariables("ORKEON_")`,
+   for every host and for `orkeon doctor`). Standard .NET mapping: `__` separates levels —
    `ORKEON_Llm__ApiKey` overrides `Llm:ApiKey`, `ORKEON_Orkeon__Rag__Profile` overrides
    `Orkeon:Rag:Profile`. Env vars are added **after** the file, so they win. A key need not
    come from either layer: the file can name the variable that holds it (`ApiKeyEnvVar`,
    [below](#the-api-key-apikey-apikeyenvvar)), read when neither resolves an `ApiKey`.
 3. **CLI mount overrides** — each `--mount` argument becomes an in-memory
    `Orkeon:FileSystem:Mounts:<i>` entry (highest precedence), placed **by virtual root**:
-   a `--mount` on a root the declared array (layers 1 + 2) already holds is written at the
+   a `--mount` on a root the declared array (the layers above) already holds is written at the
    first entry's index and **replaces every declared entry of that root** for the run; a
    `--mount` on a new root is appended after the highest declared index. The runner's own
    `/crew` (or `/script`) mount and the `InternalMounts` are always appended. A declared
@@ -35,6 +39,15 @@ of the standard .NET host sources:
    **withdrawn** — its key is written to `null` at its own index, its base path is not
    whitelisted and its folder is not probed.
 
+**Nothing else is read.** The default .NET host also laid, under the resolved file, the
+`appsettings.json` and `appsettings.{Environment}.json` of the **current directory** — since .NET 10,
+`<binary>.settings.json` and its environment twin too (`orkeon.settings.json`) — and, in
+`Development`, its user secrets: a file of another project — the folder a terminal happened to be
+in — added the profiles, MCP servers or mounts it declared to the run, and no diagnostic saw them.
+They are not read any more (GAP-36). `orkeon-host` reads `./appsettings.json` as **its** settings
+file, when `--settings` names none, never under the one it names; the REPL reads its `--settings`
+files, else the global file, then its command line, last ([CLI](./cli.md#orkeon-repl--the-separate-interactive-console)).
+
 The same `ORKEON_` prefix also feeds `EnvironmentSecretProvider` (secret lookup, e.g.
 `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY`; the `web_search` tool's Tavily key is
 `ORKEON_TAVILY_API_KEY`). The second stop of that chain is the `Secrets` section of the
@@ -42,9 +55,9 @@ file (`Secrets:TAVILY_API_KEY`), the environment variable winning when both exis
 
 **What this means in practice.** The file is the durable, shared base; everything laid
 over it is an ephemeral layer that lives and dies with one process. `orkeon doctor`'s
-`llm-config` check composes exactly like a runner (same resolution chain, same
-`ORKEON_` overlay), so its verdict answers: *what would a run launched from this shell
-use, absent any per-launch overlay?* Orkeon Studio's named model profiles ride layer 2:
+`llm-config` check composes exactly like a runner (same resolution chain, same layers: the
+variables without a prefix, the file, the `ORKEON_` overlay), so its verdict answers: *what
+would a run launched from this shell use, absent any per-launch overlay?* Orkeon Studio's named model profiles ride layer 2:
 the profile elected as default is written into the file's `Llm` section whole — endpoint,
 model, timeout, thinking switch and the variable that holds its key (`ApiKeyEnvVar`), never
 the key — so a manual terminal `orkeon run` or a scheduled team follows the same election,
@@ -131,9 +144,11 @@ templates carried, which nothing ever expanded, so the text went out as the key 
 too, with the fix: `"ApiKeyEnvVar": "NAME"`. At startup the runner host says where each key came
 from, never the key nor the variable's name — `LLM resolved: … apiKey=from the variable named by
 Llm:ApiKeyEnvVar (user environment)`, then one `LLM profile <id>: apiKey=…` line per profile
-(`from configuration (…:ApiKey)`, `from the variable named by … (process environment)`, `none`) —
-and warns once per section whose reference names a variable set nowhere, by its path, on its
-logger and on stderr; `orkeon doctor` and the REPL say the same. A value left blank reads as
+offered to crews (`from configuration (…:ApiKey)`, `from the variable named by … (process
+environment)`, `none`) — and warns once per section whose reference names a variable set nowhere,
+by its path, on its logger and on stderr; `orkeon doctor`, `orkeon init`'s probe and the REPL say
+the same. A profile `orkeon-host`'s allow-list hides is named on a line of its own and never warned
+about: no crew can name it ([service host](../architecture/service-host.md)). A value left blank reads as
 absent, for every key of the section (`Thinking:Effort` included): a Studio launch blanks the
 default fields its team's setting does not set, and a section whose every value is blank
 configures no default — the echo provider, with its warning. `orkeon init --api-key-env <name>`

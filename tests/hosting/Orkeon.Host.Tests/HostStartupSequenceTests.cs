@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Host.Tests.Doubles;
 
 namespace Orkeon.Host.Tests;
@@ -103,6 +105,42 @@ public sealed class HostStartupSequenceTests : IDisposable
         Assert.NotNull(host);
         Assert.Equal(0, launch.ExitCode);
         Assert.Empty(_failures.Reported);
+    }
+
+    [Fact]
+    public void A_named_settings_file_is_the_only_file_the_host_reads()
+    {
+        // GAP-36, decision 5: the default .NET host laid ./appsettings.json under the file
+        // --settings names — its profiles were offered to crews, unseen.
+        File.WriteAllText(Path.Combine(_scratch, "appsettings.json"), """
+            { "Llm": { "Profiles": { "intrus": { "BaseUrl": "http://localhost:11434", "Model": "qwen3" } } } }
+            """);
+
+        var launch = Prepare(Settings());
+
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        Assert.Empty(host.Services.GetRequiredService<ILlmProfileRegistry>().Names);
+    }
+
+    [Fact]
+    public void Without_settings_the_working_directorys_appsettings_is_the_hosts_settings_file()
+    {
+        // What --help promises, now by resolution rather than by the default host's content root.
+        File.WriteAllText(Path.Combine(_scratch, "appsettings.json"), """
+            {
+              "RaggableTree": { "Enabled": false },
+              "Llm": { "Profiles": { "local": { "BaseUrl": "http://localhost:11434", "Model": "qwen3" } } },
+              "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml" } ] } }
+            }
+            """);
+
+        var launch = HostStartup.Prepare([], _failures.Report);
+
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        Assert.Empty(_failures.Reported);
+        Assert.Equal(["local"], host.Services.GetRequiredService<ILlmProfileRegistry>().Names);
     }
 
     private void AssertRefused(HostLaunch launch, string named)

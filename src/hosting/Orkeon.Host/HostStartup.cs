@@ -58,7 +58,8 @@ internal static class HostStartup
 
     Options:
       -s, --settings <file>     Configuration file (JSON). Defaults to ./appsettings.json,
-                                resolved against the working directory.
+                                resolved against the working directory; a file named here
+                                replaces it.
       -m, --mount <spec>        Additional VFS mount, '<physical>:<virtual>:<rights>'. All three
                                 segments are required; rights are ro, rw or rwnd. The virtual
                                 path starts with '/' — a physical path is never a virtual path.
@@ -128,6 +129,12 @@ internal static class HostStartup
         if (ValidateArguments(args, command) is { } argumentError)
             return Refused(report, argumentError);
 
+        // The one settings file the daemon reads — the --settings file, else ./appsettings.json —,
+        // resolved once --working-dir has moved the process: the boot configuration, the reserved-root
+        // guard and the host read that file and no other (GAP-36). The default .NET host laid
+        // ./appsettings.json under the file --settings named, and the guard saw neither.
+        var settingsPath = StartupProbes.ResolveSettingsPath(command.SettingsPath);
+
         // Each hosted crew's directory is mounted read-only under a NAME — /crews, /crews-1, …
         // (ADR-008), never identity-mapped: the loader reads through the VFS, and a crew path that
         // only exists on the physical disk would pass the startup probe and then fail on every
@@ -137,7 +144,7 @@ internal static class HostStartup
         HostCrewMountPlan crewPlan;
         try
         {
-            var bootConfiguration = StartupProbes.BuildBootConfiguration(command.SettingsPath);
+            var bootConfiguration = StartupProbes.BuildBootConfiguration(settingsPath);
             crewPlan = HostCrewMounts.For(ReadSection<OrkeonHostOptions>(bootConfiguration, OrkeonHostOptions.SectionName).Crews);
         }
         catch (HostConfigurationException ex)
@@ -158,7 +165,7 @@ internal static class HostStartup
         // repo and was the one the guard could not see, so a /crews claimed in appsettings.json met the
         // host's own crew mount and came back as "Duplicate virtual paths" out of a DI factory.
         var reservedRoots = CheckReservedRoots(
-            command.Mounts, command.SettingsPath, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]);
+            command.Mounts, settingsPath, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]);
         if (reservedRoots.Error is { } reservedRootsError)
             return Refused(report, reservedRootsError);
 
@@ -173,7 +180,7 @@ internal static class HostStartup
         try
         {
             var host = RunnerHost.Build(
-                command.SettingsPath,
+                settingsPath,
                 new RunnerMountPlan
                 {
                     CliMounts = mounts,
@@ -398,10 +405,29 @@ internal static class StartupProbes
     }
 
     /// <summary>
+    /// The settings file the daemon reads: the one <c>--settings</c> names, else
+    /// <c>./appsettings.json</c> when there is one — what <c>--help</c> promises —, else none. Both
+    /// are read from the working directory, made absolute here once: the boot configuration, the
+    /// reserved-root guard and the runner host then read the same file.
+    /// </summary>
+    /// <param name="settingsPath">The <c>--settings</c> value, or null.</param>
+    /// <returns>The absolute path of the file to read, or null when there is none.</returns>
+    public static string? ResolveSettingsPath(string? settingsPath)
+    {
+        if (settingsPath is not null)
+            return Path.GetFullPath(settingsPath);
+
+        var conventional = Path.GetFullPath(ConventionalNames.SettingsFile);
+        return File.Exists(conventional) ? conventional : null;
+    }
+
+    /// <summary>
     /// The configuration the daemon boots from — the one that decides which crew directories
-    /// become VFS mounts, read before the host exists.
+    /// become VFS mounts, read before the host exists —, composed as the host composes its own
+    /// (<see cref="RunnerSettings.ReadConfiguration"/>): the variables without a prefix, the file
+    /// <see cref="ResolveSettingsPath"/> finds, the <c>ORKEON_</c> variables.
     /// <para>
-    /// The base path is the working directory, explicitly. A bare
+    /// The file is read from the working directory, explicitly. A bare
     /// <see cref="ConfigurationBuilder"/> resolves a relative file against
     /// <see cref="AppContext.BaseDirectory"/> — the executable's own folder — while
     /// <c>--help</c> promises <c>./appsettings.json</c>, <see cref="SettingsFileExists"/>
@@ -411,22 +437,20 @@ internal static class StartupProbes
     /// <c>orkeon-host</c> from their crews folder got a daemon hosting nothing with no
     /// diagnostic — the file they were looking at had simply never been read.
     /// </para>
+    /// <para>
+    /// One file (GAP-36): <c>./appsettings.json</c> and the <c>--settings</c> file used to be read
+    /// both, the named one over the other — as the default .NET host read them under the host.
+    /// </para>
     /// </summary>
     /// <exception cref="HostConfigurationException">
     /// A settings file cannot be read: named, with the line and the position of what its JSON gets
     /// wrong (GAP-35) — it used to escape the start as an unhandled exception.
     /// </exception>
-    public static IConfigurationRoot BuildBootConfiguration(string? settingsPath)
+    public static IConfiguration BuildBootConfiguration(string? settingsPath)
     {
         try
         {
-            return new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile(ConventionalNames.SettingsFile, optional: true)
-                .AddJsonFile(settingsPath ?? ConventionalNames.SettingsFile, optional: true)
-                .AddEnvironmentVariables()
-                .AddEnvironmentVariables("ORKEON_")
-                .Build();
+            return RunnerSettings.ReadConfiguration(ResolveSettingsPath(settingsPath));
         }
         catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException or UnauthorizedAccessException)
         {

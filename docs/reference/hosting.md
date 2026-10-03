@@ -80,10 +80,13 @@ target is a directory rather than probing the disk, so a physical path handed to
 
 It composes `Host.CreateDefaultBuilder()` with:
 
-- **App configuration** — on top of the default builder's sources (`appsettings.json` and
-  `appsettings.{Environment}.json` from the content root, unprefixed environment variables),
+- **App configuration** — the default builder's sources removed, those of every Orkeon host
+  (`RunnerSettings.ComposeSources`, which `RunnerSettings.ReadConfiguration` — `orkeon doctor`, the
+  probe of `orkeon init` — and the REPL compose too): the environment variables without a prefix,
   the `settingsPath` file when it exists, then the `ORKEON_`-prefixed environment
-  (`ORKEON_Llm__Model` overrides `Llm:Model`), then an in-memory layer carrying the mount
+  (`ORKEON_Llm__Model` overrides `Llm:Model`). Neither the `appsettings.json` and
+  `appsettings.{Environment}.json` of the content root — the current directory — nor user secrets
+  (GAP-36). Then an in-memory layer carrying the mount
   decisions: the `--mount` values placed by virtual root, the internal mounts, the
   `/credentials` mount of the e-mail OAuth tokens, and the `PathSecurity:AdditionalAllowedDirectories`
   entries that let the path validator reach those mounts' folders (a `--mount` outside the working
@@ -93,7 +96,9 @@ It composes `Host.CreateDefaultBuilder()` with:
 
 Once built, the host logs the mount decisions it took, warns (on the log and on stderr) when
 an OAuth e-mail account has no token store or when there is no `Llm` section — the runtime
-then falls back to the echo provider — and resolves the OpenTelemetry tracer and meter
+then falls back to the echo provider —, says where the key of the default and of each profile
+offered to crews comes from — the profiles its allow-list hides (`LlmProfileAccessOptions`, which
+`orkeon-host` binds) on one line of their own, never warned about — and resolves the OpenTelemetry tracer and meter
 providers, because the runners never *start* the host and the providers would otherwise never
 exist (see [Telemetry](#telemetry)).
 
@@ -239,8 +244,11 @@ host that wants the console adds the exporter to its own `AddOpenTelemetry()`.
 **Where the data goes.** An explicit `Telemetry:OtlpEndpoint` is used as the exporters' endpoint.
 Without one, a non-empty `OTEL_EXPORTER_OTLP_ENDPOINT` attaches the OTLP exporters with no
 Orkeon-specific setting — the exporter then reads the endpoint, the protocol and the headers from the
-standard `OTEL_EXPORTER_OTLP_*` environment itself, which is how a process launched by .NET Aspire
-reports with nothing configured. Without either, nothing is exported.
+standard `OTEL_EXPORTER_OTLP_*` variables itself, which is how a process launched by .NET Aspire
+reports with nothing configured. It reads them in the host's configuration, through its layer of
+environment variables without a prefix: the reason every Orkeon host keeps that layer, under its
+settings file ([where settings are read from](./configuration.md#where-settings-are-read-from)).
+Without either, nothing is exported.
 
 **What is exported.** Traces from the `Orkeon.Crew`, `Orkeon.Agent`, `Orkeon.Task`, `Orkeon.Llm`,
 `Orkeon.Tool`, `Orkeon.Memory` and `Orkeon.EventHub` activity sources plus the HttpClient

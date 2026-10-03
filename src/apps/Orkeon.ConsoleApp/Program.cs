@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.EnvironmentVariables;
-using Microsoft.Extensions.Configuration.Json;
+using Microsoft.Extensions.Configuration.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
-using Orkeon.Compliance.Vfs;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Cli.Abstractions.Console;
@@ -114,96 +112,51 @@ static class Program
     }
 
     /// <summary>
-    /// Layers the settings the runners read over the app's own configuration (STUDIO-49, decision
-    /// 10): the <c>--settings &lt;path&gt;</c> JSON files — or, when none is named, the global file
-    /// <c>orkeon init</c> writes, as a runner falls back to it —, then the <c>ORKEON_</c>
-    /// environment variables, prefix removed, in the order of the runner host. Turns off
-    /// <c>reloadOnChange</c> on every file-backed source.
+    /// Composes the REPL's configuration as every runner composes its own (STUDIO-49, decision 10;
+    /// GAP-36, decision 5): <see cref="Orkeon.Hosting.RunnerSettings.ComposeSources(IConfigurationBuilder, IEnumerable{string}, bool)"/>
+    /// — the environment variables without a prefix, the settings files, then the <c>ORKEON_</c>
+    /// variables, prefix removed — over the <c>--settings &lt;path&gt;</c> files or, when none is
+    /// named, the global file <c>orkeon init</c> writes, as a runner falls back to it; then the
+    /// command line the default host parsed, which stays last.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>External settings.</b> The host has no built-in way to point at a config file outside
-    /// the content root (unlike <c>Scripting.Cli</c>'s <c>-s</c> flag), so an experiment can't
-    /// reuse e.g. its <c>appsettings.local.json</c> (LLM model, rate limits, Jint limits) without
-    /// duplicating every value as an environment variable. We add the requested files just before
-    /// the environment-variable source: they override the app's bundled <c>appsettings.json</c>,
-    /// while env vars (notably the LLM API key, which must stay out of committed files) still win.
-    /// A file named here replaces the global file rather than layering over it, as for the
-    /// runners: the global file's <c>Llm:ApiKeyEnvVar</c> must not send its key to another file's
-    /// endpoint.
+    /// <b>Settings files.</b> A file named here replaces the global file rather than layering over it,
+    /// as for the runners: the global file's <c>Llm:ApiKeyEnvVar</c> must not send its key to another
+    /// file's endpoint. A named file must exist; the global one may not, on a fresh machine.
     /// </para>
     /// <para>
-    /// <b>The <c>ORKEON_</c> layer.</b> The default host reads the environment variables without a
-    /// prefix only: <c>ORKEON_Llm__ApiKey</c>, the variable every runner and the documentation name,
-    /// never reached the REPL as <c>Llm:ApiKey</c>. The layer goes after the unprefixed variables
-    /// — it wins over them — and before the command line, which stays last.
+    /// <b>Nothing else.</b> The default host laid the <c>appsettings.json</c> and
+    /// <c>appsettings.{Environment}.json</c> of the current directory under the files — the REPL
+    /// project's own when started from its folder, any other project's elsewhere; since .NET 10,
+    /// <c>&lt;application&gt;.settings.json</c> too — and, in
+    /// <c>Development</c>, its user secrets; and the files went under the bare variables, where the
+    /// runners lay them over. A file the REPL did not name configures it no more, and the order is the
+    /// runners'.
     /// </para>
     /// <para>
-    /// <b>No reload watcher.</b> The default host enables a recursive <c>FileSystemWatcher</c> over
-    /// the content-root tree to hot-reload <c>appsettings.json</c>. On large or slow filesystems
-    /// (notably WSL2, where the content root may be a huge tree with <c>.git</c>/<c>bin</c>/
-    /// <c>obj</c>/<c>node_modules</c>), <c>StartRaisingEvents()</c> blocks indefinitely registering
-    /// inotify watches, hanging boot before the REPL banner is printed. A CLI REPL needs no config
-    /// hot-reload, so we disable the watcher on every file source. Mutating the sources here is
-    /// safe: the callback runs before <c>HostBuilder.Build()</c> materializes the providers.
+    /// <b>No reload watcher.</b> The default host watched the current directory's tree to hot-reload
+    /// its <c>appsettings.json</c>: on large or slow filesystems (WSL2, a tree with <c>.git</c>,
+    /// <c>bin</c>, <c>node_modules</c>), registering the watches blocked the boot before the banner.
+    /// No source of the composition watches its file.
     /// </para>
     /// </remarks>
-    [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: --settings paths are resolved to absolute for a JSON config source during host build, before DI/VFS exist. Used as a config-file path, not direct framework I/O.")]
     internal static void ConfigureAppConfiguration(
         IConfigurationBuilder builder,
         ScriptedCommandsCliOptions scriptedOpts,
         string? globalSettingsPath)
     {
-        // The named files, else the global one — optional: a fresh machine has none yet.
-        var files = scriptedOpts.SettingsFiles.Count > 0
-            ? scriptedOpts.SettingsFiles.Select(path => (Path: System.IO.Path.GetFullPath(path), Optional: false)).ToList()
-            : globalSettingsPath is not null ? [(globalSettingsPath, true)] : [];
+        // The command line the default host parsed, kept for the end: it stays the last layer.
+        var commandLine = builder.Sources.OfType<CommandLineConfigurationSource>().ToList();
 
-        // Insert before the first env-var source so files override appsettings.json but lose
-        // to env vars; if none is present yet, append at the end.
-        var insertAt = builder.Sources.Count;
-        for (var i = 0; i < builder.Sources.Count; i++)
-        {
-            if (builder.Sources[i] is EnvironmentVariablesConfigurationSource)
-            {
-                insertAt = i;
-                break;
-            }
-        }
+        if (scriptedOpts.SettingsFiles.Count > 0)
+            Orkeon.Hosting.RunnerSettings.ComposeSources(builder, scriptedOpts.SettingsFiles, optional: false);
+        else
+            Orkeon.Hosting.RunnerSettings.ComposeSources(builder, globalSettingsPath is null ? [] : [globalSettingsPath], optional: true);
 
-        foreach (var (path, optional) in files)
-        {
-            // EXCEPTION-BOOTSTRAP: config-source path resolution runs before DI/VFS exist.
-            var source = new JsonConfigurationSource
-            {
-                Path = path,
-                Optional = optional,
-                ReloadOnChange = false,
-            };
-            source.ResolveFileProvider();
-            builder.Sources.Insert(insertAt++, source);
-        }
-
-        // The ORKEON_ layer, after the last env-var source: it wins over the unprefixed variables
-        // and loses to the command line, which the default host adds last.
-        var orkeonAt = builder.Sources.Count;
-        for (var i = builder.Sources.Count - 1; i >= 0; i--)
-        {
-            if (builder.Sources[i] is EnvironmentVariablesConfigurationSource)
-            {
-                orkeonAt = i + 1;
-                break;
-            }
-        }
-
-        builder.Sources.Insert(orkeonAt, new EnvironmentVariablesConfigurationSource { Prefix = OrkeonEnvironmentPrefix });
-
-        foreach (var source in builder.Sources.OfType<FileConfigurationSource>())
-            source.ReloadOnChange = false;
+        foreach (var source in commandLine)
+            builder.Add(source);
     }
-
-    /// <summary>The prefix of the environment variables every runner reads as configuration.</summary>
-    internal const string OrkeonEnvironmentPrefix = "ORKEON_";
 
     /// <summary>
     /// The global settings file <c>orkeon init</c> writes, resolved as the runners resolve it;

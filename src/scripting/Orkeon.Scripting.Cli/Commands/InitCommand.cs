@@ -1,9 +1,14 @@
 using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using CommandLine;
+using Microsoft.Extensions.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Infrastructure.LLMs.Profiles;
 
 namespace Orkeon.Scripting.Cli.Commands;
 
@@ -189,8 +194,11 @@ internal static class InitCommand
         Console.WriteLine($"Wrote {target}");
         PrintGuidance(plan);
 
-        if (!options.NoProbe && plan.Provider != "none" && plan.BaseUrl is not null)
-            await ProbeAsync(plan, ct).ConfigureAwait(false);
+        if (!options.NoProbe && plan.Provider != "none" && plan.BaseUrl is not null
+            && !await ProbeAsync(plan, target, ct).ConfigureAwait(false))
+        {
+            return Program.ExitScriptError;
+        }
 
         return Program.ExitOk;
     }
@@ -448,19 +456,65 @@ internal static class InitCommand
 
     // ── connectivity probe (reuses the `llm models` catalogue plumbing) ─────
 
+    /// <summary>The path of the default profile's key reference, the one the probe presents the key of.</summary>
+    private const string DefaultApiKeyReference = ConfigurationKeys.LlmSection + ":" + ConfigurationKeys.LlmApiKeyEnvVar;
+
+    private static readonly CompositeFormat UnresolvedApiKeyReferenceFormat =
+        CompositeFormat.Parse(OperatorMessages.LlmApiKeyReferenceUnresolved);
+
+    /// <summary>
+    /// Probes the endpoint the file configures with the key a run presents (GAP-36, decision 3): the
+    /// file just written, read as a runner and <c>orkeon doctor</c> read it
+    /// (<see cref="RunnerSettings.ReadConfiguration"/>), its <c>Llm</c> section by
+    /// <see cref="LlmSettings"/> — the key the configuration resolves, <c>ORKEON_Llm__ApiKey</c> over
+    /// the file's, else the variable <c>Llm:ApiKeyEnvVar</c> names, in the process then in the
+    /// Windows user scope —, at the endpoint the run calls. Says where the key comes from, never the
+    /// key; a reference set nowhere is warned about first, in the runners' words. The probe used to
+    /// read the named variable in its own process alone, before <c>ORKEON_Llm__ApiKey</c>: it failed
+    /// on a key Studio remembered, which the run found, and tested a key the run would not send.
+    /// </summary>
+    /// <returns>False when a run would refuse the section: the reader's message is printed, the file stays written.</returns>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic messages.")]
-    private static async Task ProbeAsync(InitPlan plan, CancellationToken ct)
+    private static async Task<bool> ProbeAsync(InitPlan plan, string target, CancellationToken ct)
     {
-        // ollama has its own catalogue dialect; every other preset is OpenAI-compatible.
+        var configuration = RunnerSettings.ReadConfiguration(target);
+        var section = configuration.GetSection(ConfigurationKeys.LlmSection);
+        LlmConfig settings;
+        string source;
+        IReadOnlyList<string> unresolved;
+        try
+        {
+            settings = LlmSettings.ReadDefault(configuration);
+            source = LlmSettings.DescribeApiKey(section);
+            unresolved = LlmSettings.UnresolvedApiKeyReferences(configuration);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // What a run would refuse to start on: said as the run says it, without a stack.
+            await Console.Error.WriteLineAsync(
+                $"orkeon init: {target} is written, but a run refuses its Llm section, so the probe cannot run: {ex.Message}")
+                .ConfigureAwait(false);
+            return false;
+        }
+
+        if (unresolved.Contains(DefaultApiKeyReference, StringComparer.Ordinal))
+        {
+            await Console.Error.WriteLineAsync(
+                "WARNING: " + string.Format(CultureInfo.InvariantCulture, UnresolvedApiKeyReferenceFormat, DefaultApiKeyReference))
+                .ConfigureAwait(false);
+        }
+
+        // The endpoint a run calls — the file's, unless an ORKEON_ variable moves it; ollama has its
+        // own catalogue dialect, every other preset is OpenAI-compatible.
+        var baseUrl = (string.IsNullOrWhiteSpace(section["BaseUrl"]) ? plan.BaseUrl! : section["BaseUrl"]!).TrimEnd('/');
         var catalogKey = plan.Provider == "ollama" ? "ollama" : "openai";
-        var apiKey = plan.InlineApiKey
-            ?? Environment.GetEnvironmentVariable(plan.ApiKeyEnvName ?? DefaultApiKeyEnv);
+        Console.WriteLine($"Probing {baseUrl} — API key {source}");
 
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         try
         {
             var models = await LlmCatalogClient
-                .ListAsync(client, catalogKey, plan.BaseUrl!.TrimEnd('/'), apiKey, ct)
+                .ListAsync(client, catalogKey, baseUrl, ApiKeyOf(settings), ct)
                 .ConfigureAwait(false);
             Console.WriteLine($"Probe OK — endpoint serves {models.Count} model(s).");
         }
@@ -477,5 +531,11 @@ internal static class InitCommand
                 "The configuration was written anyway — start the endpoint and retry with `orkeon doctor`.")
                 .ConfigureAwait(false);
         }
+
+        return true;
     }
+
+#pragma warning disable CS0618 // ApiKey is the field every provider reads.
+    private static string? ApiKeyOf(LlmConfig config) => config.ApiKey;
+#pragma warning restore CS0618
 }

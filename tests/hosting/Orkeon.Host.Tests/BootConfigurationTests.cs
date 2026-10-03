@@ -70,6 +70,26 @@ public sealed class BootConfigurationTests : IDisposable
 
         Assert.Equal("00:11:00", configuration["Orkeon:Host:RunTimeout"]);
     }
+
+    /// <summary>
+    /// GAP-36, decision 5: <c>./appsettings.json</c> is the daemon's settings file when
+    /// <c>--settings</c> names none — never a layer under the file it names, which would receive,
+    /// unseen, the crews, profiles and mounts of the other one.
+    /// </summary>
+    [Fact]
+    public void ANamedSettingsFileReplacesTheWorkingDirectorysAppsettings_NeverLaysOverIt()
+    {
+        File.WriteAllText(
+            Path.Combine(_scratch, "appsettings.json"),
+            """{ "Orkeon": { "Host": { "ShutdownGracePeriod": "00:00:42" } } }""");
+        var named = Path.Combine(_scratch, "host.json");
+        File.WriteAllText(named, """{ "Orkeon": { "Host": { "RunTimeout": "00:09:00" } } }""");
+
+        var configuration = StartupProbes.BuildBootConfiguration(named);
+
+        Assert.Equal("00:09:00", configuration["Orkeon:Host:RunTimeout"]);
+        Assert.Null(configuration["Orkeon:Host:ShutdownGracePeriod"]);
+    }
 }
 
 /// <summary>
