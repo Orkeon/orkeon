@@ -151,8 +151,16 @@ public sealed class UiPreferencesDocument
     private static string? Text(JsonNode? node) =>
         node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 
+    /// <summary>
+    /// A number, read from its JSON text whatever created its node (STUDIO-53): <see cref="SetStudio"/>
+    /// writes the minutes and the days as <c>int</c> nodes, which <c>TryGetValue&lt;decimal&gt;</c>
+    /// refused — the document read its own write as not set until the file was read again.
+    /// </summary>
     private static decimal? Number(JsonNode? node) =>
-        node is JsonValue value && value.TryGetValue<decimal>(out var number) ? number : null;
+        node is JsonValue value && value.GetValueKind() == JsonValueKind.Number
+            && JsonSerializer.SerializeToElement(value).TryGetDecimal(out var number)
+            ? number
+            : null;
 
     private static bool? Flag(JsonNode? node) =>
         node is JsonValue value && value.TryGetValue<bool>(out var flag) ? flag : null;

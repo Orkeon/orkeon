@@ -73,6 +73,31 @@ public sealed class UiPreferencesDocumentTests
         Assert.True((bool)json["SomethingLater"]!["Kept"]!);
     }
 
+    [Fact]
+    public void The_studio_settings_written_read_back_before_the_file_is_reloaded()
+    {
+        // STUDIO-53: SetStudio writes the minutes and the days as int nodes, which
+        // TryGetValue<decimal> refused — the document read its own write as « not set » until
+        // the file was read again, while the file held the very numbers a reload reads.
+        var file = UiPreferencesDocument.Parse(FileWithEverything);
+
+        file.SetStudio(new StudioSettings
+        {
+            BalanceRefreshMinutes = 30,
+            BalanceThresholds = ImmutableDictionary.CreateRange(
+                StringComparer.Ordinal, [KeyValuePair.Create("deepseek", 2.5m)]),
+            ArchiveSuggestionDays = 45,
+        });
+
+        var reloaded = UiPreferencesDocument.Parse(file.ToJson()).Studio;
+        Assert.Equal(30, file.Studio.BalanceRefreshMinutes);
+        Assert.Equal(45, file.Studio.ArchiveSuggestionDays);
+        Assert.Equal(2.5m, file.Studio.BalanceThresholds["deepseek"]);
+        Assert.Equal(
+            (reloaded.BalanceRefreshMinutes, reloaded.ArchiveSuggestionDays, reloaded.BalanceThresholds["deepseek"]),
+            (file.Studio.BalanceRefreshMinutes, file.Studio.ArchiveSuggestionDays, file.Studio.BalanceThresholds["deepseek"]));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

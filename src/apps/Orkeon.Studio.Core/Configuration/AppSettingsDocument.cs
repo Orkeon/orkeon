@@ -205,12 +205,17 @@ public sealed class AppSettingsDocument
     public void SetString(string path, string? value) =>
         SetNode(path, string.IsNullOrWhiteSpace(value) ? null : JsonValue.Create(value));
 
-    /// <summary>Reads an integer, accepting the string spelling the configuration binder accepts.</summary>
+    /// <summary>
+    /// Reads an integer, accepting the string spelling the configuration binder accepts. A number
+    /// reads when its JSON text is an integer within <see cref="int"/>, whatever created its node
+    /// (<see cref="Number"/>) — never <c>0.5</c> or <c>600.0</c>, which the binder refuses for an
+    /// integer too.
+    /// </summary>
     public int? GetInt32(string path)
     {
         return GetNode(path) switch
         {
-            JsonValue value when value.TryGetValue<int>(out var number) => number,
+            JsonValue value when Number(value) is { } number && number.TryGetInt32(out var integer) => integer,
             JsonValue value when value.TryGetValue<string>(out var text)
                 && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) => parsed,
             _ => null,
@@ -221,12 +226,15 @@ public sealed class AppSettingsDocument
     public void SetInt32(string path, int? value) =>
         SetNode(path, value is null ? null : JsonValue.Create(value.Value));
 
-    /// <summary>Reads a floating-point value, accepting the string spelling.</summary>
+    /// <summary>
+    /// Reads a floating-point value, accepting the string spelling. Any number reads, whatever
+    /// created its node (<see cref="Number"/>) — the integers <see cref="SetInt32"/> writes included.
+    /// </summary>
     public double? GetDouble(string path)
     {
         return GetNode(path) switch
         {
-            JsonValue value when value.TryGetValue<double>(out var number) => number,
+            JsonValue value when Number(value) is { } number && number.TryGetDouble(out var real) => real,
             JsonValue value when value.TryGetValue<string>(out var text)
                 && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) => parsed,
             _ => null,
@@ -347,6 +355,31 @@ public sealed class AppSettingsDocument
     /// <c>RunnerHost</c> tests before falling back to the echo provider.
     /// </summary>
     public bool SectionExists(string path) => GetNode(path) is JsonObject { Count: > 0 };
+
+    /// <summary>
+    /// The number a node holds, read from its JSON text — the text the file will hold — whatever
+    /// created the node; null for a node that holds no number (STUDIO-53). A node parsing creates
+    /// converts to any numeric type its text fits, but a node a writer creates holds one CLR value
+    /// and converts to nothing else: the <c>600</c> <see cref="SetInt32"/> writes was no
+    /// <see cref="double"/> until the file was read again, and the validator refused, as « not a
+    /// number », the timeout an election had just written — and every save with it.
+    /// </summary>
+    private static JsonElement? Number(JsonValue value)
+    {
+        if (value.GetValueKind() != JsonValueKind.Number)
+            return null;
+
+        try
+        {
+            return JsonSerializer.SerializeToElement(value);
+        }
+        catch (ArgumentException)
+        {
+            // NaN or an infinity: a number to .NET that JSON has no text for. A document holding
+            // one cannot be written, so it reads as no number — which the validator reports.
+            return null;
+        }
+    }
 
     private static string[] SplitPath(string path)
     {

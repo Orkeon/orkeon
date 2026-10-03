@@ -17,6 +17,8 @@ public sealed class AppSettingsDocumentTests
 
     private static readonly string[] DeeperEntries = ["a", "b"];
 
+    private static readonly string[] NumericPaths = ["Llm:MaxTokens", "Llm:TimeoutSeconds", "Llm:Temperature"];
+
     private const string DocumentWithUnknownKeys = """
         {
           "Llm": {
@@ -159,6 +161,94 @@ public sealed class AppSettingsDocumentTests
 
         Assert.Equal(4096, document.Llm.MaxTokens);
         Assert.False(document.LlmLogging.FullEmbeddingLog);
+    }
+
+    [Theory]
+    [InlineData(600)]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(int.MaxValue)]
+    public void An_integer_written_reads_as_a_number_before_the_file_is_reloaded(int value)
+    {
+        // STUDIO-53: the node SetInt32 creates holds an int, which TryGetValue<double> refused —
+        // the validator read the election's 600 s as « not a number » and blocked the save.
+        var document = AppSettingsDocument.CreateEmpty();
+
+        document.SetInt32("Llm:TimeoutSeconds", value);
+
+        Assert.Equal(value, document.GetDouble("Llm:TimeoutSeconds"));
+        Assert.Equal(value, document.GetInt32("Llm:TimeoutSeconds"));
+        AssertReadsAsReloaded(document, "Llm:TimeoutSeconds");
+    }
+
+    [Theory]
+    [InlineData(600.0, 600)]
+    [InlineData(-2.0, -2)]
+    [InlineData(0.5, null)]
+    [InlineData(3e9, null)]
+    public void A_floating_point_value_written_reads_as_an_integer_only_when_it_is_one_that_fits(double value, int? integer)
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+
+        document.SetDouble("Llm:TimeoutSeconds", value);
+
+        Assert.Equal(value, document.GetDouble("Llm:TimeoutSeconds"));
+        Assert.Equal(integer, document.GetInt32("Llm:TimeoutSeconds"));
+        AssertReadsAsReloaded(document, "Llm:TimeoutSeconds");
+    }
+
+    [Fact]
+    public void A_number_reads_as_its_json_text_whatever_created_its_node()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        document.SetNode("Llm:MaxTokens", JsonValue.Create(4096L));
+        document.SetNode("Llm:TimeoutSeconds", JsonValue.Create(3_000_000_000L));
+        document.SetNode("Llm:Temperature", JsonValue.Create(0.25m));
+
+        Assert.Equal(4096, document.GetInt32("Llm:MaxTokens"));
+        Assert.Null(document.GetInt32("Llm:TimeoutSeconds"));
+        Assert.Equal(3e9, document.GetDouble("Llm:TimeoutSeconds"));
+        Assert.Equal(0.25, document.GetDouble("Llm:Temperature"));
+        Assert.Null(document.GetInt32("Llm:Temperature"));
+        foreach (var path in NumericPaths)
+            AssertReadsAsReloaded(document, path);
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void A_number_json_has_no_text_for_reads_as_no_number(double value)
+    {
+        // Read from its JSON text, NaN and the infinities would throw: no file can hold them.
+        var document = AppSettingsDocument.CreateEmpty();
+
+        document.SetDouble("Llm:Temperature", value);
+
+        Assert.Null(document.GetDouble("Llm:Temperature"));
+        Assert.Null(document.GetInt32("Llm:Temperature"));
+    }
+
+    [Fact]
+    public void An_integer_beyond_int_in_the_file_reads_as_a_number_and_as_no_integer()
+    {
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "MaxTokens": 3000000000, "TimeoutSeconds": 600.0 } }""");
+
+        Assert.Null(document.GetInt32("Llm:MaxTokens"));
+        Assert.Equal(3e9, document.GetDouble("Llm:MaxTokens"));
+        // The configuration binder refuses « 600.0 » for an int; so does the document, as before.
+        Assert.Null(document.GetInt32("Llm:TimeoutSeconds"));
+        Assert.Equal(600, document.GetDouble("Llm:TimeoutSeconds"));
+    }
+
+    /// <summary>A document is worth what it will be worth reread: in memory, a number reads as the saved file will.</summary>
+    private static void AssertReadsAsReloaded(AppSettingsDocument document, string path)
+    {
+        var reloaded = AppSettingsDocument.Parse(document.ToJson());
+
+        Assert.Equal(reloaded.GetInt32(path), document.GetInt32(path));
+        Assert.Equal(reloaded.GetDouble(path), document.GetDouble(path));
+        Assert.Equal(reloaded.GetString(path), document.GetString(path));
     }
 
     [Fact]

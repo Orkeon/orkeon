@@ -124,6 +124,30 @@ Three tools said something other than what a run does (GAP-36, decisions 3, 5 an
   and one Information line naming the hidden ones (`LLM profiles hidden from crews by the host's
   allow-list: …`). Without a list — `orkeon run`, the REPL — nothing changes.
 
+### Fixed — Studio saves the settings it has just written: an integer a screen writes is a number to the validator
+
+Electing a model setting that pins a timeout — the 600 s Studio prefills for DeepSeek, Kimi, Z.AI and
+MiniMax — made the settings screen impossible to save: the validator reported « 'Llm:TimeoutSeconds'
+must be a number » and refused every save, the novice's automatic one included, until Studio read the
+file again. `orkeon-studio-config` refused at every save any file holding an integer — a token budget,
+a timeout, a rate limit, the shipped sample's among them. The file was right (`600`); the settings
+document was not: a node a screen writes holds the CLR value it was given, which System.Text.Json
+converts to no other type, so the document's number reader found no `double` in the `int` an election
+had just written (STUDIO-53).
+
+- **A number reads as its JSON text, whatever created its node** — as the file will, once read again.
+  `AppSettingsDocument.GetDouble` reads any JSON number, the integers the screens write included
+  (`Llm:MaxTokens` and `TimeoutSeconds`, the `RateLimiting` fields, `LlmLogging:MaxBodyLengthChars`,
+  `Orkeon:Rag:Corrective:MaxIterations`); `GetInt32` reads one whose text is an integer within `int` —
+  a `double` 600 included, never `0.5`, `600.0` or a value beyond `int`, which the configuration binder
+  refuses for an integer too. A number written as a string still reads, as the binder reads it. What
+  the screens write and what the validator checks are unchanged.
+- **NaN and the infinities read as no number**, where their text — JSON has none — would have thrown:
+  a document holding one cannot be written, and the validator refuses it by the field's name.
+- **`ui-preferences.json` follows the same rule**: Settings › Studio's minutes and days, written as
+  integers, read back as « not set » from the document that had just written them. Studio reads the
+  file again before each use, so nothing showed.
+
 ### Fixed — a scheduled team runs as Studio launches it: on its model setting, with its folders
 
 A team Studio scheduled (STUDIO-27) is run by the operating system through its `run.cmd` or `run.sh`,

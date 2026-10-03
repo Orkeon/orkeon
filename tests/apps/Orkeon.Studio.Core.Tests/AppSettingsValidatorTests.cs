@@ -10,6 +10,20 @@ namespace Orkeon.Studio.Core.Tests;
 /// </summary>
 public sealed class AppSettingsValidatorTests
 {
+    /// <summary>The integer fields among those the validator checks as numbers — each one a screen writes with SetInt32.</summary>
+    private static readonly string[] IntegerFields =
+    [
+        "Llm:MaxTokens",
+        "Llm:TimeoutSeconds",
+        "RateLimiting:MaxConcurrentRequests",
+        "RateLimiting:GlobalRequestsPerMinute",
+        "RateLimiting:ProviderRequestsPerMinute",
+        "RateLimiting:AgentRequestsPerMinute",
+        "RateLimiting:QueueLimit",
+        "LlmLogging:MaxBodyLengthChars",
+        "Orkeon:Rag:Corrective:MaxIterations",
+    ];
+
     private static AppSettingsValidator Validator(params string[] existingDirectories) =>
         new(new FakeDirectoryProbe(existingDirectories));
 
@@ -103,6 +117,35 @@ public sealed class AppSettingsValidatorTests
             """{ "Llm": { "Model": "m", "MaxTokens": "4096" } }""");
 
         Assert.Null(Find(Validator().Validate(document), ValidationCodes.InvalidFieldType));
+    }
+
+    [Fact]
+    public void Every_integer_field_a_screen_writes_is_a_number_before_the_file_is_reloaded()
+    {
+        // STUDIO-53: electing a setting that pins a timeout wrote Llm:TimeoutSeconds through
+        // SetInt32, and the validator refused the node as « not a number » — the save with it.
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "m" } }""");
+        foreach (var path in IntegerFields)
+            document.SetInt32(path, 600);
+
+        var refused = Validator().Validate(document)
+            .Where(m => m.Code == ValidationCodes.InvalidFieldType)
+            .Select(m => m.Path);
+
+        Assert.Empty(refused);
+    }
+
+    [Fact]
+    public void A_temperature_json_cannot_write_is_not_a_number()
+    {
+        // NaN has no JSON text: the file could not be written, so the save is refused by name.
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "m" } }""");
+        document.Llm.Temperature = double.NaN;
+
+        var message = Find(Validator().Validate(document), ValidationCodes.InvalidFieldType);
+
+        Assert.NotNull(message);
+        Assert.Equal("Llm:Temperature", message.Path);
     }
 
     [Fact]

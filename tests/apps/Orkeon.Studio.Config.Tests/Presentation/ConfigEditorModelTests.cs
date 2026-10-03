@@ -113,6 +113,34 @@ public sealed class ConfigEditorModelTests : IDisposable
     }
 
     [Fact]
+    public async Task A_file_holding_integers_is_saved_and_reopens_with_them()
+    {
+        // STUDIO-53: each preflight writes the forms' integers again through SetInt32, and the
+        // validator read those nodes as « not a number » — a file holding a token budget, a
+        // timeout or a rate limit could not be saved at all.
+        var path = PathIn("appsettings.json");
+        await File.WriteAllTextAsync(path, """
+            {
+              "Llm": { "Model": "qwen3", "BaseUrl": "http://localhost:11434", "MaxTokens": 4096, "TimeoutSeconds": 600 },
+              "RateLimiting": { "MaxConcurrentRequests": 1, "QueueLimit": 32 },
+              "Orkeon": { "FileSystem": { "Mounts": [ "/data/in:/workspace:ro" ] } }
+            }
+            """, TestContext.Current.CancellationToken);
+        var model = CreateModel();
+        Assert.Null(await model.OpenAsync(path, TestContext.Current.CancellationToken));
+
+        var preflight = model.Preflight(ValidationScope.Saving);
+
+        Assert.DoesNotContain(preflight.Messages, message => message.Code == ValidationCodes.InvalidFieldType);
+        Assert.False(preflight.HasBlockingErrors);
+        Assert.Null(await model.SaveAsync(path, TestContext.Current.CancellationToken));
+        var reopened = CreateModel();
+        Assert.Null(await reopened.OpenAsync(path, TestContext.Current.CancellationToken));
+        Assert.Equal(600, reopened.Document.Llm.TimeoutSeconds);
+        Assert.Equal(32, reopened.Document.RateLimiting.QueueLimit);
+    }
+
+    [Fact]
     public async Task A_ro_and_a_rw_mount_survive_the_round_trip_and_parse_at_boot()
     {
         // Spec §12.3: what the mount editor writes is what FileSystemMount.Parse reads.
