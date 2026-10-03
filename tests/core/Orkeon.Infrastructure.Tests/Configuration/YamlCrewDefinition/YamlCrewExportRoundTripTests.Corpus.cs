@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.Configuration;
@@ -27,11 +29,18 @@ public partial class YamlCrewExportRoundTripTests
         var root = RepositoryRoot();
         var examples = Path.Combine(root, "examples");
 
-        var directories = Directory.EnumerateDirectories(examples, "*", SearchOption.AllDirectories)
+        // What git tracks, when git can say: a working copy may hold untracked or ignored folders under
+        // examples/ (third-party clones under examples/others/, gitignored) that are no example crew.
+        var tracked = TrackedPaths(root, "examples");
+        var directories = (tracked is null
+                ? Directory.EnumerateDirectories(examples, "*", SearchOption.AllDirectories)
+                : tracked.Where(path => path.EndsWith('/')).Select(path => Path.Combine(root, path.TrimEnd('/').Replace('/', Path.DirectorySeparatorChar))))
             .Where(directory => !InOutputFolder(directory) && IsCrewDirectory(directory))
             .Order(StringComparer.Ordinal)
             .ToList();
-        var files = Directory.EnumerateFiles(examples, "*", SearchOption.AllDirectories)
+        var files = (tracked is null
+                ? Directory.EnumerateFiles(examples, "*", SearchOption.AllDirectories)
+                : tracked.Where(path => !path.EndsWith('/')).Select(path => Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))))
             .Where(file => file.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".yml", StringComparison.OrdinalIgnoreCase))
             .Where(file => !InOutputFolder(file))
             .Where(file => !directories.Any(directory => file.StartsWith(directory + Path.DirectorySeparatorChar, StringComparison.Ordinal)))
@@ -90,6 +99,51 @@ public partial class YamlCrewExportRoundTripTests
     private static bool IsCrewDirectory(string directory) =>
         (File.Exists(Path.Combine(directory, "config.yaml")) || File.Exists(Path.Combine(directory, "crew.yaml")))
         && (Directory.Exists(Path.Combine(directory, "agents")) || Directory.Exists(Path.Combine(directory, "tasks")));
+
+    /// <summary>
+    /// The files git tracks under <paramref name="folder"/>, each of their folders too (ending in <c>/</c>), by their
+    /// path from the root; null when git cannot answer (no git, not a working copy), and the disk alone decides.
+    /// </summary>
+    private static HashSet<string>? TrackedPaths(string root, string folder)
+    {
+        var start = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var argument in new[] { "ls-files", "-z", "--", folder })
+            start.ArgumentList.Add(argument);
+
+        string output;
+        try
+        {
+            using var git = System.Diagnostics.Process.Start(start);
+            if (git is null)
+                return null;
+            var standardError = git.StandardError.ReadToEndAsync();
+            output = git.StandardOutput.ReadToEnd();
+            git.WaitForExit();
+            _ = standardError.Result;
+            if (git.ExitCode != 0)
+                return null;
+        }
+        catch (Win32Exception)
+        {
+            return null;
+        }
+
+        var paths = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+        {
+            paths.Add(file);
+            for (var slash = file.LastIndexOf('/'); slash > 0; slash = file.LastIndexOf('/', slash - 1))
+                paths.Add(file[..(slash + 1)]);
+        }
+
+        return paths.Count == 0 ? null : paths;
+    }
 
     private static bool InOutputFolder(string path) =>
         path.Split(Path.DirectorySeparatorChar).Any(segment => OutputFolders.Contains(segment, StringComparer.Ordinal));
