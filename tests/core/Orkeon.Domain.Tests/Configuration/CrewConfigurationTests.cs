@@ -55,7 +55,7 @@ public class CrewConfigurationTests
             new TaskConfiguration { Id = TaskId.Create(), Description = TaskId.Create() },
             new TaskConfiguration { Id = TaskId.Create(), Description = TaskId.Create() }
         };
-        var executionConfig = new ExecutionConfig { MaxConcurrentTasks = 5 };
+        var executionConfig = new ExecutionConfig { MaxRPM = 5 };
         var metadata = new Dictionary<string, object>
         {
             { "project", "Orkeon" },

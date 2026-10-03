@@ -12,7 +12,6 @@ using Orkeon.Application.Services.Security;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.Crew.Planning;
 using Orkeon.Domain.Security;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
@@ -103,20 +102,8 @@ public class AgentTurnSecurityTests
         }
     }
 
-    private sealed class NullPlanner : IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(Orkeon.Domain.Task.CrewTask task, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public System.Threading.Tasks.Task<TaskPlan> RefinePlanAsync(TaskPlan plan, PlanFeedback feedback, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public System.Threading.Tasks.Task<PlanValidationResult> ValidatePlanAsync(TaskPlan plan, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-    }
-
     private static ExecutionOrchestrator ChatOrchestrator(ScriptedChatClient client, IBaseTool[] tools, Security security) =>
-        new(new SpyLogger(), new ScriptedBasicLlmProvider(), new NullPlanner(), client, tools, new FakeFileSystemService())
+        new(new SpyLogger(), new ScriptedBasicLlmProvider(), client, tools, new FakeFileSystemService())
         {
             Guardian = security.Guardian,
             ToolInvocation = security.Pipeline,
@@ -153,7 +140,7 @@ public class AgentTurnSecurityTests
         using var client = new ScriptedChatClient();
         client.EnqueueFunctionCall("call-1", "shell");
         client.EnqueueText("Shell is not allowed.");
-        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), new NullPlanner(), client, [tool], new FakeFileSystemService())
+        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), client, [tool], new FakeFileSystemService())
         {
             Guardian = guardian,
             ToolInvocation = pipeline,
@@ -174,7 +161,7 @@ public class AgentTurnSecurityTests
     {
         var security = new Security();
         using var client = new ScriptedChatClient();
-        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), new NullPlanner(), client, [], new FakeFileSystemService())
+        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), client, [], new FakeFileSystemService())
         {
             Guardian = FakeGuardianPipeline.BlockingInput(),
             ToolInvocation = security.Pipeline,
@@ -194,7 +181,7 @@ public class AgentTurnSecurityTests
     {
         var guardian = new FakeGuardianPipeline();
         using var client = new ScriptedChatClient();
-        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), new NullPlanner(), client, [], new FakeFileSystemService())
+        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), client, [], new FakeFileSystemService())
         {
             Guardian = guardian,
         };
@@ -216,7 +203,7 @@ public class AgentTurnSecurityTests
         var provider = new ScriptedBasicLlmProvider();
         provider.Enqueue("""[TOOL_CALL]{tool => "web_scrape", args => {--url "https://example.com"}}[/TOOL_CALL]""");
         provider.Enqueue("A summary.");
-        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), provider, new NullPlanner())
+        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), provider)
         {
             Guardian = security.Guardian,
             ToolInvocation = security.Pipeline,
@@ -234,7 +221,7 @@ public class AgentTurnSecurityTests
     public async System.Threading.Tasks.Task TextLoop_ABlockedInput_NeverReachesTheProvider()
     {
         var provider = new ScriptedBasicLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), provider, new NullPlanner())
+        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), provider)
         {
             Guardian = FakeGuardianPipeline.BlockingInput(),
         };

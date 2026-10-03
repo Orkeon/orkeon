@@ -138,7 +138,6 @@ public class IdentityTests
     [InlineData(typeof(TaskId))]
     [InlineData(typeof(CrewId))]
     [InlineData(typeof(ToolId))]
-    [InlineData(typeof(MemoryId))]
     [InlineData(typeof(ProcessId))]
     [InlineData(typeof(KnowledgeSourceId))]
     public void ShouldBehaveSimilarly_WhenUsingAllDerivedTypes(Type identityType)
@@ -229,19 +228,6 @@ public class IdentityTests
         var agentId2 = AgentId.From(agentId.Value.ToGuid()); // Creates a copy
         Assert.Equal(agentId, agentId2);
         Assert.Equal(agentId.Value, agentId2.Value);
-    }
-
-    [Fact]
-    public void ShouldSupportAllOperations_WhenUsingMemoryId()
-    {
-        // Act
-        var memoryId = MemoryId.Create();
-        Guid guidValue = memoryId;
-        string stringValue = memoryId;
-
-        // Assert
-        Assert.NotNull(memoryId);
-        Assert.Equal(memoryId.ToString(), stringValue);
     }
 
     [Fact]

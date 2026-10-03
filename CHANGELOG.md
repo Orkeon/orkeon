@@ -127,6 +127,76 @@ as a refused setting reads `1`. Under the Windows service with A2A, register wit
 `netsh http add urlacl` the refusal names. Remove an `orkeon mcp serve` entry from the `MCP:Servers` of the
 settings that same serve reads.
 
+### Removed — public surfaces nothing called: a tool adapter that skipped the guard, per-crew Guardian policies, the request DTOs and per-agent planning; a crew's request rate is exported under its own key **[breaking]**
+
+Public types and members that no shipped code called — several of them wrong — are deleted rather
+than kept (GAP-26):
+
+- **A tool adapter that skipped the guard.** `BaseToolToAIFunctionAdapter` (`Orkeon.Tools.Abstractions`)
+  turned an `IBaseTool` into an `AIFunction` that called the tool directly: past the Guardian, the
+  truncation, the result sanitizer and the audit every tool call crosses since GAP-09. Nothing called it.
+- **One Guardian policy per host.** `GuardianPolicyEngine.SetCrewPolicy` and `SetAgentPolicy` had no
+  caller, so the per-crew and per-agent policies were always empty. They are gone, and
+  `GetPolicy(crewId, agentId)` is the `Policy` property: the host's `Orkeon:Guardian:DefaultPolicy`,
+  as the documentation already said.
+- **The request DTOs.** No API receives them, and the CQRS commands carry their own records:
+  `CreateCrewRequest`, `UpdateCrewRequest`, `CrewAgentRequest`, `CrewTaskRequest` and the settings
+  records beside them (`Orkeon.Application.Crew.DTOs.CrewSettingsDto`, `CrewRetryConfigDto`,
+  `CrewMemoryConfigDto`, `CrewCallbackConfigDto`), `CreateAgentRequest`, `UpdateAgentRequest`,
+  `AgentSettingsDto`, `AgentMemorySettingsDto`, `CreateTaskRequest`, `UpdateTaskRequest`,
+  `TaskSettingsDto`, `TaskRetryConfigDto`, `LlmConfigDto`; their mapping methods
+  (`CrewMapper.FromCreateRequest`, `CrewMapper.UpdateFromRequest` — which ignored `Process` —,
+  `AgentMapper.CreateFromRequest`, `TaskMapper.CreateFromRequest`); and the DTO enums `ProcessType`,
+  `CrewStatus`, `TaskStatus` and `TaskPriority` (the read DTOs carry those as strings). One
+  `ProcessType` remains: the value object.
+- **Per-agent planning.** `IAgentExecutionService.PlanTaskExecutionAsync` and
+  `IExecutionOrchestrator.PlanExecutionAsync` (with `TaskExecutionPlan` and `PlannedStep`) asked a stub
+  planner for the same fixed plan, and nothing asked them: the planner (`IAgentPlanner`,
+  `AgentPlannerService`, `TaskPlan`, `PlanStep`, `PlanFeedback`, `PlanValidationResult`, and the
+  Application `PlanningContext`, `PlanningStep`, `PlanningResult`) is gone, and so are the second
+  `ExecutionPlan` (`Orkeon.Domain.SharedKernel.ValueObjects`, with `ExecutionStep` and
+  `ExecutionStrategy`) and `ExecutionPlanDto` (`TaskDto.ExecutionPlan`, never filled). A crew's
+  `planning: true` is the orchestrator's (GAP-31). `ExecutionOrchestrator`'s constructors lose their
+  `planner` parameter.
+- **Other dead surfaces.** `OrkeonApplicationOptions.MaxShortTermMemoryItems`, `EnablePersistence`,
+  `EnableRAG`, `MemoryDatabasePath` and `DefaultMemoryProvider` (copied, never read — the REPL's
+  `appsettings.json` loses its `Orkeon:DefaultMemoryProvider` key); `ShortTermMemory`, `LongTermMemory`,
+  `EntityMemory` and `ContextualMemory` (`Orkeon.Infrastructure.Memory`: the memory service has its
+  own); `StateTransitionManager`, which described crew transitions the aggregate does not follow;
+  `Orkeon.Application.Validation.CrewValidator` (a crew is validated at load by
+  `CrewDefinitionValidator`); `CrewConfigurationMapper.ToDomainCrew`, which re-created the agents under
+  new ids and never set the manager (the loaders build crews through `CrewFactory`); `Agent.Restore`
+  and `AgentSnapshot`, which lost the agent's `LlmConfig`; `Agent.ValidateForExecution` ("Agent has no
+  tools assigned" — an agent without tools is valid) with `ExecutionValidationResult`,
+  `IExecutionOrchestrator.ValidateExecutionAsync` and `IAgentExecutionService.CanExecuteTaskAsync`;
+  `IExecutionOrchestrator.MapExecutionContext` with `SimpleTaskExecutionContext` and `AgentMemory`;
+  `ExecutionStatus.Cancelled` (no run reached it: a cancelled run ends `Failed`, GAP-32; the other
+  values keep their numbers); `ExecutionConfig.EnableAsyncExecution`; and the constants and ids only
+  these used (`MemoryDefaults.DefaultMaxShortTermItems`, `PathDefaults.DefaultMemoryDatabasePath`,
+  `PlanningDefaults` of `Orkeon.Application.Constants.Execution`, three `StatusDefaults` plan statuses,
+  `MemoryId`, `TaskPlanId`, `PlanStepId`).
+- **A crew's request rate is exported under its own key.** `CrewConfigurationMapper.ToConfiguration`
+  wrote `Crew.MaxRpm` into `ExecutionConfig.MaxConcurrentTasks`, a task concurrency nothing reads (and
+  `ToDomainCrew` read it back as the request rate). The export writes `ExecutionConfig.MaxRPM`, and
+  `MaxConcurrentTasks` is removed: no mode bounds how many tasks run at once.
+
+Documented in [Default behaviors](docs/getting-started/default-behaviors.md),
+[Bootstrap](docs/getting-started/bootstrap.md), [State machine](docs/orchestration/fsm.md) and
+[Limits](docs/reference/limitations.md).
+
+Breaking: every type and member listed above is removed; `GuardianPolicyEngine.GetPolicy(crewId,
+agentId)` is the `Policy` property; `ExecutionOrchestrator`'s constructors no longer take a planner;
+`ExecutionConfig.Create` no longer takes `maxConcurrentTasks` or `enableAsyncExecution`;
+`IAgentExecutionService` keeps its two `ExecuteTaskAsync` overloads and `IExecutionOrchestrator` its
+`ExecuteTaskCoreAsync` alone.
+
+Migration: run a tool through `IToolInvocationPipeline.InvokeAsync` (registered by
+`AddOrkeonApplication()`), never `tool.CallAsync` behind an `AIFunction`; read the Guardian policy from
+`GuardianPolicyEngine.Policy` and set it per host (`Orkeon:Guardian:DefaultPolicy`); build crews from
+YAML or `.ork.ts` through the loaders, or in C# with `CrewBuilder`/`AgentBuilder`/`CrewTaskBuilder`,
+instead of the request DTOs and `ToDomainCrew`; drop the planner argument of `new ExecutionOrchestrator(…)`
+and any `IAgentPlanner` registration; read a crew's exported request rate from `ExecutionConfig.MaxRPM`.
+
 ### Added — `orkeon-host` exposes its crews to other agents over A2A: one skill per crew, and a task is a run of that crew **[breaking]**
 
 An A2A peer could not reach a crew `orkeon-host` hosts: no shipped binary called `AddOrkeonA2A`, and a C#

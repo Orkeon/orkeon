@@ -14,9 +14,6 @@ using Orkeon.Application.Tests.Doubles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
-using TaskExecutionPlan = Orkeon.Application.Interfaces.Services.TaskExecutionPlan;
-using PlannedStep = Orkeon.Application.Interfaces.Services.PlannedStep;
-using ValidationResult = Orkeon.Application.Interfaces.Services.ValidationResult;
 using ToolUsage = Orkeon.Domain.Tools.ToolUsage;
 using static Orkeon.Tests.Shared.Constants.TestEntityIds;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
@@ -283,65 +280,6 @@ public sealed class AgentExecutionServiceTests : IDisposable
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldDelegateToExecutionOrchestrator_WhenPlanningTaskExecutionAsync()
-    {
-        // Arrange
-        var expectedPlan = new TaskExecutionPlan(
-            AssignedAgent: _testAgent.Id,
-            Steps:
-            [
-                new PlannedStep("Step 1: First step", null, null),
-                new PlannedStep("Step 2: Second step", null, null)
-            ],
-            EstimatedDuration: TimeoutStandard,
-            ConfidenceScore: 0.9);
-
-        _executionOrchestrator.SetupPlan(expectedPlan);
-
-        // Act
-        var plan = await _service.PlanTaskExecutionAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(expectedPlan, plan);
-        Assert.Equal(2, plan.Steps.Count);
-        Assert.Equal("Step 1: First step", plan.Steps[0].Description);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnTrue_WhenUsingCanExecuteTaskAsyncWhenCanExecute()
-    {
-        // Arrange
-        _executionOrchestrator.SetupValidation(new ExecutionValidation
-        {
-            CanExecute = true,
-            Reasons = []
-        });
-
-        // Act
-        var canExecute = await _service.CanExecuteTaskAsync(_testAgent, _testTask, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(canExecute);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnFalse_WhenUsingCanExecuteTaskAsyncWhenCannotExecute()
-    {
-        // Arrange
-        _executionOrchestrator.SetupValidation(new ExecutionValidation
-        {
-            CanExecute = false,
-            Reasons = ["Agent lacks required tools"]
-        });
-
-        // Act
-        var canExecute = await _service.CanExecuteTaskAsync(_testAgent, _testTask, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.False(canExecute);
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task ShouldThrowArgumentNullException_WhenExecutingTaskAsyncWithNullAgent()
     {
         // Act & Assert
@@ -444,59 +382,6 @@ public sealed class AgentExecutionServiceTests : IDisposable
         Assert.True(result.Success);
         Assert.Equal(TimeoutStandard, result.ExecutionTime);
         Assert.True(_performanceMetrics.TaskExecutionRecorded);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldThrowArgumentNullException_WhenPlanningTaskExecutionAsyncWithNullAgent()
-    {
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _service.PlanTaskExecutionAsync(null!, _testTask, _context, TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldThrowArgumentNullException_WhenPlanningTaskExecutionAsyncWithNullTask()
-    {
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _service.PlanTaskExecutionAsync(_testAgent, null!, _context, TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnEmptyPlan_WhenPlanningTaskExecutionAsyncWithEmptySteps()
-    {
-        // Arrange
-        var expectedPlan = new TaskExecutionPlan(
-            AssignedAgent: _testAgent.Id,
-            Steps: [],
-            EstimatedDuration: TimeSpan.Zero,
-            ConfidenceScore: 0.5);
-
-        _executionOrchestrator.SetupPlan(expectedPlan);
-
-        // Act
-        var plan = await _service.PlanTaskExecutionAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Empty(plan.Steps);
-        Assert.Equal(TimeSpan.Zero, plan.EstimatedDuration);
-        Assert.Equal(0.5, plan.ConfidenceScore);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldThrowArgumentNullException_WhenUsingCanExecuteTaskAsyncWithNullAgent()
-    {
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _service.CanExecuteTaskAsync(null!, _testTask, TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldThrowArgumentNullException_WhenUsingCanExecuteTaskAsyncWithNullTask()
-    {
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _service.CanExecuteTaskAsync(_testAgent, null!, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -630,49 +515,16 @@ public sealed class AgentExecutionServiceTests : IDisposable
         Assert.Equal(0, _memoryCoordinator.RecallCount);
         Assert.Empty(_executionOrchestrator.LastContext!.RecalledMemories);
     }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnDetailedPlan_WhenPlanningTaskExecutionAsyncWithComplexSteps()
-    {
-        // Arrange
-        var expectedPlan = new TaskExecutionPlan(
-            AssignedAgent: _testAgent.Id,
-            Steps:
-            [
-                new PlannedStep("Research phase", "Tool1", null),
-                new PlannedStep("Analysis phase", "Tool3", null),
-                new PlannedStep("Synthesis phase", null, null)
-            ],
-            EstimatedDuration: TimeSpan.FromHours(2),
-            ConfidenceScore: 0.85);
-
-        _executionOrchestrator.SetupPlan(expectedPlan);
-
-        // Act
-        var plan = await _service.PlanTaskExecutionAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(3, plan.Steps.Count);
-        Assert.Equal("Research phase", plan.Steps[0].Description);
-        Assert.Equal("Tool1", plan.Steps[0].ToolName);
-        Assert.Null(plan.Steps[0].ToolParameters);
-        Assert.Equal(TimeSpan.FromHours(2), plan.EstimatedDuration);
-        Assert.Equal(0.85, plan.ConfidenceScore);
-    }
 }
 
 // Test doubles for dependencies
 internal class TestExecutionOrchestrator : IExecutionOrchestrator
 {
     private TaskResult? _result;
-    private TaskExecutionPlan? _plan;
-    private ExecutionValidation? _validation;
     private Exception? _exception;
     private TimeSpan _delay = TimeSpan.Zero;
 
     public void SetupResult(TaskResult result) => _result = result;
-    public void SetupPlan(TaskExecutionPlan plan) => _plan = plan;
-    public void SetupValidation(ExecutionValidation validation) => _validation = validation;
     public void ThrowException(Exception exception) => _exception = exception;
     public void SimulateDelay(TimeSpan delay) => _delay = delay;
 
@@ -700,34 +552,6 @@ internal class TestExecutionOrchestrator : IExecutionOrchestrator
             ToolsUsed: [],
             ExecutionTime: TimeSpan.FromSeconds(1),
             Error: null);
-    }
-
-    public System.Threading.Tasks.Task<TaskExecutionPlan> PlanExecutionAsync(
-        DomainAgent agent, DomainTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
-    {
-        return System.Threading.Tasks.Task.FromResult(_plan ?? new TaskExecutionPlan(
-            AssignedAgent: agent.Id,
-            Steps: [],
-            EstimatedDuration: TimeSpan.Zero,
-            ConfidenceScore: 1.0));
-    }
-
-    public System.Threading.Tasks.Task<ValidationResult> ValidateExecutionAsync(
-        DomainAgent agent, DomainTask task, CancellationToken cancellationToken)
-    {
-        return System.Threading.Tasks.Task.FromResult(new ValidationResult(
-            CanExecute: _validation?.CanExecute ?? true,
-            Reason: _validation?.Reasons?.FirstOrDefault()));
-    }
-
-    public Domain.Task.ValueObjects.SimpleTaskExecutionContext MapExecutionContext(
-        SimpleExecutionContext applicationContext, DomainAgent agent)
-    {
-        return Domain.Task.ValueObjects.SimpleTaskExecutionContext.Create(
-            variables: applicationContext.Variables ?? [],
-            previousOutputs: [],
-            memory: null,
-            availableAgents: null);
     }
 }
 
@@ -857,11 +681,4 @@ internal class TestMemoryScope : IMemoryScope
     public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation) => operation();
     public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation) => operation();
     public void Dispose() { }
-}
-
-// Supporting classes
-public class ExecutionValidation
-{
-    public bool CanExecute { get; set; }
-    public List<string> Reasons { get; set; } = [];
 }

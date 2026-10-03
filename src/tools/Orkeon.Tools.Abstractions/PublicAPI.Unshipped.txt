@@ -1,1 +1,4 @@
 #nullable enable
+*REMOVED*Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter
+*REMOVED*static Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter.ToAIFunction(Orkeon.Domain.Tools.IBaseTool! tool) -> Microsoft.Extensions.AI.AIFunction!
+*REMOVED*static Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter.ToAITools(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> System.Collections.Generic.IList<Microsoft.Extensions.AI.AITool!>!

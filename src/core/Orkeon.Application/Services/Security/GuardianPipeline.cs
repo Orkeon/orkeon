@@ -59,7 +59,7 @@ public partial class GuardianPipeline : IGuardianPipeline
 
     private async System.Threading.Tasks.Task<GuardResult> ExecuteCoreAsync(GuardContext context, CancellationToken ct)
     {
-        var policy = _policyEngine.GetPolicy(context.CrewId, context.AgentId);
+        var policy = _policyEngine.Policy;
 
         // If this phase is disabled in policy, allow immediately
         if (!policy.IsGuardPhaseEnabled(context.Phase))

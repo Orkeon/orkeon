@@ -14,7 +14,6 @@ public class OrkeonApplicationOptionsTests
 
         // Assert
         Assert.Equal(384, options.EmbeddingDimension);
-        Assert.Equal("InMemory", options.DefaultMemoryProvider);
         Assert.False(options.EnableDebugLogging);
         Assert.Equal(TimeoutStandard, options.DefaultTimeout);
     }
@@ -30,19 +29,6 @@ public class OrkeonApplicationOptionsTests
 
         // Assert
         Assert.Equal(768, options.EmbeddingDimension);
-    }
-
-    [Fact]
-    public void ShouldBeSettable_WhenUsingDefaultMemoryProvider()
-    {
-        // Arrange
-        var options = new OrkeonApplicationOptions();
-
-        // Act
-        options.DefaultMemoryProvider = "Redis";
-
-        // Assert
-        Assert.Equal("Redis", options.DefaultMemoryProvider);
     }
 
     [Fact]
@@ -115,49 +101,6 @@ public class OrkeonApplicationOptionsTests
     }
 
     [Fact]
-    public void ShouldBeValid_WhenUsingDefaultMemoryProviderWithDifferentProviders()
-    {
-        // Arrange
-        var options = new OrkeonApplicationOptions();
-        var providers = new[] { "InMemory", "Redis", "SQLite", "ChromaDB", "Pinecone" };
-
-        foreach (var provider in providers)
-        {
-            // Act
-            options.DefaultMemoryProvider = provider;
-
-            // Assert
-            Assert.Equal(provider, options.DefaultMemoryProvider);
-        }
-    }
-
-    [Fact]
-    public void ShouldBeAllowed_WhenUsingDefaultMemoryProviderWithNullValue()
-    {
-        // Arrange
-        var options = new OrkeonApplicationOptions();
-
-        // Act
-        options.DefaultMemoryProvider = null!;
-
-        // Assert
-        Assert.Null(options.DefaultMemoryProvider);
-    }
-
-    [Fact]
-    public void ShouldBeAllowed_WhenUsingDefaultMemoryProviderWithEmptyString()
-    {
-        // Arrange
-        var options = new OrkeonApplicationOptions();
-
-        // Act
-        options.DefaultMemoryProvider = string.Empty;
-
-        // Assert
-        Assert.Equal(string.Empty, options.DefaultMemoryProvider);
-    }
-
-    [Fact]
     public void ShouldBeAllowed_WhenUsingDefaultTimeoutWithZeroTimeout()
     {
         // Arrange
@@ -216,13 +159,11 @@ public class OrkeonApplicationOptionsTests
 
         // Act
         options.EmbeddingDimension = 512;
-        options.DefaultMemoryProvider = "Redis";
         options.EnableDebugLogging = true;
         options.DefaultTimeout = TimeoutLong;
 
         // Assert
         Assert.Equal(512, options.EmbeddingDimension);
-        Assert.Equal("Redis", options.DefaultMemoryProvider);
         Assert.True(options.EnableDebugLogging);
         Assert.Equal(TimeoutLong, options.DefaultTimeout);
     }
@@ -234,7 +175,6 @@ public class OrkeonApplicationOptionsTests
         var options1 = new OrkeonApplicationOptions
         {
             EmbeddingDimension = 256,
-            DefaultMemoryProvider = "SQLite",
             EnableDebugLogging = true,
             DefaultTimeout = TimeSpan.FromMinutes(3)
         };
@@ -242,14 +182,12 @@ public class OrkeonApplicationOptionsTests
         var options2 = new OrkeonApplicationOptions
         {
             EmbeddingDimension = 768,
-            DefaultMemoryProvider = "ChromaDB",
             EnableDebugLogging = false,
             DefaultTimeout = TimeSpan.FromMinutes(8)
         };
 
         // Assert
         Assert.NotEqual(options1.EmbeddingDimension, options2.EmbeddingDimension);
-        Assert.NotEqual(options1.DefaultMemoryProvider, options2.DefaultMemoryProvider);
         Assert.NotEqual(options1.EnableDebugLogging, options2.EnableDebugLogging);
         Assert.NotEqual(options1.DefaultTimeout, options2.DefaultTimeout);
     }
@@ -263,20 +201,15 @@ public class OrkeonApplicationOptionsTests
         var opt = new OrkeonApplicationOptions();
 
         // Assert
-        Assert.Equal(100, opt.MaxShortTermMemoryItems);
         Assert.Equal(RepositoryType.Yaml, opt.CrewRepositoryType);
         Assert.Equal("crews", opt.CrewsPath);
-        Assert.True(opt.EnablePersistence);
         Assert.Equal(15, opt.DefaultMaxIterations);
-        Assert.False(opt.EnableRAG);
-        Assert.Equal("orkeon_memory.db", opt.MemoryDatabasePath);
         Assert.Equal(384, opt.EmbeddingDimension);
         Assert.Equal("Simple", opt.EmbeddingProvider);
         Assert.Null(opt.OpenAIApiKey);
         Assert.Equal("text-embedding-ada-002", opt.OpenAIEmbeddingModel);
         Assert.Null(opt.AzureOpenAIEndpoint);
         Assert.Null(opt.AzureOpenAIDeploymentName);
-        Assert.Equal("InMemory", opt.DefaultMemoryProvider);
         Assert.False(opt.EnableDebugLogging);
         Assert.Equal(TimeoutStandard, opt.DefaultTimeout);
     }
@@ -294,19 +227,6 @@ public class OrkeonApplicationOptionsTests
 
         // Assert
         Assert.Equal(repoType, opt.CrewRepositoryType);
-    }
-
-    [Fact]
-    public void ShouldBeSettable_WhenUsingEnableRAG()
-    {
-        // Arrange
-        var opt = new OrkeonApplicationOptions();
-
-        // Act
-        opt.EnableRAG = true;
-
-        // Assert
-        Assert.True(opt.EnableRAG);
     }
 
     [Fact]
@@ -334,32 +254,6 @@ public class OrkeonApplicationOptionsTests
 
         // Assert
         Assert.Equal("sk-test-key", opt.OpenAIApiKey);
-    }
-
-    [Fact]
-    public void ShouldBeSettable_WhenUsingMaxShortTermMemoryItems()
-    {
-        // Arrange
-        var opt = new OrkeonApplicationOptions();
-
-        // Act
-        opt.MaxShortTermMemoryItems = 500;
-
-        // Assert
-        Assert.Equal(500, opt.MaxShortTermMemoryItems);
-    }
-
-    [Fact]
-    public void ShouldBeSettable_WhenUsingMemoryDatabasePath()
-    {
-        // Arrange
-        var opt = new OrkeonApplicationOptions();
-
-        // Act
-        opt.MemoryDatabasePath = "/data/memory.db";
-
-        // Assert
-        Assert.Equal("/data/memory.db", opt.MemoryDatabasePath);
     }
 
     [Fact]

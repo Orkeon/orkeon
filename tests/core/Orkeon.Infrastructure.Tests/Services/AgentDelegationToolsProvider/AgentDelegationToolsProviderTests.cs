@@ -694,13 +694,6 @@ internal class TestAgentExecutionService : IAgentExecutionService
         DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default) where TOutput : class
         => System.Threading.Tasks.Task.FromResult(new TaskResult<TOutput>(true, "stub", null, [], TimeSpan.Zero));
 
-    public System.Threading.Tasks.Task<TaskExecutionPlan> PlanTaskExecutionAsync(
-        DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default)
-        => System.Threading.Tasks.Task.FromResult(new TaskExecutionPlan(agent.Id, [], TimeSpan.Zero, 1.0));
-
-    public System.Threading.Tasks.Task<bool> CanExecuteTaskAsync(
-        DomainAgent agent, ICrewTask task, CancellationToken cancellationToken = default)
-        => System.Threading.Tasks.Task.FromResult(true);
 }
 
 // Test memory scope for creating SimpleExecutionContext in tests
@@ -774,4 +767,3 @@ internal class DelegationTestLogger<T> : ILogger<T>
     public bool HasLoggedDebug(string message) =>
         _logMessages.Any(m => m.Contains("[Debug]") && m.Contains(message));
 }
-

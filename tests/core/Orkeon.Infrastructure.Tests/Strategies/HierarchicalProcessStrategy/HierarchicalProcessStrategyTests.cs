@@ -139,22 +139,6 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             return System.Threading.Tasks.Task.FromResult(result);
         }
 
-        public System.Threading.Tasks.Task<TaskExecutionPlan> PlanTaskExecutionAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
-        {
-            var plan = new TaskExecutionPlan(
-                AssignedAgent: agent.Id,
-                Steps: [],
-                EstimatedDuration: TimeoutStandard,
-                ConfidenceScore: 0.8
-            );
-            return System.Threading.Tasks.Task.FromResult(plan);
-        }
-
-        public System.Threading.Tasks.Task<bool> CanExecuteTaskAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, CancellationToken cancellationToken)
-        {
-            return System.Threading.Tasks.Task.FromResult(true);
-        }
-
         public System.Threading.Tasks.Task<TaskResult<TOutput>> ExecuteTaskAsync<TOutput>(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken) where TOutput : class
         {
             var result = new TaskResult<TOutput>(

@@ -30,7 +30,7 @@ public sealed class DelegationGuard : IGuardian
         if (context.Phase != GuardPhase.Delegation)
             return Task.FromResult(GuardResult.Allow());
 
-        var policy = _policyEngine.GetPolicy(context.CrewId, context.AgentId);
+        var policy = _policyEngine.Policy;
 
         if (context.DelegationDepth >= policy.MaxDelegationDepth)
         {

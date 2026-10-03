@@ -61,27 +61,6 @@ public sealed class CovStubs_NullAgentExecutionServiceTests
         Assert.Null(result.StructuredOutput);
         Assert.Equal("No IAgentExecutionService registered", result.Error);
     }
-
-    [Fact]
-    public async Task PlanTaskExecution_ReturnsEmptyPlanForAgent()
-    {
-        var sut = CreateSut();
-        var agent = CreateAgent();
-
-        var plan = await sut.PlanTaskExecutionAsync(agent, CreateTask(), CreateContext(), TestContext.Current.CancellationToken);
-
-        Assert.Equal(agent.Id, plan.AssignedAgent);
-        Assert.Empty(plan.Steps);
-        Assert.Equal(0.0, plan.ConfidenceScore);
-    }
-
-    [Fact]
-    public async Task CanExecuteTask_AlwaysFalse()
-    {
-        var sut = CreateSut();
-
-        Assert.False(await sut.CanExecuteTaskAsync(CreateAgent(), CreateTask(), TestContext.Current.CancellationToken));
-    }
 }
 
 public sealed class CovStubs_InMemoryMemorySystemTests

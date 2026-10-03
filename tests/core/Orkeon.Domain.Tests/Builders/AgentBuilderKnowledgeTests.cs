@@ -119,22 +119,4 @@ public class AgentBuilderKnowledgeTests
             KnowledgeAttachments = [invalid],
         }));
     }
-
-    [Fact]
-    public void AgentRestore_WithSnapshotAttachments_RehydratesThem()
-    {
-        var original = MinimalAgent().WithKnowledge("produits").Build();
-
-        var restored = Orkeon.Domain.Agent.Agent.Restore(new AgentSnapshot
-        {
-            Id = original.Id,
-            Role = original.Role,
-            Goal = original.Goal,
-            Status = original.Status,
-            KnowledgeAttachments = original.KnowledgeAttachments,
-        });
-
-        var attachment = Assert.Single(restored.KnowledgeAttachments);
-        Assert.Equal("produits", attachment.Collection);
-    }
 }

@@ -113,38 +113,13 @@ public class GuardianTests
     #region GuardianPolicyEngine Tests
 
     [Fact]
-    public void ShouldUseAgentPolicy_WhenAgentPolicyOverridesCrewPolicy()
+    public void ShouldHoldTheHostPolicy_ForEveryCrewAndAgent()
     {
         var globalPolicy = new GuardianPolicy { MaxDelegationDepth = 5 };
         var engine = new GuardianPolicyEngine(globalPolicy);
 
-        engine.SetCrewPolicy(CrewIdAlt1, new GuardianPolicy { MaxDelegationDepth = 3 });
-        engine.SetAgentPolicy("agent1", new GuardianPolicy { MaxDelegationDepth = 10 });
-
-        var result = engine.GetPolicy(CrewIdAlt1, "agent1");
-        Assert.Equal(10, result.MaxDelegationDepth);
-    }
-
-    [Fact]
-    public void ShouldUseCrewPolicy_WhenCrewPolicyOverridesGlobal()
-    {
-        var globalPolicy = new GuardianPolicy { MaxDelegationDepth = 5 };
-        var engine = new GuardianPolicyEngine(globalPolicy);
-
-        engine.SetCrewPolicy(CrewIdAlt1, new GuardianPolicy { MaxDelegationDepth = 3 });
-
-        var result = engine.GetPolicy(CrewIdAlt1, "unknown-agent");
-        Assert.Equal(3, result.MaxDelegationDepth);
-    }
-
-    [Fact]
-    public void ShouldFallBackToGlobalPolicy_WhenNoSpecificPolicyExists()
-    {
-        var globalPolicy = new GuardianPolicy { MaxDelegationDepth = 5 };
-        var engine = new GuardianPolicyEngine(globalPolicy);
-
-        var result = engine.GetPolicy("unknown-crew", "unknown-agent");
-        Assert.Equal(5, result.MaxDelegationDepth);
+        Assert.Same(globalPolicy, engine.Policy);
+        Assert.Equal(5, engine.Policy.MaxDelegationDepth);
     }
 
     [Fact]

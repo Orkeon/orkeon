@@ -32,21 +32,6 @@ public static class StatusDefaults
     public const string DefaultVerbosityLevel = "Normal";
 
     /// <summary>
-    /// Status for a planned (not yet started) execution step or plan.
-    /// </summary>
-    public const string PlannedStatus = "Planned";
-
-    /// <summary>
-    /// Status for a pending (queued) execution step.
-    /// </summary>
-    public const string PendingStatus = "Pending";
-
-    /// <summary>
-    /// Status for a completed execution step or plan.
-    /// </summary>
-    public const string CompletedStatus = "Completed";
-
-    /// <summary>
     /// Default sort direction for list queries.
     /// </summary>
     public const string DefaultSortDirection = "asc";

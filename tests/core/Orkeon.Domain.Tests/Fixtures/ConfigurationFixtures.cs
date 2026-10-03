@@ -179,8 +179,6 @@ public static class ConfigurationFixtures
         {
             DefaultTimeout = TimeSpan.FromSeconds(600),
             MaxRetries = 5,
-            EnableAsyncExecution = true,
-            MaxConcurrentTasks = 8,
             EnableDebugMode = false
         };
     }

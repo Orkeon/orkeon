@@ -405,39 +405,6 @@ public class AgentAggregateRootTests
 
     #endregion
 
-    #region ValidateForExecution Tests
-
-    [Fact]
-    public void ShouldReturnSuccess_WhenAgentHasToolsAndAllowsDelegation()
-    {
-        // Arrange
-        var agent = CreateIdleAgent(allowDelegation: true);
-        agent.AddTool(new StubTool("TestTool"));
-
-        // Act
-        var result = agent.ValidateForExecution();
-
-        // Assert
-        Assert.True(result.CanExecute);
-    }
-
-    [Fact]
-    public void ShouldReturnOneIssue_WhenAgentHasNoToolsAndNoDelegation()
-    {
-        // Arrange
-        var agent = CreateIdleAgent(allowDelegation: false);
-
-        // Act
-        var result = agent.ValidateForExecution();
-
-        // Assert — only tool availability is checked, not delegation
-        Assert.False(result.CanExecute);
-        Assert.Single(result.Issues);
-        Assert.Contains("Agent has no tools assigned", result.Issues);
-    }
-
-    #endregion
-
     #region StopAsync Edge Cases
 
     [Fact]

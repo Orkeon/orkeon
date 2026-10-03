@@ -12,7 +12,7 @@
 - **Agents**: 4 — Bibliographe (Worker), Statisticien (Worker), Methodologiste (Worker), Synthetiseur PRISMA (Worker)
 - **Tools**: `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: `AgentMemory.Episodic` for traceability, `EvaluationSuite` for study quality scoring, output validation JSON (PRISMA format)
+- **Key features**: `MemoryType.Episodic` for traceability, `EvaluationSuite` for study quality scoring, output validation JSON (PRISMA format)
 - **Runner**: `standard`
 
 ## Prerequisites

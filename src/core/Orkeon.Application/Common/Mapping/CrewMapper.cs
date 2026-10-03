@@ -61,39 +61,6 @@ public static class CrewMapper
     }
 
     /// <summary>
-    /// Creates a Crew domain entity from CreateCrewRequest.
-    /// </summary>
-    public static DomainCrew FromCreateRequest(Crew.DTOs.CreateCrewRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        var crew = DomainCrew.Create(
-            !string.IsNullOrWhiteSpace(request.Description) ? request.Description : "Default goal",
-            ToProcessTypeDomain(request.Process),
-            request.Verbose,
-            request.Planning
-        );
-
-        return crew;
-    }
-
-    /// <summary>
-    /// Updates an existing Crew domain entity from UpdateCrewRequest.
-    /// </summary>
-    public static DomainCrew UpdateFromRequest(DomainCrew crew, Crew.DTOs.UpdateCrewRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(crew);
-        ArgumentNullException.ThrowIfNull(request);
-
-        if (!string.IsNullOrWhiteSpace(request.Description))
-        {
-            crew.UpdateGoal(request.Description);
-        }
-
-        return crew;
-    }
-
-    /// <summary>
     /// Creates a summary CrewDto for list views.
     /// </summary>
     public static CrewDto ToSummaryDto(DomainCrew crew)
@@ -188,32 +155,6 @@ public static class CrewMapper
     /// </summary>
     private static string MapProcessTypeToString(Domain.SharedKernel.ValueObjects.ProcessType processType) =>
         processType.Value;
-
-    /// <summary>
-    /// Converts DTO ProcessType enum to domain ProcessType.
-    /// <para>
-    /// The outbound direction was fixed to stop collapsing unlisted modes into
-    /// <c>Sequential</c>; this one kept doing it, and the DTO enum itself stopped four modes
-    /// short of the six the domain carries — so a crew created through this mapper could not
-    /// be Graph or Autonomous at all, and asking for one silently produced a Sequential crew.
-    /// An identity map that can be wrong is worse than no map: an out-of-range value is now an
-    /// argument error rather than a quiet substitution.
-    /// </para>
-    /// </summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not a declared member.</exception>
-    private static Domain.SharedKernel.ValueObjects.ProcessType ToProcessTypeDomain(ProcessType processType)
-    {
-        return processType switch
-        {
-            ProcessType.Sequential => Domain.SharedKernel.ValueObjects.ProcessType.Sequential,
-            ProcessType.Parallel => Domain.SharedKernel.ValueObjects.ProcessType.Parallel,
-            ProcessType.Hierarchical => Domain.SharedKernel.ValueObjects.ProcessType.Hierarchical,
-            ProcessType.Consensual => Domain.SharedKernel.ValueObjects.ProcessType.Consensual,
-            ProcessType.Graph => Domain.SharedKernel.ValueObjects.ProcessType.Graph,
-            ProcessType.Autonomous => Domain.SharedKernel.ValueObjects.ProcessType.Autonomous,
-            _ => throw new ArgumentOutOfRangeException(nameof(processType), processType, "Unknown process type.")
-        };
-    }
 
     private static string MapCrewStatusToString(Domain.Crew.ValueObjects.CrewStatus crewStatus)
     {

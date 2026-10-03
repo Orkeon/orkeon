@@ -440,7 +440,7 @@ All DTOs in `Orkeon.Application` follow these conventions:
 - **Collections**: `ImmutableList<T>`, `ImmutableDictionary<K,V>` (never `List<T>` or `Dictionary<K,V>`)
 - **Naming suffixes**:
   - `*Dto` — Read/transfer DTOs (AgentDto, CrewDto, TaskDto)
-  - `*Request` — Input DTOs for commands (CreateAgentRequest, UpdateCrewRequest)
+  - `*Request` — Input records a port takes (BallotRequest, A2ATaskRequest); a CQRS command is a `*Command` record (CreateCrewCommand)
   - `*Response` — API response wrappers (via `ApiResponse<T>`)
 - **JSON serialization**: `[JsonPropertyName("snake_case")]` on all API-exposed DTOs
 - **Validation**: `ICommandValidator<T>` for business rules (no Data Annotations)

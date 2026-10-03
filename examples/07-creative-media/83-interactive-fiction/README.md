@@ -12,7 +12,7 @@
 - **Agents**: 3 — Narrator, Ambiance Writer, Consistency Checker
 - **Tools**: `json_tool`, `file_read`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: choice tree written by the crew, HumanInputContext (MultipleChoice), ObserverAgent (coherence), AgentMemory.Episodic
+- **Key features**: choice tree written by the crew, HumanInputContext (MultipleChoice), ObserverAgent (coherence), MemoryType.Episodic
 - **Runner**: `standard`
 
 ## Prerequisites

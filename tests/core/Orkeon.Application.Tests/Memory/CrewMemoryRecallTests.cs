@@ -56,7 +56,7 @@ public sealed class CrewMemoryRecallTests : IDisposable
 
     private AgentExecutionService Execution() => new(
         NullLogger<AgentExecutionService>.Instance,
-        new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, _llm, new NullPlanner()),
+        new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, _llm),
         new CallbackOrchestrator(NullLogger<CallbackOrchestrator>.Instance),
         // Bag-of-words vectors have their own scale: the default MinScore is the local model's.
         new MemoryCoordinator(
@@ -140,22 +140,5 @@ public sealed class CrewMemoryRecallTests : IDisposable
 
         public System.Threading.Tasks.Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default) =>
             System.Threading.Tasks.Task.FromResult(true);
-    }
-
-    private sealed class NullPlanner : Orkeon.Domain.Crew.Planning.IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.TaskPlan> CreatePlanAsync(
-            DomainTask task, CancellationToken cancellationToken = default) =>
-            System.Threading.Tasks.Task.FromResult(new Orkeon.Domain.Crew.Planning.TaskPlan());
-
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.TaskPlan> RefinePlanAsync(
-            Orkeon.Domain.Crew.Planning.TaskPlan plan,
-            Orkeon.Domain.Crew.Planning.PlanFeedback feedback,
-            CancellationToken cancellationToken = default) =>
-            System.Threading.Tasks.Task.FromResult(plan);
-
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.PlanValidationResult> ValidatePlanAsync(
-            Orkeon.Domain.Crew.Planning.TaskPlan plan, CancellationToken cancellationToken = default) =>
-            System.Threading.Tasks.Task.FromResult(new Orkeon.Domain.Crew.Planning.PlanValidationResult { IsValid = true });
     }
 }

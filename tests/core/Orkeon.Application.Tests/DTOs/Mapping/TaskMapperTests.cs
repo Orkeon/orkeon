@@ -67,37 +67,6 @@ public class TaskMapperTests
     }
 
     [Fact]
-    public void ShouldCreateTask_WhenUsingCreateFromRequestWithValidRequest()
-    {
-        var request = new CreateTaskRequest
-        {
-            Description = "Generate API documentation",
-            ExpectedOutput = ExpectedOutput.From("Complete API docs in markdown")
-        };
-
-        var task = TaskMapper.CreateFromRequest(request);
-
-        Assert.NotNull(task);
-        Assert.Equal("Generate API documentation", task.Description.Value);
-        Assert.Equal("Complete API docs in markdown", task.ExpectedOutput);
-        Assert.Equal(Domain.Task.ValueObjects.TaskStatus.Pending, task.Status);
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentException_WhenUsingCreateFromRequestWithNullExpectedOutput()
-    {
-        var request = new CreateTaskRequest
-        {
-            Description = "Simple task",
-            ExpectedOutput = null
-        };
-
-        var exception = Assert.Throws<ArgumentException>(() => TaskMapper.CreateFromRequest(request));
-        Assert.Equal("request", exception.ParamName);
-        Assert.Contains("Expected output cannot be empty", exception.Message);
-    }
-
-    [Fact]
     public void ShouldTruncate_WhenUsingToSummaryDtoWithLongDescription()
     {
         var longDescription = "This is a very long task description that exceeds 100 characters and should be truncated when creating a summary DTO for list views";

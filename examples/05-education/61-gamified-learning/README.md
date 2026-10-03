@@ -12,7 +12,7 @@
 - **Agents**: 3 — Game Master, Challenge Designer, Evaluator
 - **Tools**: `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: skill tree progression designed by the crew, CrewHooks (OnLevelCompleted, OnAchievementUnlocked), AgentMemory.Episodic
+- **Key features**: skill tree progression designed by the crew, CrewHooks (OnLevelCompleted, OnAchievementUnlocked), MemoryType.Episodic
 - **Runner**: `standard`
 
 ## Prerequisites

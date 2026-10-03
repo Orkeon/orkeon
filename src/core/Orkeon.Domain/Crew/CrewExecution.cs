@@ -111,10 +111,5 @@ public enum ExecutionStatus
     /// Execution failed: a task did not succeed, or the run stopped on an exception or a
     /// cancellation — a cancelled run is a failed one, its reason saying so (GAP-32).
     /// </summary>
-    Failed,
-
-    /// <summary>
-    /// Execution was cancelled. No run reaches it: a cancelled run ends <see cref="Failed"/>.
-    /// </summary>
-    Cancelled
+    Failed
 }

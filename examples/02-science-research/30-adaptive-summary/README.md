@@ -12,7 +12,7 @@
 - **Agents**: 1 — Resumeur Adaptatif (Worker)
 - **Tools**: `pdf_reader`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: `AgentMemory.LongTerm` (reader profile), `ITextChunker` (long documents), `IContextWindowManager`, `AgentConfiguration` dynamic
+- **Key features**: `MemoryType.LongTerm` (reader profile), `ITextChunker` (long documents), `IContextWindowManager`, `AgentConfiguration` dynamic
 - **Runner**: `standard`
 
 ## Prerequisites

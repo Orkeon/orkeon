@@ -19,11 +19,4 @@ public sealed class StubAgentExecutionService : IAgentExecutionService
         DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default)
         where TOutput : class =>
         throw new NotSupportedException();
-
-    public Task<TaskExecutionPlan> PlanTaskExecutionAsync(
-        DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
-
-    public Task<bool> CanExecuteTaskAsync(DomainAgent agent, ICrewTask task, CancellationToken cancellationToken = default) =>
-        Task.FromResult(true);
 }

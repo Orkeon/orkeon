@@ -207,12 +207,6 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
                 ExecutionTime: TimeSpan.FromSeconds(1)));
         }
 
-        public System.Threading.Tasks.Task<TaskExecutionPlan> PlanTaskExecutionAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
-            => System.Threading.Tasks.Task.FromResult(new TaskExecutionPlan(agent.Id, [], TimeoutStandard, 0.8));
-
-        public System.Threading.Tasks.Task<bool> CanExecuteTaskAsync(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, CancellationToken cancellationToken)
-            => System.Threading.Tasks.Task.FromResult(true);
-
         public System.Threading.Tasks.Task<TaskResult<TOutput>> ExecuteTaskAsync<TOutput>(DomainAgent agent, Orkeon.Domain.Task.ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken) where TOutput : class
             => System.Threading.Tasks.Task.FromResult(new TaskResult<TOutput>(true, $"Task {task.TaskId}", null, [], TimeSpan.FromSeconds(1)));
     }

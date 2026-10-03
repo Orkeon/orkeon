@@ -307,107 +307,6 @@ public sealed class Agent : AggregateRoot<AgentId>
 #pragma warning restore S107
 
     /// <summary>
-    /// Rehydrates an <see cref="Agent"/> from persistence without raising domain events.
-    /// Use this factory when loading an existing agent from a database or external store.
-    /// </summary>
-#pragma warning disable S107 // Restore factory requires all persisted state; by design
-    internal static Agent Restore(
-        AgentId id,
-        AgentRole role,
-        AgentGoal goal,
-        AgentBackstory? backstory,
-        bool allowDelegation,
-        int maxIterations,
-        int maxRpm,
-        bool verbose,
-        AgentStatus status,
-        TimeSpan? maxExecutionTime,
-        bool cacheEnabled,
-        string? systemTemplate,
-        string? promptTemplate,
-        string? responseTemplate,
-        int maxRetryLimit,
-        ILlmProvider? llm,
-        ToolAccessPolicy? toolAccessPolicy = null,
-        IEnumerable<IBaseTool>? tools = null,
-        IEnumerable<TaskId>? assignedTasks = null,
-        IEnumerable<TaskId>? currentTasks = null,
-        GuardrailsConfig? guardrails = null)
-        => Restore(new AgentSnapshot
-        {
-            Id = id,
-            Role = role,
-            Goal = goal,
-            Backstory = backstory,
-            AllowDelegation = allowDelegation,
-            MaxIterations = maxIterations,
-            MaxRpm = maxRpm,
-            Verbose = verbose,
-            Status = status,
-            MaxExecutionTime = maxExecutionTime,
-            CacheEnabled = cacheEnabled,
-            SystemTemplate = systemTemplate,
-            PromptTemplate = promptTemplate,
-            ResponseTemplate = responseTemplate,
-            MaxRetryLimit = maxRetryLimit,
-            Llm = llm,
-            ToolAccessPolicy = toolAccessPolicy,
-            Tools = tools,
-            AssignedTasks = assignedTasks,
-            CurrentTasks = currentTasks,
-            Guardrails = guardrails
-        });
-#pragma warning restore S107
-
-    /// <summary>
-    /// Rehydrates an <see cref="Agent"/> from an <see cref="AgentSnapshot"/> without
-    /// raising domain events. This is the preferred reconstruction entry point: named
-    /// snapshot members avoid the positional-argument fragility of the flat overload.
-    /// </summary>
-    public static Agent Restore(AgentSnapshot snapshot)
-    {
-        ArgumentNullException.ThrowIfNull(snapshot);
-        ArgumentNullException.ThrowIfNull(snapshot.Id);
-        ArgumentNullException.ThrowIfNull(snapshot.Role);
-        ArgumentNullException.ThrowIfNull(snapshot.Goal);
-
-        var agent = new Agent(snapshot.Id)
-        {
-            Role = snapshot.Role,
-            Goal = snapshot.Goal,
-            Backstory = snapshot.Backstory,
-            AllowDelegation = snapshot.AllowDelegation,
-            MaxIterations = snapshot.MaxIterations,
-            MaxRpm = snapshot.MaxRpm,
-            Verbose = snapshot.Verbose,
-            Status = snapshot.Status,
-            MaxExecutionTime = snapshot.MaxExecutionTime,
-            CacheEnabled = snapshot.CacheEnabled,
-            SystemTemplate = snapshot.SystemTemplate,
-            PromptTemplate = snapshot.PromptTemplate,
-            ResponseTemplate = snapshot.ResponseTemplate,
-            MaxRetryLimit = snapshot.MaxRetryLimit,
-            Llm = snapshot.Llm,
-            ToolAccessPolicy = snapshot.ToolAccessPolicy ?? ToolAccessPolicy.CreateUnrestricted(),
-            Guardrails = snapshot.Guardrails
-        };
-
-        if (snapshot.Tools != null)
-            agent._tools.AddRange(snapshot.Tools);
-
-        if (snapshot.AssignedTasks != null)
-            agent._assignedTasks.AddRange(snapshot.AssignedTasks);
-
-        if (snapshot.CurrentTasks != null)
-            agent._currentTasks.AddRange(snapshot.CurrentTasks);
-
-        if (snapshot.KnowledgeAttachments != null)
-            agent._knowledgeAttachments.AddRange(snapshot.KnowledgeAttachments);
-
-        return agent;
-    }
-
-    /// <summary>
     /// Injects the agent selection strategy as a delegate.
     /// This allows the Application layer to provide selection logic without creating a dependency from Domain to Application.
     /// </summary>
@@ -553,24 +452,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// </summary>
     public bool HasTool(string toolName) =>
         _toolManager.HasTool(toolName);
-
-    /// <summary>
-    /// Validates whether this agent is capable of executing a task.
-    /// Checks tool availability.
-    /// </summary>
-    public ExecutionValidationResult ValidateForExecution()
-    {
-        var issues = new List<string>();
-
-        if (_tools.Count == 0)
-        {
-            issues.Add("Agent has no tools assigned");
-        }
-
-        return issues.Count == 0
-            ? ExecutionValidationResult.Success()
-            : ExecutionValidationResult.Failure(issues);
-    }
 
     /// <summary>
     /// Updates the agent's goal.

@@ -10,7 +10,6 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.Crew.Planning;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
@@ -76,7 +75,7 @@ public sealed class AgentUsageMeteringTests
         var metered = MeteredLlmProvider.Wrap(provider, sink);
         using var chatClient = new LlmProviderToChatClientAdapter(metered);
         var orchestrator = new ExecutionOrchestrator(
-            NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(metered), new NullAgentPlanner(),
+            NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(metered),
             chatClient, [tool], new FakeFileSystemService());
         var task = BuildTask();
         var context = BuildContext();
@@ -100,7 +99,7 @@ public sealed class AgentUsageMeteringTests
         var metered = MeteredLlmProvider.Wrap(provider, sink);
         using var chatClient = new LlmProviderToChatClientAdapter(metered);
         var orchestrator = new ExecutionOrchestrator(
-            NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(metered), new NullAgentPlanner(),
+            NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(metered),
             chatClient, [tool], new FakeFileSystemService());
         var task = BuildTask();
         var context = BuildContext();
@@ -121,8 +120,7 @@ public sealed class AgentUsageMeteringTests
         var sink = new MockLlmUsageSink();
         var orchestrator = new ExecutionOrchestrator(
             NullLogger<ExecutionOrchestrator>.Instance,
-            new LlmProviderAdapter(MeteredLlmProvider.Wrap(provider, sink)),
-            new NullAgentPlanner());
+            new LlmProviderAdapter(MeteredLlmProvider.Wrap(provider, sink)));
         var task = BuildTask();
         var context = BuildContext();
 
@@ -180,19 +178,6 @@ public sealed class AgentUsageMeteringTests
         var usage = Assert.Single(sink.Recorded);
         Assert.Equal(LlmUsageOperations.Agent, usage.OperationType);
         Assert.Equal(Role, usage.AgentId);
-    }
-
-    /// <summary>A planner with nothing to say: the tests exercise execution, not planning.</summary>
-    private sealed class NullAgentPlanner : IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(DomainTask task, CancellationToken cancellationToken = default) =>
-            System.Threading.Tasks.Task.FromResult(new TaskPlan { TaskId = task.Id, Steps = [] });
-
-        public System.Threading.Tasks.Task<TaskPlan> RefinePlanAsync(TaskPlan plan, PlanFeedback feedback, CancellationToken cancellationToken = default) =>
-            System.Threading.Tasks.Task.FromResult(plan);
-
-        public System.Threading.Tasks.Task<PlanValidationResult> ValidatePlanAsync(TaskPlan plan, CancellationToken cancellationToken = default) =>
-            System.Threading.Tasks.Task.FromResult(new PlanValidationResult { IsValid = true });
     }
 
     /// <summary>Answers the validation verdicts it was given, in order.</summary>

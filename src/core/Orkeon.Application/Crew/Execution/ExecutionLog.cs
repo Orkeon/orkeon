@@ -41,9 +41,6 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Tool {ToolName} not found for agent {AgentRole}")]
     internal static partial void LogToolNotFound(ILogger logger, string toolName, object agentRole);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Error planning execution for task {TaskId}")]
-    internal static partial void LogPlanningError(ILogger logger, Exception ex, object taskId);
-
     [LoggerMessage(Level = LogLevel.Warning, Message = "Output validation failed after {MaxRetries} retries for task {TaskId}: {Errors}")]
     internal static partial void LogOutputValidationExhausted(ILogger logger, int maxRetries, object taskId, string errors);
 

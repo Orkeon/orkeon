@@ -12,7 +12,7 @@
 - **Agents**: 4 -- Training Program Planner, Performance Analyst, Sports Nutritionist, Recovery Coach
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `SQLite` (episodic athlete history)
-- **Key features**: AgentMemory.Episodic, AgentConfiguration adaptive, TaskContext typed, EvaluationScore (performance tracking)
+- **Key features**: MemoryType.Episodic, AgentConfiguration adaptive, TaskContext typed, EvaluationScore (performance tracking)
 - **Runner**: `standard`
 
 ## Prerequisites

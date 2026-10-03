@@ -202,50 +202,6 @@ namespace Orkeon.Application.Agent
             }
         }
 
-        /// <summary>
-        /// Plan Task Execution Async.
-        /// </summary>
-        public System.Threading.Tasks.Task<TaskExecutionPlan> PlanTaskExecutionAsync(
-            DomainAgent agent,
-            ICrewTask task,
-            SimpleExecutionContext context,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentNullException.ThrowIfNull(agent);
-            ArgumentNullException.ThrowIfNull(task);
-
-            return _executionOrchestrator.PlanExecutionAsync(
-                agent,
-                CastToDomainTask(task),
-                context,
-                cancellationToken);
-        }
-
-        /// <summary>
-        /// Can Execute Task Async.
-        /// </summary>
-        public System.Threading.Tasks.Task<bool> CanExecuteTaskAsync(
-            DomainAgent agent,
-            ICrewTask task,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentNullException.ThrowIfNull(agent);
-            ArgumentNullException.ThrowIfNull(task);
-            return CanExecuteTaskCoreAsync(agent, task, cancellationToken);
-        }
-
-        private async System.Threading.Tasks.Task<bool> CanExecuteTaskCoreAsync(
-            DomainAgent agent,
-            ICrewTask task,
-            CancellationToken cancellationToken)
-        {
-            var validation = await _executionOrchestrator.ValidateExecutionAsync(
-                agent,
-                CastToDomainTask(task),
-                cancellationToken).ConfigureAwait(false);
-            return validation.CanExecute;
-        }
-
         [LoggerMessage(Level = LogLevel.Information, Message = "Agent {Agent} starting task: {Task}")]
         private partial void LogAgentStartingTask(object? agent, object? task);
 

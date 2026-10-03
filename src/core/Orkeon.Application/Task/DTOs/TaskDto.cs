@@ -68,10 +68,6 @@ public sealed record TaskDto
     [JsonPropertyName("complexity")]
     public TaskComplexityDto? Complexity { get; init; }
 
-    /// <summary>Gets or sets the execution plan.</summary>
-    [JsonPropertyName("execution_plan")]
-    public ExecutionPlanDto? ExecutionPlan { get; init; }
-
     /// <summary>Gets or sets the created at.</summary>
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;

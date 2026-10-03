@@ -883,11 +883,6 @@ internal class TestAgentExecutionService : IAgentExecutionService
     public Task<AppTaskResultGeneric.TaskResult<TOutput>> ExecuteTaskAsync<TOutput>(DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default) where TOutput : class
         => throw new NotImplementedException();
 
-    public Task<TaskExecutionPlan> PlanTaskExecutionAsync(DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
-
-    public Task<bool> CanExecuteTaskAsync(DomainAgent agent, ICrewTask task, CancellationToken cancellationToken = default)
-        => Task.FromResult(true);
 }
 
 internal class TestLogger<T> : ILogger<T>

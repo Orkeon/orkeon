@@ -12,7 +12,7 @@
 - **Agents**: 4 — Analyseur Publications (Worker), Analyseur Brevets (Worker), Analyseur Financements (Worker), Futuriste-Synthetiseur (Worker)
 - **Tools**: `http_api`, `web_scrape`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: `AgentMemory.LongTerm` (auto-calibration), `EvaluationScore` (accuracy tracking), `BenchmarkRunner` (backtesting)
+- **Key features**: `MemoryType.LongTerm` (auto-calibration), `EvaluationScore` (accuracy tracking), `BenchmarkRunner` (backtesting)
 - **Runner**: `standard`
 
 ## Prerequisites

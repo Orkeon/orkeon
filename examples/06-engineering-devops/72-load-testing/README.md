@@ -12,7 +12,7 @@
 - **Agents**: 4 — Scenario Designer, Test Executor, Results Analyzer, Optimization Recommender
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: BenchmarkRunner (reproducibility), AgentMemory.LongTerm (trending), EvaluationScore (regression detection), InMemoryDataset (baseline)
+- **Key features**: BenchmarkRunner (reproducibility), MemoryType.LongTerm (trending), EvaluationScore (regression detection), InMemoryDataset (baseline)
 - **Runner**: `standard`
 
 ## Prerequisites

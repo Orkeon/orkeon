@@ -11,7 +11,6 @@ using Orkeon.Application.Services.Security;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.Crew.Planning;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Tools;
 
@@ -192,7 +191,7 @@ public class AgentStepCallbackTests
         provider.Enqueue("""[TOOL_CALL]{tool => "web_scrape", args => {--input "https://example.com"}}[/TOOL_CALL]""");
         provider.Enqueue("A summary.");
         var (callbacks, handler) = Callbacks();
-        var orchestrator = new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, provider, new NullPlanner())
+        var orchestrator = new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, provider)
         {
             Callbacks = callbacks,
         };
@@ -213,7 +212,7 @@ public class AgentStepCallbackTests
         provider.Enqueue("""[TOOL_CALL]{tool => "web_scrape", args => {--input "https://example.com"}}[/TOOL_CALL]""");
         provider.Enqueue("A summary.");
         var (callbacks, handler) = Callbacks();
-        var orchestrator = new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, provider, new NullPlanner())
+        var orchestrator = new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, provider)
         {
             Callbacks = callbacks,
         };
@@ -228,17 +227,5 @@ public class AgentStepCallbackTests
         Assert.True(result.Success, result.Error);
         Assert.Equal(2, result.IterationsUsed);
         Assert.Equal(2, Assert.Single(handler.TasksCompleted).StepsExecuted);
-    }
-
-    private sealed class NullPlanner : IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(DomainTask task, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public System.Threading.Tasks.Task<TaskPlan> RefinePlanAsync(TaskPlan plan, PlanFeedback feedback, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public System.Threading.Tasks.Task<PlanValidationResult> ValidatePlanAsync(TaskPlan plan, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
     }
 }

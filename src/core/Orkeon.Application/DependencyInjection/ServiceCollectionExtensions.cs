@@ -3,7 +3,6 @@ using Microsoft.Extensions.AI;
 using Orkeon.Application.Common.CQRS;
 using Orkeon.Application.Execution;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Domain.Crew.Planning;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Agent;
 using Orkeon.Application.Crew;
@@ -57,12 +56,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMemoryService, MemoryService>();
         services.AddScoped<IMemorySearchService, MemorySearchService>();
 
-        // Planning services. The default IAgentPlanner is the deterministic stub
-        // (fixed 4-step plan — see AgentPlannerService XML doc); an LLM-backed
-        // planner is a planned feature. A crew's `planning: true` is the orchestrator's: it
-        // plans on the crew's planning provider, else the host's default profile (GAP-29).
-        services.AddScoped<IAgentPlanner, AgentPlannerService>();
-
         return services;
     }
 
@@ -79,11 +72,7 @@ public static class ServiceCollectionExtensions
 
         services.Configure<OrkeonApplicationOptions>(opt =>
         {
-            opt.MaxShortTermMemoryItems = options.MaxShortTermMemoryItems;
-            opt.EnablePersistence = options.EnablePersistence;
             opt.DefaultMaxIterations = options.DefaultMaxIterations;
-            opt.EnableRAG = options.EnableRAG;
-            opt.MemoryDatabasePath = options.MemoryDatabasePath;
             opt.EmbeddingDimension = options.EmbeddingDimension;
             opt.CrewRepositoryType = options.CrewRepositoryType;
             opt.CrewsPath = options.CrewsPath;
@@ -96,7 +85,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Delegate every shared registration (CQRS handlers, validators, domain event
-        // handlers, execution pipeline, memory and planning services) to the base
+        // handlers, execution pipeline, memory services) to the base
         // overload so the registration block lives in exactly one place.
         return services.AddOrkeonApplication();
     }
@@ -150,7 +139,6 @@ public static class ServiceCollectionExtensions
         {
             var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ExecutionOrchestrator>>();
             var llmProvider = sp.GetRequiredService<IBasicLlmProvider>();
-            var planner = sp.GetRequiredService<IAgentPlanner>();
             var chatClient = sp.GetService<IChatClient>();
             var rateLimiter = sp.GetService<Interfaces.Security.ILlmRateLimiter>();
             // Resolve optional native tool calling dependencies
@@ -167,15 +155,15 @@ public static class ServiceCollectionExtensions
                 var validationPipeline = sp.GetService<IOutputValidationPipeline>();
                 var parserFactory = sp.GetService<IOutputParserFactory>();
                 if (validationPipeline != null && parserFactory != null && rateLimiter != null)
-                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, rateLimiter, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem);
+                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, validationPipeline, parserFactory, rateLimiter, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem);
                 else if (validationPipeline != null && parserFactory != null)
-                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, fileSystem);
+                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, validationPipeline, parserFactory, fileSystem);
                 else
-                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, fileSystem);
+                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, fileSystem);
             }
             else
             {
-                orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+                orchestrator = new ExecutionOrchestrator(logger, llmProvider);
             }
 
             // RAG-03/C4 — optional knowledge augmentation: hosts without the RAG

@@ -19,14 +19,6 @@ public class MockAgentExecutionService : IAgentExecutionService
         Array.Empty<ToolUsage>(),
         TimeSpan.FromMilliseconds(100));
 
-    private TaskExecutionPlan _planResult = new(
-        AgentId.From(Guid.NewGuid()),
-        Array.Empty<PlannedStep>(),
-        TimeSpan.FromMinutes(1),
-        0.9);
-
-    private bool _canExecuteResult = true;
-
     // --- Tracking ---
     // Consensus/parallel strategies invoke ExecuteTaskAsync from multiple threads at once
     // (Task.Run fan-out per agent), so the call counter must be incremented atomically;
@@ -39,14 +31,6 @@ public class MockAgentExecutionService : IAgentExecutionService
 
     public int ExecuteTaskGenericCallCount { get; private set; }
 
-    public int PlanTaskExecutionCallCount { get; private set; }
-    public DomainAgent? LastPlanAgent { get; private set; }
-    public ICrewTask? LastPlanTask { get; private set; }
-
-    public int CanExecuteTaskCallCount { get; private set; }
-    public DomainAgent? LastCanExecuteAgent { get; private set; }
-    public ICrewTask? LastCanExecuteTask { get; private set; }
-
     private Func<DomainAgent, ICrewTask, SimpleExecutionContext, CancellationToken, TaskResult>? _executeFunc;
 
     // --- Configuration ---
@@ -57,9 +41,6 @@ public class MockAgentExecutionService : IAgentExecutionService
 
     public void SetExecuteError(string error) =>
         _executeResult = new TaskResult(false, "", null, Array.Empty<ToolUsage>(), TimeSpan.FromMilliseconds(100), error);
-
-    public void SetPlanResult(TaskExecutionPlan plan) => _planResult = plan;
-    public void SetCanExecuteResult(bool result) => _canExecuteResult = result;
 
     /// <summary>
     /// Sets a function that generates the TaskResult dynamically based on input parameters.
@@ -107,28 +88,5 @@ public class MockAgentExecutionService : IAgentExecutionService
             _executeResult.Error);
 
         return System.Threading.Tasks.Task.FromResult(result);
-    }
-
-    public System.Threading.Tasks.Task<TaskExecutionPlan> PlanTaskExecutionAsync(
-        DomainAgent agent,
-        ICrewTask task,
-        SimpleExecutionContext context,
-        CancellationToken cancellationToken = default)
-    {
-        PlanTaskExecutionCallCount++;
-        LastPlanAgent = agent;
-        LastPlanTask = task;
-        return System.Threading.Tasks.Task.FromResult(_planResult);
-    }
-
-    public System.Threading.Tasks.Task<bool> CanExecuteTaskAsync(
-        DomainAgent agent,
-        ICrewTask task,
-        CancellationToken cancellationToken = default)
-    {
-        CanExecuteTaskCallCount++;
-        LastCanExecuteAgent = agent;
-        LastCanExecuteTask = task;
-        return System.Threading.Tasks.Task.FromResult(_canExecuteResult);
     }
 }

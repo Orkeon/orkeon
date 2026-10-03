@@ -37,12 +37,6 @@ public static class MemoryDefaults
     // ── Application-level limits ──────────────────────────────────────────
 
     /// <summary>
-    /// Default maximum number of short-term items exposed at application level (100).
-    /// Used in <c>OrkeonApplicationOptions</c> and <c>CreateAgentRequest</c>.
-    /// </summary>
-    public const int DefaultMaxShortTermItems = 100;
-
-    /// <summary>
     /// Default maximum number of short-term entries retained in a crew memory store (1 000).
     /// </summary>
     public const int DefaultMaxShortTermEntries = 1_000;

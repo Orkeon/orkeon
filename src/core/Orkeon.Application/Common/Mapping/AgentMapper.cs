@@ -1,11 +1,7 @@
 using System.Collections.Immutable;
 using Orkeon.Application.Agent.DTOs;
-using Orkeon.Domain.Agent;
-using Orkeon.Domain.Agent.ValueObjects;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using Orkeon.Domain.Tools;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.Constants.Agent;
 using Orkeon.Application.Constants.Execution;
 
 namespace Orkeon.Application.Common.Mapping;
@@ -55,33 +51,6 @@ public static class AgentMapper
     public static IReadOnlyList<AgentDto> ToDto(IEnumerable<DomainAgent> agents)
     {
         return agents.Select(ToDto).ToList();
-    }
-
-    /// <summary>
-    /// Creates a simple DomainAgent from CreateAgentRequest.
-    /// Uses Agent.Create factory method with proper value objects.
-    /// </summary>
-    public static DomainAgent CreateFromRequest(CreateAgentRequest request, IBaseTool[] tools)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        var builder = new AgentBuilder()
-            .Role(AgentRole.From(request.Role))
-            .Goal(AgentGoal.From(request.Goal))
-            .AllowDelegation(request.Settings?.AllowDelegation ?? false)
-            .MaxIterations(request.Settings?.MaxIterations ?? AgentDefaults.MaxIterations)
-            .MaxRpm(request.Settings?.MaxRPM.HasValue == true ? (int)request.Settings.MaxRPM.Value : AgentDefaults.MaxRequestsPerMinute)
-            .Verbose(request.Settings?.Verbose ?? false);
-
-        if (!string.IsNullOrEmpty(request.Backstory))
-            builder.Backstory(request.Backstory);
-
-        // Assign tools to the agent via builder
-        if (tools != null && tools.Length > 0)
-        {
-            builder.WithTools(tools);
-        }
-
-        return builder.Build();
     }
 
     /// <summary>

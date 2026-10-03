@@ -67,18 +67,4 @@ public sealed class FakeAgentExecutionService : IAgentExecutionService
         CancellationToken cancellationToken = default)
         where TOutput : class
         => throw new NotSupportedException("The A2A router runs untyped tasks only.");
-
-    public System.Threading.Tasks.Task<TaskExecutionPlan> PlanTaskExecutionAsync(
-        DomainAgent agent,
-        ICrewTask task,
-        SimpleExecutionContext context,
-        CancellationToken cancellationToken = default)
-        => System.Threading.Tasks.Task.FromResult(new TaskExecutionPlan(
-            agent.Id, Array.Empty<PlannedStep>(), TimeSpan.Zero, 1.0));
-
-    public System.Threading.Tasks.Task<bool> CanExecuteTaskAsync(
-        DomainAgent agent,
-        ICrewTask task,
-        CancellationToken cancellationToken = default)
-        => System.Threading.Tasks.Task.FromResult(true);
 }

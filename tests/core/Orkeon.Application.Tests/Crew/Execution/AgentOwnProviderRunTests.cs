@@ -6,7 +6,6 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.Crew.Planning;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
@@ -23,18 +22,6 @@ namespace Orkeon.Application.Tests.Crew.Execution;
 /// </summary>
 public sealed class AgentOwnProviderRunTests
 {
-    private sealed class NoPlanner : IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(DomainTask task, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public System.Threading.Tasks.Task<TaskPlan> RefinePlanAsync(TaskPlan plan, PlanFeedback feedback, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public System.Threading.Tasks.Task<PlanValidationResult> ValidatePlanAsync(TaskPlan plan, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-    }
-
     [Fact]
     public async System.Threading.Tasks.Task An_orchestrator_without_the_hosts_profiles_fails_the_task_naming_the_agent()
     {
@@ -42,7 +29,7 @@ public sealed class AgentOwnProviderRunTests
         var @default = new ScriptedFullLlmProvider();
         using var defaultClient = new LlmProviderToChatClientAdapter(@default);
         var orchestrator = new ExecutionOrchestrator(
-            NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(@default), new NoPlanner(),
+            NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(@default),
             defaultClient, [], new FakeFileSystemService());
         var agent = new AgentBuilder().Role("Reviewer").Goal("Review the change").WithLlm(own).Build();
         var task = DomainTask.Create(TaskDescription.From("Review the change"), ExpectedOutput.From("A review"));

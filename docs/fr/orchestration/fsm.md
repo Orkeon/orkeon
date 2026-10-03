@@ -111,9 +111,9 @@ var fsm = new StateMachineBuilder<MyState, MyEvent>()
 
 ## Relation avec l'existant
 
-### StateTransitionManager
+### États de cycle de vie
 
-Le `StateTransitionManager` (`Orkeon.Application.Services.StateManagement`) valide les transitions d'états persistés (AgentStatus, CrewStatus, TaskStatus). Il gouverne les états de cycle de vie (Pending → InProgress → Completed) et n'utilise pas ce moteur.
+Les états de cycle de vie des agents, des tâches et des crews (`AgentStatus`, `TaskStatus`, `CrewStatus` : Pending → InProgress → Completed…) sont gardés par les agrégats eux-mêmes — une tâche qui n'est pas `Pending` refuse de démarrer — et un run les fait avancer au fil de l'exécution ([Événements](../architecture/domain-events.md#dispatch)). Ils n'utilisent pas ce moteur.
 
 ### Stratégies de process
 

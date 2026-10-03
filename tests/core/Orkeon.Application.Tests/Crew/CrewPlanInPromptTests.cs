@@ -96,28 +96,10 @@ public sealed class CrewPlanInPromptTests
             => System.Threading.Tasks.Task.FromResult(true);
     }
 
-    private sealed class NullPlanner : Orkeon.Domain.Crew.Planning.IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.TaskPlan> CreatePlanAsync(
-            DomainTask task, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(new Orkeon.Domain.Crew.Planning.TaskPlan());
-
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.TaskPlan> RefinePlanAsync(
-            Orkeon.Domain.Crew.Planning.TaskPlan plan,
-            Orkeon.Domain.Crew.Planning.PlanFeedback feedback,
-            CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(plan);
-
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.PlanValidationResult> ValidatePlanAsync(
-            Orkeon.Domain.Crew.Planning.TaskPlan plan, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(
-                new Orkeon.Domain.Crew.Planning.PlanValidationResult { IsValid = true });
-    }
-
     private static async System.Threading.Tasks.Task<string> PromptOfAsync(DomainTask task)
     {
         var llm = new RecordingLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, llm, new NullPlanner());
+        var orchestrator = new ExecutionOrchestrator(NullLogger<ExecutionOrchestrator>.Instance, llm);
         var agent = new AgentBuilder().Role("Support agent").Goal("Answer customer questions").Build();
 
         var result = await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);

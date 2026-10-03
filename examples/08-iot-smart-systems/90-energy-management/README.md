@@ -12,7 +12,7 @@
 - **Agents**: 4 — Consumption Monitor, Peak Forecaster, Parameter Optimizer, Efficiency Reporter
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `SQLite` (consumption history)
-- **Key features**: AgentMemory.LongTerm, EvaluationScore (energy efficiency)
+- **Key features**: MemoryType.LongTerm, EvaluationScore (energy efficiency)
 - **Runner**: `standard`
 
 ## Prerequisites

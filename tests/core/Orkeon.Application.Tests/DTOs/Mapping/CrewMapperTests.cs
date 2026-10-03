@@ -6,8 +6,6 @@ using DomainProcessType = Orkeon.Domain.SharedKernel.ValueObjects.ProcessType;
 using DomainCrewStatus = Orkeon.Domain.Crew.ValueObjects.CrewStatus;
 using static Orkeon.Tests.Shared.Constants.TestStatusConstants;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
-// CreateCrewRequest is now in Orkeon.Application.Crew.DTOs - no alias needed
-// UpdateCrewRequest is now in Orkeon.Application.Crew.DTOs - no alias needed
 
 namespace Orkeon.Application.Tests.DTOs.Mapping;
 
@@ -22,7 +20,6 @@ public class CrewMapperTests
             DomainProcessType.Sequential,
             verbose: true,
             planning: true);
-
 
         // Act
         var dto = CrewMapper.ToDto(crew);
@@ -44,113 +41,6 @@ public class CrewMapperTests
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() => CrewMapper.ToDto((DomainCrew)null!));
         Assert.Equal("crew", exception.ParamName);
-    }
-
-    [Fact]
-    public void ShouldCreateCrew_WhenUsingFromCreateRequestWithCompleteRequest()
-    {
-        // Arrange
-        var request = new CreateCrewRequest
-        {
-            Name = "Development Team",
-            Description = "Create high-quality software",
-            Process = ProcessType.Sequential, // Changed from Hierarchical to avoid validation issues
-            Verbose = true,
-            Planning = true
-        };
-
-        // Act
-        var crew = CrewMapper.FromCreateRequest(request);
-
-        // Assert
-        Assert.NotNull(crew);
-        Assert.Equal("Create high-quality software", crew.Goal);
-        Assert.Equal(DomainProcessType.Sequential, crew.ProcessType);
-        Assert.True(crew.Verbose);
-        Assert.True(crew.Planning);
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenUsingFromCreateRequestWithNullRequest()
-    {
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => CrewMapper.FromCreateRequest(null!));
-        Assert.Equal("request", exception.ParamName);
-    }
-
-    [Fact]
-    public void ShouldUseDefaults_WhenUsingFromCreateRequestWithMinimalRequest()
-    {
-        // Arrange
-        var request = new CreateCrewRequest
-        {
-            Name = "Basic Team",
-            Process = ProcessType.Sequential,
-            Verbose = false,
-            Planning = false
-        };
-
-        // Act
-        var crew = CrewMapper.FromCreateRequest(request);
-
-        // Assert
-        Assert.NotNull(crew);
-        Assert.Equal("Default goal", crew.Goal); // Default goal when description is null
-        Assert.Equal(DomainProcessType.Sequential, crew.ProcessType);
-        Assert.False(crew.Verbose);
-        Assert.False(crew.Planning);
-    }
-
-    [Fact]
-    public void ShouldUpdateCrew_WhenUsingUpdateFromRequestWithCompleteRequest()
-    {
-        // Arrange
-        var crew = DomainCrew.Create(
-            "Original goal",
-            DomainProcessType.Sequential,
-            verbose: false,
-            planning: false);
-
-        var request = new UpdateCrewRequest
-        {
-            Name = "Updated Team",
-            Description = "Updated goal"
-        };
-
-        // Act
-        var updatedCrew = CrewMapper.UpdateFromRequest(crew, request);
-
-        // Assert
-        Assert.NotNull(updatedCrew);
-        Assert.Equal("Updated goal", updatedCrew.Goal);
-        // Note: ProcessType, Verbose, Planning can't be updated in current domain implementation
-        Assert.Equal(DomainProcessType.Sequential, updatedCrew.ProcessType); // Unchanged
-        Assert.False(updatedCrew.Verbose); // Unchanged
-        Assert.False(updatedCrew.Planning); // Unchanged
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenUsingUpdateFromRequestWithNullCrew()
-    {
-        // Arrange
-        var request = new UpdateCrewRequest();
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-            CrewMapper.UpdateFromRequest(null!, request));
-        Assert.Equal("crew", exception.ParamName);
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenUsingUpdateFromRequestWithNullRequest()
-    {
-        // Arrange
-        var crew = DomainCrew.Create("Goal", DomainProcessType.Sequential);
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-            CrewMapper.UpdateFromRequest(crew, null!));
-        Assert.Equal("request", exception.ParamName);
     }
 
     [Fact]
@@ -194,7 +84,6 @@ public class CrewMapperTests
             DomainProcessType.Consensual,
             verbose: true,
             planning: true);
-
 
         // Act
         var dto = CrewMapper.ToSummaryDto(crew);
@@ -416,98 +305,6 @@ public class CrewMapperTests
 
         crew.FailExecution("unit-test failure");
         Assert.Equal("Failed", CrewMapper.ToDto(crew).Status);
-    }
-
-    [Theory]
-    [InlineData(ProcessType.Parallel, "Parallel")]
-    [InlineData(ProcessType.Consensual, "Consensual")]
-    public void FromCreateRequest_MapsTheProcessType(ProcessType requested, string expectedDomainValue)
-    {
-        var request = new CreateCrewRequest
-        {
-            Name = "Any",
-            Description = "Typed goal",
-            Process = requested,
-            Verbose = false,
-            Planning = false
-        };
-
-        var crew = CrewMapper.FromCreateRequest(request);
-
-        Assert.Equal(expectedDomainValue, crew.ProcessType.Value);
-    }
-
-    [Fact]
-    public void FromCreateRequest_Hierarchical_SurfacesTheDomainManagerGuard()
-    {
-        // The enum arm maps fine; Crew.Create then rejects a manager-less hierarchy.
-        var request = new CreateCrewRequest
-        {
-            Name = "Any",
-            Description = "Managed goal",
-            Process = ProcessType.Hierarchical,
-            Verbose = false,
-            Planning = false
-        };
-
-        Assert.Throws<ArgumentException>(() => CrewMapper.FromCreateRequest(request));
-    }
-
-    /// <summary>
-    /// An out-of-range cast is refused, not absorbed.
-    /// <para>
-    /// This used to assert the opposite, under the name <c>…_FallsBackToSequential</c>. The
-    /// fallback was not a kindness: the DTO enum stopped four modes short of the six the
-    /// domain carries, so asking for Graph or Autonomous through this mapper produced a
-    /// Sequential crew that ran to completion and reported success — the same silent
-    /// substitution the outbound direction was fixed for. The enum carries all six now, and
-    /// a value that is none of them is a caller error.
-    /// </para>
-    /// </summary>
-    [Fact]
-    public void FromCreateRequest_UnknownEnumValue_IsRefused()
-    {
-        var request = new CreateCrewRequest
-        {
-            Name = "Any",
-            Description = "Fallback goal",
-            Process = (ProcessType)999,
-            Verbose = false,
-            Planning = false
-        };
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => CrewMapper.FromCreateRequest(request));
-    }
-
-    /// <summary>
-    /// Every mode the domain carries survives the inbound mapping.
-    /// <para>
-    /// Hierarchical is absent because a request alone cannot produce one: <c>Crew.Create</c>
-    /// refuses it without a manager agent or manager LLM, and <c>CreateCrewRequest</c> carries
-    /// neither. That is the domain's invariant, not a mapping gap — and it was invisible while
-    /// an unmapped value quietly became Sequential.
-    /// </para>
-    /// </summary>
-    [Theory]
-    [InlineData(ProcessType.Sequential)]
-    [InlineData(ProcessType.Parallel)]
-    [InlineData(ProcessType.Consensual)]
-    [InlineData(ProcessType.Graph)]
-    [InlineData(ProcessType.Autonomous)]
-    public void FromCreateRequest_CarriesEveryProcessType(ProcessType process)
-    {
-        var request = new CreateCrewRequest
-        {
-            Name = "Any",
-            Description = "A goal",
-            Process = process,
-            Verbose = false,
-            Planning = false
-        };
-
-        var crew = CrewMapper.FromCreateRequest(request);
-
-        Assert.Equal(process.ToString(), crew.ProcessType.Value);
     }
 
     [Fact]

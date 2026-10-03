@@ -12,7 +12,7 @@
 - **Agents**: 6 — Pump Observer, Compressor Observer, Conveyor Observer, Diagnostician, Maintenance Planner, Parts Inventory Manager
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `database_query`, `file_write`
 - **Memory**: `SQLite` (episodic per machine)
-- **Key features**: ObserverAgent, AgentMemory.Episodic per machine, ICheckpointManager, TaskPriority
+- **Key features**: ObserverAgent, MemoryType.Episodic per machine, ICheckpointManager, TaskPriority
 - **Runner**: `standard`
 
 ## Prerequisites

@@ -12,7 +12,7 @@
 - **Agents**: 4 — Code Reviewer, Concept Pedagogue, Patterns Architect, Career Coach
 - **Tools**: `file_read`, `directory_read`, `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: ICodeSandbox (live demonstration), ICodeSecurityAnalyzer, AgentMemory.LongTerm (developer progression), batch execution
+- **Key features**: ICodeSandbox (live demonstration), ICodeSecurityAnalyzer, MemoryType.LongTerm (developer progression), batch execution
 - **Runner**: `standard`
 
 ## Prerequisites

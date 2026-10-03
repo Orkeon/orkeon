@@ -1,7 +1,6 @@
 using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Task;
-using Orkeon.Domain.Task.ValueObjects;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Infrastructure.Tests.Doubles;
@@ -31,22 +30,4 @@ public sealed class StubExecutionOrchestrator : IExecutionOrchestrator
 
     /// <summary>One execution of an agent turn.</summary>
     public sealed record AgentTurn(DomainAgent Agent, CrewTask Task, SimpleExecutionContext Context);
-
-    public System.Threading.Tasks.Task<TaskExecutionPlan> PlanExecutionAsync(
-        DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default)
-        => System.Threading.Tasks.Task.FromResult(new TaskExecutionPlan(agent.Id, [], TimeSpan.Zero, 1.0));
-
-    public System.Threading.Tasks.Task<ValidationResult> ValidateExecutionAsync(
-        DomainAgent agent, CrewTask task, CancellationToken cancellationToken = default)
-        => System.Threading.Tasks.Task.FromResult(new ValidationResult(CanExecute: true));
-
-    public SimpleTaskExecutionContext MapExecutionContext(SimpleExecutionContext applicationContext, DomainAgent agent)
-    {
-        ArgumentNullException.ThrowIfNull(applicationContext);
-        return SimpleTaskExecutionContext.Create(
-            variables: applicationContext.Variables,
-            previousOutputs: [],
-            memory: null,
-            availableAgents: null);
-    }
 }

@@ -20,7 +20,6 @@ public class ExecutionConfigTests
         // Assert
         Assert.Equal(0, config.MaxRPM);
         Assert.Empty(config.ExecutorSettings);
-        Assert.Equal(10, config.MaxConcurrentTasks);
         Assert.Equal(TimeoutStandard, config.DefaultTimeout);
     }
 

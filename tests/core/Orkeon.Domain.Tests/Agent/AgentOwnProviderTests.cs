@@ -174,24 +174,6 @@ public sealed class AgentOwnProviderTests
         agent.UpdateConfiguration(allowDelegation: false, maxIterations: 3);
         Assert.Equal(3, agent.MaxIterations);
     }
-
-    [Fact]
-    public void Restore_keeps_the_agents_own_provider()
-    {
-        var restored = DomainAgent.Restore(new AgentSnapshot
-        {
-            Id = AgentId.Create(),
-            Role = AgentRole.From("Reviewer"),
-            Goal = AgentGoal.From("Review"),
-            Status = AgentStatus.Idle,
-            MaxIterations = 3,
-            MaxRpm = 10,
-            MaxRetryLimit = 1,
-            Llm = Bridge,
-        });
-
-        Assert.Same(Bridge, restored.Llm);
-    }
 }
 
 /// <summary>Option helpers for <see cref="AgentOwnProviderTests"/>: <see cref="AgentCreateOptions"/> is a class.</summary>

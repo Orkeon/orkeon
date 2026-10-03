@@ -12,7 +12,7 @@
 - **Agents**: 7 — Utilitarian, Deontological, Care Ethics, Distributive Justice, Virtue Ethics analysts + Synthesizer + Human Decision-Maker
 - **Tools**: `json_tool`, `file_write`, `web_scrape` (jurisprudence)
 - **Memory**: `SQLite` (decision history + outcomes)
-- **Key features**: Batch execution (5 parallel analyses), HumanInputContext (final decision), EvaluationSuite, AgentMemory.LongTerm (precedents), AuditEventTypes
+- **Key features**: Batch execution (5 parallel analyses), HumanInputContext (final decision), EvaluationSuite, MemoryType.LongTerm (precedents), AuditEventTypes
 - **Runner**: `standard`
 
 ## Prerequisites

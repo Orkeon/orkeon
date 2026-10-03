@@ -23,8 +23,6 @@ public sealed class CrewId : EntityId<CrewId>
 }
 /// <summary>Strongly-typed identifier for Tool entities.</summary>
 public sealed class ToolId : EntityId<ToolId> { }
-/// <summary>Strongly-typed identifier for Memory entities.</summary>
-public sealed class MemoryId : EntityId<MemoryId> { }
 /// <summary>Strongly-typed identifier for Process entities.</summary>
 public sealed class ProcessId : EntityId<ProcessId> { }
 /// <summary>Strongly-typed identifier for KnowledgeSource entities.</summary>
@@ -47,12 +45,6 @@ public sealed class QuestionRequestId : EntityId<QuestionRequestId> { }
 // -- HumanInput -------------------------------------------------------------
 /// <summary>Strongly-typed identifier for HumanInputRequest entities.</summary>
 public sealed class HumanInputRequestId : EntityId<HumanInputRequestId> { }
-
-// -- Planning ---------------------------------------------------------------
-/// <summary>Strongly-typed identifier for TaskPlan entities.</summary>
-public sealed class TaskPlanId : EntityId<TaskPlanId> { }
-/// <summary>Strongly-typed identifier for PlanStep entities.</summary>
-public sealed class PlanStepId : EntityId<PlanStepId> { }
 
 // -- Composition ------------------------------------------------------------
 /// <summary>Strongly-typed identifier for TrainingScenario entities.</summary>

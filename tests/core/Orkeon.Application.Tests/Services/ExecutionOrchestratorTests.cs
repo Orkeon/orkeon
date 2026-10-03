@@ -1,5 +1,4 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using Orkeon.Domain.Crew.Planning;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
@@ -111,77 +110,6 @@ public class ExecutionOrchestratorTests
         public System.Threading.Tasks.Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
         {
             return System.Threading.Tasks.Task.FromResult(_isAvailable);
-        }
-    }
-
-    /// <summary>
-    /// Test agent planner for testing.
-    /// </summary>
-    private class TestAgentPlanner : IAgentPlanner
-    {
-        private readonly List<TaskPlan> _plansCreated = [];
-        private Exception? _exceptionToThrow;
-        private TaskPlan? _customPlan;
-
-        public IReadOnlyList<TaskPlan> PlansCreated => _plansCreated;
-
-        public void SetException(Exception exception)
-        {
-            _exceptionToThrow = exception;
-        }
-
-        public void SetCustomPlan(TaskPlan plan)
-        {
-            _customPlan = plan;
-        }
-
-        public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(DomainTask task, CancellationToken cancellationToken = default)
-        {
-            if (_exceptionToThrow != null)
-            {
-                throw _exceptionToThrow;
-            }
-
-            if (_customPlan != null)
-            {
-                _plansCreated.Add(_customPlan);
-                return System.Threading.Tasks.Task.FromResult(_customPlan);
-            }
-
-            var plan = new TaskPlan
-            {
-                TaskId = task.Id,
-                Steps =
-                [
-                    new PlanStep
-                    {
-                        Action = "Analyze",
-                        Description = "Analyze the task",
-                        EstimatedDuration = TimeSpan.FromMinutes(2)
-                    },
-                    new PlanStep
-                    {
-                        Action = "Execute",
-                        Description = "Execute the task",
-                        EstimatedDuration = TimeoutStandard
-                    }
-                ],
-                EstimatedDuration = TimeSpan.FromMinutes(7),
-                ConfidenceScore = 0.85
-            };
-
-            _plansCreated.Add(plan);
-            return System.Threading.Tasks.Task.FromResult(plan);
-        }
-
-        public System.Threading.Tasks.Task<TaskPlan> RefinePlanAsync(TaskPlan plan, PlanFeedback feedback, CancellationToken cancellationToken = default)
-        {
-            return System.Threading.Tasks.Task.FromResult(plan);
-        }
-
-        public System.Threading.Tasks.Task<PlanValidationResult> ValidatePlanAsync(TaskPlan plan, CancellationToken cancellationToken = default)
-        {
-            return System.Threading.Tasks.Task.FromResult(new PlanValidationResult { IsValid = true });
         }
     }
 
@@ -338,11 +266,10 @@ public class ExecutionOrchestratorTests
     {
         // Arrange
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionOrchestrator(null!, llmProvider, planner));
+            new ExecutionOrchestrator(null!, llmProvider));
     }
 
     [Fact]
@@ -350,23 +277,10 @@ public class ExecutionOrchestratorTests
     {
         // Arrange
         var logger = new TestLogger();
-        var planner = new TestAgentPlanner();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionOrchestrator(logger, null!, planner));
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenConstructingWithNullPlanner()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionOrchestrator(logger, llmProvider, null!));
+            new ExecutionOrchestrator(logger, null!));
     }
 
     [Fact]
@@ -375,10 +289,9 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
 
         // Act
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         // Assert
         Assert.NotNull(orchestrator);
@@ -394,8 +307,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent();
         var task = CreateTestTask();
@@ -422,8 +334,7 @@ public class ExecutionOrchestratorTests
         // stayed null on every non-Completed exit ("Task failed: unknown error").
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent();
         var task = CreateTestTask();
@@ -446,8 +357,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var searchTool = new TestTool(ToolSearch, "Search for information");
         var analyzerTool = new TestTool("AnalyzerTool", GoalAnalyzeData);
@@ -473,8 +383,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent();
         var task = CreateTestTask();
@@ -499,8 +408,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent(
             role: "Senior Data Analyst",
@@ -535,8 +443,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent();
         var task = CreateTestTask();
@@ -560,231 +467,15 @@ public class ExecutionOrchestratorTests
 
     #endregion
 
-    #region PlanExecutionAsync Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnPlan_WhenPlanningExecutionAsyncBasicPlanning()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var context = CreateTestContext();
-
-        // Act
-        var plan = await orchestrator.PlanExecutionAsync(agent, task, context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.NotNull(plan);
-        Assert.Equal(agent.Id, plan.AssignedAgent);
-        Assert.Equal(2, plan.Steps.Count);
-        Assert.Equal(TimeSpan.FromMinutes(4), plan.EstimatedDuration); // 2 steps * 2 minutes
-        Assert.Equal(0.8, plan.ConfidenceScore);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldMapCorrectly_WhenPlanningExecutionAsyncWithCustomPlan()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var context = CreateTestContext();
-
-        var customPlan = new TaskPlan
-        {
-            TaskId = task.Id,
-            Steps =
-            [
-                new PlanStep { Action = "Research", Description = "Research topic" },
-                new PlanStep { Action = "Analyze", Description = "Analyze findings" },
-                new PlanStep { Action = "Report", Description = "Create report" }
-            ],
-            EstimatedDuration = TimeoutLong,
-            ConfidenceScore = 0.95
-        };
-        planner.SetCustomPlan(customPlan);
-
-        // Act
-        var plan = await orchestrator.PlanExecutionAsync(agent, task, context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(3, plan.Steps.Count);
-        Assert.Equal("Research topic", plan.Steps[0].Description);
-        Assert.Equal("Research", plan.Steps[0].ToolName);
-        Assert.Equal(TimeSpan.FromMinutes(6), plan.EstimatedDuration); // 3 steps * 2 minutes
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnFallbackPlan_WhenPlanningExecutionAsyncWithPlannerException()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var context = CreateTestContext();
-
-        planner.SetException(new InvalidOperationException("Planner failed"));
-
-        // Act
-        var plan = await orchestrator.PlanExecutionAsync(agent, task, context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.NotNull(plan);
-        Assert.Single(plan.Steps);
-        Assert.Equal("Execute task directly", plan.Steps[0].Description);
-        Assert.Equal(TimeoutStandard, plan.EstimatedDuration);
-        Assert.Equal(0.5, plan.ConfidenceScore);
-        Assert.Single(logger.ErrorMessages);
-    }
-
-    #endregion
-
-    #region ValidateExecutionAsync Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnCanExecute_WhenValidatingExecutionAsyncWithValidSetup()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(tools: [new TestTool("Tool1")]);
-        var task = CreateTestTask();
-
-        // Act
-        var result = await orchestrator.ValidateExecutionAsync(agent, task, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(result.CanExecute);
-        Assert.Null(result.Reason);
-        Assert.Empty(result.MissingCapabilities ?? []);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnIssue_WhenValidatingExecutionAsyncWithNoTools()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(); // No tools
-        var task = CreateTestTask();
-
-        // Act
-        var result = await orchestrator.ValidateExecutionAsync(agent, task, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.False(result.CanExecute);
-        Assert.NotNull(result.Reason);
-        Assert.Contains("Agent has no tools assigned", result.Reason);
-        Assert.Single(result.MissingCapabilities ?? []);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnIssue_WhenValidatingExecutionAsyncWithNoDelegationAllowed()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(
-            allowDelegation: false,
-            tools: [new TestTool("Tool1")]);
-        var task = CreateTestTask();
-
-        // Act
-        var result = await orchestrator.ValidateExecutionAsync(agent, task, TestContext.Current.CancellationToken);
-
-        // Assert — delegation is no longer checked during validation (P2-LOG-01),
-        // so an agent with tools but without delegation still passes validation.
-        Assert.True(result.CanExecute);
-    }
-
-    #endregion
-
-    #region MapExecutionContext Tests
-
-    [Fact]
-    public void ShouldIncludeAgentInfo_WhenUsingMapExecutionContextUsingBasicMapping()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(role: "Data Scientist");
-        var context = CreateTestContext(new Dictionary<string, string>
-        {
-            { "param1", "value1" },
-            { "param2", "value2" }
-        });
-
-        // Act
-        var domainContext = orchestrator.MapExecutionContext(context, agent);
-
-        // Assert
-        Assert.NotNull(domainContext);
-        Assert.Equal(4, domainContext.Variables.Count); // 2 original + 2 agent info
-        Assert.Equal("value1", domainContext.Variables["param1"]);
-        Assert.Equal("value2", domainContext.Variables["param2"]);
-        Assert.Equal(agent.Id.ToString(), domainContext.Variables["agent_id"]);
-        Assert.Equal("Data Scientist", domainContext.Variables["agent_role"]);
-    }
-
-    [Fact]
-    public void ShouldStillAddAgentInfo_WhenUsingMapExecutionContextWithEmptyVariables()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent();
-        var context = CreateTestContext(); // No variables
-
-        // Act
-        var domainContext = orchestrator.MapExecutionContext(context, agent);
-
-        // Assert
-        Assert.NotNull(domainContext);
-        Assert.Equal(2, domainContext.Variables.Count);
-        Assert.Contains("agent_id", domainContext.Variables.Keys);
-        Assert.Contains("agent_role", domainContext.Variables.Keys);
-    }
-
-    #endregion
-
     #region Integration Scenarios
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldFromPlanningToExecution_WhenCompletingWorkflow()
+    public async System.Threading.Tasks.Task ShouldExecuteTheWorkflow_WhenTheAgentCarriesItsTools()
     {
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var researchTool = new TestTool("ResearchTool", "Research information");
         var analysisTool = new TestTool("AnalysisTool", GoalAnalyzeData);
@@ -805,17 +496,7 @@ public class ExecutionOrchestratorTests
 
         llmProvider.SetResponse("Research", "Using ResearchTool and AnalysisTool for comprehensive analysis");
 
-        // Act - Validate
-        var validation = await orchestrator.ValidateExecutionAsync(agent, task, TestContext.Current.CancellationToken);
-        Assert.True(validation.CanExecute);
-
-        // Act - Plan
-        var plan = await orchestrator.PlanExecutionAsync(agent, task, context, TestContext.Current.CancellationToken);
-        Assert.NotNull(plan);
-        // Plan may have empty steps in simplified test implementation
-        // Assert.NotEmpty(plan.Steps);
-
-        // Act - Execute
+        // Act
         var result = await orchestrator.ExecuteTaskCoreAsync(agent, task, context, TestContext.Current.CancellationToken);
 
         // Assert
@@ -830,7 +511,6 @@ public class ExecutionOrchestratorTests
         Assert.True(result.ExecutionTime >= TimeSpan.Zero);
 
         // Verify basic execution succeeded (logging may be minimal in this implementation)
-        Assert.NotNull(plan);
         Assert.NotNull(result);
     }
 
@@ -840,8 +520,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent1 = CreateTestAgent(role: RoleDeveloper, tools: [new TestTool("CodeTool")]);
         var agent2 = CreateTestAgent(role: "Reviewer", tools: [new TestTool("ReviewTool")]);
@@ -876,8 +555,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent();
         // Add a very long backstory
@@ -909,8 +587,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var failingTool = new TestTool("FailingTool");
         failingTool.SetResult(false, "Tool execution failed");
@@ -935,8 +612,7 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var tool1 = new TestTool("Tool1");
         var tool2 = new TestTool("Tool2");
@@ -957,28 +633,6 @@ public class ExecutionOrchestratorTests
         Assert.Contains("Tool1", result.Output);
         Assert.Contains("Tool2", result.Output);
         Assert.Contains("Tool3", result.Output);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldNotCrash_WhenValidatingExecutionAsyncWithNullLlmProvider()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(tools: [new TestTool("Tool1")]);
-        var task = CreateTestTask();
-
-        // Note: The check for null LLM provider in the actual code always passes
-        // because _llmProvider is set in constructor and can't be null
-
-        // Act
-        var result = await orchestrator.ValidateExecutionAsync(agent, task, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(result.CanExecute);
     }
 
     #endregion
@@ -1132,7 +786,6 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
 
         var searchTool = new TestTool("search_tool", "Search the web");
@@ -1143,7 +796,7 @@ public class ExecutionOrchestratorTests
         var context = CreateTestContext();
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             [searchTool], new FakeFileSystemService());
 
         // First response: function call; second response: final answer
@@ -1167,7 +820,6 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
         var validationPipeline = new TestOutputValidationPipeline();
         var parserFactory = new TestOutputParserFactory(new { Name = "test" });
@@ -1181,7 +833,7 @@ public class ExecutionOrchestratorTests
         var context = CreateTestContext();
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             [new TestTool("t1")], validationPipeline, parserFactory, new FakeFileSystemService());
 
         // First call returns invalid text, validation fails
@@ -1206,7 +858,6 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
 
         var tool = new TestTool("loop_tool", "A tool");
@@ -1216,7 +867,7 @@ public class ExecutionOrchestratorTests
         var context = CreateTestContext();
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             [tool], new FakeFileSystemService());
 
         // Enqueue more function calls than max iterations
@@ -1245,9 +896,8 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         // No IChatClient provided -- uses the 3-parameter constructor
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent();
         var task = CreateTestTask(description: "Simple task for basic provider");
@@ -1271,7 +921,6 @@ public class ExecutionOrchestratorTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
 
         var knownTool = new TestTool("known_tool", "A known tool");
@@ -1280,7 +929,7 @@ public class ExecutionOrchestratorTests
         var context = CreateTestContext();
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             [knownTool], new FakeFileSystemService());
 
         // LLM requests a tool that doesn't exist
@@ -1298,87 +947,6 @@ public class ExecutionOrchestratorTests
         Assert.Contains(logger.LoggedMessages, m =>
             m.Contains("Warning", StringComparison.OrdinalIgnoreCase) &&
             m.Contains("nonexistent_tool"));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldPlanExecution_WhenPlanningRequested()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(tools: [new TestTool("ResearchTool")]);
-        var task = CreateTestTask(description: "Research quantum computing");
-        var context = CreateTestContext();
-
-        // Act
-        var plan = await orchestrator.PlanExecutionAsync(agent, task, context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.NotNull(plan);
-        Assert.Equal(agent.Id, plan.AssignedAgent);
-        Assert.NotEmpty(plan.Steps);
-        Assert.True(plan.EstimatedDuration > TimeSpan.Zero);
-        Assert.True(plan.ConfidenceScore > 0);
-        // Verify the planner was actually called
-        Assert.Single(planner.PlansCreated);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldValidateExecution_WhenAgentAssigned()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(
-            role: "Validator Agent",
-            goal: "Test validation",
-            allowDelegation: true,
-            tools: [new TestTool("ValidatorTool")]);
-        var task = CreateTestTask();
-
-        // Act
-        var result = await orchestrator.ValidateExecutionAsync(agent, task, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(result.CanExecute);
-        Assert.Null(result.Reason);
-    }
-
-    [Fact]
-    public void ShouldMapContext_WhenMappingExecutionContext()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(role: "Mapper Agent");
-        var context = CreateTestContext(new Dictionary<string, string>
-        {
-            { "key1", "value1" },
-            { "key2", "value2" },
-            { "key3", "value3" }
-        });
-
-        // Act
-        var domainContext = orchestrator.MapExecutionContext(context, agent);
-
-        // Assert
-        Assert.NotNull(domainContext);
-        // Should have original 3 variables + 2 agent info variables
-        Assert.Equal(5, domainContext.Variables.Count);
-        Assert.Equal("value1", domainContext.Variables["key1"]);
-        Assert.Equal("value2", domainContext.Variables["key2"]);
-        Assert.Equal("value3", domainContext.Variables["key3"]);
-        Assert.Equal(agent.Id.ToString(), domainContext.Variables["agent_id"]);
-        Assert.Equal("Mapper Agent", domainContext.Variables["agent_role"]);
     }
 
     #endregion

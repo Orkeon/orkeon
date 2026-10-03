@@ -137,9 +137,9 @@ replace a default implementation (for example `IPathValidator` or
 honored regardless of the order of subsequent calls.
 
 > **Caveat**: not every service is `TryAdd`-registered. `AddOrkeonApplication()`
-> registers `IAgentExecutionService` and `IAgentPlanner` unconditionally
-> (`AddScoped`), and `AddOrkeonInfrastructure()` does the same for a few services
-> it owns outright (`ILlmProviderFactory`, `ICrewOrchestrationService`, …). For
+> registers `IAgentExecutionService` unconditionally (`AddScoped`), and
+> `AddOrkeonInfrastructure()` does the same for a few services it owns outright
+> (`ILlmProviderFactory`, `ICrewOrchestrationService`, …). For
 > those, register your implementation **after** the Orkeon call — the last
 > registration wins at resolution time.
 

@@ -12,7 +12,7 @@
 - **Agents**: 4 -- Risk Profile Assessor (human input), Strategy Allocator, Portfolio Monitor, Rebalancer
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `ask_question`, `file_write`
 - **Memory**: `EncryptedSQLite` (episodic per client)
-- **Key features**: HumanInputContext (types: MultipleChoice, Numeric, Text), EncryptedSqliteMemoryProvider, AgentMemory.Episodic
+- **Key features**: HumanInputContext (types: MultipleChoice, Numeric, Text), EncryptedSqliteMemoryProvider, MemoryType.Episodic
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites

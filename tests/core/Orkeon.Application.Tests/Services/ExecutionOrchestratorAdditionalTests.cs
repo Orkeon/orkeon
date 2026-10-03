@@ -1,5 +1,4 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using Orkeon.Domain.Crew.Planning;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
@@ -76,27 +75,6 @@ public class ExecutionOrchestratorAdditionalTests
 
         public System.Threading.Tasks.Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
             => System.Threading.Tasks.Task.FromResult(true);
-    }
-
-    private class TestAgentPlanner : IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(DomainTask task, CancellationToken cancellationToken = default)
-        {
-            var plan = new TaskPlan
-            {
-                TaskId = task.Id,
-                Steps = [new PlanStep { Action = "Execute", Description = "Execute task" }],
-                EstimatedDuration = TimeoutStandard,
-                ConfidenceScore = 0.8
-            };
-            return System.Threading.Tasks.Task.FromResult(plan);
-        }
-
-        public System.Threading.Tasks.Task<TaskPlan> RefinePlanAsync(TaskPlan plan, PlanFeedback feedback, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(plan);
-
-        public System.Threading.Tasks.Task<PlanValidationResult> ValidatePlanAsync(TaskPlan plan, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(new PlanValidationResult { IsValid = true });
     }
 
     private class TestTool : Domain.Tools.IBaseTool
@@ -299,7 +277,6 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
         var rateLimiter = new TestRateLimiter();
         var validationPipeline = new TestOutputValidationPipeline();
@@ -308,7 +285,7 @@ public class ExecutionOrchestratorAdditionalTests
         chatClient.EnqueueResponse("Task completed successfully");
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
             validationPipeline, parserFactory, rateLimiter, new FakeFileSystemService());
 
@@ -331,7 +308,6 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
         var rateLimiter = new TestRateLimiter();
         rateLimiter.SetDenied("Quota exhausted for this agent");
@@ -339,7 +315,7 @@ public class ExecutionOrchestratorAdditionalTests
         var parserFactory = new TestOutputParserFactory();
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
             validationPipeline, parserFactory, rateLimiter, new FakeFileSystemService());
 
@@ -367,13 +343,12 @@ public class ExecutionOrchestratorAdditionalTests
         // throws an exception after the lease has been acquired.
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         var rateLimiter = new TestRateLimiter();
 
         using var chatClient = new ThrowingChatClient(new InvalidOperationException("LLM failure"));
 
         var fullOrchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
             new TestOutputValidationPipeline(), new TestOutputParserFactory(), rateLimiter, new FakeFileSystemService());
 
@@ -422,7 +397,6 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
         var validationPipeline = new TestOutputValidationPipeline();
         var parserFactory = new TestOutputParserFactory();
@@ -446,7 +420,7 @@ public class ExecutionOrchestratorAdditionalTests
             });
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
             validationPipeline, parserFactory, new FakeFileSystemService());
 
@@ -468,7 +442,6 @@ public class ExecutionOrchestratorAdditionalTests
         const string timeout = "Kimi did not answer within Llm:TimeoutSeconds = 180 s: the HTTP timeout elapsed before any response arrived";
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient { NextFailure = new HttpRequestException(timeout) };
         var validationPipeline = new TestOutputValidationPipeline();
         validationPipeline.EnqueueResult(false, "empty is not a JSON object");
@@ -483,7 +456,7 @@ public class ExecutionOrchestratorAdditionalTests
             });
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
             validationPipeline, parserFactory, new FakeFileSystemService());
 
@@ -503,7 +476,6 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
         var validationPipeline = new TestOutputValidationPipeline();
         var parserFactory = new TestOutputParserFactory();
@@ -526,7 +498,7 @@ public class ExecutionOrchestratorAdditionalTests
             });
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             Array.Empty<IBaseTool>(),
             validationPipeline, parserFactory, new FakeFileSystemService());
         orchestrator.MaxOutputRetries = 2;
@@ -555,7 +527,6 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
 
         var tool = new TestTool("loop_tool", "A looping tool");
@@ -570,7 +541,7 @@ public class ExecutionOrchestratorAdditionalTests
         var agent = CreateTestAgent(maxIterations: 3, tools: [tool]);
 
         var orchestrator = new ExecutionOrchestrator(
-            logger, llmProvider, planner, chatClient,
+            logger, llmProvider, chatClient,
             [tool], new FakeFileSystemService());
 
         var task = CreateTestTask();
@@ -599,11 +570,10 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
         using var chatClient = new TestChatClient();
 
         // Act
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, new FakeFileSystemService());
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, chatClient, new FakeFileSystemService());
 
         // Assert
         Assert.NotNull(orchestrator);
@@ -615,11 +585,10 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(
-            () => new ExecutionOrchestrator(logger, llmProvider, planner, null!, new FakeFileSystemService()));
+            () => new ExecutionOrchestrator(logger, llmProvider, null!, new FakeFileSystemService()));
     }
 
     [Fact]
@@ -628,8 +597,7 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         // Act
         orchestrator.MaxOutputRetries = 5;
@@ -644,8 +612,7 @@ public class ExecutionOrchestratorAdditionalTests
         // Arrange
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         // Act
         orchestrator.MaxIterations = 50;
@@ -665,10 +632,9 @@ public class ExecutionOrchestratorAdditionalTests
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
         llmProvider.SetDefaultResponse("Legacy provider response with important data");
-        var planner = new TestAgentPlanner();
 
-        // No chat client - just basic 3-arg constructor
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        // No chat client - just the basic constructor
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent();
         var task = CreateTestTask();
@@ -689,9 +655,8 @@ public class ExecutionOrchestratorAdditionalTests
         var logger = new TestLogger();
         var llmProvider = new TestLlmProvider();
         llmProvider.SetException(new HttpRequestException("Connection refused"));
-        var planner = new TestAgentPlanner();
 
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+        var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
         var agent = CreateTestAgent();
         var task = CreateTestTask();
@@ -704,57 +669,6 @@ public class ExecutionOrchestratorAdditionalTests
         Assert.False(result.Success);
         Assert.Contains("Connection refused", result.Error);
         Assert.True(result.ExecutionTime > TimeSpan.Zero);
-    }
-
-    #endregion
-
-    #region MapExecutionContext Tests
-
-    [Fact]
-    public void ShouldAddAgentInfoToEmptyContext_WhenMapping()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(role: RoleAnalyst);
-        var context = CreateTestContext();
-
-        // Act
-        var mapped = orchestrator.MapExecutionContext(context, agent);
-
-        // Assert
-        Assert.Equal(2, mapped.Variables.Count); // agent_id + agent_role
-        Assert.Equal(RoleAnalyst, mapped.Variables["agent_role"]);
-        Assert.NotEmpty(mapped.Variables["agent_id"]);
-    }
-
-    [Fact]
-    public void ShouldPreserveExistingVariables_WhenMapping()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new TestAgentPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent(role: RoleWorker);
-        var context = CreateTestContext(new Dictionary<string, string>
-        {
-            ["project"] = "Orkeon",
-            ["version"] = "1.0"
-        });
-
-        // Act
-        var mapped = orchestrator.MapExecutionContext(context, agent);
-
-        // Assert
-        Assert.Equal(4, mapped.Variables.Count); // 2 existing + 2 agent
-        Assert.Equal("Orkeon", mapped.Variables["project"]);
-        Assert.Equal("1.0", mapped.Variables["version"]);
-        Assert.Equal(RoleWorker, mapped.Variables["agent_role"]);
     }
 
     #endregion
@@ -785,7 +699,7 @@ public class ExecutionOrchestratorAdditionalTests
                 OutputJson = Domain.Task.JsonSchema.From("{\"type\":\"object\"}")
             });
         var orchestrator = new ExecutionOrchestrator(
-            new TestLogger(), new Orkeon.Infrastructure.LLMs.LlmProviderAdapter(metered), new TestAgentPlanner(), chatClient,
+            new TestLogger(), new Orkeon.Infrastructure.LLMs.LlmProviderAdapter(metered), chatClient,
             Array.Empty<IBaseTool>(), validationPipeline, new TestOutputParserFactory(), new TestRateLimiter(),
             fullProvider: null, toolCallingStrategy: null, deliverableResolverFactory: null,
             new FakeFileSystemService());
@@ -804,44 +718,6 @@ public class ExecutionOrchestratorAdditionalTests
             Assert.Equal(taskWithJson.Id.ToString(), usage.TaskId);
             Assert.Equal(LlmUsageOperations.Agent, usage.OperationType);
         });
-    }
-
-    #endregion
-
-    #region Planning Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnFallbackPlan_WhenPlannerThrows()
-    {
-        // Arrange
-        var logger = new TestLogger();
-        var llmProvider = new TestLlmProvider();
-        var planner = new FailingPlanner();
-        var orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
-
-        var agent = CreateTestAgent();
-        var task = CreateTestTask();
-        var context = CreateTestContext();
-
-        // Act
-        var plan = await orchestrator.PlanExecutionAsync(agent, task, context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.NotNull(plan);
-        Assert.Single(plan.Steps);
-        Assert.Equal(0.5, plan.ConfidenceScore);
-    }
-
-    private class FailingPlanner : IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(DomainTask task, CancellationToken ct = default)
-            => throw new InvalidOperationException("Planner failure");
-
-        public System.Threading.Tasks.Task<TaskPlan> RefinePlanAsync(TaskPlan plan, PlanFeedback feedback, CancellationToken ct = default)
-            => System.Threading.Tasks.Task.FromResult(plan);
-
-        public System.Threading.Tasks.Task<PlanValidationResult> ValidatePlanAsync(TaskPlan plan, CancellationToken ct = default)
-            => System.Threading.Tasks.Task.FromResult(new PlanValidationResult { IsValid = true });
     }
 
     #endregion

@@ -33,25 +33,6 @@ public interface IAgentExecutionService
         Context.SimpleExecutionContext context,
         CancellationToken cancellationToken = default)
         where TOutput : class;
-
-    /// <summary>
-    /// Plans task execution without executing.
-    /// Used by hierarchical process for delegation decisions.
-    /// </summary>
-    System.Threading.Tasks.Task<TaskExecutionPlan> PlanTaskExecutionAsync(
-        DomainAgent agent,
-        ICrewTask task,
-        Context.SimpleExecutionContext context,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Validates if an agent can execute a specific task.
-    /// Checks tools, capabilities, and context requirements.
-    /// </summary>
-    System.Threading.Tasks.Task<bool> CanExecuteTaskAsync(
-        DomainAgent agent,
-        ICrewTask task,
-        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -190,23 +171,3 @@ public record TaskResult<TOutput>(
     IReadOnlyList<ToolUsage> ToolsUsed,
     TimeSpan ExecutionTime,
     string? Error = null) where TOutput : class;
-
-/// <summary>
-/// Execution plan for a task.
-/// </summary>
-public record TaskExecutionPlan(
-    Orkeon.Domain.Common.AgentId AssignedAgent,
-    IReadOnlyList<PlannedStep> Steps,
-    TimeSpan EstimatedDuration,
-    double ConfidenceScore);
-
-/// <summary>
-/// A planned execution step.
-/// Uses strongly-typed tool parameters instead of Dictionary with string keys and object values.
-/// </summary>
-public record PlannedStep(
-    string Description,
-    string? ToolName,
-    ITypedToolParameters? ToolParameters);
-
-

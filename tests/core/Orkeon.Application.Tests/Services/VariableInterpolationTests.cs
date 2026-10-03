@@ -3,7 +3,6 @@ using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.Crew.Planning;
 using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
@@ -43,24 +42,6 @@ public class VariableInterpolationTests
 
         public System.Threading.Tasks.Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
             => System.Threading.Tasks.Task.FromResult(true);
-    }
-
-    private class TestAgentPlanner : IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<TaskPlan> CreatePlanAsync(DomainTask task, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(new TaskPlan
-            {
-                TaskId = task.Id,
-                Steps = [new PlanStep { Action = "Execute", Description = "Do it", EstimatedDuration = TimeSpan.FromMinutes(1) }],
-                EstimatedDuration = TimeSpan.FromMinutes(1),
-                ConfidenceScore = 0.9
-            });
-
-        public System.Threading.Tasks.Task<TaskPlan> RefinePlanAsync(TaskPlan plan, PlanFeedback feedback, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(plan);
-
-        public System.Threading.Tasks.Task<PlanValidationResult> ValidatePlanAsync(TaskPlan plan, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(new PlanValidationResult { IsValid = true });
     }
 
     private class TestMemoryScope : IMemoryScope
@@ -113,7 +94,7 @@ public class VariableInterpolationTests
     {
         // Arrange
         var llm = new CapturingLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm, new TestAgentPlanner());
+        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm);
         var agent = CreateTestAgent();
         var task = CreateTestTask("Analyze the question: {question}");
         var context = CreateContextWithVariables(new Dictionary<string, string>
@@ -136,7 +117,7 @@ public class VariableInterpolationTests
     {
         // Arrange
         var llm = new CapturingLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm, new TestAgentPlanner());
+        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm);
         var agent = CreateTestAgent();
         var task = CreateTestTask("Research {topic} in {country}");
         var context = CreateContextWithVariables(new Dictionary<string, string>
@@ -162,7 +143,7 @@ public class VariableInterpolationTests
     {
         // Arrange
         var llm = new CapturingLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm, new TestAgentPlanner());
+        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm);
         var agent = CreateTestAgent();
         var task = CreateTestTask("Analyze the data thoroughly");
         var context = CreateContextWithVariables([]);
@@ -181,7 +162,7 @@ public class VariableInterpolationTests
     {
         // Arrange
         var llm = new CapturingLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm, new TestAgentPlanner());
+        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm);
         var agent = CreateTestAgent();
         var task = CreateTestTask("Analyze {unknown_var} please");
         var context = CreateContextWithVariables(new Dictionary<string, string>
@@ -203,7 +184,7 @@ public class VariableInterpolationTests
     {
         // Arrange
         var llm = new CapturingLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm, new TestAgentPlanner());
+        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm);
         var agent = CreateTestAgent();
         var task = CreateTestTask(
             description: "Analyze {topic}",
@@ -229,7 +210,7 @@ public class VariableInterpolationTests
     {
         // Arrange
         var llm = new CapturingLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm, new TestAgentPlanner());
+        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm);
         var agent = CreateTestAgent();
         var task = CreateTestTask("Answer: {Question}");
         var context = CreateContextWithVariables(new Dictionary<string, string>
@@ -251,7 +232,7 @@ public class VariableInterpolationTests
     {
         // Arrange
         var llm = new CapturingLlmProvider();
-        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm, new TestAgentPlanner());
+        var orchestrator = new ExecutionOrchestrator(new TestLogger(), llm);
         var agent = CreateTestAgent();
         var task = CreateTestTask("Answer: {question}");
         var context = CreateContextWithVariables(new Dictionary<string, string>

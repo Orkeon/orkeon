@@ -140,7 +140,7 @@ remplacer une implémentation par défaut (par exemple `IPathValidator` ou
 respectée quel que soit l'ordre des appels suivants.
 
 > **Réserve** : tous les services ne sont pas enregistrés en `TryAdd`.
-> `AddOrkeonApplication()` enregistre `IAgentExecutionService` et `IAgentPlanner`
+> `AddOrkeonApplication()` enregistre `IAgentExecutionService`
 > inconditionnellement (`AddScoped`), et `AddOrkeonInfrastructure()` fait de même
 > pour quelques services qu'il possède en propre (`ILlmProviderFactory`,
 > `ICrewOrchestrationService`, …). Pour ceux-là, enregistrez votre implémentation

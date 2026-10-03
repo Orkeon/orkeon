@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using Orkeon.Application.Task.DTOs;
 using Orkeon.Application.Common.DTOs;
-using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Task;
 
 namespace Orkeon.Application.Common.Mapping;
@@ -52,23 +51,6 @@ public static class TaskMapper
     public static IReadOnlyList<TaskDto> ToDto(IEnumerable<CrewTask> tasks)
     {
         return tasks.Select(ToDto).ToList();
-    }
-
-    /// <summary>
-    /// Creates a simple Task from CreateTaskRequest.
-    /// </summary>
-    public static CrewTask CreateFromRequest(CreateTaskRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        if (string.IsNullOrEmpty(request.ExpectedOutput))
-        {
-            throw new ArgumentException("Expected output cannot be empty", nameof(request));
-        }
-
-        return new CrewTaskBuilder()
-            .Description(TaskDescription.From(request.Description))
-            .ExpectedOutput(request.ExpectedOutput)
-            .Build();
     }
 
     /// <summary>

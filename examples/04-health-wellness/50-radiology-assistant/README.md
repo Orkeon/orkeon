@@ -12,7 +12,7 @@
 - **Agents**: 5 -- Image Preprocessor, ROI Analyst, Historical Comparator, Report Drafter, Supervising Radiologist (human)
 - **Tools**: `file_read`, `json_tool`, `http_api`, `file_write`
 - **Memory**: `EncryptedSQLite` (patient imaging history)
-- **Key features**: HumanInputContext (mandatory final validation), AgentMemory.LongTerm (imaging history), EncryptedSqliteMemoryProvider
+- **Key features**: HumanInputContext (mandatory final validation), MemoryType.LongTerm (imaging history), EncryptedSqliteMemoryProvider
 - **Runner**: `standard`
 
 ## Prerequisites

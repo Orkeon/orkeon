@@ -12,7 +12,7 @@
 - **Agents**: 4 — Gap Diagnostician, Pedagogical Architect, Resource Curator, Calendar Planner
 - **Tools**: `http_api`, `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: LLM-designed conditional branches, AgentMemory.Episodic, IKnowledgeSource
+- **Key features**: LLM-designed conditional branches, MemoryType.Episodic, IKnowledgeSource
 - **Runner**: `standard`
 
 ## Prerequisites

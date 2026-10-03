@@ -90,7 +90,7 @@ sentence of decision 2, "nothing in Domain, Application or Infrastructure change
 holds:
 
 - **Domain.** `Agent.FunctionCallingLlm` is `Agent.Llm` (`AgentCreateOptions.Llm`,
-  `AgentSnapshot.Llm`, the `llm` parameter of `Agent.Create`): the provider the agent's turns run on,
+  the `llm` parameter of `Agent.Create`): the provider the agent's turns run on,
   CrewAI's `llm` given as an object. An agent runs on its own provider or on a host profile, never
   both — `Agent.Create` and `AgentBuilder.Build()` refuse both. `LlmProviderCapabilities.RunsOwnTools`,
   declared by `AIAgentLlmProvider`: an agent whose own provider runs its own tools is refused Orkeon

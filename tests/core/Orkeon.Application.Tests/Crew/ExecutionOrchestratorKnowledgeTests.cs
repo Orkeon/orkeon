@@ -62,30 +62,12 @@ public class ExecutionOrchestratorKnowledgeTests
             => System.Threading.Tasks.Task.FromResult(true);
     }
 
-    private sealed class NullPlanner : Orkeon.Domain.Crew.Planning.IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.TaskPlan> CreatePlanAsync(
-            DomainTask task, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(new Orkeon.Domain.Crew.Planning.TaskPlan());
-
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.TaskPlan> RefinePlanAsync(
-            Orkeon.Domain.Crew.Planning.TaskPlan plan,
-            Orkeon.Domain.Crew.Planning.PlanFeedback feedback,
-            CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(plan);
-
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.PlanValidationResult> ValidatePlanAsync(
-            Orkeon.Domain.Crew.Planning.TaskPlan plan, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(
-                new Orkeon.Domain.Crew.Planning.PlanValidationResult { IsValid = true });
-    }
-
     // ── Factories ───────────────────────────────────────────────────────────
 
     private static ExecutionOrchestrator CreateOrchestrator(
         RecordingLlmProvider llmProvider,
         IKnowledgeContextAugmenter? augmenter = null) =>
-        new(NullLogger<ExecutionOrchestrator>.Instance, llmProvider, new NullPlanner())
+        new(NullLogger<ExecutionOrchestrator>.Instance, llmProvider)
         {
             KnowledgeAugmenter = augmenter,
         };
@@ -294,7 +276,6 @@ public class ExecutionOrchestratorKnowledgeTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddScoped<IBasicLlmProvider, RecordingLlmProvider>();
-        services.AddScoped<Orkeon.Domain.Crew.Planning.IAgentPlanner, NullPlanner>();
         services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(
             new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         return services;

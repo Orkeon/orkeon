@@ -12,7 +12,7 @@
 - **Agents**: 4 — Level Assessor, Adaptive Pedagogue, Motivation Coach, Examiner
 - **Tools**: `json_tool`, `file_read`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: AgentMemory.LongTerm (learner profile), AgentMemory.Episodic (session history), EvaluationSuite for diagnostics, IContextWindowManager
+- **Key features**: MemoryType.LongTerm (learner profile), MemoryType.Episodic (session history), EvaluationSuite for diagnostics, IContextWindowManager
 - **Runner**: `standard`
 
 ## Prerequisites

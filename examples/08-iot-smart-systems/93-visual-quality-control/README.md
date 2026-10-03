@@ -12,7 +12,7 @@
 - **Agents**: 4 — Image Capturer, Parts Inspector, Defect Classifier, SPC Statistician
 - **Tools**: `http_api`, `json_tool`, `csv_reader`, `file_write`
 - **Memory**: `SQLite` (inspection history + calibration data)
-- **Key features**: AgentMemory.LongTerm (auto-calibration), EvaluationSuite, BenchmarkRunner (reproducibility), EvaluationScore
+- **Key features**: MemoryType.LongTerm (auto-calibration), EvaluationSuite, BenchmarkRunner (reproducibility), EvaluationScore
 - **Runner**: `standard`
 
 ## Prerequisites

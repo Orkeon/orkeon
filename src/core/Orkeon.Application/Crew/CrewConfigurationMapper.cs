@@ -1,186 +1,20 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
-using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Crew;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
-using Orkeon.Domain.Agent.ValueObjects;
-using Orkeon.Domain.Task.ValueObjects;
-using Orkeon.Domain.Tools;
-using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.Agent;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Orkeon.Application.Crew;
 
 /// <summary>
-/// Maps between crew configuration models and domain entities.
+/// Exports a domain crew as a crew configuration. The other direction is the loaders' (YAML,
+/// <c>.ork.ts</c>), which build crews through <c>CrewFactory</c>.
 /// </summary>
 public static class CrewConfigurationMapper
 {
-    /// <summary>
-    /// Converts a crew configuration to a domain crew.
-    /// </summary>
-    /// <param name="configuration">The crew configuration to materialize.</param>
-    /// <param name="toolResolver">Resolves tool names to tool instances.</param>
-    /// <param name="llmProfiles">
-    /// The host's named LLM profiles: an agent or a task naming a profile it does not offer fails
-    /// the mapping with the list of known ones (GAP-17). Null offers the default profile alone.
-    /// </param>
-    /// <param name="agentPostProcessor">Optional hook invoked with each materialized agent entity.</param>
-    /// <param name="taskPostProcessor">Optional hook invoked with each materialized task entity.</param>
-    /// <param name="logger">
-    /// Optional logger for best-effort mapping warnings (unresolvable tools). Defaults to <see cref="NullLogger"/> — the mapper is an
-    /// extension method, so DI callers pass their own logger explicitly.
-    /// </param>
-    public static DomainCrew ToDomainCrew(this CrewConfiguration configuration,
-        Func<string, IBaseTool> toolResolver,
-        ILlmProfileRegistry? llmProfiles,
-        Action<DomainAgent>? agentPostProcessor = null,
-        Action<CrewTask>? taskPostProcessor = null,
-        ILogger? logger = null)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentNullException.ThrowIfNull(toolResolver);
-
-        logger ??= NullLogger.Instance;
-        var crew = CreateCrew(configuration);
-        MapAgents(configuration, crew, toolResolver, llmProfiles, agentPostProcessor, logger);
-        MapTasks(configuration, crew, toolResolver, llmProfiles, taskPostProcessor, logger);
-
-        return crew;
-    }
-
-    private static DomainCrew CreateCrew(CrewConfiguration configuration)
-    {
-        var builder = new CrewBuilder()
-            .Goal(configuration.Goal ?? "Default goal")
-            .Process(configuration.Process)
-            .Verbose(configuration.Verbose)
-            .Planning(configuration.Planning)
-            .MaxRpm(configuration.ExecutionConfig?.MaxConcurrentTasks ?? 10)
-            .EnableMemory(configuration.Memory);
-
-        // Carry the declared memory provider onto the aggregate so it survives to kickoff (P2-O-02).
-        if (!string.IsNullOrWhiteSpace(configuration.MemoryProvider))
-            builder.WithMemoryProvider(configuration.MemoryProvider);
-
-        return builder.Build();
-    }
-
-    private static void MapAgents(
-        CrewConfiguration configuration,
-        DomainCrew crew,
-        Func<string, IBaseTool> toolResolver,
-        ILlmProfileRegistry? llmProfiles,
-        Action<DomainAgent>? agentPostProcessor,
-        ILogger logger)
-    {
-        foreach (var agentConfig in configuration.Agents)
-        {
-            // A profile the host does not offer fails here, like an unknown tool under
-            // StrictTools: the crew would otherwise fail at its first task, or not at all.
-            LlmProfiles.EnsureKnown(llmProfiles, agentConfig.LlmConfig?.Profile, $"Agent '{agentConfig.Role}'");
-
-            var resolvedTools = ResolveTools(agentConfig.Tools, toolResolver, logger);
-            var agent = BuildAgent(agentConfig, resolvedTools);
-
-            agentPostProcessor?.Invoke(agent);
-            crew.AddAgent(agent.Id);
-        }
-    }
-
-    /// <summary>
-    /// Materializes a single agent entity from its configuration block: the always-present
-    /// attributes are pushed onto the builder unconditionally, the optional ones only when
-    /// the configuration actually carries a value.
-    /// </summary>
-    private static DomainAgent BuildAgent(
-        AgentConfiguration agentConfig, List<IBaseTool> resolvedTools)
-    {
-        var builder = new AgentBuilder()
-            .Role(AgentRole.From(agentConfig.Role))
-            .Goal(AgentGoal.From(agentConfig.Goal))
-            .AllowDelegation(agentConfig.AllowDelegation)
-            .MaxIterations(agentConfig.MaxIterations)
-            .MaxRpm(agentConfig.MaxRPM)
-            .Verbose(agentConfig.Verbose);
-
-        // AgentConfiguration.Backstory defaults to string.Empty and the AgentBackstory
-        // value object rejects blank values, so an empty backstory means "no backstory".
-        if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
-            builder.Backstory(agentConfig.Backstory);
-        if (agentConfig.SystemTemplate != null)
-            builder.SystemTemplate(agentConfig.SystemTemplate);
-        if (agentConfig.PromptTemplate != null)
-            builder.PromptTemplate(agentConfig.PromptTemplate);
-        if (agentConfig.ResponseTemplate != null)
-            builder.ResponseTemplate(agentConfig.ResponseTemplate);
-        if (resolvedTools.Count > 0)
-            builder.WithTools(resolvedTools);
-        if (agentConfig.Guardrails != null)
-            builder.WithGuardrails(agentConfig.Guardrails);
-        if (agentConfig.LlmConfig != null)
-            builder.WithLlmConfig(agentConfig.LlmConfig);
-        foreach (var attachment in agentConfig.KnowledgeAttachments)
-            builder.WithKnowledge(attachment);
-
-        return builder.Build();
-    }
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort tool resolution: a tool resolver throwing for one name (unknown/misconfigured tool) is logged and skipped so a single bad tool name cannot abort mapping the whole crew configuration.")]
-    private static List<IBaseTool> ResolveTools(
-        IEnumerable<string> toolNames,
-        Func<string, IBaseTool> toolResolver, ILogger logger)
-    {
-        var tools = new List<IBaseTool>();
-        foreach (var toolName in toolNames)
-        {
-            try
-            {
-                var tool = toolResolver(toolName);
-                if (tool is not null)
-                    tools.Add(tool);
-            }
-            catch (Exception ex)
-            {
-                CrewConfigurationMapperLog.LogToolResolutionFailed(logger, ex, toolName);
-            }
-        }
-        return tools;
-    }
-
-    private static void MapTasks(
-        CrewConfiguration configuration, DomainCrew crew,
-        Func<string, IBaseTool> toolResolver, ILlmProfileRegistry? llmProfiles,
-        Action<CrewTask>? taskPostProcessor, ILogger logger)
-    {
-        foreach (var taskConfig in configuration.Tasks)
-        {
-            LlmProfiles.EnsureKnown(llmProfiles, taskConfig.LlmOverride?.Profile, $"Task '{(taskConfig.Description.Length <= 60 ? taskConfig.Description : string.Concat(taskConfig.Description.AsSpan(0, 57), "..."))}'");
-
-            var builder = new CrewTaskBuilder()
-                .Description(TaskDescription.From(taskConfig.Description))
-                .ExpectedOutput(taskConfig.ExpectedOutput)
-                .Async(taskConfig.AsyncExecution)
-                .HumanInput(taskConfig.HumanInput)
-                .WithTools(ResolveTools(taskConfig.Tools, toolResolver, logger));
-
-            if (taskConfig.Guardrails is not null)
-                builder.WithGuardrails(taskConfig.Guardrails);
-
-            var task = builder.Build();
-            if (taskConfig.LlmOverride is not null)
-                task.SetLlmOverride(taskConfig.LlmOverride);
-
-            taskPostProcessor?.Invoke(task);
-            crew.AddTask(task.Id);
-        }
-    }
-
     /// <summary>
     /// Converts a domain crew to a crew configuration, including the full agent and task exports.
     /// </summary>
@@ -225,7 +59,7 @@ public static class CrewConfigurationMapper
             Tasks = ExportTasks(crew, tasks),
             ExecutionConfig = new ExecutionConfig
             {
-                MaxConcurrentTasks = crew.MaxRpm,
+                MaxRPM = crew.MaxRpm,
                 DefaultTimeout = TimeSpan.FromMinutes(5),
                 MaxRetries = AgentDefaults.MaxRetryLimit,
                 EnableDebugMode = crew.Verbose,
@@ -333,12 +167,3 @@ public static class CrewConfigurationMapper
     }
 }
 
-/// <summary>
-/// Source-generated log messages for <see cref="CrewConfigurationMapper"/> (static class,
-/// so the messages live in this satellite).
-/// </summary>
-internal static partial class CrewConfigurationMapperLog
-{
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not resolve tool '{ToolName}'; the tool is skipped and crew mapping continues")]
-    public static partial void LogToolResolutionFailed(ILogger logger, Exception ex, string toolName);
-}

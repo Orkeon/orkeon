@@ -3,7 +3,6 @@ using System.Collections.Immutable;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Context;
-using Orkeon.Application.Constants.Execution;
 using Orkeon.Application.Crew.DeliverableResolvers;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Security;
@@ -35,7 +34,6 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private readonly ILogger<ExecutionOrchestrator> _logger;
     private readonly IBasicLlmProvider _llmProvider;
     private readonly IChatClient? _chatClient;
-    private readonly Domain.Crew.Planning.IAgentPlanner _planner;
     private readonly IEnumerable<Domain.Tools.IBaseTool>? _registeredTools;
     private readonly IOutputValidationPipeline? _validationPipeline;
     private readonly IOutputParserFactory? _parserFactory;
@@ -173,15 +171,12 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// </summary>
     public ExecutionOrchestrator(
         ILogger<ExecutionOrchestrator> logger,
-        IBasicLlmProvider llmProvider,
-        Domain.Crew.Planning.IAgentPlanner planner)
+        IBasicLlmProvider llmProvider)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         ArgumentNullException.ThrowIfNull(llmProvider);
         _llmProvider = llmProvider;
-        ArgumentNullException.ThrowIfNull(planner);
-        _planner = planner;
     }
 
     /// <summary>
@@ -191,10 +186,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public ExecutionOrchestrator(
         ILogger<ExecutionOrchestrator> logger,
         IBasicLlmProvider llmProvider,
-        Domain.Crew.Planning.IAgentPlanner planner,
         IChatClient chatClient,
         Domain.FileSystem.IFileSystemService fileSystem)
-        : this(logger, llmProvider, planner)
+        : this(logger, llmProvider)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
         _chatClient = chatClient;
@@ -208,11 +202,10 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public ExecutionOrchestrator(
         ILogger<ExecutionOrchestrator> logger,
         IBasicLlmProvider llmProvider,
-        Domain.Crew.Planning.IAgentPlanner planner,
         IChatClient chatClient,
         IEnumerable<Domain.Tools.IBaseTool> registeredTools,
         Domain.FileSystem.IFileSystemService fileSystem)
-        : this(logger, llmProvider, planner, chatClient, fileSystem)
+        : this(logger, llmProvider, chatClient, fileSystem)
     {
         _registeredTools = registeredTools;
     }
@@ -223,13 +216,12 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public ExecutionOrchestrator(
         ILogger<ExecutionOrchestrator> logger,
         IBasicLlmProvider llmProvider,
-        Domain.Crew.Planning.IAgentPlanner planner,
         IChatClient chatClient,
         IEnumerable<Domain.Tools.IBaseTool> registeredTools,
         IOutputValidationPipeline validationPipeline,
         IOutputParserFactory parserFactory,
         Domain.FileSystem.IFileSystemService fileSystem)
-        : this(logger, llmProvider, planner, chatClient, registeredTools, fileSystem)
+        : this(logger, llmProvider, chatClient, registeredTools, fileSystem)
     {
         _validationPipeline = validationPipeline;
         _parserFactory = parserFactory;
@@ -241,14 +233,13 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public ExecutionOrchestrator(
         ILogger<ExecutionOrchestrator> logger,
         IBasicLlmProvider llmProvider,
-        Domain.Crew.Planning.IAgentPlanner planner,
         IChatClient chatClient,
         IEnumerable<Domain.Tools.IBaseTool> registeredTools,
         IOutputValidationPipeline validationPipeline,
         IOutputParserFactory parserFactory,
         ILlmRateLimiter rateLimiter,
         Domain.FileSystem.IFileSystemService fileSystem)
-        : this(logger, llmProvider, planner, chatClient, registeredTools, validationPipeline, parserFactory, fileSystem)
+        : this(logger, llmProvider, chatClient, registeredTools, validationPipeline, parserFactory, fileSystem)
     {
         _rateLimiter = rateLimiter;
     }
@@ -261,7 +252,6 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public ExecutionOrchestrator(
         ILogger<ExecutionOrchestrator> logger,
         IBasicLlmProvider llmProvider,
-        Domain.Crew.Planning.IAgentPlanner planner,
         IChatClient chatClient,
         IEnumerable<Domain.Tools.IBaseTool> registeredTools,
         IOutputValidationPipeline validationPipeline,
@@ -271,7 +261,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy,
         IDeliverableResolverFactory? deliverableResolverFactory,
         Domain.FileSystem.IFileSystemService fileSystem)
-        : this(logger, llmProvider, planner, chatClient, registeredTools, validationPipeline, parserFactory, rateLimiter, fileSystem)
+        : this(logger, llmProvider, chatClient, registeredTools, validationPipeline, parserFactory, rateLimiter, fileSystem)
     {
         _fullProvider = fullProvider;
         _toolCallingStrategy = toolCallingStrategy;
@@ -703,101 +693,5 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             ImmutableArray<string>.Empty,
             ImmutableDictionary<string, string>.Empty,
             ImmutableArray<TaskAmbiguousFqn>.Empty);
-    }
-
-    /// <summary>
-    /// Plan Execution Async.
-    /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Planning fault barrier: any planner failure falls back to a simple single-step plan rather than aborting execution.")]
-    public System.Threading.Tasks.Task<TaskExecutionPlan> PlanExecutionAsync(
-        DomainAgent agent,
-        CrewTask task,
-        SimpleExecutionContext context,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(agent);
-        ArgumentNullException.ThrowIfNull(task);
-        return PlanExecutionCoreAsync();
-
-        async System.Threading.Tasks.Task<TaskExecutionPlan> PlanExecutionCoreAsync()
-        {
-            try
-            {
-                var plan = await _planner.CreatePlanAsync(task, cancellationToken).ConfigureAwait(false);
-
-                var steps = plan.Steps.Select(s => new PlannedStep(
-                    Description: s.Description,
-                    ToolName: s.Action,
-                    ToolParameters: null // Convert if needed
-                )).ToList();
-
-                return new TaskExecutionPlan(
-                    AssignedAgent: agent.Id,
-                    Steps: steps.AsReadOnly(),
-                    EstimatedDuration: TimeSpan.FromMinutes(steps.Count * PlanningDefaults.MinutesPerStepEstimate), // Rough estimate
-                    ConfidenceScore: 0.8);
-            }
-            catch (Exception ex)
-            {
-                ExecutionLog.LogPlanningError(_logger, ex, task.Id);
-
-                // Return simple fallback plan
-                return new TaskExecutionPlan(
-                    AssignedAgent: agent.Id,
-                    Steps: [new PlannedStep("Execute task directly", null, null)],
-                    EstimatedDuration: TimeSpan.FromMinutes(PlanningDefaults.FallbackPlanMinutes),
-                    ConfidenceScore: 0.5);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Validate Execution Async.
-    /// </summary>
-    public System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.ValidationResult> ValidateExecutionAsync(
-        DomainAgent agent,
-        CrewTask task,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(agent);
-        // Delegate business rule validation to the domain entity
-        var domainResult = agent.ValidateForExecution();
-        var issues = new List<string>(domainResult.Issues);
-
-        // Infrastructure-level check (not a business rule)
-        if (_llmProvider == null)
-        {
-            issues.Add("No LLM provider available for agent");
-        }
-
-        // Synchronous validation: no awaitable work, so the method does not use
-        // async/await and returns a completed task directly.
-        return System.Threading.Tasks.Task.FromResult(
-            new Orkeon.Application.Interfaces.Services.ValidationResult(
-                CanExecute: issues.Count == 0,
-                Reason: issues.Count > 0 ? string.Join("; ", issues) : null,
-                MissingCapabilities: issues));
-    }
-
-    /// <summary>
-    /// Map Execution Context.
-    /// </summary>
-    public Domain.Task.ValueObjects.SimpleTaskExecutionContext MapExecutionContext(SimpleExecutionContext applicationContext, DomainAgent agent)
-    {
-        ArgumentNullException.ThrowIfNull(applicationContext);
-        ArgumentNullException.ThrowIfNull(agent);
-        // Start with existing string variables
-        var stringVariables = new Dictionary<string, string>(applicationContext.Variables ?? [])
-        {
-            // Add agent info
-            ["agent_id"] = agent.Id.ToString(),
-            ["agent_role"] = agent.Role.Value
-        };
-
-        return Domain.Task.ValueObjects.SimpleTaskExecutionContext.Create(
-            variables: stringVariables,
-            previousOutputs: [],
-            memory: null,
-            availableAgents: null);
     }
 }

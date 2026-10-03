@@ -69,12 +69,7 @@ public class ServiceCollectionExtensionsTests
         var services = CreateServiceCollectionWithRequiredDeps();
 
         // Act
-        services.AddOrkeonApplication(opt =>
-        {
-            opt.MaxShortTermMemoryItems = 50;
-            opt.EnablePersistence = false;
-            opt.DefaultMaxIterations = 5;
-        });
+        services.AddOrkeonApplication(opt => { opt.DefaultMaxIterations = 5; });
 
         // Assert — the Configure<OrkeonApplicationOptions> call was registered
         Assert.Contains(services, sd =>
@@ -90,7 +85,7 @@ public class ServiceCollectionExtensionsTests
         var services = CreateServiceCollectionWithRequiredDeps();
 
         // Act
-        services.AddOrkeonApplication(opt => { opt.EnablePersistence = true; });
+        services.AddOrkeonApplication(opt => { opt.DefaultMaxIterations = 5; });
 
         // Assert
         Assert.Contains(services, sd =>
@@ -197,7 +192,6 @@ public class ServiceCollectionExtensionsTests
             typeof(IMemoryCoordinator),
             typeof(IMemoryService),
             typeof(IMemorySearchService),
-            typeof(Orkeon.Domain.Crew.Planning.IAgentPlanner),
         };
 
         foreach (var serviceType in coreServiceTypes)
@@ -258,7 +252,6 @@ public class ServiceCollectionExtensionsTests
         // Provide stubs for external dependencies that the factory lambdas resolve
         services.AddScoped<IBasicLlmProvider, NullLlmProvider>();
         services.AddScoped<IUnitOfWork, NullUnitOfWork>();
-        services.AddScoped<Orkeon.Domain.Crew.Planning.IAgentPlanner, NullAgentPlanner>();
         // VFS-70: ExecutionOrchestrator (chatClient overloads) now requires a non-nullable
         // IFileSystemService — a host prerequisite, provided here by an in-memory fake.
         services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(
@@ -281,24 +274,5 @@ public class ServiceCollectionExtensionsTests
     {
         public void Track(IHasDomainEvents aggregate) { }
         public System.Threading.Tasks.Task<int> SaveChangesAsync(CancellationToken ct = default) => System.Threading.Tasks.Task.FromResult(0);
-    }
-
-    private sealed class NullAgentPlanner : Orkeon.Domain.Crew.Planning.IAgentPlanner
-    {
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.TaskPlan> CreatePlanAsync(
-            Orkeon.Domain.Task.CrewTask task,
-            CancellationToken ct = default)
-            => System.Threading.Tasks.Task.FromResult(new Orkeon.Domain.Crew.Planning.TaskPlan());
-
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.TaskPlan> RefinePlanAsync(
-            Orkeon.Domain.Crew.Planning.TaskPlan plan,
-            Orkeon.Domain.Crew.Planning.PlanFeedback feedback,
-            CancellationToken ct = default)
-            => System.Threading.Tasks.Task.FromResult(plan);
-
-        public System.Threading.Tasks.Task<Orkeon.Domain.Crew.Planning.PlanValidationResult> ValidatePlanAsync(
-            Orkeon.Domain.Crew.Planning.TaskPlan plan,
-            CancellationToken ct = default)
-            => System.Threading.Tasks.Task.FromResult(new Orkeon.Domain.Crew.Planning.PlanValidationResult { IsValid = true });
     }
 }

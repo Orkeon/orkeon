@@ -313,12 +313,5 @@ public class SpawnAgentToolTests
             where TOutput : class
             => throw new NotImplementedException();
 
-        public Task<TaskExecutionPlan> PlanTaskExecutionAsync(
-            DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default)
-            => throw new NotImplementedException();
-
-        public Task<bool> CanExecuteTaskAsync(
-            DomainAgent agent, ICrewTask task, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
     }
 }

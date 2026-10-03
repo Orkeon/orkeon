@@ -93,7 +93,7 @@ jamais tourné de bout en bout, et la phrase de la décision 2, « rien n'a chan
 Application ou Infrastructure pour elle », ne tient plus :
 
 - **Domain.** `Agent.FunctionCallingLlm` devient `Agent.Llm` (`AgentCreateOptions.Llm`,
-  `AgentSnapshot.Llm`, le paramètre `llm` d'`Agent.Create`) : le fournisseur sur lequel tournent les
+  le paramètre `llm` d'`Agent.Create`) : le fournisseur sur lequel tournent les
   tours de l'agent, le `llm` de CrewAI donné comme objet. Un agent tourne sur son propre fournisseur ou
   sur un profil de l'hôte, jamais les deux — `Agent.Create` et `AgentBuilder.Build()` refusent les deux.
   `LlmProviderCapabilities.RunsOwnTools`, que déclare `AIAgentLlmProvider` : un agent dont le

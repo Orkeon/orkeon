@@ -281,19 +281,9 @@ public class VoValidationTests
     [Fact]
     public void ExecutionConfig_Create_ShouldAcceptValidValues()
     {
-        var config = ExecutionConfig.Create(maxConcurrentTasks: 5, maxRetries: 2, maxRPM: 100);
-        Assert.Equal(5, config.MaxConcurrentTasks);
+        var config = ExecutionConfig.Create(maxRetries: 2, maxRPM: 100);
         Assert.Equal(2, config.MaxRetries);
         Assert.Equal(100, config.MaxRPM);
-    }
-
-    [Fact]
-    public void ExecutionConfig_Create_ShouldRejectInvalidMaxConcurrentTasks()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ExecutionConfig.Create(maxConcurrentTasks: 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ExecutionConfig.Create(maxConcurrentTasks: -1));
     }
 
     [Fact]

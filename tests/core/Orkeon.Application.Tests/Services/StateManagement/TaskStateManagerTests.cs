@@ -607,3 +607,21 @@ public class TaskStateManagerTests
     #endregion
 }
 
+// Test double for ILogger
+internal class TestLogger<T> : ILogger<T>
+{
+    public List<LoggedMessage> LoggedMessages { get; } = [];
+    public IDisposable BeginScope<TState>(TState state) where TState : notnull => new TestDisposable();
+    public bool IsEnabled(LogLevel logLevel) => true;
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    {
+        LoggedMessages.Add(new LoggedMessage { LogLevel = logLevel, Message = formatter(state, exception), Exception = exception });
+    }
+    internal class LoggedMessage
+    {
+        public LogLevel LogLevel { get; init; }
+        public string Message { get; init; } = string.Empty;
+        public Exception? Exception { get; init; }
+    }
+    private class TestDisposable : IDisposable { public void Dispose() { } }
+}

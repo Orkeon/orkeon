@@ -68,32 +68,6 @@ public sealed partial class NullAgentExecutionService : IAgentExecutionService
             Error: "No IAgentExecutionService registered"));
     }
 
-    /// <inheritdoc />
-    public Task<TaskExecutionPlan> PlanTaskExecutionAsync(
-        DomainAgent agent,
-        Domain.Task.ICrewTask task,
-        SimpleExecutionContext context,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(agent);
-        WarnOnce();
-        return Task.FromResult(new TaskExecutionPlan(
-            AssignedAgent: agent.Id,
-            Steps: [],
-            EstimatedDuration: TimeSpan.Zero,
-            ConfidenceScore: 0.0));
-    }
-
-    /// <inheritdoc />
-    public Task<bool> CanExecuteTaskAsync(
-        DomainAgent agent,
-        Domain.Task.ICrewTask task,
-        CancellationToken cancellationToken = default)
-    {
-        WarnOnce();
-        return Task.FromResult(false);
-    }
-
     // --- source-generated logging ---
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,

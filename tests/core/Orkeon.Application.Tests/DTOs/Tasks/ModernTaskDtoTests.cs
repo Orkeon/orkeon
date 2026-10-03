@@ -45,7 +45,6 @@ public class TaskDtoTests
         Assert.True(dto.RequiredTools.IsEmpty);
         Assert.Null(dto.Output);
         Assert.Null(dto.Complexity);
-        Assert.Null(dto.ExecutionPlan);
         Assert.True(dto.CreatedAt <= DateTime.UtcNow);
         Assert.Null(dto.StartedAt);
         Assert.Null(dto.CompletedAt);
@@ -75,14 +74,6 @@ public class TaskDtoTests
             ComplexityScore = 7.5
         };
 
-        var executionPlan = new ExecutionPlanDto
-        {
-            Id = "plan-123",
-            Name = "Test Plan",
-            Strategy = "Sequential",
-            Status = Active
-        };
-
         var createdAt = DateTime.UtcNow.AddHours(-2);
         var startedAt = DateTime.UtcNow.AddHours(-1);
         var completedAt = DateTime.UtcNow.AddMinutes(-30);
@@ -104,7 +95,6 @@ public class TaskDtoTests
             RequiredTools = requiredTools,
             Output = output,
             Complexity = complexity,
-            ExecutionPlan = executionPlan,
             CreatedAt = createdAt,
             StartedAt = startedAt,
             CompletedAt = completedAt,
@@ -130,7 +120,6 @@ public class TaskDtoTests
         Assert.Contains("DataProcessor", dto.RequiredTools);
         Assert.NotNull(dto.Output);
         Assert.NotNull(dto.Complexity);
-        Assert.NotNull(dto.ExecutionPlan);
         Assert.Equal(createdAt, dto.CreatedAt);
         Assert.Equal(startedAt, dto.StartedAt);
         Assert.Equal(completedAt, dto.CompletedAt);
@@ -572,7 +561,6 @@ public class TaskDtoTests
             RequiredTools = ImmutableList<string>.Empty.AddRange(s_tools123),
             Output = new TaskOutputDto { RawOutput = "Complete output", Format = "json" },
             Complexity = new TaskComplexityDto { Level = "Very High", ComplexityScore = 9.5 },
-            ExecutionPlan = new ExecutionPlanDto { Id = "plan-1", Name = "Plan 1", Strategy = "Sequential", Status = "Executed" },
             CreatedAt = DateTime.UtcNow.AddHours(-4),
             StartedAt = DateTime.UtcNow.AddHours(-3.5),
             CompletedAt = DateTime.UtcNow,
@@ -588,7 +576,6 @@ public class TaskDtoTests
         Assert.Equal(3, dto.RequiredTools.Count);
         Assert.NotNull(dto.Output);
         Assert.NotNull(dto.Complexity);
-        Assert.NotNull(dto.ExecutionPlan);
         Assert.NotNull(dto.StartedAt);
         Assert.NotNull(dto.CompletedAt);
         Assert.Single(dto.Context);

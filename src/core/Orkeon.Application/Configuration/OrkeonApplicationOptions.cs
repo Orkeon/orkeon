@@ -1,11 +1,9 @@
 using Orkeon.Application.Constants.Configuration;
 using static Orkeon.Domain.Constants.Llm.EmbeddingDefaults;
 using static Orkeon.Domain.Constants.Llm.LlmDefaults;
-using static Orkeon.Domain.Constants.Memory.MemoryDefaults;
 using Orkeon.Domain.Constants.Task;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Constants.Llm;
-using Orkeon.Domain.Constants.Memory;
 
 namespace Orkeon.Application.Configuration;
 
@@ -14,11 +12,6 @@ namespace Orkeon.Application.Configuration;
 /// </summary>
 public class OrkeonApplicationOptions
 {
-    /// <summary>
-    /// Maximum items in short-term memory.
-    /// </summary>
-    public int MaxShortTermMemoryItems { get; set; } = DefaultMaxShortTermItems;
-
     /// <summary>
     /// Type of crew repository to use (Yaml or Json).
     /// </summary>
@@ -30,24 +23,9 @@ public class OrkeonApplicationOptions
     public string CrewsPath { get; set; } = PathDefaults.DefaultCrewsPath;
 
     /// <summary>
-    /// Enable SQLite persistence for long-term memory.
-    /// </summary>
-    public bool EnablePersistence { get; set; } = true;
-
-    /// <summary>
     /// Default max iterations for agents.
     /// </summary>
     public int DefaultMaxIterations { get; set; } = AgentDefaults.MaxIterations;
-
-    /// <summary>
-    /// Enable RAG (Retrieval Augmented Generation) support.
-    /// </summary>
-    public bool EnableRAG { get; set; }
-
-    /// <summary>
-    /// Path to SQLite database for memory persistence.
-    /// </summary>
-    public string MemoryDatabasePath { get; set; } = PathDefaults.DefaultMemoryDatabasePath;
 
     /// <summary>
     /// Gets or sets the dimension for embedding vectors.
@@ -80,11 +58,6 @@ public class OrkeonApplicationOptions
     /// Azure OpenAI deployment name (if using Azure OpenAI).
     /// </summary>
     public string? AzureOpenAIDeploymentName { get; set; }
-
-    /// <summary>
-    /// Gets or sets the default memory provider type.
-    /// </summary>
-    public string DefaultMemoryProvider { get; set; } = MemoryDefaults.DefaultProvider;
 
     /// <summary>
     /// Gets or sets whether to enable debug logging.

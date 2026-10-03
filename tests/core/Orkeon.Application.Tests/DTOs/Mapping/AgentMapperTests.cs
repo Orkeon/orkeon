@@ -99,88 +99,6 @@ public class AgentMapperTests
     }
 
     [Fact]
-    public void ShouldCreateAgent_WhenUsingCreateFromRequestWithCompleteRequest()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = RoleDataAnalyst,
-            Goal = "Analyze complex datasets",
-            Backstory = "Expert in statistical analysis",
-            Settings = new AgentSettingsDto
-            {
-                AllowDelegation = true,
-                MaxIterations = 30,
-                MaxRPM = 50.0,
-                Verbose = true
-            }
-        };
-
-        var tools = new IBaseTool[]
-        {
-            new TestTool("DataTool", "Tool for data analysis"),
-            new TestTool("VisualizationTool", "Tool for visualization")
-        };
-
-        // Act
-        var agent = AgentMapper.CreateFromRequest(request, tools);
-
-        // Assert
-        Assert.NotNull(agent);
-        Assert.Equal(RoleDataAnalyst, agent.Role.Value);
-        Assert.Equal("Analyze complex datasets", agent.Goal.Value);
-        Assert.Equal("Expert in statistical analysis", agent.Backstory?.Value);
-        Assert.True(agent.AllowDelegation);
-        Assert.Equal(30, agent.MaxIterations);
-        Assert.Equal(50, agent.MaxRpm);
-        Assert.True(agent.Verbose);
-        Assert.Equal(2, agent.Tools.Count);
-    }
-
-    [Fact]
-    public void ShouldUseDefaults_WhenUsingCreateFromRequestWithMinimalRequest()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = RoleWorker,
-            Goal = "Process tasks"
-        };
-
-        // Act
-        var agent = AgentMapper.CreateFromRequest(request, []);
-
-        // Assert
-        Assert.NotNull(agent);
-        Assert.Equal(RoleWorker, agent.Role.Value);
-        Assert.Equal("Process tasks", agent.Goal.Value);
-        Assert.Null(agent.Backstory);
-        Assert.False(agent.AllowDelegation); // Domain default
-        Assert.Equal(15, agent.MaxIterations); // Domain default
-        Assert.Equal(10, agent.MaxRpm); // Domain default
-        Assert.False(agent.Verbose); // Domain default
-        Assert.Empty(agent.Tools);
-    }
-
-    [Fact]
-    public void ShouldCreateAgentWithoutTools_WhenUsingCreateFromRequestWithNullTools()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = RoleManager,
-            Goal = "Coordinate team"
-        };
-
-        // Act
-        var agent = AgentMapper.CreateFromRequest(request, null!);
-
-        // Assert
-        Assert.NotNull(agent);
-        Assert.Empty(agent.Tools);
-    }
-
-    [Fact]
     public void ShouldMapAllAgents_WhenUsingToDtoUsingEnumerableAgents()
     {
         // Arrange
@@ -233,41 +151,6 @@ public class AgentMapperTests
         Assert.Null(dto.Capabilities);
     }
 
-    [Theory]
-    [InlineData("https://api.anthropic.com", ModelClaude3, ProviderAnthropic)]
-    [InlineData(EndpointOllamaDefault, ModelLlama2, ProviderOllama)]
-    [InlineData("https://api.openai.com", ModelGpt4, ProviderOpenAI)]
-    [InlineData("", ModelGpt35Turbo, ProviderOpenAI)]
-    [InlineData("", "claude-2", ProviderAnthropic)]
-    [InlineData("", "", ProviderOpenAI)] // Default
-    public void ShouldReturnCorrectProvider_WhenUsingInferProvider(string baseUrl, string model, string expectedProvider)
-    {
-        // Arrange
-        var llmConfig = LlmConfig.OnProfile() with
-        {
-            BaseUrl = string.IsNullOrEmpty(baseUrl) ? null : new Uri(baseUrl),
-            Model = model
-        };
-
-        var dto = new LlmConfigDto
-        {
-            Provider = expectedProvider,
-            Model = model,
-            Temperature = 0.7,
-            MaxTokens = 1000,
-            TimeoutSeconds = 30
-        };
-
-        // Act - Test via ToLlmConfigDto (since InferProvider is private)
-        var agent = DomainAgent.Create(AgentRole.From("Test"), AgentGoal.From("Test"));
-        var agentDto = AgentMapper.ToDto(agent);
-
-        // Assert
-        // Since we can't directly test private methods, we verify the behavior
-        // through the public API usage
-        Assert.NotNull(agentDto);
-    }
-
     [Fact]
     public void ShouldThrowArgumentNullException_WhenUsingToDtoWithNullAgent()
     {
@@ -294,99 +177,6 @@ public class AgentMapperTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => AgentMapper.ToDto((IEnumerable<DomainAgent>)null!));
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenUsingCreateFromRequestWithNullRequest()
-    {
-        // Arrange
-        var tools = Array.Empty<IBaseTool>();
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => AgentMapper.CreateFromRequest(null!, tools));
-    }
-
-    [Fact]
-    public void ShouldApplyAllSettings_WhenUsingCreateFromRequestWithCustomSettings()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = "Technical Lead",
-            Goal = "Lead technical initiatives",
-            Backstory = "15 years of technical leadership experience",
-            Settings = new AgentSettingsDto
-            {
-                AllowDelegation = false,
-                MaxIterations = 100,
-                MaxRPM = 120.5,
-                Verbose = true
-            }
-        };
-
-        var tools = new IBaseTool[] { new TestTool("LeadershipTool", "Leadership tool") };
-
-        // Act
-        var agent = AgentMapper.CreateFromRequest(request, tools);
-
-        // Assert
-        Assert.NotNull(agent);
-        Assert.Equal("Technical Lead", agent.Role.Value);
-        Assert.Equal("Lead technical initiatives", agent.Goal.Value);
-        Assert.Equal("15 years of technical leadership experience", agent.Backstory?.Value);
-        Assert.False(agent.AllowDelegation);
-        Assert.Equal(100, agent.MaxIterations);
-        Assert.Equal(120, agent.MaxRpm); // Note: converted to int
-        Assert.True(agent.Verbose);
-        Assert.Single(agent.Tools);
-    }
-
-    [Fact]
-    public void ShouldUseDefaultValues_WhenUsingCreateFromRequestWithNullSettings()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = RoleDeveloper,
-            Goal = GoalWriteCode,
-            Settings = null
-        };
-
-        // Act
-        var agent = AgentMapper.CreateFromRequest(request, []);
-
-        // Assert
-        Assert.NotNull(agent);
-        Assert.False(agent.AllowDelegation); // Domain default: false
-        Assert.Equal(15, agent.MaxIterations); // Domain default: 15
-        Assert.Equal(10, agent.MaxRpm); // Domain default: 10
-        Assert.False(agent.Verbose); // Domain default: false
-    }
-
-    [Fact]
-    public void ShouldMixDefaultsWithProvided_WhenUsingCreateFromRequestWithPartialSettings()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = "Architect",
-            Goal = "Design systems",
-            Settings = new AgentSettingsDto
-            {
-                MaxIterations = 50,
-                // Other settings not provided
-            }
-        };
-
-        // Act
-        var agent = AgentMapper.CreateFromRequest(request, []);
-
-        // Assert
-        Assert.NotNull(agent);
-        Assert.Equal(50, agent.MaxIterations); // Provided value
-        Assert.True(agent.AllowDelegation); // DTO default when Settings object is created
-        Assert.Equal(10, agent.MaxRpm); // Domain default (MaxRPM is nullable in DTO)
-        Assert.False(agent.Verbose); // DTO default
     }
 
     [Fact]
@@ -453,27 +243,6 @@ public class AgentMapperTests
     }
 
     [Fact]
-    public void ShouldAttachEveryTool_WhenUsingCreateFromRequestWithBaseTools()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = RoleAnalyst,
-            Goal = GoalAnalyzeData
-        };
-
-        // GAP-01: a tool is an IBaseTool; nothing narrower is required to reach an agent.
-        var baseTools = new IBaseTool[] { new BaseOnlyTool() };
-
-        // Act
-        var agent = AgentMapper.CreateFromRequest(request, baseTools);
-
-        // Assert
-        Assert.NotNull(agent);
-        Assert.Equal("BaseOnlyTool", Assert.Single(agent.Tools).Name);
-    }
-
-    [Fact]
     public void ShouldHandleCorrectly_WhenUsingToDtoWithMaxValues()
     {
         // Arrange
@@ -493,48 +262,6 @@ public class AgentMapperTests
         Assert.NotNull(dto);
         Assert.True(dto.Verbose);
         Assert.True(dto.AllowDelegation);
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentException_WhenUsingCreateFromRequestWithZeroMaxRPM()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = "LowRateAgent",
-            Goal = "Work with rate limits",
-            Settings = new AgentSettingsDto
-            {
-                MaxRPM = 0.0
-            }
-        };
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
-            AgentMapper.CreateFromRequest(request, []));
-        Assert.Equal("options", exception.ParamName);
-        Assert.Contains("must be positive", exception.Message);
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentException_WhenUsingCreateFromRequestWithNegativeMaxIterations()
-    {
-        // Arrange
-        var request = new CreateAgentRequest
-        {
-            Role = "TestAgent",
-            Goal = "Test negative values",
-            Settings = new AgentSettingsDto
-            {
-                MaxIterations = -1
-            }
-        };
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
-            AgentMapper.CreateFromRequest(request, []));
-        Assert.Equal("options", exception.ParamName);
-        Assert.Contains("must be positive", exception.Message);
     }
 }
 
@@ -580,40 +307,3 @@ internal class TestTool : IBaseTool
 
     public override string ToString() => Name;
 }
-
-// A second IBaseTool implementation, distinct from TestTool
-internal class BaseOnlyTool : IBaseTool
-{
-    public string Name => "BaseOnlyTool";
-    public string Description => "A plain IBaseTool";
-    public static bool RequiresConfirmation => false;
-
-    public ToolSchema Schema => new ToolSchema(
-        Name: "BaseOnlyTool",
-        Description: "A plain IBaseTool",
-        Parameters: []);
-
-    public System.Threading.Tasks.Task<ToolCallResponse> CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest request, CancellationToken cancellationToken = default)
-    {
-        return System.Threading.Tasks.Task.FromResult(new ToolCallResponse(
-            Success: true,
-            Result: "BaseOnlyTool called",
-            Error: null,
-            Metadata: null));
-    }
-
-    public System.Threading.Tasks.Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
-    {
-        return System.Threading.Tasks.Task.FromResult(new ToolResult
-        {
-            Success = true,
-            Output = "BaseOnlyTool executed"
-        });
-    }
-
-    public bool ValidateInput(string input)
-    {
-        return true;
-    }
-}
-
