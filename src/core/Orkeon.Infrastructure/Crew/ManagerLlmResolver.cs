@@ -11,10 +11,12 @@ namespace Orkeon.Infrastructure.Crew;
 /// <summary>
 /// Resolves the LLM a crew gives its manager (GAP-19): the provider C# sets with
 /// <c>CrewBuilder.WithManagerLlm</c> — CrewAI's <c>manager_llm</c> —, metered for the host's
-/// <see cref="ILlmUsageSink"/> like a provider the host registers; else the manager agent's own
-/// <c>llm:</c> block, its profile (<see cref="ILlmProfileRegistry"/>) and model, a model left unset
-/// being the profile's own; else the host's default profile. The hierarchical and autonomous
-/// strategies resolve it once per run and hand it to every manager call.
+/// <see cref="ILlmUsageSink"/> like a provider the host registers; else the provider the manager agent
+/// carries itself (<c>Agent.Llm</c> — a Microsoft Agent Framework agent answering for it, GAP-34),
+/// metered the same way; else the manager agent's <c>llm:</c> block, its profile
+/// (<see cref="ILlmProfileRegistry"/>) and model, a model left unset being the profile's own; else the
+/// host's default profile. The hierarchical and autonomous strategies resolve it once per run and hand
+/// it to every manager call.
 /// </summary>
 public sealed class ManagerLlmResolver
 {
@@ -66,6 +68,19 @@ public sealed class ManagerLlmResolver
 
         var config = managerAgent?.LlmConfig;
         var model = string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model;
+
+        // Then the provider the manager agent carries itself — the one its turns run on: metered at
+        // this same entrance, or a manager backed by a MAF agent would manage on the default in silence.
+        if (managerAgent?.Llm is { } own)
+        {
+            return new ManagerLlm
+            {
+                ChatClient = new LlmProviderToChatClientAdapter(MeteredLlmProvider.Wrap(own, _usageSink)),
+                Model = model,
+                Name = name,
+            };
+        }
+
         if (LlmProfiles.IsDefault(config?.Profile))
             return new ManagerLlm { ChatClient = _defaultChatClient, Model = model, Name = name };
 

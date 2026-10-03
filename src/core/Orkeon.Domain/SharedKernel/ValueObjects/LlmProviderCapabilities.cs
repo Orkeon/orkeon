@@ -122,6 +122,17 @@ public sealed record LlmProviderCapabilities
     public bool ReplaysPrompt { get; init; }
 
     /// <summary>
+    /// Whether the provider is an agent that runs its own tools rather than a model that asks for
+    /// Orkeon's — the Microsoft Agent Framework bridge, which hands every call to a MAF agent and
+    /// returns the end of its run (GAP-34). An Orkeon tool offered to such a provider is never called,
+    /// so none is: an agent that carries one as its own provider (<c>Agent.Llm</c>) is refused tools
+    /// and delegation when it is created, and a task that falls on one — the agent's own, a profile's
+    /// or the host's default — with a tool to hold fails before its first call. Declared by that bridge
+    /// alone; the decorators a provider is wrapped in pass it through.
+    /// </summary>
+    public bool RunsOwnTools { get; init; }
+
+    /// <summary>
     /// The conservative default for a provider that has not declared anything: no capability
     /// is assumed, so nothing is written to the wire on its behalf.
     /// </summary>

@@ -91,7 +91,7 @@ public class AgentBuilderTests
         Assert.Equal("Task: {task}", agent.PromptTemplate);
         Assert.Equal("Result: {result}", agent.ResponseTemplate);
         Assert.Equal(3, agent.MaxRetryLimit);
-        Assert.Same(llm, agent.FunctionCallingLlm);
+        Assert.Same(llm, agent.Llm);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class AgentBuilderTests
     }
 
     [Fact]
-    public void Build_WithLlm_SetsFunctionCallingLlm()
+    public void Build_WithLlm_SetsTheProviderTheAgentRunsOn()
     {
         // Arrange
         var llm = new StubLlmProvider();
@@ -147,8 +147,8 @@ public class AgentBuilderTests
         var agent = MinimalAgent().WithLlm(llm).Build();
 
         // Assert
-        Assert.NotNull(agent.FunctionCallingLlm);
-        Assert.Same(llm, agent.FunctionCallingLlm);
+        Assert.NotNull(agent.Llm);
+        Assert.Same(llm, agent.Llm);
     }
 
     [Fact]

@@ -8,7 +8,7 @@
 
 Les trois entités principales sont construites via des builders fluides définis dans la couche Domain :
 
-- `AgentBuilder` (`Orkeon.Domain.Agent`) : configure rôle, objectif, backstory, outils, contraintes d'exécution, templates de prompt, politique d'accès outils
+- `AgentBuilder` (`Orkeon.Domain.Agent`) : configure rôle, objectif, backstory, outils, contraintes d'exécution, templates de prompt, politique d'accès outils, et le fournisseur sur lequel tournent les tours de l'agent quand il porte le sien (`.WithLlm(fournisseur)` — `Agent.Llm`, compté comme le travail de l'agent ; un agent Microsoft Agent Framework par [`.WithAgentFrameworkAgent(agent)`](../reference/agent-framework-interop.md)). `Build()` le refuse avec un profil de l'hôte (`.WithLlmConfig(LlmConfig.OnProfile(nom))`) et, sur un fournisseur qui fait ses propres outils — un agent MAF —, avec `.WithTool` ou `.AllowDelegation()`
 - `CrewTaskBuilder` (`Orkeon.Domain.Task`) : configure description, résultat attendu, priorité, dépendances, schéma JSON de sortie, mode async (`.Async()` — honoré par une crew séquentielle, refusé par `CrewBuilder.Build()` hors Sequential et Parallel), intervention humaine
 - `CrewBuilder` (`Orkeon.Domain.Crew`) : configure nom, objectif, process type, agents, tasks, planification (`.Planning()`, sur le fournisseur que pose `.WithPlanningLlm(fournisseur)` — refusé sans `.Planning()`), mémoire, callbacks, agents dynamiques, et le manager d'une crew hiérarchique — un agent (`.Hierarchical(manager)`, `.WithManager(agent)`), ou un fournisseur à lui (`.WithManagerLlm(fournisseur)`, le `manager_llm` de CrewAI : le manager assigne et revoit dessus, la crew se passe alors d'agent manager et chaque agent travaille). Un agent manager est aussi l'arbitre d'une crew consensuelle ; un LLM manager distribue aussi les tâches d'une crew autonome. `Build()` refuse l'un ou l'autre dans un process qui n'en a pas
 
@@ -111,8 +111,9 @@ Un profil que l'hôte ne définit pas fait échouer le chargement de la crew, et
 les profils offerts — exactement comme un outil inconnu. Un bloc `llm:` qui ne nomme pas de
 `model` tourne sur le modèle propre du profil (celui de l'hôte pour le profil par défaut), jamais
 sur un défaut du framework. Le manager d'une crew hiérarchique tourne sur le bloc `llm:` de son
-agent manager, comme tout agent (en C#, un fournisseur posé par `WithManagerLlm` l'emporte) ; le
-sous-système RAG tourne sur le profil que nomme `Orkeon:Rag:LlmProfile` ; le planificateur et le
+agent manager, comme tout agent (en C#, un fournisseur posé par `WithManagerLlm` l'emporte, puis
+celui que porte l'agent manager, `WithLlm`) ; le sous-système RAG tourne sur le profil que nomme
+`Orkeon:Rag:LlmProfile` ; le planificateur et le
 Guardian restent sur le profil par défaut ([Configuration](../reference/configuration.md#profils-nommés-llmprofiles)).
 En `.ork.ts`, le même choix s'écrit `agentBuilder().llm(llm.profile("claude"))` sur un agent et
 `taskBuilder().withProfile("claude")` sur une tâche. Dans Orkeon Studio, chaque réglage de modèle est

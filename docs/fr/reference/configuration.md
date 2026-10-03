@@ -146,11 +146,17 @@ celui d'OpenAI sur un autre vendeur.
 Qui tourne sur quel profil :
 
 - **Les tours d'un agent** — sur son profil `llm:`, ou le `llm_override` de sa tâche pour cette
-  tâche (`taskBuilder().withProfile(nom)` en `.ork.ts`).
+  tâche (`taskBuilder().withProfile(nom)` en `.ork.ts`). Un agent construit en C# peut porter à la
+  place son propre fournisseur (`AgentBuilder.WithLlm(fournisseur)`, ou un agent Microsoft Agent
+  Framework par `WithAgentFrameworkAgent` — `Agent.Llm`) : ses tours, sa correction de sortie et son
+  bulletin y tournent, sur un client que l'hôte construit une fois par fournisseur et compte comme le
+  travail de l'agent ; le profil du `llm_override` d'une tâche déplace toujours cette tâche, et l'agent
+  ne peut pas nommer en plus un profil (le build refuse les deux).
 - **Le manager** d'une crew hiérarchique (et celui qui distribue les tâches d'une crew autonome) —
   sur le LLM que la crew lui donne : en C#, le fournisseur que pose `CrewBuilder.WithManagerLlm`,
-  compté comme celui de l'hôte ; sinon le bloc `llm:` de son agent manager, profil et modèle ; sinon
-  le profil par défaut.
+  compté comme celui de l'hôte ; sinon le fournisseur que porte son agent manager (`WithLlm`,
+  `WithAgentFrameworkAgent`), compté de même ; sinon le bloc `llm:` de son agent manager, profil et
+  modèle ; sinon le profil par défaut.
 - **Le sous-système RAG** — génération citée, transformateurs de requête, reranker listwise,
   évaluateur et vérificateur d'ancrage du graphe correctif, classifieur `llm` et juge d'évaluation —
   sur le profil que nomme `Orkeon:Rag:LlmProfile` (absent : le défaut). Un nom que l'hôte n'offre

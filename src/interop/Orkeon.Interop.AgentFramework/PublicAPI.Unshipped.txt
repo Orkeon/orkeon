@@ -5,3 +5,7 @@
 Orkeon.Interop.AgentFramework.CrewAgent.CrewAgent(Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopes, System.Func<System.IServiceProvider!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Domain.Common.CrewId!>!>! loadCrew, string! name, string? description = null) -> void
 Orkeon.Interop.AgentFramework.CrewAgent.CrewId.get -> Orkeon.Domain.Common.CrewId?
 Orkeon.Interop.AgentFramework.DependencyInjection.ICrewAgentFactory.Create(System.Func<System.IServiceProvider!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Domain.Common.CrewId!>!>! loadCrew, string! name, string? description = null) -> Orkeon.Interop.AgentFramework.CrewAgent!
+*REMOVED*Orkeon.Interop.AgentFramework.AIAgentLlmProvider.AIAgentLlmProvider(Microsoft.Agents.AI.AIAgent! agent) -> void
+Orkeon.Interop.AgentFramework.AIAgentLlmProvider.AIAgentLlmProvider(Microsoft.Agents.AI.AIAgent! agent, Microsoft.Extensions.Logging.ILogger<Orkeon.Interop.AgentFramework.AIAgentLlmProvider!>? logger = null) -> void
+*REMOVED*static Orkeon.Interop.AgentFramework.AgentBuilderExtensions.WithAgentFrameworkAgent(this Orkeon.Domain.Agent.AgentBuilder! builder, Microsoft.Agents.AI.AIAgent! agent) -> Orkeon.Domain.Agent.AgentBuilder!
+static Orkeon.Interop.AgentFramework.AgentBuilderExtensions.WithAgentFrameworkAgent(this Orkeon.Domain.Agent.AgentBuilder! builder, Microsoft.Agents.AI.AIAgent! agent, Microsoft.Extensions.Logging.ILogger<Orkeon.Interop.AgentFramework.AIAgentLlmProvider!>? logger = null) -> Orkeon.Domain.Agent.AgentBuilder!

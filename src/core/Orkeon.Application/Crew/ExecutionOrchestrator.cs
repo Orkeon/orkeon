@@ -90,6 +90,14 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, ChatClientAgentLoop> _profileLoops =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// One agent loop per provider an agent of this scope carries itself (<c>Agent.Llm</c>, GAP-34),
+    /// keyed by the instance: the client <see cref="LlmProfiles"/> builds over it, with its own call
+    /// gate, like a profile's.
+    /// </summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Domain.SharedKernel.ILlmProvider, ChatClientAgentLoop> _ownProviderLoops =
+        new(ReferenceEqualityComparer.Instance);
+
     private OutputValidationCoordinator OutputValidation =>
         _outputValidation ??= new OutputValidationCoordinator(
             _logger, _validationPipeline, _parserFactory, _llmProvider,
@@ -132,10 +140,13 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
     /// <summary>
     /// The host's named LLM profiles (GAP-17). An agent whose <c>llm</c> configuration — or a
-    /// task whose <c>llm_override</c> — names a profile runs on that profile's provider; every
-    /// other agent stays on the orchestrator's own (the host's default profile). Set by
-    /// <c>AddOrkeonApplication</c>; null — an orchestrator built by hand — offers the default
-    /// alone, and a task naming another profile fails with the list of known ones.
+    /// task whose <c>llm_override</c> — names a profile runs on that profile's provider; an agent
+    /// that carries its own provider (<c>Agent.Llm</c>, GAP-34) runs on the client the registry
+    /// builds over it (<see cref="ILlmProfileRegistry.ForProvider"/>); every other agent stays on
+    /// the orchestrator's own (the host's default profile). Set by <c>AddOrkeonApplication</c>;
+    /// null — an orchestrator built by hand — offers the default alone: a task naming another
+    /// profile fails with the list of known ones, and a task of an agent carrying its own provider
+    /// fails naming the agent.
     /// </summary>
     public ILlmProfileRegistry? LlmProfiles { get; set; }
 
@@ -298,8 +309,33 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
             try
             {
+                // What the task runs on — the profile its llm_override names, else its agent's own
+                // provider or profile, else the default (GAP-17, GAP-34) —, for its turns and its
+                // correction round alike.
+                var llm = LlmFor(agent, task);
+                var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools);
+
+                // A provider that runs its own tools — a Microsoft Agent Framework agent — never calls
+                // Orkeon's: a task that would hand it some fails before any call, saying what to do
+                // (GAP-34). Its prompt therefore never lists a tool.
+                if (OwnToolsRefusal(agent, task, llm.Provider, toolbelt) is { } refusal)
+                {
+                    ExecutionLog.LogOwnToolsRefused(_logger, agent.Role, task.Id, refusal);
+                    return new TaskResult(
+                        Success: false,
+                        Output: string.Empty,
+                        StructuredOutput: null,
+                        ToolsUsed: toolsUsed,
+                        ExecutionTime: DateTime.UtcNow - startTime,
+                        Error: refusal)
+                    {
+                        IterationsUsed = 0,
+                        LastError = refusal,
+                    };
+                }
+
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
-                    agent, task, TaskToolbelt.Compose(agent, task, _registeredTools),
+                    agent, task, toolbelt,
                     _toolCallingStrategy?.SupportsNativeToolCalling == true);
                 var knowledgeContext = await ResolveKnowledgeContextAsync(
                     agent, task, context, cancellationToken).ConfigureAwait(false);
@@ -334,7 +370,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
 
                 var loopResult = await ExecuteWithProviderAsync(
-                    agent, task, systemPrompt, userPrompt, context, toolsUsed, cancellationToken).ConfigureAwait(false);
+                    agent, task, llm.Loop, systemPrompt, userPrompt, context, toolsUsed, cancellationToken).ConfigureAwait(false);
 
                 // A call the provider never answered leaves nothing to validate, and a correction
                 // round would only ask the same model again — the retries belong to the provider
@@ -344,8 +380,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     : await OutputValidation.ValidateAndParseOutputAsync(
                         new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed)
                         {
-                            // A correction round asks the model that answered: the profile's, when there is one.
-                            ChatLoop = ProfileLoopFor(agent, task),
+                            // A correction round asks the model that answered: the profile's or the
+                            // agent's own provider's, when there is one.
+                            ChatLoop = llm.Loop,
                         },
                         MaxOutputRetries, MaxIterations, cancellationToken).ConfigureAwait(false);
 
@@ -471,6 +508,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private async System.Threading.Tasks.Task<AgentLoopResult> ExecuteWithProviderAsync(
         DomainAgent agent,
         CrewTask task,
+        ChatClientAgentLoop? profileLoop,
         string systemPrompt,
         string userPrompt,
         SimpleExecutionContext context,
@@ -483,7 +521,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        if (ProfileLoopFor(agent, task) is { } profileLoop)
+        if (profileLoop is not null)
         {
             var profileResult = await profileLoop.ExecuteAsync(
                 agent, task, systemPrompt, userPrompt, toolsUsed, MaxIterations, cancellationToken).ConfigureAwait(false);
@@ -524,31 +562,91 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     }
 
     /// <summary>
-    /// The loop of the host profile this task runs on — its <c>llm_override</c> profile, else its
-    /// agent's — or null for the default profile, which keeps the orchestrator's own provider.
+    /// What a task runs on: the loop of its provider — null for the host's default, which keeps the
+    /// orchestrator's own loops — and that provider, whose capabilities the run reads (null when the
+    /// default's is unknown to an orchestrator built by hand).
+    /// </summary>
+    private readonly record struct TaskLlm(ChatClientAgentLoop? Loop, Domain.SharedKernel.ILlmProvider? Provider);
+
+    /// <summary>
+    /// What <paramref name="task"/> runs on (GAP-17, GAP-34): the profile its <c>llm_override</c>
+    /// names — <c>default</c> included —, else its agent's own provider (<c>Agent.Llm</c>), else its
+    /// agent's profile, else the host's default.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// The profile is not one <see cref="LlmProfiles"/> offers. The crew load checks it first;
-    /// this is the guard for a crew built by hand.
+    /// The profile is not one <see cref="LlmProfiles"/> offers — the crew load checks it first; this is
+    /// the guard for a crew built by hand —, or the agent carries its own provider and no registry
+    /// can build its client.
     /// </exception>
-    private ChatClientAgentLoop? ProfileLoopFor(DomainAgent agent, CrewTask task)
+    private TaskLlm LlmFor(DomainAgent agent, CrewTask task)
     {
-        var profile = task.LlmOverride?.Profile ?? agent.LlmConfig?.Profile;
+        var taskProfile = task.LlmOverride?.Profile;
+        if (string.IsNullOrWhiteSpace(taskProfile) && agent.Llm is { } own)
+            return OwnProviderLlm(agent, own);
+
+        return ProfileLlm(agent, string.IsNullOrWhiteSpace(taskProfile) ? agent.LlmConfig?.Profile : taskProfile);
+    }
+
+    /// <summary>The loop and provider of the host profile <paramref name="profile"/> — the default's for none.</summary>
+    private TaskLlm ProfileLlm(DomainAgent agent, string? profile)
+    {
         if (Interfaces.Ports.LlmProfiles.IsDefault(profile))
-            return null;
+            return new TaskLlm(null, _fullProvider);
 
         Interfaces.Ports.LlmProfiles.EnsureKnown(LlmProfiles, profile, $"Agent '{agent.Role.Value}'");
-        return _profileLoops.GetOrAdd(profile!.Trim(), name =>
+        var resolved = LlmProfiles!.Resolve(profile);
+        return new TaskLlm(_profileLoops.GetOrAdd(resolved.Name, _ => LoopOver(resolved)), resolved.Provider);
+    }
+
+    /// <summary>
+    /// The loop of the provider <paramref name="agent"/> carries itself: the client the host's registry
+    /// builds over it, metered there, and one loop per instance in this scope.
+    /// </summary>
+    private TaskLlm OwnProviderLlm(DomainAgent agent, Domain.SharedKernel.ILlmProvider own)
+    {
+        if (LlmProfiles is null)
         {
-            var resolved = LlmProfiles!.Resolve(name);
-            return new ChatClientAgentLoop(
-                _logger,
-                resolved.ChatClient,
-                new LlmCallGate(_logger, resolved.BasicProvider, _rateLimiter),
-                OptionsComposer,
-                ToolDispatcher,
-                DeltaSink);
-        });
+            throw new InvalidOperationException(
+                $"Agent '{agent.Role.Value}' runs on its own provider ({own.Name}), and this orchestrator has no LLM " +
+                "profile registry to build and meter that provider's client. Resolve the orchestrator from a container " +
+                "that registers the host's model (AddOrkeonInfrastructure), or set ExecutionOrchestrator.LlmProfiles.");
+        }
+
+        var client = LlmProfiles.ForProvider(own);
+        return new TaskLlm(_ownProviderLoops.GetOrAdd(own, _ => LoopOver(client)), client.Provider);
+    }
+
+    /// <summary>
+    /// A chat-client loop over <paramref name="profile"/>: its chat client and its own call gate (rate
+    /// limits and the <c>gen_ai.provider.name</c> of the spans follow its provider), sharing the options
+    /// composer and the tool dispatcher with the default loop.
+    /// </summary>
+    private ChatClientAgentLoop LoopOver(LlmProfile profile) =>
+        new(
+            _logger,
+            profile.ChatClient,
+            new LlmCallGate(_logger, profile.BasicProvider, _rateLimiter),
+            OptionsComposer,
+            ToolDispatcher,
+            DeltaSink);
+
+    /// <summary>
+    /// Why <paramref name="task"/> cannot run on <paramref name="provider"/>, or null (GAP-34): the
+    /// provider runs its own tools (<see cref="Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.RunsOwnTools"/>)
+    /// and the task's toolbelt — the agent's tools, the task's own, <c>human_input</c> — is not empty.
+    /// The agent's own provider is checked when the agent is built; this covers a task's tools, and a
+    /// profile or a default that runs its own.
+    /// </summary>
+    private static string? OwnToolsRefusal(
+        DomainAgent agent, CrewTask task, Domain.SharedKernel.ILlmProvider? provider, IReadOnlyList<Domain.Tools.IBaseTool> toolbelt)
+    {
+        if (provider is not { Capabilities.RunsOwnTools: true } || toolbelt.Count == 0)
+            return null;
+
+        var description = task.Description.Value;
+        var shortened = description.Length <= 60 ? description : string.Concat(description.AsSpan(0, 57), "...");
+        return Domain.Agent.AgentLlmRules.OwnToolsRefusal(
+            $"Agent '{agent.Role.Value}', on task '{shortened}',", provider.Name, toolbelt.Select(tool => tool.Name));
     }
 
     /// <summary>

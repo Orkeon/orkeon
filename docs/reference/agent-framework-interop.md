@@ -36,7 +36,7 @@ services.AddOrkeonAgentFramework();   // Orkeon -> MAF only; MAF -> Orkeon needs
 | Direction | In | Out | Stays behind |
 |---|---|---|---|
 | Orkeon crew → MAF (`CrewAgent`) | the MAF conversation, as the crew's initial context | the crew's final output as one assistant message, its token usage | the crew's tools, mounts, budget, memory and orchestration — MAF sees an agent that answers |
-| MAF agent → Orkeon agent's model (`WithAgentFrameworkAgent`) | the Orkeon agent's prompts, role-mapped | the MAF answer text and its usage | the Orkeon agent's tools and `LlmConfig`; MAF's own tools stay usable on its side |
+| MAF agent → Orkeon agent's model (`WithAgentFrameworkAgent`) | the Orkeon agent's prompts, role-mapped, each message once on the MAF session | the MAF answer text and its usage, metered once | the Orkeon agent's `LlmConfig` (each option declared is a warning); no Orkeon tool — refused; MAF's own tools stay usable on its side |
 | MAF agent → Orkeon tool (`WithAgentFrameworkTool`) | the `request` string | `answer` and `agent` | the MAF agent's tools, session and memory |
 
 ## An Orkeon crew as a MAF agent — `CrewAgent`
@@ -93,26 +93,62 @@ result drops into any MAF workflow, orchestration or `AsAIFunction()` chain.
 ### As an agent's model — `WithAgentFrameworkAgent`
 
 ```csharp
-var agent = new AgentBuilder()
-    .Role("Reviewer").Goal("Review the change")
-    .WithAgentFrameworkAgent(mafAgent)
+var reviewer = new AgentBuilder()
+    .Role("Reviewer").Goal("Find the biggest risk of a change")
+    .WithAgentFrameworkAgent(mafAgent, logger)   // logger optional: it hears the options not sent
     .Build();
 ```
 
-`WithAgentFrameworkAgent(agent)` is `WithLlm(new AIAgentLlmProvider(agent))`: the Orkeon agent
-keeps its role, goal and tasks, and every prompt it sends is a run of the MAF agent.
-`AIAgentLlmProvider : ILlmProvider`:
+`WithAgentFrameworkAgent(agent, logger?)` is `WithLlm(new AIAgentLlmProvider(agent, logger))`: the MAF
+agent becomes the Orkeon agent's own provider (`Agent.Llm`). The Orkeon agent keeps its role, goal and
+tasks; what answers is the MAF agent.
 
-- keeps **one MAF session for its lifetime**, created on first use, so a MAF agent with memory
-  or context providers sees one continuous conversation across the Orkeon agent's iterations;
-- maps the roles `system`, `assistant` and `tool`, and anything else to `user`;
-- ignores the `LlmConfig` it is handed (temperature, max tokens, response format) — the MAF agent
-  is configured on its own side;
-- reports `Name` = `agent-framework:<name or id>` and `LlmProviderCapabilities.Unknown`, and
-  relays the MAF usage as the response's token counts;
-- leaves **tool calling on the MAF side**: the MAF agent uses whatever tools it carries, and the
-  Orkeon agent's own tools are not offered to it. An agent that needs both wraps the MAF agent as
-  a tool instead.
+- **What runs on it** — the turns of the agent's tasks and their output-correction round, its work as
+  a hierarchical manager (it assigns and reviews), its ballot in a consensual vote. Another agent can
+  still delegate to it (`delegate_work_to_coworker`). The MAF agent receives the prompt Orkeon composed — the
+  system message (role, goal, backstory, guardrails, response template) and the user message (the
+  task, its expected output, its plan, the variables, previous outputs, recalled memories, knowledge),
+  screened by the Guardian first — and adds its own instructions and context providers to it.
+- **The order** — the profile a task's `llm_override` names wins for that task, `default` included;
+  otherwise the agent runs on its own provider. An agent runs on its own provider or on a host
+  profile, never both: `Build()` and `Agent.Create` refuse the provider together with
+  `WithLlmConfig(LlmConfig.OnProfile(name))`.
+  A crew's `WithManagerLlm` still wins over its manager agent's own provider.
+- **No Orkeon tool** — a MAF agent calls the tools it carries, never Orkeon's: `AIAgentLlmProvider`
+  declares `LlmProviderCapabilities.RunsOwnTools`. Such an agent is refused `WithTool`, `WithTools` and
+  `AllowDelegation` when it is built (`BuilderValidationException`), and `AddTool` later; a task that
+  falls on a provider that runs its own tools — the agent's own, a profile's or the host's default —
+  with tools to hold (its own `tools:`, `human_input`, the `delegate_work_to_coworker` and
+  `ask_question_to_coworker` of an agent that allows delegation, as a YAML agent does unless it writes
+  `allowDelegation: false`) fails
+  before any call. The message names the tools and the two remedies: give the tool to the MAF agent, or
+  give the MAF agent to an Orkeon agent as a tool (`WithAgentFrameworkTool`, below) — and, for the
+  delegation tools, switch delegation off. One Orkeon agent cannot hold the same MAF agent both ways.
+- **One session, each message once, one call at a time** — the provider keeps one MAF session for its
+  lifetime, created on first use, so a MAF agent with memory or context providers sees one continuous
+  conversation. The agent loop sends the whole conversation on every turn; a call that extends the
+  conversation the session holds — the previous call's messages, then the answer the provider gave
+  them — sends the session only what is new, and any other call — a new task — sends all its messages,
+  the session keeping the earlier task. Calls run one at a time: the tasks of one MAF agent run one
+  after another, even in a parallel wave or alongside an `asyncExecution` task. The session grows with
+  every task, and an earlier task's output reaches the model twice — by the session and by the prompt's
+  previous outputs; a `ChatReducer` on the MAF side bounds it.
+- **Counted once** — the run builds a client over the provider once per instance and meters it as the
+  agent's work (`operation: agent`, `manager` for a manager's calls). A MAF agent built over Orkeon's own
+  metered model is counted once, by that model's meter, under the real provider and model: the meter
+  nearest the model counts. A MAF agent on a client Orkeon does not meter is counted under
+  `agent-framework:<name>`, with the usage its response carries (estimated when it carries none).
+- **Streaming** — a streamed turn (`--stream`, `KickoffStreamingAsync`) receives the MAF answer as one
+  fragment, counted once.
+- **Options** — the bridge sends the MAF agent messages only: the options of a call's `LlmConfig`
+  (model, temperature, max tokens, top-p, response format, thinking, grammar…) never reach it. Each one
+  a call declares is a structured warning — `Option '<name>' was declared but agent-framework:<name>
+  does not support it — it was not sent` (event 110, the HTTP providers' own) — once per crew run
+  and per option, through the logger handed to `WithAgentFrameworkAgent`, else the `ILoggerFactory` the MAF
+  agent exposes (`GetService`), else nowhere. A structured output expected from a MAF agent has the
+  output validation and its correction round as its only guard.
+- It maps the roles `system`, `assistant` and `tool`, and anything else to `user`, reports `Name` =
+  `agent-framework:<name or id>`, and relays the MAF usage as the response's token counts.
 
 ### As a tool — `WithAgentFrameworkTool`
 
@@ -137,9 +173,11 @@ other tools — the mirror of MAF's `AsAIFunction()`:
 
 ## What the bridge does not do
 
-- It does not translate tools across the boundary: an Orkeon agent's tools stay Orkeon's, a MAF
-  agent's stay MAF's.
-- It does not stream tokens out of a crew (`CrewAgent` yields the final answer).
+- It does not translate tools across the boundary: an Orkeon agent's tools stay Orkeon's — refused on
+  an agent a MAF agent answers for —, a MAF agent's stay MAF's.
+- It does not stream tokens: `CrewAgent` yields a crew's final answer, and an agent a MAF agent
+  answers for receives that answer as one fragment.
+- It sends no option to a MAF agent: each one declared is a warning, never a silent drop.
 - It registers nothing in the shipped runners: `orkeon`, `orkeon-host` and the REPL do not
   reference the package. An embedding host adds it — the example does so through
   `RunnerHost.Build`'s `configureServices` hook ([hosting](hosting.md)).

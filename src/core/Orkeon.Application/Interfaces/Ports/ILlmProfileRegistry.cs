@@ -40,6 +40,19 @@ public interface ILlmProfileRegistry
     /// The host defines no such profile, or refuses it; the message lists the known ones.
     /// </exception>
     LlmProfile Resolve(string? name);
+
+    /// <summary>
+    /// The client of a provider an agent carries itself (<c>Agent.Llm</c>: <c>AgentBuilder.WithLlm</c>,
+    /// a Microsoft Agent Framework agent through <c>WithAgentFrameworkAgent</c> — GAP-34): the three
+    /// surfaces of a profile over <paramref name="provider"/>, metered for the host's usage sink — a
+    /// provider metered already is read once per call. Built once per provider instance and kept as
+    /// long as that instance lives; owned by the registry like a profile, never disposed by a caller.
+    /// Named <c>provider:&lt;name&gt;</c>, as the manager's LLM names a provider
+    /// (<see cref="ManagerLlm.ProviderPrefix"/>).
+    /// </summary>
+    /// <param name="provider">The agent's own provider.</param>
+    /// <returns>The provider's client.</returns>
+    LlmProfile ForProvider(ILlmProvider provider);
 }
 
 /// <summary>

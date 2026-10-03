@@ -81,3 +81,52 @@ de l'hôte.
   son identifiant d'agent est `orkeon-crew-<name>` et son `CrewId` vaut `null` (une crew neuve à
   chaque tour). `new CrewAgent(orchestrator, crewId|crew)` reste, pour l'appelant qui possède
   l'orchestrateur et son scope.
+
+## Amendement — 2026-10-03 (GAP-34) : l'agent MAF répond
+
+**Ce qui était faux.** `WithAgentFrameworkAgent` posait `Agent.FunctionCallingLlm`, un champ que rien
+ne lisait : un agent ainsi construit exécutait ses tâches sur le modèle par défaut de l'hôte (ou sur
+son profil), avec ses outils Orkeon, et l'agent MAF n'entendait rien — ni ses instructions, ni ses
+outils, ni sa mémoire ne servaient. Le test d'interop vérifiait le champ ; l'exemple n'exerçait que la
+forme « outil ». La conséquence « un crew Orkeon peut … être répondu par un agent MAF » n'avait
+jamais tourné de bout en bout, et la phrase de la décision 2, « rien n'a changé dans Domain,
+Application ou Infrastructure pour elle », ne tient plus :
+
+- **Domain.** `Agent.FunctionCallingLlm` devient `Agent.Llm` (`AgentCreateOptions.Llm`,
+  `AgentSnapshot.Llm`, le paramètre `llm` d'`Agent.Create`) : le fournisseur sur lequel tournent les
+  tours de l'agent, le `llm` de CrewAI donné comme objet. Un agent tourne sur son propre fournisseur ou
+  sur un profil de l'hôte, jamais les deux — `Agent.Create` et `AgentBuilder.Build()` refusent les deux.
+  `LlmProviderCapabilities.RunsOwnTools`, que déclare `AIAgentLlmProvider` : un agent dont le
+  fournisseur propre fait ses propres outils se voit refuser outils Orkeon et délégation à sa création,
+  et `AddTool` comme `UpdateConfiguration` gardent la règle.
+- **Application.** `ILlmProfileRegistry.ForProvider(fournisseur)` construit le client du fournisseur
+  propre d'un agent, une fois par instance, compté. L'orchestrateur y fait tourner les tours de l'agent,
+  leur correction et son bulletin, après le profil que nomme le `llm_override` d'une tâche et avant le
+  profil de l'agent. Une tâche qui tombe sur un fournisseur qui fait ses propres outils — celui de
+  l'agent, celui d'un profil, le défaut — avec des outils à tenir (les siens, `human_input`) échoue avant
+  tout appel, en nommant les outils et les deux remèdes.
+- **Infrastructure.** `LlmProfileRegistry.ForProvider` est une nouvelle entrée du chemin compté.
+  `ManagerLlmResolver` fait tourner le fournisseur propre d'un agent manager hiérarchique
+  (`provider:<nom>`), après `Crew.ManagerLlm`. `MeteredLlmProvider` compte un appel une fois : un appel
+  extérieur pendant lequel un compteur plus proche du modèle a compté ne rapporte rien, si bien qu'un
+  agent MAF bâti sur le modèle d'Orkeon est compté au nom du vrai fournisseur et du vrai modèle, et un
+  agent MAF sur un client qu'Orkeon ne compte pas sous `agent-framework:<nom>`.
+
+**La session.** Une par fournisseur, comme l'a choisi la décision 2, pour que la mémoire d'un agent MAF
+couvre les tours et les tâches de l'agent Orkeon — mais nourrie une fois : un appel qui prolonge la
+conversation que tient la session (les messages de l'appel précédent, puis la réponse du fournisseur)
+n'envoie que la suite, tout autre appel — une nouvelle tâche — envoie tout, et les appels passent un à
+la fois. Les tâches d'un même agent MAF passent donc l'une après l'autre, même dans une vague Parallel ;
+la sortie d'une tâche précédente atteint le modèle par la session et par les sorties précédentes du
+prompt, et la session grandit à chaque tâche (un `ChatReducer` côté MAF la borne).
+
+**Ce que le pont n'envoie pas, il le dit.** Les options de la configuration d'un appel (modèle,
+température, format de réponse, réflexion…) n'atteignent jamais un agent MAF ; chacune déclarée produit
+un avertissement structuré, une fois par run d'une crew et par option. Le streaming ne change pas : un
+tour diffusé reçoit la réponse MAF en un fragment.
+
+**Vérifié.** De bout en bout dans la suite d'interop (l'agent MAF reçoit le prompt composé, le défaut
+n'est pas appelé, un seul événement d'usage au nom de l'agent ; compté une fois sur le modèle d'Orkeon ;
+outils refusés au build, à `AddTool` et au run), et par une troisième section de
+`examples/interop/agent-framework/`, lancée sur le fournisseur écho ; la campagne sur un modèle local
+revient au propriétaire.

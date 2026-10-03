@@ -60,8 +60,8 @@ public sealed record AgentSnapshot
     /// <summary>The maximum retry limit.</summary>
     public int MaxRetryLimit { get; init; }
 
-    /// <summary>The optional function-calling LLM provider.</summary>
-    public ILlmProvider? FunctionCallingLlm { get; init; }
+    /// <summary>The provider the agent's turns run on when it carries its own (<see cref="Agent.Llm"/>).</summary>
+    public ILlmProvider? Llm { get; init; }
 
     /// <summary>The optional tool access policy (defaults to unrestricted).</summary>
     public ToolAccessPolicy? ToolAccessPolicy { get; init; }

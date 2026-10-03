@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
@@ -46,7 +48,8 @@ public sealed class LlmProfileAccessOptions
 /// <see cref="ILlmProvider"/>, <see cref="IBasicLlmProvider"/> and <see cref="IChatClient"/>) plus
 /// every <see cref="LlmProfileRegistration"/>, each built on first use, once, and held for the
 /// container's lifetime. <c>AddOrkeonLlmProfile</c> meters a registration's provider for the
-/// host's <see cref="ILlmUsageSink"/>.
+/// host's <see cref="ILlmUsageSink"/>; the registry meters the provider an agent carries itself
+/// (<see cref="ForProvider"/>, GAP-34), one of the entrances of the metered path.
 /// </summary>
 public sealed class LlmProfileRegistry : ILlmProfileRegistry
 {
@@ -54,6 +57,12 @@ public sealed class LlmProfileRegistry : ILlmProfileRegistry
     private readonly Dictionary<string, LlmProfileRegistration> _offered;
     private readonly ConcurrentDictionary<string, Lazy<LlmProfile>> _built = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lazy<LlmProfile> _default;
+
+    /// <summary>
+    /// The clients of the providers agents carry themselves, one per instance, kept as long as the
+    /// instance lives: an agent built for one run takes its client with it.
+    /// </summary>
+    private readonly ConditionalWeakTable<ILlmProvider, LlmProfile> _ownProviders = new();
 
     /// <summary>Builds the registry over the container's profile registrations.</summary>
     /// <param name="services">The container the providers are built from.</param>
@@ -118,28 +127,41 @@ public sealed class LlmProfileRegistry : ILlmProfileRegistry
         return _built.GetOrAdd(registration.Name, _ => new Lazy<LlmProfile>(() => Build(registration))).Value;
     }
 
+    /// <inheritdoc />
+    public LlmProfile ForProvider(ILlmProvider provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        return _ownProviders.GetValue(provider, own =>
+            // The agent's own provider is the host's own code, built off the metered path — by
+            // AgentBuilder.WithLlm, or by WithAgentFrameworkAgent: metered here, where the run resolves
+            // it, as the agent's work; a provider metered already is left as it is.
+            Assemble(ManagerLlm.ProviderPrefix + own.Name, MeteredLlmProvider.Wrap(own, _services.GetService<ILlmUsageSink>()), baseConfig: null));
+    }
+
+    private LlmProfile Build(LlmProfileRegistration registration) =>
+        // Metered by its registration (AddOrkeonLlmProfile), one of the entrances of the metered
+        // path — a second meter here would count every call twice.
+        Assemble(registration.Name, registration.Provider(_services), registration.BaseConfig);
+
     /// <summary>
     /// Builds a profile's three surfaces over one provider — the shape
     /// <c>AddOrkeonLlmProvider</c> gives the default — with the vendor's native tool-call
     /// parser when the provider is Anthropic, as the infrastructure default chat client does.
     /// </summary>
-    private LlmProfile Build(LlmProfileRegistration registration)
+    private LlmProfile Assemble(string name, ILlmProvider provider, LlmConfig? baseConfig)
     {
-        // Metered by its registration (AddOrkeonLlmProfile), one of the two entrances of the
-        // metered path — a second meter here would count every call twice.
-        var provider = registration.Provider(_services);
         var nativeParser = MeteredLlmProvider.Unwrap(provider) is AnthropicLlmProvider
             ? new AnthropicToolCallParser()
             : null;
 
         return new LlmProfile
         {
-            Name = registration.Name,
+            Name = name,
             Provider = provider,
             BasicProvider = new LlmProviderAdapter(provider),
             ChatClient = new LlmProviderToChatClientAdapter(
                 provider,
-                registration.BaseConfig ?? provider.BaseConfig,
+                baseConfig ?? provider.BaseConfig,
                 textFallbackParser: _services.GetService<IToolCallParser>(),
                 nativeToolCallParser: nativeParser),
         };

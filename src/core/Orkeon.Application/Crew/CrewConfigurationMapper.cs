@@ -239,8 +239,9 @@ public static class CrewConfigurationMapper
 
     /// <summary>
     /// What the crew's manager runs on (GAP-19) — <c>provider:&lt;name&gt;</c> for the provider C# set
-    /// with <c>WithManagerLlm</c>, else <c>profile:&lt;name&gt;</c> for its manager agent's profile —, or
-    /// empty for a crew whose mode has no manager (an autonomous crew's manager has no agent).
+    /// with <c>WithManagerLlm</c> or the one its manager agent carries (GAP-34), else
+    /// <c>profile:&lt;name&gt;</c> for its manager agent's profile —, or empty for a crew whose mode has
+    /// no manager (an autonomous crew's manager has no agent).
     /// </summary>
     private static string ManagerLlmOf(DomainCrew crew, IEnumerable<DomainAgent> agents)
     {

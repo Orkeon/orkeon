@@ -91,6 +91,9 @@ public class CrewConfigurationMapperTests
 
         public LlmProfile Resolve(string? name) =>
             throw new NotSupportedException("The mapper checks profile names; it never resolves a provider.");
+
+        public LlmProfile ForProvider(Orkeon.Domain.SharedKernel.ILlmProvider provider) =>
+            throw new NotSupportedException("The mapper checks profile names; it never builds a provider's client.");
     }
 
     #endregion

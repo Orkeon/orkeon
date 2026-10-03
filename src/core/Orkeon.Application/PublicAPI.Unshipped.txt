@@ -899,6 +899,7 @@ Orkeon.Application.Crew.ExecutionOrchestrator.LlmProfiles.get -> Orkeon.Applicat
 Orkeon.Application.Crew.ExecutionOrchestrator.LlmProfiles.set -> void
 Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry
 Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry.Resolve(string? name) -> Orkeon.Application.Interfaces.Ports.LlmProfile!
+Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry.ForProvider(Orkeon.Domain.SharedKernel.ILlmProvider! provider) -> Orkeon.Application.Interfaces.Ports.LlmProfile!
 Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry.IsKnown(string! name) -> bool
 Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Application.Interfaces.Ports.LlmProfile

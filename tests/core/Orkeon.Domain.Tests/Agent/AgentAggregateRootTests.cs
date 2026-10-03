@@ -328,7 +328,7 @@ public class AgentAggregateRootTests
     }
 
     [Fact]
-    public void ShouldSetFunctionCallingLlm_WhenCreatingWithOptions()
+    public void ShouldSetTheProviderTheAgentRunsOn_WhenCreatingWithOptions()
     {
         // Arrange
         var llmProvider = new StubLlmProvider();
@@ -336,15 +336,15 @@ public class AgentAggregateRootTests
         {
             Role = AgentRole.From("Caller"),
             Goal = AgentGoal.From("Call functions"),
-            FunctionCallingLlm = llmProvider
+            Llm = llmProvider
         };
 
         // Act
         var agent = DomainAgent.Create(options);
 
         // Assert
-        Assert.NotNull(agent.FunctionCallingLlm);
-        Assert.Equal("StubLlm", agent.FunctionCallingLlm.Name);
+        Assert.NotNull(agent.Llm);
+        Assert.Equal("StubLlm", agent.Llm.Name);
     }
 
     #endregion

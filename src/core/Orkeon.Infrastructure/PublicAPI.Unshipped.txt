@@ -596,6 +596,7 @@ Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration.Provider.get -> Syste
 Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration.Provider.init -> void
 Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistry
 Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistry.Resolve(string? name) -> Orkeon.Application.Interfaces.Ports.LlmProfile!
+Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistry.ForProvider(Orkeon.Domain.SharedKernel.ILlmProvider! provider) -> Orkeon.Application.Interfaces.Ports.LlmProfile!
 Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistry.IsKnown(string! name) -> bool
 Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistry.LlmProfileRegistry(System.IServiceProvider! services, System.Collections.Generic.IEnumerable<Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistration!>! registrations, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.LLMs.Profiles.LlmProfileAccessOptions!>? access = null) -> void
 Orkeon.Infrastructure.LLMs.Profiles.LlmProfileRegistry.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!

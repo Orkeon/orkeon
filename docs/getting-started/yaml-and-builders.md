@@ -8,7 +8,7 @@
 
 The three main entities are built via fluent builders defined in the Domain layer:
 
-- `AgentBuilder` (`Orkeon.Domain.Agent`): configures role, goal, backstory, tools, execution constraints, prompt templates, tool access policy
+- `AgentBuilder` (`Orkeon.Domain.Agent`): configures role, goal, backstory, tools, execution constraints, prompt templates, tool access policy, and the provider the agent's turns run on when it carries its own (`.WithLlm(provider)` — `Agent.Llm`, metered as the agent's work; a Microsoft Agent Framework agent through [`.WithAgentFrameworkAgent(agent)`](../reference/agent-framework-interop.md)). `Build()` refuses it with a host profile (`.WithLlmConfig(LlmConfig.OnProfile(name))`), and, on a provider that runs its own tools — a MAF agent —, with `.WithTool` or `.AllowDelegation()`
 - `CrewTaskBuilder` (`Orkeon.Domain.Task`): configures description, expected output, priority, dependencies, output JSON schema, async mode (`.Async()` — honoured by a sequential crew, refused by `CrewBuilder.Build()` outside Sequential and Parallel), human intervention
 - `CrewBuilder` (`Orkeon.Domain.Crew`): configures name, goal, process type, agents, tasks, planning (`.Planning()`, on the provider `.WithPlanningLlm(provider)` sets — refused without `.Planning()`), memory, callbacks, dynamic agents, and the manager of a hierarchical crew — an agent (`.Hierarchical(manager)`, `.WithManager(agent)`), or a provider of its own (`.WithManagerLlm(provider)`, CrewAI's `manager_llm`: the manager assigns and reviews on it, the crew then needs no manager agent and every agent works). A manager agent is also a consensual crew's arbiter; a manager LLM also hands an autonomous crew's tasks out. `Build()` refuses either in a process that has none
 
@@ -109,7 +109,8 @@ A profile the host does not define fails the crew load, and the message lists th
 offers — exactly like an unknown tool. A `llm:` block that names no `model` runs on the profile's
 own model (the host's for the default profile), never on a framework default. The manager of a
 hierarchical crew runs on its manager agent's `llm:` block like any agent (in C#, a provider set
-with `WithManagerLlm` wins); the RAG subsystem runs on the profile `Orkeon:Rag:LlmProfile` names; the
+with `WithManagerLlm` wins, then the provider the manager agent carries itself, `WithLlm`); the RAG
+subsystem runs on the profile `Orkeon:Rag:LlmProfile` names; the
 planner and the Guardian stay on the default profile ([Configuration](../reference/configuration.md#named-profiles-llmprofiles)).
 In `.ork.ts` the same choice is `agentBuilder().llm(llm.profile("claude"))` on an agent and
 `taskBuilder().withProfile("claude")` on a task. In Orkeon Studio, every model setting is such a

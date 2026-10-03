@@ -79,9 +79,12 @@ public sealed class AgentCreateOptions
     public int MaxRetryLimit { get; init; } = AgentDefaults.MaxRetryLimit;
 
     /// <summary>
-    /// Optional LLM provider for function calling.
+    /// The provider the agent's turns run on when it carries its own (<see cref="Agent.Llm"/>, GAP-34);
+    /// null runs it on its <see cref="LlmConfig"/> profile, else the host's default. Refused with a host
+    /// profile, and, on a provider that runs its own tools, with <see cref="Tools"/> or
+    /// <see cref="AllowDelegation"/>.
     /// </summary>
-    public ILlmProvider? FunctionCallingLlm { get; init; }
+    public ILlmProvider? Llm { get; init; }
 
     /// <summary>
     /// Optional collection of tools to assign to the agent.

@@ -1,6 +1,7 @@
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Crew;
@@ -18,7 +19,9 @@ namespace Orkeon.Examples.AgentFrameworkInterop;
 //   1. Orkeon -> MAF   an Orkeon crew runs as a MAF AIAgent (CrewAgent) -- any MAF workflow,
 //                      orchestration or AsAIFunction() chain can call it;
 //   2. MAF -> Orkeon   a MAF ChatClientAgent (built over Orkeon's own configured model)
-//                      becomes a tool of an Orkeon agent, which delegates to it.
+//                      becomes a tool of an Orkeon agent, which delegates to it;
+//   3. MAF -> Orkeon   the same MAF agent answers for another Orkeon agent: it is that agent's
+//                      model (WithAgentFrameworkAgent), and every turn of its task is a MAF run.
 //
 // The model is whatever the settings chain resolves (examples/appsettings/appsettings.json
 // by default -- Docker Model Runner -- or --settings <file>, or `orkeon init`); without one
@@ -107,6 +110,36 @@ internal static class Program
         var orkeonSide = await orchestrator.KickoffAsync(planCrew.Id, Orkeon.Application.Interfaces.Services.CrewInput.Empty("Add a CI job"));
         Console.WriteLine(orkeonSide.FinalOutput);
         Console.WriteLine($"   [succeeded: {orkeonSide.Succeeded}, {orkeonSide.Duration.TotalSeconds:F1}s]");
-        return orkeonSide.Succeeded ? 0 : 1;
+        Console.WriteLine();
+
+        // ── 3. MAF -> Orkeon, as the model ──────────────────────────────────────────────
+        // The same MAF reviewer answers for another Orkeon agent: the auditor keeps its role, goal
+        // and task, and each of its turns is a run of the reviewer, which receives the prompt Orkeon
+        // composed. The run meters it as the auditor's work, once: the reviewer is built over the
+        // configured model, metered already, so that model's meter counts and the bridge's stays
+        // silent. A MAF agent calls its own tools, never Orkeon's: the auditor carries none (the build
+        // refuses one), and an agent that needs both holds the MAF agent as a tool, as in section 2.
+        var auditor = new AgentBuilder()
+            .Role("Auditor")
+            .Goal("Name the biggest risk of a plan, in one sentence")
+            .WithAgentFrameworkAgent(reviewer, host.Services.GetRequiredService<ILogger<AIAgentLlmProvider>>())
+            .Build();
+        var audit = new CrewTaskBuilder()
+            .Description("Name the biggest risk of this plan: add a CI job that runs the tests on every push, " +
+                "caches the NuGet packages between runs and publishes the coverage report.")
+            .ExpectedOutput("The biggest risk, in one sentence.")
+            .AssignTo(auditor)
+            .Build();
+        var auditCrew = new CrewBuilder().Goal("Audit a plan").Sequential()
+            .WithAgent(auditor).WithTask(audit).Build();
+        await agents.AddAsync(auditor);
+        await tasks.AddAsync(audit);
+        await crews.AddAsync(auditCrew);
+
+        Console.WriteLine("── 3. A MAF agent answering for an Orkeon agent ──");
+        var answered = await orchestrator.KickoffAsync(auditCrew.Id, Orkeon.Application.Interfaces.Services.CrewInput.Empty("Audit the CI plan"));
+        Console.WriteLine(answered.FinalOutput);
+        Console.WriteLine($"   [succeeded: {answered.Succeeded}, {answered.Duration.TotalSeconds:F1}s]");
+        return orkeonSide.Succeeded && answered.Succeeded ? 0 : 1;
     }
 }

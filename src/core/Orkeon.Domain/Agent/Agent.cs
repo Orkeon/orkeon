@@ -99,9 +99,17 @@ public sealed class Agent : AggregateRoot<AgentId>
     public int MaxRetryLimit { get; private set; } = AgentDefaults.MaxRetryLimit;
 
     /// <summary>
-    /// Gets the function calling LLM provider.
+    /// The provider this agent's turns run on when it carries its own — CrewAI's <c>llm</c> given as
+    /// an object: <c>AgentBuilder.WithLlm</c>, or a Microsoft Agent Framework agent through
+    /// <c>WithAgentFrameworkAgent</c> (GAP-34). Its tasks and their correction round, its ballot and
+    /// its work as a hierarchical manager run on it, metered as this agent's work where the run
+    /// resolves it; a task's <c>llm_override</c> profile still moves that task. Null — the default —
+    /// runs the agent on its <see cref="LlmConfig"/> profile, else the host's default. Exclusive with
+    /// a profile, and a provider that runs its own tools
+    /// (<see cref="SharedKernel.ValueObjects.LlmProviderCapabilities.RunsOwnTools"/>) leaves the agent
+    /// no Orkeon tool and no delegation (<see cref="AgentLlmRules"/>).
     /// </summary>
-    public ILlmProvider? FunctionCallingLlm { get; private set; }
+    public ILlmProvider? Llm { get; private set; }
 
     /// <summary>
     /// Optional per-agent LLM configuration. Set when a YAML crew declares an agent-level
@@ -163,11 +171,17 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// <summary>
     /// Creates a new agent with the specified options.
     /// </summary>
+    /// <exception cref="ArgumentException">
+    /// An option is out of range, or the agent's own provider (<see cref="AgentCreateOptions.Llm"/>)
+    /// comes with a host profile, or runs its own tools and comes with tools or delegation.
+    /// </exception>
     public static Agent Create(AgentCreateOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         if (options.Role is null) throw new ArgumentNullException(nameof(options), "options.Role cannot be null.");
         if (options.Goal is null) throw new ArgumentNullException(nameof(options), "options.Goal cannot be null.");
+        if (OwnProviderRefusal(options) is { } refusal)
+            throw new ArgumentException(refusal, nameof(options));
 
         var agent = new Agent(AgentId.Create())
         {
@@ -185,7 +199,7 @@ public sealed class Agent : AggregateRoot<AgentId>
             PromptTemplate = options.PromptTemplate,
             ResponseTemplate = options.ResponseTemplate,
             MaxRetryLimit = options.MaxRetryLimit > 0 ? options.MaxRetryLimit : throw new ArgumentException("options.MaxRetryLimit must be positive.", nameof(options)),
-            FunctionCallingLlm = options.FunctionCallingLlm,
+            Llm = options.Llm,
             ToolAccessPolicy = options.ToolAccessPolicy ?? ToolAccessPolicy.CreateUnrestricted(),
             Guardrails = options.Guardrails,
             LlmConfig = options.LlmConfig
@@ -220,6 +234,34 @@ public sealed class Agent : AggregateRoot<AgentId>
     }
 
     /// <summary>
+    /// Why the agent's own provider cannot come with the rest of <paramref name="options"/>, or null
+    /// (GAP-34): a host profile besides it — the agent runs on one or the other —, or, on a provider
+    /// that runs its own tools, Orkeon tools or delegation it would never call.
+    /// </summary>
+    private static string? OwnProviderRefusal(AgentCreateOptions options)
+    {
+        if (options.Llm is not { } llm)
+            return null;
+
+        var who = $"Agent '{options.Role.Value}'";
+        if (!AgentLlmRules.NamesNoProfile(options.LlmConfig?.Profile))
+        {
+            return $"{who} is given its own provider ({llm.Name}) and the host profile '{options.LlmConfig!.Profile!.Trim()}': " +
+                "an agent runs on one or the other. Remove the profile from its LlmConfig to run on its own provider, " +
+                "or remove the provider to run on the profile.";
+        }
+
+        if (!llm.Capabilities.RunsOwnTools)
+            return null;
+
+        var tools = (options.Tools ?? []).Select(tool => tool.Name).ToList();
+        if (options.AllowDelegation)
+            tools.AddRange(AgentLlmRules.DelegationTools);
+
+        return tools.Count == 0 ? null : AgentLlmRules.OwnToolsRefusal(who, llm.Name, tools);
+    }
+
+    /// <summary>
     /// Creates a new agent with the specified parameters.
     /// Convenience overload that delegates to <see cref="Create(AgentCreateOptions)"/>.
     /// </summary>
@@ -238,7 +280,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         string? promptTemplate = null,
         string? responseTemplate = null,
         int maxRetryLimit = AgentDefaults.MaxRetryLimit,
-        ILlmProvider? functionCallingLlm = null,
+        ILlmProvider? llm = null,
         IEnumerable<IBaseTool>? tools = null,
         GuardrailsConfig? guardrails = null)
     {
@@ -257,7 +299,7 @@ public sealed class Agent : AggregateRoot<AgentId>
             PromptTemplate = promptTemplate,
             ResponseTemplate = responseTemplate,
             MaxRetryLimit = maxRetryLimit,
-            FunctionCallingLlm = functionCallingLlm,
+            Llm = llm,
             Tools = tools,
             Guardrails = guardrails
         });
@@ -285,7 +327,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         string? promptTemplate,
         string? responseTemplate,
         int maxRetryLimit,
-        ILlmProvider? functionCallingLlm,
+        ILlmProvider? llm,
         ToolAccessPolicy? toolAccessPolicy = null,
         IEnumerable<IBaseTool>? tools = null,
         IEnumerable<TaskId>? assignedTasks = null,
@@ -308,7 +350,7 @@ public sealed class Agent : AggregateRoot<AgentId>
             PromptTemplate = promptTemplate,
             ResponseTemplate = responseTemplate,
             MaxRetryLimit = maxRetryLimit,
-            FunctionCallingLlm = functionCallingLlm,
+            Llm = llm,
             ToolAccessPolicy = toolAccessPolicy,
             Tools = tools,
             AssignedTasks = assignedTasks,
@@ -345,7 +387,7 @@ public sealed class Agent : AggregateRoot<AgentId>
             PromptTemplate = snapshot.PromptTemplate,
             ResponseTemplate = snapshot.ResponseTemplate,
             MaxRetryLimit = snapshot.MaxRetryLimit,
-            FunctionCallingLlm = snapshot.FunctionCallingLlm,
+            Llm = snapshot.Llm,
             ToolAccessPolicy = snapshot.ToolAccessPolicy ?? ToolAccessPolicy.CreateUnrestricted(),
             Guardrails = snapshot.Guardrails
         };
@@ -471,8 +513,16 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// <summary>
     /// Adds a tool to the agent's capabilities.
     /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The agent answers through its own provider, which runs its own tools (GAP-34): the tool would
+    /// never be called.
+    /// </exception>
     public void AddTool(IBaseTool tool)
     {
+        ArgumentNullException.ThrowIfNull(tool);
+        if (Llm is { Capabilities.RunsOwnTools: true } llm)
+            throw new InvalidOperationException(AgentLlmRules.OwnToolsRefusal($"Agent '{Role.Value}'", llm.Name, [tool.Name]));
+
         var toolName = _toolManager.AddTool(tool, Role.ToString());
 
         RaiseDomainEvent(new AgentCapabilitiesUpdatedEvent
@@ -546,6 +596,10 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// <summary>
     /// Updates the agent's configuration.
     /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The agent is working, or delegation is switched on for an agent whose own provider runs its own
+    /// tools (GAP-34): the delegation tools would never be called.
+    /// </exception>
     public void UpdateConfiguration(
         bool? allowDelegation = null,
         int? maxIterations = null,
@@ -554,6 +608,12 @@ public sealed class Agent : AggregateRoot<AgentId>
     {
         if (Status != AgentStatus.Idle)
             throw new InvalidOperationException("Cannot update configuration while agent is working.");
+
+        if (allowDelegation == true && Llm is { Capabilities.RunsOwnTools: true } llm)
+        {
+            throw new InvalidOperationException(AgentLlmRules.OwnToolsRefusal(
+                $"Agent '{Role.Value}'", llm.Name, AgentLlmRules.DelegationTools));
+        }
 
         if (allowDelegation.HasValue)
             AllowDelegation = allowDelegation.Value;

@@ -465,6 +465,100 @@ public sealed class MeteredLlmProviderTests
         public void Record(CostUsageEvent usage) => throw new InvalidOperationException("sink down");
     }
 
+    // ── Counted once: the meter nearest the model counts (GAP-34) ─────────────────────────
+
+    [Fact]
+    public async Task A_metered_call_whose_provider_calls_a_metered_provider_is_counted_once_by_the_inner_meter()
+    {
+        // A Microsoft Agent Framework agent built over Orkeon's own model answers through the bridge,
+        // which the run meters as the agent's work: without the rule, every call counted twice.
+        var vendor = new MockLlmProvider { Name = "vendor" };
+        vendor.SetChatResult(Answer(10, 2));
+        var sink = new MockLlmUsageSink();
+        var bridge = new MockRelayLlmProvider("agent-framework:Reviewer", MeteredLlmProvider.Wrap(vendor, sink));
+
+        using (LlmUsageScope.Begin(LlmUsageOperations.Agent, crewId: "crew-1", agentId: "Reviewer", taskId: "task-1"))
+            await MeteredLlmProvider.Wrap(bridge, sink).ChatAsync(Conversation(), cancellationToken: TestContext.Current.CancellationToken);
+
+        var usage = Assert.Single(sink.Recorded);
+        Assert.Equal("vendor", usage.Provider);
+        Assert.Equal("vendor/model-x", usage.Model);
+        Assert.Equal(10, usage.PromptTokens);
+        Assert.Equal(LlmUsageOperations.Agent, usage.OperationType);
+        Assert.Equal("Reviewer", usage.AgentId);
+        Assert.Equal("task-1", usage.TaskId);
+    }
+
+    [Fact]
+    public async Task Every_inner_call_counts_and_the_outer_call_none_on_every_surface()
+    {
+        // Two model calls behind one bridge call (a MAF agent's own tool loop), on the buffered
+        // generation and on the streamed chat a streamed agent turn takes.
+        var vendor = new MockLlmProvider { Name = "vendor" };
+        vendor.SetGenerateResult(Answer(4, 1));
+        vendor.SetChatResult(Answer(10, 2));
+        var sink = new MockLlmUsageSink();
+        var metered = MeteredLlmProvider.Wrap(vendor, sink);
+        var bridge = new MockRelayLlmProvider("agent-framework:Reviewer", metered)
+        {
+            BeforeRelay = async ct => await metered.ChatAsync(Conversation("first look"), cancellationToken: ct),
+        };
+        var outer = (IStreamingLlmProvider)MeteredLlmProvider.Wrap(bridge, sink);
+        var ct = TestContext.Current.CancellationToken;
+
+        await ((ILlmProvider)outer).GenerateAsync("prompt", cancellationToken: ct);
+        await foreach (var _ in outer.ChatStreamingAsync(Conversation(), cancellationToken: ct))
+        {
+        }
+
+        Assert.Equal(4, sink.Recorded.Count);
+        Assert.All(sink.Recorded, usage => Assert.Equal("vendor", usage.Provider));
+    }
+
+    [Fact]
+    public async Task A_provider_whose_answer_no_inner_meter_counted_is_counted_by_its_own_meter()
+    {
+        var vendor = new MockLlmProvider { Name = "vendor" };
+        vendor.SetChatResult(Answer(10, 2));
+        var sink = new MockLlmUsageSink();
+        var bridge = new MockRelayLlmProvider("agent-framework:Reviewer", vendor);
+
+        await MeteredLlmProvider.Wrap(bridge, sink).ChatAsync(Conversation(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("agent-framework:Reviewer", Assert.Single(sink.Recorded).Provider);
+    }
+
+    [Fact]
+    public async Task Two_outer_calls_in_flight_at_once_each_keep_their_own_count()
+    {
+        // A answers through a metered provider, B on a provider no meter sees. B starts first and
+        // ends after A's inner meter counted: a mark shared between the two would leave B uncounted.
+        var vendor = new MockLlmProvider { Name = "vendor" };
+        vendor.SetChatResult(Answer(10, 2));
+        var direct = new MockLlmProvider { Name = "direct" };
+        direct.SetChatResult(Answer(5, 1));
+        var sink = new MockLlmUsageSink();
+        var bStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var aCounted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var a = new MockRelayLlmProvider("agent-framework:A", MeteredLlmProvider.Wrap(vendor, sink))
+        {
+            BeforeRelay = ct => bStarted.Task.WaitAsync(ct),
+            AfterRelay = _ => { aCounted.TrySetResult(); return Task.CompletedTask; },
+        };
+        var b = new MockRelayLlmProvider("agent-framework:B", direct)
+        {
+            BeforeRelay = _ => { bStarted.TrySetResult(); return Task.CompletedTask; },
+            AfterRelay = ct => aCounted.Task.WaitAsync(ct),
+        };
+        var ct = TestContext.Current.CancellationToken;
+
+        await Task.WhenAll(
+            MeteredLlmProvider.Wrap(a, sink).ChatAsync(Conversation("a"), cancellationToken: ct),
+            MeteredLlmProvider.Wrap(b, sink).ChatAsync(Conversation("b"), cancellationToken: ct));
+
+        Assert.Equal(["agent-framework:B", "vendor"], sink.Recorded.Select(e => e.Provider).Order(StringComparer.Ordinal));
+    }
+
     /// <summary>A vendor that refuses the streamed request before sending a single delta.</summary>
     private sealed class RefusingStreamingProvider : ILlmProvider, IStreamingLlmProvider
     {

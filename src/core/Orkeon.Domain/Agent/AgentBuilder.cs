@@ -27,7 +27,7 @@ public sealed class AgentBuilder
     private string? _promptTemplate;
     private string? _responseTemplate;
     private int _maxRetryLimit = AgentDefaults.MaxRetryLimit;
-    private ILlmProvider? _functionCallingLlm;
+    private ILlmProvider? _llm;
     private readonly List<IBaseTool> _tools = [];
     private ToolAccessPolicy? _toolAccessPolicy;
     private GuardrailsConfig? _guardrails;
@@ -167,10 +167,19 @@ public sealed class AgentBuilder
         return this;
     }
 
-    /// <summary>Sets the LLM provider for function calling.</summary>
+    /// <summary>
+    /// Sets the provider the agent's turns run on (<see cref="Agent.Llm"/>, CrewAI's <c>llm</c> given as
+    /// an object, GAP-34): its tasks and their correction round, its ballot, its work as a hierarchical
+    /// manager. The run builds a client over it once per provider instance and meters it as the agent's
+    /// work — a provider already metered is read once per call. A task's <c>llm_override</c> profile
+    /// still moves that task. It cannot be combined with a host profile
+    /// (<c>WithLlmConfig(LlmConfig.OnProfile(name))</c>): <see cref="Build"/> refuses both. A provider
+    /// that runs its own tools (<see cref="LlmProviderCapabilities.RunsOwnTools"/> — a Microsoft Agent
+    /// Framework agent) leaves the agent no Orkeon tool and no delegation.
+    /// </summary>
     public AgentBuilder WithLlm(ILlmProvider llmProvider)
     {
-        _functionCallingLlm = llmProvider;
+        _llm = llmProvider;
         return this;
     }
 
@@ -357,7 +366,9 @@ public sealed class AgentBuilder
     /// Builds and returns a new <see cref="Agent"/> instance.
     /// </summary>
     /// <exception cref="BuilderValidationException">
-    /// Thrown when <see cref="Role(string)"/> or <see cref="Goal(string)"/> have not been set.
+    /// Thrown when <see cref="Role(string)"/> or <see cref="Goal(string)"/> have not been set, when
+    /// <see cref="WithLlm"/> comes with a host profile, or when a provider that runs its own tools comes
+    /// with <see cref="WithTool"/>, <see cref="WithTools(IBaseTool[])"/> or <see cref="AllowDelegation"/>.
     /// </exception>
     public Agent Build()
     {
@@ -366,6 +377,9 @@ public sealed class AgentBuilder
 
         if (_goal is null)
             throw new BuilderValidationException("Agent", "Goal is required.");
+
+        if (_llm is not null)
+            ValidateOwnProvider(_llm);
 
         return Agent.Create(new AgentCreateOptions
         {
@@ -382,12 +396,42 @@ public sealed class AgentBuilder
             PromptTemplate = _promptTemplate,
             ResponseTemplate = _responseTemplate,
             MaxRetryLimit = _maxRetryLimit,
-            FunctionCallingLlm = _functionCallingLlm,
+            Llm = _llm,
             Tools = _tools,
             ToolAccessPolicy = _toolAccessPolicy,
             Guardrails = _guardrails,
             LlmConfig = _llmConfig,
             KnowledgeAttachments = _knowledgeAttachments
         });
+    }
+
+    /// <summary>
+    /// The agent's own provider against the rest of the builder (GAP-34), in the builder's words: a
+    /// host profile besides it, or tools and delegation on a provider that runs its own tools.
+    /// </summary>
+    private void ValidateOwnProvider(ILlmProvider llm)
+    {
+        if (!AgentLlmRules.NamesNoProfile(_llmConfig?.Profile))
+        {
+            throw new BuilderValidationException(
+                "Agent",
+                $".WithLlm(provider) — or .WithAgentFrameworkAgent(agent) — sets the provider '{llm.Name}' the agent runs on, " +
+                $"and .WithLlmConfig names the host profile '{_llmConfig!.Profile!.Trim()}': an agent runs on one or the other. " +
+                "Keep the provider and leave the profile out (LlmConfig.OnProfile()), or keep the profile and drop .WithLlm.");
+        }
+
+        if (!llm.Capabilities.RunsOwnTools)
+            return;
+
+        var tools = _tools.Select(tool => tool.Name).ToList();
+        if (_allowDelegation)
+            tools.AddRange(AgentLlmRules.DelegationTools);
+        if (tools.Count > 0)
+        {
+            throw new BuilderValidationException(
+                "Agent",
+                AgentLlmRules.OwnToolsRefusal(
+                    $"The agent '{_role!.Value}' (.WithTool, .WithTools or .AllowDelegation)", llm.Name, tools));
+        }
     }
 }

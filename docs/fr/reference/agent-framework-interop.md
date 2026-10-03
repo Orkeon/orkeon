@@ -37,7 +37,7 @@ services.AddOrkeonAgentFramework();   // Orkeon -> MAF seulement ; MAF -> Orkeon
 | Sens | Entre | Sort | Reste de son côté |
 |---|---|---|---|
 | Crew Orkeon → MAF (`CrewAgent`) | la conversation MAF, comme contexte initial de la crew | la sortie finale de la crew en un message assistant, son usage de jetons | les outils, montages, budget, mémoire et orchestration de la crew — MAF voit un agent qui répond |
-| Agent MAF → modèle d'un agent Orkeon (`WithAgentFrameworkAgent`) | les prompts de l'agent Orkeon, rôles projetés | le texte de la réponse MAF et son usage | les outils et le `LlmConfig` de l'agent Orkeon ; les outils propres de MAF restent utilisables de son côté |
+| Agent MAF → modèle d'un agent Orkeon (`WithAgentFrameworkAgent`) | les prompts de l'agent Orkeon, rôles projetés, chaque message une fois sur la session MAF | le texte de la réponse MAF et son usage, compté une fois | le `LlmConfig` de l'agent Orkeon (chaque option déclarée produit un avertissement) ; aucun outil Orkeon — refusés ; les outils propres de MAF restent utilisables de son côté |
 | Agent MAF → outil Orkeon (`WithAgentFrameworkTool`) | la chaîne `request` | `answer` et `agent` | les outils, la session et la mémoire de l'agent MAF |
 
 ## Une crew Orkeon comme agent MAF — `CrewAgent`
@@ -97,27 +97,66 @@ MAF.
 ### Comme modèle d'un agent — `WithAgentFrameworkAgent`
 
 ```csharp
-var agent = new AgentBuilder()
-    .Role("Reviewer").Goal("Review the change")
-    .WithAgentFrameworkAgent(mafAgent)
+var reviewer = new AgentBuilder()
+    .Role("Reviewer").Goal("Find the biggest risk of a change")
+    .WithAgentFrameworkAgent(mafAgent, logger)   // logger facultatif : il entend les options non transmises
     .Build();
 ```
 
-`WithAgentFrameworkAgent(agent)` équivaut à `WithLlm(new AIAgentLlmProvider(agent))` : l'agent
-Orkeon garde son rôle, son objectif et ses tâches, et chaque prompt qu'il envoie est une exécution
-de l'agent MAF. `AIAgentLlmProvider : ILlmProvider` :
+`WithAgentFrameworkAgent(agent, logger?)` équivaut à `WithLlm(new AIAgentLlmProvider(agent, logger))` :
+l'agent MAF devient le fournisseur propre de l'agent Orkeon (`Agent.Llm`). L'agent Orkeon garde son rôle,
+son objectif et ses tâches ; ce qui répond, c'est l'agent MAF.
 
-- garde **une seule session MAF pour toute sa durée de vie**, créée au premier usage, si bien qu'un
-  agent MAF doté de mémoire ou de fournisseurs de contexte voit une conversation continue d'une
-  itération de l'agent Orkeon à l'autre ;
-- projette les rôles `system`, `assistant` et `tool`, et tout autre rôle sur `user` ;
-- ignore le `LlmConfig` qu'on lui passe (température, jetons max, format de réponse) — l'agent MAF
-  se configure de son côté ;
-- déclare `Name` = `agent-framework:<nom ou id>` et `LlmProviderCapabilities.Unknown`, et relaie
-  l'usage MAF comme décompte de jetons de la réponse ;
-- laisse **l'appel d'outils côté MAF** : l'agent MAF utilise les outils qu'il porte, et les outils
-  propres de l'agent Orkeon ne lui sont pas proposés. Un agent qui a besoin des deux enveloppe
-  plutôt l'agent MAF en outil.
+- **Ce qui tourne sur lui** — les tours des tâches de l'agent et leur correction de sortie, son rôle de
+  manager hiérarchique (il assigne et relit), son bulletin dans un vote consensuel. Un autre agent peut
+  toujours lui déléguer du travail (`delegate_work_to_coworker`). L'agent MAF reçoit le prompt qu'Orkeon a composé —
+  le message système (rôle, objectif, backstory, garde-fous, gabarit de réponse) et le message
+  utilisateur (la tâche, son résultat attendu, son plan, les variables, les sorties précédentes, les
+  souvenirs rappelés, la connaissance), examiné d'abord par le Guardian — et y ajoute ses propres
+  instructions et fournisseurs de contexte.
+- **L'ordre** — le profil que nomme le `llm_override` d'une tâche l'emporte pour cette tâche, `default`
+  compris ; sinon l'agent tourne sur son propre fournisseur. Un agent tourne sur son propre fournisseur
+  ou sur un profil de l'hôte, jamais les deux : `Build()` et `Agent.Create` refusent le fournisseur
+  accompagné de `WithLlmConfig(LlmConfig.OnProfile(nom))`. Le `WithManagerLlm` d'une crew l'emporte toujours sur le
+  fournisseur propre de son agent manager.
+- **Aucun outil Orkeon** — un agent MAF appelle les outils qu'il porte, jamais ceux d'Orkeon :
+  `AIAgentLlmProvider` déclare `LlmProviderCapabilities.RunsOwnTools`. Un tel agent se voit refuser
+  `WithTool`, `WithTools` et `AllowDelegation` à sa construction (`BuilderValidationException`), et
+  `AddTool` ensuite ; une tâche qui tombe sur un fournisseur qui fait ses propres outils — celui de
+  l'agent, celui d'un profil ou le défaut de l'hôte — avec des outils à tenir (ses propres `tools:`,
+  `human_input`, les `delegate_work_to_coworker` et `ask_question_to_coworker` d'un agent qui permet la
+  délégation, comme le fait un agent YAML qui n'écrit pas `allowDelegation: false`) échoue avant tout appel. Le message nomme les
+  outils et les deux remèdes : donner l'outil à l'agent MAF, ou donner l'agent MAF à un agent Orkeon comme
+  outil (`WithAgentFrameworkTool`, ci-dessous) — et, pour les outils de délégation, couper la délégation.
+  Un même agent Orkeon ne peut pas tenir le même agent MAF des deux façons.
+- **Une session, chaque message une fois, un appel à la fois** — le fournisseur garde une seule session
+  MAF pour toute sa durée de vie, créée au premier usage, si bien qu'un agent MAF doté de mémoire ou de
+  fournisseurs de contexte voit une conversation continue. La boucle d'agent renvoie toute la
+  conversation à chaque tour ; un appel qui prolonge la conversation que tient la session — les messages
+  de l'appel précédent, puis la réponse que le fournisseur y a faite — n'envoie à la session que la
+  suite, et tout autre appel — une nouvelle tâche — envoie tous ses messages, la session gardant la tâche
+  précédente. Les appels passent un à la fois : les tâches d'un même agent MAF passent l'une après
+  l'autre, même dans une vague parallèle ou à côté d'une tâche `asyncExecution`. La session grandit à
+  chaque tâche, et la sortie d'une tâche précédente atteint le modèle deux fois — par la session et par
+  les sorties précédentes du prompt ; un `ChatReducer` côté MAF la borne.
+- **Compté une fois** — le run construit un client sur le fournisseur, une fois par instance, et le
+  compte comme le travail de l'agent (`operation: agent`, `manager` pour les appels d'un manager). Un
+  agent MAF bâti sur le modèle compté d'Orkeon est compté une fois, par le compteur de ce modèle, au nom
+  du vrai fournisseur et du vrai modèle : le compteur le plus proche du modèle compte. Un agent MAF sur un
+  client qu'Orkeon ne compte pas est compté sous `agent-framework:<nom>`, avec l'usage que porte sa
+  réponse (estimé quand elle n'en porte pas).
+- **Streaming** — un tour diffusé (`--stream`, `KickoffStreamingAsync`) reçoit la réponse MAF en un seul
+  fragment, compté une fois.
+- **Options** — le pont n'envoie à l'agent MAF que des messages : les options du `LlmConfig` d'un appel
+  (modèle, température, jetons max, top-p, format de réponse, réflexion, grammaire…) ne l'atteignent
+  jamais. Chacune qu'un appel déclare produit un avertissement structuré — `Option '<nom>' was declared
+  but agent-framework:<nom> does not support it — it was not sent` (événement 110, celui des
+  fournisseurs HTTP) —, une fois par run d'une crew et par option, par le logger passé à
+  `WithAgentFrameworkAgent`, sinon par l'`ILoggerFactory` qu'expose l'agent MAF (`GetService`), sinon
+  nulle part. Une sortie structurée attendue d'un agent MAF n'a pour garde que la validation de sortie et
+  sa correction.
+- Il projette les rôles `system`, `assistant` et `tool`, et tout autre rôle sur `user`, déclare
+  `Name` = `agent-framework:<nom ou id>`, et relaie l'usage MAF comme décompte de jetons de la réponse.
 
 ### Comme outil — `WithAgentFrameworkTool`
 
@@ -143,8 +182,12 @@ outils de l'agent — le miroir de l'`AsAIFunction()` de MAF :
 ## Ce que le pont ne fait pas
 
 - Il ne traduit pas les outils d'un côté à l'autre : les outils d'un agent Orkeon restent ceux
-  d'Orkeon, ceux d'un agent MAF restent ceux de MAF.
-- Il ne diffuse pas de jetons hors d'une crew (`CrewAgent` renvoie la réponse finale).
+  d'Orkeon — refusés sur un agent auquel répond un agent MAF —, ceux d'un agent MAF restent ceux de
+  MAF.
+- Il ne diffuse pas de jetons : `CrewAgent` renvoie la réponse finale d'une crew, et un agent auquel
+  répond un agent MAF reçoit cette réponse en un seul fragment.
+- Il n'envoie aucune option à un agent MAF : chacune déclarée produit un avertissement, jamais un
+  abandon silencieux.
 - Il n'enregistre rien dans les runners livrés : `orkeon`, `orkeon-host` et le REPL ne référencent
   pas le paquet. Un hôte qui embarque l'ajoute — l'exemple le fait par le hook `configureServices`
   de `RunnerHost.Build` ([hébergement](hosting.md)).

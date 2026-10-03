@@ -9,7 +9,8 @@ namespace Orkeon.Application.Interfaces;
 /// <summary>
 /// The language model a crew gives its manager, as a run resolved it (GAP-19): the provider the
 /// crew sets in C# (<c>CrewBuilder.WithManagerLlm</c>, CrewAI's <c>manager_llm</c>), else its manager
-/// agent's <c>llm:</c> block — profile and model —, else the host's default profile. The hierarchical
+/// agent's own provider (<c>Agent.Llm</c> — a Microsoft Agent Framework agent answering for it, GAP-34),
+/// else its <c>llm:</c> block — profile and model —, else the host's default profile. The hierarchical
 /// and autonomous strategies resolve it once per run and hand it to every <see cref="IManagerAgent"/>
 /// call: the manager never falls back on the default in silence.
 /// </summary>
@@ -35,8 +36,9 @@ public sealed class ManagerLlm
 
     /// <summary>
     /// Names what <paramref name="crew"/>'s manager runs on, resolving nothing:
-    /// <c>provider:&lt;name&gt;</c> for the provider the crew sets, else <c>profile:&lt;name&gt;</c> for
-    /// its manager agent's profile — <c>profile:default</c> for the host's default.
+    /// <c>provider:&lt;name&gt;</c> for the provider the crew sets, else for its manager agent's own,
+    /// else <c>profile:&lt;name&gt;</c> for its manager agent's profile — <c>profile:default</c> for the
+    /// host's default.
     /// </summary>
     /// <param name="crew">The crew whose manager it is.</param>
     /// <param name="managerAgent">The crew's manager agent; null when it has none.</param>
@@ -44,7 +46,7 @@ public sealed class ManagerLlm
     public static string Describe(DomainCrew crew, DomainAgent? managerAgent)
     {
         ArgumentNullException.ThrowIfNull(crew);
-        if (crew.ManagerLlm is { } provider)
+        if ((crew.ManagerLlm ?? managerAgent?.Llm) is { } provider)
             return ProviderPrefix + provider.Name;
 
         return ProfilePrefix + ProfileOf(managerAgent?.LlmConfig);

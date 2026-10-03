@@ -101,6 +101,10 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}]: the Guardian blocked the input of task {TaskId} before any LLM call; the task fails — {Reason}")]
     internal static partial void LogInputBlocked(ILogger logger, object agentRole, object taskId, string reason);
 
+    // GAP-34 — the task falls on a provider that runs its own tools while it holds Orkeon's; no provider was called.
+    [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}]: task {TaskId} holds Orkeon tools its provider would never call; the task fails before any LLM call — {Reason}")]
+    internal static partial void LogOwnToolsRefused(ILogger logger, object agentRole, object taskId, string reason);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "ChatClient iteration {Iteration} for [{AgentRole}]: the answer is shaped like a tool call but none could be executed from it; asking the model to call the tool instead of describing the call")]
     internal static partial void LogToolCallShapedAnswerRetrying(ILogger logger, object agentRole, int iteration);
 

@@ -105,6 +105,75 @@ C# host, call `AddOrkeonMcpServer(configuration)` next to `AddOrkeonInfrastructu
 hand takes the container's `IToolInvocationPipeline`, or `ToolInvocationPipeline.Unguarded` for the
 bare call and truncation.
 
+### Fixed — an agent backed by a Microsoft Agent Framework agent answers through it, counted once, and is refused the Orkeon tools it could never call **[breaking]**
+
+`WithAgentFrameworkAgent(agent)` set a field nothing read (GAP-34):
+
+- **The MAF agent answers.** `AgentBuilder.WithLlm` — which `WithAgentFrameworkAgent` calls — set
+  `Agent.FunctionCallingLlm`, and no runtime path read it: the agent's tasks ran on the host's default
+  model, or its profile, with its Orkeon tools, and the MAF agent heard nothing, although ADR-010, the
+  README and the reference promised that every prompt of the agent is a run of the MAF agent. The
+  field is `Agent.Llm` (`AgentCreateOptions.Llm`, `AgentSnapshot.Llm`, the `llm` parameter of
+  `Agent.Create`) — the provider the agent's turns run on, CrewAI's `llm` given as an object — and the
+  run honours it: the orchestrator builds a client over it once per provider instance
+  (`ILlmProfileRegistry.ForProvider`, named `provider:<name>`), metered as the agent's work, and runs
+  on it the agent's turns, their correction round and its ballot. The order is GAP-17's, the provider
+  in the agent's place: the profile a task's `llm_override` names (`default` included), else the
+  agent's own provider, else its profile, else the default. An orchestrator built by hand, without the
+  host's profile registry, fails such a task naming the agent. A hierarchical manager agent carrying
+  its own provider assigns and reviews on it (`ManagerLlmResolver`, after `Crew.ManagerLlm`;
+  `provider:<name>` in the run's log and the export).
+- **Its own provider or a host profile, not both.** `Agent.Create` and `AgentBuilder.Build()` refuse an
+  own provider with an `LlmConfig` that names a profile, naming both.
+- **No Orkeon tool on an agent that runs its own.** A MAF agent calls the tools it carries: Orkeon's
+  were listed in its prompt, and a `[TOOL_CALL]` it wrote would have become its answer.
+  `LlmProviderCapabilities.RunsOwnTools`, declared by `AIAgentLlmProvider` and relayed by the meter,
+  makes `Agent.Create`, `AgentBuilder.Build()`, `AddTool` and `UpdateConfiguration(allowDelegation:
+  true)` refuse tools and delegation on such an agent; a task that falls on such a provider — the
+  agent's own, a profile's (`AddOrkeonLlmProfile`) or the host's default — with tools to hold (its
+  `tools:`, `human_input`, the delegation tools of an agent that allows delegation — a YAML agent does
+  unless it writes `allowDelegation: false`) fails before any call. The message names the tools and the
+  two remedies: the tool on the MAF agent itself, or the MAF agent as a tool of an Orkeon agent
+  (`WithAgentFrameworkTool`) — and, for the delegation tools, delegation switched off.
+- **One MAF session, each message once, one call at a time.** The agent loop sends the whole
+  conversation every turn, and the MAF session already held it: a resumed turn showed the model the
+  conversation twice, and two tasks of the same agent wrote to the session at once. `AIAgentLlmProvider`
+  now sends a call that extends the conversation the session holds only what is new, any other call — a
+  new task, the session keeping the previous one — whole, and one call at a time: the tasks of one MAF
+  agent run one after another, even in a parallel wave.
+- **Counted once.** A provider answering through another metered provider — a MAF agent built over
+  Orkeon's own model, as the example builds its reviewer — would have been counted twice.
+  `MeteredLlmProvider` counts a call once, by the meter nearest the model: an outer call during which an
+  inner meter counted reports nothing, so the event names the real provider and model; a MAF agent on a
+  client Orkeon does not meter is counted under `agent-framework:<name>`. The metering guard declares
+  `LlmProfileRegistry` an entrance of the metered path, and the bridge's exemption says where it is metered.
+- **What the bridge does not send, it says.** Each option a call's `LlmConfig` declares (model,
+  temperature, max tokens, response format, thinking…) is a structured warning of `AIAgentLlmProvider` —
+  event 110, the HTTP providers' wording —, once per crew run and option, through the logger
+  `WithAgentFrameworkAgent(agent, logger)` takes, else the logger factory the MAF agent exposes.
+- `examples/interop/agent-framework/` has a third section: the MAF reviewer answering for an Orkeon
+  auditor, metered once under the configured model.
+
+Streaming is unchanged: a streamed turn receives the MAF answer as one fragment.
+
+Documented in [Microsoft Agent Framework interop](docs/reference/agent-framework-interop.md),
+[ADR-010](docs/adr/ADR-010-agent-framework-interop.md) (amendment of 2026-10-03),
+[Configuration](docs/reference/configuration.md#named-profiles-llmprofiles),
+[Process types](docs/orchestration/process-types.md) and
+[YAML and builders](docs/getting-started/yaml-and-builders.md).
+
+Breaking: `Agent.FunctionCallingLlm`, `AgentCreateOptions.FunctionCallingLlm` and
+`AgentSnapshot.FunctionCallingLlm` are renamed `Llm`, and the `functionCallingLlm` parameter of
+`Agent.Create` is `llm`; `ILlmProfileRegistry` gains `ForProvider`; `AIAgentLlmProvider` and
+`WithAgentFrameworkAgent` take an optional logger; an agent with its own provider and a host profile,
+and an agent whose own provider runs its own tools with tools or delegation, no longer build; a task
+holding tools fails on a provider that runs its own.
+
+Migration: rename `FunctionCallingLlm` to `Llm`; an `ILlmProfileRegistry` of your own implements
+`ForProvider` (build and meter the provider's client once per instance, as `LlmProfileRegistry` does);
+keep the agent's provider or its profile, not both; give a MAF agent's tool to the MAF agent itself, or
+hand the MAF agent to an Orkeon agent as a tool (`WithAgentFrameworkTool`).
+
 ### Fixed — a crew's manager applies where its mode uses one and is refused elsewhere, the planner's provider is metered, and a reference that names nothing fails the load **[breaking]**
 
 What a crew wrote about its manager, its planner and its tasks' references was read, then dropped

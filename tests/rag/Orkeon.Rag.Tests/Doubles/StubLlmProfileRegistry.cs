@@ -53,6 +53,10 @@ public sealed class StubLlmProfileRegistry : ILlmProfileRegistry
         };
     }
 
+    /// <inheritdoc />
+    public LlmProfile ForProvider(Orkeon.Domain.SharedKernel.ILlmProvider provider) =>
+        throw new InvalidOperationException("The RAG subsystem runs on host profiles, never on an agent's own provider.");
+
     /// <summary>The basic surface of a profile, which the RAG subsystem never calls.</summary>
     private sealed class UnusedBasicProvider(string name) : IBasicLlmProvider
     {

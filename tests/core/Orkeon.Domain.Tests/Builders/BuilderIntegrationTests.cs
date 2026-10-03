@@ -154,7 +154,7 @@ public class BuilderIntegrationTests
             ["PromptTemplate"] = "PromptTemplate",
             ["ResponseTemplate"] = "ResponseTemplate",
             ["MaxRetryLimit"] = "MaxRetryLimit",
-            ["WithLlm"] = "FunctionCallingLlm",
+            ["WithLlm"] = "Llm",
             ["WithTool"] = "Tools",
             ["WithTools"] = "Tools",
             ["WithToolAccessPolicy"] = "ToolAccessPolicy",

@@ -6,15 +6,18 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
 /// Architecture guard (STUDIO-42 D-04): an LLM provider reaches the runtime on the metered
-/// path, or its calls escape the token meter. The path has four entrances — the provider
+/// path, or its calls escape the token meter. The path has five entrances — the provider
 /// factory, which meters every vendor provider it builds, <c>AddOrkeonLlmProvider</c> (with its named-profile twin <c>AddOrkeonLlmProfile</c>),
 /// which meters a provider registered by hand, <c>ManagerLlmResolver</c>, which meters the
-/// provider a C# crew gives its manager (<c>Crew.ManagerLlm</c>, GAP-19), and
-/// <c>SequentialCrewOrchestrator</c>, which meters the provider a C# crew gives its planner
-/// (<c>Crew.PlanningLlm</c>, GAP-33) — so a provider may be built only in the factory or in the
+/// provider a C# crew gives its manager (<c>Crew.ManagerLlm</c>, GAP-19) or its manager agent
+/// carries (<c>Agent.Llm</c>, GAP-34), <c>SequentialCrewOrchestrator</c>, which meters the
+/// provider a C# crew gives its planner (<c>Crew.PlanningLlm</c>, GAP-33), and
+/// <c>LlmProfileRegistry.ForProvider</c>, which meters the provider an agent carries itself
+/// (<c>Agent.Llm</c>, GAP-34) — so a provider may be built only in the factory or in the
 /// very statement that hands it to <c>AddOrkeonLlmProvider</c>, and the meter itself is applied
 /// nowhere else (a second meter would count calls twice; at an entrance, <c>Wrap</c> leaves a
-/// provider already metered as it is).
+/// provider already metered as it is, and a meter wrapping a provider that answers through
+/// another metered one stays silent on the calls the inner meter counted).
 /// </summary>
 /// <remarks>
 /// Pragmatic, like the other source guards of this suite: the provider types are discovered
@@ -45,9 +48,17 @@ public sealed partial class LlmProviderMeteringGuardTests
     /// </summary>
     private const string PlanningLlmFile = "src/core/Orkeon.Infrastructure/Orchestration/SequentialCrewOrchestrator.cs";
 
-    /// <summary>The four entrances of the metered path, where <c>MeteredLlmProvider.Wrap</c> may be called.</summary>
+    /// <summary>
+    /// The agent's entrance (GAP-34): a provider C# hands an agent as its own (<c>AgentBuilder.WithLlm</c>,
+    /// <c>WithAgentFrameworkAgent</c>) is built by the host's own code too, and is metered where the run
+    /// resolves it — the client the profile registry builds over it, once per instance, under the agent's
+    /// attribution.
+    /// </summary>
+    private const string ProfileRegistryFile = "src/core/Orkeon.Infrastructure/LLMs/Profiles/LlmProfileRegistry.cs";
+
+    /// <summary>The five entrances of the metered path, where <c>MeteredLlmProvider.Wrap</c> may be called.</summary>
     private static readonly IReadOnlySet<string> Entrances =
-        new HashSet<string>(StringComparer.Ordinal) { FactoryFile, RegistrationFile, ManagerLlmFile, PlanningLlmFile };
+        new HashSet<string>(StringComparer.Ordinal) { FactoryFile, RegistrationFile, ManagerLlmFile, PlanningLlmFile, ProfileRegistryFile };
 
     /// <summary>
     /// Decorators: each wraps a provider it was handed, already obtained on the path. They
@@ -69,8 +80,9 @@ public sealed partial class LlmProviderMeteringGuardTests
             [("MockLlmProvider", "src/scripting/Orkeon.Scripting/Testing/JsTestNamespace.cs")] =
                 "The double `orkeon test` hands a script under test: it answers from expectations and calls no model.",
             [("AIAgentLlmProvider", "src/interop/Orkeon.Interop.AgentFramework/AgentBuilderExtensions.cs")] =
-                "Set as Agent.FunctionCallingLlm, a slot no runtime path calls; a host that wants the MAF agent to "
-                + "answer registers it with AddOrkeonLlmProvider.",
+                "Built by WithAgentFrameworkAgent and handed to AgentBuilder.WithLlm: the agent's own provider "
+                + "(Agent.Llm), metered where the run resolves it — LlmProfileRegistry.ForProvider for the agent's turns, "
+                + "ManagerLlmResolver for its work as a manager (GAP-34).",
         };
 
     [Fact]

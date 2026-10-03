@@ -132,16 +132,19 @@ public sealed partial class ManagerLlmTests
     /// <summary>The agents a C# crew is built from: a chef on profile <c>b</c>, and two workers.</summary>
     private sealed record Team(DomainAgent Chef, DomainAgent Writer, DomainAgent Reviewer);
 
-    /// <summary>Runs a crew built in C#: the team and two tasks saved, then kicked off.</summary>
+    /// <summary>
+    /// Runs a crew built in C#: the team and two tasks saved, then kicked off. The chef is on profile
+    /// <c>b</c> unless the test brings its own.
+    /// </summary>
     private static async Task<CrewOutput> RunBuiltAsync(
-        Vendor @default, Vendor b, Func<CrewBuilder, Team, CrewBuilder> shape, MockLlmUsageSink? sink = null)
+        Vendor @default, Vendor b, Func<CrewBuilder, Team, CrewBuilder> shape, MockLlmUsageSink? sink = null, DomainAgent? chef = null)
     {
         await using var container = Host(@default, b, sink);
         await using var scope = container.CreateAsyncScope();
         var sp = scope.ServiceProvider;
 
         var team = new Team(
-            new AgentBuilder().Role("Chef").Goal("Lead the team").WithLlmConfig(LlmConfig.OnProfile("b")).Build(),
+            chef ?? new AgentBuilder().Role("Chef").Goal("Lead the team").WithLlmConfig(LlmConfig.OnProfile("b")).Build(),
             new AgentBuilder().Role("Writer").Goal("Write the article").Build(),
             new AgentBuilder().Role("Reviewer").Goal("Review the article").Build());
         var draft = new CrewTaskBuilder().Description("Draft the article").ExpectedOutput("A draft").Build();
@@ -337,5 +340,54 @@ public sealed partial class ManagerLlmTests
         Assert.Equal(["assign", "assign"], c.Calls);
         Assert.Empty(a.ManagerCalls);
         Assert.Equal(["task", "task"], a.Calls);
+    }
+
+    // ── C#: the manager agent's own provider (GAP-34) ─────────────────────────────────────
+
+    [Fact]
+    public async Task A_csharp_manager_agent_on_its_own_provider_assigns_and_reviews_there_metered_as_the_managers_work()
+    {
+        // Agent.Llm was read by nothing: such a manager assigned and reviewed on the default, in silence.
+        var (a, b, c) = (new Vendor("vendor-a"), new Vendor("vendor-b"), new Vendor("vendor-c"));
+        var sink = new MockLlmUsageSink();
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead the team").WithLlm(c.Provider).Build();
+
+        var output = await RunBuiltAsync(a, b,
+            (crew, team) => crew.Hierarchical(team.Chef).WithAgent(team.Chef).WithAgent(team.Writer).WithAgent(team.Reviewer),
+            sink, chef);
+
+        Assert.True(output.Succeeded, output.Error);
+        Assert.Equal(["assign", "review", "assign", "review"], c.Calls);
+        Assert.Empty(a.ManagerCalls);
+        Assert.Empty(b.Calls);
+        var managerUsage = sink.Recorded.Where(e => e.Provider == "vendor-c").ToList();
+        Assert.Equal(4, managerUsage.Count);
+        Assert.All(managerUsage, e => Assert.Equal(LlmUsageOperations.Manager, e.OperationType));
+    }
+
+    [Fact]
+    public async Task A_manager_llm_wins_over_the_manager_agents_own_provider()
+    {
+        var (a, b, c, d) = (new Vendor("vendor-a"), new Vendor("vendor-b"), new Vendor("vendor-c"), new Vendor("vendor-d"));
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead the team").WithLlm(c.Provider).Build();
+
+        var output = await RunBuiltAsync(a, b, (crew, team) => crew
+            .Hierarchical(team.Chef).WithManagerLlm(d.Provider)
+            .WithAgent(team.Chef).WithAgent(team.Writer).WithAgent(team.Reviewer), chef: chef);
+
+        Assert.True(output.Succeeded, output.Error);
+        Assert.Equal(["assign", "review", "assign", "review"], d.Calls);
+        Assert.Empty(c.Calls);
+    }
+
+    [Fact]
+    public void The_manager_agents_own_provider_is_named_as_a_provider()
+    {
+        var c = new Vendor("vendor-c");
+        var chef = new AgentBuilder().Role("Chef").Goal("Lead the team").WithLlm(c.Provider).Build();
+        var writer = new AgentBuilder().Role("Writer").Goal("Write the article").Build();
+        var crew = new CrewBuilder().Goal("Ship the article").Hierarchical(chef).WithAgent(chef).WithAgent(writer).Build();
+
+        Assert.Equal("provider:vendor-c", ManagerLlm.Describe(crew, chef));
     }
 }

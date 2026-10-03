@@ -135,10 +135,17 @@ OpenAI's on another vendor.
 Who runs on which profile:
 
 - **An agent's turns** — on its own `llm:` profile, or its task's `llm_override` for that task
-  (`taskBuilder().withProfile(name)` in `.ork.ts`).
+  (`taskBuilder().withProfile(name)` in `.ork.ts`). An agent built in C# may carry its own provider
+  instead (`AgentBuilder.WithLlm(provider)`, or a Microsoft Agent Framework agent through
+  `WithAgentFrameworkAgent` — `Agent.Llm`): its turns, its correction round and its ballot run there,
+  on a client the host builds once per provider and meters as the agent's work; a task's
+  `llm_override` profile still moves that task, and the agent cannot also name a profile (the build
+  refuses both).
 - **The manager** of a hierarchical crew (and the one that hands an autonomous crew's tasks out) —
   on the LLM the crew gives it: in C# the provider `CrewBuilder.WithManagerLlm` sets, metered like
-  the host's own; else its manager agent's `llm:` block, profile and model; else the default profile.
+  the host's own; else the provider its manager agent carries itself (`WithLlm`,
+  `WithAgentFrameworkAgent`), metered the same way; else its manager agent's `llm:` block, profile and
+  model; else the default profile.
 - **The RAG subsystem** — grounded generation, query transformers, the listwise reranker, the
   corrective graph's evaluator and groundedness checker, the `llm` classifier and the evaluation
   judge — on the profile `Orkeon:Rag:LlmProfile` names (unset: the default). A name the host does
