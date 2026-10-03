@@ -1,3 +1,4 @@
+using Orkeon.Application.Services.Security;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using System.Text.Json;
@@ -40,7 +41,7 @@ public class McpServerTestsFixture
 
     // --- Build / Execution ---
 
-    public McpServer Build() => new(_mockRegistry, _options);
+    public McpServer Build() => new(_mockRegistry, ToolInvocationPipeline.Unguarded, _options);
 
     public async Task<JsonRpcResponse> ProcessRequestAsync(JsonRpcRequest request)
         => (await Build().ProcessRequestAsync(request))!;

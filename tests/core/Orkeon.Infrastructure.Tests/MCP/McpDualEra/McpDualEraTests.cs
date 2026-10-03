@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Orkeon.Application.Services.Security;
 using Orkeon.Infrastructure.MCP;
 using Orkeon.Infrastructure.Tests.Doubles;
 
@@ -16,7 +17,7 @@ public class McpDualEraTests
     private static McpServer CreateServer(out MockToolRegistry registry)
     {
         registry = new MockToolRegistry();
-        return new McpServer(registry, new McpServerOptions { Name = "TestServer", Version = "1.0.0" });
+        return new McpServer(registry, ToolInvocationPipeline.Unguarded, new McpServerOptions { Name = "TestServer", Version = "1.0.0" });
     }
 
     private static JsonRpcRequest ModernRequest(string method, string version, object? extraParams = null)

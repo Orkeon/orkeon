@@ -2,9 +2,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
-using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
@@ -15,6 +15,13 @@ namespace Orkeon.Infrastructure.MCP;
 /// `server/discover`) and legacy initialize-handshake clients (2025-11-25
 /// and earlier) on the same endpoint. Supports running over stdio or
 /// processing individual requests.
+/// <para>
+/// Every <c>tools/call</c> goes through the <see cref="IToolInvocationPipeline"/> every agent
+/// turn calls its tools through (GAP-24), under the caller <c>mcp</c>: the guardian's tool
+/// phase, the call, the one truncation rule, the result sanitizer and a <c>ToolExecution</c>
+/// audit event. The client reads what a crew agent's model reads. <c>AddOrkeonMcpServer</c>
+/// registers the server; <c>orkeon mcp serve</c> runs it on stdio.
+/// </para>
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class McpServer
@@ -22,33 +29,46 @@ public partial class McpServer
     /// <summary>Freshness hint returned on tools/list (the DI tool set is stable for a process).</summary>
     private const long ToolListTtlMs = 60_000;
 
+    /// <summary>
+    /// Who makes a call that arrives over MCP — the guardian's agent, the audit trail's role. The
+    /// client is no crew agent, and the name it gives itself vouches for nothing.
+    /// </summary>
+    private static readonly ToolInvocationCaller McpCaller = new("mcp", "mcp");
+
     private readonly IToolRegistry _toolRegistry;
+    private readonly IToolInvocationPipeline _toolInvocation;
     private readonly McpServerOptions _options;
     private readonly ILogger _logger;
 
     /// <summary>Initializes a new instance of <see cref="McpServer"/>.</summary>
     /// <param name="toolRegistry">The tool registry exposing Orkeon tools.</param>
+    /// <param name="toolInvocation">The invocation point every <c>tools/call</c> goes through.</param>
     /// <param name="options">The MCP server options.</param>
     /// <param name="logger">Optional logger.</param>
     public McpServer(
         IToolRegistry toolRegistry,
+        IToolInvocationPipeline toolInvocation,
         IOptions<McpServerOptions> options,
         ILogger<McpServer>? logger = null)
+        : this(toolRegistry, toolInvocation, options?.Value ?? new McpServerOptions(), logger)
     {
-        ArgumentNullException.ThrowIfNull(toolRegistry);
-        _toolRegistry = toolRegistry;
-        _options = options?.Value ?? new McpServerOptions();
-        _logger = logger ?? NullLogger<McpServer>.Instance;
     }
 
     /// <summary>Initializes a new instance of <see cref="McpServer"/> with direct options (useful for testing).</summary>
     /// <param name="toolRegistry">The tool registry exposing Orkeon tools.</param>
+    /// <param name="toolInvocation">The invocation point every <c>tools/call</c> goes through.</param>
     /// <param name="options">The MCP server options.</param>
     /// <param name="logger">Optional logger.</param>
-    public McpServer(IToolRegistry toolRegistry, McpServerOptions options, ILogger<McpServer>? logger = null)
+    public McpServer(
+        IToolRegistry toolRegistry,
+        IToolInvocationPipeline toolInvocation,
+        McpServerOptions options,
+        ILogger<McpServer>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(toolRegistry);
+        ArgumentNullException.ThrowIfNull(toolInvocation);
         _toolRegistry = toolRegistry;
+        _toolInvocation = toolInvocation;
         _options = options ?? new McpServerOptions();
         _logger = logger ?? NullLogger<McpServer>.Instance;
     }
@@ -115,14 +135,16 @@ public partial class McpServer
 
     /// <summary>
     /// Runs the MCP server on stdin/stdout, reading JSON-RPC messages
-    /// line by line and writing responses (notifications get none).
+    /// line by line and writing responses (notifications get none), until
+    /// stdin closes. The streams are the process's: read and written, never
+    /// disposed.
     /// </summary>
     public async Task RunStdioAsync(CancellationToken ct = default)
     {
         LogMcpServerStarting();
 
-        using var reader = Console.In;
-        using var writer = Console.Out;
+        var reader = Console.In;
+        var writer = Console.Out;
 
         while (!ct.IsCancellationRequested)
         {
@@ -272,21 +294,23 @@ public partial class McpServer
             }
         }
 
-        var toolRequest = new ToolCallRequest(callParams.Name, parameters);
-        var response = await tool.CallAsync(toolRequest, ct).ConfigureAwait(false);
+        // The invocation point of every agent turn (GAP-24): a blocked call never reaches the
+        // tool, a result is truncated and tagged as data, each call is audited — and the client
+        // reads the text a crew agent's model reads, an error included.
+        var invocation = await _toolInvocation
+            .InvokeAsync(new ToolInvocation(tool, parameters, McpCaller), ct)
+            .ConfigureAwait(false);
 
         var mcpResult = new McpToolCallResult
         {
-            IsError = !response.Success,
+            IsError = !invocation.Success,
             ResultType = "complete",
             Content =
             [
                 new()
                 {
                     Type = "text",
-                    Text = response.Success
-                        ? response.Result?.ToString() ?? ""
-                        : response.Error ?? "Unknown error"
+                    Text = invocation.ConversationText
                 }
             ]
         };

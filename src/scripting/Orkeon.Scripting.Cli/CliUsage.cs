@@ -47,6 +47,7 @@ internal static class CliUsage
         new("usecases", "Search, list, show and export the example use cases — offline, in five languages."),
         new("email", "List the e-mail accounts, sign an OAuth account in or out, check a connection."),
         new("typings", "Write the TypeScript typings for .ork.ts and .cmd.ts scripts into ./.orkeon/."),
+        new("mcp", "Serve the host's tools to an MCP client (Claude Desktop, an editor) over stdio."),
     ];
 
     /// <summary>This build's version, without the build metadata SourceLink appends.</summary>

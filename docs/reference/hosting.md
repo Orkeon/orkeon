@@ -140,7 +140,8 @@ The registration order is deliberate:
 9. **MCP** — `AddOrkeonMcp(configuration)` when the `MCP` section declares at least one
    server under `MCP:Servers` and `MCP:Enabled` is not `false`. Registering is not
    connecting: the servers are connected by the flows below, before the crew loads
-   (see [MCP](../architecture/mcp.md#activation)).
+   (see [MCP](../architecture/mcp.md#activation)). A section that still carries the removed
+   `MCP:EnableServer` fails the build of the host, servers declared or not (GAP-24).
 10. **Tool registry** — nothing of its own: `AddOrkeonInfrastructure()` already registered the default
     `ToolRegistry`, which reads every `IBaseTool` the steps above registered when it is first resolved.
 11. **Runner services** — the caller's `configureServices` hook runs last.

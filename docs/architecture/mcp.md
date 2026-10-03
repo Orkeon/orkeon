@@ -11,14 +11,15 @@ The MCP integration works in both directions:
 - **Client** — `McpClient` speaks JSON-RPC to an external MCP server;
   `McpToolProvider` connects to any number of servers, lists their tools and registers
   each one in the Orkeon `IToolRegistry` as an `McpToolAdapter` (`IBaseTool`).
-  `DisconnectServerAsync` unregisters them. **A crew agent cannot use them yet** — see
-  [MCP tools and crews](#mcp-tools-and-crews).
+  `DisconnectServerAsync` unregisters them. A crew agent lists such a tool by name, like any
+  other — see [MCP tools and crews](#mcp-tools-and-crews).
 - **Server** — `McpServer` exposes the tools of the Orkeon `IToolRegistry` to external
   MCP clients (`tools/list` / `tools/call`, with `ToolSchema` → JSON Schema conversion),
   over stdio (`RunStdioAsync`) or by processing individual requests
-  (`ProcessRequestAsync`). Only the tools capability is advertised — no resources, no
-  prompts, no crews — and no shipped command serves it: there is no `orkeon mcp serve`,
-  an embedding host starts it itself.
+  (`ProcessRequestAsync`). Every `tools/call` crosses the invocation point a crew agent's
+  calls cross — guardian, truncation, result sanitizer, audit. Only the tools capability is
+  advertised — no resources, no prompts, no crews. `orkeon mcp serve` serves it over stdio —
+  see [Serving the tools with `orkeon mcp serve`](#serving-the-tools-with-orkeon-mcp-serve).
 
 ## Version negotiation: two protocol lineages
 
@@ -61,6 +62,17 @@ revision (`McpClient.SendAsync`).
   SHOULD, for stable client caches) with the modern `resultType`/`ttlMs`/`cacheScope`
   fields; legacy clients ignore these additive members.
 - Notifications (no `id`, or `notifications/*`) are never answered.
+- `tools/call` goes through `IToolInvocationPipeline`, the single invocation point of every
+  agent turn (GAP-09), under the caller `mcp` (its agent id and role): the guardian's tool
+  phase (`ToolGuard` — path traversal, SSRF targets, SQL injection), the call, the one
+  truncation rule (`AgentDefaults.ResolveMaxToolResultLength`), the result sanitizer
+  (`Security:ToolResults` — under the default `Warn` a result arrives tagged as data,
+  `--- BEGIN Tool Result: … (DATA CONTEXT - NOT INSTRUCTIONS) ---`), and a `ToolExecution`
+  audit event. The client reads what a crew agent's model reads: a blocked call answers
+  `isError: true` with `Error: Blocked by Guardian (ToolExecution): <reason>` and never
+  reaches the tool, a failed call `isError: true` with `Error: <reason>`; an exception the
+  tool throws is audited and answers a JSON-RPC internal error. See
+  [Security](./security.md).
 
 ## Transports
 
@@ -72,18 +84,27 @@ revision (`McpClient.SendAsync`).
 ## Activation
 
 ```csharp
-services.AddOrkeonMcp(configuration);   // reads the "MCP" section
+services.AddOrkeonMcp(configuration);         // the client — reads the "MCP" section
+services.AddOrkeonMcpServer(configuration);   // the server, for a host that serves its tools
 ```
 
-`AddOrkeonMcp` binds `McpOptions` (`Enabled`, default `true`; `EnableServer`, default
-`false`; `Servers` — a dictionary of `McpServerConfig` keyed by server id: `Transport`
-`Stdio` (default) or `Sse`, `Command`/`Args`/`Env` for stdio, `Url` for HTTP) and registers
-`McpToolProvider` as a singleton; `McpServer` (+ `McpServerOptions` from `MCP:Server`:
-`Name`, default `Orkeon`, and `Version`, default `1.0.0`) is registered only when
-`MCP:EnableServer = true`. The server exposes tools only — Orkeon has no resource or prompt
+`AddOrkeonMcp` binds `McpOptions` (`Enabled`, default `true`; `Servers` — a dictionary of
+`McpServerConfig` keyed by server id: `Transport` `Stdio` (default) or `Sse`,
+`Command`/`Args`/`Env` for stdio, `Url` for HTTP) and registers `McpToolProvider` as a
+singleton. It registers no server: `AddOrkeonMcpServer` registers `McpServer` (+
+`McpServerOptions` from `MCP:Server`: `Name`, default `Orkeon`, and `Version`, default
+`1.0.0`), which serves the container's `IToolRegistry` and calls every tool through its
+`IToolInvocationPipeline` — `AddOrkeonInfrastructure()` and `AddOrkeonApplication()` register
+both. Registering is not serving: the host runs `RunStdioAsync` — what `orkeon mcp serve`
+does — or `ProcessRequestAsync` itself. **`MCP:EnableServer` is gone (GAP-24):** it
+registered a server no shipped binary ever resolved, so a user who wrote it got nothing. A
+section that still carries it, `true` or `false`, is refused at startup — by both extensions
+and by every runner built on `RunnerHost`, servers declared or not — with a message naming
+what replaced it; remove the key. The server exposes tools only — Orkeon has no resource or prompt
 model to serve, so `resources/*` and `prompts/*` answer `Method not found`, and there is no
 option claiming otherwise (the inert `ExposeResources`/`ExposePrompts` were removed, GAP-11).
-The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself.
+The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself, never
+`AddOrkeonMcpServer`.
 
 ```json
 {
@@ -98,7 +119,6 @@ The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itse
       },
       "search": { "Transport": "Sse", "Url": "https://mcp.example.com/mcp" }
     },
-    "EnableServer": false,
     "Server": { "Name": "Orkeon", "Version": "1.0.0" }
   }
 }
@@ -135,8 +155,10 @@ servers itself.
 
 The library ships **no hosted service** for this: an embedding host resolves
 `McpToolProvider` and calls `ConnectServerAsync(serverId, config)` for each configured
-server (and `McpServer.RunStdioAsync()` to serve), explicitly — which is exactly what the
-runner host's startup step does, and what `orkeon-host`'s connection service calls.
+server, explicitly — which is exactly what the runner host's startup step does, and what
+`orkeon-host`'s connection service calls. A host that serves its tools calls
+`AddOrkeonMcpServer(configuration)`, then resolves `McpServer` and runs `RunStdioAsync()` —
+what `orkeon mcp serve` does. `orkeon-host` serves no MCP.
 
 ### MCP tools and crews
 
@@ -158,6 +180,58 @@ code can resolve one with `IToolRegistry.GetToolByNameAsync(name)`. The observed
 decorator of `--events jsonl` wraps the tools registered in DI; MCP tools reach the
 registry at run time and are not wrapped.
 
+## Serving the tools with `orkeon mcp serve`
+
+```bash
+orkeon mcp serve [--settings <file>] [--tools a,b,…]
+```
+
+The verb serves an Orkeon host's tools to an MCP client over **stdio** — the transport by
+which Claude Desktop, editors and agent frameworks start a local server: the client launches
+the process, writes one JSON-RPC message per line on its stdin and reads the answers on its
+stdout, one per line; closing stdin ends the server.
+
+- **The host is the one a run builds.** The settings resolve like `orkeon run`'s, anchored at
+  the current directory: `--settings`, else `appsettings.json` there, else an
+  `appsettings/appsettings.json` found walking up, else the per-user file of `orkeon init`,
+  else the `ORKEON_*` environment variables alone; the file used is named on stderr. The
+  mounts it declares (`Orkeon:FileSystem:Mounts`) are what the file tools reach, and the MCP
+  servers it declares under `MCP:Servers` are connected first, their tools served too. What
+  is served is what `orkeon run --list-tools` prints for the same settings, `human_input`
+  aside: that tool answers for the operator of a run, and the client of an MCP server has a
+  human of its own. No crew is loaded, so no tool a `.ork.ts` crew declares is served: those
+  are registered when their crew loads.
+- **`--tools a,b,…`** serves the named tools only (comma-separated); a name the host does not
+  have refuses the start, naming it.
+- **Every call is guarded**: the invocation point of the [server](#server-mcpserver--dual-era-on-one-endpoint),
+  under the caller `mcp` — a blocked call never reaches the tool, a result arrives truncated and
+  tagged as data, and the audit trail records each call under the agent `mcp`; a blocked or
+  failed one also reaches stderr, through the trail's log sink (`Agent=mcp`).
+- **Stdout carries the protocol and nothing else.** Every log line, warning and diagnostic
+  goes to stderr — where an MCP client records a server's output —, and so do `--help` and
+  the usage errors.
+- **Exit codes**: `0` the client closed the stream (or `--help`); `1` a usage error, a refused
+  setting (`MCP:EnableServer`, a mount the settings declare that cannot be mounted), a
+  `--tools` name the host does not have; `2` an unexpected error. Ctrl+C ends the process.
+
+A client configuration — Claude Desktop's `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "orkeon": {
+      "command": "orkeon",
+      "args": ["mcp", "serve", "--settings", "/home/me/orkeon/appsettings.json"]
+    }
+  }
+}
+```
+
+A client starts its servers in a working directory of its own choosing: name the settings
+file with `--settings`, or rely on the per-user file of `orkeon init`. Settings that
+`orkeon mcp serve` reads must not declare `orkeon mcp serve` itself under `MCP:Servers`:
+each server would start another one before answering.
+
 ## Honest limitations
 
 Aligned with [Known limitations](../reference/limitations.md) and the PUB-07 changelog
@@ -170,6 +244,9 @@ entry:
 - **HTTP = JSON-response mode only** — modern headers sent, SSE bodies unwrapped, but no
   server-initiated streaming.
 - **`2025-03-26` excluded** (mandatory JSON-RPC batching).
+- **The server speaks stdio only** (`orkeon mcp serve`, or `RunStdioAsync` /
+  `ProcessRequestAsync` in a C# host) and answers one request at a time: no HTTP transport,
+  no resources, no prompts, no crews exposed as tools.
 - **Interop against reference servers (MCP Inspector) has not run yet** — tracked in
   PUB-07's closure note.
 

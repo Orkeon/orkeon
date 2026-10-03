@@ -1,3 +1,4 @@
+using Orkeon.Application.Services.Security;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
@@ -63,7 +64,9 @@ public class McpServerTests
         };
     }
 
-    private McpServerSut CreateServer() => new(_mockRegistry, _options);
+    // The bare invocation point: the call and the truncation, no guard, no tagging — these tests
+    // pin the protocol; McpServerGuardTests pins what the composed pipeline does to a call.
+    private McpServerSut CreateServer() => new(_mockRegistry, ToolInvocationPipeline.Unguarded, _options);
 
     [Fact]
     public async Task ShouldReturnCapabilities_WhenHandlingInitialize()
@@ -296,7 +299,8 @@ public class McpServerTests
             response.Result!.Value.GetRawText());
         Assert.NotNull(result);
         Assert.True(result!.IsError);
-        Assert.Equal("Something went wrong", result.Content[0].Text);
+        // The failure as the invocation point words it for a crew agent's model (GAP-24).
+        Assert.Equal("Error: Something went wrong", result.Content[0].Text);
     }
 
     [Fact]

@@ -810,10 +810,12 @@ public static partial class RunnerHost
     /// <c>MCP:Servers</c>, or <c>MCP:Enabled = false</c>, registers nothing — exactly the
     /// surface every run had before — and the servers are connected by
     /// <see cref="McpStartup"/>, not by a hosted service, because the runners never start the
-    /// host.
+    /// host. A section that still carries the removed <c>MCP:EnableServer</c> fails the host
+    /// first, servers declared or not (GAP-24).
     /// </summary>
     private static void RegisterMcp(HostBuilderContext context, IServiceCollection services)
     {
+        McpStartup.RefuseServerSwitch(context.Configuration);
         if (!McpStartup.IsConfigured(context.Configuration))
             return;
 

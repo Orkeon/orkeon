@@ -147,7 +147,9 @@ L'ordre d'enregistrement est délibéré :
 9. **MCP** — `AddOrkeonMcp(configuration)` quand la section `MCP` déclare au moins un serveur
    sous `MCP:Servers` et que `MCP:Enabled` n'est pas `false`. Enregistrer n'est pas connecter :
    les serveurs sont connectés par les flux ci-dessous, avant le chargement de la crew
-   (voir [MCP](../architecture/mcp.md#activation)).
+   (voir [MCP](../architecture/mcp.md#activation)). Une section qui porte encore la clé
+   supprimée `MCP:EnableServer` fait échouer la construction de l'hôte, serveurs déclarés ou non
+   (GAP-24).
 10. **Registre d'outils** — rien de propre : `AddOrkeonInfrastructure()` a déjà enregistré le `ToolRegistry`
     par défaut, qui lit chaque `IBaseTool` enregistré par les étapes ci-dessus à sa première résolution.
 11. **Services du runner** — le hook `configureServices` de l'appelant s'exécute en dernier.

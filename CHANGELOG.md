@@ -60,6 +60,51 @@ keyed by the id it compares; drop the scope factory from `new A2AServer(...)`; a
 the agents other scopes register adds `IAgentRegistrationStore` and `SharedStoreAgentRepository` itself;
 in `orkeon-host`'s settings, write the listener under `Orkeon:Host:A2A`.
 
+### Added — `orkeon mcp serve` serves the host's tools to an MCP client, each call through the guard, and `MCP:EnableServer` is refused **[breaking]**
+
+Orkeon's MCP server was reachable from C# alone (GAP-24): `MCP:EnableServer` registered `McpServer`,
+no binary ever resolved it, and a user who wrote the key got nothing; and a server a C# host did start
+called each tool itself, past the guard every agent turn crosses.
+
+- **A verb serves.** `orkeon mcp serve [--settings <file>] [--tools a,b,…]` serves over stdio, the
+  transport by which MCP clients — Claude Desktop, editors — launch a local server: one JSON-RPC
+  message per line in on stdin, the answers out on stdout, until the client closes stdin. It builds
+  the host `orkeon run --list-tools` reports — the settings resolved from the current directory, their
+  mounts, the built-in tools, the MCP servers they declare, connected first — and serves its registry,
+  every tool but `human_input`, which answers for the operator of a run (an MCP client has a human of
+  its own). `--tools` serves the named tools only, and a name the host does not have refuses the start.
+  Stdout carries the protocol and nothing else: logs, warnings, `--help` and usage errors go to stderr.
+  `--list-tools` and the verb build their host with one method, which answers a setting the host
+  refuses, or a settings mount whose folder does not exist, with one `ERROR:` line and exit `1` —
+  `--list-tools` ended there on an unhandled exception and a core dump.
+- **Each call is guarded.** `McpServer` takes the `IToolInvocationPipeline` and calls every tool
+  through it, under the caller `mcp`: the guardian's tool phase, the call, the one truncation rule, the
+  result sanitizer and a `ToolExecution` audit event. The client reads what a crew agent's model reads:
+  a blocked call answers `isError: true` with `Error: Blocked by Guardian (ToolExecution): …` and never
+  reaches the tool, a result arrives truncated and tagged as data, a failure reads `Error: …`.
+  `RunStdioAsync` no longer disposes the process's console streams when the client leaves.
+- **The verb is the switch.** `MCP:EnableServer` and `McpOptions.EnableServer` are removed: `AddOrkeonMcp`
+  registers the client only, and `AddOrkeonMcpServer(configuration)` registers the server, its
+  `McpServerOptions` bound from `MCP:Server` (`Name`, `Version`). A section that still carries the key,
+  `true` or `false`, is refused at startup — by both extensions and by every runner built on
+  `RunnerHost`, servers declared or not — with a message naming `orkeon mcp serve`.
+
+Documented in [MCP integration](docs/architecture/mcp.md) — which no longer says that a crew agent
+cannot use an MCP tool —, [CLI](docs/reference/cli.md), [Configuration](docs/reference/configuration.md),
+[Security](docs/architecture/security.md), [Hosting](docs/reference/hosting.md),
+[Experimental APIs](docs/reference/experimental-apis.md) and [Limitations](docs/reference/limitations.md).
+
+Breaking: a settings file or configuration that carries `MCP:EnableServer` no longer starts;
+`McpOptions.EnableServer` is removed; `AddOrkeonMcp` no longer registers `McpServer`; both `McpServer`
+constructors take an `IToolInvocationPipeline` after the registry; a failed `tools/call` reads
+`Error: <reason>`.
+
+Migration: remove `MCP:EnableServer` from the settings and serve the tools with `orkeon mcp serve`; in a
+C# host, call `AddOrkeonMcpServer(configuration)` next to `AddOrkeonInfrastructure()` and
+`AddOrkeonApplication()`, then resolve `McpServer` and run `RunStdioAsync()`; a `McpServer` built by
+hand takes the container's `IToolInvocationPipeline`, or `ToolInvocationPipeline.Unguarded` for the
+bare call and truncation.
+
 ### Fixed — a crew's manager applies where its mode uses one and is refused elsewhere, the planner's provider is metered, and a reference that names nothing fails the load **[breaking]**
 
 What a crew wrote about its manager, its planner and its tasks' references was read, then dropped

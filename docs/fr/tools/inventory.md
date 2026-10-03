@@ -259,7 +259,9 @@ le REPL. `orkeon run` construit un hôte différent pour un crew YAML (via `Runn
 et pour un script `.ork.ts` (directement sur `RunnerHost`) ; là où les deux diffèrent, la
 table le dit. L'hôte de service `orkeon-host` s'appuie sur le même `RunnerHost` : il a donc
 la suite de `RunnerHost` — tout ce que liste la première colonne sauf `semantic_search`,
-`human_input` et les tools RAG réservés aux scripts.
+`human_input` et les tools RAG réservés aux scripts. `orkeon mcp serve` construit l'hôte
+d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` à part — voir
+[Intégration MCP](../architecture/mcp.md#servir-les-outils-avec-orkeon-mcp-serve).
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
@@ -272,7 +274,7 @@ la suite de `RunnerHost` — tout ce que liste la première colonne sauf `semant
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ seulement si `BRAVE_API_KEY` est posée | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (opt-in hôte) | ❌ |
-| Les outils des serveurs MCP déclarés par `MCP:Servers` | ✅ connectés avant le chargement de la crew, sous leur propre nom (STUDIO-21) — joignables par nom dans le registre, mais pas encore attachables depuis une liste YAML `tools:` (voir le pipeline de résolution plus bas) | ❌ |
+| Les outils des serveurs MCP déclarés par `MCP:Servers` | ✅ connectés avant le chargement de la crew, sous leur propre nom (STUDIO-21) — un agent les liste dans `tools:` comme tout autre outil (voir le pipeline de résolution plus bas) | ❌ |
 | `semantic_search` | ✅ pour un crew YAML (câblé par la commande run) | ❌ |
 | `human_input` | ✅ pour un crew YAML (sur le flux d'événements sous `--events`, approuvé automatiquement sinon) | ❌ |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | par agent, quand `AllowDelegation` est actif | par agent |

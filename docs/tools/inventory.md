@@ -255,7 +255,9 @@ the REPL. `orkeon run` builds a different host for a YAML crew (through `RunnerE
 and for an `.ork.ts` script (directly on `RunnerHost`); where the two differ, the table says
 so. The service host `orkeon-host` builds on the same `RunnerHost`, so it has the
 `RunnerHost` suite — everything in the first column except `semantic_search`, `human_input`
-and the script-only RAG tools.
+and the script-only RAG tools. `orkeon mcp serve` builds the host of `orkeon run --list-tools`
+and serves its tools to an MCP client, `human_input` aside — see
+[MCP integration](../architecture/mcp.md#serving-the-tools-with-orkeon-mcp-serve).
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
@@ -268,7 +270,7 @@ and the script-only RAG tools.
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ only if `BRAVE_API_KEY` is set | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (host opt-in) | ❌ |
-| The tools of the MCP servers `MCP:Servers` declares | ✅ connected before the crew loads, under their own names (STUDIO-21) — reachable by name in the registry, but not yet attachable from a YAML `tools:` list (see the resolution pipeline below) | ❌ |
+| The tools of the MCP servers `MCP:Servers` declares | ✅ connected before the crew loads, under their own names (STUDIO-21) — an agent lists them in `tools:` like any other tool (see the resolution pipeline below) | ❌ |
 | `semantic_search` | ✅ for a YAML crew (wired by the run command) | ❌ |
 | `human_input` | ✅ for a YAML crew (on the event stream under `--events`, auto-approved otherwise) | ❌ |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | per agent, when `AllowDelegation` is on | per agent |

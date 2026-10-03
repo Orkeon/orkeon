@@ -3,7 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace Orkeon.Infrastructure.MCP;
 
 /// <summary>
-/// Top-level MCP configuration options.
+/// Top-level MCP configuration options: the client's. No option starts the server —
+/// <c>AddOrkeonMcpServer</c> registers it and <c>orkeon mcp serve</c> runs it (GAP-24).
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpOptions
@@ -12,11 +13,6 @@ public class McpOptions
     /// Whether MCP is enabled at all.
     /// </summary>
     public bool Enabled { get; set; } = true;
-
-    /// <summary>
-    /// Whether to run an MCP server exposing Orkeon tools.
-    /// </summary>
-    public bool EnableServer { get; set; }
 
     /// <summary>
     /// MCP server connections to establish as a client.

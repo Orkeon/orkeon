@@ -128,32 +128,13 @@ public static partial class RunnerExecution
             var cwd = Directory.GetCurrentDirectory();
             var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, cwd);
 
-            // The manifest lists tools, it never runs one, so this host needs a non-empty
-            // FileSystem section for one reason only: without it IFileSystemService is not
-            // registered and the filesystem-backed tools cannot even be constructed when the
-            // registry enumerates the DI-provided IBaseTool set. An internal mount of the cwd
-            // satisfies that without putting a directory on the agent-facing surface.
-            var cliMounts = opts.Mounts.ToList();
-            if (!EnsureReservedRootsAreFree(cliMounts, settingsPath, RunnerVirtualRoots.Crew, RunnerVirtualRoots.Sandbox)
-                || !EnsureMountSelectionIsResolvable(cliMounts, opts.MountIds, CrewMountDeclarations.None, settingsPath, out var selection))
-            {
-                return 1;
-            }
-
-            var internalMounts = new[] { $"{FileSystemMount.Quote(cwd)}:{RunnerVirtualRoots.Crew}:ro" };
-
-            using var host = RunnerHost.Build(
+            using var host = await BuildToolHostAsync(
                 settingsPath,
-                new RunnerMountPlan
-                {
-                    CliMounts = cliMounts,
-                    InternalMounts = internalMounts,
-                    SelectedMountIds = selection.SelectedMountIds,
-                    CrewMountReferences = selection.CrewMountReferences,
-                    AllowExternalMounts = opts.EffectiveAllowExternalMounts,
-                },
-                configureLogging: (_, b) => ConfigureStderrOnlyLogging(b),
-                configureServices: (ctx, services) =>
+                cwd,
+                opts.Mounts.ToList(),
+                opts.MountIds,
+                opts.EffectiveAllowExternalMounts,
+                (ctx, services) =>
                 {
                     // Mirror the crew-execution path (TryBuildHost registers the human_input
                     // tool + AutoApprove provider before the runner's own hook). The manifest
@@ -161,10 +142,10 @@ public static partial class RunnerExecution
                     // human_input is silently absent from --list-tools.
                     services.AddOrkeonHumanInput();
                     configureServices?.Invoke(ctx, services);
-                });
-
-            // The manifest lists what a kickoff exposes, the MCP tools included (STUDIO-21).
-            await McpStartup.ConnectConfiguredServersAsync(host, CancellationToken.None).ConfigureAwait(false);
+                },
+                CancellationToken.None).ConfigureAwait(false);
+            if (host is null)
+                return 1;
 
             var registry = host.Services.GetRequiredService<IToolRegistry>();
             var tools = await registry.GetAllToolsAsync().ConfigureAwait(false);
@@ -177,6 +158,87 @@ public static partial class RunnerExecution
                 Console.WriteLine(name);
 
             return 0;
+        }
+    }
+
+    /// <summary>
+    /// The host <c>--list-tools</c> prints and <c>orkeon mcp serve</c> serves (GAP-24): the runner
+    /// host over the settings' mounts and <paramref name="cliMounts"/>, no crew, every log line on
+    /// stderr — stdout carries the manifest, or the protocol — and the MCP servers of the settings
+    /// connected, so both see the tools a kickoff sees (STUDIO-21).
+    /// <para>
+    /// The host needs a file system even to list the tools: without one <c>IFileSystemService</c>
+    /// is not registered, and the filesystem-backed tools cannot be constructed when the registry
+    /// enumerates the DI-provided <c>IBaseTool</c> set. A mount of <paramref name="cliMounts"/> or
+    /// of the settings gives it one. Without any, <paramref name="workingDirectory"/> is mounted
+    /// internally, read-only — and only then: an internal mount is a boundary in physical space
+    /// (<c>FileSystemRegistry</c>), so beside the settings' mounts it would wall off every one
+    /// the working directory contains, and a server an MCP client starts in <c>/</c> would reach
+    /// no file at all.
+    /// </para>
+    /// </summary>
+    /// <returns>
+    /// The host, or <see langword="null"/> when the mounts or the settings are refused — a mount
+    /// guard, a mount folder that does not exist, a setting the host build rejects — after one
+    /// line on stderr says why, rather than an unhandled exception.
+    /// </returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    internal static async Task<IHost?> BuildToolHostAsync(
+        string? settingsPath,
+        string workingDirectory,
+        IReadOnlyList<string> cliMounts,
+        IEnumerable<string> mountIds,
+        bool allowExternalMounts,
+        Action<HostBuilderContext, IServiceCollection>? configureServices,
+        CancellationToken ct)
+    {
+        if (!EnsureReservedRootsAreFree(cliMounts, settingsPath, RunnerVirtualRoots.Crew, RunnerVirtualRoots.Sandbox)
+            || !EnsureMountSelectionIsResolvable(cliMounts, mountIds, CrewMountDeclarations.None, settingsPath, out var selection)
+            || !EnsureMountSourcesExist(cliMounts, settingsPath, selection))
+        {
+            return null;
+        }
+
+        var hasFileSystem = cliMounts.Count > 0
+            || RunnerSettings.ReadDeclaredAgentFacingMounts(settingsPath).Count > 0
+            || RunnerSettings.ReadDeclaredInternalMounts(settingsPath).Count > 0;
+        string[] internalMounts = hasFileSystem
+            ? []
+            : [$"{FileSystemMount.Quote(workingDirectory)}:{RunnerVirtualRoots.Crew}:ro"];
+
+        IHost host;
+        try
+        {
+            host = RunnerHost.Build(
+                settingsPath,
+                new RunnerMountPlan
+                {
+                    CliMounts = cliMounts,
+                    InternalMounts = internalMounts,
+                    SelectedMountIds = selection.SelectedMountIds,
+                    CrewMountReferences = selection.CrewMountReferences,
+                    AllowExternalMounts = allowExternalMounts,
+                },
+                configureLogging: (_, b) => ConfigureStderrOnlyLogging(b),
+                configureServices: configureServices);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // A setting the host build rejects — a retired key, MCP:EnableServer, an LLM profile
+            // it cannot build — is the operator's to fix: the sentence, not a stack trace.
+            await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
+            return null;
+        }
+
+        try
+        {
+            await McpStartup.ConnectConfiguredServersAsync(host, ct).ConfigureAwait(false);
+            return host;
+        }
+        catch (OperationCanceledException)
+        {
+            host.Dispose();
+            throw;
         }
     }
 

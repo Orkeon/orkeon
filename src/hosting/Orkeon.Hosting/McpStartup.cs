@@ -50,6 +50,25 @@ internal static partial class McpStartup
     }
 
     /// <summary>
+    /// <c>MCP:EnableServer</c> registered a server no runner ever started (GAP-24). The key is
+    /// gone, and a settings file that still writes it — servers declared or not, <c>true</c> or
+    /// <c>false</c> — fails the host here, naming the verb that serves instead, rather than being
+    /// ignored the way it always was.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The settings carry <c>MCP:EnableServer</c>.</exception>
+    public static void RefuseServerSwitch(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        if (!configuration.GetSection(ConfigurationKeys.McpSection).GetSection("EnableServer").Exists())
+            return;
+
+        throw new InvalidOperationException(
+            $"{ConfigurationKeys.McpSection}:EnableServer is not a setting any more: no runner starts an MCP server from its settings. " +
+            "`orkeon mcp serve` serves this host's tools to an MCP client over stdio. Remove the key.");
+    }
+
+    /// <summary>
     /// Connects every declared server and registers its tools; a no-op on a host built without
     /// the section. Never throws for a server: see the class summary.
     /// </summary>

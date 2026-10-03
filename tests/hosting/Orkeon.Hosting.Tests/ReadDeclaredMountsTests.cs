@@ -14,6 +14,9 @@ namespace Orkeon.Hosting.Tests;
 /// equivalence, and the method had none.
 /// </para>
 /// </summary>
+// Serial: a test here sets ORKEON_Orkeon__FileSystem__Mounts__* in the process environment,
+// which every reader and every runner host built in parallel would see — or lose mid-test.
+[Collection(ConsoleSerialCollection.Name)]
 public sealed class ReadDeclaredMountsTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), $"ork-mounts-{Guid.NewGuid():N}");

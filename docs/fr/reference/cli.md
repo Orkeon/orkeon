@@ -2,7 +2,7 @@
 
 # Référence du CLI `orkeon`
 
-L'outil en ligne de commande `orkeon` est le point d'entrée principal du framework : il exécute les crews YAML et les scripts TypeScript (`.ork.ts`), transforme un besoin en langage courant en crew (l'Atelier), génère une configuration, sonde les fournisseurs LLM, pilote le sous-système RAG, cherche dans les cas d'usage d'exemple, connecte des comptes e-mail, écrit les typings d'éditeur du DSL de scripting et diagnostique une installation. Il est construit depuis `src/scripting/Orkeon.Scripting.Cli` et se packe comme dotnet tool `orkeon` :
+L'outil en ligne de commande `orkeon` est le point d'entrée principal du framework : il exécute les crews YAML et les scripts TypeScript (`.ork.ts`), transforme un besoin en langage courant en crew (l'Atelier), génère une configuration, sonde les fournisseurs LLM, pilote le sous-système RAG, cherche dans les cas d'usage d'exemple, connecte des comptes e-mail, écrit les typings d'éditeur du DSL de scripting, sert ses outils à un client MCP et diagnostique une installation. Il est construit depuis `src/scripting/Orkeon.Scripting.Cli` et se packe comme dotnet tool `orkeon` :
 
 ```bash
 dotnet tool install --global Orkeon.Scripting.Cli --prerelease
@@ -15,7 +15,7 @@ Mettez le tool à jour avec `dotnet tool update --global Orkeon.Scripting.Cli --
 
 **Codes de sortie** (stables) : `0` OK · `1` erreur de script/config (fichier manquant, script invalide, échec de validation) · `2` le run a échoué — une erreur runtime inattendue, un service que le host n'a pas pu construire au démarrage, ou une équipe qui a tourné sans réussir (une tâche sans réponse finale, un disjoncteur déclenché, un consensus non atteint) · `130` annulé par Ctrl+C. Sur un code `2`, la **dernière ligne de stderr** est `ERROR: <raison>` — la phrase qui dit pourquoi ; le type de l'exception et sa trace de pile ne sont journalisés qu'en `--verbose 2` (ou `ORKEON_DEBUG=1`).
 
-**La ligne de commande.** `orkeon`, `orkeon --help`, `orkeon -h` et `orkeon help` impriment la liste des commandes et sortent avec `0` ; `orkeon <commande> --help` imprime les options d'une commande. `orkeon --version` (ou `orkeon version`) imprime `orkeon <version>` — `-v` n'est pas la version, c'est `--verbose`. Les commandes sont `run`, `init`, `doctor`, `llm`, `rag`, `forge`, `usecases`, `email` et `typings`, reconnues avant toute autre chose. Le verbe `run` est facultatif : un premier argument qui commence par `-`, ou qui se lit comme une crew — il contient un `/` ou un `\`, se termine par `.ork.ts`, `.ork.js`, `.ts`, `.js`, `.yaml` ou `.yml`, ou nomme un fichier ou un dossier existant — est confié à `orkeon run`. Tout autre mot est refusé avec `orkeon: unknown command '<mot>'` et le code `1`.
+**La ligne de commande.** `orkeon`, `orkeon --help`, `orkeon -h` et `orkeon help` impriment la liste des commandes et sortent avec `0` ; `orkeon <commande> --help` imprime les options d'une commande. `orkeon --version` (ou `orkeon version`) imprime `orkeon <version>` — `-v` n'est pas la version, c'est `--verbose`. Les commandes sont `run`, `init`, `doctor`, `llm`, `rag`, `forge`, `usecases`, `email`, `typings` et `mcp`, reconnues avant toute autre chose. Le verbe `run` est facultatif : un premier argument qui commence par `-`, ou qui se lit comme une crew — il contient un `/` ou un `\`, se termine par `.ork.ts`, `.ork.js`, `.ts`, `.js`, `.yaml` ou `.yml`, ou nomme un fichier ou un dossier existant — est confié à `orkeon run`. Tout autre mot est refusé avec `orkeon: unknown command '<mot>'` et le code `1`.
 
 ## `orkeon run`
 
@@ -268,6 +268,14 @@ orkeon typings --out crews/.orkeon
 ```
 
 Écrit les typings TypeScript que porte ce build de l'outil, pour votre éditeur : `orkeon.d.ts` (le [DSL de scripting](./scripting-dsl.md#réglage-de-léditeur) `.ork.ts`) et `orkeon-cli.d.ts` (les [commandes `*.cmd.ts`](../architecture/cli-ts-commands.md) du REPL). Les deux sont embarqués dans l'outil : un `dotnet tool install` suffit — ni clone, ni build. `-o`/`--out <dossier>` choisit le dossier (`./.orkeon` par défaut, créé s'il manque) ; les fichiers existants sont écrasés, relancez donc la commande après une mise à jour de l'outil. Un script commence alors par `/// <reference path="./.orkeon/orkeon.d.ts" />`, chemin relatif au script. Hors ligne. Codes de sortie : `0` écrit, `1` un argument inconnu ou `--out` sans dossier.
+
+## `orkeon mcp`
+
+```bash
+orkeon mcp serve [--settings <fichier>] [--tools a,b,…]
+```
+
+**`orkeon mcp serve`** sert les outils d'un hôte Orkeon à un client MCP sur stdio — comme Claude Desktop ou un éditeur démarre un serveur MCP local : le client lance la commande, écrit des messages JSON-RPC sur son stdin, un par ligne, et lit les réponses sur son stdout ; fermer stdin arrête le serveur. L'hôte est celui que construit `orkeon run` — les réglages, résolus comme ceux d'`orkeon run` depuis le répertoire courant (`-s, --settings <chemin>` nomme le fichier), leurs montages, les outils intégrés et les serveurs MCP qu'ils déclarent —, et ce qui est servi est ce qu'imprime `orkeon run --list-tools` pour les mêmes réglages, `human_input` à part. `--tools a,b,…` ne sert que les outils nommés ; un nom que l'hôte n'a pas refuse le démarrage. Chaque `tools/call` franchit le point d'invocation des appels d'un agent de crew — garde, troncature, assainisseur de résultat, audit — sous l'appelant `mcp`. Stdout ne porte que le protocole : journaux, avertissements, `--help` et erreurs d'usage vont sur stderr. Codes de sortie : `0` le client a fermé le flux (ou `--help`), `1` une erreur d'usage, un réglage refusé ou un nom de `--tools` que l'hôte n'a pas, `2` une erreur inattendue. Une configuration client et le détail : [Intégration MCP](../architecture/mcp.md#servir-les-outils-avec-orkeon-mcp-serve).
 
 ## `orkeon doctor`
 
