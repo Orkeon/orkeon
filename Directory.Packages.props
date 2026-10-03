@@ -55,9 +55,9 @@
     <PackageVersion Include="System.Diagnostics.EventLog" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup Label="Microsoft.Extensions.AI">
-    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.10.1" />
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.10.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
     <!-- Microsoft Agent Framework (A-14 interop): the AIAgent abstraction Orkeon.Interop.AgentFramework bridges to. -->
     <PackageVersion Include="Microsoft.Agents.AI" Version="1.20.0" />
     <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.22.0" />
@@ -121,7 +121,7 @@
   </ItemGroup>
   <ItemGroup Label="Infrastructure">
     <PackageVersion Include="Npgsql" Version="10.0.3" />
-    <PackageVersion Include="StackExchange.Redis" Version="3.3.0" />
+    <PackageVersion Include="StackExchange.Redis" Version="3.3.1" />
     <PackageVersion Include="HtmlAgilityPack" Version="1.13.0" />
     <!-- R1.4: AngleSharp (MIT) replaces Fizzler.Systems.HtmlAgilityPack (LGPL-3.0)
          as the CSS selector engine of ScrapeElementTool. -->
@@ -138,15 +138,15 @@
     <!-- MAIL: the e-mail tool family (Orkeon.Tools.Email). Both are referenced directly:
          central management pins no transitive version, so MimeKit's own pin only takes
          effect through a direct reference (MailKit alone would resolve its minimum). -->
-    <PackageVersion Include="MailKit" Version="4.18.0" />
+    <PackageVersion Include="MailKit" Version="4.18.1" />
     <PackageVersion Include="MimeKit" Version="4.18.1" />
   </ItemGroup>
   <ItemGroup Label="OpenTelemetry">
-    <PackageVersion Include="OpenTelemetry" Version="1.19.0" />
-    <PackageVersion Include="OpenTelemetry.Api" Version="1.19.0" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.19.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.19.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.0" />
+    <PackageVersion Include="OpenTelemetry" Version="1.19.1" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.19.1" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.19.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.0" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.12" />
@@ -175,7 +175,7 @@
     <PackageVersion Include="Terminal.Gui" Version="2.5.0" />
   </ItemGroup>
   <ItemGroup Label="Scripting">
-    <PackageVersion Include="Jint" Version="4.16.3" />
+    <PackageVersion Include="Jint" Version="4.16.4" />
   </ItemGroup>
   <ItemGroup Label="Roslyn">
     <!-- The compiler the build RUNS, pinned to the same 5.9.0 as the Roslyn packages
