@@ -69,7 +69,7 @@ tasks:
     context: {key: value} # Données additionnelles de contexte
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement — sans jamais les remplacer
     guardrails:           # Guardrails au niveau tâche (optionnel) — même forme qu'au niveau agent
-      preset: string      # "analysis" | "strict" | "creative"
+      preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement
       header: string
       rules: [string]
       toolRules:
@@ -125,7 +125,8 @@ Le `tools:` d'une tâche s'ajoute aux outils de son agent pour cette tâche seul
 Les guardrails peuvent être déclarés sur un agent (toutes ses tâches) et/ou sur une tâche
 (cette tâche seulement). Quand les deux existent, les deux s'appliquent — les règles de
 l'agent d'abord, puis celles de la tâche — injectées dans le prompt système de l'agent
-exécutant. Voir [Schéma YAML — Configuration Guardrails](../architecture/yaml-schema.md#configuration-guardrails).
+exécutant. Un `preset` autre que `analysis`, `strict` ou `creative` fait échouer le chargement, en
+nommant l'agent ou la tâche. Voir [Schéma YAML — Configuration Guardrails](../architecture/yaml-schema.md#configuration-guardrails).
 
 Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire configure le moteur de graphe d'état :
 

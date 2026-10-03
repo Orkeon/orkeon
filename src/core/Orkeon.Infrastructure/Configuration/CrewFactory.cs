@@ -279,6 +279,20 @@ public partial class CrewFactory : ICrewFactory
                     ? attachment with { Profile = defaultKnowledgeProfile }
                     : attachment);
             }
+            // The agent's guardrails, rendered before its task's in every prompt. They stopped here
+            // until GAP-42: mapped from YAML onto the configuration and never set on the agent, so
+            // the model read the task's guardrails alone.
+            if (agentConfig.Guardrails is not null)
+                builder.WithGuardrails(agentConfig.Guardrails);
+            // The templates no YAML key writes, which a host sets on a configuration built or
+            // adjusted in code (config with { … }): lost here without a word until GAP-42.
+            // PromptTemplate reaches an attribute nothing reads (GAP-43).
+            if (agentConfig.SystemTemplate is not null)
+                builder.SystemTemplate(agentConfig.SystemTemplate);
+            if (agentConfig.PromptTemplate is not null)
+                builder.PromptTemplate(agentConfig.PromptTemplate);
+            if (agentConfig.ResponseTemplate is not null)
+                builder.ResponseTemplate(agentConfig.ResponseTemplate);
 
             var agent = builder.Build();
 

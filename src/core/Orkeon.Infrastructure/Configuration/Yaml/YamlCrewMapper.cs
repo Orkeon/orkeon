@@ -4,6 +4,7 @@ using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
+using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Configuration;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.EventHub;
@@ -146,7 +147,7 @@ public sealed partial class YamlCrewMapper
                         Cache = MapCache(effectiveLlm.Cache),
                     }
                     : null,
-                Guardrails = MapGuardrails(kvp.Value.Guardrails),
+                Guardrails = MapGuardrails($"Agent '{kvp.Key}'", kvp.Value.Guardrails),
                 KnowledgeAttachments = MapKnowledge(kvp.Key, kvp.Value.Knowledge),
             });
         }
@@ -206,7 +207,7 @@ public sealed partial class YamlCrewMapper
                 Context = kvp.Value.Context ?? [],
                 Deliverable = MapDeliverable(kvp.Value.Deliverable),
                 LlmOverride = MapTaskLlmOverride(kvp.Value.LlmOverride),
-                Guardrails = MapGuardrails(kvp.Value.Guardrails),
+                Guardrails = MapGuardrails($"Task '{kvp.Key}'", kvp.Value.Guardrails),
             });
         }
 
@@ -682,17 +683,31 @@ public sealed partial class YamlCrewMapper
         Message = "Agent '{AgentKey}': knowledge field '{Field}' value '{RawValue}' is not numeric — field ignored.")]
     private partial void LogKnowledgeFieldNotNumeric(string agentKey, string field, string rawValue);
 
+    /// <summary>The presets a guardrails block may name, as a refusal lists them.</summary>
+    private const string KnownGuardrailPresets =
+        $"{GuardrailDefaults.PresetAnalysis}, {GuardrailDefaults.PresetStrict}, {GuardrailDefaults.PresetCreative}";
+
     /// <summary>
     /// Maps a YAML guardrails section to a <see cref="GuardrailsConfig"/> domain model.
     /// Supports preset resolution, custom rules, and tool-specific clauses — or any combination.
+    /// A preset the domain does not know fails the load, naming the agent or the task by its key and
+    /// the known presets (GAP-42): a typo used to drop the preset's rules without a word, safety rules
+    /// included. A blank preset is no preset.
     /// </summary>
-    private static GuardrailsConfig? MapGuardrails(GuardrailsYamlConfig? yaml)
+    /// <param name="owner">Who declares the block, as a message names it: <c>Agent 'researcher'</c>.</param>
+    /// <param name="yaml">The block, or null when absent.</param>
+    private static GuardrailsConfig? MapGuardrails(string owner, GuardrailsYamlConfig? yaml)
     {
         if (yaml == null)
             return null;
 
         // Start from preset if specified
         var baseConfig = GuardrailPresets.FromName(yaml.Preset);
+        if (baseConfig == null && !string.IsNullOrWhiteSpace(yaml.Preset))
+        {
+            throw new InvalidOperationException(
+                $"{owner}: unknown guardrails preset '{yaml.Preset.Trim()}'. Expected one of: {KnownGuardrailPresets}.");
+        }
 
         // Build custom rules from YAML
         var hasCustomRules = (yaml.Rules?.Count ?? 0) > 0 || (yaml.ToolRules?.Count ?? 0) > 0 || yaml.Header != null;
@@ -707,17 +722,42 @@ public sealed partial class YamlCrewMapper
         {
             Header = yaml.Header,
             Rules = yaml.Rules?.ToList() ?? [],
-            ToolRules = yaml.ToolRules?
-                .ToDictionary(
-                    kvp => kvp.Key,
-                    kvp => (IReadOnlyList<string>)kvp.Value.ToList(),
-                    StringComparer.OrdinalIgnoreCase)
-                ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+            ToolRules = MapToolRules(owner, yaml.ToolRules),
         };
 
         return baseConfig != null
             ? baseConfig.MergeWith(customConfig)
             : customConfig;
+    }
+
+    /// <summary>
+    /// The block's <c>toolRules</c>, keyed like the tools they gate: a tool name ignores case. A tool
+    /// written twice — <c>file_write</c> and <c>File_Write</c> — fails the load naming its spellings
+    /// (GAP-42), where it threw a raw <see cref="ArgumentException"/>; a tool written with no rules
+    /// adds none.
+    /// </summary>
+    private static Dictionary<string, IReadOnlyList<string>> MapToolRules(
+        string owner, Dictionary<string, List<string>>? yaml)
+    {
+        if (yaml == null)
+            return new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
+        var doubled = yaml.Keys
+            .GroupBy(tool => tool, StringComparer.OrdinalIgnoreCase)
+            .Where(spellings => spellings.Count() > 1)
+            .Select(spellings => string.Join(", ", spellings.Select(tool => $"'{tool}'")))
+            .ToList();
+        if (doubled.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"{owner}: guardrails toolRules names a tool under several keys — {string.Join("; ", doubled)}. " +
+                "A tool name ignores case: write each tool's rules under one key.");
+        }
+
+        return yaml.ToDictionary(
+            kvp => kvp.Key,
+            kvp => (IReadOnlyList<string>)(kvp.Value?.ToList() ?? []),
+            StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>

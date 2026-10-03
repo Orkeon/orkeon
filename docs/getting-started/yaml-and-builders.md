@@ -68,7 +68,7 @@ tasks:
     context: {key: value} # Additional context data
     tools: [string]       # Tools ADDED to the agent's own for this task only — never replacing them
     guardrails:           # Task-level guardrails (optional) — same shape as at agent level
-      preset: string      # "analysis" | "strict" | "creative"
+      preset: string      # "analysis" | "strict" | "creative" — any other name fails the load
       header: string
       rules: [string]
       toolRules:
@@ -121,7 +121,8 @@ A task's `tools:` add to its agent's own for that task only: a writer that holds
 
 Guardrails may be declared on an agent (all its tasks) and/or on a task (that task only). When both
 exist, both apply — agent rules first, then the task's — injected into the executing agent's system
-prompt. See [YAML schema — Guardrails configuration](../architecture/yaml-schema.md#guardrails-configuration).
+prompt. A `preset` other than `analysis`, `strict` or `creative` fails the load, naming the agent or the
+task. See [YAML schema — Guardrails configuration](../architecture/yaml-schema.md#guardrails-configuration).
 
 When `process: "graph"` is used, an additional `graphConfig` block configures the state graph engine:
 

@@ -85,10 +85,10 @@ agents:
         tools: bool       # default: false
         ttl: string       # p. ex. "1h" ; omis = défaut du fournisseur
     guardrails:           # Règles opérationnelles injectées dans le system prompt de l'agent (optionnel)
-      preset: string      # "analysis" | "strict" | "creative"
+      preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement
       header: string      # En-tête de section — utilisé seulement sans preset (chaque preset apporte le sien)
       rules: [string]     # Règles globales numérotées
-      toolRules:          # Règles rendues seulement quand l'agent possède l'outil
+      toolRules:          # Règles rendues seulement quand l'agent possède l'outil ; un nom d'outil ignore la casse, et un outil écrit sous deux clés fait échouer le chargement
         <tool_name>: [string]
     knowledge:            # Collections de connaissance (RAG) attachées à l'agent (optionnel)
       - string            # Forme courte : nom de collection avec options par défaut
@@ -124,7 +124,7 @@ tasks:
       top_p: float
       thinking: {enabled, effort, budget_tokens}
     guardrails:           # Guardrails au niveau tâche, même forme que le bloc agent (optionnel)
-      preset: string      # "analysis" | "strict" | "creative"
+      preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement
       header: string
       rules: [string]
       toolRules:
@@ -152,7 +152,9 @@ séparée. `preset` (`analysis` / `strict` / `creative`) fournit un socle de rè
 `rules`/`toolRules` explicites sont fusionnées par-dessus, et les `toolRules` d'un outil donné ne sont
 émises que si l'agent exécutant possède effectivement cet outil pour la tâche — ses propres outils
 plus le `tools:` de la tâche. Un en-tête de `preset` prime sur un
-`header` personnalisé.
+`header` personnalisé. Un `preset` autre que ces trois — une faute de frappe — fait échouer le
+chargement, en nommant l'agent ou la tâche par sa clé et les trois presets ; de même un outil écrit
+sous deux clés de `toolRules` (`file_write` et `File_Write`) : un nom d'outil ignore la casse.
 
 ## Configuration Knowledge & RAG
 

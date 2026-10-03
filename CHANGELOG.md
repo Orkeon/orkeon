@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a YAML agent's `guardrails:` reach its prompt, before its task's, and an unknown preset fails the load **[breaking]**
+
+The guardrails a YAML agent declares — a `preset`, `rules`, `toolRules` — were read onto the crew's
+configuration and never handed to the agent `CrewFactory` built (GAP-42): the system prompt carried
+its tasks' guardrails alone, for every crew loaded from YAML — `orkeon run` on a file or a directory,
+`orkeon-host`, the REPL — in every mode. Example `102-ts-codebase-documentation` ran without its
+rules against invented files.
+
+- **An agent's guardrails reach its prompt.** `CrewFactory` passes them to the agent, and the one
+  prompt composer renders them before the task's, as the documentation said: the preset's header and
+  rules, then the agent's own, then its tool rules for the tools it holds. A crew that declares agent
+  guardrails sees its prompts change — that is the fix.
+- **An unknown preset fails the load.** A `preset:` the domain does not know — `analysys` — gave no
+  guardrails at all, on an agent as on a task, or kept the block's own rules alone, without a word.
+  The load fails now, in one line naming the agent or the task by its key, the preset as written and
+  the three known ones (`analysis, strict, creative`). A blank preset is no preset.
+- **A tool written twice in `toolRules` fails the load.** `file_write` and `File_Write` name one
+  tool — a tool name ignores case — and the load threw a raw "An item with the same key has already
+  been added". It names the agent or the task and the tool's spellings now. A tool written without
+  rules adds none, where the load failed with a raw "Value cannot be null".
+- **The templates of a configuration built in code reach the agent.** `CrewFactory` passes an
+  `AgentConfiguration`'s `SystemTemplate`, `PromptTemplate` and `ResponseTemplate` to the agent it
+  builds: a host that built or adjusted a configuration in C# (`config with { … }`) lost them without
+  a word. No YAML key is added, and nothing reads `PromptTemplate` yet.
+
+Documented in [YAML schema](docs/architecture/yaml-schema.md#guardrails-configuration) and
+[YAML and builders](docs/getting-started/yaml-and-builders.md).
+
+Breaking: a guardrails `preset:` other than `analysis`, `strict` or `creative`, and a tool written
+under two keys of `toolRules`, no longer load; the system prompt of an agent that declares guardrails
+now carries them, before its task's.
+
+Migration: write `analysis`, `strict` or `creative` — or remove the preset; keep one key per tool in
+`toolRules`.
+
 ### Fixed — the third-party notices list every package the shipped binaries redistribute, generated from the restore and checked by CI
 
 `THIRD-PARTY-NOTICES.md` promised an entry for whatever the packages and the installers

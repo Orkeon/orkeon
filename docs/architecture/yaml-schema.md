@@ -84,10 +84,10 @@ agents:
         tools: bool       # default: false
         ttl: string       # e.g. "1h"; omitted = vendor default
     guardrails:           # Operational rules injected into the agent's system prompt (optional)
-      preset: string      # "analysis" | "strict" | "creative"
+      preset: string      # "analysis" | "strict" | "creative" — any other name fails the load
       header: string      # Section header — used only without a preset (every preset brings its own)
       rules: [string]     # Global numbered rules
-      toolRules:          # Rules rendered only when the agent has the tool
+      toolRules:          # Rules rendered only when the agent has the tool; a tool name ignores case, and one written under two keys fails the load
         <tool_name>: [string]
     knowledge:            # Knowledge (RAG) collections attached to the agent (optional)
       - string            # Short form: collection name with default options
@@ -123,7 +123,7 @@ tasks:
       top_p: float
       thinking: {enabled, effort, budget_tokens}
     guardrails:           # Task-level guardrails, same shape as the agent block (optional)
-      preset: string      # "analysis" | "strict" | "creative"
+      preset: string      # "analysis" | "strict" | "creative" — any other name fails the load
       header: string
       rules: [string]
       toolRules:
@@ -146,6 +146,9 @@ task). When both are present, **both apply — the agent's guardrails render fir
 separate section. `preset` (`analysis` / `strict` / `creative`) seeds a base set of rules; explicit
 `rules`/`toolRules` are merged on top, and `toolRules` for a given tool are only emitted when the
 executing agent actually holds that tool for the task — its own tools plus the task's `tools:`. A `preset` header takes precedence over a custom `header`.
+A `preset` other than these three — a typo — fails the load, naming the agent or the task by its key and
+the three presets; so does a tool written under two keys of `toolRules` (`file_write` and `File_Write`):
+a tool name ignores case.
 
 ## Knowledge & RAG configuration
 
