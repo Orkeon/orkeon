@@ -20,8 +20,14 @@ public enum ProviderBalanceStatus
     /// </summary>
     AdminKeyRequired,
 
-    /// <summary>The provider refused the key (401 or 403), or there was no key to present.</summary>
+    /// <summary>The provider refused the key: it answered 401 or 403.</summary>
     AuthenticationRefused,
+
+    /// <summary>
+    /// There was no key to present, so nothing was asked (STUDIO-54): the account's variable holds
+    /// none. Not a refusal — nobody refused anything; the key was never remembered.
+    /// </summary>
+    KeyMissing,
 
     /// <summary>
     /// The exchange failed: no answer, none within the probe's own deadline, or an error status

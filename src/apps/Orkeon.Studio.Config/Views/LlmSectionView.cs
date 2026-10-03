@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Orkeon.Studio.Config.Presentation;
 using Orkeon.Studio.Core.Llm;
+using Orkeon.Studio.Core.Presets;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using TerminalApp = Terminal.Gui.App.Application;
@@ -14,13 +15,16 @@ namespace Orkeon.Studio.Config.Views;
 /// recommendation to name the variable holding the key (<c>Llm:ApiKeyEnvVar</c>, STUDIO-49)
 /// instead of writing the key into the file.
 /// The "Test connection" button runs the optional connectivity probe of SPEC §4.2: it never
-/// blocks the screen, and its verdict changes nothing about what can be saved. Below, the
-/// named profiles of <c>Llm:Profiles</c> and the one the RAG calls, read-only (STUDIO-48).
+/// blocks the screen, and its verdict changes nothing about what can be saved. It presents the key
+/// a run presents, and refuses without a request an endpoint that needs one when none resolves
+/// (STUDIO-54). Below, the named profiles of <c>Llm:Profiles</c> and the one the RAG calls,
+/// read-only (STUDIO-48).
 /// </summary>
 internal sealed class LlmSectionView : SectionView
 {
     private readonly LlmForm _form;
     private readonly ILlmEndpointProbe _probe;
+    private readonly IEnvironmentVariables _environment;
     private readonly TextField _model;
     private readonly TextField _baseUrl;
     private readonly TextField _apiKey;
@@ -42,11 +46,13 @@ internal sealed class LlmSectionView : SectionView
     /// <summary>Builds the screen over <paramref name="form"/>.</summary>
     /// <param name="form">The section's values, as text.</param>
     /// <param name="probe">Runs the optional connectivity test.</param>
-    public LlmSectionView(LlmForm form, ILlmEndpointProbe probe)
+    /// <param name="environment">Where the test reads the key a run reads; the machine's environment by default.</param>
+    public LlmSectionView(LlmForm form, ILlmEndpointProbe probe, IEnvironmentVariables? environment = null)
         : base("LLM")
     {
         _form = form ?? throw new ArgumentNullException(nameof(form));
         _probe = probe ?? throw new ArgumentNullException(nameof(probe));
+        _environment = environment ?? SystemEnvironmentVariables.Instance;
 
         _model = FormLayout.AddField(this, 0, "Model", _form.Model);
         _baseUrl = FormLayout.AddField(this, 1, "Base URL", _form.BaseUrl);
@@ -137,28 +143,37 @@ internal sealed class LlmSectionView : SectionView
     /// <summary>
     /// Starts a probe of whatever is currently on screen and returns immediately: the screen
     /// stays usable while the endpoint is being reached, and a failure is a message, never a
-    /// reason to refuse anything else.
+    /// reason to refuse anything else. An endpoint that needs a key when none resolves is not
+    /// probed: a run would refuse it, and the line says so at once (STUDIO-54).
     /// </summary>
     internal Task TestConnection()
     {
         // The user may have typed a new endpoint without leaving the screen, so read the
         // widgets back into the form before deciding what to probe.
         Apply();
+        var request = _form.ToProbeRequest(_environment);
+        if (request.ApiKey is null && LlmPresets.NeedsApiKey(request.BaseUrl))
+        {
+            TestResult = LlmForm.KeyMissingLine;
+            _testResult.Text = TestResult;
+            return Task.CompletedTask;
+        }
+
         TestResult = "Testing the connection…";
         _testResult.Text = TestResult;
-        return TestConnectionAsync();
+        return TestConnectionAsync(request);
     }
 
     [SuppressMessage("Design", "CA1031",
         Justification = "Fault barrier around a network probe started from a button: an " +
                         "unexpected failure belongs in the result label, not in an unobserved " +
                         "task exception that would tear the UI down.")]
-    private async Task TestConnectionAsync()
+    private async Task TestConnectionAsync(LlmProbeRequest request)
     {
         string message;
         try
         {
-            var result = await _probe.ProbeAsync(_form.ToProbeRequest()).ConfigureAwait(false);
+            var result = await _probe.ProbeAsync(request).ConfigureAwait(false);
             message = result.Message;
         }
         catch (Exception ex)

@@ -9,11 +9,13 @@ namespace Orkeon.Studio.Core.Configuration;
 /// Typed view over <c>Llm:Profiles</c> (GAP-17): the named providers a crew picks with
 /// <c>llm: { profile: &lt;id&gt; }</c>, each of the <c>Llm</c> section's shape. Studio writes the
 /// entries its model settings own (STUDIO-48) — field by field, so a key it does not model
-/// (<c>MaxRetries</c>, <c>Grammar</c>) survives an edit — and never an <c>ApiKey</c>: an entry
-/// names the variable holding its key (<c>ApiKeyEnvVar</c>, STUDIO-49), which a run outside
-/// Studio reads, and a Studio launch lays the key itself as
-/// <c>ORKEON_Llm__Profiles__&lt;id&gt;__ApiKey</c>. Which entries Studio owns is
-/// <c>Orkeon.Studio.Core.Profiles.HostLlmProfiles</c>' business; this view only reads and writes.
+/// (<c>MaxRetries</c>, <c>Grammar</c>) survives an edit — and never a key: an entry names the
+/// variable holding its key (<c>ApiKeyEnvVar</c>, STUDIO-49), which a run outside Studio reads, and a
+/// Studio launch lays the key itself as <c>ORKEON_Llm__Profiles__&lt;id&gt;__ApiKey</c>. The one
+/// <c>ApiKey</c> Studio writes is no key: Docker Model Runner's placeholder <c>not-needed</c>, where
+/// none is set (<see cref="KeyAgrees(AppSettingsDocument, string, LlmProfileEntry)"/>, STUDIO-54).
+/// Which entries Studio owns is <c>Orkeon.Studio.Core.Profiles.HostLlmProfiles</c>' business; this
+/// view only reads and writes.
 /// <para>
 /// The configuration binder compares keys case-insensitively, so <see cref="Find"/> does too: two
 /// JSON properties spelt <c>claude</c> and <c>Claude</c> are one profile to the runtime, and a
@@ -66,9 +68,10 @@ public sealed class LlmProfilesSection
 
     /// <summary>
     /// Writes the entry's fields in place under its id: a field left null removes its key, every
-    /// key the entry does not model stays, and no <c>ApiKey</c> is ever written — the entry names
-    /// the variable holding it (<c>ApiKeyEnvVar</c>). A differently cased twin of the id is
-    /// renamed onto it first.
+    /// key the entry does not model stays, and no key is ever written — the entry names the variable
+    /// holding it (<c>ApiKeyEnvVar</c>); its <c>ApiKey</c> follows the placeholder rule
+    /// (<see cref="KeyAgrees(AppSettingsDocument, string, LlmProfileEntry)"/>). A differently cased
+    /// twin of the id is renamed onto it first.
     /// </summary>
     /// <returns>True when the document changed.</returns>
     public bool Set(LlmProfileEntry entry)
@@ -95,6 +98,44 @@ public sealed class LlmProfilesSection
         return !string.Equals(before, _document.GetNode(SectionPath)?.ToJsonString(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Whether the <c>ApiKey</c> of the entry answering to <paramref name="entry"/>'s id agrees with
+    /// it (<see cref="KeyAgrees(AppSettingsDocument, string, LlmProfileEntry)"/>); false when no entry
+    /// answers to it.
+    /// </summary>
+    /// <param name="entry">What the setting the entry mirrors writes (<c>ModelProfile.ToHostEntry</c>).</param>
+    public bool KeyAgrees(LlmProfileEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return Find(entry.Id) is { } key && KeyAgrees(_document, $"{SectionPath}:{key}", entry);
+    }
+
+    /// <summary>
+    /// The one rule that judges the <c>ApiKey</c> of a section of the <c>Llm</c> shape at
+    /// <paramref name="path"/> — an entry of <c>Llm:Profiles</c>, or <c>Llm</c> itself — against the
+    /// setting it mirrors (STUDIO-54). A Docker Model Runner setting's
+    /// (<see cref="LlmProfileEntry.ApiKeyPlaceholder"/>) agrees when the section holds a key — its
+    /// placeholder or any other: that server checks none —; any other setting's agrees when the
+    /// section does not hold that placeholder, which would pass before the variable the setting
+    /// names. A key written by hand is never Studio's to judge further. Writing an entry makes the
+    /// rule true, so a repair is never repeated. <see cref="ReadEntry"/> never reads the key: a
+    /// comparison of entries compares the other fields, and leaves the key to this rule.
+    /// </summary>
+    /// <param name="document">The settings file.</param>
+    /// <param name="path">The section's configuration path, as the document spells it.</param>
+    /// <param name="entry">What the setting writes.</param>
+    public static bool KeyAgrees(AppSettingsDocument document, string path, LlmProfileEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(entry);
+
+        var apiKey = document.GetString($"{path}:ApiKey");
+        return entry.ApiKeyPlaceholder is not null
+            ? !string.IsNullOrWhiteSpace(apiKey)
+            : !string.Equals(apiKey, LlmProviderDefaultModels.DockerModelRunnerApiKeyPlaceholder, StringComparison.Ordinal);
+    }
+
     /// <summary>The fields Studio models of the section of the <c>Llm</c> shape at <paramref name="path"/>.</summary>
     internal static LlmProfileEntry ReadEntry(AppSettingsDocument document, string path, string id) => new()
     {
@@ -112,8 +153,11 @@ public sealed class LlmProfilesSection
     /// <summary>
     /// Writes <paramref name="entry"/>'s fields into the section of the <c>Llm</c> shape at
     /// <paramref name="path"/>, one by one — a null field removes its key, a key the entry does
-    /// not model stays, an <c>ApiKey</c> is never written. Shared by a profile's entry and the
-    /// default section (the election, STUDIO-49), which have the same shape.
+    /// not model stays, a key is never written. The section's <c>ApiKey</c> is made to agree
+    /// (<see cref="KeyAgrees(AppSettingsDocument, string, LlmProfileEntry)"/>, STUDIO-54): a Docker
+    /// Model Runner setting writes its placeholder where no key is set, any other setting takes that
+    /// placeholder out, and every other <c>ApiKey</c> stays (STUDIO-49). Shared by a profile's entry
+    /// and the default section (the election), which have the same shape.
     /// </summary>
     internal static void WriteEntry(AppSettingsDocument document, string path, LlmProfileEntry entry)
     {
@@ -128,6 +172,11 @@ public sealed class LlmProfilesSection
         document.SetString($"{thinking}:Effort", entry.ThinkingEffort);
         if (document.GetNode(thinking) is JsonObject { Count: 0 })
             document.Remove(thinking);
+
+        // The placeholder where the server checks no key and the dialect wants one; out from under
+        // any other card, where it would pass before the variable the setting names.
+        if (!KeyAgrees(document, path, entry))
+            document.SetString($"{path}:ApiKey", entry.ApiKeyPlaceholder);
     }
 
     /// <summary>
@@ -177,7 +226,8 @@ public sealed class LlmProfilesSection
 /// <summary>
 /// One <c>Llm:Profiles</c> entry, as far as Studio models it: the fields a model setting pins,
 /// and the name of the variable holding its key. The key is not one of them — it never lives in
-/// the file.
+/// the file; a Docker Model Runner setting carries the placeholder its card writes in its place
+/// (<see cref="ApiKeyPlaceholder"/>).
 /// </summary>
 public sealed record LlmProfileEntry
 {
@@ -198,6 +248,15 @@ public sealed record LlmProfileEntry
     /// never the key — which a run outside Studio reads; null for a setting that needs no key.
     /// </summary>
     public string? ApiKeyEnvVar { get; init; }
+
+    /// <summary>
+    /// The placeholder key the setting's card writes where the section holds no <c>ApiKey</c> —
+    /// <c>not-needed</c> for Docker Model Runner, whose server checks no key while the run's OpenAI
+    /// dialect wants one; null for every other card (STUDIO-54). Derived from the card, never read
+    /// from the file: <see cref="LlmProfilesSection.KeyAgrees(AppSettingsDocument, string, LlmProfileEntry)"/>
+    /// judges the key a section holds.
+    /// </summary>
+    public string? ApiKeyPlaceholder { get; init; }
 
     /// <summary><c>Temperature</c>, when pinned.</summary>
     public double? Temperature { get; init; }

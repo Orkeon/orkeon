@@ -317,6 +317,31 @@ public sealed class ProviderBalanceTests
         Assert.Empty(rig.Opener.Opened);
     }
 
+    /// <summary>
+    /// STUDIO-54, decision 3: an account whose variable holds no key is not a refused key — nobody
+    /// refused anything. The bar and its line say the key is missing, quietly like a refusal, and
+    /// the bubble keeps the probe's own sentence; a real refusal (above) stays « key refused ».
+    /// </summary>
+    [Fact]
+    public async Task An_account_without_its_key_says_the_key_is_missing_never_refused()
+    {
+        var rig = new Rig();
+        rig.Keys.Saved.Remove(DeepSeekKeyVariable);
+        rig.Add(DeepSeek("Rapide"));
+        var bar = rig.Bar();
+
+        await bar.Balance.RefreshAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(Assert.Single(rig.Probe.Requests).ApiKey);
+        var entry = Assert.Single(bar.Balance.Items);
+        Assert.True(entry.IsFaint);
+        Assert.Equal("DeepSeek · key missing", entry.Text);
+        Assert.Contains("DeepSeek (Rapide) — key missing", entry.Line, StringComparison.Ordinal);
+        Assert.Contains(FakeProviderBalanceProbe.KeyMissingDetail, bar.Balance.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("key refused", bar.Balance.Detail, StringComparison.Ordinal);
+        Assert.StartsWith("key missing", rig.Profiles.Profiles.Single().BalanceTip, StringComparison.Ordinal);
+    }
+
     // ── the threshold (D-03) ──
 
     [Fact]

@@ -239,7 +239,10 @@ tab that names a provider is the profile named after it by the folder-name rule 
 its entry: every field the setting pins (`BaseUrl`, `Model`, `Temperature`, `TimeoutSeconds`,
 `MaxTokens`, `Thinking`) and the variable Studio remembers its key in (`ApiKeyEnvVar`, none for a
 setting that needs no key), never the key, and a key Studio does not model (`MaxRetries`,
-`Grammar`) stays where it is. A setting without a model (the echo card), or whose name keeps no
+`Grammar`) stays where it is. A Docker Model Runner setting writes `"ApiKey": "not-needed"` where
+its entry holds no key, as `orkeon init` does (STUDIO-54): the run reads that server as OpenAI,
+whose dialect refuses to call without a key, and the server checks none — a key already there
+stays. A setting without a model (the echo card), or whose name keeps no
 ASCII letter or digit, is offered to no crew; `default`, a name another setting already answers
 to, and a name that would take over an entry written by hand are refused.
 
@@ -252,14 +255,24 @@ to, and a name that would take over an entry written by hand are refused.
   saved nor on which settings file it reads.
 - **The default.** The elected setting is written into `Llm` whole — every field it pins and its
   `ApiKeyEnvVar`, a field it leaves unset removing its key; `ApiKey`, `MaxRetries`, `Grammar`,
-  `AvailableModels` and `Profiles` stay. A team launched on another setting lays all those fields
-  over its child as `ORKEON_Llm__*`, value or blank, `ORKEON_Llm__ApiKeyEnvVar` included: a team on
-  Z.AI whose key is not remembered fails without a key rather than send the default's DeepSeek key
-  to Z.AI. A team on the elected setting itself lays what it sets. `orkeon-studio-config` edits
+  `AvailableModels` and `Profiles` stay. Docker Model Runner's placeholder alone follows the card
+  (STUDIO-54): an elected Docker Model Runner setting writes `"ApiKey": "not-needed"` where `Llm`
+  holds no key, and electing any other card takes exactly that value out — left, it would pass
+  before the elected setting's `ApiKeyEnvVar`; the file `orkeon init --preset docker-model-runner`
+  wrote, then DeepSeek elected in Studio, included. Any other `ApiKey` stays. A team launched on
+  another setting lays all those fields over its child as `ORKEON_Llm__*`, value or blank,
+  `ORKEON_Llm__ApiKeyEnvVar` included: a team on Z.AI whose key is not remembered fails without a
+  key rather than send the default's DeepSeek key to Z.AI; a team on a Docker Model Runner setting
+  lays `ORKEON_Llm__ApiKey=not-needed`. A team on the elected setting itself lays what it sets. `orkeon-studio-config` edits
   `Llm` field by field; an election made in Studio afterwards rewrites the fields it owns.
 - **An older file heals at the next gesture.** An entry Studio owns without its reference, and an
   `Llm` without the elected setting's, are written again — the whole setting — at the next change
-  on the model settings (edit then save a setting), never at startup.
+  on the model settings (edit then save a setting), never at startup; so are an entry and an `Llm`
+  whose key their card disagrees with (STUDIO-54): a Docker Model Runner setting's without the
+  placeholder receives it, another card's with it loses it — once, since writing makes them agree.
+  A setting written before in another language, or whose provider the default blanked, finds its
+  card again as Studio reads `studio-model-profiles.json`, with that card's key variable, and the
+  card's name reaches the file at that same gesture.
 - **A scheduled team.** The launchers of a team Studio adopted carry the team's setting as
   `--llm-profile <id>` — its entry here —, so the run the operating system schedules takes it, as a
   launch from Studio does ([Studio](../architecture/studio.md#a-scheduled-team-runs-as-studio-launches-it-studio-50)).

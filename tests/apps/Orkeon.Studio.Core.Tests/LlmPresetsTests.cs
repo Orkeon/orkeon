@@ -1,7 +1,10 @@
 using System.Text.Json;
+using Orkeon.Constants.Llm;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Tests.Profiles;
 
 namespace Orkeon.Studio.Core.Tests;
@@ -239,5 +242,131 @@ public sealed class LlmPresetsTests
         LlmPresets.Apply(document, Plan(LlmPresets.Ollama));
 
         Assert.Equal("mine, hands off", document.GetString(LlmPresets.CommentKey));
+    }
+
+    // ── the card of a setting (STUDIO-54, decision 1) ───────────────────────
+
+    private const string UnknownEndpoint = "https://llm.example.com/v1";
+
+    private static ModelProfile Setting(string? provider, string? baseUrl = null, string? model = null) =>
+        new() { Name = "setting", Provider = provider, BaseUrl = baseUrl, Model = model };
+
+    [Theory]
+    [InlineData("deepseek")]
+    [InlineData("DEEPSEEK")]
+    [InlineData(" DeepSeek ")]
+    public void A_setting_names_its_card_whatever_the_case(string provider) =>
+        Assert.Equal(LlmPresets.DeepSeek, LlmPresets.CardOf(Setting(provider, LlmProviderEndpoints.OllamaDefault, "m")));
+
+    [Theory]
+    [InlineData("Z.AI (GLM)", LlmPresets.Zai)]
+    [InlineData("Docker Model Runner", LlmPresets.DockerModelRunner)]
+    [InlineData("Mammouth AI", LlmPresets.Mammouth)]
+    [InlineData("Other OpenAI-compatible", LlmPresets.Custom)]
+    [InlineData("None / offline", LlmPresets.None)]
+    public void A_setting_written_with_an_english_title_is_recognised_by_it_before_its_address(string title, string card) =>
+        Assert.Equal(card, LlmPresets.CardOf(Setting(title, LlmProviderEndpoints.OllamaDefault, "m")));
+
+    [Theory]
+    [InlineData("Autre compatible OpenAI")]
+    [InlineData("其他 OpenAI 兼容")]
+    [InlineData(null)]
+    [InlineData("")]
+    public void A_title_of_another_language_on_an_address_no_card_carries_is_the_compatible_openai_card(string? provider) =>
+        Assert.Equal(LlmPresets.Custom, LlmPresets.CardOf(Setting(provider, UnknownEndpoint, "qwen3")));
+
+    [Theory]
+    [InlineData("Aucun / hors ligne")]
+    [InlineData("无 / 离线")]
+    [InlineData(null)]
+    public void A_setting_without_an_address_nor_a_model_is_the_no_model_card(string? provider) =>
+        Assert.Equal(LlmPresets.None, LlmPresets.CardOf(Setting(provider)));
+
+    [Fact]
+    public void A_setting_with_a_model_and_no_address_is_the_compatible_openai_card()
+    {
+        // Not « no model »: it names one, and only the catch-all takes an endpoint typed by hand.
+        Assert.Equal(LlmPresets.Custom, LlmPresets.CardOf(Setting("Autre compatible OpenAI", model: "qwen3")));
+    }
+
+    [Theory]
+    [InlineData(LlmProviderEndpoints.Zai, LlmPresets.Zai)]
+    [InlineData(LlmProviderEndpoints.DeepSeek, LlmPresets.DeepSeek)]
+    [InlineData("http://localhost:11434", LlmPresets.Ollama)]
+    [InlineData(LlmProviderEndpoints.DockerModelRunner, LlmPresets.DockerModelRunner)]
+    // Azure OpenAI has no card by design: its per-resource endpoint is a « Compatible OpenAI » entry.
+    [InlineData("https://my-resource.openai.azure.com/openai/deployments/gpt", LlmPresets.Custom)]
+    [InlineData("not a url", LlmPresets.Custom)]
+    public void A_setting_whose_provider_was_blanked_is_recognised_by_its_address(string baseUrl, string card)
+    {
+        Assert.Equal(card, LlmPresets.CardOf(Setting("", baseUrl, "m")));
+        Assert.Equal(card, LlmPresets.CardOf(Setting(null, baseUrl, "m")));
+    }
+
+    [Fact]
+    public void Every_card_of_the_editor_is_recognised_by_its_name_and_by_its_english_title()
+    {
+        foreach (var card in LlmPresets.ProviderCatalogFor(EnglishStudioStrings.Instance))
+        {
+            Assert.Equal(card.Name, LlmPresets.CardOf(Setting(card.Name, UnknownEndpoint, "m")));
+            Assert.Equal(card.Name, LlmPresets.CardOf(Setting(card.Title, UnknownEndpoint, "m")));
+        }
+    }
+
+    [Fact]
+    public void A_card_is_titled_in_the_language_of_the_moment_and_an_unknown_name_is_shown_as_it_is()
+    {
+        var french = new FrenchTitles();
+
+        Assert.Equal("Other OpenAI-compatible", LlmPresets.TitleFor(LlmPresets.Custom, EnglishStudioStrings.Instance));
+        Assert.Equal("Autre compatible OpenAI", LlmPresets.TitleFor(LlmPresets.Custom, french));
+        Assert.Equal("Aucun / hors ligne", LlmPresets.TitleFor("NONE", french));
+        Assert.Equal("DeepSeek", LlmPresets.TitleFor(LlmPresets.DeepSeek, french));
+        Assert.Equal("azure-openai", LlmPresets.TitleFor("azure-openai", french));
+        Assert.Equal("", LlmPresets.TitleFor(null, french));
+    }
+
+    [Theory]
+    [InlineData(LlmProviderEndpoints.DeepSeek, true)]
+    [InlineData(LlmProviderEndpoints.OpenAI, true)]
+    [InlineData(UnknownEndpoint, true)]
+    // Docker Model Runner is read as OpenAI, which refuses to call without a key: it needs its placeholder.
+    [InlineData(LlmProviderEndpoints.DockerModelRunner, true)]
+    [InlineData(LlmProviderEndpoints.OllamaDefault, false)]
+    [InlineData("http://127.0.0.1:11434/v1", false)]
+    // Nothing a run could call: the probe says what it says.
+    [InlineData(null, false)]
+    [InlineData("  ", false)]
+    [InlineData("localhost:11434", false)]
+    [InlineData("not a url", false)]
+    public void Every_endpoint_but_ollama_needs_a_key_as_a_run_does(string? baseUrl, bool needsKey) =>
+        Assert.Equal(needsKey, LlmPresets.NeedsApiKey(baseUrl));
+
+    [Fact]
+    public void Only_the_docker_model_runner_card_writes_a_placeholder_key()
+    {
+        Assert.Equal("not-needed", LlmPresets.PlaceholderKeyOf(LlmPresets.DockerModelRunner));
+        Assert.Equal(LlmProviderDefaultModels.DockerModelRunnerApiKeyPlaceholder, LlmPresets.PlaceholderKeyOf(LlmPresets.DockerModelRunner));
+        Assert.Null(LlmPresets.PlaceholderKeyOf(LlmPresets.Ollama));
+        Assert.Null(LlmPresets.PlaceholderKeyOf(LlmPresets.Custom));
+        Assert.Null(LlmPresets.PlaceholderKeyOf(LlmPresets.DeepSeek));
+        Assert.Null(LlmPresets.PlaceholderKeyOf(null));
+    }
+
+    /// <summary>The English strings with the two card titles a language changes, in French.</summary>
+    private sealed class FrenchTitles : IStudioStrings
+    {
+        public string this[string key] => key switch
+        {
+            StudioStringKeys.PresetCustomTitle => "Autre compatible OpenAI",
+            StudioStringKeys.PresetNoneTitle => "Aucun / hors ligne",
+            _ => EnglishStudioStrings.Instance[key],
+        };
+
+        public event EventHandler? CultureChanged
+        {
+            add { }
+            remove { }
+        }
     }
 }

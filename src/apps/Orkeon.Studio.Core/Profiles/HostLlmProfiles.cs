@@ -46,7 +46,8 @@ public sealed record HostProfileCheck(HostProfileStatus Status, string? Id, stri
 /// Studio's model settings as the host's LLM profiles (STUDIO-48). Each setting that names a
 /// provider is the entry <c>Llm:Profiles:&lt;id&gt;</c> of the settings file — its id the name's
 /// slug —, written without the key: the entry names the variable holding it (<c>ApiKeyEnvVar</c>,
-/// STUDIO-49), which a run outside Studio reads, and a launch passes the key itself as
+/// STUDIO-49), which a run outside Studio reads — a Docker Model Runner setting carries its card's
+/// placeholder <c>not-needed</c> instead (STUDIO-54) —, and a launch passes the key itself as
 /// <c>ORKEON_Llm__Profiles__&lt;id&gt;__ApiKey</c>; so a crew that writes <c>profile: claude</c> runs
 /// on the « Claude » setting from Studio, and from a terminal <c>orkeon run</c> or a scheduled
 /// team reading the same file. The elected setting is the <c>Llm</c> section itself, written
@@ -196,8 +197,9 @@ public static class HostLlmProfiles
     /// settings from <paramref name="before"/> to <paramref name="after"/>: a renamed setting's
     /// entry moves, every key it carries with it; the entry of a setting no longer offered —
     /// removed, switched to « no model » — goes; and every offered setting the change touched, or
-    /// whose entry the file lacks or carries without the reference to its key's variable
-    /// (STUDIO-49), is written, without its key. <c>Orkeon:Rag:LlmProfile</c> follows a rename and
+    /// whose entry the file lacks, carries without the reference to its key's variable (STUDIO-49)
+    /// or with a key its card disagrees with (<see cref="LlmProfilesSection.KeyAgrees(LlmProfileEntry)"/>,
+    /// STUDIO-54), is written, without its key. <c>Orkeon:Rag:LlmProfile</c> follows a rename and
     /// falls back to the default when its profile goes: the host refuses to start on a profile it
     /// does not define. Entries written by hand are never touched.
     /// </summary>
@@ -243,13 +245,16 @@ public static class HostLlmProfiles
         {
             var profile = after.Find(name)!;
             var entry = profile.ToHostEntry(id);
-            // Untouched — and healed (STUDIO-49): an entry written before it named its key's
-            // variable is written again at the next gesture, never at startup.
+            // Untouched — and healed: an entry written before it named its key's variable
+            // (STUDIO-49), or whose key its card disagrees with — a Docker Model Runner entry
+            // without its placeholder, another one with it (STUDIO-54) —, is written again at the
+            // next gesture, never at startup.
             var untouched = before.Find(name) == profile
                 && was.TryGetValue(name, out var previousId)
                 && string.Equals(previousId, id, StringComparison.OrdinalIgnoreCase)
                 && section.Get(id) is { } written
-                && string.Equals(written.ApiKeyEnvVar, entry.ApiKeyEnvVar, StringComparison.Ordinal);
+                && string.Equals(written.ApiKeyEnvVar, entry.ApiKeyEnvVar, StringComparison.Ordinal)
+                && section.KeyAgrees(entry);
             if (!untouched)
                 changed |= section.Set(entry);
         }
@@ -262,7 +267,10 @@ public static class HostLlmProfiles
     /// every field it pins, a field it leaves unset removing its key, and the reference to its key's
     /// variable — so a run outside Studio follows the election with its timeout, its thinking
     /// switch and its key, as a host profile already did. The keys Studio does not model stay
-    /// (<see cref="LlmSection.Set"/>), a clear-text <c>ApiKey</c> among them: it is not Studio's.
+    /// (<see cref="LlmSection.Set"/>), a clear-text <c>ApiKey</c> among them: it is not Studio's. Docker
+    /// Model Runner's placeholder alone follows the card (STUDIO-54): an elected Docker Model Runner
+    /// setting writes it where no key is set, any other takes it out — the file
+    /// <c>orkeon init --preset docker-model-runner</c> wrote, then DeepSeek elected, included.
     /// </summary>
     /// <param name="document">The settings file being edited.</param>
     /// <param name="profile">The setting elected default.</param>
@@ -276,10 +284,12 @@ public static class HostLlmProfiles
 
     /// <summary>
     /// Heals the <c>Llm</c> section the election wrote before it named the key's variable
-    /// (STUDIO-49): when it lacks the reference the elected setting carries — or carries another —
-    /// it receives the elected setting whole, at the next gesture on the settings, never at
-    /// startup. Otherwise nothing is written: only the election and an edit of the elected
-    /// setting write the section, so a field edited by hand there stays.
+    /// (STUDIO-49), or whose key the elected setting's card disagrees with (STUDIO-54,
+    /// <see cref="LlmSection.KeyAgrees"/>): when it lacks the reference the elected setting carries —
+    /// or carries another —, or a Docker Model Runner setting's placeholder, or holds that placeholder
+    /// under another card, it receives the elected setting whole, at the next gesture on the
+    /// settings, never at startup. Otherwise nothing is written: only the election and an edit of the
+    /// elected setting write the section, so a field edited by hand there stays.
     /// </summary>
     /// <param name="document">The settings file being edited.</param>
     /// <param name="set">The settings, the elected one among them.</param>
@@ -292,17 +302,19 @@ public static class HostLlmProfiles
         if (set.Default is not { } profile)
             return false;
 
-        var expected = profile.ToHostEntry(LlmProfileNames.Default).ApiKeyEnvVar;
-        return !string.Equals(document.Llm.ApiKeyEnvVar, expected, StringComparison.Ordinal)
-            && ElectDefault(document, profile);
+        var expected = profile.ToHostEntry(LlmProfileNames.Default);
+        var healthy = string.Equals(document.Llm.ApiKeyEnvVar, expected.ApiKeyEnvVar, StringComparison.Ordinal)
+            && document.Llm.KeyAgrees(expected);
+        return !healthy && ElectDefault(document, profile);
     }
 
     /// <summary>
     /// The environment a launch lays over its child so that every setting offered to crews is the
     /// host profile it is in the file — endpoint, model, what it pins and its key, as
-    /// <c>ORKEON_Llm__Profiles__&lt;id&gt;__*</c>, the key resolved through <paramref name="keys"/>.
-    /// A launch from Studio thus never depends on the settings file having been saved, nor on
-    /// which settings file it reads; a setting whose key is not remembered rides without one.
+    /// <c>ORKEON_Llm__Profiles__&lt;id&gt;__*</c>, the key resolved through <paramref name="keys"/>, a
+    /// Docker Model Runner setting's placeholder otherwise (STUDIO-54). A launch from Studio thus
+    /// never depends on the settings file having been saved, nor on which settings file it reads; a
+    /// setting whose key is not remembered rides without one.
     /// </summary>
     /// <param name="set">The settings.</param>
     /// <param name="keys">Reads a key variable by name — the key store.</param>

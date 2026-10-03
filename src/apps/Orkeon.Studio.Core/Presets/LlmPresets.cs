@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Core.Profiles;
 
 namespace Orkeon.Studio.Core.Presets;
 
@@ -330,6 +331,12 @@ public static class LlmPresets
     }
 
     /// <summary>
+    /// The editor's catalogue in English, built once: the names and the English titles
+    /// <see cref="CardOf"/> recognises.
+    /// </summary>
+    private static readonly IReadOnlyList<LlmPresetInfo> EnglishCards = ProviderCatalogFor(EnglishStudioStrings.Instance);
+
+    /// <summary>
     /// The key console of the provider behind <paramref name="baseUrl"/>, as a link: the
     /// <see cref="LlmPresetInfo.KeyConsoleUri"/> of its card in <see cref="ProviderCatalogFor"/>.
     /// Null when no card matches the endpoint, when the card names no console, or when the
@@ -355,6 +362,88 @@ public static class LlmPresets
 
         return console;
     }
+
+    /// <summary>
+    /// The card a model setting is on (STUDIO-54): its stable name in
+    /// <see cref="ProviderCatalogFor"/> — <c>deepseek</c>, <c>custom</c>, <c>none</c> —, never a title,
+    /// which the language of the moment changes. A setting keeps that name
+    /// (<see cref="ModelProfile.Provider"/>); any other value is recognised here, in this order: a
+    /// card's name, whatever its case; a card's English title — sixteen of the eighteen are brand
+    /// names, the same in every language —; the endpoint, through <see cref="LlmProviderDetector"/>.
+    /// An endpoint no card carries — Azure OpenAI's among them — is « Other OpenAI-compatible », and
+    /// neither an endpoint nor a model is « no model ». A setting therefore always has a card: one
+    /// written in another language, or whose provider was blanked, opens on the card its endpoint
+    /// says, with that card's key variable.
+    /// </summary>
+    /// <param name="profile">The setting, as the store holds it.</param>
+    public static string CardOf(ModelProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        if (profile.Provider?.Trim() is { Length: > 0 } label)
+        {
+            if (EnglishCards.FirstOrDefault(card => string.Equals(card.Name, label, StringComparison.OrdinalIgnoreCase)) is { } named)
+                return named.Name;
+            if (EnglishCards.FirstOrDefault(card => string.Equals(card.Title, label, StringComparison.OrdinalIgnoreCase)) is { } titled)
+                return titled.Name;
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.BaseUrl))
+            return string.IsNullOrWhiteSpace(profile.Model) ? None : Custom;
+
+        var detected = LlmProviderDetector.Detect(profile.BaseUrl);
+        return EnglishCards.Any(card => string.Equals(card.Name, detected, StringComparison.Ordinal)) ? detected : Custom;
+    }
+
+    /// <summary>
+    /// The title of the card named <paramref name="card"/> in the language of
+    /// <paramref name="strings"/> — what the profile list, the creation assistant and the status bar
+    /// show for a setting, said again when the language switches (STUDIO-54) —, or
+    /// <paramref name="card"/> as it is when no card bears that name (a provider key such as
+    /// <c>azure-openai</c>); empty for none.
+    /// </summary>
+    /// <param name="card">A card's name, compared without case.</param>
+    /// <param name="strings">The interface's language.</param>
+    public static string TitleFor(string? card, IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        if (card?.Trim() is not { Length: > 0 } name)
+            return card ?? "";
+
+        return ProviderCatalogFor(strings)
+            .FirstOrDefault(info => string.Equals(info.Name, name, StringComparison.OrdinalIgnoreCase))?.Title
+            ?? card;
+    }
+
+    /// <summary>
+    /// Whether a run on <paramref name="baseUrl"/> needs an API key (STUDIO-54): on every endpoint but
+    /// Ollama's, as the runtime decides — Ollama's provider alone calls without a key, and every other
+    /// answers « API key is required » without one, a local Docker Model Runner included (read as
+    /// OpenAI: its card writes a placeholder, <see cref="PlaceholderKeyOf"/>). False for no endpoint, or
+    /// one that is no absolute http(s) URL: there is nothing a run could call, and a probe of it says why.
+    /// </summary>
+    /// <param name="baseUrl">The <c>BaseUrl</c> field, as typed.</param>
+    [SuppressMessage("Design", "CA1054",
+        Justification = "The input is the raw 'Llm:BaseUrl' field, which may be half-typed; an endpoint that " +
+                        "does not parse is one a run cannot call, which this answer must say rather than throw.")]
+    public static bool NeedsApiKey(string? baseUrl) =>
+        Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var endpoint)
+        && (endpoint.Scheme == Uri.UriSchemeHttp || endpoint.Scheme == Uri.UriSchemeHttps)
+        && !string.Equals(LlmProviderDetector.Detect(baseUrl), Ollama, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The placeholder key a setting on the card named <paramref name="card"/> carries where it holds
+    /// no key (STUDIO-54): <see cref="DockerModelRunnerApiKeyPlaceholder"/> for Docker Model Runner —
+    /// its server checks no key, but a run reads it as OpenAI, whose dialect refuses to call without
+    /// one; <c>orkeon init</c> and the TUI write the same —, null for every other card, Ollama's
+    /// included: its provider needs no key. Derived from the card, never stored with the setting.
+    /// </summary>
+    /// <param name="card">A card's name (<see cref="CardOf"/>).</param>
+    public static string? PlaceholderKeyOf(string? card) =>
+        string.Equals(card?.Trim(), DockerModelRunner, StringComparison.OrdinalIgnoreCase)
+            ? DockerModelRunnerApiKeyPlaceholder
+            : null;
 
     /// <summary>Returns the catalog entry of a preset, or <see langword="null"/> when unknown.</summary>
     public static LlmPresetInfo? Describe(string? preset) =>

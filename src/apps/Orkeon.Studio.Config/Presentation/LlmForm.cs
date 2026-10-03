@@ -72,20 +72,42 @@ internal sealed class LlmForm : ISettingsForm
         : string.Create(CultureInfo.InvariantCulture, $"Document search (RAG) answers on profile: {RagLlmProfile}");
 
     /// <summary>
-    /// The connectivity probe for what the fields currently hold (SPEC §4.2). The key follows
-    /// <see cref="LlmApiKeyResolver"/>, as a run reads it: a user who took the standing advice and
-    /// left the key in the environment — <c>ORKEON_Llm__ApiKey</c>, or the variable
-    /// <see cref="ApiKeyEnvVar"/> names — must still be able to test the connection.
+    /// The connectivity probe for what the fields currently hold (SPEC §4.2). The key is the one a
+    /// run presents, in the run's order (<see cref="LlmApiKeyResolver"/>, STUDIO-54):
+    /// <c>ORKEON_Llm__ApiKey</c> first — the environment wins over this file —, then the key typed
+    /// here, then <c>Llm__ApiKey</c>, and only then the variable <see cref="ApiKeyEnvVar"/> names. A
+    /// user who took the standing advice and left the key in the environment can test the
+    /// connection, and a key typed here that the environment overrides is not the one tested.
     /// </summary>
     /// <param name="environment">
-    /// Reads an environment variable by name; defaults to the process environment.
+    /// Reads an environment variable by name, in the process alone; defaults to the machine's
+    /// environment, the user scope included.
     /// </param>
     /// <remarks>
     /// Like Studio's profile editor (STUDIO-43), the probe then runs a minimal completion on the
     /// typed model with the typed thinking switch, under 30 s or the typed timeout when shorter.
     /// A field that does not parse is left out: the validator reports it, the probe does not.
     /// </remarks>
-    public LlmProbeRequest ToProbeRequest(Func<string, string?>? environment = null)
+    public LlmProbeRequest ToProbeRequest(Func<string, string?>? environment = null) =>
+        Request(environment is null
+            ? LlmApiKeyResolver.Resolve(ApiKey, FieldText.ToStringOrNull(ApiKeyEnvVar))
+            : LlmApiKeyResolver.Resolve(ApiKey, FieldText.ToStringOrNull(ApiKeyEnvVar), environment));
+
+    /// <summary>The same probe, its key read in <paramref name="environment"/>'s process block and user scope.</summary>
+    /// <param name="environment">The process environment and the user scope.</param>
+    public LlmProbeRequest ToProbeRequest(IEnvironmentVariables environment) =>
+        Request(LlmApiKeyResolver.Resolve(ApiKey, FieldText.ToStringOrNull(ApiKeyEnvVar), environment));
+
+    /// <summary>
+    /// What the screen says, without a request, when the endpoint needs a key and none resolves
+    /// (STUDIO-54): a run refuses every endpoint but Ollama's without one. The TUI remembers no
+    /// key: the remedy names the variable, or the one the runtime reads.
+    /// </summary>
+    public static string KeyMissingLine { get; } = string.Create(
+        CultureInfo.InvariantCulture,
+        $"API key missing — name the variable that holds it (API key variable), or set {LlmPresets.DefaultApiKeyEnv}.");
+
+    private LlmProbeRequest Request(string? apiKey)
     {
         FieldText.TryReadBoolean(ThinkingEnabled, "Thinking:Enabled", out var thinking, out _);
         FieldText.TryReadInt32(TimeoutSeconds, "TimeoutSeconds", out var timeout, out _);
@@ -93,9 +115,7 @@ internal sealed class LlmForm : ISettingsForm
         return new LlmProbeRequest
         {
             BaseUrl = FieldText.ToStringOrNull(BaseUrl),
-            ApiKey = environment is null
-                ? LlmApiKeyResolver.Resolve(ApiKey, FieldText.ToStringOrNull(ApiKeyEnvVar))
-                : LlmApiKeyResolver.Resolve(ApiKey, FieldText.ToStringOrNull(ApiKeyEnvVar), environment),
+            ApiKey = apiKey,
             Model = FieldText.ToStringOrNull(Model),
             ThinkingEnabled = thinking,
             CheckCompletion = true,

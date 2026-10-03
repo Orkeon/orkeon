@@ -138,6 +138,50 @@ take the new form at the next change of its setting or its folders, or at the ne
 `TeamLaunchers.Regenerate` returns `TeamLaunchersResult` — read its `Outcome`; `ForgePromoter.LauncherHeader`
 is `TeamLauncherScript.Header`.
 
+### Fixed — Studio keeps a setting's key and presents it as the run reads it: its card recognised in every language, the run's order in the TUI, a missing key said missing, Docker Model Runner's placeholder key
+
+A model setting created on « Other OpenAI-compatible » or « None / offline » opened without a card
+once the interface switched language: the editor recognised a card by its title, translated. Saved
+so, the setting lost the variable holding its key — in `studio-model-profiles.json` and in its
+`Llm:Profiles:<id>` entry —, and its runs, Studio's included, ran without a key. The
+`orkeon-studio-config` « Test » presented another key than a run, the status bar said « key refused »
+for a key never remembered, and a Docker Model Runner setting passed its « Test » and failed every
+run (STUDIO-54).
+
+- **A setting keeps its card's name.** `ModelProfile.Provider` holds the card's stable name
+  (`deepseek`, `custom`, `none`), never its title; the list, the creation assistant's step 4 and the
+  status bar show the title in the language of the moment, said again when it switches. A value that
+  is no card name — a title an older Studio wrote, in any language, a provider the default blanked, a
+  hand edit — is recognised as the store reads it (`LlmPresets.CardOf`: the name, then the English
+  title, then the endpoint; an endpoint no card carries is « Other OpenAI-compatible », neither
+  endpoint nor model « None / offline »): a setting always opens on a card, with that card's key
+  variable. The name reaches the file with the next gesture on the settings, never at startup.
+- **The TUI presents the run's key.** Its « Test » read the file's key before `ORKEON_Llm__ApiKey`;
+  a run does the reverse. It now follows the run's order — `ORKEON_Llm__ApiKey`, the file's
+  `ApiKey`, `Llm__ApiKey`, then the variable `Llm:ApiKeyEnvVar` names, process then user scope —, a
+  parity test holding it against the runtime's own reader. Without any key it refuses, at once and
+  without a request, every endpoint but Ollama's, as a run refuses it: « API key missing — name the
+  variable that holds it (API key variable), or set ORKEON_Llm__ApiKey ».
+- **A missing key is said missing.** The balance probe answers a new `ProviderBalanceStatus.KeyMissing`
+  for an account whose variable holds no key, without a request; « key refused » is a provider's 401
+  or 403 alone. The bar says « DeepSeek · key missing », quietly like a refusal, in the five
+  languages.
+- **Docker Model Runner gets its placeholder key.** The run reads that server as OpenAI, whose
+  dialect refuses to call without a key: `orkeon init` and the TUI write `"ApiKey": "not-needed"`,
+  Studio's card wrote nothing. A setting of that card now writes it in its entry, and in `Llm` when
+  elected — the one `ApiKey` Studio writes, where none is set —, lays it on its launches and presents
+  it to « Test »; electing another card takes exactly that value out of `Llm`, where it would pass
+  before the elected setting's `ApiKeyEnvVar`. One rule judges a section's key
+  (`LlmProfilesSection.KeyAgrees`), and an entry or an `Llm` that disagrees is written again at the
+  next gesture, once. The validator reports `not-needed` beside an `Llm:ApiKeyEnvVar` (a hand edit).
+  `DockerModelRunnerDefaults.DefaultModel` and `.ApiKeyPlaceholder` are aliases of the
+  `Orkeon.Constants.Llm` values Studio reads, as `BaseUrl` already was.
+
+Migration: a setting the default damaged finds its card again when Studio opens; if its key was in
+`ORKEON_Llm__ApiKey` (an « Other OpenAI-compatible » setting from before STUDIO-49), remember it again
+in the editor — the card keeps its key in `ORKEON_CUSTOM_LLM_API_KEY`. A Docker Model Runner setting
+runs at once from Studio, and outside Studio after the first gesture on the model settings.
+
 ### Fixed — the third-party notices list every package the shipped binaries redistribute, generated from the restore and checked by CI
 
 `THIRD-PARTY-NOTICES.md` promised an entry for whatever the packages and the installers

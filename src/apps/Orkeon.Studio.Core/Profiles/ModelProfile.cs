@@ -4,6 +4,8 @@ using System.Text.Json.Serialization;
 using Orkeon.Constants.Configuration;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Core.Presets;
 
 namespace Orkeon.Studio.Core.Profiles;
 
@@ -16,14 +18,24 @@ namespace Orkeon.Studio.Core.Profiles;
 /// profile <c>Llm:Profiles:&lt;<see cref="HostProfileId"/>&gt;</c> a crew picks per agent or per task
 /// (STUDIO-48, through <see cref="HostLlmProfiles"/>). The API key is deliberately absent: it
 /// stays in the environment, never in this file nor in the settings file, which names only the
-/// variable that holds it (<c>ApiKeyEnvVar</c>, STUDIO-49).
+/// variable that holds it (<c>ApiKeyEnvVar</c>, STUDIO-49). The one value written where a key goes
+/// is no key: the placeholder <c>not-needed</c> of a Docker Model Runner setting, derived from its
+/// card (<see cref="LlmPresets.PlaceholderKeyOf"/>, STUDIO-54).
 /// </summary>
 public sealed record ModelProfile
 {
     /// <summary>User-chosen display name — also the identity teams reference.</summary>
     public required string Name { get; init; }
 
-    /// <summary>Provider label, from the preset catalogue ("Ollama", "OpenAI", …).</summary>
+    /// <summary>
+    /// The setting's card: its stable name in the editor's catalogue (<c>ollama</c>, <c>deepseek</c>,
+    /// <c>custom</c>, <c>none</c> — <see cref="LlmPresetInfo.Name"/>), never its title, which the
+    /// language of the moment changes (STUDIO-54). The interface shows the card's title
+    /// (<see cref="LlmPresets.TitleFor"/>). A value that is no card name — a title an older Studio
+    /// wrote, in any language, a field the default blanked, a hand edit — is recognised by
+    /// <see cref="LlmPresets.CardOf"/> as the store reads it, and written as the name with the next
+    /// change of the settings.
+    /// </summary>
     public string? Provider { get; init; }
 
     /// <summary>Model identifier, as the endpoint expects it.</summary>
@@ -87,16 +99,16 @@ public sealed record ModelProfile
                         "a half-typed URL must be carried and re-shown, which System.Uri cannot do.")]
     public string? BaseUrl { get; init; }
 
-    /// <summary>One-line summary for cards and pickers: "Ollama · qwen2.5:14b".</summary>
-    [JsonIgnore]
-    public string Summary =>
-        (Provider, Model) switch
-        {
-            ({ Length: > 0 } provider, { Length: > 0 } model) => $"{provider} · {model}",
-            ({ Length: > 0 } provider, _) => provider,
-            (_, { Length: > 0 } model) => model,
-            _ => "",
-        };
+    /// <summary>
+    /// One-line summary for cards and pickers, in the language of <paramref name="strings"/>:
+    /// « Ollama · qwen2.5:14b » — the title of the setting's card (STUDIO-54), then its model.
+    /// </summary>
+    /// <param name="strings">The interface's language.</param>
+    public string Summary(IStudioStrings strings)
+    {
+        var card = LlmPresets.TitleFor(LlmPresets.CardOf(this), strings);
+        return Model is { Length: > 0 } model ? $"{card} · {model}" : card;
+    }
 
     /// <summary>
     /// The name a crew writes to run on this setting — <c>llm: { profile: &lt;id&gt; }</c> — and
@@ -123,7 +135,8 @@ public sealed record ModelProfile
     /// The <c>Llm:Profiles</c> entry this setting becomes under <paramref name="id"/> — and, elected,
     /// the <c>Llm</c> section itself (STUDIO-49): what it pins, as the <c>Llm</c> section spells it,
     /// and the variable holding its key (<c>ApiKeyEnvVar</c>) — never the key; no variable for a
-    /// setting that needs no key.
+    /// setting that needs no key, and the placeholder its card writes where the file holds no key —
+    /// Docker Model Runner's <c>not-needed</c> (STUDIO-54).
     /// </summary>
     public LlmProfileEntry ToHostEntry(string id)
     {
@@ -135,6 +148,7 @@ public sealed record ModelProfile
             BaseUrl = BaseUrl is { Length: > 0 } ? BaseUrl : null,
             Model = Model is { Length: > 0 } ? Model : null,
             ApiKeyEnvVar = string.IsNullOrWhiteSpace(KeyEnvName) ? null : KeyEnvName.Trim(),
+            ApiKeyPlaceholder = LlmPresets.PlaceholderKeyOf(LlmPresets.CardOf(this)),
             Temperature = Temperature,
             TimeoutSeconds = TimeoutSeconds is > 0 ? TimeoutSeconds : null,
             MaxTokens = MaxTokens is > 0 ? MaxTokens : null,
@@ -149,16 +163,17 @@ public sealed record ModelProfile
     /// which the CLI's host already binds. Every field Studio models is laid, its value or blank
     /// (STUDIO-49): a field this profile leaves unset must not fall through to the default's —
     /// above all its key and the variable that holds it, which belong to another endpoint. A
-    /// blank value reads as absent to the runtime.
+    /// blank value reads as absent to the runtime; a Docker Model Runner setting lays its
+    /// placeholder key instead (STUDIO-54).
     /// </summary>
     public IReadOnlyDictionary<string, string> EnvironmentOverrides() =>
         EnvironmentOverrides(static _ => null);
 
     /// <summary>
     /// Same overrides, <c>ORKEON_Llm__ApiKey</c> resolved from <see cref="KeyEnvName"/> through
-    /// <paramref name="environment"/> — blank when the profile names no key variable or the
-    /// variable holds no value. The key transits only into the child process environment —
-    /// never into a file.
+    /// <paramref name="environment"/> — else the placeholder of the setting's card
+    /// (<see cref="LlmPresets.PlaceholderKeyOf"/>), else blank. The key transits only into the child
+    /// process environment — never into a file.
     /// </summary>
     /// <param name="environment">Reads an environment variable by name.</param>
     public IReadOnlyDictionary<string, string> EnvironmentOverrides(Func<string, string?> environment)
@@ -178,8 +193,9 @@ public sealed record ModelProfile
     /// <summary>
     /// The same overrides for this setting as the host profile <paramref name="id"/>:
     /// <c>ORKEON_Llm__Profiles__&lt;id&gt;__*</c>, the key — <c>…__ApiKey</c> — resolved through
-    /// <paramref name="environment"/> (STUDIO-48). A launch lays them over its child so a crew
-    /// naming the profile runs on what the screen shows, whatever the settings file it reads.
+    /// <paramref name="environment"/> (STUDIO-48), else its card's placeholder (STUDIO-54). A launch
+    /// lays them over its child so a crew naming the profile runs on what the screen shows, whatever
+    /// the settings file it reads.
     /// </summary>
     /// <param name="id">The host profile id, <see cref="HostProfileId"/> as offered.</param>
     /// <param name="environment">Reads an environment variable by name.</param>
@@ -227,6 +243,12 @@ public sealed record ModelProfile
         {
             overrides[prefix + "ApiKey"] = key.Trim();
         }
+        else if (LlmPresets.PlaceholderKeyOf(LlmPresets.CardOf(this)) is { } placeholder)
+        {
+            // Docker Model Runner checks no key, but the run reads it as OpenAI, which wants one.
+            overrides[prefix + "ApiKey"] = placeholder;
+        }
+
         return overrides;
     }
 }

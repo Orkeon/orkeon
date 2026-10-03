@@ -1053,8 +1053,11 @@ public static class StudioStringKeys
     /// <summary>"readable with an admin key only"</summary>
     public const string BalanceAdminKey = "Studio.Shell.BalanceAdminKey";
 
-    /// <summary>"key refused" — a 401/403, or no key to present.</summary>
+    /// <summary>"key refused" — the provider answered 401 or 403.</summary>
     public const string BalanceKeyRefused = "Studio.Shell.BalanceKeyRefused";
+
+    /// <summary>"key missing" — no key to present, so nothing was asked (STUDIO-54).</summary>
+    public const string BalanceKeyMissing = "Studio.Shell.BalanceKeyMissing";
 
     /// <summary>"no answer" — the exchange failed or timed out.</summary>
     public const string BalanceNoAnswer = "Studio.Shell.BalanceNoAnswer";
@@ -2299,6 +2302,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.BalanceNotExposed] = "not exposed by the API",
         [StudioStringKeys.BalanceAdminKey] = "readable with an admin key only",
         [StudioStringKeys.BalanceKeyRefused] = "key refused",
+        [StudioStringKeys.BalanceKeyMissing] = "key missing",
         [StudioStringKeys.BalanceNoAnswer] = "no answer",
         [StudioStringKeys.BalanceUnexpected] = "unexpected answer",
         [StudioStringKeys.BalanceNoAccount] = "no account to ask",

@@ -84,8 +84,14 @@ public sealed class ConnectionTestKeyTests
         Assert.Equal("API key missing — remember it first", editor.ConnectionTestResult);
     }
 
+    /// <summary>
+    /// STUDIO-54, decision 4: the run reads Docker Model Runner as OpenAI, whose dialect refuses to
+    /// call without a key — its card's setting carries the placeholder <c>not-needed</c>, and the test
+    /// presents what the run presents: the placeholder, never a draft typed for another card nor the
+    /// default's key.
+    /// </summary>
     [Fact]
-    public async Task A_setting_that_needs_no_key_presents_none_not_even_a_draft_typed_for_another_card()
+    public async Task A_docker_model_runner_setting_presents_its_placeholder_never_a_draft_nor_the_defaults_key()
     {
         var keys = new FakeApiKeyStore();
         keys.Stage(LlmPresets.DefaultApiKeyEnv, DefaultsKey);
@@ -93,7 +99,7 @@ public sealed class ConnectionTestKeyTests
         var editor = Editor(keys, probe, new ModelProfile
         {
             Name = "Docker",
-            Provider = CardTitle(LlmPresets.DockerModelRunner),
+            Provider = LlmPresets.DockerModelRunner,
             Model = LlmPresets.DockerModelRunnerDefaultModel,
             BaseUrl = LlmPresets.DockerModelRunnerBaseUrl,
         });
@@ -103,6 +109,32 @@ public sealed class ConnectionTestKeyTests
             await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
             // A key pasted on a card that needs one, then a click on Docker Model Runner: the
             // draft stays in the hidden field, and is not this setting's.
+            editor.ApiKeyInput = "sk-typed-for-another-card";
+            await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
+        });
+
+        Assert.False(editor.RequiresApiKey);
+        Assert.Equal(2, probe.Requests.Count);
+        Assert.All(probe.Requests, request => Assert.Equal("not-needed", request.ApiKey));
+    }
+
+    [Fact]
+    public async Task An_ollama_setting_presents_no_key_not_even_a_draft_typed_for_another_card()
+    {
+        var keys = new FakeApiKeyStore();
+        keys.Stage(LlmPresets.DefaultApiKeyEnv, DefaultsKey);
+        var probe = new FakeLlmEndpointProbe();
+        var editor = Editor(keys, probe, new ModelProfile
+        {
+            Name = "Local",
+            Provider = CardTitle(LlmPresets.Ollama),
+            Model = "qwen3",
+            BaseUrl = LlmProviderEndpoints.OllamaDefault,
+        });
+
+        await WithTheDefaultsKeyInTheProcess(async () =>
+        {
+            await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
             editor.ApiKeyInput = "sk-typed-for-another-card";
             await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
         });

@@ -62,7 +62,8 @@ public sealed class LlmSection
     /// <summary>
     /// Inline API key (<c>Llm:ApiKey</c>) — discouraged: prefer <see cref="ApiKeyEnvVar"/>, which
     /// names the variable holding the key. A key here masks that reference: the runtime uses a key
-    /// the configuration resolves first.
+    /// the configuration resolves first. Docker Model Runner's placeholder <c>not-needed</c> is no
+    /// key: its server checks none, and the run's OpenAI dialect wants one.
     /// </summary>
     public string? ApiKey
     {
@@ -130,8 +131,11 @@ public sealed class LlmSection
     /// the election): every field <see cref="LlmProfileEntry"/> models, a null one removing its
     /// key, the reference to the key's variable included — so a run outside Studio follows the
     /// election, its timeout and its key included. The keys Studio does not model stay where they
-    /// are: <c>ApiKey</c>, <c>MaxRetries</c>, <c>Grammar</c>, <c>AvailableModels</c>,
-    /// <c>Profiles</c>. The entry's <see cref="LlmProfileEntry.Id"/> is not read.
+    /// are: <c>MaxRetries</c>, <c>Grammar</c>, <c>AvailableModels</c>, <c>Profiles</c>, and an
+    /// <c>ApiKey</c> — but Docker Model Runner's placeholder, which an elected Docker Model Runner
+    /// setting writes where no key is set and any other takes out (<see cref="KeyAgrees"/>,
+    /// STUDIO-54): left under another card, it would pass before the variable the elected setting
+    /// names. The entry's <see cref="LlmProfileEntry.Id"/> is not read.
     /// </summary>
     /// <param name="entry">What the elected setting pins.</param>
     /// <returns>True when the document changed.</returns>
@@ -145,6 +149,13 @@ public sealed class LlmSection
             _document.Remove(SectionPath);
         return !string.Equals(before, _document.GetNode(SectionPath)?.ToJsonString(), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Whether the section's <c>ApiKey</c> agrees with the elected <paramref name="entry"/>
+    /// (<see cref="LlmProfilesSection.KeyAgrees(AppSettingsDocument, string, LlmProfileEntry)"/>, STUDIO-54).
+    /// </summary>
+    /// <param name="entry">What the elected setting writes.</param>
+    public bool KeyAgrees(LlmProfileEntry entry) => LlmProfilesSection.KeyAgrees(_document, SectionPath, entry);
 
     /// <summary>
     /// Whether a JSON node holds a value as the configuration reads it: a scalar that is not blank,

@@ -19,22 +19,20 @@ internal static class BalanceText
     /// <summary>A threshold as the settings show it: no trailing zeros, no grouping.</summary>
     public static string Threshold(decimal threshold) => threshold.ToString("0.##########", CultureInfo.CurrentCulture);
 
-    /// <summary>The provider as the profile editor names it — its card's title — or its key when no card has it.</summary>
-    public static string ProviderTitle(string provider, IStudioStrings strings) =>
-        LlmPresets.ProviderCatalogFor(strings)
-            .FirstOrDefault(card => string.Equals(card.Name, provider, StringComparison.Ordinal))?.Title
-        ?? provider;
+    /// <summary>The provider as the profile editor names it — its card's title — or its key when no card has it (<see cref="LlmPresets.TitleFor"/>).</summary>
+    public static string ProviderTitle(string provider, IStudioStrings strings) => LlmPresets.TitleFor(provider, strings);
 
     /// <summary>Whether the reading's only way on is the vendor's console: a balance no inference key reads, and a console to read it in.</summary>
     public static bool OffersConsole(ProviderBalanceResult reading) =>
         reading is { Status: ProviderBalanceStatus.NotExposed or ProviderBalanceStatus.AdminKeyRequired, ConsoleUrl: not null };
 
-    /// <summary>A reading with no amount, in words: «key refused», «no answer», «not exposed by the API»…</summary>
+    /// <summary>A reading with no amount, in words: «key refused», «key missing», «no answer», «not exposed by the API»…</summary>
     public static string State(ProviderBalanceStatus status, IStudioStrings strings) => strings[status switch
     {
         ProviderBalanceStatus.NotExposed => StudioStringKeys.BalanceNotExposed,
         ProviderBalanceStatus.AdminKeyRequired => StudioStringKeys.BalanceAdminKey,
         ProviderBalanceStatus.AuthenticationRefused => StudioStringKeys.BalanceKeyRefused,
+        ProviderBalanceStatus.KeyMissing => StudioStringKeys.BalanceKeyMissing,
         ProviderBalanceStatus.NetworkError => StudioStringKeys.BalanceNoAnswer,
         ProviderBalanceStatus.UnexpectedAnswer => StudioStringKeys.BalanceUnexpected,
         _ => StudioStringKeys.BalanceNoAccount,

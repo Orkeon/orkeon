@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Profiles;
 
 namespace Orkeon.Studio.Core.Tests.Profiles;
@@ -137,7 +138,9 @@ public sealed class ModelProfileSetTests
             Assert.False(loaded.Failed);
             Assert.Equal("Local rapide", loaded.Set.DefaultProfile);
             Assert.Equal("Local rapide", loaded.Set.StudioProfile);
-            Assert.Equal("Ollama · qwen2.5:14b", loaded.Set.Profiles[0].Summary);
+            // STUDIO-54: the card is read by its name, and titled in the language of the moment.
+            Assert.Equal("ollama", loaded.Set.Profiles[0].Provider);
+            Assert.Equal("Ollama · qwen2.5:14b", loaded.Set.Profiles[0].Summary(EnglishStudioStrings.Instance));
 
             // The key never travels: the file names no secret, only the endpoint and the model.
             var raw = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
@@ -207,6 +210,46 @@ public sealed class ModelProfileSetTests
             var raw = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
             Assert.Contains("\"Profiles\"", raw, StringComparison.Ordinal);
             Assert.Contains("\"MaxTokens\"", raw, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-54, decision 1: a setting is its card's name, never a title of the interface. A file
+    /// written by a Studio in French holds the card's French title, which an English Studio used to
+    /// read as no card at all; the store recognises it — and a provider the default blanked — as it
+    /// reads, in memory: the next gesture on the settings writes the name, never the startup.
+    /// </summary>
+    [Fact]
+    public async Task A_file_written_in_another_language_is_read_as_its_card_names_without_being_written()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"orkeon-titles-{Guid.NewGuid():N}.json");
+        const string written = """
+            {
+              "Profiles": [
+                { "Name": "Boîte", "Provider": "Autre compatible OpenAI", "Model": "qwen3", "BaseUrl": "https://llm.example.com/v1", "KeyEnvName": "ORKEON_CUSTOM_LLM_API_KEY" },
+                { "Name": "Écho", "Provider": "Aucun / hors ligne" },
+                { "Name": "GLM", "Provider": "Z.AI (GLM)", "Model": "glm-5.2", "BaseUrl": "https://api.z.ai/api/paas/v4" },
+                { "Name": "Perdu", "Model": "deepseek-chat", "BaseUrl": "https://api.deepseek.com" }
+              ],
+              "DefaultProfile": "Boîte"
+            }
+            """;
+        try
+        {
+            await File.WriteAllTextAsync(path, written, TestContext.Current.CancellationToken);
+            var before = File.GetLastWriteTimeUtc(path);
+
+            var loaded = await new ModelProfileFileStore(path).LoadAsync(TestContext.Current.CancellationToken);
+
+            Assert.False(loaded.Failed);
+            Assert.Equal(["custom", "none", "zai", "deepseek"], loaded.Set.Profiles.Select(profile => profile.Provider));
+            Assert.Equal("ORKEON_CUSTOM_LLM_API_KEY", loaded.Set.Default?.KeyEnvName);
+            Assert.Equal(written, await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken));
+            Assert.Equal(before, File.GetLastWriteTimeUtc(path));
         }
         finally
         {

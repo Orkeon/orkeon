@@ -1,4 +1,6 @@
+using Orkeon.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Tests.Doubles;
 
@@ -43,6 +45,19 @@ public sealed class HostLlmProfilesTests
         BaseUrl = "http://localhost:11434",
         Model = "qwen3",
     };
+
+    private static ModelProfile Docker(string name = "Docker") => new()
+    {
+        Name = name,
+        Provider = LlmPresets.DockerModelRunner,
+        BaseUrl = LlmPresets.DockerModelRunnerBaseUrl,
+        Model = LlmPresets.DockerModelRunnerDefaultModel,
+    };
+
+    /// <summary>What <c>orkeon init --preset docker-model-runner</c> writes.</summary>
+    private const string InitDockerFile = """
+        { "Llm": { "Model": "ai/granite-4.0-h-tiny", "BaseUrl": "http://localhost:12434/engines/llama.cpp/v1", "ApiKey": "not-needed" } }
+        """;
 
     /// <summary>A settings file with a default, a profile written by hand and the RAG on none.</summary>
     private static AppSettingsDocument HandWrittenDocument() => AppSettingsDocument.Parse("""
@@ -457,6 +472,150 @@ public sealed class HostLlmProfilesTests
 
         Assert.Equal("Claude (副本 2)", name);
         Assert.Equal("claude-2", ModelProfile.HostProfileIdOf(name));
+    }
+
+    // ── Docker Model Runner (STUDIO-54, decision 4) ─────────────────────────
+
+    /// <summary>
+    /// The run reads Docker Model Runner as OpenAI, whose dialect refuses to call without a key: a
+    /// setting of that card carries the placeholder <c>orkeon init</c> and the TUI write, in its entry
+    /// and in <c>Llm</c> when it is elected — the one <c>ApiKey</c> Studio writes, and no reference.
+    /// </summary>
+    [Fact]
+    public void A_docker_model_runner_setting_writes_the_placeholder_key_in_its_entry_and_in_llm_when_elected()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        var set = ModelProfileSet.Empty.Upsert(Docker()).Upsert(DeepSeek());
+
+        HostLlmProfiles.Mirror(document, ModelProfileSet.Empty, set);
+        HostLlmProfiles.ElectDefault(document, set.Default!);
+
+        Assert.Equal("not-needed", document.GetString("Llm:Profiles:docker:ApiKey"));
+        Assert.Null(document.Llm.Profiles.Get("docker")?.ApiKeyEnvVar);
+        Assert.Equal("not-needed", document.Llm.ApiKey);
+        Assert.Null(document.Llm.ApiKeyEnvVar);
+        // The DeepSeek entry names its variable, and holds no key.
+        Assert.False(document.ContainsPath("Llm:Profiles:deepseek:ApiKey"));
+        KeyTripwire.AssertNamesNoKey(document.ToJson(), "DEEPSEEK_API_KEY");
+        Assert.True(document.Llm.Profiles.KeyAgrees(Docker().ToHostEntry("docker")));
+        Assert.True(document.Llm.KeyAgrees(Docker().ToHostEntry(LlmProfileNames.Default)));
+    }
+
+    [Fact]
+    public void Electing_another_card_takes_the_placeholder_out_of_llm_and_it_alone()
+    {
+        // The file `orkeon init --preset docker-model-runner` wrote, then DeepSeek elected in Studio:
+        // left, the placeholder would pass before the variable the elected setting names.
+        var document = AppSettingsDocument.Parse(InitDockerFile);
+
+        Assert.True(HostLlmProfiles.ElectDefault(document, DeepSeek()));
+
+        Assert.Null(document.Llm.ApiKey);
+        Assert.Equal("DEEPSEEK_API_KEY", document.Llm.ApiKeyEnvVar);
+        Assert.True(document.Llm.KeyAgrees(DeepSeek().ToHostEntry(LlmProfileNames.Default)));
+
+        // Any other key stays: it is not Studio's (the election test above keeps sk-written-by-hand).
+        document.Llm.ApiKey = "Not-Needed";
+        Assert.False(HostLlmProfiles.ElectDefault(document, DeepSeek()));
+        Assert.Equal("Not-Needed", document.Llm.ApiKey);
+    }
+
+    [Fact]
+    public void An_entry_of_another_card_carrying_the_placeholder_loses_it_at_the_next_gesture()
+    {
+        var (document, set) = TwoSettings();
+        document.SetString("Llm:Profiles:z-ai:ApiKey", "not-needed");
+        Assert.False(document.Llm.Profiles.KeyAgrees(Zai().ToHostEntry("z-ai")));
+
+        Assert.True(HostLlmProfiles.Mirror(document, set, set.WithStudio("DeepSeek")));
+
+        Assert.False(document.ContainsPath("Llm:Profiles:z-ai:ApiKey"));
+        Assert.Equal("ZAI_API_KEY", document.Llm.Profiles.Get("z-ai")?.ApiKeyEnvVar);
+    }
+
+    /// <summary>
+    /// A file Studio wrote before this lot names a Docker Model Runner setting without the
+    /// placeholder: the entry and the elected <c>Llm</c> receive it at the next gesture on the
+    /// settings, once — reading the file writes nothing, and a second gesture finds nothing to write.
+    /// </summary>
+    [Fact]
+    public void A_docker_model_runner_setting_written_before_receives_the_placeholder_at_the_next_gesture_once()
+    {
+        var set = ModelProfileSet.Empty.Upsert(Docker()).Upsert(DeepSeek());
+        var document = AppSettingsDocument.Parse("""
+            {
+              "Llm": {
+                "BaseUrl": "http://localhost:12434/engines/llama.cpp/v1", "Model": "ai/granite-4.0-h-tiny",
+                "Profiles": {
+                  "docker": { "BaseUrl": "http://localhost:12434/engines/llama.cpp/v1", "Model": "ai/granite-4.0-h-tiny" },
+                  "deepseek": { "BaseUrl": "https://api.deepseek.com", "Model": "deepseek-v4-flash", "ApiKeyEnvVar": "DEEPSEEK_API_KEY", "TimeoutSeconds": 600 }
+                }
+              }
+            }
+            """);
+        var before = document.ToJson();
+
+        // What reading does: the standing of each setting, the entries written by hand.
+        _ = HostLlmProfiles.Classify(set);
+        _ = HostLlmProfiles.HandWritten(document, set);
+        Assert.Equal(before, document.ToJson());
+        Assert.False(document.Llm.Profiles.KeyAgrees(Docker().ToHostEntry("docker")));
+        Assert.False(document.Llm.KeyAgrees(Docker().ToHostEntry(LlmProfileNames.Default)));
+
+        // A gesture on the settings (the assistant's election): the entry, and the elected default.
+        Assert.True(HostLlmProfiles.Mirror(document, set, set.WithStudio("DeepSeek")));
+        Assert.True(HostLlmProfiles.HealDefault(document, set));
+
+        Assert.Equal("not-needed", document.GetString("Llm:Profiles:docker:ApiKey"));
+        Assert.Equal("not-needed", document.Llm.ApiKey);
+        // Once: written, the rule holds, and the next gesture finds nothing to write.
+        Assert.False(HostLlmProfiles.Mirror(document, set, set.WithStudio("Docker")));
+        Assert.False(HostLlmProfiles.HealDefault(document, set));
+    }
+
+    [Fact]
+    public void A_key_the_user_wrote_on_a_docker_model_runner_setting_stays_without_repair()
+    {
+        // The server checks no key: whatever the user wrote serves as well as the placeholder.
+        var set = ModelProfileSet.Empty.Upsert(Docker());
+        var document = AppSettingsDocument.CreateEmpty();
+        HostLlmProfiles.Mirror(document, ModelProfileSet.Empty, set);
+        HostLlmProfiles.ElectDefault(document, set.Default!);
+        document.SetString("Llm:Profiles:docker:ApiKey", "my-own");
+        document.Llm.ApiKey = "my-own";
+
+        Assert.True(document.Llm.Profiles.KeyAgrees(Docker().ToHostEntry("docker")));
+        Assert.False(HostLlmProfiles.Mirror(document, set, set.WithStudio("Docker")));
+        Assert.False(HostLlmProfiles.HealDefault(document, set));
+        Assert.False(HostLlmProfiles.ElectDefault(document, set.Default!));
+
+        Assert.Equal("my-own", document.GetString("Llm:Profiles:docker:ApiKey"));
+        Assert.Equal("my-own", document.Llm.ApiKey);
+    }
+
+    [Fact]
+    public void A_launch_lays_the_placeholder_for_a_docker_model_runner_setting_and_nothing_for_ollama()
+    {
+        var set = ModelProfileSet.Empty.Upsert(Docker()).Upsert(Ollama());
+
+        var environment = HostLlmProfiles.LaunchEnvironment(set, new FakeApiKeyStore().Peek);
+
+        Assert.Equal("not-needed", environment["ORKEON_Llm__Profiles__docker__ApiKey"]);
+        Assert.False(environment.ContainsKey("ORKEON_Llm__Profiles__local__ApiKey"));
+        // In place of the default: the placeholder rather than the blank.
+        Assert.Equal("not-needed", Docker().EnvironmentOverrides()["ORKEON_Llm__ApiKey"]);
+        Assert.Equal("", Ollama().EnvironmentOverrides()["ORKEON_Llm__ApiKey"]);
+        Assert.Equal("", Docker().EnvironmentOverrides()["ORKEON_Llm__ApiKeyEnvVar"]);
+    }
+
+    [Fact]
+    public void A_docker_model_runner_setting_is_recognised_by_its_title_or_by_its_address()
+    {
+        // A setting written before STUDIO-54 holds its card's title — or nothing the default left.
+        Assert.Equal("not-needed", (Docker() with { Provider = "Docker Model Runner" }).ToHostEntry("docker").ApiKeyPlaceholder);
+        Assert.Equal("not-needed", (Docker() with { Provider = null }).ToHostEntry("docker").ApiKeyPlaceholder);
+        Assert.Null(Ollama().ToHostEntry("local").ApiKeyPlaceholder);
+        Assert.Null(DeepSeek().ToHostEntry("deepseek").ApiKeyPlaceholder);
     }
 
     /// <summary>

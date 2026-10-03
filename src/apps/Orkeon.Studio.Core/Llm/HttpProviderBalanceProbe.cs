@@ -157,7 +157,7 @@ public sealed class HttpProviderBalanceProbe : IProviderBalanceProbe, IDisposabl
 
         var apiKey = request.ApiKey?.Trim();
         if (string.IsNullOrEmpty(apiKey))
-            return BalanceReading.Of(ProviderBalanceStatus.AuthenticationRefused, "No API key is set, so there is no account to ask.");
+            return BalanceReading.Of(ProviderBalanceStatus.KeyMissing, "No API key is set, so there is no account to ask.");
 
         // The probe owns its deadline rather than the client's, so a shared HttpClient
         // (and the request timeout it carries) is none of this method's business.

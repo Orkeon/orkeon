@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
@@ -154,10 +155,11 @@ public sealed class StatusBarViewModel : ObservableObject
 
     /// <summary>
     /// «provider · model» of the default profile, what the next launch of a team on the default
-    /// runs on; null when no default is elected or it names neither.
+    /// runs on — the provider its card's title, in the interface's language (STUDIO-54); null when
+    /// no default is elected.
     /// </summary>
     public string? Profile => _profiles?.Set.Default is { } profile
-        ? StatusBarText.Join([profile.Provider, profile.Model], StatusBarText.Separator)
+        ? StatusBarText.Join([LlmPresets.TitleFor(LlmPresets.CardOf(profile), _strings), profile.Model], StatusBarText.Separator)
         : null;
 
     /// <summary>Names the default profile the provider and the model come from.</summary>

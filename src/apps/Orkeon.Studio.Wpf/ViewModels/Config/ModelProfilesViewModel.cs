@@ -67,16 +67,19 @@ public sealed class ModelProfileItemViewModel : ObservableObject
     /// <summary>Display name.</summary>
     public string Name => Profile.Name;
 
-    /// <summary>"Provider · model" one-liner.</summary>
-    public string Summary => Profile.Summary;
+    /// <summary>"Provider · model" one-liner — the card's title in the interface's language (STUDIO-54).</summary>
+    public string Summary => Profile.Summary(_strings);
 
     /// <summary>Endpoint, shown in expert mode only.</summary>
     [SuppressMessage("Design", "CA1056",
         Justification = "Presentation of the profile's endpoint text, shown verbatim in a mono label.")]
     public string? Endpoint => Profile.BaseUrl;
 
-    /// <summary>Provider label for the non-default badge.</summary>
-    public string Provider => Profile.Provider ?? "";
+    /// <summary>
+    /// The title of the setting's card for the non-default badge, in the interface's language: the
+    /// setting holds the card's name, never a title (STUDIO-54).
+    /// </summary>
+    public string Provider => LlmPresets.TitleFor(LlmPresets.CardOf(Profile), _strings);
 
     /// <summary>True for the elected default.</summary>
     public bool IsDefault { get; }
@@ -165,9 +168,10 @@ public sealed class ModelProfileItemViewModel : ObservableObject
     internal void RefreshBalance() =>
         OnPropertiesChanged(nameof(Balance), nameof(HasBalance), nameof(IsBalanceLow), nameof(BalanceTip));
 
-    /// <summary>The language switched: the host profile line and the key warning say it again.</summary>
-    internal void RefreshHostId() =>
-        OnPropertiesChanged(nameof(HostIdText), nameof(HasHostIdText), nameof(DefaultKeyVariableWarning));
+    /// <summary>The language switched: the card's title, the host profile line and the key warning say it again.</summary>
+    internal void RefreshTexts() =>
+        OnPropertiesChanged(
+            nameof(Summary), nameof(Provider), nameof(HostIdText), nameof(HasHostIdText), nameof(DefaultKeyVariableWarning));
 }
 
 /// <summary>
@@ -285,7 +289,10 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             new ThinkingChoice(true, strings[StudioStringKeys.ProfileThinkingOn]),
             new ThinkingChoice(false, strings[StudioStringKeys.ProfileThinkingOff]),
         ];
-        _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Title, profile.Provider, StringComparison.Ordinal));
+        // STUDIO-54: the card by its name — a title changes with the language —, recognised from
+        // whatever an older setting holds; a setting always has one.
+        var card = LlmPresets.CardOf(profile);
+        _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Name, card, StringComparison.Ordinal));
         // The id crews may already write: the one this setting was offered under when it opened.
         _originalHostId = previousName is null ? null : owner.OfferedHostId(previousName);
 
@@ -835,7 +842,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         _owner.CommitEdit(new ModelProfile
         {
             Name = _name.Trim(),
-            Provider = _selectedProvider?.Title,
+            Provider = _selectedProvider?.Name,
             Model = _model,
             BaseUrl = _baseUrl,
             Temperature = ParsedTemperature,
@@ -906,12 +913,13 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
     /// <summary>
     /// The key this setting presents to a probe (GAP-36): the one typed here, else the one
-    /// remembered under its variable — and nothing for a setting that needs none, not even a draft
-    /// typed for another card. Never the runtime's own variable in place of a missing key: that is
-    /// the default's key, which no run of another setting reads.
+    /// remembered under its variable — and, for a setting that needs none, its card's placeholder,
+    /// which a run presents too: Docker Model Runner's <c>not-needed</c>, nothing for Ollama
+    /// (STUDIO-54) —, never a draft typed for another card. Never the runtime's own variable in place
+    /// of a missing key: that is the default's key, which no run of another setting reads.
     /// </summary>
     private string? SettingKey =>
-        !RequiresApiKey ? null
+        !RequiresApiKey ? LlmPresets.PlaceholderKeyOf(_selectedProvider?.Name)
         : _apiKeyInput.Trim() is { Length: > 0 } typed ? typed
         : _keyStore.Peek(ApiKeyEnvName);
 
@@ -1292,7 +1300,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
             new ModelProfile
             {
                 Name = _strings[StudioStringKeys.ProfileNewName],
-                Provider = seed?.Title,
+                Provider = seed?.Name,
                 Model = seed?.DefaultModel,
                 BaseUrl = seed?.DefaultBaseUrl,
             },
@@ -1410,11 +1418,14 @@ public sealed class ModelProfilesViewModel : ObservableObject
         OnPropertiesChanged(nameof(HasHandWrittenProfiles), nameof(SelectedRagProfile));
     }
 
-    /// <summary>The language switched: the host profile lines and the default choice say it again.</summary>
+    /// <summary>
+    /// The language switched: the cards' titles (STUDIO-54), the host profile lines and the default
+    /// choice say it again.
+    /// </summary>
     private void RefreshHostTexts()
     {
         foreach (var row in Profiles)
-            row.RefreshHostId();
+            row.RefreshTexts();
         RebuildHostProfiles();
     }
 

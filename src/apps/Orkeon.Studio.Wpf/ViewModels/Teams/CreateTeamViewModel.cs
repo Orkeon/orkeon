@@ -523,6 +523,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _strings.CultureChanged += (_, _) => OnUseCaseLanguageChanged();
 
         Profiles.PropertyChanged += (_, e) => OnProfilesPropertyChanged(e.PropertyName);
+        _strings.CultureChanged += (_, _) => OnAdoptProfileLanguageChanged();
     }
 
     // ── what the constructor wired ──────────────────────────────────────────
@@ -744,6 +745,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         OnPropertiesChanged(nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint));
         ComposeCommand.RaiseCanExecuteChanged();
     }
+
+    /// <summary>The language switched: the step-4 card titles its setting's card in it (STUDIO-54).</summary>
+    private void OnAdoptProfileLanguageChanged() => OnPropertyChanged(nameof(AdoptProfileSummary));
 
     /// <summary>Raised when a session becomes active — the shell brings the screen forward.</summary>
     public event EventHandler? SessionActivated;
@@ -1988,7 +1992,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         }
     }
 
-    /// <summary>The selected profile's one-line origin, for the step-4 card (v3 W-07).</summary>
+    /// <summary>
+    /// The selected profile's one-line origin, for the step-4 card (v3 W-07): its card's title in the
+    /// interface's language, and its model (STUDIO-54).
+    /// </summary>
     public string AdoptProfileSummary =>
         Profiles.Profiles.FirstOrDefault(p => string.Equals(p.Name, AdoptProfileName, StringComparison.Ordinal))
             ?.Summary ?? "";

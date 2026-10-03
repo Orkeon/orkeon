@@ -276,6 +276,21 @@ public sealed class AppSettingsValidator
                 $"name the variable that holds the key in ApiKeyEnvVar, or set {LlmPresets.DefaultApiKeyEnv}.",
                 "Llm:ApiKey"));
         }
+
+        if (string.Equals(document.Llm.ApiKey, LlmPresets.DockerModelRunnerApiKeyPlaceholder, StringComparison.Ordinal)
+            && document.Llm.ApiKeyEnvVar is { Length: > 0 })
+        {
+            // STUDIO-54: alone, Docker Model Runner's placeholder is no key — its server checks none.
+            // Beside a reference — a file edited by hand: an election takes it out —, it masks the
+            // variable the reference names, and the run sends it in place of the key.
+            messages.Add(ValidationMessage.Information(
+                ValidationCodes.InlineApiKey,
+                $"The placeholder key '{LlmPresets.DockerModelRunnerApiKeyPlaceholder}' masks Llm:ApiKeyEnvVar: a key " +
+                "the configuration holds wins over the variable the reference names, so a run sends the " +
+                "placeholder in place of the key. Remove ApiKey — only a Docker Model Runner endpoint takes it, " +
+                "and that endpoint needs no variable.",
+                "Llm:ApiKey"));
+        }
     }
 
     private static void ValidateTypes(AppSettingsDocument document, List<ValidationMessage> messages)

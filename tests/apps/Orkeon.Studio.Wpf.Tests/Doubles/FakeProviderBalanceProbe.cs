@@ -16,8 +16,15 @@ public sealed class FakeProviderBalanceProbe : IProviderBalanceProbe
     /// <summary>Every request, in order.</summary>
     public List<LlmProbeRequest> Requests { get; } = [];
 
-    /// <summary>What a request is answered; by default 110 CNY available on the endpoint's provider.</summary>
-    public Func<LlmProbeRequest, ProviderBalanceResult> Answer { get; set; } = Available(110m, "CNY");
+    /// <summary>
+    /// What a request is answered; by default 110 CNY available on the endpoint's provider — or, as
+    /// the real probe answers a provider whose balance a key reads, the key missing when the request
+    /// carries none (STUDIO-54).
+    /// </summary>
+    public Func<LlmProbeRequest, ProviderBalanceResult> Answer { get; set; } = WithoutKeyMissing(Available(110m, "CNY"));
+
+    /// <summary>The detail the real probe gives a request without a key.</summary>
+    public const string KeyMissingDetail = "No API key is set, so there is no account to ask.";
 
     /// <summary>When set, no answer comes back until this is completed.</summary>
     public TaskCompletionSource? Gate { get; set; }
@@ -32,6 +39,12 @@ public sealed class FakeProviderBalanceProbe : IProviderBalanceProbe
     /// <summary>An answer with no amount — refused, not exposed, no answer…</summary>
     public static Func<LlmProbeRequest, ProviderBalanceResult> Without(ProviderBalanceStatus status, string detail) =>
         request => Result(request, status, detail);
+
+    /// <summary><paramref name="answer"/> for a request with a key; the key missing, without asking anyone, for one without.</summary>
+    public static Func<LlmProbeRequest, ProviderBalanceResult> WithoutKeyMissing(Func<LlmProbeRequest, ProviderBalanceResult> answer) =>
+        request => string.IsNullOrWhiteSpace(request.ApiKey)
+            ? Result(request, ProviderBalanceStatus.KeyMissing, KeyMissingDetail)
+            : answer(request);
 
     /// <inheritdoc />
     public async Task<ProviderBalanceResult> ProbeAsync(LlmProbeRequest request, CancellationToken cancellationToken = default)

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Storage;
 
 namespace Orkeon.Studio.Core.Profiles;
@@ -63,7 +64,10 @@ public sealed class InMemoryModelProfileStore : IModelProfileStore
 /// set <em>with its reason attached</em> — the profiles are Studio comfort state, not the
 /// source of truth for any run, but a file that fails to parse must not pass for an empty
 /// one (STUDIO-12 C6: a hand-written camelCase file used to load zero profiles, silently).
-/// Reads are case-insensitive on property names; writes stay PascalCase.
+/// Reads are case-insensitive on property names; writes stay PascalCase. Each setting's card is
+/// recognised as it is read (<see cref="LlmPresets.CardOf"/>, STUDIO-54): a title an older Studio
+/// wrote, in whatever language, or a provider the default blanked, becomes the card's name in
+/// memory — the file receives it with the next change of the settings, never at startup.
 /// </summary>
 [SuppressVfsCompliance(
     "EXCEPTION-BOOTSTRAP: Studio is a host application; the model profiles are UI state written " +
@@ -130,13 +134,22 @@ public sealed class ModelProfileFileStore : IModelProfileStore
             var set = JsonSerializer.Deserialize<ModelProfileSet>(json, ReadOptions);
             return set is null
                 ? new ModelProfileLoadResult(ModelProfileSet.Empty, $"{FilePath}: the file holds no profile set (its content is 'null').")
-                : new ModelProfileLoadResult(set);
+                : new ModelProfileLoadResult(WithCards(set));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             return new ModelProfileLoadResult(ModelProfileSet.Empty, $"{FilePath}: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// The set with each setting on its card's name. A <c>null</c> in the list — a hand edit — is
+    /// no setting, and is left out.
+    /// </summary>
+    private static ModelProfileSet WithCards(ModelProfileSet set) => set with
+    {
+        Profiles = [.. set.Profiles.OfType<ModelProfile>().Select(profile => profile with { Provider = LlmPresets.CardOf(profile) })],
+    };
 
     /// <inheritdoc />
     public async Task SaveAsync(ModelProfileSet profiles, CancellationToken cancellationToken = default)

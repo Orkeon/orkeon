@@ -76,6 +76,7 @@
   <data name="Studio.Shell.BalanceNotExposed" xml:space="preserve"><value>non exposé par l'API</value></data>
   <data name="Studio.Shell.BalanceAdminKey" xml:space="preserve"><value>lisible avec une clé admin seulement</value></data>
   <data name="Studio.Shell.BalanceKeyRefused" xml:space="preserve"><value>clé refusée</value></data>
+  <data name="Studio.Shell.BalanceKeyMissing" xml:space="preserve"><value>clé manquante</value></data>
   <data name="Studio.Shell.BalanceNoAnswer" xml:space="preserve"><value>pas de réponse</value></data>
   <data name="Studio.Shell.BalanceUnexpected" xml:space="preserve"><value>réponse inattendue</value></data>
   <data name="Studio.Shell.BalanceNoAccount" xml:space="preserve"><value>aucun compte à interroger</value></data>

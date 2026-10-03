@@ -255,7 +255,10 @@ son éditeur montrent ce qu'une crew écrit, `profile: claude`. Créer, modifier
 supprimer le réglage écrit, déplace ou retire son entrée : chaque champ que le réglage épingle
 (`BaseUrl`, `Model`, `Temperature`, `TimeoutSeconds`, `MaxTokens`, `Thinking`) et la variable où
 Studio mémorise sa clé (`ApiKeyEnvVar`, aucune pour un réglage sans clé), jamais la clé, et une
-clé que Studio ne modélise pas (`MaxRetries`, `Grammar`) reste où elle est. Un réglage sans
+clé que Studio ne modélise pas (`MaxRetries`, `Grammar`) reste où elle est. Un réglage Docker Model
+Runner écrit `"ApiKey": "not-needed"` là où son entrée ne porte aucune clé, comme `orkeon init`
+(STUDIO-54) : le run lit ce serveur comme OpenAI, dont le dialecte refuse d'appeler sans clé, et le
+serveur n'en vérifie aucune — une clé déjà là reste. Un réglage sans
 modèle (la carte écho), ou dont le nom ne garde aucune lettre ni aucun chiffre ASCII, n'est offert
 à aucune crew ; `default`, un nom auquel un autre réglage répond déjà et un nom qui prendrait la
 place d'une entrée écrite à la main sont refusés.
@@ -269,16 +272,27 @@ place d'une entrée écrite à la main sont refusés.
   il ne dépend donc ni de l'enregistrement du fichier ni du fichier de réglages qu'il lit.
 - **Le défaut.** Le réglage élu est écrit en entier dans `Llm` — chaque champ qu'il épingle et son
   `ApiKeyEnvVar`, un champ qu'il laisse vide retirant sa clé ; `ApiKey`, `MaxRetries`, `Grammar`,
-  `AvailableModels` et `Profiles` restent. Une équipe lancée sur un autre réglage pose tous ces champs
-  sur son processus enfant en `ORKEON_Llm__*`, valeur ou vide, `ORKEON_Llm__ApiKeyEnvVar` compris :
-  une équipe sur Z.AI dont la clé n'est pas mémorisée échoue sans clé au lieu d'envoyer à Z.AI la clé
-  DeepSeek du défaut. Une équipe sur le réglage élu lui-même pose ce qu'il fixe.
+  `AvailableModels` et `Profiles` restent. Seule la clé de remplacement de Docker Model Runner suit la
+  carte (STUDIO-54) : un réglage Docker Model Runner élu écrit `"ApiKey": "not-needed"` là où `Llm` ne
+  porte aucune clé, et l'élection de toute autre carte retire exactement cette valeur — laissée, elle
+  passerait avant l'`ApiKeyEnvVar` du réglage élu ; le fichier qu'a écrit
+  `orkeon init --preset docker-model-runner`, puis DeepSeek élu dans Studio, compris. Toute autre
+  `ApiKey` reste. Une équipe lancée sur un autre réglage pose tous ces champs sur son processus enfant
+  en `ORKEON_Llm__*`, valeur ou vide, `ORKEON_Llm__ApiKeyEnvVar` compris : une équipe sur Z.AI dont la
+  clé n'est pas mémorisée échoue sans clé au lieu d'envoyer à Z.AI la clé DeepSeek du défaut ; une
+  équipe sur un réglage Docker Model Runner pose `ORKEON_Llm__ApiKey=not-needed`. Une équipe sur le
+  réglage élu lui-même pose ce qu'il fixe.
   `orkeon-studio-config` modifie `Llm` champ par champ ; une élection faite ensuite dans Studio
   réécrit les champs qu'elle possède.
 - **Un fichier plus ancien guérit au geste suivant.** Une entrée que Studio possède sans sa
   référence, et une section `Llm` sans celle du réglage élu, sont réécrites — le réglage entier — au
   changement suivant sur les réglages de modèle (modifier puis enregistrer un réglage), jamais au
-  démarrage.
+  démarrage ; de même une entrée et une section `Llm` dont la clé ne s'accorde pas à leur carte
+  (STUDIO-54) : celle d'un réglage Docker Model Runner sans la clé de remplacement la reçoit, celle
+  d'une autre carte qui la porte la perd — une seule fois, puisque l'écrire les accorde. Un réglage
+  écrit avant dans une autre langue, ou dont le fournisseur a été vidé par le défaut, retrouve sa
+  carte quand Studio lit `studio-model-profiles.json`, avec la variable de clé de cette carte, et le
+  nom de la carte rejoint le fichier à ce même geste.
 - **Une équipe planifiée.** Les lanceurs d'une équipe que Studio a adoptée portent le réglage de
   l'équipe en `--llm-profile <id>` — son entrée ici —, si bien que l'exécution que planifie le système
   d'exploitation le prend, comme un lancement depuis Studio

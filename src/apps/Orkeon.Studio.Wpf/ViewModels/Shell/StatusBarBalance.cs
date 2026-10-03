@@ -164,6 +164,7 @@ public sealed class StatusBarBalanceItemViewModel
         OffersConsole = console is not null;
         IsWarning = reading is not null && readings.IsUnderThreshold(reading);
         IsFaint = reading?.Status is ProviderBalanceStatus.AuthenticationRefused
+            or ProviderBalanceStatus.KeyMissing
             or ProviderBalanceStatus.NetworkError
             or ProviderBalanceStatus.UnexpectedAnswer;
 
@@ -194,7 +195,7 @@ public sealed class StatusBarBalanceItemViewModel
             : new RelayCommand(readAgain, () => !readings.IsReading);
     }
 
-    /// <summary>«DeepSeek 110.00 CNY», «OpenAI», «Kimi · key refused» — never a key.</summary>
+    /// <summary>«DeepSeek 110.00 CNY», «OpenAI», «Kimi · key refused», «DeepSeek · key missing» — never a key.</summary>
     public string Text { get; }
 
     /// <summary>Whether the account was not read yet this session: a click reads it.</summary>
@@ -206,7 +207,7 @@ public sealed class StatusBarBalanceItemViewModel
     /// <summary>Whether the amount is under its provider's alert threshold (D-03).</summary>
     public bool IsWarning { get; }
 
-    /// <summary>Whether the read failed — a refused key, no answer, an answer out of shape: said quietly.</summary>
+    /// <summary>Whether the read failed — a refused key, a missing one, no answer, an answer out of shape: said quietly.</summary>
     public bool IsFaint { get; }
 
     /// <summary>The account's line in the segment's tooltip.</summary>

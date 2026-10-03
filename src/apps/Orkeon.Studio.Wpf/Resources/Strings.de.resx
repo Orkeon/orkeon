@@ -187,6 +187,9 @@
   <data name="Studio.Shell.BalanceKeyRefused" xml:space="preserve">
     <value>Schlüssel abgelehnt</value>
   </data>
+  <data name="Studio.Shell.BalanceKeyMissing" xml:space="preserve">
+    <value>Schlüssel fehlt</value>
+  </data>
   <data name="Studio.Shell.BalanceNoAnswer" xml:space="preserve">
     <value>keine Antwort</value>
   </data>

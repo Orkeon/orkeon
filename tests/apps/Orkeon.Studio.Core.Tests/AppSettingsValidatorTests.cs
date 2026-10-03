@@ -336,6 +336,26 @@ public sealed class AppSettingsValidatorTests
         Assert.Null(Find(Validator().Validate(document), ValidationCodes.InlineApiKey));
     }
 
+    /// <summary>
+    /// STUDIO-54, decision 4: beside a reference — a file edited by hand —, the placeholder masks it
+    /// like any key the file holds: the run would send <c>not-needed</c> to the endpoint whose key the
+    /// variable holds.
+    /// </summary>
+    [Fact]
+    public void The_placeholder_key_beside_a_reference_is_reported_as_it_masks_it()
+    {
+        var document = AppSettingsDocument.Parse(
+            """{ "Llm": { "Model": "deepseek-v4-flash", "ApiKey": "not-needed", "ApiKeyEnvVar": "DEEPSEEK_API_KEY" } }""");
+
+        var message = Find(Validator().Validate(document), ValidationCodes.InlineApiKey);
+
+        Assert.NotNull(message);
+        Assert.Equal(ValidationSeverity.Information, message.Severity);
+        Assert.Equal("Llm:ApiKey", message.Path);
+        Assert.Contains("not-needed", message.Text, StringComparison.Ordinal);
+        Assert.Contains("masks Llm:ApiKeyEnvVar", message.Text, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void The_shipped_sample_validates_with_only_the_mounts_warning()
     {

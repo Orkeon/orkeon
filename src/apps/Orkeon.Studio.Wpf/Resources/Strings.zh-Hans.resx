@@ -187,6 +187,9 @@
   <data name="Studio.Shell.BalanceKeyRefused" xml:space="preserve">
     <value>密钥被拒绝</value>
   </data>
+  <data name="Studio.Shell.BalanceKeyMissing" xml:space="preserve">
+    <value>缺少密钥</value>
+  </data>
   <data name="Studio.Shell.BalanceNoAnswer" xml:space="preserve">
     <value>无响应</value>
   </data>

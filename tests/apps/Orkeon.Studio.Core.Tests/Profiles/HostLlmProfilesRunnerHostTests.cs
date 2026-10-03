@@ -64,6 +64,14 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
         Model = "qwen3",
     };
 
+    private static readonly ModelProfile Docker = new()
+    {
+        Name = "Docker",
+        Provider = "docker-model-runner",
+        BaseUrl = "http://localhost:12434/engines/llama.cpp/v1",
+        Model = "ai/granite-4.0-h-tiny",
+    };
+
     private static string UniqueVariable() => "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
 
     /// <summary>
@@ -230,6 +238,54 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
             Assert.Equal(keyRemembered ? "sk-zai" : null, runsOn.ApiKey);
             // What the team's setting leaves unset is not the default's either: no 600 s.
             Assert.Null(runsOn.TimeoutSeconds);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(deepseekVariable, null);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-54, decision 4, with the real runner host: the run reads Docker Model Runner as
+    /// OpenAI, whose dialect refuses to call without a key. On the file Studio writes, the elected
+    /// default and the <c>docker</c> profile are built with the placeholder <c>not-needed</c> — no
+    /// variable anywhere: a terminal, a scheduled team.
+    /// </summary>
+    [Fact]
+    public async Task A_docker_model_runner_setting_runs_from_the_file_alone_with_its_placeholder_key()
+    {
+        var deepseekVariable = UniqueVariable();
+        var (settingsPath, _) = await WriteElectedSettingsAsync(Docker, DeepSeek with { KeyEnvName = deepseekVariable });
+
+        using var host = Build(settingsPath, new Dictionary<string, string>(StringComparer.Ordinal));
+
+        var profiles = host.Services.GetRequiredService<ILlmProfileRegistry>();
+        Assert.Equal("not-needed", profiles.Resolve("docker").Provider.BaseConfig!.ApiKey);
+        var elected = profiles.Resolve(null).Provider.BaseConfig!;
+        Assert.Equal(new Uri(Docker.BaseUrl!), elected.BaseUrl);
+        Assert.Equal("not-needed", elected.ApiKey);
+    }
+
+    /// <summary>A team launched on the Docker Model Runner setting in place of the elected DeepSeek carries the placeholder too.</summary>
+    [Fact]
+    public async Task A_team_launched_on_a_docker_model_runner_setting_carries_its_placeholder_key()
+    {
+        var deepseekVariable = UniqueVariable();
+        var (settingsPath, set) = await WriteElectedSettingsAsync(DeepSeek with { KeyEnvName = deepseekVariable }, Docker);
+        Environment.SetEnvironmentVariable(deepseekVariable, "sk-ds-default");
+        try
+        {
+            var keys = new FakeApiKeyStore();
+            keys.Stage(deepseekVariable, "sk-ds-default");
+            var launch = new Dictionary<string, string>(HostLlmProfiles.LaunchEnvironment(set, keys.Peek), StringComparer.Ordinal);
+            foreach (var (key, value) in set.Find("Docker")!.EnvironmentOverrides(keys.Peek))
+                launch[key] = value;
+
+            using var host = Build(settingsPath, launch);
+
+            var runsOn = host.Services.GetRequiredService<ILlmProfileRegistry>().Resolve(null).Provider.BaseConfig!;
+            Assert.Equal(new Uri(Docker.BaseUrl!), runsOn.BaseUrl);
+            Assert.Equal("not-needed", runsOn.ApiKey);
         }
         finally
         {

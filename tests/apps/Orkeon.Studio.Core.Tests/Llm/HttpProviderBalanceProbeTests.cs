@@ -329,17 +329,23 @@ public sealed class HttpProviderBalanceProbeTests
         Assert.Contains("the proxy rejected", result.Detail, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// STUDIO-54, decision 3: no key is a state of its own — the key is missing, nobody refused it —,
+    /// told without a request; <see cref="ProviderBalanceStatus.AuthenticationRefused"/> is the
+    /// provider's refusal alone (a 401 or a 403, above).
+    /// </summary>
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task A_provider_with_a_balance_but_no_key_is_refused_without_a_request(string? apiKey)
+    public async Task A_provider_with_a_balance_but_no_key_says_the_key_is_missing_without_a_request(string? apiKey)
     {
         using var handler = new StubHttpMessageHandler { Body = DeepSeekAnswer };
 
         var result = await ProbeAsync(handler, LlmProviderEndpoints.DeepSeek, apiKey: apiKey);
 
-        Assert.Equal(ProviderBalanceStatus.AuthenticationRefused, result.Status);
+        Assert.Equal(ProviderBalanceStatus.KeyMissing, result.Status);
+        Assert.Contains("No API key", result.Detail, StringComparison.Ordinal);
         Assert.Empty(handler.Requests);
     }
 
