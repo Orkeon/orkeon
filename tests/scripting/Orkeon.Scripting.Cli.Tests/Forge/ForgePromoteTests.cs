@@ -636,14 +636,14 @@ public sealed class ForgePromoteTests : IDisposable
     // ── STUDIO-51: the launchers hand the runner what the brief says ──
 
     /// <summary>
-    /// What a profile under <c>C:\Users\Zoé</c> with a team in a OneDrive « R&amp;D » folder makes
+    /// What a profile with an accented user name and a team in a OneDrive « R&amp;D » folder make
     /// <c>%~dp0</c>: every character <c>cmd</c> or the runner could misread.
     /// </summary>
     private const string HostileLauncherFolder = @"C:\Users\Zoé\R&D 100%\équipe\";
 
     /// <summary>
     /// A brief the engine's model wrote in French: a <c>%</c>, a trailing backslash, a quote then an
-    /// operator, a context of two bullet lines — it starts with a dash — and a folder <c>/données</c>.
+    /// operator, a context of two bullet lines — it starts with a dash — and an output folder with an accented name.
     /// </summary>
     private ForgeSession HostileSampleSession(string initialContext = "- puce un\n- puce deux")
     {
@@ -680,8 +680,8 @@ public sealed class ForgePromoteTests : IDisposable
     /// spaces and accents, then split by the C runtime, hands the runner's grammar the sample as
     /// the brief wrote it: <c>10%</c> keeps its <c>%</c>, <c>C:\temp\</c> its backslash, the quote
     /// and the <c>&amp;</c> stay in their value, the context starting with a dash is the value of
-    /// <c>--initial-context</c> — its line break a space, which the file says —, and the folder
-    /// <c>/données</c> arrives whole.
+    /// <c>--initial-context</c> — its line break a space, which the file says —, and the output
+    /// folder's accented name arrives whole.
     /// </summary>
     [Fact]
     public void The_windows_launcher_hands_the_runner_the_sample_as_the_brief_wrote_it()

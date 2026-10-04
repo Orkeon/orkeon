@@ -307,7 +307,7 @@ public sealed class TeamLaunchersTests : IDisposable
 
     // ── STUDIO-51 ──
 
-    /// <summary>What a profile under C:\Users\Zoé, a team in a « R&amp;D 100% » folder, make <c>%~dp0</c>.</summary>
+    /// <summary>What a profile with an accented user name, a team in a « R&amp;D 100% » folder with an accented name, make <c>%~dp0</c>.</summary>
     private const string HostileLauncherFolder = @"C:\Users\Zoé\R&D 100%\équipe\";
 
     /// <summary>

@@ -47,6 +47,12 @@ useDefault = true
 #                                     name (examples/03-finance-trading/). It fires only after
 #                                     a property called `Key` — `chip.Key == "..."` in
 #                                     ModalStops and the use-case wizard tests.
+#   sk-from-the-variable-0123456789   the key RunnerHostApiKeyReferenceTests sets into a
+#                                     throw-away environment variable, to prove the host reads
+#                                     ApiKeyEnvVar and never prints the key in its startup lines.
+#   zai-secret-key-1234               the key HttpLlmEndpointProbeTests (Studio.Core.Tests)
+#                                     hands its fake Z.AI handler, to assert what the probe
+#                                     sends and that its diagnostic never prints it.
 [[allowlists]]
 description = "Reviewed fake fixture and documentation values (listed individually, never by path)"
 regexes = [
@@ -63,6 +69,8 @@ regexes = [
   '''^"?orkeon-encryption-key-v2"?$''',
   '''^"?sk-live-0123456789"?$''',
   '''^"?03-finance-trading"?$''',
+  '''^"?sk-from-the-variable-0123456789"?$''',
+  '''^"?zai-secret-key-1234"?$''',
 ]
 
 # ── A credential that is a variable, not a value ─────────────────────────────────────
