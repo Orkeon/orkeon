@@ -63,14 +63,20 @@ cp "$GNUPGHOME/openpgp-revocs.d/$FPR.rev" orkeon-archive-revocation.rev
 
 # 5. What goes to GitHub: the signing subkey alone (the primary is exported as a stub
 #    without its secret part), under a passphrase of its own, used by CI only.
-gpg --armor --export-secret-subkeys "$FPR" > subkey.asc
+#    The passphrase is changed in a throwaway COPY of the full home, never in a home that
+#    holds the subkey alone: GnuPG 2.2 refuses `--passwd` there ("error changing passphrase:
+#    No secret key", the primary being a stub). The copy is destroyed right after the export.
+export PW_HOME="$(mktemp -d)"; chmod 700 "$PW_HOME"; cp -a "$GNUPGHOME/." "$PW_HOME/"
+gpg --homedir "$PW_HOME" --passwd "$FPR"   # old = the primary passphrase; new (asked for each
+                                           # key) = APT_SIGNING_PASSPHRASE
+gpg --homedir "$PW_HOME" --armor --export-secret-subkeys "$FPR" > orkeon-archive-signing-subkey.asc
+gpgconf --homedir "$PW_HOME" --kill all; rm -rf "$PW_HOME"
+# Check in a fresh home, as CI will see it: the primary must show "sec#" (secret part
+# absent), the subkey "ssb", and a signature must ask for APT_SIGNING_PASSPHRASE.
 export CI_HOME="$(mktemp -d)"; chmod 700 "$CI_HOME"
-gpg --homedir "$CI_HOME" --import subkey.asc
-gpg --homedir "$CI_HOME" --passwd "$FPR"        # the new passphrase is APT_SIGNING_PASSPHRASE
-gpg --homedir "$CI_HOME" --armor --export-secret-subkeys "$FPR" > orkeon-archive-signing-subkey.asc
-shred -u subkey.asc
-# Check: the primary must show "sec#" (secret part absent), the subkey "ssb".
+gpg --homedir "$CI_HOME" --import orkeon-archive-signing-subkey.asc
 gpg --homedir "$CI_HOME" --list-secret-keys
+echo test | gpg --homedir "$CI_HOME" --clearsign >/dev/null && echo "signing subkey OK"
 
 # 6. The public certificate (for this directory) and the fingerprint (for SECURITY.md).
 gpg --armor --export "$FPR" > orkeon-archive-keyring.asc
