@@ -77,3 +77,44 @@ bytes: strip that signature first (`scripts/nupkg-unsign.py`), then verify. The 
 commands, what each mechanism proves and does not, and what to do when a check fails are in
 [Verify what you install](docs/guides/verify-what-you-install.md). An artefact that fails
 verification is a security report, not a support question.
+
+### apt archive signing key
+
+The Debian / Ubuntu repository ([Install with apt](docs/guides/install-with-apt.md)) is signed
+with a dedicated OpenPGP key, `Orkeon Archive Signing Key <arion@orkeon.org>`. The first
+download of that key is trust on first use, so its fingerprint and the SHA-256 of the binary
+keyring file the `apt` branch serves (`orkeon-archive-keyring.gpg`) are published here, on
+`main`:
+
+```text
+Fingerprint: <PENDING-KEY-CEREMONY>
+Keyring SHA-256: <PENDING-KEY-CEREMONY>
+```
+
+The two values are placeholders until the key is created: the exact lines —
+`orkeon-archive-keyring fingerprint:` and `orkeon-archive-keyring.gpg sha256:` — will be
+published here once the key exists, and the CI guard checks them against the certificate.
+
+The public certificate is versioned, ASCII-armoured, as
+[`installers/apt/orkeon-archive-keyring.asc`](https://github.com/Orkeon/orkeon/blob/main/installers/apt/orkeon-archive-keyring.asc);
+the binary keyring is that file passed through `gpg --dearmor`. A CI guard fails when the
+values above disagree with it, or with the installation page.
+
+**What apt checks by itself**, once the source is declared with `Signed-By:`: the signature of
+each channel's index (`InRelease`) against this key only, then the SHA-256 of every package
+against that index. You check the keyring's SHA-256 once, when you add the source — the
+installation block does it.
+
+**Key policy.**
+
+- An OpenPGP v4 key: an ed25519 primary key used for certification only and kept offline, and
+  an ed25519 signing subkey valid two years — the only secret the publishing workflow holds.
+  Index signatures use SHA-256.
+- The signing subkey is extended at least six months before it expires; CI fails when its
+  expiry is less than 180 days away. An expired key makes `apt update` fail everywhere
+  (`EXPKEYSIG`).
+- A new subkey reaches users through the `orkeon-archive-keyring` package, by `apt upgrade`,
+  one release **before** the repository is signed with it: nobody has to act.
+- A **revocation** — a compromised key — is announced here and on the installation page, with
+  the new fingerprint and keyring SHA-256. It is the only case where users must download a
+  new key themselves. Publication of the repository stops until the new key is in place.

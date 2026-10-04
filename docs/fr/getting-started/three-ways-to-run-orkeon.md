@@ -58,13 +58,14 @@ Chaque [GitHub Release](https://github.com/Orkeon/orkeon/releases) attache un
 |---|---|---|---|
 | **`orkeon-cli-<version>-win-x64.zip`** | le CLI `orkeon` + **Orkeon Studio** (`orkeon-studio`, l'application de bureau) + `install.ps1` | aucun — self-contained | **Windows : le téléchargement recommandé** |
 | **`orkeon-<version>-win-x64.msi`** | les deux mêmes, MSI per-user, avec un raccourci menu Démarrer « Orkeon Studio » | aucun — self-contained | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
-| **`orkeon_<version>_amd64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + les deux applications terminal **Orkeon Studio** | aucun — self-contained | **Debian / Ubuntu : le téléchargement recommandé** |
+| **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + les deux applications terminal **Orkeon Studio** | aucun — self-contained | **Debian / Ubuntu** — de préférence depuis le [dépôt apt](../guides/install-with-apt.md), qui sert ces mêmes paquets et leurs mises à jour |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (pas de Studio en V1 — le canal d'onboarding macOS reste CLI seul) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
 | **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-host`…) + les applications Studio que la plateforme supporte + `install.sh` / `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL et l'hôte de service |
 | **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | le seul CLI `orkeon` — **sans esbuild** : un script `.ork.ts` demande `npm install -g esbuild` (ou `ORKEON_ESBUILD_PATH`) ; les crews YAML non. `orkeon typings` écrit les typings d'éditeur | **SDK** .NET 10 | Obtenir uniquement le CLI sur un poste qui compile déjà du .NET |
 
 `<rid>` vaut `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) ou
-`win-x64` (`.zip`). `SHA256SUMS` couvre tous les artefacts de la release sauf le
+`win-x64` (`.zip`). Dans chaque nom de fichier, `<version>` est la version du tag
+(`1.0.0-rc.4`). `SHA256SUMS` couvre tous les artefacts de la release sauf le
 MSI, qui a son propre `SHA256SUMS.msi` (chaque fichier est produit par le job CI
 qui a construit l'artefact).
 
@@ -121,16 +122,27 @@ install antérieure y est migré à la mise à jour.)
 
 ### Linux
 
-Le **`.deb` est le canal recommandé** sur Debian et Ubuntu — self-contained, il
-ne tire donc jamais de paquet `dotnet-runtime` ni de dépôt Microsoft :
+Le **dépôt apt est le canal recommandé** sur Debian et Ubuntu, amd64 et arm64 :
+ajoutez une fois la source signée — le bloc à copier est dans
+[Installer avec apt](../guides/install-with-apt.md) — et Orkeon se met à jour avec le reste du
+système. Le paquet est self-contained, il ne tire donc jamais de paquet `dotnet-runtime` ni de
+dépôt Microsoft :
 
 ```bash
-sudo apt install ./orkeon_<version>_amd64.deb   # installe /usr/bin/orkeon
+sudo apt install orkeon orkeon-archive-keyring   # installe /usr/bin/orkeon
+sudo apt update && sudo apt upgrade              # chaque version suivante
+```
+
+Sans le dépôt — une machine qui n'atteint pas le contenu brut de GitHub —, installez
+directement le `.deb` d'une release ; il ne reçoit aucune mise à jour :
+
+```bash
+sudo apt install ./orkeon_<version>_amd64.deb   # _arm64.deb sur ARM
 sudo apt remove orkeon
 ```
 
 Le `tar.gz` multi-apps + `install.sh` est l'alternative per-user (et la seule
-option pour `linux-arm64`, ou quand vous voulez le REPL et l'hôte de service) :
+option quand vous voulez le REPL et l'hôte de service) :
 
 ```bash
 tar -xzf orkeon-<version>-linux-x64.tar.gz
@@ -516,7 +528,8 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
   `config.yaml`.
   - Sur **Windows** : `orkeon-cli-<version>-win-x64.zip` + `install.ps1`, ou le
     MSI si vous préférez le double-clic. Un canal à la fois.
-  - Sur **Debian / Ubuntu** : `sudo apt install ./orkeon_<version>_amd64.deb`.
+  - Sur **Debian / Ubuntu** : le [dépôt apt](../guides/install-with-apt.md), puis
+    `sudo apt install orkeon orkeon-archive-keyring`.
   - Puis `orkeon init` → `orkeon doctor` → `orkeon run`.
 - **Vous préférez ne rien taper de tout cela ?** Sous Windows et Linux, ces
   mêmes paquets installent [Orkeon Studio](#orkeon-studio-la-voie-graphique) —
@@ -547,7 +560,8 @@ l'installation. Vos réglages ne font partie d'aucune installation : l'`appsetti
 | Des paquets NuGet, dans un projet | `dotnet add package Orkeon --prerelease` — et `Orkeon.Tools` si le projet le référence — réécrit la version |
 | Zip Windows, tarball macOS ou Linux | Extraire la nouvelle archive et lancer son `install.ps1` / `install.sh` : il supprime l'installation précédente et met la nouvelle à sa place |
 | MSI Windows | Lancer le nouveau MSI : il remplace celui qui est installé, y compris entre deux pré-releases |
-| Paquet Debian | `sudo apt install ./orkeon_<version>_amd64.deb` |
+| Le dépôt apt | `sudo apt update && sudo apt upgrade` |
+| Un paquet Debian téléchargé | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` sur ARM) — ou passer au [dépôt apt](../guides/install-with-apt.md), qui se met à jour seul |
 | Conteneur | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` avance à chaque release |
 | Depuis les sources | `git pull` ; le prochain `dotnet run` recompile |
 
@@ -560,9 +574,12 @@ Entre deux releases, chaque commit validé par la CI sur `main` est publié en
 Packages, où le suivant le remplace. La numérotation et l'élagage des versions sont décrits
 dans la
 [matrice de publication](../reference/publication-matrix.md#canal-dev--le-dernier-main-entre-deux-tags).
-Le canal ne sert que les **canaux NuGet** : le tool `orkeon`, le tool `orkeon-repl` (paquet
-`Orkeon.ConsoleApp`) et les paquets. Les installeurs, l'image conteneur et Orkeon Studio ne
-sont construits que sur les tags.
+Le canal sert les **canaux NuGet** : le tool `orkeon`, le tool `orkeon-repl` (paquet
+`Orkeon.ConsoleApp`) et les paquets. Sous Debian et Ubuntu, le paquet `orkeon` suit aussi
+`main`, par le canal apt `dev` — voir
+[Installer avec apt](../guides/install-with-apt.md#suivre-main-builds-dev). Les autres
+installeurs, l'image conteneur et Orkeon Studio pour Windows ne sont construits que sur les
+tags.
 
 1. **Créez un jeton.** GitHub Packages en exige un même pour lire un paquet public : un
    personal access token (classic) avec le scope `read:packages` —

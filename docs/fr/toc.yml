@@ -98,6 +98,8 @@
       href: guides/local-models.md
     - name: Vérifier ce que vous installez
       href: guides/verify-what-you-install.md
+    - name: Installer avec apt
+      href: guides/install-with-apt.md
 - name: Référence
   items:
     - name: Référence du DSL de scripting
