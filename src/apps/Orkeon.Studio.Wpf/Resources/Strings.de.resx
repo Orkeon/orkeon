@@ -2829,6 +2829,9 @@
   <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve">
     <value>Die Datei der Modellprofile konnte nicht gelesen werden — {0}. Korrigieren oder löschen Sie sie; bis dahin startet die Liste leer und die nächste Änderung überschreibt sie.</value>
   </data>
+  <data name="Studio.Settings.ProfileFileNotWritten" xml:space="preserve">
+    <value>Die Datei der Modellprofile konnte nicht geschrieben werden — {0}. Die Einstellungen bleiben für diese Sitzung wie angezeigt; die nächste Änderung schreibt sie erneut.</value>
+  </data>
   <data name="Studio.Import.Refused" xml:space="preserve">
     <value>Nicht importiert — {0}</value>
   </data>

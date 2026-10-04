@@ -23,7 +23,11 @@ reaches the OpenTelemetry exporter through them ([telemetry](./hosting.md#teleme
 2. **Environment variables with the `ORKEON_` prefix** (`AddEnvironmentVariables("ORKEON_")`,
    for every host and for `orkeon doctor`). Standard .NET mapping: `__` separates levels —
    `ORKEON_Llm__ApiKey` overrides `Llm:ApiKey`, `ORKEON_Orkeon__Rag__Profile` overrides
-   `Orkeon:Rag:Profile`. Env vars are added **after** the file, so they win. A key need not
+   `Orkeon:Rag:Profile`. The prefix and the keys are compared without case, and `:` separates
+   levels as well as `__`: `ORKEON_LLM__APIKEY`, `orkeon_llm__apikey` and `ORKEON_Llm:ApiKey` are
+   all `Llm:ApiKey`. Under Linux and macOS two spellings of a setting are two variables, and a run
+   reads either one — never set the same setting twice under two spellings. Env vars are added
+   **after** the file, so they win. A key need not
    come from either layer: the file can name the variable that holds it (`ApiKeyEnvVar`,
    [below](#the-api-key-apikey-apikeyenvvar)), read when neither resolves an `ApiKey`.
 3. **CLI mount overrides** — each `--mount` argument becomes an in-memory

@@ -4,7 +4,8 @@ namespace Orkeon.Studio.Core.Tests.Doubles;
 
 /// <summary>
 /// An <see cref="IEnvironmentVariables"/> over two dictionaries — the process block and the
-/// user scope — so a test can stage a Studio started from a parent older than the key.
+/// user scope — so a test can stage a Studio started from a parent older than the key. Names compare
+/// as on Linux and macOS, case included: two spellings are two variables.
 /// </summary>
 public sealed class FakeEnvironmentVariables : IEnvironmentVariables
 {
@@ -23,6 +24,9 @@ public sealed class FakeEnvironmentVariables : IEnvironmentVariables
     /// <inheritdoc />
     public string? Read(string name, EnvironmentVariableTarget target) =>
         ScopeOf(target).GetValueOrDefault(name);
+
+    /// <inheritdoc />
+    public IReadOnlyList<KeyValuePair<string, string>> ReadAll(EnvironmentVariableTarget target) => [.. ScopeOf(target)];
 
     /// <inheritdoc />
     public void Write(string name, string? value, EnvironmentVariableTarget target)

@@ -18,7 +18,7 @@ public sealed class SecretRowViewModel : ObservableObject
     private readonly IApiKeyStore _keyStore;
     private readonly IStudioStrings _strings;
     private string _keyInput = "";
-    private string? _storeError;
+    private string? _storeFailure;
 
     /// <summary>Builds a row; <paramref name="consoleUrl"/> is where the key is issued, when the card can say so.</summary>
     public SecretRowViewModel(string envName, string usedBy, IApiKeyStore keyStore, IStudioStrings strings, Uri? consoleUrl = null)
@@ -70,20 +70,27 @@ public sealed class SecretRowViewModel : ObservableObject
 
     /// <summary>
     /// Why the last remembered key was not kept for the next sessions (STUDIO-44) — it is in
-    /// place for this one all the same. Null when the last write went through.
+    /// place for this one all the same. Null when the last write went through. The cause is kept,
+    /// the line formed as it is read (STUDIO-56).
     /// </summary>
-    public string? StoreError
-    {
-        get => _storeError;
-        private set
-        {
-            if (SetProperty(ref _storeError, value))
-                OnPropertyChanged(nameof(HasStoreError));
-        }
-    }
+    public string? StoreError => _storeFailure is { } cause
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], cause)
+        : null;
 
     /// <summary>Whether <see cref="StoreError"/> has something to say.</summary>
-    public bool HasStoreError => _storeError is not null;
+    public bool HasStoreError => _storeFailure is not null;
+
+    /// <summary>
+    /// The language switched (STUDIO-56): called by the tab that owns the row — a row never
+    /// subscribes to the port itself (STUDIO-11).
+    /// </summary>
+    public void RefreshTexts() => OnPropertiesChanged(nameof(StatusText), nameof(StoreError));
+
+    private void ShowStoreFailure(string? cause)
+    {
+        _storeFailure = cause;
+        OnPropertiesChanged(nameof(StoreError), nameof(HasStoreError));
+    }
 
     /// <summary>Stores the pasted key in the user environment and wipes the field.</summary>
     public AsyncRelayCommand StoreCommand { get; }
@@ -103,7 +110,7 @@ public sealed class SecretRowViewModel : ObservableObject
 
         var persisted = _keyStore.SaveAsync(EnvName, key);
         KeyInput = "";
-        StoreError = null;
+        ShowStoreFailure(null);
         OnPropertiesChanged(nameof(HasKey), nameof(StatusText));
 
         try
@@ -112,8 +119,7 @@ public sealed class SecretRowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StoreError = string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], ex.Message);
+            ShowStoreFailure(ex.Message);
         }
 
         OnPropertiesChanged(nameof(HasKey), nameof(StatusText));

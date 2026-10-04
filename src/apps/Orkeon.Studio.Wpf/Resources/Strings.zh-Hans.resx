@@ -2829,6 +2829,9 @@
   <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve">
     <value>无法读取模型配置文件 — {0}。请修复或删除它；在此之前列表为空，下一次更改将覆盖该文件。</value>
   </data>
+  <data name="Studio.Settings.ProfileFileNotWritten" xml:space="preserve">
+    <value>无法写入模型配置文件 — {0}。本次会话中设置保持当前显示；下一次更改将再次写入。</value>
+  </data>
   <data name="Studio.Import.Refused" xml:space="preserve">
     <value>未导入 — {0}</value>
   </data>

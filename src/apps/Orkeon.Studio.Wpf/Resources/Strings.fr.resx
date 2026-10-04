@@ -1435,6 +1435,7 @@
   <!-- STUDIO-12 -->
   <data name="Studio.Run.KindSingleFileCrewDirectory" xml:space="preserve"><value>Dossier d'équipe contenant une définition YAML mono-fichier</value></data>
   <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve"><value>Le fichier des profils de modèle n'a pas pu être lu — {0}. Corrigez-le ou supprimez-le ; d'ici là, la liste démarre vide et la prochaine modification l'écrasera.</value></data>
+  <data name="Studio.Settings.ProfileFileNotWritten" xml:space="preserve"><value>Le fichier des profils de modèle n'a pas pu être écrit — {0}. Les réglages restent tels qu'affichés pour cette session ; la prochaine modification les écrit à nouveau.</value></data>
   <data name="Studio.Import.Refused" xml:space="preserve"><value>Non importé — {0}</value></data>
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Réponse maximale (jetons, optionnel)</value></data>
   <data name="Studio.Settings.MaxTokensHintKnown" xml:space="preserve"><value>Vide : le maximum documenté du modèle, {0} jetons — envoyé comme plafond de réponse.</value></data>

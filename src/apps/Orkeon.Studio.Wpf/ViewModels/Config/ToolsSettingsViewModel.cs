@@ -27,11 +27,14 @@ public sealed class ToolsSettingsViewModel : ObservableObject
             new SecretRowViewModel(secret.EnvName, secret.UsedBy, store, _strings, secret.ConsoleUrl))];
         Families = [.. ToolCatalog.Families.Select(family => new ToolFamilyViewModel(family, _strings))];
 
-        // The labels are read live; a language switch re-emits every one of them.
+        // The labels are read live; a language switch re-emits every one of them, the key rows'
+        // status and error lines included (STUDIO-56).
         _strings.CultureChanged += (_, _) =>
         {
             foreach (var family in Families)
                 family.RefreshLabels();
+            foreach (var secret in Secrets)
+                secret.RefreshTexts();
         };
     }
 

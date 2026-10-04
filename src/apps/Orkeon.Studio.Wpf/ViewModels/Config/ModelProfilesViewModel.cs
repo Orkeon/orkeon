@@ -232,14 +232,14 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private readonly IShellOpener? _opener;
     private LlmPresetInfo? _selectedProvider;
     private ProviderBalanceResult? _balanceReading;
-    private string? _balanceResult;
+    private bool _balanceKeyMissing;
     private string _name;
     private string? _baseUrl;
     private string? _model;
     private string? _apiKeyEnv;
     private string _apiKeyInput = "";
-    private string? _connectionTestResult;
-    private string? _keyStoreError;
+    private ProbeVerdict? _verdict;
+    private string? _keyStoreFailure;
     private bool _isTestingConnection;
     private int _settingsGeneration;
     private string _temperatureText = "";
@@ -283,12 +283,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             : "";
         _thinkingEnabled = profile.ThinkingEnabled;
         _thinkingEffortText = profile.ThinkingEffort ?? "";
-        ThinkingChoices =
-        [
-            new ThinkingChoice(null, strings[StudioStringKeys.ProfileThinkingProviderDefault]),
-            new ThinkingChoice(true, strings[StudioStringKeys.ProfileThinkingOn]),
-            new ThinkingChoice(false, strings[StudioStringKeys.ProfileThinkingOff]),
-        ];
+        ThinkingChoices = BuildThinkingChoices(strings);
         // STUDIO-54: the card by its name — a title changes with the language —, recognised from
         // whatever an older setting holds; a setting always has one.
         var card = LlmPresets.CardOf(profile);
@@ -312,8 +307,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             ShowBalance(balances.Of(ProviderBalanceAccount.For(profile)));
     }
 
-    /// <summary>The provider choices — the same catalogue `orkeon init` offers.</summary>
-    public IReadOnlyList<LlmPresetInfo> Providers { get; }
+    /// <summary>
+    /// The provider choices — the same catalogue `orkeon init` offers, in the interface's language:
+    /// rebuilt when it switches (<see cref="RefreshTexts"/>).
+    /// </summary>
+    public IReadOnlyList<LlmPresetInfo> Providers { get; private set; }
 
     /// <summary>The name under which the profile was opened; null when creating.</summary>
     public string? PreviousName { get; }
@@ -352,7 +350,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             _apiKeyEnv = value.DefaultApiKeyEnv;
             SeedTimeoutFor(value, previous);
             OnPropertyChanged(nameof(TimeoutHint));
-            ConnectionTestResult = null;
+            ShowVerdict(null);
             ShowBalance(null);
             OnPropertyChanged(nameof(RequiresApiKey));
             OnPropertyChanged(nameof(ApiKeyEnvName));
@@ -471,12 +469,14 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// </summary>
     public bool ShowBalanceRow => ShowTestRow && RequiresApiKey && _balances is { CanRead: true };
 
-    /// <summary>What the last balance read said for this endpoint — never the key; null before any.</summary>
-    public string? BalanceResult
-    {
-        get => _balanceResult;
-        private set => SetProperty(ref _balanceResult, value);
-    }
+    /// <summary>
+    /// What the last balance read said for this endpoint — never the key; null before any. Formed
+    /// as it is read, from the reading or the missing key, so it follows the language (STUDIO-56).
+    /// </summary>
+    public string? BalanceResult =>
+        _balanceKeyMissing ? _strings[StudioStringKeys.ProfileKeyMissingTest]
+        : _balanceReading is { } reading && _balances is not null ? BalanceText.Summary(reading, _balances, _strings)
+        : null;
 
     /// <summary>The probe's own line on hover, in English: it is the raw evidence (STUDIO-33), like the cause quoted in the connection test's line.</summary>
     public string? BalanceDetail => _balanceReading?.Detail;
@@ -492,12 +492,17 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
     /// <summary>
     /// Why the last remembered key was not kept for the next sessions (STUDIO-44): the key is in
-    /// place for this one all the same. Null when the last write went through.
+    /// place for this one all the same. Null when the last write went through. The cause is kept,
+    /// the line formed as it is read (STUDIO-56).
     /// </summary>
-    public string? KeyStoreError
+    public string? KeyStoreError => _keyStoreFailure is { } cause
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], cause)
+        : null;
+
+    private void ShowKeyStoreFailure(string? cause)
     {
-        get => _keyStoreError;
-        private set => SetProperty(ref _keyStoreError, value);
+        _keyStoreFailure = cause;
+        OnPropertyChanged(nameof(KeyStoreError));
     }
 
     /// <summary>Status chip of the key block: remembered, or not detected yet.</summary>
@@ -588,12 +593,22 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>
     /// Outcome line of the last connection probe, in the interface's language: the step that
     /// failed, the URL, the time waited and the cause (STUDIO-43). Cleared whenever the endpoint,
-    /// the model or the thinking switch changes, since the verdict was about the previous ones.
+    /// the model or the thinking switch changes, since the verdict was about the previous ones. The
+    /// verdict keeps its state — in progress, key missing, the probe's result —, and the line is
+    /// formed as it is read, so it follows the language (STUDIO-56).
     /// </summary>
-    public string? ConnectionTestResult
+    public string? ConnectionTestResult => _verdict switch
     {
-        get => _connectionTestResult;
-        private set => SetProperty(ref _connectionTestResult, value);
+        null => null,
+        { Result: { } result } => LlmProbeText.Describe(result, _strings),
+        { KeyMissing: true } => _strings[StudioStringKeys.ProfileKeyMissingTest],
+        _ => _strings[StudioStringKeys.LlmTesting],
+    };
+
+    private void ShowVerdict(ProbeVerdict? verdict)
+    {
+        _verdict = verdict;
+        OnPropertyChanged(nameof(ConnectionTestResult));
     }
 
     /// <summary>True while a connection test runs: the button is disabled and the line says so.</summary>
@@ -611,7 +626,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private void ClearConnectionTestResult()
     {
         _settingsGeneration++;
-        ConnectionTestResult = null;
+        ShowVerdict(null);
     }
 
     /// <summary>Commits the profile to the set.</summary>
@@ -655,8 +670,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         // profile store nor any settings file. The process half is written before this returns.
         var persisted = _keyStore.SaveAsync(ApiKeyEnvName, pastedKey);
         ApiKeyInput = "";
-        ConnectionTestResult = null;
-        KeyStoreError = null;
+        ShowVerdict(null);
+        ShowKeyStoreFailure(null);
         OnPropertyChanged(nameof(HasStoredKey));
         OnPropertyChanged(nameof(KeyStatusText));
 
@@ -666,12 +681,10 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            var message = string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], ex.Message);
             if (editorClosing || !ReferenceEquals(_owner.Editor, this))
-                _owner.ReportKeyStoreError(message);
+                _owner.ReportKeyStoreError(ex.Message);
             else
-                KeyStoreError = message;
+                ShowKeyStoreFailure(ex.Message);
         }
 
         OnPropertyChanged(nameof(HasStoredKey));
@@ -735,8 +748,15 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         TimeoutText = picked.RecommendedTimeoutSeconds?.ToString(CultureInfo.InvariantCulture) ?? "";
     }
 
-    /// <summary>The three positions of the thinking switch: provider default, on, off.</summary>
-    public IReadOnlyList<ThinkingChoice> ThinkingChoices { get; }
+    /// <summary>The three positions of the thinking switch: provider default, on, off — in the interface's language.</summary>
+    public IReadOnlyList<ThinkingChoice> ThinkingChoices { get; private set; }
+
+    private static ThinkingChoice[] BuildThinkingChoices(IStudioStrings strings) =>
+    [
+        new ThinkingChoice(null, strings[StudioStringKeys.ProfileThinkingProviderDefault]),
+        new ThinkingChoice(true, strings[StudioStringKeys.ProfileThinkingOn]),
+        new ThinkingChoice(false, strings[StudioStringKeys.ProfileThinkingOff]),
+    ];
 
     /// <summary>
     /// The thinking switch this profile pins (LLM-11). Provider default lets the model decide
@@ -879,7 +899,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         if (RequiresApiKey && apiKey is null)
         {
             // The design refuses to probe into a guaranteed 401: name the missing step.
-            ConnectionTestResult = _strings[StudioStringKeys.ProfileKeyMissingTest];
+            ShowVerdict(ProbeVerdict.MissingKey);
             return;
         }
 
@@ -894,7 +914,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         };
 
         IsTestingConnection = true;
-        ConnectionTestResult = _strings[StudioStringKeys.LlmTesting];
+        ShowVerdict(ProbeVerdict.InProgress);
         var generation = _settingsGeneration;
         LlmProbeResult result;
         try
@@ -904,7 +924,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             IsTestingConnection = false;
-            ConnectionTestResult = null;
+            ShowVerdict(null);
             throw;
         }
         catch (Exception ex)
@@ -915,7 +935,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         IsTestingConnection = false;
         // A setting changed while the probe ran: its verdict is about settings no longer shown.
         if (generation == _settingsGeneration)
-            ConnectionTestResult = LlmProbeText.Describe(result, _strings);
+            ShowVerdict(ProbeVerdict.Of(result));
     }
 
     /// <summary>
@@ -946,7 +966,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         if (RequiresApiKey && target.RequestWith(_keyStore, typed).ApiKey is null)
         {
             ShowBalance(null);
-            BalanceResult = _strings[StudioStringKeys.ProfileKeyMissingTest];
+            _balanceKeyMissing = true;
+            OnPropertyChanged(nameof(BalanceResult));
             return;
         }
 
@@ -956,11 +977,44 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private void ShowBalance(ProviderBalanceResult? reading)
     {
         _balanceReading = reading;
-        BalanceResult = reading is not null && _balances is not null
-            ? BalanceText.Summary(reading, _balances, _strings)
-            : null;
-        OnPropertiesChanged(nameof(BalanceDetail), nameof(IsBalanceLow), nameof(BalanceOffersConsole));
+        _balanceKeyMissing = false;
+        OnPropertiesChanged(nameof(BalanceResult), nameof(BalanceDetail), nameof(IsBalanceLow), nameof(BalanceOffersConsole));
         OpenBalanceConsoleCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// The language switched (STUDIO-56): relayed by the tab — the editor lives for one edit, the
+    /// port as long as the window, so it never subscribes itself (STUDIO-11). The catalogue and the
+    /// thinking choices are rebuilt in the language, the card found again by its name and the switch
+    /// by its value — assigned to the fields, never through the setters, which reseed the fields and
+    /// clear the verdict —; then each list is announced before its choice, and every computed line.
+    /// What was typed does not move.
+    /// </summary>
+    /// <param name="providers">The catalogue in the new language.</param>
+    internal void RefreshTexts(IReadOnlyList<LlmPresetInfo> providers)
+    {
+        Providers = providers;
+        if (_selectedProvider is { } selected)
+            _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Name, selected.Name, StringComparison.Ordinal)) ?? selected;
+        ThinkingChoices = BuildThinkingChoices(_strings);
+
+        OnPropertiesChanged(
+            nameof(Providers), nameof(LocalProviders), nameof(CloudProviders), nameof(OtherProviders),
+            nameof(SelectedProvider), nameof(ThinkingChoices), nameof(SelectedThinking),
+            nameof(KeyStatusText), nameof(KeyBlockTitle), nameof(KeyConsoleUrl), nameof(KeyStoreError),
+            nameof(HostIdText), nameof(HostIdRenamedText), nameof(HostKeyHint),
+            nameof(TimeoutHint), nameof(ThinkingHint), nameof(MaxTokensHint),
+            nameof(ConnectionTestResult), nameof(BalanceResult));
+    }
+
+    /// <summary>The state of the last connection test: in progress, refused for a missing key, or the probe's result.</summary>
+    private sealed record ProbeVerdict(LlmProbeResult? Result, bool KeyMissing)
+    {
+        public static ProbeVerdict InProgress { get; } = new(null, false);
+
+        public static ProbeVerdict MissingKey { get; } = new(null, true);
+
+        public static ProbeVerdict Of(LlmProbeResult result) => new(result, false);
     }
 }
 
@@ -989,8 +1043,9 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private readonly Func<IReadOnlyList<TeamSummary>>? _loadTeams;
     private readonly Action<string, string>? _followRename;
     private ModelProfileEditorViewModel? _editor;
-    private string? _loadError;
-    private string? _keyStoreError;
+    private string? _loadFailure;
+    private string? _keyStoreFailure;
+    private string? _writeFailure;
 
     /// <summary>
     /// Builds the tab over its seams. <paramref name="balances"/> are the provider balances read
@@ -1164,40 +1219,50 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// Why the profile file could not be read, when it exists and could not be; null after a
     /// clean load. A file that fails to parse used to load as the empty set — the same screen
     /// as a first run, over a file the user had hand-written (STUDIO-12 C6). The next change
-    /// overwrites that file, so the line says so.
+    /// overwrites that file, so the line says so. The cause is kept and the line formed as it is
+    /// read, so it follows the language (STUDIO-56).
     /// </summary>
-    public string? LoadError
-    {
-        get => _loadError;
-        private set
-        {
-            if (SetProperty(ref _loadError, value))
-                OnPropertyChanged(nameof(HasLoadError));
-        }
-    }
+    public string? LoadError => _loadFailure is { } cause
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileFileUnreadable], cause)
+        : null;
 
     /// <summary>Whether the unreadable-file line shows.</summary>
-    public bool HasLoadError => _loadError is not null;
+    public bool HasLoadError => _loadFailure is not null;
 
     /// <summary>
     /// Why a key remembered by an editor that has closed since — a key pasted and saved with the
     /// profile — was not kept for the next sessions (STUDIO-44). It is in place for this one.
-    /// Cleared when an editor opens.
+    /// Cleared when an editor opens. Formed from its cause as it is read (STUDIO-56).
     /// </summary>
-    public string? KeyStoreError
-    {
-        get => _keyStoreError;
-        private set
-        {
-            if (SetProperty(ref _keyStoreError, value))
-                OnPropertyChanged(nameof(HasKeyStoreError));
-        }
-    }
+    public string? KeyStoreError => _keyStoreFailure is { } cause
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], cause)
+        : null;
 
     /// <summary>Whether the key-not-kept line shows on the profile list.</summary>
-    public bool HasKeyStoreError => _keyStoreError is not null;
+    public bool HasKeyStoreError => _keyStoreFailure is not null;
 
-    internal void ReportKeyStoreError(string message) => KeyStoreError = message;
+    /// <summary>Says on the list why a key an editor remembered as it closed was not kept.</summary>
+    /// <param name="cause">What the user scope answered.</param>
+    internal void ReportKeyStoreError(string? cause)
+    {
+        _keyStoreFailure = cause;
+        OnPropertiesChanged(nameof(KeyStoreError), nameof(HasKeyStoreError));
+    }
+
+    /// <summary>
+    /// Why the last write of the model profiles file failed (STUDIO-56) — a read-only or locked file,
+    /// a set the serializer refuses —; null once a write goes through. The settings stay as shown
+    /// for the session, and the next change writes them again. Formed from its cause as it is read.
+    /// </summary>
+    public string? ProfileWriteError => _writeFailure is { } cause
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileFileNotWritten], cause)
+        : null;
+
+    /// <summary>Whether the file-not-written line shows.</summary>
+    public bool HasProfileWriteError => _writeFailure is not null;
+
+    /// <summary>The chain of writes of the model profiles file, for a test to await what a gesture wrote.</summary>
+    internal Task PendingWrite => _persist;
 
     /// <summary>Deleting is allowed only while more than one profile remains.</summary>
     public bool CanDelete => _set.Profiles.Count > 1;
@@ -1213,7 +1278,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
             OnPropertyChanged(nameof(IsEditorOpen));
             if (value is not null)
-                KeyStoreError = null;
+                ReportKeyStoreError(null);
         }
     }
 
@@ -1228,9 +1293,8 @@ public sealed class ModelProfilesViewModel : ObservableObject
     {
         var loaded = await _store.LoadAsync(cancellationToken).ConfigureAwait(true);
         _set = loaded.Set;
-        LoadError = loaded.Error is { } error
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileFileUnreadable], error)
-            : null;
+        _loadFailure = loaded.Error;
+        OnPropertiesChanged(nameof(LoadError), nameof(HasLoadError));
         Rebuild();
     }
 
@@ -1352,16 +1416,31 @@ public sealed class ModelProfilesViewModel : ObservableObject
             moved.Add(renamedTo);
         if (moved.Count > 0)
             HostProfilesChanged?.Invoke(this, new HostProfilesChangedEventArgs(moved));
-        // Writes are chained so two rapid mutations can never interleave on the file; the
-        // store itself is tolerant (a refused write is a lost convenience, said nowhere by
-        // design — the profile set lives on in memory for the session).
+        // Writes are chained so two rapid mutations can never interleave on the file. Each write
+        // answers for itself (STUDIO-56): a refused one is said on the tab and never fails the next,
+        // which writes the whole set again — the profile set lives on in memory for the session.
         _persist = Persist(_persist, set);
     }
 
+    [SuppressMessage("Design", "CA1031",
+        Justification = "Whatever the write throws — a read-only file, a set the serializer refuses —, the set " +
+                        "lives on for the session: the cause belongs on the tab's line, and the next write must " +
+                        "not inherit the failure.")]
     private async Task Persist(Task previous, ModelProfileSet set)
     {
-        await previous.ConfigureAwait(false);
-        await _store.SaveAsync(set).ConfigureAwait(false);
+        await previous.ConfigureAwait(true);
+        string? failure = null;
+        try
+        {
+            await _store.SaveAsync(set).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            failure = ex.Message;
+        }
+
+        _writeFailure = failure;
+        OnPropertiesChanged(nameof(ProfileWriteError), nameof(HasProfileWriteError));
     }
 
     private void ApplyDefaultToSettings()
@@ -1445,13 +1524,18 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
     /// <summary>
     /// The language switched: the cards' titles (STUDIO-54), the host profile lines and the default
-    /// choice say it again.
+    /// choice say it again — and the open editor, the key rows and the tab's three error lines
+    /// (STUDIO-56): the tab relays the signal to what lives shorter than the port.
     /// </summary>
     private void RefreshHostTexts()
     {
         foreach (var row in Profiles)
             row.RefreshTexts();
+        foreach (var secret in Secrets)
+            secret.RefreshTexts();
         RebuildHostProfiles();
+        _editor?.RefreshTexts(ProviderCatalog());
+        OnPropertiesChanged(nameof(LoadError), nameof(KeyStoreError), nameof(ProfileWriteError));
     }
 
     /// <summary>

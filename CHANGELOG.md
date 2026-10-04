@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the Studio TUI presents the key under every spelling a run reads, the open model-setting editor follows the language, and a refused write of the model settings is said
+
+Three defects of Studio's model settings (STUDIO-56):
+
+- **The `orkeon-studio-config` « Test connection » now finds the key under every spelling a run
+  reads.** The .NET configuration compares the `ORKEON_` prefix and the keys without case and reads
+  `:` like `__`, so a run reads `ORKEON_LLM__APIKEY`, `orkeon_llm__apikey` or `ORKEON_Llm:ApiKey`
+  as `Llm:ApiKey`. Under Linux and macOS the TUI looked for the exact name: it said « API key
+  missing », or tested another key than the one the run sends. It now reads the process block as the
+  configuration does (`IEnvironmentVariables.ReadAll`, `LlmApiKeyResolver`). When two spellings in
+  the layer that decides hold different values, a run reads either one: the TUI sends no request and
+  names the variables, never their values (« API key ambiguous — … Keep one. »). The variable
+  `Llm:ApiKeyEnvVar` names is still read by its exact name, as the run reads it.
+  `LlmApiKeyResolver.Resolve` returns an `LlmApiKeyResolution` (the key, none, or the conflict); its
+  overloads over a function and over the machine without a seam, and `LlmForm.ToProbeRequest(Func)`,
+  are removed — pass an `IEnvironmentVariables` (`SystemEnvironmentVariables.Instance`).
+- **The open model-setting editor follows a language switch.** Its cards, its three thinking
+  choices and every line it computes — the key block, the hints, the host id, the test's verdict, the
+  balance — stayed in the previous language until it was reopened. The tab relays the switch; the
+  editor rebuilds its catalogue and its choices, finds its card again by name, keeps what was typed,
+  and keeps each verdict as a state, formed as it is read. The key rows of the Models and Tools tabs
+  and the tab's error lines follow it too.
+- **A refused write of `studio-model-profiles.json` is said, and no longer kills the writes that
+  follow.** Every change wrote the file after the previous write; a write that threw (an infinite
+  temperature) made every later one fail with it until the end of the session, silently, and the
+  store swallowed a read-only or locked file. Each write now answers for itself, the Models tab says
+  the failure on a line of its own (« The model profiles file could not be written — … »), the next
+  change writes the whole set again and clears it, and the file is written beside then moved over the
+  original: replaced whole or not at all.
+
 ### Fixed — Studio refuses before saving what the run will refuse, says each refusal in the language of the screen, and neither keeps nor erases in silence a value it cannot read **[breaking]**
 
 The model-setting editor took « NaN », « Infinity » or `1e400` as a temperature: « Save » threw, the

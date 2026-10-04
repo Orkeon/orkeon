@@ -65,7 +65,7 @@ public sealed class LlmApiKeyResolverParityTests : IDisposable
                    (reference, referenced)))
         {
             var runtime = LlmSettings.ReadDefault(RunnerSettings.ReadConfiguration(settings)).ApiKey;
-            var probe = LlmApiKeyResolver.Resolve(file, reference);
+            var probe = LlmApiKeyResolver.Resolve(file, reference, SystemEnvironmentVariables.Instance).Key;
 
             Assert.Equal(expected, runtime);
             Assert.Equal(runtime, probe);
@@ -91,7 +91,84 @@ public sealed class LlmApiKeyResolverParityTests : IDisposable
             var runtime = LlmSettings.ReadDefault(RunnerSettings.ReadConfiguration(settings)).ApiKey;
 
             Assert.Equal("sk-overriding", runtime);
-            Assert.Equal(runtime, LlmApiKeyResolver.Resolve(null, named));
+            Assert.Equal(runtime, LlmApiKeyResolver.Resolve(null, named, SystemEnvironmentVariables.Instance).Key);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-56, decision 1: every spelling the configuration reads as the key, or as the
+    /// reference, gives the probe what it gives the run. Red under Linux before the fix — the probe
+    /// read the exact name —; green under Windows either way, where these are the same variables.
+    /// </summary>
+    [Theory]
+    [InlineData("ORKEON_LLM__APIKEY", false)]
+    [InlineData("orkeon_llm__apikey", false)]
+    [InlineData("ORKEON_Llm:ApiKey", false)]
+    [InlineData("LLM__APIKEY", false)]
+    [InlineData("llm__apikey", false)]
+    [InlineData("ORKEON_LLM__APIKEYENVVAR", true)]
+    public async Task Every_spelling_a_run_reads_gives_the_probe_the_same_key(string spelling, bool isReference)
+    {
+        var referenced = "ORKEON_PARITY_" + Guid.NewGuid().ToString("N");
+        var settings = await WriteSettingsAsync(apiKey: null, "ORKEON_PARITY_UNSET_" + Guid.NewGuid().ToString("N"));
+
+        using (ProcessVariables.Set(
+                   (LlmPresets.DefaultApiKeyEnv, null),
+                   (UnprefixedApiKey, null),
+                   (OrkeonReference, null),
+                   (UnprefixedReference, null),
+                   (referenced, "sk-referenced"),
+                   (spelling, isReference ? referenced : "sk-spelled")))
+        {
+            var runtime = LlmSettings.ReadDefault(RunnerSettings.ReadConfiguration(settings)).ApiKey;
+            var probe = LlmApiKeyResolver.Resolve(null, null, SystemEnvironmentVariables.Instance).Key;
+
+            Assert.Equal(isReference ? "sk-referenced" : "sk-spelled", runtime);
+            Assert.Equal(runtime, probe);
+        }
+    }
+
+    [Fact]
+    public async Task A_reference_in_another_case_than_its_variable_reads_alike_on_both_sides()
+    {
+        // The variable a reference names is read by its exact name on both sides: found under Windows,
+        // where names have no case, absent under Linux and macOS.
+        var variable = "ORKEON_PARITY_" + Guid.NewGuid().ToString("N").ToUpperInvariant();
+        var reference = variable.ToLowerInvariant();
+        var settings = await WriteSettingsAsync(apiKey: null, reference);
+
+        using (ProcessVariables.Set(
+                   (LlmPresets.DefaultApiKeyEnv, null),
+                   (UnprefixedApiKey, null),
+                   (OrkeonReference, null),
+                   (UnprefixedReference, null),
+                   (variable, "sk-variable")))
+        {
+            var runtime = LlmSettings.ReadDefault(RunnerSettings.ReadConfiguration(settings)).ApiKey;
+
+            Assert.Equal(runtime, LlmApiKeyResolver.Resolve(null, reference, SystemEnvironmentVariables.Instance).Key);
+        }
+    }
+
+    [Fact]
+    public async Task Two_spellings_with_two_values_give_the_run_either_one_and_the_probe_a_conflict()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Under Windows two spellings of a name are one variable.");
+        var settings = await WriteSettingsAsync(apiKey: null, "ORKEON_PARITY_UNSET_" + Guid.NewGuid().ToString("N"));
+
+        using (ProcessVariables.Set(
+                   (LlmPresets.DefaultApiKeyEnv, "sk-a"),
+                   ("ORKEON_LLM__APIKEY", "sk-b"),
+                   (UnprefixedApiKey, null),
+                   (OrkeonReference, null),
+                   (UnprefixedReference, null)))
+        {
+            var runtime = LlmSettings.ReadDefault(RunnerSettings.ReadConfiguration(settings)).ApiKey;
+            var probe = LlmApiKeyResolver.Resolve(null, null, SystemEnvironmentVariables.Instance);
+
+            Assert.True(runtime is "sk-a" or "sk-b", "the run reads one of the two values");
+            Assert.True(probe.IsConflict);
+            Assert.Equal(["ORKEON_LLM__APIKEY", LlmPresets.DefaultApiKeyEnv], probe.ConflictingVariables);
         }
     }
 
@@ -142,8 +219,10 @@ public sealed class LlmApiKeyResolverParityTests : IDisposable
 
         public void Dispose()
         {
-            foreach (var (name, previous) in _previous)
-                Environment.SetEnvironmentVariable(name, previous);
+            // In reverse: under Windows two spellings are one variable, and the first value read is
+            // the one to put back.
+            for (var index = _previous.Count - 1; index >= 0; index--)
+                Environment.SetEnvironmentVariable(_previous[index].Name, _previous[index].Previous);
         }
     }
 }

@@ -18,6 +18,14 @@ public sealed class LlmConnectionTestTests
     private static LlmSectionView View(LlmForm form, FakeLlmEndpointProbe probe, FakeEnvironmentVariables? environment = null) =>
         new(form, probe, environment ?? new FakeEnvironmentVariables());
 
+    private static FakeEnvironmentVariables Environment(params (string Name, string Value)[] process)
+    {
+        var environment = new FakeEnvironmentVariables();
+        foreach (var (name, value) in process)
+            environment.Process[name] = value;
+        return environment;
+    }
+
     [Fact]
     public async Task The_button_probes_the_endpoint_currently_on_screen()
     {
@@ -106,8 +114,7 @@ public sealed class LlmConnectionTestTests
         // look there — otherwise the button fails for everyone who followed the advice.
         var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OpenAI };
 
-        var request = form.ToProbeRequest(name =>
-            string.Equals(name, LlmPresets.DefaultApiKeyEnv, StringComparison.Ordinal) ? "sk-from-env" : null);
+        var request = form.ToProbeRequest(Environment((LlmPresets.DefaultApiKeyEnv, "sk-from-env")));
 
         Assert.Equal("sk-from-env", request.ApiKey);
     }
@@ -118,7 +125,7 @@ public sealed class LlmConnectionTestTests
         // STUDIO-49: the variable Llm:ApiKeyEnvVar names is where a run finds the key.
         var form = new LlmForm { BaseUrl = LlmProviderEndpoints.Zai, ApiKeyEnvVar = "ZAI_API_KEY" };
 
-        var request = form.ToProbeRequest(name => name == "ZAI_API_KEY" ? "sk-zai" : null);
+        var request = form.ToProbeRequest(Environment(("ZAI_API_KEY", "sk-zai")));
 
         Assert.Equal("sk-zai", request.ApiKey);
     }
@@ -133,8 +140,7 @@ public sealed class LlmConnectionTestTests
     {
         var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OpenAI, ApiKey = "sk-from-file" };
 
-        var request = form.ToProbeRequest(name =>
-            string.Equals(name, LlmPresets.DefaultApiKeyEnv, StringComparison.Ordinal) ? "sk-from-env" : null);
+        var request = form.ToProbeRequest(Environment((LlmPresets.DefaultApiKeyEnv, "sk-from-env")));
 
         Assert.Equal("sk-from-env", request.ApiKey);
     }
@@ -210,11 +216,48 @@ public sealed class LlmConnectionTestTests
             TimeoutSeconds = "600",
         };
 
-        var request = form.ToProbeRequest(_ => "sk-zai");
+        var request = form.ToProbeRequest(Environment((LlmPresets.DefaultApiKeyEnv, "sk-zai")));
 
         Assert.Equal("glm-5.2", request.Model);
         Assert.False(request.ThinkingEnabled);
         Assert.True(request.CheckCompletion);
         Assert.Equal(TimeSpan.FromSeconds(30), request.Timeout);
+    }
+
+    /// <summary>
+    /// STUDIO-56, decision 1: under Linux and macOS a run reads the key under any spelling of
+    /// <c>ORKEON_Llm__ApiKey</c> — the prefix and the key compared without case. The screen looked for
+    /// the exact name and said « API key missing » without a request, for a key the run sends.
+    /// </summary>
+    [Fact]
+    public async Task The_screen_presents_the_key_under_the_spelling_a_run_reads()
+    {
+        var environment = Environment(("ORKEON_LLM__APIKEY", "sk-upper"));
+        var probe = new FakeLlmEndpointProbe();
+        using var view = View(new LlmForm { BaseUrl = LlmProviderEndpoints.DeepSeek }, probe, environment);
+        view.Load();
+
+        await view.TestConnection();
+
+        Assert.Equal("sk-upper", Assert.Single(probe.Requests).ApiKey);
+    }
+
+    [Fact]
+    public async Task Two_spellings_with_different_values_are_said_without_a_request_or_a_value()
+    {
+        var environment = Environment(("ORKEON_LLM__APIKEY", "sk-first"), ("ORKEON_Llm__ApiKey", "sk-second"));
+        var probe = new FakeLlmEndpointProbe();
+        using var view = View(new LlmForm { BaseUrl = LlmProviderEndpoints.DeepSeek }, probe, environment);
+        view.Load();
+
+        await view.TestConnection();
+
+        Assert.Empty(probe.Requests);
+        Assert.StartsWith("API key ambiguous", view.TestResult, StringComparison.Ordinal);
+        Assert.Contains("ORKEON_LLM__APIKEY", view.TestResult, StringComparison.Ordinal);
+        Assert.Contains("ORKEON_Llm__ApiKey", view.TestResult, StringComparison.Ordinal);
+        Assert.Contains("Llm:ApiKey", view.TestResult, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-first", view.TestResult, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-second", view.TestResult, StringComparison.Ordinal);
     }
 }

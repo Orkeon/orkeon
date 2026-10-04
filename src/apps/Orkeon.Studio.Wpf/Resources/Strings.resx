@@ -1435,6 +1435,7 @@
   <!-- STUDIO-12 -->
   <data name="Studio.Run.KindSingleFileCrewDirectory" xml:space="preserve"><value>Team folder holding one YAML crew file</value></data>
   <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve"><value>The model profiles file could not be read — {0}. Fix or delete it; until then the list starts empty and the next change overwrites it.</value></data>
+  <data name="Studio.Settings.ProfileFileNotWritten" xml:space="preserve"><value>The model profiles file could not be written — {0}. The settings stay as shown for this session; the next change writes them again.</value></data>
   <data name="Studio.Import.Refused" xml:space="preserve"><value>Not imported — {0}</value></data>
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Maximum response (tokens, optional)</value></data>
   <data name="Studio.Settings.MaxTokensHintKnown" xml:space="preserve"><value>Empty: the model's documented maximum, {0} tokens — sent as the response cap.</value></data>

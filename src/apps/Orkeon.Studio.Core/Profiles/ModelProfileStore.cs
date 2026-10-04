@@ -60,7 +60,8 @@ public sealed class InMemoryModelProfileStore : IModelProfileStore
 
 /// <summary>
 /// JSON file store, living next to the per-user <c>appsettings.json</c> — the one directory
-/// the CLI already owns, where <c>studio-history.json</c> also lives. Loading never crashes:
+/// the CLI already owns, where <c>studio-history.json</c> also lives. A write replaces the file whole
+/// or not at all, and a refused one reaches the caller (STUDIO-56). Loading never crashes:
 /// a missing file is the empty set, and a corrupt or unreadable one degrades to the empty
 /// set <em>with its reason attached</em> — the profiles are Studio comfort state, not the
 /// source of truth for any run, but a file that fails to parse must not pass for an empty
@@ -161,23 +162,47 @@ public sealed class ModelProfileFileStore : IModelProfileStore
         Profiles = [.. set.Profiles.OfType<ModelProfile>().Select(profile => profile with { Provider = LlmPresets.CardOf(profile) })],
     };
 
+    /// <summary>
+    /// Writes the set whole or not at all (STUDIO-56): serialised first, written to a file beside the
+    /// profiles file, then moved over it — a failure before or during the write leaves the file as it
+    /// was, and the staging file is removed. A refusal — a read-only or locked file, a directory that
+    /// cannot be created, a set the serializer refuses — reaches the caller: the Models tab says it,
+    /// as the settings screen says a settings file it could not write.
+    /// </summary>
     /// <inheritdoc />
     public async Task SaveAsync(ModelProfileSet profiles, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(profiles);
 
+        var json = JsonSerializer.Serialize(profiles, WriteOptions);
+
+        var directory = Path.GetDirectoryName(FilePath);
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
+
+        var staging = FilePath + ".tmp";
         try
         {
-            var directory = Path.GetDirectoryName(FilePath);
-            if (!string.IsNullOrEmpty(directory))
-                Directory.CreateDirectory(directory);
+            await File.WriteAllTextAsync(staging, json, cancellationToken).ConfigureAwait(false);
+            File.Move(staging, FilePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(staging))
+                TryDelete(staging);
+        }
+    }
 
-            var json = JsonSerializer.Serialize(profiles, WriteOptions);
-            await File.WriteAllTextAsync(FilePath, json, cancellationToken).ConfigureAwait(false);
+    /// <summary>Removes the staging file a failed write left; the failure itself is what the caller hears.</summary>
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Comfort state: losing a write must never take the screen down with it.
+            // The write's own failure is already on its way to the caller.
         }
     }
 }

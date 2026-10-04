@@ -25,7 +25,11 @@ un `Llm__Model` nu est lu aussi, sous chacune des couches qui suivent :
 2. **Les variables d'environnement préfixées `ORKEON_`** (`AddEnvironmentVariables("ORKEON_")`,
    pour chaque hôte et pour `orkeon doctor`). Mapping .NET standard : `__` sépare les
    niveaux — `ORKEON_Llm__ApiKey` surcharge `Llm:ApiKey`, `ORKEON_Orkeon__Rag__Profile`
-   surcharge `Orkeon:Rag:Profile`. Les variables sont ajoutées **après** le fichier :
+   surcharge `Orkeon:Rag:Profile`. Le préfixe et les clés se comparent sans la casse, et `:`
+   sépare les niveaux comme `__` : `ORKEON_LLM__APIKEY`, `orkeon_llm__apikey` et
+   `ORKEON_Llm:ApiKey` valent tous `Llm:ApiKey`. Sous Linux et macOS, deux graphies d'un réglage
+   sont deux variables, et un run lit l'une ou l'autre : ne posez jamais un même réglage sous deux
+   graphies. Les variables sont ajoutées **après** le fichier :
    elles gagnent. Une clé n'a pas à venir de l'une ou l'autre couche : le fichier peut nommer la
    variable qui la contient (`ApiKeyEnvVar`, [plus bas](#la-clé-dapi-apikey-apikeyenvvar)), lue
    quand aucune ne résout d'`ApiKey`.

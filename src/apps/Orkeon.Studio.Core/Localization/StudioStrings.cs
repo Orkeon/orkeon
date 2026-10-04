@@ -1723,6 +1723,9 @@ public static class StudioStringKeys
     /// <summary>"The model profiles file could not be read — {0}. Fix or delete it; …"</summary>
     public const string ProfileFileUnreadable = "Studio.Settings.ProfileFileUnreadable";
 
+    /// <summary>"The model profiles file could not be written — {0}. The settings stay as shown for this session; …" (STUDIO-56)</summary>
+    public const string ProfileFileNotWritten = "Studio.Settings.ProfileFileNotWritten";
+
     /// <summary>"Not imported — {0}"</summary>
     public const string ImportRefused = "Studio.Import.Refused";
 
@@ -2577,6 +2580,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         // STUDIO-12
         [StudioStringKeys.TargetKindSingleFileCrewDirectory] = "Team folder holding one YAML crew file",
         [StudioStringKeys.ProfileFileUnreadable] = "The model profiles file could not be read — {0}. Fix or delete it; until then the list starts empty and the next change overwrites it.",
+        [StudioStringKeys.ProfileFileNotWritten] = "The model profiles file could not be written — {0}. The settings stay as shown for this session; the next change writes them again.",
         [StudioStringKeys.ImportRefused] = "Not imported — {0}",
         // LLM-10
         [StudioStringKeys.ProfileMaxTokensHintKnown] = "Empty: the model's documented maximum, {0} tokens — sent as the response cap.",

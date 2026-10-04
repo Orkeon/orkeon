@@ -144,17 +144,20 @@ internal sealed class LlmSectionView : SectionView
     /// Starts a probe of whatever is currently on screen and returns immediately: the screen
     /// stays usable while the endpoint is being reached, and a failure is a message, never a
     /// reason to refuse anything else. An endpoint that needs a key when none resolves is not
-    /// probed: a run would refuse it, and the line says so at once (STUDIO-54).
+    /// probed: a run would refuse it, and the line says so at once (STUDIO-54) — or names the two
+    /// variables that set the key with different values, of which a run reads either (STUDIO-56).
     /// </summary>
     internal Task TestConnection()
     {
         // The user may have typed a new endpoint without leaving the screen, so read the
         // widgets back into the form before deciding what to probe.
         Apply();
+        var key = _form.ResolveKey(_environment);
         var request = _form.ToProbeRequest(_environment);
         if (request.ApiKey is null && LlmPresets.NeedsApiKey(request.BaseUrl))
         {
-            TestResult = LlmForm.KeyMissingLine;
+            // Two spellings that disagree come first: setting one more key would not help (STUDIO-56).
+            TestResult = key.IsConflict ? LlmForm.KeyConflictLine(key) : LlmForm.KeyMissingLine;
             _testResult.Text = TestResult;
             return Task.CompletedTask;
         }
