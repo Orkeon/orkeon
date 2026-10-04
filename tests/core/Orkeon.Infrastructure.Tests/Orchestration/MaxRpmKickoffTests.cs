@@ -101,7 +101,9 @@ public sealed class MaxRpmKickoffTests
 
         var run = await StartAsync(scope.ServiceProvider, crew, agents, tasks, Ct);
 
-        await Polling.WaitUntilAsync(() => run.IsCompleted || clock.PendingTimers > 0);
+        // The third request arms its timer as soon as the window is full, possibly before the first two
+        // reach the vendor: wait for both (GAP-41: a wait reads what it asserts, never a proxy of it).
+        await Polling.WaitUntilAsync(() => run.IsCompleted || (clock.PendingTimers > 0 && vendor.InstantsOf().Length >= 2));
         Assert.False(run.IsCompleted);
         Assert.Equal([Seconds(0), Seconds(0)], vendor.InstantsOf());
 
