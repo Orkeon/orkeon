@@ -55,20 +55,15 @@ public sealed class AppSettingsValidator
 
     private static readonly string[] StringFields =
     [
-        "Llm:Model",
-        "Llm:BaseUrl",
-        "Llm:ApiKey",
-        "Llm:Thinking:Effort",
         "Orkeon:Rag:Profile",
         "Orkeon:Rag:Provider",
         RagSection.LlmProfilePath,
     ];
 
-    private static readonly string[] NumberFields =
+    // Every field the run reads as an integer (int.TryParse, or the binder): 600.0, 0.5 or "1e3" is
+    // no integer to it — ignored, or a refused start (STUDIO-55). The Llm shape's own are below.
+    private static readonly string[] IntegerFields =
     [
-        "Llm:Temperature",
-        "Llm:MaxTokens",
-        "Llm:TimeoutSeconds",
         "RateLimiting:MaxConcurrentRequests",
         "RateLimiting:GlobalRequestsPerMinute",
         "RateLimiting:ProviderRequestsPerMinute",
@@ -80,8 +75,6 @@ public sealed class AppSettingsValidator
 
     private static readonly string[] BooleanFields =
     [
-        "Llm:Thinking:Enabled",
-        "Llm:Grammar",
         "LlmLogging:FullEmbeddingLog",
         "LlmLogging:LogStreamingExchanges",
         "Orkeon:Rag:Retrieval:Hybrid:Enabled",
@@ -90,6 +83,12 @@ public sealed class AppSettingsValidator
         McpSection.SectionPath + ":Enabled",
         ShellToolsSection.SectionPath + ":AllowInterpreters",
     ];
+
+    // The keys of a section of the Llm shape — Llm itself and each entry of Llm:Profiles —, by the
+    // kind the run reads them as (LlmSettings): relative to the section.
+    private static readonly string[] LlmStringKeys = ["Model", "BaseUrl", "ApiKey", ConfigurationKeys.LlmApiKeyEnvVar, "Thinking:Effort"];
+    private static readonly string[] LlmIntegerKeys = ["MaxTokens", "TimeoutSeconds", "MaxRetries"];
+    private static readonly string[] LlmBooleanKeys = ["Thinking:Enabled", ConfigurationKeys.LlmGrammar];
 
     // The words that make an environment value read as a secret: written in clear in the
     // settings file, it is the very thing the API-key rows keep out of every file.
@@ -217,7 +216,7 @@ public sealed class AppSettingsValidator
                 $"{path}:Command");
         }
 
-        if (server.IsSse && !IsAbsoluteHttpUrl(server.Url))
+        if (server.IsSse && !LlmSection.IsAbsoluteHttpUrl(server.Url))
         {
             return ValidationMessage.Error(
                 ValidationCodes.McpUrlInvalid,
@@ -228,10 +227,6 @@ public sealed class AppSettingsValidator
 
         return null;
     }
-
-    private static bool IsAbsoluteHttpUrl(string? url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var parsed)
-        && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps);
 
     private static bool LooksLikeSecret(string name, string value)
     {
@@ -249,22 +244,84 @@ public sealed class AppSettingsValidator
         {
             messages.Add(ValidationMessage.Warning(
                 ValidationCodes.LlmSectionMissing, LlmNotConfiguredWarning, LlmSection.SectionPath));
-            return;
         }
 
-        // "localhost:11434" parses as an absolute URI whose *scheme* is "localhost", so
-        // the scheme check is what actually catches a URL missing its http:// prefix.
-        if (document.Llm.BaseUrl is { Length: > 0 } baseUrl
-            && !(Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri)
-                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)))
+        if (document.GetNode(LlmSection.SectionPath) is not JsonObject section)
+            return;
+
+        // STUDIO-55: the default is read as strictly as a profile at start (GAP-40) — its shape is
+        // judged the same way, then each entry's.
+        ValidateLlmShape(section, LlmSection.SectionPath, messages);
+        ValidateInlineKey(document, section, messages);
+        ValidateProfiles(section, messages);
+    }
+
+    /// <summary>
+    /// The keys of a section of the <c>Llm</c> shape, judged as the run reads them at start
+    /// (<c>LlmSettings</c>, STUDIO-55): strings, a finite temperature, three integers, two switches, an
+    /// absolute http(s) address, a variable's name, and a key that is no <c>${NAME}</c> placeholder.
+    /// One error per field, at its path; never the value of <c>ApiKeyEnvVar</c> or <c>ApiKey</c>,
+    /// which may be a key pasted in the wrong field.
+    /// </summary>
+    private static void ValidateLlmShape(JsonObject section, string sectionPath, List<ValidationMessage> messages)
+    {
+        foreach (var key in LlmStringKeys.Where(key => Child(section, key) is JsonObject or JsonArray))
+            messages.Add(WrongType($"{sectionPath}:{key}", "a string"));
+
+        if (Child(section, "Temperature") is { } temperature
+            && !(AppSettingsDocument.ReadDouble(temperature) is { } value && double.IsFinite(value)))
+        {
+            messages.Add(WrongType($"{sectionPath}:Temperature", "a finite number"));
+        }
+
+        foreach (var key in LlmIntegerKeys.Where(key => Child(section, key) is { } node && AppSettingsDocument.ReadInt32(node) is null))
+            messages.Add(WrongType($"{sectionPath}:{key}", "a whole number"));
+
+        foreach (var key in LlmBooleanKeys.Where(key => Child(section, key) is { } node && AppSettingsDocument.ReadBoolean(node) is null))
+            messages.Add(WrongType($"{sectionPath}:{key}", "true or false"));
+
+        if (Child(section, "BaseUrl") is JsonValue baseUrlNode
+            && AppSettingsDocument.ReadString(baseUrlNode) is { } baseUrl
+            && !string.IsNullOrWhiteSpace(baseUrl)
+            && !LlmSection.IsAbsoluteHttpUrl(baseUrl))
         {
             messages.Add(ValidationMessage.Error(
                 ValidationCodes.InvalidFieldType,
                 string.Create(CultureInfo.InvariantCulture, $"'{baseUrl}' is not an absolute http(s) URL."),
-                "Llm:BaseUrl"));
+                $"{sectionPath}:BaseUrl"));
         }
 
+        if (Child(section, ConfigurationKeys.LlmApiKeyEnvVar) is JsonValue referenceNode
+            && !LlmSection.IsVariableName(AppSettingsDocument.ReadString(referenceNode)))
+        {
+            messages.Add(ValidationMessage.Error(
+                ValidationCodes.InvalidFieldType,
+                $"'{sectionPath}:{ConfigurationKeys.LlmApiKeyEnvVar}' must be the name of an environment variable " +
+                "(no '=', space or line break) — never the key itself.",
+                $"{sectionPath}:{ConfigurationKeys.LlmApiKeyEnvVar}"));
+        }
+
+        if (Child(section, "ApiKey") is JsonValue keyNode
+            && AppSettingsDocument.ReadString(keyNode) is { } apiKey
+            && LlmSection.IsKeyPlaceholder(apiKey))
+        {
+            messages.Add(ValidationMessage.Error(
+                ValidationCodes.LlmApiKeyPlaceholder,
+                $"'{sectionPath}:ApiKey' is a ${{…}} placeholder, which the engine never expands — the text itself " +
+                "would be sent as the key, and the run refuses to start. Name the variable that holds the key " +
+                $"instead, in place of ApiKey: \"{ConfigurationKeys.LlmApiKeyEnvVar}\": \"{LlmSection.PlaceholderVariable(apiKey)}\".",
+                $"{sectionPath}:ApiKey"));
+        }
+    }
+
+    /// <summary>The information on a key written in clear in <c>Llm</c> — a placeholder is an error instead.</summary>
+    private static void ValidateInlineKey(AppSettingsDocument document, JsonObject section, List<ValidationMessage> messages)
+    {
+        if (Child(section, "ApiKey") is JsonObject or JsonArray)
+            return;
+
         if (document.Llm.ApiKey is { Length: > 0 } apiKey
+            && !LlmSection.IsKeyPlaceholder(apiKey)
             && !string.Equals(apiKey, LlmPresets.DockerModelRunnerApiKeyPlaceholder, StringComparison.Ordinal))
         {
             // STUDIO-49: a key the configuration resolves wins, so this one also masks the
@@ -293,6 +350,64 @@ public sealed class AppSettingsValidator
         }
     }
 
+    /// <summary>
+    /// <c>Llm:Profiles</c> (STUDIO-55): an object of entries, each an object of the <c>Llm</c> shape,
+    /// none named <c>default</c> — the run refuses to start on any of them. Read from the nodes, not by
+    /// path: an entry's name is spelt as the file holds it.
+    /// </summary>
+    private static void ValidateProfiles(JsonObject section, List<ValidationMessage> messages)
+    {
+        switch (Child(section, ConfigurationKeys.LlmProfiles))
+        {
+            case null:
+                return;
+            case not JsonObject:
+                messages.Add(WrongType(LlmProfilesSection.SectionPath, "an object of profiles keyed by name"));
+                return;
+            case JsonObject profiles:
+                foreach (var (id, entry) in profiles)
+                    ValidateProfile(id, entry, messages);
+                return;
+        }
+    }
+
+    private static void ValidateProfile(string id, JsonNode? entry, List<ValidationMessage> messages)
+    {
+        var path = $"{LlmProfilesSection.SectionPath}:{id}";
+        if (LlmProfilesSection.IsDefault(id))
+        {
+            messages.Add(ValidationMessage.Error(
+                ValidationCodes.LlmProfileReservedName,
+                $"The model profile '{id}' carries the reserved name of the default profile, which is the " +
+                $"{LlmSection.SectionPath} section itself: the run refuses to start. Rename the profile.",
+                path));
+        }
+
+        if (entry is JsonObject shape)
+            ValidateLlmShape(shape, path, messages);
+        else
+            messages.Add(WrongType(path, "an object of the Llm section's keys"));
+    }
+
+    /// <summary>
+    /// The node at <paramref name="relativePath"/> under <paramref name="section"/>, keys compared
+    /// without case as the configuration binds them; null when absent.
+    /// </summary>
+    private static JsonNode? Child(JsonObject section, string relativePath)
+    {
+        JsonNode? current = section;
+        foreach (var segment in relativePath.Split(':'))
+        {
+            if (current is not JsonObject container)
+                return null;
+            current = container.FirstOrDefault(property => string.Equals(property.Key, segment, StringComparison.OrdinalIgnoreCase)).Value;
+            if (current is null)
+                return null;
+        }
+
+        return current;
+    }
+
     private static void ValidateTypes(AppSettingsDocument document, List<ValidationMessage> messages)
     {
         // A node that parses as the declared kind is silent; an absent one is silent too --
@@ -301,9 +416,9 @@ public sealed class AppSettingsValidator
             .Where(path => document.GetNode(path) is JsonObject or JsonArray)
             .Select(path => WrongType(path, "a string")));
 
-        messages.AddRange(NumberFields
-            .Where(path => document.GetNode(path) is not null && document.GetDouble(path) is null)
-            .Select(path => WrongType(path, "a number")));
+        messages.AddRange(IntegerFields
+            .Where(path => document.GetNode(path) is not null && document.GetInt32(path) is null)
+            .Select(path => WrongType(path, "a whole number")));
 
         messages.AddRange(BooleanFields
             .Where(path => document.GetNode(path) is not null && document.GetBoolean(path) is null)

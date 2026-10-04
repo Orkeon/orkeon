@@ -31,24 +31,45 @@ internal sealed class RagSectionView : SectionView
         _provider = FormLayout.AddField(this, next, "Document store provider", _form.Provider);
 
         _hybrid = FormLayout.AddOptionalSwitch(
-            this, next + 2, "Hybrid retrieval (BM25 + RRF)", _form.HybridRetrievalEnabled);
+            this, next + 2, HybridCaption, _form.HybridRetrievalEnabled);
         _correctiveWebFallback = FormLayout.AddOptionalSwitch(
-            this, next + 3, "Corrective web fallback — policy switch", _form.CorrectiveWebFallbackEnabled);
+            this, next + 3, CorrectiveWebFallbackCaption, _form.CorrectiveWebFallbackEnabled);
         _webFallback = FormLayout.AddOptionalSwitch(
-            this, next + 4, "Web fallback — transport switch", _form.WebFallbackEnabled);
+            this, next + 4, WebFallbackCaption, _form.WebFallbackEnabled);
         FormLayout.AddNote(this, next + 5, RagForm.WebFallbackNotice);
 
         _maxIterations = FormLayout.AddField(this, next + 7, "Corrective max iterations", _form.CorrectiveMaxIterations);
+
+        FormLayout.TrackUnreadable(_hybrid, HybridCaption,
+            () => _form.HybridRetrievalEnabledAsWritten, () => _form.HybridRetrievalEnabledAsWritten = null);
+        FormLayout.TrackUnreadable(_correctiveWebFallback, CorrectiveWebFallbackCaption,
+            () => _form.CorrectiveWebFallbackEnabledAsWritten, () => _form.CorrectiveWebFallbackEnabledAsWritten = null);
+        FormLayout.TrackUnreadable(_webFallback, WebFallbackCaption,
+            () => _form.WebFallbackEnabledAsWritten, () => _form.WebFallbackEnabledAsWritten = null);
     }
+
+    private const string HybridCaption = "Hybrid retrieval (BM25 + RRF)";
+    private const string CorrectiveWebFallbackCaption = "Corrective web fallback — policy switch";
+    private const string WebFallbackCaption = "Web fallback — transport switch";
 
     /// <inheritdoc />
     public override void Load()
     {
         FormLayout.SetItems(_profile, RagForm.ProfileChoices, _form.ProfileChoiceIndex);
         _provider.Text = _form.Provider;
+        // The state first: setting it raises a change, which must not clear the text just loaded.
+        var hybrid = _form.HybridRetrievalEnabledAsWritten;
+        var correctiveWebFallback = _form.CorrectiveWebFallbackEnabledAsWritten;
+        var webFallback = _form.WebFallbackEnabledAsWritten;
         _hybrid.Value = FormLayout.ToCheckState(_form.HybridRetrievalEnabled);
         _correctiveWebFallback.Value = FormLayout.ToCheckState(_form.CorrectiveWebFallbackEnabled);
         _webFallback.Value = FormLayout.ToCheckState(_form.WebFallbackEnabled);
+        _form.HybridRetrievalEnabledAsWritten = hybrid;
+        _form.CorrectiveWebFallbackEnabledAsWritten = correctiveWebFallback;
+        _form.WebFallbackEnabledAsWritten = webFallback;
+        _hybrid.Text = FormLayout.SwitchCaption(HybridCaption, hybrid);
+        _correctiveWebFallback.Text = FormLayout.SwitchCaption(CorrectiveWebFallbackCaption, correctiveWebFallback);
+        _webFallback.Text = FormLayout.SwitchCaption(WebFallbackCaption, webFallback);
         _maxIterations.Text = _form.CorrectiveMaxIterations;
     }
 

@@ -62,6 +62,18 @@ public static class ValidationCodes
     /// <summary>The API key is stored in clear text instead of an environment variable.</summary>
     public const string InlineApiKey = "STUDIO-LLM-APIKEY";
 
+    /// <summary>
+    /// An <c>ApiKey</c> written as a <c>${NAME}</c> placeholder, which the run never expands and
+    /// refuses at start (STUDIO-55): its variable belongs in <c>ApiKeyEnvVar</c>.
+    /// </summary>
+    public const string LlmApiKeyPlaceholder = "STUDIO-LLM-APIKEY-PLACEHOLDER";
+
+    /// <summary>
+    /// An entry of <c>Llm:Profiles</c> named <c>default</c> (or blank) — the <c>Llm</c> section's own
+    /// name, which the run refuses at start (STUDIO-55).
+    /// </summary>
+    public const string LlmProfileReservedName = "STUDIO-LLM-PROFILE-NAME";
+
     /// <summary><c>Orkeon:Rag:Profile</c> names no known profile.</summary>
     public const string UnknownRagProfile = "STUDIO-RAG-PROFILE";
 

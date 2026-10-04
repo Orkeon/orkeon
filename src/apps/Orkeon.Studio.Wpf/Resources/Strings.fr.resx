@@ -540,6 +540,19 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-VAR" xml:space="preserve"><value>Une variable est mal formée (attendu nom=valeur).</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT" xml:space="preserve"><value>Une ligne de dossier ajoutée est vide.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS" xml:space="preserve"><value>Deux sources d'entrées en conflit sont renseignées — n'en gardez qu'une.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve"><value>La clé d'API est écrite ${NOM}, que le moteur ne remplace jamais : nommez sa variable dans ApiKeyEnvVar.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve"><value>Un profil de modèle s'appelle « default », le nom propre de la section Llm : le moteur refuse de démarrer. Renommez-le.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-ID" xml:space="preserve"><value>Deux dossiers portent le même identifiant : un identifiant nomme un seul dossier.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-SHARED" xml:space="preserve"><value>Plusieurs entrées partagent un même nom interne : une équipe en choisit une par exécution, et le même dossier deux fois est de trop.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-DASH" xml:space="preserve"><value>Une ligne de dossier ajoutée commence par « - » : le moteur la lirait comme une option.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-ID" xml:space="preserve"><value>Un identifiant de dossier n'est pas valide : ce sont les 26 caractères avant « | » d'un dossier déclaré.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-DIRECTORY" xml:space="preserve"><value>L'équipe est un dossier : le moteur l'exécute en entier.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-EMPTY" xml:space="preserve"><value>Aucune équipe n'est encore choisie.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-MISSING" xml:space="preserve"><value>Le chemin choisi n'existe pas.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-EXTENSION" xml:space="preserve"><value>Le moteur n'exécute pas ce type de fichier.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-AMBIGUOUS" xml:space="preserve"><value>Le dossier contient à la fois une équipe YAML et un script : choisissez lequel exécuter.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-YAML-BLOCKED" xml:space="preserve"><value>L'équipe YAML ne peut pas tourner tant que le dossier contient aussi un script : sortez le script, ou exécutez le script.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve"><value>Le dossier ne contient rien que le moteur puisse exécuter.</value></data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve"><value>Secours web actif : la boucle corrective peut consulter des pages, chacune validée contre l'injection de prompt.</value></data>
   <data name="Studio.Settings.WebFallbackTransportOff" xml:space="preserve"><value>Inactif : la politique corrective l'autorise, mais le transport (Orkeon:Rag:WebFallback) est encore éteint.</value></data>
   <data name="Studio.Settings.WebFallbackPolicyOff" xml:space="preserve"><value>Inactif : le transport est allumé, mais la politique corrective (Orkeon:Rag:Corrective:WebFallback) est encore éteinte.</value></data>

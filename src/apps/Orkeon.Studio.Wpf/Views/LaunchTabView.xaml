@@ -136,7 +136,7 @@
         <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" Text="{Binding Target.StatusDisplay}"/>
 
         <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
-          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Text="{Binding Target.ErrorMessage}"/>
+          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
           <ComboBox ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
                     SelectedItem="{Binding Target.PreferredDirectoryKind}"
                     Width="280" HorizontalAlignment="Left" Margin="0,6,0,0"/>

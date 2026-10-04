@@ -1530,6 +1530,45 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS" xml:space="preserve">
     <value>Hay dos fuentes de entradas en conflicto — conserve solo una.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
+    <value>La clave de API está escrita ${NOMBRE}, que el motor nunca sustituye: indique su variable en ApiKeyEnvVar.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve">
+    <value>Un perfil de modelo se llama «default», el nombre propio de la sección Llm: el motor se niega a arrancar. Cámbiele el nombre.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-ID" xml:space="preserve">
+    <value>Dos carpetas llevan el mismo identificador: un identificador nombra una sola carpeta.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-SHARED" xml:space="preserve">
+    <value>Varias entradas comparten un mismo nombre interno: un equipo elige una por ejecución, y la misma carpeta dos veces sobra.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-DASH" xml:space="preserve">
+    <value>Una línea de carpeta añadida empieza por «-»: el motor la leería como una opción.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-ID" xml:space="preserve">
+    <value>Un identificador de carpeta no es válido: son los 26 caracteres antes de «|» en una carpeta declarada.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-DIRECTORY" xml:space="preserve">
+    <value>El equipo es una carpeta: el motor la ejecuta entera.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-EMPTY" xml:space="preserve">
+    <value>Aún no se ha elegido ningún equipo.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-MISSING" xml:space="preserve">
+    <value>La ruta elegida no existe.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-EXTENSION" xml:space="preserve">
+    <value>El motor no ejecuta este tipo de archivo.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-AMBIGUOUS" xml:space="preserve">
+    <value>La carpeta contiene a la vez un equipo YAML y un script: elija cuál ejecutar.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-YAML-BLOCKED" xml:space="preserve">
+    <value>El equipo YAML no puede ejecutarse mientras la carpeta contenga también un script: saque el script o ejecute el script.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve">
+    <value>La carpeta no contiene nada que el motor pueda ejecutar.</value>
+  </data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>Recurso web activo: el bucle correctivo puede consultar páginas, cada una validada contra la inyección de prompt.</value>
   </data>

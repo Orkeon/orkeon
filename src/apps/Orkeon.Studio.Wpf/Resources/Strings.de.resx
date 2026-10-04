@@ -1530,6 +1530,45 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS" xml:space="preserve">
     <value>Zwei widersprüchliche Eingabequellen sind gesetzt — behalten Sie eine.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
+    <value>Der API-Schlüssel ist als ${NAME} geschrieben, was die Engine nie ersetzt: Nennen Sie seine Variable in ApiKeyEnvVar.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve">
+    <value>Ein Modellprofil heißt „default“, der eigene Name des Abschnitts Llm: Die Engine verweigert den Start. Benennen Sie es um.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-ID" xml:space="preserve">
+    <value>Zwei Ordner tragen dieselbe Kennung: Eine Kennung benennt genau einen Ordner.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-SHARED" xml:space="preserve">
+    <value>Mehrere Einträge teilen sich einen internen Namen: Ein Team wählt einen pro Lauf, und derselbe Ordner zweimal ist einer zu viel.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-DASH" xml:space="preserve">
+    <value>Eine hinzugefügte Ordnerzeile beginnt mit „-“: Die Engine würde sie als Option lesen.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-ID" xml:space="preserve">
+    <value>Eine Ordnerkennung ist ungültig: Es sind die 26 Zeichen vor „|“ in einem deklarierten Ordner.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-DIRECTORY" xml:space="preserve">
+    <value>Das Team ist ein Ordner: Die Engine führt ihn als Ganzes aus.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-EMPTY" xml:space="preserve">
+    <value>Es ist noch kein Team ausgewählt.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-MISSING" xml:space="preserve">
+    <value>Der gewählte Pfad existiert nicht.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-EXTENSION" xml:space="preserve">
+    <value>Die Engine führt diese Art von Datei nicht aus.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-AMBIGUOUS" xml:space="preserve">
+    <value>Der Ordner enthält sowohl ein YAML-Team als auch ein Skript: Wählen Sie, was ausgeführt werden soll.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-YAML-BLOCKED" xml:space="preserve">
+    <value>Das YAML-Team kann nicht laufen, solange der Ordner auch ein Skript enthält: Verschieben Sie das Skript oder führen Sie das Skript aus.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve">
+    <value>Der Ordner enthält nichts, was die Engine ausführen kann.</value>
+  </data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>Web-Rückfall aktiv: Die korrigierende Schleife darf Seiten abrufen, jede davon gegen Prompt-Injection geprüft.</value>
   </data>

@@ -13,6 +13,11 @@ internal sealed class RagForm : ISettingsForm
     /// <inheritdoc />
     public string Title => "RAG";
 
+    private const string HybridPath = "Orkeon:Rag:Retrieval:Hybrid:Enabled";
+    private const string CorrectiveWebFallbackPath = "Orkeon:Rag:Corrective:WebFallback:Enabled";
+    private const string WebFallbackPath = "Orkeon:Rag:WebFallback:Enabled";
+    private const string MaxIterationsPath = "Orkeon:Rag:Corrective:MaxIterations";
+
     /// <summary>The closed list of profile names, in preset order.</summary>
     public static IReadOnlyList<string> Profiles => RagSection.KnownProfiles;
 
@@ -75,6 +80,19 @@ internal sealed class RagForm : ISettingsForm
     public void SelectProfile(int choiceIndex) =>
         Profile = choiceIndex >= 1 && choiceIndex <= Profiles.Count ? Profiles[choiceIndex - 1] : null;
 
+    /// <summary>
+    /// The text <c>Orkeon:Rag:Retrieval:Hybrid:Enabled</c> holds when it reads as no boolean, else null
+    /// (STUDIO-55): kept and refused until the switch changes state — see
+    /// <see cref="LlmLoggingForm.FullEmbeddingLogAsWritten"/>.
+    /// </summary>
+    public string? HybridRetrievalEnabledAsWritten { get; set; }
+
+    /// <summary>The same for <c>Orkeon:Rag:Corrective:WebFallback:Enabled</c>.</summary>
+    public string? CorrectiveWebFallbackEnabledAsWritten { get; set; }
+
+    /// <summary>The same for <c>Orkeon:Rag:WebFallback:Enabled</c>.</summary>
+    public string? WebFallbackEnabledAsWritten { get; set; }
+
     /// <inheritdoc />
     public void LoadFrom(AppSettingsDocument document)
     {
@@ -84,20 +102,23 @@ internal sealed class RagForm : ISettingsForm
         HybridRetrievalEnabled = section.HybridRetrievalEnabled;
         CorrectiveWebFallbackEnabled = section.CorrectiveWebFallbackEnabled;
         WebFallbackEnabled = section.WebFallbackEnabled;
-        CorrectiveMaxIterations = FieldText.FromInt32(section.CorrectiveMaxIterations);
+        HybridRetrievalEnabledAsWritten = FieldText.UnreadableSwitch(document, HybridPath);
+        CorrectiveWebFallbackEnabledAsWritten = FieldText.UnreadableSwitch(document, CorrectiveWebFallbackPath);
+        WebFallbackEnabledAsWritten = FieldText.UnreadableSwitch(document, WebFallbackPath);
+        CorrectiveMaxIterations = document.GetWritten(MaxIterationsPath);
     }
 
     /// <inheritdoc />
     public IReadOnlyList<string> ApplyTo(AppSettingsDocument document)
     {
-        if (!FieldText.TryReadInt32(
-                CorrectiveMaxIterations,
-                "Orkeon:Rag:Corrective:MaxIterations",
-                out var iterations,
-                out var error))
-        {
-            return [error!];
-        }
+        var errors = new List<string>();
+        if (!FieldText.TryReadInt32(CorrectiveMaxIterations, MaxIterationsPath, out var iterations, out var error))
+            errors.Add(error!);
+        FieldText.RefuseUnreadableSwitch(HybridRetrievalEnabledAsWritten, HybridPath, errors);
+        FieldText.RefuseUnreadableSwitch(CorrectiveWebFallbackEnabledAsWritten, CorrectiveWebFallbackPath, errors);
+        FieldText.RefuseUnreadableSwitch(WebFallbackEnabledAsWritten, WebFallbackPath, errors);
+        if (errors.Count > 0)
+            return errors;
 
         if (Profile is { Length: > 0 } profile
             && !Profiles.Any(known => string.Equals(known, profile, StringComparison.OrdinalIgnoreCase)))

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Studio.Core.Configuration;
@@ -9,7 +10,7 @@ namespace Orkeon.Studio.Core.Configuration;
 /// There is deliberately no <c>Provider</c> key: the runtime infers the dialect from
 /// the endpoint, so Studio exposes <see cref="DetectedProvider"/> read-only.
 /// </summary>
-public sealed class LlmSection
+public sealed partial class LlmSection
 {
     /// <summary>Configuration path of the section.</summary>
     public const string SectionPath = "Llm";
@@ -119,6 +120,52 @@ public sealed class LlmSection
         get => _document.GetString($"{SectionPath}:Thinking:Effort");
         set => _document.SetString($"{SectionPath}:Thinking:Effort", value);
     }
+
+    /// <summary>
+    /// Whether <paramref name="apiKey"/>, trimmed, is a <c>${NAME}</c> placeholder — the run's own
+    /// pattern (<c>LlmSettings.RefusePlaceholder</c>), which refuses the start on it: Orkeon never
+    /// expands it, and the text itself would be sent as the key (STUDIO-55). <c>sk-${X}</c> is no
+    /// placeholder: a key in clear, as the run reads it.
+    /// </summary>
+    /// <param name="apiKey">The <c>ApiKey</c> as the file holds it.</param>
+    public static bool IsKeyPlaceholder(string? apiKey) =>
+        apiKey is not null && PlaceholderPattern().IsMatch(apiKey.Trim());
+
+    /// <summary>
+    /// What the run's refusal of a placeholder key says to write instead: the name inside the braces
+    /// when it can be a variable's name, else <c>&lt;the variable's name&gt;</c>.
+    /// </summary>
+    /// <param name="apiKey">A key <see cref="IsKeyPlaceholder"/> recognises.</param>
+    public static string PlaceholderVariable(string apiKey)
+    {
+        ArgumentNullException.ThrowIfNull(apiKey);
+        var name = PlaceholderPattern().Match(apiKey.Trim()).Groups["name"].Value.Trim();
+        return name.Length > 0 && IsVariableName(name) ? name : "<the variable's name>";
+    }
+
+    /// <summary>
+    /// Whether <paramref name="name"/> can be an environment variable's name as the run reads
+    /// <c>ApiKeyEnvVar</c>: no <c>=</c>, no space, no line break — a key or a sentence pasted in the
+    /// wrong field otherwise (STUDIO-49). Blank is no reference, and reads as true.
+    /// </summary>
+    /// <param name="name">The reference as written.</param>
+    public static bool IsVariableName(string? name) =>
+        string.IsNullOrWhiteSpace(name) || !name.Any(c => c == '=' || char.IsWhiteSpace(c) || char.IsControl(c));
+
+    /// <summary>
+    /// Whether <paramref name="url"/> is an absolute http(s) URL — the rule of <c>Llm:BaseUrl</c> and of
+    /// each profile's. <c>localhost:11434</c> parses as an absolute URI whose scheme is
+    /// <c>localhost</c>, so the scheme check is what catches a URL missing its <c>http://</c>.
+    /// </summary>
+    /// <param name="url">The address as written.</param>
+    [SuppressMessage("Design", "CA1054",
+        Justification = "The address as the user typed it is what is judged, malformed text included.")]
+    public static bool IsAbsoluteHttpUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var parsed)
+        && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps);
+
+    [GeneratedRegex(@"^\$\{(?<name>[^{}]*)\}$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex PlaceholderPattern();
 
     /// <summary>
     /// Provider inferred from <see cref="BaseUrl"/> — informational only, never written

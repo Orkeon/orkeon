@@ -532,6 +532,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         && !HostProfile.BlocksSave
         && !(UrlAlwaysVisible
              && (string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_model)))
+        // STUDIO-55: an address the settings screen would then refuse — not an absolute http(s) URL.
+        && (string.IsNullOrWhiteSpace(_baseUrl) || LlmSection.IsAbsoluteHttpUrl(_baseUrl.Trim()))
         // A typed tuning value that does not parse must block the save, not vanish silently.
         && (_temperatureText.Trim().Length == 0 || ParsedTemperature is not null)
         && (_timeoutText.Trim().Length == 0 || ParsedTimeoutSeconds is not null)
@@ -822,10 +824,15 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             ? value
             : null;
 
-    /// <summary>The typed temperature, or null when empty or unparseable.</summary>
+    /// <summary>
+    /// The typed temperature, or null when empty, unparseable or not a finite number (STUDIO-55):
+    /// « NaN », « Infinity » and <c>1e400</c>, read as an infinity, are refused like « abc » — JSON
+    /// has no text for them, and the run refuses them at start.
+    /// </summary>
     public double? ParsedTemperature =>
         double.TryParse(_temperatureText.Trim().Replace(',', '.'),
             System.Globalization.NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        && double.IsFinite(value)
             ? value
             : null;
 

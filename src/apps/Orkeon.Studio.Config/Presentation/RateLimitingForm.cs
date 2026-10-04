@@ -26,12 +26,12 @@ internal sealed class RateLimitingForm : ISettingsForm
     /// <inheritdoc />
     public void LoadFrom(AppSettingsDocument document)
     {
-        var section = document.RateLimiting;
-        MaxConcurrentRequests = FieldText.FromInt32(section.MaxConcurrentRequests);
-        GlobalRequestsPerMinute = FieldText.FromInt32(section.GlobalRequestsPerMinute);
-        ProviderRequestsPerMinute = FieldText.FromInt32(section.ProviderRequestsPerMinute);
-        AgentRequestsPerMinute = FieldText.FromInt32(section.AgentRequestsPerMinute);
-        QueueLimit = FieldText.FromInt32(section.QueueLimit);
+        // STUDIO-55: as the file writes them, so an unreadable budget is shown and refused, never erased.
+        MaxConcurrentRequests = document.GetWritten("RateLimiting:MaxConcurrentRequests");
+        GlobalRequestsPerMinute = document.GetWritten("RateLimiting:GlobalRequestsPerMinute");
+        ProviderRequestsPerMinute = document.GetWritten("RateLimiting:ProviderRequestsPerMinute");
+        AgentRequestsPerMinute = document.GetWritten("RateLimiting:AgentRequestsPerMinute");
+        QueueLimit = document.GetWritten("RateLimiting:QueueLimit");
     }
 
     /// <inheritdoc />

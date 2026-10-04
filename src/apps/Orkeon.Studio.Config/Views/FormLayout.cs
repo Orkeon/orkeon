@@ -144,6 +144,37 @@ internal static class FormLayout
         return list.SelectedItem ?? -1;
     }
 
+    /// <summary>
+    /// A switch's caption, saying beside it the text the file holds when that text reads as no
+    /// boolean (STUDIO-55): the switch then shows « unset », and applying refuses the value until the
+    /// switch changes state.
+    /// </summary>
+    public static string SwitchCaption(string caption, string? asWritten) =>
+        asWritten is null
+            ? caption
+            : string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{caption} — the file holds '{asWritten}', not true or false");
+
+    /// <summary>
+    /// Wires a switch to the unreadable text its form keeps (STUDIO-55): the caption says it, and the
+    /// first change of state clears it through <paramref name="clear"/> — the new state, « unset »
+    /// included, then replaces the value.
+    /// </summary>
+    public static void TrackUnreadable(CheckBox checkBox, string caption, Func<string?> asWritten, Action clear)
+    {
+        ArgumentNullException.ThrowIfNull(checkBox);
+        ArgumentNullException.ThrowIfNull(asWritten);
+        ArgumentNullException.ThrowIfNull(clear);
+
+        checkBox.Text = SwitchCaption(caption, asWritten());
+        checkBox.ValueChanged += (_, _) =>
+        {
+            if (asWritten() is null)
+                return;
+            clear();
+            checkBox.Text = caption;
+        };
+    }
+
     /// <summary>Maps an optional boolean onto a check state.</summary>
     public static CheckState ToCheckState(bool? value) => value switch
     {

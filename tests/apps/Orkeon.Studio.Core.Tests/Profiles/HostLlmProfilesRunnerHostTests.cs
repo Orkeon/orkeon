@@ -9,6 +9,7 @@ using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Storage;
 using Orkeon.Studio.Core.Tests.Doubles;
+using Orkeon.Studio.Core.Validation;
 
 namespace Orkeon.Studio.Core.Tests.Profiles;
 
@@ -291,5 +292,73 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
         {
             Environment.SetEnvironmentVariable(deepseekVariable, null);
         }
+    }
+
+    /// <summary>Values of the <c>Llm</c> shape the real host refuses at start (GAP-40), at their path.</summary>
+    public static TheoryData<string, string> ValuesTheHostRefuses() => new()
+    {
+        { "Llm:Profiles:local-gpu:Temperature", "\"warm\"" },
+        { "Llm:Profiles:local-gpu:MaxTokens", "600.0" },
+        { "Llm:Profiles:local-gpu:TimeoutSeconds", "\"600s\"" },
+        { "Llm:Profiles:local-gpu:MaxRetries", "1.5" },
+        { "Llm:Profiles:local-gpu:BaseUrl", "\"not a url\"" },
+        { "Llm:Profiles:local-gpu:ApiKeyEnvVar", "\"MY KEY\"" },
+        { "Llm:Profiles:local-gpu:ApiKey", "\"${LOCAL_KEY}\"" },
+        { "Llm:Profiles:local-gpu:Grammar", "\"yes\"" },
+        { "Llm:Temperature", "\"Infinity\"" },
+        { "Llm:MaxTokens", "\"4096x\"" },
+        { "Llm:TimeoutSeconds", "600.5" },
+        { "Llm:ApiKey", "\"${OPENAI_API_KEY}\"" },
+        { "Llm:Thinking:Enabled", "\"on\"" },
+    };
+
+    /// <summary>
+    /// STUDIO-55, the drift guard: each value of <c>Llm</c> or of an entry of <c>Llm:Profiles</c> that
+    /// the real runner host refuses at start is refused by Studio's check before saving, at the same
+    /// path — Studio.Core copies the run's rules, and this test holds the copy to the original.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ValuesTheHostRefuses))]
+    public async Task What_the_host_refuses_at_start_studio_refuses_before_saving_at_the_same_path(string path, string json)
+    {
+        var document = AppSettingsDocument.Parse("""
+            {
+              "Llm": {
+                "BaseUrl": "http://localhost:11434", "Model": "qwen3",
+                "Profiles": { "local-gpu": { "BaseUrl": "http://localhost:11500", "Model": "qwen3:32b" } }
+              },
+              "RaggableTree": { "Enabled": false }
+            }
+            """);
+        document.SetNode(path, System.Text.Json.Nodes.JsonNode.Parse(json));
+        var settingsPath = Path.Combine(_root, AppSettingsDocument.FileName);
+        await AppSettingsFile.SaveAsync(document, settingsPath, TestContext.Current.CancellationToken);
+
+        Assert.Throws<RunnerSettingsException>(() => Build(settingsPath, new Dictionary<string, string>(StringComparer.Ordinal)));
+        Assert.Contains(
+            new AppSettingsValidator(new FakeDirectoryProbe()).Validate(document),
+            message => message.Severity == ValidationSeverity.Error && message.Path == path);
+    }
+
+    /// <summary>The reserved name: an entry <c>default</c> written by hand refuses the host, and Studio's check.</summary>
+    [Fact]
+    public async Task An_entry_named_default_refuses_the_host_and_studio_refuses_it_before_saving()
+    {
+        var document = AppSettingsDocument.Parse("""
+            {
+              "Llm": {
+                "BaseUrl": "http://localhost:11434", "Model": "qwen3",
+                "Profiles": { "default": { "BaseUrl": "http://localhost:11500", "Model": "qwen3:32b" } }
+              },
+              "RaggableTree": { "Enabled": false }
+            }
+            """);
+        var settingsPath = Path.Combine(_root, AppSettingsDocument.FileName);
+        await AppSettingsFile.SaveAsync(document, settingsPath, TestContext.Current.CancellationToken);
+
+        Assert.Throws<RunnerSettingsException>(() => Build(settingsPath, new Dictionary<string, string>(StringComparer.Ordinal)));
+        Assert.Contains(
+            new AppSettingsValidator(new FakeDirectoryProbe()).Validate(document),
+            message => message.Code == ValidationCodes.LlmProfileReservedName && message.Path == "Llm:Profiles:default");
     }
 }

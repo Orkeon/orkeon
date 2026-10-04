@@ -143,10 +143,12 @@ internal sealed class LlmForm : ISettingsForm
         BaseUrl = FieldText.FromString(section.BaseUrl);
         ApiKey = FieldText.FromString(section.ApiKey);
         ApiKeyEnvVar = FieldText.FromString(section.ApiKeyEnvVar);
-        Temperature = FieldText.FromDouble(section.Temperature);
-        MaxTokens = FieldText.FromInt32(section.MaxTokens);
-        TimeoutSeconds = FieldText.FromInt32(section.TimeoutSeconds);
-        ThinkingEnabled = FieldText.FromBoolean(section.ThinkingEnabled);
+        // STUDIO-55: as the file writes them — a value the field cannot read is shown, and refused
+        // when applied, never loaded empty and erased.
+        Temperature = document.GetWritten($"{LlmSection.SectionPath}:Temperature");
+        MaxTokens = document.GetWritten($"{LlmSection.SectionPath}:MaxTokens");
+        TimeoutSeconds = document.GetWritten($"{LlmSection.SectionPath}:TimeoutSeconds");
+        ThinkingEnabled = document.GetWritten($"{LlmSection.SectionPath}:Thinking:Enabled");
         Profiles =
         [
             .. section.Profiles.Ids
@@ -176,8 +178,7 @@ internal sealed class LlmForm : ISettingsForm
 
         // The runtime refuses to start on a reference that cannot be a variable's name — say it
         // here, by its path: the value may be a key pasted in the wrong field.
-        if (FieldText.ToStringOrNull(ApiKeyEnvVar) is { } reference
-            && reference.Any(c => c == '=' || char.IsWhiteSpace(c) || char.IsControl(c)))
+        if (FieldText.ToStringOrNull(ApiKeyEnvVar) is { } reference && !LlmSection.IsVariableName(reference))
         {
             errors.Add("Llm:ApiKeyEnvVar must be the name of an environment variable (no '=', space or line break) — never the key itself.");
         }

@@ -1530,6 +1530,45 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS" xml:space="preserve">
     <value>设置了两个互相冲突的输入来源——请只保留一个。</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
+    <value>API 密钥写成了 ${名称}，引擎从不替换它：请在 ApiKeyEnvVar 中填写其变量名。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve">
+    <value>有一个模型配置名为“default”，这是 Llm 节自身的名称：引擎拒绝启动。请重命名它。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-ID" xml:space="preserve">
+    <value>两个文件夹带有相同的标识：一个标识只对应一个文件夹。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-SHARED" xml:space="preserve">
+    <value>多个条目共用同一个内部名称：团队每次运行选择其中一个；同一个文件夹出现两次则多余。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-DASH" xml:space="preserve">
+    <value>添加的文件夹行以“-”开头：引擎会把它当作选项读取。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-ID" xml:space="preserve">
+    <value>文件夹标识无效：它是已声明文件夹中“|”之前的 26 个字符。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-DIRECTORY" xml:space="preserve">
+    <value>该团队是一个文件夹：引擎会整体运行它。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-EMPTY" xml:space="preserve">
+    <value>尚未选择任何团队。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-MISSING" xml:space="preserve">
+    <value>所选路径不存在。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-EXTENSION" xml:space="preserve">
+    <value>引擎不运行这种类型的文件。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-AMBIGUOUS" xml:space="preserve">
+    <value>该文件夹同时包含 YAML 团队和脚本：请选择要运行哪一个。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-YAML-BLOCKED" xml:space="preserve">
+    <value>文件夹中还有脚本时，YAML 团队无法运行：请移出脚本，或运行该脚本。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve">
+    <value>该文件夹中没有引擎可以运行的内容。</value>
+  </data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>网络回退已启用：纠错循环可以抓取网页，每一页都会做提示注入校验。</value>
   </data>

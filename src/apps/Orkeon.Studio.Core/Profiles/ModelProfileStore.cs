@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Studio.Core.Presets;
@@ -132,8 +133,17 @@ public sealed class ModelProfileFileStore : IModelProfileStore
 
             var json = await File.ReadAllTextAsync(FilePath, cancellationToken).ConfigureAwait(false);
             var set = JsonSerializer.Deserialize<ModelProfileSet>(json, ReadOptions);
-            return set is null
-                ? new ModelProfileLoadResult(ModelProfileSet.Empty, $"{FilePath}: the file holds no profile set (its content is 'null').")
+            if (set is null)
+                return new ModelProfileLoadResult(ModelProfileSet.Empty, $"{FilePath}: the file holds no profile set (its content is 'null').");
+
+            // STUDIO-55: JSON reads 1e400 as an infinity, a number it has no text for — a setting that
+            // could never be written again, and whose launch would pass "Infinity" to the run. Such a
+            // file is refused like one the serializer cannot convert, its reason naming the setting.
+            return set.Profiles.OfType<ModelProfile>().FirstOrDefault(profile => profile.Temperature is { } t && !double.IsFinite(t)) is { } infinite
+                ? new ModelProfileLoadResult(
+                    ModelProfileSet.Empty,
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"{FilePath}: setting '{infinite.Name}': Temperature is not a finite number ({infinite.Temperature})."))
                 : new ModelProfileLoadResult(WithCards(set));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)

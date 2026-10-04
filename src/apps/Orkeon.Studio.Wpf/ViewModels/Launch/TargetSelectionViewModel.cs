@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Wpf.ViewModels.Common;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 
@@ -160,6 +161,10 @@ public sealed class TargetSelectionViewModel : ObservableObject
         { Status: RunTargetDetectionStatus.NeedsSelection } => string.Format(
             CultureInfo.InvariantCulture,
             _strings[StudioStringKeys.TargetPickScript], Candidates.Count),
+        // STUDIO-55: the explanation of the failure's code, in the language of the screen; the
+        // detector's English line stays in the validation list's tooltip.
+        { ErrorCode: { } code } when _strings[ValidationMessageViewModel.FriendlyKeyPrefix + code] is var explained
+            && explained != ValidationMessageViewModel.FriendlyKeyPrefix + code => explained,
         _ => Detection.Error ?? _strings[StudioStringKeys.TargetDetectionFailed],
     };
 

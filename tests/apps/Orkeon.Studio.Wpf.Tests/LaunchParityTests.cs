@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Process;
@@ -178,7 +179,11 @@ public sealed class ContestedDirectoryTests
         Assert.False(selection.IsResolved);
         Assert.Equal(RunTargetCodes.YamlLayoutBlockedByScript, selection.ErrorCode);
         Assert.Contains("Move or remove the script(s)", selection.YamlLayoutBlockedMessage!, StringComparison.Ordinal);
-        Assert.Contains("Move or remove the script(s)", selection.StatusDisplay, StringComparison.Ordinal);
+        // STUDIO-55: the status line says the explanation of the code; the detector's remediation,
+        // which names the scripts to move, is the line under the shape chooser.
+        Assert.Equal(
+            EnglishStudioStrings.Instance["Studio.Diagnostics.Code." + RunTargetCodes.YamlLayoutBlockedByScript],
+            selection.StatusDisplay);
     }
 
     [Fact]

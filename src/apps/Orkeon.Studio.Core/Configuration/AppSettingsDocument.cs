@@ -191,15 +191,26 @@ public sealed class AppSettingsDocument
     /// form (the configuration binder accepts both spellings); objects and arrays
     /// return <see langword="null"/>.
     /// </summary>
-    public string? GetString(string path)
+    public string? GetString(string path) => ReadString(GetNode(path));
+
+    /// <summary><see cref="GetString"/> over a node already in hand (see <see cref="ReadInt32"/>).</summary>
+    public static string? ReadString(JsonNode? node) => node switch
     {
-        return GetNode(path) switch
-        {
-            JsonValue value when value.TryGetValue<string>(out var text) => text,
-            JsonValue value => value.ToJsonString().Trim('"'),
-            _ => null,
-        };
-    }
+        JsonValue value when value.TryGetValue<string>(out var text) => text,
+        JsonValue value => value.ToJsonString().Trim('"'),
+        _ => null,
+    };
+
+    /// <summary>
+    /// The value at <paramref name="path"/> as the file writes it, for a field that must show what it
+    /// holds (STUDIO-55): a scalar's text, a container's JSON, or empty when the key is absent.
+    /// </summary>
+    public string GetWritten(string path) => GetNode(path) switch
+    {
+        null => "",
+        JsonValue value => ReadString(value) ?? "",
+        var container => container.ToJsonString(),
+    };
 
     /// <summary>Writes a string value; <see langword="null"/> or blank removes the key.</summary>
     public void SetString(string path, string? value) =>
@@ -211,16 +222,19 @@ public sealed class AppSettingsDocument
     /// (<see cref="Number"/>) — never <c>0.5</c> or <c>600.0</c>, which the binder refuses for an
     /// integer too.
     /// </summary>
-    public int? GetInt32(string path)
+    public int? GetInt32(string path) => ReadInt32(GetNode(path));
+
+    /// <summary>
+    /// <see cref="GetInt32"/> over a node already in hand — an entry of <c>Llm:Profiles</c> whose name a
+    /// path cannot spell (STUDIO-55: a path's segments are trimmed, a property name is not).
+    /// </summary>
+    public static int? ReadInt32(JsonNode? node) => node switch
     {
-        return GetNode(path) switch
-        {
-            JsonValue value when Number(value) is { } number && number.TryGetInt32(out var integer) => integer,
-            JsonValue value when value.TryGetValue<string>(out var text)
-                && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) => parsed,
-            _ => null,
-        };
-    }
+        JsonValue value when Number(value) is { } number && number.TryGetInt32(out var integer) => integer,
+        JsonValue value when value.TryGetValue<string>(out var text)
+            && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) => parsed,
+        _ => null,
+    };
 
     /// <summary>Writes an integer value; <see langword="null"/> removes the key.</summary>
     public void SetInt32(string path, int? value) =>
@@ -230,32 +244,32 @@ public sealed class AppSettingsDocument
     /// Reads a floating-point value, accepting the string spelling. Any number reads, whatever
     /// created its node (<see cref="Number"/>) — the integers <see cref="SetInt32"/> writes included.
     /// </summary>
-    public double? GetDouble(string path)
+    public double? GetDouble(string path) => ReadDouble(GetNode(path));
+
+    /// <summary><see cref="GetDouble"/> over a node already in hand (see <see cref="ReadInt32"/>).</summary>
+    public static double? ReadDouble(JsonNode? node) => node switch
     {
-        return GetNode(path) switch
-        {
-            JsonValue value when Number(value) is { } number && number.TryGetDouble(out var real) => real,
-            JsonValue value when value.TryGetValue<string>(out var text)
-                && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) => parsed,
-            _ => null,
-        };
-    }
+        JsonValue value when Number(value) is { } number && number.TryGetDouble(out var real) => real,
+        JsonValue value when value.TryGetValue<string>(out var text)
+            && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) => parsed,
+        _ => null,
+    };
 
     /// <summary>Writes a floating-point value; <see langword="null"/> removes the key.</summary>
     public void SetDouble(string path, double? value) =>
         SetNode(path, value is null ? null : JsonValue.Create(value.Value));
 
     /// <summary>Reads a boolean, accepting the string spelling.</summary>
-    public bool? GetBoolean(string path)
+    public bool? GetBoolean(string path) => ReadBoolean(GetNode(path));
+
+    /// <summary><see cref="GetBoolean"/> over a node already in hand (see <see cref="ReadInt32"/>).</summary>
+    public static bool? ReadBoolean(JsonNode? node) => node switch
     {
-        return GetNode(path) switch
-        {
-            JsonValue value when value.TryGetValue<bool>(out var flag) => flag,
-            JsonValue value when value.TryGetValue<string>(out var text)
-                && bool.TryParse(text, out var parsed) => parsed,
-            _ => null,
-        };
-    }
+        JsonValue value when value.TryGetValue<bool>(out var flag) => flag,
+        JsonValue value when value.TryGetValue<string>(out var text)
+            && bool.TryParse(text, out var parsed) => parsed,
+        _ => null,
+    };
 
     /// <summary>Writes a boolean value; <see langword="null"/> removes the key.</summary>
     public void SetBoolean(string path, bool? value) =>

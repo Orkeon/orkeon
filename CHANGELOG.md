@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Studio refuses before saving what the run will refuse, says each refusal in the language of the screen, and neither keeps nor erases in silence a value it cannot read **[breaking]**
+
+The model-setting editor took « NaN », « Infinity » or `1e400` as a temperature: « Save » threw, the
+settings document kept the value, and every later save of the session failed with it. The check before
+saving took `600.0` or `0.5` where the run reads an integer, looked at no entry of `Llm:Profiles`, and
+let through an `ApiKey` written `${NAME}` and an entry named `default` — all of which the run refuses
+at start. `orkeon-studio-config` loaded an unreadable value empty and erased it at the next save, a
+tri-state switch included; a `studio-model-profiles.json` holding `"Temperature": 1e400` loaded as an
+infinity, after which no change of the model settings reached that file and every launch passed
+`Infinity` to the run; and eleven refusals stayed in English in every language (STUDIO-55).
+
+- **A temperature is a finite number.** The editor (`ParsedTemperature`) and the TUI
+  (`FieldText.TryReadDouble`) refuse NaN, ±∞ and `1e400` like any unreadable text: « Save » stays
+  inactive, the TUI says the field. The store refuses a file whose setting holds a non-finite
+  temperature like one it cannot convert — the empty set and a reason naming the setting and the field,
+  shown on the settings screen. The editor also refuses an address that is not an absolute http(s) URL.
+- **The check judges as the run reads.** `AppSettingsValidator` judges `Llm` and each
+  `Llm:Profiles:<id>` entry by the run's rules: strings, a finite temperature, `MaxTokens`,
+  `TimeoutSeconds` and `MaxRetries` whole numbers that fit an `int` — like every other integer field
+  (`RateLimiting`, `LlmLogging:MaxBodyLengthChars`, `Orkeon:Rag:Corrective:MaxIterations`), « must be
+  a whole number » —, `Thinking:Enabled` and `Grammar` booleans, `BaseUrl` an absolute http(s) URL,
+  `ApiKeyEnvVar` a variable's name; `Llm:Profiles` and each entry objects. An `ApiKey` written `${NAME}`
+  is the error `STUDIO-LLM-APIKEY-PLACEHOLDER`, giving the run's remedy (`"ApiKeyEnvVar": "NAME"`), and
+  an entry named `default` the error `STUDIO-LLM-PROFILE-NAME`. The rules are Studio.Core functions
+  (`LlmSection.IsKeyPlaceholder`, `IsVariableName`, `IsAbsoluteHttpUrl`), held to the real runner host
+  by a test.
+- **The TUI shows what it cannot read.** Its fields load as the file writes them
+  (`AppSettingsDocument.GetWritten`): an unreadable number or switch is shown and refused when applied,
+  never erased. A tri-state switch whose key is no boolean (`"yes"`, `1`) keeps that text, says it in
+  its caption, and is refused until it changes state.
+- **Every refusal in the language of the screen.** The thirteen codes without a plain-language
+  explanation — the two above, `STUDIO-LAUNCH-MOUNT-DASH`, `STUDIO-LAUNCH-MOUNT-ID`,
+  `STUDIO-LAUNCH-DIRECTORY`, the six `STUDIO-TARGET-*`, `STUDIO-MOUNT-ID`, `STUDIO-MOUNT-SHARED` — have
+  theirs, in the five languages, and a test requires one of every `STUDIO-*` or `WIN-*` code of
+  Studio.Core. The target's status line says the explanation of its code; the line under the shape
+  chooser shows only when it names the scripts to move.
+
+**Migration**: a settings file Studio saved before may now be refused at its next save, at the path the
+line names — the run refuses it at start already (GAP-40). Write a whole number where an integer is
+read, a finite temperature, an absolute http(s) address; move an `ApiKey` written `${NAME}` to
+`"ApiKeyEnvVar": "NAME"`; rename an entry `Llm:Profiles:default`. A `studio-model-profiles.json` holding
+a non-finite temperature is reported unreadable: correct the temperature it names.
+
 ### Fixed — a team keeps its model setting and its folders: a renamed setting carries its teams, Studio says when a scheduled run cannot follow, and a team that changes machine carries nothing of the one it leaves **[breaking]**
 
 Since STUDIO-50 a team's `run.cmd`/`run.sh` carry its model setting (`--llm-profile`) and its folders, so
