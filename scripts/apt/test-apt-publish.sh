@@ -243,9 +243,11 @@ main() {
   done
   cat "$out/debs-v1.0.0-rc.4.list" "$out/debs-v1.0.0-rc.5.list" > "$out/debs.list"
 
-  # The page as it will read once the key exists: its SHA-256 is the throwaway key's.
+  # The page with the throwaway key's SHA-256 in its check line, whatever the committed
+  # value (pending before the key ceremony, the real keyring's after it).
   sha="$(sha256sum "$out/branch/orkeon-archive-keyring.gpg" | cut -d' ' -f1)"
-  sed "s|<PENDING-KEY-CEREMONY>|$sha|" "$REPO_ROOT/docs/guides/install-with-apt.md" > "$out/page.md"
+  sed -E "s|^echo \"[^ ]*  /tmp/orkeon-archive-keyring.gpg\"|echo \"$sha  /tmp/orkeon-archive-keyring.gpg\"|" \
+    "$REPO_ROOT/docs/guides/install-with-apt.md" > "$out/page.md"
 
   echo "# the documented block (check-apt-branch.sh, verify-apt-repo.sh) on rc, client $CLIENT_IMAGE"
   if bash "$here/check-apt-branch.sh" --branch-dir "$out/branch" --debs "$out/debs.list" --previous auto \

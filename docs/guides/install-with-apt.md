@@ -32,7 +32,7 @@ user that can `sudo`:
 sudo apt-get update && sudo apt-get install -y ca-certificates curl
 curl -fsSL -o /tmp/orkeon-archive-keyring.gpg \
   https://github.com/Orkeon/orkeon/raw/apt/orkeon-archive-keyring.gpg
-echo "<PENDING-KEY-CEREMONY>  /tmp/orkeon-archive-keyring.gpg" | sha256sum --check
+echo "0cc5e804e1ee49c50ec5b23145ee7ee65d4834a08b8dc38914674249dfcc6a21  /tmp/orkeon-archive-keyring.gpg" | sha256sum --check
 sudo install -m 0644 /tmp/orkeon-archive-keyring.gpg /usr/share/keyrings/orkeon-archive-keyring.gpg
 sudo tee /etc/apt/sources.list.d/orkeon.sources > /dev/null <<'EOF'
 Types: deb
@@ -186,13 +186,12 @@ gone.
   [security policy](../../SECURITY.md#apt-archive-signing-key):
 
 ```text
-Fingerprint: <PENDING-KEY-CEREMONY>
-Keyring SHA-256: <PENDING-KEY-CEREMONY>
+orkeon-archive-keyring fingerprint: 4765 9C57 4882 5078 5C78  2C37 1CF8 CD8A 4C20 1A2E
+orkeon-archive-keyring.gpg sha256: 0cc5e804e1ee49c50ec5b23145ee7ee65d4834a08b8dc38914674249dfcc6a21
 ```
 
-Until the key is created, these values — and the SHA-256 in the block above — are
-placeholders, so the block's check fails on purpose; the exact lines will be published in the
-security policy once the key exists.
+The same two lines are published in the security policy; the CI guard checks both pages, and
+the SHA-256 of the block above, against the certificate.
 
 ```bash
 gpg --show-keys /usr/share/keyrings/orkeon-archive-keyring.gpg   # needs the gnupg package

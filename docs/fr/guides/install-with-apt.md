@@ -33,7 +33,7 @@ nue, sous un utilisateur qui peut faire `sudo` :
 sudo apt-get update && sudo apt-get install -y ca-certificates curl
 curl -fsSL -o /tmp/orkeon-archive-keyring.gpg \
   https://github.com/Orkeon/orkeon/raw/apt/orkeon-archive-keyring.gpg
-echo "<PENDING-KEY-CEREMONY>  /tmp/orkeon-archive-keyring.gpg" | sha256sum --check
+echo "0cc5e804e1ee49c50ec5b23145ee7ee65d4834a08b8dc38914674249dfcc6a21  /tmp/orkeon-archive-keyring.gpg" | sha256sum --check
 sudo install -m 0644 /tmp/orkeon-archive-keyring.gpg /usr/share/keyrings/orkeon-archive-keyring.gpg
 sudo tee /etc/apt/sources.list.d/orkeon.sources > /dev/null <<'EOF'
 Types: deb
@@ -187,13 +187,12 @@ vous voulez qu'il disparaisse.
   [politique de sécurité](../../../SECURITY.fr.md#clé-de-signature-du-dépôt-apt) :
 
 ```text
-Fingerprint: <PENDING-KEY-CEREMONY>
-Keyring SHA-256: <PENDING-KEY-CEREMONY>
+orkeon-archive-keyring fingerprint: 4765 9C57 4882 5078 5C78  2C37 1CF8 CD8A 4C20 1A2E
+orkeon-archive-keyring.gpg sha256: 0cc5e804e1ee49c50ec5b23145ee7ee65d4834a08b8dc38914674249dfcc6a21
 ```
 
-Tant que la clé n'est pas créée, ces valeurs — et le SHA-256 du bloc ci-dessus — sont des
-gabarits, et la vérification du bloc échoue donc à dessein ; les lignes exactes seront publiées
-dans la politique de sécurité dès que la clé existera.
+Les deux mêmes lignes figurent dans la politique de sécurité ; la garde de la CI compare les deux
+pages, ainsi que le SHA-256 du bloc ci-dessus, au certificat.
 
 ```bash
 gpg --show-keys /usr/share/keyrings/orkeon-archive-keyring.gpg   # exige le paquet gnupg

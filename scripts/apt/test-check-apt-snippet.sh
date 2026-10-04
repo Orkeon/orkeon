@@ -49,6 +49,8 @@ check "a page without its end marker fails" fails
 echo "# once the real certificate is committed (no PLACEHOLDER header)"
 tree
 sed -i '/^Comment: PLACEHOLDER/d' "$t/installers/apt/orkeon-archive-keyring.asc"
+# The pages as they read before the ceremony, whatever the committed state.
+both 's|^echo "[^ ]*  /tmp/orkeon-archive-keyring.gpg"|echo "<PENDING-KEY-CEREMONY>  /tmp/orkeon-archive-keyring.gpg"|'
 check "the pending value fails" fails
 both "s|<PENDING-KEY-CEREMONY>|$(sha_of)|"
 check "the keyring's SHA-256 passes" passes

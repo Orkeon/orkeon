@@ -87,13 +87,11 @@ keyring file the `apt` branch serves (`orkeon-archive-keyring.gpg`) are publishe
 `main`:
 
 ```text
-Fingerprint: <PENDING-KEY-CEREMONY>
-Keyring SHA-256: <PENDING-KEY-CEREMONY>
+orkeon-archive-keyring fingerprint: 4765 9C57 4882 5078 5C78  2C37 1CF8 CD8A 4C20 1A2E
+orkeon-archive-keyring.gpg sha256: 0cc5e804e1ee49c50ec5b23145ee7ee65d4834a08b8dc38914674249dfcc6a21
 ```
 
-The two values are placeholders until the key is created: the exact lines —
-`orkeon-archive-keyring fingerprint:` and `orkeon-archive-keyring.gpg sha256:` — will be
-published here once the key exists, and the CI guard checks them against the certificate.
+The CI guard checks these two lines against the certificate committed in `installers/apt/`.
 
 The public certificate is versioned, ASCII-armoured, as
 [`installers/apt/orkeon-archive-keyring.asc`](https://github.com/Orkeon/orkeon/blob/main/installers/apt/orkeon-archive-keyring.asc);

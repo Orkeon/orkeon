@@ -90,13 +90,11 @@ SHA-256 du fichier de trousseau binaire que sert la branche `apt` (`orkeon-archi
 sont donc publiés ici, sur `main` :
 
 ```text
-Fingerprint: <PENDING-KEY-CEREMONY>
-Keyring SHA-256: <PENDING-KEY-CEREMONY>
+orkeon-archive-keyring fingerprint: 4765 9C57 4882 5078 5C78  2C37 1CF8 CD8A 4C20 1A2E
+orkeon-archive-keyring.gpg sha256: 0cc5e804e1ee49c50ec5b23145ee7ee65d4834a08b8dc38914674249dfcc6a21
 ```
 
-Ces deux valeurs restent des gabarits tant que la clé n'est pas créée : les lignes exactes —
-`orkeon-archive-keyring fingerprint:` et `orkeon-archive-keyring.gpg sha256:` — seront
-publiées ici dès que la clé existera, et la garde de la CI les compare au certificat.
+La garde de la CI compare ces deux lignes au certificat versionné dans `installers/apt/`.
 
 Le certificat public est versionné, armuré (ASCII), sous
 [`installers/apt/orkeon-archive-keyring.asc`](https://github.com/Orkeon/orkeon/blob/main/installers/apt/orkeon-archive-keyring.asc) ;
