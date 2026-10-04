@@ -86,6 +86,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [SonarQube Quality Gate](./guides/quality-gate.md) | Local SonarQube analysis with the "Orkeon Transitional" gate: transitional thresholds, hardening trajectory, automatic provisioning by the scripts |
 | [Local models](./guides/local-models.md) | Run everything on your own machine: Docker Model Runner (pull/configure/inspect, 128K contexts), Ollama, embedded `local-llm` image variant, model switching, troubleshooting |
 | [Verify what you install](./guides/verify-what-you-install.md) | What the provenance chain proves and does not (OIDC Trusted Publishing, SLSA attestations, `SHA256SUMS`, SBOM), the exact `gh attestation verify` / `dotnet nuget verify` commands, and why a nuget.org package must be un-signed before its digest matches |
+| [Install with apt](./guides/install-with-apt.md) | Debian / Ubuntu (amd64, arm64): add the signed Orkeon apt source once, then `apt install` / `apt upgrade`; the `stable`, `rc` and `dev` channels, going back to a version, removal, Docker builds, troubleshooting |
 
 ### Reference
 

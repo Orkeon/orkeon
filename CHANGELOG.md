@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Orkeon is an apt package on Debian and Ubuntu: add the signed source once, then `apt install orkeon` and `apt upgrade`, on amd64 and arm64
+
+- **A signed apt repository, served by this GitHub repository.** The packages stay the Release
+  assets `release.yml` already builds, smokes and attests; the signed index lives on the orphan
+  `apt` branch. The source is a deb822 file (`installers/apt/orkeon.sources`) with
+  `Signed-By:` pointing at `/usr/share/keyrings/orkeon-archive-keyring.gpg` — no `apt-key`,
+  nothing trusted system-wide. Nothing adds it for you: neither the `.deb` nor `install.sh`. The
+  block to copy, the channels, going back to a version, removal, Docker builds and
+  troubleshooting are in [Install with apt](docs/guides/install-with-apt.md).
+- **Three channels.** `stable` carries final versions only and stays empty until one is
+  published; `rc` carries every tagged release; `dev` carries the `orkeon` package of every green
+  `main` (`1.0.0~rc.4.dev.<n>`), unstable and unsupported, the three latest builds only, never
+  published to NuGet.org. Switching is one `Suites:` line. Every version still attached to a
+  Release stays in its channel: `sudo apt install orkeon=<version>` goes back to it.
+- **A `.deb` for arm64**, `orkeon_<version>_arm64.deb`, smoked on an ARM runner like the amd64
+  one — `linux-arm64` no longer needs the multi-app archive to get the CLI.
+- **`orkeon-archive-keyring`**, a package (`orkeon-archive-keyring_<YYYY.MM.DD>_all.deb`) that
+  owns the repository's public key, so a new signing subkey reaches every machine through
+  `apt upgrade`. `orkeon` recommends it; the setup block installs it explicitly, since
+  `--no-install-recommends` would skip it. The key's fingerprint, the keyring's SHA-256 and the
+  key policy (an offline primary key, a two-year signing subkey extended at least six months
+  ahead, rotation, revocation) are in [SECURITY.md](SECURITY.md#apt-archive-signing-key).
+- **The Debian package installs on Ubuntu 26.04**: its `Depends` accepts `libicu78` and
+  `libicu77` besides `libicu76` down to `libicu70`.
+- **`install.sh` points at the apt repository** on Debian, Ubuntu and their derivatives — it
+  reads `/etc/os-release` and prints the guide's address, nothing more: it writes nothing under
+  `/etc` and never calls `sudo`.
+
+### Changed — the `.deb` file name carries the tag's version, and every published asset is checked after publication
+
+- **`orkeon_1.0.0-rc.4_amd64.deb`, not `orkeon_1.0.0~rc.4_amd64.deb`.** GitHub rewrites `~` in
+  an uploaded asset name, so the published file never matched its `SHA256SUMS` line. The file
+  name now follows the tag; the package's `Version:` field keeps the `~` (`1.0.0~rc.4`), which
+  sorts a pre-release before its final version. The `1.0.0-rc.3` and `1.0.0-rc.4` Releases are
+  left as published: their `.deb` is named `orkeon_1.0.0.rc.N_amd64.deb` while their
+  `SHA256SUMS` names it with `~` — the digest is the same, only the name differs.
+- **The post-publication verification runs.** `release-verify.yml` was triggered by
+  `release: published`, which never fires for a Release created with the workflow's
+  `GITHUB_TOKEN`: `release.yml` now calls it. It no longer skips what it cannot find
+  (`--ignore-missing`): every published asset must have its manifest line, and every line its
+  asset. [Verify what you install](docs/guides/verify-what-you-install.md) and the
+  [publication matrix](docs/reference/publication-matrix.md) said it ran on every Release; they
+  now say how it does.
+
 ### Fixed — the Studio TUI presents the key under every spelling a run reads, the open model-setting editor follows the language, and a refused write of the model settings is said
 
 Three defects of Studio's model settings (STUDIO-56):

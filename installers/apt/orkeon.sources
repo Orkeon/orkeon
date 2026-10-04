@@ -1,0 +1,5 @@
+Types: deb
+URIs: https://github.com/Orkeon/orkeon/
+Suites: raw/apt/stable/
+Include: orkeon orkeon-archive-keyring
+Signed-By: /usr/share/keyrings/orkeon-archive-keyring.gpg

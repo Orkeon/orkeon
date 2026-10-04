@@ -21,7 +21,8 @@ was run on the `v1.0.0-rc.3` artefacts before being written down here.
 | **Build provenance attestation** (SLSA v1, Sigstore) | `publish.yml`, step *Attest the packages and the SBOM* — on every `*.nupkg`; `release.yml`, step *Attest the release assets* — on every archive, `.deb`, MSI and the SBOM | The SHA-256 of the file is recorded in a statement signed by GitHub's Sigstore instance, naming the workflow file, the tag, the commit and the run. A file with a different digest has no statement. |
 | **`ContinuousIntegrationBuild=true`** at pack time | `publish.yml`, step `dotnet pack` | Paths inside the PDBs and assemblies are normalised, so the packed bytes do not depend on the runner's directory layout. It is a *deterministic-build* setting, not a guarantee that you can rebuild the identical bytes yourself — the SDK, the runner image and the NuGet graph would have to match. |
 | **`SHA256SUMS`** manifests | Release assets (`SHA256SUMS` for the archives, the `.deb` and the SBOM; `SHA256SUMS.msi` for the two MSIs) | Integrity of what you downloaded against what the workflow uploaded. Cheap, offline, but the manifests are just release assets and are not attested themselves: the attestation of each file they list is what ties that file to the workflow. |
-| **Post-publish verification** | `release-verify.yml`, on every published Release | Once the Release exists, a fresh runner downloads the *published* assets, checks both manifests, and walks the onboarding smoke again on the `.deb` and the `osx-arm64` tarball — so an asset that differs from what the release smokes installed is caught. |
+| **Post-publish verification** | `release-verify.yml`, called by `release.yml` once the Release is published | A fresh runner downloads the *published* assets, checks every one of them against the two manifests — an asset without a line, or a line without an asset, fails it — and walks the onboarding smoke again on the `.deb` and the `osx-arm64` tarball, so an asset that differs from what the release smokes installed is caught. |
+| **Signed APT repository** | The `apt` branch, signed in `release.yml` (job `apt-publish`) with a dedicated OpenPGP key; its fingerprint and the keyring's SHA-256 are in [SECURITY.md](../../SECURITY.md#apt-archive-signing-key) | apt checks the signature of the channel's index against that key only, then every downloaded `.deb` against the SHA-256 the index lists. You check the key once, when you add the source. See [Install with apt](./install-with-apt.md). |
 | **Pinned actions and base images** | Every `uses:` is a commit SHA; every external `FROM` image is pinned by digest | What ran on the runner is what the repository says ran. |
 
 Two things carry **no** attestation: the dev builds of `main` on GitHub Packages
@@ -65,6 +66,26 @@ on `orkeon-cli-1.0.0-rc.3-osx-arm64.tar.gz`: one statement, predicate
 `https://slsa.dev/provenance/v1`, builder
 `https://github.com/Orkeon/orkeon/.github/workflows/release.yml@refs/tags/v1.0.0-rc.3`,
 eleven subjects (every archive, the `.deb` and both MSIs of that release).
+
+## Verify the APT signing key
+
+The repository's key is checked once, when you add the source: the installation block of
+[Install with apt](./install-with-apt.md) compares the downloaded keyring with the SHA-256
+published in [SECURITY.md](../../SECURITY.md#apt-archive-signing-key) and stops on any
+difference. To check the fingerprint as well (`gnupg` installed):
+
+```bash
+sha256sum /usr/share/keyrings/orkeon-archive-keyring.gpg          # = the keyring SHA-256 in SECURITY.md
+gpg --show-keys /usr/share/keyrings/orkeon-archive-keyring.gpg    # = the fingerprint in SECURITY.md
+```
+
+The output must show an ed25519 primary key with the published fingerprint, the user id
+`Orkeon Archive Signing Key <arion@orkeon.org>`, and a signing subkey `[S]` that has not
+expired. The armoured source of the same key is
+[`installers/apt/orkeon-archive-keyring.asc`](https://github.com/Orkeon/orkeon/blob/main/installers/apt/orkeon-archive-keyring.asc);
+`gpg --dearmor` turns it into the exact bytes of the keyring. After that, apt checks every
+update by itself; the packages it installs are the Release assets, so the attestation commands
+above apply to them unchanged.
 
 ## Verify a NuGet package
 

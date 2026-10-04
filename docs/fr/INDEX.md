@@ -86,6 +86,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Quality Gate SonarQube](./guides/quality-gate.md) | Analyse SonarQube locale avec la gate « Orkeon Transitional » : seuils transitoires, trajectoire de durcissement, provisionnement automatique par les scripts |
 | [Modèles locaux](./guides/local-models.md) | Tout exécuter sur sa machine : Docker Model Runner (pull/configure/inspect, contextes 128K), Ollama, variante d'image `local-llm` embarquée, changement de modèle, dépannage |
 | [Vérifier ce que vous installez](./guides/verify-what-you-install.md) | Ce que la chaîne de provenance prouve et ne prouve pas (Trusted Publishing OIDC, attestations SLSA, `SHA256SUMS`, SBOM), les commandes exactes `gh attestation verify` / `dotnet nuget verify`, et pourquoi un paquet nuget.org doit être dé-signé avant que son digest corresponde |
+| [Installer avec apt](./guides/install-with-apt.md) | Debian / Ubuntu (amd64, arm64) : ajouter une fois la source apt signée d'Orkeon, puis `apt install` / `apt upgrade` ; les canaux `stable`, `rc` et `dev`, le retour à une version, la désinstallation, les builds Docker, le dépannage |
 
 ### Référence
 

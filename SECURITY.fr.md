@@ -80,3 +80,47 @@ commandes exactes, ce que chaque mécanisme prouve ou non, et la conduite à ten
 vérification échoue sont dans [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md).
 Un artefact qui échoue à la vérification est un signalement de sécurité, pas une question
 de support.
+
+### Clé de signature du dépôt apt
+
+Le dépôt Debian / Ubuntu ([Installer avec apt](docs/fr/guides/install-with-apt.md)) est signé
+avec une clé OpenPGP dédiée, `Orkeon Archive Signing Key <arion@orkeon.org>`. Le premier
+téléchargement de cette clé repose sur la confiance au premier usage : son empreinte et le
+SHA-256 du fichier de trousseau binaire que sert la branche `apt` (`orkeon-archive-keyring.gpg`)
+sont donc publiés ici, sur `main` :
+
+```text
+Fingerprint: <PENDING-KEY-CEREMONY>
+Keyring SHA-256: <PENDING-KEY-CEREMONY>
+```
+
+Ces deux valeurs restent des gabarits tant que la clé n'est pas créée : les lignes exactes —
+`orkeon-archive-keyring fingerprint:` et `orkeon-archive-keyring.gpg sha256:` — seront
+publiées ici dès que la clé existera, et la garde de la CI les compare au certificat.
+
+Le certificat public est versionné, armuré (ASCII), sous
+[`installers/apt/orkeon-archive-keyring.asc`](https://github.com/Orkeon/orkeon/blob/main/installers/apt/orkeon-archive-keyring.asc) ;
+le trousseau binaire est ce fichier passé par `gpg --dearmor`. Une garde de la CI échoue quand
+les valeurs ci-dessus ne lui correspondent pas, ou ne correspondent pas à la page
+d'installation.
+
+**Ce qu'apt vérifie de lui-même**, une fois la source déclarée avec `Signed-By:` : la signature
+de l'index de chaque canal (`InRelease`) avec cette clé seule, puis le SHA-256 de chaque paquet
+contre cet index. Vous vérifiez le SHA-256 du trousseau une fois, en ajoutant la source — le
+bloc d'installation le fait.
+
+**Politique de la clé.**
+
+- Une clé OpenPGP v4 : une clé primaire ed25519 réservée à la certification et gardée hors
+  ligne, et une sous-clé de signature ed25519 valable deux ans — le seul secret que détient le
+  workflow de publication. Les signatures de l'index utilisent SHA-256.
+- La sous-clé de signature est prolongée au moins six mois avant son échéance ; la CI échoue
+  quand cette échéance est à moins de 180 jours. Une clé expirée fait échouer `apt update`
+  partout (`EXPKEYSIG`).
+- Une nouvelle sous-clé arrive aux utilisateurs par le paquet `orkeon-archive-keyring`, via
+  `apt upgrade`, une release **avant** que le dépôt soit signé avec elle : personne n'a rien à
+  faire.
+- Une **révocation** — une clé compromise — est annoncée ici et sur la page d'installation,
+  avec la nouvelle empreinte et le nouveau SHA-256 du trousseau. C'est le seul cas où les
+  utilisateurs doivent télécharger eux-mêmes une nouvelle clé. La publication du dépôt s'arrête
+  jusqu'à ce que la nouvelle clé soit en place.

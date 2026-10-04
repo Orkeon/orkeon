@@ -263,7 +263,8 @@ print_runtime_help() {
   echo "  Note: the \`orkeon\` command itself is self-contained and already works --"
   echo "  only the other launchers in this archive need the runtime. Distributions"
   echo "  that carry the CLI alone need none of the above: the Debian package"
-  echo "  (orkeon_<version>_amd64.deb) and, on Windows, orkeon-cli-<version>-win-x64.zip."
+  echo "  (the Orkeon apt repository, or orkeon_<version>_<amd64|arm64>.deb) and, on"
+  echo "  Windows, orkeon-cli-<version>-win-x64.zip."
 }
 
 if needs_dotnet_runtime && ! has_dotnet_10; then
@@ -301,3 +302,24 @@ if [ "$RUNTIME_MISSING" = 1 ]; then
   echo "          instructions printed above, or"
   echo "          https://dotnet.microsoft.com/download/dotnet/10.0"
 fi
+
+# On Debian, Ubuntu and their derivatives, point at the signed apt repository,
+# which installs the CLI and keeps it updated. Diagnostic only: /etc/os-release
+# is read, nothing is written under /etc, no source is added and sudo is never
+# called -- the user runs the documented commands.
+print_apt_hint() {
+  [ "$(uname -s)" = "Linux" ] || return 0
+  [ -r /etc/os-release ] || return 0
+  os_ids=$(sed -n -e 's/^ID=//p' -e 's/^ID_LIKE=//p' /etc/os-release | tr -d "\"'" | tr '\n' ' ')
+  case " $os_ids " in
+    *" debian "*|*" ubuntu "*) ;;
+    *) return 0 ;;
+  esac
+  echo ""
+  echo "TIP: on Debian and Ubuntu, the orkeon CLI is also an apt package, updated with"
+  echo "     the rest of the system (apt upgrade). Add the signed Orkeon source once:"
+  echo "       https://github.com/Orkeon/orkeon/blob/main/docs/guides/install-with-apt.md"
+  echo "     This installer did not add it, and never does."
+}
+
+print_apt_hint
