@@ -73,6 +73,14 @@ check "a 2-year signing subkey with matching SECURITY files passes" 0 "check-sig
 run "$work/good.asc" "$work/docs-good" --require-real
 check "--require-real accepts a certificate that is not the placeholder" 0
 
+# Prose that names the markers mid-sentence (as the docs do while the key is pending) is
+# not a marker line: only a line that starts with the marker is read.
+mkdir -p "$work/docs-prose"; cp "$work/docs-good"/SECURITY*.md "$work/docs-prose/"
+printf '\nThe lines `orkeon-archive-keyring fingerprint:` and `orkeon-archive-keyring.gpg sha256:` follow.\nFingerprint: <PENDING-KEY-CEREMONY>\n' \
+  | tee -a "$work/docs-prose/SECURITY.md" >> "$work/docs-prose/SECURITY.fr.md"
+run "$work/good.asc" "$work/docs-prose"
+check "a marker quoted in prose is not read as a marker line" 0 "check-signing-key: ok - $fpr_good"
+
 fpr_short="$(new_key short "$UID_OK" cert 30d)"
 docs "$work/docs-short" "$fpr_short" "$(keyring_sha "$work/short.asc")"
 run "$work/short.asc" "$work/docs-short"

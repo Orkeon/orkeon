@@ -121,9 +121,12 @@ KEYRING_SHA="$(gpg --batch --dearmor < "$CERT" | sha256sum | cut -d' ' -f1)"
 # Prints the normalised value of every <marker> line of <file>, one per line.
 marker_values() { # <file> <marker>
   awk -v m="$(tr 'A-Z' 'a-z' <<<"$2")" '{
-    i = index(tolower($0), m); if (!i) next
-    r = substr($0, i + length(m))
-    sub(/^[^0-9A-Fa-f]*/, "", r)
+    # A marker line starts with the marker (indentation allowed): prose that quotes the
+    # marker mid-sentence, or names it in backticks, is not a marker line.
+    l = $0; sub(/^[ \t]*/, "", l)
+    if (index(tolower(l), m) != 1) next
+    r = substr(l, length(m) + 1)
+    sub(/^[ \t]*/, "", r)
     match(r, /^[0-9A-Fa-f ]*/); r = substr(r, 1, RLENGTH)
     gsub(/ /, "", r); print toupper(r)
   }' "$1"
