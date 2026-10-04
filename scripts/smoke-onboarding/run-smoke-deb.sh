@@ -11,6 +11,7 @@
 #
 # What it exercises, end to end, on the *published* payload:
 #   1. apt resolves the package's Depends on a stock image (no dotnet repo);
+#  1b. `dpkg -V orkeon` is silent: the package's md5sums match what it installed;
 #   2. the payload survived packaging (esbuild, embedding model, the 7 whitelisted
 #      tree-sitter grammars — WIN-04 pruning);
 #  2b. the two Orkeon Studio TUIs shipped too — /usr/bin/orkeon-studio-config and
@@ -33,7 +34,7 @@
 #   --orkeon PATH   skip apt entirely and smoke an already-available binary. The
 #                   degraded mode used for local validation on a machine where
 #                   installing a package is not an option; steps 1, 2 and 7 are
-#                   reported SKIP.
+#                   reported SKIP (and 1b).
 #   --work-dir DIR  scratch directory (default: a mktemp -d, removed on success).
 #   --keep          keep the scratch directory even on success.
 #
@@ -131,12 +132,25 @@ if [[ -n "$DEB_PATH" ]]; then
   else
     smoke_fail "launcher" "$INSTALLED_BIN missing after install"
   fi
+
+  # The package ships DEBIAN/md5sums, so an installed file can be checked after
+  # the fact. `dpkg -V` prints one line per file that differs and nothing when all
+  # agree: a silent run on a fresh install proves the list is complete and right.
+  if [[ ! -s /var/lib/dpkg/info/orkeon.md5sums ]]; then
+    smoke_fail "dpkg-verify" "the package carries no md5sums: dpkg -V cannot check it"
+  elif verify_out="$(dpkg -V orkeon 2>&1)" && [[ -z "$verify_out" ]]; then
+    smoke_pass "dpkg-verify" "dpkg -V orkeon reports nothing: every installed file matches its md5sums line"
+  else
+    printf '%s\n' "$verify_out" | head -n 20 | sed 's/^/    | /'
+    smoke_fail "dpkg-verify" "dpkg -V orkeon reports differences"
+  fi
   ORKEON_BIN="$INSTALLED_BIN"
   PAYLOAD_ROOT="$INSTALLED_PREFIX"
   STUDIO_INSTALLED=true
 else
   smoke_skip "apt-install" "--orkeon given: smoking an already-available binary"
   smoke_skip "launcher" "--orkeon given"
+  smoke_skip "dpkg-verify" "--orkeon given"
   STUDIO_INSTALLED=false
   if [[ ! -x "$ORKEON_BIN" ]]; then
     smoke_fail "launcher" "not executable: $ORKEON_BIN"

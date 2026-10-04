@@ -150,8 +150,12 @@ jobs:
       # staging tree, and the multi-app linux-x64 staging already holds both from
       # the same self-contained, pruned publish. Reusing it saves a second publish
       # (~3 min and a couple of GB) for a byte-identical payload.
+      # SOURCE_DATE_EPOCH is the date of the tagged commit: package-deb.sh stamps
+      # every member of the package with it, so rebuilding the same commit gives
+      # the same bytes.
       - name: Package the Debian package (amd64)
         run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           mapfile -t stages < <(find artifacts/installers/_stage -mindepth 1 -maxdepth 1 -type d \
             -name 'orkeon-*-linux-x64' ! -name 'orkeon-cli-*')
           if [[ ${#stages[@]} -ne 1 ]]; then
@@ -159,6 +163,17 @@ jobs:
             exit 1
           fi
           ./scripts/package-deb.sh --stage "${stages[0]}" --out artifacts/installers
+
+      # lintian as a report, not a gate: the tags a self-contained package carries
+      # on purpose are listed with their reason in
+      # scripts/package-deb.lintian-overrides, and anything else lands in the job
+      # summary. The step goes red on an unexpected error tag, and the job goes on.
+      - name: Lintian report on the Debian package
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends lintian >/dev/null
+          ./scripts/lintian-deb.sh artifacts/installers/*.deb | tee -a "$GITHUB_STEP_SUMMARY"
 
       # Software bill of materials (CycloneDX 1.7 JSON) of the solution the
       # installers were published from, as a release asset: pinned dotnet tool,
