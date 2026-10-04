@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
-# Builds the Debian package orkeon_<ver>_amd64.deb from the self-contained,
-# tree-sitter-pruned linux-x64 publish of the `orkeon` CLI.
+# Builds the Debian package orkeon_<ver>_<arch>.deb from the self-contained,
+# tree-sitter-pruned linux publish of the `orkeon` CLI.
 #
 # Usage:
 #   scripts/package-deb.sh [--version X.Y.Z[-suffix]] [--out artifacts/installers]
-#                          [-c Release] [--stage DIR] [--keep-work]
+#                          [--arch amd64|arm64] [-c Release] [--stage DIR] [--keep-work]
+#
+# --arch is the Debian architecture (default amd64); it selects the RID
+# (amd64 -> linux-x64, arm64 -> linux-arm64). The staging tree's executables must
+# be of that architecture, or the script refuses to package them.
 #
 # The publish / pruning / esbuild-fetch logic is NOT duplicated here: this
-# script drives scripts/package-installers.sh --app-set cli --rids linux-x64 and
+# script drives scripts/package-installers.sh --app-set cli --rids <rid> and
 # remaps its staging tree onto the Debian layout. Pass --stage to reuse a
 # staging tree already built by that script (CI publishes once, packages twice).
+#
+# SOURCE_DATE_EPOCH, when set, makes the package reproducible: every file of the
+# package gets that mtime, and the changelog and the archive headers that date.
+# Two builds from the same staging tree are then byte-identical.
 #
 # Layout: payload in /usr/lib/orkeon, launcher /usr/bin/orkeon; the Orkeon
 # Studio TUIs land in /usr/lib/orkeon-studio-{config,run} with launchers
@@ -24,26 +32,52 @@ OUT="$REPO_ROOT/artifacts/installers"
 CONFIG="Release"
 STAGE_IN=""
 KEEP_WORK=false
+DEB_ARCH="amd64"
 
 MAINTAINER="Orkeon Contributors <arion@orkeon.org>"
-HOMEPAGE="https://github.com/Orkeon"
+HOMEPAGE="https://github.com/Orkeon/orkeon"
 # apt resolves these at install time; the names differ across distributions, so
 # each family is an alternation covering Debian 12/13 and Ubuntu 22.04→26.04.
-#   ICU      — .NET needs it unless built with InvariantGlobalization;
+#   ICU      — .NET needs it unless built with InvariantGlobalization. One
+#              alternative per ICU soname, newest first, the way dotnet-runtime-deps
+#              lists them: libicu78 (Ubuntu 26.04), 77, 76 (Debian 13), 74 (Ubuntu
+#              24.04), 72 (Debian 12), 70 (Ubuntu 22.04). apt skips an alternative a
+#              distribution does not carry. Keeping it current: the install matrix
+#              of the apt repository's end-to-end check fails the day a targeted
+#              distribution moves to an ICU missing here — add it at the front.
 #   OpenSSL  — Ubuntu 24.04 renamed libssl3 to libssl3t64 (time_t transition).
-DEPENDS="libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates"
+DEPENDS="libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates"
+# The repository's signing key. Recommends, not Depends: `apt install ./orkeon_*.deb`
+# with no repository configured must keep working, and apt installs recommends by
+# default, so a repository install keeps the key current without asking.
+RECOMMENDS="orkeon-archive-keyring"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version) VERSION="$2"; shift 2 ;;
     --out)     OUT="$2"; shift 2 ;;
     --stage)   STAGE_IN="$2"; shift 2 ;;
+    --arch)    DEB_ARCH="$2"; shift 2 ;;
     --keep-work) KEEP_WORK=true; shift ;;
     -c|--configuration) CONFIG="$2"; shift 2 ;;
-    -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
+
+# The Debian architecture names the RID to publish and the ELF machine every
+# executable of the payload must carry (e_machine: 62 = x86-64, 183 = AArch64).
+case "$DEB_ARCH" in
+  amd64) RID="linux-x64";   ELF_MACHINE=62 ;;
+  arm64) RID="linux-arm64"; ELF_MACHINE=183 ;;
+  *) echo "Unknown --arch '$DEB_ARCH' (expected amd64 or arm64)." >&2; exit 2 ;;
+esac
+
+if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
+  [[ "$SOURCE_DATE_EPOCH" =~ ^[0-9]+$ ]] || { echo "SOURCE_DATE_EPOCH must be a number of seconds, got '$SOURCE_DATE_EPOCH'." >&2; exit 2; }
+  # dpkg-deb reads it too (archive member dates): make sure it is exported.
+  export SOURCE_DATE_EPOCH
+fi
 
 command -v dpkg-deb >/dev/null 2>&1 || { echo "dpkg-deb not found (install the 'dpkg' package)." >&2; exit 1; }
 
@@ -57,14 +91,14 @@ if [[ -n "$STAGE_IN" ]]; then
 else
   rm -rf "$WORK"
   mkdir -p "$WORK"
-  echo "==> Publishing the CLI payload via package-installers.sh (--app-set cli, linux-x64)"
+  echo "==> Publishing the CLI payload via package-installers.sh (--app-set cli, $RID)"
   "$REPO_ROOT/scripts/package-installers.sh" \
-    --app-set cli --rids linux-x64 --out "$WORK" -c "$CONFIG" \
+    --app-set cli --rids "$RID" --out "$WORK" -c "$CONFIG" \
     ${VERSION:+--version "$VERSION"}
   # One staging root per RID; the version is baked into its name, so glob it and
   # read the version back from the VERSION marker rather than resolving twice.
-  mapfile -t stages < <(find "$WORK/_stage" -mindepth 1 -maxdepth 1 -type d -name 'orkeon-cli-*-linux-x64')
-  [[ ${#stages[@]} -eq 1 ]] || { echo "Expected exactly one linux-x64 staging tree under $WORK/_stage, found ${#stages[@]}" >&2; exit 1; }
+  mapfile -t stages < <(find "$WORK/_stage" -mindepth 1 -maxdepth 1 -type d -name "orkeon-cli-*-$RID")
+  [[ ${#stages[@]} -eq 1 ]] || { echo "Expected exactly one $RID staging tree under $WORK/_stage, found ${#stages[@]}" >&2; exit 1; }
   SRC_STAGE="${stages[0]}"
 fi
 
@@ -73,19 +107,46 @@ fi
 # The notices of the .NET runtime the payload bundles: package-installers.sh copies them there.
 [[ -d "$SRC_STAGE/licenses" ]] || { echo "Missing $SRC_STAGE/licenses, the .NET runtime's license and notices (staging tree predates GAP-45?)" >&2; exit 1; }
 
+# An arm64 package filled with x86-64 binaries would install without a word and
+# fail at the first run: read the ELF header of every executable the launchers
+# exec (bytes 0-3 the magic, byte 4 the class, bytes 18-19 the machine).
+elf_machine() { # $1=file -> e_machine as a decimal, or nothing when not a 64-bit LE ELF
+  local magic
+  magic="$(od -An -tx1 -N5 "$1" | tr -d ' \n')"
+  [[ "$magic" == "7f454c4602" ]] || return 0
+  od -An -tu2 -j18 -N2 --endian=little "$1" | tr -d ' \n'
+}
+check_arch() { # $1=file
+  local machine
+  machine="$(elf_machine "$1")"
+  if [[ "$machine" != "$ELF_MACHINE" ]]; then
+    echo "Architecture mismatch: --arch $DEB_ARCH expects ELF machine $ELF_MACHINE, but $1 is ${machine:-not a 64-bit ELF}${machine:+ (62 = x86-64, 183 = AArch64)}. Wrong staging tree for this architecture?" >&2
+    exit 1
+  fi
+}
+check_arch "$SRC_STAGE/libexec/orkeon/orkeon"
+check_arch "$SRC_STAGE/libexec/esbuild-bin/esbuild"
+
 if [[ -z "$VERSION" ]]; then
   [[ -f "$SRC_STAGE/VERSION" ]] || { echo "No VERSION marker in $SRC_STAGE; pass --version." >&2; exit 1; }
   VERSION="$(tr -d '[:space:]' < "$SRC_STAGE/VERSION")"
 fi
 [[ -n "$VERSION" ]] || { echo "Could not resolve a version; pass --version." >&2; exit 1; }
 
-# dpkg orders `~` before everything, including the empty string: 0.9.2~beta thus
-# sorts *before* the 0.9.2 final, which is what a pre-release must do.
+# The `Version:` field and the file name deliberately differ.
+# - The field takes `~` for the upstream `-`: dpkg orders `~` before everything,
+#   including the empty string, so 0.9.2~beta sorts *before* the 0.9.2 final,
+#   which is what a pre-release must do.
+# - The file name keeps the upstream version (orkeon_1.0.0-rc.4_amd64.deb): GitHub
+#   rewrites `~` to `.` when an asset is uploaded, so a `~` in the name would make
+#   the published file disagree with its SHA256SUMS line and with any apt index
+#   pointing at it. apt reads the version from the index and the control file,
+#   never from the file name, so the dpkg-name convention is not needed here.
 DEB_VERSION="${VERSION//-/\~}"
-PKG_DIR="$OUT/_deb-stage/orkeon_${DEB_VERSION}_amd64"
-DEB_PATH="$OUT/orkeon_${DEB_VERSION}_amd64.deb"
+PKG_DIR="$OUT/_deb-stage/orkeon_${VERSION}_${DEB_ARCH}"
+DEB_PATH="$OUT/orkeon_${VERSION}_${DEB_ARCH}.deb"
 
-echo "==> Staging orkeon $DEB_VERSION (upstream $VERSION) for amd64"
+echo "==> Staging orkeon $DEB_VERSION (upstream $VERSION) for $DEB_ARCH ($RID)"
 rm -rf "$PKG_DIR"
 mkdir -p "$PKG_DIR/DEBIAN" "$PKG_DIR/usr/bin" "$PKG_DIR/usr/lib/orkeon" "$PKG_DIR/usr/share/doc/orkeon"
 
@@ -107,6 +168,7 @@ studio_apphost() { # $1=app-name -> apphost file name (AssemblyName)
 for app in $STUDIO_APPS; do
   apphost="$(studio_apphost "$app")"
   [[ -x "$SRC_STAGE/libexec/$app/$apphost" ]] || { echo "Missing apphost $SRC_STAGE/libexec/$app/$apphost (staging tree predates STUDIO-07?)" >&2; exit 1; }
+  check_arch "$SRC_STAGE/libexec/$app/$apphost"
   mkdir -p "$PKG_DIR/usr/lib/$app"
   cp -R "$SRC_STAGE/libexec/$app/." "$PKG_DIR/usr/lib/$app/"
 done
@@ -229,18 +291,33 @@ done
 # reflects what dpkg actually lays down.
 "$REPO_ROOT/scripts/hardlink-dedup.sh" "$PKG_DIR/usr/lib"
 
+# --- 4c. md5sums ---------------------------------------------------------------
+# What `dpkg -V orkeon` and debsums check an installed package against: every
+# regular file outside DEBIAN/, path relative to the root without `./`. Written
+# after the mode reset and the dedup, so it describes the tree dpkg-deb packs; a
+# hard-linked file is listed under each of its paths, as dpkg installs each one.
+(
+  cd "$PKG_DIR"
+  find . -path ./DEBIAN -prune -o -type f -print0 \
+    | LC_ALL=C sort -z \
+    | sed -z 's|^\./||' \
+    | xargs -0 -r md5sum
+) > "$PKG_DIR/DEBIAN/md5sums"
+chmod 644 "$PKG_DIR/DEBIAN/md5sums"
+
 # --- 5. Control ---------------------------------------------------------------
 # Policy 5.6.20: installed size is an estimate in KiB, excluding DEBIAN/.
 INSTALLED_SIZE="$(du -sk --exclude=DEBIAN "$PKG_DIR" | cut -f1)"
 cat > "$PKG_DIR/DEBIAN/control" <<EOF
 Package: orkeon
 Version: $DEB_VERSION
-Architecture: amd64
+Architecture: $DEB_ARCH
 Section: devel
 Priority: optional
 Maintainer: $MAINTAINER
 Installed-Size: $INSTALLED_SIZE
 Depends: $DEPENDS
+Recommends: $RECOMMENDS
 Homepage: $HOMEPAGE
 Description: multi-agent AI orchestration framework and CLI
  Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
@@ -262,6 +339,12 @@ EOF
 chmod 644 "$PKG_DIR/DEBIAN/control"
 
 # --- 6. Build -----------------------------------------------------------------
+# Reproducible dates: every member of the package takes SOURCE_DATE_EPOCH as its
+# mtime (the staging copies carry the build's clock). Without it, the dates stay
+# those of the build, as before.
+if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
+  find "$PKG_DIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
+fi
 rm -f "$DEB_PATH"
 dpkg-deb --build --root-owner-group "$PKG_DIR" "$DEB_PATH"
 
