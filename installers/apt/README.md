@@ -76,6 +76,7 @@ gpgconf --homedir "$PW_HOME" --kill all; rm -rf "$PW_HOME"
 export CI_HOME="$(mktemp -d)"; chmod 700 "$CI_HOME"
 gpg --homedir "$CI_HOME" --import orkeon-archive-signing-subkey.asc
 gpg --homedir "$CI_HOME" --list-secret-keys
+export GPG_TTY="$(tty)"   # stdin is a pipe below: the passphrase prompt needs the terminal
 echo test | gpg --homedir "$CI_HOME" --clearsign >/dev/null && echo "signing subkey OK"
 
 # 6. The public certificate (for this directory) and the fingerprint (for SECURITY.md).
