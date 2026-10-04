@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `main` (`1.0.0~rc.4.dev.<n>`), unstable and unsupported, the three latest builds only, never
   published to NuGet.org. Switching is one `Suites:` line. Every version still attached to a
   Release stays in its channel: `sudo apt install orkeon=<version>` goes back to it.
+- **`apt-dev.yml` feeds `dev`** after every green CI run on `main`: both `.deb` on the fixed-tag
+  prerelease `apt-dev`, a dropped build's assets deleted only once the pushed index no longer
+  lists them; the README's newest-tag one-liner and `git describe` now read `v*` tags only.
 - **A `.deb` for arm64.** `orkeon_<version>_arm64.deb` ships with every release next to the
   amd64 one (Raspberry Pi 5, AWS Graviton, Ampere, ARM virtual machines): same content and
   layout, built from the same publish as the `linux-arm64` archive, smoke-tested on a real ARM

@@ -134,7 +134,11 @@ validated, between two releases:
 Suites: raw/apt/dev/
 ```
 
-- **Versions** look like `1.0.0~rc.4.dev.<n>`, with `n` growing at every build: above the
+- **A build appears a few minutes after CI passes** on a push to `main`. Its packages are
+  attached to the `apt-dev` prerelease of the repository — one fixed tag that never moves, and
+  not a release.
+- **Versions** look like `1.0.0~rc.4.dev.<n>`, `n` being the number of the CI run that validated
+  the commit, so it grows at every build: above the
   release they start from, below the next one — so a dev machine moves to the next release
   candidate by a plain `apt upgrade` when it is published. After a final version, the dev
   builds move to the next patch (`1.0.1~dev.<n>` after `1.0.0`), as the
@@ -149,8 +153,8 @@ Suites: raw/apt/dev/
   `main` through its own channel on GitHub Packages, described in
   [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md#follow-main-the-dev-channel).
 
-The source file, the key and the commands are those of the other channels; only the
-`Suites:` line differs.
+The source file, the key and the commands are those of the other channels — the `dev` channel
+carries `orkeon-archive-keyring` too; only the `Suites:` line differs.
 
 ## Remove
 

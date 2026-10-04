@@ -90,8 +90,12 @@ Where each piece goes:
 | The fingerprint and the keyring SHA-256 (step 6) | `SECURITY.md` and `SECURITY.fr.md`, in the marker lines below. |
 | The subkey expiry date | A calendar reminder, 6 months before it. |
 
-The `apt-signing` environment and the other repository settings are listed in
-[Repository settings](#repository-settings-before-the-first-publishing-tag). Then destroy both temporary homes (`rm -rf "$GNUPGHOME" "$CI_HOME"`) once the backups are
+The `apt-signing` environment is restricted to `v*` tags and the `main` branch — `main` for the
+dev channel, which `.github/workflows/apt-dev.yml` publishes after every green CI run there. A
+required reviewer would hold each of those dev publications until approved. The other
+repository settings are listed in
+[Repository settings](#repository-settings-before-the-first-publishing-tag). Then destroy both
+temporary homes (`rm -rf "$GNUPGHOME" "$CI_HOME"`) once the backups are
 checked, and verify the committed certificate: `bash scripts/apt/check-signing-key.sh
 --require-real` must pass.
 
@@ -99,8 +103,9 @@ checked, and verify the committed certificate: `bash scripts/apt/check-signing-k
 
 The guard compares the certificate with every place that cites it: `SECURITY.md`,
 `SECURITY.fr.md`, `docs/guides/install-with-apt.md` and `docs/fr/guides/install-with-apt.md`.
-Each one cites it in these two lines, anywhere in a line (typically in a `text` code block;
-spaces inside the values and their case do not matter):
+Each one cites it in these two lines, each starting its own line (indentation allowed,
+typically in a `text` code block; a marker quoted mid-sentence is ignored; spaces inside the
+values and their case do not matter):
 
 ```text
 orkeon-archive-keyring fingerprint: XXXX XXXX XXXX XXXX XXXX  XXXX XXXX XXXX XXXX XXXX

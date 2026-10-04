@@ -96,6 +96,11 @@ jobs:
       # --base refusal, the retry on a branch moved meanwhile. Git only, no network.
       - name: Test the apt branch publisher
         run: bash scripts/apt/test-publish-apt-channel.sh
+      # The apt dev channel (scripts/apt/publish-dev.sh, run by apt-dev.yml): its version is
+      # publish.yml's, it keeps the three newest builds, and an asset leaves the apt-dev
+      # prerelease only after the pushed index has dropped it - proved against a fake gh.
+      - name: Test the apt dev channel against a fake gh
+        run: bash scripts/apt/test-publish-dev.sh
       # Release asset names (scripts/check-release-assets.sh): no character GitHub rewrites
       # on upload, and every asset listed in a checksum manifest.
       - name: Test the release asset-name guard

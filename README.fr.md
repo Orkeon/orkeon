@@ -209,8 +209,9 @@ En attendant (et sur n'importe quelle machine), l'archive self-contained — `os
 ```bash
 # Le nom de l'asset porte la version, et le raccourci `latest/download/` de GitHub
 # ignore les préversions — résolvez donc d'abord le tag le plus récent (ou copiez le
-# lien de l'asset depuis la page des releases, ce qui revient au même à la main).
-TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name"' | cut -d'"' -f4)
+# lien de l'asset depuis la page des releases, ce qui revient au même à la main). Seuls
+# les tags `v` sont des versions : `apt-dev` porte les builds de dev du dépôt apt.
+TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name": "v' | cut -d'"' -f4)
 VER=${TAG#v}; BASE=https://github.com/Orkeon/orkeon/releases/download/$TAG
 
 curl -fsSL -O "$BASE/orkeon-cli-$VER-osx-arm64.tar.gz"     # osx-x64 sur Intel

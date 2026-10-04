@@ -1,0 +1,253 @@
+# The dev channel of the apt repository: the orkeon CLI package built from every push
+# to main that CI passed, installable with `Suites: raw/apt/dev/` (docs/guides/
+# install-with-apt.md, "Follow main"). Never NuGet: this workflow packs no nupkg, calls
+# neither dotnet pack nor publish.yml, and pushes to no feed. publish.yml's publish-dev
+# job serves the dotnet tool between two tags; both number a build after the same CI
+# run, so one commit carries one dev version on both channels.
+#
+# Version: <props prefix>-<props suffix>.dev.<CI run number> for the asset name (no "~":
+# GitHub renames it on upload), with "~" for "-" in the Debian Version field, which
+# sorts a dev build above the release it starts from and below the next one
+# (1.0.0~rc.4 < 1.0.0~rc.4.dev.812 < 1.0.0~rc.5 < 1.0.0). A props version without a
+# suffix moves the dev builds to the next patch, as publish.yml does.
+#
+# Hosting: every build adds uniquely named assets to ONE prerelease, tag apt-dev,
+# created on the first build's commit, never marked latest, and whose tag never moves
+# (no "would clobber existing tag" for contributors). An asset the index points to is
+# never replaced, so apt never meets a "Hash Sum mismatch". The channel keeps the three
+# newest builds: an older one leaves the signed index in the same push that adds the
+# new one, and its assets are deleted only once that index is pushed.
+#
+# workflow_dispatch: `publish` false (the default) builds the two packages of the
+# dispatched commit and publishes nothing - the dry run. `publish` true, from main
+# only, publishes the commit of the newest green CI push run on main, under that run's
+# number - for a build whose workflow_run trigger failed. A build already in the index
+# publishes nothing.
+#
+# Owner settings: the apt-signing environment (APT_SIGNING_KEY, APT_SIGNING_PASSPHRASE)
+# must allow the branch main, not only v* tags; and the apt-dev prerelease must exist
+# before immutable releases are enabled, or the channel can no longer delete the
+# assets of the builds it drops.
+name: apt dev channel
+on:
+  workflow_run: { workflows: [ CI ], types: [ completed ], branches: [ main ] }
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to the dev channel (false: build the two packages only)"
+        type: boolean
+        default: false
+permissions: { contents: read }
+jobs:
+  build:
+    # Only a push to main whose CI passed, in this repository - publish.yml's guard.
+    # workflow_run also fires for pull-request runs, and a fork's branch may well be
+    # called main: the event and the head repository are what rule those out.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event.workflow_run.conclusion == 'success'
+          && github.event.workflow_run.event == 'push'
+          && github.event.workflow_run.head_branch == 'main'
+          && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    # actions: read lists the CI runs on workflow_dispatch.
+    permissions: { contents: read, actions: read }
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      deb_version: ${{ steps.ver.outputs.deb_version }}
+      sha: ${{ steps.run.outputs.sha }}
+      run: ${{ steps.run.outputs.run }}
+    steps:
+      # The commit and the number of the CI run the build is named after.
+      - name: Resolve the CI run
+        id: run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PUBLISH: ${{ inputs.publish }}
+          WR_SHA: ${{ github.event.workflow_run.head_sha }}
+          WR_RUN: ${{ github.event.workflow_run.run_number }}
+        run: |
+          if [ "$EVENT" = workflow_run ]; then
+            sha="$WR_SHA"; run="$WR_RUN"
+          else
+            if [ "$PUBLISH" = true ] && [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "::error::publish: true is accepted from main only; dispatch from main, or leave publish false for a dry run."
+              exit 1
+            fi
+            read -r run ci_sha < <(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
+              --jq '.workflow_runs[0] | "\(.run_number) \(.head_sha)"')
+            if [ -z "$run" ] || [ "$run" = null ]; then
+              echo "::error::No green CI push run on main to number this build after."
+              exit 1
+            fi
+            # A dry run builds the dispatched commit; a publication builds what CI validated.
+            if [ "$PUBLISH" = true ]; then sha="$ci_sha"; else sha="$GITHUB_SHA"; fi
+          fi
+          { echo "sha=$sha"; echo "run=$run"; } >> "$GITHUB_OUTPUT"
+          echo "Building $sha as CI run #$run"
+      - name: Free up runner disk space
+        run: |
+          echo "Before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          echo "After:"; df -h / | tail -1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.run.outputs.sha }}
+          persist-credentials: false
+      - name: Resolve the dev version
+        id: ver
+        env:
+          CI_RUN: ${{ steps.run.outputs.run }}
+        run: |
+          bash scripts/apt/publish-dev.sh version --props src/Directory.Build.props --run "$CI_RUN" | tee -a "$GITHUB_OUTPUT"
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The restore fills packages/ (RestorePackagesPath, Directory.Build.props), not
+          # ~/.nuget/packages, which keeps only the dotnet tools and the MSBuild SDKs NuGet resolves.
+          path: |
+            packages
+            ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      # The CLI set for the two linux RIDs only: the orkeon CLI and the two Studio TUIs the
+      # package carries, cross-published from this x64 runner like release.yml does. The
+      # staging trees are kept for package-deb.sh --stage; the archives are by-products.
+      - name: Publish the CLI payloads (linux-x64, linux-arm64)
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: ./scripts/package-installers.sh --app-set cli --rids "linux-x64 linux-arm64" --version "$VERSION" --out artifacts/installers --keep-stage "linux-x64 linux-arm64"
+      # SOURCE_DATE_EPOCH is the commit date: package-deb.sh stamps every member with it.
+      - name: Package the Debian packages (amd64, arm64)
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          for pair in amd64:linux-x64 arm64:linux-arm64; do
+            arch="${pair%%:*}"; rid="${pair#*:}"
+            ./scripts/package-deb.sh --stage "artifacts/installers/_stage/orkeon-cli-$VERSION-$rid" \
+              --version "$VERSION" --arch "$arch" --out artifacts/deb
+          done
+      # The names the index and the prerelease will carry, and the Version apt will read.
+      - name: Check the packages
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          DEB_VERSION: ${{ steps.ver.outputs.deb_version }}
+        run: |
+          for arch in amd64 arm64; do
+            f="artifacts/deb/orkeon_${VERSION}_$arch.deb"
+            [ -f "$f" ] || { echo "::error::$f was not built"; exit 1; }
+            [ "$(dpkg-deb -f "$f" Version)" = "$DEB_VERSION" ] || { echo "::error::$f: Version is not $DEB_VERSION"; exit 1; }
+            [ "$(dpkg-deb -f "$f" Architecture)" = "$arch" ] || { echo "::error::$f: Architecture is not $arch"; exit 1; }
+          done
+          ls -l artifacts/deb/*.deb
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: apt-dev-debs
+          path: artifacts/deb/*.deb
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  publish:
+    needs: build
+    if: github.event_name == 'workflow_run' || inputs.publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: apt-signing
+    # contents: write creates the apt-dev prerelease, attaches and deletes its assets,
+    # and pushes the apt branch. Nothing else is granted.
+    permissions: { contents: write }
+    # One dev publication at a time: each one reads dev/ from the apt branch, rebuilds it
+    # and pushes it back. A newer pending run replacing an older pending one is fine here
+    # (the newer build is the one the channel wants). Not shared with release.yml: a
+    # group keeps one pending job only, so a queued dev build would cancel a pending
+    # release publication. The two never write the same channel directory, and
+    # publish-apt-channel.sh re-applies its own directory over a concurrent push.
+    concurrency: { group: apt-dev, cancel-in-progress: false }
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.build.outputs.version }}
+      DEB_VERSION: ${{ needs.build.outputs.deb_version }}
+      SHA: ${{ needs.build.outputs.sha }}
+      CI_RUN: ${{ needs.build.outputs.run }}
+    steps:
+      # The scripts of the built commit; credentials kept for the push to the apt branch.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.build.outputs.sha }}
+      # The throwaway development certificate must never sign a published index.
+      - name: Check the signing certificate is the real one
+        run: bash scripts/apt/check-signing-key.sh --require-real
+      - name: Install apt-utils when missing
+        run: command -v apt-ftparchive >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils; }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: apt-dev-debs
+          path: debs
+      - name: Create the apt-dev prerelease when missing
+        run: bash scripts/apt/publish-dev.sh ensure-release --target "$SHA"
+      # The keyring package lives in the channel too (the documented install names it).
+      # Its published bytes are reused, never rebuilt: the index refuses other bytes
+      # under a published version.
+      - name: Get the keyring package
+        run: |
+          ver="$(tr -d '[:space:]' < installers/apt/keyring.version)"
+          asset="orkeon-archive-keyring_${ver}_all.deb"
+          if gh release view apt-dev --json assets --jq '.assets[].name' | grep -qxF "$asset"; then
+            gh release download apt-dev --pattern "$asset" --dir debs
+          else
+            ./scripts/package-keyring-deb.sh --out debs
+          fi
+          ls -l debs
+      # The dev/ directory as published, and the apt commit it was read from (empty when
+      # the branch or the directory does not exist yet: the first build).
+      - name: Read the published dev channel
+        id: current
+        run: |
+          mkdir -p "$RUNNER_TEMP/current"
+          base=""
+          if git fetch --quiet --depth 1 origin apt 2>/dev/null; then
+            base="$(git rev-parse FETCH_HEAD)"
+            if git cat-file -e "$base:dev" 2>/dev/null; then
+              git archive "$base" dev | tar -x -C "$RUNNER_TEMP/current"
+            fi
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          ls -la "$RUNNER_TEMP/current/dev" 2>/dev/null || echo "no dev/ published yet"
+      - name: Build and sign the dev index
+        id: index
+        env:
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_PASSPHRASE: ${{ secrets.APT_SIGNING_PASSPHRASE }}
+        run: |
+          gpg --dearmor < installers/apt/orkeon-archive-keyring.asc > "$RUNNER_TEMP/archive.gpg"
+          bash scripts/apt/publish-dev.sh index --current "$RUNNER_TEMP/current/dev" --out "$RUNNER_TEMP/out/dev" \
+            --keyring "$RUNNER_TEMP/archive.gpg" \
+            "debs/orkeon_${VERSION}_amd64.deb" "debs/orkeon_${VERSION}_arm64.deb" debs/orkeon-archive-keyring_*_all.deb \
+            | tee -a "$GITHUB_OUTPUT"
+      # Before the push: the index must never point to an asset that is not there yet.
+      - name: Attach the packages to apt-dev
+        if: steps.index.outputs.status == 'published'
+        run: |
+          bash scripts/apt/publish-dev.sh upload --published "$RUNNER_TEMP/current/dev/Packages" \
+            "debs/orkeon_${VERSION}_amd64.deb" "debs/orkeon_${VERSION}_arm64.deb" debs/orkeon-archive-keyring_*_all.deb
+      - name: Push the dev index to the apt branch
+        if: steps.index.outputs.status == 'published'
+        env:
+          BASE: ${{ steps.current.outputs.base }}
+        run: |
+          bash scripts/apt/publish-apt-channel.sh --channel dev --dir "$RUNNER_TEMP/out/dev" \
+            ${BASE:+--base "$BASE"} \
+            --message "dev: orkeon $DEB_VERSION (CI run #$CI_RUN, ${SHA:0:12})"
+      # After the push, against the index as pushed: the builds that left the three newest
+      # lose their assets only now that no published index lists them.
+      - name: Delete the assets the pushed index no longer lists
+        run: |
+          git fetch --quiet --depth 1 origin apt
+          git show FETCH_HEAD:dev/Packages > "$RUNNER_TEMP/pushed-Packages"
+          bash scripts/apt/publish-dev.sh prune --index "$RUNNER_TEMP/pushed-Packages" --apply
