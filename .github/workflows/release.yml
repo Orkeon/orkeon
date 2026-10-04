@@ -2,7 +2,8 @@
 # real Ubuntu runner, and only then attaches them to the GitHub Release.
 # Coexists with publish.yml (NuGet push) on the same trigger.
 #
-# Pipeline: installers -> {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} -> release.
+# Pipeline: installers -> {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} -> release
+# -> verify-published (release-verify.yml, called on the published assets).
 # The smokes (and the msi job's own install/uninstall smoke) install from the
 # *job* artefacts, never from the Release, so a broken payload is caught before
 # anything is published. workflow_dispatch runs everything except the
@@ -172,6 +173,17 @@ jobs:
           dotnet tool install --tool-path .tools CycloneDX --version 6.2.0
           .tools/dotnet-CycloneDX Orkeon.sln -o artifacts/installers -fn "orkeon-$ver.sbom.cdx.json" -F Json -t -sn Orkeon -sv "$ver"
           (cd artifacts/installers && sha256sum "orkeon-$ver.sbom.cdx.json" >> SHA256SUMS && sort -k2 -o SHA256SUMS SHA256SUMS)
+
+      # Every asset name must survive the upload unchanged and appear in
+      # SHA256SUMS exactly once: GitHub rewrites any character outside
+      # [A-Za-z0-9._-] (a `~` becomes `.`), and a manifest line naming a file the
+      # Release does not carry is a checksum nobody can verify. The guard proves
+      # its own rules first, on throw-away files (no build, no network). The MSIs
+      # do not exist yet here; the release job checks them with their manifest.
+      - name: Test the release-asset guard
+        run: bash scripts/test-check-release-assets.sh
+      - name: Check the asset names against SHA256SUMS
+        run: ./scripts/check-release-assets.sh artifacts/installers SHA256SUMS
 
       - name: List the artefacts
         run: ls -lh artifacts/installers/*.tar.gz artifacts/installers/*.zip artifacts/installers/*.deb artifacts/installers/*.sbom.cdx.json artifacts/installers/SHA256SUMS
@@ -703,6 +715,12 @@ jobs:
         with:
           name: orkeon-msi
           path: artifacts/installers
+      # The full set, both manifests: the last point before publication where an
+      # asset outside every manifest, or a line without its asset, can be stopped.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { path: repo }
+      - name: Check every asset against SHA256SUMS and SHA256SUMS.msi
+        run: ./repo/scripts/check-release-assets.sh artifacts/installers SHA256SUMS SHA256SUMS.msi
       # Build provenance for every asset the step below publishes. It sits here
       # because the six downloads above are what materialise the assets, and the
       # release step is what hands them to the world — between the two is the only
@@ -755,6 +773,19 @@ jobs:
             **Curated release notes**: see the section matching this tag in
             [CHANGELOG.md](https://github.com/Orkeon/orkeon/blob/${{ github.ref_name }}/CHANGELOG.md).
           generate_release_notes: true
+
+  # Scenario C on the PUBLISHED assets: the .deb and the osx-arm64 tarball as a
+  # user downloads them, and every asset against its manifest line. Called from
+  # here because a Release created with GITHUB_TOKEN starts no other workflow, so
+  # a `release: published` trigger in release-verify.yml would never fire. The
+  # called workflow gets this job's permissions: contents: read, nothing more.
+  verify-published:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions: { contents: read }
+    uses: ./.github/workflows/release-verify.yml
+    with:
+      tag: ${{ github.ref_name }}
 
   # Builds and pushes the example-runners container image to GHCR. Same v* trigger
   # as the installers; runs independently (own job, package-scoped permissions).

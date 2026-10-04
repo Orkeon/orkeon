@@ -7,10 +7,21 @@
 # onboarding chain — the assets could differ from the job artifacts only
 # through an upload/tamper/replace accident, which is exactly what this
 # catches. Reuses the same smoke scripts, pointed at the Release assets.
+#
+# Triggers: release.yml calls this workflow (workflow_call, job verify-published)
+# right after its release job, in the same run; workflow_dispatch replays it on
+# any tag. There is no `release: published` trigger: release.yml creates the
+# Release with GITHUB_TOKEN, and an event raised by that token starts no other
+# workflow, so such a trigger never fired. When called, this workflow runs with
+# the permissions of the calling job, which grants contents: read and no more.
 name: Release verify (published assets)
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to verify (e.g. v1.0.0-rc.1)"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       tag:
@@ -64,19 +75,24 @@ jobs:
           fi
           ./scripts/smoke-onboarding/run-smoke-tarball.sh --tarball "$tarball" --studio absent
 
+  # Every published asset has exactly one checksum line, and every line names a
+  # published asset: the asset list comes from the Release itself, not from the
+  # files the download happened to bring back. Without --ignore-missing, a line
+  # whose file is absent is an error rather than a line skipped in silence.
   verify-checksums:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Download every published asset and verify SHA256SUMS
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download every published asset and verify both manifests against it
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
           REPO: ${{ github.repository }}
         run: |
-          mkdir -p published && cd published
-          gh release download "$TAG" --repo "$REPO"
+          mkdir -p published
+          gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/assets.txt"
+          gh release download "$TAG" --repo "$REPO" --dir published
           # Two checksum files by design (see publication-matrix): SHA256SUMS
           # covers everything but the MSIs; SHA256SUMS.msi covers the two MSIs (CLI and service host).
-          sha256sum --check --ignore-missing SHA256SUMS
-          sha256sum --check --ignore-missing SHA256SUMS.msi
+          ./scripts/check-release-assets.sh --assets "$RUNNER_TEMP/assets.txt" published SHA256SUMS SHA256SUMS.msi

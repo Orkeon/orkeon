@@ -79,11 +79,18 @@ if [[ -z "$VERSION" ]]; then
 fi
 [[ -n "$VERSION" ]] || { echo "Could not resolve a version; pass --version." >&2; exit 1; }
 
-# dpkg orders `~` before everything, including the empty string: 0.9.2~beta thus
-# sorts *before* the 0.9.2 final, which is what a pre-release must do.
+# The `Version:` field and the file name deliberately differ.
+# - The field takes `~` for the upstream `-`: dpkg orders `~` before everything,
+#   including the empty string, so 0.9.2~beta sorts *before* the 0.9.2 final,
+#   which is what a pre-release must do.
+# - The file name keeps the upstream version (orkeon_1.0.0-rc.4_amd64.deb): GitHub
+#   rewrites `~` to `.` when an asset is uploaded, so a `~` in the name would make
+#   the published file disagree with its SHA256SUMS line and with any apt index
+#   pointing at it. apt reads the version from the index and the control file,
+#   never from the file name, so the dpkg-name convention is not needed here.
 DEB_VERSION="${VERSION//-/\~}"
-PKG_DIR="$OUT/_deb-stage/orkeon_${DEB_VERSION}_amd64"
-DEB_PATH="$OUT/orkeon_${DEB_VERSION}_amd64.deb"
+PKG_DIR="$OUT/_deb-stage/orkeon_${VERSION}_amd64"
+DEB_PATH="$OUT/orkeon_${VERSION}_amd64.deb"
 
 echo "==> Staging orkeon $DEB_VERSION (upstream $VERSION) for amd64"
 rm -rf "$PKG_DIR"
