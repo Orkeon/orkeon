@@ -182,7 +182,7 @@ On a `v*` tag, `release.yml` builds every installer artifact, **smokes each onbo
 channel on a real runner** (Windows CLI zip, Windows service, Debian package, macOS
 tarball), and only then attaches everything to the GitHub Release. The pipeline is
 `installers → {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} →
-release → apt-publish → verify-apt` (the last two are described in
+release → {verify-published, apt-publish → verify-apt}` (the last two are described in
 [The apt repository](#the-apt-repository)); behind those same five jobs, `runners-image` pushes the `orkeon-runners`
 container image to GHCR in parallel with `release`, so a red smoke moves neither the
 Release nor the `:latest` tag. `workflow_dispatch` runs
@@ -197,7 +197,7 @@ scripting DSL).
 |---|---|---|---|
 | `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every launcher — `orkeon`, `orkeon-slim`, `orkeon-repl`, `orkeon-host` — + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon`, `orkeon-host` and the Studio apps self-contained, the rest framework-dependent |
 | `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `orkeon-studio` (WPF Orkeon Studio) + `install.ps1` | self-contained |
-| `orkeon_<version>_amd64.deb` / `orkeon_<version>_arm64.deb` | `package-deb.sh --arch amd64\|arm64` (reuses the `linux-x64` and `linux-arm64` staging trees — one publish, two packages per architecture) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (`libicu78` down to `libicu70`, `libssl3t64 \| libssl3`, `libc6 (>= 2.34)`…), never on `dotnet-runtime-*`; `Recommends: orkeon-archive-keyring` |
+| `orkeon_<version>_amd64.deb` / `orkeon_<version>_arm64.deb` | `package-deb.sh --arch amd64\|arm64` (reuses the `linux-x64` and `linux-arm64` staging trees — one publish, two packages per architecture) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (`libicu78` down to `libicu70`, `libssl3t64 \| libssl3`, `libc6 (>= 2.34)`…, so Debian 12/13 and Ubuntu 22.04 to 26.04), never on `dotnet-runtime-*`; `Recommends: orkeon-archive-keyring`; ships `md5sums` (`dpkg -V orkeon`); byte-identical across two builds of the same commit (`SOURCE_DATE_EPOCH`) |
 | `orkeon-archive-keyring_<YYYY.MM.DD>_all.deb` | `package-keyring-deb.sh`, once per keyring version (a date, such as `2026.10.04`, from `installers/apt/keyring.version`); later Releases attach the bytes already published, never a rebuild | `/usr/share/keyrings/orkeon-archive-keyring.gpg`, the public key of the [apt repository](#the-apt-repository) | — |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI + `orkeon-studio` (WPF, with an "Orkeon Studio" Start-menu shortcut), same pruned publish as the zip | self-contained |
 | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | `package-installers.sh --app-set cli --rids osx-arm64 osx-x64` (cross-published from the ubuntu runner) | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS channel stays CLI-only) | self-contained |
@@ -217,8 +217,10 @@ the job that produced the artifact it covers.
 
 **Blocking smokes.** `smoke-windows` (a `windows-latest` runner) installs
 `orkeon-cli-*-win-x64.zip` and walks the onboarding chain on it; `smoke-deb` (a stock
-`ubuntu-latest` image, and an `ubuntu-24.04-arm` runner for the arm64 package) installs the
-`.deb` through `apt`, walks the same chain, then removes the package; `smoke-macos` (a `macos-latest`, Apple-silicon runner) extracts the `osx-arm64`
+`ubuntu-latest` image for amd64, an `ubuntu-24.04-arm` runner for arm64 — each entry refuses a
+runner of the other architecture) installs the `.deb` through `apt`, checks `dpkg -V orkeon`
+is silent, walks the same chain, then removes the package — the linux-x64 tarball smoke runs
+on the amd64 entry; `smoke-macos` (a `macos-latest`, Apple-silicon runner) extracts the `osx-arm64`
 tarball, installs it with `install.sh` and walks the same chain before uninstalling; the `msi`
 job runs its own `msiexec /i /qn` → `orkeon doctor --json` → `msiexec /x /qn` chain, asserting
 the install directory, the ARP entry and the user `PATH` entry appear and then disappear.
@@ -229,13 +231,17 @@ plus a silent reinstall of itself. All of them install from the **job** artifact
 the Release, so a broken payload is caught before anything is published — the `release` job
 `needs` them all.
 
-**After publication.** `release.yml` itself calls `release-verify.yml` once the Release is
-published — a Release created with the workflow's `GITHUB_TOKEN` triggers no other workflow,
-so a `release: published` trigger would never fire; it also runs on demand for a given tag.
-It downloads the assets *from the Release page*, checks every one of them against
-`SHA256SUMS` and `SHA256SUMS.msi` — an asset without a line, or a line without an asset, fails
-the run — and replays the `.deb` and `osx-arm64` onboarding smokes on them, catching an asset
-that an upload, a replace or a tamper made different from what the smokes above installed.
+**After publication.** `release.yml` calls `release-verify.yml` in its `verify-published` job,
+right after the `release` job of the same run (and it can be run on demand for a given tag). A
+`release: published` trigger would never fire: a Release created with the workflow's
+`GITHUB_TOKEN` starts no other workflow. It downloads the assets *from the Release page*,
+checks that every published asset has exactly one line in `SHA256SUMS` or `SHA256SUMS.msi`
+and every line names a published asset, verifies every checksum with no line skipped, and
+replays the onboarding smokes of both `.deb` (amd64, and arm64 on an ARM runner) and of the
+`osx-arm64` tarball on them — catching an asset that an upload, a replace or a tamper made
+different from what the smokes above installed. Run by hand on `v1.0.0-rc.3` or
+`v1.0.0-rc.4`, it fails by design: those Releases predate the naming rule below, and carry no
+arm64 package.
 
 `smoke-macos` is also the only place the Gatekeeper and code-signing story is exercised: an
 unsigned, quarantined or malformed native library (`libtree-sitter*.dylib`, onnxruntime, the
@@ -245,8 +251,8 @@ The `.deb` file name carries the tag's version (`orkeon_1.0.0-rc.4_amd64.deb`), 
 package's `Version:` field replaces `-` with `~` (`1.0.0~rc.4`) so a pre-release sorts before
 its final under `dpkg`. The two differ on purpose: GitHub rewrites `~` in an uploaded asset
 name, and apt reads the file name from its index, never from the package. No asset name
-carries a character outside `[A-Za-z0-9._-]` — the `installers` job fails otherwise — so
-`SHA256SUMS` lists every asset under the name it is published with. (The `1.0.0-rc.3` and
+carries a character outside `[A-Za-z0-9._-]` — `scripts/check-release-assets.sh` fails the
+`installers` job, and the `release` job before publishing, otherwise — so `SHA256SUMS` lists every asset under the name it is published with. (The `1.0.0-rc.3` and
 `1.0.0-rc.4` Releases predate the rule: their `.deb` was published as
 `orkeon_1.0.0.rc.N_amd64.deb` while their `SHA256SUMS` names it with `~`.)
 

@@ -21,7 +21,7 @@ was run on the `v1.0.0-rc.3` artefacts before being written down here.
 | **Build provenance attestation** (SLSA v1, Sigstore) | `publish.yml`, step *Attest the packages and the SBOM* — on every `*.nupkg`; `release.yml`, step *Attest the release assets* — on every archive, `.deb`, MSI and the SBOM | The SHA-256 of the file is recorded in a statement signed by GitHub's Sigstore instance, naming the workflow file, the tag, the commit and the run. A file with a different digest has no statement. |
 | **`ContinuousIntegrationBuild=true`** at pack time | `publish.yml`, step `dotnet pack` | Paths inside the PDBs and assemblies are normalised, so the packed bytes do not depend on the runner's directory layout. It is a *deterministic-build* setting, not a guarantee that you can rebuild the identical bytes yourself — the SDK, the runner image and the NuGet graph would have to match. |
 | **`SHA256SUMS`** manifests | Release assets (`SHA256SUMS` for the archives, the `.deb` and the SBOM; `SHA256SUMS.msi` for the two MSIs) | Integrity of what you downloaded against what the workflow uploaded. Cheap, offline, but the manifests are just release assets and are not attested themselves: the attestation of each file they list is what ties that file to the workflow. |
-| **Post-publish verification** | `release-verify.yml`, called by `release.yml` once the Release is published | A fresh runner downloads the *published* assets, checks every one of them against the two manifests — an asset without a line, or a line without an asset, fails it — and walks the onboarding smoke again on the `.deb` and the `osx-arm64` tarball, so an asset that differs from what the release smokes installed is caught. |
+| **Post-publish verification** | `release-verify.yml`, called by `release.yml` right after it publishes the Release (job `verify-published`), or by hand for any tag | A fresh runner downloads the *published* assets, checks that both manifests list every published asset, and nothing else, and that every checksum holds, then walks the onboarding smoke again on both `.deb` (amd64, arm64) and the `osx-arm64` tarball, so an asset that differs from what the release smokes installed is caught. |
 | **Signed APT repository** | The `apt` branch, signed in `release.yml` (job `apt-publish`) with a dedicated OpenPGP key; its fingerprint and the keyring's SHA-256 are in [SECURITY.md](../../SECURITY.md#apt-archive-signing-key) | apt checks the signature of the channel's index against that key only, then every downloaded `.deb` against the SHA-256 the index lists. You check the key once, when you add the source. See [Install with apt](./install-with-apt.md). |
 | **Pinned actions and base images** | Every `uses:` is a commit SHA; every external `FROM` image is pinned by digest | What ran on the runner is what the repository says ran. |
 
@@ -85,7 +85,9 @@ expired. The armoured source of the same key is
 [`installers/apt/orkeon-archive-keyring.asc`](https://github.com/Orkeon/orkeon/blob/main/installers/apt/orkeon-archive-keyring.asc);
 `gpg --dearmor` turns it into the exact bytes of the keyring. After that, apt checks every
 update by itself; the packages it installs are the Release assets, so the attestation commands
-above apply to them unchanged.
+above apply to them unchanged. Once installed, the Debian package can be checked file by
+file: `dpkg -V orkeon` prints nothing when every installed file matches the checksum the
+package recorded.
 
 ## Verify a NuGet package
 

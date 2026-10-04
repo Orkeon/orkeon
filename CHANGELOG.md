@@ -21,35 +21,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `main` (`1.0.0~rc.4.dev.<n>`), unstable and unsupported, the three latest builds only, never
   published to NuGet.org. Switching is one `Suites:` line. Every version still attached to a
   Release stays in its channel: `sudo apt install orkeon=<version>` goes back to it.
-- **A `.deb` for arm64**, `orkeon_<version>_arm64.deb`, smoked on an ARM runner like the amd64
-  one — `linux-arm64` no longer needs the multi-app archive to get the CLI.
+- **A `.deb` for arm64.** `orkeon_<version>_arm64.deb` ships with every release next to the
+  amd64 one (Raspberry Pi 5, AWS Graviton, Ampere, ARM virtual machines): same content and
+  layout, built from the same publish as the `linux-arm64` archive, smoke-tested on a real ARM
+  runner (`smoke-deb` is a matrix, each entry checking `dpkg --print-architecture`), attested
+  and listed in `SHA256SUMS`. `linux-arm64` users no longer need the multi-app archive and
+  `install.sh`.
 - **`orkeon-archive-keyring`**, a package (`orkeon-archive-keyring_<YYYY.MM.DD>_all.deb`) that
   owns the repository's public key, so a new signing subkey reaches every machine through
   `apt upgrade`. `orkeon` recommends it; the setup block installs it explicitly, since
   `--no-install-recommends` would skip it. The key's fingerprint, the keyring's SHA-256 and the
   key policy (an offline primary key, a two-year signing subkey extended at least six months
   ahead, rotation, revocation) are in [SECURITY.md](SECURITY.md#apt-archive-signing-key).
-- **The Debian package installs on Ubuntu 26.04**: its `Depends` accepts `libicu78` and
-  `libicu77` besides `libicu76` down to `libicu70`.
 - **`install.sh` points at the apt repository** on Debian, Ubuntu and their derivatives — it
   reads `/etc/os-release` and prints the guide's address, nothing more: it writes nothing under
   `/etc` and never calls `sudo`.
 
-### Changed — the `.deb` file name carries the tag's version, and every published asset is checked after publication
+### Changed — the `.deb` file name carries the tag's version, every published asset is checked against its manifests after publication, and the Debian package installs on Ubuntu 26.04, verifies once installed and builds reproducibly
 
 - **`orkeon_1.0.0-rc.4_amd64.deb`, not `orkeon_1.0.0~rc.4_amd64.deb`.** GitHub rewrites `~` in
   an uploaded asset name, so the published file never matched its `SHA256SUMS` line. The file
   name now follows the tag; the package's `Version:` field keeps the `~` (`1.0.0~rc.4`), which
   sorts a pre-release before its final version. The `1.0.0-rc.3` and `1.0.0-rc.4` Releases are
-  left as published: their `.deb` is named `orkeon_1.0.0.rc.N_amd64.deb` while their
-  `SHA256SUMS` names it with `~` — the digest is the same, only the name differs.
+  left as published (rewriting them would break their attestations): their `.deb` is named `orkeon_1.0.0.rc.N_amd64.deb` while their
+  `SHA256SUMS` names it with `~` — the digest is the same, only the name differs: check that file by hand.
+- **`release.yml` refuses an asset GitHub would rename** (any character outside
+  `[A-Za-z0-9._-]`), an asset without a `SHA256SUMS` line and a line without its asset
+  (`scripts/check-release-assets.sh`, in the `installers` job and in the `release` job before
+  publishing).
 - **The post-publication verification runs.** `release-verify.yml` was triggered by
   `release: published`, which never fires for a Release created with the workflow's
-  `GITHUB_TOKEN`: `release.yml` now calls it. It no longer skips what it cannot find
-  (`--ignore-missing`): every published asset must have its manifest line, and every line its
-  asset. [Verify what you install](docs/guides/verify-what-you-install.md) and the
+  `GITHUB_TOKEN`: `release.yml` now calls it in its `verify-published` job, right after
+  `release`; it can still be run by hand for a tag. It no longer skips a manifest line whose
+  file is missing (`--ignore-missing` removed): every published asset must have its manifest
+  line, and every line its asset; it replays the smoke of both `.deb`. Run by hand on
+  `v1.0.0-rc.3` or `v1.0.0-rc.4`, it fails by design, naming the gap above.
+  [Verify what you install](docs/guides/verify-what-you-install.md) and the
   [publication matrix](docs/reference/publication-matrix.md) said it ran on every Release; they
   now say how it does.
+- **The Debian package installs on Ubuntu 26.04**: its `Depends` accepts `libicu78` and
+  `libicu77` besides `libicu76` down to `libicu70` (Ubuntu 26.04 ships only `libicu78`).
+- **`Recommends: orkeon-archive-keyring`** — not `Depends`, so a local
+  `sudo apt install ./orkeon_<version>_amd64.deb` without the repository keeps working.
+- **`Homepage`** points at the repository, https://github.com/Orkeon/orkeon.
+- **The package ships `md5sums`**: `dpkg -V orkeon` / `debsums orkeon` check the installed
+  files, and the Debian smoke asserts `dpkg -V orkeon` is silent.
+- **Reproducible**: two builds of the same commit give the same bytes (`release.yml` sets
+  `SOURCE_DATE_EPOCH` to the tagged commit's date).
+- **`package-deb.sh --arch amd64|arm64`**, refusing a staging tree whose executables are of the
+  other architecture.
+- **lintian** runs in the `installers` job as a non-blocking report in the job summary; the
+  expected tags of a self-contained package are listed with their reason in
+  `scripts/package-deb.lintian-overrides`.
 
 ### Fixed — the Studio TUI presents the key under every spelling a run reads, the open model-setting editor follows the language, and a refused write of the model settings is said
 

@@ -187,7 +187,7 @@ orkeon init          # écrit ~/.config/Orkeon/appsettings.json
 orkeon run crew.yaml
 ```
 
-Une machine qui n'atteint pas le contenu brut de GitHub installe à la place le `.deb` d'une release — `<version>` étant la version du tag (`1.0.0-rc.4`), elle ne reçoit aucune mise à jour :
+Une machine qui n'atteint pas le contenu brut de GitHub installe à la place le `.deb` d'une release (`_arm64.deb` sur une machine ARM : Raspberry Pi 5, Graviton, Ampere) ; elle ne reçoit aucune mise à jour. `<version>` est le tag de la release sans son `v` — par exemple `1.0.0-rc.5`, tiret compris. (Les releases jusqu'à 1.0.0-rc.4 nomment le fichier `orkeon_1.0.0.rc.N_amd64.deb` alors que leur ligne `SHA256SUMS` porte `orkeon_1.0.0~rc.N_amd64.deb` : vérifiez ces deux-là à la main.) Puis :
 
 ```bash
 # SHA256SUMS est un asset de release lui aussi — téléchargez-le à côté du .deb et vérifiez
