@@ -3,7 +3,11 @@
 # Coexists with publish.yml (NuGet push) on the same trigger.
 #
 # Pipeline: installers -> {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} -> release
-# -> verify-published (release-verify.yml, called on the published assets).
+# -> {verify-published (release-verify.yml, called on the published assets),
+#     apt-publish (signs the apt index on the apt branch) -> verify-apt (release-verify.yml
+#     again, the apt matrix: the documented block replayed on 5 distributions x 2 archs)}.
+# The Release is created as a draft, every asset is attached, and only then is it
+# published: a published tag is never written again (its assets are indexed by apt).
 # The smokes (and the msi job's own install/uninstall smoke) install from the
 # *job* artefacts, never from the Release, so a broken payload is caught before
 # anything is published. workflow_dispatch runs everything except the
@@ -176,6 +180,23 @@ jobs:
       # on purpose are listed with their reason in
       # scripts/package-deb.lintian-overrides, and anything else lands in the job
       # summary. The step goes red on an unexpected error tag, and the job goes on.
+      # The apt repository's keyring package, orkeon-archive-keyring_<keyring.version>_all.deb,
+      # attached to every Release so that each one carries the key its index is signed
+      # with. One version has one set of bytes: when an earlier published Release already
+      # carries it, those bytes are attached again rather than rebuilt (a newer dpkg-deb
+      # on the runner could produce others, and the apt index refuses a second digest for
+      # one version). While installers/apt holds the development placeholder certificate,
+      # a tag attaches no keyring package at all: the throwaway key must never ship.
+      - name: Stage the apt keyring package (built once per keyring version)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]] && grep -q '^Comment: PLACEHOLDER' installers/apt/orkeon-archive-keyring.asc; then
+            echo "::warning::installers/apt/orkeon-archive-keyring.asc is the development placeholder: no orkeon-archive-keyring package is attached, and the apt-publish job will refuse to sign. Run the key ceremony (installers/apt/README.md)."
+            exit 0
+          fi
+          bash scripts/apt/stage-keyring-deb.sh --out artifacts/installers
+
       - name: Lintian report on the Debian packages
         continue-on-error: true
         run: |
@@ -731,6 +752,23 @@ jobs:
     # no other job of this file gains a signing identity.
     permissions: { contents: write, attestations: write, id-token: write }
     steps:
+      # A published tag is final: its .deb files are indexed by apt with their SHA-256,
+      # so attaching them again (a re-run of this job) would break `apt update` with
+      # "Hash Sum mismatch" on every machine. A draft left by a failed run holds nothing
+      # anyone has seen: it is deleted (the tag stays) and made again below.
+      - name: Refuse a tag whose Release is already published
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          state="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null || echo none)"
+          case "$state" in
+            none) echo "No Release for $TAG yet." ;;
+            true) echo "Deleting the draft Release left for $TAG by an earlier run."
+                  gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes ;;
+            *) echo "::error::The Release of $TAG is already published: its assets are frozen (the apt index lists their digests). Publish a new tag instead of re-running this job."
+               exit 1 ;;
+          esac
       # Reassemble the full artefact set: release-assets is the complement,
       # the four per-smoke artifacts carry the rest (each archive was
       # uploaded exactly once — see the installers job).
@@ -810,12 +848,27 @@ jobs:
           # README.md / README.fr.md resolve the newest tag through the releases
           # API instead of the latest/download/ shortcut, so both cases work.
           prerelease: ${{ contains(github.ref_name, '-') }}
+          # Created as a draft: nobody can download an asset before the last one is
+          # attached; the step below publishes it.
+          draft: true
           # The curated notes are the CHANGELOG section matching this tag; the
           # auto-generated commit list below is the appendix, not the story.
           body: |
             **Curated release notes**: see the section matching this tag in
             [CHANGELOG.md](https://github.com/Orkeon/orkeon/blob/${{ github.ref_name }}/CHANGELOG.md).
           generate_release_notes: true
+
+      # The one moment the Release becomes public, every asset attached. With immutable
+      # Releases enabled on the repository, this also freezes its assets.
+      - name: Publish the draft Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          latest=false
+          [[ "$TAG" == *-* ]] || latest=true
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest="$latest"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,url
 
   # Scenario C on the PUBLISHED assets: the .deb and the osx-arm64 tarball as a
   # user downloads them, and every asset against its manifest line. Called from
@@ -829,6 +882,71 @@ jobs:
     uses: ./.github/workflows/release-verify.yml
     with:
       tag: ${{ github.ref_name }}
+      scope: assets
+
+  # Adds the tag's published .deb files to the signed apt index on the `apt` branch:
+  # rc for every tag, stable too for a final version (no "-": the same test that sets
+  # prerelease above). The packages are downloaded from the PUBLISHED Release and
+  # checked against it (name, size, SHA256SUMS); the index is built from the branch as
+  # read, proved by a real apt client against a local copy of GitHub's URLs, and only
+  # then pushed as one commit (scripts/apt/publish-index.sh). The signing subkey lives
+  # in the apt-signing environment only (deployable from v* tags), and no other job sees
+  # it. The concurrency group is shared with apt-maintenance.yml; the dev channel has its
+  # own, and a race between the two is resolved by publish-apt-channel.sh, which applies
+  # its channel again on the moved branch.
+  apt-publish:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: apt-signing
+    # contents: write - pushes the apt branch, through the checkout's credentials.
+    permissions: { contents: write }
+    concurrency: { group: apt-release, cancel-in-progress: false }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the index tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends apt-utils gpgv >/dev/null
+          # sqv (the verifier of Debian 13) checks the signature too when it installs.
+          sudo apt-get install -y -qq --no-install-recommends sqv >/dev/null 2>&1 || echo "sqv not available on this runner; gpgv only"
+      - name: The signing certificate must be the real one
+        run: bash scripts/apt/check-signing-key.sh --require-real
+      - name: Download and check the published packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          bash scripts/apt/fetch-release-debs.sh --tag "$TAG" --out "$RUNNER_TEMP/debs"
+          gpg --batch --dearmor < installers/apt/orkeon-archive-keyring.asc > "$RUNNER_TEMP/orkeon-archive-keyring.gpg"
+      - name: Sign, prove and push the apt index
+        env:
+          TAG: ${{ github.ref_name }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_PASSPHRASE: ${{ secrets.APT_SIGNING_PASSPHRASE }}
+          # The pre-push client, pinned by digest like every other base image.
+          CHECK_IMAGE: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+        run: |
+          channels=(--channel rc)
+          [[ "$TAG" == *-* ]] || channels+=(--channel stable)
+          bash scripts/apt/publish-index.sh --message "$TAG" \
+            --keyring "$RUNNER_TEMP/orkeon-archive-keyring.gpg" \
+            "${channels[@]}" --ensure stable --ensure rc \
+            --debs "$RUNNER_TEMP/debs/debs.list" \
+            --check-version "${TAG#v}" --check-image "$CHECK_IMAGE"
+
+  # The installation block of the guide, replayed word for word on the published apt
+  # repository: the apt jobs of release-verify.yml (the matrix lives there only). It
+  # retries while raw.githubusercontent.com still serves the previous index.
+  verify-apt:
+    needs: apt-publish
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions: { contents: read }
+    uses: ./.github/workflows/release-verify.yml
+    with:
+      tag: ${{ github.ref_name }}
+      scope: apt
 
   # Builds and pushes the example-runners container image to GHCR. Same v* trigger
   # as the installers; runs independently (own job, package-scoped permissions).

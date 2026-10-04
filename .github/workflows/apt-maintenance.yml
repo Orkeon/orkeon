@@ -1,0 +1,125 @@
+# apt repository maintenance outside a tag: sign the stable and rc channels again,
+# withdraw a version, or index Releases published before the repository existed.
+#
+# workflow_dispatch only, and run FROM A TAG (the "Use workflow from" selector): the
+# apt-signing environment admits v* tags only. The scripts come from that tag; the
+# certificate comes from main, because a key extension is committed to main before any
+# tag carries it. Same scripts, environment and concurrency group as the apt-publish job
+# of release.yml (scripts/apt/publish-index.sh), so the two never interleave.
+#
+# Modes (targets separated by spaces):
+#   resign  no target. Both channels signed again with a newer Date: after a key
+#           extension, or to refresh the index.
+#   yank    <package>=<version>[/<arch>]... Each stanza is removed from every channel that
+#           lists it, then the index is signed again. Run it BEFORE deleting any Release
+#           asset: an indexed asset that disappears is a 404 for every user.
+#   seed    <tag>... Indexes the .deb files of published Releases: rc for every tag,
+#           stable too for a tag without "-". Each file is checked against the Release
+#           (name, size), its SHA256SUMS line (an old line naming it with "~" counts) and
+#           its build provenance attestation; any difference stops everything.
+name: apt maintenance
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "resign, yank or seed"
+        required: true
+        type: choice
+        options: [ resign, yank, seed ]
+      targets:
+        description: "yank: package=version[/arch]...; seed: tags (v1.0.0-rc.3 v1.0.0-rc.4); resign: empty"
+        required: false
+        type: string
+        default: ""
+permissions:
+  contents: read
+jobs:
+  maintain:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: apt-signing
+    # contents: write - pushes the apt branch; attestations: read - seed verifies the
+    # build provenance of each package it indexes.
+    permissions: { contents: write, attestations: read }
+    concurrency: { group: apt-release, cancel-in-progress: false }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: main-tree
+          persist-credentials: false
+          sparse-checkout: |
+            installers/apt
+            docs/guides/install-with-apt.md
+            docs/fr/guides/install-with-apt.md
+            SECURITY.md
+            SECURITY.fr.md
+          sparse-checkout-cone-mode: false
+      - name: Check the request
+        env:
+          MODE: ${{ inputs.mode }}
+          TARGETS: ${{ inputs.targets }}
+        run: |
+          read -r -a targets <<<"$TARGETS"
+          case "$MODE" in
+            resign) [[ ${#targets[@]} -eq 0 ]] || { echo "::error::resign takes no target"; exit 1; } ;;
+            yank)
+              [[ ${#targets[@]} -ge 1 ]] || { echo "::error::yank needs package=version[/arch]"; exit 1; }
+              for t in "${targets[@]}"; do
+                [[ "$t" =~ ^[a-z0-9][a-z0-9+.-]*=[A-Za-z0-9.+~:-]+(/(amd64|arm64|all))?$ ]] || { echo "::error::not package=version[/arch]: $t"; exit 1; }
+              done ;;
+            seed)
+              [[ ${#targets[@]} -ge 1 ]] || { echo "::error::seed needs at least one tag"; exit 1; }
+              for t in "${targets[@]}"; do
+                [[ "$t" =~ ^v[0-9][A-Za-z0-9.+-]*$ ]] || { echo "::error::not a v* tag: $t"; exit 1; }
+              done ;;
+          esac
+      - name: Install the index tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends apt-utils gpgv >/dev/null
+          sudo apt-get install -y -qq --no-install-recommends sqv >/dev/null 2>&1 || echo "sqv not available on this runner; gpgv only"
+      - name: The certificate on main must be the real one
+        run: |
+          bash scripts/apt/check-signing-key.sh --require-real \
+            --cert main-tree/installers/apt/orkeon-archive-keyring.asc --docs-root main-tree
+          gpg --batch --dearmor < main-tree/installers/apt/orkeon-archive-keyring.asc > "$RUNNER_TEMP/orkeon-archive-keyring.gpg"
+      - name: Download and check the packages to index
+        if: inputs.mode == 'seed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGETS: ${{ inputs.targets }}
+        run: |
+          read -r -a tags <<<"$TARGETS"
+          args=()
+          for t in "${tags[@]}"; do args+=(--tag "$t"); done
+          bash scripts/apt/fetch-release-debs.sh "${args[@]}" --attest --out "$RUNNER_TEMP/debs"
+      - name: Sign, prove and push the apt index
+        env:
+          MODE: ${{ inputs.mode }}
+          TARGETS: ${{ inputs.targets }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_PASSPHRASE: ${{ secrets.APT_SIGNING_PASSPHRASE }}
+          CHECK_IMAGE: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+        run: |
+          read -r -a targets <<<"$TARGETS"
+          args=(--keyring "$RUNNER_TEMP/orkeon-archive-keyring.gpg" --ensure stable --ensure rc)
+          case "$MODE" in
+            resign)
+              args+=(--channel stable --channel rc --message resign) ;;
+            yank)
+              args+=(--channel stable --channel rc --message "yank ${targets[*]}")
+              for t in "${targets[@]}"; do args+=(--yank "$t"); done ;;
+            seed)
+              args+=(--channel rc --debs "$RUNNER_TEMP/debs/debs.list" --message "seed ${targets[*]}")
+              for t in "${targets[@]}"; do
+                [[ "$t" == *-* ]] || { args+=(--channel stable); break; }
+              done
+              # The pre-push client proves the last tag given (download through the
+              # redirects, digest checked against the signed index).
+              last="${targets[${#targets[@]}-1]}"
+              args+=(--check-version "${last#v}" --check-image "$CHECK_IMAGE") ;;
+          esac
+          bash scripts/apt/publish-index.sh "${args[@]}"

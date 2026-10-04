@@ -90,8 +90,8 @@ Where each piece goes:
 | The fingerprint and the keyring SHA-256 (step 6) | `SECURITY.md` and `SECURITY.fr.md`, in the marker lines below. |
 | The subkey expiry date | A calendar reminder, 6 months before it. |
 
-The `apt-signing` environment is restricted to `v*` tags, preferably with a required reviewer.
-Then destroy both temporary homes (`rm -rf "$GNUPGHOME" "$CI_HOME"`) once the backups are
+The `apt-signing` environment and the other repository settings are listed in
+[Repository settings](#repository-settings-before-the-first-publishing-tag). Then destroy both temporary homes (`rm -rf "$GNUPGHOME" "$CI_HOME"`) once the backups are
 checked, and verify the committed certificate: `bash scripts/apt/check-signing-key.sh
 --require-real` must pass.
 
@@ -129,3 +129,45 @@ At least 6 months before the subkey ends:
 
 A subkey that has expired cannot be repaired from the CI side: the index it signed is invalid
 for every user until the new keyring reaches them.
+
+## Repository settings before the first publishing tag
+
+The publication runs in GitHub Actions and needs these settings, made by a maintainer in the
+repository settings:
+
+1. **Environment `apt-signing`** (Settings → Environments):
+   - deployment branches and tags: the tag pattern `v*` (the `apt-publish` job of
+     `release.yml` and `apt-maintenance.yml`) **and** the branch `main` (the `dev` channel's
+     workflow publishes from `main`);
+   - a required reviewer is recommended: every publication then waits for an approval;
+   - secrets `APT_SIGNING_KEY` and `APT_SIGNING_PASSPHRASE`, from the key ceremony above.
+2. **Ruleset on the tags `v*`**: no deletion, no update (a tag never moves), creation
+   restricted to the maintainers.
+3. **Ruleset on the branch `apt`**: no deletion, no force-push. Updates restricted to the
+   publishing workflows: GitHub Actions as a bypass actor if the ruleset offers it; otherwise a
+   deploy key with write access, stored in the `apt-signing` environment, and the workflows'
+   checkout given that key. Check that a manual push to `apt` is refused.
+4. **Immutable Releases** (Settings → General → Releases), once the `apt-dev` prerelease of
+   the dev channel exists: the dev channel replaces assets on that one prerelease, which an
+   immutable Release would forbid, so turn it on only after checking how the setting treats
+   it. `release.yml` already creates every Release as a draft and publishes it once all its
+   assets are attached, which immutable Releases require.
+
+What runs where:
+
+| Workflow | Publishes | Concurrency group |
+|---|---|---|
+| `release.yml`, job `apt-publish` (after `release`, tags only) | `rc`, and `stable` for a tag without `-` | `apt-release` |
+| `apt-maintenance.yml` (`workflow_dispatch` from a tag: `resign`, `yank`, `seed`) | `stable` and `rc` | `apt-release` |
+| `apt-dev.yml` (pushes to `main`) | `dev` | its own |
+
+Every push to `apt` goes through `scripts/apt/publish-apt-channel.sh`, which replaces only its
+channel directories and retries on top of a branch that moved meanwhile, so the two groups
+never overwrite each other. The first publication creates the `apt` branch.
+
+**Order for the first publication.** Run the ceremony and merge its certificate first: a tag
+pushed while the certificate is the placeholder attaches no keyring package and its
+`apt-publish` job fails on purpose. Then seed the Releases published before the repository
+existed (`apt-maintenance.yml`, mode `seed`, targets `v1.0.0-rc.3 v1.0.0-rc.4`) **after** the
+first publishing tag: that tag brings the `orkeon-archive-keyring` package, without which the
+documented installation block cannot install it.
