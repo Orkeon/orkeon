@@ -70,6 +70,13 @@ jobs:
       # `gh`, with no network and no token, before any of it can run for real.
       - name: Test the dev-channel prune against a fake gh
         run: bash scripts/test-prune-dev-packages.sh
+      # The apt index generator (scripts/apt/build-apt-index.sh): exact Release fields, the
+      # merge and its refusals, the yank and the by-hash pruning, proved with a throwaway
+      # key and dummy packages, no network. The real apt clients run in apt-index.yml.
+      - name: Test the apt index generator offline
+        run: |
+          command -v apt-ftparchive >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils; }
+          bash scripts/apt/test-build-apt-index.sh --offline
       # Scripting-DSL contract gate: the shipped .ork.ts examples are typechecked against
       # the shipped Typings/*.d.ts. The examples are also executed by the test suite, so
       # agreement here means the declarations and the Jint runtime describe one API. Seven
