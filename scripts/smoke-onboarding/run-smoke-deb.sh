@@ -2,7 +2,8 @@
 #
 # run-smoke-deb.sh — released-artefact smoke for the Debian package (LIN-02).
 #
-# Installs orkeon_<ver>_amd64.deb through apt on a bare runner, walks the whole
+# Installs orkeon_<ver>_<arch>.deb (amd64 or arm64, on a machine of that
+# architecture) through apt on a bare runner, walks the whole
 # onboarding chain on the installed binary, then removes the package and checks
 # the removal is clean. Sibling of run-smoke.ps1 (WIN-06) and run-smoke-tarball.sh
 # (MAC-02): the behavioural steps, the payload whitelist and the doctor verdict
@@ -28,6 +29,7 @@
 #
 # Usage:
 #   scripts/smoke-onboarding/run-smoke-deb.sh --deb artifacts/installers/orkeon_*_amd64.deb
+#   scripts/smoke-onboarding/run-smoke-deb.sh --deb artifacts/installers/orkeon_*_arm64.deb   # on arm64
 #   scripts/smoke-onboarding/run-smoke-deb.sh --orkeon /path/to/orkeon   # degraded, see below
 #
 #   --deb PATH      the package to install (apt install / apt remove phases run).
@@ -62,7 +64,7 @@ while [[ $# -gt 0 ]]; do
     --orkeon)   ORKEON_BIN="$2"; shift 2 ;;
     --work-dir) WORK_DIR="$2"; shift 2 ;;
     --keep)     KEEP=true; shift ;;
-    -h|--help)  sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)  sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done

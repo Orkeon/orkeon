@@ -31,24 +31,40 @@ on:
 permissions:
   contents: read
 jobs:
+  # One entry per Debian architecture, as in release.yml's smoke-deb: the arm64
+  # package is smoked on a real ARM runner, checked to be one before installing.
   verify-deb:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    name: verify-deb (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check the runner architecture
+        run: |
+          actual="$(dpkg --print-architecture)"
+          if [[ "$actual" != "${{ matrix.arch }}" ]]; then
+            echo "::error::This verify-deb entry is for ${{ matrix.arch }}, but the runner is $actual." >&2
+            exit 1
+          fi
       - name: Download the published .deb
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
           mkdir -p published
-          gh release download "$TAG" --pattern 'orkeon_*_amd64.deb' --dir published
+          gh release download "$TAG" --pattern 'orkeon_*_${{ matrix.arch }}.deb' --dir published
           ls -la published
       - name: Smoke the published package
         run: |
-          deb="$(find published -maxdepth 1 -name 'orkeon_*_amd64.deb' | head -n1)"
+          deb="$(find published -maxdepth 1 -name 'orkeon_*_${{ matrix.arch }}.deb' | head -n1)"
           if [[ -z "$deb" ]]; then
-            echo "No orkeon_*_amd64.deb among the published assets." >&2
+            echo "No orkeon_*_${{ matrix.arch }}.deb among the published assets." >&2
             exit 1
           fi
           ./scripts/smoke-onboarding/run-smoke-deb.sh --deb "$deb"
