@@ -164,7 +164,7 @@ jobs:
       # the same bytes.
       - name: Package the Debian packages (amd64, arm64)
         run: |
-          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"; export SOURCE_DATE_EPOCH
           for pair in amd64:linux-x64 arm64:linux-arm64; do
             arch="${pair%%:*}"; rid="${pair#*:}"
             mapfile -t stages < <(find artifacts/installers/_stage -mindepth 1 -maxdepth 1 -type d \
@@ -202,6 +202,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends lintian >/dev/null
+          set -o pipefail
           ./scripts/lintian-deb.sh artifacts/installers/*.deb | tee -a "$GITHUB_STEP_SUMMARY"
 
       # Software bill of materials (CycloneDX 1.7 JSON) of the solution the

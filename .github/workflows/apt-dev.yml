@@ -38,6 +38,11 @@ on:
         type: boolean
         default: false
 permissions: { contents: read }
+# bash -eo pipefail: a step that pipes a script into tee (version, index) must fail when
+# the script does; plain run: steps use bash -e only, which reports the exit of tee.
+defaults:
+  run:
+    shell: bash
 jobs:
   build:
     # Only a push to main whose CI passed, in this repository - publish.yml's guard.
@@ -247,6 +252,7 @@ jobs:
       # After the push, against the index as pushed: the builds that left the three newest
       # lose their assets only now that no published index lists them.
       - name: Delete the assets the pushed index no longer lists
+        if: steps.index.outputs.status == 'published'
         run: |
           git fetch --quiet --depth 1 origin apt
           git show FETCH_HEAD:dev/Packages > "$RUNNER_TEMP/pushed-Packages"
