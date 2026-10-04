@@ -1,0 +1,104 @@
+# Weekly health check of the published apt repository (stable and rc), between two tags:
+#   - every stanza's Filename is a Release asset of the indexed size, and the newest
+#     package of each architecture has the indexed SHA-256;
+#   - each channel's InRelease verifies with gpgv and sqv against the keyring made from
+#     installers/apt/orkeon-archive-keyring.asc on main, and its Date is not in the future;
+#   - the signing subkey expires in more than 180 days;
+#   - raw/apt/<channel>/InRelease answers a redirect, then 200 (a 429 only warns);
+#   - one install round: the documented block on ubuntu:24.04 amd64, channel rc.
+# scripts/apt/check-apt-health.sh does the checks; the publication bench
+# (scripts/apt/test-apt-publish.sh) proves it fails on a stanza without its asset, an
+# InRelease that does not verify and a key that expires too soon. The dev channel and its
+# apt-dev prerelease are not looked at here.
+#
+# A red week opens (or comments) one tracking issue with a fixed title, and the first
+# green run closes it, as integration.yml does. Before the apt branch exists, the run
+# says so and passes.
+name: apt health
+on:
+  schedule:
+    - cron: "41 6 * * 1"   # Mondays 06:41 UTC (odd minute to dodge the cron rush)
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: apt-health
+  cancel-in-progress: false
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # One title, read by the step that opens the issue and the one that closes it.
+      TRACKING_ISSUE_TITLE: "apt repository health check is red"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Is the apt repository published yet
+        id: exists
+        run: |
+          if [ -n "$(git ls-remote --heads origin refs/heads/apt)" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No apt branch yet: the repository is not published, nothing to check."
+          fi
+      - name: Install the verifiers
+        if: steps.exists.outputs.published == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends gpgv sqv >/dev/null
+      - name: Index, assets, signature, key expiry, availability
+        if: steps.exists.outputs.published == 'true'
+        run: |
+          gpg --batch --dearmor < installers/apt/orkeon-archive-keyring.asc > "$RUNNER_TEMP/orkeon-archive-keyring.gpg"
+          bash scripts/apt/check-apt-health.sh --keyring "$RUNNER_TEMP/orkeon-archive-keyring.gpg" \
+            --channels "stable rc" --require-sqv
+      - name: One install round (ubuntu:24.04, rc)
+        if: steps.exists.outputs.published == 'true'
+        env:
+          IMAGE: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+        run: |
+          # The newest orkeon of rc for amd64, as tagged (the package's "~" is the tag's "-").
+          curl -fsSL -o "$RUNNER_TEMP/Packages" https://github.com/Orkeon/orkeon/raw/apt/rc/Packages
+          newest=""
+          while read -r v; do
+            if [ -z "$newest" ] || dpkg --compare-versions "$v" gt "$newest"; then newest="$v"; fi
+          done < <(awk '/^Package: / { p = $2 } /^Version: / { v = $2 } /^Architecture: / { a = $2 }
+                        /^$/ { if (p == "orkeon" && a == "amd64") print v; p = v = a = "" }' "$RUNNER_TEMP/Packages")
+          if [ -z "$newest" ]; then
+            echo "::notice::rc offers no amd64 orkeon yet; no install round."
+            exit 0
+          fi
+          bash scripts/apt/verify-apt-repo.sh rc "${newest//\~/-}" --image "$IMAGE"
+
+      # The tracking issue is a latch: one issue per red streak, a comment per red week,
+      # closed by the first green run. Both steps re-filter on the exact title, since
+      # in:title is a fuzzy search.
+      - name: Surface the failure as a tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing="$(gh issue list --state open --search "$TRACKING_ISSUE_TITLE in:title" --json number,title \
+            | jq -r --arg t "$TRACKING_ISSUE_TITLE" 'map(select(.title == $t)) | .[0].number // empty' || true)"
+          body="The weekly apt repository health check failed: $RUN_URL"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$TRACKING_ISSUE_TITLE" --label bug --body "$body"
+          fi
+      - name: Clear the tracking issue on a green run
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing="$(gh issue list --state open --search "$TRACKING_ISSUE_TITLE in:title" --json number,title \
+            | jq -r --arg t "$TRACKING_ISSUE_TITLE" 'map(select(.title == $t)) | .[0].number // empty' || true)"
+          if [ -z "$existing" ]; then
+            echo "No open tracking issue - nothing to clear."
+            exit 0
+          fi
+          gh issue close "$existing" --reason completed --comment "The apt repository health check is green again: $RUN_URL"

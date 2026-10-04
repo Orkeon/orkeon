@@ -13,8 +13,13 @@
 # It then publishes, exactly as the workflows do, through publish-apt-channel.sh and
 # update-apt-channels.sh into a bare repository: the first tag bootstraps the orphan branch
 # (rc and an empty stable), the second one adds to rc and re-attaches the published keyring
-# package (stage-keyring-deb.sh), then a yank and a resign. On this machine,
-# check-apt-branch.sh proves the channel with a real apt client in a debian:13 container.
+# package (stage-keyring-deb.sh), then a yank and a resign. Then check-apt-branch.sh
+# replays the documented installation block (verify-apt-repo.sh, a copy of the page whose
+# key SHA-256 is the throwaway key's) in a debian:13 container against the fake GitHub:
+# install, upgrade rc.4 -> rc.5, removal; and check-apt-health.sh passes on that state and
+# fails on the three faults it exists for: a stanza without its asset, an InRelease that
+# does not verify, a signing subkey that expires within 180 days.
+# The containers reach the distribution's mirrors (sudo, curl, ca-certificates).
 set -euo pipefail
 export LC_ALL=C
 
@@ -160,6 +165,50 @@ builder() {
   echo "builder passed"
 }
 
+# health: check-apt-health.sh against the fake GitHub, on the state the builder published
+health() {
+  echo "127.0.0.1 github.test raw.test objects.test" >> /etc/hosts
+  local url=http://github.test:8081/Orkeon/orkeon/
+  serve() { # <branch dir>
+    [ ! -f /work/fg.pid ] || kill "$(cat /work/fg.pid)" 2>/dev/null || true
+    python3 /repo/scripts/apt/fake-github.py --branch "$1" --assets /work/rel --log /work/health.log --port 8081 &
+    echo $! > /work/fg.pid
+    for _ in $(seq 50); do curl -s -o /dev/null http://127.0.0.1:8081/ && break; sleep 0.2; done
+  }
+  health_run() { code=0; out="$(bash /repo/scripts/apt/check-apt-health.sh --base-url "$url" --require-sqv "$@" 2>&1)" || code=$?; }
+
+  serve /work/branch
+  health_run --keyring /work/key/archive.gpg
+  echo "$out" | sed 's/^/      | /'
+  check "health passes on the published state" test "$code" -eq 0
+
+  mv /work/rel/v1.0.0-rc.4/orkeon_1.0.0-rc.4_amd64.deb /work/held.deb
+  health_run --keyring /work/key/archive.gpg --no-download
+  check "a stanza without its asset fails" bash -c '[ "$0" -ne 0 ] && grep -q "FAIL  rc: orkeon 1.0.0~rc.4 amd64 .*without its asset" <<<"$1"' "$code" "$out"
+  mv /work/held.deb /work/rel/v1.0.0-rc.4/orkeon_1.0.0-rc.4_amd64.deb
+
+  cp -a /work/branch /work/bad
+  sed -i 's/^Label: Orkeon$/Label: Orkeon2/' /work/bad/rc/InRelease
+  serve /work/bad
+  health_run --keyring /work/key/archive.gpg --no-download
+  check "an InRelease that does not verify fails" bash -c '[ "$0" -ne 0 ] && grep -q "FAIL  rc: InRelease does not verify with gpgv" <<<"$1"' "$code" "$out"
+
+  make_key /work/key short 30d
+  cp -a /work/branch /work/short
+  for c in stable rc; do
+    APT_SIGNING_KEY="$(cat /work/key/short-secret.asc)" APT_SIGNING_PASSPHRASE="$PASSPHRASE" \
+      bash /repo/scripts/apt/build-apt-index.sh --channel "$c" --dir "/work/short/$c" --keyring /work/key/short.gpg 2>/dev/null
+  done
+  serve /work/short
+  health_run --keyring /work/key/short.gpg --no-download
+  check "a signing subkey expiring within 180 days fails" bash -c '[ "$0" -ne 0 ] && grep -q "FAIL  the signing subkey expires in 29 days" <<<"$1"' "$code" "$out"
+  check "... while its signatures verify" bash -c 'grep -q "ok    rc: InRelease verifies with gpgv" <<<"$0" && grep -q "ok    rc: InRelease verifies with sqv" <<<"$0"' "$out"
+  kill "$(cat /work/fg.pid)" 2>/dev/null || true
+
+  if [ "$failed" -gt 0 ]; then echo "health: ${failed} check(s) failed"; exit 1; fi
+  echo "health passed"
+}
+
 # --- On this machine -----------------------------------------------------------------------
 dexec() { # <container> <command...>: run to completion, print the output, return the status
   local c="$1" tag="/tmp/dexec-$RANDOM$RANDOM" waited=0 st
@@ -181,7 +230,7 @@ main() {
   # shellcheck disable=SC2064
   trap "docker rm -f $b >/dev/null 2>&1 || true; rm -rf '$out'" EXIT
   docker run -d --name "$b" "$BUILDER_IMAGE" sleep infinity >/dev/null
-  dexec "$b" bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends apt-utils gpg gpg-agent gpgv sqv git ca-certificates python3 >/dev/null' \
+  dexec "$b" bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends apt-utils gpg gpg-agent gpgv sqv git ca-certificates python3 curl >/dev/null' \
     || { echo "test-apt-publish: could not prepare $BUILDER_IMAGE" >&2; exit 1; }
   docker exec "$b" mkdir -p /repo/docs/fr
   tar -C "$REPO_ROOT" -cf - scripts installers docs/guides docs/fr/guides | docker exec -i "$b" tar -C /repo -xf -
@@ -194,20 +243,34 @@ main() {
   done
   cat "$out/debs-v1.0.0-rc.4.list" "$out/debs-v1.0.0-rc.5.list" > "$out/debs.list"
 
-  echo "# pre-push check (check-apt-branch.sh) on the published rc channel, client $CLIENT_IMAGE"
-  if bash "$here/check-apt-branch.sh" --branch-dir "$out/branch" --debs "$out/debs-v1.0.0-rc.5.list" \
-      --channel rc --version 1.0.0-rc.5 --image "$CLIENT_IMAGE" --server-container "$b"; then
+  # The page as it will read once the key exists: its SHA-256 is the throwaway key's.
+  sha="$(sha256sum "$out/branch/orkeon-archive-keyring.gpg" | cut -d' ' -f1)"
+  sed "s|<PENDING-KEY-CEREMONY>|$sha|" "$REPO_ROOT/docs/guides/install-with-apt.md" > "$out/page.md"
+
+  echo "# the documented block (check-apt-branch.sh, verify-apt-repo.sh) on rc, client $CLIENT_IMAGE"
+  if bash "$here/check-apt-branch.sh" --branch-dir "$out/branch" --debs "$out/debs.list" --previous auto \
+      --page "$out/page.md" --channel rc --version 1.0.0-rc.5 --image "$CLIENT_IMAGE" --server-container "$b"; then
     echo "ok    check-apt-branch passes on the published rc"
   else
     echo "FAIL  check-apt-branch passes on the published rc"; failed=$((failed + 1))
   fi
   # A version the channel does not offer must fail.
   if bash "$here/check-apt-branch.sh" --branch-dir "$out/branch" --debs "$out/debs-v1.0.0-rc.5.list" \
-      --channel rc --version 1.0.0-rc.6 --image "$CLIENT_IMAGE" --server-container "$b" >/dev/null 2>&1; then
+      --page "$out/page.md" --channel rc --version 1.0.0-rc.6 --image "$CLIENT_IMAGE" --server-container "$b" >/dev/null 2>&1; then
     echo "FAIL  check-apt-branch fails on a version the channel lacks"; failed=$((failed + 1))
   else
     echo "ok    check-apt-branch fails on a version the channel lacks"
   fi
+  # The page as committed (the key SHA-256 still pending) must fail: never in silence.
+  if bash "$here/check-apt-branch.sh" --branch-dir "$out/branch" --debs "$out/debs-v1.0.0-rc.5.list" \
+      --channel rc --version 1.0.0-rc.5 --image "$CLIENT_IMAGE" --server-container "$b" >/dev/null 2>&1; then
+    echo "FAIL  the block refuses a key whose SHA-256 differs from the page's"; failed=$((failed + 1))
+  else
+    echo "ok    the block refuses a key whose SHA-256 differs from the page's"
+  fi
+
+  echo "# check-apt-health.sh against the fake GitHub"
+  dexec "$b" bash /repo/scripts/apt/test-apt-publish.sh --health || failed=$((failed + 1))
 
   if [ "$failed" -gt 0 ]; then echo "test-apt-publish: ${failed} check(s) failed"; exit 1; fi
   echo "test-apt-publish passed"
@@ -215,7 +278,8 @@ main() {
 
 case "${1:-}" in
   --builder) builder ;;
+  --health) health ;;
   "") main ;;
-  -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' ;;
+  -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//' ;;
   *) echo "test-apt-publish: unknown argument: $1" >&2; exit 2 ;;
 esac

@@ -4,7 +4,8 @@
 #
 # Pipeline: installers -> {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} -> release
 # -> {verify-published (release-verify.yml, called on the published assets),
-#     apt-publish (signs the apt index on the apt branch)}.
+#     apt-publish (signs the apt index on the apt branch) -> verify-apt (release-verify.yml
+#     again, the apt matrix: the documented block replayed on 5 distributions x 2 archs)}.
 # The Release is created as a draft, every asset is attached, and only then is it
 # published: a published tag is never written again (its assets are indexed by apt).
 # The smokes (and the msi job's own install/uninstall smoke) install from the
@@ -934,6 +935,18 @@ jobs:
             "${channels[@]}" --ensure stable --ensure rc \
             --debs "$RUNNER_TEMP/debs/debs.list" \
             --check-version "${TAG#v}" --check-image "$CHECK_IMAGE"
+
+  # The installation block of the guide, replayed word for word on the published apt
+  # repository: the apt jobs of release-verify.yml (the matrix lives there only). It
+  # retries while raw.githubusercontent.com still serves the previous index.
+  verify-apt:
+    needs: apt-publish
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions: { contents: read }
+    uses: ./.github/workflows/release-verify.yml
+    with:
+      tag: ${{ github.ref_name }}
+      scope: apt
 
   # Builds and pushes the example-runners container image to GHCR. Same v* trigger
   # as the installers; runs independently (own job, package-scoped permissions).

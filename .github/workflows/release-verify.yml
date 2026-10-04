@@ -27,6 +27,16 @@ on:
         required: false
         type: string
         default: all
+      apt-channels:
+        description: "apt channels to verify, as a JSON array (default: rc, plus stable for a tag without -)"
+        required: false
+        type: string
+        default: ""
+      apt-version:
+        description: "the version the apt channels must install (default: the tag without its v)"
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       tag:
@@ -39,6 +49,16 @@ on:
         type: choice
         options: [ all, assets, apt ]
         default: all
+      apt-channels:
+        description: "apt channels to verify, as a JSON array (default: rc, plus stable for a tag without -)"
+        required: false
+        type: string
+        default: ""
+      apt-version:
+        description: "the version the apt channels must install (default: the tag without its v)"
+        required: false
+        type: string
+        default: ""
 permissions:
   contents: read
 # scope: release.yml calls this workflow twice, once per stage, and each call runs
@@ -130,3 +150,79 @@ jobs:
           # Two checksum files by design (see publication-matrix): SHA256SUMS
           # covers everything but the MSIs; SHA256SUMS.msi covers the two MSIs (CLI and service host).
           ./scripts/check-release-assets.sh --assets "$RUNNER_TEMP/assets.txt" published SHA256SUMS SHA256SUMS.msi
+
+  # The apt repository as a user meets it: the installation block of
+  # docs/guides/install-with-apt.md, replayed word for word by
+  # scripts/apt/verify-apt-repo.sh in fresh containers (install, version, dpkg -V,
+  # upgrade from the previous version, removal in the documented order, no W: line).
+  # This matrix exists only here: release.yml calls it after apt-publish (verify-apt),
+  # and workflow_dispatch replays it for any tag.
+  apt-plan:
+    if: inputs.scope != 'assets'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      channels: ${{ steps.plan.outputs.channels }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - id: plan
+        env:
+          TAG: ${{ inputs.tag }}
+          CHANNELS: ${{ inputs.apt-channels }}
+          VERSION: ${{ inputs.apt-version }}
+        run: |
+          # The channels apt-publish chose for this tag: rc always, stable too for a
+          # final version. apt-dev is the dev channel's prerelease, no tagged version:
+          # it is verified only when the caller names its channel and version.
+          if [[ -z "$CHANNELS" ]]; then
+            if [[ "$TAG" == apt-dev ]]; then
+              echo "::error::apt-dev is no release: give apt-channels and apt-version"
+              exit 1
+            fi
+            CHANNELS='["rc"]'
+            [[ "$TAG" == *-* ]] || CHANNELS='["stable", "rc"]'
+          fi
+          VERSION="${VERSION:-${TAG#v}}"
+          echo "channels=$CHANNELS" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "apt channels $CHANNELS, version $VERSION"
+
+  verify-apt:
+    needs: apt-plan
+    strategy:
+      fail-fast: false
+      # Ten cells per channel call raw.githubusercontent.com anonymously from shared
+      # runner addresses: spread them rather than ignore its 429.
+      max-parallel: 4
+      matrix:
+        channel: ${{ fromJSON(needs.apt-plan.outputs.channels) }}
+        image:
+          - { name: "debian:12", ref: "debian:12@sha256:f37a335e82bca302e955fa39f9dfe28f1be618f016f8a2b56318e5a5111afc26" }
+          - { name: "debian:13", ref: "debian:13@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c" }
+          - { name: "ubuntu:22.04", ref: "ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401" }
+          - { name: "ubuntu:24.04", ref: "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55" }
+          - { name: "ubuntu:26.04", ref: "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7" }
+        platform:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    name: verify-apt (${{ matrix.channel }}, ${{ matrix.image.name }}, ${{ matrix.platform.arch }})
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The block is the one the tag documents.
+          ref: ${{ inputs.tag != 'apt-dev' && inputs.tag || '' }}
+      - name: Check the runner architecture
+        run: |
+          actual="$(dpkg --print-architecture)"
+          if [[ "$actual" != "${{ matrix.platform.arch }}" ]]; then
+            echo "::error::This verify-apt entry is for ${{ matrix.platform.arch }}, but the runner is $actual." >&2
+            exit 1
+          fi
+      - name: Replay the installation block
+        env:
+          CHANNEL: ${{ matrix.channel }}
+          VERSION: ${{ needs.apt-plan.outputs.version }}
+          IMAGE: ${{ matrix.image.ref }}
+        run: bash scripts/apt/verify-apt-repo.sh "$CHANNEL" "$VERSION" --image "$IMAGE"

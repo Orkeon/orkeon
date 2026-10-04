@@ -84,6 +84,13 @@ jobs:
         run: |
           command -v apt-ftparchive >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils; }
           bash scripts/apt/test-build-apt-index.sh --offline
+      # The apt installation block (docs/guides/install-with-apt.md and its French mirror):
+      # one block, identical in both languages, writing exactly installers/apt/orkeon.sources
+      # and checking the keyring SHA-256 of installers/apt. Proved on throw-away copies first.
+      - name: Test and run the apt installation block guard
+        run: |
+          bash scripts/apt/test-check-apt-snippet.sh
+          bash scripts/apt/check-apt-snippet.sh
       # The one script that pushes the apt branch (scripts/apt/publish-apt-channel.sh), proved
       # against a local bare repository: orphan bootstrap, a channel replaced exactly, the
       # --base refusal, the retry on a branch moved meanwhile. Git only, no network.
