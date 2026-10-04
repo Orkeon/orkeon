@@ -275,7 +275,7 @@ public class OpenAICompatibleProviderBaseTests
         Assert.Equal("Default model response", result.Content);
         Assert.Equal(60, result.TokensUsed);
         var sent = await handler.CapturedRequests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(TestModelName, JsonDocument.Parse(sent).RootElement.GetProperty("model").GetString());
+        Assert.Equal(TestModelName, JsonElement.Parse(sent).GetProperty("model").GetString());
     }
 
     [Fact]

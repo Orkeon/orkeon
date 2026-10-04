@@ -29,7 +29,7 @@ public class ChromaDbMemoryProviderTextSearchFilterTests
     private static async Task<JsonElement> LastBodyAsync(FakeHttpMessageHandler handler)
     {
         var body = await handler.CapturedRequests[^1].Content!.ReadAsStringAsync(Ct);
-        return JsonDocument.Parse(body).RootElement.Clone();
+        return JsonElement.Parse(body);
     }
 
     private static void AssertEqualityConditions(JsonElement where)

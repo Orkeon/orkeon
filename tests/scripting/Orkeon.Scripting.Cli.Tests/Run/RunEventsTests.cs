@@ -332,7 +332,7 @@ public sealed class RunEventsTests : IDisposable
         Assert.Equal(Program.ExitScriptError, exit);
         var events = console.Stdout
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => JsonDocument.Parse(line).RootElement)
+            .Select(line => JsonElement.Parse(line))
             .ToList();
         Assert.Equal(["run.started", "run.finished"], events.Select(e => e.GetProperty("kind").GetString()));
         Assert.Equal(1, events[1].GetProperty("exitCode").GetInt32());

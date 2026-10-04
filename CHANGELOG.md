@@ -928,7 +928,7 @@ stops, when it refuses a setting at start, and when a program reads their output
 Documented in [Service host](docs/architecture/service-host.md), [A2A conformance](docs/reference/a2a-conformance.md),
 [CLI](docs/reference/cli.md), [MCP integration](docs/architecture/mcp.md), [Hosting](docs/reference/hosting.md),
 [Configuration](docs/reference/configuration.md), [Opt-in subsystems](docs/reference/opt-in-subsystems.md) and
-[Tool inventory](docs/tools/inventory.md); the [service-host example](examples/service-host/README.md) follows a
+[Tool inventory](docs/tools/inventory.md); the [service-host example](https://github.com/Orkeon/orkeon/blob/main/examples/service-host/README.md) follows a
 task with `sendSubscribe`.
 
 Breaking: `IA2ATaskRouter.RouteTaskAsync` takes an `IProgress<string>? progress` before its token, with no
@@ -1058,7 +1058,7 @@ a fresh crew for every message — so its card had no skill (GAP-23).
 Documented in [Service host](docs/architecture/service-host.md#5-other-agents-a2a),
 [A2A conformance](docs/reference/a2a-conformance.md#activation), [Configuration](docs/reference/configuration.md),
 [Opt-in subsystems](docs/reference/opt-in-subsystems.md) and [Limitations](docs/reference/limitations.md); the
-[service-host example](examples/service-host/README.md) exposes its crew on the loopback.
+[service-host example](https://github.com/Orkeon/orkeon/blob/main/examples/service-host/README.md) exposes its crew on the loopback.
 
 Breaking: `IA2ATaskRouter` declares `GetSkillsAsync`; the two `A2AServer` constructors no longer take an
 `IServiceScopeFactory`; after a router of the host's, `AddOrkeonA2A` no longer registers the agent

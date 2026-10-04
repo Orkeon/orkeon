@@ -26,7 +26,7 @@ public class LanceDbMemoryProviderTextSearchFilterTests
         await search(provider);
 
         var body = await handler.CapturedRequests[1].Content!.ReadAsStringAsync(Ct);
-        return JsonDocument.Parse(body).RootElement.Clone();
+        return JsonElement.Parse(body);
     }
 
     [Fact]
