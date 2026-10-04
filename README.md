@@ -154,7 +154,7 @@ Runner, Ollama, or a model embedded in the container image) — see the
 | You want to… | Do this | Details |
 |---|---|---|
 | **Run crews with zero install** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — interactive shell, 104 bundled examples (`orkeon-example run 1`), local-model ready | [Container guide](docs/getting-started/three-ways-to-run-orkeon.md#3-container) |
-| **Install the `orkeon` CLI** | Windows and Debian/Ubuntu: the quickstarts below. macOS: the CLI tarball below (`osx-arm64`, `osx-x64`). `linux-arm64` — and anyone who also wants the REPL or the service host — takes the multi-app `orkeon-<version>-<rid>.tar.gz` from the [releases](https://github.com/Orkeon/orkeon/releases), then `./install.sh` | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
+| **Install the `orkeon` CLI** | Windows and Debian/Ubuntu (amd64, arm64): the quickstarts below. macOS: the CLI tarball below (`osx-arm64`, `osx-x64`). Anyone who also wants the REPL or the service host takes the multi-app `orkeon-<version>-<rid>.tar.gz` from the [releases](https://github.com/Orkeon/orkeon/releases), then `./install.sh` | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
 | **Embed Orkeon in your app** | `dotnet add package Orkeon --prerelease` — the complete framework in one package, from [nuget.org](https://www.nuget.org/packages/Orkeon) (the public feed: no extra source, no token). Optionally add [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (the built-in tool families) and the opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — the latter pins a pre-release upstream, `SmartComponents.LocalEmbeddings`, and will keep doing so past 1.0: see [limitations](docs/reference/limitations.md) —, `Orkeon.Interop.AgentFramework`, `Orkeon.Hosting.Aspire`) — see the [publication matrix](docs/reference/publication-matrix.md). The `orkeon` CLI tool and the container image above are unchanged | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
 | **Verify what you download** | Every package and installer carries a GitHub-signed build provenance attestation and a `SHA256SUMS` line: `gh attestation verify <file> --repo Orkeon/orkeon` — no trust in this page required | [Verify what you install](docs/guides/verify-what-you-install.md) |
 | **Hack on the framework** | `git clone` (**without** `--recursive`) + `dotnet build Orkeon.sln` | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
@@ -178,15 +178,22 @@ orkeon init          # in a NEW terminal: pick your LLM provider and model
 orkeon run crew.yaml
 ```
 
-**Debian / Ubuntu** — download `orkeon_<version>_amd64.deb`; self-contained too, no `dotnet-runtime` package pulled in:
+**Debian / Ubuntu** (amd64, arm64) — add the signed Orkeon apt source once: the block to copy, with its key check and its `stable` / `rc` / `dev` channels, is in [Install with apt](docs/guides/install-with-apt.md). Then Orkeon is a package like any other — self-contained too, no `dotnet-runtime` package pulled in:
+
+```bash
+sudo apt install orkeon orkeon-archive-keyring   # once
+sudo apt update && sudo apt upgrade              # every later version
+orkeon init          # writes ~/.config/Orkeon/appsettings.json
+orkeon run crew.yaml
+```
+
+A machine that cannot reach GitHub's raw content installs one release's `.deb` instead (`_arm64.deb` on an ARM machine: Raspberry Pi 5, Graviton, Ampere); it receives no updates. `<version>` is the release tag without its `v` — for example `1.0.0-rc.5`, hyphen included. (Releases up to 1.0.0-rc.4 name the file `orkeon_1.0.0.rc.N_amd64.deb` while their `SHA256SUMS` line reads `orkeon_1.0.0~rc.N_amd64.deb`: check those two by hand.) Then:
 
 ```bash
 # SHA256SUMS is a release asset too — download it alongside the .deb and check
-grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # expect: OK
+grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # expect: OK (_arm64.deb on ARM)
 
 sudo apt install ./orkeon_<version>_amd64.deb
-orkeon init          # writes ~/.config/Orkeon/appsettings.json
-orkeon run crew.yaml
 ```
 
 **macOS** — Homebrew becomes the recommended route once the `Orkeon/homebrew-tap` repository ships with the first tagged release:
@@ -202,8 +209,9 @@ Until then (and on any machine), the self-contained tarball — `osx-arm64` for 
 ```bash
 # The asset name carries the version, and GitHub's `latest/download/` shortcut skips
 # prereleases — so resolve the newest tag first (or copy the asset link off the
-# releases page, which is the same thing done by hand).
-TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name"' | cut -d'"' -f4)
+# releases page, which is the same thing done by hand). Only `v` tags are releases:
+# `apt-dev` holds the dev builds of the apt repository.
+TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name": "v' | cut -d'"' -f4)
 VER=${TAG#v}; BASE=https://github.com/Orkeon/orkeon/releases/download/$TAG
 
 curl -fsSL -O "$BASE/orkeon-cli-$VER-osx-arm64.tar.gz"     # osx-x64 on Intel

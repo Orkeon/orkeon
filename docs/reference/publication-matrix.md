@@ -182,7 +182,8 @@ On a `v*` tag, `release.yml` builds every installer artifact, **smokes each onbo
 channel on a real runner** (Windows CLI zip, Windows service, Debian package, macOS
 tarball), and only then attaches everything to the GitHub Release. The pipeline is
 `installers → {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} →
-release`; behind those same five jobs, `runners-image` pushes the `orkeon-runners`
+release → {verify-published, apt-publish → verify-apt}` (the last two are described in
+[The apt repository](#the-apt-repository)); behind those same five jobs, `runners-image` pushes the `orkeon-runners`
 container image to GHCR in parallel with `release`, so a red smoke moves neither the
 Release nor the `:latest` tag. `workflow_dispatch` runs
 the same thing minus the publication (no tag, no Release to attach to). A tag carrying a
@@ -196,7 +197,8 @@ scripting DSL).
 |---|---|---|---|
 | `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every launcher — `orkeon`, `orkeon-slim`, `orkeon-repl`, `orkeon-host` — + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon`, `orkeon-host` and the Studio apps self-contained, the rest framework-dependent |
 | `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `orkeon-studio` (WPF Orkeon Studio) + `install.ps1` | self-contained |
-| `orkeon_<version>_amd64.deb` | `package-deb.sh` (reuses the `linux-x64` staging tree — one publish, two packages) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (libicu / libssl alternations), never on `dotnet-runtime-*` |
+| `orkeon_<version>_amd64.deb` / `orkeon_<version>_arm64.deb` | `package-deb.sh --arch amd64\|arm64` (reuses the `linux-x64` and `linux-arm64` staging trees — one publish, two packages per architecture) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (`libicu78` down to `libicu70`, `libssl3t64 \| libssl3`, `libc6 (>= 2.34)`…, so Debian 12/13 and Ubuntu 22.04 to 26.04), never on `dotnet-runtime-*`; `Recommends: orkeon-archive-keyring`; ships `md5sums` (`dpkg -V orkeon`); byte-identical across two builds of the same commit (`SOURCE_DATE_EPOCH`) |
+| `orkeon-archive-keyring_<YYYY.MM.DD>_all.deb` | `package-keyring-deb.sh`, once per keyring version (a date, such as `2026.10.04`, from `installers/apt/keyring.version`); later Releases attach the bytes already published, never a rebuild | `/usr/share/keyrings/orkeon-archive-keyring.gpg`, the public key of the [apt repository](#the-apt-repository) | — |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI + `orkeon-studio` (WPF, with an "Orkeon Studio" Start-menu shortcut), same pruned publish as the zip | self-contained |
 | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | `package-installers.sh --app-set cli --rids osx-arm64 osx-x64` (cross-published from the ubuntu runner) | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS channel stays CLI-only) | self-contained |
 | `SHA256SUMS` | the `installers` job's packaging scripts (`package-deb.sh` refreshes its own line) | one line per artifact above **except the MSI**, plus the SBOM (`orkeon-<version>.sbom.cdx.json`) | — |
@@ -215,8 +217,10 @@ the job that produced the artifact it covers.
 
 **Blocking smokes.** `smoke-windows` (a `windows-latest` runner) installs
 `orkeon-cli-*-win-x64.zip` and walks the onboarding chain on it; `smoke-deb` (a stock
-`ubuntu-latest` image) installs the `.deb` through `apt`, walks the same chain, then removes
-the package; `smoke-macos` (a `macos-latest`, Apple-silicon runner) extracts the `osx-arm64`
+`ubuntu-latest` image for amd64, an `ubuntu-24.04-arm` runner for arm64 — each entry refuses a
+runner of the other architecture) installs the `.deb` through `apt`, checks `dpkg -V orkeon`
+is silent, walks the same chain, then removes the package — the linux-x64 tarball smoke runs
+on the amd64 entry; `smoke-macos` (a `macos-latest`, Apple-silicon runner) extracts the `osx-arm64`
 tarball, installs it with `install.sh` and walks the same chain before uninstalling; the `msi`
 job runs its own `msiexec /i /qn` → `orkeon doctor --json` → `msiexec /x /qn` chain, asserting
 the install directory, the ARP entry and the user `PATH` entry appear and then disappear.
@@ -227,18 +231,30 @@ plus a silent reinstall of itself. All of them install from the **job** artifact
 the Release, so a broken payload is caught before anything is published — the `release` job
 `needs` them all.
 
-**After publication.** `release-verify.yml` runs on every published Release (and on demand
-for a given tag): it downloads the assets *from the Release page*, checks `SHA256SUMS` and
-`SHA256SUMS.msi`, and replays the `.deb` and `osx-arm64` onboarding smokes on them — catching
-an asset that an upload, a replace or a tamper made different from what the smokes above
-installed.
+**After publication.** `release.yml` calls `release-verify.yml` in its `verify-published` job,
+right after the `release` job of the same run (and it can be run on demand for a given tag). A
+`release: published` trigger would never fire: a Release created with the workflow's
+`GITHUB_TOKEN` starts no other workflow. It downloads the assets *from the Release page*,
+checks that every published asset has exactly one line in `SHA256SUMS` or `SHA256SUMS.msi`
+and every line names a published asset, verifies every checksum with no line skipped, and
+replays the onboarding smokes of both `.deb` (amd64, and arm64 on an ARM runner) and of the
+`osx-arm64` tarball on them — catching an asset that an upload, a replace or a tamper made
+different from what the smokes above installed. Run by hand on `v1.0.0-rc.3` or
+`v1.0.0-rc.4`, it fails by design: those Releases predate the naming rule below, and carry no
+arm64 package.
 
 `smoke-macos` is also the only place the Gatekeeper and code-signing story is exercised: an
 unsigned, quarantined or malformed native library (`libtree-sitter*.dylib`, onnxruntime, the
 esbuild binary) is killed at load time, so it fails there rather than in a user's terminal.
 
-The debian version string replaces `-` with `~` (`1.0.0-rc.1` → `orkeon_1.0.0~rc.1_amd64.deb`)
-so a pre-release sorts before its final under `dpkg`.
+The `.deb` file name carries the tag's version (`orkeon_1.0.0-rc.4_amd64.deb`), while the
+package's `Version:` field replaces `-` with `~` (`1.0.0~rc.4`) so a pre-release sorts before
+its final under `dpkg`. The two differ on purpose: GitHub rewrites `~` in an uploaded asset
+name, and apt reads the file name from its index, never from the package. No asset name
+carries a character outside `[A-Za-z0-9._-]` — `scripts/check-release-assets.sh` fails the
+`installers` job, and the `release` job before publishing, otherwise — so `SHA256SUMS` lists every asset under the name it is published with. (The `1.0.0-rc.3` and
+`1.0.0-rc.4` Releases predate the rule: their `.deb` was published as
+`orkeon_1.0.0.rc.N_amd64.deb` while their `SHA256SUMS` names it with `~`.)
 
 The MSI's `ProductVersion` drops the suffix instead: Windows Installer versions carry only three
 numeric fields, so `build-msi.ps1` truncates `1.0.0-rc.1` to `1.0.0` for the property that
@@ -246,14 +262,15 @@ numeric fields, so `build-msi.ps1` truncates `1.0.0-rc.1` to `1.0.0` for the pro
 `.msi` filename (`orkeon-1.0.0-rc.1-win-x64.msi`) and in the `ARPCOMMENTS` property shown in
 "Installed apps".
 
-The `orkeon` CLI is distributed through **seven channels**:
+The `orkeon` CLI is distributed through **eight channels**:
 
 | Channel | Artifact | Runtime | Audience |
 |---|---|---|---|
 | NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. Part of the NuGet.org lineup (PUB-25) — publishable since the package dropped from 262.5 MB to 137.6 MB (iOS/Android onnxruntime natives excluded); first push at `v1.0.0-rc.3` |
 | Windows zip + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel. Ships `orkeon-studio` (WPF Orkeon Studio) next to the CLI |
 | Windows MSI (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, double-click install and an "Installed apps" entry. Ships `orkeon-studio` with a Start-menu shortcut. One channel at a time: the MSI refuses to install over a zip install |
-| Debian package | `orkeon_<version>_amd64.deb` | self-contained | Debian / Ubuntu onboarding — the recommended channel. Ships the `orkeon-studio-config` / `orkeon-studio-run` TUIs next to the CLI |
+| Debian / Ubuntu apt repository | the `.deb` packages below, indexed on the `apt` branch (channels `stable`, `rc`, `dev`) | self-contained | Debian / Ubuntu, amd64 and arm64 — the recommended channel: `apt install`, `apt upgrade`. See [The apt repository](#the-apt-repository) |
+| Debian package | `orkeon_<version>_amd64.deb` / `_arm64.deb` | self-contained | Debian / Ubuntu without the repository (one version, no updates). Ships the `orkeon-studio-config` / `orkeon-studio-run` TUIs next to the CLI |
 | macOS tarball + `install.sh` | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | self-contained | macOS onboarding today; `install.sh` clears the Gatekeeper quarantine attribute and ad-hoc re-signs the Mach-O files `codesign -v` rejects |
 | Homebrew | the same osx tarballs, via `installers/homebrew/orkeon.rb` | self-contained | macOS, once the tap exists — **not published yet**, see below |
 | Multi-app installer archive | `orkeon` / `orkeon-slim` launchers | `orkeon` self-contained, `orkeon-slim` framework-dependent | devs who also want the REPL, the service host or the Studio apps |
@@ -277,6 +294,137 @@ Publishing the `Orkeon/homebrew-tap` repository and pushing the formula to it is
 action, not CI** (MAC-00 §8): `brew tap orkeon/tap && brew install orkeon` does not resolve
 before that. Submission to homebrew-core and a `.pkg` installer stay out of scope until the
 project is code-signed.
+
+### The apt repository
+
+Debian and Ubuntu users add one source and then manage Orkeon with apt — the user side is
+[Install with apt](../guides/install-with-apt.md). The repository lives in this GitHub
+repository, in two halves:
+
+- **The packages stay Release assets** — the `.deb` files `release.yml` already builds,
+  smokes and attests. Nothing is copied elsewhere.
+- **The signed index lives on the orphan `apt` branch**: one directory per channel
+  (`InRelease`, `Release`, `Release.gpg`, `Packages`, `Packages.gz`, `by-hash/SHA256/…`), plus
+  the binary keyring `orkeon-archive-keyring.gpg` at its root for the first setup. Only the
+  workflows push to it, one commit per publication; a ruleset forbids its deletion and any
+  force-push. It holds no `.deb`, so it weighs a few kilobytes.
+
+The source reads `URIs: https://github.com/Orkeon/orkeon/` and `Suites: raw/apt/<channel>/` — a
+"flat" repository. apt fetches the index at `…/raw/apt/<channel>/`, which GitHub redirects to
+`raw.githubusercontent.com`, and resolves each package's `Filename:` —
+`releases/download/<tag>/<asset>` — against the same root, so the download lands on the
+Release asset. The cost is GitHub's rate limit on anonymous raw traffic (`429`): `apt update`
+treats it as a warning, a Docker build retries.
+
+| Channel | Directory | Receives |
+|---|---|---|
+| `stable` | `stable/` | every `v*` tag without a pre-release segment — the same test that sets `prerelease:` on the Release. Empty until a final version is published |
+| `rc` | `rc/` | every `v*` tag, so every package of `stable` is in `rc` too |
+| `dev` | `dev/` | the `orkeon` package of every green push to `main`, versioned `<props version with ~>.dev.<n>` (`1.0.0~rc.4.dev.<n>`); its assets sit on the single fixed-tag prerelease `apt-dev`; only the three latest builds are kept. Never published to NuGet.org, never attested as a release |
+
+Each channel's `Release` file keeps `Origin: Orkeon` and `Label: Orkeon` for ever (a change
+makes every machine confirm it), sets `Suite:` to the source path without its trailing `/` and
+no `Codename` (otherwise apt warns "Conflicting distribution"), declares
+`Architectures: amd64 arm64` and `Acquire-By-Hash: yes`, lists SHA-256 digests only, carries a
+strictly increasing `Date` (apt ignores an `InRelease` older than the one it has) and no
+`Valid-Until`. The index is generated by `apt-ftparchive`; the `by-hash` files are pruned by the
+publishing scripts, keeping at least three generations.
+
+**History and immutability.** A channel lists **every** version still attached to a Release, so
+`apt install orkeon=<version>` can always go back — except `dev`, which keeps its three latest
+builds. A stanza, once published, never changes its
+digest for the same package, version and architecture: the generator refuses. `release.yml`
+never rewrites the assets of a published tag — it creates the Release as a draft, attaches the
+assets, then publishes it, and Releases are immutable — because a re-uploaded asset would make
+every machine fail with "Hash Sum mismatch".
+
+**The chain on a tag.** `release` publishes the Release; `apt-publish` (GitHub environment
+`apt-signing`, the only place that holds the signing subkey, as the `APT_SIGNING_KEY` and
+`APT_SIGNING_PASSPHRASE` secrets, deployable from `v*` tags and from `main`, for the `dev`
+channel only) adds the new packages to
+`rc` — and to `stable` for a final version —, signs the index and pushes the `apt` branch;
+`verify-apt` then replays the installation block of the guide **word for word**, in fresh
+Debian 12 and 13 and Ubuntu 22.04, 24.04 and 26.04 containers, on amd64 and arm64: install,
+upgrade from the previous version, removal in the documented order. It retries while raw
+still serves the previous index. A weekly check compares the index with the assets, the key's
+expiry with the 180-day threshold, and raw's availability.
+
+**The `dev` chain** is `apt-dev.yml`, started by every CI run that passes on a push to `main`
+(the guard of `publish.yml`'s `publish-dev` job). It publishes the CLI set for `linux-x64` and
+`linux-arm64` only, packs the two `.deb` with `package-deb.sh --arch`, and never calls
+`dotnet pack`, `publish.yml` or a NuGet feed. The version is `publish-dev`'s, with `~` for `-` in
+the Debian field: `1.0.0~rc.4.dev.<CI run number>`, asset `orkeon_1.0.0-rc.4.dev.<n>_<arch>.deb`.
+Then, in the `apt-signing` environment, `scripts/apt/publish-dev.sh`:
+
+1. creates the `apt-dev` prerelease if it is missing (never latest; its tag, set on the first
+   build's commit, never moves);
+2. rebuilds `dev/` from the published one, adding the new build and yanking any build that is
+   no longer among the three newest, and signs it — a build already indexed, or older than the
+   three kept, publishes nothing;
+3. attaches the two packages under their unique names, before the index can point to them; an
+   asset an index already points to is never replaced;
+4. pushes `dev/` to the `apt` branch;
+5. deletes the assets of the builds the **pushed** index no longer lists — never before.
+
+The keyring package is attached once to `apt-dev` and its bytes reused afterwards.
+`workflow_dispatch` with `publish` left `false` builds the two packages and publishes nothing; with
+`publish: true`, from `main`, it publishes the newest green CI run of `main`. `apt-dev` must exist
+before Releases are made immutable: immutability only binds Releases created after it, and an
+immutable `apt-dev` could no longer drop old builds. Its rules are proved without network by
+`scripts/apt/test-publish-dev.sh` in CI, and `apt-index.yml` upgrades real apt clients from one dev
+build to a newer one.
+
+**Maintenance outside a tag** goes through `apt-maintenance.yml` (`workflow_dispatch`, run
+**from a tag** so the environment rule admits it), with the same scripts, environment and
+concurrency group as `apt-publish`: `resign` signs both channels again with a newer `Date`;
+`yank <package>=<version>[/<arch>]` withdraws a stanza and signs again; `seed <tag>…` indexes
+assets published before the repository existed.
+
+#### Procedure: extend or rotate the signing subkey
+
+The subkey is valid two years and is extended **at least six months** before it expires — CI
+fails below 180 days. An expired key breaks `apt update` on every machine, with no fallback.
+
+1. On the offline machine, extend the subkey
+   (`gpg --quick-set-expire <primary fingerprint> 2y <subkey fingerprint>`) — or, to rotate,
+   add a new one (`gpg --quick-add-key <primary fingerprint> ed25519 sign 2y`).
+2. Export the public certificate, replace `installers/apt/orkeon-archive-keyring.asc`, change
+   `installers/apt/keyring.version`, and update the keyring SHA-256 in `SECURITY.md`,
+   `SECURITY.fr.md` and both installation pages (the CI guard checks they agree).
+3. The next Release publishes the new `orkeon-archive-keyring`; users receive it with
+   `apt upgrade`. An extension stops here; run `apt-maintenance.yml` in `resign` mode if the
+   index should be signed again before the next tag.
+4. For a rotation only, **one Release later**: the maintainer replaces `APT_SIGNING_KEY` with
+   the new subkey, exported alone (`gpg --export-secret-subkeys <subkey fingerprint>!`). The
+   old subkey expires, or is revoked.
+
+#### Procedure: withdraw a version (yank)
+
+1. Run `apt-maintenance.yml` in `yank` mode, from a tag, naming
+   `<package>=<version>[/<arch>]`.
+2. Check that the channel's `InRelease` on the `apt` branch carries a newer `Date` and no
+   longer lists the version; after an `apt update`, `apt-cache policy orkeon` no longer shows it.
+3. Only then, and only if needed, delete the asset from its Release. Any purge of Release
+   assets starts with this procedure — an indexed asset that disappears turns into a 404 for
+   every user.
+
+#### Procedure: revoke the key
+
+1. Publish the revocation certificate (kept offline since the key was created) in
+   `SECURITY.md`, `SECURITY.fr.md` and the installation pages.
+2. Freeze publication: no tag, no `apt-maintenance.yml` run, until the new key is in place.
+3. Create a new key and a new keyring, publish their fingerprint and SHA-256 as in the
+   extension procedure, and sign the index with the new subkey. Users must download the new
+   key themselves (the first lines of the installation block) — the only case where they act.
+
+#### Procedure: the key has expired
+
+Users see `EXPKEYSIG` on every `apt update`, and the channel stops updating. Extend the subkey
+(procedure above, step 1), publish the certificate and a new `orkeon-archive-keyring` version,
+then run `apt-maintenance.yml` in `resign` mode. A machine whose keyring is older than the
+extension cannot verify the new index: it reinstalls the keyring by the first lines of the
+installation block, or installs the new `orkeon-archive-keyring_<YYYY.MM.DD>_all.deb` downloaded
+from its Release (`sudo apt install ./orkeon-archive-keyring_<YYYY.MM.DD>_all.deb`).
 
 All flavours are built from the same `src/scripting/Orkeon.Scripting.Cli` csproj and share
 the one bundled esbuild. The remaining CLI

@@ -54,7 +54,7 @@ if (-not $Python -or $LASTEXITCODE -ne 0) {
 
 # --- Version -----------------------------------------------------------------
 if (-not $Version) {
-    $tag = git -C $RepoRoot describe --tags --abbrev=0 2>$null
+    $tag = git -C $RepoRoot describe --tags --match 'v*' --abbrev=0 2>$null
     if ($LASTEXITCODE -eq 0 -and $tag) { $Version = $tag -replace '^v', '' }
 }
 if (-not $Version) {

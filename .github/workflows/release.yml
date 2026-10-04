@@ -2,7 +2,12 @@
 # real Ubuntu runner, and only then attaches them to the GitHub Release.
 # Coexists with publish.yml (NuGet push) on the same trigger.
 #
-# Pipeline: installers -> {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} -> release.
+# Pipeline: installers -> {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} -> release
+# -> {verify-published (release-verify.yml, called on the published assets),
+#     apt-publish (signs the apt index on the apt branch) -> verify-apt (release-verify.yml
+#     again, the apt matrix: the documented block replayed on 5 distributions x 2 archs)}.
+# The Release is created as a draft, every asset is attached, and only then is it
+# published: a published tag is never written again (its assets are indexed by apt).
 # The smokes (and the msi job's own install/uninstall smoke) install from the
 # *job* artefacts, never from the Release, so a broken payload is caught before
 # anything is published. workflow_dispatch runs everything except the
@@ -124,15 +129,17 @@ jobs:
             echo "version_arg=" >> "$GITHUB_OUTPUT"
           fi
 
-      # --keep-stage linux-x64: the per-RID staging trees are by-products (the
-      # archives above them are the artifacts) and the five of the full set weigh
-      # ~2.6 GB on a runner that already has to free disk before it can start.
-      # Exactly one of them has a second consumer — the Debian step below reads
-      # the linux-x64 tree through package-deb.sh --stage rather than publishing
-      # it again — so that one is named and the other four go as soon as their
-      # archive is written.
+      # --keep-stage "linux-x64 linux-arm64": the per-RID staging trees are
+      # by-products (the archives above them are the artifacts) and the five of
+      # the full set weigh ~2.6 GB on a runner that already has to free disk
+      # before it can start. Exactly two of them have a second consumer - the
+      # Debian step below reads the two linux trees through package-deb.sh
+      # --stage rather than publishing them again - so those are named and the
+      # other three go as soon as their archive is written. Room is not the
+      # issue: the free-up step left 108 GB free on the 1.0.0-rc.4 run, and the
+      # second tree plus its package tree add about 1 GB.
       - name: Package installers (every app, every RID)
-        run: ./scripts/package-installers.sh ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers --keep-stage linux-x64
+        run: ./scripts/package-installers.sh ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers --keep-stage "linux-x64 linux-arm64"
 
       # The desktop onboarding channels: the `orkeon` CLI alone, as
       # orkeon-cli-<ver>-win-x64.zip and orkeon-cli-<ver>-osx-{arm64,x64}.tar.gz.
@@ -145,19 +152,57 @@ jobs:
       - name: Package the CLI archives (win-x64, osx-arm64, osx-x64)
         run: ./scripts/package-installers.sh --app-set cli --rids "win-x64 osx-arm64 osx-x64" ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers
 
-      # package-deb.sh only lifts libexec/orkeon + libexec/esbuild-bin out of a
-      # staging tree, and the multi-app linux-x64 staging already holds both from
-      # the same self-contained, pruned publish. Reusing it saves a second publish
-      # (~3 min and a couple of GB) for a byte-identical payload.
-      - name: Package the Debian package (amd64)
+      # package-deb.sh only lifts the CLI and Studio payloads out of a staging
+      # tree, and each multi-app linux staging already holds them from the same
+      # self-contained, pruned publish. Reusing it saves a second publish (~3 min
+      # and a couple of GB per architecture) for a byte-identical payload. The
+      # arm64 package is assembled here too: dpkg-deb only packs files, and
+      # package-deb.sh refuses a tree whose executables are of another
+      # architecture. Only its smoke needs an ARM machine.
+      # SOURCE_DATE_EPOCH is the date of the tagged commit: package-deb.sh stamps
+      # every member of the package with it, so rebuilding the same commit gives
+      # the same bytes.
+      - name: Package the Debian packages (amd64, arm64)
         run: |
-          mapfile -t stages < <(find artifacts/installers/_stage -mindepth 1 -maxdepth 1 -type d \
-            -name 'orkeon-*-linux-x64' ! -name 'orkeon-cli-*')
-          if [[ ${#stages[@]} -ne 1 ]]; then
-            echo "Expected exactly one linux-x64 staging tree, found ${#stages[@]}: ${stages[*]}" >&2
-            exit 1
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          for pair in amd64:linux-x64 arm64:linux-arm64; do
+            arch="${pair%%:*}"; rid="${pair#*:}"
+            mapfile -t stages < <(find artifacts/installers/_stage -mindepth 1 -maxdepth 1 -type d \
+              -name "orkeon-*-$rid" ! -name 'orkeon-cli-*')
+            if [[ ${#stages[@]} -ne 1 ]]; then
+              echo "Expected exactly one $rid staging tree, found ${#stages[@]}: ${stages[*]}" >&2
+              exit 1
+            fi
+            ./scripts/package-deb.sh --stage "${stages[0]}" --arch "$arch" --out artifacts/installers
+          done
+
+      # lintian as a report, not a gate: the tags a self-contained package carries
+      # on purpose are listed with their reason in
+      # scripts/package-deb.lintian-overrides, and anything else lands in the job
+      # summary. The step goes red on an unexpected error tag, and the job goes on.
+      # The apt repository's keyring package, orkeon-archive-keyring_<keyring.version>_all.deb,
+      # attached to every Release so that each one carries the key its index is signed
+      # with. One version has one set of bytes: when an earlier published Release already
+      # carries it, those bytes are attached again rather than rebuilt (a newer dpkg-deb
+      # on the runner could produce others, and the apt index refuses a second digest for
+      # one version). While installers/apt holds the development placeholder certificate,
+      # a tag attaches no keyring package at all: the throwaway key must never ship.
+      - name: Stage the apt keyring package (built once per keyring version)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]] && grep -q '^Comment: PLACEHOLDER' installers/apt/orkeon-archive-keyring.asc; then
+            echo "::warning::installers/apt/orkeon-archive-keyring.asc is the development placeholder: no orkeon-archive-keyring package is attached, and the apt-publish job will refuse to sign. Run the key ceremony (installers/apt/README.md)."
+            exit 0
           fi
-          ./scripts/package-deb.sh --stage "${stages[0]}" --out artifacts/installers
+          bash scripts/apt/stage-keyring-deb.sh --out artifacts/installers
+
+      - name: Lintian report on the Debian packages
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends lintian >/dev/null
+          ./scripts/lintian-deb.sh artifacts/installers/*.deb | tee -a "$GITHUB_STEP_SUMMARY"
 
       # Software bill of materials (CycloneDX 1.7 JSON) of the solution the
       # installers were published from, as a release asset: pinned dotnet tool,
@@ -172,6 +217,17 @@ jobs:
           dotnet tool install --tool-path .tools CycloneDX --version 6.2.0
           .tools/dotnet-CycloneDX Orkeon.sln -o artifacts/installers -fn "orkeon-$ver.sbom.cdx.json" -F Json -t -sn Orkeon -sv "$ver"
           (cd artifacts/installers && sha256sum "orkeon-$ver.sbom.cdx.json" >> SHA256SUMS && sort -k2 -o SHA256SUMS SHA256SUMS)
+
+      # Every asset name must survive the upload unchanged and appear in
+      # SHA256SUMS exactly once: GitHub rewrites any character outside
+      # [A-Za-z0-9._-] (a `~` becomes `.`), and a manifest line naming a file the
+      # Release does not carry is a checksum nobody can verify. The guard proves
+      # its own rules first, on throw-away files (no build, no network). The MSIs
+      # do not exist yet here; the release job checks them with their manifest.
+      - name: Test the release-asset guard
+        run: bash scripts/test-check-release-assets.sh
+      - name: Check the asset names against SHA256SUMS
+        run: ./scripts/check-release-assets.sh artifacts/installers SHA256SUMS
 
       - name: List the artefacts
         run: ls -lh artifacts/installers/*.tar.gz artifacts/installers/*.zip artifacts/installers/*.deb artifacts/installers/*.sbom.cdx.json artifacts/installers/SHA256SUMS
@@ -200,8 +256,8 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
-      # Both linux payloads the smoke-deb job installs: the .deb, and the
-      # multi-app linux-x64 tarball. The tarball rides along because it is the
+      # The linux payloads the smoke-deb matrix installs: the two .deb (amd64 and
+      # arm64), and the multi-app linux-x64 tarball. The tarball rides along because it is the
       # only published archive that carries the two Studio TUIs on a runner we
       # actually have — smoke-macos exercises run-smoke-tarball.sh with
       # `--studio absent`, and nothing exercised the `present` side.
@@ -227,7 +283,7 @@ jobs:
           compression-level: 0
           retention-days: 1
       # The complement only: the cli win zip lives in orkeon-cli-win-x64, the
-      # cli osx tarballs in orkeon-cli-osx, the .deb + the full linux-x64
+      # cli osx tarballs in orkeon-cli-osx, the two .deb + the full linux-x64
       # tarball in orkeon-linux, and the full win zip in orkeon-win-x64. What
       # remains here: the full osx tarballs, the full linux-arm64 tarball and
       # the checksums. (The linux-x64 exclusion pattern would also match a cli
@@ -544,7 +600,8 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-  # The two Linux channels, on one stock ubuntu image.
+  # The two Linux channels, on stock ubuntu images: one entry per Debian
+  # architecture, the arm64 one on a real ARM runner.
   #
   # First the .deb: installed through apt, walked along the same onboarding chain
   # as every other channel, then removed (LIN-02). It asserts the two Orkeon
@@ -552,12 +609,20 @@ jobs:
   # and both answering `--version` with stdin and stdout redirected, the headless
   # contract of STUDIO-08.
   #
-  # Then the tar.gz channel, which is where `--studio present` gets its only run:
+  # Then, on the amd64 entry only, the tar.gz channel, which is where
+  # `--studio present` gets its only run:
   # smoke-macos is the sole other caller of run-smoke-tarball.sh and it passes
   # `--studio absent`, so until this step the "installed from an archive, and
   # working headless" half of STUDIO-08 was asserted nowhere.
   smoke-deb:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    name: smoke-deb (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     needs: installers
     timeout-minutes: 20
     steps:
@@ -566,11 +631,21 @@ jobs:
         with:
           name: orkeon-linux
           path: artifacts
+      # A runner of the wrong kind would let an amd64 smoke pass for an ARM one:
+      # the machine must be the architecture the entry claims before anything is
+      # installed on it.
+      - name: Check the runner architecture
+        run: |
+          actual="$(dpkg --print-architecture)"
+          if [[ "$actual" != "${{ matrix.arch }}" ]]; then
+            echo "::error::This smoke-deb entry is for ${{ matrix.arch }}, but the runner is $actual." >&2
+            exit 1
+          fi
       - name: Smoke the installed package
         run: |
-          deb="$(find artifacts -maxdepth 1 -name 'orkeon_*_amd64.deb' | head -n1)"
+          deb="$(find artifacts -maxdepth 1 -name 'orkeon_*_${{ matrix.arch }}.deb' | head -n1)"
           if [[ -z "$deb" ]]; then
-            echo "No orkeon_*_amd64.deb in the downloaded artefact." >&2
+            echo "No orkeon_*_${{ matrix.arch }}.deb in the downloaded artefact." >&2
             exit 1
           fi
           ./scripts/smoke-onboarding/run-smoke-deb.sh --deb "$deb"
@@ -584,6 +659,7 @@ jobs:
       # --work-dir / --keep pin the scratch tree to an uploadable path and hold
       # its logs/ on a pass too, not just on failure.
       - name: Smoke the linux tarball (Studio TUIs present)
+        if: matrix.arch == 'amd64'
         run: |
           tarball="$(find artifacts -maxdepth 1 -name 'orkeon-*-linux-x64.tar.gz' | head -n1)"
           if [[ -z "$tarball" ]]; then
@@ -598,7 +674,7 @@ jobs:
             --keep
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always()
+        if: always() && matrix.arch == 'amd64'
         with:
           name: orkeon-smoke-linux-tarball-logs
           path: ${{ runner.temp }}/orkeon-smoke-tarball/logs
@@ -676,6 +752,23 @@ jobs:
     # no other job of this file gains a signing identity.
     permissions: { contents: write, attestations: write, id-token: write }
     steps:
+      # A published tag is final: its .deb files are indexed by apt with their SHA-256,
+      # so attaching them again (a re-run of this job) would break `apt update` with
+      # "Hash Sum mismatch" on every machine. A draft left by a failed run holds nothing
+      # anyone has seen: it is deleted (the tag stays) and made again below.
+      - name: Refuse a tag whose Release is already published
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          state="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null || echo none)"
+          case "$state" in
+            none) echo "No Release for $TAG yet." ;;
+            true) echo "Deleting the draft Release left for $TAG by an earlier run."
+                  gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes ;;
+            *) echo "::error::The Release of $TAG is already published: its assets are frozen (the apt index lists their digests). Publish a new tag instead of re-running this job."
+               exit 1 ;;
+          esac
       # Reassemble the full artefact set: release-assets is the complement,
       # the four per-smoke artifacts carry the rest (each archive was
       # uploaded exactly once — see the installers job).
@@ -703,6 +796,12 @@ jobs:
         with:
           name: orkeon-msi
           path: artifacts/installers
+      # The full set, both manifests: the last point before publication where an
+      # asset outside every manifest, or a line without its asset, can be stopped.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { path: repo }
+      - name: Check every asset against SHA256SUMS and SHA256SUMS.msi
+        run: ./repo/scripts/check-release-assets.sh artifacts/installers SHA256SUMS SHA256SUMS.msi
       # Build provenance for every asset the step below publishes. It sits here
       # because the six downloads above are what materialise the assets, and the
       # release step is what hands them to the world — between the two is the only
@@ -749,12 +848,105 @@ jobs:
           # README.md / README.fr.md resolve the newest tag through the releases
           # API instead of the latest/download/ shortcut, so both cases work.
           prerelease: ${{ contains(github.ref_name, '-') }}
+          # Created as a draft: nobody can download an asset before the last one is
+          # attached; the step below publishes it.
+          draft: true
           # The curated notes are the CHANGELOG section matching this tag; the
           # auto-generated commit list below is the appendix, not the story.
           body: |
             **Curated release notes**: see the section matching this tag in
             [CHANGELOG.md](https://github.com/Orkeon/orkeon/blob/${{ github.ref_name }}/CHANGELOG.md).
           generate_release_notes: true
+
+      # The one moment the Release becomes public, every asset attached. With immutable
+      # Releases enabled on the repository, this also freezes its assets.
+      - name: Publish the draft Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          latest=false
+          [[ "$TAG" == *-* ]] || latest=true
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest="$latest"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,url
+
+  # Scenario C on the PUBLISHED assets: the .deb and the osx-arm64 tarball as a
+  # user downloads them, and every asset against its manifest line. Called from
+  # here because a Release created with GITHUB_TOKEN starts no other workflow, so
+  # a `release: published` trigger in release-verify.yml would never fire. The
+  # called workflow gets this job's permissions: contents: read, nothing more.
+  verify-published:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions: { contents: read }
+    uses: ./.github/workflows/release-verify.yml
+    with:
+      tag: ${{ github.ref_name }}
+      scope: assets
+
+  # Adds the tag's published .deb files to the signed apt index on the `apt` branch:
+  # rc for every tag, stable too for a final version (no "-": the same test that sets
+  # prerelease above). The packages are downloaded from the PUBLISHED Release and
+  # checked against it (name, size, SHA256SUMS); the index is built from the branch as
+  # read, proved by a real apt client against a local copy of GitHub's URLs, and only
+  # then pushed as one commit (scripts/apt/publish-index.sh). The signing subkey lives
+  # in the apt-signing environment only (deployable from v* tags), and no other job sees
+  # it. The concurrency group is shared with apt-maintenance.yml; the dev channel has its
+  # own, and a race between the two is resolved by publish-apt-channel.sh, which applies
+  # its channel again on the moved branch.
+  apt-publish:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: apt-signing
+    # contents: write - pushes the apt branch, through the checkout's credentials.
+    permissions: { contents: write }
+    concurrency: { group: apt-release, cancel-in-progress: false }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the index tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends apt-utils gpgv >/dev/null
+          # sqv (the verifier of Debian 13) checks the signature too when it installs.
+          sudo apt-get install -y -qq --no-install-recommends sqv >/dev/null 2>&1 || echo "sqv not available on this runner; gpgv only"
+      - name: The signing certificate must be the real one
+        run: bash scripts/apt/check-signing-key.sh --require-real
+      - name: Download and check the published packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          bash scripts/apt/fetch-release-debs.sh --tag "$TAG" --out "$RUNNER_TEMP/debs"
+          gpg --batch --dearmor < installers/apt/orkeon-archive-keyring.asc > "$RUNNER_TEMP/orkeon-archive-keyring.gpg"
+      - name: Sign, prove and push the apt index
+        env:
+          TAG: ${{ github.ref_name }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_PASSPHRASE: ${{ secrets.APT_SIGNING_PASSPHRASE }}
+          # The pre-push client, pinned by digest like every other base image.
+          CHECK_IMAGE: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+        run: |
+          channels=(--channel rc)
+          [[ "$TAG" == *-* ]] || channels+=(--channel stable)
+          bash scripts/apt/publish-index.sh --message "$TAG" \
+            --keyring "$RUNNER_TEMP/orkeon-archive-keyring.gpg" \
+            "${channels[@]}" --ensure stable --ensure rc \
+            --debs "$RUNNER_TEMP/debs/debs.list" \
+            --check-version "${TAG#v}" --check-image "$CHECK_IMAGE"
+
+  # The installation block of the guide, replayed word for word on the published apt
+  # repository: the apt jobs of release-verify.yml (the matrix lives there only). It
+  # retries while raw.githubusercontent.com still serves the previous index.
+  verify-apt:
+    needs: apt-publish
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions: { contents: read }
+    uses: ./.github/workflows/release-verify.yml
+    with:
+      tag: ${{ github.ref_name }}
+      scope: apt
 
   # Builds and pushes the example-runners container image to GHCR. Same v* trigger
   # as the installers; runs independently (own job, package-scoped permissions).

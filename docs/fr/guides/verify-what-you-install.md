@@ -21,7 +21,8 @@ chacune a été exécutée sur les artefacts `v1.0.0-rc.3` avant d'être écrite
 | **Attestation de provenance de build** (SLSA v1, Sigstore) | `publish.yml`, étape *Attest the packages and the SBOM* — sur chaque `*.nupkg` ; `release.yml`, étape *Attest the release assets* — sur chaque archive, `.deb`, MSI et le SBOM | Le SHA-256 du fichier est consigné dans une déclaration signée par l'instance Sigstore de GitHub, qui nomme le fichier de workflow, le tag, le commit et le run. Un fichier au digest différent n'a pas de déclaration. |
 | **`ContinuousIntegrationBuild=true`** au pack | `publish.yml`, étape `dotnet pack` | Les chemins dans les PDB et les assemblies sont normalisés : les octets packés ne dépendent pas de l'arborescence du runner. C'est un réglage de *build déterministe*, pas une garantie que vous puissiez reconstruire les octets identiques vous-même — il faudrait le même SDK, la même image de runner et le même graphe NuGet. |
 | Manifestes **`SHA256SUMS`** | Assets de release (`SHA256SUMS` pour les archives, le `.deb` et le SBOM ; `SHA256SUMS.msi` pour les deux MSI) | Intégrité de ce que vous avez téléchargé par rapport à ce que le workflow a envoyé. Bon marché, hors ligne, mais les manifestes ne sont que des assets et ne sont pas attestés eux-mêmes : c'est l'attestation de chaque fichier listé qui relie ce fichier au workflow. |
-| **Vérification après publication** | `release-verify.yml`, à chaque Release publiée | Une fois la Release créée, un runner neuf télécharge les assets *publiés*, contrôle les deux manifestes et rejoue le smoke d'onboarding sur le `.deb` et l'archive `osx-arm64` — un asset différent de ce que les smokes de release ont installé est ainsi détecté. |
+| **Vérification après publication** | `release-verify.yml`, appelé par `release.yml` juste après la publication de la Release (job `verify-published`), ou à la main pour n'importe quel tag | Un runner neuf télécharge les assets *publiés*, contrôle que les deux manifestes listent chaque asset publié, et rien d'autre, et que chaque empreinte est juste, puis rejoue le smoke d'onboarding sur les deux `.deb` (amd64, arm64) et l'archive `osx-arm64` : un asset différent de ce que les smokes de release ont installé est ainsi détecté. |
+| **Dépôt APT signé** | La branche `apt`, signée dans `release.yml` (job `apt-publish`) avec une clé OpenPGP dédiée ; son empreinte et le SHA-256 du trousseau sont dans [SECURITY.fr.md](../../../SECURITY.fr.md#clé-de-signature-du-dépôt-apt) | apt vérifie la signature de l'index du canal avec cette clé seule, puis chaque `.deb` téléchargé contre le SHA-256 que liste l'index. Vous vérifiez la clé une fois, en ajoutant la source. Voir [Installer avec apt](./install-with-apt.md). |
 | **Actions et images de base épinglées** | Chaque `uses:` est un SHA de commit ; chaque image `FROM` externe est épinglée par digest | Ce qui a tourné sur le runner est ce que le dépôt dit avoir tourné. |
 
 Deux choses ne portent **aucune** attestation : les builds dev de `main` sur GitHub Packages
@@ -65,6 +66,28 @@ Mesuré sur `orkeon-cli-1.0.0-rc.3-osx-arm64.tar.gz` : une déclaration, prédic
 `https://slsa.dev/provenance/v1`, builder
 `https://github.com/Orkeon/orkeon/.github/workflows/release.yml@refs/tags/v1.0.0-rc.3`,
 onze sujets (chaque archive, le `.deb` et les deux MSI de cette release).
+
+## Vérifier la clé de signature APT
+
+La clé du dépôt se vérifie une fois, en ajoutant la source : le bloc d'installation
+d'[Installer avec apt](./install-with-apt.md) compare le trousseau téléchargé au SHA-256 publié
+dans [SECURITY.fr.md](../../../SECURITY.fr.md#clé-de-signature-du-dépôt-apt) et s'arrête au
+moindre écart. Pour vérifier aussi l'empreinte (`gnupg` installé) :
+
+```bash
+sha256sum /usr/share/keyrings/orkeon-archive-keyring.gpg          # = le SHA-256 du trousseau dans SECURITY.fr.md
+gpg --show-keys /usr/share/keyrings/orkeon-archive-keyring.gpg    # = l'empreinte dans SECURITY.fr.md
+```
+
+La sortie doit montrer une clé primaire ed25519 portant l'empreinte publiée, l'identité
+`Orkeon Archive Signing Key <arion@orkeon.org>`, et une sous-clé de signature `[S]` non
+expirée. La source armurée de la même clé est
+[`installers/apt/orkeon-archive-keyring.asc`](https://github.com/Orkeon/orkeon/blob/main/installers/apt/orkeon-archive-keyring.asc) ;
+`gpg --dearmor` la transforme en les octets exacts du trousseau. Ensuite, apt vérifie seul
+chaque mise à jour ; les paquets qu'il installe sont les assets des Releases, et les commandes
+d'attestation ci-dessus s'y appliquent telles quelles. Une fois installé, le paquet Debian se vérifie fichier par
+fichier : `dpkg -V orkeon` n'affiche rien quand chaque fichier installé correspond à
+l'empreinte enregistrée par le paquet.
 
 ## Vérifier un paquet NuGet
 

@@ -154,7 +154,7 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 | Vous voulez… | Faites | Détails |
 |---|---|---|
 | **Exécuter des crews sans rien installer** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — shell interactif, 104 exemples embarqués (`orkeon-example run 1`), prêt pour les modèles locaux | [Guide conteneur](docs/fr/getting-started/three-ways-to-run-orkeon.md#3-conteneur) |
-| **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu : les démarrages rapides ci-dessous. macOS : l'archive CLI ci-dessous (`osx-arm64`, `osx-x64`). Pour `linux-arm64` — et pour qui veut aussi le REPL ou le host de service — c'est l'archive multi-applications `orkeon-<version>-<rid>.tar.gz` des [releases](https://github.com/Orkeon/orkeon/releases), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
+| **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu (amd64, arm64) : les démarrages rapides ci-dessous. macOS : l'archive CLI ci-dessous (`osx-arm64`, `osx-x64`). Pour qui veut aussi le REPL ou le host de service, c'est l'archive multi-applications `orkeon-<version>-<rid>.tar.gz` des [releases](https://github.com/Orkeon/orkeon/releases), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
 | **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon --prerelease` — le framework complet en un seul paquet, depuis [nuget.org](https://www.nuget.org/packages/Orkeon) (le flux public : aucune source à ajouter, aucun token). Ajoutez au besoin [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (les familles d'outils intégrés) et les opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — ce dernier épingle un amont en préversion, `SmartComponents.LocalEmbeddings`, et continuera après la 1.0 : voir les [limitations](docs/fr/reference/limitations.md) —, `Orkeon.Interop.AgentFramework`, `Orkeon.Hosting.Aspire`) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md). Le tool CLI `orkeon` et l'image conteneur ci-dessus sont inchangés | [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
 | **Vérifier ce que vous téléchargez** | Chaque paquet et installeur porte une attestation de provenance de build signée par GitHub et une ligne `SHA256SUMS` : `gh attestation verify <fichier> --repo Orkeon/orkeon` — aucune confiance en cette page n'est requise | [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md) |
 | **Contribuer au framework** | `git clone` (**sans** `--recursive`) + `dotnet build Orkeon.sln` | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
@@ -178,15 +178,22 @@ orkeon init          # dans un NOUVEAU terminal : choisissez le fournisseur LLM 
 orkeon run crew.yaml
 ```
 
-**Debian / Ubuntu** — téléchargez `orkeon_<version>_amd64.deb` ; self-contained lui aussi, aucun paquet `dotnet-runtime` tiré :
+**Debian / Ubuntu** (amd64, arm64) — ajoutez une fois la source apt signée d'Orkeon : le bloc à copier, avec la vérification de la clé et les canaux `stable` / `rc` / `dev`, est dans [Installer avec apt](docs/fr/guides/install-with-apt.md). Orkeon est ensuite un paquet comme un autre — self-contained lui aussi, aucun paquet `dotnet-runtime` tiré :
+
+```bash
+sudo apt install orkeon orkeon-archive-keyring   # une fois
+sudo apt update && sudo apt upgrade              # chaque version suivante
+orkeon init          # écrit ~/.config/Orkeon/appsettings.json
+orkeon run crew.yaml
+```
+
+Une machine qui n'atteint pas le contenu brut de GitHub installe à la place le `.deb` d'une release (`_arm64.deb` sur une machine ARM : Raspberry Pi 5, Graviton, Ampere) ; elle ne reçoit aucune mise à jour. `<version>` est le tag de la release sans son `v` — par exemple `1.0.0-rc.5`, tiret compris. (Les releases jusqu'à 1.0.0-rc.4 nomment le fichier `orkeon_1.0.0.rc.N_amd64.deb` alors que leur ligne `SHA256SUMS` porte `orkeon_1.0.0~rc.N_amd64.deb` : vérifiez ces deux-là à la main.) Puis :
 
 ```bash
 # SHA256SUMS est un asset de release lui aussi — téléchargez-le à côté du .deb et vérifiez
-grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # attendu : OK
+grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # attendu : OK (_arm64.deb sur ARM)
 
 sudo apt install ./orkeon_<version>_amd64.deb
-orkeon init          # écrit ~/.config/Orkeon/appsettings.json
-orkeon run crew.yaml
 ```
 
 **macOS** — Homebrew deviendra la voie recommandée dès que le dépôt `Orkeon/homebrew-tap` sera publié, à la première release taguée :
@@ -202,8 +209,9 @@ En attendant (et sur n'importe quelle machine), l'archive self-contained — `os
 ```bash
 # Le nom de l'asset porte la version, et le raccourci `latest/download/` de GitHub
 # ignore les préversions — résolvez donc d'abord le tag le plus récent (ou copiez le
-# lien de l'asset depuis la page des releases, ce qui revient au même à la main).
-TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name"' | cut -d'"' -f4)
+# lien de l'asset depuis la page des releases, ce qui revient au même à la main). Seuls
+# les tags `v` sont des versions : `apt-dev` porte les builds de dev du dépôt apt.
+TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name": "v' | cut -d'"' -f4)
 VER=${TAG#v}; BASE=https://github.com/Orkeon/orkeon/releases/download/$TAG
 
 curl -fsSL -O "$BASE/orkeon-cli-$VER-osx-arm64.tar.gz"     # osx-x64 sur Intel

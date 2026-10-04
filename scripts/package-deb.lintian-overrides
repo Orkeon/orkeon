@@ -1,0 +1,43 @@
+# Lintian tags the orkeon package carries on purpose, read by scripts/lintian-deb.sh.
+#
+# One override per line: `<tag> [<context>]`. The context is matched against what
+# lintian prints after the tag (its context and the [path] it points at), with `*`
+# matching anything; no context matches the tag wherever it fires. Every override
+# says why the tag is expected of a self-contained package. A tag missing here is
+# reported as unexpected, so a new one is a decision to take, not noise.
+#
+# The overrides live in the repository, never in the package: they describe how
+# the package is built, not something its users need.
+
+# --- The bundled .NET runtime and third-party natives ---------------------------
+# package-deb.sh marks every bundled .so 0755, the mode the .NET publish gives
+# them; the runtime loads them with dlopen, which the executable bit does not
+# change.
+shared-library-is-executable * [usr/lib/orkeon*/*.so]
+# The natives come prebuilt from NuGet (the .NET runtime pack, SQLite, ONNX
+# Runtime, the tree-sitter grammars) and ship as their vendors built them; the
+# package does not rebuild or strip third-party binaries.
+unstripped-binary-or-object [usr/lib/orkeon*/*]
+# The .NET runtime's compression native statically includes zlib (zlib-ng): part
+# of the runtime pack, not a copy the package adds.
+embedded-library zlib [usr/lib/orkeon*/libSystem.IO.Compression.Native.so]
+# A tree-sitter grammar needs no library at all (no NEEDED entry): the
+# tree-sitter runtime loads it and resolves nothing from it but its language table.
+shared-library-lacks-prerequisites [usr/lib/orkeon*/libtree-sitter-*.so]
+# esbuild comes from the npm registry as a statically linked Go binary, the build
+# its upstream publishes for every platform.
+statically-linked-binary [usr/lib/orkeon/esbuild-bin/esbuild]
+
+# --- The package layout -----------------------------------------------------------
+# The three self-contained payloads share most of their files (the .NET runtime,
+# the common Orkeon assemblies); hardlink-dedup.sh links the identical ones so the
+# package stores and installs each once.
+package-contains-hardlink
+# The commands document themselves (`orkeon --help`, `orkeon <command> --help`);
+# no manual page is shipped.
+no-manual-page [usr/bin/orkeon*]
+# The package is built from the upstream release, not from a Debian source
+# package, so its version carries no Debian revision and lintian takes it for a
+# native package, whose changelog it expects as changelog.gz. The file keeps the
+# name of a packaged upstream release, changelog.Debian.gz.
+wrong-name-for-changelog-of-native-package [usr/share/doc/orkeon/changelog.Debian.gz]

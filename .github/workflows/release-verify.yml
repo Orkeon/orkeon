@@ -7,42 +7,123 @@
 # onboarding chain — the assets could differ from the job artifacts only
 # through an upload/tamper/replace accident, which is exactly what this
 # catches. Reuses the same smoke scripts, pointed at the Release assets.
+#
+# Triggers: release.yml calls this workflow (workflow_call, job verify-published)
+# right after its release job, in the same run; workflow_dispatch replays it on
+# any tag. There is no `release: published` trigger: release.yml creates the
+# Release with GITHUB_TOKEN, and an event raised by that token starts no other
+# workflow, so such a trigger never fired. When called, this workflow runs with
+# the permissions of the calling job, which grants contents: read and no more.
 name: Release verify (published assets)
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to verify (e.g. v1.0.0-rc.1)"
+        required: true
+        type: string
+      scope:
+        description: "assets (the published files), apt (the apt repository) or all"
+        required: false
+        type: string
+        default: all
+      apt-channels:
+        description: "apt channels to verify, as a JSON array (default: rc, plus stable for a tag without -)"
+        required: false
+        type: string
+        default: ""
+      apt-version:
+        description: "the version the apt channels must install (default: the tag without its v)"
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       tag:
         description: "Release tag to verify (e.g. v1.0.0-rc.1)"
         required: true
         type: string
+      scope:
+        description: "assets (the published files), apt (the apt repository) or all"
+        required: false
+        type: choice
+        options: [ all, assets, apt ]
+        default: all
+      apt-channels:
+        description: "apt channels to verify, as a JSON array (default: rc, plus stable for a tag without -)"
+        required: false
+        type: string
+        default: ""
+      apt-version:
+        description: "the version the apt channels must install (default: the tag without its v)"
+        required: false
+        type: string
+        default: ""
 permissions:
   contents: read
+# scope: release.yml calls this workflow twice, once per stage, and each call runs
+# distinct jobs: `assets` right after the Release is published (verify-published),
+# `apt` once the apt index is pushed (verify-apt). The asset jobs ignore the dev
+# channel's fixed-tag prerelease apt-dev: it is no release.
 jobs:
-  verify-deb:
+  # Only a v* tag is a release. The apt-dev prerelease holds the dev builds of the apt
+  # repository (apt-dev.yml): several versions at once, no SHA256SUMS, nothing these
+  # checks could verify. Refused here rather than reported as a broken release.
+  release-tag:
     runs-on: ubuntu-latest
+    steps:
+      - name: Check the tag names a release
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          case "$TAG" in
+            v*) echo "Verifying $TAG." ;;
+            *) echo "::error::'$TAG' is not a release tag (v*); apt-dev and other non-v tags are not verified here."; exit 1 ;;
+          esac
+
+  # One entry per Debian architecture, as in release.yml's smoke-deb: the arm64
+  # package is smoked on a real ARM runner, checked to be one before installing.
+  verify-deb:
+    needs: release-tag
+    if: inputs.scope != 'apt'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    name: verify-deb (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check the runner architecture
+        run: |
+          actual="$(dpkg --print-architecture)"
+          if [[ "$actual" != "${{ matrix.arch }}" ]]; then
+            echo "::error::This verify-deb entry is for ${{ matrix.arch }}, but the runner is $actual." >&2
+            exit 1
+          fi
       - name: Download the published .deb
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
           mkdir -p published
-          gh release download "$TAG" --pattern 'orkeon_*_amd64.deb' --dir published
+          gh release download "$TAG" --pattern 'orkeon_*_${{ matrix.arch }}.deb' --dir published
           ls -la published
       - name: Smoke the published package
         run: |
-          deb="$(find published -maxdepth 1 -name 'orkeon_*_amd64.deb' | head -n1)"
+          deb="$(find published -maxdepth 1 -name 'orkeon_*_${{ matrix.arch }}.deb' | head -n1)"
           if [[ -z "$deb" ]]; then
-            echo "No orkeon_*_amd64.deb among the published assets." >&2
+            echo "No orkeon_*_${{ matrix.arch }}.deb among the published assets." >&2
             exit 1
           fi
           ./scripts/smoke-onboarding/run-smoke-deb.sh --deb "$deb"
 
   verify-macos:
+    needs: release-tag
+    if: inputs.scope != 'apt'
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
@@ -64,19 +145,102 @@ jobs:
           fi
           ./scripts/smoke-onboarding/run-smoke-tarball.sh --tarball "$tarball" --studio absent
 
+  # Every published asset has exactly one checksum line, and every line names a
+  # published asset: the asset list comes from the Release itself, not from the
+  # files the download happened to bring back. Without --ignore-missing, a line
+  # whose file is absent is an error rather than a line skipped in silence.
   verify-checksums:
+    needs: release-tag
+    if: inputs.scope != 'apt'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Download every published asset and verify SHA256SUMS
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download every published asset and verify both manifests against it
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
           REPO: ${{ github.repository }}
         run: |
-          mkdir -p published && cd published
-          gh release download "$TAG" --repo "$REPO"
+          mkdir -p published
+          gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/assets.txt"
+          gh release download "$TAG" --repo "$REPO" --dir published
           # Two checksum files by design (see publication-matrix): SHA256SUMS
           # covers everything but the MSIs; SHA256SUMS.msi covers the two MSIs (CLI and service host).
-          sha256sum --check --ignore-missing SHA256SUMS
-          sha256sum --check --ignore-missing SHA256SUMS.msi
+          ./scripts/check-release-assets.sh --assets "$RUNNER_TEMP/assets.txt" published SHA256SUMS SHA256SUMS.msi
+
+  # The apt repository as a user meets it: the installation block of
+  # docs/guides/install-with-apt.md, replayed word for word by
+  # scripts/apt/verify-apt-repo.sh in fresh containers (install, version, dpkg -V,
+  # upgrade from the previous version, removal in the documented order, no W: line).
+  # This matrix exists only here: release.yml calls it after apt-publish (verify-apt),
+  # and workflow_dispatch replays it for any tag.
+  apt-plan:
+    if: inputs.scope != 'assets'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      channels: ${{ steps.plan.outputs.channels }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - id: plan
+        env:
+          TAG: ${{ inputs.tag }}
+          CHANNELS: ${{ inputs.apt-channels }}
+          VERSION: ${{ inputs.apt-version }}
+        run: |
+          # The channels apt-publish chose for this tag: rc always, stable too for a
+          # final version. apt-dev is the dev channel's prerelease, no tagged version:
+          # it is verified only when the caller names its channel and version.
+          if [[ -z "$CHANNELS" ]]; then
+            if [[ "$TAG" == apt-dev ]]; then
+              echo "::error::apt-dev is no release: give apt-channels and apt-version"
+              exit 1
+            fi
+            CHANNELS='["rc"]'
+            [[ "$TAG" == *-* ]] || CHANNELS='["stable", "rc"]'
+          fi
+          VERSION="${VERSION:-${TAG#v}}"
+          echo "channels=$CHANNELS" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "apt channels $CHANNELS, version $VERSION"
+
+  verify-apt:
+    needs: apt-plan
+    strategy:
+      fail-fast: false
+      # Ten cells per channel call raw.githubusercontent.com anonymously from shared
+      # runner addresses: spread them rather than ignore its 429.
+      max-parallel: 4
+      matrix:
+        channel: ${{ fromJSON(needs.apt-plan.outputs.channels) }}
+        image:
+          - { name: "debian:12", ref: "debian:12@sha256:f37a335e82bca302e955fa39f9dfe28f1be618f016f8a2b56318e5a5111afc26" }
+          - { name: "debian:13", ref: "debian:13@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c" }
+          - { name: "ubuntu:22.04", ref: "ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401" }
+          - { name: "ubuntu:24.04", ref: "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55" }
+          - { name: "ubuntu:26.04", ref: "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7" }
+        platform:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    name: verify-apt (${{ matrix.channel }}, ${{ matrix.image.name }}, ${{ matrix.platform.arch }})
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The block is the one the tag documents.
+          ref: ${{ inputs.tag != 'apt-dev' && inputs.tag || '' }}
+      - name: Check the runner architecture
+        run: |
+          actual="$(dpkg --print-architecture)"
+          if [[ "$actual" != "${{ matrix.platform.arch }}" ]]; then
+            echo "::error::This verify-apt entry is for ${{ matrix.platform.arch }}, but the runner is $actual." >&2
+            exit 1
+          fi
+      - name: Replay the installation block
+        env:
+          CHANNEL: ${{ matrix.channel }}
+          VERSION: ${{ needs.apt-plan.outputs.version }}
+          IMAGE: ${{ matrix.image.ref }}
+        run: bash scripts/apt/verify-apt-repo.sh "$CHANNEL" "$VERSION" --image "$IMAGE"

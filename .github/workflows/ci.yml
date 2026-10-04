@@ -70,6 +70,41 @@ jobs:
       # `gh`, with no network and no token, before any of it can run for real.
       - name: Test the dev-channel prune against a fake gh
         run: bash scripts/test-prune-dev-packages.sh
+      # The apt repository's signing certificate (installers/apt/): its guard is proved on
+      # throwaway keys made at test time (a subkey that ends within 180 days, a fingerprint
+      # SECURITY.md does not cite), then run on the committed certificate. No secret involved.
+      - name: Test and run the apt signing-key guard
+        run: |
+          bash scripts/apt/test-check-signing-key.sh
+          bash scripts/apt/check-signing-key.sh
+      # The apt index generator (scripts/apt/build-apt-index.sh): exact Release fields, the
+      # merge and its refusals, the yank and the by-hash pruning, proved with a throwaway
+      # key and dummy packages, no network. The real apt clients run in apt-index.yml.
+      - name: Test the apt index generator offline
+        run: |
+          command -v apt-ftparchive >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils; }
+          bash scripts/apt/test-build-apt-index.sh --offline
+      # The apt installation block (docs/guides/install-with-apt.md and its French mirror):
+      # one block, identical in both languages, writing exactly installers/apt/orkeon.sources
+      # and checking the keyring SHA-256 of installers/apt. Proved on throw-away copies first.
+      - name: Test and run the apt installation block guard
+        run: |
+          bash scripts/apt/test-check-apt-snippet.sh
+          bash scripts/apt/check-apt-snippet.sh
+      # The one script that pushes the apt branch (scripts/apt/publish-apt-channel.sh), proved
+      # against a local bare repository: orphan bootstrap, a channel replaced exactly, the
+      # --base refusal, the retry on a branch moved meanwhile. Git only, no network.
+      - name: Test the apt branch publisher
+        run: bash scripts/apt/test-publish-apt-channel.sh
+      # The apt dev channel (scripts/apt/publish-dev.sh, run by apt-dev.yml): its version is
+      # publish.yml's, it keeps the three newest builds, and an asset leaves the apt-dev
+      # prerelease only after the pushed index has dropped it - proved against a fake gh.
+      - name: Test the apt dev channel against a fake gh
+        run: bash scripts/apt/test-publish-dev.sh
+      # Release asset names (scripts/check-release-assets.sh): no character GitHub rewrites
+      # on upload, and every asset listed in a checksum manifest.
+      - name: Test the release asset-name guard
+        run: bash scripts/test-check-release-assets.sh
       # Scripting-DSL contract gate: the shipped .ork.ts examples are typechecked against
       # the shipped Typings/*.d.ts. The examples are also executed by the test suite, so
       # agreement here means the declarations and the Jint runtime describe one API. Seven

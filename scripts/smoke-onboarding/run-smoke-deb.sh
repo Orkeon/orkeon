@@ -2,7 +2,8 @@
 #
 # run-smoke-deb.sh — released-artefact smoke for the Debian package (LIN-02).
 #
-# Installs orkeon_<ver>_amd64.deb through apt on a bare runner, walks the whole
+# Installs orkeon_<ver>_<arch>.deb (amd64 or arm64, on a machine of that
+# architecture) through apt on a bare runner, walks the whole
 # onboarding chain on the installed binary, then removes the package and checks
 # the removal is clean. Sibling of run-smoke.ps1 (WIN-06) and run-smoke-tarball.sh
 # (MAC-02): the behavioural steps, the payload whitelist and the doctor verdict
@@ -11,6 +12,7 @@
 #
 # What it exercises, end to end, on the *published* payload:
 #   1. apt resolves the package's Depends on a stock image (no dotnet repo);
+#  1b. `dpkg -V orkeon` is silent: the package's md5sums match what it installed;
 #   2. the payload survived packaging (esbuild, embedding model, the 7 whitelisted
 #      tree-sitter grammars — WIN-04 pruning);
 #  2b. the two Orkeon Studio TUIs shipped too — /usr/bin/orkeon-studio-config and
@@ -27,13 +29,14 @@
 #
 # Usage:
 #   scripts/smoke-onboarding/run-smoke-deb.sh --deb artifacts/installers/orkeon_*_amd64.deb
+#   scripts/smoke-onboarding/run-smoke-deb.sh --deb artifacts/installers/orkeon_*_arm64.deb   # on arm64
 #   scripts/smoke-onboarding/run-smoke-deb.sh --orkeon /path/to/orkeon   # degraded, see below
 #
 #   --deb PATH      the package to install (apt install / apt remove phases run).
 #   --orkeon PATH   skip apt entirely and smoke an already-available binary. The
 #                   degraded mode used for local validation on a machine where
 #                   installing a package is not an option; steps 1, 2 and 7 are
-#                   reported SKIP.
+#                   reported SKIP (and 1b).
 #   --work-dir DIR  scratch directory (default: a mktemp -d, removed on success).
 #   --keep          keep the scratch directory even on success.
 #
@@ -61,7 +64,7 @@ while [[ $# -gt 0 ]]; do
     --orkeon)   ORKEON_BIN="$2"; shift 2 ;;
     --work-dir) WORK_DIR="$2"; shift 2 ;;
     --keep)     KEEP=true; shift ;;
-    -h|--help)  sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)  sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -131,12 +134,25 @@ if [[ -n "$DEB_PATH" ]]; then
   else
     smoke_fail "launcher" "$INSTALLED_BIN missing after install"
   fi
+
+  # The package ships DEBIAN/md5sums, so an installed file can be checked after
+  # the fact. `dpkg -V` prints one line per file that differs and nothing when all
+  # agree: a silent run on a fresh install proves the list is complete and right.
+  if [[ ! -s /var/lib/dpkg/info/orkeon.md5sums ]]; then
+    smoke_fail "dpkg-verify" "the package carries no md5sums: dpkg -V cannot check it"
+  elif verify_out="$(dpkg -V orkeon 2>&1)" && [[ -z "$verify_out" ]]; then
+    smoke_pass "dpkg-verify" "dpkg -V orkeon reports nothing: every installed file matches its md5sums line"
+  else
+    printf '%s\n' "$verify_out" | head -n 20 | sed 's/^/    | /'
+    smoke_fail "dpkg-verify" "dpkg -V orkeon reports differences"
+  fi
   ORKEON_BIN="$INSTALLED_BIN"
   PAYLOAD_ROOT="$INSTALLED_PREFIX"
   STUDIO_INSTALLED=true
 else
   smoke_skip "apt-install" "--orkeon given: smoking an already-available binary"
   smoke_skip "launcher" "--orkeon given"
+  smoke_skip "dpkg-verify" "--orkeon given"
   STUDIO_INSTALLED=false
   if [[ ! -x "$ORKEON_BIN" ]]; then
     smoke_fail "launcher" "not executable: $ORKEON_BIN"
