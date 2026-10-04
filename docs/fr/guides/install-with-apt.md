@@ -46,6 +46,11 @@ sudo apt-get update && sudo apt-get install -y orkeon orkeon-archive-keyring
 ```
 <!-- apt-setup:end -->
 
+> **Pour installer le build dev de `main`**, voyez [Installer un build dev](#installer-un-build-dev).
+> Le bloc installe depuis `stable`, qui ne porte que les versions finales : avant la première,
+> `apt-get update` s'y arrête sur *« does not have a Release file »* (canal jamais publié) ou
+> l'installation sur *« Unable to locate package orkeon »* (canal encore vide).
+
 Ensuite, comme pour tous les autres canaux :
 
 ```bash
@@ -153,6 +158,23 @@ Suites: raw/apt/dev/
 - **apt seulement.** Les builds dev ne sont jamais publiés sur NuGet.org ; l'outil dotnet
   `orkeon` suit `main` par son propre canal sur GitHub Packages, décrit dans
   [Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md#suivre-main--le-canal-dev).
+
+### Installer un build dev
+
+**Sur une machine sans la source**, lancez le [bloc de mise en place](#mise-en-place) avec une
+seule modification : avant de le coller, remplacez `Suites: raw/apt/stable/` par
+`Suites: raw/apt/dev/`. Tout le reste — la clé, la vérification de son SHA-256, le fichier de
+source — reste identique.
+
+**Sur une machine qui a déjà la source** (sur `stable` ou `rc`), passez-la sur `dev` :
+
+```bash
+sudo sed -i 's|^Suites: .*|Suites: raw/apt/dev/|' /etc/apt/sources.list.d/orkeon.sources
+sudo apt-get update && sudo apt-get install -y orkeon orkeon-archive-keyring
+orkeon --version   # <version>.dev.<n>
+```
+
+**Ensuite, pour prendre le build dev le plus récent :** `sudo apt update && sudo apt upgrade`.
 
 Le fichier de source, la clé et les commandes sont ceux des autres canaux — le canal `dev` porte
 lui aussi `orkeon-archive-keyring` ; seule la ligne `Suites:` change.

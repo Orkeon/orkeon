@@ -45,6 +45,11 @@ sudo apt-get update && sudo apt-get install -y orkeon orkeon-archive-keyring
 ```
 <!-- apt-setup:end -->
 
+> **To install the dev build of `main`**, see [Install a dev build](#install-a-dev-build). The
+> block installs from `stable`, which carries final versions only: before the first one,
+> `apt-get update` stops on it with *"does not have a Release file"* (a channel never
+> published) or the install with *"Unable to locate package orkeon"* (a channel still empty).
+
 Then, as with every other channel:
 
 ```bash
@@ -152,6 +157,22 @@ Suites: raw/apt/dev/
 - **apt only.** Dev builds are never published to NuGet.org; the `orkeon` dotnet tool follows
   `main` through its own channel on GitHub Packages, described in
   [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md#follow-main-the-dev-channel).
+
+### Install a dev build
+
+**On a machine without the source**, run the [setup block](#set-it-up) with one change:
+before you paste it, replace `Suites: raw/apt/stable/` by `Suites: raw/apt/dev/`. Everything
+else — the key, its SHA-256 check, the source file — stays as it is.
+
+**On a machine that already has the source** (on `stable` or `rc`), switch it to `dev`:
+
+```bash
+sudo sed -i 's|^Suites: .*|Suites: raw/apt/dev/|' /etc/apt/sources.list.d/orkeon.sources
+sudo apt-get update && sudo apt-get install -y orkeon orkeon-archive-keyring
+orkeon --version   # <version>.dev.<n>
+```
+
+**Then, to take the newest dev build:** `sudo apt update && sudo apt upgrade`.
 
 The source file, the key and the commands are those of the other channels — the `dev` channel
 carries `orkeon-archive-keyring` too; only the `Suites:` line differs.
