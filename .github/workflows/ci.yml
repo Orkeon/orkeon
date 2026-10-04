@@ -70,6 +70,13 @@ jobs:
       # `gh`, with no network and no token, before any of it can run for real.
       - name: Test the dev-channel prune against a fake gh
         run: bash scripts/test-prune-dev-packages.sh
+      # The apt repository's signing certificate (installers/apt/): its guard is proved on
+      # throwaway keys made at test time (a subkey that ends within 180 days, a fingerprint
+      # SECURITY.md does not cite), then run on the committed certificate. No secret involved.
+      - name: Test and run the apt signing-key guard
+        run: |
+          bash scripts/apt/test-check-signing-key.sh
+          bash scripts/apt/check-signing-key.sh
       # Scripting-DSL contract gate: the shipped .ork.ts examples are typechecked against
       # the shipped Typings/*.d.ts. The examples are also executed by the test suite, so
       # agreement here means the declarations and the Jint runtime describe one API. Seven
