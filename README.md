@@ -209,8 +209,9 @@ Until then (and on any machine), the self-contained tarball — `osx-arm64` for 
 ```bash
 # The asset name carries the version, and GitHub's `latest/download/` shortcut skips
 # prereleases — so resolve the newest tag first (or copy the asset link off the
-# releases page, which is the same thing done by hand).
-TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name"' | cut -d'"' -f4)
+# releases page, which is the same thing done by hand). Only `v` tags are releases:
+# `apt-dev` holds the dev builds of the apt repository.
+TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name": "v' | cut -d'"' -f4)
 VER=${TAG#v}; BASE=https://github.com/Orkeon/orkeon/releases/download/$TAG
 
 curl -fsSL -O "$BASE/orkeon-cli-$VER-osx-arm64.tar.gz"     # osx-x64 on Intel

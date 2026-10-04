@@ -23,8 +23,9 @@
 # objects.test (a long signed-looking URL), three host names on one internal network.
 # A debian:13 client (apt 3, sqv) and an ubuntu:22.04 client (apt 2.4, gpgv) use the
 # deb822 source the documentation gives, only the URI changed, and go through: an empty
-# channel, a pinned install, upgrades rc.4 -> rc.5 -> 1.0.0 (a dev build sorting below
-# the next rc), the keyring package taking over a hand-placed keyring, a yank, the
+# channel, a pinned install, upgrades rc.4 -> rc.5 -> 1.0.0, the dev channel as
+# scripts/apt/publish-dev.sh publishes it (a dev build upgraded to a newer one while the
+# installed one leaves the three kept, then to the next rc, which sorts above them all), the keyring package taking over a hand-placed keyring, a yank, the
 # stable channel, and the armored-keyring trap (NO_PUBKEY under apt 2.4). Every
 # "apt-get update" must print no W:, E: or Err: line, and the fake GitHub must have
 # served every request (no 404, no %7e, Packages fetched by-hash).
@@ -105,7 +106,8 @@ make_fixtures() { # sets $fx; builds keys and every .deb the scenarios use
   make_key "$fx" archive
   make_key "$fx" other
   local v a
-  for v in 1.0.0~rc.3 1.0.0~rc.4 1.0.0~rc.5 1.0.0 1.0.0~rc.4.dev.9 1.0.0~rc.4.dev.12 1.0.0~rc.5.dev.1; do
+  for v in 1.0.0~rc.3 1.0.0~rc.4 1.0.0~rc.5 1.0.0 1.0.0~rc.4.dev.9 1.0.0~rc.4.dev.12 1.0.0~rc.5.dev.1 \
+           1.0.0~rc.4.dev.13 1.0.0~rc.4.dev.14 1.0.0~rc.4.dev.15; do
     for a in amd64 arm64; do
       make_deb "$fx/debs/orkeon_${v//\~/-}_$a.deb" orkeon "$v" "$a"
     done
@@ -505,6 +507,30 @@ bench_server() { # <step>
       pub rc "${rc[@]}"
       pub dev "${dev[@]}"
       ;;
+    devnext)
+      # Three more dev builds, each one as apt-dev.yml publishes it: publish-dev.sh index
+      # rebuilds the published dev/ (keeping the three newest), the assets are attached,
+      # the index is pushed, and only then the assets it no longer lists are deleted.
+      local v a files keep
+      for v in 13 14 15; do
+        sleep 1   # the Date of each index is the clock, and must grow
+        files=()
+        for a in amd64 arm64; do
+          publish apt-dev "orkeon_1.0.0-rc.4.dev.${v}_$a.deb" "$fx/debs/orkeon_1.0.0-rc.4.dev.${v}_$a.deb"
+          files+=("$fx/debs/orkeon_1.0.0-rc.4.dev.${v}_$a.deb")
+        done
+        rm -rf /srv/out
+        APT_SIGNING_KEY="$(cat "$fx/archive-secret.asc")" APT_SIGNING_PASSPHRASE="$PASSPHRASE" \
+          bash /bench/publish-dev.sh index --current /srv/branch/dev --out /srv/out \
+            --keyring "$fx/archive.gpg" "${files[@]}" "$fx/debs/orkeon-archive-keyring_${KEYRING_VERSION}_all.deb"
+        rm -rf /srv/branch/dev
+        cp -a /srv/out /srv/branch/dev
+        keep=" $(sed -n 's|^Filename: releases/download/apt-dev/||p' /srv/branch/dev/Packages | tr '\n' ' ') "
+        for a in /srv/assets/apt-dev/orkeon_*.deb; do
+          [[ "$keep" == *" $(basename "$a") "* ]] || { rm -f "$a"; echo "deleted asset $(basename "$a")"; }
+        done
+      done
+      ;;
     rc5)
       mapfile -t rc < <(orkeon 1.0.0~rc.5 v1.0.0-rc.5)
       pub rc "${rc[@]}"
@@ -576,11 +602,20 @@ EOF
       apt_do install --allow-downgrades orkeon=1.0.0~rc.4.dev.12
       check "the dev channel installs 1.0.0~rc.4.dev.12" installed orkeon 1.0.0~rc.4.dev.12
       ;;
+    devnext)
+      sources dev
+      update_clean "dev after three more builds"
+      check "the dev channel keeps the three newest builds" \
+        test "$(madison)" = "1.0.0~rc.4.dev.13 1.0.0~rc.4.dev.14 1.0.0~rc.4.dev.15 "
+      apt_do upgrade
+      check "upgrade moves 1.0.0~rc.4.dev.12 (no longer offered) to 1.0.0~rc.4.dev.15" installed orkeon 1.0.0~rc.4.dev.15
+      check "... whose binary runs" bash -c '[ "$(orkeon)" = "orkeon 1.0.0~rc.4.dev.15" ]'
+      ;;
     rc5)
       sources dev rc
       update_clean "dev + rc"
       apt_do upgrade
-      check "upgrade moves 1.0.0~rc.4.dev.12 to 1.0.0~rc.5 (the dev build sorts below the next rc)" installed orkeon 1.0.0~rc.5
+      check "upgrade moves 1.0.0~rc.4.dev.15 to 1.0.0~rc.5 (a dev build sorts below the next rc)" installed orkeon 1.0.0~rc.5
       ;;
     final)
       sources rc
@@ -658,7 +693,7 @@ for _ in range(50):
     docker cp "$srv:/srv/kit" - | docker cp - "$name:/bench"
   done
 
-  for step in start rc5 final yank; do
+  for step in start devnext rc5 final yank; do
     if [ "$step" != start ]; then
       echo "# server publishes: $step"
       dexec "$srv" bash /bench/test-build-apt-index.sh --bench-server "$step" | sed 's/^/  /'
@@ -679,6 +714,7 @@ for _ in range(50):
   check "never by-hash/SHA512" bash -c '! grep -q "SHA512" <<<"$0"' "$out"
   check "packages came from releases/download/<tag>/<asset>" says "302 github.test /Orkeon/orkeon/releases/download/v1.0.0-rc.3/orkeon_1.0.0-rc.3_amd64.deb"
   check "... through the objects.test redirect" says "200 objects.test /github-production-release-asset-2e65be/"
+  check "the upgraded dev build came from the apt-dev prerelease" says "302 github.test /Orkeon/orkeon/releases/download/apt-dev/orkeon_1.0.0-rc.4.dev.15_amd64.deb"
   check "the dev build came from the apt-dev prerelease" says "302 github.test /Orkeon/orkeon/releases/download/apt-dev/orkeon_1.0.0-rc.4.dev.12_amd64.deb"
   finish "test-build-apt-index (containers)"
 }

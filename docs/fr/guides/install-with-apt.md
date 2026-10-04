@@ -136,7 +136,11 @@ la CI, entre deux releases :
 Suites: raw/apt/dev/
 ```
 
-- **Les versions** ont la forme `1.0.0~rc.4.dev.<n>`, `n` croissant à chaque build : au-dessus de
+- **Un build arrive quelques minutes après le passage de la CI** sur un push vers `main`. Ses
+  paquets sont attachés à la prerelease `apt-dev` du dépôt — un tag fixe qui ne bouge jamais, et
+  pas une release.
+- **Les versions** ont la forme `1.0.0~rc.4.dev.<n>`, `n` étant le numéro de l'exécution de CI qui
+  a validé le commit, donc croissant à chaque build : au-dessus de
   la release dont elles partent, en dessous de la suivante — une machine dev passe donc à la
   release candidate suivante par un simple `apt upgrade` quand elle est publiée. Après une
   version finale, les builds dev passent au patch suivant (`1.0.1~dev.<n>` après `1.0.0`), comme
@@ -150,8 +154,8 @@ Suites: raw/apt/dev/
   `orkeon` suit `main` par son propre canal sur GitHub Packages, décrit dans
   [Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md#suivre-main--le-canal-dev).
 
-Le fichier de source, la clé et les commandes sont ceux des autres canaux ; seule la ligne
-`Suites:` change.
+Le fichier de source, la clé et les commandes sont ceux des autres canaux — le canal `dev` porte
+lui aussi `orkeon-archive-keyring` ; seule la ligne `Suites:` change.
 
 ## Désinstaller
 

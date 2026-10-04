@@ -22,7 +22,8 @@
 # caller states which trees still have a consumer. The full set alone leaves
 # ~2.6 GB of them behind, which the release runner does not have to spare.
 #
-# Version resolution: --version > git describe (v-stripped) > src/Directory.Build.props.
+# Version resolution: --version > git describe of the newest v* tag (v-stripped; the
+# apt-dev tag of the apt dev builds is no version) > src/Directory.Build.props.
 # esbuild is fetched per-RID straight from the npm registry (no npm/node needed);
 # the version comes from tools/scripting-esbuild/package-lock.json.
 #
@@ -87,7 +88,7 @@ stage_kept() { # $1=rid
 
 # --- Version -----------------------------------------------------------------
 if [[ -z "$VERSION" ]]; then
-  VERSION="$(git -C "$REPO_ROOT" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+  VERSION="$(git -C "$REPO_ROOT" describe --tags --match 'v*' --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
 fi
 if [[ -z "$VERSION" ]]; then
   props="$REPO_ROOT/src/Directory.Build.props"

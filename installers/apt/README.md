@@ -90,7 +90,9 @@ Where each piece goes:
 | The fingerprint and the keyring SHA-256 (step 6) | `SECURITY.md` and `SECURITY.fr.md`, in the marker lines below. |
 | The subkey expiry date | A calendar reminder, 6 months before it. |
 
-The `apt-signing` environment is restricted to `v*` tags, preferably with a required reviewer.
+The `apt-signing` environment is restricted to `v*` tags and the `main` branch — `main` for the
+dev channel, which `.github/workflows/apt-dev.yml` publishes after every green CI run there. A
+required reviewer would hold each of those dev publications until approved.
 Then destroy both temporary homes (`rm -rf "$GNUPGHOME" "$CI_HOME"`) once the backups are
 checked, and verify the committed certificate: `bash scripts/apt/check-signing-key.sh
 --require-real` must pass.

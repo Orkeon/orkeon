@@ -345,7 +345,8 @@ qu'il a) et pas de `Valid-Until`. L'index est produit par `apt-ftparchive` ; les
 `by-hash` sont élagués par les scripts de publication, qui gardent au moins trois générations.
 
 **Historique et immuabilité.** Un canal liste **toutes** les versions encore attachées à une
-Release : `apt install orkeon=<version>` peut donc toujours revenir en arrière. Une stanza
+Release : `apt install orkeon=<version>` peut donc toujours revenir en arrière — sauf `dev`, qui
+garde ses trois derniers builds. Une stanza
 publiée ne change jamais d'empreinte pour un même paquet, une même version et une même
 architecture : le générateur refuse. `release.yml` ne réécrit jamais les assets d'un tag publié
 — il crée la Release en brouillon, y attache les assets, puis la publie, et les Releases sont
@@ -353,7 +354,8 @@ immuables — car un asset renvoyé ferait échouer chaque machine en « Hash Su
 
 **La chaîne sur un tag.** `release` publie la Release ; `apt-publish` (environnement GitHub
 `apt-signing`, le seul endroit qui détient la sous-clé de signature, dans les secrets
-`APT_SIGNING_KEY` et `APT_SIGNING_PASSPHRASE`, déployable depuis les tags `v*` seulement) ajoute
+`APT_SIGNING_KEY` et `APT_SIGNING_PASSPHRASE`, déployable depuis les tags `v*`, et depuis `main`
+pour le seul canal `dev`) ajoute
 les nouveaux paquets à `rc` — et à `stable` pour une version finale —, signe l'index et pousse
 la branche `apt` ; `verify-apt` rejoue ensuite **mot pour mot** le bloc d'installation du
 guide, dans des conteneurs neufs Debian 12 et 13 et Ubuntu 22.04, 24.04 et 26.04, en amd64 et
@@ -361,6 +363,32 @@ arm64 : installation, montée depuis la version précédente, désinstallation d
 documenté. Il réessaie tant que raw sert encore l'index précédent. Un contrôle hebdomadaire
 compare l'index aux assets, l'échéance de la clé au seuil de 180 jours, et vérifie la
 disponibilité de raw.
+
+**La chaîne `dev`** est `apt-dev.yml`, lancé par chaque exécution de la CI qui passe sur un push
+vers `main` (la garde du job `publish-dev` de `publish.yml`). Il publie le jeu CLI pour
+`linux-x64` et `linux-arm64` seulement, assemble les deux `.deb` avec `package-deb.sh --arch`, et
+n'appelle jamais `dotnet pack`, `publish.yml` ni un flux NuGet. La version est celle de
+`publish-dev`, avec `~` pour `-` dans le champ Debian : `1.0.0~rc.4.dev.<numéro de la CI>`, asset
+`orkeon_1.0.0-rc.4.dev.<n>_<arch>.deb`. Ensuite, dans l'environnement `apt-signing`,
+`scripts/apt/publish-dev.sh` :
+
+1. crée la prerelease `apt-dev` si elle manque (jamais « latest » ; son tag, posé sur le commit
+   du premier build, ne bouge jamais) ;
+2. reconstruit `dev/` à partir de celui publié, en ajoutant le nouveau build et en retirant tout
+   build qui n'est plus parmi les trois plus récents, et le signe — un build déjà indexé, ou plus
+   ancien que les trois gardés, ne publie rien ;
+3. attache les deux paquets sous leurs noms uniques, avant que l'index puisse les citer ; un
+   asset qu'un index cite déjà n'est jamais remplacé ;
+4. pousse `dev/` sur la branche `apt` ;
+5. supprime les assets des builds que l'index **poussé** ne liste plus — jamais avant.
+
+Le paquet du trousseau est attaché une fois à `apt-dev`, puis ses octets sont réutilisés.
+`workflow_dispatch` avec `publish` laissé à `false` construit les deux paquets et ne publie rien ;
+avec `publish: true`, depuis `main`, il publie la dernière exécution verte de la CI sur `main`.
+`apt-dev` doit exister avant que les Releases deviennent immuables : l'immuabilité ne lie que les
+Releases créées après elle, et un `apt-dev` immuable ne pourrait plus retirer d'anciens builds.
+Ses règles sont prouvées sans réseau par `scripts/apt/test-publish-dev.sh` dans la CI, et
+`apt-index.yml` fait monter de vrais clients apt d'un build dev à un plus récent.
 
 **La maintenance hors tag** passe par `apt-maintenance.yml` (`workflow_dispatch`, lancé **depuis
 un tag** pour que la règle de l'environnement l'admette), avec les mêmes scripts, le même

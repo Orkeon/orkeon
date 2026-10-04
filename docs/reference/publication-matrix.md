@@ -331,7 +331,8 @@ strictly increasing `Date` (apt ignores an `InRelease` older than the one it has
 publishing scripts, keeping at least three generations.
 
 **History and immutability.** A channel lists **every** version still attached to a Release, so
-`apt install orkeon=<version>` can always go back. A stanza, once published, never changes its
+`apt install orkeon=<version>` can always go back — except `dev`, which keeps its three latest
+builds. A stanza, once published, never changes its
 digest for the same package, version and architecture: the generator refuses. `release.yml`
 never rewrites the assets of a published tag — it creates the Release as a draft, attaches the
 assets, then publishes it, and Releases are immutable — because a re-uploaded asset would make
@@ -339,13 +340,39 @@ every machine fail with "Hash Sum mismatch".
 
 **The chain on a tag.** `release` publishes the Release; `apt-publish` (GitHub environment
 `apt-signing`, the only place that holds the signing subkey, as the `APT_SIGNING_KEY` and
-`APT_SIGNING_PASSPHRASE` secrets, deployable from `v*` tags only) adds the new packages to
+`APT_SIGNING_PASSPHRASE` secrets, deployable from `v*` tags and from `main`, for the `dev`
+channel only) adds the new packages to
 `rc` — and to `stable` for a final version —, signs the index and pushes the `apt` branch;
 `verify-apt` then replays the installation block of the guide **word for word**, in fresh
 Debian 12 and 13 and Ubuntu 22.04, 24.04 and 26.04 containers, on amd64 and arm64: install,
 upgrade from the previous version, removal in the documented order. It retries while raw
 still serves the previous index. A weekly check compares the index with the assets, the key's
 expiry with the 180-day threshold, and raw's availability.
+
+**The `dev` chain** is `apt-dev.yml`, started by every CI run that passes on a push to `main`
+(the guard of `publish.yml`'s `publish-dev` job). It publishes the CLI set for `linux-x64` and
+`linux-arm64` only, packs the two `.deb` with `package-deb.sh --arch`, and never calls
+`dotnet pack`, `publish.yml` or a NuGet feed. The version is `publish-dev`'s, with `~` for `-` in
+the Debian field: `1.0.0~rc.4.dev.<CI run number>`, asset `orkeon_1.0.0-rc.4.dev.<n>_<arch>.deb`.
+Then, in the `apt-signing` environment, `scripts/apt/publish-dev.sh`:
+
+1. creates the `apt-dev` prerelease if it is missing (never latest; its tag, set on the first
+   build's commit, never moves);
+2. rebuilds `dev/` from the published one, adding the new build and yanking any build that is
+   no longer among the three newest, and signs it — a build already indexed, or older than the
+   three kept, publishes nothing;
+3. attaches the two packages under their unique names, before the index can point to them; an
+   asset an index already points to is never replaced;
+4. pushes `dev/` to the `apt` branch;
+5. deletes the assets of the builds the **pushed** index no longer lists — never before.
+
+The keyring package is attached once to `apt-dev` and its bytes reused afterwards.
+`workflow_dispatch` with `publish` left `false` builds the two packages and publishes nothing; with
+`publish: true`, from `main`, it publishes the newest green CI run of `main`. `apt-dev` must exist
+before Releases are made immutable: immutability only binds Releases created after it, and an
+immutable `apt-dev` could no longer drop old builds. Its rules are proved without network by
+`scripts/apt/test-publish-dev.sh` in CI, and `apt-index.yml` upgrades real apt clients from one dev
+build to a newer one.
 
 **Maintenance outside a tag** goes through `apt-maintenance.yml` (`workflow_dispatch`, run
 **from a tag** so the environment rule admits it), with the same scripts, environment and

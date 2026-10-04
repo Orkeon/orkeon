@@ -31,9 +31,25 @@ on:
 permissions:
   contents: read
 jobs:
+  # Only a v* tag is a release. The apt-dev prerelease holds the dev builds of the apt
+  # repository (apt-dev.yml): several versions at once, no SHA256SUMS, nothing these
+  # checks could verify. Refused here rather than reported as a broken release.
+  release-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the tag names a release
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          case "$TAG" in
+            v*) echo "Verifying $TAG." ;;
+            *) echo "::error::'$TAG' is not a release tag (v*); apt-dev and other non-v tags are not verified here."; exit 1 ;;
+          esac
+
   # One entry per Debian architecture, as in release.yml's smoke-deb: the arm64
   # package is smoked on a real ARM runner, checked to be one before installing.
   verify-deb:
+    needs: release-tag
     strategy:
       fail-fast: false
       matrix:
@@ -70,6 +86,7 @@ jobs:
           ./scripts/smoke-onboarding/run-smoke-deb.sh --deb "$deb"
 
   verify-macos:
+    needs: release-tag
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
@@ -96,6 +113,7 @@ jobs:
   # files the download happened to bring back. Without --ignore-missing, a line
   # whose file is absent is an error rather than a line skipped in silence.
   verify-checksums:
+    needs: release-tag
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
