@@ -22,18 +22,34 @@ on:
         description: "Release tag to verify (e.g. v1.0.0-rc.1)"
         required: true
         type: string
+      scope:
+        description: "assets (the published files), apt (the apt repository) or all"
+        required: false
+        type: string
+        default: all
   workflow_dispatch:
     inputs:
       tag:
         description: "Release tag to verify (e.g. v1.0.0-rc.1)"
         required: true
         type: string
+      scope:
+        description: "assets (the published files), apt (the apt repository) or all"
+        required: false
+        type: choice
+        options: [ all, assets, apt ]
+        default: all
 permissions:
   contents: read
+# scope: release.yml calls this workflow twice, once per stage, and each call runs
+# distinct jobs: `assets` right after the Release is published (verify-published),
+# `apt` once the apt index is pushed (verify-apt). The asset jobs ignore the dev
+# channel's fixed-tag prerelease apt-dev: it is no release.
 jobs:
   # One entry per Debian architecture, as in release.yml's smoke-deb: the arm64
   # package is smoked on a real ARM runner, checked to be one before installing.
   verify-deb:
+    if: inputs.scope != 'apt' && inputs.tag != 'apt-dev'
     strategy:
       fail-fast: false
       matrix:
@@ -70,6 +86,7 @@ jobs:
           ./scripts/smoke-onboarding/run-smoke-deb.sh --deb "$deb"
 
   verify-macos:
+    if: inputs.scope != 'apt' && inputs.tag != 'apt-dev'
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
@@ -96,6 +113,7 @@ jobs:
   # files the download happened to bring back. Without --ignore-missing, a line
   # whose file is absent is an error rather than a line skipped in silence.
   verify-checksums:
+    if: inputs.scope != 'apt' && inputs.tag != 'apt-dev'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
