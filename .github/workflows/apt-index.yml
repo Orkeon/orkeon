@@ -1,0 +1,48 @@
+# apt index bench - scripts/apt/test-build-apt-index.sh with real apt clients.
+#
+# The offline half of the bench (Release fields, merge, refusals, yank, by-hash pruning)
+# runs in ci.yml on every push. This workflow adds the half that costs minutes: a
+# debian:13 container builds a signed index with a throwaway key and plays GitHub
+# (raw/apt/<channel>/ and releases/download/<tag>/<asset>, each behind a 302 to another
+# host), and a debian:13 client (apt 3, sqv) and an ubuntu:22.04 client (apt 2.4, gpgv)
+# install, upgrade, switch channel, take over the keyring and see a yank. Every
+# "apt-get update" must print no W: line. No network to GitHub, no real key, no secret.
+#
+# It only concerns a few paths, so it is filtered on them.
+name: apt index
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/apt/**'
+      - 'scripts/package-deb.sh'
+      - 'scripts/package-keyring-deb.sh'
+      - 'installers/apt/**'
+      - '.github/workflows/apt-index.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'scripts/apt/**'
+      - 'scripts/package-deb.sh'
+      - 'scripts/package-keyring-deb.sh'
+      - 'installers/apt/**'
+      - '.github/workflows/apt-index.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: apt-index-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # apt-ftparchive comes with apt-utils; the hosted image normally has it already.
+      - name: Install apt-utils when missing
+        run: command -v apt-ftparchive >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils; }
+      - name: Offline part (generator on the runner)
+        run: bash scripts/apt/test-build-apt-index.sh --offline
+      - name: Real apt clients against a fake GitHub (debian:13, ubuntu:22.04)
+        run: bash scripts/apt/test-build-apt-index.sh --containers
