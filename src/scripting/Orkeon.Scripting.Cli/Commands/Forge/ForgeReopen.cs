@@ -74,18 +74,20 @@ internal sealed record ForgeTeamRecord
     public ForgeReferenceRecord? Reference { get; init; }
 
     /// <summary>
-    /// The schedule the folder declares, and what <c>forge schedule</c> installed of it
-    /// (STUDIO-27, D-03); null when it declares none and nothing is installed.
+    /// The schedule the folder declares (STUDIO-27, D-03); null when it declares none. What
+    /// <c>forge schedule</c> installed of it is this machine's, recorded beside the artifacts in
+    /// <c>schedule/installed.json</c> — never here: the record travels with the folder (STUDIO-52).
     /// </summary>
     [JsonPropertyName("schedule")]
     public ForgeTeamSchedule? Schedule { get; init; }
 
     /// <summary>
     /// Writes the record into <paramref name="destination"/> (overwriting a previous promotion's).
-    /// <paramref name="schedule"/> is the promotion's <c>--schedule</c>; what a previous
-    /// <c>forge schedule</c> installed is carried over whatever it says, because the registration
-    /// is still there — a re-adoption touches no operating system, and the names are the only way
-    /// back to it (D-03).
+    /// <paramref name="schedule"/> is the promotion's <c>--schedule</c>, the schedule the record
+    /// declares. What a previous <c>forge schedule</c> installed is not this record's: it stays in
+    /// <c>schedule/installed.json</c>, which a re-adoption keeps whatever it says, because the
+    /// registration is still there — a re-adoption touches no operating system, and the names are
+    /// the only way back to it (D-03, STUDIO-52).
     /// </summary>
     public static void Write(string destination, ForgeSession session, ForgeBrief? brief, DateTimeOffset now, ForgeSchedule? schedule = null)
     {
@@ -101,7 +103,7 @@ internal sealed record ForgeTeamRecord
             PromotedAt = now.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             Brief = brief,
             Reference = session.Document.Reference,
-            Schedule = ForgeTeamSchedule.Of(schedule?.Expression, TryRead(destination)?.Schedule?.Installed),
+            Schedule = ForgeTeamSchedule.Of(schedule?.Expression),
         });
     }
 

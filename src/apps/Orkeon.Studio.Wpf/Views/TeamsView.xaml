@@ -624,6 +624,11 @@
                              Text="{Binding ScheduleManualCommand, Mode=OneWay}"/>
                   </StackPanel>
                 </StackPanel>
+                <!-- STUDIO-52: what the team's scheduled run cannot follow, read against the settings file
+                     as saved — a refusal, the default in place of its setting, an older version of it. -->
+                <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,6,0,0"
+                           TextWrapping="Wrap" Text="{Binding ScheduledRunLine}"
+                           Visibility="{Binding HasScheduledRunLine, Converter={StaticResource BooleanToVisibility}}"/>
                 <!-- STUDIO-31/32: what an archive or a restore has to say on its card — a refusal (the
                      team busy, the disk), or an offer: « Stop the schedule and archive » (the system
                      would keep running a team nobody sees), « Restore ». Never a refusal in silence. -->

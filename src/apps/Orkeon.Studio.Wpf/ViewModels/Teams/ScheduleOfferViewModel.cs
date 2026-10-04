@@ -35,21 +35,36 @@ public sealed class ScheduleOfferViewModel : ObservableObject
     private readonly ForgeClient _client;
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
+    private readonly Func<string, string?>? _noticeFor;
+    private readonly Func<string, Task>? _prepare;
     private string? _teamPath;
     private string? _expression;
     private bool _isOpen;
     private string _outcome = "";
     private string? _manualCommand;
 
-    /// <summary>Builds the offer over the engine client the wizard drives.</summary>
-    public ScheduleOfferViewModel(ForgeClient client, IUiDispatcher dispatcher, IStudioStrings strings)
+    /// <summary>
+    /// Builds the offer over the engine client the wizard drives. <paramref name="noticeFor"/> says, for
+    /// a team folder, what its scheduled run cannot follow (STUDIO-52): the line under the question,
+    /// and the end of the outcome. <paramref name="prepare"/> runs before « Install »: the settings
+    /// saved when the file lacks what the team's launchers name, the launchers written for this
+    /// machine. Left out, neither is said nor done.
+    /// </summary>
+    public ScheduleOfferViewModel(
+        ForgeClient client,
+        IUiDispatcher dispatcher,
+        IStudioStrings strings,
+        Func<string, string?>? noticeFor = null,
+        Func<string, Task>? prepare = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
+        _noticeFor = noticeFor;
+        _prepare = prepare;
         InstallCommand = new AsyncRelayCommand(InstallAsync, () => IsOpen);
         LaterCommand = new RelayCommand(Decline, () => IsOpen);
-        _strings.CultureChanged += (_, _) => OnPropertyChanged(nameof(Question));
+        _strings.CultureChanged += (_, _) => OnPropertiesChanged(nameof(Question), nameof(Notice), nameof(HasNotice));
     }
 
     /// <summary>Raised once the engine said where the team's schedule stands after « Install ».</summary>
@@ -66,6 +81,7 @@ public sealed class ScheduleOfferViewModel : ObservableObject
 
             InstallCommand.RaiseCanExecuteChanged();
             LaterCommand.RaiseCanExecuteChanged();
+            RefreshNotice();
         }
     }
 
@@ -77,6 +93,19 @@ public sealed class ScheduleOfferViewModel : ObservableObject
             string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardScheduleOfferDaily], daily["daily@".Length..]),
         _ => _strings[StudioStringKeys.WizardScheduleOfferHourly],
     };
+
+    /// <summary>
+    /// What the team's scheduled run cannot follow (STUDIO-52) — the default in place of a setting no
+    /// crew can name, above all —, said under the question before anything is installed; empty when
+    /// the run takes what Studio shows, or the question is not on screen.
+    /// </summary>
+    public string Notice => IsOpen && _teamPath is { } teamPath ? _noticeFor?.Invoke(teamPath) ?? "" : "";
+
+    /// <summary>Whether the line under the question shows.</summary>
+    public bool HasNotice => Notice.Length > 0;
+
+    /// <summary>The settings or the settings file changed (STUDIO-52): the line under the question is read again.</summary>
+    internal void RefreshNotice() => OnPropertiesChanged(nameof(Notice), nameof(HasNotice));
 
     /// <summary>What happened to the offer: installed, left for later, refused, kept; empty while nothing did.</summary>
     public string Outcome
@@ -180,6 +209,12 @@ public sealed class ScheduleOfferViewModel : ObservableObject
         ForgeScheduleReport report;
         try
         {
+            // STUDIO-52: the settings saved when the file lacks what the launchers name, the launchers
+            // written for this machine — a refused save still installs, and the outcome says what the
+            // scheduled run cannot follow.
+            if (_prepare is { } prepare)
+                await prepare(teamPath).ConfigureAwait(true);
+
             report = await _client.ScheduleAsync(teamPath, ForgeScheduleVerb.Install).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -197,7 +232,9 @@ public sealed class ScheduleOfferViewModel : ObservableObject
             IsOpen = false;
             if (report.Succeeded)
             {
-                Outcome = _strings[StudioStringKeys.WizardScheduleInstalled];
+                Outcome = _noticeFor?.Invoke(teamPath) is { Length: > 0 } notice
+                    ? $"{_strings[StudioStringKeys.WizardScheduleInstalled]} {notice}"
+                    : _strings[StudioStringKeys.WizardScheduleInstalled];
                 ManualCommand = null;
             }
             else

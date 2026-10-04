@@ -55,8 +55,8 @@ internal sealed record ForgeRenameOutcome
 /// <item><description>the new folder name, by the one folder rule (<see cref="FolderSlug"/>) — refused when something is already there (D-03);</description></item>
 /// <item><description>the team folder, moved to it;</description></item>
 /// <item><description>the session rule R links to the team, its folder following the team's (STUDIO-26) — a copy's original is never touched;</description></item>
-/// <item><description>the titles: <c>session.json</c> (and <c>promotedTo</c>), <c>forge.json</c>, Studio's <c>studio-team.json</c>, <c>FORGE.md</c>, the launchers' header;</description></item>
-/// <item><description><c>schedule/</c>, regenerated for the folder as it is now;</description></item>
+/// <item><description>the titles: <c>session.json</c> (and <c>promotedTo</c>), <c>forge.json</c>, Studio's <c>studio-team.json</c>, <c>FORGE.md</c>'s title line, the launchers' header;</description></item>
+/// <item><description><c>schedule/</c>, regenerated for the folder as it is now — the record of what was installed kept;</description></item>
 /// <item><description>the registration the operating system holds, reinstalled under the new name when one ran the team.</description></item>
 /// </list>
 /// Everything a step changes is journaled first — the folders moved, the files' bytes — and a step
@@ -111,7 +111,7 @@ internal static class ForgeTeamRenamer
         IReadOnlyList<string>? former = null;
         if (moves)
         {
-            former = RegistrationToFollow(team, record, host, warnings, out var refusal);
+            former = RegistrationToFollow(team, host, warnings, out var refusal);
             if (refusal is not null)
                 return new ForgeRenameOutcome { Failure = refusal };
         }
@@ -146,7 +146,7 @@ internal static class ForgeTeamRenamer
             RetitleRecord(directory, name, session?.Document.Slug ?? folderName, journal);
             RenameInSidecar(directory, name, journal, warnings);
             RewriteFile(journal, Path.Combine(directory, ForgePromoter.CardFileName),
-                card => ForgePromoter.RetitleCard(card, name, team, formerName, directory, artifactName));
+                card => ForgePromoter.RetitleCard(card, name));
             foreach (var launcher in new[] { ForgePromoter.PosixLauncherName, ForgePromoter.WindowsLauncherName })
             {
                 RewriteFile(journal, Path.Combine(directory, launcher),
@@ -228,13 +228,12 @@ internal static class ForgeTeamRenamer
     /// </summary>
     private static IReadOnlyList<string>? RegistrationToFollow(
         string team,
-        ForgeTeamRecord? record,
         ForgeScheduleHost host,
         List<(string Code, string Message)> warnings,
         out ForgeRenameFailure? refusal)
     {
         refusal = null;
-        if (record?.Schedule?.Installed is not { Names.Count: > 0 } installed)
+        if (ForgeScheduleInstallation.TryRead(team) is not { Names.Count: > 0 } installed)
             return null;
 
         var check = new ForgeScheduler(host).Check(team);

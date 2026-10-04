@@ -59,9 +59,12 @@ public sealed record ForgeSolutionSummary
         || string.Equals(Status, "Ready", StringComparison.OrdinalIgnoreCase);
 }
 
-/// <summary>What Studio reads of a team's <c>forge.json</c> (<see cref="ForgeSessionCatalog.ReadTeamRecord"/>).</summary>
-/// <param name="SessionId">The id of the session it names (STUDIO-25); null when none or unreadable.</param>
-/// <param name="HasInstalledSchedule">Whether its <c>schedule</c> block records an installation (STUDIO-27).</param>
+/// <summary>What Studio reads of a team's engine records (<see cref="ForgeSessionCatalog.ReadTeamRecord"/>).</summary>
+/// <param name="SessionId">The id of the session its <c>forge.json</c> names (STUDIO-25); null when none or unreadable.</param>
+/// <param name="HasInstalledSchedule">
+/// Whether its <c>schedule/installed.json</c> records an installation (STUDIO-27; STUDIO-52 moved the
+/// record out of <c>forge.json</c>, which travels with the folder).
+/// </param>
 public sealed record TeamForgeRecord(Guid? SessionId, bool HasInstalledSchedule)
 {
     /// <summary>No record, or one that could not be read.</summary>
@@ -194,37 +197,41 @@ public static class ForgeSessionCatalog
     public static Guid? ReadTeamSessionId(string teamDirectory) => ReadTeamRecord(teamDirectory).SessionId;
 
     /// <summary>
-    /// What Studio reads of <paramref name="teamDirectory"/>'s <c>forge.json</c>, in one read: the id
-    /// of its session (STUDIO-25), and whether its <c>schedule</c> block records an installation
-    /// (STUDIO-27) — a team whose registration the engine must be asked to remove before the folder
-    /// goes. Read-only, tolerant: an absent or unreadable record reads as neither.
+    /// What Studio reads of <paramref name="teamDirectory"/>'s engine records: the id of its session
+    /// that its <c>forge.json</c> names (STUDIO-25), and whether its <c>schedule/installed.json</c>
+    /// records an installation (STUDIO-27, STUDIO-52) — a team whose registration the engine must be
+    /// asked to remove before the folder goes. Read-only, tolerant: an absent or unreadable
+    /// <c>forge.json</c> names no session, and the installation is read by the record's presence
+    /// alone — the engine decides what it names.
     /// </summary>
     public static TeamForgeRecord ReadTeamRecord(string teamDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
+        var installed = HasInstallationRecord(teamDirectory);
+        var none = installed ? TeamForgeRecord.None with { HasInstalledSchedule = true } : TeamForgeRecord.None;
         try
         {
             var path = Path.Combine(teamDirectory, TeamRecordFileName);
             if (!File.Exists(path))
-                return TeamForgeRecord.None;
+                return none;
 
             using var document = JsonDocument.Parse(File.ReadAllText(path));
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
-                return TeamForgeRecord.None;
+                return none;
 
-            var installed = root.TryGetProperty("schedule", out var schedule)
-                && schedule.ValueKind == JsonValueKind.Object
-                && schedule.TryGetProperty("installed", out var block)
-                && block.ValueKind == JsonValueKind.Object;
             return new TeamForgeRecord(ReadId(root), installed) { PromotedAt = ReadPromotedAt(root) };
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            return TeamForgeRecord.None;
+            return none;
         }
     }
+
+    /// <summary>Whether <c>schedule/installed.json</c> is there: what <c>forge schedule</c> records of an installation (STUDIO-52).</summary>
+    private static bool HasInstallationRecord(string teamDirectory) =>
+        File.Exists(Path.Combine(teamDirectory, ConventionalNames.ScheduleDirectory, ConventionalNames.ScheduleInstallationFile));
 
     /// <summary>
     /// What <paramref name="teamDirectory"/>'s <c>forge.json</c> gives its launchers (STUDIO-50): the

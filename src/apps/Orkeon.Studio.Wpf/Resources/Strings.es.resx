@@ -828,6 +828,9 @@
   <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve">
     <value>No lanzado: hay que corregir antes {0} error(es).</value>
   </data>
+  <data name="Studio.Run.SettingsNotSaved" xml:space="preserve">
+    <value>No lanzado: no se pudieron guardar los ajustes de los que depende esta ejecución — {0}</value>
+  </data>
   <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>Cancelación: se pide a la CLI que se detenga, y se la mata si no lo hace.</value>
   </data>
@@ -2495,6 +2498,24 @@
   </data>
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>No se eliminó: el disco lo rechazó — quizá haya un archivo del equipo abierto.</value>
+  </data>
+  <data name="Studio.Teams.SettingMissing" xml:space="preserve">
+    <value>{0} — ausente de esta máquina: el ajuste por defecto se ejecuta en su lugar</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunOnDefault" xml:space="preserve">
+    <value>Programado, este equipo se ejecuta con el ajuste por defecto, no con «{0}». {1}</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunNoModel" xml:space="preserve">
+    <value>«{0}» no tiene modelo: desde Studio, el equipo responde en eco.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunRefused" xml:space="preserve">
+    <value>La próxima ejecución programada será rechazada: el archivo de ajustes guardado aún no define «{0}». Guarde los ajustes.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunOutdated" xml:space="preserve">
+    <value>La ejecución programada toma «{0}» tal como se guardó, no como lo muestra Studio. Guarde los ajustes.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunFolderRefused" xml:space="preserve">
+    <value>La próxima ejecución programada será rechazada: el archivo de ajustes guardado aún no declara la carpeta {0}. Guarde los ajustes.</value>
   </data>
   <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
     <value>Equipo archivado — ¿restaurarlo?</value>

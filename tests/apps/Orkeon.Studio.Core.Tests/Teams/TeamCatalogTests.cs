@@ -1,5 +1,10 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Orkeon.Constants.FileSystem;
+using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 
 namespace Orkeon.Studio.Core.Tests.Teams;
@@ -740,6 +745,171 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.True(summary.IsArchived);
         Assert.Equal(ArchivedOn, summary.ArchivedAt);
         Assert.Equal(ArchivedOn, summary.LastRunAt);
+    }
+
+    // ── STUDIO-52: a team keeps its model setting, and changes machine without the machine ──
+
+    /// <summary>The companion file as written, as a JSON tree.</summary>
+    private static JsonNode? Sidecar(string team) =>
+        JsonNode.Parse(File.ReadAllText(Path.Combine(team, StudioTeamMetadata.FileName)));
+
+    /// <summary>
+    /// Decision 1: a setting renamed in the settings screen takes its teams along — every companion
+    /// file naming it, archived ones too, as the lookup compares names (ordinal) — and nothing else
+    /// moves: the other fields of those files, the teams naming another setting or another case of
+    /// the name, and a file that cannot be read, byte for byte.
+    /// </summary>
+    [Fact]
+    public void Renaming_a_setting_rewrites_the_teams_naming_it_and_nothing_else()
+    {
+        var teams = Path.Combine(_root, "teams");
+        var active = Path.Combine(teams, "veille");
+        TeamCatalog.SaveMetadata(active, new StudioTeamMetadata
+        {
+            Name = "Veille", Description = "Relit la presse.", Profile = "DeepSeek", Schedule = "daily@07:30",
+            Mounts = ["./output:/output:rw", "./input:/workspace:ro"],
+        });
+        var archived = Path.Combine(teams, "ancienne");
+        TeamCatalog.SaveMetadata(archived, new StudioTeamMetadata { Name = "Ancienne", Profile = "DeepSeek", LastRunAt = AddedOn });
+        Assert.True(TeamCatalog.Archive(archived, ArchivedOn));
+        var otherCase = Path.Combine(teams, "casse");
+        TeamCatalog.SaveMetadata(otherCase, new StudioTeamMetadata { Name = "Casse", Profile = "deepseek" });
+        var other = Path.Combine(teams, "autre");
+        TeamCatalog.SaveMetadata(other, new StudioTeamMetadata { Name = "Autre", Profile = "Z.AI" });
+        var unreadable = Path.Combine(teams, "illisible");
+        Directory.CreateDirectory(unreadable);
+        File.WriteAllText(Path.Combine(unreadable, StudioTeamMetadata.FileName), """{ "profile": "DeepSeek", """);
+        var untouched = new[] { otherCase, other, unreadable }
+            .ToDictionary(team => team, team => File.ReadAllBytes(Path.Combine(team, StudioTeamMetadata.FileName)));
+        var activeBefore = Sidecar(active)!;
+        var archivedBefore = Sidecar(archived)!;
+
+        var renamed = TeamCatalog.RenameSetting(teams, "DeepSeek", "DeepSeek V4");
+
+        Assert.Equal([archived, active], renamed);
+        activeBefore["profile"] = "DeepSeek V4";
+        archivedBefore["profile"] = "DeepSeek V4";
+        Assert.True(JsonNode.DeepEquals(activeBefore, Sidecar(active)), Sidecar(active)!.ToJsonString());
+        Assert.True(JsonNode.DeepEquals(archivedBefore, Sidecar(archived)), Sidecar(archived)!.ToJsonString());
+        var archivedAfter = TeamCatalog.Describe(archived);
+        Assert.Equal(ArchivedOn, archivedAfter.ArchivedAt);
+        Assert.Equal(AddedOn, archivedAfter.LastRunAt);
+        foreach (var (team, bytes) in untouched)
+            Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(team, StudioTeamMetadata.FileName)));
+    }
+
+    /// <summary>
+    /// Decision 3: what a team sends to someone carries nothing of the machine that sends it. The
+    /// copy's launchers name no settings file, no model setting, no folder of this disk, and
+    /// schedule/ — what this machine's scheduler knows of the team — stays behind; the team's own
+    /// travels: its crew, its own folders anchored to the launcher's, its declarations by their ids,
+    /// its sample inputs. The original is not touched.
+    /// </summary>
+    [Fact]
+    public void An_export_carries_nothing_of_the_machine_and_leaves_its_schedule_behind()
+    {
+        var team = Path.Combine(_root, "teams", "veille");
+        var docs = MountId.Create();
+        var outside = Path.Combine(_root, "dehors", "rapports");
+        Directory.CreateDirectory(outside);
+        var settingsPath = Path.Combine(_root, "config", "appsettings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
+        File.WriteAllText(settingsPath, "{}");
+        Directory.CreateDirectory(Path.Combine(team, "crew"));
+        File.WriteAllText(Path.Combine(team, "crew", "config.yaml"), "name: veille\n");
+        File.WriteAllText(Path.Combine(team, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\n");
+        File.WriteAllText(Path.Combine(team, TeamLaunchers.WindowsLauncherName), "@echo off\r\n");
+        File.WriteAllText(Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName), """
+            {"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","format":"yaml",
+             "brief":{"sample":{"variables":{"supplier_url":"https://exemple.fr/offres"},"initialContext":"Premier essai"}},
+             "schedule":{"expression":"daily@07:30"}}
+            """);
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+        {
+            Name = "Veille",
+            Profile = "DeepSeek",
+            Schedule = "daily@07:30",
+            Mounts = ["./output:/output:rw", $"{docs}|/data/docs:/docs:ro", $"{outside}:/rapports:rw"],
+        });
+        var schedule = Path.Combine(team, ConventionalNames.ScheduleDirectory);
+        Directory.CreateDirectory(schedule);
+        File.WriteAllText(Path.Combine(schedule, ConventionalNames.ScheduleInstallationFile),
+            $$"""{"expression":"daily@07:30","family":"linux","names":["orkeon-veille.timer"],"path":{{JsonSerializer.Serialize(team)}}}""");
+        File.WriteAllText(Path.Combine(schedule, "cron.txt"), $"30 7 * * * '{team}/run.sh' # orkeon:veille\n");
+        var deepSeek = new ModelProfile
+        {
+            Name = "DeepSeek", Provider = "deepseek", BaseUrl = "https://api.deepseek.com",
+            Model = "deepseek-v4-flash", KeyEnvName = "DEEPSEEK_API_KEY",
+        };
+        var context = new TeamLauncherContext
+        {
+            Profiles = ModelProfileSet.Empty.Upsert(deepSeek),
+            DeclaredMounts = [$"{docs}|/data/docs:/docs:ro"],
+            SettingsPath = settingsPath,
+        };
+        Assert.Equal(TeamLaunchersOutcome.Written, TeamLaunchers.Regenerate(team, context).Outcome);
+        var originalPosix = File.ReadAllText(Path.Combine(team, TeamLaunchers.PosixLauncherName));
+        var originalWindows = File.ReadAllText(Path.Combine(team, TeamLaunchers.WindowsLauncherName));
+        // What this machine's launchers name: the copy must not.
+        Assert.Contains("--llm-profile='deepseek'", originalPosix, StringComparison.Ordinal);
+        Assert.Contains(settingsPath, originalPosix, StringComparison.Ordinal);
+        Assert.Contains(outside, originalPosix, StringComparison.Ordinal);
+        var shared = Path.Combine(_root, "partage");
+        Directory.CreateDirectory(shared);
+
+        var exported = TeamCatalog.ExportTo(team, shared);
+
+        Assert.NotNull(exported);
+        var posix = File.ReadAllText(Path.Combine(exported!, TeamLaunchers.PosixLauncherName));
+        var windows = File.ReadAllText(Path.Combine(exported!, TeamLaunchers.WindowsLauncherName));
+        foreach (var launcher in new[] { posix, windows })
+        {
+            Assert.DoesNotContain("--settings", launcher, StringComparison.Ordinal);
+            Assert.DoesNotContain("--llm-profile", launcher, StringComparison.Ordinal);
+            Assert.DoesNotContain(outside, launcher, StringComparison.Ordinal);
+            Assert.DoesNotContain("/rapports", launcher, StringComparison.Ordinal);
+            Assert.Contains("Orkeon Studio writes this file again", launcher, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("exec orkeon \\\n  run \"$DIR/crew\" \\\n", posix, StringComparison.Ordinal);
+        Assert.Contains("  --mount \"\\\"$DIR/output\\\":/output:rw\" \\\n", posix, StringComparison.Ordinal);
+        Assert.Contains($"  --mount-id '{docs}' \\\n", posix, StringComparison.Ordinal);
+        Assert.Contains("  --var 'supplier_url=https://exemple.fr/offres' \\\n", posix, StringComparison.Ordinal);
+        Assert.EndsWith("  --initial-context='Premier essai'\n", posix, StringComparison.Ordinal);
+        Assert.Contains($" --mount-id \"{docs}\"", windows, StringComparison.Ordinal);
+        Assert.Contains(" --mount ^\"\\\"%~dp0output\\\":/output:rw^\"", windows, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(exported!, ConventionalNames.ScheduleDirectory)));
+        foreach (var file in Directory.EnumerateFiles(exported!, "*", SearchOption.AllDirectories))
+        {
+            var text = File.ReadAllText(file);
+            Assert.DoesNotContain(team, text, StringComparison.Ordinal);
+            Assert.DoesNotContain(settingsPath, text, StringComparison.Ordinal);
+        }
+
+        Assert.Equal(originalPosix, File.ReadAllText(Path.Combine(team, TeamLaunchers.PosixLauncherName)));
+        Assert.Equal(originalWindows, File.ReadAllText(Path.Combine(team, TeamLaunchers.WindowsLauncherName)));
+        Assert.True(File.Exists(Path.Combine(schedule, ConventionalNames.ScheduleInstallationFile)));
+    }
+
+    /// <summary>Decision 3: a team that arrives leaves the other machine's schedule/ behind as well.</summary>
+    [Fact]
+    public void An_import_leaves_the_schedule_folder_behind()
+    {
+        var source = AdoptedTeam("veille", "Veille");
+        var schedule = Path.Combine(source, ConventionalNames.ScheduleDirectory);
+        Directory.CreateDirectory(schedule);
+        File.WriteAllText(Path.Combine(schedule, ConventionalNames.ScheduleInstallationFile),
+            $$"""{"expression":"hourly","family":"windows","names":["Orkeon veille"],"path":{{JsonSerializer.Serialize(source)}}}""");
+        File.WriteAllText(Path.Combine(schedule, "windows-task.xml"), "<Task/>");
+
+        var imported = TeamCatalog.Import(source, Path.Combine(_root, "teams"), AddedOn, out var refusal);
+
+        Assert.Null(refusal);
+        Assert.NotNull(imported);
+        Assert.False(Directory.Exists(Path.Combine(imported!, ConventionalNames.ScheduleDirectory)));
+        Assert.True(File.Exists(Path.Combine(imported!, "crew.yaml")));
+        Assert.True(File.Exists(Path.Combine(imported!, "output", "rapport.md")));
+        Assert.True(Directory.Exists(schedule));
     }
 }
 

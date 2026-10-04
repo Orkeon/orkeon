@@ -104,9 +104,10 @@ internal static class ForgeScheduleAdapters
 
     /// <summary>
     /// The command a person runs to install <paramref name="teamDirectory"/>'s schedule by hand on
-    /// <paramref name="platform"/> — the fallback every refusal carries, and the one
-    /// <c>FORGE.md</c> and the <c>promoted</c> event display. Displayed, never executed: what
-    /// Orkeon itself runs is the adapter's list of arguments.
+    /// <paramref name="platform"/> — the fallback every refusal carries, and the one the
+    /// <c>promoted</c> event displays: for this machine, never written into a file — <c>FORGE.md</c>
+    /// names nothing of the machine (STUDIO-52). Displayed, never executed: what Orkeon itself runs
+    /// is the adapter's list of arguments.
     /// </summary>
     public static string ManualInstallCommand(ForgePromotePlatform platform, string teamDirectory, string artifactName)
     {

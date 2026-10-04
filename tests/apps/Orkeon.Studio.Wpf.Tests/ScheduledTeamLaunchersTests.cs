@@ -11,7 +11,8 @@ namespace Orkeon.Studio.Wpf.Tests;
 /// <summary>
 /// STUDIO-50, on the window over a test disk: a team's launchers — what the operating system's
 /// scheduled run executes — are written again whenever the team's setting or its folders change in
-/// Studio. A setting the team names created, renamed away or removed moves the run's model; a save
+/// Studio. A setting the team names created or removed moves the run's model — a renamed one
+/// carries the team along (STUDIO-52, TeamSettingFollowsTests) —; a save
 /// of the team's folders moves its mounts. Never a key.
 /// </summary>
 public sealed class ScheduledTeamLaunchersTests : IDisposable
@@ -81,7 +82,7 @@ public sealed class ScheduledTeamLaunchersTests : IDisposable
     private string Windows() => File.ReadAllText(Path.Combine(_team, TeamLaunchers.WindowsLauncherName));
 
     [Fact]
-    public void The_setting_a_team_names_moves_its_launchers_when_it_is_created_renamed_away_or_removed()
+    public void The_setting_a_team_names_moves_its_launchers_when_it_is_created_or_removed()
     {
         var window = Window();
         Assert.DoesNotContain("--llm-profile", Posix(), StringComparison.Ordinal);

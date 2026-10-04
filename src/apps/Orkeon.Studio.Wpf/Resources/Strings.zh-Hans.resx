@@ -828,6 +828,9 @@
   <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve">
     <value>未启动：需先修正 {0} 个错误。</value>
   </data>
+  <data name="Studio.Run.SettingsNotSaved" xml:space="preserve">
+    <value>未启动：此次运行所依赖的设置无法保存——{0}</value>
+  </data>
   <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>正在取消：先请求 CLI 停止，若不停止则强制结束。</value>
   </data>
@@ -2495,6 +2498,24 @@
   </data>
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>未删除：磁盘拒绝了操作——团队的某个文件可能处于打开状态。</value>
+  </data>
+  <data name="Studio.Teams.SettingMissing" xml:space="preserve">
+    <value>{0} — 本机上不存在：由默认设置代为运行</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunOnDefault" xml:space="preserve">
+    <value>计划运行时，此团队使用默认设置，而不是“{0}”。{1}</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunNoModel" xml:space="preserve">
+    <value>“{0}”没有模型：从 Studio 启动时，团队以回显应答。</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunRefused" xml:space="preserve">
+    <value>下一次计划运行将被拒绝：已保存的设置文件尚未定义“{0}”。请保存设置。</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunOutdated" xml:space="preserve">
+    <value>计划运行使用的是已保存的“{0}”，而不是 Studio 当前显示的版本。请保存设置。</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunFolderRefused" xml:space="preserve">
+    <value>下一次计划运行将被拒绝：已保存的设置文件尚未声明文件夹 {0}。请保存设置。</value>
   </data>
   <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
     <value>团队已归档——要恢复吗？</value>

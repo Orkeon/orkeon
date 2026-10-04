@@ -170,17 +170,15 @@ public static class TeamLaunchers
             return null;
 
         var record = ForgeSessionCatalog.ReadTeamLaunchRecord(teamDirectory);
-        var isScript = record.Format is not null
-            ? record.IsScript
-            : File.Exists(Path.Combine(teamDirectory, CrewDirectoryName, "crew.ork.ts"));
+        var isScript = IsScript(teamDirectory, record);
 
-        // The setting Studio launches the team on, when it is a host profile: a setting renamed or
-        // removed since, or one offered to no crew (« no model », a name without a letter), runs on
-        // the default — as a Studio launch of a team naming no setting it knows does.
-        var llmProfile = team.Profile is { Length: > 0 } setting
-            && HostLlmProfiles.Offered(context.Profiles).TryGetValue(setting, out var id)
-                ? id
-                : null;
+        // The setting Studio launches the team on, when it is a host profile (STUDIO-52): a setting
+        // absent from this machine — removed, or named by a team from another one — runs on the
+        // default, as a Studio launch of it does; one offered to no crew (« no model », a name without
+        // a Latin letter) does too, and the team's card says so when the team is scheduled.
+        var llmProfile = TeamSettingStanding.Of(team.Profile, context.Profiles) is { Kind: TeamSettingKind.Offered } offered
+            ? offered.Id
+            : null;
 
         // The same plan a Studio launch passes: a settings declaration by its id, the team's own
         // folders and its copies as --mount. An id this machine does not declare goes too: the
@@ -220,10 +218,15 @@ public static class TeamLaunchers
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
         ArgumentNullException.ThrowIfNull(context);
+        return Write(teamDirectory, () => Describe(teamDirectory, context));
+    }
 
+    /// <summary>Writes the two launchers of the run <paramref name="describe"/> reads — a file already saying it is left as it is.</summary>
+    private static TeamLaunchersResult Write(string teamDirectory, Func<TeamLaunch?> describe)
+    {
         try
         {
-            if (Describe(teamDirectory, context) is not { } launch)
+            if (describe() is not { } launch)
                 return new TeamLaunchersResult(TeamLaunchersOutcome.NotATeam);
 
             var spec = Spec(launch);
@@ -247,6 +250,73 @@ public static class TeamLaunchers
         {
             return new TeamLaunchersResult(TeamLaunchersOutcome.DiskRefused);
         }
+    }
+
+    /// <summary>
+    /// The run a copy of <paramref name="teamDirectory"/> carries to another machine (STUDIO-52,
+    /// decision 3) — nothing of this one: no settings file, no model setting, no folder of this disk.
+    /// What stays is the team's own: its crew, its folders anchored to the launcher's, the
+    /// declarations its companion file names by their ids alone — the ids travel with the companion
+    /// file (VFS-90, D-06) — and the brief's sample inputs. Null when the folder holds no promoted
+    /// team or no companion file.
+    /// </summary>
+    /// <param name="teamDirectory">The copy's folder.</param>
+    public static TeamLaunch? DescribePortable(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        if (!IsPromotedTeam(teamDirectory))
+            return null;
+
+        // Read without this machine's declarations: an entry naming one by id stays that id, which
+        // the machine that receives the copy resolves against its own (VFS-90, D-06).
+        var team = TeamCatalog.Describe(teamDirectory, declaredMounts: null);
+        if (team.Metadata is null)
+            return null;
+
+        var record = ForgeSessionCatalog.ReadTeamLaunchRecord(teamDirectory);
+        var isScript = IsScript(teamDirectory, record);
+        var mounts = new List<TeamLaunchMount>();
+        var mountIds = new List<string>();
+        foreach (var mount in team.ResolvedMounts)
+        {
+            if (mount.Id is { } id)
+            {
+                if (!mountIds.Contains(id.ToString()))
+                    mountIds.Add(id.ToString());
+            }
+            else if (mount.Source == TeamMountSource.InsideTeam && Anchored(teamDirectory, mount.Effective) is { } anchored)
+            {
+                mounts.Add(anchored);
+            }
+
+            // Anything else names a folder of this disk — a copy of a folder outside the team, an
+            // entry that does not read: it stays in the companion file, never in what travels.
+        }
+
+        return new TeamLaunch
+        {
+            TeamName = FolderSlug.From(Path.GetFileName(Path.TrimEndingDirectorySeparator(teamDirectory))) ?? FolderSlug.TeamFallback,
+            TeamDirectory = Path.GetFullPath(teamDirectory),
+            IsScript = isScript,
+            Mounts = mounts,
+            MountIds = mountIds,
+            Variables = isScript ? [] : record.SampleVariables,
+            InitialContext = isScript || string.IsNullOrWhiteSpace(record.SampleInitialContext) ? null : record.SampleInitialContext,
+        };
+    }
+
+    /// <summary>
+    /// Writes the two launchers of an exported copy (<see cref="DescribePortable"/>, STUDIO-52): the
+    /// Studio that imports the copy writes them again for its own machine; without Studio, they run
+    /// the team on the default of whoever received it, with that machine's own declarations. Tolerant,
+    /// like <see cref="Regenerate"/>.
+    /// </summary>
+    /// <param name="teamDirectory">The copy's folder.</param>
+    public static TeamLaunchersResult WritePortable(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        return Write(teamDirectory, () => DescribePortable(teamDirectory));
     }
 
     /// <summary><c>run.sh</c>'s text for <paramref name="launch"/>.</summary>
@@ -329,6 +399,12 @@ public static class TeamLaunchers
 
         return segments;
     }
+
+    /// <summary>Whether the crew is a script: what <c>forge.json</c> says, else whether <c>crew/crew.ork.ts</c> is there.</summary>
+    private static bool IsScript(string teamDirectory, TeamLaunchRecord record) =>
+        record.Format is not null
+            ? record.IsScript
+            : File.Exists(Path.Combine(teamDirectory, CrewDirectoryName, "crew.ork.ts"));
 
     /// <summary>
     /// A folder inside the team as a mount anchored to the launcher's folder — or null when the

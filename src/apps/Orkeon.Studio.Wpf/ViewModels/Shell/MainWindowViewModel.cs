@@ -1,3 +1,5 @@
+using Orkeon.Domain.Common;
+using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.History;
@@ -26,6 +28,11 @@ public sealed class MainWindowViewModel : ObservableObject
 {
     private readonly IStudioStrings _strings;
     private readonly IPathPicker _picker;
+    private readonly IAppSettingsStore _settingsStore;
+    private readonly string _teamsHome;
+    private readonly Func<IReadOnlyList<string>> _declaredMounts;
+    private readonly Func<TeamLauncherContext> _launcherContext;
+    private AppSettingsDocument? _savedSettings;
     private int _selectedTabIndex;
 
     /// <summary>
@@ -102,6 +109,11 @@ public sealed class MainWindowViewModel : ObservableObject
         // alike — and stops the run outright. Passing a snapshot would leave a stale verdict
         // behind after an edit in the settings.
         Func<IReadOnlyList<string>> declaredMounts = () => Config.Mounts.CurrentMountStrings;
+        _declaredMounts = declaredMounts;
+        _teamsHome = teamsHome;
+        // The store the settings screen reads and writes through: what a run outside Studio reads is
+        // the file as this store saved it (STUDIO-52).
+        _settingsStore = settingsStore ?? PhysicalAppSettingsStore.Instance;
 
         Launch = new LaunchTabViewModel(new LaunchTabDependencies
         {
@@ -122,6 +134,10 @@ public sealed class MainWindowViewModel : ObservableObject
             // archived-team banner restores through « My teams », which owns the rules.
             TeamsRoot = teamsHome,
             RestoreTeam = RestoreArchivedTeam,
+            // STUDIO-52: the meta line names a setting absent from this machine as the card does, and
+            // a launch naming a folder id the file as saved lacks saves the settings first.
+            ModelSettings = ModelSettings,
+            PrepareLaunch = PrepareLaunchAsync,
         });
 
         // VFS-90: each settings row says which teams name it by id, and removing one asks
@@ -140,7 +156,9 @@ public sealed class MainWindowViewModel : ObservableObject
             new ModelProfilesViewModel(profileStore, Config.Llm, strings, llmProbe, keyStore,
                 loadTeams: () => TeamCatalog.List(teamsHome, TeamListFilter.All),
                 balances: Balances,
-                shellOpener: shellOpener),
+                shellOpener: shellOpener,
+                // STUDIO-52: a renamed setting's teams follow it before the change is mirrored.
+                followRename: FollowRenamedSetting),
             Mode,
             // STUDIO-14 settings (D-13, P-1): the folders tab also lists each adopted team's own
             // folders, read from the sidecars and written nowhere — a team's folders are vouched
@@ -161,6 +179,7 @@ public sealed class MainWindowViewModel : ObservableObject
             DeclaredMounts = declaredMounts(),
             SettingsPath = Config.Location.EffectivePath,
         };
+        _launcherContext = launcherContext;
         // A setting created, removed, renamed or offered no more: the teams naming it run
         // elsewhere outside Studio, and their launchers say so again.
         Settings.Profiles.HostProfilesChanged += (_, e) =>
@@ -197,6 +216,10 @@ public sealed class MainWindowViewModel : ObservableObject
                 Mode = Mode,
                 // STUDIO-32: an imported case dates its arrival — its first activity.
                 Clock = seams.Clock,
+                // STUDIO-52: the schedule offer says what the scheduled run cannot follow, and its
+                // « Install » saves what the file lacks and writes the launchers for this machine.
+                ScheduledRunLine = ScheduledRunLineFor,
+                PrepareSchedule = PrepareScheduleAsync,
             });
 
         Teams = new TeamsViewModel(new TeamsDependencies
@@ -216,6 +239,12 @@ public sealed class MainWindowViewModel : ObservableObject
             // undo banner keeps a timer of its own (D-02).
             StudioSettings = () => Settings.Studio.Current,
             UndoDelay = seams.UndoDelay,
+            // STUDIO-52: a card names a setting absent from this machine, a scheduled team's says
+            // what its scheduled run cannot follow — read against the settings file as saved —, and
+            // « Install the schedule » saves what the file lacks and writes the launchers first.
+            ModelSettings = ModelSettings,
+            ScheduledRun = team => ScheduledRunCheck.First(team, Settings.Profiles.Set, _savedSettings),
+            PrepareSchedule = PrepareScheduleAsync,
         });
 
 
@@ -238,6 +267,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 // No teams root: a trial stamps no last run (STUDIO-31, D-05). The restore goes
                 // through « My teams » like the Run screen's.
                 RestoreTeam = RestoreArchivedTeam,
+                ModelSettings = ModelSettings,
+                PrepareLaunch = PrepareLaunchAsync,
             }),
             teamsRoot);
 
@@ -284,7 +315,13 @@ public sealed class MainWindowViewModel : ObservableObject
         TeamMounts = new TeamMountsDialogViewModel(strings, declaredMounts: declaredMounts, launcherContext: launcherContext);
         Teams.MountsRequested += (_, e) =>
             TeamMounts.Open(e.Card.Summary.Path, e.Card.Name, e.Card.Mounts,
-                onSaved: () => { Teams.Refresh(); Launch.RefreshTeamDescription(); });
+                onSaved: () =>
+                {
+                    Teams.Refresh();
+                    Launch.RefreshTeamDescription();
+                    // STUDIO-52: a folder the team now names by an id the file as saved lacks is saved.
+                    _ = SaveFolderIdsGuarded(e.Card.Summary.Path);
+                });
         Launch.RunRecorded += (_, _) => _ = Teams.LoadLastRunsAsync();
         Teams.TestRequested += (_, e) => { Test.Launcher.Target.Select(e.Path); TestRequested?.Invoke(this, EventArgs.Empty); };
         var effectiveStrings = strings ?? EnglishStudioStrings.Instance;
@@ -344,7 +381,14 @@ public sealed class MainWindowViewModel : ObservableObject
         };
         // An adoption or an import may bring a schedule: its card asks the engine where it stands
         // (STUDIO-27, D-05) — and the wizard's « Install » says what it did.
-        CreateTeam.TeamAdopted += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
+        CreateTeam.TeamAdopted += (_, e) =>
+        {
+            Teams.Refresh();
+            Test.RefreshTeams();
+            _ = Teams.CheckScheduleAsync(e.Path);
+            // STUDIO-52: the folder ids the adopted team names are saved when the file lacks them.
+            _ = SaveFolderIdsGuarded(e.Path);
+        };
         // STUDIO-31 (D-08): an archive or a restore changes what the Test picker offers, and what
         // the two launchers may run — a target archived under them is refused from then on.
         Teams.ArchiveChanged += (_, _) =>
@@ -361,7 +405,15 @@ public sealed class MainWindowViewModel : ObservableObject
             if (e.PropertyName == nameof(StudioSettingsViewModel.Current))
                 Teams.RefreshArchiveSuggestion();
         };
-        Import.TeamImported += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
+        Import.TeamImported += (_, e) =>
+        {
+            // STUDIO-52: an imported team's launchers name the other machine's settings file, setting
+            // and folders: they are written for this one at once — never at startup.
+            TeamLaunchers.Regenerate(e.Path, launcherContext());
+            Teams.Refresh();
+            Test.RefreshTeams();
+            _ = Teams.CheckScheduleAsync(e.Path);
+        };
         // A use case imported as it is from the gallery (STUDIO-41) has no schedule to ask about.
         CreateTeam.Gallery.Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         // STUDIO-14 settings (D-13): the « Team folders » section of the settings follows the
@@ -391,6 +443,14 @@ public sealed class MainWindowViewModel : ObservableObject
             Teams.Refresh();
             Launch.RefreshTeamDescription();
             Test.Launcher.RefreshTeamDescription();
+        };
+        // STUDIO-52: what a scheduled team's run cannot follow is read against the settings file as
+        // saved — read again after each save or load —, and against the model settings Studio shows.
+        Config.Saved += (_, _) => _ = RefreshSavedSettingsGuarded();
+        Settings.Profiles.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ModelProfilesViewModel.Set))
+                RefreshSettingViews();
         };
     }
 
@@ -712,6 +772,152 @@ public sealed class MainWindowViewModel : ObservableObject
     /// the rules (D-09) and the refresh of every list are one; the refusal, or null once restored.
     /// </summary>
     private string? RestoreArchivedTeam(string teamPath) => Teams.RestoreTeam(teamPath);
+
+    /// <summary>
+    /// A setting the settings screen renamed (STUDIO-52, decision 1), before the change reaches the
+    /// cards, the settings file and the launchers: every team of the catalog naming it — archived
+    /// ones included — names its new name, and so does the team the wizard is adopting.
+    /// </summary>
+    private void FollowRenamedSetting(string from, string to)
+    {
+        TeamCatalog.RenameSetting(_teamsHome, from, to);
+        CreateTeam.FollowRenamedSetting(from, to);
+        Teams.Refresh();
+        Test.RefreshTeams();
+    }
+
+    /// <summary>The model settings as Studio shows them (STUDIO-52) — read when a screen asks, never captured.</summary>
+    private ModelProfileSet ModelSettings() => Settings.Profiles.Set;
+
+    /// <summary>The model settings or the settings file as saved changed (STUDIO-52): every screen naming a team's setting reads it again.</summary>
+    private void RefreshSettingViews()
+    {
+        Teams.RefreshSettings();
+        CreateTeam.ScheduleOffer.RefreshNotice();
+        Launch.RefreshTeamDescription();
+        Test.Launcher.RefreshTeamDescription();
+    }
+
+    /// <summary>What the schedule offer says under its question for <paramref name="teamPath"/> (STUDIO-52); null when the scheduled run takes what Studio shows.</summary>
+    private string? ScheduledRunLineFor(string teamPath) =>
+        ScheduledRunCheck.First(TeamCatalog.Describe(teamPath, _declaredMounts()), Settings.Profiles.Set, _savedSettings) is { } notice
+            ? ScheduledRunCheck.Describe(notice, _strings)
+            : null;
+
+    /// <summary>The settings file as saved — what a run outside Studio reads —; null when there is none, or it cannot be read.</summary>
+    private async Task<AppSettingsDocument?> ReadSavedSettingsAsync()
+    {
+        if (Config.Location.EffectivePath is not { Length: > 0 } path || !_settingsStore.Exists(path))
+            return null;
+
+        var (document, _) = await _settingsStore.TryLoadAsync(path).ConfigureAwait(true);
+        return document;
+    }
+
+    /// <summary>Reads the settings file as saved again, then what every screen says of a team's run outside Studio.</summary>
+    private async Task RefreshSavedSettingsAsync()
+    {
+        _savedSettings = await ReadSavedSettingsAsync().ConfigureAwait(true);
+        RefreshSettingViews();
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031",
+        Justification = "Discarded task: a fault reading the settings file lands on the wizard's status line, like every barrier of the window.")]
+    private async Task RefreshSavedSettingsGuarded()
+    {
+        try
+        {
+            await RefreshSavedSettingsAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            CreateTeam.ReportStatus(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// The preparation of the window (STUDIO-52, decision 4): when the settings file as saved lacks
+    /// some of what a gesture is about to name — <paramref name="gaps"/> counts it in a document — and
+    /// the document of the settings screen has it, the document is saved, whole, as the choice of a
+    /// folder saves it. Null when nothing had to be saved or the save went through; the reason the
+    /// save was refused otherwise.
+    /// </summary>
+    private async Task<string?> SaveWhatTheFileLacksAsync(Func<AppSettingsDocument?, int> gaps)
+    {
+        var missing = gaps(await ReadSavedSettingsAsync().ConfigureAwait(true));
+        if (missing == 0 || gaps(Config.Document) >= missing)
+            return null;
+
+        if (!await Config.SaveAsync().ConfigureAwait(true))
+            return Config.StatusMessage ?? "";
+
+        _savedSettings = await ReadSavedSettingsAsync().ConfigureAwait(true);
+        return null;
+    }
+
+    /// <summary>What <paramref name="teamPath"/>'s scheduled run cannot take from <paramref name="document"/>, beyond the default: a refusal or an older version.</summary>
+    private int RunGaps(string teamPath, AppSettingsDocument? document, bool foldersOnly) =>
+        ScheduledRunCheck.Of(TeamCatalog.Describe(teamPath, _declaredMounts()), Settings.Profiles.Set, document)
+            .Count(notice => foldersOnly ? notice.Issue == ScheduledRunIssue.FolderRefused : notice.Issue != ScheduledRunIssue.OnDefault);
+
+    /// <summary>
+    /// Before « Install the schedule » (STUDIO-52, decisions 3 and 4): the settings saved when the file
+    /// lacks what the team's launchers name, then the launchers written for this machine — a copy
+    /// made by hand is written at the gesture that schedules it here. A refused save still installs:
+    /// the card or the offer says what the scheduled run cannot follow.
+    /// </summary>
+    private async Task PrepareScheduleAsync(string teamPath)
+    {
+        await SaveWhatTheFileLacksAsync(document => RunGaps(teamPath, document, foldersOnly: false)).ConfigureAwait(true);
+        TeamLaunchers.Regenerate(teamPath, _launcherContext());
+    }
+
+    /// <summary>
+    /// After a gesture that makes a team depend on a folder id — the save of its folders, its
+    /// adoption (STUDIO-52) —: an id the screen gave a declaration when it read the file is saved,
+    /// and stays the team's from one start to the next. A refused save is said on the settings status line.
+    /// </summary>
+    private async Task SaveFolderIdsAsync(string teamPath)
+    {
+        if (await SaveWhatTheFileLacksAsync(document => RunGaps(teamPath, document, foldersOnly: true)).ConfigureAwait(true) is null)
+            TeamLaunchers.Regenerate(teamPath, _launcherContext());
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031",
+        Justification = "Discarded task: a fault saving the settings lands on the wizard's status line, like every barrier of the window.")]
+    private async Task SaveFolderIdsGuarded(string teamPath)
+    {
+        try
+        {
+            await SaveFolderIdsAsync(teamPath).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            CreateTeam.ReportStatus(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Before a launch of the Run or Test screen (STUDIO-52, decision 4): the runner looks every
+    /// <c>--mount-id</c> up in the settings file as saved. One the file lacks and the screen's document
+    /// has is saved first; null to launch, the reason the save was refused otherwise. A launch that
+    /// pins another settings file saves nothing.
+    /// </summary>
+    private async Task<string?> PrepareLaunchAsync(IReadOnlyList<string> mountIds, string? settingsPath)
+    {
+        if (settingsPath is { Length: > 0 }
+            && !string.Equals(
+                System.IO.Path.TrimEndingDirectorySeparator(settingsPath),
+                Config.Location.EffectivePath is { Length: > 0 } effective ? System.IO.Path.TrimEndingDirectorySeparator(effective) : null,
+                Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison))
+        {
+            return null;
+        }
+
+        return await SaveWhatTheFileLacksAsync(document => mountIds.Count(text =>
+                !MountId.TryParse(text, out var id) || document?.Mounts.Find(id) is null))
+            .ConfigureAwait(true);
+    }
 
     /// <summary>
     /// The environment a launch lays over its child. Every launch carries the model settings as

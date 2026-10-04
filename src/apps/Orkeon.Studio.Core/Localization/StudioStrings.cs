@@ -932,6 +932,13 @@ public static class StudioStringKeys
     /// <summary>"Not launched: {0} error(s) must be fixed first."</summary>
     public const string LaunchNotLaunchedErrors = "Studio.Run.NotLaunchedErrors";
 
+    /// <summary>
+    /// "Not launched: the settings this run depends on could not be saved — {0}" — a folder id the run
+    /// names was in the settings shown and not in the file saved, and the save was refused; {0} says
+    /// why (STUDIO-52).
+    /// </summary>
+    public const string LaunchSettingsNotSaved = "Studio.Run.SettingsNotSaved";
+
     /// <summary>"Cancelling: the CLI is asked to stop, and is killed if it does not."</summary>
     public const string LaunchCancelling = "Studio.Run.Cancelling";
 
@@ -1436,6 +1443,36 @@ public static class StudioStringKeys
 
     /// <summary>"Not deleted: the disk refused — a file of the team may be open." — the delete banner when the disk kept the folder (STUDIO-27).</summary>
     public const string TeamsDeleteRefused = "Studio.Teams.DeleteRefused";
+
+    // ---- STUDIO-52: what a team's run outside Studio cannot follow ----
+
+    /// <summary>
+    /// "{0} — absent from this machine: the default setting runs in its place" — {0} is a setting a
+    /// team names and no setting of this machine bears; said in <see cref="TeamsSettingLabel"/> on the
+    /// card and in <see cref="RunMetaProfile"/> on the Run and Test screens, the same words (STUDIO-52).
+    /// </summary>
+    public const string TeamsSettingMissing = "Studio.Teams.SettingMissing";
+
+    /// <summary>
+    /// "Scheduled, this team runs on the default setting, not on “{0}”. {1}" — {1} says why no crew
+    /// can name the setting (STUDIO-52): the card of a scheduled team, and the schedule offer.
+    /// </summary>
+    public const string TeamsScheduledRunOnDefault = "Studio.Teams.ScheduledRunOnDefault";
+
+    /// <summary>"“{0}” has no model: from Studio, the team answers as an echo." — the reason of <see cref="TeamsScheduledRunOnDefault"/> for a setting that names no provider (STUDIO-52).</summary>
+    public const string TeamsScheduledRunNoModel = "Studio.Teams.ScheduledRunNoModel";
+
+    /// <summary>"The next scheduled run will be refused: the saved settings file does not define “{0}” yet. Save the settings." (STUDIO-52)</summary>
+    public const string TeamsScheduledRunRefused = "Studio.Teams.ScheduledRunRefused";
+
+    /// <summary>"The scheduled run takes “{0}” as it was saved, not as Studio shows it. Save the settings." (STUDIO-52)</summary>
+    public const string TeamsScheduledRunOutdated = "Studio.Teams.ScheduledRunOutdated";
+
+    /// <summary>
+    /// "The next scheduled run will be refused: the saved settings file does not declare the folder {0}
+    /// yet. Save the settings." — {0} is the folder's virtual path, never a folder of the disk (STUDIO-52).
+    /// </summary>
+    public const string TeamsScheduledRunFolderRefused = "Studio.Teams.ScheduledRunFolderRefused";
 
     // ---- STUDIO-31: archiving a team — the model and the rules ----
 
@@ -2260,6 +2297,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.LaunchReady] = "Ready to launch.",
         [StudioStringKeys.LaunchNoTarget] = "No target resolved.",
         [StudioStringKeys.LaunchNotLaunchedErrors] = "Not launched: {0} error(s) must be fixed first.",
+        [StudioStringKeys.LaunchSettingsNotSaved] = "Not launched: the settings this run depends on could not be saved — {0}",
         [StudioStringKeys.LaunchCancelling] = "Cancelling: the CLI is asked to stop, and is killed if it does not.",
         [StudioStringKeys.LaunchNothingToReplay] = "Nothing to replay: the entry for '{0}' recorded no arguments.",
         [StudioStringKeys.LaunchValidating] = "Validating…",
@@ -2432,6 +2470,15 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsScheduleStopFailed] = "The schedule could not be stopped: {0}",
         [StudioStringKeys.TeamsDeleteUnscheduleFailed] = "Not deleted: its schedule could not be stopped — {0}",
         [StudioStringKeys.TeamsDeleteRefused] = "Not deleted: the disk refused — a file of the team may be open.",
+        [StudioStringKeys.TeamsSettingMissing] = "{0} — absent from this machine: the default setting runs in its place",
+        [StudioStringKeys.TeamsScheduledRunOnDefault] = "Scheduled, this team runs on the default setting, not on “{0}”. {1}",
+        [StudioStringKeys.TeamsScheduledRunNoModel] = "“{0}” has no model: from Studio, the team answers as an echo.",
+        [StudioStringKeys.TeamsScheduledRunRefused] =
+            "The next scheduled run will be refused: the saved settings file does not define “{0}” yet. Save the settings.",
+        [StudioStringKeys.TeamsScheduledRunOutdated] =
+            "The scheduled run takes “{0}” as it was saved, not as Studio shows it. Save the settings.",
+        [StudioStringKeys.TeamsScheduledRunFolderRefused] =
+            "The next scheduled run will be refused: the saved settings file does not declare the folder {0} yet. Save the settings.",
         [StudioStringKeys.CommonArchivedTeamRestore] = "Archived team — restore it?",
         [StudioStringKeys.CommonTeamRestored] = "Team restored: it is back among your teams.",
         [StudioStringKeys.TeamsArchiveBusy] = "Not archived: the team is running, or open in the assistant — try again once it is free.",

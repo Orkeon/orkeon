@@ -153,11 +153,17 @@ internal static class CaptureWorldWriter
     {
         // A team's own folder is never declared in the settings (STUDIO-14, P-1): a plan that
         // tried would photograph the very duplication the design rules out.
+        // Each declaration under the id Studio writes into the file (VFS-90): a run passes it as
+        // --mount-id, and a launch naming an id the file as saved lacks saves the settings first
+        // (STUDIO-52) — which a world with a deliberately unreadable folder refuses. Stable ids, so
+        // a shot never differs from the last one by an id.
         var mounts = plan.DeclaredMounts
-            .Select(mount => mount.InsideTeam
+            .Select((mount, index) => mount.InsideTeam
                 ? throw new InvalidOperationException(
                     $"'{mount.VirtualPath}' is an in-team folder; the settings never declare one (STUDIO-14, P-1).")
-                : MountString(mount, data))
+                : string.Create(CultureInfo.InvariantCulture, $"01K6CAPTVRE{index + 1:D15}")
+                    + Orkeon.Domain.FileSystem.FileSystemMount.IdSeparator
+                    + MountString(mount, data))
             .ToArray();
         var sections = new List<string>
         {

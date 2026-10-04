@@ -339,6 +339,19 @@ public sealed record CreateTeamDependencies
     /// declared folders, and no settings file — the run then resolves its own.
     /// </summary>
     public Func<TeamLauncherContext>? LauncherContext { get; init; }
+
+    /// <summary>
+    /// What an adopted team's scheduled run cannot follow, given its folder (STUDIO-52), in one line:
+    /// the schedule offer says it under its question, and at the end of its outcome. Null says nothing.
+    /// </summary>
+    public Func<string, string?>? ScheduledRunLine { get; init; }
+
+    /// <summary>
+    /// Runs before the schedule offer's « Install » (STUDIO-52), given the team folder: the settings
+    /// saved when the file as saved lacks what the team's launchers name, the launchers written again
+    /// for this machine. Null installs the folder as it stands.
+    /// </summary>
+    public Func<string, Task>? PrepareSchedule { get; init; }
 }
 
 /// <summary>
@@ -500,7 +513,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         OpenSettingsCommand = new RelayCommand(() => OpenSettingsRequested?.Invoke(this, EventArgs.Empty));
         OpenDiagnosticCommand = new RelayCommand(() => OpenDiagnosticRequested?.Invoke(this, EventArgs.Empty));
         PickAssistantCommand = new RelayCommand(PickAssistant);
-        ScheduleOffer = new ScheduleOfferViewModel(_client, _dispatcher, _strings);
+        ScheduleOffer = new ScheduleOfferViewModel(_client, _dispatcher, _strings, wired.ScheduledRunLine, wired.PrepareSchedule);
 
         // STUDIO-39: the gallery, the suggestions under the need, the reference chip.
         Gallery = new UseCaseGalleryViewModel(
@@ -741,9 +754,26 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         if (propertyName is not (nameof(ModelProfilesViewModel.HasStudioProfile) or nameof(ModelProfilesViewModel.Set)))
             return;
 
-        // CanCompose starts with HasAssistant: an election must wake the button too.
-        OnPropertiesChanged(nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint));
+        // CanCompose starts with HasAssistant: an election must wake the button too. The step-4 card
+        // reads the setting it names among them — renamed, edited or newly elected (STUDIO-52).
+        OnPropertiesChanged(
+            nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint),
+            nameof(AdoptProfileName), nameof(AdoptProfileSummary));
         ComposeCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// A setting renamed in the settings screen (STUDIO-52): the team being adopted follows it when it
+    /// named it — chosen at step 4, or taken back from the team « Modify » reopened —, so the adoption
+    /// does not write the former name. The machine default needs nothing: it follows by the election.
+    /// </summary>
+    public void FollowRenamedSetting(string from, string to)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(from);
+        ArgumentException.ThrowIfNullOrEmpty(to);
+
+        if (string.Equals(_adoptProfileName, from, StringComparison.Ordinal))
+            AdoptProfileName = to;
     }
 
     /// <summary>The language switched: the step-4 card titles its setting's card in it (STUDIO-54).</summary>

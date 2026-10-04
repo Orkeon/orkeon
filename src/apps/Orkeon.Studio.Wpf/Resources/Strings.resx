@@ -306,6 +306,7 @@
   <data name="Studio.Run.Ready" xml:space="preserve"><value>Ready to launch.</value></data>
   <data name="Studio.Run.NoTarget" xml:space="preserve"><value>No target resolved.</value></data>
   <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve"><value>Not launched: {0} error(s) must be fixed first.</value></data>
+  <data name="Studio.Run.SettingsNotSaved" xml:space="preserve"><value>Not launched: the settings this run depends on could not be saved — {0}</value></data>
   <data name="Studio.Run.Cancelling" xml:space="preserve"><value>Cancelling: the CLI is asked to stop, and is killed if it does not.</value></data>
   <data name="Studio.Run.NothingToReplay" xml:space="preserve"><value>Nothing to replay: the entry for '{0}' recorded no arguments.</value></data>
   <data name="Studio.Run.Validating" xml:space="preserve"><value>Validating…</value></data>
@@ -1133,6 +1134,24 @@
   </data>
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>Not deleted: the disk refused — a file of the team may be open.</value>
+  </data>
+  <data name="Studio.Teams.SettingMissing" xml:space="preserve">
+    <value>{0} — absent from this machine: the default setting runs in its place</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunOnDefault" xml:space="preserve">
+    <value>Scheduled, this team runs on the default setting, not on “{0}”. {1}</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunNoModel" xml:space="preserve">
+    <value>“{0}” has no model: from Studio, the team answers as an echo.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunRefused" xml:space="preserve">
+    <value>The next scheduled run will be refused: the saved settings file does not define “{0}” yet. Save the settings.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunOutdated" xml:space="preserve">
+    <value>The scheduled run takes “{0}” as it was saved, not as Studio shows it. Save the settings.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunFolderRefused" xml:space="preserve">
+    <value>The next scheduled run will be refused: the saved settings file does not declare the folder {0} yet. Save the settings.</value>
   </data>
   <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
     <value>Archived team — restore it?</value>

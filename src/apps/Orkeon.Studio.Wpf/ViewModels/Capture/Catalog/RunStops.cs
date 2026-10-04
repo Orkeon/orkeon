@@ -66,7 +66,10 @@ internal static class RunStops
                 c.Shell.Launch.Target.Select(c.World.TeamDirectory("veille-concurrentielle"));
                 c.World.Cli.Hold("run");
                 c.HoldUntilTeardown(c.Shell.Launch.RunCommand.ExecuteAsync());
-                await CaptureWait.UntilAsync(() => c.Shell.Launch.IsRunning);
+                // Parked, not merely running: a launch reads the settings file before it starts
+                // (STUDIO-52), so the screen says « running » a moment before the child holds — a
+                // release in between would find nothing to release.
+                await CaptureWait.UntilAsync(() => c.Shell.Launch.IsRunning && c.World.Cli.IsParked);
             },
             // The stop owns its whole run: a held child released by the NEXT stop would leave the
             // walk waiting on a task nothing in this stop can finish.

@@ -63,6 +63,23 @@ public static class ConventionalNames
     public const string PosixTeamLauncher = "run.sh";
 
     /// <summary>
+    /// A promoted team's schedule folder, at the root of its folder: the artifacts of the three
+    /// scheduler families and what this machine's scheduler registered (STUDIO-52) — what the
+    /// operating system of one machine knows of the team. Written by <c>orkeon forge promote</c>
+    /// and <c>forge schedule</c>; Orkeon Studio leaves it behind when it exports or imports a team:
+    /// <c>forge schedule</c> writes it again on the machine that installs.
+    /// </summary>
+    public const string ScheduleDirectory = "schedule";
+
+    /// <summary>
+    /// The record of what <c>forge schedule</c> registered, inside <see cref="ScheduleDirectory"/>
+    /// (STUDIO-52): the schedule, the system family, the names, the folder and the date. Written by
+    /// the CLI, which acts on these names alone; Orkeon Studio reads whether it is there — a team
+    /// whose registration the engine must remove before the folder goes.
+    /// </summary>
+    public const string ScheduleInstallationFile = "installed.json";
+
+    /// <summary>
     /// The flat YAML crew layout: a directory holding these three files is a crew, as opposed to
     /// the multi-file layout with its <c>agents/</c> and <c>tasks/</c> sub-folders.
     /// <para>

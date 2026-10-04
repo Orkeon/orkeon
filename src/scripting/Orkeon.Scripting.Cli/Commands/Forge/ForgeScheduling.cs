@@ -1,13 +1,18 @@
 using System.Globalization;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
 /// <summary>
 /// The <c>schedule</c> block of <c>forge.json</c> (STUDIO-27, D-03): the schedule the folder
-/// declares — its promotion's <c>--schedule</c> — and, once <c>forge schedule</c> installed it,
-/// what was installed. Absent from a folder that declares none and has nothing installed.
+/// declares — its promotion's <c>--schedule</c>. Absent from a folder that declares none. What
+/// <c>forge schedule</c> installed of it is no part of it (STUDIO-52): it is this machine's, and
+/// <c>forge.json</c> travels with the folder — <see cref="ForgeScheduleInstallation"/> records it
+/// beside the artifacts.
 /// </summary>
 internal sealed record ForgeTeamSchedule
 {
@@ -15,23 +20,35 @@ internal sealed record ForgeTeamSchedule
     [JsonPropertyName("expression")]
     public string? Expression { get; init; }
 
-    /// <summary>What <c>forge schedule</c> registered with the operating system; null while nothing is.</summary>
-    [JsonPropertyName("installed")]
-    public ForgeScheduleInstallation? Installed { get; init; }
-
-    /// <summary>The block for <paramref name="expression"/> and <paramref name="installed"/>; null when both are.</summary>
-    public static ForgeTeamSchedule? Of(string? expression, ForgeScheduleInstallation? installed) =>
-        expression is null && installed is null ? null : new ForgeTeamSchedule { Expression = expression, Installed = installed };
+    /// <summary>The block for <paramref name="expression"/>; null when the folder declares none.</summary>
+    public static ForgeTeamSchedule? Of(string? expression) =>
+        expression is null ? null : new ForgeTeamSchedule { Expression = expression };
 }
 
 /// <summary>
 /// What <c>forge schedule</c> registered, recorded so that a check and a removal act on these
 /// names and never on names they would compute (D-03): a folder renamed since still removes the
-/// registration it made under its former name. Every field is optional on read — a record
+/// registration it made under its former name. Recorded in <c>schedule/installed.json</c>, beside
+/// the artifacts it describes (STUDIO-52): what this machine's scheduler knows of the team — the
+/// folder it was made for among it —, which a copy made by hand carries, and is recognised by, and
+/// which an export leaves behind with the artifacts; <c>forge.json</c>, which travels with the
+/// folder, keeps the declared schedule alone. Every field is optional on read — a record
 /// hand-edited into an incomplete one stays readable, and names nothing to act on.
 /// </summary>
 internal sealed record ForgeScheduleInstallation
 {
+    /// <summary>The record's file, inside <c>schedule/</c>.</summary>
+    public const string FileName = ConventionalNames.ScheduleInstallationFile;
+
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    };
+
     /// <summary>The schedule installed.</summary>
     [JsonPropertyName("expression")]
     public string? Expression { get; init; }
@@ -51,6 +68,43 @@ internal sealed record ForgeScheduleInstallation
     /// <summary>When it was installed (UTC, ISO-8601).</summary>
     [JsonPropertyName("installedAt")]
     public string? InstalledAt { get; init; }
+
+    /// <summary>Where <paramref name="teamDirectory"/>'s record lives: <c>schedule/installed.json</c>.</summary>
+    public static string PathFor(string teamDirectory) =>
+        System.IO.Path.Combine(teamDirectory, ForgePromoter.ScheduleDirectoryName, FileName);
+
+    /// <summary>
+    /// What <paramref name="teamDirectory"/> records as installed; null when nothing is — no record,
+    /// or one that cannot be read: never fatal.
+    /// </summary>
+    public static ForgeScheduleInstallation? TryRead(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var file = PathFor(teamDirectory);
+        if (!File.Exists(file))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<ForgeScheduleInstallation>(File.ReadAllText(file), SerializerOptions);
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Records <paramref name="installation"/> as what <paramref name="teamDirectory"/> installed, <c>schedule/</c> created when it is not there.</summary>
+    public static void Save(string teamDirectory, ForgeScheduleInstallation installation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentNullException.ThrowIfNull(installation);
+
+        var file = PathFor(teamDirectory);
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, JsonSerializer.Serialize(installation, SerializerOptions), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+    }
 }
 
 /// <summary>Where a folder's schedule stands (<c>schedule.state</c>).</summary>
@@ -164,12 +218,12 @@ internal sealed record ForgeScheduleHost(IForgeScheduleAdapter Adapter, Func<Dat
 /// <list type="bullet">
 /// <item><description><b>Install</b> registers what <c>schedule/</c> describes, regenerated first when it describes another folder (a copy, a moved or renamed team); a registration of this folder's under a former name goes first.</description></item>
 /// <item><description><b>Check</b> compares what the OS holds under the recorded names with what the folder is now.</description></item>
-/// <item><description><b>Remove</b> unregisters, deletes <c>schedule/</c> and the <c>forge.json</c> block; nothing to remove is a success.</description></item>
+/// <item><description><b>Remove</b> unregisters, deletes <c>schedule/</c> — the record with it — and the <c>forge.json</c> block; nothing to remove is a success.</description></item>
 /// </list>
-/// Which registration a folder may act on is recorded, never computed: the <c>installed</c> block
-/// of its own <c>forge.json</c>. A copy of a scheduled team inherits its original's block; the
-/// block names the folder it was made for, and while that folder still claims it, the copy leaves
-/// it alone.
+/// Which registration a folder may act on is recorded, never computed: its own
+/// <c>schedule/installed.json</c> (<see cref="ForgeScheduleInstallation"/>, STUDIO-52). A copy of a
+/// scheduled team made by hand inherits its original's record; the record names the folder it was
+/// made for, and while that folder still claims it, the copy leaves it alone.
 /// </summary>
 internal sealed class ForgeScheduler(ForgeScheduleHost host)
 {
@@ -223,6 +277,11 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
                 $"'{teamDirectory}' holds no {Path.GetFileName(launcher)} for the schedule to run — adopt it again to regenerate its launchers.");
         }
 
+        // Read before schedule/ is regenerated (STUDIO-52): the names of an installation made under a
+        // former name are the only way back to it, a refusal of the system after the regeneration
+        // included.
+        var installed = ForgeScheduleInstallation.TryRead(teamDirectory);
+
         // What schedule/ describes has to be this folder, where and as it is now: a copy, a moved or a
         // renamed team carries artifacts naming another launcher and another name.
         var artifactName = ForgePromoter.ArtifactName(teamDirectory);
@@ -232,7 +291,6 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
         var target = new ForgeScheduleTarget(
             teamDirectory, Path.Combine(teamDirectory, ForgePromoter.ScheduleDirectoryName), launcher, names);
         var manual = ForgeScheduleAdapters.ManualInstallCommand(Adapter.Family, teamDirectory, artifactName);
-        var installed = record.Schedule.Installed;
         var ownership = OwnershipOf(installed, teamDirectory);
 
         var probe = Adapter.Probe(names);
@@ -261,14 +319,14 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
         if (outcome.Refusal is { } refusal)
             return Failed(ForgeErrorCodes.ScheduleRefused, Refused(refusal), manual);
 
-        ForgeTeamRecord.SaveSchedule(teamDirectory, ForgeTeamSchedule.Of(expression, new ForgeScheduleInstallation
+        ForgeScheduleInstallation.Save(teamDirectory, new ForgeScheduleInstallation
         {
             Expression = expression,
             Family = Family,
             Names = names,
             Path = teamDirectory,
             InstalledAt = host.Clock().UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
-        }));
+        });
 
         return new ForgeScheduleOutcome
         {
@@ -281,9 +339,8 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
-        var record = ForgeTeamRecord.TryRead(teamDirectory);
-        var expression = record?.Schedule?.Expression;
-        var installed = record?.Schedule?.Installed;
+        var expression = ForgeTeamRecord.TryRead(teamDirectory)?.Schedule?.Expression;
+        var installed = ForgeScheduleInstallation.TryRead(teamDirectory);
 
         switch (OwnershipOf(installed, teamDirectory))
         {
@@ -316,15 +373,16 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
 
     /// <summary>
     /// <c>forge unschedule &lt;team&gt;</c>: unregisters what this folder installed, deletes
-    /// <c>schedule/</c> and the <c>forge.json</c> block. Nothing to remove is a success; a
-    /// refusal leaves everything in place, so a retry still knows the names.
+    /// <c>schedule/</c> — the record of what was installed with it — and the <c>forge.json</c> block.
+    /// Nothing to remove is a success; a refusal leaves everything in place, so a retry still knows
+    /// the names.
     /// </summary>
     public ForgeScheduleOutcome Remove(string teamDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
         var record = ForgeTeamRecord.TryRead(teamDirectory);
-        var installed = record?.Schedule?.Installed;
+        var installed = ForgeScheduleInstallation.TryRead(teamDirectory);
         var warnings = new List<(string Code, string Message)>();
         var removed = false;
         IReadOnlyList<string> names = [];
@@ -387,7 +445,7 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
-        var installed = ForgeTeamRecord.TryRead(teamDirectory)?.Schedule?.Installed;
+        var installed = ForgeScheduleInstallation.TryRead(teamDirectory);
         return OwnershipOf(installed, teamDirectory, SpellFamily(platform)) == Ownership.Own
             ? $"The team is no longer scheduled, but '{string.Join("', '", installed!.Names!)}' still runs it: remove it with `orkeon forge unschedule \"{teamDirectory}\"`."
             : null;
@@ -419,13 +477,13 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
                 : Ownership.Own;
     }
 
-    /// <summary>Whether <paramref name="folder"/>'s own record names <paramref name="names"/>, installed for itself.</summary>
+    /// <summary>Whether <paramref name="folder"/>'s own record (<c>schedule/installed.json</c>) names <paramref name="names"/>, installed for itself.</summary>
     private static bool ClaimsItsOwn(string folder, IReadOnlyList<string> names, string family)
     {
         if (!Directory.Exists(folder))
             return false;
 
-        var theirs = ForgeTeamRecord.TryRead(folder)?.Schedule?.Installed;
+        var theirs = ForgeScheduleInstallation.TryRead(folder);
         return theirs is not null
             && string.Equals(theirs.Family, family, StringComparison.Ordinal)
             && SamePath(theirs.Path, folder)

@@ -2,4 +2,6 @@
 const Orkeon.Constants.FileSystem.ConventionalNames.TeamSidecarFile = "studio-team.json" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Credentials = "/credentials" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.PosixTeamLauncher = "run.sh" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.ScheduleDirectory = "schedule" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.ScheduleInstallationFile = "installed.json" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.WindowsTeamLauncher = "run.cmd" -> string!

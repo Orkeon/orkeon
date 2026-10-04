@@ -34,7 +34,9 @@ public sealed record StudioTeamMetadata
 
     /// <summary>
     /// Name of the model profile this team runs on — its host profile is the
-    /// <c>--llm-profile</c> of the team's launchers (STUDIO-50, <see cref="TeamLaunchers"/>).
+    /// <c>--llm-profile</c> of the team's launchers (STUDIO-50, <see cref="TeamLaunchers"/>). The one
+    /// link to the setting, by its name: renaming the setting in Studio rewrites it
+    /// (<see cref="TeamCatalog.RenameSetting"/>, STUDIO-52).
     /// </summary>
     [JsonPropertyName("profile")]
     public string? Profile { get; init; }
@@ -237,15 +239,15 @@ public sealed record TeamSummary
     public Guid? ForgeSessionId { get; init; }
 
     /// <summary>
-    /// Whether the folder's <c>forge.json</c> records a schedule the engine installed (STUDIO-27) —
-    /// even one the sidecar no longer names, or one inherited by a copy: the engine decides which
-    /// registration is the folder's own when asked to remove it.
+    /// Whether the folder's <c>schedule/installed.json</c> records a schedule the engine installed
+    /// (STUDIO-27, STUDIO-52) — even one the sidecar no longer names, or one inherited by a copy made
+    /// by hand: the engine decides which registration is the folder's own when asked to remove it.
     /// </summary>
     public bool HasInstalledSchedule { get; init; }
 
     /// <summary>
     /// Whether the team has a schedule to stop before it goes (STUDIO-27, D-06): declared in the
-    /// sidecar, or recorded as installed in <c>forge.json</c>.
+    /// sidecar, or recorded as installed in <c>schedule/installed.json</c>.
     /// </summary>
     public bool HasSchedule => Schedule is { Length: > 0 } || HasInstalledSchedule;
 
@@ -783,6 +785,38 @@ public static partial class TeamCatalog
     }
 
     /// <summary>
+    /// Follows a model setting the settings screen renamed (STUDIO-52, decision 1): every team under
+    /// <paramref name="root"/>, archived ones included, whose companion file names
+    /// <paramref name="from"/> — compared as every launch finds a setting, ordinal — names
+    /// <paramref name="to"/> from now on, every other field as it was. A companion file that cannot
+    /// be read is left as it is, and so is one the disk refuses to write: tolerant, like the rest of
+    /// the catalog. Returns the team folders rewritten.
+    /// </summary>
+    /// <param name="root">The teams directory.</param>
+    /// <param name="from">The setting's former name.</param>
+    /// <param name="to">Its name now.</param>
+    public static IReadOnlyList<string> RenameSetting(string root, string from, string to)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(root);
+        ArgumentException.ThrowIfNullOrEmpty(from);
+        ArgumentException.ThrowIfNullOrEmpty(to);
+
+        var renamed = new List<string>();
+        foreach (var team in List(root, TeamListFilter.All))
+        {
+            // A companion file that cannot be read names no setting here: it is never written over.
+            if (team.Metadata is { } metadata
+                && string.Equals(metadata.Profile, from, StringComparison.Ordinal)
+                && TryWriteMetadata(team.Path, metadata with { Profile = to }))
+            {
+                renamed.Add(team.Path);
+            }
+        }
+
+        return renamed;
+    }
+
+    /// <summary>
     /// Records the team's mount strings in the sidecar, preserving everything else it says.
     /// A folder without a sidecar gains a minimal one — the mounts are worth remembering
     /// even for a hand-built team.
@@ -927,7 +961,12 @@ public static partial class TeamCatalog
     /// destination keeps the slug and must not already exist (the promote-time rule: never
     /// merge into what is already there). The root <c>appsettings.json</c> is left behind —
     /// a resolved settings copy can carry provider endpoints the recipient should not
-    /// inherit, and never travels. Returns the destination, or null when the disk refused.
+    /// inherit, and never travels. Nothing of this machine travels either (STUDIO-52, the rule
+    /// the import report draws from ADR-008): <c>schedule/</c> — what this machine's scheduler
+    /// knows of the team, paths included — stays behind, and the copy's launchers are written
+    /// again without the settings file, the model setting or a folder of this disk
+    /// (<see cref="TeamLaunchers.WritePortable"/>). Returns the destination, or null when the
+    /// disk refused.
     /// </summary>
     public static string? ExportTo(string teamDirectory, string destinationParent)
     {
@@ -954,7 +993,7 @@ public static partial class TeamCatalog
 
             foreach (var directory in Directory.EnumerateDirectories(teamDirectory))
             {
-                if (File.GetAttributes(directory).HasFlag(FileAttributes.ReparsePoint))
+                if (File.GetAttributes(directory).HasFlag(FileAttributes.ReparsePoint) || IsScheduleDirectory(directory))
                     continue;
                 CopyTree(directory, Path.Combine(destination, Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))));
             }
@@ -963,6 +1002,11 @@ public static partial class TeamCatalog
             // its own folders are recorded relative to it.
             if (TryReadMetadata(destination) is { } exported)
                 SaveMetadata(destination, Relativized(exported, teamDirectory));
+
+            // The launchers this machine wrote name its settings file, its model setting and its
+            // folders: the copy's say none of it (STUDIO-52). A copy without a companion file keeps
+            // the engine's launchers, as Studio never writes those.
+            TeamLaunchers.WritePortable(destination);
 
             return destination;
         }
@@ -1032,7 +1076,9 @@ public static partial class TeamCatalog
                 }
 
                 destination = candidate;
-                CopyTree(sourcePath, destination);
+                // The other machine's schedule/ stays behind (STUDIO-52): what its scheduler registered
+                // names its paths, and « Install the schedule » writes it again here.
+                CopyTree(sourcePath, destination, leaveSchedule: true);
 
                 // An older sidecar carrying absolute paths under its source folder is rewritten
                 // relative on import — a copy is a safeguard, not a compatibility layer. An
@@ -1379,7 +1425,11 @@ public static partial class TeamCatalog
         }
     }
 
-    private static void CopyTree(string source, string destination)
+    /// <summary>
+    /// Copies <paramref name="source"/> into <paramref name="destination"/>; with
+    /// <paramref name="leaveSchedule"/>, the source's own <c>schedule/</c> stays behind.
+    /// </summary>
+    private static void CopyTree(string source, string destination, bool leaveSchedule = false)
     {
         Directory.CreateDirectory(destination);
         foreach (var file in Directory.EnumerateFiles(source))
@@ -1388,10 +1438,21 @@ public static partial class TeamCatalog
         {
             // A directory symlink is not followed: a link to an ancestor would recurse
             // until the path length gives out, and a copy should carry files, not aliases.
-            if (File.GetAttributes(directory).HasFlag(FileAttributes.ReparsePoint))
+            if (File.GetAttributes(directory).HasFlag(FileAttributes.ReparsePoint) || (leaveSchedule && IsScheduleDirectory(directory)))
                 continue;
 
             CopyTree(directory, Path.Combine(destination, Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))));
         }
     }
+
+    /// <summary>
+    /// Whether <paramref name="directory"/> is a team's <c>schedule/</c> (STUDIO-52): the artifacts and
+    /// the record of what this machine's scheduler registered — which a copy made by hand carries,
+    /// and an export or an import leaves behind.
+    /// </summary>
+    private static bool IsScheduleDirectory(string directory) =>
+        string.Equals(
+            Path.GetFileName(Path.TrimEndingDirectorySeparator(directory)),
+            ConventionalNames.ScheduleDirectory,
+            StringComparison.OrdinalIgnoreCase);
 }

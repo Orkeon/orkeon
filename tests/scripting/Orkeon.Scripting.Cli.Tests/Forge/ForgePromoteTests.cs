@@ -41,8 +41,9 @@ public sealed class ForgeScheduleTests
 /// <summary>
 /// The promotion (SPEC-ORKEON-FORGE §11): a Ready session leaves its directory as an
 /// ordinary folder — crew copy, launch scripts against the CLI's own run grammar,
-/// FORGE.md identity card, generated schedule artifacts with the install command
-/// displayed and never executed.
+/// FORGE.md identity card, generated schedule artifacts whose install command the
+/// <c>promoted</c> event offers and nothing executes — and nothing of the machine in the
+/// card or the record (STUDIO-52).
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class ForgePromoteTests : IDisposable
@@ -205,10 +206,53 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Equal(ForgePromoter.ScheduleDirectoryName, result.ScheduleDirectory);
         Assert.Contains("systemctl --user enable --now orkeon-ma-veille.timer", result.InstallCommand, StringComparison.Ordinal);
 
-        // The card shows the install command; nothing was executed.
+        // STUDIO-52: the card says who installs the schedule — `orkeon forge schedule .` from the
+        // folder — and nothing of this machine: the install command rides the promoted event alone.
         var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
         Assert.Contains("Planification", card, StringComparison.Ordinal);
-        Assert.Contains(result.InstallCommand!, card, StringComparison.Ordinal);
+        Assert.Contains("`orkeon forge schedule .`", card, StringComparison.Ordinal);
+        Assert.DoesNotContain(result.InstallCommand!, card, StringComparison.Ordinal);
+        Assert.DoesNotContain("À la main", card, StringComparison.Ordinal);
+        Assert.DoesNotContain(Destination, card, StringComparison.Ordinal);
+        Assert.DoesNotContain(Path.Combine(Destination, ForgePromoter.ScheduleDirectoryName), card, StringComparison.Ordinal);
+
+        // The record declares the schedule, and holds nothing of an installation, nor of this machine.
+        var record = File.ReadAllText(Path.Combine(Destination, ForgeTeamRecord.FileName));
+        var declared = JsonElement.Parse(record).GetProperty("schedule");
+        Assert.Equal("daily@07:30", declared.GetProperty("expression").GetString());
+        Assert.False(declared.TryGetProperty("installed", out _));
+        Assert.DoesNotContain(_workspace, record, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// STUDIO-52, in the card's other language: the schedule section names <c>orkeon forge schedule .</c>
+    /// and no command of the machine that promoted the team, whatever the platform.
+    /// </summary>
+    [Theory]
+    [InlineData("windows")]
+    [InlineData("linux")]
+    [InlineData("other")]
+    public void The_english_card_names_no_command_of_the_machine(string family)
+    {
+        var platform = family switch
+        {
+            "windows" => ForgePromotePlatform.Windows,
+            "linux" => ForgePromotePlatform.Linux,
+            _ => ForgePromotePlatform.Other,
+        };
+        var session = ReadySession();
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief.Replace("\"language\": \"fr\"", "\"language\": \"en\"", StringComparison.Ordinal), out var brief, out _));
+        session.SaveArtifact(ForgeSession.BriefFileName, brief!);
+        Assert.True(ForgeSchedule.TryParse("hourly", out var schedule, out _));
+
+        var result = ForgePromoter.Promote(session, Destination, schedule, settingsPath: null, copySettings: false, platform, Now);
+
+        var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
+        Assert.Contains("## Schedule", card, StringComparison.Ordinal);
+        Assert.Contains("`orkeon forge schedule .` installs it and `orkeon forge unschedule .` removes it.", card, StringComparison.Ordinal);
+        Assert.DoesNotContain("By hand", card, StringComparison.Ordinal);
+        Assert.DoesNotContain(result.InstallCommand!, card, StringComparison.Ordinal);
+        Assert.DoesNotContain(Destination, card, StringComparison.Ordinal);
     }
 
     [Fact]

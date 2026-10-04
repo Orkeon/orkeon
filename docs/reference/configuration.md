@@ -326,7 +326,11 @@ to, and a name that would take over an entry written by hand are refused.
 - **A scheduled team.** The launchers of a team Studio adopted carry the team's setting as
   `--llm-profile <id>` — its entry here —, so the run the operating system schedules takes it, as a
   launch from Studio does ([Studio](../architecture/studio.md#a-scheduled-team-runs-as-studio-launches-it-studio-50)).
-  That run reads this file as saved, keys where it names them.
+  That run reads this file as saved, keys where it names them: the team's card says when this file
+  does not define its entry yet, holds an older version of it, or when the setting is one no run
+  outside Studio can take — the run then takes the default —, and « Install the schedule » saves the
+  settings first when they lack it. A setting renamed in Studio carries its teams
+  ([Studio](../architecture/studio.md#a-team-keeps-its-setting-and-its-folders-studio-52)).
 - **« Other OpenAI-compatible ».** A setting created from that card keeps its key in
   `ORKEON_CUSTOM_LLM_API_KEY`, shared by the settings of the card. One created before keeps
   `ORKEON_Llm__ApiKey` — the runtime's own key of the default: remembered in the user scope, it is

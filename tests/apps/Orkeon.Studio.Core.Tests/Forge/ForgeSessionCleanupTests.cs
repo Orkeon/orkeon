@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Orkeon.Constants.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Teams;
 
@@ -103,12 +104,21 @@ public sealed class ForgeSessionCleanupTests : IDisposable
         Assert.Equal(2, ForgeSessionCatalog.FindOrphans(_workspace).Count);
     }
 
-    /// <summary>D-06: a team whose forge.json records an installed schedule has one to stop, whatever its sidecar says.</summary>
+    /// <summary>
+    /// D-06, STUDIO-52: a team whose <c>schedule/installed.json</c> records an installed schedule has one
+    /// to stop, whatever its sidecar says — the record of this machine's scheduler, beside the
+    /// artifacts. A <c>forge.json</c> still holding an <c>installed</c> block (before STUDIO-52) is not
+    /// read: that file travels with the folder, and nothing is deployed.
+    /// </summary>
     [Fact]
     public void A_team_recording_an_installed_schedule_has_one_to_stop()
     {
-        var installed = WriteTeam("installee", OriginalId,
-            """{"expression":"daily@08:00","installed":{"expression":"daily@08:00","family":"windows","names":["Orkeon installee"]}}""");
+        var installed = WriteTeam("installee", OriginalId, """{"expression":"daily@08:00"}""");
+        WriteInstallation(installed, """{"expression":"daily@08:00","family":"windows","names":["Orkeon installee"]}""");
+        var formerPlace = WriteTeam("ancienne-place", null,
+            """{"expression":"daily@08:00","installed":{"expression":"daily@08:00","family":"windows","names":["Orkeon ancienne-place"]}}""");
+        var withoutRecord = Path.Combine(TeamsRoot, "sans-forge-json");
+        WriteInstallation(withoutRecord, """{"expression":"hourly","family":"linux","names":["orkeon-sans-forge-json.timer"]}""");
         var declared = WriteTeam("declaree", null, """{"expression":"hourly"}""");
         TeamCatalog.SaveMetadata(declared, new StudioTeamMetadata { Name = "Déclarée", Schedule = "hourly" });
         var none = WriteTeam("aucune", null);
@@ -116,10 +126,21 @@ public sealed class ForgeSessionCleanupTests : IDisposable
         Assert.True(ForgeSessionCatalog.ReadTeamRecord(installed).HasInstalledSchedule);
         Assert.Equal(Guid.Parse(OriginalId), ForgeSessionCatalog.ReadTeamRecord(installed).SessionId);
         Assert.True(TeamCatalog.Describe(installed).HasSchedule);
+        Assert.False(ForgeSessionCatalog.ReadTeamRecord(formerPlace).HasInstalledSchedule);
+        Assert.True(ForgeSessionCatalog.ReadTeamRecord(withoutRecord).HasInstalledSchedule);
+        Assert.Null(ForgeSessionCatalog.ReadTeamRecord(withoutRecord).SessionId);
         Assert.False(TeamCatalog.Describe(declared).HasInstalledSchedule);
         Assert.True(TeamCatalog.Describe(declared).HasSchedule);
         Assert.False(TeamCatalog.Describe(none).HasSchedule);
         Assert.Equal(TeamForgeRecord.None, ForgeSessionCatalog.ReadTeamRecord(Path.Combine(TeamsRoot, "nulle-part")));
+    }
+
+    /// <summary>What <c>forge schedule</c> records of an installation, where it records it (STUDIO-52).</summary>
+    private static void WriteInstallation(string team, string record)
+    {
+        var schedule = Path.Combine(team, ConventionalNames.ScheduleDirectory);
+        Directory.CreateDirectory(schedule);
+        File.WriteAllText(Path.Combine(schedule, ConventionalNames.ScheduleInstallationFile), record);
     }
 
     /// <summary>D-05: « Stop the schedule » forgets it in the sidecar, and only it.</summary>

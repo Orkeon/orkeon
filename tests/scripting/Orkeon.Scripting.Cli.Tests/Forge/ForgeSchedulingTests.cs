@@ -1,5 +1,7 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Xml.Linq;
+using Orkeon.Constants.FileSystem;
 using Orkeon.Scripting.Cli.Commands.Forge;
 using Orkeon.Scripting.Cli.Tests.Doubles;
 using Orkeon.Tests.Shared.Launchers;
@@ -47,8 +49,9 @@ public sealed class ForgeSchedulingTests : IDisposable
     /// <summary>
     /// D-01/D-02/D-03: installing registers the team under the name its folder gives it — the
     /// task « Orkeon ma-veille », the timer orkeon-ma-veille.timer, the cron line marked
-    /// « # orkeon:ma-veille » — running its own launcher, and forge.json records what was
-    /// installed: expression, family, names, folder, date.
+    /// « # orkeon:ma-veille » — running its own launcher, and records what was installed —
+    /// expression, family, names, folder, date — in schedule/installed.json, beside the artifacts
+    /// it describes (STUDIO-52): forge.json keeps the declared schedule alone.
     /// </summary>
     [Theory]
     [MemberData(nameof(Families))]
@@ -70,12 +73,51 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.Equal(ExpectedNames(platform, "ma-veille"), state.GetProperty("names").EnumerateArray().Select(n => n.GetString()));
         Assert.True(IsRegistered(os, platform, "ma-veille", Team));
 
-        var installed = ForgeTeamRecord.TryRead(Team)!.Schedule!.Installed!;
+        Assert.True(File.Exists(InstallationRecord(Team)));
+        var installed = ForgeScheduleInstallation.TryRead(Team)!;
         Assert.Equal("daily@07:30", installed.Expression);
         Assert.Equal(family, installed.Family);
         Assert.Equal(ExpectedNames(platform, "ma-veille"), installed.Names);
         Assert.Equal(Team, installed.Path);
         Assert.Equal("2026-09-24T10:00:00Z", installed.InstalledAt);
+        Assert.Equal(["expression"], ScheduleBlockKeys(Team));
+        Assert.Equal("daily@07:30", ForgeTeamRecord.TryRead(Team)!.Schedule!.Expression);
+    }
+
+    /// <summary>
+    /// STUDIO-52: the record of what was installed is read in schedule/installed.json and nowhere
+    /// else — the check and the removal act on the names it holds; without it, the folder installed
+    /// nothing as far as they know, and the OS is not even asked. The removal takes it with
+    /// schedule/, and leaves forge.json declaring no schedule, as before.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Families))]
+    public async Task The_check_and_the_removal_read_the_record_in_schedule_and_the_removal_takes_it(string family)
+    {
+        var platform = Platform(family);
+        PromoteScheduled(Team, platform);
+        var (os, host) = Machine(platform);
+        Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
+        var record = InstallationRecord(Team);
+        var aside = Path.Combine(_workspace, "installed.json");
+        Assert.True(File.Exists(record));
+
+        File.Move(record, aside);
+        os.Invocations.Clear();
+        var withoutRecord = Assert.Single((await RunAsync(host, "schedule", Team, "--check")).Events);
+        Assert.Equal("absent", withoutRecord.GetProperty("state").GetString());
+        Assert.Equal(ForgeScheduleReasons.NotInstalled, withoutRecord.GetProperty("reason").GetString());
+        Assert.Empty(os.Invocations);
+
+        File.Move(aside, record);
+        Assert.Equal("installed", Assert.Single((await RunAsync(host, "schedule", Team, "--check")).Events).GetProperty("state").GetString());
+
+        var removal = Assert.Single((await RunAsync(host, "unschedule", Team)).Events);
+        Assert.True(removal.GetProperty("removed").GetBoolean());
+        Assert.Equal(0, RegistrationCount(os, platform));
+        Assert.False(File.Exists(record));
+        Assert.False(Directory.Exists(Path.Combine(Team, ForgePromoter.ScheduleDirectoryName)));
+        Assert.Null(ForgeTeamRecord.TryRead(Team)!.Schedule);
     }
 
     /// <summary>D-01: installing again is reinstalling — one registration, and the check says it is installed.</summary>
@@ -97,8 +139,9 @@ public sealed class ForgeSchedulingTests : IDisposable
     }
 
     /// <summary>
-    /// D-01: removing unregisters, deletes schedule/ and the forge.json block; removing again finds
-    /// nothing and still succeeds — nothing to remove is a success.
+    /// D-01: removing unregisters, deletes schedule/ — the record of what was installed with it — and
+    /// the forge.json block; removing again finds nothing and still succeeds — nothing to remove is a
+    /// success.
     /// </summary>
     [Theory]
     [MemberData(nameof(Families))]
@@ -108,6 +151,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         PromoteScheduled(Team, platform);
         var (os, host) = Machine(platform);
         Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
+        Assert.True(File.Exists(InstallationRecord(Team)));
 
         var (exitCode, events) = await RunAsync(host, "unschedule", Team);
 
@@ -167,7 +211,8 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.Equal(ForgeErrorCodes.ScheduleRefused, error.GetProperty("code").GetString());
         Assert.Contains(message, error.GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.Equal(ForgeScheduleAdapters.ManualInstallCommand(platform, Team, "ma-veille"), error.GetProperty("command").GetString());
-        Assert.Null(ForgeTeamRecord.TryRead(Team)!.Schedule!.Installed);
+        Assert.Null(ForgeScheduleInstallation.TryRead(Team));
+        Assert.False(File.Exists(InstallationRecord(Team)));
         Assert.Equal(0, RegistrationCount(os, platform));
     }
 
@@ -336,20 +381,32 @@ public sealed class ForgeSchedulingTests : IDisposable
 
     /// <summary>
     /// DA-3: the card no longer asks a person to install the schedule — Studio installs it with the
-    /// user's consent, or <c>forge schedule</c> does; the command by hand stays, as the fallback.
+    /// user's consent, or <c>forge schedule</c> does. STUDIO-52: and it names nothing of the machine
+    /// that promoted the team — a folder made to be shared carries no path of it. The command by
+    /// hand, for this machine, rides the <c>promoted</c> event, never a file.
     /// </summary>
     [Fact]
-    public void The_card_says_who_installs_the_schedule_and_keeps_the_manual_command()
+    public async Task The_card_says_who_installs_the_schedule_and_the_command_by_hand_rides_the_event()
     {
-        PromoteScheduled(Team, ForgePromotePlatform.Windows);
+        ReadySession();
+        var (_, host) = Machine(ForgePromotePlatform.Windows);
 
-        var card = File.ReadAllText(Path.Combine(Team, ForgePromoter.CardFileName));
+        var (exitCode, events) = await RunAsync(host, "promote", "veille", "--to", Team, "--schedule", "daily@07:30");
 
+        Assert.Equal(0, exitCode);
+        var manual = ForgeScheduleAdapters.ManualInstallCommand(ForgePromoter.DetectPlatform(), Team, "ma-veille");
+        Assert.Equal(manual, Assert.Single(events, e => Kind(e) == "promoted").GetProperty("install").GetString());
+
+        var card = await File.ReadAllTextAsync(Path.Combine(Team, ForgePromoter.CardFileName), TestContext.Current.CancellationToken);
         Assert.Contains("`orkeon forge schedule .`", card, StringComparison.Ordinal);
         Assert.Contains("`orkeon forge unschedule .`", card, StringComparison.Ordinal);
         Assert.Contains("Orkeon Studio installe la planification avec votre accord", card, StringComparison.Ordinal);
         Assert.DoesNotContain("installez l'artefact vous-même", card, StringComparison.Ordinal);
-        Assert.Contains(ForgeScheduleAdapters.ManualInstallCommand(ForgePromotePlatform.Windows, Team, "ma-veille"), card, StringComparison.Ordinal);
+        Assert.DoesNotContain("À la main", card, StringComparison.Ordinal);
+        Assert.DoesNotContain(manual, card, StringComparison.Ordinal);
+        foreach (var platform in new[] { ForgePromotePlatform.Windows, ForgePromotePlatform.Linux, ForgePromotePlatform.Other })
+            Assert.DoesNotContain(ForgeScheduleAdapters.ManualInstallCommand(platform, Team, "ma-veille"), card, StringComparison.Ordinal);
+        Assert.DoesNotContain(_workspace, card, StringComparison.Ordinal);
     }
 
     /// <summary>Without <c>--events</c> the verb speaks to a person: one line, in words.</summary>
@@ -420,14 +477,15 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.False(IsRegistered(os, platform, "ma-veille", Team));
         Assert.True(IsRegistered(os, platform, "veille-matin", moved));
         Assert.Equal(1, RegistrationCount(os, platform));
-        Assert.Equal(moved, ForgeTeamRecord.TryRead(moved)!.Schedule!.Installed!.Path);
+        Assert.Equal(moved, ForgeScheduleInstallation.TryRead(moved)!.Path);
         Assert.Equal("installed", Assert.Single((await RunAsync(host, "schedule", moved, "--check")).Events).GetProperty("state").GetString());
     }
 
     /// <summary>
-    /// A copy of a scheduled team carries its original's forge.json, installed block included. The
-    /// registration it names is the original's, which still claims it: the copy checks absent,
-    /// its removal leaves the original's in place, and installing it registers one of its own.
+    /// A copy of a scheduled team, made by hand, carries its original's schedule/ — the record of what
+    /// was installed included, with the folder it was made for (STUDIO-52). The registration it names
+    /// is the original's, which still claims it: the copy checks absent, its removal leaves the
+    /// original's in place, and installing it registers one of its own.
     /// </summary>
     [Theory]
     [MemberData(nameof(Families))]
@@ -439,6 +497,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
         var copy = Path.Combine(_workspace, "teams", "ma-veille-copy");
         ForgePromoter.CopyDirectory(Team, copy);
+        Assert.Equal(Team, ForgeScheduleInstallation.TryRead(copy)!.Path);
 
         var check = Assert.Single((await RunAsync(host, "schedule", copy, "--check")).Events);
         Assert.Equal("absent", check.GetProperty("state").GetString());
@@ -456,6 +515,52 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.True(IsRegistered(os, platform, "ma-veille", Team));
         Assert.True(IsRegistered(os, platform, "ma-veille-copy-2", second));
         Assert.Equal(2, RegistrationCount(os, platform));
+        Assert.Equal(second, ForgeScheduleInstallation.TryRead(second)!.Path);
+        Assert.Equal(Team, ForgeScheduleInstallation.TryRead(Team)!.Path);
+    }
+
+    /// <summary>
+    /// STUDIO-52: an install regenerates the artifacts of a copy or of a moved folder — and keeps the
+    /// record of what was installed, read before the regeneration: the system refusing the new
+    /// registration afterwards forgets nothing. The copy still checks as a copy; the moved folder
+    /// still knows the names it installed under, which the next install removes.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Families))]
+    public async Task Artifacts_regenerated_for_a_copy_or_a_moved_folder_leave_the_record_in_place(string family)
+    {
+        var platform = Platform(family);
+        PromoteScheduled(Team, platform);
+        var (os, host) = Machine(platform);
+        Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
+        var original = await File.ReadAllBytesAsync(InstallationRecord(Team), TestContext.Current.CancellationToken);
+
+        // A copy made by hand, its original still where it was.
+        var copy = Path.Combine(_workspace, "teams", "ma-veille-copy");
+        ForgePromoter.CopyDirectory(Team, copy);
+        RefuseEveryChange(os, platform);
+        Assert.Equal(1, (await RunAsync(host, "schedule", copy)).ExitCode);
+        Assert.Equal(original, await File.ReadAllBytesAsync(InstallationRecord(copy), TestContext.Current.CancellationToken));
+        Assert.Contains("orkeon-ma-veille-copy.service", ScheduleFiles(copy));
+        Assert.DoesNotContain("orkeon-ma-veille.service", ScheduleFiles(copy));
+        os.Refusals.Clear();
+        Assert.Equal(ForgeScheduleReasons.Copy,
+            Assert.Single((await RunAsync(host, "schedule", copy, "--check")).Events).GetProperty("reason").GetString());
+
+        // The original moved by hand: the names it installed under stay known.
+        var moved = Path.Combine(_workspace, "teams", "veille-matin");
+        Directory.Move(Team, moved);
+        RefuseEveryChange(os, platform);
+        Assert.Equal(1, (await RunAsync(host, "schedule", moved)).ExitCode);
+        Assert.Equal(original, await File.ReadAllBytesAsync(InstallationRecord(moved), TestContext.Current.CancellationToken));
+        Assert.Contains("orkeon-veille-matin.service", ScheduleFiles(moved));
+        os.Refusals.Clear();
+
+        Assert.Equal(0, (await RunAsync(host, "schedule", moved)).ExitCode);
+        Assert.False(IsRegistered(os, platform, "ma-veille", Team));
+        Assert.True(IsRegistered(os, platform, "veille-matin", moved));
+        Assert.Equal(1, RegistrationCount(os, platform));
+        Assert.Equal(moved, ForgeScheduleInstallation.TryRead(moved)!.Path);
     }
 
     /// <summary>
@@ -490,7 +595,9 @@ public sealed class ForgeSchedulingTests : IDisposable
     {
         PromoteScheduled(Team, ForgePromotePlatform.Linux, "hourly");
         Assert.Equal("hourly", ForgeTeamRecord.TryRead(Team)!.Schedule!.Expression);
-        Assert.Null(ForgeTeamRecord.TryRead(Team)!.Schedule!.Installed);
+        Assert.Equal(["expression"], ScheduleBlockKeys(Team));
+        Assert.Null(ForgeScheduleInstallation.TryRead(Team));
+        Assert.False(File.Exists(InstallationRecord(Team)));
 
         var bare = Path.Combine(_workspace, "teams", "sans-planification");
         ForgePromoter.Promote(ReadySession(), bare, schedule: null, settingsPath: null, copySettings: false, ForgePromotePlatform.Linux, Now);
@@ -498,12 +605,13 @@ public sealed class ForgeSchedulingTests : IDisposable
     }
 
     /// <summary>
-    /// A re-adoption rewrites forge.json and keeps what was installed — the names are the only way
-    /// back to the registration. One that drops the schedule touches no OS: it warns that the
+    /// A re-adoption rewrites forge.json and schedule/ and keeps the record of what was installed —
+    /// the names are the only way back to the registration (STUDIO-52: schedule/installed.json, the
+    /// one file of schedule/ it keeps). One that drops the schedule touches no OS: it warns that the
     /// registration still runs the team, and the check calls it stale until it is removed.
     /// </summary>
     [Fact]
-    public async Task A_readoption_keeps_the_installed_block_and_one_that_drops_the_schedule_warns()
+    public async Task A_readoption_keeps_the_installation_record_and_one_that_drops_the_schedule_warns()
     {
         var session = PromoteScheduled(Team, ForgePromotePlatform.Linux);
         var (os, host) = Machine(ForgePromotePlatform.Linux);
@@ -521,9 +629,10 @@ public sealed class ForgeSchedulingTests : IDisposable
         var warning = Assert.Single(events, e => Kind(e) == "warning");
         Assert.Equal(ForgeErrorCodes.ScheduleStillInstalled, warning.GetProperty("code").GetString());
         Assert.Contains("forge unschedule", warning.GetProperty("message").GetString(), StringComparison.Ordinal);
-        var record = ForgeTeamRecord.TryRead(Team)!;
-        Assert.Null(record.Schedule!.Expression);
-        Assert.NotNull(record.Schedule.Installed);
+        Assert.Null(ForgeTeamRecord.TryRead(Team)!.Schedule);
+        Assert.Equal([ConventionalNames.ScheduleInstallationFile],
+            Directory.GetFileSystemEntries(Path.Combine(Team, ForgePromoter.ScheduleDirectoryName)).Select(Path.GetFileName));
+        Assert.Equal(Team, ForgeScheduleInstallation.TryRead(Team)!.Path);
 
         var check = Assert.Single((await RunAsync(host, "schedule", Team, "--check")).Events);
         Assert.Equal("stale", check.GetProperty("state").GetString());
@@ -542,9 +651,12 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.Equal(0, (await RunAsync(host, "schedule", Team)).ExitCode);
         session.Document.PromotedTo = Team;
         Assert.True(ForgeSchedule.TryParse("hourly", out var hourly, out _));
+        var record = await File.ReadAllBytesAsync(InstallationRecord(Team), TestContext.Current.CancellationToken);
 
         ForgePromoter.Promote(session, Team, hourly, null, false, ForgePromotePlatform.Windows, Now);
 
+        Assert.Equal(record, await File.ReadAllBytesAsync(InstallationRecord(Team), TestContext.Current.CancellationToken));
+        Assert.Equal(["expression"], ScheduleBlockKeys(Team));
         var check = Assert.Single((await RunAsync(host, "schedule", Team, "--check")).Events);
         Assert.Equal("stale", check.GetProperty("state").GetString());
         Assert.Equal(ForgeScheduleReasons.Changed, check.GetProperty("reason").GetString());
@@ -831,6 +943,37 @@ public sealed class ForgeSchedulingTests : IDisposable
         ForgePromotePlatform.Linux => os.EnabledUnits.Count,
         _ => (os.Crontab ?? "").Split('\n').Count(line => line.Contains("# orkeon:", StringComparison.Ordinal)),
     };
+
+    /// <summary>Where <c>forge schedule</c> records what it installed (STUDIO-52).</summary>
+    private static string InstallationRecord(string team) =>
+        Path.Combine(team, ConventionalNames.ScheduleDirectory, ConventionalNames.ScheduleInstallationFile);
+
+    /// <summary>The keys of forge.json's <c>schedule</c> block, as the file spells them.</summary>
+    private static List<string> ScheduleBlockKeys(string team) =>
+        [.. ((JsonObject)JsonNode.Parse(File.ReadAllText(Path.Combine(team, ForgeTeamRecord.FileName)))!["schedule"]!).Select(property => property.Key)];
+
+    /// <summary>The system refuses every change — a new registration, and the removal of a former one.</summary>
+    private static void RefuseEveryChange(FakeScheduleOs os, ForgePromotePlatform platform)
+    {
+        switch (platform)
+        {
+            case ForgePromotePlatform.Windows:
+                os.Refusals["schtasks /Create"] = "ERROR: Access is denied.";
+                os.Refusals["schtasks /Delete"] = "ERROR: Access is denied.";
+                break;
+            case ForgePromotePlatform.Linux:
+                os.Refusals["systemctl enable"] = "Failed to connect to bus: No medium found";
+                os.Refusals["systemctl disable"] = "Failed to connect to bus: No medium found";
+                break;
+            default:
+                os.Refusals["crontab -"] = "crontab: you are not allowed to use this program";
+                break;
+        }
+    }
+
+    /// <summary>The files of a folder's schedule/, by name.</summary>
+    private static List<string?> ScheduleFiles(string team) =>
+        [.. Directory.GetFiles(Path.Combine(team, ForgePromoter.ScheduleDirectoryName)).Select(Path.GetFileName)];
 
     private static string? Kind(JsonElement e) => e.GetProperty("kind").GetString();
 

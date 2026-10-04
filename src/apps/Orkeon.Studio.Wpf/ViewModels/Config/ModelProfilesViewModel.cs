@@ -980,6 +980,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private readonly IShellOpener? _opener;
     private ModelProfileSet _set = ModelProfileSet.Empty;
     private readonly Func<IReadOnlyList<TeamSummary>>? _loadTeams;
+    private readonly Action<string, string>? _followRename;
     private ModelProfileEditorViewModel? _editor;
     private string? _loadError;
     private string? _keyStoreError;
@@ -988,6 +989,10 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// Builds the tab over its seams. <paramref name="balances"/> are the provider balances read
     /// this session (STUDIO-35): each row shows its account's, and the editor reads one; left
     /// out, neither shows. <paramref name="shellOpener"/> opens a vendor's console from the editor.
+    /// <paramref name="followRename"/> is called with a setting's former name and its new one when
+    /// the editor renames it, before the change reaches the cards, the settings file and the
+    /// launchers (STUDIO-52): the teams naming it follow it first, so « Used by » and their launchers
+    /// read them under the new name. Left out, a rename moves the elections alone.
     /// </summary>
     public ModelProfilesViewModel(
         IModelProfileStore? store,
@@ -997,11 +1002,13 @@ public sealed class ModelProfilesViewModel : ObservableObject
         IApiKeyStore? keyStore = null,
         Func<IReadOnlyList<TeamSummary>>? loadTeams = null,
         BalanceReadings? balances = null,
-        IShellOpener? shellOpener = null)
+        IShellOpener? shellOpener = null,
+        Action<string, string>? followRename = null)
     {
         ArgumentNullException.ThrowIfNull(llm);
 
         _loadTeams = loadTeams;
+        _followRename = followRename;
 
         _store = store ?? new InMemoryModelProfileStore();
         _llm = llm;
@@ -1261,6 +1268,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
         var wasDefault = previousName is not null
             && string.Equals(_set.DefaultProfile, previousName, StringComparison.Ordinal);
 
+        // A rename (STUDIO-52): the teams naming the setting follow it first — compared as every
+        // launch finds a setting, ordinal —, then the change rebuilds « Used by », mirrors the
+        // settings file and writes the launchers of the teams it moved.
+        if (previousName is not null && !string.Equals(previousName, profile.Name, StringComparison.Ordinal))
+            _followRename?.Invoke(previousName, profile.Name);
+
         Mutate(_set.Upsert(profile, previousName), renamedFrom: previousName, renamedTo: profile.Name);
         Editor = null;
 
@@ -1324,8 +1337,13 @@ public sealed class ModelProfilesViewModel : ObservableObject
         // (a rename moves the entry, a removal takes it out, the key never goes in).
         _llm.MirrorModelProfiles(before, set, renamedFrom, renamedTo);
         Rebuild();
-        // STUDIO-50: the launchers of the teams naming a moved setting say it again.
-        if (HostLlmProfiles.MovedNames(before, set) is { Count: > 0 } moved)
+        // STUDIO-50: the launchers of the teams naming a moved setting say it again. A renamed
+        // setting's teams already name its new name (STUDIO-52): they move with its former one — a
+        // setting renamed to a name no crew can write takes the profile out of their launchers.
+        var moved = new HashSet<string>(HostLlmProfiles.MovedNames(before, set), StringComparer.Ordinal);
+        if (renamedFrom is not null && renamedTo is not null && moved.Contains(renamedFrom))
+            moved.Add(renamedTo);
+        if (moved.Count > 0)
             HostProfilesChanged?.Invoke(this, new HostProfilesChangedEventArgs(moved));
         // Writes are chained so two rapid mutations can never interleave on the file; the
         // store itself is tolerant (a refused write is a lost convenience, said nowhere by

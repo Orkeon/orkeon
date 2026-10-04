@@ -278,6 +278,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         SetDocument(document, path);
         Location.UseCustomPath(path);
         StatusMessage = string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigLoaded], path);
+        Saved?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
@@ -312,6 +313,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         SetDocument(document, path);
         StatusMessage = string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigLoaded], path);
+        Saved?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -372,6 +374,7 @@ public sealed class ConfigTabViewModel : ObservableObject
                 ValidationCodes.LlmSectionMissing)
             : string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigSaved], path);
 
+        Saved?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
@@ -430,6 +433,13 @@ public sealed class ConfigTabViewModel : ObservableObject
 
     /// <summary>Raised on every edit, dirty or already dirty — the novice auto-save listens here.</summary>
     public event EventHandler? DocumentEdited;
+
+    /// <summary>
+    /// Raised once the document was written to its file, or read from one (STUDIO-52): the file as
+    /// saved is what a run outside Studio reads — a scheduled team's above all —, and what is checked
+    /// against it is checked again.
+    /// </summary>
+    public event EventHandler? Saved;
 
     private void MarkDirty()
     {

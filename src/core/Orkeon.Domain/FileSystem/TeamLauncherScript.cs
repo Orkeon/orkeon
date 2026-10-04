@@ -177,7 +177,7 @@ public static class TeamLauncherScript
 
     private const string StudioNote =
         "Orkeon Studio writes this file again from studio-team.json whenever the team's model setting "
-        + "or folders change: an edit made here is lost then.";
+        + "or folders change, at its import and before its schedule is installed: an edit made here is lost then.";
 
     private const string LineBreakComment = "A line break in a value below is written as a space: a cmd command holds one line.";
 

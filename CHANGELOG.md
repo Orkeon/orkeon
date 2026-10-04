@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a team keeps its model setting and its folders: a renamed setting carries its teams, Studio says when a scheduled run cannot follow, and a team that changes machine carries nothing of the one it leaves **[breaking]**
+
+Since STUDIO-50 a team's `run.cmd`/`run.sh` carry its model setting (`--llm-profile`) and its folders, so
+the run the operating system schedules is the one Studio launches. Five situations undid that without a
+word (STUDIO-52): a setting renamed in Studio detached its teams — launched on the default, their
+launchers without `--llm-profile`, their card still naming the former name; a team on « no model » or on
+a setting named without an ASCII letter ran on its setting from Studio and on the default once
+scheduled, and a setting absent from the machine was shown as in force; an imported team kept the other
+machine's settings file, setting and folders in its launchers, an exported one carried this machine's —
+user name included — and `FORGE.md` and `forge.json` the absolute path of the team; a setting created
+without saving the settings was named by the launchers before the file had it, and the next scheduled
+run was refused; a declaration the settings editor gave an id when it read the file was linked to a team
+under an id the file never held, refused at launch and lost at the next start.
+
+- **A renamed setting carries its teams.** The editor rewrites the `profile` of every companion file
+  naming the former name — archived teams included — and the wizard's choice, before the change is
+  mirrored and the launchers written (`TeamCatalog.RenameSetting`, `ModelProfilesViewModel`'s
+  `followRename`, `CreateTeamViewModel.FollowRenamedSetting`).
+- **What a run outside Studio cannot take is said, never refused.** `TeamSettingStanding` (`None`,
+  `Offered`, `NotOffered`, `Missing`) serves the card, the schedule offer, the Run and Test screens and
+  `TeamLaunchers.Describe`: a scheduled team on a setting offered to no crew reads « Scheduled, this team
+  runs on the default setting, not on “X” » and why; a setting absent from the machine reads « X —
+  absent from this machine: the default setting runs in its place » with the same words on the card and
+  the Run screens.
+- **The settings file as saved is checked, and saved when a gesture depends on it.** `ScheduledRunCheck`
+  compares what a scheduled team's launchers name with the file as saved — a profile it does not define
+  or a folder id it does not declare (« will be refused »), the default, an entry older than the setting
+  (its key judged by `KeyAgrees`) — and the card shows the first. « Install the schedule » (card and
+  offer), saving « Change the folders », an adoption and a launch from the Run or Test screen save the
+  settings when the file lacks what they name and the screen's document has it; a launch whose save is
+  refused does not start and says why (`Studio.Run.SettingsNotSaved`). A launch pinning another settings
+  file saves nothing. `ConfigTabViewModel.Saved` is raised after each save and load.
+- **A team that changes machine.** An import writes the team's launchers for this machine at once; «
+  Install the schedule » writes them just before `forge schedule`; nothing is written at startup. «
+  Export » writes the copy's launchers without the settings file, the model setting or a folder of the
+  disk (`TeamLaunchers.WritePortable`), and an export or an import leaves `schedule/` behind.
+- **The engine writes nothing of the machine into `FORGE.md` or `forge.json`.** The card's schedule
+  section keeps `orkeon forge schedule .` and loses « By hand, on this machine » and its command, which
+  rides the `promoted` event and a refusal's `error` only; `forge rename` retitles the card's title line
+  alone. What `forge schedule` installed is recorded in `schedule/installed.json`
+  (`ConventionalNames.ScheduleDirectory`, `ConventionalNames.ScheduleInstallationFile`), beside the
+  artifacts, no longer in `forge.json`'s `schedule.installed`; same fields, same rule for a copy made by
+  hand; a re-adoption and a regeneration of the artifacts keep it.
+- Seven strings in the five languages. The screenshot world declares its folders under stable ids, and
+  the in-flight run shot waits for the scripted run to be parked.
+
+Migration: a team detached by a rename made before this version stays detached — its card says «
+absent », and « Modify » chooses it a setting. A team linked to an id the file never held (« declaration
+… is missing ») is repaired by « Change the folders ». A schedule installed before this version is
+recorded in `forge.json`, which nothing reads any more: the card's « Install the schedule » installs it
+again under the same names and records it in `schedule/installed.json`. A `FORGE.md` written before keeps
+its command.
+
 ### Fixed — every setting a host cannot honour is refused at its start, naming its key, and `orkeon doctor` judges the file as a run does **[breaking]**
 
 GAP-35 gave a refused setting one line and one exit code, but only some settings were judged at start

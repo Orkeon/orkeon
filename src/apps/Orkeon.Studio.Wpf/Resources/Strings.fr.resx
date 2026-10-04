@@ -306,6 +306,7 @@
   <data name="Studio.Run.Ready" xml:space="preserve"><value>Prêt à lancer.</value></data>
   <data name="Studio.Run.NoTarget" xml:space="preserve"><value>Aucune cible résolue.</value></data>
   <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve"><value>Non lancé : {0} erreur(s) à corriger d'abord.</value></data>
+  <data name="Studio.Run.SettingsNotSaved" xml:space="preserve"><value>Non lancé : les réglages dont dépend cette exécution n'ont pas pu être enregistrés — {0}</value></data>
   <data name="Studio.Run.Cancelling" xml:space="preserve"><value>Annulation : le CLI est invité à s'arrêter, et tué s'il ne le fait pas.</value></data>
   <data name="Studio.Run.NothingToReplay" xml:space="preserve"><value>Rien à rejouer : l'entrée pour « {0} » n'a enregistré aucun argument.</value></data>
   <data name="Studio.Run.Validating" xml:space="preserve"><value>Validation…</value></data>
@@ -1133,6 +1134,24 @@
   </data>
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>Suppression refusée par le disque — un fichier de l'équipe est peut-être ouvert.</value>
+  </data>
+  <data name="Studio.Teams.SettingMissing" xml:space="preserve">
+    <value>{0} — absent de cette machine : le réglage par défaut tourne à sa place</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunOnDefault" xml:space="preserve">
+    <value>Planifiée, cette équipe tourne sur le réglage par défaut, pas sur « {0} ». {1}</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunNoModel" xml:space="preserve">
+    <value>« {0} » n'a pas de modèle : depuis Studio, l'équipe répond en écho.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunRefused" xml:space="preserve">
+    <value>La prochaine exécution planifiée sera refusée : le fichier de réglages enregistré ne définit pas encore « {0} ». Enregistrez les réglages.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunOutdated" xml:space="preserve">
+    <value>L'exécution planifiée prend « {0} » tel qu'il a été enregistré, pas tel que Studio le montre. Enregistrez les réglages.</value>
+  </data>
+  <data name="Studio.Teams.ScheduledRunFolderRefused" xml:space="preserve">
+    <value>La prochaine exécution planifiée sera refusée : le fichier de réglages enregistré ne déclare pas encore le dossier {0}. Enregistrez les réglages.</value>
   </data>
   <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
     <value>Équipe archivée — la restaurer ?</value>

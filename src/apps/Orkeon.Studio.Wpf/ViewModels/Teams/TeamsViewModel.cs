@@ -7,6 +7,7 @@ using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Common;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -137,6 +138,7 @@ public sealed class TeamCardViewModel : ObservableObject
     private bool _isConfirmingDelete;
     private bool _isDescriptionExpanded;
     private TeamScheduleState _scheduleState;
+    private ScheduledRunNotice? _scheduledRun;
     private string _scheduleMessage = "";
     private string? _scheduleManualCommand;
     private ForgeSolutionSummary? _linkedSession;
@@ -226,6 +228,7 @@ public sealed class TeamCardViewModel : ObservableObject
         RenameCommand = new RelayCommand(() => owner.BeginRename(this), () => owner.CanRename && !IsArchived);
         ConfirmRenameCommand = new AsyncRelayCommand(() => owner.RenameAsync(this), () => CanConfirmRename);
         CancelRenameCommand = new RelayCommand(() => IsRenaming = false);
+        _scheduledRun = ReadScheduledRun();
     }
 
     /// <summary>« Rename » (STUDIO-28, D-07): opens the editor on the team's name, in place of the action row.</summary>
@@ -457,7 +460,32 @@ public sealed class TeamCardViewModel : ObservableObject
         OnPropertiesChanged(
             nameof(ScheduleState), nameof(ScheduleStateLine), nameof(HasScheduleStateLine), nameof(HasScheduleRow),
             nameof(ShowsInstallSchedule), nameof(ShowsStopSchedule), nameof(BadgeTone));
+        // Whether the team holds a schedule may have changed with it: so has what its card says of it.
+        RefreshSetting();
     }
+
+    /// <summary>
+    /// What this team's scheduled run cannot follow (STUDIO-52) — a refusal, the default in place of
+    /// its setting, an older version of it — in one line, read against the settings file as saved;
+    /// empty when the team holds no schedule, or its scheduled run takes what Studio shows.
+    /// </summary>
+    public string ScheduledRunLine => _scheduledRun is { } notice ? ScheduledRunCheck.Describe(notice, _strings) : "";
+
+    /// <summary>Whether the card says what its scheduled run cannot follow.</summary>
+    public bool HasScheduledRunLine => _scheduledRun is not null;
+
+    /// <summary>
+    /// The model settings or the settings file changed (STUDIO-52): the card names its setting again —
+    /// absent from this machine, or not — and says again what its scheduled run cannot follow.
+    /// </summary>
+    internal void RefreshSetting()
+    {
+        _scheduledRun = ReadScheduledRun();
+        OnPropertiesChanged(nameof(ProfileDisplay), nameof(MetaLine), nameof(ScheduledRunLine), nameof(HasScheduledRunLine));
+    }
+
+    /// <summary>The first thing the scheduled run cannot follow — only for a team that holds a schedule.</summary>
+    private ScheduledRunNotice? ReadScheduledRun() => HoldsSchedule ? _owner.ScheduledRunOf(Summary) : null;
 
     /// <summary>Says what a schedule gesture could not do; empty clears it.</summary>
     internal void ReportSchedule(string message, string? manualCommand)
@@ -758,10 +786,13 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Whether the agent-count meta part exists.</summary>
     public bool HasAgentCount => Summary.AgentCount is not null;
 
-    /// <summary>The setting-name part ("setting: X") — the meta line's model-profile part.</summary>
+    /// <summary>
+    /// The setting-name part ("setting: X") — the meta line's model-profile part; a setting no setting
+    /// of this machine bears says that the default runs in its place (STUDIO-52), as the Run screen does.
+    /// </summary>
     public string? ProfileDisplay =>
         Summary.Profile is { Length: > 0 } profile
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSettingLabel], profile)
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSettingLabel], _owner.SettingOf(Summary)?.Label(_strings) ?? profile)
             : null;
 
     /// <summary>
@@ -906,6 +937,26 @@ public sealed record TeamsDependencies
     /// beats too. Immediate when null: the banner then goes as soon as it came.
     /// </summary>
     public IUiDelay? UndoDelay { get; init; }
+
+    /// <summary>
+    /// The model settings as Studio shows them (STUDIO-52, decision 2): a card names the setting its
+    /// team runs on, and says when no setting of this machine bears that name — the default runs in
+    /// its place. Null names the setting as recorded.
+    /// </summary>
+    public Func<ModelProfileSet>? ModelSettings { get; init; }
+
+    /// <summary>
+    /// What a team's scheduled run cannot follow (STUDIO-52, <see cref="ScheduledRunCheck"/>), read
+    /// against the settings file as saved: the card of a scheduled team says it. Null says nothing.
+    /// </summary>
+    public Func<TeamSummary, ScheduledRunNotice?>? ScheduledRun { get; init; }
+
+    /// <summary>
+    /// Runs before « Install the schedule » (STUDIO-52, decisions 3 and 4), given the team folder: the
+    /// settings saved when the file as saved lacks what the team's launchers name, and the launchers
+    /// written again for this machine. Null installs the folder as it stands.
+    /// </summary>
+    public Func<string, Task>? PrepareSchedule { get; init; }
 }
 
 /// <summary>
@@ -934,6 +985,9 @@ public sealed class TeamsViewModel : ObservableObject
     private readonly TimeProvider _clock;
     private readonly Func<StudioSettings> _studioSettings;
     private readonly IUiDelay _undoDelay;
+    private readonly Func<ModelProfileSet>? _modelSettings;
+    private readonly Func<TeamSummary, ScheduledRunNotice?>? _scheduledRun;
+    private readonly Func<string, Task>? _prepareSchedule;
     private readonly string _workspace;
     private Dictionary<string, (DateTimeOffset StartedAt, RunOutcome Outcome)> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
 
@@ -978,6 +1032,9 @@ public sealed class TeamsViewModel : ObservableObject
         _clock = wired.Clock ?? TimeProvider.System;
         _studioSettings = wired.StudioSettings ?? (() => StudioSettings.Default);
         _undoDelay = wired.UndoDelay ?? ImmediateUiDelay.Instance;
+        _modelSettings = wired.ModelSettings;
+        _scheduledRun = wired.ScheduledRun;
+        _prepareSchedule = wired.PrepareSchedule;
         _lastRunsKnown = _historyStore is null;
         var root = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
         _workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
@@ -1362,6 +1419,24 @@ public sealed class TeamsViewModel : ObservableObject
     /// <summary>Whether « Rename » can reach the engine — the folder, its session and its schedule are the engine's to move (STUDIO-28).</summary>
     public bool CanRename => _forge is not null;
 
+    /// <summary>The standing of <paramref name="team"/>'s setting among the settings shown (STUDIO-52); null when none are wired.</summary>
+    internal TeamSettingStanding? SettingOf(TeamSummary team) =>
+        _modelSettings is null ? null : TeamSettingStanding.Of(team.Profile, _modelSettings());
+
+    /// <summary>What <paramref name="team"/>'s scheduled run cannot follow (STUDIO-52); null when nothing, or nothing is wired.</summary>
+    internal ScheduledRunNotice? ScheduledRunOf(TeamSummary team) => _scheduledRun?.Invoke(team);
+
+    /// <summary>
+    /// The model settings or the settings file as saved changed (STUDIO-52): every card names its
+    /// setting and says what its scheduled run cannot follow again — from memory and the companion
+    /// files, never asking the engine.
+    /// </summary>
+    public void RefreshSettings()
+    {
+        foreach (var card in AllCards)
+            card.RefreshSetting();
+    }
+
     /// <summary>
     /// Asks the engine where every team's schedule stands (STUDIO-27, D-05) — the shell runs this
     /// once at startup. Only teams that have one are asked, one at a time.
@@ -1434,10 +1509,18 @@ public sealed class TeamsViewModel : ObservableObject
         }
     }
 
-    /// <summary>« Install the schedule » (D-05): <c>forge schedule</c>, the card then shows what the engine answered.</summary>
+    /// <summary>
+    /// « Install the schedule » (D-05): the preparation first (STUDIO-52) — the settings saved when the
+    /// file lacks what the team's launchers name, the launchers written for this machine —, then
+    /// <c>forge schedule</c>; the card then shows what the engine answered, and what the scheduled run
+    /// still cannot follow when the settings could not be saved: the installation stands either way.
+    /// </summary>
     internal async Task InstallScheduleAsync(TeamCardViewModel card)
     {
         card.ReportSchedule("", null);
+        if (_prepareSchedule is { } prepare)
+            await prepare(card.Summary.Path).ConfigureAwait(true);
+
         var report = await ScheduleAsync(card.Summary.Path, ForgeScheduleVerb.Install).ConfigureAwait(true);
         if (!report.Succeeded)
         {
@@ -1448,6 +1531,7 @@ public sealed class TeamsViewModel : ObservableObject
         }
 
         RecordScheduleState(card.Summary.Path, report.State);
+        card.RefreshSetting();
     }
 
     /// <summary>

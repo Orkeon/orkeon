@@ -350,7 +350,12 @@ place d'une entrée écrite à la main sont refusés.
   l'équipe en `--llm-profile <id>` — son entrée ici —, si bien que l'exécution que planifie le système
   d'exploitation le prend, comme un lancement depuis Studio
   ([Studio](../architecture/studio.md#une-équipe-planifiée-tourne-comme-studio-la-lance-studio-50)).
-  Cette exécution lit ce fichier tel qu'enregistré, les clés là où il les nomme.
+  Cette exécution lit ce fichier tel qu'enregistré, les clés là où il les nomme : la carte de l'équipe
+  dit quand ce fichier ne définit pas encore son entrée, en garde une version ancienne, ou quand le
+  réglage est un réglage qu'aucune exécution hors de Studio ne peut prendre — l'exécution prend alors
+  le défaut —, et « Installer la planification » enregistre d'abord les réglages quand ils ne l'ont
+  pas. Un réglage renommé dans Studio emporte ses équipes
+  ([Studio](../architecture/studio.md#une-équipe-garde-son-réglage-et-ses-dossiers-studio-52)).
 - **« Autre compatible OpenAI ».** Un réglage créé depuis cette carte range sa clé dans
   `ORKEON_CUSTOM_LLM_API_KEY`, partagée par les réglages de la carte. Un réglage créé avant garde
   `ORKEON_Llm__ApiKey` — la clé native du défaut pour le runtime : mémorisée en portée Utilisateur,

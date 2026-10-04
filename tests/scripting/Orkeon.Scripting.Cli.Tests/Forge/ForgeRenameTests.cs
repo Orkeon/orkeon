@@ -116,8 +116,9 @@ public sealed class ForgeRenameTests : IDisposable
 
     /// <summary>
     /// D-01 step 5: the team's schedule/ is regenerated for the folder as it is now — every unit,
-    /// task and cron line names the new folder's launchers under the new name — and so is the
-    /// install command FORGE.md shows. A schedule declared and never installed asks the OS nothing.
+    /// task and cron line names the new folder's launchers under the new name. FORGE.md has no
+    /// command to follow any more — it names nothing of the machine (STUDIO-52) —: its title does.
+    /// A schedule declared and never installed asks the OS nothing.
     /// </summary>
     [Fact]
     public async Task The_schedule_artifacts_follow_the_new_path_and_the_new_name()
@@ -143,7 +144,10 @@ public sealed class ForgeRenameTests : IDisposable
             Assert.DoesNotContain("ma-veille", await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken), StringComparison.Ordinal);
 
         var card = await File.ReadAllTextAsync(Path.Combine(Renamed, ForgePromoter.CardFileName), TestContext.Current.CancellationToken);
-        Assert.Contains(ForgeScheduleAdapters.ManualInstallCommand(ForgePromotePlatform.Linux, Renamed, "veille-du-matin"), card, StringComparison.Ordinal);
+        Assert.Equal("# Veille du matin", CardTitle(Renamed));
+        Assert.Contains("`orkeon forge schedule .`", card, StringComparison.Ordinal);
+        Assert.DoesNotContain(ForgeScheduleAdapters.ManualInstallCommand(ForgePromotePlatform.Linux, Renamed, "veille-du-matin"), card, StringComparison.Ordinal);
+        Assert.DoesNotContain(_workspace, card, StringComparison.Ordinal);
         Assert.DoesNotContain("ma-veille", card, StringComparison.Ordinal);
 
         Assert.Empty(os.Invocations);
@@ -152,7 +156,7 @@ public sealed class ForgeRenameTests : IDisposable
     /// <summary>
     /// D-01 step 5: a schedule the OS runs is reinstalled under the new name — the registration of
     /// the former name removed, the new one running the new folder's launcher, one registration in
-    /// all — and forge.json records what is installed now.
+    /// all — and schedule/installed.json records what is installed now (STUDIO-52).
     /// </summary>
     [Theory]
     [MemberData(nameof(Families))]
@@ -172,7 +176,8 @@ public sealed class ForgeRenameTests : IDisposable
         Assert.True(IsRegistered(os, platform, "veille-du-matin", Renamed));
         Assert.Equal(1, RegistrationCount(os, platform));
 
-        var installed = ForgeTeamRecord.TryRead(Renamed)!.Schedule!.Installed!;
+        Assert.True(File.Exists(Path.Combine(Renamed, ConventionalNames.ScheduleDirectory, ConventionalNames.ScheduleInstallationFile)));
+        var installed = ForgeScheduleInstallation.TryRead(Renamed)!;
         Assert.Equal(Renamed, installed.Path);
         Assert.Equal(ExpectedNames(platform, "veille-du-matin"), installed.Names);
         Assert.Equal("installed", Assert.Single((await RunAsync(host, "schedule", Renamed, "--check")).Events).GetProperty("state").GetString());

@@ -8,6 +8,7 @@ using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Validation;
@@ -45,6 +46,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
     private readonly IDirectoryProbe _directories;
     private readonly Func<string, string?>? _restoreTeam;
+    private readonly Func<ModelProfileSet>? _modelSettings;
+    private readonly Func<IReadOnlyList<string>, string?, Task<string?>>? _prepareLaunch;
     private bool _isRunning;
     private string? _runningTarget;
     private bool _isJournalOpen;
@@ -75,6 +78,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         // launcher is built without one.
         _session = new RunSession(_runner, seams.HistoryStore, seams.TeamsRoot);
         _restoreTeam = seams.RestoreTeam;
+        _modelSettings = seams.ModelSettings;
+        _prepareLaunch = seams.PrepareLaunch;
         _settingsStore = seams.SettingsStore ?? PhysicalAppSettingsStore.Instance;
         _dispatcher = seams.Dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = seams.Strings ?? EnglishStudioStrings.Instance;
@@ -538,7 +543,14 @@ public sealed class LaunchTabViewModel : ObservableObject
             return null;
         }
 
-        var arguments = RunArgumentsBuilder.Build(target, BuildOptions(validate));
+        var options = BuildOptions(validate);
+        if (await PrepareAsync(options.MountIds, Options.EffectiveSettingsPath).ConfigureAwait(true) is { } refusal)
+        {
+            StatusMessage = refusal;
+            return null;
+        }
+
+        var arguments = RunArgumentsBuilder.Build(target, options);
         var workingDirectory = GetWorkingDirectory(target);
 
         return await ExecuteAsync(
@@ -587,6 +599,13 @@ public sealed class LaunchTabViewModel : ObservableObject
             return null;
         }
 
+        // The recorded ids, read against the settings file as saved, as a launch's (STUDIO-52).
+        if (await PrepareAsync(RecordedMountIds(entry.Arguments), entry.SettingsPath).ConfigureAwait(true) is { } refusal)
+        {
+            StatusMessage = refusal;
+            return null;
+        }
+
         BeginLaunch();
         LoadIntoForm(entry);
 
@@ -609,6 +628,40 @@ public sealed class LaunchTabViewModel : ObservableObject
     private IReadOnlyDictionary<string, string> EnvironmentFor(string targetPath) =>
         _environmentForTarget?.Invoke(targetPath)
         ?? new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The preparation of a launch (STUDIO-52, decision 4): the runner looks every <c>--mount-id</c> up
+    /// in the settings file as saved, and a declaration the screen gave its id when it read the file
+    /// is in the document only — the shell saves it first. Null to launch; the line that says why the
+    /// run does not start, when the save was refused.
+    /// </summary>
+    private async Task<string?> PrepareAsync(IReadOnlyList<string> mountIds, string? settingsPath)
+    {
+        if (_prepareLaunch is null || mountIds.Count == 0)
+            return null;
+
+        return await _prepareLaunch(mountIds, settingsPath).ConfigureAwait(true) is { } refusal
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.LaunchSettingsNotSaved], refusal)
+            : null;
+    }
+
+    /// <summary>The <c>--mount-id</c> values of a recorded argument list: the ids after the option, up to the next option.</summary>
+    private static List<string> RecordedMountIds(IReadOnlyList<string> arguments)
+    {
+        var option = RunOptionAvailability.ToCommandLineName(RunOption.MountIds);
+        var ids = new List<string>();
+        for (var i = 0; i < arguments.Count; i++)
+        {
+            if (!string.Equals(arguments[i], option, StringComparison.Ordinal))
+                continue;
+
+            for (i++; i < arguments.Count && !arguments[i].StartsWith('-'); i++)
+                ids.Add(arguments[i]);
+            i--;
+        }
+
+        return ids;
+    }
 
     /// <summary>
     /// A launch starts from a clean screen (STUDIO-17). The journal used to accumulate across
@@ -828,8 +881,14 @@ public sealed class LaunchTabViewModel : ObservableObject
             // need is the user's brief, pages long when a README was pasted.
             if (_team.Summary is { Length: > 0 } summary)
                 parts.Add(summary);
+            // A setting no setting of this machine bears runs on the default: said with the card's
+            // own words (STUDIO-52).
             if (_team.Profile is { Length: > 0 } profile)
-                parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaProfile], profile));
+            {
+                var setting = _modelSettings is null ? profile : TeamSettingStanding.Of(profile, _modelSettings()).Label(_strings);
+                parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaProfile], setting));
+            }
+
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
         }
     }
@@ -1233,4 +1292,19 @@ public sealed record LaunchTabDependencies
     /// every list; null restores through the catalog directly.
     /// </summary>
     public Func<string, string?>? RestoreTeam { get; init; }
+
+    /// <summary>
+    /// The model settings as Studio shows them (STUDIO-52): the team card says when the setting its
+    /// target names is absent from this machine — the default runs in its place. Null names the
+    /// setting as recorded.
+    /// </summary>
+    public Func<ModelProfileSet>? ModelSettings { get; init; }
+
+    /// <summary>
+    /// The preparation of a launch (STUDIO-52, decision 4), given the <c>--mount-id</c> values the run
+    /// passes and the settings file it pins (null: none): the shell saves the settings when the file
+    /// as saved lacks one of them — the runner looks them up there. Null to launch, the reason the
+    /// save was refused otherwise: the run does not start. Null wires none: the run starts as it is.
+    /// </summary>
+    public Func<IReadOnlyList<string>, string?, Task<string?>>? PrepareLaunch { get; init; }
 }

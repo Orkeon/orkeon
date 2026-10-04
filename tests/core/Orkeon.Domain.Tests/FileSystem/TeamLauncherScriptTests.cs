@@ -322,7 +322,7 @@ public sealed class TeamLauncherScriptTests : IDisposable
     {
         var studio = Spec("x", studio: true) with { IsScript = true };
 
-        const string Note = "Orkeon Studio writes this file again from studio-team.json whenever the team's model setting or folders change: an edit made here is lost then.";
+        const string Note = "Orkeon Studio writes this file again from studio-team.json whenever the team's model setting or folders change, at its import and before its schedule is installed: an edit made here is lost then.";
         Assert.Contains($"\r\nrem {Note}\r\nrem The crew lives in crew\\crew.ork.ts - edit it there, this script only launches it.\r\n",
             TeamLauncherScript.Windows(studio), StringComparison.Ordinal);
         Assert.Contains($"\n# {Note}\n# The crew lives in crew/crew.ork.ts — edit it there, this script only launches it.\n",

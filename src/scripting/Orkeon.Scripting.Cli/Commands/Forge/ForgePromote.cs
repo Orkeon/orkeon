@@ -89,8 +89,10 @@ internal sealed record ForgePromotionResult
     public string? ScheduleDirectory { get; init; }
 
     /// <summary>
-    /// The host platform's install command, for a person installing by hand. The promotion never
-    /// runs it: <c>forge schedule</c> installs the schedule, when the user agrees (STUDIO-27).
+    /// The host platform's install command, for a person installing by hand on this machine: the
+    /// <c>promoted</c> event carries it, never a file — <c>FORGE.md</c> names nothing of the machine
+    /// (STUDIO-52). The promotion never runs it: <c>forge schedule</c> installs the schedule, when
+    /// the user agrees (STUDIO-27).
     /// </summary>
     public string? InstallCommand { get; init; }
 
@@ -134,8 +136,11 @@ internal static class ForgePromoter
     /// <summary>Name of the generated identity card.</summary>
     public const string CardFileName = "FORGE.md";
 
-    /// <summary>Name of the schedule artifact directory.</summary>
-    public const string ScheduleDirectoryName = "schedule";
+    /// <summary>
+    /// Name of the schedule directory: the artifacts, and the record of what <c>forge schedule</c>
+    /// installed (<see cref="ForgeScheduleInstallation"/>, STUDIO-52).
+    /// </summary>
+    public const string ScheduleDirectoryName = ConventionalNames.ScheduleDirectory;
 
     /// <summary>Name of the copied settings file, when <c>--with-settings</c> asked for it.</summary>
     public const string SettingsFileName = ConventionalNames.SettingsFile;
@@ -172,31 +177,17 @@ internal static class ForgePromoter
         launcher.Replace(TeamLauncherScript.Header(formerName), TeamLauncherScript.Header(name), StringComparison.Ordinal);
 
     /// <summary>
-    /// <c>FORGE.md</c>'s text for a team renamed <paramref name="title"/> and moved from
-    /// <paramref name="formerDirectory"/> to <paramref name="directory"/> (STUDIO-28): its title
-    /// line, and the install command its schedule section shows — each platform's spelling, the
-    /// card being written on whichever machine promoted it. Everything else, hand edits included,
-    /// as it was.
+    /// <c>FORGE.md</c>'s text for a team renamed <paramref name="title"/> (STUDIO-28): its title line.
+    /// Nothing else in the card names the team or its folder — its schedule section names no command
+    /// of the machine (STUDIO-52) —; everything else, hand edits included, as it was.
     /// </summary>
-    internal static string RetitleCard(
-        string card, string title, string formerDirectory, string formerName, string directory, string name)
+    internal static string RetitleCard(string card, string title)
     {
-        var text = card;
-        if (text.StartsWith("# ", StringComparison.Ordinal))
-        {
-            var end = text.IndexOfAny(['\r', '\n']);
-            text = $"# {title}{(end < 0 ? "" : text[end..])}";
-        }
+        if (!card.StartsWith("# ", StringComparison.Ordinal))
+            return card;
 
-        foreach (var platform in Enum.GetValues<ForgePromotePlatform>())
-        {
-            text = text.Replace(
-                ForgeScheduleAdapters.ManualInstallCommand(platform, formerDirectory, formerName),
-                ForgeScheduleAdapters.ManualInstallCommand(platform, directory, name),
-                StringComparison.Ordinal);
-        }
-
-        return text;
+        var end = card.IndexOfAny(['\r', '\n']);
+        return $"# {title}{(end < 0 ? "" : card[end..])}";
     }
 
     /// <summary>
@@ -225,7 +216,9 @@ internal static class ForgePromoter
         // folder moved or renamed since; never a copy of it. Re-adoption then UPDATES it in
         // place: the generated artifacts (crew/, schedule/, launchers, FORGE.md) are
         // regenerated, everything else — sidecar, user files, outputs — is preserved. Omitting
-        // the schedule on a re-adoption removes schedule/: the folder says what is true.
+        // the schedule on a re-adoption removes its artifacts: the folder says what is true. The
+        // record of what forge schedule installed stays (STUDIO-52): the registration is still
+        // there, and its names are the only way back to it.
         var updating = false;
         if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
         {
@@ -242,7 +235,7 @@ internal static class ForgePromoter
 
             updating = true;
             DeleteIfExists(Path.Combine(destination, ForgeYamlRenderer.CrewDirectoryName));
-            DeleteIfExists(Path.Combine(destination, ScheduleDirectoryName));
+            ClearScheduleArtifacts(destination);
 
             // A previous promote's settings copy usually carries API keys: when this
             // re-adoption does not ask for one, a stale unreferenced copy must not
@@ -322,7 +315,6 @@ internal static class ForgePromoter
             Brief = brief,
             Verdict = verdict,
             Schedule = schedule,
-            InstallCommand = installCommand,
             Now = now,
             WriteMounts = writeMounts,
         });
@@ -347,6 +339,36 @@ internal static class ForgePromoter
     {
         if (Directory.Exists(directory))
             Directory.Delete(directory, recursive: true);
+    }
+
+    /// <summary>
+    /// Empties <paramref name="teamDirectory"/>'s <c>schedule/</c> of its artifacts and keeps the record
+    /// of what <c>forge schedule</c> installed (STUDIO-52, <see cref="ForgeScheduleInstallation"/>):
+    /// nothing here touches the operating system, the registration it names is still there, and its
+    /// names are the only way back to it. The folder goes when nothing is left in it.
+    /// </summary>
+    private static void ClearScheduleArtifacts(string teamDirectory)
+    {
+        var directory = Path.Combine(teamDirectory, ScheduleDirectoryName);
+        if (!Directory.Exists(directory))
+            return;
+
+        foreach (var entry in Directory.EnumerateFileSystemEntries(directory).ToList())
+        {
+            if (File.Exists(entry)
+                && string.Equals(Path.GetFileName(entry), ForgeScheduleInstallation.FileName, PhysicalPathContainment.Comparison))
+            {
+                continue;
+            }
+
+            if (Directory.Exists(entry))
+                Directory.Delete(entry, recursive: true);
+            else
+                File.Delete(entry);
+        }
+
+        if (!Directory.EnumerateFileSystemEntries(directory).Any())
+            Directory.Delete(directory);
     }
 
     /// <summary>
@@ -758,7 +780,8 @@ internal static class ForgePromoter
     /// install (STUDIO-27): the artifacts are left as they are — hand edits included — when they
     /// name this folder's launchers under <paramref name="teamName"/>, and regenerated from
     /// <paramref name="schedule"/> when they do not: a copy of a scheduled team, a team moved or
-    /// renamed since its promotion, or artifacts deleted.
+    /// renamed since its promotion, or artifacts deleted. The record of what was installed stays
+    /// (STUDIO-52): a regeneration forgets no name an installation was made under.
     /// </summary>
     internal static void EnsureScheduleArtifacts(string teamDirectory, string teamName, ForgeSchedule schedule, DateTimeOffset now)
     {
@@ -767,7 +790,7 @@ internal static class ForgePromoter
         if (ScheduleArtifactsDescribe(teamDirectory, teamName))
             return;
 
-        DeleteIfExists(Path.Combine(teamDirectory, ScheduleDirectoryName));
+        ClearScheduleArtifacts(teamDirectory);
         WriteScheduleArtifacts(teamDirectory, teamName, schedule, now);
     }
 
@@ -822,9 +845,6 @@ internal static class ForgePromoter
         /// <summary>The requested schedule, when <c>--schedule</c> asked for one.</summary>
         public ForgeSchedule? Schedule { get; init; }
 
-        /// <summary>The command the card displays for a person installing by hand.</summary>
-        public string? InstallCommand { get; init; }
-
         /// <summary>When the folder was promoted.</summary>
         public required DateTimeOffset Now { get; init; }
 
@@ -871,7 +891,7 @@ internal static class ForgePromoter
         AppendVerdictSection(card, content.Verdict, language);
         AppendLaunchSection(card, content.Session, content.WriteMounts, language);
         AppendFoldersSection(card, content.WriteMounts, language);
-        AppendScheduleSection(card, content.Schedule, content.InstallCommand, language);
+        AppendScheduleSection(card, content.Schedule, language);
 
         File.WriteAllText(Path.Combine(destination, CardFileName), card.ToString());
     }
@@ -1004,11 +1024,12 @@ internal static class ForgePromoter
     }
 
     /// <summary>
-    /// The schedule: the artifacts, who installs them — Orkeon Studio with the user's consent, or
-    /// <c>forge schedule</c> (STUDIO-27, DA-3) — and the command that installs them by hand.
+    /// The schedule: the artifacts, and who installs them — Orkeon Studio with the user's consent, or
+    /// <c>forge schedule</c> (STUDIO-27, DA-3). Nothing of the machine that promoted the team
+    /// (STUDIO-52): the card travels with the folder, and the command that installs the schedule by
+    /// hand on this machine rides the <c>promoted</c> event, and a refusal's <c>error</c>.
     /// </summary>
-    private static void AppendScheduleSection(
-        StringBuilder card, ForgeSchedule? schedule, string? installCommand, CardLanguage language)
+    private static void AppendScheduleSection(StringBuilder card, ForgeSchedule? schedule, CardLanguage language)
     {
         if (schedule is null)
             return;
@@ -1017,10 +1038,8 @@ internal static class ForgePromoter
         card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Planification", "Schedule")}");
         card.AppendLine();
         card.AppendLine(language.Pick(
-            $"Les artefacts sous `{ScheduleDirectoryName}/` couvrent les trois plateformes (tâche planifiée Windows, timer systemd, ligne cron). Orkeon n'a pas d'ordonnanceur à lui : c'est le système qui lance l'équipe. Orkeon Studio installe la planification avec votre accord ; en ligne de commande, depuis ce dossier, `orkeon forge schedule .` l'installe et `orkeon forge unschedule .` la retire. À la main, sur cette machine :",
-            $"The artifacts under `{ScheduleDirectoryName}/` cover the three platforms (Windows scheduled task, systemd timer, cron line). Orkeon has no scheduler of its own: the operating system runs the team. Orkeon Studio installs the schedule with your consent; from a terminal, in this folder, `orkeon forge schedule .` installs it and `orkeon forge unschedule .` removes it. By hand, on this machine:"));
-        card.AppendLine();
-        card.AppendLine(CultureInfo.InvariantCulture, $"```\n{installCommand}\n```");
+            $"Les artefacts sous `{ScheduleDirectoryName}/` couvrent les trois plateformes (tâche planifiée Windows, timer systemd, ligne cron). Orkeon n'a pas d'ordonnanceur à lui : c'est le système qui lance l'équipe. Orkeon Studio installe la planification avec votre accord ; en ligne de commande, depuis ce dossier, `orkeon forge schedule .` l'installe et `orkeon forge unschedule .` la retire.",
+            $"The artifacts under `{ScheduleDirectoryName}/` cover the three platforms (Windows scheduled task, systemd timer, cron line). Orkeon has no scheduler of its own: the operating system runs the team. Orkeon Studio installs the schedule with your consent; from a terminal, in this folder, `orkeon forge schedule .` installs it and `orkeon forge unschedule .` removes it."));
     }
 
     private static DateTime NextOccurrence(DateTimeOffset now, int hour, int minute)
