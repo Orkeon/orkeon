@@ -831,6 +831,15 @@
   <data name="Studio.Run.SettingsNotSaved" xml:space="preserve">
     <value>Nicht gestartet: Die Einstellungen, von denen dieser Lauf abhängt, konnten nicht gespeichert werden — {0}</value>
   </data>
+  <data name="Studio.Run.TeamFoldersCreated" xml:space="preserve">
+    <value>Im Teamordner angelegt: {0}</value>
+  </data>
+  <data name="Studio.Run.TeamFolderCreateFailed" xml:space="preserve">
+    <value>Der Teamordner '{0}' konnte nicht angelegt werden: {1}</value>
+  </data>
+  <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve">
+    <value>Nichts zu lesen: Der Teamordner '{0}' (Einhängepunkt {1}) existiert nicht. Legen Sie ihn an und legen Sie die Eingaben dort ab.</value>
+  </data>
   <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>Abbruch: Die CLI wird zum Anhalten aufgefordert und andernfalls beendet.</value>
   </data>

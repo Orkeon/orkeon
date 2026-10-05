@@ -43,5 +43,16 @@ public static class DirectoryProbeExtensions
             error = ex.Message;
             return false;
         }
+        catch (ArgumentException ex)
+        {
+            // A malformed path, as TeamCatalog tolerates when it writes the sidecar.
+            error = ex.Message;
+            return false;
+        }
+        catch (NotSupportedException ex)
+        {
+            error = ex.Message;
+            return false;
+        }
     }
 }

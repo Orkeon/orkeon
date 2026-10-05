@@ -944,6 +944,18 @@ public static class StudioStringKeys
     /// </summary>
     public const string LaunchSettingsNotSaved = "Studio.Run.SettingsNotSaved";
 
+    /// <summary>"Created in the team folder: {0}" — the team's writable folders a launch created (STUDIO-60).</summary>
+    public const string RunTeamFoldersCreated = "Studio.Run.TeamFoldersCreated";
+
+    /// <summary>"The team's folder '{0}' could not be created: {1}" — the disk refused, the launch stops (STUDIO-60).</summary>
+    public const string RunTeamFolderCreateFailed = "Studio.Run.TeamFolderCreateFailed";
+
+    /// <summary>
+    /// "Nothing to read: the team's folder '{0}' (mount point {1}) does not exist. Create it and put the
+    /// inputs there." — a read-only folder of the team is missing; it is not invented (STUDIO-60).
+    /// </summary>
+    public const string RunTeamFolderMissingReadOnly = "Studio.Run.TeamFolderMissingReadOnly";
+
     /// <summary>"Cancelling: the CLI is asked to stop, and is killed if it does not."</summary>
     public const string LaunchCancelling = "Studio.Run.Cancelling";
 
@@ -2329,6 +2341,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.LaunchNoTarget] = "No target resolved.",
         [StudioStringKeys.LaunchNotLaunchedErrors] = "Not launched: {0} error(s) must be fixed first.",
         [StudioStringKeys.LaunchSettingsNotSaved] = "Not launched: the settings this run depends on could not be saved — {0}",
+        [StudioStringKeys.RunTeamFoldersCreated] = "Created in the team folder: {0}",
+        [StudioStringKeys.RunTeamFolderCreateFailed] = "The team's folder '{0}' could not be created: {1}",
+        [StudioStringKeys.RunTeamFolderMissingReadOnly] = "Nothing to read: the team's folder '{0}' (mount point {1}) does not exist. Create it and put the inputs there.",
         [StudioStringKeys.LaunchCancelling] = "Cancelling: the CLI is asked to stop, and is killed if it does not.",
         [StudioStringKeys.LaunchNothingToReplay] = "Nothing to replay: the entry for '{0}' recorded no arguments.",
         [StudioStringKeys.LaunchValidating] = "Validating…",

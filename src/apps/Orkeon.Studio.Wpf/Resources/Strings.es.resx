@@ -831,6 +831,15 @@
   <data name="Studio.Run.SettingsNotSaved" xml:space="preserve">
     <value>No lanzado: no se pudieron guardar los ajustes de los que depende esta ejecución — {0}</value>
   </data>
+  <data name="Studio.Run.TeamFoldersCreated" xml:space="preserve">
+    <value>Creado en la carpeta del equipo: {0}</value>
+  </data>
+  <data name="Studio.Run.TeamFolderCreateFailed" xml:space="preserve">
+    <value>No se pudo crear la carpeta del equipo '{0}': {1}</value>
+  </data>
+  <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve">
+    <value>Nada que leer: la carpeta del equipo '{0}' (punto de montaje {1}) no existe. Créela y ponga ahí las entradas.</value>
+  </data>
   <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>Cancelación: se pide a la CLI que se detenga, y se la mata si no lo hace.</value>
   </data>

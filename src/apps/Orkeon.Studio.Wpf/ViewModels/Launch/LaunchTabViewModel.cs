@@ -550,6 +550,14 @@ public sealed class LaunchTabViewModel : ObservableObject
             return null;
         }
 
+        // The team's own folders, as the workshop's launchers prepare them (STUDIO-60): a dry
+        // run prepares too, since the launcher would.
+        if (PrepareTeamFolders(TeamDirectory(), _team.ResolvedMounts) is { } folderRefusal)
+        {
+            StatusMessage = folderRefusal;
+            return null;
+        }
+
         var arguments = RunArgumentsBuilder.Build(target, options);
         var workingDirectory = GetWorkingDirectory(target);
 
@@ -592,7 +600,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         // STUDIO-31, D-07: the recorded argv would run an archived team as if nothing had changed —
         // one click, no confirmation. The guard reads the ENTRY's target, not the form's, and the
         // entry offers the restore rather than refusing in silence; the form is left as it was.
-        if (TeamCatalog.DescribeTarget(entry.Target).IsArchived)
+        var team = TeamCatalog.DescribeTarget(entry.Target);
+        if (team.IsArchived)
         {
             StatusMessage = _strings[StudioStringKeys.CommonArchivedTeamRestore];
             History.OfferRestore(entry);
@@ -603,6 +612,13 @@ public sealed class LaunchTabViewModel : ObservableObject
         if (await PrepareAsync(RecordedMountIds(entry.Arguments), entry.SettingsPath).ConfigureAwait(true) is { } refusal)
         {
             StatusMessage = refusal;
+            return null;
+        }
+
+        // The team's own folders, as a launch's (STUDIO-60); the recorded argv is replayed as it is.
+        if (PrepareTeamFolders(team.TeamDirectory, team.ResolvedMounts) is { } folderRefusal)
+        {
+            StatusMessage = folderRefusal;
             return null;
         }
 
@@ -643,6 +659,33 @@ public sealed class LaunchTabViewModel : ObservableObject
         return await _prepareLaunch(mountIds, settingsPath).ConfigureAwait(true) is { } refusal
             ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.LaunchSettingsNotSaved], refusal)
             : null;
+    }
+
+    /// <summary>
+    /// The team's own folders before a launch (STUDIO-60): a missing writable one is created and the
+    /// journal says so; a missing read-only one, or a creation the disk refuses, stops the launch.
+    /// Null to launch; the line that says why the run does not start otherwise. The notice is written
+    /// before the journal of the launch is begun, so a refusal keeps it on screen.
+    /// </summary>
+    private string? PrepareTeamFolders(string? teamDirectory, IReadOnlyList<ResolvedTeamMount> mounts)
+    {
+        var prepared = TeamFolderPreparation.Prepare(teamDirectory, mounts, _directories);
+
+        if (prepared.Created.Count > 0)
+        {
+            Log.AppendNotice(string.Format(
+                CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.RunTeamFoldersCreated],
+                string.Join(", ", prepared.Created)));
+        }
+
+        if (prepared.Failures is [var (folder, error), ..])
+            return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunTeamFolderCreateFailed], folder, error);
+
+        if (prepared.MissingReadOnly is [var (missing, virtualPath), ..])
+            return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunTeamFolderMissingReadOnly], missing, virtualPath);
+
+        return null;
     }
 
     /// <summary>The <c>--mount-id</c> values of a recorded argument list: the ids after the option, up to the next option.</summary>
