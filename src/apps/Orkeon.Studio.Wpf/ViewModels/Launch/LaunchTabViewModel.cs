@@ -63,6 +63,12 @@ public sealed class LaunchTabViewModel : ObservableObject
     private BinaryLocation? _binaryLocation;
 
     /// <summary>Builds the tab over its seams; each one has an in-memory double in the tests.</summary>
+    /// <summary>
+    /// The teams root a real run stamps its team's last run under (STUDIO-31, D-05; STUDIO-61: the
+    /// one the window resolved); null stamps nothing — the Test screen's launcher.
+    /// </summary>
+    public string? TeamsRoot { get; }
+
     public LaunchTabViewModel(LaunchTabDependencies? dependencies = null)
     {
         var seams = dependencies ?? new LaunchTabDependencies();
@@ -77,6 +83,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         // root is how a real run stamps its team's last run (STUDIO-31, D-05) — the Test screen's
         // launcher is built without one.
         _session = new RunSession(_runner, seams.HistoryStore, seams.TeamsRoot);
+        TeamsRoot = seams.TeamsRoot;
         _restoreTeam = seams.RestoreTeam;
         _modelSettings = seams.ModelSettings;
         _prepareLaunch = seams.PrepareLaunch;

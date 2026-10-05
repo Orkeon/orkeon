@@ -1,6 +1,7 @@
 using System.Globalization;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
@@ -16,7 +17,10 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// STUDIO-35 puts the provider balance here: the optional automatic reading, off by default
 /// (D-02), and one alert threshold per provider whose balance a key reads (D-03). STUDIO-32 puts
 /// the archive suggestion of My teams beside it (DB-1): its switch and its threshold, written
-/// through the same <see cref="Apply"/>.
+/// through the same <see cref="Apply"/>. STUDIO-61 puts the teams folder under them: the root in
+/// force and where it came from — the variable, the option, this card or the default —, and a
+/// « Change… » that writes the preference; the choice applies at the next start, since every
+/// screen keeps the root it was built on.
 /// </para>
 /// </summary>
 public sealed class StudioSettingsViewModel : ObservableObject
@@ -30,19 +34,30 @@ public sealed class StudioSettingsViewModel : ObservableObject
     private readonly BalanceReadings _balances;
     private readonly Action<StudioSettings>? _persist;
     private readonly IStudioStrings _strings;
+    private readonly IPathPicker _picker;
+    private TeamsRootResolution _shownTeamsRoot;
 
     /// <summary>
     /// Builds the tab over the balances it tunes; <paramref name="persist"/> writes each change —
     /// left out, the choices last for the session only (the screenshot campaign's case).
+    /// <paramref name="teamsRoot"/> is the teams root the window resolved at startup (STUDIO-61);
+    /// left out, the card shows the default. <paramref name="picker"/> opens the folder dialog
+    /// « Change… » asks through; left out, the button does nothing.
     /// </summary>
     public StudioSettingsViewModel(
         BalanceReadings? balances = null,
         Action<StudioSettings>? persist = null,
-        IStudioStrings? strings = null)
+        IStudioStrings? strings = null,
+        TeamsRootResolution? teamsRoot = null,
+        IPathPicker? picker = null)
     {
         _balances = balances ?? new BalanceReadings();
         _persist = persist;
         _strings = strings ?? EnglishStudioStrings.Instance;
+        _picker = picker ?? NullPathPicker.Instance;
+        TeamsRoot = teamsRoot ?? new TeamsRootResolution(TeamCatalog.DefaultRoot(), TeamsRootSource.Default, null, null);
+        _shownTeamsRoot = TeamsRoot;
+        ChangeTeamsRootCommand = new RelayCommand(ChangeTeamsRoot, () => CanChangeTeamsRoot);
 
         // A value written by hand that the list does not offer is offered too, in its place:
         // the combo must show what the file says, not an empty box.
@@ -73,7 +88,67 @@ public sealed class StudioSettingsViewModel : ObservableObject
                 row.RefreshLabels();
             foreach (var choice in ArchiveSuggestionChoices)
                 choice.RefreshLabel();
+            OnPropertiesChanged(nameof(TeamsRootSourceText), nameof(TeamsRootIgnoredText));
         };
+    }
+
+    // ── the teams folder (STUDIO-61) ──
+
+    /// <summary>
+    /// The teams root in force for this session, as the window resolved it at startup: the
+    /// variable, then the option, then the preference, then the default. Read once — a change
+    /// through the card does not move it.
+    /// </summary>
+    public TeamsRootResolution TeamsRoot { get; }
+
+    /// <summary>
+    /// The path the card shows: the root in force, or — once « Change… » picked a folder — the
+    /// folder chosen, which the next start reads.
+    /// </summary>
+    public string TeamsRootPath => _shownTeamsRoot.Path;
+
+    /// <summary>Where the shown path comes from: « set by ORKEON_STUDIO_TEAMS_ROOT », « set by --teams-root », « chosen here » or « default ».</summary>
+    public string TeamsRootSourceText => _shownTeamsRoot.Source switch
+    {
+        TeamsRootSource.Environment => string.Format(
+            CultureInfo.CurrentCulture, _strings[StudioStringKeys.SettingsTeamsRootSourceEnvironment], TeamsRootLocator.EnvironmentVariable),
+        TeamsRootSource.Argument => string.Format(
+            CultureInfo.CurrentCulture, _strings[StudioStringKeys.SettingsTeamsRootSourceArgument], Shell.StartupArguments.TeamsRootSwitch),
+        TeamsRootSource.Preference => _strings[StudioStringKeys.SettingsTeamsRootSourcePreference],
+        _ => _strings[StudioStringKeys.SettingsTeamsRootSourceDefault],
+    };
+
+    /// <summary>A value set for the root that could not be used — a relative path —, with its reason; null when every value was usable.</summary>
+    public string? TeamsRootIgnoredText => TeamsRoot.IgnoredValue is { } ignored
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.SettingsTeamsRootIgnored], ignored, TeamsRoot.IgnoredReason)
+        : null;
+
+    /// <summary>Whether the card has an ignored value to name.</summary>
+    public bool HasTeamsRootIgnored => TeamsRoot.IgnoredValue is not null;
+
+    /// <summary>
+    /// Whether « Change… » is offered: the preference only counts when neither the variable nor
+    /// the option is in force — writing it then would change nothing, and the source line says
+    /// which of the two holds the root.
+    /// </summary>
+    public bool CanChangeTeamsRoot => TeamsRoot.Source is TeamsRootSource.Preference or TeamsRootSource.Default;
+
+    /// <summary>Opens the folder dialog and writes the folder picked as the preference, for the next start.</summary>
+    public RelayCommand ChangeTeamsRootCommand { get; }
+
+    private void ChangeTeamsRoot()
+    {
+        if (!CanChangeTeamsRoot)
+            return;
+
+        var picked = _picker.PickFolder(_strings[StudioStringKeys.SettingsTeamsRootTitle], _shownTeamsRoot.Path);
+        if (string.IsNullOrWhiteSpace(picked))
+            return;
+
+        var chosen = System.IO.Path.TrimEndingDirectorySeparator(picked.Trim());
+        Apply(_balances.Settings with { TeamsRoot = chosen });
+        _shownTeamsRoot = new TeamsRootResolution(chosen, TeamsRootSource.Preference, null, null);
+        OnPropertiesChanged(nameof(TeamsRootPath), nameof(TeamsRootSourceText));
     }
 
     /// <summary>

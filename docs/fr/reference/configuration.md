@@ -305,6 +305,8 @@ définit. C'est ce qu'Orkeon Studio écrit dans les lanceurs d'une équipe plani
 
 #### Studio écrit cette section
 
+Aucune section `Orkeon:Studio` n'existe, et Studio n'écrit ici aucune de ses propres préférences : ce fichier est celui que lit `orkeon run`, et l'hôte refuse au démarrage toute section `Orkeon:*` qu'il ne connaît pas — une clé `Orkeon:Studio:TeamsRoot` ferait échouer chaque run de la machine. Le dossier des équipes que Studio liste se choisit par la variable `ORKEON_STUDIO_TEAMS_ROOT`, l'option `--teams-root` ou Réglages › Studio, dont la préférence vit dans le `ui-preferences.json` propre à Studio (STUDIO-61, [Studio](../architecture/studio.md)).
+
 Les réglages de modèle d'Orkeon Studio sont les profils de l'hôte (STUDIO-48). Chaque réglage de
 l'onglet Modèle d'IA qui nomme un fournisseur est le profil nommé d'après lui par la règle des
 noms de dossier des équipes — « Claude » donne `claude`, « Z.AI » donne `z-ai` —, et sa carte comme

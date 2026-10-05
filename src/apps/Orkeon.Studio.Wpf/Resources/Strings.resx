@@ -1317,6 +1317,30 @@
   <data name="Studio.Settings.ArchiveSuggestionDays" xml:space="preserve">
     <value>{0} days</value>
   </data>
+  <data name="Studio.Settings.TeamsRootTitle" xml:space="preserve">
+    <value>Teams folder</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootHint" xml:space="preserve">
+    <value>Where Studio lists and creates its teams. A change applies at the next start. The run TUI reads the variable only.</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceEnvironment" xml:space="preserve">
+    <value>set by {0}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceArgument" xml:space="preserve">
+    <value>set by {0}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourcePreference" xml:space="preserve">
+    <value>chosen here</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceDefault" xml:space="preserve">
+    <value>default</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootIgnored" xml:space="preserve">
+    <value>'{0}' was ignored: {1}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootChange" xml:space="preserve">
+    <value>Change…</value>
+  </data>
   <data name="Studio.Settings.ArchiveSuggestionHint" xml:space="preserve">
     <value>A scheduled team is never proposed — the system runs it without Studio — nor a team whose last activity is unknown.</value>
   </data>

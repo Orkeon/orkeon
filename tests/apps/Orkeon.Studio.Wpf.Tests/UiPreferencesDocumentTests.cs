@@ -22,6 +22,7 @@ public sealed class UiPreferencesDocumentTests
             "BalanceThresholds": { "deepseek": 12.5 },
             "ArchiveSuggestion": false,
             "ArchiveSuggestionDays": 90,
+            "TeamsRoot": "/home/me/workshop/teams",
             "SomethingNewer": 7
           },
           "SomethingLater": { "Kept": true }
@@ -29,6 +30,28 @@ public sealed class UiPreferencesDocumentTests
         """;
 
     private static JsonObject Json(string text) => (JsonObject)JsonNode.Parse(text)!;
+
+    // ── STUDIO-61: the teams folder rides the Studio section ──
+
+    [Fact]
+    public void The_teams_root_is_read_from_the_studio_section_blank_meaning_none_and_written_back_by_merge()
+    {
+        Assert.Equal("/home/me/workshop/teams", UiPreferencesDocument.Parse(FileWithEverything).Studio.TeamsRoot);
+        Assert.Null(UiPreferencesDocument.Parse("""{ "Studio": { "TeamsRoot": "   " } }""").Studio.TeamsRoot);
+        Assert.Null(UiPreferencesDocument.Parse("""{ "Studio": { "TeamsRoot": 12 } }""").Studio.TeamsRoot);
+        Assert.Null(UiPreferencesDocument.Parse("{}").Studio.TeamsRoot);
+
+        var file = UiPreferencesDocument.Parse(FileWithEverything);
+        file.SetStudio(file.Studio with { TeamsRoot = "/home/me/other/teams" });
+
+        var written = Json(file.ToJson());
+        Assert.Equal("/home/me/other/teams", (string?)written["Studio"]!["TeamsRoot"]);
+        Assert.Equal(90, (int?)written["Studio"]!["ArchiveSuggestionDays"]);
+        Assert.Equal(7, (int?)written["Studio"]!["SomethingNewer"]);
+        Assert.Equal("dark", (string?)written["Theme"]);
+        // The file is Studio's own: no key of it is an Orkeon:* section the run could read.
+        Assert.DoesNotContain("Orkeon", file.ToJson(), StringComparison.Ordinal);
+    }
 
     [Fact]
     public void Saving_the_theme_the_language_or_the_mode_keeps_the_studio_settings_and_every_unknown_key()

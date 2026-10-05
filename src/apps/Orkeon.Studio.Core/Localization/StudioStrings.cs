@@ -1599,6 +1599,30 @@ public static class StudioStringKeys
     /// <summary>"{0} days" — a threshold of the archive suggestion in Settings › Studio (STUDIO-32, DB-1).</summary>
     public const string SettingsArchiveSuggestionDays = "Studio.Settings.ArchiveSuggestionDays";
 
+    /// <summary>"Teams folder" — the card of Settings › Studio naming the teams root in force (STUDIO-61).</summary>
+    public const string SettingsTeamsRootTitle = "Studio.Settings.TeamsRootTitle";
+
+    /// <summary>The hint under the teams folder: where Studio lists its teams, a change applies at the next start, the run TUI reads the variable only (STUDIO-61).</summary>
+    public const string SettingsTeamsRootHint = "Studio.Settings.TeamsRootHint";
+
+    /// <summary>"set by {0}" — the teams root comes from the variable; {0} is its name (STUDIO-61).</summary>
+    public const string SettingsTeamsRootSourceEnvironment = "Studio.Settings.TeamsRootSourceEnvironment";
+
+    /// <summary>"set by {0}" — the teams root comes from the startup option; {0} is the switch (STUDIO-61).</summary>
+    public const string SettingsTeamsRootSourceArgument = "Studio.Settings.TeamsRootSourceArgument";
+
+    /// <summary>"chosen here" — the teams root is the preference of the card (STUDIO-61).</summary>
+    public const string SettingsTeamsRootSourcePreference = "Studio.Settings.TeamsRootSourcePreference";
+
+    /// <summary>"default" — nothing names a teams root (STUDIO-61).</summary>
+    public const string SettingsTeamsRootSourceDefault = "Studio.Settings.TeamsRootSourceDefault";
+
+    /// <summary>"'{0}' was ignored: {1}" — a value set for the teams root that could not be used, and why (STUDIO-61).</summary>
+    public const string SettingsTeamsRootIgnored = "Studio.Settings.TeamsRootIgnored";
+
+    /// <summary>"Change…" — the button of the teams folder card opening the folder dialog (STUDIO-61).</summary>
+    public const string SettingsTeamsRootChange = "Studio.Settings.TeamsRootChange";
+
 
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
@@ -2562,6 +2586,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsArchivedOn] = "Archived on {0}",
         [StudioStringKeys.TeamsLastRunDate] = "Last run: {0}",
         [StudioStringKeys.SettingsArchiveSuggestionDays] = "{0} days",
+        [StudioStringKeys.SettingsTeamsRootTitle] = "Teams folder",
+        [StudioStringKeys.SettingsTeamsRootHint] = "Where Studio lists and creates its teams. A change applies at the next start. The run TUI reads the variable only.",
+        [StudioStringKeys.SettingsTeamsRootSourceEnvironment] = "set by {0}",
+        [StudioStringKeys.SettingsTeamsRootSourceArgument] = "set by {0}",
+        [StudioStringKeys.SettingsTeamsRootSourcePreference] = "chosen here",
+        [StudioStringKeys.SettingsTeamsRootSourceDefault] = "default",
+        [StudioStringKeys.SettingsTeamsRootIgnored] = "'{0}' was ignored: {1}",
+        [StudioStringKeys.SettingsTeamsRootChange] = "Change…",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",

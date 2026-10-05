@@ -57,6 +57,86 @@ public sealed class MainWindowViewModelTests
         Assert.True(window.Launch.IsBinaryAvailable);
     }
 
+    // ── STUDIO-61: one teams root, resolved once, for every screen ──
+
+    private static readonly string WorkshopTeams = Path.Combine(Path.GetTempPath(), "orkeon-ws", "teams");
+
+    private static Func<string, string?> Variable(string? value) =>
+        name => name == TeamsRootLocator.EnvironmentVariable ? value : null;
+
+    [Fact]
+    public void Built_for_the_machine_with_the_variable_every_screen_reads_the_workshop_catalogue()
+    {
+        // Before: the window resolved the root for the Launch tab alone, and the wizard, the
+        // import, the trial and My teams fell back to the fixed path on their own.
+        var window = MainWindowViewModel.CreateForCurrentMachine(
+            new FakePathPicker(),
+            new QueuedUiDispatcher(),
+            new StudioServices { ProfileStore = new InMemoryModelProfileStore(), BalanceProbe = new FakeProviderBalanceProbe() },
+            new StudioUiPreferences { InitialStudio = StudioSettings.Default with { TeamsRoot = "/elsewhere/teams" } },
+            teamsRootArgument: "/shortcut/teams",
+            environment: Variable(WorkshopTeams));
+
+        Assert.Equal(WorkshopTeams, window.TeamsRoot.Path);
+        Assert.Equal(TeamsRootSource.Environment, window.TeamsRoot.Source);
+        Assert.Equal(WorkshopTeams, window.CreateTeam.TeamsRoot);
+        Assert.Equal(WorkshopTeams, window.Import.TeamsRoot);
+        Assert.Equal(WorkshopTeams, window.Test.TeamsRoot);
+        Assert.Equal(WorkshopTeams, window.Teams.TeamsRoot);
+        Assert.Equal(WorkshopTeams, window.Launch.TeamsRoot);
+        // The card says what is in force, and the preference cannot change it while the variable holds.
+        Assert.Equal(WorkshopTeams, window.Settings.Studio.TeamsRootPath);
+        Assert.Contains(TeamsRootLocator.EnvironmentVariable, window.Settings.Studio.TeamsRootSourceText, StringComparison.Ordinal);
+        Assert.False(window.Settings.Studio.CanChangeTeamsRoot);
+    }
+
+    [Fact]
+    public void Without_the_variable_the_option_wins_then_the_preference_then_the_default()
+    {
+        var option = MainWindowViewModel.CreateForCurrentMachine(
+            new FakePathPicker(), new QueuedUiDispatcher(),
+            new StudioServices { ProfileStore = new InMemoryModelProfileStore(), BalanceProbe = new FakeProviderBalanceProbe() },
+            new StudioUiPreferences { InitialStudio = StudioSettings.Default with { TeamsRoot = WorkshopTeams } },
+            teamsRootArgument: Path.Combine(Path.GetTempPath(), "orkeon-shortcut", "teams"),
+            environment: Variable(null));
+        Assert.Equal(TeamsRootSource.Argument, option.TeamsRoot.Source);
+        Assert.Equal(option.TeamsRoot.Path, option.Teams.TeamsRoot);
+
+        var preference = MainWindowViewModel.CreateForCurrentMachine(
+            new FakePathPicker(), new QueuedUiDispatcher(),
+            new StudioServices { ProfileStore = new InMemoryModelProfileStore(), BalanceProbe = new FakeProviderBalanceProbe() },
+            new StudioUiPreferences { InitialStudio = StudioSettings.Default with { TeamsRoot = WorkshopTeams } },
+            environment: Variable(null));
+        Assert.Equal(TeamsRootSource.Preference, preference.TeamsRoot.Source);
+        Assert.Equal(WorkshopTeams, preference.Teams.TeamsRoot);
+        Assert.True(preference.Settings.Studio.CanChangeTeamsRoot);
+
+        var nothing = MainWindowViewModel.CreateForCurrentMachine(
+            new FakePathPicker(), new QueuedUiDispatcher(),
+            new StudioServices { ProfileStore = new InMemoryModelProfileStore(), BalanceProbe = new FakeProviderBalanceProbe() },
+            environment: Variable(null));
+        Assert.Equal(TeamsRootSource.Default, nothing.TeamsRoot.Source);
+        Assert.Equal(TeamCatalog.DefaultRoot(), nothing.Teams.TeamsRoot);
+    }
+
+    [Fact]
+    public void A_window_built_over_a_bare_root_reads_it_as_the_argument_and_one_without_as_the_default()
+    {
+        Assert.Equal(TeamsRootSource.Default, Build().TeamsRoot.Source);
+
+        var root = TempRoot();
+        try
+        {
+            var window = BuildOver(new FakeAppSettingsStore(), root);
+            Assert.Equal(Path.Combine(root, "teams"), window.TeamsRoot.Path);
+            Assert.Equal(TeamsRootSource.Argument, window.TeamsRoot.Source);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public void Should_ShareTheProcessRunner_Between_TheDiagnosticAndTheLauncher()
     {

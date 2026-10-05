@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Core.Validation;
 
 namespace Orkeon.Studio.Run.Launcher;
@@ -23,26 +24,49 @@ internal sealed class RunLauncherViewModel
 {
     private readonly IAppSettingsReader _settingsReader;
 
-    /// <summary>Creates the launcher over explicit collaborators (the test seam).</summary>
+    /// <summary>
+    /// Creates the launcher over explicit collaborators (the test seam). <paramref name="teamsRoot"/>
+    /// is the teams root a real run stamps its team's last run under (STUDIO-31, D-05; STUDIO-61);
+    /// null stamps nothing.
+    /// </summary>
     public RunLauncherViewModel(
         RunTargetDetector detector,
         OrkeonProcessRunner runner,
         ILaunchHistoryStore? history = null,
         MountValidator? mountValidator = null,
-        IAppSettingsReader? settingsReader = null)
+        IAppSettingsReader? settingsReader = null,
+        TeamsRootResolution? teamsRoot = null)
     {
         ArgumentNullException.ThrowIfNull(detector);
         ArgumentNullException.ThrowIfNull(runner);
 
         Target = new TargetSelectionModel(detector);
         Options = new LaunchOptionsModel(mountValidator);
-        Session = new RunSession(runner, history);
+        TeamsRoot = teamsRoot;
+        Session = new RunSession(runner, history, teamsRoot?.Path);
         _settingsReader = settingsReader ?? PhysicalAppSettingsReader.Instance;
     }
 
-    /// <summary>Creates the launcher over the real machine: real disk, real processes, real history file.</summary>
-    public static RunLauncherViewModel ForCurrentMachine() =>
-        new(new RunTargetDetector(), OrkeonProcessRunner.ForCurrentMachine(), TryCreateHistoryStore());
+    /// <summary>
+    /// Creates the launcher over the real machine: real disk, real processes, real history file —
+    /// and the teams root the <c>ORKEON_STUDIO_TEAMS_ROOT</c> variable names (STUDIO-61), read
+    /// through <paramref name="environment"/>, the process environment unless a test hands one.
+    /// The TUI parses no startup option and has no preferences file: the variable alone, else the
+    /// default. A run from here then stamps its team's last run as the WPF Launch tab does.
+    /// </summary>
+    public static RunLauncherViewModel ForCurrentMachine(Func<string, string?>? environment = null) =>
+        new(
+            new RunTargetDetector(),
+            OrkeonProcessRunner.ForCurrentMachine(),
+            TryCreateHistoryStore(),
+            teamsRoot: TeamsRootLocator.Resolve(environment));
+
+    /// <summary>
+    /// The teams root in force and where it came from (STUDIO-61): the variable or the default
+    /// for <see cref="ForCurrentMachine"/>; null when the launcher was built without one, and a
+    /// run then stamps no team.
+    /// </summary>
+    public TeamsRootResolution? TeamsRoot { get; }
 
     /// <summary>The target picker.</summary>
     public TargetSelectionModel Target { get; }
