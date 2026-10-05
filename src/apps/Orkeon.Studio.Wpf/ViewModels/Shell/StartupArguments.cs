@@ -27,6 +27,13 @@ public sealed record StartupArguments
     public const string CliDirectorySwitch = "--cli-dir";
 
     /// <summary>
+    /// Names the teams folder for this start (STUDIO-61) — the shortcut a workshop writes into its
+    /// launcher of Studio. Beaten by <c>ORKEON_STUDIO_TEAMS_ROOT</c>, beats the preference of
+    /// Settings › Studio; a relative path is ignored, and the card says so.
+    /// </summary>
+    public const string TeamsRootSwitch = "--teams-root";
+
+    /// <summary>
     /// Exit code for an argument Studio does not accept — the same contract as the two terminal
     /// front-ends, so a typo in a shortcut or a script fails loudly instead of silently opening
     /// the window as if nothing had been asked for.
@@ -46,6 +53,9 @@ public sealed record StartupArguments
     /// <summary>Directory holding the `orkeon` CLI; null when not named.</summary>
     public string? CliDirectory { get; init; }
 
+    /// <summary>The teams folder named for this start; null when not named.</summary>
+    public string? TeamsRoot { get; init; }
+
     /// <summary>The arguments that were not recognised, kept so they can be reported rather than ignored.</summary>
     public IReadOnlyList<string> Unrecognized { get; init; } = [];
 
@@ -58,6 +68,7 @@ public sealed record StartupArguments
         var smokeExit = false;
         string? captureDirectory = null;
         string? cliDirectory = null;
+        string? teamsRoot = null;
         var unrecognized = new List<string>();
 
         for (var i = 0; i < arguments.Count; i++)
@@ -75,6 +86,10 @@ public sealed record StartupArguments
             {
                 cliDirectory = TakeDirectory(arguments, ref i, argument, cliDirectory, unrecognized);
             }
+            else if (string.Equals(argument, TeamsRootSwitch, StringComparison.Ordinal))
+            {
+                teamsRoot = TakeDirectory(arguments, ref i, argument, teamsRoot, unrecognized);
+            }
             else if (!string.IsNullOrWhiteSpace(argument))
             {
                 unrecognized.Add(argument);
@@ -86,6 +101,7 @@ public sealed record StartupArguments
             SmokeExit = smokeExit,
             CaptureScreensDirectory = captureDirectory,
             CliDirectory = cliDirectory,
+            TeamsRoot = teamsRoot,
             Unrecognized = unrecognized,
         };
     }
@@ -115,7 +131,7 @@ public sealed record StartupArguments
         ArgumentNullException.ThrowIfNull(unrecognized);
 
         return $"Unrecognized argument(s): {string.Join(", ", unrecognized)}. "
-            + $"Orkeon Studio accepts only {SmokeExitSwitch}, {CaptureScreensSwitch} <directory> "
-            + $"and {CliDirectorySwitch} <directory>.";
+            + $"Orkeon Studio accepts only {SmokeExitSwitch}, {CaptureScreensSwitch} <directory>, "
+            + $"{CliDirectorySwitch} <directory> and {TeamsRootSwitch} <directory>.";
     }
 }

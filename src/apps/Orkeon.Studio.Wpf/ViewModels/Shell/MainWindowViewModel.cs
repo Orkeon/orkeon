@@ -39,14 +39,17 @@ public sealed class MainWindowViewModel : ObservableObject
     /// Builds the window over its seams; the tests construct it entirely in memory.
     /// <paramref name="globalPathOverride"/>, <paramref name="forgeWorkspace"/> and
     /// <paramref name="teamsRoot"/> are the three roots Studio reads and writes under, each
-    /// falling back to the per-user location when it is not named.
+    /// falling back to the per-user location when it is not named. <paramref name="teamsRootResolution"/>
+    /// says where the teams root came from (STUDIO-61) — <see cref="CreateForCurrentMachine"/> resolves
+    /// it; a test that hands a bare <paramref name="teamsRoot"/> is read as the argument source.
     /// </summary>
     public MainWindowViewModel(
         StudioServices? services = null,
         StudioUiPreferences? preferences = null,
         string? globalPathOverride = null,
         string? forgeWorkspace = null,
-        string? teamsRoot = null)
+        string? teamsRoot = null,
+        TeamsRootResolution? teamsRootResolution = null)
     {
         var seams = services ?? new StudioServices();
         var ui = preferences ?? new StudioUiPreferences();
@@ -86,7 +89,15 @@ public sealed class MainWindowViewModel : ObservableObject
         Chat = new ChatThreadViewModel(strings, delay);
         About = new AboutViewModel(runner, dispatcher);
 
-        var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
+        // STUDIO-61: the root is resolved HERE, once, and every screen below receives it — the
+        // wizard, the import, the trial, My teams and the launcher read one catalogue. A screen
+        // handed the raw parameter would fall back to the default on its own, and list another
+        // folder than the Launch tab.
+        var teamsHome = teamsRoot ?? teamsRootResolution?.Path ?? TeamCatalog.DefaultRoot();
+        TeamsRoot = teamsRootResolution is { } resolved && string.Equals(resolved.Path, teamsHome, StringComparison.Ordinal)
+            ? resolved
+            : new TeamsRootResolution(
+                teamsHome, teamsRoot is null ? TeamsRootSource.Default : TeamsRootSource.Argument, null, null);
         // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
         // on Windows — where the global appsettings, the model profiles and the history
         // already live): sessions are resumable app state, not documents, unlike the
@@ -167,8 +178,10 @@ public sealed class MainWindowViewModel : ObservableObject
             new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome, TeamListFilter.All), strings, declaredMounts),
             // STUDIO-21: the tool keys ride the same store as the profile keys.
             new ToolsSettingsViewModel(keyStore, strings),
-            // STUDIO-35 D-06: Settings › Studio, written into ui-preferences.json by merge.
-            new StudioSettingsViewModel(Balances, ui.PersistStudio, strings));
+            // STUDIO-35 D-06: Settings › Studio, written into ui-preferences.json by merge. STUDIO-61:
+            // its « Teams folder » card says the root in force and writes the preference through the
+            // same merge, the folder picked in the window's dialog.
+            new StudioSettingsViewModel(Balances, ui.PersistStudio, strings, TeamsRoot, picker));
 
         // STUDIO-50: what a team's launchers are written against — the run the operating system
         // schedules is the run Studio launches: the model settings, the folders the settings
@@ -199,7 +212,7 @@ public sealed class MainWindowViewModel : ObservableObject
                 Dispatcher = dispatcher,
                 Strings = strings,
                 WorkspaceDirectory = forgeHome,
-                TeamsRoot = teamsRoot,
+                TeamsRoot = teamsHome,
                 DeclaredMounts = declaredMounts,
                 LauncherContext = launcherContext,
                 Chat = this.Chat,
@@ -224,7 +237,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         Teams = new TeamsViewModel(new TeamsDependencies
         {
-            TeamsRoot = teamsRoot,
+            TeamsRoot = teamsHome,
             WorkspaceDirectory = forgeHome,
             Strings = strings,
             ShellOpener = shellOpener,
@@ -270,7 +283,7 @@ public sealed class MainWindowViewModel : ObservableObject
                 ModelSettings = ModelSettings,
                 PrepareLaunch = PrepareLaunchAsync,
             }),
-            teamsRoot);
+            teamsHome);
 
         // STUDIO-34: the bar at the foot of the window watches the three activities that can run
         // at once — each with its own engine — and gives each a group while it runs (DD-2).
@@ -296,7 +309,7 @@ public sealed class MainWindowViewModel : ObservableObject
             TargetProbe = targetProbe,
             Picker = picker,
             Strings = strings,
-            TeamsRoot = teamsRoot,
+            TeamsRoot = teamsHome,
             // VFS-90 D-06: an imported team naming declarations this machine does not have can
             // have them authorized as recorded — under the same ids — from the review card.
             DeclaredMounts = declaredMounts,
@@ -457,6 +470,13 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>The appsettings editor (spec §4).</summary>
     public ConfigTabViewModel Config { get; }
 
+    /// <summary>
+    /// The teams root every screen of this window reads and writes under, and where it came from
+    /// (STUDIO-61): the <c>ORKEON_STUDIO_TEAMS_ROOT</c> variable, the <c>--teams-root</c> option,
+    /// the preference of Settings › Studio, or the default. Resolved once at startup.
+    /// </summary>
+    public TeamsRootResolution TeamsRoot { get; }
+
     /// <summary>The unified Settings screen and its model profiles (design v3).</summary>
     public SettingsScreenViewModel Settings { get; }
 
@@ -524,18 +544,26 @@ public sealed class MainWindowViewModel : ObservableObject
     /// Builds a window wired to the real machine: the physical disk, the co-installed CLI and the
     /// per-user history file. The history store degrades to in-memory when the platform gives us no
     /// configuration directory, rather than refusing to open the window over it.
+    /// <para>
+    /// The teams root is resolved here (STUDIO-61): the <c>ORKEON_STUDIO_TEAMS_ROOT</c> variable, read
+    /// through <paramref name="environment"/> — the process environment unless a test hands one —,
+    /// then <paramref name="teamsRootArgument"/> (<c>--teams-root</c>), then the preference the
+    /// window opens with, then the default. Nothing of it reaches the settings file the runs read.
+    /// </para>
     /// </summary>
     public static MainWindowViewModel CreateForCurrentMachine(
         IPathPicker picker,
         IUiDispatcher dispatcher,
         StudioServices? services = null,
         StudioUiPreferences? preferences = null,
-        string? teamsRoot = null)
+        string? teamsRootArgument = null,
+        Func<string, string?>? environment = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);
 
         var seams = services ?? new StudioServices();
+        var teamsRoot = TeamsRootLocator.Resolve(environment, teamsRootArgument, preferences?.InitialStudio?.TeamsRoot);
 
         ILaunchHistoryStore? historyStore =
             LaunchHistoryFileStore.TryGetDefaultPath(out var historyPath, out _) && historyPath is { Length: > 0 }
@@ -569,7 +597,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 BalanceProbe = seams.BalanceProbe ?? HttpProviderBalanceProbe.ForCurrentMachine(),
             },
             preferences,
-            teamsRoot: teamsRoot);
+            teamsRoot: teamsRoot.Path,
+            teamsRootResolution: teamsRoot);
     }
 
     /// <summary>Runs the work the window defers until it is shown: opening the per-user settings file, locating the CLI, loading the history, reading the model profiles.</summary>

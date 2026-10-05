@@ -8,8 +8,8 @@ namespace Orkeon.Studio.Wpf.ViewModels.Services;
 /// (<see cref="UiPreferencesDocument"/>), and never in the settings file the CLI and the teams
 /// read.
 /// <para>
-/// STUDIO-35 gives it the balance settings, STUDIO-32 the archive suggestion: a new setting is one
-/// more property here, one more key in <see cref="UiPreferencesDocument"/>, and one more card on
+/// STUDIO-35 gives it the balance settings, STUDIO-32 the archive suggestion, STUDIO-61 the teams
+/// folder: a new setting is one more property here, one more key in <see cref="UiPreferencesDocument"/>, and one more card on
 /// the tab.
 /// </para>
 /// </summary>
@@ -47,4 +47,12 @@ public sealed record StudioSettings
 
     /// <summary>The days without activity past which a team is proposed for archiving (DB-1).</summary>
     public int ArchiveSuggestionDays { get; init; } = DefaultArchiveSuggestionDays;
+
+    /// <summary>
+    /// The teams folder chosen in Settings › Studio (STUDIO-61), or null for the default. Read once
+    /// at startup by <c>TeamsRootLocator</c>, after the <c>ORKEON_STUDIO_TEAMS_ROOT</c> variable and
+    /// the <c>--teams-root</c> option; a relative path is ignored. The WPF application alone reads
+    /// it: the run TUI, which has no preferences file, reads the variable only.
+    /// </summary>
+    public string? TeamsRoot { get; init; }
 }

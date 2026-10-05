@@ -1,6 +1,8 @@
+using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Llm;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
@@ -18,6 +20,116 @@ namespace Orkeon.Studio.Wpf.Tests;
 /// </summary>
 public sealed class SettingsScreenTests
 {
+    // ── STUDIO-61: the « Teams folder » card of Settings › Studio ──
+
+    private static readonly string WorkshopTeams = Path.Combine(Path.GetTempPath(), "orkeon-ws", "teams");
+    private static readonly string PickedTeams = Path.Combine(Path.GetTempPath(), "orkeon-picked", "teams");
+
+    private static string English(string key, params object[] arguments) =>
+        string.Format(CultureInfo.CurrentCulture, EnglishStudioStrings.Instance[key], arguments);
+
+    [Fact]
+    public void The_teams_folder_card_says_the_path_and_its_source()
+    {
+        var variable = new StudioSettingsViewModel(
+            teamsRoot: new TeamsRootResolution(WorkshopTeams, TeamsRootSource.Environment, null, null));
+        Assert.Equal(WorkshopTeams, variable.TeamsRootPath);
+        Assert.Equal(English(StudioStringKeys.SettingsTeamsRootSourceEnvironment, TeamsRootLocator.EnvironmentVariable), variable.TeamsRootSourceText);
+        Assert.Contains("ORKEON_STUDIO_TEAMS_ROOT", variable.TeamsRootSourceText, StringComparison.Ordinal);
+        Assert.False(variable.HasTeamsRootIgnored);
+        Assert.Null(variable.TeamsRootIgnoredText);
+
+        var option = new StudioSettingsViewModel(
+            teamsRoot: new TeamsRootResolution(WorkshopTeams, TeamsRootSource.Argument, null, null));
+        Assert.Contains("--teams-root", option.TeamsRootSourceText, StringComparison.Ordinal);
+
+        var preference = new StudioSettingsViewModel(
+            teamsRoot: new TeamsRootResolution(WorkshopTeams, TeamsRootSource.Preference, null, null));
+        Assert.Equal(English(StudioStringKeys.SettingsTeamsRootSourcePreference), preference.TeamsRootSourceText);
+
+        var nothing = new StudioSettingsViewModel();
+        Assert.Equal(TeamCatalog.DefaultRoot(), nothing.TeamsRootPath);
+        Assert.Equal(English(StudioStringKeys.SettingsTeamsRootSourceDefault), nothing.TeamsRootSourceText);
+        Assert.True(nothing.ChangeTeamsRootCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void Change_asks_the_folder_dialog_and_writes_the_preference_for_the_next_start()
+    {
+        var persisted = new List<StudioSettings>();
+        var picker = new FakePathPicker { FolderToReturn = PickedTeams + Path.DirectorySeparatorChar };
+        var studio = new StudioSettingsViewModel(
+            new BalanceReadings(settings: StudioSettings.Default with { BalanceRefreshMinutes = 15 }),
+            persisted.Add,
+            teamsRoot: new TeamsRootResolution(WorkshopTeams, TeamsRootSource.Preference, null, null),
+            picker: picker);
+
+        Assert.True(studio.ChangeTeamsRootCommand.CanExecute(null));
+        studio.ChangeTeamsRootCommand.Execute(null);
+
+        Assert.Equal([English(StudioStringKeys.SettingsTeamsRootTitle)], picker.Prompts);
+        var written = Assert.Single(persisted);
+        Assert.Equal(PickedTeams, written.TeamsRoot);
+        // Written by merge with the rest of Settings › Studio, never alone.
+        Assert.Equal(15, written.BalanceRefreshMinutes);
+        Assert.Same(written, studio.Current);
+        // The card shows the choice; the root in force stays until the next start.
+        Assert.Equal(PickedTeams, studio.TeamsRootPath);
+        Assert.Equal(English(StudioStringKeys.SettingsTeamsRootSourcePreference), studio.TeamsRootSourceText);
+        Assert.Equal(WorkshopTeams, studio.TeamsRoot.Path);
+    }
+
+    [Fact]
+    public void A_cancelled_dialog_writes_nothing()
+    {
+        var persisted = new List<StudioSettings>();
+        var studio = new StudioSettingsViewModel(persist: persisted.Add, picker: new FakePathPicker());
+
+        studio.ChangeTeamsRootCommand.Execute(null);
+
+        Assert.Empty(persisted);
+        Assert.Equal(TeamCatalog.DefaultRoot(), studio.TeamsRootPath);
+    }
+
+    [Fact]
+    public void When_the_variable_or_the_option_holds_the_root_the_command_is_off_and_the_card_says_which()
+    {
+        var persisted = new List<StudioSettings>();
+        var picker = new FakePathPicker { FolderToReturn = PickedTeams };
+
+        foreach (var source in new[] { TeamsRootSource.Environment, TeamsRootSource.Argument })
+        {
+            var studio = new StudioSettingsViewModel(
+                persist: persisted.Add,
+                teamsRoot: new TeamsRootResolution(WorkshopTeams, source, null, null),
+                picker: picker);
+
+            Assert.False(studio.CanChangeTeamsRoot);
+            Assert.False(studio.ChangeTeamsRootCommand.CanExecute(null));
+            studio.ChangeTeamsRootCommand.Execute(null);
+            Assert.Contains(
+                source == TeamsRootSource.Environment ? TeamsRootLocator.EnvironmentVariable : StartupArguments.TeamsRootSwitch,
+                studio.TeamsRootSourceText,
+                StringComparison.Ordinal);
+        }
+
+        Assert.Empty(persisted);
+        Assert.Empty(picker.Prompts);
+    }
+
+    [Fact]
+    public void A_value_ignored_at_startup_is_named_with_its_reason()
+    {
+        var studio = new StudioSettingsViewModel(
+            teamsRoot: new TeamsRootResolution(
+                WorkshopTeams, TeamsRootSource.Argument, "my-workshop/teams", "ORKEON_STUDIO_TEAMS_ROOT is not an absolute path."));
+
+        Assert.True(studio.HasTeamsRootIgnored);
+        Assert.Equal(
+            English(StudioStringKeys.SettingsTeamsRootIgnored, "my-workshop/teams", "ORKEON_STUDIO_TEAMS_ROOT is not an absolute path."),
+            studio.TeamsRootIgnoredText);
+    }
+
     private static (ModelProfilesViewModel Profiles, LlmSectionViewModel Llm, InMemoryModelProfileStore Store, AppSettingsDocument Document) Build() =>
         Build(new FakeApiKeyStore(), new FakeLlmEndpointProbe());
 

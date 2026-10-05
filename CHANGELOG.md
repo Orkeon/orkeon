@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the teams folder is chosen by ORKEON_STUDIO_TEAMS_ROOT, --teams-root or Settings › Studio, and nothing of it reaches appsettings.json
+
+- **The teams root was a fixed path** (STUDIO-61). Studio listed, created, imported, duplicated and
+  launched its teams under `%USERPROFILE%\Orkeon\teams` with no variable, no option and no
+  setting, so an Orkeon Workshop folder could only be Studio's catalogue by being that folder.
+  `TeamsRootLocator` (Studio.Core) now chooses the root once at startup: the
+  `ORKEON_STUDIO_TEAMS_ROOT` variable, then the `--teams-root <folder>` option of the WPF app, then
+  the preference of Settings › Studio, then the default. An absolute path only, its ending
+  separator trimmed, the folder not required to exist; a relative or blank value is skipped and the
+  next source applies.
+- **Every screen reads the same catalogue.** The window resolved the root for the Launch tab alone;
+  the creation assistant, the import, the trial and My teams fell back to the fixed path on their
+  own. The root is resolved before the window is built and handed to the five screens.
+- **A « Teams folder » card in Settings › Studio** says the path in force and which of the four
+  sources holds it — « set by ORKEON_STUDIO_TEAMS_ROOT », « set by --teams-root », « chosen here »,
+  « default » —, names a value that was ignored with its reason, and its « Change… » opens the
+  folder dialog and writes the preference into Studio's own `ui-preferences.json` (`TeamsRoot` in
+  its `Studio` section, merged like every key of that file), for the next start; the button is off
+  while the variable or the option holds the root.
+- **The run TUI stamps a team's last run as the WPF Launch tab does.** `orkeon-studio-run`
+  reads the variable alone — it parses no startup option and has no preferences file — and hands
+  the root to its `RunSession`, which recorded no last run before.
+- **No `Orkeon:Studio` key.** The settings file is the one `orkeon run` reads, and the host
+  refuses at start any `Orkeon:*` section it does not know (GAP-54): the preference lives in
+  Studio's file, and a test against the real runner host keeps it that way. The variable the child
+  `orkeon` process inherits lands as the root-level key `STUDIO_TEAMS_ROOT`, neither read nor
+  refused.
+- **`WorkshopLayout`** (Studio.Core) reads the Orkeon Workshop folder around a teams root — whether
+  it is one (`settings/` and `workbooks/` beside the teams root), the team's settings file
+  `settings/<slug>/appsettings.json`, and the team's trees that exist, `mounts.<name>` included — for
+  the lots that follow.
+- Migration: nothing set, the same path — `%USERPROFILE%\Orkeon\teams`, no diff on disk.
+
 ### Fixed — the Folders step proposes what the request calls for, says when it is the standard proposal, and lets the user fill the folders kept inside the team before the trial (STUDIO-57)
 
 - **A folder to read is proposed only when the team reads files.** A request such as « summarize

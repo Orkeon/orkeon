@@ -1021,6 +1021,9 @@ public sealed class TeamsViewModel : ObservableObject
     private readonly Dictionary<string, TeamScheduleState> _scheduleStates = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Builds the screen over its seams; the loaders default to the real catalogs.</summary>
+    /// <summary>The teams root the cards list (STUDIO-61): the one the window resolved, or the default.</summary>
+    public string TeamsRoot { get; }
+
     public TeamsViewModel(TeamsDependencies? dependencies = null)
     {
         var wired = dependencies ?? new TeamsDependencies();
@@ -1037,6 +1040,7 @@ public sealed class TeamsViewModel : ObservableObject
         _prepareSchedule = wired.PrepareSchedule;
         _lastRunsKnown = _historyStore is null;
         var root = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
+        TeamsRoot = root;
         _workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
         // Every team, archived or not: the screen splits them (STUDIO-31).
         _loadTeams = wired.LoadTeams ?? (() => TeamCatalog.List(root, TeamListFilter.All));

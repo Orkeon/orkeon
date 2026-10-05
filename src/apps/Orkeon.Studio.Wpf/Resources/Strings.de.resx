@@ -2702,6 +2702,30 @@
   <data name="Studio.Settings.ArchiveSuggestionDays" xml:space="preserve">
     <value>{0} Tagen</value>
   </data>
+  <data name="Studio.Settings.TeamsRootTitle" xml:space="preserve">
+    <value>Teams-Ordner</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootHint" xml:space="preserve">
+    <value>Wo Studio seine Teams auflistet und anlegt. Eine Änderung gilt ab dem nächsten Start. Die Run-TUI liest nur die Variable.</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceEnvironment" xml:space="preserve">
+    <value>gesetzt durch {0}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceArgument" xml:space="preserve">
+    <value>gesetzt durch {0}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourcePreference" xml:space="preserve">
+    <value>hier gewählt</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceDefault" xml:space="preserve">
+    <value>Standard</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootIgnored" xml:space="preserve">
+    <value>„{0}“ wurde ignoriert: {1}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootChange" xml:space="preserve">
+    <value>Ändern…</value>
+  </data>
   <data name="Studio.Settings.ArchiveSuggestionHint" xml:space="preserve">
     <value>Ein geplantes Team wird nie vorgeschlagen — das System führt es ohne Studio aus —, ebenso wenig ein Team, dessen letzte Aktivität unbekannt ist.</value>
   </data>

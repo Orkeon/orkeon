@@ -3,6 +3,7 @@ using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Run.Launcher;
 
@@ -399,5 +400,36 @@ public class RunLauncherViewModelTests
         Assert.Equal(2, lines.Count);
         Assert.Contains("/crews/b.yaml", lines[0], StringComparison.Ordinal);
         Assert.Contains("/crews/a.yaml", lines[1], StringComparison.Ordinal);
+    }
+
+    // ── STUDIO-61: the teams root of the TUI is the variable, or the default ──
+
+    [Fact]
+    public void Built_for_the_machine_the_launcher_carries_the_teams_root_the_variable_names()
+    {
+        var workshop = Path.Combine(Path.GetTempPath(), "orkeon-ws", "teams");
+
+        var launcher = RunLauncherViewModel.ForCurrentMachine(
+            name => name == TeamsRootLocator.EnvironmentVariable ? workshop : null);
+
+        Assert.NotNull(launcher.TeamsRoot);
+        Assert.Equal(workshop, launcher.TeamsRoot.Path);
+        Assert.Equal(TeamsRootSource.Environment, launcher.TeamsRoot.Source);
+    }
+
+    [Fact]
+    public void Built_for_the_machine_without_the_variable_the_launcher_carries_the_default_root()
+    {
+        var launcher = RunLauncherViewModel.ForCurrentMachine(_ => null);
+
+        Assert.NotNull(launcher.TeamsRoot);
+        Assert.Equal(TeamCatalog.DefaultRoot(), launcher.TeamsRoot.Path);
+        Assert.Equal(TeamsRootSource.Default, launcher.TeamsRoot.Source);
+    }
+
+    [Fact]
+    public void Built_over_doubles_the_launcher_has_no_teams_root_and_stamps_nothing()
+    {
+        Assert.Null(new LauncherFixture().WithInstalledCli().Build().TeamsRoot);
     }
 }

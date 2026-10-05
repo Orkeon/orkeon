@@ -95,4 +95,26 @@ public sealed class StartupArgumentsTests
         Assert.Contains("--cli-dir", bare.Unrecognized);
     }
 
+    // ── STUDIO-61: the teams folder of this start ──
+
+    [Fact]
+    public void The_teams_root_switch_takes_its_directory()
+    {
+        var arguments = StartupArguments.Parse(["--teams-root", @"C:\ws\teams", "--smoke-exit"]);
+
+        Assert.Equal(@"C:\ws\teams", arguments.TeamsRoot);
+        Assert.True(arguments.SmokeExit);
+        Assert.Empty(arguments.Unrecognized);
+        Assert.Equal("--teams-root", StartupArguments.TeamsRootSwitch);
+    }
+
+    [Fact]
+    public void A_teams_root_switch_without_a_directory_is_refused_and_the_message_names_the_switch()
+    {
+        var bare = StartupArguments.Parse(["--teams-root"]);
+
+        Assert.Null(bare.TeamsRoot);
+        Assert.Contains("--teams-root", bare.Unrecognized);
+        Assert.Contains("--teams-root <directory>", StartupArguments.DescribeUnrecognized(bare.Unrecognized), StringComparison.Ordinal);
+    }
 }

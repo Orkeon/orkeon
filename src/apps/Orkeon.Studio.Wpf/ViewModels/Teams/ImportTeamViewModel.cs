@@ -82,6 +82,9 @@ public sealed class ImportTeamViewModel : ObservableObject
     private readonly ImportTeamAction _import;
     private string? _statusMessage;
 
+    /// <summary>The teams root an import lands in (STUDIO-61): the one the window resolved, or the default.</summary>
+    public string TeamsRoot => _teamsRoot;
+
     /// <summary>Builds the screen over its seams; every collaborator defaults to the real one.</summary>
     public ImportTeamViewModel(ImportTeamDependencies? dependencies = null)
     {

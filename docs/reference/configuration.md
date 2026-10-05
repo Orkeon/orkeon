@@ -286,6 +286,8 @@ Orkeon Studio writes into a scheduled team's launchers.
 
 #### Studio writes this section
 
+No `Orkeon:Studio` section exists, and Studio writes none of its own preferences here: this is the file `orkeon run` reads, and the host refuses at start any `Orkeon:*` section it does not know — a `Orkeon:Studio:TeamsRoot` key would fail every run of the machine. The teams folder Studio lists is chosen by the `ORKEON_STUDIO_TEAMS_ROOT` variable, the `--teams-root` option or Settings › Studio, whose preference lives in Studio's own `ui-preferences.json` (STUDIO-61, [Studio](../architecture/studio.md)).
+
 Orkeon Studio's model settings are the host's profiles (STUDIO-48). Each setting of the AI-model
 tab that names a provider is the profile named after it by the folder-name rule of the teams —
 « Claude » is `claude`, « Z.AI » is `z-ai` — and its card and its editor show what a crew writes,

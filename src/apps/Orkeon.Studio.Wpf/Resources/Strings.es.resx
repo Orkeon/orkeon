@@ -2702,6 +2702,30 @@
   <data name="Studio.Settings.ArchiveSuggestionDays" xml:space="preserve">
     <value>{0} días</value>
   </data>
+  <data name="Studio.Settings.TeamsRootTitle" xml:space="preserve">
+    <value>Carpeta de los equipos</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootHint" xml:space="preserve">
+    <value>Donde Studio lista y crea sus equipos. Un cambio se aplica en el próximo inicio. La TUI de ejecución solo lee la variable.</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceEnvironment" xml:space="preserve">
+    <value>definido por {0}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceArgument" xml:space="preserve">
+    <value>definido por {0}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourcePreference" xml:space="preserve">
+    <value>elegido aquí</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceDefault" xml:space="preserve">
+    <value>predeterminado</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootIgnored" xml:space="preserve">
+    <value>«{0}» se ignoró: {1}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootChange" xml:space="preserve">
+    <value>Cambiar…</value>
+  </data>
   <data name="Studio.Settings.ArchiveSuggestionHint" xml:space="preserve">
     <value>Nunca se propone un equipo planificado — el sistema lo ejecuta sin Studio — ni un equipo cuya última actividad se desconoce.</value>
   </data>

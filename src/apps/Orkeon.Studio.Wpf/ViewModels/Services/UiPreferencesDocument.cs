@@ -27,6 +27,7 @@ public sealed class UiPreferencesDocument
     private const string BalanceThresholdsKey = "BalanceThresholds";
     private const string ArchiveSuggestionKey = "ArchiveSuggestion";
     private const string ArchiveSuggestionDaysKey = "ArchiveSuggestionDays";
+    private const string TeamsRootKey = "TeamsRoot";
 
     /// <summary>
     /// What the first writer also put in the file: it serialized the whole preferences record,
@@ -103,6 +104,9 @@ public sealed class UiPreferencesDocument
                 BalanceThresholds = thresholds.ToImmutable(),
                 ArchiveSuggestion = Flag(section[ArchiveSuggestionKey]) ?? StudioSettings.Default.ArchiveSuggestion,
                 ArchiveSuggestionDays = days,
+                // A blank is nothing chosen; a relative path is kept as written — the locator
+                // ignores it and the card names it, which is more honest than dropping it here.
+                TeamsRoot = Text(section[TeamsRootKey]) is { } teamsRoot && !string.IsNullOrWhiteSpace(teamsRoot) ? teamsRoot : null,
             };
         }
     }
@@ -143,6 +147,7 @@ public sealed class UiPreferencesDocument
         section[BalanceThresholdsKey] = thresholds;
         section[ArchiveSuggestionKey] = settings.ArchiveSuggestion;
         section[ArchiveSuggestionDaysKey] = settings.ArchiveSuggestionDays;
+        section[TeamsRootKey] = settings.TeamsRoot;
     }
 
     /// <summary>The document as the file stores it, indented for whoever opens it.</summary>

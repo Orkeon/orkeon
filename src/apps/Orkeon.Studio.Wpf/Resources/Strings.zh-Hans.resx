@@ -2702,6 +2702,30 @@
   <data name="Studio.Settings.ArchiveSuggestionDays" xml:space="preserve">
     <value>{0} 天</value>
   </data>
+  <data name="Studio.Settings.TeamsRootTitle" xml:space="preserve">
+    <value>团队文件夹</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootHint" xml:space="preserve">
+    <value>Studio 列出并创建团队的位置。更改将在下次启动时生效。运行 TUI 仅读取该变量。</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceEnvironment" xml:space="preserve">
+    <value>由 {0} 设置</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceArgument" xml:space="preserve">
+    <value>由 {0} 设置</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourcePreference" xml:space="preserve">
+    <value>在此选择</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootSourceDefault" xml:space="preserve">
+    <value>默认</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootIgnored" xml:space="preserve">
+    <value>已忽略“{0}”：{1}</value>
+  </data>
+  <data name="Studio.Settings.TeamsRootChange" xml:space="preserve">
+    <value>更改…</value>
+  </data>
   <data name="Studio.Settings.ArchiveSuggestionHint" xml:space="preserve">
     <value>已设置计划的团队从不会被建议——系统会在没有 Studio 的情况下运行它——最近活动未知的团队也不会。</value>
   </data>

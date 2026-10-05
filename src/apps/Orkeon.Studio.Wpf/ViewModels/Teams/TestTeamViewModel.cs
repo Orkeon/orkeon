@@ -29,6 +29,7 @@ public sealed class TestTeamViewModel : ObservableObject
 
         Launcher = launcher;
         var root = teamsRoot ?? TeamCatalog.DefaultRoot();
+        TeamsRoot = root;
         // The active teams only (STUDIO-31, D-08): an archived team is not tested from Studio.
         _loadTeams = loadTeams ?? (() => TeamCatalog.List(root, TeamListFilter.Active));
         RefreshTeams();
@@ -36,6 +37,9 @@ public sealed class TestTeamViewModel : ObservableObject
 
     /// <summary>The trial launcher — target, dry-run, run, console.</summary>
     public LaunchTabViewModel Launcher { get; }
+
+    /// <summary>The teams root the picker lists (STUDIO-61): the one the window resolved, or the default.</summary>
+    public string TeamsRoot { get; }
 
     /// <summary>The teams offered by the picker.</summary>
     public ObservableCollection<TeamSummary> TeamChoices { get; } = [];

@@ -160,7 +160,10 @@ public partial class App : System.Windows.Application
                 // or mode write keeps it, and its own writes keep them.
                 InitialStudio = preferences.Studio,
                 PersistStudio = UiPreferences.SaveStudio,
-            });
+            },
+            // STUDIO-61: the teams folder of this start — the variable, this option, the preference
+            // above, or the default — resolved once by the window, for every screen.
+            teamsRootArgument: arguments.TeamsRoot);
 
         // VFS-90: removing an authorized folder a team names by id asks first — the one
         // MessageBox the settings screen has, because the alternative is a team that silently
