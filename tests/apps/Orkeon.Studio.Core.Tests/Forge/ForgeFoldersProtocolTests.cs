@@ -19,7 +19,7 @@ public sealed class ForgeFoldersProtocolTests : IDisposable
 
     /// <summary>Verbatim from the CLI's golden test.</summary>
     private const string GoldenProposed =
-        """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"folders.proposed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF à convertir"},{"path":"/outmd","role":"output","purpose":"Les fichiers Markdown"}]}""";
+        """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"folders.proposed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF à convertir"},{"path":"/outmd","role":"output","purpose":"Les fichiers Markdown"}],"defaults":false}""";
 
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "studio-folders-" + Guid.NewGuid().ToString("N"));
 
@@ -103,7 +103,24 @@ public sealed class ForgeFoldersProtocolTests : IDisposable
         var model = new ForgeSessionModel();
         model.Feed(Parse(Blueprint));
 
+        Assert.False(model.FoldersConfirmed);
         Assert.Equal(["/workspace", "/outmd"], model.DerivedMounts.Select(m => m.VirtualPath));
+    }
+
+    /// <summary>STUDIO-57: the user kept no folder — a confirmed empty list is a team with none, not a plan's guess.</summary>
+    [Fact]
+    public void A_confirmed_empty_list_is_a_team_with_no_folder()
+    {
+        var model = new ForgeSessionModel();
+        model.Feed(Parse(BriefReady("[]")));
+        model.Feed(Parse(Blueprint));
+
+        Assert.True(model.FoldersConfirmed);
+        Assert.Empty(model.Folders);
+        Assert.Empty(model.DerivedMounts);
+
+        model.Feed(Parse("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"x","dir":"/ws/.orkeon/forge/x","format":"yaml","resumed":false}"""));
+        Assert.False(model.FoldersConfirmed);
     }
 
     [Fact]
@@ -134,6 +151,39 @@ public sealed class ForgeFoldersProtocolTests : IDisposable
         Assert.Equal(["/inpdf", "/outmd"], confirmed.Folders.Select(f => f.Path));
         Assert.Equal("/data/pdf", confirmed.Folders[0].Directory);
         Assert.Null(confirmed.Folders[1].Directory);
+    }
+
+    /// <summary>
+    /// STUDIO-57. The proposal says whether it is the defaults; <c>brief.ready</c> names the
+    /// folders the session holds for the team, with their directories; a new session forgets both.
+    /// </summary>
+    [Fact]
+    public void The_defaults_flag_and_the_held_folders_reach_the_model_and_a_new_session_forgets_them()
+    {
+        var model = new ForgeSessionModel();
+        model.Feed(Parse(GoldenProposed));
+        Assert.False(model.ProposedFoldersAreDefaults);
+
+        model.Feed(Parse("""{"v":2,"seq":1,"ts":"t","kind":"folders.proposed","folders":[{"path":"/workspace","role":"input","purpose":"Ce que l'équipe lit."},{"path":"/output","role":"output","purpose":"Où l'équipe écrit ses résultats."}],"defaults":true}"""));
+        Assert.True(model.ProposedFoldersAreDefaults);
+        Assert.Empty(model.HeldFolders);
+
+        model.Feed(Parse("""{"v":2,"seq":2,"ts":"t","kind":"brief.ready","brief":{"goal":"g","folders":[{"path":"/workspace","role":"input"},{"path":"/output","role":"output"}],"acceptance":[]},"heldFolders":[{"path":"/workspace","role":"input","dir":"/ws/.orkeon/forge/s/folders/workspace"},{"path":"/output","role":"output","dir":"/ws/.orkeon/forge/s/folders/output"}]}"""));
+        Assert.Equal(["/workspace", "/output"], model.HeldFolders.Select(f => f.Path));
+        Assert.Equal("/ws/.orkeon/forge/s/folders/workspace", model.HeldFolders[0].Directory);
+        Assert.True(model.HeldFolders[0].IsInput);
+        Assert.False(model.HeldFolders[1].IsInput);
+        Assert.Equal(["/workspace", "/output"], model.Folders.Select(f => f.Path));
+
+        // An older engine names no held folder: nothing to fill.
+        model.Feed(Parse(BriefReady("""[{"path":"/inpdf","role":"input"},{"path":"/markdown","role":"output"}]""")));
+        Assert.Empty(model.HeldFolders);
+
+        model.Feed(Parse("""{"v":2,"seq":2,"ts":"t","kind":"brief.ready","brief":{"goal":"g","folders":[],"acceptance":[]},"heldFolders":[{"path":"/output","role":"output","dir":"/d"}]}"""));
+        Assert.Single(model.HeldFolders);
+        model.Feed(Parse("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"x","dir":"/ws/.orkeon/forge/x","format":"yaml","resumed":false}"""));
+        Assert.Empty(model.HeldFolders);
+        Assert.False(model.ProposedFoldersAreDefaults);
     }
 
     [Fact]

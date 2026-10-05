@@ -52,17 +52,33 @@ function stableHeader() {
     lines.push("- Also record: what comes in (with one realistic sample value), what comes");
     lines.push("  out and in which shape, and any constraint the request states (length,");
     lines.push("  tone, language, allowed sources) — from the request when it says them.");
-    lines.push("- Folders: list in `folders` every folder the request names for the team,");
-    lines.push("  each {path, role, purpose}: path is '/' plus the name as the request spells");
-    lines.push("  it (\"/inpdf\"), role is 'input' when the team reads it and 'output' when it");
-    lines.push("  writes to it, purpose says in a few words what it holds. Never invent a");
-    lines.push("  folder the request does not name: when it names none, leave `folders` empty");
-    lines.push("  and the defaults are proposed. Never ask about folders: the user confirms");
-    lines.push("  the list right after your submission.");
+    lines.push("- Folders: list in `folders` every folder the request names OR DESCRIBES for");
+    lines.push("  the team, each {path, role, purpose}. path is '/' plus the name as the request");
+    lines.push("  spells it (\"/inpdf\"); when the request describes a folder without naming it");
+    lines.push("  ('a folder of PDFs with the instructions', 'another with the documents to");
+    lines.push("  attach'), name it yourself from what it holds, one short lowercase word in the");
+    lines.push("  request's language ('/instructions', '/documents'), one folder per folder");
+    lines.push("  described. role is 'input' when the team reads it and 'output' when it writes");
+    lines.push("  to it; purpose says in a few words what it holds and how the team must use");
+    lines.push("  it, in the user's words — the user may complete it before confirming. When");
+    lines.push("  the request names or describes any folder, list one output folder too, with a");
+    lines.push("  purpose that means something for this team — when the result is not a file");
+    lines.push("  (mails sent, an API called), the output folder is where the record of what was");
+    lines.push("  done lands ('/output', 'le compte rendu des envois'). Never invent an INPUT");
+    lines.push("  folder the request neither names nor describes; when it names or describes");
+    lines.push("  none at all, leave `folders` empty and the defaults are proposed. Never ask");
+    lines.push("  about folders: the user confirms the list right after your submission.");
+    lines.push("- Always set `readsFiles`: true when the team reads files or documents from a");
+    lines.push("  folder (PDFs, spreadsheets, text files it is given), false when what comes in");
+    lines.push("  is typed, pasted or fetched from the web (a URL, a text, a question). It");
+    lines.push("  decides whether a folder to read is proposed at all.");
     lines.push("- Keep the interview short: when you have goal + acceptance + sample, stop");
     lines.push("  asking and submit.");
     lines.push("- If the submission is rejected, fix exactly what the rejection names and");
     lines.push("  submit again without asking the user anything new.");
+    lines.push("- Write in light Markdown at most: **bold** for a label or the one question,");
+    lines.push("  '- ' bullets for a short list. No headings, no tables, no code blocks, no");
+    lines.push("  links: the user reads you in a chat bubble.");
   } else {
     lines.push("## Your deliverable: the team plan");
     lines.push("From the brief below, design the smallest team that satisfies the");
@@ -88,13 +104,29 @@ function stableHeader() {
   if (phase !== "brief" && folders.length > 0) {
     lines.push("");
     lines.push("## The team's folders (confirmed by the user — use these, and only these)");
+    lines.push("Each folder comes with the user's own note on what it holds and how the team");
+    lines.push("must use it: follow that note to the letter when you design the tasks.");
     for (var f = 0; f < folders.length; f++) {
       var folder = folders[f];
       lines.push("- " + folder.path + " — " + (folder.role === "input" ? "read-only input" : "writable output")
         + (folder.purpose ? ": " + folder.purpose : ""));
     }
-    lines.push("Every task deliverable is a path under one of the output folders above");
-    lines.push("(\"" + firstOutput(folders) + "/result.md\"). Agents that read files read the input folders.");
+    var output = firstOutput(folders);
+    if (output) {
+      lines.push("Every task deliverable is a path under one of the output folders above");
+      lines.push("(\"" + output + "/result.md\"). Agents that read files read the input folders.");
+    } else {
+      lines.push("No folder is written to (STUDIO-57): the team writes no file, so no task has a");
+      lines.push("`deliverable` — its result is what it does (mails sent, an API called, an answer");
+      lines.push("given) and what it reports in its final output. Agents that read files read the");
+      lines.push("input folders.");
+    }
+  } else if (phase !== "brief" && input.brief) {
+    lines.push("");
+    lines.push("## The team's folders");
+    lines.push("The user confirmed no folder at all (STUDIO-57): the team reads and writes no file.");
+    lines.push("No agent needs a file tool, no task has a `deliverable`; the result is what the team");
+    lines.push("does and what it reports in its final output.");
   }
 
   if (phase !== "brief" && input.crewTools && input.crewTools.length > 0) {
@@ -139,12 +171,13 @@ function stableHeader() {
   return lines.join("\n");
 }
 
-// The first output folder of the confirmed list — the example deliverable root.
+// The first output folder of the confirmed list — the example deliverable root; null when
+// the team writes nowhere (STUDIO-57).
 function firstOutput(folders) {
   for (var i = 0; i < folders.length; i++)
     if (folders[i].role === "output")
       return folders[i].path;
-  return "/output";
+  return null;
 }
 
 // ---------------------------------------------------------------------------------------

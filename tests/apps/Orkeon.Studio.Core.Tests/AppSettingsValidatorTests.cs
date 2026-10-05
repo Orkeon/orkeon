@@ -265,17 +265,20 @@ public sealed class AppSettingsValidatorTests
     }
 
     [Fact]
-    public void Saving_a_document_without_mounts_is_blocked_rather_than_merely_flagged()
+    public void Saving_a_document_without_mounts_is_flagged_and_never_blocked()
     {
-        // Spec §4.5 requires at least one mount. While editing that is a warning (a launcher
-        // can still pass --mount); writing the file is where it has to stop being advisory.
+        // STUDIO-57: the runner mounts nothing and runs the crew all the same — a team that reads
+        // a mail and answers a mail needs no folder, and a team's own folders travel with it.
+        // Saving used to block here, on the claim that the runtime refuses to start.
         var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "m" } }""");
 
-        var message = Find(Validator().Validate(document, ValidationScope.Saving), ValidationCodes.MountsEmpty);
+        var messages = Validator().Validate(document, ValidationScope.Saving);
+        var message = Find(messages, ValidationCodes.MountsEmpty);
 
         Assert.NotNull(message);
-        Assert.Equal(ValidationSeverity.Error, message.Severity);
+        Assert.Equal(ValidationSeverity.Warning, message.Severity);
         Assert.Equal(MountsSection.SectionPath, message.Path);
+        Assert.DoesNotContain(messages, m => m.Severity == ValidationSeverity.Error);
     }
 
     [Fact]
@@ -283,7 +286,8 @@ public sealed class AppSettingsValidatorTests
     {
         var messages = Validator().ValidateJson("""{ "Llm": { "Model": "m" } }""", ValidationScope.Saving);
 
-        Assert.Equal(ValidationSeverity.Error, Assert.Single(messages, m => m.Code == ValidationCodes.MountsEmpty).Severity);
+        Assert.Equal(ValidationSeverity.Warning, Assert.Single(messages, m => m.Code == ValidationCodes.MountsEmpty).Severity);
+        Assert.DoesNotContain(messages, m => m.Severity == ValidationSeverity.Error);
     }
 
     [Fact]

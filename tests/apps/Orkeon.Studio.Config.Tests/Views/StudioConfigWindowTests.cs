@@ -107,19 +107,20 @@ public class StudioConfigWindowTests
     }
 
     [Fact]
-    public void The_save_scope_blocks_an_empty_mount_list_that_the_edit_scope_only_warns_about()
+    public void An_empty_mount_list_warns_in_both_scopes_and_blocks_neither()
     {
         using var window = new StudioConfigWindow(CreateModel());
 
         var editing = window.Validate();
         var saving = window.Validate(ValidationScope.Saving);
 
+        // STUDIO-57: a team that reads or writes no file needs no folder.
         Assert.False(editing.HasBlockingErrors);
-        Assert.True(saving.HasBlockingErrors);
+        Assert.False(saving.HasBlockingErrors);
         Assert.Contains(
             saving.Messages,
             message => message.Code == ValidationCodes.MountsEmpty
-                && message.Severity == ValidationSeverity.Error);
+                && message.Severity == ValidationSeverity.Warning);
     }
 
     [Fact]

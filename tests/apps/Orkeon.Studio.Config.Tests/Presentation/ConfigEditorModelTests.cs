@@ -34,8 +34,9 @@ public sealed class ConfigEditorModelTests : IDisposable
     [Fact]
     public void An_empty_mount_list_is_advice_while_editing_and_an_error_when_saving()
     {
-        // A settings file is meant to stand on its own (spec §4.5): a launcher can still add
-        // --mount arguments, so the editor tolerates the empty list — writing one is blocked.
+        // An empty folder list is a warning while editing and when saving alike (STUDIO-57):
+        // the runner mounts nothing and runs the crew all the same, and a team's own folders
+        // travel with the team. Writing the file used to be blocked here.
         var model = CreateModel();
 
         var editing = model.Preflight().Messages;
@@ -48,9 +49,9 @@ public sealed class ConfigEditorModelTests : IDisposable
         Assert.Contains(
             saving,
             message => message.Code == ValidationCodes.MountsEmpty
-                && message.Severity == ValidationSeverity.Error);
+                && message.Severity == ValidationSeverity.Warning);
         Assert.False(model.Preflight().HasBlockingErrors);
-        Assert.True(model.Preflight(ValidationScope.Saving).HasBlockingErrors);
+        Assert.False(model.Preflight(ValidationScope.Saving).HasBlockingErrors);
     }
 
     [Fact]

@@ -166,15 +166,19 @@ internal sealed class BriefStage : IForgeStageRunner
     /// (GAP-27), is a recoverable <c>FORGE-FOLDERS-INVALID</c> and the proposal is made again.
     /// The confirmed list is kept in <c>folders.json</c> (with the directories bound) and in the
     /// brief (without them — a physical path never reaches a prompt), then announced by
-    /// <c>brief.ready</c>.
+    /// <c>brief.ready</c>, whose <c>heldFolders</c> are the folders the session holds for the
+    /// team — kept «inside the team», each created now under the session's <c>folders/</c> so
+    /// the user can drop files in it before the trial (STUDIO-57). The proposal says whether it
+    /// is the defaults (<c>defaults</c>): the request named no folder.
     /// </summary>
     private async Task ConfirmFoldersAsync(
         ForgeSession session, ForgeEventWriter events, ForgeBrief brief, CancellationToken cancellationToken)
     {
         var proposal = ForgeFolders.ProposalOf(brief);
+        var defaults = ForgeFolders.IsDefaultProposal(brief);
         while (true)
         {
-            events.Emit("folders.proposed", new { folders = proposal });
+            events.Emit("folders.proposed", new { folders = proposal, defaults });
 
             var answer = _autoConfirmFolders
                 ? proposal
@@ -202,7 +206,12 @@ internal sealed class BriefStage : IForgeStageRunner
             session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = answer });
             var confirmed = brief with { Folders = [.. answer.Select(ForgeFolders.WithoutDirectory)] };
             session.SaveArtifact(ForgeSession.BriefFileName, confirmed);
-            events.Emit("brief.ready", new { brief = confirmed });
+            var held = ForgeFolders.Hold(session, answer);
+            events.Emit("brief.ready", new
+            {
+                brief = confirmed,
+                heldFolders = held.Select(f => new { path = f.Path, role = f.Role, dir = f.Directory }),
+            });
             return;
         }
     }

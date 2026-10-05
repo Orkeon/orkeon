@@ -153,7 +153,7 @@ public sealed class MountEditorViewModelTests
 public sealed class MountsEditorViewModelTests
 {
     [Fact]
-    public void Should_ReportAnError_When_TheListIsEmptyAndOneIsRequired()
+    public void Should_WarnWithoutAnError_When_TheListIsEmptyAndOneIsAskedFor()
     {
         var editor = new MountsEditorViewModel(new FakeDirectoryProbe(), requireAtLeastOne: true);
 
@@ -161,11 +161,12 @@ public sealed class MountsEditorViewModelTests
         Assert.Empty(editor.ValidationMessages);
         Assert.False(editor.HasErrors);
 
-        // ...and the first explicit validation says what is missing.
+        // ...and the first explicit validation says what is missing — as a warning (STUDIO-57):
+        // a team that reads or writes no file needs no folder, so nothing here is an error.
         editor.Validate();
 
-        Assert.Contains(editor.ValidationMessages, m => m.Code == ValidationCodes.MountsEmpty);
-        Assert.True(editor.HasErrors);
+        Assert.Contains(editor.ValidationMessages, m => m.Code == ValidationCodes.MountsEmpty && !m.IsError);
+        Assert.False(editor.HasErrors);
     }
 
     [Fact]

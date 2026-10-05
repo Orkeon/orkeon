@@ -1489,7 +1489,7 @@
     <value>Das angegebene Dokumentindex-Profil ist unbekannt.</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve">
-    <value>Es ist noch kein Ordner erlaubt: Fügen Sie mindestens einen hinzu.</value>
+    <value>Es ist noch kein Ordner erlaubt: Die Agenten sehen keinen Ihrer Ordner. Ein Team, das keine Datei liest oder schreibt, braucht keinen.</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve">
     <value>Ein Ordnereintrag ist fehlerhaft.</value>
@@ -1869,9 +1869,6 @@
   <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve">
     <value>Ein anderer Server trägt diese Kennung bereits.</value>
   </data>
-  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve">
-    <value>Noch nicht gespeichert: Geben Sie mindestens einen Ordner frei (Reiter Erlaubte Ordner) — Ihre Änderungen werden gespeichert, sobald einer vorhanden ist.</value>
-  </data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve">
     <value>Der Assistent läuft nicht — starten Sie die Komposition (Schritt 1, Zusammenstellen) oder setzen Sie die Sitzung fort; Ihre Frage wurde aufbewahrt.</value>
   </data>
@@ -2133,7 +2130,7 @@
     <value>Die Übernahme legt das Team als gewöhnlichen Ordner in Ihrem Profil ab. Haben Sie eine Zeitplanung gewählt, bietet Studio danach an, sie in der Aufgabenplanung Ihres Systems zu installieren; das Team erscheint unter Meine Teams.</value>
   </data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve">
-    <value>Es ist noch kein Ordner erlaubt. Die Agenten sehen nichts, solange Sie nicht mindestens einen freigeben.</value>
+    <value>Es ist noch kein Ordner erlaubt: Die Agenten sehen keinen Ihrer Ordner. Ein Team, das keine Datei liest oder schreibt, braucht keinen, und die eigenen Ordner eines Teams reisen mit ihm.</value>
   </data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve">
     <value>Nicht gespeichert — die Datei konnte nicht geschrieben werden: {0}</value>
@@ -2191,9 +2188,6 @@
   </data>
   <data name="Studio.Chat.YourBrief" xml:space="preserve">
     <value>IHR BRIEFING</value>
-  </data>
-  <data name="Studio.Chat.Edit" xml:space="preserve">
-    <value>Bearbeiten</value>
   </data>
   <data name="Studio.Chat.Stop" xml:space="preserve">
     <value>Anhalten</value>
@@ -2940,6 +2934,69 @@
   <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
     <value>Im Team</value>
   </data>
+  <data name="Studio.Create.Rephrase" xml:space="preserve">
+    <value>Umformulieren</value>
+  </data>
+  <data name="Studio.Create.RephraseTip" xml:space="preserve">
+    <value>Der Assistent schreibt Ihre Anfrage klarer und vollständiger um; Ihre eigenen Worte bleiben einen Klick entfernt.</value>
+  </data>
+  <data name="Studio.Create.RephraseUndo" xml:space="preserve">
+    <value>Zurück zu meinen Worten</value>
+  </data>
+  <data name="Studio.Create.Rephrasing" xml:space="preserve">
+    <value>Ihre Anfrage wird umformuliert …</value>
+  </data>
+  <data name="Studio.Create.Rephrased" xml:space="preserve">
+    <value>Anfrage umformuliert — « Zurück zu meinen Worten » stellt Ihren Text wieder her.</value>
+  </data>
+  <data name="Studio.Create.RephraseFailed" xml:space="preserve">
+    <value>Die Anfrage konnte nicht umformuliert werden: {0}</value>
+  </data>
+  <data name="Studio.Create.AddFolder" xml:space="preserve">
+    <value>Ordner hinzufügen</value>
+  </data>
+  <data name="Studio.Create.RemoveFolder" xml:space="preserve">
+    <value>Diesen Ordner entfernen: das Team bekommt ihn nicht.</value>
+  </data>
+  <data name="Studio.Create.FolderPurposeHint" xml:space="preserve">
+    <value>Was er enthält und wie das Team ihn nutzen soll — der Assistent folgt diesen Hinweisen.</value>
+  </data>
+  <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
+    <value>Klicken zum Wechseln: vom Team gelesen oder geschrieben.</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
+    <value>Ihre Anfrage nennt keinen Ordner: dies ist der Standardvorschlag. Benennen Sie einen Ordner bei Bedarf um, sagen Sie, wo jeder liegt, und bestätigen Sie: das Team verwendet genau diese.</value>
+  </data>
+  <data name="Studio.Create.DefaultInputPurpose" xml:space="preserve">
+    <value>Was das Team liest.</value>
+  </data>
+  <data name="Studio.Create.DefaultOutputPurpose" xml:space="preserve">
+    <value>Wohin das Team seine Ergebnisse schreibt.</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
+    <value>Angekreuzt: der Ordner gehört dem Team und reist mit ihm. Abwählen, um stattdessen einen Ordner auf der Festplatte zu wählen.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
+    <value>Möchten Sie Dateien oder Unterordner in die eingerichteten Ordner legen?</value>
+  </data>
+  <data name="Studio.Create.FillFoldersHint" xml:space="preserve">
+    <value>Diese Ordner werden im Team aufbewahrt. Was Sie jetzt dort ablegen, liest der Probelauf, und es wandert bei der Übernahme ins Team.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersNo" xml:space="preserve">
+    <value>Nein</value>
+  </data>
+  <data name="Studio.Create.FillFoldersYes" xml:space="preserve">
+    <value>Ja</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
+    <value>Öffnen</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
+    <value>Öffnet den Ordner im Datei-Explorer.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersContinue" xml:space="preserve">
+    <value>Weiter</value>
+  </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
     <value>gelesen</value>
   </data>
@@ -2954,9 +3011,6 @@
   </data>
   <data name="Studio.Create.FolderTwice" xml:space="preserve">
     <value>{0} steht zweimal in der Liste.</value>
-  </data>
-  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
-    <value>Mindestens ein Ordner muss die Ergebnisse des Teams aufnehmen.</value>
   </data>
   <data name="Studio.Settings.HostId" xml:space="preserve">
     <value>In der Datei eines Teams: profile: {0}</value>

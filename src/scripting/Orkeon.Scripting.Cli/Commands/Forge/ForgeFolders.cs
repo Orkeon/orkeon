@@ -91,18 +91,16 @@ internal static class ForgeFolders
 
     /// <summary>
     /// The structural rules of a list: absolute one-segment paths the mount grammar can spell,
-    /// no reserved root, a known role, no root twice, and at least one output — a team that
-    /// writes nothing has no result to show. <paramref name="where"/> prefixes each message
-    /// (<c>folders</c> in a brief).
+    /// no reserved root, a known role, no root twice. An empty list is a valid one, and so is a
+    /// list with no output (STUDIO-57): a team that sends mails from what it reads writes no
+    /// file, and its result is what it did — the run's own output, which the judge reads.
+    /// <paramref name="where"/> prefixes each message (<c>folders</c> in a brief).
     /// </summary>
     public static IReadOnlyList<string> Validate(IReadOnlyList<ForgeFolder>? folders, string where = "folders")
     {
         var errors = new List<string>();
         if (folders is not { Count: > 0 })
-        {
-            errors.Add($"'{where}' must hold at least one folder the team writes to (role 'output').");
             return errors;
-        }
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < folders.Count; i++)
@@ -132,9 +130,6 @@ internal static class ForgeFolders
                 errors.Add($"{label}: 'dir' must be an absolute directory.");
         }
 
-        if (!folders.Any(f => string.Equals(f.Role, OutputRole, StringComparison.Ordinal)))
-            errors.Add($"'{where}' must hold at least one folder the team writes to (role 'output').");
-
         return errors;
     }
 
@@ -162,21 +157,24 @@ internal static class ForgeFolders
 
     /// <summary>
     /// The folders proposed when the request names none: <c>/workspace</c> to read, only when
-    /// something comes in, and <c>/output</c> to write — the two roots a team had before the
-    /// list existed, now a proposal the user confirms rather than a default nobody chose.
+    /// the team reads files (the brief's <c>readsFiles</c>; when the assistant did not say,
+    /// when something comes in — STUDIO-57: a team given a URL or a text reads no folder), and
+    /// <c>/output</c> to write — the two roots a team had before the list existed, now a
+    /// proposal the user confirms rather than a default nobody chose. Each purpose is said in
+    /// the brief's language.
     /// </summary>
     public static IReadOnlyList<ForgeFolder> Defaults(ForgeBrief brief)
     {
         ArgumentNullException.ThrowIfNull(brief);
 
         var folders = new List<ForgeFolder>();
-        if (brief.Inputs is { Count: > 0 })
+        if (brief.ReadsFiles ?? brief.Inputs is { Count: > 0 })
         {
             folders.Add(new ForgeFolder
             {
                 Path = RunnerVirtualRoots.Workspace,
                 Role = InputRole,
-                Purpose = "What the team reads.",
+                Purpose = DefaultPurpose(brief.Language, InputRole),
             });
         }
 
@@ -184,16 +182,57 @@ internal static class ForgeFolders
         {
             Path = RunnerVirtualRoots.Output,
             Role = OutputRole,
-            Purpose = "Where the team writes its results.",
+            Purpose = DefaultPurpose(brief.Language, OutputRole),
         });
         return folders;
+    }
+
+    /// <summary>What a default folder holds, in the brief's language (<c>fr</c>, else English).</summary>
+    public static string DefaultPurpose(string? language, string role)
+    {
+        var french = string.Equals(language, "fr", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(role, InputRole, StringComparison.Ordinal)
+            ? (french ? "Ce que l'équipe lit." : "What the team reads.")
+            : (french ? "Où l'équipe écrit ses résultats." : "Where the team writes its results.");
+    }
+
+    /// <summary>Whether a brief's proposal is the defaults: the request named no folder.</summary>
+    public static bool IsDefaultProposal(ForgeBrief brief)
+    {
+        ArgumentNullException.ThrowIfNull(brief);
+        return brief.Folders is not { Count: > 0 };
     }
 
     /// <summary>The list a brief proposes: its own folders, or the defaults when it names none.</summary>
     public static IReadOnlyList<ForgeFolder> ProposalOf(ForgeBrief brief)
     {
         ArgumentNullException.ThrowIfNull(brief);
-        return brief.Folders is { Count: > 0 } named ? [.. named.Select(WithoutDirectory)] : Defaults(brief);
+        return IsDefaultProposal(brief) ? Defaults(brief) : [.. brief.Folders!.Select(WithoutDirectory)];
+    }
+
+    /// <summary>
+    /// The folders of a confirmed list the session holds for the team — the ones bound to no
+    /// directory, kept «inside the team» — each with its session directory
+    /// (<c>folders/&lt;name&gt;</c>), created here so the user can drop files in it before the
+    /// trial (STUDIO-57): a folder that exists is one an explorer can open.
+    /// </summary>
+    public static IReadOnlyList<ForgeFolder> Hold(ForgeSession session, IReadOnlyList<ForgeFolder> folders)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(folders);
+
+        var held = new List<ForgeFolder>();
+        foreach (var folder in folders)
+        {
+            if (folder.Directory is { Length: > 0 } || folder.Path is not { Length: > 1 })
+                continue;
+
+            var directory = SessionFolder(session, folder);
+            System.IO.Directory.CreateDirectory(directory);
+            held.Add(folder with { Directory = directory });
+        }
+
+        return held;
     }
 
     /// <summary>The folder as the brief and the prompts carry it: no physical path.</summary>
@@ -211,15 +250,16 @@ internal static class ForgeFolders
     }
 
     /// <summary>
-    /// The list a session's team uses: the confirmed one; for a session that never confirmed
-    /// one — rebuilt by <c>forge reopen</c> from a team folder — the brief's, else what its plan
-    /// addresses (a reading agent reads <c>/workspace</c>, each deliverable root is written).
+    /// The list a session's team uses: the confirmed one — empty included, when the user kept
+    /// no folder at all (STUDIO-57); for a session that never confirmed one — rebuilt by
+    /// <c>forge reopen</c> from a team folder — the brief's, else what its plan addresses (a
+    /// reading agent reads <c>/workspace</c>, each deliverable root is written).
     /// </summary>
     public static IReadOnlyList<ForgeFolder> Of(ForgeSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
 
-        if (Confirmed(session) is { Count: > 0 } confirmed)
+        if (Confirmed(session) is { } confirmed)
             return confirmed;
 
         if (session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)?.Folders is { Count: > 0 } briefed)
@@ -242,10 +282,12 @@ internal static class ForgeFolders
     /// Where each folder lands during the trial. An output is always the session's own
     /// <c>folders/&lt;name&gt;</c>: the trial never writes into a real folder of the user's, and
     /// the run's snapshot takes it from there. An input reads the directory the user bound
-    /// behind it; else the first unbound input reads <c>--read</c> when one is given; else
-    /// <c>/workspace</c> reads the workspace, as it always did; else the session's
-    /// <c>folders/&lt;name&gt;</c> — the folder «inside the team», readable before the team exists
-    /// and moved into it at the adoption. Every session directory is created here.
+    /// behind it; else the first unbound input reads <c>--read</c> when one is given; else the
+    /// session's <c>folders/&lt;name&gt;</c> — the folder «inside the team», readable before the
+    /// team exists (the user drops files in it, STUDIO-57) and moved into it at the adoption.
+    /// Only a session that never confirmed a list — rebuilt from a team folder, its folders
+    /// derived from the plan — keeps reading the workspace behind <c>/workspace</c>, as it did
+    /// before the list existed. Every session directory is created here.
     /// </summary>
     public static IReadOnlyList<ForgeTrialMount> TrialMounts(
         ForgeSession session, IReadOnlyList<ForgeFolder> folders, string workspace, string? readRoot)
@@ -256,6 +298,7 @@ internal static class ForgeFolders
 
         var mounts = new List<ForgeTrialMount>();
         var readRootTaken = readRoot is null;
+        var workspaceReadsWorkspace = Confirmed(session) is not { Count: > 0 };
         foreach (var folder in folders)
         {
             string physical;
@@ -272,7 +315,8 @@ internal static class ForgeFolders
                 physical = readRoot!;
                 readRootTaken = true;
             }
-            else if (string.Equals(folder.Path, RunnerVirtualRoots.Workspace, StringComparison.Ordinal))
+            else if (workspaceReadsWorkspace
+                     && string.Equals(folder.Path, RunnerVirtualRoots.Workspace, StringComparison.Ordinal))
             {
                 physical = workspace;
             }

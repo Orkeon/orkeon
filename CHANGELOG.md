@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the Folders step proposes what the request calls for, says when it is the standard proposal, and lets the user fill the folders kept inside the team before the trial (STUDIO-57)
+
+- **A folder to read is proposed only when the team reads files.** A request such as « summarize
+  the article at this URL » named no folder, so the forge proposed its defaults — and `/workspace`
+  to read came with them whenever the brief had any input, a URL included. The brief now carries
+  `readsFiles` (`brief_submit`), which the assistant sets: false drops the folder to read even with
+  an input, true proposes it even with none; when the assistant did not say, the old reading
+  (something comes in) stands. A default folder's purpose is said in the brief's language, not
+  always in English.
+- **The proposal says it is the defaults.** `folders.proposed` carries `defaults: true` when the
+  request named no folder; the wizard's Folders step then reads « Your request names no folder:
+  this is the standard proposal » instead of « Read from your request », and shows the defaults'
+  purposes in the user's language.
+- **« Inside the team » is a state, not a button that greys out once pressed.** On a Folders row it
+  is a checkable chip, accent-filled when it is the answer: unchecking an input hands it back to
+  the disk picker, an output stays checked until a disk folder answers it. A greyed-out button after
+  one click read as « cannot choose ».
+- **The fill step.** `brief.ready` now carries `heldFolders` — every confirmed folder kept inside
+  the team, with the session directory the engine creates for it at the confirmation
+  (`folders/<name>`). When there is one, the wizard asks whether to put files or sub-folders in
+  the folders set up: « No » lets the construction go on, « Yes » shows « Open » behind each such
+  folder (the file explorer) and « Continue » below; the terminal prints the directories. The
+  engine composes meanwhile.
+- **A `/workspace` kept inside the team is read from the session.** Its trial used to read the
+  working directory — under Studio, the forge's own — so files dropped in the session folder went
+  unread until the adoption. Once a list is confirmed, every input bound to no directory reads the
+  session's `folders/<name>`, `/workspace` included; `--read` still answers the first such input;
+  a session that never confirmed a list keeps the old reading.
+- **A folder the request describes is a folder the assistant lists.** « Two folders of PDFs, one
+  with the instructions, the other with the documents to attach » used to yield the defaults: the
+  prompt asked for the folders the request *names*, and forbade inventing one. The assistant now
+  lists every folder named or described, naming a described one from what it holds
+  (`/instructions`, `/documents`), plus one output folder with a purpose that means something for
+  the team — the record of the mails sent, when the result is no file. It is also asked to write
+  light Markdown at most.
+- **The chat bubble renders Markdown and can be copied.** `**Entrée**` showed with its stars, and
+  nothing in a bubble could be selected. The engine's and the user's words now go through a
+  read-only rich text that renders bold, italic, inline code, bullet and numbered lists, headings
+  and fenced code (`MarkdownLite`, Studio Core; `MarkdownText`, the control), and a sentence or
+  the whole answer can be selected and copied; plain text renders as typed.
+- **A folder can be added, taken off, flipped and annotated on the Folders step.** Each row has a
+  note — what the folder holds and how the team must use it, sent as its `purpose` and followed
+  by the assistant when it designs the tasks —, a chip that flips read and written, and a cross;
+  « Add a folder » adds one. A list with no output folder, or none at all, is valid in the engine
+  and in Studio: a team that sends mails from what it reads writes no file, no task has a
+  `deliverable`, and a confirmed empty list is a team with no folder, never the folders its plan
+  would imply. The assistant no longer has to propose an output folder nobody needs.
+- **« Rephrase » on step 1.** `orkeon forge rephrase <request>` asks the assistant's LLM to rewrite
+  the request as a clear brief, adding nothing, and answers with one `need.rephrased` line; Studio's
+  « Rephrase » runs it under the assistant's profile and takes the text as the need, « Back to my
+  words » restores what was typed.
+- **The pinned brief card is selectable, and its « Edit » is gone.** The pencil only went back to
+  step 1, which « Start over » does; the text can now be selected and copied.
+- **The status line follows the Folders row.** « x allowed and bound as /y » stayed on screen after
+  the row went back to « inside the team »; it now goes when the row no longer holds that folder.
+- **« Settings › Authorized folders » no longer demands a folder.** Saving the settings file with
+  no authorized folder was refused — « Not saved yet: authorize at least one folder » — on the
+  claim that the runtime refuses to start without one. It does not: the runner builds no file
+  system when nothing is mounted and runs the crew all the same, so a team that reads a mail and
+  answers a mail needs no folder, and a team's own folders travel in its sidecar and launcher,
+  never in that file. `STUDIO-MOUNT-EMPTY` is now a warning in every scope, in Studio and in the
+  `orkeon-studio-config` TUI alike, and its text says what it means: the agents see no folder of
+  yours; the novice empty state says the same.
+
 ### Added — Orkeon is an apt package on Debian and Ubuntu: add the signed source once, then `apt install orkeon` and `apt upgrade`, on amd64 and arm64
 
 - **A signed apt repository, served by this GitHub repository.** The packages stay the Release

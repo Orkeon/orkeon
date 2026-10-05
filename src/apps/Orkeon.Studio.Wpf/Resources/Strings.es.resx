@@ -1489,7 +1489,7 @@
     <value>El perfil de índice documental indicado es desconocido.</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve">
-    <value>Todavía no hay ninguna carpeta autorizada: añada al menos una.</value>
+    <value>Todavía no hay ninguna carpeta autorizada: los agentes no ven ninguna de las suyas. Un equipo que no lee ni escribe archivos no necesita ninguna.</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve">
     <value>Una entrada de carpeta está mal formada.</value>
@@ -1869,9 +1869,6 @@
   <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve">
     <value>Otro servidor ya lleva este identificador.</value>
   </data>
-  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve">
-    <value>Aún no guardado: autorice al menos una carpeta (pestaña Carpetas autorizadas) — sus cambios se guardarán en cuanto haya una.</value>
-  </data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve">
     <value>El asistente no se está ejecutando — inicie la composición (paso 1, Componer) o reanude la sesión; su pregunta se ha conservado.</value>
   </data>
@@ -2133,7 +2130,7 @@
     <value>Adoptar guarda el equipo como una carpeta ordinaria de su perfil. Si eligió una planificación, Studio le propone después instalarla en el programador de su sistema; el equipo aparece en Mis equipos.</value>
   </data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve">
-    <value>Todavía no hay ninguna carpeta autorizada. Los agentes no verán nada mientras no autorice al menos una.</value>
+    <value>Todavía no hay ninguna carpeta autorizada: los agentes no ven ninguna de las suyas. Un equipo que no lee ni escribe archivos no necesita ninguna, y las carpetas propias de un equipo viajan con él.</value>
   </data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve">
     <value>No guardado — no se pudo escribir el archivo: {0}</value>
@@ -2191,9 +2188,6 @@
   </data>
   <data name="Studio.Chat.YourBrief" xml:space="preserve">
     <value>SU BRIEFING</value>
-  </data>
-  <data name="Studio.Chat.Edit" xml:space="preserve">
-    <value>Editar</value>
   </data>
   <data name="Studio.Chat.Stop" xml:space="preserve">
     <value>Detener</value>
@@ -2940,6 +2934,69 @@
   <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
     <value>Dentro del equipo</value>
   </data>
+  <data name="Studio.Create.Rephrase" xml:space="preserve">
+    <value>Reformular</value>
+  </data>
+  <data name="Studio.Create.RephraseTip" xml:space="preserve">
+    <value>El asistente reescribe su solicitud, más clara y completa; sus propias palabras quedan a un clic.</value>
+  </data>
+  <data name="Studio.Create.RephraseUndo" xml:space="preserve">
+    <value>Volver a mi versión</value>
+  </data>
+  <data name="Studio.Create.Rephrasing" xml:space="preserve">
+    <value>Reformulando su solicitud…</value>
+  </data>
+  <data name="Studio.Create.Rephrased" xml:space="preserve">
+    <value>Solicitud reformulada — « Volver a mi versión » restaura lo que escribió.</value>
+  </data>
+  <data name="Studio.Create.RephraseFailed" xml:space="preserve">
+    <value>No se pudo reformular la solicitud: {0}</value>
+  </data>
+  <data name="Studio.Create.AddFolder" xml:space="preserve">
+    <value>Añadir una carpeta</value>
+  </data>
+  <data name="Studio.Create.RemoveFolder" xml:space="preserve">
+    <value>Quitar esta carpeta: el equipo no la tendrá.</value>
+  </data>
+  <data name="Studio.Create.FolderPurposeHint" xml:space="preserve">
+    <value>Qué contiene y cómo debe usarla el equipo — el asistente seguirá estas notas.</value>
+  </data>
+  <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
+    <value>Clic para cambiar: leída por el equipo, o escrita por él.</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
+    <value>Su solicitud no nombra ninguna carpeta: esta es la propuesta estándar. Renombre una carpeta si lo desea, diga dónde está cada una y confirme: el equipo usará exactamente estas.</value>
+  </data>
+  <data name="Studio.Create.DefaultInputPurpose" xml:space="preserve">
+    <value>Lo que el equipo lee.</value>
+  </data>
+  <data name="Studio.Create.DefaultOutputPurpose" xml:space="preserve">
+    <value>Donde el equipo escribe sus resultados.</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
+    <value>Marcada: la carpeta pertenece al equipo y viaja con él. Desmárquela para elegir una carpeta del disco.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
+    <value>¿Quiere poner archivos o subcarpetas en las carpetas que ha configurado?</value>
+  </data>
+  <data name="Studio.Create.FillFoldersHint" xml:space="preserve">
+    <value>Estas carpetas se guardan dentro del equipo. Lo que deje ahí ahora es lo que lee la prueba, y pasa al equipo al adoptarlo.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersNo" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Studio.Create.FillFoldersYes" xml:space="preserve">
+    <value>Sí</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
+    <value>Abrir</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
+    <value>Abre la carpeta en el explorador de archivos.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersContinue" xml:space="preserve">
+    <value>Continuar</value>
+  </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
     <value>leída</value>
   </data>
@@ -2954,9 +3011,6 @@
   </data>
   <data name="Studio.Create.FolderTwice" xml:space="preserve">
     <value>{0} aparece dos veces.</value>
-  </data>
-  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
-    <value>Al menos una carpeta debe recibir los resultados del equipo.</value>
   </data>
   <data name="Studio.Settings.HostId" xml:space="preserve">
     <value>En el archivo de un equipo: profile: {0}</value>

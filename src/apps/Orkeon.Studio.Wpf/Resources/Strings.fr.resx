@@ -526,7 +526,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-TYPE" xml:space="preserve"><value>Un champ des réglages n'a pas le bon type.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY" xml:space="preserve"><value>Une clé API est écrite dans le fichier — déplacez-la vers une variable d'environnement.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-RAG-PROFILE" xml:space="preserve"><value>Le profil d'index documentaire indiqué est inconnu.</value></data>
-  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve"><value>Aucun dossier n'est autorisé pour l'instant : ajoutez-en au moins un.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve"><value>Aucun dossier n'est autorisé pour l'instant : les agents ne voient aucun des vôtres. Une équipe qui ne lit ni n'écrit de fichier n'en a pas besoin.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve"><value>Une entrée de dossier est mal formée.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve"><value>Un dossier autorisé n'existe pas sur cette machine.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve"><value>Deux dossiers partagent le même nom interne.</value></data>
@@ -653,7 +653,6 @@
   <data name="Studio.Settings.McpProblemCommand" xml:space="preserve"><value>Un serveur stdio a besoin d'une commande à lancer.</value></data>
   <data name="Studio.Settings.McpProblemUrl" xml:space="preserve"><value>Un serveur HTTP a besoin d'une URL http(s) absolue.</value></data>
   <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve"><value>Un autre serveur porte déjà cet identifiant.</value></data>
-  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve"><value>Pas encore enregistré : autorisez au moins un dossier (onglet Dossiers autorisés) — vos modifications s'enregistreront dès qu'il sera en place.</value></data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve"><value>L'assistant n'est pas en cours d'exécution — lancez la composition (étape 1, Composer) ou reprenez la session ; votre question a été conservée.</value></data>
   <data name="Studio.Create.EngineBusy" xml:space="preserve"><value>L'assistant est encore occupé avec « {0} » — arrêtez-le, ou laissez-le finir, avant d'ouvrir une équipe.</value></data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve"><value>Copier</value></data>
@@ -754,7 +753,7 @@
   <data name="Studio.Create.HelpStep2" xml:space="preserve"><value>L'assistant propose une équipe : un agent par tâche, chacun avec les seules capacités nécessaires. Vous pouvez modifier un agent, en ajouter un, et choisir les dossiers que l'équipe verra une fois adoptée.</value></data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve"><value>L'équipe répète sur un exemple, dans son bac à sable — rien d'autre n'est touché. Le verdict vous dit honnêtement si le résultat correspond à ce que vous avez demandé à l'étape 1.</value></data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopter range l'équipe dans un dossier ordinaire de votre profil. Si vous avez choisi une planification, Studio propose ensuite de l'installer dans le planificateur de votre système ; l'équipe apparaît dans Mes équipes.</value></data>
-  <data name="Studio.Settings.NoviceEmpty" xml:space="preserve"><value>Aucun dossier n'est encore autorisé. Les agents ne verront rien tant que vous n'en autorisez pas au moins un.</value></data>
+  <data name="Studio.Settings.NoviceEmpty" xml:space="preserve"><value>Aucun dossier n'est encore autorisé : les agents ne voient aucun des vôtres. Une équipe qui ne lit ni n'écrit de fichier n'en a pas besoin, et les dossiers propres à une équipe voyagent avec elle.</value></data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve"><value>Non enregistré — le fichier n'a pas pu être écrit : {0}</value></data>
   <data name="Studio.Teams.ExportedTo" xml:space="preserve"><value>Équipe exportée vers {0}</value></data>
   <data name="Studio.Teams.ExportFailed" xml:space="preserve"><value>Export refusé — la destination existe déjà, ou le disque a refusé.</value></data>
@@ -801,9 +800,6 @@
   </data>
   <data name="Studio.Chat.YourBrief" xml:space="preserve">
     <value>VOTRE BRIEF</value>
-  </data>
-  <data name="Studio.Chat.Edit" xml:space="preserve">
-    <value>Modifier</value>
   </data>
   <data name="Studio.Chat.Stop" xml:space="preserve">
     <value>Arrêter</value>
@@ -1532,6 +1528,69 @@
   <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
     <value>Dans l'équipe</value>
   </data>
+  <data name="Studio.Create.Rephrase" xml:space="preserve">
+    <value>Reformuler</value>
+  </data>
+  <data name="Studio.Create.RephraseTip" xml:space="preserve">
+    <value>L'assistant réécrit votre demande, plus claire et complète ; vos mots restent à un clic.</value>
+  </data>
+  <data name="Studio.Create.RephraseUndo" xml:space="preserve">
+    <value>Revenir à ma version</value>
+  </data>
+  <data name="Studio.Create.Rephrasing" xml:space="preserve">
+    <value>Reformulation de votre demande…</value>
+  </data>
+  <data name="Studio.Create.Rephrased" xml:space="preserve">
+    <value>Demande reformulée — « Revenir à ma version » restaure ce que vous aviez écrit.</value>
+  </data>
+  <data name="Studio.Create.RephraseFailed" xml:space="preserve">
+    <value>La demande n'a pas pu être reformulée : {0}</value>
+  </data>
+  <data name="Studio.Create.AddFolder" xml:space="preserve">
+    <value>Ajouter un dossier</value>
+  </data>
+  <data name="Studio.Create.RemoveFolder" xml:space="preserve">
+    <value>Retirer ce dossier : l'équipe ne l'aura pas.</value>
+  </data>
+  <data name="Studio.Create.FolderPurposeHint" xml:space="preserve">
+    <value>Ce qu'il contient et comment l'équipe doit s'en servir — l'assistant suivra ces consignes.</value>
+  </data>
+  <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
+    <value>Cliquer pour changer : lu par l'équipe, ou écrit par elle.</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
+    <value>Votre demande ne nomme aucun dossier : voici la proposition standard. Renommez un dossier si vous le souhaitez, dites où chacun se trouve, puis confirmez : l'équipe utilisera exactement ceux-là.</value>
+  </data>
+  <data name="Studio.Create.DefaultInputPurpose" xml:space="preserve">
+    <value>Ce que l'équipe lit.</value>
+  </data>
+  <data name="Studio.Create.DefaultOutputPurpose" xml:space="preserve">
+    <value>Où l'équipe écrit ses résultats.</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
+    <value>Coché : le dossier appartient à l'équipe et voyage avec elle. Décochez pour choisir un dossier sur le disque.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
+    <value>Souhaitez-vous mettre des fichiers ou des sous-dossiers dans les dossiers que vous avez paramétrés ?</value>
+  </data>
+  <data name="Studio.Create.FillFoldersHint" xml:space="preserve">
+    <value>Ces dossiers sont gardés dans l'équipe. Ce que vous y déposez maintenant est ce que l'essai lit, et rejoint l'équipe à l'adoption.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersNo" xml:space="preserve">
+    <value>Non</value>
+  </data>
+  <data name="Studio.Create.FillFoldersYes" xml:space="preserve">
+    <value>Oui</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
+    <value>Ouvrir</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
+    <value>Ouvre le dossier dans l'explorateur de fichiers.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersContinue" xml:space="preserve">
+    <value>Continuer</value>
+  </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
     <value>lu</value>
   </data>
@@ -1546,9 +1605,6 @@
   </data>
   <data name="Studio.Create.FolderTwice" xml:space="preserve">
     <value>{0} figure deux fois.</value>
-  </data>
-  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
-    <value>Au moins un dossier doit recevoir les résultats de l'équipe.</value>
   </data>
   <data name="Studio.Settings.HostId" xml:space="preserve">
     <value>Dans le fichier d'une équipe : profile: {0}</value>

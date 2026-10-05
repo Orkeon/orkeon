@@ -69,10 +69,10 @@ public sealed class ConfigTabViewModelTests
     }
 
     [Fact]
-    public async Task Should_RefuseToSave_When_NoMountIsDeclared()
+    public async Task Should_Save_When_NoMountIsDeclared_AndOnlyWarn()
     {
-        // Tolerated while editing — a launcher can still pass --mount — but a settings file is
-        // expected to stand on its own, so writing one that cannot start a run is blocked.
+        // STUDIO-57: a file with no authorized folder saves like any other — the runner mounts
+        // nothing and runs the crew all the same, and a team's own folders travel with it.
         var store = new FakeAppSettingsStore();
         var tab = Build(store);
 
@@ -80,12 +80,13 @@ public sealed class ConfigTabViewModelTests
             tab.Validate(),
             m => m.Code == ValidationCodes.MountsEmpty && m.Severity == ValidationSeverity.Warning);
 
-        Assert.False(await tab.SaveAsync(TestContext.Current.CancellationToken));
+        Assert.True(await tab.SaveAsync(TestContext.Current.CancellationToken));
 
-        Assert.Empty(store.SavedPaths);
+        Assert.NotEmpty(store.SavedPaths);
         Assert.Contains(
             tab.ValidationMessages,
-            m => m.Code == ValidationCodes.MountsEmpty && m.Severity == ValidationSeverity.Error);
+            m => m.Code == ValidationCodes.MountsEmpty && m.Severity == ValidationSeverity.Warning);
+        Assert.DoesNotContain(tab.ValidationMessages, m => m.IsError);
     }
 
     [Fact]
@@ -365,27 +366,29 @@ public sealed class ConfigTabViewModelTests
     }
 }
 
-/// <summary>The one refusal a novice actually meets: no authorized folder yet.</summary>
+/// <summary>
+/// The refusal a novice used to meet: no authorized folder yet. Gone (STUDIO-57): a team that
+/// reads a mail and answers a mail needs no folder, the runner mounts nothing and runs it all
+/// the same, and a team's own folders travel with the team, never in this file.
+/// </summary>
 public sealed class MountsEmptyRefusalTests
 {
     [Fact]
-    public async Task A_save_blocked_only_by_the_empty_folder_list_names_the_fix()
+    public async Task A_settings_file_with_no_authorized_folder_saves_and_only_warns()
     {
+        var store = new FakeAppSettingsStore();
         var tab = new ConfigTabViewModel(new StudioServices
         {
-            SettingsStore = new FakeAppSettingsStore(),
+            SettingsStore = store,
             Directories = new FakeDirectoryProbe("/data"),
         });
         tab.Rag.Profile = "quality"; // dirty, but no mount declared
 
-        Assert.False(await tab.SaveAsync(TestContext.Current.CancellationToken));
-
-        Assert.Equal(
-            EnglishStudioStrings.Instance[StudioStringKeys.ConfigNotSavedNeedFolder],
-            tab.StatusMessage);
-
-        // Authorizing a folder heals it: the very same save now goes through.
-        tab.Mounts.AddMount().PhysicalPath = "/data";
         Assert.True(await tab.SaveAsync(TestContext.Current.CancellationToken));
+
+        Assert.NotNull(store.LastSavedJson);
+        Assert.Contains("\"quality\"", store.LastSavedJson!, StringComparison.Ordinal);
+        Assert.DoesNotContain(tab.ValidationMessages, m => m.IsError);
+        Assert.Contains(tab.ValidationMessages, m => m.Code == ValidationCodes.MountsEmpty);
     }
 }

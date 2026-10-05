@@ -27,19 +27,28 @@ public static class ForgeEventKinds
     /// <summary>
     /// The folders step (STUDIO-46): <c>folders</c>, the list the engine proposes between the
     /// brief and the plan — each <c>{path, role, purpose}</c>, the folders the request named or
-    /// the defaults (<c>/workspace</c> to read when something comes in, <c>/output</c> to write).
-    /// The engine then waits for <see cref="FoldersConfirmed"/>.
+    /// the defaults (<c>/workspace</c> to read when the team reads files, <c>/output</c> to
+    /// write), said by <c>defaults</c> (STUDIO-57). The engine then waits for
+    /// <see cref="FoldersConfirmed"/>.
     /// </summary>
     public const string FoldersProposed = "folders.proposed";
 
     /// <summary>
     /// The structured brief is available — its <c>folders</c> are the confirmed list
-    /// (STUDIO-46), without the directories bound behind them.
+    /// (STUDIO-46), without the directories bound behind them; <c>heldFolders</c> are the
+    /// folders kept inside the team, each <c>{path, role, dir}</c> with the session directory
+    /// the engine created for it (STUDIO-57).
     /// </summary>
     public const string BriefReady = "brief.ready";
 
     /// <summary>A team plan was proposed.</summary>
     public const string BlueprintReady = "blueprint.ready";
+
+    /// <summary>
+    /// <c>forge rephrase</c> answered (STUDIO-57): <c>text</c>, the request rewritten as a clear
+    /// brief by the assistant's LLM, and <c>original</c>, what was typed. The verb opens no session.
+    /// </summary>
+    public const string NeedRephrased = "need.rephrased";
 
     /// <summary>One crew file was written.</summary>
     public const string FileWritten = "file.written";

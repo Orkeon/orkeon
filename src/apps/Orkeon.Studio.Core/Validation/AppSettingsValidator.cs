@@ -483,17 +483,16 @@ public sealed class AppSettingsValidator
 
         if (entries.Count == 0)
         {
-            // While editing this is only a warning: the runner injects the crew's config
-            // directory on its own and a launcher may add --mount arguments, so an empty array
-            // is not automatically a dead configuration. Saving one is a different matter — a
-            // settings file is expected to stand on its own, so the save path blocks.
-            const string Text =
-                "No file system mount is declared. The runtime refuses to start unless at " +
-                "least one mount is configured here or passed at launch (--mount).";
-
-            messages.Add(scope == ValidationScope.Saving
-                ? ValidationMessage.Error(ValidationCodes.MountsEmpty, Text, MountsSection.SectionPath)
-                : ValidationMessage.Warning(ValidationCodes.MountsEmpty, Text, MountsSection.SectionPath));
+            // A warning, while editing and when saving alike (STUDIO-57). The runner builds no
+            // file system when nothing is mounted and runs the crew all the same: a team that
+            // reads a mail and answers a mail needs no folder, and a team's own folders travel
+            // in its sidecar and its launcher, never in this file. Saving used to block here,
+            // on the claim that the runtime refuses to start — it does not.
+            messages.Add(ValidationMessage.Warning(
+                ValidationCodes.MountsEmpty,
+                "No file system mount is declared: the agents see no folder of yours. A team that " +
+                "reads or writes no file needs none, and a team's own folders travel with it.",
+                MountsSection.SectionPath));
             return;
         }
 

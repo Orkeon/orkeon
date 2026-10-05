@@ -1489,7 +1489,7 @@
     <value>此处指定的文档索引配置档未知。</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve">
-    <value>尚未授权任何文件夹：请至少添加一个。</value>
+    <value>尚未授权任何文件夹：智能体看不到您的任何文件夹。不读写文件的团队不需要文件夹。</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve">
     <value>某个文件夹条目格式有误。</value>
@@ -1869,9 +1869,6 @@
   <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve">
     <value>另一个服务器已使用该标识符。</value>
   </data>
-  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve">
-    <value>尚未保存：请至少授权一个文件夹（「授权文件夹」标签页）——一旦有了，您的修改就会被保存。</value>
-  </data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve">
     <value>助手当前未在运行——请启动组建（第 1 步「组建」）或恢复会话；您的问题已保留。</value>
   </data>
@@ -2133,7 +2130,7 @@
     <value>采纳会把团队保存为您个人目录下的一个普通文件夹。如果您选择了排程，Studio 随后会提议把它安装到系统的计划程序中；团队会出现在「我的团队」中。</value>
   </data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve">
-    <value>尚未授权任何文件夹。在您至少授权一个之前，智能体什么也看不到。</value>
+    <value>尚未授权任何文件夹：智能体看不到您的任何文件夹。不读写文件的团队不需要文件夹，团队自己的文件夹会随团队一起移动。</value>
   </data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve">
     <value>未保存——无法写入文件：{0}</value>
@@ -2191,9 +2188,6 @@
   </data>
   <data name="Studio.Chat.YourBrief" xml:space="preserve">
     <value>您的需求简述</value>
-  </data>
-  <data name="Studio.Chat.Edit" xml:space="preserve">
-    <value>编辑</value>
   </data>
   <data name="Studio.Chat.Stop" xml:space="preserve">
     <value>停止</value>
@@ -2940,6 +2934,69 @@
   <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
     <value>放在团队内</value>
   </data>
+  <data name="Studio.Create.Rephrase" xml:space="preserve">
+    <value>重新表述</value>
+  </data>
+  <data name="Studio.Create.RephraseTip" xml:space="preserve">
+    <value>助手会把您的需求改写得更清晰完整；您的原话随时可一键恢复。</value>
+  </data>
+  <data name="Studio.Create.RephraseUndo" xml:space="preserve">
+    <value>恢复我的原话</value>
+  </data>
+  <data name="Studio.Create.Rephrasing" xml:space="preserve">
+    <value>正在重新表述您的需求…</value>
+  </data>
+  <data name="Studio.Create.Rephrased" xml:space="preserve">
+    <value>需求已重新表述——「恢复我的原话」可还原您输入的内容。</value>
+  </data>
+  <data name="Studio.Create.RephraseFailed" xml:space="preserve">
+    <value>无法重新表述需求：{0}</value>
+  </data>
+  <data name="Studio.Create.AddFolder" xml:space="preserve">
+    <value>添加文件夹</value>
+  </data>
+  <data name="Studio.Create.RemoveFolder" xml:space="preserve">
+    <value>移除此文件夹：团队将不会使用它。</value>
+  </data>
+  <data name="Studio.Create.FolderPurposeHint" xml:space="preserve">
+    <value>它包含什么、团队应如何使用——助手会遵循这些说明。</value>
+  </data>
+  <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
+    <value>点击切换：由团队读取，或由团队写入。</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
+    <value>您的需求未指定任何文件夹：这是标准建议。如有需要可重命名文件夹，说明每个文件夹的位置，然后确认：团队将只使用这些文件夹。</value>
+  </data>
+  <data name="Studio.Create.DefaultInputPurpose" xml:space="preserve">
+    <value>团队读取的内容。</value>
+  </data>
+  <data name="Studio.Create.DefaultOutputPurpose" xml:space="preserve">
+    <value>团队写入结果的位置。</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
+    <value>勾选：该文件夹属于团队并随团队一起移动。取消勾选可改为选择磁盘上的文件夹。</value>
+  </data>
+  <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
+    <value>是否要在您设置的文件夹中放入文件或子文件夹？</value>
+  </data>
+  <data name="Studio.Create.FillFoldersHint" xml:space="preserve">
+    <value>这些文件夹保存在团队内。您现在放入的内容就是试运行读取的内容，并会在采用团队时一并移入团队。</value>
+  </data>
+  <data name="Studio.Create.FillFoldersNo" xml:space="preserve">
+    <value>否</value>
+  </data>
+  <data name="Studio.Create.FillFoldersYes" xml:space="preserve">
+    <value>是</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
+    <value>打开</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
+    <value>在文件资源管理器中打开该文件夹。</value>
+  </data>
+  <data name="Studio.Create.FillFoldersContinue" xml:space="preserve">
+    <value>继续</value>
+  </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
     <value>读取</value>
   </data>
@@ -2954,9 +3011,6 @@
   </data>
   <data name="Studio.Create.FolderTwice" xml:space="preserve">
     <value>{0} 出现了两次。</value>
-  </data>
-  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
-    <value>至少要有一个文件夹接收团队的结果。</value>
   </data>
   <data name="Studio.Settings.HostId" xml:space="preserve">
     <value>在团队文件中写：profile: {0}</value>

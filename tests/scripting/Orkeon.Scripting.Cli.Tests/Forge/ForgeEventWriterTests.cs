@@ -72,7 +72,8 @@ public class ForgeEventWriterTests
 
     /// <summary>
     /// The folders step (STUDIO-46): the proposal as it goes out — a folder inside the team
-    /// carries no <c>dir</c> — and Studio's answer, verbatim from its <c>ForgeFoldersProtocolTests</c>,
+    /// carries no <c>dir</c>, <c>defaults</c> says whether the request named none (STUDIO-57) —
+    /// and Studio's answer, verbatim from its <c>ForgeFoldersProtocolTests</c>,
     /// as the channel reads it back.
     /// </summary>
     [Fact]
@@ -88,10 +89,11 @@ public class ForgeEventWriterTests
                 new ForgeFolder { Path = "/inpdf", Role = "input", Purpose = "Les PDF à convertir" },
                 new ForgeFolder { Path = "/outmd", Role = "output", Purpose = "Les fichiers Markdown" },
             },
+            defaults = false,
         });
 
         Assert.Equal(
-            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"folders.proposed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF à convertir"},{"path":"/outmd","role":"output","purpose":"Les fichiers Markdown"}]}""" + "\n",
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"folders.proposed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF à convertir"},{"path":"/outmd","role":"output","purpose":"Les fichiers Markdown"}],"defaults":false}""" + "\n",
             output.ToString().ReplaceLineEndings("\n"));
 
         var studio = new StringReader(

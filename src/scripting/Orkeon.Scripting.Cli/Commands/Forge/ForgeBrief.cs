@@ -93,6 +93,15 @@ internal sealed record ForgeBrief
     [JsonPropertyName("folders")]
     public IReadOnlyList<ForgeFolder>? Folders { get; init; }
 
+    /// <summary>
+    /// Whether the team reads files or documents from a folder (STUDIO-57) — false when what
+    /// comes in is typed, pasted or fetched from the web: a URL, a text, a question. Null when
+    /// the assistant did not say; the defaults then fall back on the inputs. Decides whether
+    /// the default proposal holds a folder to read (<see cref="ForgeFolders.Defaults"/>).
+    /// </summary>
+    [JsonPropertyName("readsFiles")]
+    public bool? ReadsFiles { get; init; }
+
     /// <summary>Tone, length, language, allowed sources…</summary>
     [JsonPropertyName("constraints")]
     public IReadOnlyList<string>? Constraints { get; init; }

@@ -1532,11 +1532,14 @@ public partial class CreateTeamWizardTests
     private static string ReadingWritingBlueprint(string deliverableRoot = "/output") =>
         $$"""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read","file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"{{deliverableRoot}}/rapport.md"}],"rationale":"r"},"iteration":1}""";
 
-    /// <summary>The engine's <c>folders.proposed</c> line (STUDIO-46).</summary>
-    private static string FoldersProposedLine(params (string Path, string Role)[] folders) =>
+    /// <summary>The engine's <c>folders.proposed</c> line (STUDIO-46); <c>defaults</c> when the request named none (STUDIO-57).</summary>
+    private static string FoldersProposedLine((string Path, string Role)[] folders, bool defaults = false) =>
         "{\"v\":2,\"seq\":2,\"ts\":\"t\",\"kind\":\"folders.proposed\",\"folders\":["
         + string.Join(",", folders.Select(f => $"{{\"path\":\"{f.Path}\",\"role\":\"{f.Role}\",\"purpose\":\"p\"}}"))
-        + "]}";
+        + "],\"defaults\":" + (defaults ? "true" : "false") + "}";
+
+    /// <summary>The engine's defaults when the request names no folder: <c>/workspace</c> to read, <c>/output</c> to write.</summary>
+    private static (string Path, string Role)[] DefaultFolders => [("/workspace", "input"), ("/output", "output")];
 
     /// <summary>The fiche's two folders: the PDFs read, the Markdown written.</summary>
     private static (string Path, string Role)[] PdfFolders => [("/inpdf", "input"), ("/outmd", "output")];
@@ -1557,14 +1560,27 @@ public partial class CreateTeamWizardTests
         FakeProcessLauncher processes,
         (string Path, string Role)[] proposed,
         Action<CreateTeamViewModel> answer,
-        params string[] after)
+        params string[] after) =>
+        ScriptFoldersStep(vm, processes, FoldersProposedLine(proposed), answer, after);
+
+    /// <summary>
+    /// The same, from the <c>folders.proposed</c> line itself. The <c>brief.ready</c> played back
+    /// holds what the engine holds (STUDIO-57): every confirmed folder bound to no directory,
+    /// each with its session directory (<c>folders/&lt;name&gt;</c> under the session).
+    /// </summary>
+    private static void ScriptFoldersStep(
+        CreateTeamViewModel vm,
+        FakeProcessLauncher processes,
+        string proposedLine,
+        Action<CreateTeamViewModel> answer,
+        string[] after)
     {
         processes.OutputToEmit.Clear();
         processes.WhileRunning = () =>
         {
             processes.WhileRunning = null;
             processes.Emit(Out(SessionStarted));
-            processes.Emit(Out(FoldersProposedLine(proposed)));
+            processes.Emit(Out(proposedLine));
             answer(vm);
         };
         processes.OnInputLine = line =>
@@ -1574,9 +1590,14 @@ public partial class CreateTeamWizardTests
                 return;
 
             processes.OnInputLine = null;
-            var confirmed = document.RootElement.GetProperty("folders").EnumerateArray()
+            var folders = document.RootElement.GetProperty("folders").EnumerateArray().ToList();
+            var confirmed = folders
                 .Select(f => $"{{\"path\":\"{f.GetProperty("path").GetString()}\",\"role\":\"{f.GetProperty("role").GetString()}\"}}");
-            processes.Emit(Out($"{{\"v\":2,\"seq\":3,\"ts\":\"t\",\"kind\":\"brief.ready\",\"brief\":{{\"goal\":\"g\",\"folders\":[{string.Join(",", confirmed)}]}}}}"));
+            var held = folders
+                .Where(f => !f.TryGetProperty("dir", out _))
+                .Select(f => $"{{\"path\":\"{f.GetProperty("path").GetString()}\",\"role\":\"{f.GetProperty("role").GetString()}\",\"dir\":\"/ws/.orkeon/forge/veille/folders/{f.GetProperty("path").GetString()!.TrimStart('/')}\"}}");
+            processes.Emit(Out(
+                $"{{\"v\":2,\"seq\":3,\"ts\":\"t\",\"kind\":\"brief.ready\",\"brief\":{{\"goal\":\"g\",\"folders\":[{string.Join(",", confirmed)}]}},\"heldFolders\":[{string.Join(",", held)}]}}"));
             foreach (var next in after)
                 processes.Emit(Out(next));
         };
@@ -1636,6 +1657,315 @@ public partial class CreateTeamWizardTests
         Assert.DoesNotContain(vm.MountRows, r => r.VirtualPath is "/workspace" or "/output");
         Assert.Equal(["./outmd:/outmd:rw", "./inpdf:/inpdf:ro"], vm.SidecarMounts());
         Assert.DoesNotContain("--read", processes.Requests[0].Arguments);
+    }
+
+    /// <summary>
+    /// STUDIO-57. A request that names no folder gets the engine's defaults: the panel must not
+    /// claim it read them from the request, and their purposes come in Studio's language, not
+    /// in the brief's — the engine wrote them in French here, the wizard speaks English.
+    /// </summary>
+    [Fact]
+    public async Task The_default_proposal_says_so_and_speaks_the_users_language()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, FoldersProposedLine(DefaultFolders, defaults: true), wizard =>
+        {
+            Assert.True(wizard.IsFoldersStep);
+            Assert.True(wizard.IsDefaultFolderProposal);
+            Assert.StartsWith("Your request names no folder", wizard.FoldersStepSubtitle, StringComparison.Ordinal);
+            Assert.Equal(["What the team reads.", "Where the team writes its results."], wizard.FolderRows.Select(r => r.Purpose));
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, [ReadingWritingBlueprint(), Paused]);
+
+        await Compose(vm);
+
+        Assert.Equal([("/workspace", (string?)null), ("/output", null)], Confirmed(processes));
+    }
+
+    /// <summary>
+    /// STUDIO-57. The named proposal keeps the request's words and the ordinary subtitle.
+    /// </summary>
+    [Fact]
+    public async Task A_proposal_read_from_the_request_keeps_its_words()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            Assert.False(wizard.IsDefaultFolderProposal);
+            Assert.StartsWith("Read from your request", wizard.FoldersStepSubtitle, StringComparison.Ordinal);
+            Assert.Equal(["p", "p"], wizard.FolderRows.Select(r => r.Purpose));
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
+
+        await Compose(vm);
+    }
+
+    /// <summary>
+    /// STUDIO-57. « Inside the team » is a state the user toggles, never a button that greys
+    /// out once pressed: checking it answers an input, unchecking it leaves the input for the
+    /// disk picker, and an output — kept inside the team unless a disk folder answers it —
+    /// stays checked.
+    /// </summary>
+    [Fact]
+    public async Task Inside_the_team_is_a_state_an_input_can_leave_and_an_output_keeps()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            var input = wizard.FolderRows[0];
+            var output = wizard.FolderRows[1];
+            Assert.False(input.IsInsideTeam);
+            Assert.True(output.IsInsideTeam);
+
+            input.IsInsideTeam = true;
+            Assert.True(input.IsInsideTeam);
+            Assert.False(input.IsUnanswered);
+            Assert.Equal("inside the team: inpdf", input.FolderLabel);
+
+            input.IsInsideTeam = false;
+            Assert.False(input.IsInsideTeam);
+            Assert.True(input.IsUnanswered);
+            Assert.Equal("no folder chosen yet", input.FolderLabel);
+
+            output.IsInsideTeam = false;
+            Assert.True(output.IsInsideTeam);
+            Assert.Equal("inside the team: outmd", output.FolderLabel);
+
+            // A disk folder takes an output out of the team; the chip follows.
+            wizard.BindTeamMount("/outmd", Folder("/data/md", "/outmd", Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite));
+            Assert.False(output.IsInsideTeam);
+            Assert.Equal("/data/md", output.Directory);
+            output.IsInsideTeam = true;
+            Assert.True(output.IsInsideTeam);
+            Assert.Null(output.Directory);
+
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
+
+        await Compose(vm);
+
+        Assert.Equal([("/inpdf", (string?)null), ("/outmd", null)], Confirmed(processes));
+    }
+
+    /// <summary>
+    /// STUDIO-57. Once the folders are confirmed, the engine names the ones it holds for the
+    /// team, and the wizard asks whether to put files or sub-folders in them. « Yes » shows
+    /// « Open » behind each — the file explorer on the session directory the engine created —
+    /// and « Continue » below; « No » lets the construction go on. The engine composes meanwhile.
+    /// </summary>
+    [Fact]
+    public async Task The_fill_step_asks_once_the_folders_are_confirmed_and_opens_each_held_folder()
+    {
+        var opener = new RecordingShellOpener();
+        var (vm, processes, _) = Build(shellOpener: opener);
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            Assert.False(wizard.IsFillFoldersStep);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
+
+        await Compose(vm);
+
+        // The plan came and the wizard moved on; the question waits above it.
+        Assert.Equal(2, vm.Step);
+        Assert.True(vm.IsFillFoldersStep);
+        Assert.True(vm.IsFillFoldersQuestion);
+        Assert.False(vm.IsFillingFolders);
+        Assert.Equal(["/inpdf", "/outmd"], vm.HeldFolderRows.Select(r => r.VirtualPath));
+        Assert.Equal(["read", "written"], vm.HeldFolderRows.Select(r => r.RoleLabel));
+        Assert.Equal("/ws/.orkeon/forge/veille/folders/inpdf", vm.HeldFolderRows[0].Directory);
+        Assert.True(vm.FillFoldersYesCommand.CanExecute(null));
+        Assert.False(vm.FillFoldersContinueCommand.CanExecute(null));
+
+        vm.FillFoldersYesCommand.Execute(null);
+        Assert.True(vm.IsFillingFolders);
+        Assert.False(vm.IsFillFoldersQuestion);
+        Assert.All(vm.HeldFolderRows, row => Assert.True(row.CanOpen));
+        vm.HeldFolderRows[0].OpenCommand.Execute(null);
+        vm.HeldFolderRows[1].OpenCommand.Execute(null);
+        Assert.Equal(["/ws/.orkeon/forge/veille/folders/inpdf", "/ws/.orkeon/forge/veille/folders/outmd"], opener.Opened);
+
+        vm.FillFoldersContinueCommand.Execute(null);
+        Assert.False(vm.IsFillFoldersStep);
+        Assert.False(vm.IsFillingFolders);
+    }
+
+    /// <summary>
+    /// STUDIO-57. The status line that announced a folder bound behind a row — « x allowed and
+    /// bound as /inpdf » — goes when the row no longer holds that folder: the chip went back to
+    /// « inside the team », or the row was renamed. A line about something else stays.
+    /// </summary>
+    [Fact]
+    public async Task The_declared_folder_status_goes_when_the_row_leaves_its_folder()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            var row = wizard.FolderRows[0];
+            wizard.BindTeamMount("/inpdf", Folder("/data/pdf", "/inpdf"));
+            wizard.ReportStatus("« pdf » allowed and bound as /inpdf");
+            Assert.Equal("« pdf » allowed and bound as /inpdf", wizard.StatusMessage);
+
+            row.IsInsideTeam = true;
+            Assert.Equal("", wizard.StatusMessage);
+
+            // Bound again, then another line took the status: the row's change leaves it alone.
+            wizard.BindTeamMount("/inpdf", Folder("/data/pdf", "/inpdf"));
+            wizard.ReportStatus("« pdf » allowed and bound as /inpdf");
+            wizard.ReportStatus("something else");
+            row.VirtualPath = "/factures";
+            Assert.Equal("something else", wizard.StatusMessage);
+
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
+
+        await Compose(vm);
+    }
+
+    /// <summary>
+    /// STUDIO-57. A folder the user adds, renames, flips to « written » and annotates is confirmed
+    /// as such — its note travels as the folder's <c>purpose</c> —, and a folder the user takes off
+    /// is gone with the folder bound under its name.
+    /// </summary>
+    [Fact]
+    public async Task A_folder_can_be_added_annotated_flipped_and_another_taken_off()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            Assert.True(wizard.AddFolderRowCommand.CanExecute(null));
+            wizard.AddFolderRowCommand.Execute(null);
+            var added = wizard.FolderRows[2];
+            Assert.Equal("/files", added.VirtualPath);
+            Assert.True(added.IsInput);
+            Assert.True(added.IsUnanswered);
+
+            added.ToggleRoleCommand.Execute(null);
+            Assert.False(added.IsInput);
+            Assert.Equal("written", added.RoleLabel);
+            Assert.True(added.IsInsideTeam);
+            added.VirtualPath = "/rapports";
+            added.Purpose = "  un compte rendu par envoi, en Markdown  ";
+
+            // The proposed output goes, with the disk folder bound under its name.
+            wizard.BindTeamMount("/outmd", Folder("/data/md", "/outmd", Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite));
+            Assert.Equal(["/data/md:/outmd:rw"], wizard.TeamMounts);
+            wizard.FolderRows[1].RemoveCommand.Execute(null);
+            Assert.Equal(["/inpdf", "/rapports"], wizard.FolderRows.Select(r => r.VirtualPath));
+            Assert.Empty(wizard.TeamMounts);
+
+            Assert.True(wizard.CanConfirmFolders);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint("/rapports"), Paused);
+
+        await Compose(vm);
+
+        Assert.Equal([("/inpdf", (string?)null), ("/rapports", null)], Confirmed(processes));
+        using var sent = System.Text.Json.JsonDocument.Parse(
+            processes.InputLines.Single(line => line.Contains("folders.confirmed", StringComparison.Ordinal)));
+        var rapports = sent.RootElement.GetProperty("folders")[1];
+        Assert.Equal("output", rapports.GetProperty("role").GetString());
+        Assert.Equal("un compte rendu par envoi, en Markdown", rapports.GetProperty("purpose").GetString());
+        Assert.Equal(["./rapports:/rapports:rw"], vm.TeamMounts);
+    }
+
+    /// <summary>
+    /// STUDIO-57. A team that sends mails from what it reads writes no file: every folder may be
+    /// taken off, the panel stays to confirm the empty list, and the team then has no folder —
+    /// not the ones its plan would imply.
+    /// </summary>
+    [Fact]
+    public async Task Every_folder_may_be_taken_off_and_the_team_then_has_none()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            wizard.FolderRows[1].RemoveCommand.Execute(null);
+            wizard.FolderRows[0].RemoveCommand.Execute(null);
+            Assert.Empty(wizard.FolderRows);
+            Assert.True(wizard.IsFoldersStep);
+            Assert.False(wizard.HasFoldersProblem);
+            Assert.True(wizard.CanConfirmFolders);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, ReadingWritingBlueprint(), Paused);
+
+        await Compose(vm);
+
+        Assert.Empty(Confirmed(processes));
+        Assert.False(vm.IsFoldersStep);
+        Assert.False(vm.IsFillFoldersStep);
+        Assert.Empty(vm.TeamMounts);
+        Assert.Empty(vm.MountRows);
+    }
+
+    /// <summary>
+    /// STUDIO-57. « Rephrase » runs <c>forge rephrase</c> with the need as one argument and takes
+    /// the rewritten text as the need; « Back to my words » brings the typed one back. A failure
+    /// lands on the status line and leaves the need alone.
+    /// </summary>
+    [Fact]
+    public async Task Rephrase_rewrites_the_need_and_back_to_my_words_restores_it()
+    {
+        var (vm, processes, _) = Build();
+        vm.Need = "deux dossiers de pdf, envoyer des mails";
+        Assert.True(vm.RephraseNeedCommand.CanExecute(null));
+        Assert.False(vm.CanUndoRephrase);
+        processes.NextRuns.Enqueue([Out("""{"v":2,"seq":1,"ts":"t","kind":"need.rephrased","text":"L'équipe lit deux dossiers de PDF et envoie les mails.","original":"deux dossiers de pdf, envoyer des mails"}""")]);
+
+        await vm.RephraseNeedCommand.ExecuteAsync();
+
+        Assert.Equal("L'équipe lit deux dossiers de PDF et envoie les mails.", vm.Need);
+        Assert.True(vm.CanUndoRephrase);
+        Assert.False(vm.IsRephrasing);
+        Assert.StartsWith("Request rewritten", vm.StatusMessage, StringComparison.Ordinal);
+        var request = Assert.Single(processes.Requests);
+        Assert.Equal(["forge", "rephrase", "deux dossiers de pdf, envoyer des mails", "--events", "jsonl"], request.Arguments);
+        Assert.Equal("/ws", request.WorkingDirectory);
+
+        // A second rephrase keeps the words the user typed, not the first rewrite.
+        processes.NextRuns.Enqueue([Out("""{"v":2,"seq":1,"ts":"t","kind":"need.rephrased","text":"Encore plus clair.","original":"x"}""")]);
+        await vm.RephraseNeedCommand.ExecuteAsync();
+        Assert.Equal("Encore plus clair.", vm.Need);
+
+        vm.UndoRephraseCommand.Execute(null);
+        Assert.Equal("deux dossiers de pdf, envoyer des mails", vm.Need);
+        Assert.False(vm.CanUndoRephrase);
+
+        processes.NextRuns.Enqueue([Out("""{"v":2,"seq":1,"ts":"t","kind":"error","code":"FORGE-LLM-UNAVAILABLE","message":"no LLM is configured","recoverable":false}""")]);
+        await vm.RephraseNeedCommand.ExecuteAsync();
+        Assert.Equal("deux dossiers de pdf, envoyer des mails", vm.Need);
+        Assert.Equal("The request could not be rewritten: no LLM is configured", vm.StatusMessage);
+
+        vm.Need = "";
+        Assert.False(vm.RephraseNeedCommand.CanExecute(null));
+    }
+
+    /// <summary>STUDIO-57. « No » settles the question; without an opener the rows cannot open, and a new creation forgets the card.</summary>
+    [Fact]
+    public async Task No_settles_the_fill_step_and_a_new_creation_forgets_it()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard => wizard.ConfirmFoldersCommand.Execute(null), PdfBlueprint(), Paused);
+
+        await Compose(vm);
+
+        Assert.True(vm.IsFillFoldersQuestion);
+        Assert.All(vm.HeldFolderRows, row => Assert.False(row.CanOpen));
+        vm.FillFoldersNoCommand.Execute(null);
+        Assert.False(vm.IsFillFoldersStep);
+        Assert.False(vm.FillFoldersNoCommand.CanExecute(null));
+
+        vm.RestartCommand.Execute(null);
+        Assert.Empty(vm.HeldFolderRows);
+        Assert.False(vm.IsFillFoldersStep);
     }
 
     /// <summary>
@@ -2187,8 +2517,9 @@ public partial class CreateTeamWizardTests
     }
 
     /// <summary>
-    /// STUDIO-46: the panel shows while the engine waits for it, and only then — a list with no
-    /// output cannot be confirmed, and a session that ends without an answer takes the panel away.
+    /// STUDIO-46: the panel shows while the engine waits for it, and only then — a session that
+    /// ends without an answer takes the panel away. A list with no output can be confirmed since
+    /// STUDIO-57: a team that writes no file is a team all the same.
     /// </summary>
     [Fact]
     public async Task Dropping_a_named_folder_forgets_it_and_later_keeps_it_visible()
@@ -2199,8 +2530,8 @@ public partial class CreateTeamWizardTests
         ScriptFoldersStep(vm, processes, [("/inpdf", "input")], wizard =>
         {
             Assert.True(wizard.IsFoldersStep);
-            Assert.Equal("At least one folder must receive the team's results.", wizard.FoldersProblem);
-            Assert.False(wizard.ConfirmFoldersCommand.CanExecute(null));
+            Assert.False(wizard.HasFoldersProblem);
+            Assert.True(wizard.ConfirmFoldersCommand.CanExecute(null));
             processes.Emit(Out("""{"v":2,"seq":9,"ts":"t","kind":"session.finished","status":"abandoned","exitCode":0}"""));
         });
 

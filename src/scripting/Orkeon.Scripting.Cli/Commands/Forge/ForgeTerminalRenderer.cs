@@ -68,6 +68,14 @@ internal sealed class ForgeTerminalRenderer : TextWriter
 
             case "brief.ready":
                 _console.WriteLine("✔ Brief captured — acceptance criteria locked in.");
+                if (e.TryGetProperty("heldFolders", out var held) && held.ValueKind == JsonValueKind.Array
+                    && held.GetArrayLength() > 0)
+                {
+                    _console.WriteLine("Folders kept inside the team — drop files or sub-folders there before the trial:");
+                    foreach (var folder in held.EnumerateArray())
+                        _console.WriteLine($"  {Text(folder, "path")} ({Text(folder, "role")}) → {Text(folder, "dir")}");
+                }
+
                 break;
 
             case "folders.proposed":

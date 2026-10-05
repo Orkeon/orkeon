@@ -59,7 +59,6 @@ public sealed class ChatThreadViewModel : ObservableObject
 
         OpenCommand = new RelayCommand(Open);
         CloseCommand = new RelayCommand(Close);
-        EditBriefCommand = new RelayCommand(EditBrief);
         ToggleCommand = new RelayCommand(() => { if (_isOpen) Close(); else Open(); });
         ToggleRecapCommand = new RelayCommand(() => IsRecapExpanded = !_isRecapExpanded);
         StopCommand = new RelayCommand(Stop, () => _isBusy);
@@ -70,9 +69,6 @@ public sealed class ChatThreadViewModel : ObservableObject
         SkipCommand = new RelayCommand(
             () => Send(_strings[StudioStringKeys.ChatSkipAnswer]), () => IsAsking);
     }
-
-    /// <summary>Raised when the user asks to leave the thread and go back to the form.</summary>
-    public event EventHandler? EditBriefRequested;
 
     /// <summary>Raised when Stop is pressed — the owner cancels whatever it started.</summary>
     public event EventHandler? StopRequested;
@@ -279,13 +275,6 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>Gives the column back, history intact.</summary>
     public RelayCommand CloseCommand { get; }
-
-    /// <summary>
-    /// «Edit» on the pinned brief card: the same retreat as Close, plus the intent that
-    /// distinguishes the two. Sharing CloseCommand made the pencil a second cross — it hid
-    /// the thread and left the brief exactly as unreachable as before.
-    /// </summary>
-    public RelayCommand EditBriefCommand { get; }
 
     /// <summary>One button for both.</summary>
     public RelayCommand ToggleCommand { get; }
@@ -518,17 +507,6 @@ public sealed class ChatThreadViewModel : ObservableObject
     {
         IsOpen = false;
         RaiseDerived();
-    }
-
-    /// <summary>
-    /// Closes the thread AND says why: the caller is asking to go back and change the brief,
-    /// not merely to put the conversation away. Raising this from Close() instead made every
-    /// dismissal of the panel — the header's cross included — claim the user wanted to edit.
-    /// </summary>
-    private void EditBrief()
-    {
-        Close();
-        EditBriefRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void Push(ChatTurnViewModel turn)

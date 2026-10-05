@@ -167,10 +167,18 @@ public sealed class ForgeFoldersTests : IDisposable
         var wire = Event("folders.proposed").GetProperty("folders");
         Assert.Equal(["/inpdf", "/outmd"], wire.EnumerateArray().Select(f => f.GetProperty("path").GetString()));
 
+        // Read from the request, not the defaults (STUDIO-57).
+        Assert.False(Event("folders.proposed").GetProperty("defaults").GetBoolean());
+
         // Confirmed: the brief the plan reads carries them — never the physical path.
         var briefFolders = Event("brief.ready").GetProperty("brief").GetProperty("folders");
         Assert.Equal(["/inpdf", "/outmd"], briefFolders.EnumerateArray().Select(f => f.GetProperty("path").GetString()));
         Assert.DoesNotContain(pdfs, Event("brief.ready").GetRawText(), StringComparison.Ordinal);
+
+        // Held: the one folder kept inside the team, created now so the user can fill it (STUDIO-57).
+        var held = Assert.Single(Event("brief.ready").GetProperty("heldFolders").EnumerateArray());
+        Assert.Equal("/outmd", held.GetProperty("path").GetString());
+        Assert.Equal(Path.Combine(session.Directory, "folders", "outmd"), held.GetProperty("dir").GetString());
         Assert.Equal(pdfs, ForgeFolders.Confirmed(session)![0].Directory);
         var blueprintRequest = assistant.Requests.Single(r => r.Phase == ForgeAssistantPhase.Blueprint);
         Assert.NotNull(blueprintRequest.Brief?.Folders);
@@ -224,15 +232,73 @@ public sealed class ForgeFoldersTests : IDisposable
     [Fact]
     public void A_brief_naming_no_folder_proposes_the_defaults()
     {
+        // The assistant did not say whether files are read: something comes in, so a folder to read.
         var reading = ForgeFolders.ProposalOf(Brief(ForgeDocuments.ValidBrief));
         Assert.Equal(["/workspace", "/output"], reading.Select(f => f.Path));
         Assert.Equal(["input", "output"], reading.Select(f => f.Role));
+        Assert.True(ForgeFolders.IsDefaultProposal(Brief(ForgeDocuments.ValidBrief)));
+        Assert.False(ForgeFolders.IsDefaultProposal(Brief(PdfBrief)));
 
         // Nothing comes in: nothing to read, so no /workspace.
         var writing = ForgeFolders.ProposalOf(Brief("""
             { "goal": "Écrire un poème chaque matin", "acceptance": [ { "id": "A1", "statement": "Un poème", "kind": "must" } ] }
             """));
         Assert.Equal(["/output"], writing.Select(f => f.Path));
+    }
+
+    /// <summary>
+    /// STUDIO-57. A URL comes in, a Markdown summary comes out: the team reads no folder, and
+    /// a « /workspace » to read answered a question nobody asked. <c>readsFiles</c> decides:
+    /// false drops the folder to read even with an input, true proposes it even with none.
+    /// </summary>
+    [Fact]
+    public void Reads_files_decides_whether_a_folder_to_read_is_proposed_at_all()
+    {
+        var url = Brief(ForgeDocuments.ValidBrief.Replace("\"language\": \"fr\"", "\"readsFiles\": false, \"language\": \"fr\"", StringComparison.Ordinal));
+        Assert.Equal(["/output"], ForgeFolders.ProposalOf(url).Select(f => f.Path));
+
+        var files = Brief("""
+            { "goal": "Convertir les PDF qu'on me donne", "readsFiles": true, "acceptance": [ { "id": "A1", "statement": "Un .md", "kind": "must" } ] }
+            """);
+        Assert.Equal(["/workspace", "/output"], ForgeFolders.ProposalOf(files).Select(f => f.Path));
+    }
+
+    /// <summary>STUDIO-57. A default's purpose is said in the brief's language, not always in English.</summary>
+    [Fact]
+    public void A_default_folder_says_its_purpose_in_the_briefs_language()
+    {
+        var french = ForgeFolders.ProposalOf(Brief(ForgeDocuments.ValidBrief));
+        Assert.Equal(["Ce que l'équipe lit.", "Où l'équipe écrit ses résultats."], french.Select(f => f.Purpose));
+
+        var english = ForgeFolders.ProposalOf(Brief(ForgeDocuments.ValidBrief.Replace("\"language\": \"fr\"", "\"language\": \"en\"", StringComparison.Ordinal)));
+        Assert.Equal(["What the team reads.", "Where the team writes its results."], english.Select(f => f.Purpose));
+    }
+
+    /// <summary>
+    /// STUDIO-57. The proposal says it is the defaults, and once the list is confirmed the
+    /// session holds every folder kept inside the team: each directory exists — an explorer
+    /// can open it, the user can drop files in it before the trial — and <c>brief.ready</c>
+    /// names it.
+    /// </summary>
+    [Fact]
+    public async Task The_defaults_are_said_as_such_and_the_held_folders_are_created_and_announced()
+    {
+        var session = ForgeSession.Create(_workspace, "held");
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief), new ScriptedUserChannel()))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(Event("folders.proposed").GetProperty("defaults").GetBoolean());
+
+        var held = Event("brief.ready").GetProperty("heldFolders").EnumerateArray().ToList();
+        Assert.Equal(["/workspace", "/output"], held.Select(h => h.GetProperty("path").GetString()));
+        Assert.Equal(["input", "output"], held.Select(h => h.GetProperty("role").GetString()));
+        Assert.Equal(Path.Combine(session.Directory, "folders", "workspace"), held[0].GetProperty("dir").GetString());
+        Assert.Equal(Path.Combine(session.Directory, "folders", "output"), held[1].GetProperty("dir").GetString());
+        Assert.All(held, h => Assert.True(Directory.Exists(h.GetProperty("dir").GetString())));
+
+        // The directories stay out of the brief: a physical path never reaches a prompt.
+        Assert.DoesNotContain(session.Directory, Event("brief.ready").GetProperty("brief").GetRawText(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -260,12 +326,16 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.Contains(errors, e => e.Contains("one absolute segment", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// STUDIO-57: a list with no output, or no folder at all, is a valid one — a team that sends
+    /// mails from what it reads writes no file. What is still refused: a root twice, an unknown role.
+    /// </summary>
     [Fact]
-    public void A_list_without_an_output_or_with_a_root_twice_is_refused()
+    public void A_list_without_an_output_is_valid_and_a_root_twice_is_refused()
     {
-        Assert.Contains(
-            ForgeFolders.Validate([Folder("/inpdf", "input")]),
-            e => e.Contains("at least one folder the team writes to", StringComparison.Ordinal));
+        Assert.Empty(ForgeFolders.Validate([Folder("/inpdf", "input")]));
+        Assert.Empty(ForgeFolders.Validate([]));
+        Assert.Empty(ForgeFolders.Validate(null));
         Assert.Contains(
             ForgeFolders.Validate([Folder("/outmd", "output"), Folder("/OUTMD", "output")]),
             e => e.Contains("listed twice", StringComparison.Ordinal));
@@ -275,6 +345,22 @@ public sealed class ForgeFoldersTests : IDisposable
     }
 
     // ── the confirmation ─────────────────────────────────────────────────────────
+
+    /// <summary>STUDIO-57: the user kept no folder at all — the confirmed empty list is the team's, not the plan's guess.</summary>
+    [Fact]
+    public async Task A_confirmed_empty_list_is_honoured_over_what_the_plan_implies()
+    {
+        var session = ForgeSession.Create(_workspace, "mails");
+        var channel = new ScriptedUserChannel().ConfirmsFolders([]);
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief), channel))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Empty(ForgeFolders.Confirmed(session)!);
+        Assert.Empty(ForgeFolders.Of(session));
+        Assert.Empty(Event("brief.ready").GetProperty("heldFolders").EnumerateArray());
+        Assert.Empty(ForgeFolders.TrialMounts(session, ForgeFolders.Of(session), _workspace, null));
+    }
 
     [Fact]
     public async Task A_renamed_folder_is_the_one_the_brief_keeps()
@@ -468,10 +554,19 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.Equal(Path.Combine(session.Directory, "folders", "notes"), mounts[1].PhysicalPath);
         Assert.True(Directory.Exists(mounts[1].PhysicalPath));
 
-        // The default /workspace keeps reading the workspace, as it always did.
+        // A session that never confirmed a list — rebuilt from a team folder — keeps reading
+        // the workspace behind /workspace, as it did before the list existed.
         var defaults = ForgeFolders.TrialMounts(session, [Folder("/workspace", "input"), Folder("/output", "output")], _workspace, null);
         Assert.Equal(_workspace, defaults[0].PhysicalPath);
         Assert.Equal(Path.Combine(session.Directory, "folders", "output"), defaults[1].PhysicalPath);
+
+        // Once a list is confirmed, a /workspace kept inside the team reads the session's own
+        // folder — what the user dropped there (STUDIO-57) — like every other such input.
+        session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = [Folder("/workspace", "input"), Folder("/output", "output")] });
+        var confirmed = ForgeFolders.TrialMounts(session, ForgeFolders.Of(session), _workspace, null);
+        Assert.Equal(Path.Combine(session.Directory, "folders", "workspace"), confirmed[0].PhysicalPath);
+        Assert.True(Directory.Exists(confirmed[0].PhysicalPath));
+        Assert.Equal(documents, ForgeFolders.TrialMounts(session, ForgeFolders.Of(session), _workspace, documents)[0].PhysicalPath);
     }
 
     [Fact]

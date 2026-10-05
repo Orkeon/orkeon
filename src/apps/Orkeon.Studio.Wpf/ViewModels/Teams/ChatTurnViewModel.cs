@@ -63,6 +63,14 @@ public sealed class ChatTurnViewModel : ObservableObject
     /// <summary>The closing bubble — success ground, said once, when the brief is complete.</summary>
     public bool IsClosing { get; }
 
+    /// <summary>
+    /// Whether the body is free text — the assistant's own words from the engine, or what the
+    /// user typed — rather than a catalogue line (STUDIO-57). Free text is rendered as the light
+    /// Markdown it may carry, at the regular weight, so a bold word shows as one; a catalogue
+    /// line keeps the semi-bold the design gives a question.
+    /// </summary>
+    public bool IsFreeText => _bodyKey is null && !IsClosing;
+
     /// <summary>Re-reads whatever this turn takes from the catalogue, after a language switch.</summary>
     internal void Retranslate() =>
         OnPropertiesChanged(nameof(Body), nameof(Detail), nameof(Hint), nameof(HasDetail), nameof(HasHint));

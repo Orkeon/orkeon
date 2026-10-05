@@ -40,11 +40,14 @@ public sealed class MountValidatorTests
     }
 
     [Fact]
-    public void An_empty_list_is_an_error_when_at_least_one_mount_is_required()
+    public void An_empty_list_is_a_warning_when_at_least_one_mount_is_asked_for()
     {
         var messages = new MountValidator(new FakeDirectoryProbe()).Validate(Array.Empty<MountDefinition>());
 
-        Assert.Equal(ValidationCodes.MountsEmpty, Assert.Single(messages).Code);
+        var message = Assert.Single(messages);
+        Assert.Equal(ValidationCodes.MountsEmpty, message.Code);
+        // STUDIO-57: never an error — a team that reads or writes no file needs no folder.
+        Assert.Equal(ValidationSeverity.Warning, message.Severity);
     }
 
     [Fact]

@@ -258,19 +258,13 @@
                   BorderThickness="1" CornerRadius="12" Padding="13,11" Margin="0,0,0,13"
                   Visibility="{Binding ShowsBrief, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel>
-              <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource LinkBtn}" Command="{Binding EditBriefCommand}"
-                        Foreground="{DynamicResource AccentBrush}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="pencil" Size="11" Margin="0,0,5,0"/>
-                    <TextBlock Text="{Binding [Studio.Chat.Edit], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
-                <TextBlock Style="{StaticResource Eyebrow}" FontSize="9.5" VerticalAlignment="Center"
-                           Text="{Binding [Studio.Chat.YourBrief], Source={x:Static services:I18n.Instance}}"/>
-              </DockPanel>
-              <TextBlock FontSize="12.5" Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="18.5"
-                         Foreground="{DynamicResource InkBrush}" Text="{Binding Brief}"/>
+              <!-- STUDIO-57: no « Edit » any more — it only went back to step 1, which « Start
+                   over » does; what was wanted here is the text, selectable and copyable. -->
+              <TextBlock Style="{StaticResource Eyebrow}" FontSize="9.5" VerticalAlignment="Center"
+                         Text="{Binding [Studio.Chat.YourBrief], Source={x:Static services:I18n.Instance}}"/>
+              <controls:MarkdownText FontSize="12.5" LineHeight="18.5" Margin="0,6,0,0" Source="{Binding Brief}"
+                                     CodeFontFamily="{StaticResource MonoFont}"
+                                     Foreground="{DynamicResource InkBrush}"/>
               <ItemsControl ItemsSource="{Binding BriefChips}" Margin="0,9,0,0">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -327,8 +321,22 @@
                         </Style>
                       </Border.Style>
                       <StackPanel>
-                        <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" LineHeight="19"
-                                   Foreground="{DynamicResource InkBrush}" Text="{Binding Body}"/>
+                        <!-- STUDIO-57: the body renders the light Markdown the assistant writes and
+                             can be selected and copied; a catalogue line keeps the design's semi-bold. -->
+                        <controls:MarkdownText FontSize="13" LineHeight="19" Source="{Binding Body}"
+                                               CodeFontFamily="{StaticResource MonoFont}"
+                                               Foreground="{DynamicResource InkBrush}">
+                          <controls:MarkdownText.Style>
+                            <Style TargetType="controls:MarkdownText">
+                              <Setter Property="FontWeight" Value="SemiBold"/>
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsFreeText}" Value="True">
+                                  <Setter Property="FontWeight" Value="Normal"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </controls:MarkdownText.Style>
+                        </controls:MarkdownText>
                         <TextBlock FontSize="12" Margin="0,7,0,0" TextWrapping="Wrap" LineHeight="18.5"
                                    Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Detail}"
                                    Visibility="{Binding HasDetail, Converter={StaticResource BooleanToVisibility}}"/>
@@ -357,8 +365,9 @@
                   <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentWeakBrush}"
                           BorderThickness="1" CornerRadius="13,4,13,13" Padding="13,11" HorizontalAlignment="Right"
                           Visibility="{Binding IsUser, Converter={StaticResource BooleanToVisibility}}">
-                    <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="19"
-                               Foreground="{DynamicResource InkBrush}" Text="{Binding Body}"/>
+                    <controls:MarkdownText FontSize="13" LineHeight="19" Source="{Binding Body}"
+                                           CodeFontFamily="{StaticResource MonoFont}"
+                                           Foreground="{DynamicResource InkBrush}"/>
                   </Border>
                 </Grid>
               </DataTemplate>

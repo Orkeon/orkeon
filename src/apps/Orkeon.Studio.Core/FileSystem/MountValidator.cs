@@ -23,8 +23,10 @@ public sealed class MountValidator
     /// </summary>
     /// <param name="mountStrings">Entries to validate.</param>
     /// <param name="requireAtLeastOne">
-    /// True in the mount editor, where saving an empty list makes the runtime refuse to
-    /// boot; false when the launcher merely adds mounts on top of an existing file.
+    /// True in the mount editor, where an empty list is worth a warning — the agents see no
+    /// folder of the user's; a team that reads or writes no file needs none, and a team's own
+    /// folders travel with it (STUDIO-57) —; false when the launcher merely adds mounts on top
+    /// of an existing file.
     /// </param>
     /// <param name="teamDirectory">See the structured overload.</param>
     public IReadOnlyList<ValidationMessage> Validate(
@@ -69,10 +71,11 @@ public sealed class MountValidator
 
         if (requireAtLeastOne && mounts.Count == 0)
         {
-            messages.Add(ValidationMessage.Error(
+            messages.Add(ValidationMessage.Warning(
                 ValidationCodes.MountsEmpty,
-                "At least one mount must be declared: the runtime refuses to start with an " +
-                "empty 'Orkeon:FileSystem:Mounts'.",
+                "No folder is declared in 'Orkeon:FileSystem:Mounts': the agents see no folder of " +
+                "yours. A team that reads or writes no file needs none, and a team's own folders " +
+                "travel with it.",
                 MountsSectionPath));
         }
 

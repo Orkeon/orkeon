@@ -70,6 +70,15 @@ public static class StudioStringKeys
     /// <summary>"The assistant is not running any more — …"</summary>
     public const string WizardAssistantNotRunning = "Studio.Create.AssistantNotRunning";
 
+    /// <summary>"Rewriting your request…" — the status line while <c>forge rephrase</c> runs (STUDIO-57).</summary>
+    public const string WizardRephrasing = "Studio.Create.Rephrasing";
+
+    /// <summary>"Request rewritten — « Back to my words » restores what you typed." (STUDIO-57).</summary>
+    public const string WizardRephrased = "Studio.Create.Rephrased";
+
+    /// <summary>"The request could not be rewritten: {0}" (STUDIO-57).</summary>
+    public const string WizardRephraseFailed = "Studio.Create.RephraseFailed";
+
     /// <summary>"The assistant is still busy with « {0} » — stop it, or let it finish, before opening a team."</summary>
     public const string WizardEngineBusy = "Studio.Create.EngineBusy";
 
@@ -113,7 +122,6 @@ public static class StudioStringKeys
     /// <summary>"YOUR BRIEF"</summary>
     public const string ChatYourBrief = "Studio.Chat.YourBrief";
     /// <summary>"Edit"</summary>
-    public const string ChatEdit = "Studio.Chat.Edit";
     /// <summary>"Stop"</summary>
     public const string ChatStop = "Studio.Chat.Stop";
     /// <summary>"Send"</summary>
@@ -777,9 +785,6 @@ public static class StudioStringKeys
     public const string ConfigNotSavedWriteFailed = "Studio.Settings.NotSavedWriteFailed";
 
     public const string ConfigNotSavedNoDestination = "Studio.Settings.NotSavedNoDestination";
-
-    /// <summary>"Not saved yet: authorize at least one folder…"</summary>
-    public const string ConfigNotSavedNeedFolder = "Studio.Settings.NotSavedNeedFolder";
 
     /// <summary>"Saved to {0}."</summary>
     public const string ConfigSaved = "Studio.Settings.Saved";
@@ -1791,9 +1796,6 @@ public static class StudioStringKeys
     /// <summary>"{0} is listed twice." — two folders under one name.</summary>
     public const string WizardFolderTwice = "Studio.Create.FolderTwice";
 
-    /// <summary>"At least one folder must receive the team's results."</summary>
-    public const string WizardFolderNoOutput = "Studio.Create.FolderNoOutput";
-
     /// <summary>"inside the team: {0}" — what a team-relative row shows in place of a disk path.</summary>
     public const string WizardInsideTeamFolder = "Studio.Create.InsideTeamFolder";
 
@@ -1805,6 +1807,18 @@ public static class StudioStringKeys
 
     /// <summary>The step-3 note when an input folder is kept inside a team that does not exist yet.</summary>
     public const string WizardTrialInsideTeam = "Studio.Create.TrialInsideTeam";
+
+    /// <summary>The Folders step's subtitle when the list was read from the request (STUDIO-46).</summary>
+    public const string WizardFoldersStepSub = "Studio.Create.FoldersStepSub";
+
+    /// <summary>The Folders step's subtitle when the list is the engine's defaults — nothing was read from the request (STUDIO-57).</summary>
+    public const string WizardFoldersStepSubDefaults = "Studio.Create.FoldersStepSubDefaults";
+
+    /// <summary>"What the team reads." — the purpose of the default input folder, in the user's language (STUDIO-57).</summary>
+    public const string WizardDefaultInputPurpose = "Studio.Create.DefaultInputPurpose";
+
+    /// <summary>"Where the team writes its results." — the purpose of the default output folder (STUDIO-57).</summary>
+    public const string WizardDefaultOutputPurpose = "Studio.Create.DefaultOutputPurpose";
 
     /// <summary>"Open the folder" — the header button (D-15).</summary>
     public const string WizardOpenFolder = "Studio.Create.OpenFolder";
@@ -1987,8 +2001,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagAllGood] = "Everything is in place.",
         [StudioStringKeys.DiagFixNeeded] = "One point to fix before launching a team.",
         [StudioStringKeys.DiagCounts] = "{0} checks passed, {1} warning(s), {2} failure(s).",
-        [StudioStringKeys.ConfigNotSavedNeedFolder] = "Not saved yet: authorize at least one folder (Authorized folders tab) — your changes will be saved as soon as one is in place.",
         [StudioStringKeys.WizardAssistantNotRunning] = "The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.",
+        [StudioStringKeys.WizardRephrasing] = "Rewriting your request…",
+        [StudioStringKeys.WizardRephrased] = "Request rewritten — « Back to my words » restores what you typed.",
+        [StudioStringKeys.WizardRephraseFailed] = "The request could not be rewritten: {0}",
         [StudioStringKeys.WizardEngineBusy] = "The assistant is still busy with « {0} » — stop it, or let it finish, before opening a team.",
         [StudioStringKeys.WizardStep1] = "Describe",
         [StudioStringKeys.WizardStep2] = "Compose",
@@ -2015,7 +2031,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatTitle] = "Assistant conversation",
         [StudioStringKeys.ChatRecap] = "What I've noted",
         [StudioStringKeys.ChatYourBrief] = "YOUR BRIEF",
-        [StudioStringKeys.ChatEdit] = "Edit",
         [StudioStringKeys.ChatStop] = "Stop",
         [StudioStringKeys.ChatSend] = "Send",
         [StudioStringKeys.ChatReply] = "Reply",
@@ -2102,7 +2117,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-LLM-APIKEY"] = "An API key is written inside the file — move it to an environment variable.",
         ["Studio.Diagnostics.Code.STUDIO-RAG-PROFILE"] = "The document-index profile named here is unknown.",
         ["Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE"] = "The document search names a model profile this file does not define.",
-        ["Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY"] = "No folder is allowed yet: add at least one.",
+        ["Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY"] = "No folder is allowed yet: the agents see none of yours. A team that reads or writes no file needs none.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT"] = "A folder entry is malformed.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-PATH"] = "An allowed folder does not exist on this machine.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION"] = "Two folders share the same internal name.",
@@ -2603,11 +2618,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardFolderNotChosen] = "no folder chosen yet",
         [StudioStringKeys.WizardFolderInvalidName] = "« {0} » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.",
         [StudioStringKeys.WizardFolderTwice] = "{0} is listed twice.",
-        [StudioStringKeys.WizardFolderNoOutput] = "At least one folder must receive the team's results.",
         [StudioStringKeys.WizardInsideTeamFolder] = "inside the team: {0}",
         [StudioStringKeys.WizardCreateInsideTeam] = "Create inside the team",
         [StudioStringKeys.WizardCreateAllInsideTeam] = "Create every folder inside the team",
         [StudioStringKeys.WizardTrialInsideTeam] = "The trial reads the folders kept inside the team from the working session — drop your documents there with « Open the folder »; they move into the team when you adopt it.",
+        [StudioStringKeys.WizardFoldersStepSub] = "Read from your request. Rename a folder if you like, say where each one lives, then confirm — the team will use exactly these.",
+        [StudioStringKeys.WizardFoldersStepSubDefaults] = "Your request names no folder: this is the standard proposal. Rename a folder if you like, say where each one lives, then confirm — the team will use exactly these.",
+        [StudioStringKeys.WizardDefaultInputPurpose] = "What the team reads.",
+        [StudioStringKeys.WizardDefaultOutputPurpose] = "Where the team writes its results.",
         [StudioStringKeys.WizardOpenFolder] = "Open the folder",
         [StudioStringKeys.WizardOpenFolderSession] = "Opens the working session — the folder the assistant is writing in.",
         [StudioStringKeys.WizardOpenFolderTeam] = "Opens the folder of the adopted team.",

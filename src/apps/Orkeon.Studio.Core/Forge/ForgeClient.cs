@@ -152,6 +152,26 @@ public static class ForgeArgumentsBuilder
         return [ForgeVerb, "rename", teamDirectory, "--name", name, "--events", "jsonl"];
     }
 
+    /// <summary>
+    /// The argv of <c>forge rephrase</c> (STUDIO-57): the request as one argument — the launcher
+    /// passes arguments whole, so its spaces and line breaks travel as typed — then
+    /// <c>--events jsonl</c> and the settings when one is named.
+    /// </summary>
+    public static IReadOnlyList<string> BuildRephrase(ForgeRephraseRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.Need);
+
+        var arguments = new List<string> { ForgeVerb, "rephrase", request.Need, "--events", "jsonl" };
+        if (!string.IsNullOrWhiteSpace(request.SettingsPath))
+        {
+            arguments.Add("--settings");
+            arguments.Add(request.SettingsPath);
+        }
+
+        return arguments;
+    }
+
     /// <summary>Builds the argv of <paramref name="request"/>, <c>--events jsonl</c> always on.</summary>
     public static IReadOnlyList<string> Build(ForgeStartRequest request)
     {
@@ -210,6 +230,32 @@ public static class ForgeArgumentsBuilder
 
         return arguments;
     }
+}
+
+/// <summary>What <c>forge rephrase</c> is asked (STUDIO-57).</summary>
+public sealed record ForgeRephraseRequest
+{
+    /// <summary>The request typed at step 1, to rewrite.</summary>
+    public required string Need { get; init; }
+
+    /// <summary>The CLI's working directory — the settings resolve next to it.</summary>
+    public string? WorkingDirectory { get; init; }
+
+    /// <summary>Explicit settings path, same semantics as <c>orkeon run</c>.</summary>
+    public string? SettingsPath { get; init; }
+
+    /// <summary>The environment the verb runs under — the assistant's profile, like a session.</summary>
+    public IReadOnlyDictionary<string, string> EnvironmentOverrides { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+}
+
+/// <summary>What <c>forge rephrase</c> answered: the text, or why there is none.</summary>
+/// <param name="Text">The rewritten request; null when the verb failed.</param>
+/// <param name="Error">What went wrong, in the engine's words; null on success.</param>
+public sealed record ForgeRephraseResult(string? Text, string? Error)
+{
+    /// <summary>Whether a rewritten request came back.</summary>
+    public bool Success => Text is { Length: > 0 };
 }
 
 /// <summary>
@@ -324,6 +370,57 @@ public sealed class ForgeClient
             _input = null;
             _cancellation = null;
         }
+    }
+
+    /// <summary>
+    /// Runs <c>orkeon forge rephrase</c> (STUDIO-57) to completion: one child process, no session,
+    /// its one <c>need.rephrased</c> line read into the result — or its <c>error</c> line, its
+    /// stderr, or its exit code when it gave none. Independent of a running session: the verb
+    /// touches nothing of it.
+    /// </summary>
+    public async Task<ForgeRephraseResult> RephraseAsync(ForgeRephraseRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var location = _locator.Locate();
+        if (!location.Found)
+            return new ForgeRephraseResult(null, location.Error ?? $"`{OrkeonBinaryLocator.ExecutableBaseName}` was not found.");
+
+        string? text = null;
+        string? error = null;
+        var stderr = new List<string>();
+        var result = await _launcher.RunAsync(
+            new ProcessLaunchRequest
+            {
+                FileName = location.Path!,
+                Arguments = ForgeArgumentsBuilder.BuildRephrase(request),
+                WorkingDirectory = request.WorkingDirectory,
+                Environment = request.EnvironmentOverrides,
+            },
+            line =>
+            {
+                if (line.Channel == ProcessOutputChannel.StandardOutput && OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
+                {
+                    if (orkeonEvent!.Kind == ForgeEventKinds.NeedRephrased)
+                        text = orkeonEvent.GetString("text");
+                    else if (orkeonEvent.Kind == ForgeEventKinds.Error)
+                        error = orkeonEvent.GetString("message") ?? orkeonEvent.GetString("code");
+                }
+                else if (line.Channel == ProcessOutputChannel.StandardError && !string.IsNullOrWhiteSpace(line.Text))
+                {
+                    stderr.Add(line.Text.Trim());
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (text is { Length: > 0 })
+            return new ForgeRephraseResult(text, null);
+
+        return new ForgeRephraseResult(
+            null,
+            error
+            ?? (stderr.Count > 0 ? string.Join(" ", stderr) : null)
+            ?? (result.Outcome == RunOutcome.Cancelled ? "cancelled" : $"exit code {result.ExitCode}"));
     }
 
     /// <summary>

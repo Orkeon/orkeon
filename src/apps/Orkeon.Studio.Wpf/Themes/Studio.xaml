@@ -590,6 +590,52 @@
     </Setter>
   </Style>
 
+  <!-- The checkable twin of ChipAction (STUDIO-57): the one state a chip can hold — « Inside
+       the team » on a Folders row — reads as CHOSEN when it is, accent-filled, not as a button
+       nobody may press. Same metrics as ChipAction, so the two sit on one line. -->
+  <Style x:Key="ChipToggle" TargetType="ToggleButton">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Height" Value="24"/>
+    <Setter Property="Padding" Value="11,0"/>
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border x:Name="bd" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="12" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="Transparent"/>
+              <Setter Property="Foreground" Value="{DynamicResource AccentFgBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- Card-header mono meta (slug, file name) sitting on the title's centre line —
        the one recipe for «titre + slug + actions» headers (v3 W-05). -->
   <Style x:Key="CardHeaderMeta" TargetType="TextBlock" BasedOn="{StaticResource MonoText}">

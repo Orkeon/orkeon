@@ -325,23 +325,17 @@ public sealed class ConfigTabViewModel : ObservableObject
     {
         FlushMountsToDocument();
 
-        // Validated as a save, not as an edit: a settings file with no mount cannot start a run
-        // on its own, so writing one is blocked even though the editor tolerates the empty list
-        // while the user is still working.
+        // Validated as a save, not as an edit. A file with no authorized folder saves like any
+        // other (STUDIO-57): the runner mounts nothing and runs the crew all the same, and a
+        // team's own folders travel with the team, not in this file.
         Validate(ValidationScope.Saving);
 
         if (HasBlockingErrors)
         {
-            // The one refusal a novice will actually meet: nothing else is wrong, the file
-            // just has no authorized folder yet. Name the fix and where it lives — the
-            // generic "N errors" line points at nothing they can act on from this tab.
-            StatusMessage = ValidationMessages.Where(m => m.IsError)
-                    .All(m => m.Code == ValidationCodes.MountsEmpty)
-                ? _strings[StudioStringKeys.ConfigNotSavedNeedFolder]
-                : string.Format(
-                    CultureInfo.InvariantCulture,
-                    _strings[StudioStringKeys.ConfigNotSavedErrors],
-                    ValidationMessages.Count(m => m.IsError));
+            StatusMessage = string.Format(
+                CultureInfo.InvariantCulture,
+                _strings[StudioStringKeys.ConfigNotSavedErrors],
+                ValidationMessages.Count(m => m.IsError));
             return false;
         }
 

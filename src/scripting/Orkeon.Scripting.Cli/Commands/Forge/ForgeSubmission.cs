@@ -131,7 +131,10 @@ internal sealed class BriefSubmitTool : ForgeSubmitToolBase
         + "context (string); inputs (array of {name, description, example}); expectedOutput "
         + "({format: markdown|json|text|file, description}); constraints (array of strings); "
         + "toolHints (array of strings); folders (array of {path: '/name', role: input|output, "
-        + "purpose} — the folders the request names, empty when it names none); acceptance "
+        + "purpose} — the folders the request names or describes, a described one named from what "
+        + "it holds, plus one output folder with a purpose; empty when it names none); readsFiles "
+        + "(boolean — true when the team reads files or documents from a folder, false when what "
+        + "comes in is typed, pasted or fetched from the web); acceptance "
         + "(array of {id: 'A1'…, statement, kind: "
         + "must|should}, required, at least one); sample ({variables: object, initialContext}); "
         + "language ('fr' or 'en').";
@@ -149,7 +152,8 @@ internal sealed class BriefSubmitTool : ForgeSubmitToolBase
             ["expectedOutput"] = new("object", "{format: markdown|json|text|file, description}.", Required: false),
             ["constraints"] = new("array", "Tone, length, language, allowed sources.", Required: false),
             ["toolHints"] = new("array", "Voiced needs ('read PDFs', 'call an API').", Required: false),
-            ["folders"] = new("array", "The folders the request names: {path: '/name', role: input|output, purpose}.", Required: false),
+            ["folders"] = new("array", "The folders the request names or describes: {path: '/name', role: input|output, purpose}; a described folder is named from what it holds.", Required: false),
+            ["readsFiles"] = new("boolean", "true when the team reads files or documents from a folder; false when what comes in is typed, pasted or fetched from the web (a URL, a text, a question).", Required: false),
             ["sample"] = new("object", "The test input: {variables, initialContext}.", Required: false),
             ["language"] = new("string", "'fr' or 'en'.", Required: false),
         });

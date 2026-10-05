@@ -135,11 +135,7 @@ public sealed partial class CreateTeamViewModel
                     && string.Equals(r.VirtualPath, TeamMountPaths.ReadRoot, StringComparison.Ordinal));
             if (row is null)
             {
-                row = new WizardFolderRow(
-                    new ForgeFolder(UniqueRoot(name), ForgeFolder.InputRole),
-                    _strings,
-                    PickRowFolder,
-                    OnFolderRowPathChanged);
+                row = NewFolderRow(new ForgeFolder(UniqueRoot(name), ForgeFolder.InputRole));
                 FolderRows.Add(row);
             }
 

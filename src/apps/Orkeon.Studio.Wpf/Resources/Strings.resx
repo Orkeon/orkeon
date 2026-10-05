@@ -526,7 +526,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-TYPE" xml:space="preserve"><value>A settings field has the wrong type.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY" xml:space="preserve"><value>An API key is written inside the file — move it to an environment variable.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-RAG-PROFILE" xml:space="preserve"><value>The document-index profile named here is unknown.</value></data>
-  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve"><value>No folder is allowed yet: add at least one.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve"><value>No folder is allowed yet: the agents see none of yours. A team that reads or writes no file needs none.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve"><value>A folder entry is malformed.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve"><value>An allowed folder does not exist on this machine.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve"><value>Two folders share the same internal name.</value></data>
@@ -653,7 +653,6 @@
   <data name="Studio.Settings.McpProblemCommand" xml:space="preserve"><value>A stdio server needs a command to launch.</value></data>
   <data name="Studio.Settings.McpProblemUrl" xml:space="preserve"><value>An HTTP server needs an absolute http(s) URL.</value></data>
   <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve"><value>Another server already carries this identifier.</value></data>
-  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve"><value>Not saved yet: authorize at least one folder (Authorized folders tab) — your changes will be saved as soon as one is in place.</value></data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve"><value>The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.</value></data>
   <data name="Studio.Create.EngineBusy" xml:space="preserve"><value>The assistant is still busy with « {0} » — stop it, or let it finish, before opening a team.</value></data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve"><value>Copy</value></data>
@@ -754,7 +753,7 @@
   <data name="Studio.Create.HelpStep2" xml:space="preserve"><value>The assistant proposes a team: one agent per job, each with only the capacities it needs. You can edit an agent, add one, and choose which folders the team may see once adopted.</value></data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve"><value>The team rehearses on a sample, in its own sandbox — nothing outside it is touched. The verdict tells you honestly whether the result meets what you asked at step 1.</value></data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopting stores the team as an ordinary folder under your profile. If you chose a schedule, Studio then offers to install it in your system's scheduler; the team appears in My teams.</value></data>
-  <data name="Studio.Settings.NoviceEmpty" xml:space="preserve"><value>No folder is allowed yet. The agents will see nothing until you allow at least one.</value></data>
+  <data name="Studio.Settings.NoviceEmpty" xml:space="preserve"><value>No folder is allowed yet: the agents see none of yours. A team that reads or writes no file needs none, and a team's own folders travel with it.</value></data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve"><value>Not saved — the file could not be written: {0}</value></data>
   <data name="Studio.Teams.ExportedTo" xml:space="preserve"><value>Team exported to {0}</value></data>
   <data name="Studio.Teams.ExportFailed" xml:space="preserve"><value>Export refused — the destination already exists, or the disk said no.</value></data>
@@ -801,9 +800,6 @@
   </data>
   <data name="Studio.Chat.YourBrief" xml:space="preserve">
     <value>YOUR BRIEF</value>
-  </data>
-  <data name="Studio.Chat.Edit" xml:space="preserve">
-    <value>Edit</value>
   </data>
   <data name="Studio.Chat.Stop" xml:space="preserve">
     <value>Stop</value>
@@ -1532,6 +1528,69 @@
   <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
     <value>Inside the team</value>
   </data>
+  <data name="Studio.Create.Rephrase" xml:space="preserve">
+    <value>Rephrase</value>
+  </data>
+  <data name="Studio.Create.RephraseTip" xml:space="preserve">
+    <value>The assistant rewrites your request, clearer and complete; your own words stay one click away.</value>
+  </data>
+  <data name="Studio.Create.RephraseUndo" xml:space="preserve">
+    <value>Back to my words</value>
+  </data>
+  <data name="Studio.Create.Rephrasing" xml:space="preserve">
+    <value>Rewriting your request…</value>
+  </data>
+  <data name="Studio.Create.Rephrased" xml:space="preserve">
+    <value>Request rewritten — « Back to my words » restores what you typed.</value>
+  </data>
+  <data name="Studio.Create.RephraseFailed" xml:space="preserve">
+    <value>The request could not be rewritten: {0}</value>
+  </data>
+  <data name="Studio.Create.AddFolder" xml:space="preserve">
+    <value>Add a folder</value>
+  </data>
+  <data name="Studio.Create.RemoveFolder" xml:space="preserve">
+    <value>Remove this folder: the team will not have it.</value>
+  </data>
+  <data name="Studio.Create.FolderPurposeHint" xml:space="preserve">
+    <value>What it holds and how the team must use it — the assistant follows these notes.</value>
+  </data>
+  <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
+    <value>Click to switch: read by the team, or written by it.</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
+    <value>Your request names no folder: this is the standard proposal. Rename a folder if you like, say where each one lives, then confirm — the team will use exactly these.</value>
+  </data>
+  <data name="Studio.Create.DefaultInputPurpose" xml:space="preserve">
+    <value>What the team reads.</value>
+  </data>
+  <data name="Studio.Create.DefaultOutputPurpose" xml:space="preserve">
+    <value>Where the team writes its results.</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
+    <value>Checked: the folder is the team's own and travels with it. Uncheck it to choose a folder on the disk instead.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
+    <value>Do you want to put files or sub-folders in the folders you set up?</value>
+  </data>
+  <data name="Studio.Create.FillFoldersHint" xml:space="preserve">
+    <value>These folders are kept inside the team. What you drop there now is what the trial reads, and it moves into the team when you adopt it.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersNo" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Studio.Create.FillFoldersYes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
+    <value>Opens the folder in the file explorer.</value>
+  </data>
+  <data name="Studio.Create.FillFoldersContinue" xml:space="preserve">
+    <value>Continue</value>
+  </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
     <value>read</value>
   </data>
@@ -1546,9 +1605,6 @@
   </data>
   <data name="Studio.Create.FolderTwice" xml:space="preserve">
     <value>{0} is listed twice.</value>
-  </data>
-  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
-    <value>At least one folder must receive the team's results.</value>
   </data>
   <data name="Studio.Settings.HostId" xml:space="preserve">
     <value>In a crew file: profile: {0}</value>

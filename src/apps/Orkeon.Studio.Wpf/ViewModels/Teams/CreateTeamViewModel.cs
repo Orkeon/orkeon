@@ -484,7 +484,6 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // «Edit» on the brief card means the form, not just a hidden panel. Without this the
         // pencil closed the thread and dropped the user back on whatever step they were on,
         // with the brief as unreachable as it was a moment earlier.
-        Chat.EditBriefRequested += (_, _) => GoStep(1);
         Chat.Turns.CollectionChanged += (_, _) => OnChatTurnsChanged();
         Chat.PropertyChanged += (_, e) => OnChatPropertyChanged(e.PropertyName);
 
@@ -973,6 +972,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint));
                 RaiseDraftChanged();
                 ComposeCommand.RaiseCanExecuteChanged();
+                RefreshRephrase();
                 ScheduleSuggestions();
             }
         }
@@ -1257,6 +1257,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             OnPropertiesChanged(
                 nameof(CanCompose), nameof(CanSaveTeam), nameof(IsEngineWorking),
                 nameof(TrialInProgress), nameof(CanTryTeam));
+            RefreshRephrase();
             // The card's first and last readings come from here: the engine starting and
             // the engine dying are both silent on the event stream, and both change what
             // the card must say.
@@ -1307,7 +1308,33 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>The shell's way in: a resume failure must land on this screen's status line.</summary>
-    internal void ReportStatus(string message) => StatusMessage = message;
+    internal void ReportStatus(string message)
+    {
+        StatusMessage = message;
+        // The sentence that follows a folder bound behind a Folders row — « x allowed and
+        // bound as /y » — is remembered with its root (STUDIO-57): it goes when the row's
+        // answer changes, or it would keep claiming a binding the row no longer has.
+        if (_bindingStatusRoot is { } root)
+            _bindingStatus = (root, message);
+        _bindingStatusRoot = null;
+    }
+
+    /// <summary>The root a status line is about to be reported for — set by a row's binding, read by the next <see cref="ReportStatus"/>.</summary>
+    private string? _bindingStatusRoot;
+
+    /// <summary>The status line that followed a row's binding, with its root; null when none is on screen.</summary>
+    private (string Root, string Message)? _bindingStatus;
+
+    /// <summary>A row of <paramref name="root"/> lost the folder it was bound to: the line that announced it goes.</summary>
+    private void ForgetBindingStatus(string root)
+    {
+        if (_bindingStatus is { } status && string.Equals(status.Root, root, StringComparison.Ordinal))
+        {
+            _bindingStatus = null;
+            if (string.Equals(StatusMessage, status.Message, StringComparison.Ordinal))
+                StatusMessage = "";
+        }
+    }
 
     /// <summary>The engine's pending arbitrations, as buttons; empty while none is owed.</summary>
     public ObservableCollection<WizardDecision> Decisions { get; } = [];
@@ -1666,7 +1693,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// </summary>
     private string? ReadRoot()
     {
-        var input = _model.Folders.Count == 0
+        var input = !_model.FoldersConfirmed
             ? TeamMountPaths.ReadRoot
             : _model.Folders.FirstOrDefault(folder => folder.IsInput && folder.Directory is null)?.Path;
         if (input is null || BoundEntry(input) is not { } entry)

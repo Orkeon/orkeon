@@ -231,14 +231,36 @@ public sealed class ForgeSessionModel
     /// </summary>
     public IReadOnlyList<ForgeFolder> ProposedFolders { get; private set; } = [];
 
+    /// <summary>
+    /// Whether the proposal is the engine's defaults (<c>defaults</c>, STUDIO-57): the request
+    /// named no folder, so nothing in the list was read from it.
+    /// </summary>
+    public bool ProposedFoldersAreDefaults { get; private set; }
+
     /// <summary>Whether the engine waits for the folders to be confirmed.</summary>
     public bool FoldersPending { get; private set; }
+
+    /// <summary>
+    /// The folders the session holds for the team (<c>brief.ready</c>'s <c>heldFolders</c>,
+    /// STUDIO-57): the confirmed folders kept inside the team, each with the session directory
+    /// the engine created for it — what the trial reads and writes, and what moves into the
+    /// team at the adoption. The user may fill them before the trial. Empty until a brief
+    /// settles the list, and again when a new session starts.
+    /// </summary>
+    public IReadOnlyList<ForgeFolder> HeldFolders { get; private set; } = [];
 
     /// <summary>
     /// The confirmed folders, as the brief carries them (<c>brief.ready</c>): the list every
     /// folder surface of the team follows. Empty until a brief settles it.
     /// </summary>
     public IReadOnlyList<ForgeFolder> Folders { get; private set; } = [];
+
+    /// <summary>
+    /// Whether a list was confirmed at all (STUDIO-57): <c>brief.ready</c> carried a <c>folders</c>
+    /// array — empty included, when the user kept no folder. Only a session that never confirmed
+    /// one falls back on what its plan implies; an empty confirmed list is a team with no folder.
+    /// </summary>
+    public bool FoldersConfirmed { get; private set; }
 
     /// <summary>
     /// Clears the pending folders step once the client sent its <c>folders.confirmed</c> — the
@@ -399,6 +421,9 @@ public sealed class ForgeSessionModel
                     : null;
                 Directory = orkeonEvent.GetString("dir");
                 Format = orkeonEvent.GetString("format");
+                HeldFolders = [];
+                FoldersConfirmed = false;
+                ProposedFoldersAreDefaults = false;
                 ReferenceUseCaseId = ReadReferenceId(orkeonEvent);
                 Resumed = orkeonEvent.GetBool("resumed") ?? false;
                 EngineVersion = orkeonEvent.GetString("engine");
@@ -423,11 +448,14 @@ public sealed class ForgeSessionModel
 
             case ForgeEventKinds.FoldersProposed:
                 ProposedFolders = ReadFolders(orkeonEvent.Root);
+                ProposedFoldersAreDefaults = orkeonEvent.GetBool("defaults") ?? false;
+                HeldFolders = [];
                 FoldersPending = true;
                 break;
 
             case ForgeEventKinds.BriefReady:
                 ReadBrief(orkeonEvent);
+                HeldFolders = ReadFolders(orkeonEvent.Root, "heldFolders");
                 FoldersPending = false;
                 break;
 
@@ -649,6 +677,7 @@ public sealed class ForgeSessionModel
 
         BriefInputs = ReadBriefInputs(brief);
         Folders = WithSentDirectories(ReadFolders(brief));
+        FoldersConfirmed = brief.TryGetProperty("folders", out var confirmedList) && confirmedList.ValueKind == JsonValueKind.Array;
         // The confirmed list replaces what the plan implies (STUDIO-46): a plan already read
         // re-derives its mounts from it.
         if (BlueprintJson is { } blueprintJson)
@@ -677,10 +706,10 @@ public sealed class ForgeSessionModel
     }
 
     /// <summary>The <c>folders</c> array of <paramref name="owner"/>; a folder without a path or a known role is skipped.</summary>
-    private static List<ForgeFolder> ReadFolders(JsonElement owner)
+    private static List<ForgeFolder> ReadFolders(JsonElement owner, string property = "folders")
     {
         var folders = new List<ForgeFolder>();
-        if (!owner.TryGetProperty("folders", out var array) || array.ValueKind != JsonValueKind.Array)
+        if (!owner.TryGetProperty(property, out var array) || array.ValueKind != JsonValueKind.Array)
             return folders;
 
         foreach (var folder in array.EnumerateArray())
@@ -853,8 +882,9 @@ public sealed class ForgeSessionModel
             .ToList();
 
         // The confirmed folders ARE the team's mounts (STUDIO-46): an input is read by the
-        // reading agents, an output written by the agents whose deliverables land there.
-        if (Folders.Count > 0)
+        // reading agents, an output written by the agents whose deliverables land there — and
+        // a confirmed empty list is a team with no folder at all (STUDIO-57).
+        if (FoldersConfirmed)
             return FolderMounts(readers, roles, blueprint);
 
         var mounts = new List<ForgeDerivedMount>();

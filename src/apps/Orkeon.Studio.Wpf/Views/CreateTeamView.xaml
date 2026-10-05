@@ -484,16 +484,27 @@
           <StackPanel>
             <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
                        Text="{Binding [Studio.Create.FoldersStepTitle], Source={x:Static services:I18n.Instance}}"/>
+            <!-- STUDIO-57: the subtitle says where the list comes from — the request, or the
+                 standard proposal when the request named no folder. -->
             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,12" TextWrapping="Wrap"
-                       Text="{Binding [Studio.Create.FoldersStepSub], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding FoldersStepSubtitle}"/>
             <ItemsControl ItemsSource="{Binding FolderRows}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,0,0,1" Padding="0,8">
                     <DockPanel>
-                      <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="6,0,0,0"
-                              Command="{Binding InsideTeamCommand}"
-                              Content="{Binding [Studio.Create.FolderInsideTeam], Source={x:Static services:I18n.Instance}}"/>
+                      <!-- STUDIO-57: the cross takes the row off the list. -->
+                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" VerticalAlignment="Center" Margin="6,0,0,0"
+                              Command="{Binding RemoveCommand}"
+                              ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}">
+                        <controls:LucideIcon Kind="x" Size="12" Foreground="{DynamicResource InkMutedBrush}"/>
+                      </Button>
+                      <!-- STUDIO-57: « Inside the team » is a state, checkable — it reads chosen
+                           when it is, and unchecking an input hands it back to the disk picker. -->
+                      <ToggleButton DockPanel.Dock="Right" Style="{StaticResource ChipToggle}" VerticalAlignment="Center" Margin="6,0,0,0"
+                                    IsChecked="{Binding IsInsideTeam, Mode=TwoWay}"
+                                    ToolTip="{Binding [Studio.Create.FolderInsideTeamTip], Source={x:Static services:I18n.Instance}}"
+                                    Content="{Binding [Studio.Create.FolderInsideTeam], Source={x:Static services:I18n.Instance}}"/>
                       <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="6,0,0,0"
                               Command="{Binding PickCommand}"
                               Content="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"/>
@@ -504,18 +515,33 @@
                         <StackPanel Orientation="Horizontal">
                           <TextBox Style="{StaticResource Input}" Width="160" VerticalAlignment="Center"
                                    Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
-                          <TextBlock Style="{StaticResource ToolChipText}" Margin="8,0,0,0" VerticalAlignment="Center"
-                                     Foreground="{DynamicResource InkFaintBrush}" Text="{Binding RoleLabel}"/>
+                          <!-- STUDIO-57: the role is a chip that flips — read, written. -->
+                          <Button Style="{StaticResource ChipAction}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                  Command="{Binding ToggleRoleCommand}" Content="{Binding RoleLabel}"
+                                  ToolTip="{Binding [Studio.Create.FolderRoleTip], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
-                        <TextBlock Style="{StaticResource Hint}" FontSize="11.5" Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="{Binding Purpose}"
-                                   Visibility="{Binding HasPurpose, Converter={StaticResource BooleanToVisibility}}"/>
+                        <!-- STUDIO-57: the note the assistant follows — what the folder holds and
+                             how the team must use it. The forge's words to start with. -->
+                        <TextBox Style="{StaticResource Input}" Margin="0,6,0,0" MinWidth="360" MaxWidth="640"
+                                 HorizontalAlignment="Left" TextWrapping="Wrap" AcceptsReturn="False"
+                                 Tag="{Binding [Studio.Create.FolderPurposeHint], Source={x:Static services:I18n.Instance}}"
+                                 Text="{Binding Purpose, UpdateSourceTrigger=PropertyChanged}"/>
                       </StackPanel>
                     </DockPanel>
                   </Border>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <!-- STUDIO-57: one more folder, named and annotated by the user. -->
+            <Button Style="{StaticResource ChipAction}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                    Command="{Binding AddFolderRowCommand}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock VerticalAlignment="Center"
+                           Text="{Binding [Studio.Create.AddFolder], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
             <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,8,0,0"
                        Foreground="{DynamicResource DangerBrush}" Text="{Binding FoldersProblem}"
                        Visibility="{Binding HasFoldersProblem, Converter={StaticResource BooleanToVisibility}}"/>
@@ -527,6 +553,68 @@
                 </StackPanel>
               </Button>
             </DockPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- STUDIO-57: the fill step. Once the folders are confirmed, when some are kept inside
+             the team, the card asks whether to put files or sub-folders in them: « No » lets
+             the construction go on; « Yes » shows « Open » behind each such folder — the file
+             explorer on the session directory the engine created — and « Continue » below.
+             The engine composes meanwhile; the trial reads what was dropped. -->
+        <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+                Visibility="{Binding IsFillFoldersStep, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel>
+            <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Create.FillFoldersQuestion], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,12" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Create.FillFoldersHint], Source={x:Static services:I18n.Instance}}"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                        Visibility="{Binding IsFillFoldersQuestion, Converter={StaticResource BooleanToVisibility}}">
+              <Button Style="{StaticResource BtnGhost}" Command="{Binding FillFoldersNoCommand}"
+                      Content="{Binding [Studio.Create.FillFoldersNo], Source={x:Static services:I18n.Instance}}"/>
+              <Button Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding FillFoldersYesCommand}"
+                      Content="{Binding [Studio.Create.FillFoldersYes], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+            <StackPanel Visibility="{Binding IsFillingFolders, Converter={StaticResource BooleanToVisibility}}">
+              <ItemsControl ItemsSource="{Binding HeldFolderRows}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                      <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="10,0,0,0"
+                                Command="{Binding OpenCommand}"
+                                ToolTip="{Binding [Studio.Create.FillFoldersOpenTip], Source={x:Static services:I18n.Instance}}">
+                          <StackPanel Orientation="Horizontal">
+                            <controls:LucideIcon Kind="folder-open" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="{Binding [Studio.Create.FillFoldersOpen], Source={x:Static services:I18n.Instance}}"/>
+                          </StackPanel>
+                        </Button>
+                        <StackPanel>
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource MonoText}" FontSize="12" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource InkBrush}" Text="{Binding VirtualPath}"/>
+                            <TextBlock Style="{StaticResource ToolChipText}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding RoleLabel}"/>
+                          </StackPanel>
+                          <TextBlock Style="{StaticResource Hint}" FontSize="11.5" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"
+                                     Text="{Binding Directory}" ToolTip="{Binding Directory}"/>
+                        </StackPanel>
+                      </DockPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <DockPanel Margin="0,12,0,0" LastChildFill="False">
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding FillFoldersContinueCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding [Studio.Create.FillFoldersContinue], Source={x:Static services:I18n.Instance}}"/>
+                    <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                  </StackPanel>
+                </Button>
+              </DockPanel>
+            </StackPanel>
           </StackPanel>
         </Border>
 
@@ -552,6 +640,25 @@
                      Text="{Binding Need, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="11.5" Margin="0,6,0,0" TextWrapping="Wrap"
                        Text="{Binding [Studio.Create.NeedDropHint], Source={x:Static services:I18n.Instance}}"/>
+            <!-- STUDIO-57: « Rephrase » asks the assistant for a clearer need; « Back to my words »
+                 brings the typed one back. -->
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button Style="{StaticResource ChipAction}" Command="{Binding RephraseNeedCommand}"
+                      ToolTip="{Binding [Studio.Create.RephraseTip], Source={x:Static services:I18n.Instance}}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="sparkles" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                  <TextBlock VerticalAlignment="Center"
+                             Text="{Binding [Studio.Create.Rephrase], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource ChipAction}" Margin="6,0,0,0" Command="{Binding UndoRephraseCommand}"
+                      Content="{Binding [Studio.Create.RephraseUndo], Source={x:Static services:I18n.Instance}}"
+                      Visibility="{Binding CanUndoRephrase, Converter={StaticResource BooleanToVisibility}}"/>
+              <TextBlock Style="{StaticResource Hint}" FontSize="11.5" Margin="10,0,0,0" VerticalAlignment="Center"
+                         Text="{Binding [Studio.Create.Rephrasing], Source={x:Static services:I18n.Instance}}"
+                         Visibility="{Binding IsRephrasing, Converter={StaticResource BooleanToVisibility}}"/>
+            </StackPanel>
             <!-- STUDIO-39 (D-04): the use case this creation starts from — the chip a chosen card
                  leaves under the need it wrote. Its ✕ takes the reference away, never the words. -->
             <Border Style="{StaticResource BriefChip}" HorizontalAlignment="Left" Margin="0,8,0,0" Padding="10,0,4,0"

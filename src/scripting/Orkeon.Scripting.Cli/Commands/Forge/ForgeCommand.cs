@@ -20,6 +20,14 @@ internal sealed record ForgeCommandOptions
     /// <summary>The problem, typed on the command line; null opens with the interview.</summary>
     public string? Need { get; init; }
 
+    /// <summary>
+    /// <c>forge rephrase &lt;request&gt;</c> (STUDIO-57): the assistant's LLM rewrites the request
+    /// typed on the command line as a clear brief — what comes in, what comes out, the rules
+    /// stated — and nothing else happens: no session, no interview. <c>--events jsonl</c> answers
+    /// with one <c>need.rephrased</c> line; the terminal prints the text.
+    /// </summary>
+    public bool Rephrase { get; init; }
+
     /// <summary><c>forge list</c>.</summary>
     public bool List { get; init; }
 
@@ -126,11 +134,13 @@ internal sealed record ForgeCommandOptions
     public string? PackDirectory { get; init; }
 
     /// <summary>
-    /// <c>--read &lt;dir&gt;</c>: the folder the trial reads as <c>/workspace</c>, in place of
-    /// the workspace itself. The workspace keeps every other role — the sessions live under
-    /// it, the settings resolve next to it — so a client can point a trial at the documents
-    /// the team is meant to read without moving its sessions there. Null: the workspace, as
-    /// before.
+    /// <c>--read &lt;dir&gt;</c>: the folder the trial reads behind the first input the confirmed
+    /// list binds to no directory (<c>/workspace</c> by default). The workspace keeps every other
+    /// role — the sessions live under it, the settings resolve next to it — so a client can
+    /// point a trial at the documents the team is meant to read without moving its sessions
+    /// there. Null: the session's own folder for that input (STUDIO-57), where the user dropped
+    /// files after confirming the folders; the workspace itself only for a session that never
+    /// confirmed a list.
     /// </summary>
     public string? ReadDirectory { get; init; }
 
@@ -194,7 +204,7 @@ internal sealed record ForgeCommandOptions
     }
 
     private static bool IsVerb(string arg) =>
-        arg is "list" or "resume" or "promote" or "reopen" or "schedule" or "unschedule" or "rename";
+        arg is "list" or "resume" or "promote" or "reopen" or "schedule" or "unschedule" or "rename" or "rephrase";
 
     /// <summary>
     /// The seven subcommands; <c>resume</c> and <c>promote</c> take the session slug,
@@ -205,6 +215,10 @@ internal sealed record ForgeCommandOptions
         var verb = args[i];
         if (verb == "list")
             return options with { List = true };
+
+        // The words that follow are the request to rewrite, collected like a need.
+        if (verb == "rephrase")
+            return options with { Rephrase = true };
 
         if (verb == "reopen")
         {
@@ -365,6 +379,13 @@ internal sealed record ForgeCommandOptions
             "reopen takes no option but --events: it finds or rebuilds the team's session and starts nothing."),
         ((o, _) => o.Check && o.ScheduleDirectory is null,
             "--check only applies to `forge schedule`."),
+        ((o, needWords) => o.Rephrase && needWords == 0,
+            "rephrase needs the request to rewrite, typed after the verb."),
+        ((o, _) => o.Rephrase
+                   && (o.Format is not null || o.Auto || o.Dry || o.PackDirectory is not null
+                       || o.MaxIterations is not null || o.MaxTokens is not null || o.MaxSeconds is not null
+                       || o.ReadDirectory is not null || o.Reference is not null || o.Edit || o.Adopt),
+            "rephrase takes the request, --events and --settings only: it rewrites the request and starts nothing."),
         ((o, needWords) => ActsOnASchedule(o) && (ShapesACycle(o) || needWords > 0),
             "schedule and unschedule take no option but --events (and --check for schedule): they act on the team folder's schedule and start nothing."),
         ((o, needWords) => o.RenameDirectory is not null && (ShapesACycle(o) || needWords > 0),
@@ -452,6 +473,9 @@ internal static class ForgeCommand
 
         if (options.List)
             return await ListAsync(workspace).ConfigureAwait(false);
+
+        if (options.Rephrase)
+            return await ForgeRephrase.RunAsync(workspace, options).ConfigureAwait(false);
 
         if (options.PromoteSlug is not null)
             return await PromoteAsync(workspace, options, scheduleHost).ConfigureAwait(false);
