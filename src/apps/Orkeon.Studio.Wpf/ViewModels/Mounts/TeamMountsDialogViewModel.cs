@@ -98,7 +98,7 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     private readonly Func<TeamLauncherContext>? _launcherContext;
     private string _teamDirectory = "";
     private string _teamName = "";
-    private Action? _onSaved;
+    private Action<TeamLaunchersResult?>? _onSaved;
     private bool _isOpen;
 
     /// <summary>
@@ -137,8 +137,12 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
         private set => SetProperty(ref _isOpen, value);
     }
 
-    /// <summary>Shows the modal for one team; <paramref name="onSaved"/> runs after a save.</summary>
-    public void Open(string teamDirectory, string teamName, IReadOnlyList<string> mounts, Action? onSaved = null)
+    /// <summary>
+    /// Shows the modal for one team; <paramref name="onSaved"/> runs after a save, with what became
+    /// of the team's launchers — null when none are written here (STUDIO-63: the shell says when
+    /// they were another tool's and were kept).
+    /// </summary>
+    public void Open(string teamDirectory, string teamName, IReadOnlyList<string> mounts, Action<TeamLaunchersResult?>? onSaved = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
         ArgumentNullException.ThrowIfNull(mounts);
@@ -245,11 +249,11 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
         _saveMounts(_teamDirectory, MountsToSave());
         // The launchers follow the sidecar (STUDIO-50): the folders the operating system's
         // scheduled run mounts are the ones a Studio launch now passes.
-        if (_launcherContext is { } context)
-            TeamLaunchers.Regenerate(_teamDirectory, context());
+        // Launchers another tool wrote are kept, and the shell says so (STUDIO-63).
+        var launchers = _launcherContext is { } context ? TeamLaunchers.Regenerate(_teamDirectory, context()) : null;
         var onSaved = _onSaved;
         Close();
-        onSaved?.Invoke();
+        onSaved?.Invoke(launchers);
     }
 
     private void Close()

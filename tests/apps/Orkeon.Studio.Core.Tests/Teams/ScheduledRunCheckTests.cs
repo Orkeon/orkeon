@@ -212,4 +212,37 @@ public sealed class ScheduledRunCheckTests : IDisposable
         Assert.Equal(ScheduledRunIssue.OnDefault, onDefault[1].Issue);
         Assert.Equal(folder, ScheduledRunCheck.First(Team("模型", mounts), Settings, Saved(null)));
     }
+    // ── STUDIO-63: launchers another tool wrote ──
+
+    /// <summary>
+    /// STUDIO-63, decision 3: a scheduled team whose launchers another tool wrote runs those
+    /// launchers, which name neither Studio's setting nor its folders — one notice says it, whatever
+    /// the file as saved holds; Orkeon's launchers keep today's notices.
+    /// </summary>
+    [Fact]
+    public void Foreign_launchers_are_one_notice_whatever_the_state_of_the_setting()
+    {
+        string[] mounts = [$"{Docs}|/data/docs:/docs:ro"];
+        var expected = new ScheduledRunNotice(ScheduledRunIssue.ForeignLaunchers, "Veille");
+
+        foreach (var (team, saved) in new (TeamSummary, AppSettingsDocument?)[]
+                 {
+                     (Team("GLM", mounts), null),
+                     (Team("GLM", mounts), Saved(null, Glm with { Model = "glm-4.6" })),
+                     (Team("GLM"), Saved(null, Glm)),
+                     (Team("模型", mounts), Saved(null)),
+                     (Team(null), null),
+                 })
+        {
+            Assert.Equal(expected, Assert.Single(ScheduledRunCheck.Of(team, Settings, saved, foreignLaunchers: true)));
+            Assert.Equal(expected, ScheduledRunCheck.First(team, Settings, saved, foreignLaunchers: true));
+        }
+
+        Assert.Equal(
+            "The scheduled run uses the team's own run.sh / run.cmd, written by another tool: it does not read Studio's setting nor its folders.",
+            Line(expected));
+        Assert.Equal(
+            [new ScheduledRunNotice(ScheduledRunIssue.SettingRefused, "GLM"), new ScheduledRunNotice(ScheduledRunIssue.FolderRefused, "/docs")],
+            ScheduledRunCheck.Of(Team("GLM", mounts), Settings, Saved(null), foreignLaunchers: false));
+    }
 }

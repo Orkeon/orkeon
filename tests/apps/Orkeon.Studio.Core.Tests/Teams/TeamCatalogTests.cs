@@ -942,8 +942,9 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(settingsPath, "{}");
         Directory.CreateDirectory(Path.Combine(team, "crew"));
         File.WriteAllText(Path.Combine(team, "crew", "config.yaml"), "name: veille\n");
-        File.WriteAllText(Path.Combine(team, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\n");
-        File.WriteAllText(Path.Combine(team, TeamLaunchers.WindowsLauncherName), "@echo off\r\n");
+        // The engine's launchers, Orkeon's header on line 2: Studio writes them again (STUDIO-63).
+        File.WriteAllText(Path.Combine(team, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\n# " + TeamLauncherScript.Header("veille") + "\n");
+        File.WriteAllText(Path.Combine(team, TeamLaunchers.WindowsLauncherName), "@echo off\r\nrem " + TeamLauncherScript.Header("veille") + "\r\n");
         File.WriteAllText(Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName), """
             {"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","format":"yaml",
              "brief":{"sample":{"variables":{"supplier_url":"https://exemple.fr/offres"},"initialContext":"Premier essai"}},

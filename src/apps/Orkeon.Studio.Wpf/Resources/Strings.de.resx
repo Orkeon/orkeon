@@ -2559,6 +2559,12 @@
   <data name="Studio.Teams.ScheduledRunFolderRefused" xml:space="preserve">
     <value>Der nächste geplante Lauf wird abgelehnt: Die gespeicherte Einstellungsdatei deklariert den Ordner {0} noch nicht. Speichern Sie die Einstellungen.</value>
   </data>
+  <data name="Studio.Teams.ScheduledForeignLaunchers" xml:space="preserve">
+    <value>Der geplante Lauf verwendet die eigenen run.sh / run.cmd des Teams, die ein anderes Werkzeug geschrieben hat: Er liest weder die Einstellung von Studio noch seine Ordner.</value>
+  </data>
+  <data name="Studio.Teams.LaunchersKept" xml:space="preserve">
+    <value>Die Ordner sind gespeichert. Die run.sh und run.cmd des Teams wurden von einem anderen Werkzeug geschrieben und bleiben unverändert — Studio startet das Team von seiner Karte aus.</value>
+  </data>
   <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
     <value>Archiviertes Team — wiederherstellen?</value>
   </data>

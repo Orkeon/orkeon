@@ -243,7 +243,7 @@ public sealed class MainWindowViewModel : ObservableObject
             // what its scheduled run cannot follow — read against the settings file as saved —, and
             // « Install the schedule » saves what the file lacks and writes the launchers first.
             ModelSettings = ModelSettings,
-            ScheduledRun = team => ScheduledRunCheck.First(team, Settings.Profiles.Set, _savedSettings),
+            ScheduledRun = team => ScheduledRunCheck.First(team, Settings.Profiles.Set, _savedSettings, ForeignLaunchersOf(team.Path)),
             PrepareSchedule = PrepareScheduleAsync,
         });
 
@@ -312,20 +312,24 @@ public sealed class MainWindowViewModel : ObservableObject
         // a declaration made every team re-declare its mounts from scratch.
         _picker = picker ?? NullPathPicker.Instance;
         AllowedFolders = new AllowedFolderChooserViewModel(declaredMounts, strings);
+        var effectiveStrings = strings ?? EnglishStudioStrings.Instance;
+        _strings = effectiveStrings;
         TeamMounts = new TeamMountsDialogViewModel(strings, declaredMounts: declaredMounts, launcherContext: launcherContext);
         Teams.MountsRequested += (_, e) =>
             TeamMounts.Open(e.Card.Summary.Path, e.Card.Name, e.Card.Mounts,
-                onSaved: () =>
+                onSaved: launchers =>
                 {
                     Teams.Refresh();
+                    // STUDIO-63: launchers another tool wrote were kept — the one gesture besides
+                    // the adoption whose result is said; the settings hook below stays silent.
+                    if (launchers?.Outcome == TeamLaunchersOutcome.ForeignKept)
+                        Teams.Announce(effectiveStrings[StudioStringKeys.TeamsLaunchersKept]);
                     Launch.RefreshTeamDescription();
                     // STUDIO-52: a folder the team now names by an id the file as saved lacks is saved.
                     _ = SaveFolderIdsGuarded(e.Card.Summary.Path);
                 });
         Launch.RunRecorded += (_, _) => _ = Teams.LoadLastRunsAsync();
         Teams.TestRequested += (_, e) => { Test.Launcher.Target.Select(e.Path); TestRequested?.Invoke(this, EventArgs.Empty); };
-        var effectiveStrings = strings ?? EnglishStudioStrings.Instance;
-        _strings = effectiveStrings;
         Teams.ExportDestinationPicker = () =>
             picker?.PickFolder(effectiveStrings[Orkeon.Studio.Core.Localization.StudioStringKeys.DialogExportDestination]);
         TeamMounts.AddRequested += (_, _) =>
@@ -800,7 +804,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>What the schedule offer says under its question for <paramref name="teamPath"/> (STUDIO-52); null when the scheduled run takes what Studio shows.</summary>
     private string? ScheduledRunLineFor(string teamPath) =>
-        ScheduledRunCheck.First(TeamCatalog.Describe(teamPath, _declaredMounts()), Settings.Profiles.Set, _savedSettings) is { } notice
+        ScheduledRunCheck.First(TeamCatalog.Describe(teamPath, _declaredMounts()), Settings.Profiles.Set, _savedSettings, ForeignLaunchersOf(teamPath)) is { } notice
             ? ScheduledRunCheck.Describe(notice, _strings)
             : null;
 
@@ -857,8 +861,17 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>What <paramref name="teamPath"/>'s scheduled run cannot take from <paramref name="document"/>, beyond the default: a refusal or an older version.</summary>
     private int RunGaps(string teamPath, AppSettingsDocument? document, bool foldersOnly) =>
-        ScheduledRunCheck.Of(TeamCatalog.Describe(teamPath, _declaredMounts()), Settings.Profiles.Set, document)
-            .Count(notice => foldersOnly ? notice.Issue == ScheduledRunIssue.FolderRefused : notice.Issue != ScheduledRunIssue.OnDefault);
+        ScheduledRunCheck.Of(TeamCatalog.Describe(teamPath, _declaredMounts()), Settings.Profiles.Set, document, ForeignLaunchersOf(teamPath))
+            .Count(notice => foldersOnly
+                ? notice.Issue == ScheduledRunIssue.FolderRefused
+                : notice.Issue is not (ScheduledRunIssue.OnDefault or ScheduledRunIssue.ForeignLaunchers));
+
+    /// <summary>
+    /// Whether <paramref name="teamPath"/>'s launchers were written by another tool (STUDIO-63): a
+    /// promoted team Studio does not write the launchers of. A folder without launchers is nobody's.
+    /// </summary>
+    private static bool ForeignLaunchersOf(string teamPath) =>
+        TeamLaunchers.IsPromotedTeam(teamPath) && !TeamLaunchers.WritesLaunchersOf(teamPath);
 
     /// <summary>
     /// Before « Install the schedule » (STUDIO-52, decisions 3 and 4): the settings saved when the file

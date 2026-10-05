@@ -1491,6 +1491,20 @@ public static class StudioStringKeys
     /// </summary>
     public const string TeamsScheduledRunFolderRefused = "Studio.Teams.ScheduledRunFolderRefused";
 
+    /// <summary>
+    /// "The scheduled run uses the team's own run.sh / run.cmd, written by another tool: it does not
+    /// read Studio's setting nor its folders." — the card of a scheduled team whose launchers Orkeon
+    /// did not write (STUDIO-63).
+    /// </summary>
+    public const string TeamsScheduledForeignLaunchers = "Studio.Teams.ScheduledForeignLaunchers";
+
+    /// <summary>
+    /// "The folders are saved. The team's run.sh and run.cmd were written by another tool and were
+    /// left as they are — Studio launches the team from its card." — My teams, after « Change the
+    /// folders » on such a team (STUDIO-63).
+    /// </summary>
+    public const string TeamsLaunchersKept = "Studio.Teams.LaunchersKept";
+
     // ---- STUDIO-31: archiving a team — the model and the rules ----
 
     /// <summary>"Archived team — restore it?" — what every guard of an archived team says: the launchers, a replay from the History, the card's Test icon (STUDIO-31, D-07).</summary>
@@ -2525,6 +2539,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
             "The scheduled run takes “{0}” as it was saved, not as Studio shows it. Save the settings.",
         [StudioStringKeys.TeamsScheduledRunFolderRefused] =
             "The next scheduled run will be refused: the saved settings file does not declare the folder {0} yet. Save the settings.",
+        [StudioStringKeys.TeamsScheduledForeignLaunchers] =
+            "The scheduled run uses the team's own run.sh / run.cmd, written by another tool: it does not read Studio's setting nor its folders.",
+        [StudioStringKeys.TeamsLaunchersKept] =
+            "The folders are saved. The team's run.sh and run.cmd were written by another tool and were left as they are — Studio launches the team from its card.",
         [StudioStringKeys.CommonArchivedTeamRestore] = "Archived team — restore it?",
         [StudioStringKeys.CommonTeamRestored] = "Team restored: it is back among your teams.",
         [StudioStringKeys.TeamsArchiveBusy] = "Not archived: the team is running, or open in the assistant — try again once it is free.",

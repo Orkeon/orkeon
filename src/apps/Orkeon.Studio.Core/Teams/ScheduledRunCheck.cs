@@ -21,11 +21,17 @@ public enum ScheduledRunIssue
 
     /// <summary>The settings file as saved holds another version of the team's setting: the scheduled run takes it.</summary>
     Outdated,
+
+    /// <summary>
+    /// The team's launchers were written by another tool (STUDIO-63): the scheduled run executes
+    /// them as they are, and reads neither Studio's setting nor its folders — the only notice then.
+    /// </summary>
+    ForeignLaunchers,
 }
 
 /// <summary>One thing a team's scheduled run cannot follow (STUDIO-52).</summary>
 /// <param name="Issue">What.</param>
-/// <param name="Subject">The setting's name, or the folder's virtual path — never a folder of the disk.</param>
+/// <param name="Subject">The setting's name, or the folder's virtual path — never a folder of the disk; the team's name for <see cref="ScheduledRunIssue.ForeignLaunchers"/>.</param>
 /// <param name="Check">For <see cref="ScheduledRunIssue.OnDefault"/>: why no crew can name the setting.</param>
 public sealed record ScheduledRunNotice(ScheduledRunIssue Issue, string Subject, HostProfileCheck? Check = null);
 
@@ -36,7 +42,9 @@ public sealed record ScheduledRunNotice(ScheduledRunIssue Issue, string Subject,
 /// both up in the settings file as it was saved — not in the document the settings screen holds:
 /// a profile or a folder id the file does not have refuses the run, an entry the screen changed
 /// since runs as it was saved, and a setting offered to no crew is not named at all — the run takes
-/// the default. A pure reading: the caller hands the file as saved, read through the screen's store.
+/// the default. A pure reading: the caller hands the file as saved, read through the screen's store,
+/// and says whether the launchers are Orkeon's (STUDIO-63, <see cref="TeamLaunchers.WritesLaunchersOf"/>):
+/// launchers another tool wrote name none of this, and the one notice says so.
 /// </summary>
 public static class ScheduledRunCheck
 {
@@ -48,10 +56,19 @@ public static class ScheduledRunCheck
     /// <param name="team">The team, its folders read against the settings shown — what its launchers name.</param>
     /// <param name="settings">The model settings as Studio shows them.</param>
     /// <param name="saved">The settings file as saved — what the scheduled run reads —; null when there is none.</param>
-    public static IReadOnlyList<ScheduledRunNotice> Of(TeamSummary team, ModelProfileSet settings, AppSettingsDocument? saved)
+    /// <param name="foreignLaunchers">
+    /// Whether the team's launchers were written by another tool (STUDIO-63): then the scheduled run
+    /// reads none of the above, and <see cref="ScheduledRunIssue.ForeignLaunchers"/> is the one notice.
+    /// </param>
+    public static IReadOnlyList<ScheduledRunNotice> Of(TeamSummary team, ModelProfileSet settings, AppSettingsDocument? saved, bool foreignLaunchers = false)
     {
         ArgumentNullException.ThrowIfNull(team);
         ArgumentNullException.ThrowIfNull(settings);
+
+        // Launchers of another tool carry neither --llm-profile nor --mount-id: judging the file
+        // against them would speak of a launcher that does not exist.
+        if (foreignLaunchers)
+            return [new ScheduledRunNotice(ScheduledRunIssue.ForeignLaunchers, team.Name)];
 
         var setting = SettingNotice(TeamSettingStanding.Of(team.Profile, settings), settings, saved);
         var folders = FolderIds(team)
@@ -120,8 +137,8 @@ public static class ScheduledRunCheck
     }
 
     /// <summary>The first of <see cref="Of"/> — the one line a card shows —; null when the run takes what Studio shows.</summary>
-    public static ScheduledRunNotice? First(TeamSummary team, ModelProfileSet settings, AppSettingsDocument? saved) =>
-        Of(team, settings, saved) is { Count: > 0 } notices ? notices[0] : null;
+    public static ScheduledRunNotice? First(TeamSummary team, ModelProfileSet settings, AppSettingsDocument? saved, bool foreignLaunchers = false) =>
+        Of(team, settings, saved, foreignLaunchers) is { Count: > 0 } notices ? notices[0] : null;
 
     /// <summary>The line <paramref name="notice"/> is in the interface's language.</summary>
     /// <param name="notice">What the scheduled run cannot follow.</param>
@@ -136,6 +153,7 @@ public static class ScheduledRunCheck
             ScheduledRunIssue.SettingRefused => Format(strings[StudioStringKeys.TeamsScheduledRunRefused], notice.Subject),
             ScheduledRunIssue.FolderRefused => Format(strings[StudioStringKeys.TeamsScheduledRunFolderRefused], notice.Subject),
             ScheduledRunIssue.Outdated => Format(strings[StudioStringKeys.TeamsScheduledRunOutdated], notice.Subject),
+            ScheduledRunIssue.ForeignLaunchers => strings[StudioStringKeys.TeamsScheduledForeignLaunchers],
             _ => Format(
                 strings[StudioStringKeys.TeamsScheduledRunOnDefault],
                 notice.Subject,

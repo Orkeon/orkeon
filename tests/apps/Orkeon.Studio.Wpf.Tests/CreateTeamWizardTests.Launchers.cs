@@ -1,3 +1,4 @@
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Common;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
@@ -54,8 +55,8 @@ public partial class CreateTeamWizardTests
             {
                 Directory.CreateDirectory(Path.Combine(promoted, "crew"));
                 File.WriteAllText(Path.Combine(promoted, "crew", "config.yaml"), "name: veille\n");
-                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\nexec orkeon run \"$DIR/crew\"\n");
-                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.WindowsLauncherName), "@echo off\r\norkeon run \"%~dp0crew\"\r\n");
+                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\n# " + TeamLauncherScript.Header(Path.GetFileName(promoted)) + "\nexec orkeon run \"$DIR/crew\"\n");
+                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.WindowsLauncherName), "@echo off\r\nrem " + TeamLauncherScript.Header(Path.GetFileName(promoted)) + "\r\norkeon run \"%~dp0crew\"\r\n");
             };
             processes.OutputToEmit.Clear();
             processes.OutputToEmit.AddRange(
@@ -138,8 +139,8 @@ public partial class CreateTeamWizardTests
             {
                 Directory.CreateDirectory(Path.Combine(promoted, "crew"));
                 File.WriteAllText(Path.Combine(promoted, "crew", "config.yaml"), "name: veille\n");
-                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\nexec orkeon run \"$DIR/crew\"\n");
-                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.WindowsLauncherName), "@echo off\r\norkeon run \"%~dp0crew\"\r\n");
+                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\n# " + TeamLauncherScript.Header(Path.GetFileName(promoted)) + "\nexec orkeon run \"$DIR/crew\"\n");
+                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.WindowsLauncherName), "@echo off\r\nrem " + TeamLauncherScript.Header(Path.GetFileName(promoted)) + "\r\norkeon run \"%~dp0crew\"\r\n");
                 File.WriteAllText(
                     Path.Combine(promoted, ForgeSessionCatalog.TeamRecordFileName),
                     $$"""{"v":1,"slug":"veille","format":"yaml","brief":{"sample":{"initialContext":"{{context}}"} } }""");

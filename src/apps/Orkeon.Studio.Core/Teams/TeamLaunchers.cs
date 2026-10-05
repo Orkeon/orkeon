@@ -85,6 +85,12 @@ public enum TeamLaunchersOutcome
 
     /// <summary>The disk refused: the launchers are as they were, or half written.</summary>
     DiskRefused,
+
+    /// <summary>
+    /// A launcher in the folder was written by something other than Orkeon: both are left as they
+    /// are, Studio launches the team from its card (STUDIO-63).
+    /// </summary>
+    ForeignKept,
 }
 
 /// <summary>What <see cref="TeamLaunchers.Regenerate"/> did, and whether the <c>run.cmd</c> it wrote runs the team (STUDIO-51).</summary>
@@ -106,6 +112,16 @@ public sealed record TeamLaunchersResult(TeamLaunchersOutcome Outcome, TeamLaunc
 /// again at adoption and whenever the team's setting or folders change, whole — an edit made by
 /// hand is lost then, and the file says so. Never a key: the run reads it where the settings file
 /// names it (STUDIO-49).
+/// <para>
+/// Only its own, though (STUDIO-63): a launcher is Orkeon's by the header its second line carries
+/// (<see cref="TeamLauncherScript.CarriesHeader"/>), the one <c>forge promote</c> and Studio both
+/// write and <c>forge rename</c> finds the team's name in. A launcher another tool wrote — the
+/// workshop's, generated from its own <c>mounts.json</c>; one written by hand without the header —
+/// is left as it is, and so is its pair: nothing of it is merged, <see cref="TeamLaunchersOutcome.ForeignKept"/>
+/// says so, and the caller says it on screen. Studio still launches the team from its card; a
+/// scheduled run executes those launchers as they are, and the card says that too
+/// (<see cref="ScheduledRunCheck"/>).
+/// </para>
 /// <para>
 /// The text is the composer's (<see cref="TeamLauncherScript"/>, STUDIO-51), the one <c>forge
 /// promote</c> writes with: the frame, the header <c>forge rename</c> finds the team's name in,
@@ -147,6 +163,39 @@ public static class TeamLaunchers
         return Directory.Exists(Path.Combine(teamDirectory, CrewDirectoryName))
             && (File.Exists(Path.Combine(teamDirectory, PosixLauncherName))
                 || File.Exists(Path.Combine(teamDirectory, WindowsLauncherName)));
+    }
+
+    /// <summary>
+    /// Whether Studio writes <paramref name="teamDirectory"/>'s launchers (STUDIO-63): the folder holds a
+    /// promoted team (<see cref="IsPromotedTeam"/>) and every launcher present carries Orkeon's header
+    /// (<see cref="TeamLauncherScript.CarriesHeader"/>). False for a launcher another tool wrote, or
+    /// one the disk refuses to read: <see cref="Regenerate"/> leaves both as they are then.
+    /// </summary>
+    public static bool WritesLaunchersOf(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        try
+        {
+            return IsPromotedTeam(teamDirectory) && LaunchersAreOrkeons(teamDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Whether every launcher present in <paramref name="teamDirectory"/> carries Orkeon's header; true when none is there.</summary>
+    private static bool LaunchersAreOrkeons(string teamDirectory)
+    {
+        foreach (var name in new[] { PosixLauncherName, WindowsLauncherName })
+        {
+            var path = Path.Combine(teamDirectory, name);
+            if (File.Exists(path) && !TeamLauncherScript.CarriesHeader(File.ReadAllText(path)))
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -211,6 +260,7 @@ public static class TeamLaunchers
     /// would read as text. Tolerant, like the rest of the teams folder: the result says when the
     /// folder holds no promoted team or the disk refused, and when the <c>run.cmd</c> written
     /// launches nothing because the team's command is longer than <c>cmd</c> holds (STUDIO-51).
+    /// A launcher without Orkeon's header keeps both as they are (STUDIO-63, <see cref="WritesLaunchersOf"/>).
     /// </summary>
     /// <param name="teamDirectory">The team folder.</param>
     /// <param name="context">The model settings, the settings' mounts and the settings file.</param>
@@ -228,6 +278,11 @@ public static class TeamLaunchers
         {
             if (describe() is not { } launch)
                 return new TeamLaunchersResult(TeamLaunchersOutcome.NotATeam);
+
+            // Only what Orkeon wrote is written again (STUDIO-63): a launcher another tool wrote,
+            // or one whose header was removed by hand, keeps its pair with it — never merged.
+            if (!LaunchersAreOrkeons(teamDirectory))
+                return new TeamLaunchersResult(TeamLaunchersOutcome.ForeignKept);
 
             var spec = Spec(launch);
             var posix = Path.Combine(teamDirectory, PosixLauncherName);

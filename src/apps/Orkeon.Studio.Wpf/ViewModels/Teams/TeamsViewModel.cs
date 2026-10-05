@@ -1945,6 +1945,12 @@ public sealed class TeamsViewModel : ObservableObject
 
     private string _statusMessage = "";
 
+    /// <summary>
+    /// A line the shell puts on this screen after a gesture of its own (STUDIO-63): the folders
+    /// dialog saved a team whose launchers another tool wrote, and they were left as they are.
+    /// </summary>
+    internal void Announce(string message) => StatusMessage = message;
+
     /// <summary>The export destination chooser — wired by the shell to the OS folder browser.</summary>
     public Func<string?>? ExportDestinationPicker { get; set; }
 
