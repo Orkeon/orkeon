@@ -110,6 +110,8 @@ public sealed class WorkshopSiblingsTests : IDisposable
 
         Assert.False(refused.Succeeded);
         Assert.Equal(["settings"], refused.Taken);
+        // Nothing moved: every tree of the team stayed, not only the one whose destination is taken.
+        Assert.Equal(["workbooks", "settings"], refused.Kept);
         Assert.Empty(refused.Moved);
         Assert.True(Directory.Exists(At("workbooks", "veille-2")));
         Assert.False(Directory.Exists(At("workbooks", "veille")));

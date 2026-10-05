@@ -277,8 +277,11 @@ public sealed class MainWindowViewModel : ObservableObject
                 ShellOpener = shellOpener,
                 DeclaredMounts = declaredMounts,
                 Clock = seams.Clock,
-                // No teams root: a trial stamps no last run (STUDIO-31, D-05). The restore goes
-                // through « My teams » like the Run screen's.
+                // No teams root: a trial stamps no last run (STUDIO-31, D-05). It still reads the
+                // team's own settings file, as the Run screen does (STUDIO-62): the rehearsal runs
+                // on the model and limits the real run will. The restore goes through « My teams »
+                // like the Run screen's.
+                TeamSettingsRoot = teamsHome,
                 RestoreTeam = RestoreArchivedTeam,
                 ModelSettings = ModelSettings,
                 PrepareLaunch = PrepareLaunchAsync,

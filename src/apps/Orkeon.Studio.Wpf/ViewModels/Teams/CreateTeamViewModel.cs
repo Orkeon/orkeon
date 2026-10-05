@@ -408,10 +408,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     private IReadOnlyList<UseCaseCardViewModel> _closeUseCases = [];
     private string? _referenceUseCaseId;
 
-    /// <summary>Builds the wizard; every collaborator is optional so tests inject doubles.</summary>
     /// <summary>The teams root an adopted team lands in (STUDIO-61): the one the window resolved, or the default.</summary>
     public string TeamsRoot => _teamsRoot;
 
+    /// <summary>Builds the wizard; every collaborator is optional so tests inject doubles.</summary>
     public CreateTeamViewModel(ModelProfilesViewModel profiles, CreateTeamDependencies? dependencies = null)
     {
         ArgumentNullException.ThrowIfNull(profiles);

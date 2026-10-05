@@ -252,8 +252,10 @@ public static partial class RunnerExecution
         // For a crew directory the definition's directory IS the target — the root, or the
         // crew/ sub-folder the inspection designated: mounting it (rather than the folder the
         // operator named, or its parent) keeps the VFS surface as narrow as it is for a
-        // single-file crew, and anchors appsettings resolution inside the crew — the walk up
-        // still reaches a team folder's own settings file.
+        // single-file crew, and anchors appsettings resolution inside the crew: for a promoted
+        // team the chain starts at crew/, so a settings file kept at the team folder's root is not
+        // found — only crew/appsettings.json and an appsettings/ (or _shared/) folder above it —
+        // and the workshop's launchers pass --settings.
         if (inspection.IsCrewDirectory)
             configPath = Path.TrimEndingDirectorySeparator(inspection.CrewRoot!);
         var configDir = inspection.IsCrewDirectory ? configPath : Path.GetDirectoryName(configPath)!;

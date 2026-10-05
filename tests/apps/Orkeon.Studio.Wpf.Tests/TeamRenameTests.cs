@@ -323,9 +323,70 @@ public sealed class TeamRenameTests : IDisposable
 
         Assert.True(File.Exists(Path.Combine(_root, "settings", "veille-du-matin", "appsettings.json")));
         Assert.Equal(
-            string.Format(System.Globalization.CultureInfo.CurrentCulture, Text(StudioStringKeys.TeamsRenamed), "Veille du matin", "veille-du-matin")
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, EnglishStudioStrings.Instance[StudioStringKeys.TeamsRenamed], "Veille du matin", "veille-du-matin")
                 + " " + Text(StudioStringKeys.TeamsRenamedWithSiblings),
             teams.StatusMessage);
+    }
+
+    /// <summary>
+    /// A launch of the team recorded on its settings file (STUDIO-62) replays that path verbatim: the
+    /// history follows <c>settings/&lt;slug&gt;</c> as it follows the folder, or « Relaunch » after a
+    /// rename would hand the run a file that is gone.
+    /// </summary>
+    [Fact]
+    public async Task In_a_workshop_a_launch_recorded_on_the_teams_settings_file_replays_where_the_file_moved()
+    {
+        SeedTeam(Team, "Ma veille");
+        LayWorkshop("ma-veille");
+        var formerSettings = Path.Combine(_root, "settings", "ma-veille", "appsettings.json");
+        var movedSettings = Path.Combine(_root, "settings", "veille-du-matin", "appsettings.json");
+        var history = new FakeLaunchHistoryStore
+        {
+            History = LaunchHistory.Empty.Add(LaunchHistoryEntry.Starting(
+                Team, ["run", Team, "--settings=" + formerSettings], settingsPath: formerSettings, workingDirectory: Team)),
+        };
+        var teams = Teams(EngineRenaming(Team, Renamed, "Veille du matin"), history);
+        var card = Assert.Single(teams.Teams);
+
+        card.RenameCommand.Execute(null);
+        card.RenameText = "Veille du matin";
+        await card.ConfirmRenameCommand.ExecuteAsync();
+
+        var entry = Assert.Single(history.History.Entries);
+        Assert.Equal(Renamed, entry.Target);
+        Assert.Equal(movedSettings, entry.SettingsPath);
+        Assert.Equal(["run", Renamed, "--settings=" + movedSettings], entry.Arguments);
+    }
+
+    /// <summary>
+    /// A place taken by a FILE is no tree, so the pre-check lets the rename through; the move then finds
+    /// it taken and moves nothing. The team is renamed and the line says which trees stayed — never the
+    /// plain « renamed » of a team that now runs on the machine's model in silence.
+    /// </summary>
+    [Fact]
+    public async Task A_tree_whose_place_is_taken_after_the_pre_check_is_said_not_dropped()
+    {
+        SeedTeam(Team, "Ma veille");
+        LayWorkshop("ma-veille");
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings", "veille-du-matin"), "not a folder", TestContext.Current.CancellationToken);
+        var teams = Teams(EngineRenaming(Team, Renamed, "Veille du matin"));
+        var card = Assert.Single(teams.Teams);
+
+        card.RenameCommand.Execute(null);
+        card.RenameText = "Veille du matin";
+        await card.ConfirmRenameCommand.ExecuteAsync();
+
+        Assert.Equal(Renamed, Assert.Single(teams.Teams).Summary.Path);
+        Assert.Contains(
+            string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                EnglishStudioStrings.Instance[StudioStringKeys.TeamsRenameSiblingsKept],
+                "workbooks/ma-veille, tests/ma-veille, settings/ma-veille, mounts.test/ma-veille",
+                "ma-veille"),
+            teams.StatusMessage!,
+            StringComparison.Ordinal);
+        Assert.True(Directory.Exists(Path.Combine(_root, "workbooks", "ma-veille")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "workbooks", "veille-du-matin")));
     }
 
     /// <summary>
@@ -346,7 +407,7 @@ public sealed class TeamRenameTests : IDisposable
         await card.ConfirmRenameCommand.ExecuteAsync();
 
         Assert.Equal(
-            string.Format(System.Globalization.CultureInfo.CurrentCulture, Text(StudioStringKeys.TeamsRenameSiblingTaken), "settings/veille-du-matin"),
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, EnglishStudioStrings.Instance[StudioStringKeys.TeamsRenameSiblingTaken], "settings/veille-du-matin"),
             card.RenameRefusal);
         Assert.True(card.IsRenaming);
         Assert.Empty(processes.Requests);
@@ -379,7 +440,7 @@ public sealed class TeamRenameTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(_root, "tests", "ma-veille")));
         Assert.False(Directory.Exists(Path.Combine(_root, "settings", "veille-du-matin")));
         Assert.Equal(
-            string.Format(System.Globalization.CultureInfo.CurrentCulture, Text(StudioStringKeys.TeamsRenamed), "Veille du matin", "veille-du-matin"),
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, EnglishStudioStrings.Instance[StudioStringKeys.TeamsRenamed], "Veille du matin", "veille-du-matin"),
             teams.StatusMessage);
     }
 

@@ -138,6 +138,38 @@ public sealed class LaunchHistoryTests
         Assert.Equal(3, rebased.Entries.Count);
     }
 
+    /// <summary>
+    /// STUDIO-64: in a workshop a launch of the team names <c>settings/&lt;slug&gt;/appsettings.json</c>
+    /// (STUDIO-62), a folder beside the teams root that moves with the team. The siblings follow in
+    /// the launches of that team only — another team's launch keeps naming its own.
+    /// </summary>
+    [Fact]
+    public void Rebasing_follows_the_sibling_folders_that_moved_with_the_team()
+    {
+        var workshop = Path.Combine(Path.GetTempPath(), "orkeon-rebase-ws");
+        var team = Path.Combine(workshop, "teams", "veille");
+        var renamed = Path.Combine(workshop, "teams", "veille-2");
+        var settings = Path.Combine(workshop, "settings", "veille", "appsettings.json");
+        var movedSettings = Path.Combine(workshop, "settings", "veille-2", "appsettings.json");
+        var launch = LaunchHistoryEntry.Starting(team, ["run", team, "--settings=" + settings], settingsPath: settings, workingDirectory: team);
+        var other = Path.Combine(workshop, "teams", "autre");
+        var otherSettings = Path.Combine(workshop, "settings", "autre", "appsettings.json");
+        var another = LaunchHistoryEntry.Starting(other, ["run", other, "--settings=" + otherSettings], settingsPath: otherSettings);
+        var history = LaunchHistory.Empty.Add(another).Add(launch);
+
+        var rebased = history.Rebase(
+            team, renamed, [(Path.Combine(workshop, "settings", "veille"), Path.Combine(workshop, "settings", "veille-2"))]);
+
+        Assert.Equal(renamed, rebased.Entries[0].Target);
+        Assert.Equal(movedSettings, rebased.Entries[0].SettingsPath);
+        Assert.Equal(["run", renamed, "--settings=" + movedSettings], rebased.Entries[0].Arguments);
+        AssertSameEntry(another, rebased.Entries[1]);
+
+        // Without the siblings, as before: the team's folder only.
+        var folderOnly = history.Rebase(team, renamed);
+        Assert.Equal(settings, folderOnly.Entries[0].SettingsPath);
+    }
+
     [Fact]
     public void Outcomes_are_stored_by_name_so_the_file_stays_readable()
     {

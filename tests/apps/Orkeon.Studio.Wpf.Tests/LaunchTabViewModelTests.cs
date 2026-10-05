@@ -1047,6 +1047,29 @@ public sealed class LaunchTabViewModelTests
         }
     }
 
+    [Fact]
+    public async Task Should_NameTheFoldersCreated_When_AReplayGoesOn()
+    {
+        var (root, team) = TeamOnDisk("veille", "./output:/output:rw", "./input:/workspace:ro");
+        try
+        {
+            // The input exists and the output does not: a replay creates it and carries on — and its
+            // journal, begun before the preparation, still says so once the process has started.
+            var directories = new FakeDirectoryProbe(team, Path.Combine(team, "input"));
+            var (tab, launcher, _) = Build(TeamProbe(team), directories);
+            var entry = LaunchHistoryEntry.Starting(team, ["run", team], null, team);
+
+            await tab.ReplayAsync(entry, TestContext.Current.CancellationToken);
+
+            Assert.Single(launcher.Requests);
+            Assert.Contains(tab.Log.Lines, line => line.Text == $"Created in the team folder: {Path.Combine(team, "output")}");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     // ---- STUDIO-62: a workshop team runs on settings/<slug>/appsettings.json unless a file is pinned ----
 
     private const string WorkshopTeamsRoot = "/ws/teams";
@@ -1116,12 +1139,30 @@ public sealed class LaunchTabViewModelTests
         Assert.Equal("/etc/orkeon/appsettings.json", tab.ResolvedSettingsPath);
         Assert.Contains("--settings=/etc/orkeon/appsettings.json", tab.BuildArguments());
         Assert.DoesNotContain(tab.BuildArguments(), a => a.Contains(VeilleSettingsFile, StringComparison.Ordinal));
-        // The team file is still known, so the line still says a pin overrides it.
+        // The team file is still known, but the line that says the run reads it is gone: it would
+        // name a file this run does not read.
         Assert.Equal(VeilleSettingsFile, tab.TeamSettingsPath);
+        Assert.Null(tab.TeamSettingsLine);
 
-        // Back to automatic: the team file applies again.
+        // Back to automatic: the team file applies again, and the line with it.
         tab.Options.SettingsMode = SettingsSelectionMode.Automatic;
         Assert.Equal(VeilleSettingsFile, tab.ResolvedSettingsPath);
+        Assert.NotNull(tab.TeamSettingsLine);
+    }
+
+    [Fact]
+    public void Should_ReadABlankPinAsNoPin_When_ExpertModeIsOnWithoutAPath()
+    {
+        var (tab, _, _, _) = BuildOverWorkshop();
+        tab.Target.Select(VeilleCrew);
+
+        // Explicit mode, the path typed then cleared: nothing is pinned, as the Core model reads it.
+        tab.Options.SettingsPath = "";
+        tab.Options.SettingsMode = SettingsSelectionMode.ExplicitPath;
+
+        Assert.Equal(VeilleSettingsFile, tab.ResolvedSettingsPath);
+        Assert.Contains("--settings=" + VeilleSettingsFile, tab.BuildArguments());
+        Assert.NotNull(tab.TeamSettingsLine);
     }
 
     [Fact]
@@ -1158,6 +1199,12 @@ public sealed class LaunchTabViewModelTests
         await tab.ReplayAsync(pinned, TestContext.Current.CancellationToken);
         Assert.True(tab.Options.IsSettingsExplicit);
         Assert.Equal("/etc/orkeon/appsettings.json", tab.Options.EffectiveSettingsPath);
+
+        // And an entry recorded on the team's file lets go of the pin the form was holding: the form
+        // shows what the replayed command line reads.
+        await tab.ReplayAsync(entry, TestContext.Current.CancellationToken);
+        Assert.True(tab.Options.IsSettingsAutomatic);
+        Assert.Equal(VeilleSettingsFile, tab.ResolvedSettingsPath);
     }
 
     [Fact]

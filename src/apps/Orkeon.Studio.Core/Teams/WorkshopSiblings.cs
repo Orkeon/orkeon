@@ -9,7 +9,7 @@ namespace Orkeon.Studio.Core.Teams;
 /// </summary>
 /// <param name="Moved">The trees that moved — or, for a copy, were copied.</param>
 /// <param name="Taken">The trees whose destination was already taken: then nothing moved.</param>
-/// <param name="Kept">The trees still under the former slug after a move the disk refused — the ones put back and the one that failed.</param>
+/// <param name="Kept">The trees still under the former slug after a gesture that moved none of them or put them back — the ones put back and the one that failed, or every tree when a destination was taken.</param>
 /// <param name="Destination">Where the gesture put things: the <c>archive/&lt;slug&gt;</c> folder, the copied settings folder; null for a rename, and when nothing moved.</param>
 public sealed record WorkshopMoveResult(
     IReadOnlyList<string> Moved,
@@ -80,7 +80,7 @@ public static class WorkshopSiblings
         var moves = trees.Select(tree => (tree.Kind, From: tree.Path, To: Path.Combine(root, tree.Kind, toSlug))).ToList();
         var taken = moves.Where(move => Exists(move.To)).Select(move => move.Kind).ToList();
         if (taken.Count > 0)
-            return new WorkshopMoveResult([], taken, [], null);
+            return new WorkshopMoveResult([], taken, [.. moves.Select(move => move.Kind)], null);
 
         return MoveAll(moves, destinationFolder: null);
     }

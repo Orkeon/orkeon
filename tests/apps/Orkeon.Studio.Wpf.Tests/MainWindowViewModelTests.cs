@@ -120,6 +120,42 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void The_trial_screen_reads_the_teams_own_settings_file_as_the_run_screen_does()
+    {
+        // STUDIO-62 anchored the file on the launcher's teams root, which the trial's launcher is built
+        // without — a trial stamps no last run — so a rehearsal ran on the machine's model and the real
+        // run of the same team on the workshop's.
+        const string teams = "/ws/teams";
+        const string crew = "/ws/teams/veille/crew.yaml";
+        var settingsFile = WorkshopLayout.SettingsFileOf(teams, "veille");
+        var store = new FakeAppSettingsStore();
+        store.Files[settingsFile] = "{}";
+        var window = new MainWindowViewModel(new StudioServices
+            {
+                SettingsStore = store,
+                Directories = new FakeDirectoryProbe(teams, "/ws/teams/veille"),
+                TargetProbe = new FakeTargetProbe().WithDirectory(teams).WithDirectory("/ws/teams/veille").WithFile(crew),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(),
+                    new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+            },
+            globalPathOverride: GlobalPath,
+            forgeWorkspace: "/ws/forge",
+            teamsRoot: teams);
+
+        window.Launch.Target.Select(crew);
+        window.Test.Launcher.Target.Select(crew);
+
+        Assert.Equal(settingsFile, window.Launch.TeamSettingsPath);
+        Assert.Equal(settingsFile, window.Test.Launcher.TeamSettingsPath);
+        Assert.Contains("--settings=" + settingsFile, window.Test.Launcher.BuildArguments());
+        // Still no teams root for the stamp: a trial is a rehearsal.
+        Assert.Null(window.Test.Launcher.TeamsRoot);
+    }
+
+    [Fact]
     public void A_window_built_over_a_bare_root_reads_it_as_the_argument_and_one_without_as_the_default()
     {
         Assert.Equal(TeamsRootSource.Default, Build().TeamsRoot.Source);

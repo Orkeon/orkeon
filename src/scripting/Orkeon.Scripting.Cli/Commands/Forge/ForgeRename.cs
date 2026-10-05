@@ -66,14 +66,15 @@ internal sealed record ForgeRenameOutcome
 /// </summary>
 internal static class ForgeTeamRenamer
 {
-    /// <summary>How Studio writes its sidecar, kept on a rewrite.</summary>
     /// <summary>
-    /// The sidecar's writing contract, Studio's (STUDIO-58): two spaces, non-ASCII text as the letters
-    /// themselves — a local file people open, never HTML — and a final newline at the write.
+    /// The sidecar's writing contract, Studio's (STUDIO-58): two spaces, LF line breaks on every
+    /// platform, non-ASCII text as the letters themselves — a local file people open, never HTML —
+    /// and a final newline at the write.
     /// </summary>
     private static readonly JsonSerializerOptions SidecarOptions = new()
     {
         WriteIndented = true,
+        NewLine = "\n",
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 

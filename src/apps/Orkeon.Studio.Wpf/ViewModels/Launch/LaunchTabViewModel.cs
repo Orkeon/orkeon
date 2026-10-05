@@ -44,6 +44,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private readonly Func<string, IReadOnlyDictionary<string, string>?>? _environmentForTarget;
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
+    private readonly string? _teamSettingsRoot;
     private readonly IDirectoryProbe _directories;
     private readonly Func<string, string?>? _restoreTeam;
     private readonly Func<ModelProfileSet>? _modelSettings;
@@ -62,13 +63,13 @@ public sealed class LaunchTabViewModel : ObservableObject
     private ProcessRunResult? _lastResult;
     private BinaryLocation? _binaryLocation;
 
-    /// <summary>Builds the tab over its seams; each one has an in-memory double in the tests.</summary>
     /// <summary>
     /// The teams root a real run stamps its team's last run under (STUDIO-31, D-05; STUDIO-61: the
     /// one the window resolved); null stamps nothing — the Test screen's launcher.
     /// </summary>
     public string? TeamsRoot { get; }
 
+    /// <summary>Builds the tab over its seams; each one has an in-memory double in the tests.</summary>
     public LaunchTabViewModel(LaunchTabDependencies? dependencies = null)
     {
         var seams = dependencies ?? new LaunchTabDependencies();
@@ -84,6 +85,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         // launcher is built without one.
         _session = new RunSession(_runner, seams.HistoryStore, seams.TeamsRoot);
         TeamsRoot = seams.TeamsRoot;
+        _teamSettingsRoot = seams.TeamSettingsRoot ?? seams.TeamsRoot;
         _restoreTeam = seams.RestoreTeam;
         _modelSettings = seams.ModelSettings;
         _prepareLaunch = seams.PrepareLaunch;
@@ -543,22 +545,27 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>
     /// The settings file the run will read: the Expert mode's pin, else the team's file, else null
     /// — the CLI's own chain. The command line, the request, the history entry and the settings
-    /// mounts panel all read this one.
+    /// mounts panel all read this one. A pin left blank is no pin: the Core model reads it so too
+    /// (<c>LaunchOptionsModel.EffectiveSettingsPath</c>), and the team's file then applies.
     /// </summary>
-    public string? ResolvedSettingsPath => Options.EffectiveSettingsPath ?? TeamSettingsPath;
+    public string? ResolvedSettingsPath => HasPin ? Options.EffectiveSettingsPath : TeamSettingsPath;
+
+    /// <summary>Whether the Expert mode pins a settings file — a non-blank path in explicit mode.</summary>
+    private bool HasPin => !string.IsNullOrWhiteSpace(Options.EffectiveSettingsPath);
 
     /// <summary>
     /// The one line that says where the model comes from, shown beside the command line and
     /// outside the « Advanced » fold: the team's settings file, and — when the card names a
     /// model setting of this machine — that the setting overrides the file's <c>Llm</c> section
     /// (the card's instruction, laid over the run as <c>ORKEON_Llm__*</c>). Null when no team
-    /// file applies.
+    /// file applies — and while a pinned file overrides it: the line would then say the run reads
+    /// a file it does not.
     /// </summary>
     public string? TeamSettingsLine
     {
         get
         {
-            if (TeamSettingsPath is not { Length: > 0 } path)
+            if (TeamSettingsPath is not { Length: > 0 } path || HasPin)
                 return null;
 
             var line = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunSettingsTeamFile], path);
@@ -583,7 +590,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     private void RefreshTeamSettingsPath()
     {
-        TeamSettingsPath = TeamSettingsFile.Find(TeamsRoot, Target.SelectedPath, _directories, _settingsStore.Exists);
+        TeamSettingsPath = TeamSettingsFile.Find(_teamSettingsRoot, Target.SelectedPath, _directories, _settingsStore.Exists);
         OnPropertiesChanged(nameof(TeamSettingsPath), nameof(ResolvedSettingsPath), nameof(TeamSettingsLine));
     }
 
@@ -691,6 +698,10 @@ public sealed class LaunchTabViewModel : ObservableObject
             return null;
         }
 
+        // The journal of this launch begins before the folders are prepared, as a Run's does, so the
+        // folders created are named in it and a replay that goes on does not wipe the line (STUDIO-60).
+        BeginLaunch();
+
         // The team's own folders, as a launch's (STUDIO-60); the recorded argv is replayed as it is.
         if (PrepareTeamFolders(team.TeamDirectory, team.ResolvedMounts) is { } folderRefusal)
         {
@@ -698,7 +709,6 @@ public sealed class LaunchTabViewModel : ObservableObject
             return null;
         }
 
-        BeginLaunch();
         LoadIntoForm(entry);
 
         return await ExecuteAsync(
@@ -740,8 +750,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>
     /// The team's own folders before a launch (STUDIO-60): a missing writable one is created and the
     /// journal says so; a missing read-only one, or a creation the disk refuses, stops the launch.
-    /// Null to launch; the line that says why the run does not start otherwise. The notice is written
-    /// before the journal of the launch is begun, so a refusal keeps it on screen.
+    /// Null to launch; the line that says why the run does not start otherwise. Called once the journal
+    /// of the launch has begun — a Run's, a Replay's —, so the notice stays in it.
     /// </summary>
     private string? PrepareTeamFolders(string? teamDirectory, IReadOnlyList<ResolvedTeamMount> mounts)
     {
@@ -1333,6 +1343,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         if (TeamSettingsPath is { Length: > 0 } teamFile
             && string.Equals(settingsPath, teamFile, Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison))
         {
+            // A pin the form still holds from an earlier choice would claim the replay reads it.
+            Options.SettingsMode = SettingsSelectionMode.Automatic;
             return;
         }
 
@@ -1343,7 +1355,9 @@ public sealed class LaunchTabViewModel : ObservableObject
     private void RefreshPreview()
     {
         // The settings in force decide which team mounts go on the command line at all, so
-        // they are refreshed before the arguments are built.
+        // they are refreshed before the arguments are built. A pin set or cleared changes which
+        // file that is, and whether the team's file line still holds (STUDIO-62).
+        OnPropertiesChanged(nameof(ResolvedSettingsPath), nameof(TeamSettingsLine));
         PublishSettingsMounts();
 
         // The mount table's appended rows depend on the mount the runner injects ahead of the
@@ -1415,6 +1429,14 @@ public sealed record LaunchTabDependencies
     /// stamps nothing — the Test screen's launcher is built without it: a trial is a rehearsal.
     /// </summary>
     public string? TeamsRoot { get; init; }
+
+    /// <summary>
+    /// The teams root a team's own settings file is looked up under (STUDIO-62): the workshop's
+    /// <c>settings/&lt;slug&gt;/appsettings.json</c> beside it. Left unset it is <see cref="TeamsRoot"/>.
+    /// The Test screen's launcher sets it alone: a trial stamps no last run, yet reads the same
+    /// model and limits as the real run of the team.
+    /// </summary>
+    public string? TeamSettingsRoot { get; init; }
 
     /// <summary>
     /// Restores an archived team, given its folder: null once restored, the refusal otherwise

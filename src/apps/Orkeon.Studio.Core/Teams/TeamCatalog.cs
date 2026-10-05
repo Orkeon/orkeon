@@ -313,13 +313,17 @@ public enum TeamFolderOccupant
 public static partial class TeamCatalog
 {
     /// <summary>
-    /// How the sidecar is written (STUDIO-58): two spaces, no key for a null, non-ASCII text as the
-    /// letters themselves — the file feeds JSON parsers and people, never HTML — and, in
-    /// <see cref="TryWriteMetadata"/>, a final newline. UTF-8 without BOM. The read stays strict.
+    /// How the sidecar is written (STUDIO-58): two spaces, LF line breaks whatever the platform —
+    /// the default is <c>Environment.NewLine</c>, which would write CR LF on Windows and a lone LF
+    /// at the end, where the other tools that write the card use LF throughout —, no key for a null,
+    /// non-ASCII text as the letters themselves — the file feeds JSON parsers and people, never
+    /// HTML — and, in <see cref="TryWriteMetadata"/>, a final newline. UTF-8 without BOM. The read
+    /// stays strict.
     /// </summary>
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
+        NewLine = "\n",
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };

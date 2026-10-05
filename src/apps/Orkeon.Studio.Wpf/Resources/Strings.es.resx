@@ -1585,7 +1585,7 @@
     <value>La carpeta no contiene nada que el motor pueda ejecutar.</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-ROOT-SHADOWED" xml:space="preserve">
-    <value>El equipo es su subcarpeta crew/: las carpetas o scripts de su raíz se dejaron de lado, no se ejecutaron.</value>
+    <value>La definición del equipo es su subcarpeta crew/: las carpetas o scripts de su raíz se dejaron de lado, no se ejecutaron.</value>
   </data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>Recurso web activo: el bucle correctivo puede consultar páginas, cada una validada contra la inyección de prompt.</value>
@@ -2642,7 +2642,7 @@
     <value>En el taller, {0} ya está ocupado: elija otro nombre.</value>
   </data>
   <data name="Studio.Teams.RenamedWithSiblings" xml:space="preserve">
-    <value>Su cuaderno, sus pruebas, sus ajustes y sus juegos de carpetas la siguieron.</value>
+    <value>Su cuaderno, sus pruebas, sus ajustes y sus juegos de carpetas lo siguieron.</value>
   </data>
   <data name="Studio.Teams.RenameSiblingsKept" xml:space="preserve">
     <value>En el taller, {0} no pudieron seguir al equipo y se quedan bajo {1}.</value>

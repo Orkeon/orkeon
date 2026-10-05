@@ -61,6 +61,21 @@ public sealed class TeamsRootLocatorTests
         Assert.Contains("--teams-root", resolution.IgnoredReason, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(@"\ws\teams")]
+    [InlineData("C:teams")]
+    public void A_path_that_resolves_against_the_current_drive_or_folder_is_relative_and_ignored(string value)
+    {
+        // Under Windows both are "rooted" for Path.IsPathRooted, yet neither names one folder: the
+        // first reads the current drive, the second the current folder of C:. Under Linux they are
+        // plain relative names. The same answer everywhere: not an absolute path.
+        var resolution = TeamsRootLocator.Resolve(Variable(value), Shortcut);
+
+        Assert.Equal(Shortcut, resolution.Path);
+        Assert.Equal(TeamsRootSource.Argument, resolution.Source);
+        Assert.Equal(value, resolution.IgnoredValue);
+    }
+
     [Fact]
     public void A_blank_value_is_absent_not_ignored()
     {

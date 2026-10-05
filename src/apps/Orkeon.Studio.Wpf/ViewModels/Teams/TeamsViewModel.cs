@@ -1036,10 +1036,10 @@ public sealed class TeamsViewModel : ObservableObject
     /// </summary>
     private readonly Dictionary<string, TeamScheduleState> _scheduleStates = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Builds the screen over its seams; the loaders default to the real catalogs.</summary>
     /// <summary>The teams root the cards list (STUDIO-61): the one the window resolved, or the default.</summary>
     public string TeamsRoot { get; }
 
+    /// <summary>Builds the screen over its seams; the loaders default to the real catalogs.</summary>
     public TeamsViewModel(TeamsDependencies? dependencies = null)
     {
         var wired = dependencies ?? new TeamsDependencies();
@@ -2071,11 +2071,21 @@ public sealed class TeamsViewModel : ObservableObject
         WorkshopMoveResult? siblings = null;
         if (!string.Equals(NormalizePath(renamed), NormalizePath(team.Path), PhysicalPathContainment.Comparison))
         {
-            await RebaseHistoryAsync(team.Path, renamed).ConfigureAwait(true);
-            FollowScheduleState(team, renamed, report.ScheduleState);
             // The workshop's trees follow the folder the engine moved (STUDIO-64); a tree that could
             // not is put back with the others and said — the team stays renamed.
-            siblings = WorkshopSiblings.FollowRename(TeamsRoot, FolderNameOf(team.Path), FolderNameOf(renamed));
+            var formerSlug = FolderNameOf(team.Path);
+            var newSlug = FolderNameOf(renamed);
+            siblings = WorkshopSiblings.FollowRename(TeamsRoot, formerSlug, newSlug);
+
+            // A launch recorded on the team's settings file replays that path verbatim (STUDIO-62):
+            // the history follows the trees that moved, as it follows the folder.
+            var workshop = WorkshopLayout.RootOf(TeamsRoot);
+            await RebaseHistoryAsync(
+                team.Path,
+                renamed,
+                [.. siblings.Moved.Select(kind => (System.IO.Path.Combine(workshop, kind, formerSlug), System.IO.Path.Combine(workshop, kind, newSlug)))])
+                .ConfigureAwait(true);
+            FollowScheduleState(team, renamed, report.ScheduleState);
         }
 
         StatusMessage = RenamedLine(name, team.Path, renamed, report.Warnings, siblings);
@@ -2133,7 +2143,7 @@ public sealed class TeamsViewModel : ObservableObject
     /// last run and « Relaunch » replays it where the team is. History is comfort: a store that
     /// refuses costs the line, never the rename.
     /// </summary>
-    private async Task RebaseHistoryAsync(string from, string to)
+    private async Task RebaseHistoryAsync(string from, string to, IReadOnlyList<(string From, string To)>? siblings = null)
     {
         if (_historyStore is null)
             return;
@@ -2141,7 +2151,7 @@ public sealed class TeamsViewModel : ObservableObject
         try
         {
             var history = await _historyStore.LoadAsync().ConfigureAwait(true);
-            await _historyStore.SaveAsync(history.Rebase(from, to)).ConfigureAwait(true);
+            await _historyStore.SaveAsync(history.Rebase(from, to, siblings)).ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
@@ -2179,12 +2189,15 @@ public sealed class TeamsViewModel : ObservableObject
                 name, System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(renamed))),
         };
 
-        // STUDIO-64: what the workshop keeps beside the team followed it — or stayed, named.
-        if (siblings is { Kept.Count: > 0 })
+        // STUDIO-64: what the workshop keeps beside the team followed it — or stayed, named. A tree
+        // whose destination was taken after the pre-check (a file, a folder made meanwhile) stayed
+        // too: said the same way, never in silence.
+        var stayed = siblings is null ? [] : siblings.Kept.Concat(siblings.Taken).Distinct(StringComparer.Ordinal).ToList();
+        if (stayed.Count > 0)
         {
             parts.Add(string.Format(
                 CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameSiblingsKept],
-                TreeNames(siblings.Kept, FolderNameOf(from)), FolderNameOf(from)));
+                TreeNames(stayed, FolderNameOf(from)), FolderNameOf(from)));
         }
         else if (siblings is { Moved.Count: > 0 })
         {

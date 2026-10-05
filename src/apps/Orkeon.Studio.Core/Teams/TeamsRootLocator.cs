@@ -85,8 +85,10 @@ public static class TeamsRootLocator
             if (string.IsNullOrWhiteSpace(value))
                 continue;
 
+            // Fully qualified, not merely rooted: under Windows `\ws\teams` and `C:teams` are rooted
+            // yet resolve against the current drive or the current folder of a drive — relative.
             var trimmed = value.Trim();
-            if (!System.IO.Path.IsPathRooted(trimmed))
+            if (!System.IO.Path.IsPathFullyQualified(trimmed))
             {
                 // The first unusable value is the one the card names: it is the one that would have
                 // won, and the one its author expects to see in force.

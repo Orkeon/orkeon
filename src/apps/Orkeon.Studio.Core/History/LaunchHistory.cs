@@ -45,16 +45,30 @@ public sealed record LaunchHistory
     /// target, working directory, settings file and arguments. A renamed team's card keeps its last
     /// run, and « Relaunch » replays it where the team now is. Every other launch, the order and
     /// the bound are left as they were.
+    /// <para>
+    /// <paramref name="siblings"/> are the other folders that moved with the team — in a workshop,
+    /// <c>settings/&lt;slug&gt;</c>, which a launch of the team passes as <c>--settings</c> (STUDIO-62,
+    /// STUDIO-64): the launches of the team are spelled under them too. A launch of another team
+    /// is never touched by them.
+    /// </para>
     /// </summary>
-    public LaunchHistory Rebase(string from, string to)
+    public LaunchHistory Rebase(string from, string to, IReadOnlyList<(string From, string To)>? siblings = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(from);
         ArgumentException.ThrowIfNullOrWhiteSpace(to);
 
         return new LaunchHistory
         {
-            Entries = [.. Entries.Select(entry => entry.Launches(from) ? entry.Rebased(from, to) : entry)],
+            Entries = [.. Entries.Select(entry => entry.Launches(from) ? Follow(entry.Rebased(from, to), siblings) : entry)],
         };
+    }
+
+    private static LaunchHistoryEntry Follow(LaunchHistoryEntry entry, IReadOnlyList<(string From, string To)>? siblings)
+    {
+        foreach (var (from, to) in siblings ?? [])
+            entry = entry.Rebased(from, to);
+
+        return entry;
     }
 
     /// <summary>Serializes to the on-disk JSON shape.</summary>
