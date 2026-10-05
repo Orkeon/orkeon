@@ -1165,6 +1165,12 @@
   <data name="Studio.Teams.ScheduledRunFolderRefused" xml:space="preserve">
     <value>La prochaine exécution planifiée sera refusée : le fichier de réglages enregistré ne déclare pas encore le dossier {0}. Enregistrez les réglages.</value>
   </data>
+  <data name="Studio.Teams.ScheduledForeignLaunchers" xml:space="preserve">
+    <value>L'exécution planifiée lance les run.sh / run.cmd de l'équipe, écrits par un autre outil : elle ne lit ni le réglage de Studio ni ses dossiers.</value>
+  </data>
+  <data name="Studio.Teams.LaunchersKept" xml:space="preserve">
+    <value>Les dossiers sont enregistrés. Les run.sh et run.cmd de l'équipe ont été écrits par un autre outil et sont gardés tels quels — Studio lance l'équipe depuis sa carte.</value>
+  </data>
   <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
     <value>Équipe archivée — la restaurer ?</value>
   </data>

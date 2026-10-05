@@ -2559,6 +2559,12 @@
   <data name="Studio.Teams.ScheduledRunFolderRefused" xml:space="preserve">
     <value>La próxima ejecución programada será rechazada: el archivo de ajustes guardado aún no declara la carpeta {0}. Guarde los ajustes.</value>
   </data>
+  <data name="Studio.Teams.ScheduledForeignLaunchers" xml:space="preserve">
+    <value>La ejecución programada usa los run.sh / run.cmd propios del equipo, escritos por otra herramienta: no lee el ajuste de Studio ni sus carpetas.</value>
+  </data>
+  <data name="Studio.Teams.LaunchersKept" xml:space="preserve">
+    <value>Las carpetas están guardadas. Los run.sh y run.cmd del equipo fueron escritos por otra herramienta y se dejan tal cual — Studio lanza el equipo desde su tarjeta.</value>
+  </data>
   <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
     <value>Equipo archivado — ¿restaurarlo?</value>
   </data>

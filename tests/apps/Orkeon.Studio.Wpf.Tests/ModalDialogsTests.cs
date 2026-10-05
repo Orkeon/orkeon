@@ -22,7 +22,7 @@ public sealed class ModalDialogsTests
         var dialog = new TeamMountsDialogViewModel(saveMounts: (dir, mounts) => saved = (dir, mounts));
         var refreshed = false;
 
-        dialog.Open("/teams/veille", "Veille", ["/a:/docs:ro", "/b:/output:rw"], onSaved: () => refreshed = true);
+        dialog.Open("/teams/veille", "Veille", ["/a:/docs:ro", "/b:/output:rw"], onSaved: _ => refreshed = true);
         Assert.Equal(2, dialog.Rows.Count);
         Assert.All(dialog.Rows, row => Assert.True(row.IsChecked));
 

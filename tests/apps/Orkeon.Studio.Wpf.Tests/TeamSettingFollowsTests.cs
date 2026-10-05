@@ -1,3 +1,4 @@
+using Orkeon.Domain.FileSystem;
 using System.Text.Json;
 using Orkeon.Domain.Common;
 using Orkeon.Studio.Core.Configuration;
@@ -67,8 +68,8 @@ public sealed class TeamSettingFollowsTests : IDisposable
         var team = Path.Combine(parent ?? _teamsRoot, slug);
         Directory.CreateDirectory(Path.Combine(team, "crew"));
         File.WriteAllText(Path.Combine(team, "crew", "config.yaml"), "name: veille\n");
-        File.WriteAllText(Path.Combine(team, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\nexec orkeon run \"$DIR/crew\"\n");
-        File.WriteAllText(Path.Combine(team, TeamLaunchers.WindowsLauncherName), "@echo off\r\norkeon run \"%~dp0crew\"\r\n");
+        File.WriteAllText(Path.Combine(team, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\n# " + TeamLauncherScript.Header(slug) + "\nexec orkeon run \"$DIR/crew\"\n");
+        File.WriteAllText(Path.Combine(team, TeamLaunchers.WindowsLauncherName), "@echo off\r\nrem " + TeamLauncherScript.Header(slug) + "\r\norkeon run \"%~dp0crew\"\r\n");
         TeamCatalog.SaveMetadata(team, metadata);
         _targets.WithDirectory(team).WithDirectory(Path.Combine(team, "agents"));
         return team;
@@ -224,7 +225,7 @@ public sealed class TeamSettingFollowsTests : IDisposable
     {
         var source = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", Profile = "Claude" }, Path.Combine(_root, "shared"));
         File.WriteAllText(Path.Combine(source, TeamLaunchers.PosixLauncherName),
-            "#!/usr/bin/env sh\nexec orkeon run \"$DIR/crew\" --settings='/autre/machine/appsettings.json' --llm-profile='claude'\n");
+            "#!/usr/bin/env sh\n# " + TeamLauncherScript.Header("veille") + "\nexec orkeon run \"$DIR/crew\" --settings='/autre/machine/appsettings.json' --llm-profile='claude'\n");
         SettingsFile("{}");
         var window = Window();
         window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
@@ -254,7 +255,7 @@ public sealed class TeamSettingFollowsTests : IDisposable
         // The folder arrives by hand, with the launchers another machine wrote: nothing rewrites them
         // until the gesture that schedules the team here.
         await File.WriteAllTextAsync(Path.Combine(team, TeamLaunchers.PosixLauncherName),
-            "#!/usr/bin/env sh\nexec orkeon run \"$DIR/crew\" --settings='/autre/machine/appsettings.json'\n",
+            "#!/usr/bin/env sh\n# " + TeamLauncherScript.Header("veille") + "\nexec orkeon run \"$DIR/crew\" --settings='/autre/machine/appsettings.json'\n",
             TestContext.Current.CancellationToken);
         window.Teams.Refresh();
         string? atInstall = null;

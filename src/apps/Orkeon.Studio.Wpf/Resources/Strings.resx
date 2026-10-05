@@ -1165,6 +1165,12 @@
   <data name="Studio.Teams.ScheduledRunFolderRefused" xml:space="preserve">
     <value>The next scheduled run will be refused: the saved settings file does not declare the folder {0} yet. Save the settings.</value>
   </data>
+  <data name="Studio.Teams.ScheduledForeignLaunchers" xml:space="preserve">
+    <value>The scheduled run uses the team's own run.sh / run.cmd, written by another tool: it does not read Studio's setting nor its folders.</value>
+  </data>
+  <data name="Studio.Teams.LaunchersKept" xml:space="preserve">
+    <value>The folders are saved. The team's run.sh and run.cmd were written by another tool and were left as they are — Studio launches the team from its card.</value>
+  </data>
   <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
     <value>Archived team — restore it?</value>
   </data>

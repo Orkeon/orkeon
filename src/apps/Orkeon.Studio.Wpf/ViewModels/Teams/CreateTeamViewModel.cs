@@ -3315,7 +3315,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// schedule still installed (STUDIO-51). Then, when the <c>run.cmd</c> Studio just wrote
     /// launches nothing — the team's command is longer than <c>cmd</c> holds —, that (STUDIO-51):
     /// the engine's word on its own launchers is left out once Studio's replace them. Said, never
-    /// a failure: the team is saved.
+    /// a failure: the team is saved. Never <see cref="TeamLaunchersOutcome.ForeignKept"/> here
+    /// (STUDIO-63): the launchers <c>forge promote</c> just wrote carry Orkeon's header.
     /// </summary>
     private string AdoptedLine(string adopted, ForgeWarningInfo? warning, TeamLaunchersResult launchers)
     {

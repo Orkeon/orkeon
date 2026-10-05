@@ -1,3 +1,4 @@
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
@@ -41,8 +42,8 @@ public sealed class ScheduledTeamLaunchersTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_team, "crew"));
         File.WriteAllText(Path.Combine(_team, "crew", "config.yaml"), "name: veille\n");
         // What `forge promote` wrote, before any setting of the team existed.
-        File.WriteAllText(Path.Combine(_team, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\nexec orkeon run \"$DIR/crew\"\n");
-        File.WriteAllText(Path.Combine(_team, TeamLaunchers.WindowsLauncherName), "@echo off\r\norkeon run \"%~dp0crew\"\r\n");
+        File.WriteAllText(Path.Combine(_team, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\n# " + TeamLauncherScript.Header("veille-docs") + "\nexec orkeon run \"$DIR/crew\"\n");
+        File.WriteAllText(Path.Combine(_team, TeamLaunchers.WindowsLauncherName), "@echo off\r\nrem " + TeamLauncherScript.Header("veille-docs") + "\r\norkeon run \"%~dp0crew\"\r\n");
         TeamCatalog.SaveMetadata(_team, new StudioTeamMetadata
         {
             Name = "Veille docs",
@@ -129,5 +130,53 @@ public sealed class ScheduledTeamLaunchersTests : IDisposable
         Assert.Contains("--mount \"\\\"$DIR/output\\\":/output:rw\" \"\\\"$DIR/rapports\\\":/rapports:rw\"", posix, StringComparison.Ordinal);
         Assert.Contains("--llm-profile='deepseek'", posix, StringComparison.Ordinal);
         Assert.Contains("^\"\\\"%~dp0rapports\\\":/rapports:rw^\"", Windows(), StringComparison.Ordinal);
+    }
+    // ── STUDIO-63: launchers another tool wrote ──
+
+    private const string WorkshopPosix =
+        "#!/usr/bin/env sh\n# Launcher of the Orkeon team 'veille-docs', written by `orkeon-bench scaffold` from mounts.json:\n"
+        + "TEAM_ENV=prod\nexec orkeon run \"$DIR/crew\" --settings \"$DIR/../settings/veille-docs/appsettings.json\"\n";
+
+    private const string WorkshopWindows =
+        "@echo off\r\nrem Launcher of the Orkeon team 'veille-docs', written by `orkeon-bench scaffold` from mounts.json:\r\n"
+        + "set TEAM_ENV=prod\r\norkeon run \"%~dp0crew\" --settings \"%~dp0..\\settings\\veille-docs\\appsettings.json\"\r\n";
+
+    /// <summary>
+    /// STUDIO-63: the workshop's launchers stay byte for byte as they are through every gesture that
+    /// writes Orkeon's — a setting created, « Change the folders », « Install the schedule » —; the
+    /// folders dialog says so on My teams, and the scheduled card says the run uses them.
+    /// </summary>
+    [Fact]
+    public async Task Launchers_another_tool_wrote_stay_as_they_are_and_the_screen_says_it()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_team, TeamLaunchers.PosixLauncherName), WorkshopPosix, TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_team, TeamLaunchers.WindowsLauncherName), WorkshopWindows, TestContext.Current.CancellationToken);
+        TeamCatalog.SaveMetadata(_team, new StudioTeamMetadata { Name = "Veille docs", Profile = "DeepSeek", Schedule = "daily@07:30", Mounts = ["./output:/output:rw"] });
+        var window = Window();
+
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        Assert.Equal(WorkshopPosix, Posix());
+        Assert.Equal(WorkshopWindows, Windows());
+
+        var card = window.Teams.Teams.Single(c => c.Summary.Path == _team);
+        card.ChangeMountsCommand.Execute(null);
+        window.TeamMounts.AddMount(new MountDefinition { PhysicalPath = Path.Combine(_team, "rapports"), VirtualPath = "/rapports", Rights = MountRights.ReadWrite });
+        window.TeamMounts.SaveCommand.Execute(null);
+        Assert.Equal(WorkshopPosix, Posix());
+        Assert.Equal(WorkshopWindows, Windows());
+        Assert.Contains(TeamCatalog.Describe(_team).Mounts, mount => mount.Contains("/rapports", StringComparison.Ordinal));
+        Assert.Equal(
+            "The folders are saved. The team's run.sh and run.cmd were written by another tool and were left as they are — Studio launches the team from its card.",
+            window.Teams.StatusMessage);
+
+        card = window.Teams.Teams.Single(c => c.Summary.Path == _team);
+        Assert.Equal(
+            "The scheduled run uses the team's own run.sh / run.cmd, written by another tool: it does not read Studio's setting nor its folders.",
+            card.ScheduledRunLine);
+
+        // « Install the schedule » writes Orkeon's launchers first (STUDIO-52): not these.
+        await card.InstallScheduleCommand.ExecuteAsync();
+        Assert.Equal(WorkshopPosix, Posix());
+        Assert.Equal(WorkshopWindows, Windows());
     }
 }
