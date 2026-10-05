@@ -546,6 +546,9 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>The session rule R linked to this team when the banner was armed; null when none.</summary>
     internal ForgeSolutionSummary? LinkedSession => _linkedSession;
 
+    /// <summary>Whether the armed banner archives in a workshop rather than deletes (STUDIO-64).</summary>
+    private bool _archivesInWorkshop;
+
     /// <summary>Why the delete did not happen — its schedule could not be stopped, or the disk refused; empty otherwise.</summary>
     public string DeleteRefusal
     {
@@ -574,11 +577,24 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Whether the banner shows the manual command.</summary>
     public bool HasDeleteManualCommand => _deleteManualCommand is { Length: > 0 };
 
-    /// <summary>Arms the banner's answers: the linked session, the box ticked, no refusal yet.</summary>
-    internal void PrepareDelete(ForgeSolutionSummary? linkedSession)
+    /// <summary>
+    /// The banner's question: « Delete this team? » in a plain catalogue; in a workshop, where
+    /// Delete moves the team and its trees under <c>archive/</c>, « Move the team and what goes
+    /// with it to the workshop's archive? » (STUDIO-64).
+    /// </summary>
+    public string DeleteQuestion =>
+        _strings[_archivesInWorkshop ? StudioStringKeys.TeamsDeleteAskArchive : StudioStringKeys.TeamsDeleteConfirm];
+
+    /// <summary>
+    /// Arms the banner's answers: the linked session, the box ticked, no refusal yet — and, with
+    /// <paramref name="archivesInWorkshop"/>, the workshop's question in place of the plain one.
+    /// </summary>
+    internal void PrepareDelete(ForgeSolutionSummary? linkedSession, bool archivesInWorkshop = false)
     {
         _linkedSession = linkedSession;
+        _archivesInWorkshop = archivesInWorkshop;
         OnPropertyChanged(nameof(CanDeleteSessionToo));
+        OnPropertyChanged(nameof(DeleteQuestion));
         DeleteSessionToo = true;
         RefuseDelete("", null);
     }
@@ -1958,6 +1974,20 @@ public sealed class TeamsViewModel : ObservableObject
         if (TeamCatalog.Duplicate(path, _clock.GetUtcNow()) is not { } copy)
             return;
 
+        // In a workshop, the copy's launchers read settings/<copy-slug>: the settings follow the copy
+        // and nothing else does — a workbook and tests are the original's story (STUDIO-64). A copy
+        // of the settings that failed is said, never the copy of the team undone.
+        if (WorkshopLayout.IsWorkshop(TeamsRoot))
+        {
+            var copySlug = FolderNameOf(copy);
+            var settings = WorkshopSiblings.CopySettings(TeamsRoot, FolderNameOf(path), copySlug);
+            var folder = $"{WorkshopLayout.SettingsFolder}/{copySlug}";
+            if (settings.Moved.Count > 0)
+                StatusMessage = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsDuplicateSettingsCopied], folder);
+            else if (!settings.Succeeded)
+                StatusMessage = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsDuplicateSettingsNotCopied], folder);
+        }
+
         Refresh();
         // A copy carries its original's schedule, which runs the original: what runs the copy is
         // the engine's to say (STUDIO-27).
@@ -2006,10 +2036,20 @@ public sealed class TeamsViewModel : ObservableObject
         var folder = System.IO.Path.Combine(
             System.IO.Path.GetDirectoryName(System.IO.Path.TrimEndingDirectorySeparator(team.Path)) ?? team.Path,
             FolderSlug.From(name) ?? FolderSlug.TeamFallback);
-        if (!string.Equals(NormalizePath(folder), NormalizePath(team.Path), PhysicalPathContainment.Comparison)
-            && TakenRefusal(folder) is { } taken)
+        var moves = !string.Equals(NormalizePath(folder), NormalizePath(team.Path), PhysicalPathContainment.Comparison);
+        if (moves && TakenRefusal(folder) is { } taken)
         {
             card.RefuseRename(taken);
+            return;
+        }
+
+        // In a workshop, a tree of the new slug beside the teams root — a workbook, tests, settings,
+        // a mount set — would be left to the renamed team: refused before the engine is asked (STUDIO-64).
+        if (moves && WorkshopSiblings.TakenTrees(TeamsRoot, FolderNameOf(folder)) is { Count: > 0 } takenTrees)
+        {
+            card.RefuseRename(string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameSiblingTaken],
+                TreeNames(takenTrees, FolderNameOf(folder))));
             return;
         }
 
@@ -2022,13 +2062,17 @@ public sealed class TeamsViewModel : ObservableObject
 
         // A name whose folder is the team's own only retitled it: nothing Studio keeps moved.
         var renamed = report.Path!;
+        WorkshopMoveResult? siblings = null;
         if (!string.Equals(NormalizePath(renamed), NormalizePath(team.Path), PhysicalPathContainment.Comparison))
         {
             await RebaseHistoryAsync(team.Path, renamed).ConfigureAwait(true);
             FollowScheduleState(team, renamed, report.ScheduleState);
+            // The workshop's trees follow the folder the engine moved (STUDIO-64); a tree that could
+            // not is put back with the others and said — the team stays renamed.
+            siblings = WorkshopSiblings.FollowRename(TeamsRoot, FolderNameOf(team.Path), FolderNameOf(renamed));
         }
 
-        StatusMessage = RenamedLine(name, team.Path, renamed, report.Warnings);
+        StatusMessage = RenamedLine(name, team.Path, renamed, report.Warnings, siblings);
         Refresh();
         TeamRenamed?.Invoke(this, new TeamRenamedEventArgs(team.Path, renamed));
     }
@@ -2120,7 +2164,7 @@ public sealed class TeamsViewModel : ObservableObject
     /// allow inside the former folder, which pointed into the team and now point nowhere. The user's
     /// settings are said, never rewritten. The engine's own warnings follow, in its words.
     /// </summary>
-    private string RenamedLine(string name, string from, string renamed, IReadOnlyList<string> warnings)
+    private string RenamedLine(string name, string from, string renamed, IReadOnlyList<string> warnings, WorkshopMoveResult? siblings)
     {
         var parts = new List<string>
         {
@@ -2128,6 +2172,18 @@ public sealed class TeamsViewModel : ObservableObject
                 CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenamed],
                 name, System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(renamed))),
         };
+
+        // STUDIO-64: what the workshop keeps beside the team followed it — or stayed, named.
+        if (siblings is { Kept.Count: > 0 })
+        {
+            parts.Add(string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameSiblingsKept],
+                TreeNames(siblings.Kept, FolderNameOf(from)), FolderNameOf(from)));
+        }
+        else if (siblings is { Moved.Count: > 0 })
+        {
+            parts.Add(_strings[StudioStringKeys.TeamsRenamedWithSiblings]);
+        }
 
         var stranded = _declaredMounts()
             .Where(entry => !TeamMountPaths.IsTeamRelative(entry) && DeclaredMounts.IsInsideTeam(entry, from))
@@ -2143,6 +2199,14 @@ public sealed class TeamsViewModel : ObservableObject
         parts.AddRange(warnings);
         return string.Join(" ", parts);
     }
+
+    /// <summary>The folder's own name: the slug that indexes a team's trees in a workshop (STUDIO-64).</summary>
+    private static string FolderNameOf(string path) =>
+        System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(path));
+
+    /// <summary>The trees as the workshop spells them — <c>settings/veille</c>, <c>mounts.test/veille</c> —, comma-separated.</summary>
+    private static string TreeNames(IEnumerable<string> kinds, string slug) =>
+        string.Join(", ", kinds.Select(kind => $"{kind}/{slug}"));
 
     /// <summary>
     /// Deletes a team, and leaves nothing behind (STUDIO-27, D-06/D-07). Rule R names the linked
@@ -2170,7 +2234,22 @@ public sealed class TeamsViewModel : ObservableObject
             }
         }
 
-        if (!TeamCatalog.Delete(team.Path))
+        // In a workshop, nothing is erased: the team and its trees go under archive/<slug>/ (STUDIO-64).
+        // The team folder moves first, so a refusal there has moved nothing; a later one puts all back.
+        if (WorkshopLayout.IsWorkshop(TeamsRoot))
+        {
+            var archived = WorkshopSiblings.Archive(TeamsRoot, FolderNameOf(team.Path));
+            if (!archived.Succeeded || archived.Destination is null)
+            {
+                card.RefuseDelete(_strings[StudioStringKeys.TeamsDeleteRefused], null);
+                return;
+            }
+
+            StatusMessage = string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchivedToWorkshop],
+                $"{WorkshopLayout.ArchiveFolder}/{FolderNameOf(archived.Destination)}");
+        }
+        else if (!TeamCatalog.Delete(team.Path))
         {
             card.RefuseDelete(_strings[StudioStringKeys.TeamsDeleteRefused], null);
             return;
@@ -2215,8 +2294,9 @@ public sealed class TeamsViewModel : ObservableObject
         switch (row)
         {
             case TeamCardViewModel card:
-                // The banner's box needs the session before it opens (STUDIO-27, D-07).
-                card.PrepareDelete(LinkedSessionOf(card.Summary));
+                // The banner's box needs the session before it opens (STUDIO-27, D-07), and its
+                // question needs to know whether Delete archives here (STUDIO-64).
+                card.PrepareDelete(LinkedSessionOf(card.Summary), WorkshopLayout.IsWorkshop(TeamsRoot));
                 card.IsConfirmingDelete = true;
                 break;
             case InProgressSessionViewModel session:

@@ -679,6 +679,48 @@ public sealed class TeamsScreenTests : IDisposable
         Assert.Null(screen.Cards[0].LastRun);
     }
 
+    /// <summary>
+    /// STUDIO-64: in a workshop the copy's launchers read settings/&lt;copy-slug&gt;, so the settings
+    /// follow the copy — and nothing else does: a workbook, tests and a mount set are the
+    /// original's own.
+    /// </summary>
+    [Fact]
+    public void In_a_workshop_a_duplicate_takes_its_settings_and_nothing_else()
+    {
+        Team("modele", "Modèle");
+        foreach (var tree in new[] { "workbooks", "tests", "settings", "mounts.test" })
+            Directory.CreateDirectory(Path.Combine(_root, tree, "modele"));
+        File.WriteAllText(Path.Combine(_root, "settings", "modele", "appsettings.json"), "{}\n");
+        var screen = Screen();
+
+        screen.Cards.Single(card => card.Slug == "modele").DuplicateCommand.Execute(null);
+
+        Assert.Equal(["modele-copy", "modele"], Slugs(screen.Cards));
+        Assert.True(File.Exists(Path.Combine(_root, "settings", "modele-copy", "appsettings.json")));
+        Assert.True(File.Exists(Path.Combine(_root, "settings", "modele", "appsettings.json")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "workbooks", "modele-copy")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "tests", "modele-copy")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "mounts.test", "modele-copy")));
+        Assert.Equal(Format(StudioStringKeys.TeamsDuplicateSettingsCopied, "settings/modele-copy"), screen.StatusMessage);
+    }
+
+    /// <summary>Without a workshop, a duplicate copies the team folder and nothing outside teams/, as before.</summary>
+    [Fact]
+    public void Without_a_workshop_a_duplicate_copies_the_team_folder_alone()
+    {
+        Team("modele", "Modèle");
+        Directory.CreateDirectory(Path.Combine(_root, "settings", "modele"));
+        File.WriteAllText(Path.Combine(_root, "settings", "modele", "appsettings.json"), "{}\n");
+        var screen = Screen();
+
+        screen.Cards.Single(card => card.Slug == "modele").DuplicateCommand.Execute(null);
+
+        Assert.Equal(["modele-copy", "modele"], Slugs(screen.Cards));
+        Assert.True(Directory.Exists(Path.Combine(TeamsRoot, "modele-copy")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "settings", "modele-copy")));
+        Assert.Equal("", screen.StatusMessage);
+    }
+
     // ── the acceptance criteria (fiche §7) ──
 
     /// <summary>

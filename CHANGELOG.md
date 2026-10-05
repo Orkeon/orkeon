@@ -88,6 +88,41 @@ its own; a dry run creates the team's missing writable folders, as a real run do
   the lots that follow.
 - Migration: nothing set, the same path — `%USERPROFILE%\Orkeon\teams`, no diff on disk.
 
+### Fixed — in a workshop, Rename, Delete and Duplicate follow the team's trees
+
+- **Rename left four orphans** (STUDIO-64, a fix to an existing surface). In an Orkeon Workshop
+  folder, everything that goes with a team is indexed by its folder name: `workbooks/<slug>`,
+  `tests/<slug>`, `settings/<slug>/appsettings.json` — read by its launchers as
+  `settings/$(basename "$DIR")` — and each `mounts.<name>/<slug>`. Rename in My teams moved
+  `teams/<slug>` alone, so the renamed team ran on the machine's model in silence. Once the engine
+  has moved the team folder, `WorkshopSiblings.FollowRename` (Studio.Core) now moves the sibling
+  trees that exist, and the line says « Its workbook, tests, settings and mount sets followed
+  it ». A destination already taken refuses the rename in the editor, before the engine is asked,
+  naming it. A move the disk refuses after the engine succeeded puts back the trees already moved,
+  and the team stays renamed: the line names the trees that stayed under the former slug.
+- **Delete erased without return.** `archive/` exists in a workshop for the teams taken out, the
+  workbook holds the decisions and approvals of paid runs that Studio never shows, and a mount set
+  is outside git. In a workshop, Delete now moves the team folder first, then its trees, under
+  `archive/<slug>/<kind>/` — `archive/<slug>-2/` when the name is taken, by the free-suffix rule
+  every folder Orkeon names follows (`TeamCatalog.FreeSibling`); a `mounts.<name>` keeps its whole
+  name. The banner asks « Move the team and what goes with it to the workshop's archive? », its
+  session box stays, the schedule is stopped first as before, and the linked session goes only once
+  the archive succeeded. A refusal on the team folder has moved nothing; a later one puts
+  everything back; both say the disk refused. The line says « Moved to archive/<slug>. ».
+- **Duplicate copied a team without its setting.** `settings/<slug>-copy` did not exist, so the
+  copy ran on the machine's model where the original ran on its own. In a workshop, Duplicate now
+  copies `settings/<slug>` to `settings/<slug>-copy` and nothing else — a workbook and tests are
+  the original's story, a mount set an environment built on purpose. A settings folder already
+  under the copy's name is left alone; a copy of the settings the disk refused is said on the
+  line, the copy of the team never undone.
+- **A plain catalogue is untouched.** Without `settings/` and `workbooks/` beside the teams root
+  there is no workshop (`WorkshopLayout.IsWorkshop`, STUDIO-61): the three gestures do byte for
+  byte what they did, a folder named like a tree stays where it is, and explicit tests hold it.
+  `TeamCatalog.Delete` and `Duplicate` keep their signatures; `CopyTree` is now `internal`.
+- Migration: in a workshop, Delete archives instead of erasing — a team taken out sits whole under
+  `archive/<slug>/`, to delete by hand or with `orkeon-bench team remove`; the fallback that kept
+  erasing the team folder was not taken. Outside a workshop, no change.
+
 ### Fixed — the Folders step proposes what the request calls for, says when it is the standard proposal, and lets the user fill the folders kept inside the team before the trial (STUDIO-57)
 
 - **A folder to read is proposed only when the team reads files.** A request such as « summarize

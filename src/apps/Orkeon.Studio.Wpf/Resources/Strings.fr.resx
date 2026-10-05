@@ -1223,6 +1223,27 @@
   <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
     <value>Vérifiez Réglages › Dossiers autorisés : {0} se trouvait dans l'ancien dossier de l'équipe et n'existe plus.</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
+    <value>Ranger l'équipe et ce qui va avec dans l'archive de l'atelier ?</value>
+  </data>
+  <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
+    <value>Rangé dans {0}.</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingTaken" xml:space="preserve">
+    <value>Dans l'atelier, {0} est déjà pris : choisissez un autre nom.</value>
+  </data>
+  <data name="Studio.Teams.RenamedWithSiblings" xml:space="preserve">
+    <value>Son classeur, ses tests, ses réglages et ses jeux de dossiers l'ont suivie.</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingsKept" xml:space="preserve">
+    <value>Dans l'atelier, {0} n'ont pas pu suivre l'équipe et restent sous {1}.</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsCopied" xml:space="preserve">
+    <value>Ses réglages ont suivi la copie : {0}.</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsNotCopied" xml:space="preserve">
+    <value>La copie tourne sur le réglage par défaut : {0} n'a pas pu être copié.</value>
+  </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
     <value>Pour renommer le dossier, utilisez Renommer dans Mes équipes.</value>
   </data>

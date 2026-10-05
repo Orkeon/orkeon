@@ -2617,6 +2617,27 @@
   <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
     <value>Prüfen Sie Einstellungen › Erlaubte Ordner: {0} lag im früheren Ordner des Teams und existiert nicht mehr.</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
+    <value>Das Team und was dazugehört ins Archiv der Werkstatt verschieben?</value>
+  </data>
+  <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
+    <value>Verschoben nach {0}.</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingTaken" xml:space="preserve">
+    <value>In der Werkstatt ist {0} bereits belegt: Wählen Sie einen anderen Namen.</value>
+  </data>
+  <data name="Studio.Teams.RenamedWithSiblings" xml:space="preserve">
+    <value>Arbeitsmappe, Tests, Einstellungen und Ordnersätze sind mitgezogen.</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingsKept" xml:space="preserve">
+    <value>In der Werkstatt konnten {0} dem Team nicht folgen und bleiben unter {1}.</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsCopied" xml:space="preserve">
+    <value>Die Einstellungen sind mit der Kopie gegangen: {0}.</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsNotCopied" xml:space="preserve">
+    <value>Die Kopie läuft mit der Standardeinstellung: {0} konnte nicht kopiert werden.</value>
+  </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
     <value>Um den Ordner umzubenennen, nutzen Sie „Umbenennen“ unter „Meine Teams“.</value>
   </data>

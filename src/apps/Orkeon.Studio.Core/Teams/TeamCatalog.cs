@@ -1448,7 +1448,7 @@ public static partial class TeamCatalog
     /// Copies <paramref name="source"/> into <paramref name="destination"/>; with
     /// <paramref name="leaveSchedule"/>, the source's own <c>schedule/</c> stays behind.
     /// </summary>
-    private static void CopyTree(string source, string destination, bool leaveSchedule = false)
+    internal static void CopyTree(string source, string destination, bool leaveSchedule = false)
     {
         Directory.CreateDirectory(destination);
         foreach (var file in Directory.EnumerateFiles(source))
