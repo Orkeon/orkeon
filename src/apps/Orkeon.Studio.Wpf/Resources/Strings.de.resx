@@ -1584,6 +1584,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve">
     <value>Der Ordner enthält nichts, was die Engine ausführen kann.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-ROOT-SHADOWED" xml:space="preserve">
+    <value>Das Team ist sein Unterordner crew/: die Ordner oder Skripte in seinem Stammverzeichnis wurden beiseitegelassen, nicht ausgeführt.</value>
+  </data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>Web-Rückfall aktiv: Die korrigierende Schleife darf Seiten abrufen, jede davon gegen Prompt-Injection geprüft.</value>
   </data>

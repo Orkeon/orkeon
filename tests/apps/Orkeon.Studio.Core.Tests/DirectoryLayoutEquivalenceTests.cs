@@ -58,6 +58,12 @@ public sealed class DirectoryLayoutEquivalenceTests : IDisposable
         ("partial-flat", DirectoryVerdict.NotAYamlCrewDirectory),
         ("loose-yaml", DirectoryVerdict.NotAYamlCrewDirectory),
         ("empty", DirectoryVerdict.NotAYamlCrewDirectory),
+        // STUDIO-59: a team folder's crew/ is the crew, whatever the root holds.
+        ("crew-plus-root-agents", DirectoryVerdict.RunnableYamlDirectory),
+        ("crew-plus-root-script", DirectoryVerdict.RunnableYamlDirectory),
+        ("crew-plus-clean-root", DirectoryVerdict.RunnableYamlDirectory),
+        ("empty-crew-plus-root-agents", DirectoryVerdict.RunnableYamlDirectory),
+        ("crew-script-plus-root-script", DirectoryVerdict.NotAYamlCrewDirectory),
     ];
 
     public static TheoryData<string, DirectoryVerdict> Matrix()
@@ -123,6 +129,11 @@ public sealed class DirectoryLayoutEquivalenceTests : IDisposable
             Assert.True(
                 CrewDirectoryLayout.Inspect(target.RunPath).IsCrewDirectory,
                 $"Studio would run '{name}' as a directory but the CLI rejects it.");
+            // And handed the team folder itself, the CLI loads the definition Studio runs:
+            // the crew/ sub-folder when there is one, the root otherwise (STUDIO-59).
+            Assert.Equal(
+                target.RunPath,
+                CrewDirectoryLayout.Inspect(directory).CrewRoot);
         }
     }
 
@@ -209,11 +220,42 @@ public sealed class DirectoryLayoutEquivalenceTests : IDisposable
                 break;
             case "empty":
                 break;
+            case "crew-plus-root-agents":
+                WritePromotedCrew(directory);
+                Folder(directory, "agents", "mounted.txt");
+                break;
+            case "crew-plus-root-script":
+                WritePromotedCrew(directory);
+                Write(directory, "crew.ork.ts", "export const crew = {};\n");
+                break;
+            case "crew-plus-clean-root":
+                WritePromotedCrew(directory);
+                Folder(directory, "output", ".keep");
+                Write(directory, "run.sh", "#!/bin/sh\n");
+                break;
+            case "empty-crew-plus-root-agents":
+                Directory.CreateDirectory(Path.Combine(directory, "crew"));
+                Folder(directory, "agents", "researcher.yaml");
+                Write(directory, "config.yaml", "name: fixture\n");
+                break;
+            case "crew-script-plus-root-script":
+                Directory.CreateDirectory(Path.Combine(directory, "crew"));
+                Write(Path.Combine(directory, "crew"), "crew.ork.ts", "export const crew = {};\n");
+                Write(directory, "crew.ork.ts", "export const crew = {};\n");
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(fixtureName), fixtureName, "Unknown fixture.");
         }
 
         return directory;
+    }
+
+    /// <summary>The layout <c>forge promote</c> writes: the definition under <c>crew/</c>.</summary>
+    private static void WritePromotedCrew(string directory)
+    {
+        var crew = Path.Combine(directory, "crew");
+        Folder(crew, "agents", "researcher.yaml");
+        Write(crew, "config.yaml", "name: fixture\n");
     }
 
     private static void WriteFlatTriplet(string directory)

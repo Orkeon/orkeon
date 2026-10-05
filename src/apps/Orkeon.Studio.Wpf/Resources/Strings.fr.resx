@@ -558,6 +558,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-AMBIGUOUS" xml:space="preserve"><value>Le dossier contient à la fois une équipe YAML et un script : choisissez lequel exécuter.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-YAML-BLOCKED" xml:space="preserve"><value>L'équipe YAML ne peut pas tourner tant que le dossier contient aussi un script : sortez le script, ou exécutez le script.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve"><value>Le dossier ne contient rien que le moteur puisse exécuter.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-ROOT-SHADOWED" xml:space="preserve"><value>L'équipe est son sous-dossier crew/ : les dossiers ou scripts à sa racine ont été mis de côté, pas exécutés.</value></data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve"><value>Secours web actif : la boucle corrective peut consulter des pages, chacune validée contre l'injection de prompt.</value></data>
   <data name="Studio.Settings.WebFallbackTransportOff" xml:space="preserve"><value>Inactif : la politique corrective l'autorise, mais le transport (Orkeon:Rag:WebFallback) est encore éteint.</value></data>
   <data name="Studio.Settings.WebFallbackPolicyOff" xml:space="preserve"><value>Inactif : le transport est allumé, mais la politique corrective (Orkeon:Rag:Corrective:WebFallback) est encore éteinte.</value></data>

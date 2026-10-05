@@ -16,7 +16,12 @@ namespace Orkeon.Hosting;
 /// recognized layout at all. <see langword="null"/> when the path is not a directory
 /// (the caller keeps its file-based dispatch) or when the directory is a valid crew.
 /// </param>
-public sealed record CrewDirectoryInspection(bool IsCrewDirectory, string? Error);
+/// <param name="CrewRoot">
+/// The directory holding the definition the loader reads, as a full physical path: the
+/// inspected directory itself, or its <c>crew/</c> sub-folder when that one is the crew
+/// (STUDIO-59). <see langword="null"/> when <paramref name="IsCrewDirectory"/> is false.
+/// </param>
+public sealed record CrewDirectoryInspection(bool IsCrewDirectory, string? Error, string? CrewRoot = null);
 
 /// <summary>
 /// Detects whether a crew target path is a <b>crew directory</b> rather than a single file, so
@@ -28,6 +33,13 @@ public sealed record CrewDirectoryInspection(bool IsCrewDirectory, string? Error
 ///   <item><description><b>flat</b> — the legacy triplet <c>crew.yaml</c> + <c>agents.yaml</c> +
 ///   <c>tasks.yaml</c>.</description></item>
 /// </list>
+/// A directory whose <c>crew/</c> sub-folder holds one of those layouts — the team folder
+/// <c>forge promote</c> writes, one folder per mount point beside the definition — is a crew
+/// whose definition is <c>crew/</c>, whatever the root holds (STUDIO-59): a mount point named
+/// <c>agents/</c> or a launcher script at the root is set aside, never read as a crew. The
+/// descent is one step, never into <c>crew/crew/</c>, and a <c>crew/</c> that is no crew leaves
+/// the root under its own rules. Orkeon Studio applies the same order
+/// (<c>RunTargetDetector</c>), so a folder is read one way.
 /// A directory that also holds a scripting entry point is rejected as ambiguous instead of
 /// silently preferring one form over the other, and a directory with no recognized layout is
 /// rejected with the list of what was searched.
@@ -35,6 +47,12 @@ public sealed record CrewDirectoryInspection(bool IsCrewDirectory, string? Error
 [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: classifies the user-supplied crew target on the physical disk, before the host (and thus IFileSystemService) is built.")]
 public static class CrewDirectoryLayout
 {
+    /// <summary>
+    /// The sub-folder a promoted team keeps its definition in (mirrors the forge renderer's
+    /// <c>CrewDirectoryName</c> and Studio's <c>RunTargetDetector.PromotedCrewDirectoryName</c>).
+    /// </summary>
+    public const string PromotedCrewFolder = "crew";
+
     /// <summary>Sub-directory names that select the per-entity layout.</summary>
     private static readonly string[] EntityFolders = ["agents", "tasks"];
 
@@ -60,6 +78,22 @@ public static class CrewDirectoryLayout
         if (!Directory.Exists(root))
             return new CrewDirectoryInspection(false, null);
 
+        // The promoted layout first: a crew/ that is itself a crew is the team's definition,
+        // and the root's folders and scripts are mount points and launchers. One step only.
+        var promoted = Path.Combine(root, PromotedCrewFolder);
+        if (Directory.Exists(promoted) && InspectRoot(promoted) is { IsCrewDirectory: true } team)
+            return team;
+
+        return InspectRoot(root);
+    }
+
+    /// <summary>
+    /// Classifies <paramref name="root"/> on its own content — the per-entity or flat layout at
+    /// its root, a scripting entry point beside it — without looking into a <c>crew/</c>
+    /// sub-folder: this is the one step <see cref="Inspect"/> takes on it.
+    /// </summary>
+    private static CrewDirectoryInspection InspectRoot(string root)
+    {
         var entityFolders = EntityFolders
             .Select(name => Path.Combine(root, name))
             .Where(Directory.Exists)
@@ -78,7 +112,7 @@ public static class CrewDirectoryLayout
             return new CrewDirectoryInspection(false, DescribeAmbiguous(root, yamlMarkers, scripts));
         }
 
-        return new CrewDirectoryInspection(true, null);
+        return new CrewDirectoryInspection(true, null, root);
     }
 
     /// <summary>
@@ -112,7 +146,7 @@ public static class CrewDirectoryLayout
         var searched = string.Join(", ",
             EntityFolders.Select(name => Quote(name + "/")).Append(Quote(string.Join(" + ", FlatFiles))));
         var message = $"'{root}' is a directory but holds no recognized crew layout. "
-            + $"Searched for: {searched}.";
+            + $"Searched for: {searched}, at its root or under a {Quote(PromotedCrewFolder + "/")} sub-folder.";
 
         // A lone script in the directory is the most likely intent behind `run <dir>` here, so
         // point at it rather than leaving the user to guess — without ever running it implicitly.

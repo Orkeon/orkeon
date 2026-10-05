@@ -21,6 +21,13 @@ namespace Orkeon.Studio.Core.Targets;
 ///   to <c>crew.yaml</c>, then <c>config.yaml</c>, and are otherwise offered as candidates
 ///   the way scripts are (STUDIO-12 C1).</description></item>
 /// </list>
+/// Before any of the directory rules, a <c>crew/</c> sub-folder that is itself one of those
+/// shapes is the crew (STUDIO-59): the promoted layout <c>forge promote</c> writes is a
+/// container — the team folder — not a shape competing with its root, and the CLI reads it
+/// the same way (<c>CrewDirectoryLayout.Inspect</c>). The run descends into <c>crew/</c>, the
+/// team folder stays the selected path, and whatever markers or scripts the root carried are
+/// named in a notice (<see cref="RunTargetCodes.RootShadowedByPromotedCrew"/>): a mount point
+/// named <c>agents/</c> at the root of a workshop team is a folder, not a crew.
 /// A directory holding a YAML layout <em>and</em> any scripting entry point is refused as
 /// ambiguous, exactly as <c>CrewDirectoryLayout.Inspect</c> refuses it: the CLI applies no
 /// precedence there, and offers no flag to force one shape over the other.
@@ -169,6 +176,17 @@ public sealed class RunTargetDetector
         var scripts = ListScripts(directory);
         var crewScript = scripts.Find(IsConventionalCrewScript);
 
+        // The promoted layout first: a crew/ holding a crew is the team's definition, and the
+        // root's markers and scripts are mount points and launchers, never a competing crew.
+        if (allowPromotedLayout && TryResolvePromotedLayout(directory, preferredKind) is { } promoted)
+        {
+            return markers.Count > 0 || scripts.Count > 0
+                ? promoted.WithNotice(
+                    RunTargetCodes.RootShadowedByPromotedCrew,
+                    RootShadowedText(directory, markers, scripts))
+                : promoted;
+        }
+
         if (markers.Count > 0 && scripts.Count > 0)
             return ResolveContested(directory, markers, scripts, crewScript, preferredKind);
 
@@ -180,9 +198,6 @@ public sealed class RunTargetDetector
 
         if (scripts.Count > 0)
             return RunTargetDetection.NeedsSelection(directory, scripts);
-
-        if (allowPromotedLayout && TryResolvePromotedLayout(directory, preferredKind) is { } promoted)
-            return promoted;
 
         if (ResolveYamlFiles(directory) is { } singleFileCrew)
             return singleFileCrew;
@@ -198,11 +213,16 @@ public sealed class RunTargetDetector
 
     /// <summary>
     /// An adopted team: <c>forge promote</c> keeps the definition in a <c>crew/</c> sub-folder
-    /// and puts the launchers, the card, the deliverable folders and Studio's sidecar beside
-    /// it. The folder the user picks — and the one a team card hands over — is the team, so
-    /// the run path descends while the SELECTED path stays put: the sidecar is read next to
-    /// it, and the launch runs from the team folder, which is what makes the team's own
-    /// /output land inside the security root. Null when the folder holds no such layout.
+    /// and puts the launchers, the card, the deliverable folders — one per mount point, named
+    /// after it — and Studio's sidecar beside it. The folder the user picks — and the one a
+    /// team card hands over — is the team, so the run path descends while the SELECTED path
+    /// stays put: the sidecar is read next to it, and the launch runs from the team folder,
+    /// which is what makes the team's own /output land inside the security root. The team
+    /// folder is a container, not a shape competing with its root: this probe runs before
+    /// every root rule, and one step down only — <c>crew/crew/</c> is never looked into. Null
+    /// when the folder has no <c>crew/</c>, or one that resolves to no crew (empty, several
+    /// scripts, a failure): the root then keeps its own rules. Carrying the selection a
+    /// <c>crew/</c> with several scripts would ask for is a later improvement.
     /// </summary>
     private RunTargetDetection? TryResolvePromotedLayout(string directory, RunTargetKind? preferredKind)
     {
@@ -214,6 +234,19 @@ public sealed class RunTargetDetector
         return nested is { Status: RunTargetDetectionStatus.Resolved, Target: { } inner }
             ? RunTargetDetection.Resolved(directory, inner with { SelectedPath = directory })
             : null;
+    }
+
+    /// <summary>
+    /// The notice a promoted team carries when its root also looks like a crew: the markers
+    /// and scripts found there are named, so the user knows they were set aside, not run.
+    /// </summary>
+    private static string RootShadowedText(string directory, List<string> markers, List<string> scripts)
+    {
+        var setAside = string.Join(", ", markers.Concat(scripts).Select(path => $"'{path}'"));
+        return $"'{directory}' holds its crew under '{PromotedCrewDirectoryName}/', which is what runs. "
+            + $"What its root also carries ({setAside}) was not read as a crew: a folder named "
+            + $"'{AgentsDirectoryName}' or '{TasksDirectoryName}' at the root of a team is a mount point, "
+            + $"and a script there is not the entry point. Pick a file inside '{directory}' to run that instead.";
     }
 
     /// <summary>

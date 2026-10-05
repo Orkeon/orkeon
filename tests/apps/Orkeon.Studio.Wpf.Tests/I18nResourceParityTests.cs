@@ -102,9 +102,11 @@ public sealed partial class I18nResourceParityTests
     /// The virtual mount roots the runner uses. They are code literals an expert screen
     /// quotes verbatim — the same category as <c>--mount</c> or
     /// <c>Orkeon:FileSystem:Mounts:{index}</c>, which the French strings already carry.
-    /// Translating <c>/crew</c> would name a mount that does not exist.
+    /// Translating <c>/crew</c> would name a mount that does not exist — and the same holds
+    /// for <c>crew/</c>, the sub-folder a promoted team keeps its definition in
+    /// (STUDIO-59): a folder name on disk, quoted as it is.
     /// </summary>
-    private static readonly string[] MountPathLiterals = ["/crew"];
+    private static readonly string[] MountPathLiterals = ["/crew", "crew/"];
 
     [Fact]
     public void Should_Speak_Of_Equipes_Not_Crews_When_Reading_The_French_Values()

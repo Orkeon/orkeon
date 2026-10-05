@@ -127,6 +127,30 @@ public sealed class RunCommandDirectoryTests
     }
 
     /// <summary>
+    /// STUDIO-59: a team folder written by <c>forge promote</c> keeps its crew under
+    /// <c>crew/</c> and one folder per mount point at its root. A mount point named
+    /// <c>agents/</c> used to make the root the crew, and the run failed on the settings file
+    /// the root never had. Handed the team folder, the runner loads <c>crew/</c>.
+    /// </summary>
+    [Fact]
+    public async Task A_team_folder_runs_its_crew_sub_folder_whatever_the_root_holds()
+    {
+        using var scratch = new ScriptScratch();
+        WritePerEntityCrew(scratch);
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "agents"));
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = scratch.Root,
+            AllowExternalMounts = true,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// VFS-90: a crew whose <c>config.yaml</c> names the roots it uses starts when the settings
     /// provide them — the block selects and validates, it asks for no flag.
     /// </summary>
