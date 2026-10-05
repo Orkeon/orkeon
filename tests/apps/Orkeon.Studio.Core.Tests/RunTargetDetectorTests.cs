@@ -491,4 +491,107 @@ public sealed class RunTargetDetectorTests
         Assert.NotNull(target);
         Assert.Equal(RunTargetKind.ScriptDirectory, target.Kind);
     }
+
+
+    // ── STUDIO-59: a team folder's crew/ is the crew, whatever the root holds ──────────
+
+    /// <summary>
+    /// A workshop team keeps its crew under <c>crew/</c> and one folder per mount point at
+    /// its root. A mount point named <c>agents</c> or <c>tasks</c> used to turn the root into
+    /// a multi-file crew — and the run then failed on a <c>config.yaml</c> the root never had.
+    /// The promoted layout is a container: it is probed first, the run descends into it, the
+    /// team folder stays the selected path, and a notice names what the root carried.
+    /// </summary>
+    [Theory]
+    [InlineData("agents")]
+    [InlineData("tasks")]
+    public void A_mount_folder_named_agents_at_the_root_does_not_shadow_the_promoted_crew(string mountPoint)
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/t", "/teams/t/" + mountPoint, "/teams/t/crew", "/teams/t/crew/agents")
+            .WithFiles("/teams/t/crew/config.yaml");
+
+        var detection = Detector(probe).Detect("/teams/t");
+
+        Assert.True(detection.IsResolved);
+        var target = detection.Target!;
+        Assert.Equal(RunTargetKind.MultiFileCrewDirectory, target.Kind);
+        Assert.Equal("/teams/t/crew", Norm(target.RunPath));
+        Assert.Equal("/teams/t", target.SelectedPath);
+        Assert.Equal("/teams/t", target.WorkingDirectory);
+        var notice = Assert.Single(detection.Notices);
+        Assert.Equal(RunTargetCodes.RootShadowedByPromotedCrew, notice.Code);
+        Assert.Contains("/teams/t/" + mountPoint, Norm(notice.Text), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_root_script_next_to_a_promoted_script_crew_runs_crew_slash_crew_ork_ts_with_a_notice()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/t", "/teams/t/crew")
+            .WithFiles("/teams/t/crew/crew.ork.ts", "/teams/t/crew.ork.ts");
+
+        var detection = Detector(probe).Detect("/teams/t");
+
+        Assert.True(detection.IsResolved);
+        var target = detection.Target!;
+        Assert.Equal(RunTargetKind.ScriptDirectory, target.Kind);
+        Assert.Equal("/teams/t/crew/crew.ork.ts", Norm(target.RunPath));
+        Assert.Equal("/teams/t", target.SelectedPath);
+        var notice = Assert.Single(detection.Notices);
+        Assert.Equal(RunTargetCodes.RootShadowedByPromotedCrew, notice.Code);
+        Assert.Contains("/teams/t/crew.ork.ts", Norm(notice.Text), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_flat_triplet_at_the_root_is_still_shadowed_by_crew()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/t", "/teams/t/crew", "/teams/t/crew/tasks")
+            .WithFiles(
+                "/teams/t/crew/config.yaml",
+                "/teams/t/crew.yaml", "/teams/t/agents.yaml", "/teams/t/tasks.yaml");
+
+        var detection = Detector(probe).Detect("/teams/t");
+
+        Assert.True(detection.IsResolved);
+        Assert.Equal("/teams/t/crew", Norm(detection.Target!.RunPath));
+        Assert.Equal("/teams/t", detection.Target.SelectedPath);
+        var notice = Assert.Single(detection.Notices);
+        Assert.Equal(RunTargetCodes.RootShadowedByPromotedCrew, notice.Code);
+        Assert.Contains("/teams/t/crew.yaml", Norm(notice.Text), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Only a <c>crew/</c> that resolves to a crew takes precedence: an empty one changes
+    /// nothing, and the root keeps the rules it always had — here, a multi-file crew.
+    /// </summary>
+    [Fact]
+    public void A_crew_folder_holding_no_crew_leaves_the_root_rules_in_force()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/t", "/teams/t/crew", "/teams/t/agents");
+
+        var detection = Detector(probe).Detect("/teams/t");
+
+        Assert.True(detection.IsResolved);
+        Assert.Equal(RunTargetKind.MultiFileCrewDirectory, detection.Target!.Kind);
+        Assert.Equal("/teams/t", detection.Target.RunPath);
+        Assert.Empty(detection.Notices);
+    }
+
+    [Fact]
+    public void A_promoted_team_with_a_clean_root_resolves_as_before()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/t", "/teams/t/crew", "/teams/t/crew/agents", "/teams/t/output", "/teams/t/input")
+            .WithFiles("/teams/t/crew/config.yaml", "/teams/t/run.sh", "/teams/t/studio-team.json");
+
+        var detection = Detector(probe).Detect("/teams/t");
+
+        Assert.True(detection.IsResolved);
+        Assert.Equal("/teams/t/crew", Norm(detection.Target!.RunPath));
+        Assert.Equal("/teams/t", detection.Target.SelectedPath);
+        Assert.Empty(detection.Notices);
+    }
 }

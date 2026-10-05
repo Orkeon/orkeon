@@ -2144,6 +2144,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-TARGET-AMBIGUOUS"] = "The folder holds both a YAML team and a script: choose which one to run.",
         ["Studio.Diagnostics.Code.STUDIO-TARGET-YAML-BLOCKED"] = "The YAML team cannot run while the folder also holds a script: move the script out, or run the script.",
         ["Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE"] = "The folder holds nothing the engine can run.",
+        ["Studio.Diagnostics.Code.STUDIO-TARGET-ROOT-SHADOWED"] = "The team's crew is its crew/ sub-folder: the folders or scripts at its root were set aside, not run.",
         [StudioStringKeys.ValidationSummary] = "Validation: {0} error(s), {1} warning(s), {2} note(s).",
         [StudioStringKeys.LaunchNothingRan] = "Nothing ran — {0}",
         [StudioStringKeys.LaunchExitCode] = "Exit code {0} — {1}",

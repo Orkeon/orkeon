@@ -17,9 +17,21 @@ public enum RunTargetDetectionStatus
 }
 
 /// <summary>
+/// Something a resolved detection has to say without refusing anything: a stable code
+/// (see <see cref="RunTargetCodes"/>) and its text, shown as an information line of the
+/// launch validation.
+/// </summary>
+/// <param name="Code">Stable code, for UI keying and tests.</param>
+/// <param name="Text">Human-readable text naming the paths concerned.</param>
+public sealed record RunTargetNotice(string Code, string Text);
+
+/// <summary>
 /// What the detector made of a picked path: a resolved target, a list of candidates for
 /// the user to choose from, or an explicit error. Ambiguity is never resolved by
-/// precedence — a directory that looks like two shapes at once fails and names both.
+/// precedence — a directory that looks like two shapes at once fails and names both. A
+/// <c>crew/</c> sub-folder holding a crew is not a competing shape but the container of
+/// the team's definition (STUDIO-59): it wins over whatever the root holds, and the
+/// detection carries a <see cref="Notices">notice</see> naming what was set aside.
 /// </summary>
 public sealed record RunTargetDetection
 {
@@ -44,8 +56,18 @@ public sealed record RunTargetDetection
     /// <summary>Stable failure code (see <see cref="RunTargetCodes"/>), for UI keying and tests.</summary>
     public string? ErrorCode { get; init; }
 
+    /// <summary>
+    /// What a resolved detection has to say about the path without refusing it — the
+    /// root folders a <c>crew/</c> sub-folder set aside. Empty on a failed detection.
+    /// </summary>
+    public IReadOnlyList<RunTargetNotice> Notices { get; init; } = [];
+
     /// <summary>True when a target was resolved.</summary>
     public bool IsResolved => Status == RunTargetDetectionStatus.Resolved;
+
+    /// <summary>The same detection, carrying one more notice.</summary>
+    internal RunTargetDetection WithNotice(string code, string text) =>
+        this with { Notices = [.. Notices, new RunTargetNotice(code, text)] };
 
     internal static RunTargetDetection Resolved(string selectedPath, RunTarget target) =>
         new() { Status = RunTargetDetectionStatus.Resolved, SelectedPath = selectedPath, Target = target };
@@ -96,4 +118,11 @@ public static class RunTargetCodes
 
     /// <summary>The directory holds nothing runnable.</summary>
     public const string NoCandidate = "STUDIO-TARGET-NO-CANDIDATE";
+
+    /// <summary>
+    /// Notice, not an error: the directory's <c>crew/</c> sub-folder is the crew, and the
+    /// layout markers or scripts found at the root — a mount point named <c>agents</c>, a
+    /// stray script — were set aside, never read as a crew.
+    /// </summary>
+    public const string RootShadowedByPromotedCrew = "STUDIO-TARGET-ROOT-SHADOWED";
 }

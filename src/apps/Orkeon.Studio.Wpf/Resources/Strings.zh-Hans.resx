@@ -1569,6 +1569,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve">
     <value>该文件夹中没有引擎可以运行的内容。</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-ROOT-SHADOWED" xml:space="preserve">
+    <value>团队即其 crew/ 子文件夹：根目录下的文件夹或脚本已被搁置，未运行。</value>
+  </data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>网络回退已启用：纠错循环可以抓取网页，每一页都会做提示注入校验。</value>
   </data>

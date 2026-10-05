@@ -232,9 +232,10 @@ public static partial class RunnerExecution
         var configPath = Path.GetFullPath(opts.ConfigPath);
 
         // A crew target is either a single file (.yaml / .ork.ts) or a directory holding a
-        // multi-file crew (config.yaml + agents/ + tasks/, or the flat legacy triplet). The
-        // directory form is classified here so an ambiguous or empty directory reports its own
-        // diagnostic instead of the generic "config file not found".
+        // multi-file crew (config.yaml + agents/ + tasks/, or the flat legacy triplet) — at its
+        // root, or under its crew/ sub-folder, which then wins over whatever the root holds
+        // (STUDIO-59). The directory form is classified here so an ambiguous or empty directory
+        // reports its own diagnostic instead of the generic "config file not found".
         var inspection = CrewDirectoryLayout.Inspect(configPath);
         if (inspection.Error is not null)
         {
@@ -248,11 +249,13 @@ public static partial class RunnerExecution
             return false;
         }
 
-        // For a crew directory the config dir IS the target: mounting it (rather than its
-        // parent) keeps the VFS surface as narrow as it is for a single-file crew, and anchors
-        // appsettings resolution inside the crew.
+        // For a crew directory the definition's directory IS the target — the root, or the
+        // crew/ sub-folder the inspection designated: mounting it (rather than the folder the
+        // operator named, or its parent) keeps the VFS surface as narrow as it is for a
+        // single-file crew, and anchors appsettings resolution inside the crew — the walk up
+        // still reaches a team folder's own settings file.
         if (inspection.IsCrewDirectory)
-            configPath = Path.TrimEndingDirectorySeparator(configPath);
+            configPath = Path.TrimEndingDirectorySeparator(inspection.CrewRoot!);
         var configDir = inspection.IsCrewDirectory ? configPath : Path.GetDirectoryName(configPath)!;
         // Resolved here, announced by TryBuildHost once the mount guards have passed.
         var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, configDir);

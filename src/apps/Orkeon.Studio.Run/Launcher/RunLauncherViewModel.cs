@@ -117,7 +117,14 @@ internal sealed class RunLauncherViewModel
         var messages = new List<ValidationMessage>();
 
         if (Target.Target is { } target)
+        {
             messages.AddRange(RunArgumentsBuilder.Validate(target, Options.ToLaunchOptions(target, dryRun)));
+
+            // The detector's notices — the root folders a crew/ sub-folder set aside
+            // (STUDIO-59) — read as information, like the directory-run advice.
+            foreach (var notice in Target.Detection?.Notices ?? [])
+                messages.Add(ValidationMessage.Information(notice.Code, notice.Text, target.RunPath));
+        }
 
         messages.AddRange(Options.ValidateMounts());
         return messages;

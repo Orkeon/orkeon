@@ -150,6 +150,7 @@ public sealed class CrewDirectoryLayoutTests : IDisposable
         Assert.Contains("'agents/'", inspection.Error, StringComparison.Ordinal);
         Assert.Contains("'tasks/'", inspection.Error, StringComparison.Ordinal);
         Assert.Contains("crew.yaml + agents.yaml + tasks.yaml", inspection.Error, StringComparison.Ordinal);
+        Assert.Contains("'crew/'", inspection.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -169,5 +170,94 @@ public sealed class CrewDirectoryLayoutTests : IDisposable
     public void An_empty_path_is_rejected()
     {
         Assert.ThrowsAny<ArgumentException>(() => CrewDirectoryLayout.Inspect(" "));
+    }
+
+
+    // ── STUDIO-59: a crew/ sub-folder wins over the root ───────────────────────────────
+
+    /// <summary>
+    /// A team folder written by <c>forge promote</c> keeps its definition under <c>crew/</c>
+    /// and one folder per mount point beside it. A mount point named <c>agents</c> used to
+    /// make the root the crew, and the load then failed on a settings file the root never
+    /// had. The definition is <c>crew/</c>, and the inspection says so.
+    /// </summary>
+    [Theory]
+    [InlineData("agents")]
+    [InlineData("tasks")]
+    public void A_crew_sub_folder_wins_over_an_entity_folder_at_the_root(string mountPoint)
+    {
+        var dir = NewDirectory("team-" + mountPoint);
+        Directory.CreateDirectory(Path.Combine(dir, mountPoint));
+        Touch(Path.Combine(dir, "crew", "config.yaml"));
+        Directory.CreateDirectory(Path.Combine(dir, "crew", "agents"));
+
+        var inspection = CrewDirectoryLayout.Inspect(dir);
+
+        Assert.True(inspection.IsCrewDirectory);
+        Assert.Null(inspection.Error);
+        Assert.Equal(Path.Combine(dir, "crew"), inspection.CrewRoot);
+    }
+
+    [Fact]
+    public void A_crew_sub_folder_wins_over_a_root_script()
+    {
+        var dir = NewDirectory("team-script");
+        Touch(Path.Combine(dir, "crew.ork.ts"));
+        Touch(Path.Combine(dir, "crew", "config.yaml"));
+        Directory.CreateDirectory(Path.Combine(dir, "crew", "agents"));
+
+        var inspection = CrewDirectoryLayout.Inspect(dir);
+
+        Assert.True(inspection.IsCrewDirectory);
+        Assert.Equal(Path.Combine(dir, "crew"), inspection.CrewRoot);
+    }
+
+    [Fact]
+    public void A_crew_directory_at_the_root_names_itself_as_the_definition()
+    {
+        var dir = NewDirectory("root-crew");
+        Touch(Path.Combine(dir, "config.yaml"));
+        Directory.CreateDirectory(Path.Combine(dir, "agents"));
+
+        var inspection = CrewDirectoryLayout.Inspect(dir);
+
+        Assert.True(inspection.IsCrewDirectory);
+        Assert.Equal(dir, inspection.CrewRoot);
+    }
+
+    /// <summary>
+    /// One step down, never two: <c>crew/crew/</c> is not looked into, so a <c>crew/</c> that
+    /// is no crew itself leaves the root under its own rules.
+    /// </summary>
+    [Fact]
+    public void An_empty_crew_sub_folder_leaves_the_root_rules_in_force()
+    {
+        var dir = NewDirectory("team-empty-crew");
+        Directory.CreateDirectory(Path.Combine(dir, "crew"));
+        Directory.CreateDirectory(Path.Combine(dir, "agents"));
+        Touch(Path.Combine(dir, "config.yaml"));
+
+        var inspection = CrewDirectoryLayout.Inspect(dir);
+
+        Assert.True(inspection.IsCrewDirectory);
+        Assert.Equal(dir, inspection.CrewRoot);
+
+        var nested = NewDirectory("team-nested-crew");
+        Directory.CreateDirectory(Path.Combine(nested, "crew"));
+        Touch(Path.Combine(nested, "crew", "crew", "config.yaml"));
+        Directory.CreateDirectory(Path.Combine(nested, "crew", "crew", "agents"));
+
+        Assert.False(CrewDirectoryLayout.Inspect(nested).IsCrewDirectory);
+    }
+
+    [Fact]
+    public void A_non_crew_directory_carries_no_definition_path()
+    {
+        var dir = NewDirectory("plain");
+
+        var inspection = CrewDirectoryLayout.Inspect(dir);
+
+        Assert.False(inspection.IsCrewDirectory);
+        Assert.Null(inspection.CrewRoot);
     }
 }

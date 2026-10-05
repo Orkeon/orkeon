@@ -101,6 +101,27 @@ public class RunLauncherViewModelTests
     }
 
     [Fact]
+    public void A_crew_sub_folder_winning_over_the_root_is_said_as_information()
+    {
+        // STUDIO-59: the team folder's crew/ is the crew; the agents/ mount point at the
+        // root is named, as information, next to the directory-run advice.
+        var fixture = new LauncherFixture().WithInstalledCli();
+        fixture.Targets
+            .WithDirectories("/teams/t", "/teams/t/agents", "/teams/t/crew", "/teams/t/crew/agents")
+            .WithFiles("/teams/t/crew/config.yaml");
+        var launcher = fixture.Build();
+        launcher.Target.Select("/teams/t");
+
+        var messages = launcher.Validate();
+
+        Assert.False(launcher.HasBlockingErrors());
+        var notice = Assert.Single(messages, message => message.Code == RunTargetCodes.RootShadowedByPromotedCrew);
+        Assert.Equal(ValidationSeverity.Information, notice.Severity);
+        Assert.Contains("/teams/t/agents", notice.Text.Replace('\\', '/'), StringComparison.Ordinal);
+        Assert.Equal("/teams/t/crew", launcher.Target.Target!.RunPath.Replace('\\', '/'));
+    }
+
+    [Fact]
     public void An_out_of_range_verbosity_blocks_the_launch()
     {
         var fixture = new LauncherFixture().WithInstalledCli();

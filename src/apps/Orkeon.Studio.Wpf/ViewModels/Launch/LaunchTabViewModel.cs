@@ -409,7 +409,12 @@ public sealed class LaunchTabViewModel : ObservableObject
         }
 
         var options = BuildOptions();
-        var messages = RunArgumentsBuilder.Validate(target, options);
+        var messages = new List<ValidationMessage>(RunArgumentsBuilder.Validate(target, options));
+
+        // What the detector had to say without refusing the path — the root folders a crew/
+        // sub-folder set aside (STUDIO-59) — reads as information, like the directory-run advice.
+        foreach (var notice in Target.Detection?.Notices ?? [])
+            messages.Add(ValidationMessage.Information(notice.Code, notice.Text, target.RunPath));
 
         foreach (var message in messages)
             ValidationMessages.Add(new ValidationMessageViewModel(message, _strings));

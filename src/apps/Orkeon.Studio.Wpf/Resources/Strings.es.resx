@@ -1569,6 +1569,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve">
     <value>La carpeta no contiene nada que el motor pueda ejecutar.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-ROOT-SHADOWED" xml:space="preserve">
+    <value>El equipo es su subcarpeta crew/: las carpetas o scripts de su raíz se dejaron de lado, no se ejecutaron.</value>
+  </data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>Recurso web activo: el bucle correctivo puede consultar páginas, cada una validada contra la inyección de prompt.</value>
   </data>

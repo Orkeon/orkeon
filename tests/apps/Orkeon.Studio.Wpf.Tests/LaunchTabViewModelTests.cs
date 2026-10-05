@@ -764,6 +764,28 @@ public sealed class LaunchTabViewModelTests
     }
 
     [Fact]
+    public void Should_SayWhatTheRootCarried_When_ACrewSubFolderWinsOverIt()
+    {
+        // STUDIO-59: a workshop team keeps its crew under crew/ and a mount point named
+        // agents/ at its root; the crew runs, and the list says the root folder was not it.
+        var probe = new FakeTargetProbe()
+            .WithDirectory("/teams/t").WithDirectory("/teams/t/agents")
+            .WithDirectory("/teams/t/crew").WithDirectory("/teams/t/crew/agents")
+            .WithFile("/teams/t/crew/config.yaml");
+        var (tab, _, _) = Build(probe);
+
+        tab.Target.Select("/teams/t");
+
+        Assert.Equal("/teams/t/crew", tab.Target.RunPath!.Replace('\\', '/'));
+        var notice = Assert.Single(
+            tab.ValidationMessages,
+            m => m.Code == RunTargetCodes.RootShadowedByPromotedCrew);
+        Assert.Equal(ValidationSeverity.Information, notice.Severity);
+        Assert.Contains("/teams/t/agents", notice.Text.Replace('\\', '/'), StringComparison.Ordinal);
+        Assert.False(tab.HasBlockingErrors);
+    }
+
+    [Fact]
     public void Should_BlockTheLaunch_When_AVariableNameIsMalformed()
     {
         var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");

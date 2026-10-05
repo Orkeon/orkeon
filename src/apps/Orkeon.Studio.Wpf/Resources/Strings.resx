@@ -553,6 +553,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-AMBIGUOUS" xml:space="preserve"><value>The folder holds both a YAML team and a script: choose which one to run.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-YAML-BLOCKED" xml:space="preserve"><value>The YAML team cannot run while the folder also holds a script: move the script out, or run the script.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-TARGET-NO-CANDIDATE" xml:space="preserve"><value>The folder holds nothing the engine can run.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-TARGET-ROOT-SHADOWED" xml:space="preserve"><value>The team's crew is its crew/ sub-folder: the folders or scripts at its root were set aside, not run.</value></data>
   <data name="Studio.Settings.WebFallbackActive" xml:space="preserve"><value>Web fallback active: the corrective loop may fetch pages, each one validated against prompt injection.</value></data>
   <data name="Studio.Settings.WebFallbackTransportOff" xml:space="preserve"><value>Inactive: the corrective policy allows it, but the transport (Orkeon:Rag:WebFallback) is still off.</value></data>
   <data name="Studio.Settings.WebFallbackPolicyOff" xml:space="preserve"><value>Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.</value></data>

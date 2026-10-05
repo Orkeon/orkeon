@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a team folder's crew/ is the crew, whatever the root holds (STUDIO-59)
+
+- **Studio and `orkeon run` read a team folder one way.** A workshop team keeps its crew under
+  `crew/` and one folder per mount point at its root; a mount point named `agents/` or `tasks/`
+  — or a launcher script — made the root the crew in Studio, and the run failed on
+  `config.yaml (or crew.yaml) not found`. The CLI read the root the same way and never looked
+  into `crew/`. Both now probe `crew/` first: when it holds a crew, it is the definition —
+  Studio runs it from the team folder, `orkeon run <folder>` loads it (`CrewDirectoryLayout`
+  designates it as `CrewDirectoryInspection.CrewRoot`), and the settings walk up still reaches
+  the team's own file. One step down, never `crew/crew/`; a `crew/` holding no crew leaves the
+  root under its old rules.
+- **What the root carried is said, never taken for the crew.** The detection carries a notice
+  (`STUDIO-TARGET-ROOT-SHADOWED`) naming the folders and scripts it set aside; the launch
+  validation shows it as an information line, in the five languages. The CLI's
+  « no recognized crew layout » diagnostic now names the `crew/` sub-folder among what it
+  searched.
+- Migration: none — a folder without `crew/`, and a promoted team with a clean root, give the
+  same result as before, without the line.
+
 ### Fixed — the Folders step proposes what the request calls for, says when it is the standard proposal, and lets the user fill the folders kept inside the team before the trial (STUDIO-57)
 
 - **A folder to read is proposed only when the team reads files.** A request such as « summarize

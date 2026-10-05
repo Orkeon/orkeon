@@ -27,3 +27,10 @@ Orkeon.Hosting.RunnerSettingsException.RunnerSettingsException(string! message) 
 Orkeon.Hosting.RunnerSettingsException.RunnerSettingsException(string! message, System.Exception! innerException) -> void
 const Orkeon.Hosting.RunnerEnvironment.McpServeVariable = "ORKEON_MCP_SERVE" -> string!
 static Orkeon.Hosting.RunnerEnvironment.StartedByMcpServe.get -> bool
+*REMOVED*Orkeon.Hosting.CrewDirectoryInspection.CrewDirectoryInspection(bool IsCrewDirectory, string? Error) -> void
+*REMOVED*Orkeon.Hosting.CrewDirectoryInspection.Deconstruct(out bool IsCrewDirectory, out string? Error) -> void
+Orkeon.Hosting.CrewDirectoryInspection.CrewDirectoryInspection(bool IsCrewDirectory, string? Error, string? CrewRoot = null) -> void
+Orkeon.Hosting.CrewDirectoryInspection.Deconstruct(out bool IsCrewDirectory, out string? Error, out string? CrewRoot) -> void
+Orkeon.Hosting.CrewDirectoryInspection.CrewRoot.get -> string?
+Orkeon.Hosting.CrewDirectoryInspection.CrewRoot.init -> void
+const Orkeon.Hosting.CrewDirectoryLayout.PromotedCrewFolder = "crew" -> string!
