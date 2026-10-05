@@ -307,6 +307,9 @@
   <data name="Studio.Run.NoTarget" xml:space="preserve"><value>No target resolved.</value></data>
   <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve"><value>Not launched: {0} error(s) must be fixed first.</value></data>
   <data name="Studio.Run.SettingsNotSaved" xml:space="preserve"><value>Not launched: the settings this run depends on could not be saved — {0}</value></data>
+  <data name="Studio.Run.TeamFoldersCreated" xml:space="preserve"><value>Created in the team folder: {0}</value></data>
+  <data name="Studio.Run.TeamFolderCreateFailed" xml:space="preserve"><value>The team's folder '{0}' could not be created: {1}</value></data>
+  <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve"><value>Nothing to read: the team's folder '{0}' (mount point {1}) does not exist. Create it and put the inputs there.</value></data>
   <data name="Studio.Run.Cancelling" xml:space="preserve"><value>Cancelling: the CLI is asked to stop, and is killed if it does not.</value></data>
   <data name="Studio.Run.NothingToReplay" xml:space="preserve"><value>Nothing to replay: the entry for '{0}' recorded no arguments.</value></data>
   <data name="Studio.Run.Validating" xml:space="preserve"><value>Validating…</value></data>

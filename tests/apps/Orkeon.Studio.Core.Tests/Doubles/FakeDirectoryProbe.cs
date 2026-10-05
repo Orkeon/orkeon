@@ -19,10 +19,16 @@ public sealed class FakeDirectoryProbe : IDirectoryProbe
     /// <summary>Paths passed to <see cref="Create"/>, in call order.</summary>
     public List<string> Created { get; } = new();
 
+    /// <summary>When set, <see cref="Create"/> throws what it returns instead of creating — the shape of a disk that refuses.</summary>
+    public Func<string, Exception>? CreateFault { get; init; }
+
     public bool Exists(string path) => _existing.Contains(path);
 
     public void Create(string path)
     {
+        if (CreateFault is { } fault)
+            throw fault(path);
+
         Created.Add(path);
         _existing.Add(path);
     }

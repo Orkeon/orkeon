@@ -877,6 +877,153 @@ public sealed class LaunchTabViewModelTests
 
         Assert.Equal("/crews/ts", launcher.LastRequest!.WorkingDirectory);
     }
+
+    // ---- STUDIO-60: the team's own folders are prepared before the launch -------------
+
+    private static (string Root, string Team) TeamOnDisk(string name, params string[] mounts)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-studio-60-{Guid.NewGuid():N}");
+        var team = Path.Combine(root, name);
+        Directory.CreateDirectory(Path.Combine(team, "agents"));
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = name, Mounts = mounts });
+        return (root, team);
+    }
+
+    private static FakeTargetProbe TeamProbe(string team) =>
+        new FakeTargetProbe().WithDirectory(team).WithDirectory(Path.Combine(team, "agents"));
+
+    [Fact]
+    public async Task Should_CreateAMissingWritableFolder_BeforeTheProcessStarts_When_TheCardDeclaresIt()
+    {
+        var (root, team) = TeamOnDisk("veille", "./output:/output:rw");
+        try
+        {
+            // The probe knows the team folder only: the sidecar's write created output/ on the
+            // real disk, but the launch reasons on the probe, which says it is missing.
+            var directories = new FakeDirectoryProbe(team);
+            var (tab, launcher, _) = Build(TeamProbe(team), directories);
+            tab.Target.Select(team);
+            var output = Path.Combine(team, "output");
+            List<string>? createdWhenStarted = null;
+            launcher.WhileRunning = () => createdWhenStarted = [.. directories.Created];
+
+            await tab.RunAsync(TestContext.Current.CancellationToken);
+
+            Assert.Single(launcher.Requests);
+            Assert.Equal([output], createdWhenStarted);
+            Assert.Contains(tab.Log.Lines, line => line.Text == $"Created in the team folder: {output}");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Should_RefuseTheLaunch_When_AReadOnlyFolderOfTheTeamIsMissing()
+    {
+        var (root, team) = TeamOnDisk("veille", "./output:/output:rw", "./input:/workspace:ro");
+        try
+        {
+            var directories = new FakeDirectoryProbe(team, Path.Combine(team, "output"));
+            var (tab, launcher, _) = Build(TeamProbe(team), directories);
+            tab.Target.Select(team);
+
+            var result = await tab.RunAsync(TestContext.Current.CancellationToken);
+
+            Assert.Null(result);
+            Assert.Empty(launcher.Requests);
+            Assert.Empty(directories.Created);
+            Assert.Equal(
+                $"Nothing to read: the team's folder '{Path.Combine(team, "input")}' (mount point /workspace) does not exist. Create it and put the inputs there.",
+                tab.StatusMessage);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Should_RefuseTheLaunch_When_TheDiskRefusesToCreateTheFolder()
+    {
+        var (root, team) = TeamOnDisk("veille", "./output:/output:rw");
+        try
+        {
+            var directories = new FakeDirectoryProbe(team)
+            {
+                CreateFault = _ => new UnauthorizedAccessException("Read-only media."),
+            };
+            var (tab, launcher, _) = Build(TeamProbe(team), directories);
+            tab.Target.Select(team);
+
+            var result = await tab.RunAsync(TestContext.Current.CancellationToken);
+
+            Assert.Null(result);
+            Assert.Empty(launcher.Requests);
+            Assert.Equal(
+                $"The team's folder '{Path.Combine(team, "output")}' could not be created: Read-only media.",
+                tab.StatusMessage);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Should_LeaveTheFoldersAlone_When_TheyAlreadyExist()
+    {
+        var (root, team) = TeamOnDisk("veille", "./output:/output:rw", "./input:/workspace:ro");
+        try
+        {
+            var directories = new FakeDirectoryProbe(team, Path.Combine(team, "output"), Path.Combine(team, "input"));
+            var (tab, launcher, _) = Build(TeamProbe(team), directories);
+            tab.Target.Select(team);
+
+            await tab.RunAsync(TestContext.Current.CancellationToken);
+
+            Assert.Single(launcher.Requests);
+            Assert.Empty(directories.Created);
+            Assert.DoesNotContain(tab.Log.Lines, line => line.Text.StartsWith("Created in the team folder", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Should_PrepareTheFoldersTheSameWay_When_ALaunchIsReplayed()
+    {
+        var (root, team) = TeamOnDisk("veille", "./output:/output:rw", "./input:/workspace:ro");
+        try
+        {
+            var directories = new FakeDirectoryProbe(team);
+            var (tab, launcher, _) = Build(TeamProbe(team), directories);
+            var entry = LaunchHistoryEntry.Starting(team, ["run", team], null, team);
+
+            var refused = await tab.ReplayAsync(entry, TestContext.Current.CancellationToken);
+
+            // The read-only folder is missing: refused before any process, the writable one created.
+            Assert.Null(refused);
+            Assert.Empty(launcher.Requests);
+            Assert.Equal([Path.Combine(team, "output")], directories.Created);
+            Assert.Contains("Nothing to read", tab.StatusMessage!, StringComparison.Ordinal);
+
+            directories.Directories.Add(Path.Combine(team, "input"));
+
+            await tab.ReplayAsync(entry, TestContext.Current.CancellationToken);
+
+            // The argv is replayed as recorded; the folders were prepared first.
+            var request = Assert.Single(launcher.Requests);
+            Assert.Equal(["run", team], request.Arguments);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }
 
 public sealed class ValidationMessageViewModelTests
@@ -1093,7 +1240,9 @@ public sealed class LaunchScreenFacetsTests
             });
             var probe = new FakeTargetProbe().WithDirectory(team).WithDirectory(Path.Combine(team, "agents"));
             var opener = new RecordingShellOpener();
-            var tab = Build(probe, directories: new FakeDirectoryProbe(team), shellOpener: opener,
+            // The read-only input exists, as the sidecar's write created it: a launch refuses a
+            // missing one (STUDIO-60), and this test is about the result folders.
+            var tab = Build(probe, directories: new FakeDirectoryProbe(team, Path.Combine(team, "input")), shellOpener: opener,
                 declaredMounts: ["/srv/docs:/docs:ro", "/srv/archive:/archive:rw"]);
             tab.Target.Select(team);
 

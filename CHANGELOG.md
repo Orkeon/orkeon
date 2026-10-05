@@ -35,6 +35,26 @@ A git diff of the whole card at every run.
 Migration: a card written before loses its `null` lines and gains its final newline at the first
 write — once, with nothing to do.
 
+### Fixed — a team's writable folders exist before the run starts, a missing read-only one refuses the launch (STUDIO-60)
+
+- **The launch prepares the team's own folders, as the workshop's launchers do.** A team whose
+  sidecar declares `./output:/output:rw` without the folder failed its first run from Studio:
+  `orkeon run` refuses a mount whose folder does not exist, and Studio created the folders only
+  when it wrote the sidecar — after that run, in `RecordRun`. Before a launch — Run, Run with
+  `--validate`, Replay — the Launch tab now examines every well-formed `./x` entry of the team: a
+  missing writable folder (`rw`, `rwnd`) is created, and the journal names it; a missing read-only
+  one refuses the launch before any process starts, naming the folder and its mount point — an
+  empty input is an error to show, not a folder to invent; a creation the disk refuses stops the
+  launch with the disk's reason. Nothing is created outside the team: an absolute entry, a copy, a
+  settings declaration, an unknown id, an unreadable entry and a `./../x` are left alone. The rule
+  is the one `run.sh`/`run.cmd` apply (`TeamFolderPreparation` in Studio.Core, pure over
+  `IDirectoryProbe`); the creation at the sidecar's write is unchanged and still creates every
+  folder, `ro` included. No `.gitkeep`, no sidecar write, no history entry before the run.
+
+Migration: a read-only folder of a team deleted by hand is now refused by Studio, before the run and
+with its own line naming the folder and its mount point, where `orkeon run` refused it at start with
+its own; a dry run creates the team's missing writable folders, as a real run does.
+
 ### Fixed — the Folders step proposes what the request calls for, says when it is the standard proposal, and lets the user fill the folders kept inside the team before the trial (STUDIO-57)
 
 - **A folder to read is proposed only when the team reads files.** A request such as « summarize

@@ -12,10 +12,16 @@ public sealed class FakeDirectoryProbe : IDirectoryProbe
 
     public List<string> Created { get; } = [];
 
+    /// <summary>When set, <see cref="Create"/> throws what it returns instead of creating — the shape of a disk that refuses.</summary>
+    public Func<string, Exception>? CreateFault { get; init; }
+
     public bool Exists(string path) => Directories.Contains(path);
 
     public void Create(string path)
     {
+        if (CreateFault is { } fault)
+            throw fault(path);
+
         Created.Add(path);
         Directories.Add(path);
     }

@@ -831,6 +831,15 @@
   <data name="Studio.Run.SettingsNotSaved" xml:space="preserve">
     <value>未启动：此次运行所依赖的设置无法保存——{0}</value>
   </data>
+  <data name="Studio.Run.TeamFoldersCreated" xml:space="preserve">
+    <value>已在团队文件夹中创建：{0}</value>
+  </data>
+  <data name="Studio.Run.TeamFolderCreateFailed" xml:space="preserve">
+    <value>无法创建团队文件夹“{0}”：{1}</value>
+  </data>
+  <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve">
+    <value>无可读取内容：团队文件夹“{0}”（挂载点 {1}）不存在。请创建它并将输入放在那里。</value>
+  </data>
   <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>正在取消：先请求 CLI 停止，若不停止则强制结束。</value>
   </data>
