@@ -23,11 +23,15 @@ namespace Orkeon.Studio.Run.Launcher;
 internal sealed class RunLauncherViewModel
 {
     private readonly IAppSettingsReader _settingsReader;
+    private readonly ITargetProbe _targetProbe;
+    private readonly IDirectoryProbe _directories;
 
     /// <summary>
     /// Creates the launcher over explicit collaborators (the test seam). <paramref name="teamsRoot"/>
-    /// is the teams root a real run stamps its team's last run under (STUDIO-31, D-05; STUDIO-61);
-    /// null stamps nothing.
+    /// is the teams root a real run stamps its team's last run under (STUDIO-31, D-05; STUDIO-61)
+    /// and the root a team's own settings file is anchored on (STUDIO-62); null stamps nothing and
+    /// finds no team file. <paramref name="targetProbe"/> is the disk the team file is looked up on
+    /// — the detector's, in production; the real disk when absent.
     /// </summary>
     public RunLauncherViewModel(
         RunTargetDetector detector,
@@ -35,7 +39,8 @@ internal sealed class RunLauncherViewModel
         ILaunchHistoryStore? history = null,
         MountValidator? mountValidator = null,
         IAppSettingsReader? settingsReader = null,
-        TeamsRootResolution? teamsRoot = null)
+        TeamsRootResolution? teamsRoot = null,
+        ITargetProbe? targetProbe = null)
     {
         ArgumentNullException.ThrowIfNull(detector);
         ArgumentNullException.ThrowIfNull(runner);
@@ -45,6 +50,8 @@ internal sealed class RunLauncherViewModel
         TeamsRoot = teamsRoot;
         Session = new RunSession(runner, history, teamsRoot?.Path);
         _settingsReader = settingsReader ?? PhysicalAppSettingsReader.Instance;
+        _targetProbe = targetProbe ?? PhysicalTargetProbe.Instance;
+        _directories = new TargetProbeDirectories(_targetProbe);
     }
 
     /// <summary>
@@ -56,10 +63,11 @@ internal sealed class RunLauncherViewModel
     /// </summary>
     public static RunLauncherViewModel ForCurrentMachine(Func<string, string?>? environment = null) =>
         new(
-            new RunTargetDetector(),
+            new RunTargetDetector(PhysicalTargetProbe.Instance),
             OrkeonProcessRunner.ForCurrentMachine(),
             TryCreateHistoryStore(),
-            teamsRoot: TeamsRootLocator.Resolve(environment));
+            teamsRoot: TeamsRootLocator.Resolve(environment),
+            targetProbe: PhysicalTargetProbe.Instance);
 
     /// <summary>
     /// The teams root in force and where it came from (STUDIO-61): the variable or the default
@@ -83,8 +91,34 @@ internal sealed class RunLauncherViewModel
     /// </summary>
     public string? WorkingDirectoryOverride { get; set; }
 
-    /// <summary>Mounts already declared by the pinned appsettings file, shown read-only.</summary>
+    /// <summary>Mounts already declared by the settings file the run will read, shown read-only.</summary>
     public IReadOnlyList<string> SettingsMounts { get; private set; } = [];
+
+    /// <summary>
+    /// The settings file the run will read: the pin, else the team's own file (STUDIO-62), else
+    /// null — the CLI's own chain. The team file is looked up again for the current target first.
+    /// </summary>
+    public string? ResolvedSettingsPath
+    {
+        get
+        {
+            SyncTeamSettingsPath();
+            return Options.ResolvedSettingsPath;
+        }
+    }
+
+    /// <summary>
+    /// The settings label of the form: « Settings: auto », or « Settings: auto (team file: &lt;path&gt;) »
+    /// when the workshop's file for the selected team will be read (STUDIO-62) — nothing is pinned
+    /// and the team sits right under the teams root with its <c>settings/&lt;slug&gt;/appsettings.json</c>.
+    /// </summary>
+    public string DescribeSettings()
+    {
+        SyncTeamSettingsPath();
+        return Options.UseAutomaticSettings && Options.TeamSettingsPath is { Length: > 0 } teamFile
+            ? $"Settings: auto (team file: {teamFile})"
+            : "Settings: auto";
+    }
 
     /// <summary>Why <see cref="SettingsMounts"/> is empty, when it is empty for a reason.</summary>
     public string? SettingsMountsNotice { get; private set; }
@@ -110,6 +144,7 @@ internal sealed class RunLauncherViewModel
     public IReadOnlyList<string> BuildArguments(bool dryRun = false)
     {
         var target = RequireTarget();
+        SyncTeamSettingsPath();
         return RunArgumentsBuilder.Build(target, Options.ToLaunchOptions(target, dryRun));
     }
 
@@ -139,6 +174,7 @@ internal sealed class RunLauncherViewModel
     public IReadOnlyList<ValidationMessage> Validate(bool dryRun = false)
     {
         var messages = new List<ValidationMessage>();
+        SyncTeamSettingsPath();
 
         if (Target.Target is { } target)
             messages.AddRange(RunArgumentsBuilder.Validate(target, Options.ToLaunchOptions(target, dryRun)));
@@ -165,13 +201,14 @@ internal sealed class RunLauncherViewModel
         "configuration key each mount occupies depends on the crew being launched.";
 
     /// <summary>
-    /// Re-reads the pinned appsettings file's mounts. In automatic mode nothing is read:
-    /// which file wins is the CLI's decision, and guessing it here would be a second
-    /// implementation of the resolution chain — the screen shows the chain instead.
+    /// Re-reads the mounts of the settings file the run will read: the pinned one, else the
+    /// team's own file (STUDIO-62). With neither nothing is read: which file wins is then the
+    /// CLI's decision, and guessing it here would be a second implementation of the resolution
+    /// chain — the screen shows the chain instead.
     /// </summary>
     public void RefreshSettingsMounts()
     {
-        var path = Options.EffectiveSettingsPath;
+        var path = ResolvedSettingsPath;
 
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -217,7 +254,8 @@ internal sealed class RunLauncherViewModel
         {
             TargetPath = target.SelectedPath,
             Arguments = BuildArguments(dryRun),
-            SettingsPath = Options.EffectiveSettingsPath,
+            // Recorded as a pin is: the entry replays on the file the run read (STUDIO-62).
+            SettingsPath = Options.ResolvedSettingsPath,
             WorkingDirectory = EffectiveWorkingDirectory,
             RecordInHistory = !dryRun,
         };
@@ -260,12 +298,28 @@ internal sealed class RunLauncherViewModel
         ArgumentNullException.ThrowIfNull(entry);
 
         WorkingDirectoryOverride = entry.WorkingDirectory;
-        Options.UseAutomaticSettings = string.IsNullOrWhiteSpace(entry.SettingsPath);
-        Options.ExplicitSettingsPath = entry.SettingsPath;
+        var resolved = Target.Select(entry.Target).IsResolved;
+        SyncTeamSettingsPath();
+
+        // An entry recorded on the team's own file was not a pin (STUDIO-62): the form stays
+        // automatic, as it was when the entry was recorded.
+        var recordedTeamFile = entry.SettingsPath is { Length: > 0 } recorded
+            && Options.TeamSettingsPath is { Length: > 0 } teamFile
+            && string.Equals(recorded, teamFile, Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison);
+        Options.UseAutomaticSettings = recordedTeamFile || string.IsNullOrWhiteSpace(entry.SettingsPath);
+        Options.ExplicitSettingsPath = recordedTeamFile ? null : entry.SettingsPath;
         RefreshSettingsMounts();
 
-        return Target.Select(entry.Target).IsResolved;
+        return resolved;
     }
+
+    /// <summary>
+    /// Looks the team's settings file up for the current target (STUDIO-62): the workshop's
+    /// <c>settings/&lt;slug&gt;/appsettings.json</c> beside the teams root, for a team folder right
+    /// under it; null without a root, outside it, or when the file is missing.
+    /// </summary>
+    private void SyncTeamSettingsPath() =>
+        Options.TeamSettingsPath = TeamSettingsFile.Find(TeamsRoot?.Path, Target.SelectedPath, _directories, _targetProbe.FileExists);
 
     /// <summary>One display line per past launch, newest first.</summary>
     public IReadOnlyList<string> DescribeHistory() =>
@@ -298,4 +352,17 @@ internal sealed class RunLauncherViewModel
         LaunchHistoryFileStore.TryGetDefaultPath(out var path, out _)
             ? new LaunchHistoryFileStore(path!)
             : null;
+
+    /// <summary>
+    /// The target probe seen as a directory probe, for the one question the team file lookup asks
+    /// — is the target a folder — over the same declared disk the detector reads. Nothing is ever
+    /// created through it.
+    /// </summary>
+    private sealed class TargetProbeDirectories(ITargetProbe probe) : IDirectoryProbe
+    {
+        public bool Exists(string path) => probe.DirectoryExists(path);
+
+        public void Create(string path) =>
+            throw new NotSupportedException("The launcher's team file lookup never creates a directory.");
+    }
 }

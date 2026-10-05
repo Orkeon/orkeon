@@ -956,6 +956,19 @@ public static class StudioStringKeys
     /// </summary>
     public const string RunTeamFolderMissingReadOnly = "Studio.Run.TeamFolderMissingReadOnly";
 
+    /// <summary>
+    /// "Team settings file: {0} — the run reads it instead of the machine's file; pin another file
+    /// above to override." — the workshop's settings file for the selected team, passed as
+    /// <c>--settings</c> when nothing is pinned (STUDIO-62).
+    /// </summary>
+    public const string RunSettingsTeamFile = "Studio.Run.SettingsTeamFile";
+
+    /// <summary>
+    /// "The card's model setting overrides its Llm section." — appended to the line above when the
+    /// team's card names a model setting of this machine (STUDIO-62).
+    /// </summary>
+    public const string RunSettingsTeamFileProfileNote = "Studio.Run.SettingsTeamFileProfileNote";
+
     /// <summary>"Cancelling: the CLI is asked to stop, and is killed if it does not."</summary>
     public const string LaunchCancelling = "Studio.Run.Cancelling";
 
@@ -2368,6 +2381,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunTeamFoldersCreated] = "Created in the team folder: {0}",
         [StudioStringKeys.RunTeamFolderCreateFailed] = "The team's folder '{0}' could not be created: {1}",
         [StudioStringKeys.RunTeamFolderMissingReadOnly] = "Nothing to read: the team's folder '{0}' (mount point {1}) does not exist. Create it and put the inputs there.",
+        [StudioStringKeys.RunSettingsTeamFile] = "Team settings file: {0} — the run reads it instead of the machine's file; pin another file above to override.",
+        [StudioStringKeys.RunSettingsTeamFileProfileNote] = "The card's model setting overrides its Llm section.",
         [StudioStringKeys.LaunchCancelling] = "Cancelling: the CLI is asked to stop, and is killed if it does not.",
         [StudioStringKeys.LaunchNothingToReplay] = "Nothing to replay: the entry for '{0}' recorded no arguments.",
         [StudioStringKeys.LaunchValidating] = "Validating…",

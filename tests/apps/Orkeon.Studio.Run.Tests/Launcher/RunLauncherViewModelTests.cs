@@ -432,4 +432,98 @@ public class RunLauncherViewModelTests
     {
         Assert.Null(new LauncherFixture().WithInstalledCli().Build().TeamsRoot);
     }
+
+    // ── STUDIO-62: a workshop team runs on settings/<slug>/appsettings.json unless a file is pinned ──
+
+    [Fact]
+    public void The_command_line_carries_the_team_settings_file_when_the_root_and_the_target_designate_it()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli().WithTeamsRoot("/ws/teams");
+        var (crew, settingsFile) = fixture.WithWorkshopTeam("veille");
+        var launcher = fixture.Build();
+        launcher.Target.Select(crew);
+
+        Assert.Equal(["run", crew, "--settings=" + settingsFile], launcher.BuildArguments());
+        Assert.Contains("--settings=" + settingsFile, launcher.DescribeCommandLine(), StringComparison.Ordinal);
+        Assert.Equal($"Settings: auto (team file: {settingsFile})", launcher.DescribeSettings());
+        Assert.Equal(settingsFile, launcher.ResolvedSettingsPath);
+    }
+
+    [Fact]
+    public void A_pinned_file_replaces_the_team_settings_file()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli().WithTeamsRoot("/ws/teams");
+        var (crew, _) = fixture.WithWorkshopTeam("veille");
+        var launcher = fixture.Build();
+        launcher.Target.Select(crew);
+        launcher.Options.UseAutomaticSettings = false;
+        launcher.Options.ExplicitSettingsPath = "/etc/orkeon/appsettings.json";
+
+        Assert.Equal(["run", crew, "--settings=/etc/orkeon/appsettings.json"], launcher.BuildArguments());
+        Assert.Equal("Settings: auto", launcher.DescribeSettings());
+    }
+
+    [Fact]
+    public void Without_a_team_file_or_outside_the_root_nothing_is_passed()
+    {
+        // A team under the root whose workshop keeps no file for it.
+        var fixture = new LauncherFixture().WithInstalledCli().WithTeamsRoot("/ws/teams");
+        fixture.Targets.WithDirectories("/ws/teams", "/ws/teams/bare").WithFiles("/ws/teams/bare/crew.yaml");
+        var launcher = fixture.Build();
+        launcher.Target.Select("/ws/teams/bare/crew.yaml");
+        Assert.Equal(["run", "/ws/teams/bare/crew.yaml"], launcher.BuildArguments());
+        Assert.Equal("Settings: auto", launcher.DescribeSettings());
+
+        // Any folder picked elsewhere, even with a settings/<name> file lying around its grand-parent.
+        fixture.Targets.WithDirectories("/elsewhere/veille").WithFiles(
+            "/elsewhere/veille/crew.yaml",
+            Orkeon.Studio.Core.Teams.WorkshopLayout.SettingsFileOf("/elsewhere", "veille"));
+        launcher.Target.Select("/elsewhere/veille/crew.yaml");
+        Assert.Equal(["run", "/elsewhere/veille/crew.yaml"], launcher.BuildArguments());
+
+        // No teams root at all: the doubles' default.
+        var rootless = new LauncherFixture().WithInstalledCli();
+        rootless.Targets.WithDirectories("/ws/teams", "/ws/teams/veille")
+            .WithFiles("/ws/teams/veille/crew.yaml", Orkeon.Studio.Core.Teams.WorkshopLayout.SettingsFileOf("/ws/teams", "veille"));
+        var rootlessLauncher = rootless.Build();
+        rootlessLauncher.Target.Select("/ws/teams/veille/crew.yaml");
+        Assert.Equal(["run", "/ws/teams/veille/crew.yaml"], rootlessLauncher.BuildArguments());
+    }
+
+    [Fact]
+    public async Task A_run_on_the_team_file_records_it_and_loading_the_entry_back_stays_automatic()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli().WithTeamsRoot("/ws/teams");
+        var (crew, settingsFile) = fixture.WithWorkshopTeam("veille");
+        var launcher = fixture.Build();
+        launcher.Target.Select(crew);
+
+        await launcher.LaunchAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var recorded = Assert.Single(fixture.History.Recorded);
+        Assert.Equal(settingsFile, recorded.SettingsPath);
+        Assert.Equal(["run", crew, "--settings=" + settingsFile], recorded.Arguments);
+
+        var again = fixture.Build();
+        Assert.True(again.ApplyHistoryEntry(recorded));
+        Assert.True(again.Options.UseAutomaticSettings);
+        Assert.Null(again.Options.ExplicitSettingsPath);
+        Assert.Equal(settingsFile, again.ResolvedSettingsPath);
+    }
+
+    [Fact]
+    public void The_settings_mounts_are_read_from_the_team_file()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli().WithTeamsRoot("/ws/teams");
+        var (crew, _) = fixture.WithWorkshopTeam("veille", """
+            {"Orkeon":{"FileSystem":{"Mounts":["/ws/mounts.docs/veille:/docs:ro"]}}}
+            """);
+        var launcher = fixture.Build();
+        launcher.Target.Select(crew);
+
+        launcher.RefreshSettingsMounts();
+
+        Assert.Equal(["/ws/mounts.docs/veille:/docs:ro"], launcher.SettingsMounts);
+        Assert.Null(launcher.SettingsMountsNotice);
+    }
 }

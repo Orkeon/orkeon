@@ -110,6 +110,51 @@ public class LaunchOptionsModelTests
         Assert.Equal("/etc/orkeon/appsettings.json", model.ToLaunchOptions(YamlTarget()).SettingsPath);
     }
 
+    // ── STUDIO-62: the workshop's file for the team, under the pin ──
+
+    [Fact]
+    public void The_team_settings_file_is_resolved_in_automatic_mode_only()
+    {
+        var model = new LaunchOptionsModel(new MountValidator(new FakeDirectoryProbe()))
+        {
+            UseAutomaticSettings = true,
+            TeamSettingsPath = "/ws/settings/veille/appsettings.json",
+        };
+
+        // The pin stays what it is — none —, the resolved path is the team's file.
+        Assert.Null(model.EffectiveSettingsPath);
+        Assert.Equal("/ws/settings/veille/appsettings.json", model.ResolvedSettingsPath);
+        Assert.Equal("/ws/settings/veille/appsettings.json", model.ToLaunchOptions(YamlTarget()).SettingsPath);
+    }
+
+    [Fact]
+    public void A_pinned_file_wins_over_the_team_settings_file()
+    {
+        var model = new LaunchOptionsModel(new MountValidator(new FakeDirectoryProbe()))
+        {
+            UseAutomaticSettings = false,
+            ExplicitSettingsPath = "/etc/orkeon/appsettings.json",
+            TeamSettingsPath = "/ws/settings/veille/appsettings.json",
+        };
+
+        Assert.Equal("/etc/orkeon/appsettings.json", model.EffectiveSettingsPath);
+        Assert.Equal("/etc/orkeon/appsettings.json", model.ResolvedSettingsPath);
+        Assert.Equal("/etc/orkeon/appsettings.json", model.ToLaunchOptions(YamlTarget()).SettingsPath);
+    }
+
+    [Fact]
+    public void Without_a_team_settings_file_automatic_mode_still_emits_nothing()
+    {
+        var model = new LaunchOptionsModel(new MountValidator(new FakeDirectoryProbe()))
+        {
+            UseAutomaticSettings = true,
+            TeamSettingsPath = null,
+        };
+
+        Assert.Null(model.ResolvedSettingsPath);
+        Assert.Null(model.ToLaunchOptions(YamlTarget()).SettingsPath);
+    }
+
     [Fact]
     public void Resolution_chain_is_the_four_steps_the_runtime_walks()
     {

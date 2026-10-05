@@ -185,6 +185,23 @@ public sealed class RunArgumentsBuilderTests
     }
 
     /// <summary>
+    /// STUDIO-62: a workshop team's own settings file rides the command line exactly as a pinned
+    /// one does — one argument, <c>--settings=&lt;absolute path&gt;</c> — and the runner reads it back.
+    /// </summary>
+    [Fact]
+    public void A_team_settings_file_is_passed_attached_like_a_pinned_one()
+    {
+        var arguments = RunArgumentsBuilder.Build(
+            YamlTarget(),
+            new RunLaunchOptions { SettingsPath = "/ws/settings/veille/appsettings.json" });
+
+        Assert.Equal(["run", "/crews/crew.yaml", "--settings=/ws/settings/veille/appsettings.json"], arguments);
+        using var parser = new Parser(s => s.HelpWriter = null);
+        var options = Assert.IsType<Parsed<RunnerOptions>>(RunnerArguments.Parse<RunnerOptions>(parser, arguments.Skip(2))).Value;
+        Assert.Equal("/ws/settings/veille/appsettings.json", options.SettingsPath);
+    }
+
+    /// <summary>
     /// STUDIO-51, decision 7: a variable or a mount the runner would read as an option — a
     /// sequence value starting with a dash — is refused before the launch, against its option.
     /// </summary>

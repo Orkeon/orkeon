@@ -310,6 +310,8 @@
   <data name="Studio.Run.TeamFoldersCreated" xml:space="preserve"><value>Créé dans le dossier de l'équipe : {0}</value></data>
   <data name="Studio.Run.TeamFolderCreateFailed" xml:space="preserve"><value>Le dossier de l'équipe « {0} » n'a pas pu être créé : {1}</value></data>
   <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve"><value>Rien à lire : le dossier de l'équipe « {0} » (point de montage {1}) n'existe pas. Créez-le et placez-y les entrées.</value></data>
+  <data name="Studio.Run.SettingsTeamFile" xml:space="preserve"><value>Fichier de réglages de l'équipe : {0} — le run le lit à la place du fichier de la machine ; épinglez un autre fichier ci-dessus pour le remplacer.</value></data>
+  <data name="Studio.Run.SettingsTeamFileProfileNote" xml:space="preserve"><value>Le réglage de modèle de la carte recouvre sa section Llm.</value></data>
   <data name="Studio.Run.Cancelling" xml:space="preserve"><value>Annulation : le CLI est invité à s'arrêter, et tué s'il ne le fait pas.</value></data>
   <data name="Studio.Run.NothingToReplay" xml:space="preserve"><value>Rien à rejouer : l'entrée pour « {0} » n'a enregistré aucun argument.</value></data>
   <data name="Studio.Run.Validating" xml:space="preserve"><value>Validation…</value></data>

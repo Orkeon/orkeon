@@ -1024,6 +1024,239 @@ public sealed class LaunchTabViewModelTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    // ---- STUDIO-62: a workshop team runs on settings/<slug>/appsettings.json unless a file is pinned ----
+
+    private const string WorkshopTeamsRoot = "/ws/teams";
+
+    private const string VeilleCrew = "/ws/teams/veille/crew.yaml";
+
+    private static readonly string VeilleSettingsFile = Orkeon.Studio.Core.Teams.WorkshopLayout.SettingsFileOf(WorkshopTeamsRoot, "veille");
+
+    /// <summary>
+    /// A tab over a workshop: the teams root, a team folder right under it, and the workshop's
+    /// settings file for the team declared in the settings store — the seam the file is looked up
+    /// through. Nothing on the disk.
+    /// </summary>
+    private static (LaunchTabViewModel Tab, FakeProcessLauncher Launcher, FakeLaunchHistoryStore History, FakeAppSettingsStore Settings) BuildOverWorkshop(
+        string? teamsRoot = WorkshopTeamsRoot,
+        string settingsJson = "{}",
+        Func<IReadOnlyList<string>, string?, Task<string?>>? prepareLaunch = null)
+    {
+        var launcher = new FakeProcessLauncher();
+        var history = new FakeLaunchHistoryStore();
+        var settings = new FakeAppSettingsStore();
+        settings.Files[VeilleSettingsFile] = settingsJson;
+
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = new FakeTargetProbe().WithDirectory(WorkshopTeamsRoot).WithDirectory("/ws/teams/veille").WithFile(VeilleCrew),
+            Directories = new FakeDirectoryProbe(WorkshopTeamsRoot, "/ws/teams/veille"),
+            HistoryStore = history,
+            SettingsStore = settings,
+            TeamsRoot = teamsRoot,
+            PrepareLaunch = prepareLaunch,
+        });
+
+        return (tab, launcher, history, settings);
+    }
+
+    [Fact]
+    public void Should_PassTheTeamSettingsFile_When_NothingIsPinned()
+    {
+        var (tab, _, _, _) = BuildOverWorkshop();
+
+        tab.Target.Select(VeilleCrew);
+
+        Assert.Equal(VeilleSettingsFile, tab.TeamSettingsPath);
+        Assert.Equal(VeilleSettingsFile, tab.ResolvedSettingsPath);
+        Assert.Null(tab.Options.EffectiveSettingsPath);
+        Assert.Contains("--settings=" + VeilleSettingsFile, tab.BuildArguments());
+        Assert.Contains("--settings=", tab.CommandLinePreview!, StringComparison.Ordinal);
+        Assert.Contains(VeilleSettingsFile, tab.CommandLinePreview!, StringComparison.Ordinal);
+        Assert.NotNull(tab.TeamSettingsLine);
+        Assert.StartsWith("Team settings file: " + VeilleSettingsFile, tab.TeamSettingsLine, StringComparison.Ordinal);
+        // No card names a setting: the precedence note is not there.
+        Assert.DoesNotContain("model setting", tab.TeamSettingsLine, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_PreferThePin_When_AFileIsPinnedInExpertMode()
+    {
+        var (tab, _, _, _) = BuildOverWorkshop();
+        tab.Target.Select(VeilleCrew);
+
+        tab.Options.SettingsPath = "/etc/orkeon/appsettings.json";
+        tab.Options.SettingsMode = SettingsSelectionMode.ExplicitPath;
+
+        Assert.Equal("/etc/orkeon/appsettings.json", tab.ResolvedSettingsPath);
+        Assert.Contains("--settings=/etc/orkeon/appsettings.json", tab.BuildArguments());
+        Assert.DoesNotContain(tab.BuildArguments(), a => a.Contains(VeilleSettingsFile, StringComparison.Ordinal));
+        // The team file is still known, so the line still says a pin overrides it.
+        Assert.Equal(VeilleSettingsFile, tab.TeamSettingsPath);
+
+        // Back to automatic: the team file applies again.
+        tab.Options.SettingsMode = SettingsSelectionMode.Automatic;
+        Assert.Equal(VeilleSettingsFile, tab.ResolvedSettingsPath);
+    }
+
+    [Fact]
+    public async Task Should_RecordTheTeamFileInTheHistoryEntry_When_TheRunReadsIt()
+    {
+        var (tab, launcher, history, _) = BuildOverWorkshop();
+        tab.Target.Select(VeilleCrew);
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(launcher.Requests);
+        Assert.Contains("--settings=" + VeilleSettingsFile, request.Arguments);
+        var recorded = Assert.Single(history.Recorded);
+        Assert.Equal(VeilleSettingsFile, recorded.SettingsPath);
+    }
+
+    [Fact]
+    public async Task Should_StayAutomatic_When_AnEntryRecordedOnTheTeamFileIsReplayed()
+    {
+        var (tab, launcher, history, _) = BuildOverWorkshop();
+        var entry = LaunchHistoryEntry.Starting(VeilleCrew, ["run", VeilleCrew, "--settings=" + VeilleSettingsFile], VeilleSettingsFile);
+        history.History = LaunchHistory.Empty.Add(entry);
+        await tab.History.LoadAsync(TestContext.Current.CancellationToken);
+
+        await tab.ReplayAsync(entry, TestContext.Current.CancellationToken);
+
+        Assert.True(tab.Options.IsSettingsAutomatic);
+        Assert.Null(tab.Options.EffectiveSettingsPath);
+        Assert.Equal(VeilleSettingsFile, tab.ResolvedSettingsPath);
+        Assert.Equal(entry.Arguments, Assert.Single(launcher.Requests).Arguments);
+
+        // A pin recorded as a pin still loads as one.
+        var pinned = LaunchHistoryEntry.Starting(VeilleCrew, ["run", VeilleCrew, "--settings=/etc/orkeon/appsettings.json"], "/etc/orkeon/appsettings.json");
+        await tab.ReplayAsync(pinned, TestContext.Current.CancellationToken);
+        Assert.True(tab.Options.IsSettingsExplicit);
+        Assert.Equal("/etc/orkeon/appsettings.json", tab.Options.EffectiveSettingsPath);
+    }
+
+    [Fact]
+    public async Task Should_ReadTheSettingsMountsFromTheTeamFile_When_ItApplies()
+    {
+        var (tab, _, _, _) = BuildOverWorkshop(
+            settingsJson: """{"Orkeon":{"FileSystem":{"Mounts":["/ws/mounts.docs/veille:/docs:ro"]}}}""");
+        tab.Target.Select(VeilleCrew);
+
+        await tab.RefreshSettingsMountsAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("/ws/mounts.docs/veille:/docs:ro", Assert.Single(tab.Mounts.SettingsMounts));
+    }
+
+    [Fact]
+    public void Should_HaveNoTeamSettingsLine_When_OutsideAWorkshop()
+    {
+        // No teams root: the Test screen's launcher, or a plain catalogue.
+        var (rootless, _, _, _) = BuildOverWorkshop(teamsRoot: null);
+        rootless.Target.Select(VeilleCrew);
+        Assert.Null(rootless.TeamSettingsPath);
+        Assert.Null(rootless.TeamSettingsLine);
+        Assert.DoesNotContain(rootless.BuildArguments(), a => a.StartsWith("--settings", StringComparison.Ordinal));
+
+        // A team under the root whose workshop keeps no file for it.
+        var (tab, _, _, settings) = BuildOverWorkshop();
+        settings.Files.Remove(VeilleSettingsFile);
+        tab.Target.Select(VeilleCrew);
+        Assert.Null(tab.TeamSettingsPath);
+        Assert.Null(tab.TeamSettingsLine);
+        Assert.DoesNotContain(tab.BuildArguments(), a => a.StartsWith("--settings", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_HandTheTeamFileToThePreparation_So_NothingIsSavedIntoTheMachinesFile()
+    {
+        // A launch that reads another file than the machine's saves nothing into the machine's
+        // (STUDIO-52, decision 4): the preparation receives the team file as it receives a pin.
+        var declared = Orkeon.Domain.Common.MountId.Create();
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-studio-62-{Guid.NewGuid():N}");
+        var teamsRoot = Path.Combine(root, "teams");
+        var team = Path.Combine(teamsRoot, "veille");
+        var settingsFile = Orkeon.Studio.Core.Teams.WorkshopLayout.SettingsFileOf(teamsRoot, "veille");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(team, "agents"));
+            TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "veille", Mounts = [$"{declared}|/srv/docs:/workspace:ro"] });
+            string? handed = "unset";
+            var settings = new FakeAppSettingsStore();
+            settings.Files[settingsFile] = "{}";
+            var tab = new LaunchTabViewModel(new LaunchTabDependencies
+            {
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                TargetProbe = TeamProbe(team),
+                Directories = new FakeDirectoryProbe(teamsRoot, team),
+                SettingsStore = settings,
+                TeamsRoot = teamsRoot,
+                DeclaredMounts = () => [$"{declared}|/srv/docs:/workspace:ro"],
+                PrepareLaunch = (_, settingsPath) =>
+                {
+                    handed = settingsPath;
+                    return Task.FromResult<string?>(null);
+                },
+            });
+            tab.Target.Select(team);
+            Assert.Equal(settingsFile, tab.TeamSettingsPath);
+
+            await tab.RunAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(settingsFile, handed);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Should_SayTheCardsSettingOverridesTheFile_When_TheCardNamesAKnownSetting()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-studio-62-{Guid.NewGuid():N}");
+        var teamsRoot = Path.Combine(root, "teams");
+        var team = Path.Combine(teamsRoot, "veille");
+        var settingsFile = Orkeon.Studio.Core.Teams.WorkshopLayout.SettingsFileOf(teamsRoot, "veille");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(team, "agents"));
+            TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "veille", Profile = "Z.AI" });
+            var settings = new FakeAppSettingsStore();
+            settings.Files[settingsFile] = "{}";
+            var known = Orkeon.Studio.Core.Profiles.ModelProfileSet.Empty.Upsert(
+                new Orkeon.Studio.Core.Profiles.ModelProfile { Name = "Z.AI", Provider = "ZAI", Model = "glm-4.6" });
+
+            LaunchTabViewModel BuildWith(Func<Orkeon.Studio.Core.Profiles.ModelProfileSet>? modelSettings) => new(new LaunchTabDependencies
+            {
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                TargetProbe = TeamProbe(team),
+                Directories = new FakeDirectoryProbe(teamsRoot, team),
+                SettingsStore = settings,
+                TeamsRoot = teamsRoot,
+                ModelSettings = modelSettings,
+            });
+
+            // The setting is one of this machine: the precedence « card's setting > team file » is said.
+            var tab = BuildWith(() => known);
+            tab.Target.Select(team);
+            Assert.EndsWith("The card's model setting overrides its Llm section.", tab.TeamSettingsLine, StringComparison.Ordinal);
+
+            // The setting is absent from this machine: the default runs, nothing overrides the file.
+            var missing = BuildWith(() => Orkeon.Studio.Core.Profiles.ModelProfileSet.Empty);
+            missing.Target.Select(team);
+            Assert.NotNull(missing.TeamSettingsLine);
+            Assert.DoesNotContain("overrides", missing.TeamSettingsLine, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }
 
 public sealed class ValidationMessageViewModelTests

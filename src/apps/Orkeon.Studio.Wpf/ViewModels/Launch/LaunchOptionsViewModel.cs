@@ -347,13 +347,20 @@ public sealed class LaunchOptionsViewModel : ObservableObject
     /// <summary>Whether streaming can be asked for at all — it needs the protocol.</summary>
     public bool CanStreamGeneratedText => WatchProgress;
 
+    /// <summary>
+    /// Collects the form into the options the argument builder consumes.
+    /// <paramref name="settingsPath"/> is what goes on the command line as <c>--settings</c> when
+    /// the tab resolved one beyond the pin — the workshop's file for the team (STUDIO-62) —; left
+    /// null, the pin alone (<see cref="EffectiveSettingsPath"/>) goes.
+    /// </summary>
     public RunLaunchOptions ToOptions(
         IReadOnlyList<string>? mounts = null,
         bool allowExternalMounts = false,
         bool validate = false,
-        IReadOnlyList<string>? mountIds = null) => new()
+        IReadOnlyList<string>? mountIds = null,
+        string? settingsPath = null) => new()
     {
-        SettingsPath = EffectiveSettingsPath,
+        SettingsPath = settingsPath ?? EffectiveSettingsPath,
         Variables = IsYamlTarget ? [.. Variables.Select(v => v.ToVariable())] : [],
         InitialContext = IsYamlTarget ? InitialContext : null,
         InputsJson = IsScriptTarget ? InputsJson : null,

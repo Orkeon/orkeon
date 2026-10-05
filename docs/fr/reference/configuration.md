@@ -328,7 +328,13 @@ place d'une entrée écrite à la main sont refusés.
   planifiée, `orkeon-host` lancé par l'utilisateur, `orkeon-repl`. L'éditeur nomme cette variable en
   mode expert. Un lancement depuis Studio — un run, un essai, l'assistant de création — pose
   toujours chaque réglage sur son processus enfant en `ORKEON_Llm__Profiles__<id>__*`, clé comprise :
-  il ne dépend donc ni de l'enregistrement du fichier ni du fichier de réglages qu'il lit.
+  il ne dépend donc ni de l'enregistrement du fichier ni du fichier de réglages qu'il lit. Une
+  équipe d'un dossier Orkeon Workshop — son dossier juste sous la racine des équipes, avec
+  `settings/<slug>/appsettings.json` à côté de cette racine — est lancée sur ce fichier, passé en
+  `--settings` sauf si le mode Expert en épingle un autre (STUDIO-62) : sa section `Llm` et son
+  `RateLimiting` s'appliquent tels quels quand la carte de l'équipe ne nomme aucun réglage ; une
+  carte qui nomme un réglage de cette machine pose par-dessus les `ORKEON_Llm__*` de ce réglage,
+  clé par clé.
 - **Le défaut.** Le réglage élu est écrit en entier dans `Llm` — chaque champ qu'il épingle et son
   `ApiKeyEnvVar`, un champ qu'il laisse vide retirant sa clé ; `ApiKey`, `MaxRetries`, `Grammar`,
   `AvailableModels` et `Profiles` restent. Seule la clé de remplacement de Docker Model Runner suit la

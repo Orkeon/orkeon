@@ -156,6 +156,7 @@ internal sealed class RunLauncherWindow : Window
         {
             _settingsField.Enabled = _automaticSettings.Value != CheckState.Checked;
             CollectForm();
+            RefreshSettingsLabel();
             RefreshCommandLine();
         };
 
@@ -217,6 +218,7 @@ internal sealed class RunLauncherWindow : Window
 
         RefreshTargetStatus();
         RefreshOptionAvailability();
+        RefreshSettingsLabel();
         RefreshCommandLine();
     }
 
@@ -331,6 +333,16 @@ internal sealed class RunLauncherWindow : Window
     {
         CollectForm();
         _commandLine.Text = _launcher.DescribeCommandLine();
+    }
+
+    /// <summary>
+    /// The settings label names the team's own file when the run will read it (STUDIO-62):
+    /// « Settings: auto (team file: …) » — the pin, when there is one, still wins.
+    /// </summary>
+    private void RefreshSettingsLabel()
+    {
+        CollectForm();
+        _automaticSettings.Text = _launcher.DescribeSettings();
     }
 
     private void RefreshMountsSummary()
