@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 
@@ -55,6 +57,155 @@ public sealed class TeamsManagementTests
             if (Directory.Exists(root))
                 Directory.Delete(root, recursive: true);
         }
+    }
+
+    // ── STUDIO-64: in a workshop, Delete archives ──
+
+    /// <summary>A workshop around <paramref name="root"/>: settings/ and workbooks/ beside the teams root, and the trees of <paramref name="slug"/>.</summary>
+    private static void LayWorkshop(string root, string slug)
+    {
+        var workshop = Path.GetDirectoryName(root)!;
+        foreach (var tree in new[] { "workbooks", "tests", "settings", "mounts.test" })
+            Directory.CreateDirectory(Path.Combine(workshop, tree, slug));
+        File.WriteAllText(Path.Combine(workshop, "settings", slug, "appsettings.json"), "{}\n");
+    }
+
+    /// <summary>A promoted session rule R links to <paramref name="team"/>, in the workspace at <paramref name="workspace"/>.</summary>
+    private static string LinkedSession(string workspace, string team, string id)
+    {
+        File.WriteAllText(Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName), $$"""{"v":1,"id":"{{id}}","slug":"veille"}""");
+        var directory = Path.Combine(workspace, ".orkeon", "forge", "veille");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, ForgeSessionCatalog.SessionFileName),
+            $$"""{"v":1,"id":"{{id}}","slug":"veille","title":"veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{JsonSerializer.Serialize(team)}},"updatedAt":"2026-09-24T08:00:00Z"}""");
+        return directory;
+    }
+
+    private const string SessionId = "6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f";
+
+    /// <summary>
+    /// In a workshop, the banner asks the workshop's question, and Delete erases nothing: the team
+    /// folder and its trees go under archive/&lt;slug&gt;/, the line says where, and the linked
+    /// session goes only once they did.
+    /// </summary>
+    [Fact]
+    public async Task In_a_workshop_deleting_a_team_moves_it_and_its_trees_under_the_archive()
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(workspace, "teams");
+        try
+        {
+            var team = SeedTeam(root, "veille", "Veille");
+            LayWorkshop(root, "veille");
+            var session = LinkedSession(workspace, team, SessionId);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, WorkspaceDirectory = workspace });
+            var gone = new List<string>();
+            teams.SessionDeleted += (_, e) => gone.Add(e.Session.Directory);
+            var card = Assert.Single(teams.Teams);
+
+            card.AskDeleteCommand.Execute(null);
+            Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteAskArchive], card.DeleteQuestion);
+            Assert.True(card.CanDeleteSessionToo);
+            await card.ConfirmDeleteCommand.ExecuteAsync();
+
+            var archive = Path.Combine(workspace, "archive", "veille");
+            Assert.True(File.Exists(Path.Combine(archive, "teams", StudioTeamMetadata.FileName)));
+            Assert.True(File.Exists(Path.Combine(archive, "settings", "appsettings.json")));
+            Assert.True(Directory.Exists(Path.Combine(archive, "workbooks")));
+            Assert.True(Directory.Exists(Path.Combine(archive, "tests")));
+            Assert.True(Directory.Exists(Path.Combine(archive, "mounts.test")));
+            Assert.False(Directory.Exists(team));
+            foreach (var tree in new[] { "workbooks", "tests", "settings", "mounts.test" })
+                Assert.False(Directory.Exists(Path.Combine(workspace, tree, "veille")), tree);
+            Assert.Equal("Moved to archive/veille.", teams.StatusMessage);
+            Assert.Empty(teams.Teams);
+            Assert.Equal([session], gone);
+            Assert.False(Directory.Exists(session));
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+                Directory.Delete(workspace, recursive: true);
+        }
+    }
+
+    /// <summary>An archive the disk refuses keeps the team where it is, says so on the banner, and keeps its session.</summary>
+    [Fact]
+    public async Task An_archive_the_disk_refuses_keeps_the_team_and_its_session()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "A read-only folder refuses a move on Unix only.");
+        var workspace = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(workspace, "teams");
+        var archive = Path.Combine(workspace, "archive");
+        try
+        {
+            var team = SeedTeam(root, "veille", "Veille");
+            LayWorkshop(root, "veille");
+            var session = LinkedSession(workspace, team, SessionId);
+            Directory.CreateDirectory(archive);
+            MakeReadOnly(archive);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, WorkspaceDirectory = workspace });
+            var card = Assert.Single(teams.Teams);
+
+            card.AskDeleteCommand.Execute(null);
+            await card.ConfirmDeleteCommand.ExecuteAsync();
+
+            Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteRefused], card.DeleteRefusal);
+            Assert.True(Directory.Exists(team));
+            Assert.True(File.Exists(Path.Combine(workspace, "settings", "veille", "appsettings.json")));
+            Assert.True(Directory.Exists(session));
+            Assert.Single(teams.Teams);
+        }
+        finally
+        {
+            if (Directory.Exists(archive))
+                MakeWritable(archive);
+            if (Directory.Exists(workspace))
+                Directory.Delete(workspace, recursive: true);
+        }
+    }
+
+    /// <summary>Without a workshop beside the teams root, Delete erases the folder as it always did, and asks its plain question.</summary>
+    [Fact]
+    public async Task Without_a_workshop_deleting_a_team_erases_its_folder_as_before()
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(workspace, "teams");
+        try
+        {
+            var team = SeedTeam(root, "veille", "Veille");
+            // One marker alone is no workshop: the folder named like a tree is nobody's.
+            Directory.CreateDirectory(Path.Combine(workspace, "settings", "veille"));
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, WorkspaceDirectory = workspace, LoadSessions = () => [] });
+            var card = Assert.Single(teams.Teams);
+
+            card.AskDeleteCommand.Execute(null);
+            Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteConfirm], card.DeleteQuestion);
+            await card.ConfirmDeleteCommand.ExecuteAsync();
+
+            Assert.False(Directory.Exists(team));
+            Assert.True(Directory.Exists(Path.Combine(workspace, "settings", "veille")));
+            Assert.False(Directory.Exists(Path.Combine(workspace, "archive")));
+            Assert.Equal("", teams.StatusMessage);
+            Assert.Empty(teams.Teams);
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+                Directory.Delete(workspace, recursive: true);
+        }
+    }
+
+    private static void MakeReadOnly(string directory)
+    {
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+    }
+
+    private static void MakeWritable(string directory)
+    {
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
     [Fact]

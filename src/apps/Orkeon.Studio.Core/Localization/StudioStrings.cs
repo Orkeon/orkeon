@@ -1474,6 +1474,32 @@ public static class StudioStringKeys
     /// <summary>"Not deleted: the disk refused — a file of the team may be open." — the delete banner when the disk kept the folder (STUDIO-27).</summary>
     public const string TeamsDeleteRefused = "Studio.Teams.DeleteRefused";
 
+    /// <summary>"Delete this team?" — the delete banner's question in a plain catalogue (STUDIO-27).</summary>
+    public const string TeamsDeleteConfirm = "Studio.Teams.DeleteConfirm";
+
+    // ---- STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees ----
+
+    /// <summary>"Move the team and what goes with it to the workshop's archive?" — the delete banner's question in a workshop, where Delete archives (STUDIO-64).</summary>
+    public const string TeamsDeleteAskArchive = "Studio.Teams.DeleteAskArchive";
+
+    /// <summary>"Moved to {0}." — the screen's line once a team and its trees went under the workshop's archive; {0} is archive/&lt;slug&gt; (STUDIO-64).</summary>
+    public const string TeamsArchivedToWorkshop = "Studio.Teams.ArchivedToWorkshop";
+
+    /// <summary>"In the workshop, {0} is already taken: choose another name." — the rename editor when a tree of the new slug exists beside the teams root; {0} lists them, kind/slug (STUDIO-64).</summary>
+    public const string TeamsRenameSiblingTaken = "Studio.Teams.RenameSiblingTaken";
+
+    /// <summary>"Its workbook, tests, settings and mount sets followed it." — after the renamed line, when the team's trees moved with it (STUDIO-64).</summary>
+    public const string TeamsRenamedWithSiblings = "Studio.Teams.RenamedWithSiblings";
+
+    /// <summary>"In the workshop, {0} could not follow the team and stay under {1}." — the team is renamed, its trees are not; {0} lists them, {1} is the former slug (STUDIO-64).</summary>
+    public const string TeamsRenameSiblingsKept = "Studio.Teams.RenameSiblingsKept";
+
+    /// <summary>"Its settings followed the copy: {0}." — after a duplicate in a workshop; {0} is settings/&lt;copy-slug&gt; (STUDIO-64).</summary>
+    public const string TeamsDuplicateSettingsCopied = "Studio.Teams.DuplicateSettingsCopied";
+
+    /// <summary>"The copy runs on the default setting: {0} could not be copied." — the copy exists, its settings folder does not; {0} is settings/&lt;copy-slug&gt; (STUDIO-64).</summary>
+    public const string TeamsDuplicateSettingsNotCopied = "Studio.Teams.DuplicateSettingsNotCopied";
+
     // ---- STUDIO-52: what a team's run outside Studio cannot follow ----
 
     /// <summary>
@@ -2570,6 +2596,16 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsScheduleStopFailed] = "The schedule could not be stopped: {0}",
         [StudioStringKeys.TeamsDeleteUnscheduleFailed] = "Not deleted: its schedule could not be stopped — {0}",
         [StudioStringKeys.TeamsDeleteRefused] = "Not deleted: the disk refused — a file of the team may be open.",
+        [StudioStringKeys.TeamsDeleteConfirm] = "Delete this team?",
+
+        // STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees
+        [StudioStringKeys.TeamsDeleteAskArchive] = "Move the team and what goes with it to the workshop's archive?",
+        [StudioStringKeys.TeamsArchivedToWorkshop] = "Moved to {0}.",
+        [StudioStringKeys.TeamsRenameSiblingTaken] = "In the workshop, {0} is already taken: choose another name.",
+        [StudioStringKeys.TeamsRenamedWithSiblings] = "Its workbook, tests, settings and mount sets followed it.",
+        [StudioStringKeys.TeamsRenameSiblingsKept] = "In the workshop, {0} could not follow the team and stay under {1}.",
+        [StudioStringKeys.TeamsDuplicateSettingsCopied] = "Its settings followed the copy: {0}.",
+        [StudioStringKeys.TeamsDuplicateSettingsNotCopied] = "The copy runs on the default setting: {0} could not be copied.",
         [StudioStringKeys.TeamsSettingMissing] = "{0} — absent from this machine: the default setting runs in its place",
         [StudioStringKeys.TeamsScheduledRunOnDefault] = "Scheduled, this team runs on the default setting, not on “{0}”. {1}",
         [StudioStringKeys.TeamsScheduledRunNoModel] = "“{0}” has no model: from Studio, the team answers as an echo.",

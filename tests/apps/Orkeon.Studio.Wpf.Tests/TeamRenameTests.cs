@@ -295,6 +295,94 @@ public sealed class TeamRenameTests : IDisposable
         Assert.Equal(Renamed, Assert.Single(window.Launch.History.Entries).Target);
     }
 
+    // ── the workshop's trees (STUDIO-64) ──
+
+    /// <summary>
+    /// In a workshop — settings/ and workbooks/ beside the teams root —, what goes with the team is
+    /// indexed by its folder's name: once the engine moved the folder, the workbook, the tests, the
+    /// settings and each mount set follow it, and the line says so.
+    /// </summary>
+    [Fact]
+    public async Task In_a_workshop_the_trees_follow_the_renamed_team()
+    {
+        SeedTeam(Team, "Ma veille");
+        LayWorkshop("ma-veille");
+        var teams = Teams(EngineRenaming(Team, Renamed, "Veille du matin"));
+        var card = Assert.Single(teams.Teams);
+
+        card.RenameCommand.Execute(null);
+        card.RenameText = "Veille du matin";
+        await card.ConfirmRenameCommand.ExecuteAsync();
+
+        Assert.Equal(Renamed, Assert.Single(teams.Teams).Summary.Path);
+        foreach (var tree in new[] { "workbooks", "tests", "settings", "mounts.test" })
+        {
+            Assert.True(Directory.Exists(Path.Combine(_root, tree, "veille-du-matin")), tree);
+            Assert.False(Directory.Exists(Path.Combine(_root, tree, "ma-veille")), tree);
+        }
+
+        Assert.True(File.Exists(Path.Combine(_root, "settings", "veille-du-matin", "appsettings.json")));
+        Assert.Equal(
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, Text(StudioStringKeys.TeamsRenamed), "Veille du matin", "veille-du-matin")
+                + " " + Text(StudioStringKeys.TeamsRenamedWithSiblings),
+            teams.StatusMessage);
+    }
+
+    /// <summary>
+    /// A tree of the new slug already beside the teams root — here its settings — would be left to
+    /// the renamed team: refused on the card, before the engine is asked, and nothing moved.
+    /// </summary>
+    [Fact]
+    public async Task A_taken_tree_in_the_workshop_is_refused_on_the_card_before_the_engine_is_asked()
+    {
+        SeedTeam(Team, "Ma veille");
+        LayWorkshop("ma-veille");
+        Directory.CreateDirectory(Path.Combine(_root, "settings", "veille-du-matin"));
+        var processes = new FakeProcessLauncher();
+        var card = Assert.Single(Teams(processes).Teams);
+
+        card.RenameCommand.Execute(null);
+        card.RenameText = "Veille du matin";
+        await card.ConfirmRenameCommand.ExecuteAsync();
+
+        Assert.Equal(
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, Text(StudioStringKeys.TeamsRenameSiblingTaken), "settings/veille-du-matin"),
+            card.RenameRefusal);
+        Assert.True(card.IsRenaming);
+        Assert.Empty(processes.Requests);
+        Assert.True(Directory.Exists(Team));
+        Assert.True(Directory.Exists(Path.Combine(_root, "workbooks", "ma-veille")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "workbooks", "veille-du-matin")));
+    }
+
+    /// <summary>
+    /// Without settings/ and workbooks/ beside the teams root there is no workshop: a folder named
+    /// like a tree stays where it is, and the rename does exactly what it did before.
+    /// </summary>
+    [Fact]
+    public async Task Without_a_workshop_the_rename_moves_the_team_folder_alone()
+    {
+        SeedTeam(Team, "Ma veille");
+        Directory.CreateDirectory(Path.Combine(_root, "settings", "ma-veille"));
+        Directory.CreateDirectory(Path.Combine(_root, "tests", "ma-veille"));
+        var processes = EngineRenaming(Team, Renamed, "Veille du matin");
+        var teams = Teams(processes);
+        var card = Assert.Single(teams.Teams);
+
+        card.RenameCommand.Execute(null);
+        card.RenameText = "Veille du matin";
+        await card.ConfirmRenameCommand.ExecuteAsync();
+
+        Assert.Equal(["forge", "rename", Team, "--name", "Veille du matin", "--events", "jsonl"], Assert.Single(processes.Requests).Arguments);
+        Assert.Equal(Renamed, Assert.Single(teams.Teams).Summary.Path);
+        Assert.True(Directory.Exists(Path.Combine(_root, "settings", "ma-veille")));
+        Assert.True(Directory.Exists(Path.Combine(_root, "tests", "ma-veille")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "settings", "veille-du-matin")));
+        Assert.Equal(
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, Text(StudioStringKeys.TeamsRenamed), "Veille du matin", "veille-du-matin"),
+            teams.StatusMessage);
+    }
+
     // ── the wizard (D-06) ──
 
     /// <summary>
@@ -325,6 +413,14 @@ public sealed class TeamRenameTests : IDisposable
         TeamCatalog.SaveMetadata(directory, new StudioTeamMetadata { Name = name });
         Directory.CreateDirectory(Path.Combine(directory, "crew"));
         File.WriteAllText(Path.Combine(directory, "crew", "config.yaml"), "name: veille\n");
+    }
+
+    /// <summary>The workshop around the teams root: settings/ and workbooks/ beside it, and the four trees of <paramref name="slug"/>.</summary>
+    private void LayWorkshop(string slug)
+    {
+        foreach (var tree in new[] { "workbooks", "tests", "settings", "mounts.test" })
+            Directory.CreateDirectory(Path.Combine(_root, tree, slug));
+        File.WriteAllText(Path.Combine(_root, "settings", slug, "appsettings.json"), "{}\n");
     }
 
     private static ForgeClient Client(FakeProcessLauncher processes) =>

@@ -1232,6 +1232,27 @@
   <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
     <value>Check Settings › Authorized folders: {0} was inside the team's former folder and no longer exists.</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
+    <value>Move the team and what goes with it to the workshop's archive?</value>
+  </data>
+  <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
+    <value>Moved to {0}.</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingTaken" xml:space="preserve">
+    <value>In the workshop, {0} is already taken: choose another name.</value>
+  </data>
+  <data name="Studio.Teams.RenamedWithSiblings" xml:space="preserve">
+    <value>Its workbook, tests, settings and mount sets followed it.</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingsKept" xml:space="preserve">
+    <value>In the workshop, {0} could not follow the team and stay under {1}.</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsCopied" xml:space="preserve">
+    <value>Its settings followed the copy: {0}.</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsNotCopied" xml:space="preserve">
+    <value>The copy runs on the default setting: {0} could not be copied.</value>
+  </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
     <value>To rename the folder, use Rename in My teams.</value>
   </data>

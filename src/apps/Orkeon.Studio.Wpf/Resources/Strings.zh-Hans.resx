@@ -2632,6 +2632,27 @@
   <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
     <value>请检查「设置 › 授权文件夹」：{0} 位于团队原来的文件夹中，现已不存在。</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
+    <value>将团队及其相关内容移至工作坊的归档？</value>
+  </data>
+  <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
+    <value>已移至 {0}。</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingTaken" xml:space="preserve">
+    <value>工作坊中 {0} 已被占用：请另选一个名称。</value>
+  </data>
+  <data name="Studio.Teams.RenamedWithSiblings" xml:space="preserve">
+    <value>其工作簿、测试、设置和挂载集已随之迁移。</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingsKept" xml:space="preserve">
+    <value>工作坊中 {0} 未能随团队迁移，仍保留在 {1} 下。</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsCopied" xml:space="preserve">
+    <value>其设置已随副本复制：{0}。</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsNotCopied" xml:space="preserve">
+    <value>副本将使用默认设置运行：无法复制 {0}。</value>
+  </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
     <value>要重命名文件夹，请在“我的团队”中使用“重命名”。</value>
   </data>

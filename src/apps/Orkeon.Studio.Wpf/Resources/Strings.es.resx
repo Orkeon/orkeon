@@ -2632,6 +2632,27 @@
   <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
     <value>Revise Ajustes › Carpetas autorizadas: {0} estaba dentro de la antigua carpeta del equipo y ya no existe.</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
+    <value>¿Mover el equipo y lo que lo acompaña al archivo del taller?</value>
+  </data>
+  <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
+    <value>Movido a {0}.</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingTaken" xml:space="preserve">
+    <value>En el taller, {0} ya está ocupado: elija otro nombre.</value>
+  </data>
+  <data name="Studio.Teams.RenamedWithSiblings" xml:space="preserve">
+    <value>Su cuaderno, sus pruebas, sus ajustes y sus juegos de carpetas la siguieron.</value>
+  </data>
+  <data name="Studio.Teams.RenameSiblingsKept" xml:space="preserve">
+    <value>En el taller, {0} no pudieron seguir al equipo y se quedan bajo {1}.</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsCopied" xml:space="preserve">
+    <value>Sus ajustes siguieron a la copia: {0}.</value>
+  </data>
+  <data name="Studio.Teams.DuplicateSettingsNotCopied" xml:space="preserve">
+    <value>La copia corre con el ajuste predeterminado: no se pudo copiar {0}.</value>
+  </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
     <value>Para renombrar la carpeta, use Renombrar en Mis equipos.</value>
   </data>

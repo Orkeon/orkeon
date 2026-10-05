@@ -364,7 +364,7 @@
                     <StackPanel Orientation="Horizontal">
                       <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                                  Foreground="{DynamicResource DangerBrush}"
-                                 Text="{Binding [Studio.Teams.DeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding DeleteQuestion}"/>
                       <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
