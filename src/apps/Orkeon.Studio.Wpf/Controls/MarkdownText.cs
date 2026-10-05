@@ -215,7 +215,7 @@ public sealed class MarkdownText : ContentControl
         return paragraph;
     }
 
-    private Inline Inline(MarkdownRun run, MarkdownBlock block)
+    private Run Inline(MarkdownRun run, MarkdownBlock block)
     {
         var inline = new Run(run.Text);
         if (run.Bold || block.Kind == MarkdownBlockKind.Heading)
