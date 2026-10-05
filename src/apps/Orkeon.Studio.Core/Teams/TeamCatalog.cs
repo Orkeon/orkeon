@@ -3,6 +3,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using System.Globalization;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Compliance.Vfs;
@@ -97,6 +98,14 @@ public sealed record StudioTeamMetadata
     [JsonPropertyName("addedAt")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTimeOffset? AddedAt { get; init; }
+
+    /// <summary>
+    /// Every key of the file this build does not model — another tool's — kept as read and written
+    /// back last (STUDIO-58). A <c>with</c> carries the dictionary, so every writer keeps them without
+    /// naming them; a duplicate and an import copy them, as they copy the card.
+    /// </summary>
+    [JsonExtensionData]
+    public IDictionary<string, JsonElement>? Extra { get; init; }
 }
 
 /// <summary>Which teams <see cref="TeamCatalog.List"/> returns (STUDIO-31, D-03).</summary>
@@ -303,7 +312,17 @@ public enum TeamFolderOccupant
     "storage on the physical disk, addressed before any VFS mount exists.")]
 public static partial class TeamCatalog
 {
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+    /// <summary>
+    /// How the sidecar is written (STUDIO-58): two spaces, no key for a null, non-ASCII text as the
+    /// letters themselves — the file feeds JSON parsers and people, never HTML — and, in
+    /// <see cref="TryWriteMetadata"/>, a final newline. UTF-8 without BOM. The read stays strict.
+    /// </summary>
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     /// <summary>
     /// The default root: <c>~/Orkeon/teams</c> — the user-profile home the design names,
@@ -640,7 +659,7 @@ public static partial class TeamCatalog
             CreateTeamFolders(teamDirectory, relativized.Mounts);
             File.WriteAllText(
                 Path.Combine(teamDirectory, StudioTeamMetadata.FileName),
-                JsonSerializer.Serialize(relativized, Options));
+                JsonSerializer.Serialize(relativized, Options) + "\n");
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
