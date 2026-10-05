@@ -739,8 +739,12 @@ public static partial class TeamCatalog
             && TryWriteMetadata(team, metadata with { LastRunAt = startedAt });
     }
 
-    /// <summary>Whether <paramref name="directory"/> is a folder right under <paramref name="teamsRoot"/> — where a team lives.</summary>
-    private static bool IsTeamFolderOf(string teamsRoot, string directory)
+    /// <summary>
+    /// Whether <paramref name="directory"/> is a folder right under <paramref name="teamsRoot"/> — where
+    /// a team lives. Shared with <see cref="TeamSettingsFile"/> (STUDIO-62), which anchors a team's
+    /// settings file on the same rule.
+    /// </summary>
+    internal static bool IsTeamFolderOf(string teamsRoot, string directory)
     {
         var parent = Path.GetDirectoryName(NormalizePath(directory));
         return parent is { Length: > 0 }

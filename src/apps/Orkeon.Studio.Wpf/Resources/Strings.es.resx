@@ -840,6 +840,12 @@
   <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve">
     <value>Nada que leer: la carpeta del equipo '{0}' (punto de montaje {1}) no existe. Créela y ponga ahí las entradas.</value>
   </data>
+  <data name="Studio.Run.SettingsTeamFile" xml:space="preserve">
+    <value>Archivo de ajustes del equipo: {0} — la ejecución lo lee en lugar del archivo de la máquina; fije otro archivo arriba para sustituirlo.</value>
+  </data>
+  <data name="Studio.Run.SettingsTeamFileProfileNote" xml:space="preserve">
+    <value>El ajuste de modelo de la tarjeta sobrescribe su sección Llm.</value>
+  </data>
   <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>Cancelación: se pide a la CLI que se detenga, y se la mata si no lo hace.</value>
   </data>

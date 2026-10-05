@@ -308,7 +308,11 @@ to, and a name that would take over an entry written by hand are refused.
   `orkeon-host` started by the user, `orkeon-repl`. The editor names that variable in expert mode. A
   launch from Studio — a run, a trial, the creation assistant — still lays every setting over its
   child as `ORKEON_Llm__Profiles__<id>__*`, key included, so it never depends on the file having been
-  saved nor on which settings file it reads.
+  saved nor on which settings file it reads. A team of an Orkeon Workshop folder — its folder right
+  under the teams root, with `settings/<slug>/appsettings.json` beside that root — is launched on
+  that file, passed as `--settings` unless Expert mode pins another (STUDIO-62): its `Llm` section
+  and its `RateLimiting` apply as they are when the team's card names no setting; a card naming a
+  setting of this machine lays that setting's `ORKEON_Llm__*` over it, key by key.
 - **The default.** The elected setting is written into `Llm` whole — every field it pins and its
   `ApiKeyEnvVar`, a field it leaves unset removing its key; `ApiKey`, `MaxRetries`, `Grammar`,
   `AvailableModels` and `Profiles` stay. Docker Model Runner's placeholder alone follows the card

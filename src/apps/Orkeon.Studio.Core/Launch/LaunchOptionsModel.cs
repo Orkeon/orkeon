@@ -34,9 +34,25 @@ public sealed class LaunchOptionsModel
     /// <summary>The pinned settings file, meaningful only when <see cref="UseAutomaticSettings"/> is false.</summary>
     public string? ExplicitSettingsPath { get; set; }
 
-    /// <summary>What goes on the command line: null in automatic mode.</summary>
+    /// <summary>The pin, as it goes on the command line: null in automatic mode.</summary>
     public string? EffectiveSettingsPath =>
         UseAutomaticSettings || string.IsNullOrWhiteSpace(ExplicitSettingsPath) ? null : ExplicitSettingsPath;
+
+    /// <summary>
+    /// The workshop's file for the selected team, when there is one (STUDIO-62,
+    /// <see cref="Teams.TeamSettingsFile"/>): <c>settings/&lt;slug&gt;/appsettings.json</c> beside the
+    /// teams root. Set by the launcher at each choice of target; null for a team without one, a
+    /// team outside the root, or any other folder.
+    /// </summary>
+    public string? TeamSettingsPath { get; set; }
+
+    /// <summary>
+    /// What really goes on the command line: the pin, else the team's file, else nothing — the
+    /// CLI's own chain. A pinned file wins over the team's; the team's file applies in automatic
+    /// mode only.
+    /// </summary>
+    public string? ResolvedSettingsPath =>
+        EffectiveSettingsPath ?? (string.IsNullOrWhiteSpace(TeamSettingsPath) ? null : TeamSettingsPath);
 
     /// <summary>The CLI's settings resolution chain, for the "auto" explanation panel.</summary>
     public static IReadOnlyList<SettingsResolutionStep> ResolutionChain => SettingsLocations.ResolutionChain;
@@ -207,7 +223,7 @@ public sealed class LaunchOptionsModel
 
         return new RunLaunchOptions
         {
-            SettingsPath = EffectiveSettingsPath,
+            SettingsPath = ResolvedSettingsPath,
             Variables = RunOptionAvailability.IsAvailable(dialect, RunOption.Variables) ? [.. _variables] : [],
             InitialContext = RunOptionAvailability.IsAvailable(dialect, RunOption.InitialContext) ? InitialContext : null,
             InputsJson = RunOptionAvailability.IsAvailable(dialect, RunOption.Inputs) ? InputsJson : null,

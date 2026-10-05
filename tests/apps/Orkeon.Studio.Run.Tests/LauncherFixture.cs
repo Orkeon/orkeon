@@ -1,6 +1,7 @@
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Run.Launcher;
 using Orkeon.Studio.Run.Tests.Doubles;
 
@@ -39,11 +40,38 @@ internal sealed class LauncherFixture
     /// <summary>The declared appsettings files.</summary>
     public FakeAppSettingsReader Settings { get; } = new();
 
+    /// <summary>The teams root the launcher is built with (STUDIO-61); null, the default, stamps nothing and finds no team file.</summary>
+    public TeamsRootResolution? TeamsRoot { get; private set; }
+
     /// <summary>Declares the co-installed CLI as present.</summary>
     public LauncherFixture WithInstalledCli()
     {
         Executables.WithFile(BinaryPath);
         return this;
+    }
+
+    /// <summary>Gives the launcher a teams root, as the variable would (STUDIO-61).</summary>
+    public LauncherFixture WithTeamsRoot(string teamsRoot)
+    {
+        TeamsRoot = new TeamsRootResolution(teamsRoot, TeamsRootSource.Environment, null, null);
+        return this;
+    }
+
+    /// <summary>
+    /// Declares a workshop team right under the teams root — its folder, a crew file inside it —
+    /// and the workshop's settings file for it, <c>settings/&lt;slug&gt;/appsettings.json</c> beside
+    /// the root (STUDIO-62). Returns the crew file and the settings file.
+    /// </summary>
+    public (string Crew, string SettingsFile) WithWorkshopTeam(string slug, string settingsJson = "{}")
+    {
+        var root = TeamsRoot?.Path ?? throw new InvalidOperationException("Call WithTeamsRoot first.");
+        var team = Path.Combine(root, slug);
+        var crew = Path.Combine(team, "crew.yaml");
+        var settingsFile = WorkshopLayout.SettingsFileOf(root, slug);
+
+        Targets.WithDirectories(root, team).WithFiles(crew, settingsFile);
+        Settings.WithFile(settingsFile, settingsJson);
+        return (crew, settingsFile);
     }
 
     /// <summary>Declares a YAML crew file and returns its path.</summary>
@@ -67,5 +95,7 @@ internal sealed class LauncherFixture
         new OrkeonProcessRunner(Processes, new OrkeonBinaryLocator(Executables)),
         History,
         new MountValidator(Directories),
-        Settings);
+        Settings,
+        TeamsRoot,
+        Targets);
 }

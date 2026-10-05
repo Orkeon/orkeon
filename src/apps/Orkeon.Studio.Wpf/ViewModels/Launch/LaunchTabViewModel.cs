@@ -93,7 +93,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         _strings.CultureChanged += (_, _) =>
         {
             OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary),
-                nameof(CliBanner), nameof(TeamMetaLine), nameof(OpenResultLabel), nameof(ArchivedTargetMessage));
+                nameof(CliBanner), nameof(TeamMetaLine), nameof(OpenResultLabel), nameof(ArchivedTargetMessage),
+                nameof(TeamSettingsLine));
             RaiseRunStateChanged();
         };
 
@@ -360,7 +361,9 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     public async Task RefreshSettingsMountsAsync(CancellationToken cancellationToken = default)
     {
-        if (Options.EffectiveSettingsPath is not { Length: > 0 } path)
+        // The file the run will read (STUDIO-62): the pin, else the team's own file — whose
+        // mount table is then the one in force — else the machine's declared list.
+        if (ResolvedSettingsPath is not { Length: > 0 } path)
         {
             Mounts.SetSettingsMounts(_declaredMounts());
             return;
@@ -383,7 +386,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     private void PublishSettingsMounts()
     {
-        var path = Options.EffectiveSettingsPath;
+        var path = ResolvedSettingsPath;
         if (path is not { Length: > 0 })
         {
             _settingsMountsSource = null;
@@ -519,7 +522,65 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     private RunLaunchOptions BuildOptions(bool validate = false) =>
-        Options.ToOptions(Mounts.ToMountArguments(), Mounts.AllowExternalMounts, validate, Mounts.ToMountIdArguments());
+        Options.ToOptions(
+            Mounts.ToMountArguments(), Mounts.AllowExternalMounts, validate, Mounts.ToMountIdArguments(),
+            settingsPath: ResolvedSettingsPath);
+
+    /// <summary>
+    /// The workshop's settings file for the selected team (STUDIO-62): <c>settings/&lt;slug&gt;/appsettings.json</c>
+    /// beside the teams root, found by <see cref="TeamSettingsFile.Find"/> at each choice of target
+    /// — the team folder right under <see cref="TeamsRoot"/>, the file read through the settings
+    /// store. Null for a team without one, a team outside the root, any other folder, or a tab
+    /// built without a root. Studio never writes this file.
+    /// </summary>
+    public string? TeamSettingsPath { get; private set; }
+
+    /// <summary>
+    /// The settings file the run will read: the Expert mode's pin, else the team's file, else null
+    /// — the CLI's own chain. The command line, the request, the history entry and the settings
+    /// mounts panel all read this one.
+    /// </summary>
+    public string? ResolvedSettingsPath => Options.EffectiveSettingsPath ?? TeamSettingsPath;
+
+    /// <summary>
+    /// The one line that says where the model comes from, shown beside the command line and
+    /// outside the « Advanced » fold: the team's settings file, and — when the card names a
+    /// model setting of this machine — that the setting overrides the file's <c>Llm</c> section
+    /// (the card's instruction, laid over the run as <c>ORKEON_Llm__*</c>). Null when no team
+    /// file applies.
+    /// </summary>
+    public string? TeamSettingsLine
+    {
+        get
+        {
+            if (TeamSettingsPath is not { Length: > 0 } path)
+                return null;
+
+            var line = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunSettingsTeamFile], path);
+            return CardNamesAKnownSetting()
+                ? line + " " + _strings[StudioStringKeys.RunSettingsTeamFileProfileNote]
+                : line;
+        }
+    }
+
+    /// <summary>
+    /// Whether the card names a model setting the launch will lay over the run: one this machine
+    /// has (<see cref="TeamSettingStanding"/>); a tab built without the model settings takes the
+    /// card at its word, as the meta line does.
+    /// </summary>
+    private bool CardNamesAKnownSetting() =>
+        _team.Profile is { Length: > 0 } profile
+        && (_modelSettings is null || TeamSettingStanding.Of(profile, _modelSettings()).Kind != TeamSettingKind.Missing);
+
+    /// <summary>
+    /// Re-reads the team's settings file for the current target — the file may have appeared, or
+    /// the target may have left the workshop — and tells the screen.
+    /// </summary>
+    private void RefreshTeamSettingsPath()
+    {
+        TeamSettingsPath = TeamSettingsFile.Find(TeamsRoot, Target.SelectedPath, _directories, _settingsStore.Exists);
+        OnPropertiesChanged(nameof(TeamSettingsPath), nameof(ResolvedSettingsPath), nameof(TeamSettingsLine));
+    }
 
     // A launch is an invocation of the orkeon CLI, so an absent CLI is a refusal, not a
     // late failure: a live Run button that answers a click with «the tool was not located»
@@ -551,7 +612,9 @@ public sealed class LaunchTabViewModel : ObservableObject
         }
 
         var options = BuildOptions(validate);
-        if (await PrepareAsync(options.MountIds, Options.EffectiveSettingsPath).ConfigureAwait(true) is { } refusal)
+        // The team's file counts as a pin here (STUDIO-62): a launch that reads another file
+        // than the machine's saves nothing into the machine's.
+        if (await PrepareAsync(options.MountIds, ResolvedSettingsPath).ConfigureAwait(true) is { } refusal)
         {
             StatusMessage = refusal;
             return null;
@@ -573,7 +636,8 @@ public sealed class LaunchTabViewModel : ObservableObject
             {
                 TargetPath = target.SelectedPath,
                 Arguments = arguments,
-                SettingsPath = Options.EffectiveSettingsPath,
+                // Recorded as a pin is: the entry replays on the file the run read (STUDIO-62).
+                SettingsPath = ResolvedSettingsPath,
                 WorkingDirectory = workingDirectory,
                 // A dry run is not a launch: recording it would fill the replayable history with
                 // entries that never ran a crew. The terminal launcher makes the same exclusion.
@@ -863,6 +927,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     public void RefreshTeamDescription()
     {
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath, _declaredMounts());
+        RefreshTeamSettingsPath();
         Mounts.SetTeamMounts(_team.ResolvedMounts);
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
@@ -1219,6 +1284,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     {
         Options.Target = Target.Target;
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath, _declaredMounts());
+        RefreshTeamSettingsPath();
         Mounts.SetTeamMounts(_team.ResolvedMounts);
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
@@ -1251,13 +1317,22 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     private void LoadIntoForm(LaunchHistoryEntry entry)
     {
+        // Selecting the target resolves the team's settings file for it (STUDIO-62).
         Target.Select(entry.Target);
 
-        if (entry.SettingsPath is { Length: > 0 } settingsPath)
+        if (entry.SettingsPath is not { Length: > 0 } settingsPath)
+            return;
+
+        // An entry recorded on the team's own file was not a pin: the form stays automatic, as it
+        // was when the entry was recorded, and the team file still applies.
+        if (TeamSettingsPath is { Length: > 0 } teamFile
+            && string.Equals(settingsPath, teamFile, Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison))
         {
-            Options.SettingsPath = settingsPath;
-            Options.SettingsMode = SettingsSelectionMode.ExplicitPath;
+            return;
         }
+
+        Options.SettingsPath = settingsPath;
+        Options.SettingsMode = SettingsSelectionMode.ExplicitPath;
     }
 
     private void RefreshPreview()

@@ -840,6 +840,12 @@
   <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve">
     <value>Nichts zu lesen: Der Teamordner '{0}' (Einhängepunkt {1}) existiert nicht. Legen Sie ihn an und legen Sie die Eingaben dort ab.</value>
   </data>
+  <data name="Studio.Run.SettingsTeamFile" xml:space="preserve">
+    <value>Einstellungsdatei des Teams: {0} — der Lauf liest sie anstelle der Datei des Rechners; heften Sie oben eine andere Datei an, um sie zu ersetzen.</value>
+  </data>
+  <data name="Studio.Run.SettingsTeamFileProfileNote" xml:space="preserve">
+    <value>Die Modelleinstellung der Karte überschreibt ihren Llm-Abschnitt.</value>
+  </data>
   <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>Abbruch: Die CLI wird zum Anhalten aufgefordert und andernfalls beendet.</value>
   </data>

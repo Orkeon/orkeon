@@ -123,6 +123,35 @@ Migration: a launcher whose second line was removed by hand used to be written o
 next change of the team's setting or folders; it is now another tool's — kept with its edit, and
 the screen says so. To hand it back to Studio, put the header line back, or re-adopt the team.
 
+### Fixed — a workshop team launched from Studio runs on its own settings file
+
+- **Studio never read a workshop team's settings file** (STUDIO-62). An Orkeon Workshop keeps a
+  team's model and `RateLimiting` in `<workshop>/settings/<slug>/appsettings.json`, which its
+  `run.sh`/`run.cmd` pass as `--settings`; launched from Studio, the same team ran on the machine's
+  file unless the user pinned the team's in Expert mode, at every session, for every team. The
+  Launch tab now resolves a third source under the pin (`TeamSettingsFile`, Studio.Core): for a
+  target whose team folder sits right under the teams root — the root Studio resolved, STUDIO-61 —
+  and whose `settings/<slug>/appsettings.json` exists beside that root, the file is passed as
+  `--settings=<absolute path>`. The slug is the folder's name; nothing is read inside the team;
+  Studio never writes this file.
+- **The pin wins, the file is shown.** Precedence « Expert pin > the team's file > the CLI's own
+  chain » (`LaunchOptionsModel.TeamSettingsPath`, `ResolvedSettingsPath`). The file in force is in
+  the command-line preview and on one line beside it, outside the « Advanced » fold; a history
+  entry records it as it records a pin, and replaying such an entry keeps the form automatic. The
+  effective-mount table reads the file the run will read; the refusal of undeclared folders stays
+  on the machine's file; the saves before a launch (STUDIO-52) skip a launch on the team file as
+  they skip a pin. The run TUI does the same from `ORKEON_STUDIO_TEAMS_ROOT`, its label reading
+  « Settings: auto (team file: …) ».
+- **The `ORKEON_Llm__*` overlay is unchanged.** A card without `profile` lays Studio's
+  `ORKEON_Llm__Profiles__<id>__*` only, and the team file's `Llm` section and `RateLimiting` apply
+  as they are; a card naming a setting of this machine lays that setting's `ORKEON_Llm__*` too, key
+  by key — the card's explicit instruction, said on the line — so the model's precedence is « the
+  card's setting > the team's file > Studio's default ». Known edge, not corrected: a profile id
+  defined both in the team file's `Llm:Profiles` and in Studio's settings merges field by field,
+  Studio's `Profiles__<id>__*` winning key by key.
+- Migration: a plain catalogue has no `<root>/../settings/<slug>/`: nothing changes — no
+  `--settings` for a team without the file, a team outside the root, or a folder picked by hand.
+
 ### Fixed — the Folders step proposes what the request calls for, says when it is the standard proposal, and lets the user fill the folders kept inside the team before the trial (STUDIO-57)
 
 - **A folder to read is proposed only when the team reads files.** A request such as « summarize
