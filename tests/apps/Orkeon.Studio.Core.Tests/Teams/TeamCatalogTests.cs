@@ -747,6 +747,131 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.Equal(ArchivedOn, summary.LastRunAt);
     }
 
+    // ── STUDIO-58: the sidecar is written back as it was found, plus what changed ──
+
+    /// <summary>
+    /// A card another tool wrote — its own keys, its accents as letters, a final newline — comes
+    /// back from a run with <c>lastRunAt</c> added and nothing else: no key it did not have for a
+    /// null, no escape sequence, every unknown key kept and written after Studio's own, a final
+    /// newline. A second run changes no byte.
+    /// </summary>
+    [Fact]
+    public void A_card_another_tool_wrote_keeps_its_keys_its_accents_and_gains_no_null()
+    {
+        var teams = Path.Combine(_root, "teams");
+        var team = Path.Combine(teams, "veille");
+        Directory.CreateDirectory(team);
+        File.WriteAllText(Path.Combine(team, "crew.yaml"), "name: veille\n");
+        var sidecar = Path.Combine(team, StudioTeamMetadata.FileName);
+        File.WriteAllText(
+            sidecar,
+            """{"name":"Veille d'été","description":"Résumé — accents « gardés »","mounts":["./notes:/notes:ro"],"harness":{"schema":2}}""" + "\n");
+
+        Assert.True(TeamCatalog.RecordRun(teams, team, ArchivedOn));
+
+        var text = File.ReadAllText(sidecar);
+        Assert.Contains("Veille d'été", text, StringComparison.Ordinal);
+        Assert.Contains("accents « gardés »", text, StringComparison.Ordinal);
+        Assert.Contains("\"harness\"", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u00", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("null", text, StringComparison.Ordinal);
+        Assert.EndsWith("\n", text, StringComparison.Ordinal);
+        Assert.Equal(
+            ["name", "description", "mounts", "lastRunAt", "harness"],
+            JsonNode.Parse(text)!.AsObject().Select(property => property.Key));
+        Assert.Equal(2, JsonNode.Parse(text)!["harness"]!["schema"]!.GetValue<int>());
+        Assert.Equal(ArchivedOn, TeamCatalog.Describe(team).LastRunAt);
+
+        Assert.True(TeamCatalog.RecordRun(teams, team, ArchivedOn));
+        Assert.Equal(text, File.ReadAllText(sidecar));
+    }
+
+    /// <summary>
+    /// The keys Studio does not model survive an archive and a restore — and the restored card names
+    /// neither the flag nor its date — and a duplicate carries them: it is a copy of the card.
+    /// </summary>
+    [Fact]
+    public void Another_tools_keys_survive_an_archive_a_restore_and_a_duplicate()
+    {
+        var team = CardOfAnotherTool("veille");
+
+        Assert.True(TeamCatalog.Archive(team, ArchivedOn));
+        Assert.Equal(2, Sidecar(team)!["harness"]!["schema"]!.GetValue<int>());
+        Assert.True(Sidecar(team)!["archived"]!.GetValue<bool>());
+
+        Assert.True(TeamCatalog.Restore(team));
+        var restored = File.ReadAllText(Path.Combine(team, StudioTeamMetadata.FileName));
+        Assert.Contains("\"harness\"", restored, StringComparison.Ordinal);
+        Assert.DoesNotContain("archived", restored, StringComparison.Ordinal);
+        Assert.DoesNotContain("null", restored, StringComparison.Ordinal);
+        Assert.EndsWith("\n", restored, StringComparison.Ordinal);
+
+        var copy = TeamCatalog.Duplicate(team, AddedOn)!;
+        Assert.Equal(2, Sidecar(copy)!["harness"]!["schema"]!.GetValue<int>());
+        Assert.Equal("Résumé — accents « gardés »", Sidecar(copy)!["description"]!.GetValue<string>());
+    }
+
+    /// <summary>Every writer that merges a field keeps the keys it does not know, under the same contract.</summary>
+    [Theory]
+    [InlineData("mounts")]
+    [InlineData("schedule")]
+    [InlineData("update")]
+    public void Every_writer_keeps_the_keys_it_does_not_know(string writer)
+    {
+        var team = CardOfAnotherTool("veille");
+
+        switch (writer)
+        {
+            case "mounts":
+                TeamCatalog.SaveMounts(team, ["./output:/output:rw"]);
+                break;
+            case "schedule":
+                TeamCatalog.UpdateMetadata(team, current => current with { Schedule = "daily@07:30" });
+                TeamCatalog.ClearSchedule(team);
+                break;
+            default:
+                TeamCatalog.UpdateMetadata(team, current => current with { Profile = "Cloud" });
+                break;
+        }
+
+        var text = File.ReadAllText(Path.Combine(team, StudioTeamMetadata.FileName));
+        Assert.Contains("\"harness\"", text, StringComparison.Ordinal);
+        Assert.Contains("accents « gardés »", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u00", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("null", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("schedule", text, StringComparison.Ordinal);
+        Assert.EndsWith("\n", text, StringComparison.Ordinal);
+        Assert.Equal("harness", JsonNode.Parse(text)!.AsObject().Last().Key);
+    }
+
+    /// <summary>
+    /// The read stays strict: a trailing comma, which the other tool's strict parsers refuse too,
+    /// makes the card « without metadata » — a card Studio alone would accept would hide a defect.
+    /// </summary>
+    [Fact]
+    public void A_card_with_a_trailing_comma_is_read_as_no_metadata()
+    {
+        var team = Path.Combine(_root, "veille");
+        Directory.CreateDirectory(team);
+        File.WriteAllText(Path.Combine(team, StudioTeamMetadata.FileName), """{"name":"Veille",}""" + "\n");
+
+        var summary = Assert.Single(TeamCatalog.List(_root));
+        Assert.Equal("veille", summary.Name);
+        Assert.False(summary.HasMetadata);
+    }
+
+    /// <summary>A team folder whose card another tool wrote: accents as letters, a key of its own, a final newline.</summary>
+    private string CardOfAnotherTool(string slug)
+    {
+        var team = Path.Combine(_root, slug);
+        Directory.CreateDirectory(team);
+        File.WriteAllText(Path.Combine(team, "crew.yaml"), $"name: {slug}\n");
+        File.WriteAllText(
+            Path.Combine(team, StudioTeamMetadata.FileName),
+            """{"name":"Veille d'été","description":"Résumé — accents « gardés »","mounts":["./notes:/notes:ro"],"harness":{"schema":2}}""" + "\n");
+        return team;
+    }
+
     // ── STUDIO-52: a team keeps its model setting, and changes machine without the machine ──
 
     /// <summary>The companion file as written, as a JSON tree.</summary>

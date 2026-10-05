@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Orkeon.Constants.FileSystem;
@@ -66,7 +67,15 @@ internal sealed record ForgeRenameOutcome
 internal static class ForgeTeamRenamer
 {
     /// <summary>How Studio writes its sidecar, kept on a rewrite.</summary>
-    private static readonly JsonSerializerOptions SidecarOptions = new() { WriteIndented = true };
+    /// <summary>
+    /// The sidecar's writing contract, Studio's (STUDIO-58): two spaces, non-ASCII text as the letters
+    /// themselves — a local file people open, never HTML — and a final newline at the write.
+    /// </summary>
+    private static readonly JsonSerializerOptions SidecarOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     /// <summary>
     /// Renames the team at <paramref name="teamDirectory"/> <paramref name="name"/>. The sessions
@@ -328,7 +337,7 @@ internal static class ForgeTeamRenamer
 
         journal.Snapshot(file);
         sidecar["name"] = name;
-        File.WriteAllText(file, sidecar.ToJsonString(SidecarOptions), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        File.WriteAllText(file, sidecar.ToJsonString(SidecarOptions) + "\n", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
     /// <summary><paramref name="file"/> rewritten by <paramref name="rewrite"/>, journaled; absent, or unchanged, it is not touched.</summary>

@@ -281,6 +281,43 @@ public sealed class ForgeRenameTests : IDisposable
     }
 
     /// <summary>
+    /// STUDIO-58: the sidecar another tool wrote comes back from the rename byte for byte, except
+    /// <c>name</c> — its accents as letters, its own keys in their order — and ends with a newline.
+    /// </summary>
+    [Fact]
+    public async Task Renaming_rewrites_the_sidecar_without_loss()
+    {
+        var imported = Path.Combine(_workspace, "teams", "import");
+        Directory.CreateDirectory(Path.Combine(imported, "crew"));
+        await File.WriteAllTextAsync(Path.Combine(imported, "crew", "config.yaml"), "name: import\n", TestContext.Current.CancellationToken);
+        const string Card = """
+            {
+              "name": "Import",
+              "description": "Résumé — accents « gardés »",
+              "harness": {
+                "schema": 2
+              },
+              "mounts": [
+                "./notes:/notes:ro"
+              ]
+            }
+
+            """;
+        await File.WriteAllTextAsync(Path.Combine(imported, ConventionalNames.TeamSidecarFile), Card.ReplaceLineEndings("\n"), TestContext.Current.CancellationToken);
+        var (_, host) = Machine(ForgePromotePlatform.Linux);
+
+        var (exitCode, _) = await RunAsync(host, "rename", imported, "--name", "Veille importée");
+
+        Assert.Equal(0, exitCode);
+        var moved = Path.Combine(_workspace, "teams", "veille-importee");
+        var text = await File.ReadAllTextAsync(Path.Combine(moved, ConventionalNames.TeamSidecarFile), TestContext.Current.CancellationToken);
+        Assert.EndsWith("\n", text, StringComparison.Ordinal);
+        Assert.Equal(
+            Card.ReplaceLineEndings("\n").Replace("\"Import\"", "\"Veille importée\"", StringComparison.Ordinal),
+            text.ReplaceLineEndings("\n"));
+    }
+
+    /// <summary>
     /// D-03: the new name's folder is already there — another team, a folder, a file. The rename is
     /// refused, saying what occupies it, and nothing moves.
     /// </summary>

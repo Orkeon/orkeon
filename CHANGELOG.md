@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — studio-team.json is written back as it was found, plus what changed
+
+A fix of an existing surface (STUDIO-58): the `studio-team.json` sidecar of a team folder, which
+Studio writes at adoption and after every run, and `orkeon forge rename` retitles. A card another
+tool wrote — Orkeon Workshop writes one with its own keys, its accents as letters and a final
+newline, in a folder it versions — came back from every launch from Studio rebuilt: its unknown
+keys lost, `"profile": null` and `"schedule": null` added, `é` written `\u00E9`, no final newline.
+A git diff of the whole card at every run.
+
+- **Every key Studio does not model is kept.** `StudioTeamMetadata` carries the keys this build
+  does not know (`Extra`, `[JsonExtensionData]`) and writes them back after its own, in the order
+  read; every writer — adoption, « Change the folders », archive and restore, duplicate, import,
+  export, the stamp of a run — keeps them without naming them, and a duplicate or an import copies
+  them with the card. The keys Studio owns keep the order of its model; the card's original order
+  is not promised.
+- **No key for a null.** A field the card does not set is not written as `null`: a card of another
+  tool gains `lastRunAt` after a run and nothing else.
+- **Non-ASCII text as the letters themselves, a final newline.** The sidecar is written with two
+  spaces, UTF-8 without BOM, no escape sequence for an accent or a dash, and ends with a newline —
+  a second run changes no byte. `orkeon forge rename`, which already kept the unknown keys, writes
+  the same way.
+- **The read stays strict.** A card with a comment or a trailing comma is still a card « without
+  metadata », as before: the other tool validates it with strict parsers, and a card Studio alone
+  would accept would hide a defect.
+
+Migration: a card written before loses its `null` lines and gains its final newline at the first
+write — once, with nothing to do.
+
 ### Fixed — the Folders step proposes what the request calls for, says when it is the standard proposal, and lets the user fill the folders kept inside the team before the trial (STUDIO-57)
 
 - **A folder to read is proposed only when the team reads files.** A request such as « summarize
