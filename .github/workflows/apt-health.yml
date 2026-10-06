@@ -13,7 +13,12 @@
 #
 # A red week opens (or comments) one tracking issue with a fixed title, and the first
 # green run closes it, as integration.yml does. Before the apt branch exists, the run
-# says so and passes.
+# says so and passes; so does a channel the branch does not hold yet (the dev channel
+# creates the branch long before the first tag fills stable or rc) - read from the branch
+# itself, so a published channel that answers 404 stays a failure.
+#
+# The checks run in a debian:13 container: its sqv is the one apt 3 calls, and the sqv of
+# the ubuntu-24.04 runner has no --cleartext, so it cannot read an InRelease.
 name: apt health
 on:
   schedule:
@@ -37,25 +42,38 @@ jobs:
       - name: Is the apt repository published yet
         id: exists
         run: |
-          if [ -n "$(git ls-remote --heads origin refs/heads/apt)" ]; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
-          else
+          if [ -z "$(git ls-remote --heads origin refs/heads/apt)" ]; then
             echo "published=false" >> "$GITHUB_OUTPUT"
             echo "::notice::No apt branch yet: the repository is not published, nothing to check."
+            exit 0
           fi
-      - name: Install the verifiers
+          echo "published=true" >> "$GITHUB_OUTPUT"
+          # The channels the branch holds, read from its tree (no blob is fetched).
+          git fetch --quiet --depth 1 --filter=blob:none origin apt
+          channels=""
+          for c in stable rc; do
+            if [ -n "$(git ls-tree --name-only FETCH_HEAD "$c/InRelease")" ]; then
+              channels="${channels:+$channels }$c"
+            else
+              echo "::notice::The apt branch holds no $c channel yet: not checked."
+            fi
+          done
+          echo "channels=$channels" >> "$GITHUB_OUTPUT"
+      - name: Index, assets, signature, key expiry, availability (debian:13)
         if: steps.exists.outputs.published == 'true'
+        env:
+          IMAGE: debian:13@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c
+          CHANNELS: ${{ steps.exists.outputs.channels }}
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends gpgv sqv >/dev/null
-      - name: Index, assets, signature, key expiry, availability
-        if: steps.exists.outputs.published == 'true'
-        run: |
-          gpg --batch --dearmor < installers/apt/orkeon-archive-keyring.asc > "$RUNNER_TEMP/orkeon-archive-keyring.gpg"
-          bash scripts/apt/check-apt-health.sh --keyring "$RUNNER_TEMP/orkeon-archive-keyring.gpg" \
-            --channels "stable rc" --require-sqv
+          # Without a channel the key's expiry is still checked.
+          docker run --rm -e GITHUB_ACTIONS -e CHANNELS -v "$PWD:/repo:ro" -w /repo "$IMAGE" bash -euo pipefail -c '
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends ca-certificates curl gpg gpgv sqv >/dev/null
+            gpg --batch --dearmor < installers/apt/orkeon-archive-keyring.asc > /tmp/orkeon-archive-keyring.gpg
+            bash scripts/apt/check-apt-health.sh --keyring /tmp/orkeon-archive-keyring.gpg \
+              --channels "$CHANNELS" --require-sqv'
       - name: One install round (ubuntu:24.04, rc)
-        if: steps.exists.outputs.published == 'true'
+        if: contains(format(' {0} ', steps.exists.outputs.channels), ' rc ')
         env:
           IMAGE: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
         run: |
