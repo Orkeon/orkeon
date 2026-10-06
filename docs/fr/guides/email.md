@@ -29,11 +29,15 @@ La famille est la deuxième exception motivée au gel du périmètre, décidée 
 lui-même. La décision et les alternatives écartées sont dans
 [ADR-012](../adr/ADR-012-email-tool-family.md).
 
-> **Campagne en attente.** Rien sur cette page n'a encore été exécuté contre un vrai compte
-> Gmail ou Hotmail : cette campagne réelle revient au propriétaire (MAIL-07). Les parcours par
-> fournisseur ci-dessous suivent la documentation des fournisseurs, vérifiée le 2026-09-26.
-> Tenez-les pour en attente de campagne — comme sont documentés les fournisseurs OpenRouter et
-> Mammouth — jusqu'à ce que la campagne soit archivée.
+> **Gmail est campagné ; Hotmail est en attente de campagne.** La campagne réelle du
+> propriétaire (MAIL-07) a joué le cycle complet — relève, brouillon, envoi à soi-même,
+> déplacement vers `archive`, corbeille — sur un vrai compte Gmail, avec un mot de passe
+> d'application le 2026-10-04 et en OAuth2 le 2026-10-05 : voir
+> [Ce que la campagne Gmail a établi](#ce-que-la-campagne-gmail-a-établi). Hotmail et
+> Outlook.com via Microsoft Graph, et Outlook en IMAP et SMTP, n'ont pas encore été exécutés
+> contre un vrai compte : leurs parcours suivent la documentation de Microsoft, vérifiée le
+> 2026-09-26. Tenez-les pour en attente de campagne — comme sont documentés les fournisseurs
+> OpenRouter et Mammouth.
 
 ## Les treize outils
 
@@ -48,7 +52,7 @@ lui-même. La décision et les alternatives écartées sont dans
 | `email_rename_folder` | Organize | Renomme un dossier ; les dossiers système sont refusés |
 | `email_move` | Organize | Déplace des messages vers un dossier ou un rôle (`archive`, `junk`…) |
 | `email_mark` | Organize | Marque des messages lus ou non lus, suivis ou non |
-| `email_delete` | Delete (Purge avec `permanent: true`) | Met des messages à la corbeille, ou les supprime définitivement |
+| `email_delete` | Delete (Purge avec `permanent: true`) | Met des messages à la corbeille, ou les supprime définitivement ; rend chaque id supprimé, avec son nouvel id dans la corbeille |
 | `email_draft` | Draft (+ Read pour répondre ou transférer) | Enregistre un nouveau message, une réponse ou un transfert dans les brouillons, **sans l'envoyer** |
 | `email_send` | Send (+ Read pour répondre ou transférer) | Envoie un nouveau message, une réponse ou un transfert — aux seuls destinataires autorisés |
 | `email_parser` | aucun (pas de compte) | Parse un fichier `.eml` depuis un chemin virtuel, avec la même sortie qu'`email_read` |
@@ -445,11 +449,27 @@ voit tous les comptes du fichier de réglages qu'il résout.
   d'un résultat d'outil. Une page de recherche contient jusqu'à `limit` messages, chacun avec un
   aperçu de 100 caractères, et un objet et un expéditeur coupés à 200 caractères ; une page qui
   ne tiendrait pas est coupée après un message entier, et `next_cursor` reprend juste après le
-  dernier rendu : rien n'est sauté. `email_read` rend au plus `max_chars` caractères du corps —
+  dernier rendu : rien n'est sauté.
+- **`limit` est un plafond, et `next_cursor` est la seule fin d'un dossier.** Une dizaine de
+  messages tiennent dans un résultat d'outil, quoi que demande `limit` jusqu'à son maximum de
+  50 : sur une vraie boîte Gmail, une recherche de 88 messages est revenue en pages de 10, 9,
+  10, 13, 8, 9, 9, 9, 10 et 1. Une page plus courte que `limit` ne dit donc rien de ce qui
+  reste — lisez jusqu'à ce que `next_cursor` soit nul. `count` est le nombre de messages de la
+  page, jamais le nombre de correspondances ; `total` est le nombre de messages du dossier qui
+  répondent aux critères, toutes pages comptées, et reste le même d'une page à l'autre. Un
+  compte IMAP le rend (pas avec `has_attachments`, appliqué page par page) ; Graph et POP3 ne
+  le rendent pas. Sans critère, c'est le `total` du dossier dans `email_folders`, moins les
+  messages qu'un autre client a marqués supprimés sans les purger.
+- **`email_read` rend au plus `max_chars` caractères du corps** —
   moins quand les en-têtes et les sauts de ligne échappés prennent la place — et `next_offset`
   reprend exactement là où la tranche s'arrête ; les listes d'adresses qui évinceraient le corps
   gardent cinq adresses et une dernière entrée comme `(+37 more)`. L'avis et le verdict viennent
   d'abord, le corps en dernier.
+- **Une suppression nomme ce qu'elle a supprimé.** `email_delete` rend `messages` : chaque `id`
+  reçu et, pour une mise à la corbeille, le `new_id` que le message y porte désormais — pour
+  le lire, le remettre en place ou le supprimer définitivement. `new_id` est absent quand le
+  message est supprimé définitivement, et sur un serveur IMAP sans UIDPLUS (cherchez dans la
+  corbeille).
 - **Les critères de recherche se combinent en ET.** `from`, `to` (l'en-tête To), `subject` et
   `text` (objet ou corps) cherchent une sous-chaîne, sans tenir compte de la casse — sur un
   compte Outlook lu via Graph ils passent plutôt par KQL, où chaque mot doit correspondre à un
@@ -461,6 +481,9 @@ voit tous les comptes du fichier de réglages qu'il résout.
   `spam` marche aussi —, `archive`, `all` sur Gmail) désigne le dossier quel que soit le nom que
   lui donne le fournisseur. Gmail n'a pas de dossier d'archives : `archive` y est Tous les
   messages (*All Mail*), où le message quitte la boîte de réception et garde ses autres libellés.
+  `email_folders` le dit : aucun dossier ne porte le rôle `archive` sur Gmail, et le dossier
+  Tous les messages (rôle `all`) le liste sous `also_roles` — tout rôle qu'un appel peut nommer
+  est un rôle que la liste montre, comme `role` ou parmi les `also_roles` du dossier qu'il ouvre.
 - **`raw_query`** transmet une requête native du fournisseur, combinée en ET avec les autres
   critères : la syntaxe de recherche de Gmail (`from:bank has:attachment older_than:30d`) sur
   un compte Gmail, KQL sur un compte Outlook lu via Graph. Les autres serveurs, et POP3, la
@@ -613,6 +636,22 @@ codes que le CLI traduit en codes de sortie.
 - **« The message is … KB once encoded »** — Microsoft Graph accepte 4 Mo par requête, soit
   environ 3 Mo de pièces jointes une fois encodées en base64. La limite propre d'un serveur SMTP
   (`SIZE`) est signalée par « The message is … KB; <hôte> accepts at most … KB ».
+- **« `cursor` '…' is not a cursor this account issued »** — le curseur a été altéré en
+  revenant, ou appartient à un autre compte (un curseur IMAP s'écrit `u:<nombre>`, un curseur
+  Graph `n:<page>.<k>`, un curseur POP3 `o:<nombre>`). Repassez `next_cursor` tel que la page
+  précédente l'a rendu, avec le même dossier et les mêmes critères, ou omettez `cursor` pour
+  repartir du message le plus récent.
+- **« The connection to <hôte>:<port> failed (…) »** — le message dit lequel de deux cas se
+  présente. *À l'ouverture de la session* : rien n'a été modifié, rappeler est donc sans
+  risque ; si l'échec se répète, vérifiez `Host`, `Port` et `Security` du compte, et le réseau.
+  *En cours de session* : la ligne est tombée, ce qu'un serveur de courrier fait à une session
+  inactive ou longue ; l'appel suivant ouvre une nouvelle connexion, il suffit donc de
+  rappeler — mais si l'appel modifiait la boîte (un déplacement, une suppression, un
+  brouillon, un envoi), cherchez d'abord : le serveur a pu l'appliquer avant la coupure.
+- **« '…' is not an e-mail address »** — un destinataire s'écrit `user@example.org` ou
+  `Nom <user@example.org>` ; un nom de compte (`gmail`) est ce que prend `account`, pas `to`.
+  `email_accounts` donne l'`address` propre à chaque compte, ce qu'il faut pour « me l'envoyer
+  à moi-même ».
 - **« … has no archive folder »** — le serveur n'en signale ni n'en nomme aucun (`Archive`,
   `Archives`) ; créez un dossier nommé `Archive`, ou déplacez vers un chemin. Gmail n'en a pas
   besoin : `archive` y est Tous les messages.
@@ -647,6 +686,10 @@ codes que le CLI traduit en codes de sortie.
   une suppression définitive n'efface toujours que ses propres messages (MailKit retire la
   marque de suppression des autres le temps de la purge). Sur Gmail, une suppression définitive
   passe par `[Gmail]/Trash`, puisque purger un libellé ne fait qu'archiver.
+- **Aucun outil ne rend les libellés Gmail.** Un message se voit à travers le dossier où on le
+  lit, et `email_read` ne liste pas les libellés qu'il porte : qu'un message archivé ait gardé
+  ses autres libellés se vérifie en cherchant dans le dossier de chaque libellé, ou dans
+  l'interface de Gmail, pas en un seul appel.
 - **Pas dans cette version** : supprimer des dossiers, copier un message ou lui donner plusieurs
   libellés Gmail, l'approbation humaine interactive d'un envoi (utilisez `email_draft`), un outil
   OAuth générique pour d'autres API.
@@ -665,8 +708,46 @@ codes que le CLI traduit en codes de sortie.
   `hidden_content`.
 - **Les pages POP3 se comptent depuis le message le plus récent** : du courrier qui arrive ou
   part entre deux appels les décale, et une page peut alors répéter ou sauter un message.
+- **`email_move` et `email_delete` listent les ids qui tiennent dans le résultat d'un agent**
+  (une quarantaine de messages avec leurs nouveaux ids) : au-delà, la boucle d'agent tronque la
+  liste et le dit. Les compteurs viennent d'abord et ne sont jamais coupés ; déplacez ou
+  supprimez par lots plus petits quand chaque nouvel id compte.
 - **`email_folders` liste les dossiers qui tiennent dans le résultat d'un agent** (une
   quarantaine avec des noms longs) : au-delà, la boucle d'agent tronque la liste et le dit.
 - **Chaque compte est visible de chaque crew et de chaque script qui résout le même fichier de
   réglages** — voir le modèle de menace dans [SECURITY.fr.md](../../../SECURITY.fr.md).
-- **La validation réelle sur de vrais comptes Gmail et Hotmail reste à faire** (MAIL-07).
+- **La validation réelle sur un vrai compte Hotmail ou Outlook.com reste à faire** (MAIL-07) :
+  Microsoft Graph, et Outlook en IMAP et SMTP, sont en attente de campagne. Gmail est
+  campagné — voir ci-dessous.
+
+## Ce que la campagne Gmail a établi
+
+La campagne réelle du propriétaire (MAIL-07) a fait jouer le cycle complet à une crew sur un
+vrai compte Gmail, deux fois : avec un mot de passe d'application le 2026-10-04, en OAuth2
+(XOAUTH2) le 2026-10-05.
+
+| Contrôle | Mot de passe d'application | OAuth2 |
+|---|---|---|
+| Le cycle tourne de bout en bout — recherche, lecture, brouillon, envoi à soi-même, déplacement vers `archive`, corbeille — chaque étape rendant un id serveur | passe | passe |
+| Un déplacement vers `archive` arrive dans Tous les messages (`[Gmail]/Tous les messages` sur un compte en français) et le message quitte la boîte de réception | passe | passe |
+| Une lecture de 3000 caractères tient sous le plafond de la boucle d'agent et reprend à `next_offset` | passe | passe |
+| Un dossier entier est atteint par pagination, sans message sauté ni rendu deux fois | partiel — deux pages lues, le curseur non suivi jusqu'au bout | passe — 88 messages, 88 ids distincts, `next_cursor` nul à la dixième page |
+| La campagne ne laisse aucun brouillon | passe | passe |
+| `orkeon email login` se termine sur la redirection du navigateur, sans rien coller | — | passe |
+
+Ce qu'elle a changé dans les outils : `email_delete` rend les ids qu'il a supprimés,
+`email_search` rend `total` et dit ce que sont `count` et `limit`, `email_folders` montre où va
+`archive` sur Gmail, et trois refus — un curseur, une connexion tombée, un destinataire qui
+n'est pas une adresse — disent quoi faire. Ce qu'elle a laissé ouvert :
+
+- **La même recherche a rendu des compteurs différents sur une boîte crue inchangée** (0, puis
+  8, sur l'archive). La campagne lisait `count`, qui est la taille d'une page ; que Gmail
+  réponde aussi à une recherche depuis une vue en retard sur une suppression n'est pas
+  tranché. `total` est là pour distinguer les deux.
+- **Une page de 50 messages n'existe pas** : une dizaine tiennent dans un résultat d'outil
+  (ci-dessus).
+- **Qu'un message archivé garde ses autres libellés** n'a pas été observé par un outil
+  (ci-dessus).
+- **La corbeille n'est pas vidée** : `permanent: true` demande le droit `Purge`, que le compte
+  de campagne n'accordait pas. Ce qu'une crew supprime reste dans la corbeille jusqu'à la purge
+  à trente jours de Gmail, ou jusqu'à un compte qui accorde `Purge`.

@@ -102,7 +102,7 @@ internal sealed record EmailSearchRequest
 
     /// <summary>Folder path or role.</summary>
     [JsonPropertyName("folder")]
-    [FieldSchema(Description = "Folder path, or a role: inbox, sent, drafts, trash, junk, archive (default inbox)", IsRequired = false)]
+    [FieldSchema(Description = "Folder path, or a role: inbox, sent, drafts, trash, junk, archive, all (default inbox)", IsRequired = false)]
     public string? Folder { get; init; }
 
     /// <summary>Only unread.</summary>
@@ -157,7 +157,7 @@ internal sealed record EmailSearchRequest
 
     /// <summary>Page size.</summary>
     [JsonPropertyName("limit")]
-    [FieldSchema(Description = "Messages per page (default 10, at most 50)", IsRequired = false)]
+    [FieldSchema(Description = "The most messages a page may hold (default 10, at most 50). A page is also cut to what fits a tool result, about 10 messages: it can hold fewer than `limit` while more follow", IsRequired = false)]
     public int? Limit { get; init; }
 
     /// <summary>Next-page cursor.</summary>
@@ -186,12 +186,17 @@ internal sealed record EmailSearchResponse
 
     /// <summary>Messages on this page.</summary>
     [JsonPropertyName("count")]
-    [ReturnSchema(Description = "Messages on this page")]
+    [ReturnSchema(Description = "Messages on this page — not the number of matches, and possibly fewer than `limit`: the folder is finished only when `next_cursor` is null")]
     public int Count { get; init; }
+
+    /// <summary>Matches in the whole folder.</summary>
+    [JsonPropertyName("total")]
+    [ReturnSchema(Description = "Messages of the folder matching the criteria, every page counted, when the server says (IMAP, without `has_attachments`); null otherwise")]
+    public int? Total { get; init; }
 
     /// <summary>Next-page cursor.</summary>
     [JsonPropertyName("next_cursor")]
-    [ReturnSchema(Description = "Pass it as `cursor` (same criteria) for the next page; null on the last page")]
+    [ReturnSchema(Description = "Pass it as `cursor` (same folder and criteria) for the next page; null on the last page, and only then")]
     public string? NextCursor { get; init; }
 
     /// <summary>The page, newest first.</summary>

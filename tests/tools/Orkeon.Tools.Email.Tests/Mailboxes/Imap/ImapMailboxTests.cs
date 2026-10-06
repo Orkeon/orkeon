@@ -161,6 +161,7 @@ public sealed class ImapMailboxTests
 
         Assert.Equal(EmailErrorCode.ServerError, error.Code);
         Assert.Contains($"The connection to 127.0.0.1:{refusing.Port} failed", error.Message, StringComparison.Ordinal);
+        Assert.Contains("It failed while opening the session, so nothing was changed", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

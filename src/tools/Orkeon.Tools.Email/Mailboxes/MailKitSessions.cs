@@ -70,7 +70,7 @@ internal static class MailKitSessions
                 await AuthenticateAsync(client, credential, cancellationToken).ConfigureAwait(false);
             }
         }
-        catch (Exception ex) when (Translate(ex, account, endpoint) is { } translated)
+        catch (Exception ex) when (Translate(ex, account, endpoint, opening: true) is { } translated)
         {
             throw translated;
         }
@@ -87,7 +87,14 @@ internal static class MailKitSessions
     /// The actionable form of a MailKit or socket failure, or null for anything else (a
     /// cancellation, an <see cref="EmailToolException"/> already written for the agent).
     /// </summary>
-    public static EmailToolException? Translate(Exception exception, ResolvedEmailAccount account, MailEndpoint? endpoint)
+    /// <param name="exception">The failure.</param>
+    /// <param name="account">The account the call was for.</param>
+    /// <param name="endpoint">The server it was talking to, when known.</param>
+    /// <param name="opening">
+    /// True while the session is being opened: nothing was asked of the mailbox yet, and a
+    /// failure that repeats is a setting, where one in the middle of a session is a dropped line.
+    /// </param>
+    public static EmailToolException? Translate(Exception exception, ResolvedEmailAccount account, MailEndpoint? endpoint, bool opening = false)
     {
         ArgumentNullException.ThrowIfNull(exception);
         ArgumentNullException.ThrowIfNull(account);
@@ -122,7 +129,10 @@ internal static class MailKitSessions
             ProtocolException or ServiceNotConnectedException or ServiceNotAuthenticatedException or IOException or SocketException
                 or TimeoutException => new EmailToolException(
                 EmailErrorCode.ServerError,
-                $"The connection to {server} failed: {exception.Message}",
+                $"The connection to {server} failed ({exception.Message}). " + (opening
+                    ? "It failed while opening the session, so nothing was changed: call again. If it fails every time, an operator checks the account's Host, Port and Security, and the network."
+                    : "A dropped connection is usually transient, and the next call opens a new one: call again. "
+                      + "If this call was changing the mailbox (a move, a delete, a draft, a send), search first: the server may have applied it before the line broke."),
                 exception),
             _ => null,
         };

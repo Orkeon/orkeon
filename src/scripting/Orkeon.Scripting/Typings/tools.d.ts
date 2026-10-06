@@ -133,6 +133,8 @@ declare global {
         readonly name: string;
         /** Absent for an ordinary folder. */
         readonly role?: EmailFolderRole;
+        /** Other roles that open this folder when they have none of their own: on Gmail, `archive` opens All Mail. */
+        readonly also_roles?: readonly EmailFolderRole[];
         /** Messages in the folder, when the server says. */
         readonly total?: number;
         /** Unread messages, when the server says. */
@@ -168,7 +170,7 @@ declare global {
         has_attachments?: boolean;
         /** The provider's own query language: Gmail search syntax, or KQL on Outlook. */
         raw_query?: string;
-        /** Messages per page: 10 by default, clamped to 1..50. */
+        /** The most messages a page may hold: 10 by default, clamped to 1..50. A page is also cut to a tool result (about 10 messages), so it can hold fewer while more follow. */
         limit?: number;
         /** The previous page's `next_cursor`, sent with the same criteria. */
         cursor?: string;
@@ -198,9 +200,11 @@ declare global {
         readonly notice: string;
         readonly account: string;
         readonly folder: string;
-        /** Messages on this page. */
+        /** Messages on this page: not the number of matches, and possibly fewer than `limit`. */
         readonly count: number;
-        /** Pass it as `cursor`, with the same criteria, for the next page; absent on the last one. */
+        /** Messages of the folder matching the criteria, every page counted; IMAP only, absent with `has_attachments`. */
+        readonly total?: number;
+        /** Pass it as `cursor`, with the same folder and criteria, for the next page; absent on the last one, and only then. */
         readonly next_cursor?: string;
         /** Newest first. */
         readonly messages: readonly EmailSummary[];
@@ -363,6 +367,8 @@ declare global {
         readonly permanent: boolean;
         /** The trash folder the messages went to, when not permanent. */
         readonly moved_to?: string;
+        /** Each deleted message; `new_id` is its id in the trash, absent when it is gone for good or when the server does not say. */
+        readonly messages: readonly { readonly id: string; readonly new_id?: string }[];
     }
 
     /** A new message, a reply (`reply_to_id`) or a forward (`forward_id`), for `emailDraft` and `emailSend`. */

@@ -12,7 +12,7 @@ namespace Orkeon.Tools.Email.Tools;
 /// <summary>Moves messages to the trash, or deletes them for good.</summary>
 [ToolContract("email_delete",
     Name = "email_delete",
-    Description = "Delete messages: moved to the trash by default (needs the Delete right); `permanent: true` deletes them for good (needs the Purge right, cannot be undone).",
+    Description = "Delete messages: moved to the trash by default (needs the Delete right); `permanent: true` deletes them for good (needs the Purge right, cannot be undone). Returns each deleted id, with its new id in the trash.",
     Category = "Email")]
 internal sealed class EmailDeleteTool : ToolBase<EmailDeleteRequest, EmailDeleteResponse>
 {
@@ -43,6 +43,7 @@ internal sealed class EmailDeleteTool : ToolBase<EmailDeleteRequest, EmailDelete
             Deleted = outcome.Count,
             Permanent = outcome.Permanent,
             MovedTo = outcome.MovedTo,
+            Messages = outcome.Messages.Select(item => new DeletedMessageDto { Id = item.Id, NewId = item.NewId }).ToList(),
         };
     }
 }

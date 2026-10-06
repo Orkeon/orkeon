@@ -220,7 +220,7 @@ public sealed class GraphMailboxTests
 
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await graph.Mailbox.SearchAsync(new MailSearch { Cursor = cursor }, Token));
 
-        Assert.StartsWith("`cursor` is not a cursor of this account", error.Message, StringComparison.Ordinal);
+        Assert.Contains("is not a cursor this account issued (its cursors read `n:<page>.<k>`)", error.Message, StringComparison.Ordinal);
         Assert.Empty(graph.Http.Requests);
     }
 
@@ -250,7 +250,7 @@ public sealed class GraphMailboxTests
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await graph.Mailbox.SearchAsync(new MailSearch { Cursor = cursor }, Token));
 
         Assert.Equal(EmailErrorCode.InvalidRequest, error.Code);
-        Assert.StartsWith("`cursor` is not a cursor of this account", error.Message, StringComparison.Ordinal);
+        Assert.Contains("is not a cursor this account issued (its cursors read `n:<page>.<k>`)", error.Message, StringComparison.Ordinal);
         Assert.Empty(graph.Http.Requests);
     }
 
@@ -346,7 +346,8 @@ public sealed class GraphMailboxTests
 
         var outcome = await graph.Mailbox.DeleteAsync(["graph:m-1"], permanent: false, Token);
 
-        Assert.Equal(new DeleteOutcome(1, false, "Deleted Items"), outcome);
+        Assert.Equal((1, false, "Deleted Items"), (outcome.Count, outcome.Permanent, outcome.MovedTo));
+        Assert.Equal(new MovedMessage("graph:m-1", "graph:m-1"), Assert.Single(outcome.Messages));
         Assert.Equal("""{"destinationId":"id-trash"}""", Assert.Single(graph.Http.RequestsTo(HttpMethod.Post, $"{Base}me/messages/m-1/move")).Body);
     }
 
@@ -371,7 +372,8 @@ public sealed class GraphMailboxTests
 
         var outcome = await graph.Mailbox.DeleteAsync(["graph:m-1", "graph:m-2"], permanent: true, Token);
 
-        Assert.Equal(new DeleteOutcome(2, true, null), outcome);
+        Assert.Equal((2, true, (string?)null), (outcome.Count, outcome.Permanent, outcome.MovedTo));
+        Assert.Equal([new MovedMessage("graph:m-1", null), new MovedMessage("graph:m-2", null)], outcome.Messages);
         Assert.Equal(
             [$"{Base}me/messages/m-1/permanentDelete", $"{Base}me/messages/m-2/permanentDelete"],
             graph.Http.Requests.Select(request => request.Uri.AbsoluteUri));

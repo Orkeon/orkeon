@@ -183,6 +183,20 @@ internal sealed record EmailDeleteRequest
     public bool? Permanent { get; init; }
 }
 
+/// <summary>One deleted message.</summary>
+internal sealed record DeletedMessageDto
+{
+    /// <summary>Id it was deleted by.</summary>
+    [JsonPropertyName("id")]
+    [ReturnSchema(Description = "Id the message was deleted by; it no longer opens it")]
+    public string Id { get; init; } = "";
+
+    /// <summary>Id in the trash.</summary>
+    [JsonPropertyName("new_id")]
+    [ReturnSchema(Description = "Its id in the trash, to read it, move it back or delete it for good; null when it is gone for good or when the server does not say (search the trash)")]
+    public string? NewId { get; init; }
+}
+
 /// <summary>Response of <c>email_delete</c>.</summary>
 internal sealed record EmailDeleteResponse
 {
@@ -205,4 +219,9 @@ internal sealed record EmailDeleteResponse
     [JsonPropertyName("moved_to")]
     [ReturnSchema(Description = "Trash folder they went to, when not permanent")]
     public string? MovedTo { get; init; }
+
+    /// <summary>Deleted messages.</summary>
+    [JsonPropertyName("messages")]
+    [ReturnSchema(Description = "Each deleted message: its id, and its new id in the trash")]
+    public IReadOnlyList<DeletedMessageDto> Messages { get; init; } = [];
 }

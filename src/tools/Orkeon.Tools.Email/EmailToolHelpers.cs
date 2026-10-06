@@ -146,6 +146,7 @@ internal static class EmailToolHelpers
             Path = folder.Path,
             Name = folder.Name,
             Role = folder.Role,
+            AlsoRoles = folder.AlsoRoles,
             Total = folder.Total,
             Unread = folder.Unread,
         };

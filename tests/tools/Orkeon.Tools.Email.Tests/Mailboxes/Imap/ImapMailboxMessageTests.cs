@@ -37,6 +37,7 @@ public sealed class ImapMailboxMessageTests
         Assert.Equal("u:2", second.NextCursor);
         Assert.Equal(["Message 1"], third.Messages.Select(m => m.Subject));
         Assert.Null(third.NextCursor);
+        Assert.Equal([5, 5, 5], new[] { first.Total, second.Total, third.Total });
     }
 
     [Fact]
@@ -139,6 +140,7 @@ public sealed class ImapMailboxMessageTests
         Assert.Equal(expectedSubject, summary.Subject);
         Assert.Equal(wanted, summary.HasAttachments);
         Assert.Null(page.NextCursor);
+        Assert.Null(page.Total);
     }
 
     [Fact]
@@ -188,7 +190,8 @@ public sealed class ImapMailboxMessageTests
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await mailbox.SearchAsync(new MailSearch { Cursor = cursor }, Token));
 
         Assert.Equal(EmailErrorCode.InvalidRequest, error.Code);
-        Assert.StartsWith("`cursor` is not a cursor of this account", error.Message, StringComparison.Ordinal);
+        Assert.StartsWith($"`cursor` '{cursor}' is not a cursor this account issued (its cursors read `u:<number>`)", error.Message, StringComparison.Ordinal);
+        Assert.Contains("leave `cursor` out to start again from the newest message", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -357,7 +360,10 @@ public sealed class ImapMailboxMessageTests
         var outcome = await mailbox.DeleteAsync([MessageIds.Imap("INBOX", server.UidValidityOf("INBOX"), uid)], permanent: false, Token);
 
         server.AssertHealthy();
-        Assert.Equal(new DeleteOutcome(1, false, "Trash"), outcome);
+        Assert.Equal((1, false, "Trash"), (outcome.Count, outcome.Permanent, outcome.MovedTo));
+        Assert.Equal(
+            new MovedMessage(MessageIds.Imap("INBOX", server.UidValidityOf("INBOX"), uid), MessageIds.Imap("Trash", server.UidValidityOf("Trash"), 1)),
+            Assert.Single(outcome.Messages));
         Assert.Empty(server.UidsOf("INBOX"));
         Assert.Single(server.UidsOf("Trash"));
     }
@@ -409,7 +415,8 @@ public sealed class ImapMailboxMessageTests
         var outcome = await mailbox.DeleteAsync([MessageIds.Imap("INBOX", validity, doomed)], permanent: true, Token);
 
         server.AssertHealthy();
-        Assert.Equal(new DeleteOutcome(1, true, null), outcome);
+        Assert.Equal((1, true, (string?)null), (outcome.Count, outcome.Permanent, outcome.MovedTo));
+        Assert.Equal(new MovedMessage(MessageIds.Imap("INBOX", validity, doomed), null), Assert.Single(outcome.Messages));
         Assert.Equal([bystander], server.UidsOf("INBOX"));
         Assert.Contains(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"UID EXPUNGE {doomed}"), server.Commands);
     }
@@ -426,7 +433,7 @@ public sealed class ImapMailboxMessageTests
         var outcome = await mailbox.DeleteAsync([MessageIds.Imap("INBOX", server.UidValidityOf("INBOX"), doomed)], permanent: true, Token);
 
         server.AssertHealthy();
-        Assert.Equal(new DeleteOutcome(1, true, null), outcome);
+        Assert.Equal((1, true, (string?)null), (outcome.Count, outcome.Permanent, outcome.MovedTo));
         Assert.Equal([spared], server.UidsOf("INBOX"));
         Assert.Contains("\\Deleted", server.FlagsOf("INBOX", spared));
     }
@@ -462,7 +469,7 @@ public sealed class ImapMailboxMessageTests
         var outcome = await mailbox.DeleteAsync([MessageIds.Imap("INBOX", server.UidValidityOf("INBOX"), uid)], permanent: true, Token);
 
         server.AssertHealthy();
-        Assert.Equal(new DeleteOutcome(1, true, null), outcome);
+        Assert.Equal((1, true, (string?)null), (outcome.Count, outcome.Permanent, outcome.MovedTo));
         Assert.Empty(server.UidsOf("INBOX"));
         Assert.Empty(server.UidsOf("[Gmail]/Trash"));
         var moveIndex = server.Commands.ToList().FindIndex(c => c.StartsWith("UID MOVE", StringComparison.Ordinal));

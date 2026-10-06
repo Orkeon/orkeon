@@ -11,7 +11,7 @@ namespace Orkeon.Tools.Email.Tools;
 /// <summary>Lists the folders of an account.</summary>
 [ToolContract("email_folders",
     Name = "email_folders",
-    Description = "List the folders of an e-mail account with their role (inbox, sent, drafts, trash, junk, archive), message and unread counts. Needs the Read right.",
+    Description = "List the folders of an e-mail account with their role (inbox, sent, drafts, trash, junk, archive, all), message and unread counts. Needs the Read right.",
     Category = "Email")]
 internal sealed class EmailFoldersTool : ToolBase<EmailFoldersRequest, EmailFoldersResponse>
 {

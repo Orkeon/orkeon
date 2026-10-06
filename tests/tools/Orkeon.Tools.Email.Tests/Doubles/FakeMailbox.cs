@@ -123,7 +123,10 @@ internal sealed class FakeMailbox : IMailbox
     public Task<DeleteOutcome> DeleteAsync(IReadOnlyList<string> ids, bool permanent, CancellationToken cancellationToken)
     {
         Deletes.Add((ids, permanent));
-        return Task.FromResult(new DeleteOutcome(ids.Count, permanent, permanent ? null : "Trash"));
+        return Task.FromResult(new DeleteOutcome(ids.Count, permanent, permanent ? null : "Trash")
+        {
+            Messages = ids.Select(id => new MovedMessage(id, permanent ? null : id + "-trashed")).ToList(),
+        });
     }
 
     /// <inheritdoc />

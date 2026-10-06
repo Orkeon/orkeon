@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the e-mail tools say what the live Gmail campaign could not read from them (MAIL-07)
+
+The owner's live campaign ran the whole cycle — search, read, draft, send to oneself, move to
+`archive`, trash — against a real Gmail account, with an app password on 2026-10-04 and with
+OAuth2 on 2026-10-05. The cycle passes; what follows is what the campaign could not prove, or
+had to work around, because of what a tool returned.
+
+- **`email_delete` returns the ids it deleted.** A new `messages` list holds each `id` and, for
+  a move to the trash, the `new_id` the message has there (IMAP with UIDPLUS, Graph); a message
+  deleted for good has none. A delete was provable by a counter and an absence only.
+- **`email_search` returns `total`, and says what `count` and `limit` are.** `count` is the
+  size of the page; `total` is the number of messages of the folder matching the criteria,
+  every page counted (IMAP, not with `has_attachments`). `limit` is a ceiling: a page is cut to
+  what the agent loop keeps of a tool result, about ten messages, so a page shorter than `limit`
+  is not the end of a folder — `next_cursor` alone is. Nothing changes in what a page holds;
+  the schema, the tool description and the guide now say it.
+- **`email_folders` shows where `archive` goes on Gmail.** No Gmail folder carries the role
+  `archive`, which `email_move` accepts and sends to All Mail: that folder (role `all`) now
+  lists it under `also_roles`. The tool description and the `folder` argument name `all` too.
+- **Three refusals say what to do.** A cursor the account did not issue names the form of its
+  cursors and the two ways out (the previous page's `next_cursor`, or none); a failed
+  connection says whether it failed while opening the session (nothing changed; a repeat is a
+  setting) or in the middle of one (call again, and search first when the call was changing
+  the mailbox); a recipient that is not an address says that an account name is not one and that
+  `email_accounts` gives the address.
+- **The guide documents Gmail as campaigned** (EN and FR), with what the campaign established
+  and what it left open — the page of 50, Gmail labels, which no tool returns, and a search
+  whose count moved on a mailbox believed unchanged. Hotmail and Outlook.com through Microsoft
+  Graph, and Outlook over IMAP and SMTP, stay campaign-pending.
+
+Breaking for a caller that compared a refusal's text: the three messages above changed.
+
 ### Fixed — studio-team.json is written back as it was found, plus what changed
 
 A fix of an existing surface (STUDIO-58): the `studio-team.json` sidecar of a team folder, which

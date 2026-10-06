@@ -212,7 +212,8 @@ public sealed class Pop3MailboxTests
         var outcome = await mailbox.DeleteAsync(["pop3:uid-1", "pop3:uid-3"], permanent: true, Token);
 
         server.AssertHealthy();
-        Assert.Equal(new DeleteOutcome(2, true, null), outcome);
+        Assert.Equal((2, true, (string?)null), (outcome.Count, outcome.Permanent, outcome.MovedTo));
+        Assert.Equal([new MovedMessage("pop3:uid-1", null), new MovedMessage("pop3:uid-3", null)], outcome.Messages);
         Assert.Equal(["uid-2"], server.Uids);
         var transcript = server.Transcript.ToList();
         Assert.True(transcript.LastIndexOf("QUIT") > transcript.IndexOf("DELE 3"));

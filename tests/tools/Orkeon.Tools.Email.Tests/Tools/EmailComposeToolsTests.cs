@@ -178,6 +178,19 @@ public sealed class EmailComposeToolsTests
     }
 
     [Fact]
+    public async Task Should_tell_an_account_name_from_an_address_and_where_the_address_is()
+    {
+        using var fixture = new ToolFixture();
+
+        var error = ToolResults.Failure(await fixture.CallAsync("email_draft", ("to", ToolResults.Of("full")), ("subject", "S"), ("text", "T")));
+
+        Assert.Equal(
+            "Tool execution failed: 'full' is not an e-mail address: a recipient is `user@example.org` or `Name <user@example.org>`, never an account name. email_accounts gives each account's own `address`.",
+            error);
+        Assert.Empty(fixture.Mailbox().Drafts);
+    }
+
+    [Fact]
     public async Task Should_explain_what_a_new_message_lacks()
     {
         using var fixture = new ToolFixture();
@@ -186,7 +199,7 @@ public sealed class EmailComposeToolsTests
         var badAddress = ToolResults.Failure(await fixture.CallAsync("email_send", ("to", ToolResults.Of("not an address")), ("subject", "S"), ("text", "T")));
 
         Assert.Equal("Tool execution failed: A new message needs a `subject`.", noSubject);
-        Assert.Equal("Tool execution failed: 'not an address' is not an e-mail address.", badAddress);
+        Assert.StartsWith("Tool execution failed: 'not an address' is not an e-mail address: a recipient is `user@example.org`", badAddress, StringComparison.Ordinal);
         Assert.Empty(fixture.Sender().Sent);
     }
 
