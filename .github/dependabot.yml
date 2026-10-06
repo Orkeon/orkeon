@@ -17,6 +17,12 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    groups:
+      # `init` and `analyze` are one action at one commit: bumped apart, `analyze`
+      # refuses the configuration `init` wrote and every CodeQL job fails.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
 
   # The esbuild toolchain lockfile used by the scripting layer.
   - package-ecosystem: npm

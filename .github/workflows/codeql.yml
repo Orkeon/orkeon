@@ -10,7 +10,9 @@
 #   - python                — the repo's tooling scripts, three of which gate ci.yml.
 #   - actions               — the workflows themselves (injection-prone `run:` blocks,
 #                             unpinned actions). Supported since CodeQL Action 3.27;
-#                             the pin below is 3.37.9.
+#                             the pin below is 4.38.1.
+# `init` and `analyze` must carry the SAME commit: `analyze` refuses the configuration
+# an `init` of another version wrote ("Loaded a configuration file for version …").
 # Each language uploads under its own `category`, so their results never overwrite one
 # another in the Security tab.
 name: CodeQL
@@ -38,11 +40,11 @@ jobs:
         language: [ csharp, javascript-typescript, python, actions ]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v3
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
           languages: ${{ matrix.language }}
           build-mode: none
           queries: security-and-quality
-      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v3
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
           category: "/language:${{ matrix.language }}"
