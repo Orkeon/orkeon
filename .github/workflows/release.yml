@@ -456,6 +456,15 @@ jobs:
           if (-not (Test-Path -LiteralPath $orkeonCmd)) { throw "$orkeonCmd not found after install" }
           Write-Host "PASS install -- $orkeonCmd exists"
 
+          # The notices Package.wxs harvests with the rest of the stage tree (GAP-52).
+          # Same assertions as the ZIP channel, shared from lib\notices-windows.ps1:
+          # the runtimes to expect are read from the installed applications, the
+          # Windows Desktop pack of the WPF Studio included.
+          . ./scripts/smoke-onboarding/lib/notices-windows.ps1
+          $notices = Invoke-OrkeonNoticesAssertions -Root $installDir
+          if ($notices.Problems.Count -gt 0) { throw ("notices: " + ($notices.Problems -join '; ')) }
+          Write-Host "PASS notices -- $($notices.Notes -join '; ')"
+
           # Per-user MSI registration lands under the HKCU Uninstall key, but an
           # elevated CI session may surprise us -- search both hives (plus the
           # 32-bit view), retry once for registry settle, and dump everything the

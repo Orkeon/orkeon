@@ -14,6 +14,11 @@
     1. the archive layout survived packaging (bin\orkeon.cmd, install.ps1, VERSION);
     2. the payload survived it too — esbuild.exe, the BGE-micro-v2 embedding model
        and the 7 whitelisted tree-sitter grammars (WIN-04 pruning);
+   2b. the notices came with it: LICENSE.md, THIRD-PARTY-NOTICES.md and one
+       licenses\<pack>\ per .NET runtime an application bundles -- asserted on
+       the archive, then again on the tree install.ps1 made of it (GAP-52); the
+       assertions live in lib\notices-windows.ps1, shared with the msi job and
+       the two service smokes;
     3. install.ps1 installs, registers an Add/Remove Programs entry and adds its
        bin\ folder to the user PATH (WIN-05);
     4. a fresh session resolves `orkeon` from that PATH entry alone;
@@ -67,6 +72,8 @@ $fixtures = Join-Path $PSScriptRoot 'fixtures'
 
 # Orkeon Studio assertions, shared with the msi job (see the file's header).
 . (Join-Path $PSScriptRoot 'lib\studio-windows.ps1')
+# Notices assertions, shared with the msi job and the two service smokes.
+. (Join-Path $PSScriptRoot 'lib\notices-windows.ps1')
 
 # The grammars WIN-04's MSBuild pruning keeps (src\Directory.Build.targets,
 # OrkeonTreeSitterKeptGrammars). Losing one must fail the smoke.
@@ -114,6 +121,16 @@ function Step-Fail([string]$Label, [string]$Note) {
     Add-Step 'FAIL' $Label $Note
     $script:Failures++
     Write-Host "    FAIL $Label $Note" -ForegroundColor Red
+}
+
+# The notices of one tree (lib\notices-windows.ps1), as a step of this smoke.
+function Step-Notices([string]$Label, [string]$Root) {
+    $notices = Invoke-OrkeonNoticesAssertions -Root $Root
+    if ($notices.Problems.Count -gt 0) {
+        Step-Fail $Label ($notices.Problems -join '; ')
+    } else {
+        Step-Pass $Label ($notices.Notes -join '; ')
+    }
 }
 
 function Write-Tail([string]$Path, [int]$Lines = 10) {
@@ -278,6 +295,10 @@ if ($missing.Count -gt 0) {
     Step-Pass 'payload' "launcher + esbuild.exe + BGE-micro-v2 model + $($keptGrammars.Count) tree-sitter libraries present"
 }
 
+# The notices package-installers.sh puts in the archive; the runtimes to expect
+# are read from the applications themselves (GAP-52).
+Step-Notices 'notices' $archiveRoot
+
 # ---------------------------------------------------------------------------- #
 # 3. install.ps1
 # ---------------------------------------------------------------------------- #
@@ -297,6 +318,10 @@ if ($installFailed) {
     Write-Host 'SMOKE FAILED (nothing installed, later steps are moot)' -ForegroundColor Red
     exit 1
 }
+
+# install.ps1 copies the notices only when the archive carries them, without a
+# word otherwise: asserted again on the installed tree, which is what the user keeps.
+Step-Notices 'notices-installed' $installDir
 
 # Add/Remove Programs entry (WIN-05).
 if (Test-Path -LiteralPath $arpKeyPath) {

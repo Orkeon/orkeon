@@ -104,6 +104,111 @@ smoke_assert_payload() {
   return 0
 }
 
+# smoke_assert_notices <notices-dir> <license-file> <app-dir>... — the notices that
+# travel with the bits they cover (GAP-45), asserted on the payload as the user
+# receives it: the license, THIRD-PARTY-NOTICES.md and, for each .NET runtime an
+# application bundles, a non-empty licenses/<pack>/.
+#
+# Nothing is listed here. Which runtimes a payload bundles is read from the payload:
+# each *.runtimeconfig.json of the application folders names the frameworks its
+# application carries (`includedFrameworks`, absent from a framework-dependent one),
+# and the pack is `<framework>.Runtime.<rid>`, the RID being the one the *.deps.json
+# beside it was published for. So an application that turns self-contained, or starts
+# bundling Windows Desktop, is expected to bring its folder without a line changing
+# here. Application folders that hold no *.runtimeconfig.json at all are a failure,
+# never an empty pass: the caller pointed at the wrong place.
+#
+# The PowerShell twin is Invoke-OrkeonNoticesAssertions (lib/notices-windows.ps1);
+# scripts/test-smoke-notices.sh and .ps1 prove both on the same trees.
+smoke_assert_notices() {
+  local notices_dir="$1" license="$2"
+  shift 2
+
+  local verdict
+  verdict="$(python3 - "$notices_dir" "$license" "$@" <<'PY'
+import json, sys
+from pathlib import Path
+
+notices, license_name = Path(sys.argv[1]), sys.argv[2]
+app_dirs = [Path(arg) for arg in sys.argv[3:]]
+problems, seen = [], []
+
+for name in (license_name, "THIRD-PARTY-NOTICES.md"):
+    if (notices / name).is_file():
+        seen.append(name)
+    else:
+        problems.append(f"{notices / name} is missing")
+
+
+def read(path):
+    return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+configs = [config for folder in app_dirs if folder.is_dir()
+           for config in sorted(folder.glob("*.runtimeconfig.json"))]
+if not configs:
+    where = ", ".join(str(folder) for folder in app_dirs) or "no application folder was given"
+    problems.append(f"no *.runtimeconfig.json to read the bundled runtimes from ({where})")
+
+# pack -> the applications that bundle it, in the order met.
+expected = {}
+framework_dependent = 0
+for config in configs:
+    app = config.parent
+    try:
+        options = read(config).get("runtimeOptions") or {}
+    except (OSError, ValueError) as exc:
+        problems.append(f"{config}: unreadable ({exc})")
+        continue
+    frameworks = [f.get("name") for f in options.get("includedFrameworks") or [] if f.get("name")]
+    if not frameworks:
+        framework_dependent += 1
+        continue
+    rid = ""
+    for deps in sorted(app.glob("*.deps.json")):
+        try:
+            target = (read(deps).get("runtimeTarget") or {}).get("name") or ""
+        except (OSError, ValueError):
+            continue
+        rid = target.partition("/")[2]
+        if rid:
+            break
+    if not rid:
+        problems.append(f"{app.name} bundles {', '.join(frameworks)} but no *.deps.json beside "
+                        f"{config.name} names the runtime identifier it was published for")
+        continue
+    for framework in frameworks:
+        expected.setdefault(f"{framework}.Runtime.{rid}", []).append(app.name)
+
+for pack, apps in expected.items():
+    folder = notices / "licenses" / pack
+    files = sorted(p.name for p in folder.iterdir() if p.is_file()) if folder.is_dir() else []
+    bundlers = ", ".join(dict.fromkeys(apps))
+    if not folder.is_dir():
+        problems.append(f"licenses/{pack}/ is missing from {notices} (the runtime {bundlers} bundles)")
+    elif not files:
+        problems.append(f"licenses/{pack}/ is empty in {notices} (the runtime {bundlers} bundles)")
+    else:
+        seen.append(f"licenses/{pack}/ ({', '.join(files)})")
+
+if problems:
+    print("FAIL|" + "; ".join(problems))
+else:
+    note = ", ".join(seen) + f" in {notices}"
+    if not expected:
+        note += f"; no bundled runtime ({framework_dependent} framework-dependent application(s))"
+    print("PASS|" + note)
+PY
+)"
+
+  if [[ "${verdict%%|*}" == "PASS" ]]; then
+    smoke_pass "notices" "${verdict#*|}"
+    return 0
+  fi
+  smoke_fail "notices" "${verdict#*|}"
+  return 1
+}
+
 # --------------------------------------------------------------------------- #
 # Orkeon Studio (STUDIO-08, spec §8.4) — present or absent by channel.
 # --------------------------------------------------------------------------- #

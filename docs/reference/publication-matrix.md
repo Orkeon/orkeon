@@ -227,9 +227,12 @@ the install directory, the ARP entry and the user `PATH` entry appear and then d
 `smoke-windows-service` installs the **full** win-x64 zip's service channel — virtual account,
 `--working-dir` proven with a relative crew path, a refused configuration that stops without
 looping and lands in the event log — and the `msi` job smokes the service MSI the same way,
-plus a silent reinstall of itself. All of them install from the **job** artifacts, never from
-the Release, so a broken payload is caught before anything is published — the `release` job
-`needs` them all.
+plus a silent reinstall of itself. Every one of them also checks the notices of what it
+installed: the license, `THIRD-PARTY-NOTICES.md` and one `licenses/<pack>/` per .NET runtime an
+application bundles, the runtimes being read from the payload itself (each
+`*.runtimeconfig.json`), not from a list. All of them install from the **job** artifacts, never
+from the Release, so a broken payload is caught before anything is published — the `release`
+job `needs` them all.
 
 **After publication.** `release.yml` calls `release-verify.yml` in its `verify-published` job,
 right after the `release` job of the same run (and it can be run on demand for a given tag). A
@@ -239,7 +242,9 @@ checks that every published asset has exactly one line in `SHA256SUMS` or `SHA25
 and every line names a published asset, verifies every checksum with no line skipped, and
 replays the onboarding smokes of both `.deb` (amd64, and arm64 on an ARM runner) and of the
 `osx-arm64` tarball on them — catching an asset that an upload, a replace or a tamper made
-different from what the smokes above installed. Run by hand on `v1.0.0-rc.3` or
+different from what the smokes above installed. The two smoke jobs check the tag out, so the
+smokes replayed are the tag's own: an older Release is asked what its own smokes asked of it,
+not what `main`'s ask today. Run by hand on `v1.0.0-rc.3` or
 `v1.0.0-rc.4`, it fails by design: those Releases predate the naming rule below, and carry no
 arm64 package.
 

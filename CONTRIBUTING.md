@@ -271,7 +271,11 @@ project, exposing plain fields or properties to configure answers and inspect ca
   `.dockerignore` keeps both in the build context: `--check` fails otherwise. The installers
   copy the notices of the .NET runtime they bundle at packaging time
   (`scripts/third-party-notices.py --runtime-notices`, which `scripts/package-installers.sh`
-  and its `.ps1` mirror call, so both need Python 3).
+  and its `.ps1` mirror call, so both need Python 3). Every release smoke then checks, on
+  the payload it installed, that the license, the notices and the `licenses/<pack>/` of each
+  bundled runtime arrived (`smoke_assert_notices` and its PowerShell twin
+  `Invoke-OrkeonNoticesAssertions`, under `scripts/smoke-onboarding/lib/`): a packaging
+  script, an installer or a WiX file that stops copying one fails the release.
 * Commit messages are in English and follow the history's `type(scope): summary` shape
   (`feat`, `fix`, `docs`, `test`, `chore`…).
 
@@ -367,7 +371,8 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    (`scripts/third-party-notices.py --check`, its rules tested by
    `scripts/test-third-party-notices.py`), the scripting typings check
    (`scripts/check-scripting-typings.sh`), the dev-channel prune test
-   (`scripts/test-prune-dev-packages.sh`), the examples gates
+   (`scripts/test-prune-dev-packages.sh`), the test of the release smokes' notices check
+   (`scripts/test-smoke-notices.sh` and its `.ps1` twin), the examples gates
    (`scripts/generate-examples-index.sh --check`, `scripts/lint-example-configs.py`,
    `scripts/lint-example-readmes.py`, `scripts/test-examples-catalog.py`, the examples
    solution built with `-warnaserror`, `scripts/validate-all-examples.sh`), the

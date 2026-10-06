@@ -13,6 +13,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d AS build
 WORKDIR /src
 
+# The whole context, packages/ included when it is there: under Linux a restore fills
+# <repository>/packages (RestorePackagesPath, Directory.Build.props), so a local build
+# publishes from it without downloading the closure again. A fresh checkout (CI) has
+# none and restores from nuget.org. .dockerignore keeps the folder in the context for this.
 COPY . .
 RUN dotnet publish src/hosting/Orkeon.Host/Orkeon.Host.csproj \
       --configuration Release \

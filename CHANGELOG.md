@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the release smokes check the notices of every payload, and the runner image says what its build context holds (GAP-52)
+
+Since GAP-45 every published payload carries its license, `THIRD-PARTY-NOTICES.md` and, for
+each .NET runtime it bundles, a `licenses/<pack>/` folder. Nothing checked that they arrived: a
+packaging script, an installer, a WiX file or `package-deb.sh` could stop copying them and the
+release left green.
+
+- **Every release smoke fails, naming what is missing, when a payload lacks its notices.** The
+  license (`copyright` in the Debian package), `THIRD-PARTY-NOTICES.md` and a non-empty
+  `licenses/<pack>/` per bundled runtime are asserted on the tree the user keeps: the CLI
+  archive and what `install.ps1` or `install.sh` makes of it, the two MSIs once installed, the
+  full Windows archive, the `.deb`. No smoke lists the folders it expects: each
+  `*.runtimeconfig.json` of the payload names the frameworks its application bundles, and the
+  pack is `<framework>.Runtime.<rid>`. A payload with no `*.runtimeconfig.json` is a failure,
+  never an empty pass. Two twin functions hold the rule, `smoke_assert_notices`
+  (`lib/smoke-common.sh`) and `Invoke-OrkeonNoticesAssertions` (`lib/notices-windows.ps1`),
+  both proved in CI on throwaway trees.
+- **`release-verify.yml` replays the smokes of the tag it verifies.** Run by hand, its two
+  smoke jobs checked out the branch the run started from; they now check the tag out, so an
+  older Release is asked what its own smokes asked of it.
+- **`.dockerignore` and `Dockerfile.runners` say what Docker does.** `*.md` drops the Markdown
+  of the repository root only, and the comments claimed it dropped every Markdown file but the
+  READMEs — a rule that, once "fixed" to match them, would have removed the RAG demo's corpus
+  and every example README from the published image. The comments now point at
+  `.dockerignore`, which says why deeper Markdown stays and why `packages/` is kept in the
+  context; `!src/*/*/README.md`, which re-included nothing, is gone; the image's banner no
+  longer counts its examples. The build context is the same, file for file.
+
+No .NET project changes, and nothing changes in what an archive, a package or an image holds.
+
 ### Fixed — the e-mail tools say what the live Gmail campaign could not read from them (MAIL-07)
 
 The owner's live campaign ran the whole cycle — search, read, draft, send to oneself, move to

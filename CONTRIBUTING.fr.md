@@ -282,7 +282,12 @@ réponses et inspecter les appels. La référence est
   deux dans le contexte de build : sinon, le `--check` échoue. Les installeurs copient les
   notices du runtime .NET qu'ils embarquent au moment de l'empaquetage
   (`scripts/third-party-notices.py --runtime-notices`, qu'appellent
-  `scripts/package-installers.sh` et son miroir `.ps1`, qui demandent donc Python 3).
+  `scripts/package-installers.sh` et son miroir `.ps1`, qui demandent donc Python 3). Chaque
+  smoke de la release vérifie ensuite, sur la charge utile qu'il a installée, que la licence,
+  les notices et le `licenses/<pack>/` de chaque runtime embarqué sont arrivés
+  (`smoke_assert_notices` et son jumeau PowerShell `Invoke-OrkeonNoticesAssertions`, sous
+  `scripts/smoke-onboarding/lib/`) : un script d'empaquetage, un installeur ou un fichier WiX
+  qui cesse d'en copier un fait échouer la release.
 * Les messages de commit sont en anglais et suivent la forme `type(scope): summary` de
   l'historique (`feat`, `fix`, `docs`, `test`, `chore`…).
 
@@ -386,7 +391,8 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    notices tierces (`scripts/third-party-notices.py --check`, dont les règles sont testées
    par `scripts/test-third-party-notices.py`), la vérification des typings de scripting
    (`scripts/check-scripting-typings.sh`), le test de la purge du canal dev
-   (`scripts/test-prune-dev-packages.sh`), les gates des
+   (`scripts/test-prune-dev-packages.sh`), le test du contrôle des notices des smokes de
+   release (`scripts/test-smoke-notices.sh` et son jumeau `.ps1`), les gates des
    exemples (`scripts/generate-examples-index.sh --check`,
    `scripts/lint-example-configs.py`, `scripts/lint-example-readmes.py`,
    `scripts/test-examples-catalog.py`, la solution d'exemples compilée en `-warnaserror`,

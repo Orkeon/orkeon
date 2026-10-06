@@ -12,9 +12,18 @@ examples/others
 **/*.suo
 _site
 sonarqube
+# packages/ is not listed, on purpose. Under Linux a restore fills <repository>/packages
+# (RestorePackagesPath, Directory.Build.props), and deploy/Dockerfile.host copies the whole
+# context: its publish restores from that folder instead of downloading the closure again.
+# A fresh checkout (CI) has none, and no image keeps it in its final stage.
+#
+# Docker anchors a pattern at the root of the context: *.md drops the Markdown of the
+# repository root and nothing deeper. The rest stays, on purpose: Dockerfile.runners ships
+# the README of every example (`orkeon-example show` prints it) and the documents the
+# scripting demos read (examples/scripting/data/), and every build reads the
+# AnalyzerReleases.*.md of the VFS analyzer under src/.
 *.md
 !README.md
 # Every image copies these two into /usr/share/doc/orkeon/: the notices go with the bits.
 !LICENSE.md
 !THIRD-PARTY-NOTICES.md
-!src/*/*/README.md

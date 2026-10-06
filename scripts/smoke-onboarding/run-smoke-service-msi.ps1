@@ -11,6 +11,9 @@
     1. silent install succeeds (0 or 3010), the exe lands at the one canonical
        path (Program Files\Orkeon\libexec\orkeon-host\orkeon-host.exe), the ARP
        entry "Orkeon Service Host" exists;
+   1b. the notices were installed with it: LICENSE.md, THIRD-PARTY-NOTICES.md
+       and one licenses\<pack>\ per .NET runtime the host bundles (GAP-52,
+       lib\notices-windows.ps1);
     2. the service is registered under NT SERVICE\Orkeon, Auto, with a quoted
        ImagePath carrying --settings and --working-dir pointing at
        ProgramData\Orkeon; the data directory exists with Modify for the
@@ -56,6 +59,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'lib\service-windows.ps1')
+. (Join-Path $PSScriptRoot 'lib\notices-windows.ps1')
 
 $serviceName = 'Orkeon'
 $installRoot = Join-Path $env:ProgramFiles 'Orkeon'
@@ -102,6 +106,10 @@ try {
     if (-not (Test-Path $dataDir)) { $problems += "install: $dataDir was not created" }
     if ($problems.Count -gt 0) { throw "Install assertions failed: $($problems -join '; ')" }
     Write-Host "  installed (exe, ARP entry, data dir)"
+
+    # What PackageService.wxs installs of the notices, read back from the install
+    # directory: the license, the third-party notices, licenses\ (GAP-52).
+    Add-Result 'notices' (Invoke-OrkeonNoticesAssertions -Root $installRoot)
 
     # -- 2. Registration assertions (shared with the ZIP channel) ----------------
     Add-Result 'registration' (Invoke-OrkeonServiceRegistrationAssertions `
