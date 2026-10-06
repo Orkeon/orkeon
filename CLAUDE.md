@@ -344,6 +344,18 @@ check there before assuming a registered surface is actually invoked.
 
 ## Development Guidelines
 
+### Branching — never start work on `main`
+
+Before the first change of a new piece of work, read the current branch (`git branch --show-current`):
+
+- **On `main`**: creating a branch is mandatory, before any file is touched. Its prefix follows the nature of the work:
+  - `feature/<slug>` — a new capability or behaviour;
+  - `fix/<slug>` — a bug, regression or CI repair;
+  - `chore/<slug>` — everything else that changes no behaviour (docs, refactoring, dependencies, tooling, submodule bumps).
+- **On any other branch**: continue on it — no new branch.
+
+The slug is short, lowercase and hyphenated (e.g. `fix/apt-health-unpublished-channels`). Nothing is ever committed directly to `main`.
+
 ### Virtual File System (VFS) — mandatory for all I/O
 
 Framework code MUST NOT call `System.IO.File.*`, `System.IO.Directory.*`, `new FileStream/FileInfo/DirectoryInfo/FileSystemWatcher` directly. Route all filesystem access through `IFileSystemService` (mount-aware, rights-audited, virtual paths). See `docs/architecture/vfs-compliance.md` for the full spec; the baseline audit and second-pass review live in the private `backstage` submodule.
