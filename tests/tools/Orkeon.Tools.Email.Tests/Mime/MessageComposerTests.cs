@@ -74,7 +74,9 @@ public sealed class MessageComposerTests
             await Compose(new ComposeInput { To = [recipient], Subject = "S", Text = "T" }));
 
         Assert.Equal(EmailErrorCode.InvalidRequest, error.Code);
-        Assert.Equal($"'{recipient}' is not an e-mail address.", error.Message);
+        Assert.Equal(
+            $"'{recipient}' is not an e-mail address: a recipient is `user@example.org` or `Name <user@example.org>`, never an account name. email_accounts gives each account's own `address`.",
+            error.Message);
     }
 
     [Fact]

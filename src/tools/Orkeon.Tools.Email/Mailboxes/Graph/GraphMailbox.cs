@@ -221,10 +221,11 @@ internal sealed class GraphMailbox : IMailbox
                     .ConfigureAwait(false);
             }
 
-            return new DeleteOutcome(ids.Count, true, null);
+            return new DeleteOutcome(ids.Count, true, null) { Messages = ids.Select(id => new MovedMessage(id, null)).ToList() };
         }
 
         var trash = await ResolveFolderAsync(FolderRoles.Trash, cancellationToken).ConfigureAwait(false);
+        var deleted = new List<MovedMessage>(ids.Count);
         foreach (var id in ids)
         {
             var graphId = MessageIds.ParseGraph(id);
@@ -237,12 +238,14 @@ internal sealed class GraphMailbox : IMailbox
                     "This message is already in Deleted Items: pass `permanent: true` to delete it for good (needs the Purge right).");
             }
 
-            using var _ = await _graph.SendJsonAsync(
+            using var document = await _graph.SendJsonAsync(
                 HttpMethod.Post, GraphClient.Resolve($"me/messages/{Escape(graphId)}/move"), new JsonObject { ["destinationId"] = trash.Id }, cancellationToken)
                 .ConfigureAwait(false);
+            var newId = ReadString(document.RootElement, "id");
+            deleted.Add(new MovedMessage(id, newId is null ? id : MessageIds.Graph(newId)));
         }
 
-        return new DeleteOutcome(ids.Count, false, trash.Info.Path);
+        return new DeleteOutcome(deleted.Count, false, trash.Info.Path) { Messages = deleted };
     }
 
     /// <inheritdoc />
@@ -368,7 +371,7 @@ internal sealed class GraphMailbox : IMailbox
             }
         }
 
-        throw new EmailToolException(EmailErrorCode.InvalidRequest, "`cursor` is not a cursor of this account: pass `next_cursor` exactly as a previous page returned it.");
+        throw Cursors.Refused(cursor, CursorPrefix + "<page>.<k>");
     }
 
     private static MessageSummaryInfo Summarize(JsonElement item)

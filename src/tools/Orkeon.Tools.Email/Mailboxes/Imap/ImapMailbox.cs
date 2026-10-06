@@ -63,12 +63,13 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
         {
             var folders = await client.GetFoldersAsync(
                 client.PersonalNamespaces[0], StatusItems.Count | StatusItems.Unread, false, cancellationToken).ConfigureAwait(false);
-            return folders
+            var described = folders
                 .Where(folder => !folder.Attributes.HasFlag(FolderAttributes.NonExistent))
                 .Select(folder => Describe(client, folder))
                 .OrderBy(folder => folder.Role == FolderRoles.Inbox ? 0 : 1)
                 .ThenBy(folder => folder.Path, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            return DeclareGmailArchive(client, described);
         }, cancellationToken);
 
     /// <inheritdoc />
@@ -118,7 +119,11 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
             var uids = await folder.SearchAsync(BuildQuery(client, search), cancellationToken).ConfigureAwait(false);
             var below = ParseCursor(search.Cursor);
             var ordered = uids.Where(uid => uid.Id < below).OrderByDescending(uid => uid.Id).ToList();
-            return await CollectPageAsync(folder, ordered, search, cancellationToken).ConfigureAwait(false);
+            var page = await CollectPageAsync(folder, ordered, search, cancellationToken).ConfigureAwait(false);
+
+            // The server answered every match at once, so the total costs nothing; attachments
+            // are filtered here, page by page, and their total is not known.
+            return search.HasAttachments is null ? page with { Total = uids.Count } : page;
         }, cancellationToken);
 
     /// <inheritdoc />
@@ -152,14 +157,7 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
                 }
 
                 var map = await folder.MoveToAsync(uids, target, cancellationToken).ConfigureAwait(false);
-                foreach (var (item, uid) in group.Zip(uids))
-                {
-                    var index = map.Source.IndexOf(uid);
-                    var newId = index >= 0 && index < map.Destination.Count
-                        ? MessageIds.Imap(target.FullName, map.Destination[index].Validity, map.Destination[index].Id)
-                        : null;
-                    moved.Add(new MovedMessage(item.Id, newId));
-                }
+                moved.AddRange(MovedTo(target, group, uids, map));
             }
 
             return moved;
@@ -198,7 +196,7 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
                     "This server declares no trash folder: delete for good with `permanent: true` (needs the Purge right).");
             }
 
-            var count = 0;
+            var deleted = new List<MovedMessage>(ids.Count);
             foreach (var group in GroupByFolder(ids))
             {
                 var (folder, uids) = await OpenGroupAsync(client, group, FolderAccess.ReadWrite, cancellationToken).ConfigureAwait(false);
@@ -209,11 +207,11 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
                         "These messages are already in the trash: pass `permanent: true` to delete them for good (needs the Purge right).");
                 }
 
-                await folder.MoveToAsync(uids, trash, cancellationToken).ConfigureAwait(false);
-                count += uids.Count;
+                var map = await folder.MoveToAsync(uids, trash, cancellationToken).ConfigureAwait(false);
+                deleted.AddRange(MovedTo(trash, group, uids, map));
             }
 
-            return new DeleteOutcome(count, false, DisplayPath(trash));
+            return new DeleteOutcome(deleted.Count, false, DisplayPath(trash)) { Messages = deleted };
         }, cancellationToken);
 
     /// <inheritdoc />
@@ -447,7 +445,7 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
             return below;
         }
 
-        throw new EmailToolException(EmailErrorCode.InvalidRequest, "`cursor` is not a cursor of this account: pass `next_cursor` exactly as a previous page returned it.");
+        throw Cursors.Refused(cursor, CursorPrefix + "<number>");
     }
 
     /// <summary>
@@ -458,7 +456,7 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
     private static async Task<DeleteOutcome> PurgeAsync(ImapClient client, IReadOnlyList<string> ids, IMailFolder? trash, CancellationToken cancellationToken)
     {
         var gmail = client.Capabilities.HasFlag(ImapCapabilities.GMailExt1);
-        var count = 0;
+        var purged = new List<MovedMessage>(ids.Count);
         foreach (var group in GroupByFolder(ids))
         {
             var (folder, uids) = await OpenGroupAsync(client, group, FolderAccess.ReadWrite, cancellationToken).ConfigureAwait(false);
@@ -468,15 +466,28 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
                 var map = await folder.MoveToAsync(uids, trash, cancellationToken).ConfigureAwait(false);
                 await trash.OpenAsync(FolderAccess.ReadWrite, cancellationToken).ConfigureAwait(false);
                 await ExpungeAsync(trash, map.Destination, cancellationToken).ConfigureAwait(false);
-                count += uids.Count;
+                purged.AddRange(group.Select(item => new MovedMessage(item.Id, null)));
                 continue;
             }
 
             await ExpungeAsync(folder, uids, cancellationToken).ConfigureAwait(false);
-            count += uids.Count;
+            purged.AddRange(group.Select(item => new MovedMessage(item.Id, null)));
         }
 
-        return new DeleteOutcome(count, true, null);
+        return new DeleteOutcome(purged.Count, true, null) { Messages = purged };
+    }
+
+    /// <summary>Each message of <paramref name="group"/> with the id the server gave it in <paramref name="target"/> (UIDPLUS), or none.</summary>
+    private static IEnumerable<MovedMessage> MovedTo(IMailFolder target, List<(string Id, ImapMessageId Target)> group, IList<UniqueId> uids, UniqueIdMap map)
+    {
+        foreach (var (item, uid) in group.Zip(uids))
+        {
+            var index = map.Source.IndexOf(uid);
+            var newId = index >= 0 && index < map.Destination.Count
+                ? MessageIds.Imap(target.FullName, map.Destination[index].Validity, map.Destination[index].Id)
+                : null;
+            yield return new MovedMessage(item.Id, newId);
+        }
     }
 
     private static async Task ExpungeAsync(IMailFolder folder, IList<UniqueId> uids, CancellationToken cancellationToken)
@@ -629,6 +640,26 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
             RoleOf(client, folder),
             selectable ? folder.Count : null,
             selectable ? folder.Unread : null);
+    }
+
+    /// <summary>
+    /// Gmail has no archive folder, and the role lookup opens All Mail for <c>archive</c>: the
+    /// listing says so, on the folder a move to <c>archive</c> lands in, so that what an agent
+    /// discovers and what it may ask for are the same roles.
+    /// </summary>
+    private static List<MailFolderInfo> DeclareGmailArchive(ImapClient client, List<MailFolderInfo> folders)
+    {
+        if (!client.Capabilities.HasFlag(ImapCapabilities.GMailExt1) || !FlagsRoles(client)
+            || folders.Exists(folder => folder.Role == FolderRoles.Archive
+                || ConventionalNames(FolderRoles.Archive).Contains(folder.Path, StringComparer.Ordinal)))
+        {
+            return folders;
+        }
+
+        var all = folders.FindIndex(folder => folder.Role == FolderRoles.All);
+        if (all >= 0)
+            folders[all] = folders[all] with { AlsoRoles = [FolderRoles.Archive] };
+        return folders;
     }
 
     private static string? RoleOf(ImapClient client, IMailFolder folder)

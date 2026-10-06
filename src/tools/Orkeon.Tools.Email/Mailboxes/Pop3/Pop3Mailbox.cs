@@ -132,7 +132,7 @@ internal sealed class Pop3Mailbox : IMailbox, IDisposable
             foreach (var index in indexes)
                 await client.DeleteMessageAsync(index, cancellationToken).ConfigureAwait(false);
 
-            return new DeleteOutcome(uids.Count, true, null);
+            return new DeleteOutcome(uids.Count, true, null) { Messages = uids.Select(uid => new MovedMessage(MessageIds.Pop3(uid), null)).ToList() };
         }, cancellationToken);
     }
 
@@ -222,7 +222,7 @@ internal sealed class Pop3Mailbox : IMailbox, IDisposable
             return skip;
         }
 
-        throw new EmailToolException(EmailErrorCode.InvalidRequest, "`cursor` is not a cursor of this account: pass `next_cursor` exactly as a previous page returned it.");
+        throw Cursors.Refused(cursor, CursorPrefix + "<number>");
     }
 
     private void RequireInbox(string folder)

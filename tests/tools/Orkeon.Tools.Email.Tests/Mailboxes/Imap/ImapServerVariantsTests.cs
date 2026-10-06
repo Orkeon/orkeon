@@ -185,13 +185,33 @@ public sealed class ImapServerVariantsTests
         var archived = await mailbox.MoveAsync([page.Messages[0].Id], "archive", Token);
 
         server.AssertHealthy();
-        Assert.Contains(folders, folder => folder is { Path: "[Gmail]/All Mail", Role: "all" });
+        Assert.Equal([FolderRoles.Archive], folders.Single(folder => folder is { Path: "[Gmail]/All Mail", Role: "all" }).AlsoRoles);
+        Assert.All(folders.Where(folder => folder.Role != FolderRoles.All), folder => Assert.Null(folder.AlsoRoles));
+        Assert.Equal(3, page.Total);
         Assert.Contains(server.Commands, c => c.StartsWith("UID SEARCH RETURN", StringComparison.Ordinal));
         Assert.Contains(server.Commands, c => c.Contains("BODY.PEEK[1]<0.", StringComparison.Ordinal));
         Assert.Equal(["Report attached", "HTML one", "Plain one"], page.Messages.Select(m => m.Subject));
         Assert.All(page.Messages, message => Assert.False(string.IsNullOrWhiteSpace(message.Preview)));
         Assert.Equal("Plain one", read.Message.Subject);
         Assert.StartsWith(MessageIds.Imap("[Gmail]/All Mail", server.UidValidityOf("[Gmail]/All Mail"), 1), Assert.Single(archived).NewId, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_not_declare_All_Mail_as_the_archive_When_a_folder_named_Archive_is_what_the_role_opens()
+    {
+        await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password, FakeImapServer.GmailCapabilities);
+        server.AddFolder("[Gmail]").AddFolder("[Gmail]/All Mail", "\\All").AddFolder("Archive");
+        var uid = server.AddMessage("INBOX", MimeSamples.Plain());
+        using var credentials = new CredentialsFixture();
+        await using var mailbox = new ImapMailbox(
+            TestAccounts.AsGmail(TestAccounts.Loopback(IncomingProtocol.Imap, server.Port)), new NetworkMailServiceConnector(), credentials.Provider, credentials.Time);
+
+        var folders = await mailbox.ListFoldersAsync(Token);
+        var archived = await mailbox.MoveAsync([MessageIds.Imap("INBOX", server.UidValidityOf("INBOX"), uid)], "archive", Token);
+
+        server.AssertHealthy();
+        Assert.All(folders, folder => Assert.Null(folder.AlsoRoles));
+        Assert.Equal(MessageIds.Imap("Archive", server.UidValidityOf("Archive"), 1), Assert.Single(archived).NewId);
     }
 
     [Fact]

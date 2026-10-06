@@ -147,6 +147,8 @@ public sealed class EmailOrganizingToolsTests
         var result = ToolResults.Success(await fixture.CallAsync("email_delete", ("ids", ToolResults.Of("id-1"))));
 
         Assert.Equal((1, false, "Trash"), (result["deleted"], result["permanent"], result["moved_to"]));
+        var deleted = Assert.Single(ToolResults.Objects(result, "messages"));
+        Assert.Equal(("id-1", "id-1-trashed"), (deleted["id"], deleted["new_id"]));
         Assert.False(Assert.Single(fixture.Mailbox().Deletes).Permanent);
     }
 
@@ -162,6 +164,9 @@ public sealed class EmailOrganizingToolsTests
 
         Assert.Equal((1, true), (purged["deleted"], purged["permanent"]));
         Assert.False(purged.ContainsKey("moved_to"));
+        var gone = Assert.Single(ToolResults.Objects(purged, "messages"));
+        Assert.Equal("id-1", gone["id"]);
+        Assert.False(gone.ContainsKey("new_id"));
         Assert.Contains("does not grant the Purge right", refused, StringComparison.Ordinal);
     }
 

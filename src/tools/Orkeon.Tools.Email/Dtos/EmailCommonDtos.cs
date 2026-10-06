@@ -21,9 +21,14 @@ internal sealed record EmailFolderDto
     [ReturnSchema(Description = "inbox, sent, drafts, trash, junk, archive or all; null for an ordinary folder")]
     public string? Role { get; init; }
 
+    /// <summary>Other roles that open this folder.</summary>
+    [JsonPropertyName("also_roles")]
+    [ReturnSchema(Description = "Other roles that open this folder when they have none of their own (Gmail: `archive` opens All Mail); null otherwise")]
+    public IReadOnlyList<string>? AlsoRoles { get; init; }
+
     /// <summary>Messages in the folder.</summary>
     [JsonPropertyName("total")]
-    [ReturnSchema(Description = "Messages in the folder, when known")]
+    [ReturnSchema(Description = "Messages in the folder, when known; a search without criteria reports the same number as its `total`, less the messages marked deleted")]
     public int? Total { get; init; }
 
     /// <summary>Unread messages.</summary>

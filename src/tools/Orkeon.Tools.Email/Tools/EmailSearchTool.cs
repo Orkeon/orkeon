@@ -14,7 +14,7 @@ namespace Orkeon.Tools.Email.Tools;
 /// <summary>Searches one folder of an account, newest first, one page at a time.</summary>
 [ToolContract("email_search",
     Name = "email_search",
-    Description = "Search a folder of an e-mail account (default: inbox), newest first: unread/flagged, from, to, subject, text, dates, attachments, or a provider-native raw_query. Returns ids for email_read, email_move, email_mark, email_delete. Needs the Read right.",
+    Description = "Search a folder of an e-mail account (default: inbox), newest first: unread/flagged, from, to, subject, text, dates, attachments, or a provider-native raw_query. Returns one page of ids for email_read, email_move, email_mark, email_delete; a page can be shorter than `limit`, so read on with `next_cursor` until it is null. Needs the Read right.",
     Category = "Email")]
 internal sealed class EmailSearchTool : ToolBase<EmailSearchRequest, EmailSearchResponse>
 {
@@ -57,7 +57,7 @@ internal sealed class EmailSearchTool : ToolBase<EmailSearchRequest, EmailSearch
 
         var page = await _access.Mailbox(account).SearchAsync(search, cancellationToken).ConfigureAwait(false);
         var messages = page.Messages.Select(message => EmailToolHelpers.ToDto(message, _screen)).ToList();
-        var response = Respond(account.Name, search.Folder, messages, page.NextCursor);
+        var response = Respond(account.Name, search.Folder, messages, page.NextCursor, page.Total);
 
         // A page longer than what the agent loop keeps is cut here, after a whole message, with
         // the cursor that resumes right after the last one kept. Cut by the loop, it would end
@@ -68,18 +68,19 @@ internal sealed class EmailSearchTool : ToolBase<EmailSearchRequest, EmailSearch
                && page.Messages[messages.Count - 2].ResumeCursor is { } resume)
         {
             messages.RemoveAt(messages.Count - 1);
-            response = Respond(account.Name, search.Folder, messages, resume);
+            response = Respond(account.Name, search.Folder, messages, resume, page.Total);
         }
 
         return response;
     }
 
-    private static EmailSearchResponse Respond(string account, string folder, List<EmailSummaryDto> messages, string? nextCursor) => new()
+    private static EmailSearchResponse Respond(string account, string folder, List<EmailSummaryDto> messages, string? nextCursor, int? total) => new()
     {
         Notice = EmailContentScreen.UntrustedNotice,
         Account = account,
         Folder = folder,
         Count = messages.Count,
+        Total = total,
         NextCursor = nextCursor,
         Messages = [.. messages],
     };

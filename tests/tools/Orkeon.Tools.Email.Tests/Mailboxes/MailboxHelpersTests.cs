@@ -94,11 +94,11 @@ public sealed class MailboxHelpersTests
     [InlineData("folder", "FolderNotFound", "The folder 'Archive' does not exist in account 'acct': list them with email_folders.")]
     [InlineData("message", "MessageNotFound", "The message no longer exists in account 'acct' (moved or deleted): search again.")]
     [InlineData("command", "ServerError", "imap.example.test:993 refused the command: no way")]
-    [InlineData("protocol", "ServerError", "The connection to imap.example.test:993 failed: garbled")]
-    [InlineData("io", "ServerError", "The connection to imap.example.test:993 failed: reset")]
+    [InlineData("protocol", "ServerError", "The connection to imap.example.test:993 failed (garbled). A dropped connection is usually transient, and the next call opens a new one: call again.")]
+    [InlineData("io", "ServerError", "The connection to imap.example.test:993 failed (reset).")]
     [InlineData("socket", "ServerError", "The connection to imap.example.test:993 failed")]
     [InlineData("disconnected", "ServerError", "The connection to imap.example.test:993 failed")]
-    [InlineData("timeout", "ServerError", "The connection to imap.example.test:993 failed: timed out")]
+    [InlineData("timeout", "ServerError", "The connection to imap.example.test:993 failed (timed out).")]
     public void Should_turn_MailKit_and_socket_failures_into_actionable_errors(string failure, string code, string message)
     {
         var account = TestAccounts.Resolve("acct", TestAccounts.Custom());

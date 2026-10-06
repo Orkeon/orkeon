@@ -38,7 +38,14 @@ internal enum MailboxCapabilities
 /// <param name="Role"><c>inbox</c>, <c>sent</c>, <c>drafts</c>, <c>trash</c>, <c>junk</c>, <c>archive</c>, <c>all</c>, or null.</param>
 /// <param name="Total">Messages in the folder, when known.</param>
 /// <param name="Unread">Unread messages, when known.</param>
-internal sealed record MailFolderInfo(string Path, string Name, string? Role, int? Total, int? Unread);
+internal sealed record MailFolderInfo(string Path, string Name, string? Role, int? Total, int? Unread)
+{
+    /// <summary>
+    /// The other roles that open this folder, when a role has no folder of its own: on Gmail,
+    /// <c>archive</c> opens All Mail. Null when the role above says it all.
+    /// </summary>
+    public IReadOnlyList<string>? AlsoRoles { get; init; }
+}
 
 /// <summary>A search as an agent phrases it.</summary>
 internal sealed record MailSearch
@@ -120,7 +127,11 @@ internal sealed record MessageSummaryInfo
 /// <summary>A page of search results.</summary>
 /// <param name="Messages">Newest first.</param>
 /// <param name="NextCursor">Cursor of the next page, or null on the last one.</param>
-internal sealed record MessagePage(IReadOnlyList<MessageSummaryInfo> Messages, string? NextCursor);
+/// <param name="Total">
+/// How many messages of the folder match the criteria, every page counted, when the backend
+/// knows without another round trip; null otherwise.
+/// </param>
+internal sealed record MessagePage(IReadOnlyList<MessageSummaryInfo> Messages, string? NextCursor, int? Total = null);
 
 /// <summary>A message fetched whole. Owns (and disposes) the MIME message.</summary>
 internal sealed class FetchedMessage : IDisposable
@@ -163,7 +174,14 @@ internal sealed record MovedMessage(string Id, string? NewId);
 /// <param name="Count">Messages deleted.</param>
 /// <param name="Permanent">Whether they are gone for good.</param>
 /// <param name="MovedTo">The trash folder they went to, when not permanent.</param>
-internal sealed record DeleteOutcome(int Count, bool Permanent, string? MovedTo);
+internal sealed record DeleteOutcome(int Count, bool Permanent, string? MovedTo)
+{
+    /// <summary>
+    /// Each message deleted: the id it was deleted by and, in the trash, the id it now has when
+    /// the server says (IMAP UIDPLUS, Graph). A message gone for good has no new id.
+    /// </summary>
+    public IReadOnlyList<MovedMessage> Messages { get; init; } = [];
+}
 
 /// <summary>What a send returned.</summary>
 /// <param name="ServerResponse">The server's acceptance line, when it gives one.</param>

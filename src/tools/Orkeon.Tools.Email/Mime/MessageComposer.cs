@@ -111,7 +111,13 @@ internal sealed class MessageComposer
         foreach (var value in values.Where(v => !string.IsNullOrWhiteSpace(v)))
         {
             if (!MailboxAddress.TryParse(value.Trim(), out var mailbox) || !mailbox.Address.Contains('@', StringComparison.Ordinal))
-                throw new EmailToolException(EmailErrorCode.InvalidRequest, $"'{value}' is not an e-mail address.");
+            {
+                throw new EmailToolException(
+                    EmailErrorCode.InvalidRequest,
+                    $"'{value}' is not an e-mail address: a recipient is `user@example.org` or `Name <user@example.org>`, never an account name. "
+                    + "email_accounts gives each account's own `address`.");
+            }
+
             if (!list.Mailboxes.Any(existing => string.Equals(existing.Address, mailbox.Address, StringComparison.OrdinalIgnoreCase)))
                 list.Add(mailbox);
         }

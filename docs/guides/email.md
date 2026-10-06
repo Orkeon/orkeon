@@ -27,11 +27,14 @@ The family is the second motivated exception to the scope freeze, decided by the
 script cannot open a socket, and a plugin would not put e-mail in Orkeon itself. The
 decision and the alternatives it rejected are in [ADR-012](../adr/ADR-012-email-tool-family.md).
 
-> **Campaign pending.** Nothing on this page has been run against a real Gmail or Hotmail
-> account yet: that live campaign is the owner's (MAIL-07). The provider walkthroughs below
-> follow the providers' own documentation, checked on 2026-09-26. Treat them as
-> campaign-pending — the way the OpenRouter and Mammouth providers are documented — until
-> the campaign is archived.
+> **Gmail is campaigned; Hotmail is campaign-pending.** The owner's live campaign (MAIL-07)
+> ran the whole cycle — check, draft, send to oneself, move to `archive`, trash — against a
+> real Gmail account, with an app password on 2026-10-04 and with OAuth2 on 2026-10-05: see
+> [What the Gmail campaign established](#what-the-gmail-campaign-established). Hotmail and
+> Outlook.com through Microsoft Graph, and Outlook over IMAP and SMTP, have not been run
+> against a real account yet: their walkthroughs follow Microsoft's documentation, checked on
+> 2026-09-26. Treat them as campaign-pending — the way the OpenRouter and Mammouth providers
+> are documented.
 
 ## The thirteen tools
 
@@ -46,7 +49,7 @@ decision and the alternatives it rejected are in [ADR-012](../adr/ADR-012-email-
 | `email_rename_folder` | Organize | Renames a folder; system folders are refused |
 | `email_move` | Organize | Moves messages to a folder or a role (`archive`, `junk`…) |
 | `email_mark` | Organize | Marks messages read or unread, flagged or not |
-| `email_delete` | Delete (Purge with `permanent: true`) | Moves messages to the trash, or deletes them for good |
+| `email_delete` | Delete (Purge with `permanent: true`) | Moves messages to the trash, or deletes them for good; returns each deleted id, with its new id in the trash |
 | `email_draft` | Draft (+ Read to reply or forward) | Saves a new message, a reply or a forward in Drafts, **without sending it** |
 | `email_send` | Send (+ Read to reply or forward) | Sends a new message, a reply or a forward — to allowed recipients only |
 | `email_parser` | none (no account) | Parses an `.eml` file from a virtual path, with the same output as `email_read` |
@@ -429,10 +432,25 @@ account of the settings file it resolves.
   search page holds up to `limit` messages, each with a 100-character preview and a subject
   and a sender clipped to 200 characters; a page that would not fit is cut after a whole
   message, and `next_cursor` resumes right after the last one returned, so nothing is
-  skipped. `email_read` returns at most `max_chars` characters of the body — fewer when the
+  skipped.
+- **`limit` is a ceiling, and `next_cursor` is the only end of a folder.** Ten or so messages
+  fit a tool result, whatever `limit` asks for up to its maximum of 50: on a real Gmail inbox
+  a search of 88 messages came back as pages of 10, 9, 10, 13, 8, 9, 9, 9, 10 and 1. A page
+  shorter than `limit` therefore says nothing about what is left — read on until
+  `next_cursor` is null. `count` is the number of messages on the page, never the number of
+  matches; `total` is the number of messages of the folder that match the criteria, every
+  page counted, and stays the same from one page to the next. An IMAP account returns it
+  (not with `has_attachments`, which is applied page by page); Graph and POP3 do not. With
+  no criteria it is the folder's `total` in `email_folders`, less the messages another
+  client marked deleted and has not expunged.
+- **`email_read` returns at most `max_chars` characters of the body** — fewer when the
   headers and the escaped line breaks need the room — and `next_offset` resumes exactly where
   the slice ends; address lists that would crowd the body out keep five addresses and a last
   entry such as `(+37 more)`. The notice and the verdict come first, the body last.
+- **A delete names what it deleted.** `email_delete` returns `messages`: each `id` it was
+  given and, for a move to the trash, the `new_id` the message now has there — to read it,
+  to move it back, or to delete it for good. `new_id` is absent when the message is gone for
+  good, and on an IMAP server without UIDPLUS (search the trash).
 - **Search criteria are ANDed.** `from`, `to` (the To header), `subject` and `text` (subject
   or body) match a substring, case ignored — on an Outlook account read through Graph they go
   through KQL instead, where each word must match a whole word or a word prefix; `since` and `before` take a date or an ISO 8601
@@ -442,7 +460,9 @@ account of the settings file it resolves.
   (`Clients/ACME`); a role (`inbox`, `sent`, `drafts`, `trash`, `junk` — `spam` works too —,
   `archive`, `all` on Gmail) names the folder whatever the provider calls it. Gmail has no
   archive folder: there `archive` is All Mail, where the message leaves the inbox and keeps
-  its other labels.
+  its other labels. `email_folders` says so: no folder carries the role `archive` on Gmail,
+  and the All Mail folder (role `all`) lists it under `also_roles` — every role a call may
+  name is one the listing shows, as a `role` or among the `also_roles` of the folder it opens.
 - **`raw_query`** passes a provider-native query, ANDed with the other criteria: Gmail's
   search syntax (`from:bank has:attachment older_than:30d`) on a Gmail account, KQL on an
   Outlook account read through Graph. Other servers, and POP3, refuse it.
@@ -583,6 +603,22 @@ yours, sign it out, check it; its failures are `EmailToolException`s carrying an
 - **"The message is … KB once encoded"** — Microsoft Graph accepts 4 MB per request, about
   3 MB of attachments once base64-encoded. An SMTP server's own limit (`SIZE`) is reported as
   "The message is … KB; <host> accepts at most … KB".
+- **"`cursor` '…' is not a cursor this account issued"** — the cursor was altered on its way
+  back, or belongs to another account (an IMAP cursor reads `u:<number>`, a Graph one
+  `n:<page>.<k>`, a POP3 one `o:<number>`). Pass `next_cursor` exactly as the previous page
+  returned it, with the same folder and criteria, or leave `cursor` out to start again from
+  the newest message.
+- **"The connection to <host>:<port> failed (…)"** — the message says which of two cases it
+  is. *While opening the session*: nothing was changed, so calling again is safe; if it fails
+  every time, check the account's `Host`, `Port` and `Security`, and the network. *In the
+  middle of a session*: the line dropped, which a mail server does to an idle or long session;
+  the next call opens a new connection, so calling again is enough — but if the call was
+  changing the mailbox (a move, a delete, a draft, a send), search first: the server may have
+  applied it before the line broke.
+- **"'…' is not an e-mail address"** — a recipient is `user@example.org` or
+  `Name <user@example.org>`; an account name (`gmail`) is what `account` takes, not `to`.
+  `email_accounts` gives each account's own `address`, which is what "send it to myself"
+  needs.
 - **"… has no archive folder"** — the server neither flags nor names one (`Archive`,
   `Archives`); create a folder named `Archive`, or move to a path. Gmail needs none: there
   `archive` is All Mail.
@@ -614,6 +650,10 @@ yours, sign it out, check it; its failures are `EmailToolException`s carrying an
   back without its new id, and a move or a permanent delete still removes only its own
   messages (MailKit takes the deleted mark off the others for the time of the expunge). On
   Gmail a permanent delete goes through `[Gmail]/Trash`, since expunging a label only archives.
+- **Gmail labels are not returned by any tool.** A message is seen through the folder it is
+  read in, and `email_read` does not list the labels it carries: that an archived message
+  kept its other labels can be checked by searching each label's folder, or in Gmail's own
+  interface, not from a single call.
 - **Not in this version**: deleting folders, copying a message or giving it several Gmail
   labels, interactive human approval of a send (use `email_draft`), a generic OAuth tool for
   other APIs.
@@ -630,8 +670,43 @@ yours, sign it out, check it; its failures are `EmailToolException`s carrying an
   agent reads a one-line notice instead, flagged `hidden_content`.
 - **POP3 pages count from the newest message**: mail that arrives or leaves between two calls
   shifts them, so a page may repeat or skip a message.
+- **`email_move` and `email_delete` list the ids that fit in an agent's result** (about forty
+  messages with their new ids): past that, the agent loop truncates the list and says so. The
+  counters come first and are never cut; move or delete in smaller batches when each new id
+  matters.
 - **`email_folders` lists the folders that fit in an agent's result** (about forty with long
   names): past that, the agent loop truncates the list and says so.
 - **Every account is visible to every crew and script that resolves the same settings
   file** — see the threat model in [SECURITY.md](../../SECURITY.md).
-- **Live validation against real Gmail and Hotmail accounts is pending** (MAIL-07).
+- **Live validation against a real Hotmail or Outlook.com account is pending** (MAIL-07):
+  Microsoft Graph, and Outlook over IMAP and SMTP, are campaign-pending. Gmail is campaigned —
+  see below.
+
+## What the Gmail campaign established
+
+The owner's live campaign (MAIL-07) ran a crew through the whole cycle on a real Gmail
+account, twice: with an app password on 2026-10-04, with OAuth2 (XOAUTH2) on 2026-10-05.
+
+| Check | App password | OAuth2 |
+|---|---|---|
+| The cycle runs end to end — search, read, draft, send to oneself, move to `archive`, trash — each step returning a server id | passes | passes |
+| A move to `archive` lands in All Mail (`[Gmail]/Tous les messages` on a French account) and the message leaves the inbox | passes | passes |
+| A read of 3000 characters stays under the agent loop's cap and resumes at `next_offset` | passes | passes |
+| A whole folder is reached by paging, no message skipped or returned twice | partial — two pages read, the cursor not followed to its end | passes — 88 messages, 88 distinct ids, `next_cursor` null on the tenth page |
+| The campaign leaves no draft behind | passes | passes |
+| `orkeon email login` ends on the browser's redirect, with nothing to paste | — | passes |
+
+What it changed in the tools: `email_delete` returns the ids it deleted, `email_search`
+returns `total` and says what `count` and `limit` are, `email_folders` shows where `archive`
+goes on Gmail, and three refusals — a cursor, a dropped connection, a recipient that is not an
+address — say what to do. What it left open:
+
+- **The same search returned different counts on a mailbox believed unchanged** (0, then 8,
+  on the archive). The campaign read `count`, which is a page's size; whether Gmail also
+  answers a search from a view that lags a delete is not settled. `total` is there to tell
+  the two apart.
+- **A page of 50 messages does not exist**: ten or so fit a tool result (above).
+- **Whether an archived message keeps its other labels** was not observed by a tool (above).
+- **The trash is not emptied**: `permanent: true` needs the `Purge` right, which the campaign
+  account did not grant. What a crew deletes stays in the trash until Gmail's own thirty-day
+  purge, or an account that grants `Purge`.

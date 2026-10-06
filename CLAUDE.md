@@ -213,7 +213,8 @@ The project follows Clean Architecture with clear separation of concerns:
   `Send:AllowedRecipients`, prompt-injection screening of what is read, hand-written OAuth2
   (`orkeon email login`) with tokens in the internal `/credentials` VFS root; registered by
   `AddOrkeonEmailTools(configuration)` in the runner host and the REPL, denied to forged
-  crews. Live Gmail/Hotmail campaign pending (MAIL-07); see `docs/guides/email.md`
+  crews. Gmail campaigned live (app password 2026-10-04, OAuth2 2026-10-05); the Hotmail/Graph
+  campaign is pending (MAIL-07); see `docs/guides/email.md`
 
 **Infrastructure Layer Components**:
 - ✅ Redis memory provider with vector search (`RedisMemoryProvider`; at-rest encryption through `EncryptedMemoryProviderDecorator`)

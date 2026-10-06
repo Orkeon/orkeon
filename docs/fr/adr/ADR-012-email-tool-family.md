@@ -128,6 +128,10 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
 - **La validation réelle sur de vrais comptes Gmail et Hotmail est la campagne du propriétaire**
   (MAIL-07). Tant qu'elle n'est pas archivée, la prise en charge des fournisseurs est documentée
   comme en attente de campagne.
+  *Note datée, 2026-10-06* : Gmail a été campagné le 2026-10-04 (mot de passe d'application) et
+  le 2026-10-05 (OAuth2), et est documenté comme tel ; Hotmail et Outlook.com restent en attente
+  de campagne. Les résultats sont dans le
+  [guide](../guides/email.md#ce-que-la-campagne-gmail-a-établi).
 - Hors de cette version : supprimer des dossiers, copier un message ou lui donner plusieurs
   libellés Gmail, les envois Graph au-delà d'environ 3 Mo (une session de chargement),
   l'approbation humaine interactive d'un envoi.
