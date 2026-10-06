@@ -15,6 +15,9 @@
 #  1b. `dpkg -V orkeon` is silent: the package's md5sums match what it installed;
 #   2. the payload survived packaging (esbuild, embedding model, the 7 whitelisted
 #      tree-sitter grammars — WIN-04 pruning);
+#  2a. the notices shipped with it: /usr/share/doc/orkeon holds `copyright`,
+#      THIRD-PARTY-NOTICES.md and one licenses/<pack>/ per .NET runtime an
+#      application of the package bundles (GAP-52);
 #  2b. the two Orkeon Studio TUIs shipped too — /usr/bin/orkeon-studio-config and
 #      /usr/bin/orkeon-studio-run are installed and answer `--version` with no
 #      terminal at all (STUDIO-08, spec §8.4);
@@ -36,7 +39,7 @@
 #   --orkeon PATH   skip apt entirely and smoke an already-available binary. The
 #                   degraded mode used for local validation on a machine where
 #                   installing a package is not an option; steps 1, 2 and 7 are
-#                   reported SKIP (and 1b).
+#                   reported SKIP (and 1b, 2a).
 #   --work-dir DIR  scratch directory (default: a mktemp -d, removed on success).
 #   --keep          keep the scratch directory even on success.
 #
@@ -170,6 +173,16 @@ fi
 # sibling subdirectory, where the tar.gz keeps the archive's libexec/ tree.
 smoke_log "Package payload"
 smoke_assert_payload "$PAYLOAD_ROOT" "$PAYLOAD_ROOT/esbuild-bin/esbuild"
+
+# The notices of the package live under /usr/share/doc/orkeon, the license as the
+# Debian `copyright` file; one folder per application under /usr/lib. The runtimes
+# to expect are read from those applications (GAP-52). Nothing to assert on a bare
+# binary: --orkeon installs no package.
+if [[ -n "$DEB_PATH" ]]; then
+  smoke_assert_notices /usr/share/doc/orkeon copyright /usr/lib/orkeon /usr/lib/orkeon-studio-*
+else
+  smoke_skip "notices" "--orkeon given"
+fi
 
 # --------------------------------------------------------------------------- #
 # 2b. Orkeon Studio TUIs (STUDIO-08)

@@ -57,8 +57,8 @@
 # image rather than bloating this base image.
 #
 # --- Bundled examples: the orkeon-example helper ------------------------------
-# The image ships 105 example crews under /app/examples plus a helper that makes
-# running them a one-liner from the interactive shell (or via docker run):
+# The image ships the numbered example crews under /app/examples plus a helper that
+# makes running them a one-liner from the interactive shell (or via docker run):
 #   orkeon-example list                 browse them
 #   orkeon-example run 1                run one by number
 #   orkeon-example show 42              print an example's README
@@ -116,8 +116,8 @@ COPY global.json Directory.Build.props Directory.Packages.props ./
 # Full framework + examples sources. The runners' project graph spans src/core,
 # src/hosting, src/scripting and the examples tree,
 # so the whole tree is copied rather than an enumerated per-csproj list (kept
-# robust as references evolve). .dockerignore strips bin/obj/.git/artifacts/
-# node_modules and non-README *.md from the context.
+# robust as references evolve). What the context holds of it is .dockerignore's
+# to say: read it there, not here.
 COPY src/ src/
 COPY examples/ examples/
 
@@ -227,7 +227,7 @@ RUN mkdir -p /etc/orkeon/zsh && cat /etc/orkeon/banner.txt > /etc/orkeon/motd &&
   '\033[36m──────────────────────────────────────────────────────────────────────────\033[0m' \
   '' \
   '  \033[1;36mTry it now\033[0m \033[2m(copy-paste)\033[0m' \
-  '    orkeon-example list                     browse the 105 bundled examples' \
+  '    orkeon-example list                     browse the bundled examples' \
   '    orkeon-example run 1                    run #1 — research assistant' \
   '    orkeon run /app/examples/scripting/01-hello-world.ork.ts   \033[2mno LLM needed\033[0m' \
   '    \033[2mfirst time? on your host:\033[0m docker model pull ai/granite-4.0-h-tiny' \
@@ -319,10 +319,12 @@ ENV ORKEON_ESBUILD_PATH=/app/esbuild-bin/esbuild
 # base image's, which carries its own.
 COPY LICENSE.md THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon/
 
-# Example crew definitions (config.yaml + README) and the shared appsettings.
-# Only the numbered categories plus appsettings/ are shipped — others/, _legacy/
-# and the runner/source projects are intentionally left out. .dockerignore has
-# already dropped bin/obj and non-README *.md.
+# The examples the image ships: the nine numbered categories, each example whole
+# (its config.yaml or main.ork.ts, its README, which `orkeon-example show` prints,
+# and the data files it reads), the shared appsettings/ and, below, the scripting
+# demos. The other folders of examples/ (others/, the runner and source projects)
+# are intentionally left out. What the context holds of the ones copied is
+# .dockerignore's to say.
 COPY examples/01-enterprise         examples/01-enterprise
 COPY examples/02-science-research   examples/02-science-research
 COPY examples/03-finance-trading    examples/03-finance-trading

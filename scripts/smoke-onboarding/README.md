@@ -154,6 +154,10 @@ through), and an uninstall that removes service, payload and ARP entry while
 `ProgramData\Orkeon` survives. Same administrator and disposable-machine
 requirements.
 
+Both also assert the **notices** of what they install — the full archive as
+extracted, the service MSI as installed — through `lib\notices-windows.ps1` (see
+step 2 below).
+
 ## Released-artefact smokes (WIN-06 / LIN-02 / MAC-02)
 
 `run-smoke.ps1`, `run-smoke-deb.sh` and `run-smoke-tarball.sh` are siblings. They
@@ -168,8 +172,13 @@ ones that sharing is literal — the behavioural steps, the payload whitelist an
 the doctor verdict live in **`lib/smoke-common.sh`**, which both source, so they
 cannot drift. `run-smoke.ps1` mirrors the same logic in PowerShell, and shares
 its **Orkeon Studio** assertions with the `msi` job through
-**`lib/studio-windows.ps1`** (dot-sourced by both). All three use the same
-fixtures in `fixtures/`:
+**`lib/studio-windows.ps1`** (dot-sourced by both). The **notices** check is
+shared the same way: `smoke_assert_notices` in `lib/smoke-common.sh` for the two
+shell smokes, and its twin `Invoke-OrkeonNoticesAssertions` in
+**`lib/notices-windows.ps1`** for `run-smoke.ps1`, the `msi` job and the two
+service smokes. CI proves both on throwaway trees, with no archive
+(`scripts/test-smoke-notices.sh`, `scripts/test-smoke-notices.ps1`). All three
+use the same fixtures in `fixtures/`:
 
 | Fixture | Why it exists |
 |---------|---------------|
@@ -181,6 +190,7 @@ fixtures in `fixtures/`:
 
 1. **Install** — `Expand-Archive` + `install.ps1` (Windows) / `apt-get install ./orkeon_*.deb` (Debian) / `tar -xzf` + `./install.sh --prefix ~/.local` (tar.gz). The apt step doubles as the check that the package's `Depends` resolve on a stock image, with no dotnet repository.
 2. **Payload** — `esbuild(.exe)`, `LocalEmbeddingsModel/default/{model.onnx,vocab.txt}` and the **7 whitelisted tree-sitter grammars** (WIN-04 pruning) must all be present. The grammar suffix follows the platform: `.dll`, `.so` or `.dylib`.
+   - **Notices** (GAP-52) — the license (`LICENSE.md`; `copyright` in the Debian package), `THIRD-PARTY-NOTICES.md` and one non-empty `licenses/<pack>/` per .NET runtime an application bundles must have come along, in the tree the user keeps: the installed one (and, on Windows, the extracted archive before it). No smoke lists the folders it expects. Each `*.runtimeconfig.json` of the payload names the frameworks its application bundles (`includedFrameworks`, absent from a framework-dependent application), and the folder is `<framework>.Runtime.<rid>`, the RID read from the `*.deps.json` beside it — so the WPF Studio brings `Microsoft.WindowsDesktop.App.Runtime.win-x64` beside `Microsoft.NETCore.App.Runtime.win-x64` without a name written anywhere. A payload with no `*.runtimeconfig.json` at all is a failure, never an empty pass. The step names what it saw when it passes, and what is missing when it fails.
 3. **Fresh session** — Windows: the user `PATH` is re-read from the registry and `orkeon` must resolve from it alone, plus the Add/Remove Programs entry must be registered (WIN-05). tar.gz: `<prefix>/bin/orkeon` must be a symlink into `<prefix>/lib/orkeon`, and `command -v orkeon` must find it once `<prefix>/bin` is on the `PATH`.
 4. **Orkeon Studio** — the graphical channel has to survive packaging too, and what it ships is per-platform (STUDIO-07's RID filter), so the assertion is per-platform as well:
    - **Windows** (zip *and* MSI): `bin\orkeon-studio.cmd` + `libexec\orkeon-studio\Orkeon.Studio.exe` installed, then `orkeon-studio --smoke-exit` — which opens the WPF window, lets it render and shuts down with code 0 — must exit 0. This is the only place a real window is ever opened; a Studio that cannot resolve its XAML, its runtime or its ViewModels fails nowhere else. The MSI channel additionally requires the "Orkeon Studio" Start-menu shortcut. A hung window is capped by a timeout so it reports as a named failure rather than as a workflow timeout.

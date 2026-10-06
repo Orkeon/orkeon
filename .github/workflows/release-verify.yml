@@ -6,7 +6,9 @@
 # that what a real user downloads from the Release page walks the same
 # onboarding chain — the assets could differ from the job artifacts only
 # through an upload/tamper/replace accident, which is exactly what this
-# catches. Reuses the same smoke scripts, pointed at the Release assets.
+# catches. Reuses the same smoke scripts, pointed at the Release assets: those of
+# the tag itself (the two smoke jobs check the tag out), so a manual run on an older
+# tag asks of its assets what its own smokes asked, not what main's ask today.
 #
 # Triggers: release.yml calls this workflow (workflow_call, job verify-published)
 # right after its release job, in the same run; workflow_dispatch replays it on
@@ -97,6 +99,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The smoke of the tag, not of the branch a manual run starts from: an older
+          # release is verified against what its own smokes asked of it.
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
       - name: Check the runner architecture
         run: |
           actual="$(dpkg --print-architecture)"
@@ -128,6 +134,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # As in verify-deb: the smoke of the tag.
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
       - name: Download the published osx-arm64 tarball
         env:
           GH_TOKEN: ${{ github.token }}

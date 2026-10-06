@@ -15,6 +15,8 @@
 #      launchers into <prefix>/bin;
 #   2. the payload survived packaging (esbuild, embedding model, the 7
 #      whitelisted tree-sitter grammars — WIN-04 pruning);
+#  2b. the notices were installed with it: LICENSE.md, THIRD-PARTY-NOTICES.md
+#      and one licenses/<pack>/ per .NET runtime an application bundles (GAP-52);
 #   3. the launcher resolves through its symlink and finds its bundled esbuild;
 #  3b. the Orkeon Studio TUIs are exactly where the RID filter says they should
 #      be: installed and answering `--version` headless on a linux archive,
@@ -200,6 +202,11 @@ fi
 smoke_log "Installed payload"
 APP_DIR="$LIB_DIR/libexec/orkeon"
 smoke_assert_payload "$APP_DIR" "$LIB_DIR/libexec/esbuild-bin/esbuild"
+
+# The notices install.sh copies only when the archive carries them, without a word
+# otherwise: asserted on the installed tree, which is what the user keeps. The
+# runtimes to expect are read from the applications themselves (GAP-52).
+smoke_assert_notices "$LIB_DIR" LICENSE.md "$LIB_DIR"/libexec/*/
 
 # install.sh symlinks every launcher in <lib>/bin into <prefix>/bin. The launcher
 # walks that symlink to find its root, which is what lets the bundled esbuild be

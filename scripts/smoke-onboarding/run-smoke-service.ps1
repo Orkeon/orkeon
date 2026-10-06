@@ -12,6 +12,9 @@
     1. the archive carries the daemon and its deployment assets —
        libexec\orkeon-host\orkeon-host.exe, deploy\windows\install-service.ps1,
        and the bin\orkeon-host.cmd terminal wrapper (which is never registered);
+   1b. the notices came with it: LICENSE.md, THIRD-PARTY-NOTICES.md and one
+       licenses\<pack>\ per .NET runtime an application of the archive bundles
+       (GAP-52, lib\notices-windows.ps1);
     2. registration lands on the virtual account NT SERVICE\Orkeon (never
        LocalSystem), with a quoted ImagePath carrying --settings and
        --working-dir, the Environment REG_MULTI_SZ value, and Modify for the
@@ -61,6 +64,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'lib\service-windows.ps1')
+. (Join-Path $PSScriptRoot 'lib\notices-windows.ps1')
 
 $serviceName = 'Orkeon'
 $serviceAccount = "NT SERVICE\$serviceName"
@@ -105,6 +109,10 @@ try {
     }
     if ($problems.Count -gt 0) { throw "Archive layout assertions failed: $($problems -join '; ')" }
     Write-Host "  layout OK (exe, deploy assets, terminal wrapper)"
+
+    # The full archive bundles a runtime per self-contained application: its notices
+    # travel with it, read from the applications themselves (GAP-52).
+    Add-Result 'notices' (Invoke-OrkeonNoticesAssertions -Root $tree)
 
     # -- 2. Lay out Program Files + ProgramData like the docs say ---------------
     Write-Host "== Installing under $installRoot, data under $dataDir"

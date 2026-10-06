@@ -238,7 +238,10 @@ apparaissent puis disparaissent. `smoke-windows-service` installe le canal servi
 win-x64 **complet** — compte virtuel, `--working-dir` prouvé par un chemin de crew relatif,
 configuration refusée qui s'arrête sans boucler et atterrit dans le journal d'événements — et
 le job `msi` smoke le MSI service de la même façon, plus une réinstallation silencieuse de
-lui-même. Tous installent depuis les artefacts **de job**, jamais depuis la Release : une
+lui-même. Chacun vérifie aussi les notices de ce qu'il a installé : la licence,
+`THIRD-PARTY-NOTICES.md` et un `licenses/<pack>/` par runtime .NET qu'une application embarque,
+les runtimes étant lus dans la charge utile elle-même (chaque `*.runtimeconfig.json`), pas dans
+une liste. Tous installent depuis les artefacts **de job**, jamais depuis la Release : une
 charge utile cassée est donc attrapée avant toute publication — le job `release` les a tous en
 `needs`.
 
@@ -251,8 +254,11 @@ avec le `GITHUB_TOKEN` du workflow ne lance aucun autre workflow. Il télécharg
 empreinte sans en sauter aucune, et rejoue dessus les smokes d'onboarding des deux `.deb`
 (amd64, et arm64 sur un runner ARM) et de l'archive `osx-arm64` — ce qui attrape un asset qu'un
 envoi, un remplacement ou une altération aurait rendu différent de ce que les smokes ci-dessus
-ont installé. Lancé à la main sur `v1.0.0-rc.3` ou `v1.0.0-rc.4`, il échoue par construction :
-ces Releases précèdent la règle de nommage ci-dessous, et n'ont pas de paquet arm64.
+ont installé. Les deux jobs de smoke extraient le tag : les smokes rejoués sont ceux du tag
+lui-même, et une Release plus ancienne se voit demander ce que ses propres smokes lui
+demandaient, pas ce que ceux de `main` demandent aujourd'hui. Lancé à la main sur
+`v1.0.0-rc.3` ou `v1.0.0-rc.4`, il échoue par construction : ces Releases précèdent la règle de
+nommage ci-dessous, et n'ont pas de paquet arm64.
 
 `smoke-macos` est aussi le seul endroit où l'histoire Gatekeeper / signature est éprouvée : une
 bibliothèque native non signée, en quarantaine ou malformée (`libtree-sitter*.dylib`,

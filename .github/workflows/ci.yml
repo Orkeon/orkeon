@@ -70,6 +70,15 @@ jobs:
       # `gh`, with no network and no token, before any of it can run for real.
       - name: Test the dev-channel prune against a fake gh
         run: bash scripts/test-prune-dev-packages.sh
+      # The notices check of the release smokes (smoke_assert_notices and its PowerShell
+      # twin Invoke-OrkeonNoticesAssertions): the release is the only other place it runs,
+      # so its rules are proved here on throwaway trees, with no publish and no archive.
+      # The twin runs under the PowerShell 7 the runner image ships.
+      - name: Test the notices check of the release smokes
+        run: bash scripts/test-smoke-notices.sh
+      - name: Test its PowerShell twin
+        shell: pwsh
+        run: ./scripts/test-smoke-notices.ps1
       # The apt repository's signing certificate (installers/apt/): its guard is proved on
       # throwaway keys made at test time (a subkey that ends within 180 days, a fingerprint
       # SECURITY.md does not cite), then run on the committed certificate. No secret involved.
