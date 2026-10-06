@@ -60,7 +60,13 @@ trap 'rm -rf "$work"' EXIT
 mkdir -m 700 "$work/gpgv-home"
 SQV=false
 if command -v sqv >/dev/null 2>&1 && sqv --help 2>&1 | grep -q -- '--cleartext'; then SQV=true; fi
-if $REQUIRE_SQV && ! $SQV; then bad "sqv (the verifier of Debian 13) is required but not installed"; fi
+if $REQUIRE_SQV && ! $SQV; then
+  if command -v sqv >/dev/null 2>&1; then
+    bad "sqv (the verifier of Debian 13) is required, and the one installed has no --cleartext (older than 1.3)"
+  else
+    bad "sqv (the verifier of Debian 13) is required but not installed"
+  fi
+fi
 
 curl_opts=(--silent --show-error --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 600)
 
