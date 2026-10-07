@@ -1530,6 +1530,39 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve">
     <value>某个 MCP 服务器的环境中含有明文机密；请改为在您的用户环境中设置。</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-NAME" xml:space="preserve">
+    <value>某个电子邮件账户的名称不可用：只能包含字母、数字、“.”、“_”和“-”，最多 64 个字符。引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve">
+    <value>两个电子邮件账户的名称仅大小写不同：引擎会把它们读成同一个账户，或者根本无法读取该文件。请重命名其中一个。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve">
+    <value>某个电子邮件账户含有引擎不认识的键：在更正或删除该键之前，引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-VALUE" xml:space="preserve">
+    <value>某个电子邮件账户含有引擎无法读取的值：在更正之前，引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS" xml:space="preserve">
+    <value>某个电子邮件账户没有可用的地址：在 Address 填入地址之前，引擎会搁置它。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS" xml:space="preserve">
+    <value>某个电子邮件账户未授予任何权限：在 Rights 说明智能体可以做什么之前，引擎会搁置它。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SERVER" xml:space="preserve">
+    <value>某个电子邮件账户的服务器设置互相矛盾（主机、端口、协议、安全方式或超时）：引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-AUTH" xml:space="preserve">
+    <value>某个电子邮件账户的登录方式不完整或与其提供商不符：在更正之前，该账户无法使用。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SEND" xml:space="preserve">
+    <value>某个电子邮件账户的发送规则不成立（收件人、配额，或在没有发送服务器时授予发送权限）：引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DEFAULT" xml:space="preserve">
+    <value>默认电子邮件账户没有指向任何已声明的账户：未指定账户的调用将失败。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SCREENING" xml:space="preserve">
+    <value>电子邮件部分的筛查开关既不是 true 也不是 false：在更正之前，引擎会搁置所有账户。</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve">
     <value>该选项不适用于所选团队。</value>
   </data>

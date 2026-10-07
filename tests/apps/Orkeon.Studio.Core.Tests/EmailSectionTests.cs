@@ -1,4 +1,9 @@
+using System.Text;
+using System.Text.Json.Nodes;
+using Microsoft.Extensions.Configuration;
+using Orkeon.Constants.Configuration;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Tools.Email.Configuration;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -470,6 +475,201 @@ public sealed class EmailSectionTests
 
         Assert.Equal(1, document.GetInt32("Orkeon:Tools:Email:Screening:Future"));
         Assert.Null(document.GetNode("Orkeon:Tools:Email:Screening:WithholdRejected"));
+    }
+
+    // A section written by hand with every key in lower case: the configuration compares keys
+    // without regard to case, so the engine reads it whole.
+    private const string LowerCaseKeys = """
+        { "Orkeon": { "Tools": { "Email": {
+            "defaultaccount": "work",
+            "credentialsdirectory": "/srv/credentials",
+            "screening": { "withholdrejected": true },
+            "accounts": {
+              "work": {
+                "provider": "Gmail", "address": "me@gmail.com", "displayname": "Me", "rights": "Read, Send",
+                "timeoutseconds": 30, "savesentcopy": true,
+                "incoming": { "protocol": "Imap", "host": "imap.example.com", "port": 1993, "security": "StartTls" },
+                "outgoing": { "host": "smtp.example.com", "port": 2525 },
+                "auth": { "method": "Password", "username": "me", "passwordenvvar": "GMAIL_APP_PASSWORD" },
+                "send": { "allowedrecipients": ["*@example.com"], "maxrecipients": 5, "maxperhour": 20 }
+              }
+            }
+        } } } }
+        """;
+
+    [Fact]
+    public void Keys_written_in_another_case_are_read_as_the_engine_reads_them()
+    {
+        var email = AppSettingsDocument.Parse(LowerCaseKeys).Email;
+
+        Assert.Equal("work", email.DefaultAccount);
+        Assert.Equal("/srv/credentials", email.CredentialsDirectory);
+        Assert.True(email.WithholdRejected);
+        Assert.Equal(["work"], email.AccountNames);
+        Assert.Equal(
+            new EmailAccountDefinition
+            {
+                Name = "work",
+                Provider = "Gmail",
+                Address = "me@gmail.com",
+                DisplayName = "Me",
+                Rights = EmailRight.Read | EmailRight.Send,
+                TimeoutSeconds = 30,
+                SaveSentCopy = true,
+                IncomingProtocol = "Imap",
+                IncomingHost = "imap.example.com",
+                IncomingPort = 1993,
+                IncomingSecurity = "StartTls",
+                OutgoingHost = "smtp.example.com",
+                OutgoingPort = 2525,
+                AuthMethod = "Password",
+                Username = "me",
+                PasswordEnvVar = "GMAIL_APP_PASSWORD",
+                MaxRecipients = 5,
+                MaxPerHour = 20,
+            },
+            email.GetAccount("work")! with { AllowedRecipients = [] });
+        Assert.Equal(["*@example.com"], email.GetAccount("work")!.AllowedRecipients);
+    }
+
+    [Fact]
+    public void A_field_changed_under_keys_in_another_case_lands_on_the_key_the_file_holds_and_never_beside_it()
+    {
+        var document = AppSettingsDocument.Parse(LowerCaseKeys);
+        var email = document.Email;
+
+        email.DefaultAccount = "Work";
+        email.CredentialsDirectory = "/srv/other";
+        email.WithholdRejected = false;
+        email.SetAccount(email.GetAccount("work")! with
+        {
+            Address = "you@gmail.com",
+            Rights = EmailRight.Read,
+            IncomingPort = 993,
+            OutgoingSecurity = "StartTls",
+            PasswordEnvVar = "OTHER_PASSWORD",
+            AllowedRecipients = ["you@example.com"],
+            MaxPerHour = 10,
+            SaveSentCopy = false,
+        });
+
+        // No object holds two keys equal but for the case, which no run could read.
+        AssertNoTwinKeys(document.Root);
+
+        // The spelling of the file stays; a key it did not hold comes in the engine's spelling.
+        var section = (JsonObject)document.GetNode(EmailSection.SectionPath)!;
+        var account = (JsonObject)section["accounts"]!["work"]!;
+        Assert.Equal(["defaultaccount", "credentialsdirectory", "screening", "accounts"], section.Select(property => property.Key));
+        Assert.Equal(["withholdrejected"], ((JsonObject)section["screening"]!).Select(property => property.Key));
+        Assert.Equal(
+            ["provider", "address", "displayname", "rights", "timeoutseconds", "savesentcopy", "incoming", "outgoing", "auth", "send"],
+            account.Select(property => property.Key));
+        Assert.Equal(["host", "port", "Security"], ((JsonObject)account["outgoing"]!).Select(property => property.Key));
+        Assert.Equal(["method", "username", "passwordenvvar"], ((JsonObject)account["auth"]!).Select(property => property.Key));
+        Assert.Equal(["allowedrecipients", "maxrecipients", "maxperhour"], ((JsonObject)account["send"]!).Select(property => property.Key));
+
+        // And the engine binds what was written.
+        var options = Bind(document);
+        var bound = Assert.Single(options.Accounts).Value;
+        Assert.Empty(options.SectionProblems);
+        Assert.Empty(options.AccountProblems);
+        Assert.Equal("Work", options.DefaultAccount);
+        Assert.Equal("/srv/other", options.CredentialsDirectory);
+        Assert.False(options.Screening.WithholdRejected);
+        Assert.Equal("you@gmail.com", bound.Address);
+        Assert.Equal(EmailRights.Read, bound.Rights);
+        Assert.Equal(993, bound.Incoming.Port);
+        Assert.Equal(TransportSecurity.StartTls, bound.Outgoing.Security);
+        Assert.Equal("OTHER_PASSWORD", bound.Auth.PasswordEnvVar);
+        Assert.Equal(["you@example.com"], bound.Send.AllowedRecipients);
+        Assert.Equal(10, bound.Send.MaxPerHour);
+        Assert.False(bound.SaveSentCopy);
+    }
+
+    [Fact]
+    public void A_field_cleared_removes_the_key_the_file_holds_whatever_its_case()
+    {
+        var document = AppSettingsDocument.Parse(LowerCaseKeys);
+        var email = document.Email;
+
+        email.DefaultAccount = null;
+        email.CredentialsDirectory = " ";
+        email.WithholdRejected = null;
+        email.SetAccount(email.GetAccount("work")! with
+        {
+            Address = null,
+            DisplayName = null,
+            Rights = EmailRight.None,
+            TimeoutSeconds = null,
+            SaveSentCopy = null,
+            IncomingProtocol = null,
+            IncomingHost = null,
+            IncomingPort = null,
+            IncomingSecurity = null,
+            OutgoingPort = null,
+            Username = null,
+            AllowedRecipients = [],
+            MaxRecipients = null,
+            MaxPerHour = null,
+        });
+
+        var section = (JsonObject)document.GetNode(EmailSection.SectionPath)!;
+        var account = (JsonObject)section["accounts"]!["work"]!;
+        Assert.Equal(["accounts"], section.Select(property => property.Key));
+        Assert.Equal(["provider", "outgoing", "auth"], account.Select(property => property.Key));
+        Assert.Equal(["host"], ((JsonObject)account["outgoing"]!).Select(property => property.Key));
+        Assert.Equal(["method", "passwordenvvar"], ((JsonObject)account["auth"]!).Select(property => property.Key));
+
+        email.RemoveAccount("work");
+
+        Assert.Empty(section);
+    }
+
+    [Fact]
+    public void An_account_added_or_renamed_under_keys_in_another_case_stays_in_the_dictionary_the_file_holds()
+    {
+        var document = AppSettingsDocument.Parse(LowerCaseKeys);
+        var email = document.Email;
+
+        email.RenameAccount("work", "job");
+        email.SetAccount(new EmailAccountDefinition { Name = "perso", Provider = "Outlook" });
+
+        var section = (JsonObject)document.GetNode(EmailSection.SectionPath)!;
+        AssertNoTwinKeys(document.Root);
+        Assert.Equal(["job", "perso"], ((JsonObject)section["accounts"]!).Select(property => property.Key));
+        Assert.Equal(["job", "perso"], email.AccountNames);
+        Assert.Equal("job", section["defaultaccount"]!.GetValue<string>());
+
+        email.RemoveAccount("job");
+
+        Assert.Null(email.DefaultAccount);
+        Assert.Equal(["credentialsdirectory", "screening", "accounts"], section.Select(property => property.Key));
+    }
+
+    private static void AssertNoTwinKeys(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject container:
+                Assert.Equal(container.Count, container.Select(property => property.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+                foreach (var (_, value) in container)
+                    AssertNoTwinKeys(value);
+                break;
+            case JsonArray array:
+                foreach (var item in array)
+                    AssertNoTwinKeys(item);
+                break;
+        }
+    }
+
+    private static EmailToolsOptions Bind(AppSettingsDocument document)
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(document.ToJson()));
+        var configuration = new ConfigurationBuilder().AddJsonStream(stream).Build();
+        var options = new EmailToolsOptions();
+
+        EmailOptionsBinder.Bind(configuration.GetSection(ConfigurationKeys.ToolsEmail), options);
+        return options;
     }
 
     /// <summary>Every field set to a value the engine reads back as written.</summary>

@@ -1530,6 +1530,39 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve">
     <value>Die Umgebung eines MCP-Servers enthält ein Geheimnis im Klartext; setzen Sie es stattdessen in Ihrer Benutzerumgebung.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-NAME" xml:space="preserve">
+    <value>Ein E-Mail-Kontoname ist unbrauchbar: nur Buchstaben, Ziffern, '.', '_' und '-', höchstens 64 Zeichen. Die Engine stellt das Konto zurück.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve">
+    <value>Zwei E-Mail-Konten tragen bis auf die Groß-/Kleinschreibung denselben Namen: Die Engine liest sie als eines oder kann die Datei gar nicht mehr lesen. Benennen Sie eines um.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve">
+    <value>Ein E-Mail-Konto enthält einen Schlüssel, den die Engine nicht kennt: Sie stellt das Konto zurück, bis er korrigiert oder entfernt ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-VALUE" xml:space="preserve">
+    <value>Ein E-Mail-Konto enthält einen Wert, den die Engine nicht lesen kann: Sie stellt das Konto zurück, bis er korrigiert ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS" xml:space="preserve">
+    <value>Ein E-Mail-Konto hat keine brauchbare Adresse: Die Engine stellt es zurück, bis Address eine enthält.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS" xml:space="preserve">
+    <value>Ein E-Mail-Konto gewährt kein Recht: Die Engine stellt es zurück, bis Rights sagt, was ein Agent tun darf.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SERVER" xml:space="preserve">
+    <value>Die Server eines E-Mail-Kontos passen nicht zusammen (Host, Port, Protokoll, Sicherheit oder Zeitlimit): Die Engine stellt das Konto zurück.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-AUTH" xml:space="preserve">
+    <value>Die Anmeldung eines E-Mail-Kontos ist unvollständig oder passt nicht zu seinem Anbieter: Das Konto ist unbrauchbar, bis sie korrigiert ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SEND" xml:space="preserve">
+    <value>Die Versandregeln eines E-Mail-Kontos stimmen nicht (ein Empfänger, ein Kontingent oder das Senderecht ohne Ausgangsserver): Die Engine stellt das Konto zurück.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DEFAULT" xml:space="preserve">
+    <value>Das Standard-E-Mail-Konto nennt kein deklariertes Konto: Ein Aufruf, der kein Konto nennt, schlägt fehl.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SCREENING" xml:space="preserve">
+    <value>Der Prüfschalter des E-Mail-Abschnitts ist weder true noch false: Die Engine stellt alle Konten zurück, bis er es ist.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve">
     <value>Diese Option gilt nicht für das gewählte Team.</value>
   </data>

@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio's settings check judges the e-mail accounts as the run will
+
+An e-mail account declared wrong stops no run: the engine sets it aside, and says why when a
+tool or `orkeon email` names it. Studio said nothing of `Orkeon:Tools:Email`, so a misspelt
+right or a missing host was first heard of at a tool call (STUDIO-66).
+
+- **The settings check reads each account as the engine does.** A name the engine refuses, a
+  key no account carries, a value its binder cannot read, a missing address or right, servers
+  that do not hold together, a sign-in that does not fit the provider, a recipient pattern or a
+  quota it refuses, the right to send without an outgoing server, a `DefaultAccount` that names
+  no account, a `Screening:WithholdRejected` that is neither true nor false: each is said in
+  the engine's own sentence, at the key that fixes it (`STUDIO-MAIL-NAME`, `-KEY`, `-VALUE`,
+  `-ADDRESS`, `-RIGHTS`, `-SERVER`, `-AUTH`, `-SEND`, `-DEFAULT`, `-SCREENING`), with its
+  plain-language line in the five languages. The file is judged as it is written: an empty
+  `Incoming:Host` blocks the preset's host, and an unreadable value is all the engine says of
+  the account that holds it.
+- **Every finding is a warning, and the file saves.** The run does not refuse to start on a
+  broken account, so Studio does not refuse to save one. The one error is
+  `STUDIO-MAIL-DUPLICATE`: two account names equal but for the case whose objects set one same
+  key — the JSON configuration refuses a key written twice, and no run can read the file. When
+  the two share no key the run reads one account made of both, and the finding is a warning.
+- **A field left blank has a value Studio can show.** `EmailAccountEffective.Of` gives what
+  the engine resolves from the provider preset — protocols, hosts, ports, securities, the
+  sign-in method, the login name, the tenant, whether a sent copy is kept, whether the account
+  can send — without writing any of it.
+- **Held to the engine.** Studio Core does not reference `Orkeon.Tools.Email`, so
+  `EmailAccountRules` spells its rules again; `EmailValidationOracleTests` hands every row —
+  accounts Studio writes and accounts written by hand — to the engine's binder, registry and
+  resolver, and the verdict, the problems of each family and the effective values must agree.
+  Two rules differ on purpose: a `PasswordEnvVar` or `ClientSecretEnvVar` that cannot be a
+  variable's name is a warning of Studio's own, its value never repeated; and the address is
+  read more loosely than by the engine, which parses it with MimeKit.
+
+The findings show in the validation list of the Settings screen; no screen edits an account
+yet.
+
 ### Changed — the release smokes check the notices of every payload, and the runner image says what its build context holds (GAP-52)
 
 Since GAP-45 every published payload carries its license, `THIRD-PARTY-NOTICES.md` and, for

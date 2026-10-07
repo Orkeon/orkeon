@@ -139,8 +139,115 @@ public sealed class AppSettingsValidator
         ValidateRagLlmProfile(document, messages);
         ValidateMounts(document, messages, scope);
         ValidateMcp(document, messages);
+        ValidateEmail(document, messages);
 
         return messages;
+    }
+
+    /// <summary>
+    /// The e-mail accounts (STUDIO-66), judged as the run will judge them: a broken account stops
+    /// no run — the engine sets it aside, and says why when a tool names it —, so each finding is
+    /// a warning in the engine's own sentence (<see cref="EmailAccountRules"/>) and the file saves.
+    /// The one error is a pair of account names equal but for the case whose objects share a key:
+    /// the JSON configuration refuses a key written twice, and no run reads the file at all.
+    /// </summary>
+    private static void ValidateEmail(AppSettingsDocument document, List<ValidationMessage> messages)
+    {
+        var email = document.Email;
+        if (EmailAccountRules.ScreeningProblem(document) is { } screening)
+        {
+            messages.Add(ValidationMessage.Warning(
+                ValidationCodes.EmailScreening,
+                screening,
+                $"{EmailSection.SectionPath}:{EmailSection.Keys.Screening}:{EmailSection.Keys.WithholdRejected}"));
+        }
+
+        var names = email.AccountNames;
+        if (email.DefaultAccount?.Trim() is { Length: > 0 } named && !names.Contains(named, StringComparer.OrdinalIgnoreCase))
+        {
+            // The sentence a call that names no account gets from the engine's registry.
+            var configured = names.Count == 0 ? "none" : string.Join(", ", names.Order(StringComparer.OrdinalIgnoreCase));
+            messages.Add(ValidationMessage.Warning(
+                ValidationCodes.EmailDefault,
+                $"Unknown e-mail account '{named}'. Configured: {configured}.",
+                $"{EmailSection.SectionPath}:{EmailSection.Keys.DefaultAccount}"));
+        }
+
+        // Names equal but for the case are judged together and on that alone: the run reads none
+        // of them on its own. Each is compared with every one before it.
+        var accounts = email.AccountsNode;
+        var twins = names
+            .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var earlier = new Dictionary<string, (string First, HashSet<string> Keys)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in names)
+        {
+            if (!twins.Contains(name))
+            {
+                messages.AddRange(EmailAccountRules.Check(document, name));
+                continue;
+            }
+
+            var keys = ValueKeys(accounts?[name], string.Empty).ToList();
+            if (earlier.TryGetValue(name, out var twin))
+                messages.Add(DuplicateAccount(twin.First, name, keys.FirstOrDefault(twin.Keys.Contains)));
+            else
+                earlier[name] = twin = (name, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            twin.Keys.UnionWith(keys);
+        }
+    }
+
+    /// <summary>
+    /// What the configuration does of two account names equal but for the case: it refuses the
+    /// file when both objects set one same key (<paramref name="shared"/> — an error: every run
+    /// fails to start), and reads one account made of both otherwise (a warning).
+    /// </summary>
+    private static ValidationMessage DuplicateAccount(string first, string name, string? shared)
+    {
+        var path = $"{EmailSection.AccountsPath}:{name}";
+        return shared is null
+            ? ValidationMessage.Warning(
+                ValidationCodes.EmailDuplicate,
+                $"E-mail accounts '{first}' and '{name}' differ only by case: the run reads them as one account, " +
+                "the keys of both together. Rename one, or merge them.",
+                path)
+            : ValidationMessage.Error(
+                ValidationCodes.EmailDuplicate,
+                $"E-mail accounts '{first}' and '{name}' differ only by case and both set " +
+                $"{(shared.Length == 0 ? "a value" : shared)}: the configuration refuses a key written twice, " +
+                "so no run can read this file. Rename one, or merge them.",
+                path);
+    }
+
+    /// <summary>The configuration keys under <paramref name="node"/> that hold a value, relative to it.</summary>
+    private static IEnumerable<string> ValueKeys(JsonNode? node, string path)
+    {
+        switch (node)
+        {
+            case JsonObject container:
+                foreach (var (key, value) in container)
+                {
+                    foreach (var leaf in ValueKeys(value, path.Length == 0 ? key : $"{path}:{key}"))
+                        yield return leaf;
+                }
+
+                break;
+            case JsonArray array:
+                for (var index = 0; index < array.Count; index++)
+                {
+                    var item = string.Create(CultureInfo.InvariantCulture, $"{index}");
+                    foreach (var leaf in ValueKeys(array[index], path.Length == 0 ? item : $"{path}:{item}"))
+                        yield return leaf;
+                }
+
+                break;
+            default:
+                yield return path;
+                break;
+        }
     }
 
     /// <summary>

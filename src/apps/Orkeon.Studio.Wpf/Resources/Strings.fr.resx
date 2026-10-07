@@ -540,6 +540,17 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-COMMAND" xml:space="preserve"><value>Un serveur MCP stdio ne nomme aucune commande à lancer.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-URL" xml:space="preserve"><value>Un serveur MCP HTTP n'a pas d'URL http(s) absolue.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve"><value>L'environnement d'un serveur MCP porte un secret en clair ; posez-le plutôt dans votre environnement utilisateur.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-NAME" xml:space="preserve"><value>Un nom de compte e-mail est inutilisable : lettres, chiffres, '.', '_' et '-' seulement, 64 caractères au plus. Le moteur met le compte de côté.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve"><value>Deux comptes e-mail portent le même nom à la casse près : le moteur les lit comme un seul, ou ne peut plus lire le fichier du tout. Renommez-en un.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve"><value>Un compte e-mail porte une clé que le moteur ne connaît pas : il met le compte de côté tant qu'elle n'est pas corrigée ou retirée.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-VALUE" xml:space="preserve"><value>Un compte e-mail contient une valeur que le moteur ne sait pas lire : il met le compte de côté tant qu'elle n'est pas corrigée.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS" xml:space="preserve"><value>Un compte e-mail n'a pas d'adresse utilisable : le moteur le met de côté tant qu'Address n'en contient pas une.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS" xml:space="preserve"><value>Un compte e-mail n'accorde aucun droit : le moteur le met de côté tant que Rights ne dit pas ce qu'un agent peut faire.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SERVER" xml:space="preserve"><value>Les serveurs d'un compte e-mail ne tiennent pas ensemble (hôte, port, protocole, sécurité ou délai) : le moteur met le compte de côté.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-AUTH" xml:space="preserve"><value>La connexion d'un compte e-mail est incomplète ou ne convient pas à son fournisseur : le compte est inutilisable tant qu'elle n'est pas corrigée.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SEND" xml:space="preserve"><value>Les règles d'envoi d'un compte e-mail ne tiennent pas (un destinataire, un quota, ou le droit d'envoyer sans serveur sortant) : le moteur met le compte de côté.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DEFAULT" xml:space="preserve"><value>Le compte e-mail par défaut ne nomme aucun compte déclaré : un appel qui ne nomme pas de compte échoue.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SCREENING" xml:space="preserve"><value>L'interrupteur de filtrage de la section e-mail n'est ni true ni false : le moteur met tous les comptes de côté tant qu'il ne l'est pas.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve"><value>Cette option ne s'applique pas à l'équipe sélectionnée.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-VERBOSE" xml:space="preserve"><value>Le niveau de détail n'est pas valide.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-VAR" xml:space="preserve"><value>Une variable est mal formée (attendu nom=valeur).</value></data>

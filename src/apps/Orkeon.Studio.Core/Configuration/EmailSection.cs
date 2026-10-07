@@ -13,8 +13,12 @@ namespace Orkeon.Studio.Core.Configuration;
 /// field cleared removes its key, and an object emptied removes itself.
 /// </summary>
 /// <remarks>
-/// Account names are compared without regard to case, as the engine's dictionary does, while the
-/// spelling found in the file is kept. The names of the keys and of the enumeration values are
+/// Every key inside the section is looked up without regard to case, as the configuration reads
+/// it, and the spelling found in the file is kept: a value is written to, or removed from, the
+/// key the file holds — never to a twin beside it, which no run could read —, and only a key
+/// the file lacks is created, in the spelling of <see cref="Keys"/>. Account names are compared
+/// the same way, as the engine's dictionary does. The path down to the section
+/// (<c>Orkeon:Tools:Email</c>) is read as written, like every other section. The names of the keys and of the enumeration values are
 /// copies of what <c>Orkeon.Tools.Email</c> binds — Core does not reference it, so as not to carry
 /// MailKit into the forms — and a test holds each of them to the engine's binder.
 /// </remarks>
@@ -26,12 +30,8 @@ public sealed class EmailSection
     /// <summary>Configuration path of the accounts dictionary.</summary>
     public const string AccountsPath = SectionPath + ":" + Keys.Accounts;
 
-    private const string WithholdRejectedPath = SectionPath + ":" + Keys.Screening + ":" + Keys.WithholdRejected;
-    private const string ScreeningPath = SectionPath + ":" + Keys.Screening;
-    private const string DefaultAccountPath = SectionPath + ":" + Keys.DefaultAccount;
-    private const string CredentialsDirectoryPath = SectionPath + ":" + Keys.CredentialsDirectory;
-
-    private static readonly EmailRight AllRights = Enum.GetValues<EmailRight>().Aggregate(EmailRight.None, (all, right) => all | right);
+    /// <summary>Every right the engine declares, together: a bit outside them is no right.</summary>
+    internal static readonly EmailRight AllRights = Enum.GetValues<EmailRight>().Aggregate(EmailRight.None, (all, right) => all | right);
 
     private readonly AppSettingsDocument _document;
 
@@ -56,13 +56,13 @@ public sealed class EmailSection
     public static IReadOnlyList<string> Rights { get; } = ["Read", "Organize", "Draft", "Send", "Delete", "Purge"];
 
     /// <summary>The account names, as the file spells them, in document order.</summary>
-    public IReadOnlyList<string> AccountNames => _document.ObjectKeys(AccountsPath);
+    public IReadOnlyList<string> AccountNames => AccountsNode is { } accounts ? [.. accounts.Select(property => property.Key)] : [];
 
     /// <summary>The account a call uses when it names none; absent means the only account.</summary>
     public string? DefaultAccount
     {
-        get => _document.GetString(DefaultAccountPath);
-        set => _document.SetString(DefaultAccountPath, value);
+        get => ReadText(Section, Keys.DefaultAccount);
+        set => WriteSectionText(Keys.DefaultAccount, value);
     }
 
     /// <summary>
@@ -72,12 +72,20 @@ public sealed class EmailSection
     /// </summary>
     public bool? WithholdRejected
     {
-        get => _document.GetBoolean(WithholdRejectedPath);
+        get => AppSettingsDocument.ReadBoolean(WithholdRejectedNode);
         set
         {
-            _document.SetBoolean(WithholdRejectedPath, value);
-            if (_document.GetNode(ScreeningPath) is JsonObject { Count: 0 })
-                _document.Remove(ScreeningPath);
+            // Clearing never creates the section, and leaves alone what is no object under Screening.
+            if (value is null && Node(Section, Keys.Screening) is not JsonObject)
+                return;
+
+            WriteObject(EnsureSection(), Keys.Screening, screening =>
+            {
+                if (value is null)
+                    Remove(screening, Keys.WithholdRejected);
+                else
+                    Write(screening, Keys.WithholdRejected, JsonValue.Create(value.Value));
+            });
         }
     }
 
@@ -87,8 +95,8 @@ public sealed class EmailSection
     /// </summary>
     public string? CredentialsDirectory
     {
-        get => _document.GetString(CredentialsDirectoryPath);
-        set => _document.SetString(CredentialsDirectoryPath, value);
+        get => ReadText(Section, Keys.CredentialsDirectory);
+        set => WriteSectionText(Keys.CredentialsDirectory, value);
     }
 
     /// <summary>
@@ -100,17 +108,27 @@ public sealed class EmailSection
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        if (_document.GetNode(AccountsPath) is not JsonObject accounts
+        if (AccountsNode is not { } accounts
             || FindKey(accounts, name) is not { } key
             || accounts[key] is not JsonObject account)
         {
             return null;
         }
 
-        var incoming = account[Keys.Incoming] as JsonObject;
-        var outgoing = account[Keys.Outgoing] as JsonObject;
-        var auth = account[Keys.Auth] as JsonObject;
-        var send = account[Keys.Send] as JsonObject;
+        return ReadAccount(key, account);
+    }
+
+    /// <summary>
+    /// The account <paramref name="account"/> holds under <paramref name="key"/>, whatever the key —
+    /// a blank one included, which the engine lists too. A node that is no object (STUDIO-66: the
+    /// engine then reads an account that declares nothing) reads as an account with no field.
+    /// </summary>
+    internal static EmailAccountDefinition ReadAccount(string key, JsonObject? account)
+    {
+        var incoming = Node(account, Keys.Incoming) as JsonObject;
+        var outgoing = Node(account, Keys.Outgoing) as JsonObject;
+        var auth = Node(account, Keys.Auth) as JsonObject;
+        var send = Node(account, Keys.Send) as JsonObject;
         var rights = ReadText(account, Keys.Rights);
         var parsed = TryParseRights(rights, out var granted) ? granted : EmailRight.None;
 
@@ -123,7 +141,7 @@ public sealed class EmailSection
             Rights = parsed,
             RightsRaw = parsed == EmailRight.None && !string.IsNullOrWhiteSpace(rights) ? rights : null,
             TimeoutSeconds = ReadInt(account, Keys.TimeoutSeconds),
-            SaveSentCopy = AppSettingsDocument.ReadBoolean(account[Keys.SaveSentCopy]),
+            SaveSentCopy = AppSettingsDocument.ReadBoolean(Node(account, Keys.SaveSentCopy)),
             IncomingProtocol = ReadText(incoming, Keys.Protocol),
             IncomingHost = ReadText(incoming, Keys.Host),
             IncomingPort = ReadInt(incoming, Keys.Port),
@@ -138,7 +156,7 @@ public sealed class EmailSection
             ClientId = ReadText(auth, Keys.ClientId),
             ClientSecretEnvVar = ReadText(auth, Keys.ClientSecretEnvVar),
             Tenant = ReadText(auth, Keys.Tenant),
-            AllowedRecipients = [.. ReadStrings(send?[Keys.AllowedRecipients])],
+            AllowedRecipients = [.. ReadStrings(Node(send, Keys.AllowedRecipients))],
             MaxRecipients = ReadInt(send, Keys.MaxRecipients),
             MaxPerHour = ReadInt(send, Keys.MaxPerHour),
         };
@@ -219,7 +237,7 @@ public sealed class EmailSection
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        if (_document.GetNode(AccountsPath) is not JsonObject accounts || FindKey(accounts, name) is not { } key)
+        if (AccountsNode is not { } accounts || FindKey(accounts, name) is not { } key)
             return;
 
         accounts.Remove(key);
@@ -231,7 +249,7 @@ public sealed class EmailSection
         }
 
         if (accounts.Count == 0)
-            _document.Remove(AccountsPath);
+            Remove(Section, Keys.Accounts);
     }
 
     /// <summary>
@@ -245,7 +263,7 @@ public sealed class EmailSection
         ArgumentException.ThrowIfNullOrWhiteSpace(oldName);
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
 
-        if (_document.GetNode(AccountsPath) is not JsonObject accounts || FindKey(accounts, oldName) is not { } key)
+        if (AccountsNode is not { } accounts || FindKey(accounts, oldName) is not { } key)
             return;
         if (string.Equals(key, newName, StringComparison.Ordinal))
             return;
@@ -265,28 +283,75 @@ public sealed class EmailSection
             DefaultAccount = newName;
     }
 
+    /// <summary>The section's object, or null when the file holds none.</summary>
+    private JsonObject? Section => _document.GetNode(SectionPath) as JsonObject;
+
+    /// <summary>The accounts dictionary as the file holds it, whatever the case of its key; null when there is none.</summary>
+    internal JsonObject? AccountsNode => Node(Section, Keys.Accounts) as JsonObject;
+
+    /// <summary>What stands under <c>Screening:WithholdRejected</c>, whatever the case of the two keys.</summary>
+    internal JsonNode? WithholdRejectedNode => Node(Node(Section, Keys.Screening) as JsonObject, Keys.WithholdRejected);
+
+    private JsonObject EnsureSection()
+    {
+        if (Section is { } section)
+            return section;
+
+        section = [];
+        _document.SetNode(SectionPath, section);
+        return section;
+    }
+
     private JsonObject EnsureAccounts()
     {
-        if (_document.GetNode(AccountsPath) is JsonObject accounts)
+        if (AccountsNode is { } accounts)
             return accounts;
 
+        var section = EnsureSection();
         accounts = [];
-        _document.SetNode(AccountsPath, accounts);
+        section[FindKey(section, Keys.Accounts) ?? Keys.Accounts] = accounts;
         return accounts;
     }
 
-    /// <summary>The key spelt exactly as <paramref name="name"/>, else the first that differs only by case.</summary>
-    private static string? FindKey(JsonObject accounts, string name) =>
-        accounts.ContainsKey(name)
+    /// <summary>Writes a text of the section itself; clearing it never creates the section.</summary>
+    private void WriteSectionText(string key, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            Remove(Section, key);
+        else
+            Write(EnsureSection(), key, JsonValue.Create(value));
+    }
+
+    /// <summary>
+    /// The key of <paramref name="owner"/> spelt exactly as <paramref name="name"/>, else the first
+    /// that differs only by case — the one the configuration reads under that name.
+    /// </summary>
+    private static string? FindKey(JsonObject owner, string name) =>
+        owner.ContainsKey(name)
             ? name
-            : accounts.Select(property => property.Key).FirstOrDefault(key => string.Equals(key, name, StringComparison.OrdinalIgnoreCase));
+            : owner.Select(property => property.Key).FirstOrDefault(key => string.Equals(key, name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>What <paramref name="owner"/> holds under <paramref name="key"/>, whatever the case the file spells it in.</summary>
+    private static JsonNode? Node(JsonObject? owner, string key) =>
+        owner is not null && FindKey(owner, key) is { } found ? owner[found] : null;
+
+    /// <summary>Removes the key the file holds for <paramref name="key"/>, whatever its case.</summary>
+    private static void Remove(JsonObject? owner, string key)
+    {
+        if (owner is not null && FindKey(owner, key) is { } found)
+            owner.Remove(found);
+    }
+
+    /// <summary>Writes under the key the file holds for <paramref name="key"/>, or creates it as <see cref="Keys"/> spells it.</summary>
+    private static void Write(JsonObject owner, string key, JsonNode value) =>
+        owner[FindKey(owner, key) ?? key] = value;
 
     // Reads: the document's own readers over a node in hand — an account name may hold a colon or a
     // blank, which a colon-separated path could not spell.
 
-    private static string? ReadText(JsonObject? owner, string key) => AppSettingsDocument.ReadString(owner?[key]);
+    private static string? ReadText(JsonObject? owner, string key) => AppSettingsDocument.ReadString(Node(owner, key));
 
-    private static int? ReadInt(JsonObject? owner, string key) => AppSettingsDocument.ReadInt32(owner?[key]);
+    private static int? ReadInt(JsonObject? owner, string key) => AppSettingsDocument.ReadInt32(Node(owner, key));
 
     private static IEnumerable<string> ReadStrings(JsonNode? node) =>
         node is JsonArray array
@@ -317,25 +382,25 @@ public sealed class EmailSection
     private static void WriteText(JsonObject owner, string key, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            owner.Remove(key);
-        else if (!string.Equals(AppSettingsDocument.ReadString(owner[key]), value, StringComparison.Ordinal))
-            owner[key] = JsonValue.Create(value);
+            Remove(owner, key);
+        else if (!string.Equals(ReadText(owner, key), value, StringComparison.Ordinal))
+            Write(owner, key, JsonValue.Create(value));
     }
 
     private static void WriteInt(JsonObject owner, string key, int? value)
     {
         if (value is null)
-            owner.Remove(key);
-        else if (AppSettingsDocument.ReadInt32(owner[key]) != value)
-            owner[key] = JsonValue.Create(value.Value);
+            Remove(owner, key);
+        else if (ReadInt(owner, key) != value)
+            Write(owner, key, JsonValue.Create(value.Value));
     }
 
     private static void WriteBoolean(JsonObject owner, string key, bool? value)
     {
         if (value is null)
-            owner.Remove(key);
-        else if (AppSettingsDocument.ReadBoolean(owner[key]) != value)
-            owner[key] = JsonValue.Create(value.Value);
+            Remove(owner, key);
+        else if (AppSettingsDocument.ReadBoolean(Node(owner, key)) != value)
+            Write(owner, key, JsonValue.Create(value.Value));
     }
 
     /// <summary>
@@ -351,11 +416,11 @@ public sealed class EmailSection
             return;
         }
 
-        if (TryParseRights(AppSettingsDocument.ReadString(owner[Keys.Rights]), out var written) && written == granted)
+        if (TryParseRights(ReadText(owner, Keys.Rights), out var written) && written == granted)
             return;
 
         var names = Enum.GetValues<EmailRight>().Where(right => right != EmailRight.None && granted.HasFlag(right));
-        owner[Keys.Rights] = JsonValue.Create(string.Join(", ", names));
+        Write(owner, Keys.Rights, JsonValue.Create(string.Join(", ", names)));
     }
 
     private static void WriteRecipients(JsonObject owner, IEnumerable<string> recipients)
@@ -363,7 +428,7 @@ public sealed class EmailSection
         var kept = recipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient)).ToList();
         if (kept.Count == 0)
         {
-            owner.Remove(Keys.AllowedRecipients);
+            Remove(owner, Keys.AllowedRecipients);
             return;
         }
 
@@ -371,21 +436,21 @@ public sealed class EmailSection
         foreach (var recipient in kept)
             array.Add(JsonValue.Create(recipient));
 
-        owner[Keys.AllowedRecipients] = array;
+        Write(owner, Keys.AllowedRecipients, array);
     }
 
     /// <summary>Fills the object under <paramref name="key"/>, creating it when needed and removing it when it ends up empty.</summary>
     private static void WriteObject(JsonObject owner, string key, Action<JsonObject> fill)
     {
-        var existing = owner[key] as JsonObject;
+        var existing = Node(owner, key) as JsonObject;
         var child = existing ?? [];
 
         fill(child);
 
         if (child.Count == 0)
-            owner.Remove(key);
+            Remove(owner, key);
         else if (existing is null)
-            owner[key] = child;
+            Write(owner, key, child);
     }
 
     /// <summary>

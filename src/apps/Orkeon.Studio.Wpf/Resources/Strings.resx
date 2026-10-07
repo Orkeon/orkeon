@@ -540,6 +540,17 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-COMMAND" xml:space="preserve"><value>A stdio MCP server names no command to launch.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-URL" xml:space="preserve"><value>An HTTP MCP server has no absolute http(s) URL.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve"><value>An MCP server's environment carries a secret in clear text; set it in your user environment instead.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-NAME" xml:space="preserve"><value>An e-mail account name is unusable: letters, digits, '.', '_' and '-' only, 64 characters at most. The run sets the account aside.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve"><value>Two e-mail accounts carry the same name but for the case: the run reads them as one, or cannot read the file at all. Rename one.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve"><value>An e-mail account carries a key the engine does not know: the run sets the account aside until the key is corrected or removed.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-VALUE" xml:space="preserve"><value>An e-mail account holds a value the engine cannot read: the run sets the account aside until it is corrected.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS" xml:space="preserve"><value>An e-mail account has no usable address: the run sets it aside until Address holds one.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS" xml:space="preserve"><value>An e-mail account grants no right: the run sets it aside until Rights says what an agent may do.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SERVER" xml:space="preserve"><value>The servers of an e-mail account do not hold together (host, port, protocol, security or timeout): the run sets the account aside.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-AUTH" xml:space="preserve"><value>The sign-in of an e-mail account is incomplete or does not fit its provider: the account cannot be used until it is corrected.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SEND" xml:space="preserve"><value>The sending rules of an e-mail account do not hold (a recipient, a quota, or the right to send without an outgoing server): the run sets the account aside.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DEFAULT" xml:space="preserve"><value>The default e-mail account names no declared account: a call that names no account fails.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SCREENING" xml:space="preserve"><value>The screening switch of the e-mail section is neither true nor false: the run sets every account aside until it is.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve"><value>This option does not apply to the selected team.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-VERBOSE" xml:space="preserve"><value>The verbosity level is not valid.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-VAR" xml:space="preserve"><value>A variable is malformed (expected name=value).</value></data>

@@ -1530,6 +1530,39 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve">
     <value>El entorno de un servidor MCP contiene un secreto en claro; póngalo en su entorno de usuario.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-NAME" xml:space="preserve">
+    <value>El nombre de una cuenta de correo no es utilizable: solo letras, dígitos, '.', '_' y '-', 64 caracteres como máximo. El motor aparta la cuenta.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve">
+    <value>Dos cuentas de correo llevan el mismo nombre salvo por las mayúsculas: el motor las lee como una sola, o ya no puede leer el archivo. Cambie el nombre de una.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve">
+    <value>Una cuenta de correo lleva una clave que el motor no conoce: aparta la cuenta hasta que se corrija o se quite.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-VALUE" xml:space="preserve">
+    <value>Una cuenta de correo contiene un valor que el motor no sabe leer: aparta la cuenta hasta que se corrija.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS" xml:space="preserve">
+    <value>Una cuenta de correo no tiene una dirección utilizable: el motor la aparta hasta que Address contenga una.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS" xml:space="preserve">
+    <value>Una cuenta de correo no concede ningún derecho: el motor la aparta hasta que Rights diga qué puede hacer un agente.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SERVER" xml:space="preserve">
+    <value>Los servidores de una cuenta de correo no encajan (host, puerto, protocolo, seguridad o tiempo de espera): el motor aparta la cuenta.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-AUTH" xml:space="preserve">
+    <value>El inicio de sesión de una cuenta de correo está incompleto o no corresponde a su proveedor: la cuenta no se puede usar hasta que se corrija.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SEND" xml:space="preserve">
+    <value>Las reglas de envío de una cuenta de correo no se sostienen (un destinatario, una cuota o el derecho de enviar sin servidor saliente): el motor aparta la cuenta.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DEFAULT" xml:space="preserve">
+    <value>La cuenta de correo predeterminada no nombra ninguna cuenta declarada: una llamada que no nombra cuenta falla.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SCREENING" xml:space="preserve">
+    <value>El interruptor de filtrado de la sección de correo no es ni true ni false: el motor aparta todas las cuentas hasta que lo sea.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve">
     <value>Esta opción no se aplica al equipo seleccionado.</value>
   </data>
