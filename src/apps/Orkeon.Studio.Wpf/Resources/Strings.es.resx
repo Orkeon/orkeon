@@ -1539,6 +1539,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve">
     <value>Dos cuentas de correo llevan el mismo nombre salvo por las mayúsculas: el motor las lee como una sola, o ya no puede leer el archivo. Cambie el nombre de una.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-TWIN" xml:space="preserve">
+    <value>Dos claves de los ajustes de correo llevan el mismo nombre salvo por las mayúsculas: el motor las lee como una sola, o ya no puede leer el archivo. Conserve solo una.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve">
     <value>Una cuenta de correo lleva una clave que el motor no conoce: aparta la cuenta hasta que se corrija o se quite.</value>
   </data>

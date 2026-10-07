@@ -96,7 +96,7 @@ public static class EmailAccountRules
     ];
 
     /// <summary>The keys an account carries, in the order the engine lists them.</summary>
-    private static readonly string[] AccountKeys =
+    internal static readonly string[] AccountKeys =
     [
         EmailSection.Keys.Provider, EmailSection.Keys.Address, EmailSection.Keys.DisplayName, EmailSection.Keys.Rights,
         EmailSection.Keys.Incoming, EmailSection.Keys.Outgoing, EmailSection.Keys.Auth, EmailSection.Keys.Send,
@@ -107,7 +107,7 @@ public static class EmailAccountRules
         [EmailSection.Keys.Protocol, EmailSection.Keys.Host, EmailSection.Keys.Port, EmailSection.Keys.Security];
 
     /// <summary>The keys each object of an account carries, by the object's key.</summary>
-    private static readonly Dictionary<string, string[]> ObjectKeys = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly Dictionary<string, string[]> ObjectKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         [EmailSection.Keys.Incoming] = EndpointKeys,
         [EmailSection.Keys.Outgoing] = EndpointKeys,
@@ -155,8 +155,9 @@ public static class EmailAccountRules
     /// it, which is what the run reads: a key no account carries and a value the binder cannot
     /// convert first — with the screening switch of the section when it is unreadable, which sets
     /// every account aside —, and the engine then says nothing else of the account; otherwise the
-    /// rules of <see cref="Check(string, EmailAccountDefinition)"/>. Empty when the file holds no
-    /// such account.
+    /// rules of <see cref="Check(string, EmailAccountDefinition)"/>. Keys equal but for the case
+    /// (<see cref="EmailTwinKeys"/>) come before all of it and alone: the run reads none of them on
+    /// its own, when it reads the file at all. Empty when the file holds no such account.
     /// </summary>
     public static IReadOnlyList<ValidationMessage> Check(AppSettingsDocument document, string name)
     {
@@ -169,6 +170,9 @@ public static class EmailAccountRules
         // What stands under the name may be no object at all: the engine then reads an account
         // that declares nothing.
         var account = node as JsonObject;
+        if (account is not null && EmailTwinKeys.Under(account, $"{EmailSection.AccountsPath}:{name}").ToList() is { Count: > 0 } twins)
+            return twins;
+
         var findings = new Findings(name);
         if (ScreeningProblem(document) is { } screening)
             findings.Add(ValidationCodes.EmailScreening, string.Empty, screening);

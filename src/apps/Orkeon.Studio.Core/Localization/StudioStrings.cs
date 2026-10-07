@@ -2360,6 +2360,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET"] = "An MCP server's environment carries a secret in clear text; set it in your user environment instead.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-NAME"] = "An e-mail account name is unusable: letters, digits, '.', '_' and '-' only, 64 characters at most. The run sets the account aside.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE"] = "Two e-mail accounts carry the same name but for the case: the run reads them as one, or cannot read the file at all. Rename one.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-TWIN"] = "Two keys of the e-mail settings carry the same name but for the case: the run reads them as one, or cannot read the file at all. Keep one.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-KEY"] = "An e-mail account carries a key the engine does not know: the run sets the account aside until the key is corrected or removed.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-VALUE"] = "An e-mail account holds a value the engine cannot read: the run sets the account aside until it is corrected.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS"] = "An e-mail account has no usable address: the run sets it aside until it has one.",

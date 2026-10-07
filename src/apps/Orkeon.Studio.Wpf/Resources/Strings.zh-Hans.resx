@@ -1539,6 +1539,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve">
     <value>两个电子邮件账户的名称仅大小写不同：引擎会把它们读成同一个账户，或者根本无法读取该文件。请重命名其中一个。</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-TWIN" xml:space="preserve">
+    <value>电子邮件设置中有两个键的名称仅大小写不同：引擎会把它们读成同一个键，或者根本无法读取该文件。请只保留其中一个。</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve">
     <value>某个电子邮件账户含有引擎不认识的键：在更正或删除该键之前，引擎会搁置该账户。</value>
   </data>

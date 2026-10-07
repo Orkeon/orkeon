@@ -148,12 +148,16 @@ public sealed class AppSettingsValidator
     /// The e-mail accounts (STUDIO-66), judged as the run will judge them: a broken account stops
     /// no run — the engine sets it aside, and says why when a tool names it —, so each finding is
     /// a warning in the engine's own sentence (<see cref="EmailAccountRules"/>) and the file saves.
-    /// The one error is a pair of account names equal but for the case whose objects share a key:
-    /// the JSON configuration refuses a key written twice, and no run reads the file at all.
+    /// The one error is a pair of account names, or of keys anywhere in the section
+    /// (<see cref="EmailTwinKeys"/>), equal but for the case and that set one same key: the JSON
+    /// configuration refuses a key written twice, and no run reads the file at all.
     /// </summary>
     private static void ValidateEmail(AppSettingsDocument document, List<ValidationMessage> messages)
     {
         var email = document.Email;
+        if (document.GetNode(EmailSection.SectionPath) is JsonObject section)
+            messages.AddRange(EmailTwinKeys.Under(section, EmailSection.SectionPath, email.AccountsNode));
+
         if (EmailAccountRules.ScreeningProblem(document) is { } screening)
         {
             messages.Add(ValidationMessage.Warning(
@@ -181,7 +185,7 @@ public sealed class AppSettingsValidator
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var earlier = new Dictionary<string, (string First, HashSet<string> Keys)>(StringComparer.OrdinalIgnoreCase);
+        var earlier = new Dictionary<string, (string First, EmailTwinKeys.Reading Read)>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in names)
         {
             if (!twins.Contains(name))
@@ -190,13 +194,21 @@ public sealed class AppSettingsValidator
                 continue;
             }
 
-            var keys = ValueKeys(accounts?[name], string.Empty).ToList();
+            var account = accounts?[name];
             if (earlier.TryGetValue(name, out var twin))
-                messages.Add(DuplicateAccount(twin.First, name, keys.FirstOrDefault(twin.Keys.Contains)));
+            {
+                messages.Add(DuplicateAccount(twin.First, name, twin.Read.Next(account)));
+            }
             else
-                earlier[name] = twin = (name, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            {
+                var read = new EmailTwinKeys.Reading();
+                read.Next(account);
+                earlier[name] = (name, read);
+            }
 
-            twin.Keys.UnionWith(keys);
+            // The keys inside are judged all the same: a pair of them alone makes the file unreadable.
+            if (account is JsonObject keys)
+                messages.AddRange(EmailTwinKeys.Under(keys, $"{EmailSection.AccountsPath}:{name}"));
         }
     }
 
@@ -220,34 +232,6 @@ public sealed class AppSettingsValidator
                 $"{(shared.Length == 0 ? "a value" : shared)}: the configuration refuses a key written twice, " +
                 "so no run can read this file. Rename one, or merge them.",
                 path);
-    }
-
-    /// <summary>The configuration keys under <paramref name="node"/> that hold a value, relative to it.</summary>
-    private static IEnumerable<string> ValueKeys(JsonNode? node, string path)
-    {
-        switch (node)
-        {
-            case JsonObject container:
-                foreach (var (key, value) in container)
-                {
-                    foreach (var leaf in ValueKeys(value, path.Length == 0 ? key : $"{path}:{key}"))
-                        yield return leaf;
-                }
-
-                break;
-            case JsonArray array:
-                for (var index = 0; index < array.Count; index++)
-                {
-                    var item = string.Create(CultureInfo.InvariantCulture, $"{index}");
-                    foreach (var leaf in ValueKeys(array[index], path.Length == 0 ? item : $"{path}:{item}"))
-                        yield return leaf;
-                }
-
-                break;
-            default:
-                yield return path;
-                break;
-        }
     }
 
     /// <summary>

@@ -1539,6 +1539,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve">
     <value>Zwei E-Mail-Konten tragen bis auf die Groß-/Kleinschreibung denselben Namen: Die Engine liest sie als eines oder kann die Datei gar nicht mehr lesen. Benennen Sie eines um.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-TWIN" xml:space="preserve">
+    <value>Zwei Schlüssel der E-Mail-Einstellungen tragen bis auf die Groß-/Kleinschreibung denselben Namen: Die Engine liest sie als einen oder kann die Datei gar nicht mehr lesen. Behalten Sie nur einen.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve">
     <value>Ein E-Mail-Konto enthält einen Schlüssel, den die Engine nicht kennt: Sie stellt das Konto zurück, bis er korrigiert oder entfernt ist.</value>
   </data>

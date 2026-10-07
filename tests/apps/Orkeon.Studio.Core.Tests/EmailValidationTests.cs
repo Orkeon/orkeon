@@ -16,9 +16,9 @@ namespace Orkeon.Studio.Core.Tests;
 /// STUDIO-66 — the e-mail accounts in the settings check: each finding with its code, its
 /// severity and its path. A broken account never stops a run — the engine sets it aside and says
 /// so when a tool names it —, so every finding is a warning and the file saves; the one error is
-/// the pair of names the configuration cannot read at all.
+/// the pair of names, or of keys, the configuration cannot read at all.
 /// </summary>
-public sealed class EmailValidationTests : IDisposable
+public sealed partial class EmailValidationTests : IDisposable
 {
     private const string Accounts = EmailSection.AccountsPath;
 

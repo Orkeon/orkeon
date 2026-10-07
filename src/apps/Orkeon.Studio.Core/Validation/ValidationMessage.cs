@@ -124,11 +124,20 @@ public static class ValidationCodes
     public const string EmailName = "STUDIO-MAIL-NAME";
 
     /// <summary>
-    /// Two e-mail account names equal but for the case — the one e-mail finding that is an error:
-    /// the JSON configuration refuses a key written twice without regard to case, so no run reads
-    /// the file. A warning when the two share no key, which the run reads as one account.
+    /// Two e-mail account names equal but for the case — with <see cref="EmailTwin"/>, the e-mail
+    /// findings that are an error: the JSON configuration refuses a key written twice without regard
+    /// to case, so no run reads the file. A warning when the two share no key, which the run reads
+    /// as one account.
     /// </summary>
     public const string EmailDuplicate = "STUDIO-MAIL-DUPLICATE";
+
+    /// <summary>
+    /// Two keys equal but for the case in one object of <c>Orkeon:Tools:Email</c> (<c>Provider</c>
+    /// and <c>provider</c>) — an error when both set one same key, which the JSON configuration
+    /// refuses: no run reads the file. A warning when they are objects that share no key, which the
+    /// run reads as one while Studio reads and edits one of them only.
+    /// </summary>
+    public const string EmailTwin = "STUDIO-MAIL-TWIN";
 
     /// <summary>A key no e-mail account carries: the engine sets the account aside.</summary>
     public const string EmailKey = "STUDIO-MAIL-KEY";

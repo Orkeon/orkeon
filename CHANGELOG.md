@@ -154,6 +154,14 @@ right or a missing host was first heard of at a tool call (STUDIO-66).
   `STUDIO-MAIL-DUPLICATE`: two account names equal but for the case whose objects set one same
   key — the JSON configuration refuses a key written twice, and no run can read the file. When
   the two share no key the run reads one account made of both, and the finding is a warning.
+- **Two keys equal but for the case in one object are said too.** `Provider` and `provider` in
+  an account, `Host` and `host` under `Incoming`, `DefaultAccount` and `defaultaccount` in the
+  section: the JSON configuration refuses the second, no run starts, and the check said nothing.
+  `STUDIO-MAIL-TWIN` names both spellings at the key, alone on the account that carries them —
+  an error when both set one same configuration key, a warning when they are objects the
+  configuration merges, of which Studio reads and edits one only. The severity is held to the
+  configuration a run composes, which also corrects `STUDIO-MAIL-DUPLICATE` on an empty account
+  followed by a twin name that holds a value: refused by the run, and now an error.
 - **A field left blank has a value Studio can show.** `EmailAccountEffective.Of` gives what
   the engine resolves from the provider preset — protocols, hosts, ports, securities, the
   sign-in method, the login name, the tenant, whether a sent copy is kept, whether the account
