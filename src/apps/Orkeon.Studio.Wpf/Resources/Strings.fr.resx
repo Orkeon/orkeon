@@ -391,6 +391,7 @@
 <data name="Studio.Shell.Json" xml:space="preserve"><value>JSON brut</value></data>
 <data name="Studio.Shell.Tools" xml:space="preserve"><value>Outils</value></data>
 <data name="Studio.Shell.Mcp" xml:space="preserve"><value>MCP</value></data>
+<data name="Studio.Shell.Mails" xml:space="preserve"><value>Mails</value></data>
 <data name="Studio.Settings.ModelTitle" xml:space="preserve"><value>Modèle de l'assistant de Studio</value></data>
 <data name="Studio.Settings.ModelHintNovice" xml:space="preserve"><value>C'est lui qui compose vos équipes et rédige les verdicts d'essai.</value></data>
 <data name="Studio.Settings.ModelHintExpert" xml:space="preserve"><value>Utilisé par l'assistant de création, les verdicts et les réponses aux questions — indépendant des modèles des équipes.</value></data>
@@ -544,8 +545,8 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE" xml:space="preserve"><value>Deux comptes e-mail portent le même nom à la casse près : le moteur les lit comme un seul, ou ne peut plus lire le fichier du tout. Renommez-en un.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-KEY" xml:space="preserve"><value>Un compte e-mail porte une clé que le moteur ne connaît pas : il met le compte de côté tant qu'elle n'est pas corrigée ou retirée.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-VALUE" xml:space="preserve"><value>Un compte e-mail contient une valeur que le moteur ne sait pas lire : il met le compte de côté tant qu'elle n'est pas corrigée.</value></data>
-  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS" xml:space="preserve"><value>Un compte e-mail n'a pas d'adresse utilisable : le moteur le met de côté tant qu'Address n'en contient pas une.</value></data>
-  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS" xml:space="preserve"><value>Un compte e-mail n'accorde aucun droit : le moteur le met de côté tant que Rights ne dit pas ce qu'un agent peut faire.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS" xml:space="preserve"><value>Un compte e-mail n'a pas d'adresse utilisable : le moteur le met de côté tant qu'il n'en a pas une.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS" xml:space="preserve"><value>Un compte e-mail n'accorde aucun droit : le moteur le met de côté tant qu'il ne dit pas ce qu'un agent peut faire.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SERVER" xml:space="preserve"><value>Les serveurs d'un compte e-mail ne tiennent pas ensemble (hôte, port, protocole, sécurité ou délai) : le moteur met le compte de côté.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-AUTH" xml:space="preserve"><value>La connexion d'un compte e-mail est incomplète ou ne convient pas à son fournisseur : le compte est inutilisable tant qu'elle n'est pas corrigée.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MAIL-SEND" xml:space="preserve"><value>Les règles d'envoi d'un compte e-mail ne tiennent pas (un destinataire, un quota, ou le droit d'envoyer sans serveur sortant) : le moteur met le compte de côté.</value></data>
@@ -664,12 +665,85 @@
   <data name="Studio.Settings.ToolOnlyWithStoredKey" xml:space="preserve"><value>présent seulement une fois la clé {0} mémorisée, ci-dessus</value></data>
   <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve"><value>les paramètres de connexion sont fournis à l'appel, par l'agent</value></data>
   <data name="Studio.Settings.ToolExpertSetting" xml:space="preserve"><value>réglage expert ci-dessous : {0}</value></data>
-  <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve"><value>a besoin d'un compte e-mail déclaré dans le fichier de réglages, sous {0} ; un compte OAuth se connecte ensuite avec orkeon email login</value></data>
+  <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve"><value>a besoin d'un compte e-mail, déclaré dans Réglages › Mails</value></data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve"><value>{0} outils, rien à régler</value></data>
   <data name="Studio.Settings.McpProblemId" xml:space="preserve"><value>Un identifiant est requis : lettres, chiffres, '.', '_' et '-'.</value></data>
   <data name="Studio.Settings.McpProblemCommand" xml:space="preserve"><value>Un serveur stdio a besoin d'une commande à lancer.</value></data>
   <data name="Studio.Settings.McpProblemUrl" xml:space="preserve"><value>Un serveur HTTP a besoin d'une URL http(s) absolue.</value></data>
   <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve"><value>Un autre serveur porte déjà cet identifiant.</value></data>
+  <data name="Studio.Settings.MailSettingsFile" xml:space="preserve"><value>Les comptes sont écrits dans {0}. Une équipe lancée sur un autre fichier de réglages ne les voit pas.</value></data>
+  <data name="Studio.Settings.MailChoicePreset" xml:space="preserve"><value>Laisser le préréglage décider</value></data>
+  <data name="Studio.Settings.MailProviderGmail" xml:space="preserve"><value>Gmail — ses serveurs sont préréglés ; mot de passe d'application ou OAuth2</value></data>
+  <data name="Studio.Settings.MailProviderOutlook" xml:space="preserve"><value>Outlook.com ou Microsoft 365 — lu et envoyé par Microsoft Graph ; OAuth2 seulement</value></data>
+  <data name="Studio.Settings.MailProviderCustom" xml:space="preserve"><value>Autre fournisseur — vous indiquez ses serveurs ; connexion par mot de passe</value></data>
+  <data name="Studio.Settings.MailAuthPassword" xml:space="preserve"><value>Mot de passe</value></data>
+  <data name="Studio.Settings.MailAuthOAuth2" xml:space="preserve"><value>OAuth2 — vous vous connectez sur la page du fournisseur</value></data>
+  <data name="Studio.Settings.MailNameInvalid" xml:space="preserve"><value>Un nom ne contient que des lettres, des chiffres, « . », « _ » et « - », commence par une lettre ou un chiffre et compte 64 caractères au plus.</value></data>
+  <data name="Studio.Settings.MailNameTaken" xml:space="preserve"><value>Un autre compte répond déjà à ce nom — majuscules et minuscules font le même nom.</value></data>
+  <data name="Studio.Settings.MailCredentialsDirectoryPick" xml:space="preserve"><value>Choisir le dossier qui garde les jetons de connexion</value></data>
+  <data name="Studio.Settings.MailTitle" xml:space="preserve"><value>Comptes e-mail</value></data>
+  <data name="Studio.Settings.MailIntro" xml:space="preserve"><value>Les boîtes que vos agents peuvent utiliser. Chaque compte dit ce qu'un agent a le droit d'en faire, et rien n'est envoyé hors des destinataires que vous listez.</value></data>
+  <data name="Studio.Settings.MailAdd" xml:space="preserve"><value>Ajouter un compte</value></data>
+  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>Aucun compte déclaré : les outils de messagerie refusent tout appel tant qu'il n'y en a pas.</value></data>
+  <data name="Studio.Settings.MailDefaultAccount" xml:space="preserve"><value>Compte utilisé quand un agent n'en nomme aucun</value></data>
+  <data name="Studio.Settings.MailDefaultAccountHint" xml:space="preserve"><value>Avec un seul compte, vous pouvez le laisser vide : le moteur prend celui-là.</value></data>
+  <data name="Studio.Settings.MailNewTitle" xml:space="preserve"><value>Un nouveau compte</value></data>
+  <data name="Studio.Settings.MailName" xml:space="preserve"><value>Nom du compte</value></data>
+  <data name="Studio.Settings.MailNameHint" xml:space="preserve"><value>Le nom que vos agents donnent au compte, par exemple perso. Lettres, chiffres, « . », « _ » et « - ».</value></data>
+  <data name="Studio.Settings.MailProvider" xml:space="preserve"><value>Fournisseur</value></data>
+  <data name="Studio.Settings.MailAddress" xml:space="preserve"><value>Adresse e-mail</value></data>
+  <data name="Studio.Settings.MailAddConfirm" xml:space="preserve"><value>Ajouter le compte</value></data>
+  <data name="Studio.Settings.MailRename" xml:space="preserve"><value>Renommer</value></data>
+  <data name="Studio.Settings.MailRemove" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="Studio.Settings.MailRenameLabel" xml:space="preserve"><value>Nouveau nom</value></data>
+  <data name="Studio.Settings.MailRenameCost" xml:space="preserve"><value>Un compte connecté par OAuth2 devra se reconnecter sous son nouveau nom : ses jetons sont rangés sous l'ancien. Un mot de passe reste dans sa variable d'environnement, sous le nom de la variable.</value></data>
+  <data name="Studio.Settings.MailRemoveQuestion" xml:space="preserve"><value>Supprimer ce compte ?</value></data>
+  <data name="Studio.Settings.MailRemoveCost" xml:space="preserve"><value>La variable d'environnement qui garde son mot de passe et ses jetons de connexion restent sur cette machine.</value></data>
+  <data name="Studio.Settings.MailProblemsTitle" xml:space="preserve"><value>En l'état, une exécution ne peut pas utiliser ce compte :</value></data>
+  <data name="Studio.Settings.MailNumberUnread" xml:space="preserve"><value>Un champ numérique contient autre chose qu'un nombre entier : il n'est pas écrit.</value></data>
+  <data name="Studio.Settings.MailDisplayName" xml:space="preserve"><value>Nom affiché aux destinataires</value></data>
+  <data name="Studio.Settings.MailRightsTitle" xml:space="preserve"><value>Ce qu'un agent peut faire</value></data>
+  <data name="Studio.Settings.MailRightsIntro" xml:space="preserve"><value>Rien de coché, rien de permis : le moteur refuse un compte qui n'accorde aucun droit.</value></data>
+  <data name="Studio.Settings.MailRightRead" xml:space="preserve"><value>Lire — lister les dossiers, chercher, lire les messages et enregistrer les pièces jointes</value></data>
+  <data name="Studio.Settings.MailRightOrganize" xml:space="preserve"><value>Organiser — créer et renommer des dossiers, déplacer des messages, les marquer lus ou suivis</value></data>
+  <data name="Studio.Settings.MailRightDraft" xml:space="preserve"><value>Rédiger — enregistrer des brouillons dans la boîte, sans les envoyer</value></data>
+  <data name="Studio.Settings.MailRightSend" xml:space="preserve"><value>Envoyer — aux destinataires autorisés seulement</value></data>
+  <data name="Studio.Settings.MailRightDelete" xml:space="preserve"><value>Supprimer — déplacer des messages vers la corbeille</value></data>
+  <data name="Studio.Settings.MailRightPurge" xml:space="preserve"><value>Purger — effacer des messages définitivement</value></data>
+  <data name="Studio.Settings.MailRecipients" xml:space="preserve"><value>Destinataires autorisés</value></data>
+  <data name="Studio.Settings.MailRecipientsHint" xml:space="preserve"><value>Un par ligne : une adresse, *@domaine pour tout un domaine, ou * pour n'importe qui.</value></data>
+  <data name="Studio.Settings.MailRecipientAdd" xml:space="preserve"><value>Ajouter un destinataire</value></data>
+  <data name="Studio.Settings.MailRecipientInvalid" xml:space="preserve"><value>Ni une adresse, ni *@domaine, ni *.</value></data>
+  <data name="Studio.Settings.MailSendClosed" xml:space="preserve"><value>Personne ne peut encore recevoir de courrier de ce compte : listez les destinataires autorisés.</value></data>
+  <data name="Studio.Settings.MailMaxRecipients" xml:space="preserve"><value>Destinataires par message, au plus</value></data>
+  <data name="Studio.Settings.MailMaxPerHour" xml:space="preserve"><value>Messages par heure, au plus</value></data>
+  <data name="Studio.Settings.MailAuthTitle" xml:space="preserve"><value>Connexion</value></data>
+  <data name="Studio.Settings.MailAuthMethod" xml:space="preserve"><value>Méthode de connexion</value></data>
+  <data name="Studio.Settings.MailPasswordByVariable" xml:space="preserve"><value>Le mot de passe est lu dans une variable d'environnement — voir le guide e-mail.</value></data>
+  <data name="Studio.Settings.MailClientId" xml:space="preserve"><value>Identifiant client OAuth</value></data>
+  <data name="Studio.Settings.MailClientIdHint" xml:space="preserve"><value>L'identifiant de l'application que vous avez enregistrée chez Google ou Microsoft.</value></data>
+  <data name="Studio.Settings.MailUsername" xml:space="preserve"><value>Nom d'utilisateur</value></data>
+  <data name="Studio.Settings.MailPasswordEnvVar" xml:space="preserve"><value>Nom de la variable qui contient le mot de passe</value></data>
+  <data name="Studio.Settings.MailClientSecretEnvVar" xml:space="preserve"><value>Nom de la variable qui contient le secret client OAuth</value></data>
+  <data name="Studio.Settings.MailEnvVarHint" xml:space="preserve"><value>Un nom, jamais le secret lui-même : le moteur lit la variable au moment de se connecter.</value></data>
+  <data name="Studio.Settings.MailTenant" xml:space="preserve"><value>Locataire Microsoft</value></data>
+  <data name="Studio.Settings.MailServersTitle" xml:space="preserve"><value>Serveurs de messagerie</value></data>
+  <data name="Studio.Settings.MailIncoming" xml:space="preserve"><value>Lecture du courrier</value></data>
+  <data name="Studio.Settings.MailOutgoing" xml:space="preserve"><value>Envoi du courrier</value></data>
+  <data name="Studio.Settings.MailProtocol" xml:space="preserve"><value>Protocole</value></data>
+  <data name="Studio.Settings.MailHost" xml:space="preserve"><value>Nom du serveur</value></data>
+  <data name="Studio.Settings.MailPort" xml:space="preserve"><value>Numéro de port</value></data>
+  <data name="Studio.Settings.MailSecurity" xml:space="preserve"><value>Sécurité de la connexion</value></data>
+  <data name="Studio.Settings.MailOutgoingHostHint" xml:space="preserve"><value>Sans serveur d'envoi, le sien ou celui d'un préréglage, le compte ne peut pas envoyer.</value></data>
+  <data name="Studio.Settings.MailTimeout" xml:space="preserve"><value>Délai d'attente, en secondes</value></data>
+  <data name="Studio.Settings.MailTimeoutHint" xml:space="preserve"><value>Vide : celui de la bibliothèque de messagerie. Il ne s'applique pas à un compte lu par Microsoft Graph.</value></data>
+  <data name="Studio.Settings.MailSaveSentCopy" xml:space="preserve"><value>Ranger une copie de chaque message envoyé dans le dossier des messages envoyés</value></data>
+  <data name="Studio.Settings.MailSectionTitle" xml:space="preserve"><value>Pour tous les comptes</value></data>
+  <data name="Studio.Settings.MailWithholdRejected" xml:space="preserve"><value>Retenir le corps d'un message que le filtrage des injections de prompt rejette</value></data>
+  <data name="Studio.Settings.MailWithholdRejectedHint" xml:space="preserve"><value>Désactivé, l'agent lit le message avec un avertissement ; activé, il ne lit que l'avertissement.</value></data>
+  <data name="Studio.Settings.MailCredentialsDirectory" xml:space="preserve"><value>Dossier des jetons de connexion</value></data>
+  <data name="Studio.Settings.MailCredentialsDirectoryDefault" xml:space="preserve"><value>credentials, à côté de votre fichier de réglages</value></data>
+  <data name="Studio.Settings.MailCredentialsDirectoryHint" xml:space="preserve"><value>Un chemin de cette machine, pas un des dossiers autorisés. Un chemin relatif part du fichier de réglages qui le nomme.</value></data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve"><value>L'assistant n'est pas en cours d'exécution — lancez la composition (étape 1, Composer) ou reprenez la session ; votre question a été conservée.</value></data>
   <data name="Studio.Create.EngineBusy" xml:space="preserve"><value>L'assistant est encore occupé avec « {0} » — arrêtez-le, ou laissez-le finir, avant d'ouvrir une équipe.</value></data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve"><value>Copier</value></data>

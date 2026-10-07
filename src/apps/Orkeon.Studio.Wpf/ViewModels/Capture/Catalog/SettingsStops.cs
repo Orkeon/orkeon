@@ -3,7 +3,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>Settings and its seven tabs.</summary>
+/// <summary>Settings and its eight tabs.</summary>
 internal static class SettingsStops
 {
     /// <summary>The stops.</summary>
@@ -93,6 +93,36 @@ internal static class SettingsStops
                     + "image_generation and the database tools need said next to their names.",
             Covers = ["Settings.Tools.HasSecrets"],
             SweepsLanguages = true,
+        },
+
+        new()
+        {
+            Name = "reglages-mails",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsEmail,
+            Because = "The E-mail tab (STUDIO-67): the line that says which file the accounts are "
+                    + "written to, the two seeded accounts and the form of the Gmail one — its rights "
+                    + "as six sentences, its sign-in method, and nothing else for the novice; the "
+                    + "expert pass adds the servers, the variable names and the section card.",
+            Covers = ["Config.Email.HasAccounts", "Config.Email.HasSelectedAccount"],
+            CoversFalse = ["Config.Email.IsAdding"],
+            SweepsLanguages = true,
+        },
+
+        new()
+        {
+            Name = "reglages-mails-serveurs",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsEmail,
+            Modes = CaptureModes.Expert,
+            Because = "The custom account in the expert form: no preset fills its servers, so the "
+                    + "two hosts are its own and every other field shows what the engine will use as "
+                    + "a watermark; it may send, and its allowed recipients are listed one per line.",
+            Covers = ["Config.Email.IsExpert", "Config.Email.HasSelectedAccount"],
+            Arrange = CaptureAction.Sync(static c =>
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[^1]),
+            Teardown = CaptureAction.Sync(static c =>
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[0]),
         },
 
         new()

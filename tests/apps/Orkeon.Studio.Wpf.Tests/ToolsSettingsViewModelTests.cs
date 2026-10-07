@@ -72,11 +72,12 @@ public sealed class ToolsSettingsViewModelTests
     }
 
     /// <summary>
-    /// MAIL-05 — there is no form for an e-mail account, so the line points at the file and at
-    /// the one interactive step an OAuth account needs; it is not a key of the card above.
+    /// STUDIO-67 — an e-mail account is declared in Settings › E-mail, so the line sends the
+    /// reader to that tab: neither to the settings file nor to a command line. It is not a key of
+    /// the card above.
     /// </summary>
     [Fact]
-    public void The_email_family_says_its_mailbox_tools_need_an_account_declared_in_the_file()
+    public void The_email_family_says_its_mailbox_tools_need_an_account_declared_in_the_email_tab()
     {
         var tools = new ToolsSettingsViewModel(new FakeApiKeyStore());
 
@@ -86,14 +87,34 @@ public sealed class ToolsSettingsViewModelTests
         Assert.Equal(12, email.Requirements.Count);
         Assert.All(email.Requirements, r =>
         {
-            Assert.Equal(
-                "needs an e-mail account declared in the settings file under Orkeon:Tools:Email:Accounts; "
-                + "an OAuth account then signs in with orkeon email login",
-                r.Text);
+            Assert.Equal("needs an e-mail account, declared in Settings › E-mail", r.Text);
+            Assert.DoesNotContain("Orkeon:Tools", r.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("orkeon email", r.Text, StringComparison.Ordinal);
             Assert.False(r.IsKey);
         });
         Assert.Contains(email.Tools, t => t.Name == "email_parser" && !t.NeedsSomething);
         Assert.DoesNotContain(email.Requirements, r => r.Name == "email_parser");
+    }
+
+    /// <summary>STUDIO-67 — the line names the tab the way each language's tab strip does.</summary>
+    [Theory]
+    [InlineData("fr")]
+    [InlineData("de")]
+    [InlineData("es")]
+    [InlineData("zh-Hans")]
+    public void The_email_line_names_the_tab_as_the_tab_strip_spells_it(string culture)
+    {
+        var strings = new FakeResxStudioStrings(culture);
+        var tools = new ToolsSettingsViewModel(new FakeApiKeyStore(), strings);
+
+        var email = Assert.Single(tools.Families, f => f.Key == ToolCatalog.EmailFamily);
+
+        Assert.All(email.Requirements, r =>
+        {
+            Assert.Contains(strings["Studio.Shell.Mails"], r.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("orkeon email", r.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("{0}", r.Text, StringComparison.Ordinal);
+        });
     }
 
     /// <summary>

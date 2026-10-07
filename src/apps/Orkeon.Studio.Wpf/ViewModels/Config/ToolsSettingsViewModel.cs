@@ -149,7 +149,8 @@ public sealed class ToolRequirementViewModel : ObservableObject
         ToolRequirement.OnlyWithStoredKey => Format(StudioStringKeys.ToolOnlyWithStoredKey),
         ToolRequirement.ParametersAtCall => _strings[StudioStringKeys.ToolParametersAtCall],
         ToolRequirement.ExpertSetting => Format(StudioStringKeys.ToolExpertSetting),
-        ToolRequirement.EmailAccount => Format(StudioStringKeys.ToolNeedsEmailAccount),
+        // The sentence sends to the E-mail tab (STUDIO-67); the section the tool names is not said.
+        ToolRequirement.EmailAccount => _strings[StudioStringKeys.ToolNeedsEmailAccount],
         _ => "",
     };
 

@@ -170,7 +170,9 @@ internal static class CaptureWorldWriter
             $"  \"Llm\": {plan.LlmJson}",
             "  \"Orkeon\": { \"FileSystem\": { \"Mounts\": "
                 + JsonSerializer.Serialize(mounts)
-                + " } }",
+                + " }"
+                + (plan.EmailJson is { } email ? ", \"Tools\": { \"Email\": " + email + " }" : "")
+                + " }",
         };
         sections.AddRange(plan.ExtraSections.Select(section => $"  \"{section.Key}\": {section.Value}"));
 

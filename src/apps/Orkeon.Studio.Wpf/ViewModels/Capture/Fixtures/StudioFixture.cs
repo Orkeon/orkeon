@@ -163,6 +163,10 @@ internal static class StudioFixture
             new("disparu", "/perdu", "ro"),
         ],
         LlmJson = """{ "Provider": "deepseek", "Model": "deepseek-chat" }""",
+        // STUDIO-67: the E-mail tab photographs a preset account and a custom one — the first
+        // shows what a novice declares, the second every field of the expert form. Both are
+        // accounts the run would use: no shot carries a warning the seed did not mean.
+        EmailJson = """{ "DefaultAccount": "perso", "Accounts": { "perso": { "Provider": "Gmail", "Address": "camille.durand@gmail.com", "DisplayName": "Camille Durand", "Rights": "Read, Organize, Draft", "Auth": { "PasswordEnvVar": "GMAIL_APP_PASSWORD" } }, "bureau": { "Provider": "Custom", "Address": "camille@atelier-durand.example", "Rights": "Read, Organize, Draft, Send", "Incoming": { "Host": "imap.atelier-durand.example" }, "Outgoing": { "Host": "smtp.atelier-durand.example", "Security": "StartTls" }, "Auth": { "PasswordEnvVar": "BUREAU_MAIL_PASSWORD" }, "Send": { "AllowedRecipients": [ "*@atelier-durand.example", "comptable@cabinet-martin.example" ], "MaxPerHour": 20 } } } }""",
         ExtraSections = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["RateLimiting"] = """{ "RequestsPerMinute": 60, "MaxConcurrent": 4 }""",

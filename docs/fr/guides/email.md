@@ -71,6 +71,12 @@ compte, fonctionne.
 Le chemin le plus court, et celui qu'on conseille pour Gmail : IMAP et SMTP avec un **mot de
 passe d'application**, un mot de passe de 16 caractères que Google génère pour une application.
 
+**Dans Orkeon Studio**, l'étape 4 est un formulaire : **Réglages › Mails** — « Ajouter un
+compte », son nom, Gmail, l'adresse, puis les droits à cocher. Studio écrit la section ci-dessous
+dans le fichier de réglages qu'il édite (l'onglet le nomme) ; une équipe lancée sur un autre
+fichier de réglages ne voit pas le compte. Le mot de passe se pose toujours dans une variable
+d'environnement (étapes 1 à 3), et le JSON reste la référence pour qui écrit le fichier à la main.
+
 1. Activez la **validation en deux étapes** du compte Google (Compte Google › Sécurité). Les
    mots de passe d'application n'existent pas sans elle.
 2. Ouvrez <https://myaccount.google.com/apppasswords>, créez un mot de passe d'application
@@ -283,6 +289,11 @@ le courrier envoyé, et une boîte POP3 n'a pas de dossier Envoyés). Quand aucu
 — voir [Limites](#limites).
 
 ## Référence des réglages
+
+**Dans Orkeon Studio**, chaque clé ci-dessous a son champ dans **Réglages › Mails** (le mode
+expert les montre toutes, chacune avec sa clé en infobulle ; un champ laissé vide montre le défaut
+en filigrane) — voir [Orkeon Studio](../architecture/studio.md#les-comptes-e-mail-dans-les-réglages-studio-65-à-67).
+Ce qui suit est le fichier tel que le moteur le lit.
 
 Tout se trouve sous `Orkeon:Tools:Email`. Rien n'est validé au démarrage d'un hôte — le runner lit
 seulement si un compte OAuth a besoin du magasin de jetons : la section e-mail est la seule exception

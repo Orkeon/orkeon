@@ -452,6 +452,59 @@ public sealed class SettingsScreenTests
         Assert.True(expert.IsModelTab);
     }
 
+    /// <summary>STUDIO-67: the e-mail accounts are everyone's, so a switch back to novice stays on them.</summary>
+    [Fact]
+    public void The_mails_tab_is_open_to_both_modes_and_a_switch_back_to_novice_stays_on_it()
+    {
+        var novice = Screen(new UiModeViewModel());
+        var raised = new List<string>();
+        novice.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+
+        novice.ShowMailsCommand.Execute(null);
+
+        Assert.True(novice.IsMailsTab);
+        Assert.Equal(SettingsScreenViewModel.MailsTab, novice.ActiveTab);
+        Assert.Contains(nameof(SettingsScreenViewModel.IsMailsTab), raised);
+        Assert.False(novice.IsModelTab);
+
+        var mode = new UiModeViewModel("expert");
+        var expert = Screen(mode);
+        expert.ShowMailsCommand.Execute(null);
+        Assert.True(expert.IsMailsTab);
+
+        mode.SetNoviceCommand.Execute(null);
+
+        Assert.True(expert.IsMailsTab);
+    }
+
+    /// <summary>STUDIO-67: a tab name the screen does not know never leaves a blank screen.</summary>
+    [Fact]
+    public void A_tab_name_the_screen_does_not_know_still_falls_back_to_the_model_tab()
+    {
+        var screen = Screen(new UiModeViewModel("expert"));
+        screen.ShowMailsCommand.Execute(null);
+
+        screen.ActiveTab = "mail";
+
+        Assert.True(screen.IsModelTab);
+        Assert.False(screen.IsMailsTab);
+    }
+
+    /// <summary>STUDIO-67: the e-mail form shows the expert's fields to the expert alone, and follows the switch.</summary>
+    [Fact]
+    public void The_email_form_follows_the_mode_switch()
+    {
+        var mode = new UiModeViewModel();
+        var screen = Screen(mode);
+        Assert.False(screen.Config.Email.IsExpert);
+
+        mode.SetExpertCommand.Execute(null);
+        Assert.True(screen.Config.Email.IsExpert);
+
+        mode.SetNoviceCommand.Execute(null);
+        Assert.False(screen.Config.Email.IsExpert);
+    }
+
     // ── the read-only « Team folders » section (STUDIO-14, D-13 / P-1) ──
 
     private static SettingsScreenViewModel Screen(UiModeViewModel mode, TeamFoldersViewModel teamFolders)

@@ -1206,7 +1206,7 @@ public static class StudioStringKeys
     /// <summary>"expert setting below: {0}"</summary>
     public const string ToolExpertSetting = "Studio.Settings.ToolExpertSetting";
 
-    /// <summary>"needs an e-mail account declared in the settings file under {0}; an OAuth account then signs in with orkeon email login"</summary>
+    /// <summary>"needs an e-mail account, declared in Settings › E-mail"</summary>
     public const string ToolNeedsEmailAccount = "Studio.Settings.ToolNeedsEmailAccount";
 
     /// <summary>"{0} tools, nothing to configure"</summary>
@@ -1225,6 +1225,41 @@ public static class StudioStringKeys
 
     /// <summary>"Another server already carries this identifier."</summary>
     public const string McpProblemDuplicate = "Studio.Settings.McpProblemDuplicate";
+
+    // ── the E-mail tab (STUDIO-67): what the form says that a binding cannot ──
+
+    /// <summary>"E-mail" — the tab, and what the Tools tab sends to.</summary>
+    public const string ShellMails = "Studio.Shell.Mails";
+
+    /// <summary>"Accounts are written to {0}. A team launched on another settings file does not see them."</summary>
+    public const string MailSettingsFile = "Studio.Settings.MailSettingsFile";
+
+    /// <summary>"Leave it to the preset" — the entry of a list that removes the key.</summary>
+    public const string MailChoicePreset = "Studio.Settings.MailChoicePreset";
+
+    /// <summary>"Gmail — its servers are preset; an app password or OAuth2"</summary>
+    public const string MailProviderGmail = "Studio.Settings.MailProviderGmail";
+
+    /// <summary>"Outlook.com or Microsoft 365 — read and sent through Microsoft Graph; OAuth2 only"</summary>
+    public const string MailProviderOutlook = "Studio.Settings.MailProviderOutlook";
+
+    /// <summary>"Another provider — you name its servers; signs in with a password"</summary>
+    public const string MailProviderCustom = "Studio.Settings.MailProviderCustom";
+
+    /// <summary>"Password"</summary>
+    public const string MailAuthPassword = "Studio.Settings.MailAuthPassword";
+
+    /// <summary>"OAuth2 — you sign in on the provider's own page"</summary>
+    public const string MailAuthOAuth2 = "Studio.Settings.MailAuthOAuth2";
+
+    /// <summary>"A name holds letters, digits, '.', '_' and '-' only, starts with a letter or a digit, and has 64 characters at most."</summary>
+    public const string MailNameInvalid = "Studio.Settings.MailNameInvalid";
+
+    /// <summary>"Another account already answers to this name — upper and lower case are the same name."</summary>
+    public const string MailNameTaken = "Studio.Settings.MailNameTaken";
+
+    /// <summary>"Choose the folder that holds the sign-in tokens"</summary>
+    public const string MailCredentialsDirectoryPick = "Studio.Settings.MailCredentialsDirectoryPick";
 
     /// <summary>"No key yet?"</summary>
     public const string ProfileKeyNoKeyYet = "Studio.Settings.KeyNoKeyYet";
@@ -2219,8 +2254,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE"] = "Two e-mail accounts carry the same name but for the case: the run reads them as one, or cannot read the file at all. Rename one.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-KEY"] = "An e-mail account carries a key the engine does not know: the run sets the account aside until the key is corrected or removed.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-VALUE"] = "An e-mail account holds a value the engine cannot read: the run sets the account aside until it is corrected.",
-        ["Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS"] = "An e-mail account has no usable address: the run sets it aside until Address holds one.",
-        ["Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS"] = "An e-mail account grants no right: the run sets it aside until Rights says what an agent may do.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS"] = "An e-mail account has no usable address: the run sets it aside until it has one.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS"] = "An e-mail account grants no right: the run sets it aside until it says what an agent may do.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-SERVER"] = "The servers of an e-mail account do not hold together (host, port, protocol, security or timeout): the run sets the account aside.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-AUTH"] = "The sign-in of an e-mail account is incomplete or does not fit its provider: the account cannot be used until it is corrected.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-SEND"] = "The sending rules of an e-mail account do not hold (a recipient, a quota, or the right to send without an outgoing server): the run sets the account aside.",
@@ -2514,13 +2549,23 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ToolOnlyWithStoredKey] = "present only once the key {0} is remembered, above",
         [StudioStringKeys.ToolParametersAtCall] = "the connection parameters are given at the call, by the agent",
         [StudioStringKeys.ToolExpertSetting] = "expert setting below: {0}",
-        [StudioStringKeys.ToolNeedsEmailAccount] =
-            "needs an e-mail account declared in the settings file under {0}; an OAuth account then signs in with orkeon email login",
+        [StudioStringKeys.ToolNeedsEmailAccount] = "needs an e-mail account, declared in Settings › E-mail",
         [StudioStringKeys.ToolFamilyQuietPattern] = "{0} tools, nothing to configure",
         [StudioStringKeys.McpProblemId] = "An identifier is required: letters, digits, '.', '_' and '-'.",
         [StudioStringKeys.McpProblemCommand] = "A stdio server needs a command to launch.",
         [StudioStringKeys.McpProblemUrl] = "An HTTP server needs an absolute http(s) URL.",
         [StudioStringKeys.McpProblemDuplicate] = "Another server already carries this identifier.",
+        [StudioStringKeys.ShellMails] = "E-mail",
+        [StudioStringKeys.MailSettingsFile] = "Accounts are written to {0}. A team launched on another settings file does not see them.",
+        [StudioStringKeys.MailChoicePreset] = "Leave it to the preset",
+        [StudioStringKeys.MailProviderGmail] = "Gmail — its servers are preset; an app password or OAuth2",
+        [StudioStringKeys.MailProviderOutlook] = "Outlook.com or Microsoft 365 — read and sent through Microsoft Graph; OAuth2 only",
+        [StudioStringKeys.MailProviderCustom] = "Another provider — you name its servers; signs in with a password",
+        [StudioStringKeys.MailAuthPassword] = "Password",
+        [StudioStringKeys.MailAuthOAuth2] = "OAuth2 — you sign in on the provider's own page",
+        [StudioStringKeys.MailNameInvalid] = "A name holds letters, digits, '.', '_' and '-' only, starts with a letter or a digit, and has 64 characters at most.",
+        [StudioStringKeys.MailNameTaken] = "Another account already answers to this name — upper and lower case are the same name.",
+        [StudioStringKeys.MailCredentialsDirectoryPick] = "Choose the folder that holds the sign-in tokens",
         [StudioStringKeys.ProfileKeyNoKeyYet] = "No key yet?",
         [StudioStringKeys.ProfileKeyOnVendorSite] = "on the provider's site",
         [StudioStringKeys.ProfileKeyExpertHint] = "setx ORKEON_Llm__ApiKey \"sk-…\" — read natively by the runtime, wins over any file",

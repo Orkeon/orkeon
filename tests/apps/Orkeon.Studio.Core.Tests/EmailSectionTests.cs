@@ -155,6 +155,86 @@ public sealed class EmailSectionTests
             """).ToJson(), document.ToJson());
     }
 
+    private const string UnreadableValues = """
+        { "Orkeon": { "Tools": { "Email": { "Accounts": { "a": {
+          "Address": "a@x.org", "TimeoutSeconds": "soon", "SaveSentCopy": "maybe",
+          "Incoming": { "Port": "abc" }, "Outgoing": { "Port": 2.5 },
+          "Send": { "MaxRecipients": "x", "MaxPerHour": [ 3 ] } } } } } } }
+        """;
+
+    /// <summary>
+    /// A number or a switch the engine cannot read comes back as null, like an absent key. Writing
+    /// that null back is "unchanged", not "cleared": the value stays as the file spelt it, and so
+    /// does the finding the run makes of it — an edit of another field must not turn an account
+    /// the engine sets aside into one it uses with the preset's port.
+    /// </summary>
+    [Fact]
+    public void A_number_or_a_switch_the_engine_cannot_read_stays_as_written_when_another_field_is_edited()
+    {
+        var document = AppSettingsDocument.Parse(UnreadableValues);
+        var read = Assert.IsType<EmailAccountDefinition>(document.Email.GetAccount("a"));
+        Assert.Null(read.IncomingPort);
+        Assert.Null(read.OutgoingPort);
+        Assert.Null(read.TimeoutSeconds);
+        Assert.Null(read.SaveSentCopy);
+        Assert.Null(read.MaxRecipients);
+        Assert.Null(read.MaxPerHour);
+
+        document.Email.SetAccount(read with { DisplayName = "A" });
+
+        var expected = AppSettingsDocument.Parse(UnreadableValues);
+        expected.SetString("Orkeon:Tools:Email:Accounts:a:DisplayName", "A");
+        Assert.Equal(expected.ToJson(), AppSettingsDocument.Parse(document.ToJson()).ToJson());
+        Assert.Equal("abc", document.GetString("Orkeon:Tools:Email:Accounts:a:Incoming:Port"));
+        Assert.Equal("soon", document.GetString("Orkeon:Tools:Email:Accounts:a:TimeoutSeconds"));
+        Assert.Equal("maybe", document.GetString("Orkeon:Tools:Email:Accounts:a:SaveSentCopy"));
+        Assert.Equal("x", document.GetString("Orkeon:Tools:Email:Accounts:a:Send:MaxRecipients"));
+        Assert.NotNull(document.GetNode("Orkeon:Tools:Email:Accounts:a:Send:MaxPerHour"));
+        Assert.NotNull(document.GetNode("Orkeon:Tools:Email:Accounts:a:Outgoing:Port"));
+    }
+
+    [Fact]
+    public void A_value_that_reads_replaces_the_one_the_engine_could_not_read()
+    {
+        var document = AppSettingsDocument.Parse(UnreadableValues);
+        var read = document.Email.GetAccount("a")!;
+
+        document.Email.SetAccount(read with
+        {
+            IncomingPort = 993,
+            OutgoingPort = 465,
+            TimeoutSeconds = 30,
+            SaveSentCopy = true,
+            MaxRecipients = 5,
+            MaxPerHour = 20,
+        });
+
+        Assert.Equal(AppSettingsDocument.Parse("""
+            { "Orkeon": { "Tools": { "Email": { "Accounts": { "a": {
+              "Address": "a@x.org", "TimeoutSeconds": 30, "SaveSentCopy": true,
+              "Incoming": { "Port": 993 }, "Outgoing": { "Port": 465 },
+              "Send": { "MaxRecipients": 5, "MaxPerHour": 20 } } } } } } }
+            """).ToJson(), document.ToJson());
+    }
+
+    /// <summary>What reads, and what is empty, is still cleared by a null: a field emptied removes its key.</summary>
+    [Fact]
+    public void A_number_or_a_switch_that_reads_or_is_empty_is_still_removed_when_cleared()
+    {
+        var document = AppSettingsDocument.Parse("""
+            { "Orkeon": { "Tools": { "Email": { "Accounts": { "a": {
+              "Address": "a@x.org", "TimeoutSeconds": "30", "SaveSentCopy": "False",
+              "Incoming": { "Port": 993 }, "Outgoing": { "Port": "" },
+              "Send": { "MaxRecipients": " ", "MaxPerHour": null } } } } } } }
+            """);
+
+        document.Email.SetAccount(new EmailAccountDefinition { Name = "a", Address = "a@x.org" });
+
+        Assert.Equal(AppSettingsDocument.Parse("""
+            { "Orkeon": { "Tools": { "Email": { "Accounts": { "a": { "Address": "a@x.org" } } } } } }
+            """).ToJson(), document.ToJson());
+    }
+
     [Fact]
     public void An_emptied_Incoming_Outgoing_Auth_and_Send_are_removed_and_never_written_as_empty_objects()
     {

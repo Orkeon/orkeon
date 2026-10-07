@@ -199,8 +199,11 @@ public static class EmailAccountRules
         return findings.Messages.Count > 0 ? findings.Messages : Check(name, EmailSection.ReadAccount(name, account));
     }
 
-    /// <summary>Whether <paramref name="name"/> is a name the engine accepts for an account (and for its token file).</summary>
-    private static bool IsValidName(string name) =>
+    /// <summary>
+    /// Whether <paramref name="name"/> is a name the engine accepts for an account (and for its
+    /// token file): what a form checks before it writes an account under it (STUDIO-67).
+    /// </summary>
+    public static bool IsValidName(string? name) =>
         !string.IsNullOrEmpty(name)
         && name.Length <= MaxNameLength
         && char.IsAsciiLetterOrDigit(name[0])
@@ -216,10 +219,13 @@ public static class EmailAccountRules
 
     /// <summary>
     /// Whether <paramref name="pattern"/> is an entry <c>Send:AllowedRecipients</c> understands: an
-    /// address alone, <c>*@domain</c>, or <c>*</c> for anyone.
+    /// address alone, <c>*@domain</c>, or <c>*</c> for anyone. The engine trims an entry before it
+    /// reads it, and so does a caller.
     /// </summary>
-    private static bool IsRecipientPattern(string pattern)
+    public static bool IsRecipientPattern(string pattern)
     {
+        ArgumentNullException.ThrowIfNull(pattern);
+
         if (pattern == "*")
             return true;
 

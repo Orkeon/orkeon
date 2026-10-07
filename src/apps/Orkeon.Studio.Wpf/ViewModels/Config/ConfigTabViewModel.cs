@@ -65,6 +65,8 @@ public sealed class ConfigTabViewModel : ObservableObject
         Mounts.Changed += OnMountsChanged;
 
         Location = new SettingsLocationViewModel(Picker, globalPathOverride, _strings);
+        // After the location: the E-mail tab says which file its accounts are written to (STUDIO-67).
+        Email = new EmailSectionViewModel(() => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker);
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,
@@ -85,6 +87,8 @@ public sealed class ConfigTabViewModel : ObservableObject
         {
             if (e.PropertyName is nameof(SettingsLocationViewModel.CanSave))
                 SaveCommand.RaiseCanExecuteChanged();
+            if (e.PropertyName is nameof(SettingsLocationViewModel.EffectivePath))
+                Email.RefreshSettingsFile();
         };
         // The explicit Validate lands its verdict in the status line (audit 07/16): the
         // novice screen has no validation card any more, the summary is the feedback.
@@ -121,9 +125,11 @@ public sealed class ConfigTabViewModel : ObservableObject
     /// <summary>The <c>MCP</c> form of the MCP tab (STUDIO-21).</summary>
     public McpSectionViewModel Mcp { get; }
 
+    /// <summary>The <c>Orkeon:Tools:Email</c> form of the E-mail tab (STUDIO-67).</summary>
+    public EmailSectionViewModel Email { get; }
+
     /// <summary>The <c>Orkeon:FileSystem:Mounts</c> editor (spec §4.5).</summary>
     public MountsEditorViewModel Mounts { get; }
-
 
     /// <summary>The save-location picker and resolution chain (spec §4.3).</summary>
     public SettingsLocationViewModel Location { get; }
@@ -232,6 +238,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         LlmLogging.Refresh();
         ShellTools.Refresh();
         Mcp.Refresh();
+        Email.Refresh();
         Mounts.Load(_document.Mounts.RawEntries);
 
         IsDirty = false;

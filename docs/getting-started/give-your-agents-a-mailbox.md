@@ -48,6 +48,9 @@ Three rules hold the e-mail tools together, and the example leans on all three:
 The example's settings file declares one account under `Orkeon:Tools:Email` (its `Llm`
 section, and the `Scripting` time limit covered in step 4, are left out here). Replace the address with yours:
 
+> In Orkeon Studio the same account is declared in a form, **Settings › E-mail**, which writes
+> this section into your own settings file — see the [e-mail guide](../guides/email.md#quick-start-gmail-with-an-app-password).
+
 ```json
 "Orkeon": {
   "Tools": {

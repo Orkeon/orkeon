@@ -167,8 +167,9 @@ public sealed class EmailSection
     /// a field that is null or blank, an empty recipient list and an object left empty remove
     /// their keys. A value the file already holds in another spelling that reads the same
     /// (<c>"read,SEND"</c>, <c>"993"</c>) is left as it is, so saving an account the user did not
-    /// change changes nothing. The account object itself stays, however empty, so that it is
-    /// still listed.
+    /// change changes nothing — a number or a switch the engine cannot read included, which reads
+    /// as null and which a null leaves where it was. The account object itself stays, however
+    /// empty, so that it is still listed.
     /// </summary>
     /// <exception cref="ArgumentException">
     /// The name is blank, or differs from an existing account's only by case: the engine could not
@@ -390,7 +391,7 @@ public sealed class EmailSection
     private static void WriteInt(JsonObject owner, string key, int? value)
     {
         if (value is null)
-            Remove(owner, key);
+            Clear(owner, key, readable: ReadInt(owner, key) is not null);
         else if (ReadInt(owner, key) != value)
             Write(owner, key, JsonValue.Create(value.Value));
     }
@@ -398,9 +399,26 @@ public sealed class EmailSection
     private static void WriteBoolean(JsonObject owner, string key, bool? value)
     {
         if (value is null)
-            Remove(owner, key);
+            Clear(owner, key, readable: AppSettingsDocument.ReadBoolean(Node(owner, key)) is not null);
         else if (AppSettingsDocument.ReadBoolean(Node(owner, key)) != value)
             Write(owner, key, JsonValue.Create(value.Value));
+    }
+
+    /// <summary>
+    /// Clears a number or a switch: the key goes when it held a value that reads, or nothing (a
+    /// JSON null, a blank text). A value the engine cannot read (<c>"Port": "abc"</c>) came back
+    /// as null when the account was read, so a null written back is that same value, unchanged:
+    /// it stays as the file spelt it, with the finding the run makes of it, until a value that
+    /// reads replaces it.
+    /// </summary>
+    private static void Clear(JsonObject owner, string key, bool readable)
+    {
+        if (readable
+            || Node(owner, key) is not { } written
+            || (written is JsonValue value && value.TryGetValue<string>(out var text) && string.IsNullOrWhiteSpace(text)))
+        {
+            Remove(owner, key);
+        }
     }
 
     /// <summary>

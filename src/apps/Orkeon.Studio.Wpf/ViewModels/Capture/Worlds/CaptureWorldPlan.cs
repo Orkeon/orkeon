@@ -144,6 +144,13 @@ internal sealed record CaptureWorldPlan
     /// <summary>The LLM section of <c>appsettings.json</c>, as a JSON object body.</summary>
     public string LlmJson { get; init; } = """{ "Provider": "ollama", "Model": "qwen3:8b" }""";
 
+    /// <summary>
+    /// The <c>Orkeon:Tools:Email</c> section of <c>appsettings.json</c>, as a JSON object body; null
+    /// writes none. Its own property rather than an extra section: it lives under the <c>Orkeon</c>
+    /// key the declared folders already open.
+    /// </summary>
+    public string? EmailJson { get; init; }
+
     /// <summary>Extra top-level sections of <c>appsettings.json</c>, as JSON object bodies by key.</summary>
     public IReadOnlyDictionary<string, string> ExtraSections { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);

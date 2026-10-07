@@ -1,7 +1,9 @@
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
+using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
@@ -50,6 +52,26 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
 
             Assert.DoesNotContain(real, _worlds.Root, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    /// <summary>
+    /// STUDIO-67: the E-mail tab photographs a preset account and a custom one, read back through
+    /// the production document — and both are accounts the run would use, so no shot of the
+    /// campaign shows a warning the seed did not mean.
+    /// </summary>
+    [Fact]
+    public void The_seeded_settings_declare_a_gmail_account_and_a_custom_one_the_run_would_use()
+    {
+        var document = AppSettingsDocument.Parse(File.ReadAllText(_worlds.Seeded.SettingsPath));
+
+        Assert.Equal(2, document.Email.AccountNames.Count);
+        var accounts = document.Email.AccountNames.Select(name => document.Email.GetAccount(name)!).ToList();
+        Assert.Contains(accounts, account => account.Provider == "Gmail");
+        Assert.Contains(accounts, account => account.Provider == "Custom" && account.IncomingHost is not null && account.OutgoingHost is not null);
+        Assert.All(document.Email.AccountNames, name => Assert.Empty(EmailAccountRules.Check(document, name)));
+        // The folders of the seed still stand beside the accounts, under the same root key.
+        Assert.NotEmpty(document.Mounts.RawEntries);
+        Assert.Empty(AppSettingsDocument.Parse(File.ReadAllText(_worlds.Pristine.SettingsPath)).Email.AccountNames);
     }
 
     [Fact]

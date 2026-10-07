@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio: an E-mail settings tab
+
+The mail tools read their accounts from `Orkeon:Tools:Email`, and Studio sent whoever wanted one
+to the settings file and to a command line. Settings has an eighth tab, **E-mail** (« Mails » in
+French), in both modes, where the accounts are declared, renamed and removed in a form
+(STUDIO-65, STUDIO-67).
+
+- **The settings document reads and writes the section** (STUDIO-65). `AppSettingsDocument.Email`
+  lists, reads, writes, renames and removes the accounts and carries `DefaultAccount`,
+  `Screening:WithholdRejected` and `CredentialsDirectory`. A key Studio does not model stays
+  where it was, a value the user did not change keeps the spelling the file had, and nothing is
+  written as an empty string, an empty object or an empty list.
+- **The novice declares an account without reading a key name.** A small box asks for the name,
+  the provider and the address and writes only once validated; the form then shows the provider,
+  the address, the name shown to recipients, the six rights as six sentences, the sign-in method
+  — the OAuth client ID once it is OAuth2 —, the allowed recipients as soon as « Send » is
+  ticked, and the two server names of an account no preset fills. Every edit saves the file.
+- **The expert sees every key.** The protocols, ports and securities of both sides, the user
+  name, the names of the two secret variables, the Microsoft tenant, the sending quotas, the
+  timeout, the copy of sent mail, and the two settings of the section, each with its
+  configuration key as a tooltip. No key is reachable through the raw file alone.
+- **A field left empty says what it is worth.** The watermark is what the engine will use —
+  `imap.gmail.com`, port 993, OAuth2 for Outlook — and changing the provider moves it without
+  rewriting what was typed.
+- **Each account says what the run will say of it**, as the file holds it: an unknown key, a
+  value the engine cannot read, a missing right. They are warnings — an incomplete account stops
+  no save, of the account or of any other setting.
+- **Renaming and removing ask first, and say what they leave.** An account that signs in with
+  OAuth2 must sign in again under its new name, since its token file carries the old one;
+  the password stays in its environment variable; removing an account leaves that variable and
+  the tokens on the machine. `DefaultAccount` follows a rename and goes with its account.
+- **The tab says which file it writes.** A run reads one settings file: a team launched on
+  another one does not see these accounts, and Studio lays nothing over a launch to give them.
+- **The Tools tab sends to it.** The line of the twelve mailbox tools reads « needs an e-mail
+  account, declared in Settings › E-mail », in the five languages, and names neither the file
+  nor a command.
+
+No secret is typed in the tab and it opens no connection: the engine still reads the password
+from the environment variable the account names, and an OAuth account still signs in with
+`orkeon email login`. Docs: the Studio page (EN and FR) describes the tab, and the e-mail guide
+and the mailbox tutorial point to it.
+
 ### Added — Studio's settings check judges the e-mail accounts as the run will
 
 An e-mail account declared wrong stops no run: the engine sets it aside, and says why when a

@@ -67,6 +67,12 @@ to declare, `email_accounts` lists none, and `email_parser`, which needs no acco
 The shortest path, and the recommended one for Gmail: IMAP and SMTP with an **app
 password**, a 16-character password Google generates for one application.
 
+**In Orkeon Studio**, step 4 is a form: **Settings › E-mail** — « Add an account », its name,
+Gmail, the address, then the rights to tick. Studio writes the section below into the settings
+file it edits (the tab names it); a team launched on another settings file does not see the
+account. The password still goes into an environment variable (steps 1 to 3), and the JSON
+stays the reference for whoever writes the file by hand.
+
 1. Turn on **2-Step Verification** for the Google account (Google Account › Security). App
    passwords do not exist without it.
 2. Open <https://myaccount.google.com/apppasswords>, create an app password named
@@ -270,6 +276,11 @@ the message itself is sent.
 [Limits](#limits).
 
 ## Settings reference
+
+**In Orkeon Studio**, every key below has its field in **Settings › E-mail** (the expert mode
+shows them all, each with its key as a tooltip; a field left empty shows the default as a
+watermark) — see [Orkeon Studio](../architecture/studio.md#e-mail-accounts-in-the-settings-studio-65-to-67).
+What follows is the file as the engine reads it.
 
 Everything lives under `Orkeon:Tools:Email`. Nothing is validated when a host starts — the
 runner only reads whether an OAuth account needs the token store: the e-mail section is the one
