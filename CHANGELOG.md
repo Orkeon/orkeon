@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a Mistral model that reasons no longer breaks a stream (LLM-08)
+
+- **A stream whose content deltas are arrays is read.** `mistral-large-4` reasons by default
+  and streams `delta.content` as an array of typed chunks, the shape the buffered path has
+  read since 2026-08-30. The text stream (`GenerateStreamingAsync`) threw
+  `InvalidOperationException` on the first one; the chat stream (`ChatStreamingAsync`)
+  dropped them — the reasoning trace, and the first words of the answer, which arrive inside
+  the chunk that closes the thinking. Both read the two shapes now, on every
+  OpenAI-compatible provider.
+
 ### Changed — the release smokes check the notices of every payload, and the runner image says what its build context holds (GAP-52)
 
 Since GAP-45 every published payload carries its license, `THIRD-PARTY-NOTICES.md` and, for
