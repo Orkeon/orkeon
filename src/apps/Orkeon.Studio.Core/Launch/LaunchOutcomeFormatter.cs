@@ -33,8 +33,8 @@ public static class LaunchOutcomeFormatter
         ArgumentNullException.ThrowIfNull(strings);
 
         return result.Outcome == RunOutcome.NotStarted
-            ? string.Format(CultureInfo.InvariantCulture, strings[StudioStringKeys.LaunchNothingRan], result.Description)
-            : string.Format(CultureInfo.InvariantCulture, strings[StudioStringKeys.LaunchExitCode], result.ExitCode, result.Description);
+            ? strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.LaunchNothingRan, result.Description)
+            : strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.LaunchExitCode, result.ExitCode, result.Description);
     }
 
     /// <summary>Describes a dry run (<c>--validate</c>) as the verdict the spec asks for (English).</summary>

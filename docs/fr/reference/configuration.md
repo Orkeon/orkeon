@@ -490,7 +490,13 @@ commande `orkeon email` s'en sert, tous ses problèmes signalés d'un coup, et u
 binder ne sait même pas lire (un droit mal orthographié, un port en toutes lettres) met ce seul
 compte de côté au lieu de faire échouer l'hôte — une section cassée ne casse jamais un crew qui
 n'envoie pas de courrier. Les secrets n'y sont jamais des valeurs, seulement les **noms** des
-variables d'environnement qui les contiennent. Parcours par fournisseur et table clé par clé :
+variables d'environnement qui les contiennent (`Auth:PasswordEnvVar`, `Auth:ClientSecretEnvVar`),
+lues comme l'est la variable que nomme `ApiKeyEnvVar` : dans l'environnement du processus, puis —
+sous Windows — dans la portée persistante de l'utilisateur (`HKCU\Environment`), où Orkeon Studio
+mémorise un mot de passe saisi dans **Réglages › Mails** ; lues, jamais recopiées dans le
+processus ; l'environnement du processus seul sous Linux et macOS
+([où une variable de secret est lue](../guides/email.md#où-une-variable-de-secret-est-lue)).
+Parcours par fournisseur et table clé par clé :
 [Outils e-mail](../guides/email.md).
 
 | Section | Configure |

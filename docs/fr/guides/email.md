@@ -9,8 +9,8 @@ chercher dans un dossier, lire un message, enregistrer ses pièces jointes, rang
 dans des dossiers, le marquer, le supprimer, rédiger des brouillons qu'un humain enverra — et,
 quand un opérateur l'autorise, envoyer eux-mêmes du courrier. La famille parle IMAP, POP3 et
 SMTP via MailKit, et Microsoft Graph pour Outlook.com, Hotmail et Microsoft 365. Des préréglages
-renseignent les serveurs de Gmail et d'Outlook, et un compte OAuth2 se connecte une fois, depuis
-un terminal, avec `orkeon email login`.
+renseignent les serveurs de Gmail et d'Outlook, et un compte OAuth2 se connecte une fois, avec
+`orkeon email login` dans un terminal ou « Se connecter » dans Orkeon Studio.
 
 Trois règles structurent toute la famille :
 
@@ -71,6 +71,17 @@ compte, fonctionne.
 Le chemin le plus court, et celui qu'on conseille pour Gmail : IMAP et SMTP avec un **mot de
 passe d'application**, un mot de passe de 16 caractères que Google génère pour une application.
 
+**Dans Orkeon Studio**, les étapes 3 et 4 sont un formulaire : **Réglages › Mails** — « Ajouter
+un compte », son nom, Gmail, l'adresse, les droits à cocher, et le mot de passe d'application de
+l'étape 2, saisi dans le formulaire. Studio écrit la section ci-dessous dans le fichier de
+réglages qu'il édite (l'onglet le nomme) ; une équipe lancée sur un autre fichier de réglages ne
+voit pas le compte. Le mot de passe n'est dans aucun fichier : Studio le garde dans votre
+environnement utilisateur Windows, dans une variable qui porte le nom du compte
+(`EMAIL_GMAIL_PASSWORD` pour un compte appelé `gmail`), et écrit ce nom dans `PasswordEnvVar`.
+Un run l'y trouve, que Studio, un terminal ou une tâche planifiée le lance
+([où une variable de secret est lue](#où-une-variable-de-secret-est-lue)). Le JSON reste la
+référence pour qui écrit le fichier à la main.
+
 1. Activez la **validation en deux étapes** du compte Google (Compte Google › Sécurité). Les
    mots de passe d'application n'existent pas sans elle.
 2. Ouvrez <https://myaccount.google.com/apppasswords>, créez un mot de passe d'application
@@ -79,8 +90,10 @@ passe d'application**, un mot de passe de 16 caractères que Google génère pou
    disponibles pour votre compte — un compte en Protection Avancée, ou un compte Google
    Workspace dont l'administrateur les a désactivés — passez par
    [Gmail avec OAuth2](#gmail-avec-oauth2).
-3. Mettez le mot de passe dans une variable d'environnement du processus qui lance vos crews —
-   pas dans un fichier. N'importe quel nom convient : le compte le nomme (`PasswordEnvVar`).
+3. Mettez le mot de passe dans une variable d'environnement — pas dans un fichier. N'importe
+   quel nom convient : le compte le nomme (`PasswordEnvVar`). Un run lit la variable dans
+   l'environnement de son propre processus, puis, sous Windows, dans l'environnement de
+   l'utilisateur, où `setx` la pose.
 
    ```bash
    export GMAIL_APP_PASSWORD='abcdefghijklmnop'        # bash / zsh
@@ -88,7 +101,7 @@ passe d'application**, un mot de passe de 16 caractères que Google génère pou
 
    ```powershell
    $env:GMAIL_APP_PASSWORD = 'abcdefghijklmnop'        # PowerShell, cette session
-   setx GMAIL_APP_PASSWORD abcdefghijklmnop            # Windows, les sessions suivantes
+   setx GMAIL_APP_PASSWORD abcdefghijklmnop            # Windows, l'environnement de l'utilisateur : tout run le lit
    ```
 
 4. Déclarez le compte dans le fichier de réglages du crew (à côté de son `config.yaml`) ou
@@ -174,7 +187,9 @@ Sous `Orkeon:Tools:Email:Accounts` :
 `Auth:Method` peut être omis : le préréglage `Outlook` se connecte toujours en OAuth2. `Tenant`
 vaut par défaut `consumers`, le tenant des comptes personnels ; pour un compte professionnel ou
 scolaire, mettez `"Tenant": "organizations"` ou l'id de votre tenant (votre administrateur devra
-peut-être consentir à l'application). Puis :
+peut-être consentir à l'application). Puis connectez-vous — **dans Orkeon Studio** : Réglages ›
+Mails, le compte, « Se connecter », qui affiche l'adresse et le code ci-dessous et décompte le
+code ; dans un terminal :
 
 ```bash
 orkeon email login hotmail
@@ -210,7 +225,8 @@ et reçoit la réponse sur une adresse de bouclage (`127.0.0.1`), avec PKCE.
    scope `https://mail.google.com/` et votre propre adresse comme **utilisateur test**.
 3. Créez un **ID client OAuth** de type **Application de bureau** (*Desktop app*). Copiez son ID
    client, et mettez son secret client dans une variable d'environnement
-   (`GOOGLE_CLIENT_SECRET` ci-dessous).
+   (`GOOGLE_CLIENT_SECRET` ci-dessous) — dans Orkeon Studio, saisissez-le dans le formulaire du
+   compte, qui le garde comme il garde un mot de passe.
 4. Déclarez le compte, sous `Orkeon:Tools:Email:Accounts` :
 
    ```json
@@ -226,7 +242,10 @@ et reçoit la réponse sur une adresse de bouclage (`127.0.0.1`), avec PKCE.
    }
    ```
 
-5. Lancez `orkeon email login gmail`. La commande affiche une adresse Google à ouvrir et écoute
+5. Connectez-vous — **dans Orkeon Studio** : Réglages › Mails, le compte, « Se connecter », qui
+   affiche l'adresse de Google avec « Copier le lien » et « Ouvrir dans le navigateur », et un
+   champ pour l'adresse où le navigateur aboutit ; dans un terminal, lancez
+   `orkeon email login gmail`. La commande affiche une adresse Google à ouvrir et écoute
    sur un port libre de `127.0.0.1`. Connectez-vous et acceptez ; Google affiche un écran
    d'avertissement pour une application qu'il n'a pas vérifiée, que vous pouvez passer pour
    votre propre application. Le navigateur arrive ensuite sur l'adresse de bouclage et dit
@@ -234,7 +253,11 @@ et reçoit la réponse sur une adresse de bouclage (`127.0.0.1`), avec PKCE.
    **Quand le navigateur tourne sur une autre machine** — WSL, un conteneur, une session SSH —
    cette dernière page ne peut pas se charger : copiez l'adresse où elle aboutit
    (`http://127.0.0.1:…/?state=…&code=…`) depuis la barre d'adresse, collez-la dans le terminal
-   et appuyez sur Entrée.
+   et appuyez sur Entrée — ou dans le champ du panneau de Studio. Une adresse qui n'est pas
+   celle-là — tronquée, l'adresse qu'on vous a dit d'ouvrir, autre chose — n'est pas prise et
+   la connexion continue d'attendre : le terminal dit pourquoi et demande l'adresse complète,
+   et le panneau de Studio dit la même chose sous le champ, qui garde ce que vous avez collé
+   pour que vous le corrigiez.
 
 **Garder la connexion.** Une application Google laissée au statut de publication **Test**
 reçoit des jetons de rafraîchissement qui expirent au bout de 7 jours ; ensuite chaque appel
@@ -284,6 +307,13 @@ le courrier envoyé, et une boîte POP3 n'a pas de dossier Envoyés). Quand aucu
 
 ## Référence des réglages
 
+**Dans Orkeon Studio**, chaque clé ci-dessous a son champ dans **Réglages › Mails** (le mode
+expert les montre toutes, chacune avec sa clé en infobulle ; un champ laissé vide montre le défaut
+en filigrane) — voir [Orkeon Studio](../architecture/studio.md#les-comptes-e-mail-dans-les-réglages-studio-65-à-70).
+Le mot de passe et le secret client de Gmail s'y saisissent aussi : Studio garde chacun dans une
+variable de l'environnement de l'utilisateur et n'écrit que le nom de la variable. Ce qui suit
+est le fichier tel que le moteur le lit.
+
 Tout se trouve sous `Orkeon:Tools:Email`. Rien n'est validé au démarrage d'un hôte — le runner lit
 seulement si un compte OAuth a besoin du magasin de jetons : la section e-mail est la seule exception
 à [la règle](../reference/configuration.md#quand-un-réglage-est-refusé) qui veut qu'un hôte refuse à
@@ -310,15 +340,34 @@ sans se connecter.
 | `…:Outgoing:Protocol`, `Host`, `Port`, `Security` | Le côté envoi : `Smtp`, ou `Graph` pour un compte lu via Graph | ceux du préréglage ; aucun pour `Custom` |
 | `…:Auth:Method` | `Password` ou `OAuth2` | `OAuth2` avec un `ClientId` ou le préréglage Outlook, sinon `Password` |
 | `…:Auth:Username` | L'identifiant de connexion | l'adresse |
-| `…:Auth:PasswordEnvVar` | Le **nom** de la variable d'environnement qui contient le mot de passe | obligatoire avec `Password` |
+| `…:Auth:PasswordEnvVar` | Le **nom** de la variable d'environnement qui contient le mot de passe ([où elle est lue](#où-une-variable-de-secret-est-lue)) | obligatoire avec `Password` |
 | `…:Auth:ClientId` | L'id client OAuth (application Google Cloud ou Microsoft Entra) | obligatoire avec `OAuth2` |
-| `…:Auth:ClientSecretEnvVar` | Le **nom** de la variable d'environnement qui contient le secret client | obligatoire pour Gmail en OAuth2 ; facultatif pour Outlook (un client Entra confidentiel) |
+| `…:Auth:ClientSecretEnvVar` | Le **nom** de la variable d'environnement qui contient le secret client, lue de la même façon | obligatoire pour Gmail en OAuth2 ; facultatif pour Outlook (un client Entra confidentiel) |
 | `…:Auth:Tenant` | Tenant Microsoft : `consumers`, `organizations`, `common` ou un id de tenant | `consumers` |
 | `…:Send:AllowedRecipients` | Qui peut recevoir : des adresses, `*@domaine`, `*` | vide — personne |
 | `…:Send:MaxRecipients` | Nombre maximal de destinataires d'un message | pas de plafond |
 | `…:Send:MaxPerHour` | Nombre maximal de messages envoyés par heure par le compte, par processus | pas de plafond |
 | `…:TimeoutSeconds` | Délai d'expiration des connexions IMAP, POP3 et SMTP | celui de la bibliothèque |
 | `…:SaveSentCopy` | Ajouter chaque message envoyé au dossier Envoyés | `true` pour un compte `Custom` qui envoie en SMTP et lit en IMAP, sinon `false` |
+
+### Où une variable de secret est lue
+
+`PasswordEnvVar` et `ClientSecretEnvVar` nomment une variable, jamais le secret. Sa valeur est
+lue quand le compte se connecte :
+
+- **Sous Windows**, dans l'environnement du processus qui lance le crew, puis dans
+  l'environnement persistant de l'utilisateur (`HKCU\Environment`), où `setx` et Orkeon Studio la
+  posent. Un terminal ouvert avant que le mot de passe soit mémorisé, et une équipe planifiée,
+  la trouvent quand même. La valeur est lue, jamais recopiée dans le processus : ce que le run
+  lance — un outil shell, un serveur MCP stdio — n'hérite d'aucun secret qu'il n'avait pas. Un
+  environnement utilisateur illisible (un compte de service sans profil) compte comme une
+  variable absente.
+- **Sous Linux et macOS**, dans l'environnement du processus seul : il n'y a pas
+  d'environnement utilisateur à lire, et une variable exportée dans un terminal est inconnue
+  d'un programme démarré ailleurs.
+
+`orkeon email accounts` et `orkeon email check` lisent de la même façon : un compte qu'ils
+disent prêt l'est pour un run lancé sous le même compte utilisateur.
 
 ## Droits et liste d'autorisation d'envoi
 
@@ -522,7 +571,7 @@ Le côté opérateur de la famille — jamais celui d'un agent :
 | Commande | Ce qu'elle fait |
 |---|---|
 | `orkeon email accounts [--settings <fichier>] [--json]` | Liste les comptes déclarés, leur préréglage, leurs protocoles, leurs droits et s'ils sont prêts, avec ce qu'il faut corriger — prêt signifie que la variable du mot de passe est définie, ou que le secret client que nomme le compte est défini et qu'un jeton utilisable (valide ou rafraîchissable) est enregistré. Sans réseau, sans afficher aucun secret. `--json` écrit un tableau JSON des entrées que liste `email_accounts` (`name`, `address`, `provider`, `reads`, `sends`, `rights`, `default`, `ready`, `problem`), plus `auth` (`Password` ou `OAuth2`) |
-| `orkeon email login <compte> [--settings <fichier>]` | Connecte un compte OAuth2 et enregistre ses jetons (code d'appareil pour Microsoft, navigateur et bouclage pour Google) |
+| `orkeon email login <compte> [--settings <fichier>] [--events jsonl]` | Connecte un compte OAuth2 et enregistre ses jetons (code d'appareil pour Microsoft, navigateur et bouclage pour Google). `--events jsonl` écrit chaque étape comme un événement JSON pour un programme qui la pilote — ce que fait Orkeon Studio |
 | `orkeon email logout <compte> [--settings <fichier>]` | Oublie les jetons enregistrés d'un compte OAuth |
 | `orkeon email check <compte> [--settings <fichier>]` | Se connecte, s'authentifie, liste les dossiers et affiche les compteurs de la boîte de réception |
 
@@ -538,6 +587,21 @@ réseau — échec de connexion, identifiants ou autorisation refusés par le fo
 « state mismatch » compris) ; `130` annulation. Les outils ne lancent jamais de connexion eux-mêmes : un compte
 OAuth sans jeton utilisable répond « run `orkeon email login <account>` ». La référence
 complète est dans la [référence CLI](../reference/cli.md#orkeon-email).
+
+Dans Orkeon Studio, l'état et le test sont dans Réglages › Mails : chaque compte dit s'il est
+prêt — ce que répond `orkeon email accounts --json` pour le fichier de réglages que l'onglet
+écrit, tel qu'enregistré — et « Tester la connexion » lance `orkeon email check` dessus, sans
+terminal. Le verdict suit le code de sortie — joignable, à corriger sur cette machine, ou le
+serveur ou le réseau — au-dessus de la phrase que la commande imprime, montrée telle quelle
+([Les comptes e-mail dans les réglages](../architecture/studio.md#les-comptes-e-mail-dans-les-réglages-studio-65-à-70)).
+Un compte qui se connecte en OAuth2 y a aussi « Se connecter » et « Se déconnecter » : le
+premier lance `orkeon email login --events jsonl` et montre quoi faire pendant qu'il attend —
+l'adresse et le code pour Microsoft, avec le temps qu'il reste au code ; l'adresse de Google et
+un champ pour celle où le navigateur a abouti —, le second demande d'abord, puis lance
+`orkeon email logout`. Studio n'ouvre aucun navigateur de lui-même : « Ouvrir dans le
+navigateur » est un clic, et seulement pour une adresse `https`. Les deux agissent sur le
+fichier de réglages tel qu'enregistré, et « Annuler », un autre onglet ou la fermeture de
+Studio arrêtent la commande.
 
 ## Où vivent les jetons
 
@@ -579,7 +643,8 @@ scopes : changez l'un d'eux et le compte redemande un login au lieu d'envoyer un
 destinataire pour lequel il n'a pas été délivré. Lancez `orkeon email logout` avant un tel
 changement, ou supprimez l'ancien fichier. `orkeon-repl` enregistre les outils mais ne tient
 aucun magasin de jetons : les comptes à mot de passe y fonctionnent, les comptes OAuth y sont
-refusés avec un message qui le dit. Un montage utilisateur qui revendique `/credentials` est
+refusés avec un message qui le dit — un compte connecté depuis Orkeon Studio sert aux runs
+`orkeon`, pas au REPL. Un montage utilisateur qui revendique `/credentials` est
 refusé quels que soient les comptes — par chaque commande `orkeon` et par `orkeon-host` avant
 leur démarrage (pas par `orkeon-repl`, qui ne monte aucun `/credentials`), et par Orkeon Studio
 dans son éditeur de montages.
@@ -605,29 +670,45 @@ répondent « This host keeps no OAuth tokens ». La décision du runner est ré
 déclare un compte OAuth, `ConfiguredDirectory(section)` rend son `CredentialsDirectory`, et
 `TokenSubdirectory` vaut `email`. Le service public `EmailAccountAdministration` (résolu depuis
 la DI après `AddOrkeonEmailTools`) fait ce que fait `orkeon email` — lister les comptes, en
-connecter un via un `IEmailLoginInteraction` à vous, le déconnecter, le vérifier ; ses échecs
-sont des `EmailToolException` portant un `EmailErrorCode` sur lequel un hôte peut brancher, les
-codes que le CLI traduit en codes de sortie.
+connecter un via un `IEmailLoginInteraction` à vous (quatre méthodes : montrer le code
+d'appareil, montrer l'adresse d'autorisation, lire une redirection collée, et
+`ShowRedirectRejectedAsync`, appelée avec une raison d'une phrase quand une ligne collée n'est
+pas la redirection — la connexion continue alors d'attendre), le déconnecter, le vérifier ;
+ses échecs sont des `EmailToolException` portant un `EmailErrorCode` sur lequel un hôte peut
+brancher, les codes que le CLI traduit en codes de sortie.
 
 ## Dépannage
 
 - **Gmail refuse le mot de passe** — le mot de passe du compte n'est pas accepté en IMAP et en
   SMTP ; utilisez un mot de passe d'application (plus haut), ou OAuth2.
-- **« … read from the environment variable X, which is not set »** — la variable existe dans
-  un autre shell, pas dans le processus qui lance le crew. Un programme démarré depuis le bureau
-  (Studio) ou un service ne voit pas une variable exportée dans un terminal.
+- **« … read from the environment variable X, which is not set »** (Linux, macOS) — la
+  variable existe dans un autre shell, pas dans le processus qui lance le crew : un programme
+  démarré depuis le bureau ou un service ne voit pas une variable exportée dans un terminal.
+- **« … which is set neither in the process environment nor in the user's »** (Windows) — le
+  run a cherché aux deux endroits ([où une variable de secret est lue](#où-une-variable-de-secret-est-lue)).
+  Saisissez le mot de passe dans Studio (Réglages › Mails) ou posez-le avec `setx`, sous le
+  compte Windows qui lance le crew ; une variable posée avec `$env:` dans un autre terminal
+  n'est à aucun des deux.
 - **« … needs an OAuth sign-in: run `orkeon email login <account>` »** — pas encore de jeton, ou
   le jeton de rafraîchissement a été révoqué ou a expiré (une application Google laissée en
   Test : 7 jours). Relancez le login.
 - **Le code d'appareil a expiré** — les codes de Microsoft durent environ quinze minutes ;
-  relancez le login et saisissez le nouveau code.
+  relancez le login et saisissez le nouveau code. Dans Studio, le panneau décompte le code puis,
+  une fois le temps écoulé, le dit et propose « Recommencer », qui demande un nouveau code.
 - **Le navigateur n'atteint pas `127.0.0.1`** pendant un login Google — collez l'adresse finale
-  dans le terminal (voir [Gmail avec OAuth2](#gmail-avec-oauth2)). « The redirect did not come
+  dans le terminal, ou dans le champ du panneau de Studio puis « Utiliser cette adresse » (voir
+  [Gmail avec OAuth2](#gmail-avec-oauth2)). « That is not the address the browser ended on »,
+  suivi d'une raison (« The pasted text is not an address. », « The pasted address is the one
+  to open, not the one the browser ended on. », « The pasted address is not the redirect address
+  of this sign-in (…). », « The pasted address carries no authorization code: it may be cut
+  short. »), signifie que la ligne n'a pas été prise et que la connexion attend toujours :
+  collez l'adresse entière, de `http://127.0.0.1` jusqu'à sa fin. « The redirect did not come
   from this sign-in (state mismatch) » signifie que l'adresse collée appartient à une
   tentative précédente.
 - **« The provider issued no refresh token »** — Microsoft : ajoutez `offline_access` aux
   autorisations de l'application. Google : révoquez l'accès de l'application dans la page des
-  accès tiers de votre compte Google, puis reconnectez-vous.
+  accès tiers de votre compte Google, puis reconnectez-vous. Studio affiche la phrase telle
+  qu'imprimée et ne réessaie pas de lui-même : rien n'a été mémorisé.
 - **Outlook en IMAP : « User is authenticated but not connected »** — la régression de
   Microsoft du 2026-09-24 pour les comptes personnels. Retirez `Incoming:Protocol` pour revenir
   à Graph.

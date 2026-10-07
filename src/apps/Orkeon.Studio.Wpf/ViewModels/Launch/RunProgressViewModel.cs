@@ -32,9 +32,8 @@ public sealed class RunTaskViewModel
 
     /// <summary>How long it took, in seconds, for a compact label.</summary>
     public string Duration =>
-        string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.UsageSeconds],
+        _strings.Format(
+            StudioStringKeys.UsageSeconds,
             (Task.DurationMs / 1000.0).ToString("0.0", CultureInfo.CurrentCulture));
 
     /// <summary>Tokens spent, or an empty label when the run did not say.</summary>
@@ -48,7 +47,7 @@ public sealed class RunTaskViewModel
     /// the owner's second run lacked (STUDIO-17).
     /// </summary>
     public string ToolCalls => Task.ToolCalls is { } calls
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunProgressToolCalls], calls)
+        ? _strings.Format(StudioStringKeys.RunProgressToolCalls, calls)
         : string.Empty;
 }
 
@@ -73,9 +72,8 @@ public sealed class RunningTaskViewModel
 
     /// <summary>"since HH:mm:ss", local time, from the run's own clock; empty when the start carried none.</summary>
     public string Since => Task.StartedAt is { } started
-        ? string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.RunProgressTaskSince],
+        ? _strings.Format(
+            StudioStringKeys.RunProgressTaskSince,
             started.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture))
         : string.Empty;
 }
@@ -139,7 +137,7 @@ public sealed class RunProgressViewModel : ObservableObject
 
     /// <summary>"Tool X running…" while a tool call is open; empty otherwise.</summary>
     public string ActivityLine => _model.ActiveToolName is { } tool
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunProgressToolActive], tool)
+        ? _strings.Format(StudioStringKeys.RunProgressToolActive, tool)
         : string.Empty;
 
     /// <summary>Whether a tool is at work — gates the activity line.</summary>
@@ -206,9 +204,8 @@ public sealed class RunProgressViewModel : ObservableObject
 
     /// <summary>The cost line, empty until the meter moves.</summary>
     public string CostSummary => _model.Cost is { } cost
-        ? string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.RunProgressCost],
+        ? _strings.Format(
+            StudioStringKeys.RunProgressCost,
             cost.Tokens.ToString("N0", CultureInfo.CurrentCulture),
             cost.Model ?? "—")
         : string.Empty;
@@ -247,16 +244,14 @@ public sealed class RunProgressViewModel : ObservableObject
             // has said whose turn it is (STUDIO-17).
             if (RunningTasks.Count > 0)
             {
-                return string.Format(
-                    CultureInfo.CurrentCulture,
-                    _strings[StudioStringKeys.RunProgressTasksProgress],
+                return _strings.Format(
+                    StudioStringKeys.RunProgressTasksProgress,
                     Tasks.Count,
                     RunningTasks.Count);
             }
 
-            return string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.RunProgressTasksDone],
+            return _strings.Format(
+                StudioStringKeys.RunProgressTasksDone,
                 Tasks.Count);
         }
     }

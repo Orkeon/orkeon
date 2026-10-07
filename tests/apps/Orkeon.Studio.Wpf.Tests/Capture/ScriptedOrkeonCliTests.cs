@@ -44,6 +44,20 @@ public sealed class ScriptedOrkeonCliTests
         Assert.Equal("cycle", await FirstLineAsync(cli, Ask("forge")));
     }
 
+    /// <summary>
+    /// STUDIO-69: <c>email accounts</c> is scripted as a pair, like <c>forge reopen</c> — the
+    /// settings tab reads its states from it — and <c>email check</c>, which no stop asks for,
+    /// borrows nothing from it: a connection test of the campaign would get no sentence at all.
+    /// </summary>
+    [Fact]
+    public async Task The_email_accounts_listing_has_a_script_of_its_own_that_no_other_email_verb_borrows()
+    {
+        var cli = new ScriptedOrkeonCli().Answer("email accounts", 0, "[]");
+
+        Assert.Equal("[]", await FirstLineAsync(cli, Ask("email", "accounts", "--json", "--settings", "/cfg/appsettings.json")));
+        Assert.Null(await FirstLineAsync(cli, Ask("email", "check", "perso", "--settings", "/cfg/appsettings.json")));
+    }
+
     [Fact]
     public async Task An_unscripted_verb_succeeds_silently_rather_than_throwing()
     {
@@ -109,6 +123,47 @@ public sealed class ScriptedOrkeonCliTests
         Assert.Equal(["{\"kind\":\"run.started\"}"], whileParked);
         Assert.Contains("run.finished", lines[^1], StringComparison.Ordinal);
         Assert.Equal(2, lines.Count);
+    }
+
+    /// <summary>
+    /// A conversing verb can speak on its own while it waits (STUDIO-70): the sign-in of an
+    /// e-mail account says it completed when the person is done in the browser, not in answer to
+    /// a line. What it says reaches the session alone, and a session its token stopped is told
+    /// apart from one that ended on its closed stdin — "the child was stopped" is a thing a
+    /// screen promises.
+    /// </summary>
+    [Fact]
+    public async Task A_conversing_verb_speaks_on_its_own_and_says_whether_it_was_stopped()
+    {
+        var cli = new ScriptedOrkeonCli().Converse("email login", ["code"], _ => []);
+        var lines = new List<string>();
+        Orkeon.Studio.Core.Process.IProcessInputWriter? input = null;
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+
+        var first = cli.RunAsync(
+            new ProcessLaunchRequest { FileName = "orkeon", Arguments = ["email", "login", "a"], OnInputReady = writer => input = writer },
+            line => lines.Add(line.Text),
+            TestContext.Current.CancellationToken);
+        Assert.Equal(1, cli.LiveConversations);
+
+        cli.Say("email login", "completed");
+        Assert.Equal(["code", "completed"], lines);
+
+        input!.Close();
+        Assert.Equal(0, (await first).ExitCode);
+        Assert.Equal(0, cli.LiveConversations);
+        Assert.Equal(0, cli.StoppedConversations);
+
+        var second = cli.RunAsync(Ask("email", "login", "a"), _ => { }, stop.Token);
+        Assert.Equal(1, cli.LiveConversations);
+        await stop.CancelAsync();
+        Assert.Equal(RunOutcome.Cancelled, (await second).Outcome);
+        Assert.Equal(0, cli.LiveConversations);
+        Assert.Equal(1, cli.StoppedConversations);
+
+        // Nobody is listening any more: the line falls on the floor.
+        cli.Say("email login", "late");
+        Assert.Equal(["code", "completed"], lines);
     }
 
     /// <summary>

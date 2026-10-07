@@ -144,6 +144,13 @@ internal sealed record CaptureWorldPlan
     /// <summary>The LLM section of <c>appsettings.json</c>, as a JSON object body.</summary>
     public string LlmJson { get; init; } = """{ "Provider": "ollama", "Model": "qwen3:8b" }""";
 
+    /// <summary>
+    /// The <c>Orkeon:Tools:Email</c> section of <c>appsettings.json</c>, as a JSON object body; null
+    /// writes none. Its own property rather than an extra section: it lives under the <c>Orkeon</c>
+    /// key the declared folders already open.
+    /// </summary>
+    public string? EmailJson { get; init; }
+
     /// <summary>Extra top-level sections of <c>appsettings.json</c>, as JSON object bodies by key.</summary>
     public IReadOnlyDictionary<string, string> ExtraSections { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
@@ -169,6 +176,21 @@ internal sealed record CaptureWorldPlan
 
     /// <summary>What <c>orkeon doctor --json</c> answers.</summary>
     public string DoctorJson { get; init; } = "[]";
+
+    /// <summary>
+    /// What <c>orkeon email accounts --json</c> answers (STUDIO-69): what the engine makes of each
+    /// account of <see cref="EmailJson"/>, which the E-mail tab shows as a state on its rows. A
+    /// script, like every other answer of the CLI here — no account of a campaign is ever asked
+    /// about for real, and none is connected to.
+    /// </summary>
+    public string EmailAccountsJson { get; init; } = "[]";
+
+    /// <summary>
+    /// What <c>orkeon email login --events jsonl</c> says before it waits (STUDIO-70): the event
+    /// lines of a sign-in, played as a session that stays open until it is stopped — the panel of
+    /// a sign-in only exists while its child waits. Empty scripts no sign-in.
+    /// </summary>
+    public IReadOnlyList<string> EmailLoginStream { get; init; } = [];
 
     /// <summary>What <c>orkeon --version</c> answers.</summary>
     public string VersionLine { get; init; } = "orkeon 1.0.0-rc.2";

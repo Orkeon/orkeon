@@ -209,7 +209,7 @@ public sealed class ImportTeamViewModel : ObservableObject
         DeclareCopiesCommand.RaiseCanExecuteChanged();
         var name = described.Name ?? target.SelectedPath;
         var detail = described.AgentCount is { } agents
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ImportRecognizedAgents], name, agents)
+            ? _strings.Format(StudioStringKeys.ImportRecognizedAgents, name, agents)
             : name;
         RecognitionReport.Add(new ImportCheckViewModel(_strings[kindKey], detail, "ok"));
 
@@ -219,8 +219,7 @@ public sealed class ImportTeamViewModel : ObservableObject
                 _strings[StudioStringKeys.ImportSecretsCleanDetail], "ok")
             : new ImportCheckViewModel(
                 _strings[StudioStringKeys.ImportSecretsFound],
-                string.Format(CultureInfo.CurrentCulture,
-                    _strings[StudioStringKeys.ImportSecretsFoundDetail], SecretWarnings.Count), "warn"));
+                _strings.Format(StudioStringKeys.ImportSecretsFoundDetail, SecretWarnings.Count), "warn"));
 
         // The imported sidecar's declared folders, when it carries any (F-08): a crew
         // parser is still out of scope, but a Studio-adopted team travels with its list.
@@ -228,8 +227,7 @@ public sealed class ImportTeamViewModel : ObservableObject
         {
             RecognitionReport.Add(new ImportCheckViewModel(
                 _strings[StudioStringKeys.ImportMountsDeclared],
-                string.Format(CultureInfo.CurrentCulture,
-                    _strings[StudioStringKeys.ImportMountsDeclaredDetail],
+                _strings.Format(StudioStringKeys.ImportMountsDeclaredDetail,
                     described.Mounts.Count,
                     // The way the agents address them, never the exporting machine's folders
                     // — an import report is read by whoever received the team (ADR-008).
@@ -247,7 +245,7 @@ public sealed class ImportTeamViewModel : ObservableObject
         if (UnknownMounts.Count > 0)
         {
             RecognitionReport.Add(new ImportCheckViewModel(
-                string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ImportUnknownMountIds], UnknownMounts.Count),
+                _strings.Format(StudioStringKeys.ImportUnknownMountIds, UnknownMounts.Count),
                 MountLabels.DescribeAll(UnknownMounts.Select(m => m.Raw).ToList(), _strings, ", "),
                 "warn"));
         }
@@ -269,7 +267,7 @@ public sealed class ImportTeamViewModel : ObservableObject
             // successful click looks like to someone who missed the card refresh. A refused
             // source says why (STUDIO-12 C1); a disk failure keeps the generic line.
             StatusMessage = refusal is { Length: > 0 }
-                ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ImportRefused], refusal)
+                ? _strings.Format(StudioStringKeys.ImportRefused, refusal)
                 : _strings[StudioStringKeys.ImportFailed];
             return;
         }

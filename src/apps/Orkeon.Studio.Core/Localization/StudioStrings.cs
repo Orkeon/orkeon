@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Orkeon.Studio.Core.Localization;
 
 /// <summary>
@@ -15,6 +17,38 @@ public interface IStudioStrings
 
     /// <summary>Raised when the culture changes, so ViewModels can re-emit their bindings.</summary>
     event EventHandler? CultureChanged;
+}
+
+/// <summary>
+/// The one place a string of the port is formatted: the pattern is read from the table
+/// and its arguments are forwarded as the array they arrive in. A call site names the
+/// key, never the pattern -- <c>strings.Format(key, name)</c>, not
+/// <c>string.Format(culture, strings[key], name)</c> --, so that no <c>string.Format</c>
+/// is handed a pattern any entry of the table could be: a static analysis following the
+/// data flow counts every placeholder of every string against the arguments of every
+/// such call (CodeQL's <c>cs/invalid-string-formatting</c>, a false positive per call).
+/// A guard test keeps the direct form out of Core and the WPF front.
+/// </summary>
+public static class StudioStringsFormatting
+{
+    /// <summary>Formats the string of <paramref name="key"/> in the current culture.</summary>
+    /// <param name="strings">The localization port.</param>
+    /// <param name="key">The key of the pattern (rendered as itself when unknown, like the indexer).</param>
+    /// <param name="arguments">The values of the pattern's placeholders, in order.</param>
+    public static string Format(this IStudioStrings strings, string key, params object?[] arguments) =>
+        strings.Format(CultureInfo.CurrentCulture, key, arguments);
+
+    /// <summary>Formats the string of <paramref name="key"/> with <paramref name="provider"/>.</summary>
+    /// <param name="strings">The localization port.</param>
+    /// <param name="provider">Formats the arguments; the current culture when null, as <c>string.Format</c> reads it.</param>
+    /// <param name="key">The key of the pattern (rendered as itself when unknown, like the indexer).</param>
+    /// <param name="arguments">The values of the pattern's placeholders, in order.</param>
+    public static string Format(this IStudioStrings strings, IFormatProvider? provider, string key, params object?[] arguments)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return string.Format(provider, strings[key], arguments);
+    }
 }
 
 /// <summary>
@@ -1206,7 +1240,7 @@ public static class StudioStringKeys
     /// <summary>"expert setting below: {0}"</summary>
     public const string ToolExpertSetting = "Studio.Settings.ToolExpertSetting";
 
-    /// <summary>"needs an e-mail account declared in the settings file under {0}; an OAuth account then signs in with orkeon email login"</summary>
+    /// <summary>"needs an e-mail account, declared in Settings › E-mail"</summary>
     public const string ToolNeedsEmailAccount = "Studio.Settings.ToolNeedsEmailAccount";
 
     /// <summary>"{0} tools, nothing to configure"</summary>
@@ -1225,6 +1259,152 @@ public static class StudioStringKeys
 
     /// <summary>"Another server already carries this identifier."</summary>
     public const string McpProblemDuplicate = "Studio.Settings.McpProblemDuplicate";
+
+    // ── the E-mail tab (STUDIO-67): what the form says that a binding cannot ──
+
+    /// <summary>"E-mail" — the tab, and what the Tools tab sends to.</summary>
+    public const string ShellMails = "Studio.Shell.Mails";
+
+    /// <summary>"Accounts are written to {0}. A team launched on another settings file does not see them."</summary>
+    public const string MailSettingsFile = "Studio.Settings.MailSettingsFile";
+
+    /// <summary>"Leave it to the preset" — the entry of a list that removes the key.</summary>
+    public const string MailChoicePreset = "Studio.Settings.MailChoicePreset";
+
+    /// <summary>"Gmail — its servers are preset; an app password or OAuth2"</summary>
+    public const string MailProviderGmail = "Studio.Settings.MailProviderGmail";
+
+    /// <summary>"Outlook.com or Microsoft 365 — read and sent through Microsoft Graph; OAuth2 only"</summary>
+    public const string MailProviderOutlook = "Studio.Settings.MailProviderOutlook";
+
+    /// <summary>"Another provider — you name its servers; signs in with a password"</summary>
+    public const string MailProviderCustom = "Studio.Settings.MailProviderCustom";
+
+    /// <summary>"Password"</summary>
+    public const string MailAuthPassword = "Studio.Settings.MailAuthPassword";
+
+    /// <summary>"OAuth2 — you sign in on the provider's own page"</summary>
+    public const string MailAuthOAuth2 = "Studio.Settings.MailAuthOAuth2";
+
+    /// <summary>"A name holds letters, digits, '.', '_' and '-' only, starts with a letter or a digit, and has 64 characters at most."</summary>
+    public const string MailNameInvalid = "Studio.Settings.MailNameInvalid";
+
+    /// <summary>"Another account already answers to this name — upper and lower case are the same name."</summary>
+    public const string MailNameTaken = "Studio.Settings.MailNameTaken";
+
+    /// <summary>"Choose the folder that holds the sign-in tokens"</summary>
+    public const string MailCredentialsDirectoryPick = "Studio.Settings.MailCredentialsDirectoryPick";
+
+    // ── the secrets of an e-mail account (STUDIO-68): typed in the form, kept outside any file ──
+
+    /// <summary>"Password or app password"</summary>
+    public const string MailPassword = "Studio.Settings.MailPassword";
+
+    /// <summary>"Stored on this machine, outside any file" — the state of a password or of a client secret.</summary>
+    public const string MailPasswordStored = "Studio.Settings.MailPasswordStored";
+
+    /// <summary>"Not stored yet"</summary>
+    public const string MailPasswordMissing = "Studio.Settings.MailPasswordMissing";
+
+    /// <summary>"Client secret (Google desktop application)"</summary>
+    public const string MailClientSecret = "Studio.Settings.MailClientSecret";
+
+    /// <summary>"Kept in the variable {0}"</summary>
+    public const string MailSecretVariable = "Studio.Settings.MailSecretVariable";
+
+    // ── what the engine makes of an e-mail account, and its connection test (STUDIO-69) ──
+
+    /// <summary>"Ready"</summary>
+    public const string MailStateReady = "Studio.Settings.MailStateReady";
+
+    /// <summary>"Not ready" — the engine's own sentence follows, as printed.</summary>
+    public const string MailStateNotReady = "Studio.Settings.MailStateNotReady";
+
+    /// <summary>"Set aside" — the findings of the form already say why.</summary>
+    public const string MailStateSetAside = "Studio.Settings.MailStateSetAside";
+
+    /// <summary>"Unknown — {0}": the CLI is missing or failed, and {0} says which.</summary>
+    public const string MailStateUnknown = "Studio.Settings.MailStateUnknown";
+
+    /// <summary>"As of the saved file — save to check again": the document holds unsaved edits.</summary>
+    public const string MailStateOfSavedFile = "Studio.Settings.MailStateOfSavedFile";
+
+    /// <summary>"Test the connection"</summary>
+    public const string MailTest = "Studio.Settings.MailTest";
+
+    /// <summary>"Connecting…"</summary>
+    public const string MailTesting = "Studio.Settings.MailTesting";
+
+    /// <summary>"Reachable" — the engine's sentence follows, with the number of folders.</summary>
+    public const string MailTestReachable = "Studio.Settings.MailTestReachable";
+
+    /// <summary>"Could not connect" — the CLI gave no verdict on the account.</summary>
+    public const string MailTestFailed = "Studio.Settings.MailTestFailed";
+
+    /// <summary>"To fix on this machine" — a setting, a secret or a sign-in is missing (exit code 1).</summary>
+    public const string MailTestOperatorFixable = "Studio.Settings.MailTestOperatorFixable";
+
+    /// <summary>"The server refused or did not answer" — the engine's sentence says which (exit code 2).</summary>
+    public const string MailTestServerOrNetwork = "Studio.Settings.MailTestServerOrNetwork";
+
+    // ── signing an OAuth e-mail account in and out (STUDIO-70): the CLI does it, the tab says what to do meanwhile ──
+
+    /// <summary>"Sign in" — runs <c>orkeon email login</c> on an OAuth account.</summary>
+    public const string MailSignIn = "Studio.Settings.MailSignIn";
+
+    /// <summary>"Sign out" — asks first, then runs <c>orkeon email logout</c>.</summary>
+    public const string MailSignOut = "Studio.Settings.MailSignOut";
+
+    /// <summary>"Forget the stored tokens of {0}? The account will need a new sign-in."</summary>
+    public const string MailSignOutConfirm = "Studio.Settings.MailSignOutConfirm";
+
+    /// <summary>"Could not sign out" — what the CLI said follows, as printed.</summary>
+    public const string MailSignOutFailed = "Studio.Settings.MailSignOutFailed";
+
+    /// <summary>"Starting the sign-in…" — the verb has not said yet what to do.</summary>
+    public const string MailSignInStarting = "Studio.Settings.MailSignInStarting";
+
+    /// <summary>"Open {0} and enter this code:" — {0} is the page the provider names.</summary>
+    public const string MailDeviceCode = "Studio.Settings.MailDeviceCode";
+
+    /// <summary>"The code expires in {0}" — {0} is minutes and seconds.</summary>
+    public const string MailDeviceCodeExpiresIn = "Studio.Settings.MailDeviceCodeExpiresIn";
+
+    /// <summary>"The code expired — start again"</summary>
+    public const string MailDeviceCodeExpired = "Studio.Settings.MailDeviceCodeExpired";
+
+    /// <summary>"Start again" — a new sign-in, with a new code.</summary>
+    public const string MailSignInRestart = "Studio.Settings.MailSignInRestart";
+
+    /// <summary>"Open this address in a browser and allow the access:"</summary>
+    public const string MailAuthorizationUrl = "Studio.Settings.MailAuthorizationUrl";
+
+    /// <summary>"If the browser cannot come back to this machine, paste the address it ended on:"</summary>
+    public const string MailPasteRedirect = "Studio.Settings.MailPasteRedirect";
+
+    /// <summary>"Use this address" — sends the pasted address to the sign-in.</summary>
+    public const string MailPasteRedirectSend = "Studio.Settings.MailPasteRedirectSend";
+
+    /// <summary>"This address was not sent: the sign-in is no longer reading. Sign in again." — the pasted address stays in its field.</summary>
+    public const string MailPasteRedirectNotSent = "Studio.Settings.MailPasteRedirectNotSent";
+
+    /// <summary>"That is not the address the browser ended on:" — then the verb's sentence; the pasted address is back in its field.</summary>
+    public const string MailPasteRedirectRejected = "Studio.Settings.MailPasteRedirectRejected";
+
+    /// <summary>"Copy the link"</summary>
+    public const string MailCopyLink = "Studio.Settings.MailCopyLink";
+
+    /// <summary>"Open in the browser" — only ever on a click, and only an https address.</summary>
+    public const string MailOpenInBrowser = "Studio.Settings.MailOpenInBrowser";
+
+    /// <summary>"Signed in"</summary>
+    public const string MailSignedIn = "Studio.Settings.MailSignedIn";
+
+    /// <summary>"The sign-in did not complete" — what the CLI said follows, as printed.</summary>
+    public const string MailSignInFailed = "Studio.Settings.MailSignInFailed";
+
+    /// <summary>"Nothing was stored. The e-mail guide (docs/guides/email.md) says what each refusal means."</summary>
+    public const string MailSignInFailedHint = "Studio.Settings.MailSignInFailedHint";
 
     /// <summary>"No key yet?"</summary>
     public const string ProfileKeyNoKeyYet = "Studio.Settings.KeyNoKeyYet";
@@ -2215,6 +2395,18 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-MCP-COMMAND"] = "A stdio MCP server names no command to launch.",
         ["Studio.Diagnostics.Code.STUDIO-MCP-URL"] = "An HTTP MCP server has no absolute http(s) URL.",
         ["Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET"] = "An MCP server's environment carries a secret in clear text; set it in your user environment instead.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-NAME"] = "An e-mail account name is unusable: letters, digits, '.', '_' and '-' only, 64 characters at most. The run sets the account aside.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-DUPLICATE"] = "Two e-mail accounts carry the same name but for the case: the run reads them as one, or cannot read the file at all. Rename one.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-TWIN"] = "Two keys of the e-mail settings carry the same name but for the case: the run reads them as one, or cannot read the file at all. Keep one.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-KEY"] = "An e-mail account carries a key the engine does not know: the run sets the account aside until the key is corrected or removed.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-VALUE"] = "An e-mail account holds a value the engine cannot read: the run sets the account aside until it is corrected.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-ADDRESS"] = "An e-mail account has no usable address: the run sets it aside until it has one.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-RIGHTS"] = "An e-mail account grants no right: the run sets it aside until it says what an agent may do.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-SERVER"] = "The servers of an e-mail account do not hold together (host, port, protocol, security or timeout): the run sets the account aside.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-AUTH"] = "The sign-in of an e-mail account is incomplete or does not fit its provider: the account cannot be used until it is corrected.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-SEND"] = "The sending rules of an e-mail account do not hold (a recipient, a quota, or the right to send without an outgoing server): the run sets the account aside.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-DEFAULT"] = "The default e-mail account names no declared account: a call that names no account fails.",
+        ["Studio.Diagnostics.Code.STUDIO-MAIL-SCREENING"] = "The screening switch of the e-mail section is neither true nor false: the run sets every account aside until it is.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION"] = "This option does not apply to the selected team.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-VERBOSE"] = "The verbosity level is not valid.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-VAR"] = "A variable is malformed (expected name=value).",
@@ -2503,13 +2695,58 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ToolOnlyWithStoredKey] = "present only once the key {0} is remembered, above",
         [StudioStringKeys.ToolParametersAtCall] = "the connection parameters are given at the call, by the agent",
         [StudioStringKeys.ToolExpertSetting] = "expert setting below: {0}",
-        [StudioStringKeys.ToolNeedsEmailAccount] =
-            "needs an e-mail account declared in the settings file under {0}; an OAuth account then signs in with orkeon email login",
+        [StudioStringKeys.ToolNeedsEmailAccount] = "needs an e-mail account, declared in Settings › E-mail",
         [StudioStringKeys.ToolFamilyQuietPattern] = "{0} tools, nothing to configure",
         [StudioStringKeys.McpProblemId] = "An identifier is required: letters, digits, '.', '_' and '-'.",
         [StudioStringKeys.McpProblemCommand] = "A stdio server needs a command to launch.",
         [StudioStringKeys.McpProblemUrl] = "An HTTP server needs an absolute http(s) URL.",
         [StudioStringKeys.McpProblemDuplicate] = "Another server already carries this identifier.",
+        [StudioStringKeys.ShellMails] = "E-mail",
+        [StudioStringKeys.MailSettingsFile] = "Accounts are written to {0}. A team launched on another settings file does not see them.",
+        [StudioStringKeys.MailChoicePreset] = "Leave it to the preset",
+        [StudioStringKeys.MailProviderGmail] = "Gmail — its servers are preset; an app password or OAuth2",
+        [StudioStringKeys.MailProviderOutlook] = "Outlook.com or Microsoft 365 — read and sent through Microsoft Graph; OAuth2 only",
+        [StudioStringKeys.MailProviderCustom] = "Another provider — you name its servers; signs in with a password",
+        [StudioStringKeys.MailAuthPassword] = "Password",
+        [StudioStringKeys.MailAuthOAuth2] = "OAuth2 — you sign in on the provider's own page",
+        [StudioStringKeys.MailNameInvalid] = "A name holds letters, digits, '.', '_' and '-' only, starts with a letter or a digit, and has 64 characters at most.",
+        [StudioStringKeys.MailNameTaken] = "Another account already answers to this name — upper and lower case are the same name.",
+        [StudioStringKeys.MailCredentialsDirectoryPick] = "Choose the folder that holds the sign-in tokens",
+        [StudioStringKeys.MailPassword] = "Password or app password",
+        [StudioStringKeys.MailPasswordStored] = "Stored on this machine, outside any file",
+        [StudioStringKeys.MailPasswordMissing] = "Not stored yet",
+        [StudioStringKeys.MailClientSecret] = "Client secret (Google desktop application)",
+        [StudioStringKeys.MailSecretVariable] = "Kept in the variable {0}",
+        [StudioStringKeys.MailStateReady] = "Ready",
+        [StudioStringKeys.MailStateNotReady] = "Not ready",
+        [StudioStringKeys.MailStateSetAside] = "Set aside",
+        [StudioStringKeys.MailStateUnknown] = "Unknown — {0}",
+        [StudioStringKeys.MailStateOfSavedFile] = "As of the saved file — save to check again",
+        [StudioStringKeys.MailTest] = "Test the connection",
+        [StudioStringKeys.MailTesting] = "Connecting…",
+        [StudioStringKeys.MailTestReachable] = "Reachable",
+        [StudioStringKeys.MailTestFailed] = "Could not connect",
+        [StudioStringKeys.MailTestOperatorFixable] = "To fix on this machine",
+        [StudioStringKeys.MailTestServerOrNetwork] = "The server refused or did not answer",
+        [StudioStringKeys.MailSignIn] = "Sign in",
+        [StudioStringKeys.MailSignOut] = "Sign out",
+        [StudioStringKeys.MailSignOutConfirm] = "Forget the stored tokens of {0}? The account will need a new sign-in.",
+        [StudioStringKeys.MailSignOutFailed] = "Could not sign out",
+        [StudioStringKeys.MailSignInStarting] = "Starting the sign-in…",
+        [StudioStringKeys.MailDeviceCode] = "Open {0} and enter this code:",
+        [StudioStringKeys.MailDeviceCodeExpiresIn] = "The code expires in {0}",
+        [StudioStringKeys.MailDeviceCodeExpired] = "The code expired — start again",
+        [StudioStringKeys.MailSignInRestart] = "Start again",
+        [StudioStringKeys.MailAuthorizationUrl] = "Open this address in a browser and allow the access:",
+        [StudioStringKeys.MailPasteRedirect] = "If the browser cannot come back to this machine, paste the address it ended on:",
+        [StudioStringKeys.MailPasteRedirectSend] = "Use this address",
+        [StudioStringKeys.MailPasteRedirectNotSent] = "This address was not sent: the sign-in is no longer reading. Sign in again.",
+        [StudioStringKeys.MailPasteRedirectRejected] = "That is not the address the browser ended on:",
+        [StudioStringKeys.MailCopyLink] = "Copy the link",
+        [StudioStringKeys.MailOpenInBrowser] = "Open in the browser",
+        [StudioStringKeys.MailSignedIn] = "Signed in",
+        [StudioStringKeys.MailSignInFailed] = "The sign-in did not complete",
+        [StudioStringKeys.MailSignInFailedHint] = "Nothing was stored. The e-mail guide (docs/guides/email.md) says what each refusal means.",
         [StudioStringKeys.ProfileKeyNoKeyYet] = "No key yet?",
         [StudioStringKeys.ProfileKeyOnVendorSite] = "on the provider's site",
         [StudioStringKeys.ProfileKeyExpertHint] = "setx ORKEON_Llm__ApiKey \"sk-…\" — read natively by the runtime, wins over any file",

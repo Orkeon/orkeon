@@ -56,7 +56,7 @@ public static class EmailToolsServiceCollectionExtensions
         services.TryAddSingleton(sp => new EmailCredentialProvider(
             sp.GetRequiredService<IEmailTokenStore>(),
             sp.GetRequiredService<OAuth2Client>(),
-            EmailEnvironment.Process));
+            EmailEnvironment.Machine));
         services.TryAddSingleton<IMailServiceConnector>(_ => new NetworkMailServiceConnector());
         services.TryAddSingleton<IMailboxProvider>(sp => new MailboxProvider(
             sp.GetRequiredService<IMailServiceConnector>(),

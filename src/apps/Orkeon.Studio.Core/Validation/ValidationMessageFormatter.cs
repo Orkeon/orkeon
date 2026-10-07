@@ -66,9 +66,9 @@ public static class ValidationMessageFormatter
         var warnings = messages.Count(message => message.Severity == ValidationSeverity.Warning);
         var infos = messages.Count - errors - warnings;
 
-        return string.Format(
+        return strings.Format(
             CultureInfo.InvariantCulture,
-            strings[StudioStringKeys.ValidationSummary],
+            StudioStringKeys.ValidationSummary,
             errors, warnings, infos);
     }
 }

@@ -218,10 +218,10 @@ orkeon rag eval --dataset examples/rag/eval/golden.yaml \
 ## `orkeon email`
 
 ```bash
-orkeon email accounts [--settings <file>] [--json]   # the declared accounts, their rights, whether each is ready
-orkeon email login <account> [--settings <file>]     # sign an OAuth2 account in and store its tokens
-orkeon email logout <account> [--settings <file>]    # forget the stored tokens of an OAuth account
-orkeon email check <account> [--settings <file>]     # connect, authenticate, list the folders
+orkeon email accounts [--settings <file>] [--json]                  # the declared accounts, their rights, whether each is ready
+orkeon email login <account> [--settings <file>] [--events jsonl]   # sign an OAuth2 account in and store its tokens
+orkeon email logout <account> [--settings <file>]                   # forget the stored tokens of an OAuth account
+orkeon email check <account> [--settings <file>]                    # connect, authenticate, list the folders
 ```
 
 The operator's side of the e-mail tools ([guide](../guides/email.md)): what is declared under
@@ -240,9 +240,27 @@ Agents never run these — a tool that finds no usable token answers
   sign in from any browser. A Google account uses the authorization code with PKCE: the
   command prints Google's authorization address and listens on a free port of `127.0.0.1`;
   when the browser cannot reach this machine (WSL, a container, an SSH session), paste the
-  address the browser ends on into the terminal. The tokens go to the runner's internal
-  `/credentials` root ([where the tokens live](../guides/email.md#where-the-tokens-live)). A
-  password account has nothing to log in to and is refused.
+  address the browser ends on into the terminal. A pasted line that is not that address — cut
+  short, the address to open, plain text — is answered by a sentence that says why, without
+  repeating it, and the command goes on waiting; an empty line is ignored. The tokens go to
+  the runner's internal `/credentials` root
+  ([where the tokens live](../guides/email.md#where-the-tokens-live)). A password account has
+  nothing to log in to and is refused.
+  With **`--events jsonl`** a program drives the sign-in instead of a person reading it — the
+  way Orkeon Studio runs it. Standard output then carries one JSON event per line and nothing
+  else, in the envelope of the [run event stream](../architecture/run-event-bus.md), under five
+  kinds declared once in `Orkeon.Constants.Protocol.EmailEventKinds`:
+  `email.login.device_code` (`verification_uri`, `user_code`, `expires_in` in seconds),
+  `email.login.authorization_url` (`authorization_uri`), `email.login.redirect_rejected`
+  (`message`), `email.login.completed` (`account`), and `error` (`code` — the e-mail error
+  code, such as `CredentialMissing` or `LoginRequired` —, `message`, `recoverable`), which
+  replaces the line on stderr; the exit code is the one the verb has without the option.
+  Standard input is the driver's hold on the verb: a line written to it is the address the
+  browser ended on — a line that is not gets `email.login.redirect_rejected`, whose `message`
+  says why without repeating the line, and the verb goes on waiting: a rejected line ends
+  nothing and changes no exit code —, and closing it aborts the sign-in with exit code
+  `130` — the Google flow waits without a deadline, so a driver that goes away never leaves the
+  verb listening on its port. Without the option the verb prints exactly what it printed before.
 - **`logout`** deletes the stored tokens of an OAuth account, and says so when there were none;
   a password account has none and is refused.
 - **`check`** connects, authenticates and lists the folders, then prints how many there are

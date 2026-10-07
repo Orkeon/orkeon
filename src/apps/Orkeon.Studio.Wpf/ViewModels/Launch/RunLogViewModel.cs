@@ -131,10 +131,10 @@ public sealed class RunLogViewModel : ObservableObject
 
     /// <summary>The status line under the log panel.</summary>
     public string Summary => DroppedLines == 0
-        ? string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.LogLines], Lines.Count)
-        : string.Format(
+        ? _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.LogLines, Lines.Count)
+        : _strings.Format(
             CultureInfo.InvariantCulture,
-            _strings[StudioStringKeys.LogLinesDropped], Lines.Count, DroppedLines, MaxLines);
+            StudioStringKeys.LogLinesDropped, Lines.Count, DroppedLines, MaxLines);
 
     /// <summary>Appends a streamed line, evicting the oldest once the cap is reached.</summary>
     public void Append(ProcessOutputLine line, LogLineKind kind = LogLineKind.Output)

@@ -138,9 +138,8 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
 
     /// <summary>How many tools are at work, and the first of them; null when none is.</summary>
     public string? Tools => _model.ActiveTools.Count > 0
-        ? string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.StatusBarTools],
+        ? _strings.Format(
+            StudioStringKeys.StatusBarTools,
             _model.ActiveTools.Count,
             _model.ActiveTools[0].ToolName)
         : null;
@@ -154,9 +153,8 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
 
     /// <summary>How many delegations are under way; null when none is.</summary>
     public string? Delegations => _model.ActiveDelegations.Count > 0
-        ? string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.StatusBarDelegations],
+        ? _strings.Format(
+            StudioStringKeys.StatusBarDelegations,
             _model.ActiveDelegations.Count)
         : null;
 
@@ -191,9 +189,8 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
                     .Select(spent => StatusBarText.Join(
                         [
                             spent.Key.Length > 0 ? spent.Key : "—",
-                            string.Format(
-                                CultureInfo.CurrentCulture,
-                                _strings[StudioStringKeys.UsageTokens],
+                            _strings.Format(
+                                StudioStringKeys.UsageTokens,
                                 spent.Value.ToString("N0", CultureInfo.CurrentCulture)),
                         ],
                         StatusBarText.Separator)),
@@ -214,7 +211,7 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
         [
             Team, CurrentTask, Duration, Cache,
             BilledCost is { } billed
-                ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.StatusBarCostBilled], billed)
+                ? _strings.Format(StudioStringKeys.StatusBarCostBilled, billed)
                 : null,
             ToolsDetail, DelegationsDetail, ReportedModel, ProvidersDetail,
         ],
@@ -267,9 +264,8 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
         if (tool.StartedAt is not { } started)
             return tool.ToolName;
 
-        var since = string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.RunProgressTaskSince],
+        var since = _strings.Format(
+            StudioStringKeys.RunProgressTaskSince,
             started.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture));
         return $"{tool.ToolName}{StatusBarText.Separator}{since}";
     }
@@ -379,9 +375,8 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
 
     /// <summary>What the session's allowance has left; null for a session with no cap.</summary>
     public string? BudgetLeft => _progress?.TokensRemaining is { } left
-        ? string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.StatusBarBudgetLeft],
+        ? _strings.Format(
+            StudioStringKeys.StatusBarBudgetLeft,
             left.ToString("N0", CultureInfo.CurrentCulture))
         : null;
 

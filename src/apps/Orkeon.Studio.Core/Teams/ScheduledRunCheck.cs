@@ -150,19 +150,16 @@ public static class ScheduledRunCheck
 
         return notice.Issue switch
         {
-            ScheduledRunIssue.SettingRefused => Format(strings[StudioStringKeys.TeamsScheduledRunRefused], notice.Subject),
-            ScheduledRunIssue.FolderRefused => Format(strings[StudioStringKeys.TeamsScheduledRunFolderRefused], notice.Subject),
-            ScheduledRunIssue.Outdated => Format(strings[StudioStringKeys.TeamsScheduledRunOutdated], notice.Subject),
+            ScheduledRunIssue.SettingRefused => strings.Format(StudioStringKeys.TeamsScheduledRunRefused, notice.Subject),
+            ScheduledRunIssue.FolderRefused => strings.Format(StudioStringKeys.TeamsScheduledRunFolderRefused, notice.Subject),
+            ScheduledRunIssue.Outdated => strings.Format(StudioStringKeys.TeamsScheduledRunOutdated, notice.Subject),
             ScheduledRunIssue.ForeignLaunchers => strings[StudioStringKeys.TeamsScheduledForeignLaunchers],
-            _ => Format(
-                strings[StudioStringKeys.TeamsScheduledRunOnDefault],
+            _ => strings.Format(
+                StudioStringKeys.TeamsScheduledRunOnDefault,
                 notice.Subject,
                 notice.Check?.Status == HostProfileStatus.NoProvider
-                    ? Format(strings[StudioStringKeys.TeamsScheduledRunNoModel], notice.Subject)
+                    ? strings.Format(StudioStringKeys.TeamsScheduledRunNoModel, notice.Subject)
                     : HostProfileText.Describe(notice.Check, strings)),
         };
     }
-
-    private static string Format(string pattern, params object?[] values) =>
-        string.Format(CultureInfo.CurrentCulture, pattern, values);
 }

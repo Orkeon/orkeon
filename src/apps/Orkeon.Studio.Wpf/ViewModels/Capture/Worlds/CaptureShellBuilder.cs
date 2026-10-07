@@ -40,6 +40,9 @@ internal static class CaptureShellBuilder
                 ForgeClient = new Orkeon.Studio.Core.Forge.ForgeClient(world.Cli, world.Locator),
                 ProfileStore = world.ProfileStore,
                 ShellOpener = NullShellOpener.Instance,
+                // STUDIO-70: a browser port that opens nothing keeps « Open in the browser » on the
+                // sign-in panel; no SignInTicker, so the countdown of a device code never moves.
+                BrowserOpener = NullBrowserOpener.Instance,
                 Delay = world.Delay,
                 // My teams' undo banner (STUDIO-32) never goes by itself during a campaign: a stop
                 // photographs it, and its teardown answers it. One timer per shell, never shared.

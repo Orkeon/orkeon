@@ -49,6 +49,9 @@ Trois règles tiennent ensemble les outils e-mail, et l'exemple s'appuie sur les
 Le fichier de réglages de l'exemple déclare un compte sous `Orkeon:Tools:Email` (sa section
 `Llm`, et la limite de temps `Scripting` traitée à l'étape 4, sont omises ici). Remplacez l'adresse par la vôtre :
 
+> Dans Orkeon Studio, le même compte se déclare dans un formulaire, **Réglages › Mails**, qui écrit
+> cette section dans votre propre fichier de réglages — voir le [guide e-mail](../guides/email.md#démarrage-rapide--gmail-avec-un-mot-de-passe-dapplication).
+
 ```json
 "Orkeon": {
   "Tools": {

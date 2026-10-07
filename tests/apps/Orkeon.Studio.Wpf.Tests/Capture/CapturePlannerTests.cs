@@ -91,8 +91,12 @@ public sealed class CapturePlannerTests
         // STUDIO-46: -1 stop — the two step-1 folder-policy stops leave with the policy, and the
         // Folders step takes their place (dossiers-proposes, both modes, both themes, language
         // sweep) = -8 shots.
-        Assert.Equal(63, CaptureCatalog.All.Count);
-        Assert.Equal(348, plan.Count);
+        // STUDIO-67: +2 stops (reglages-mails, both modes, both themes, language sweep = +8;
+        // reglages-mails-serveurs, the custom account with every field, expert only, both themes = +2).
+        // STUDIO-70: +1 stop (reglages-mails-connexion, the device sign-in panel of the Outlook
+        // account, both modes, both themes, language sweep) = +8 shots.
+        Assert.Equal(66, CaptureCatalog.All.Count);
+        Assert.Equal(366, plan.Count);
     }
 
     [Fact]

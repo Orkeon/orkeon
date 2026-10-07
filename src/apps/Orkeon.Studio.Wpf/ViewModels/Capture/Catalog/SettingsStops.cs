@@ -3,7 +3,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>Settings and its seven tabs.</summary>
+/// <summary>Settings and its eight tabs.</summary>
 internal static class SettingsStops
 {
     /// <summary>The stops.</summary>
@@ -93,6 +93,74 @@ internal static class SettingsStops
                     + "image_generation and the database tools need said next to their names.",
             Covers = ["Settings.Tools.HasSecrets"],
             SweepsLanguages = true,
+        },
+
+        new()
+        {
+            Name = "reglages-mails",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsEmail,
+            Because = "The E-mail tab (STUDIO-67): the line that says which file the accounts are "
+                    + "written to, the two seeded accounts and the form of the Gmail one — its rights "
+                    + "as six sentences, its sign-in method, and nothing else for the novice; the "
+                    + "expert pass adds the servers, the variable names and the section card. Each "
+                    + "account carries the dot of its state (STUDIO-69): the Gmail one is ready, and "
+                    + "says so above the button that tests its connection.",
+            Covers = ["Config.Email.HasAccounts", "Config.Email.HasSelectedAccount"],
+            CoversFalse = ["Config.Email.IsAdding", "Config.Email.IsStateOfSavedFile", "Config.Email.IsSigningIn"],
+            SweepsLanguages = true,
+            // The window reads the states when the tab arrives; a walk without a window asks here.
+            Arrange = static c => c.Shell.Config.Email.RefreshStatesAsync(),
+        },
+
+        new()
+        {
+            Name = "reglages-mails-serveurs",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsEmail,
+            Modes = CaptureModes.Expert,
+            Because = "The custom account in the expert form: no preset fills its servers, so the "
+                    + "two hosts are its own and every other field shows what the engine will use as "
+                    + "a watermark; it may send, and its allowed recipients are listed one per line. "
+                    + "Its password is not stored, so its state is « not ready » with the engine's "
+                    + "own sentence, which names the variable (STUDIO-69).",
+            Covers = ["Config.Email.IsExpert", "Config.Email.HasSelectedAccount"],
+            Arrange = static async c =>
+            {
+                await c.Shell.Config.Email.RefreshStatesAsync();
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[^1];
+            },
+            Teardown = CaptureAction.Sync(static c =>
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[0]),
+        },
+
+        new()
+        {
+            Name = "reglages-mails-connexion",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsEmail,
+            Because = "An OAuth account signing in (STUDIO-70): the Outlook account, whose state "
+                    + "says it was never signed in, with the panel of its device sign-in under it — "
+                    + "the page to open in clear, the code in large, the time it has left, « Copy "
+                    + "the link » and « Open in the browser » — while the scripted `orkeon email "
+                    + "login` waits. Nothing was opened, and the code is a made-up one: a real "
+                    + "device code is a secret while it lives.",
+            Covers = ["Config.Email.IsSigningIn", "Config.Email.HasSelectedAccount"],
+            CoversFalse = ["Config.Email.IsStateOfSavedFile"],
+            SweepsLanguages = true,
+            Arrange = static async c =>
+            {
+                var email = c.Shell.Config.Email;
+                await email.RefreshStatesAsync();
+                email.SelectedAccount = email.Accounts.First(row => row.ShowSignIn);
+                email.SelectedAccount.SignInCommand.Execute(null);
+            },
+            // The child would wait for ever: it is stopped with the stop.
+            Teardown = CaptureAction.Sync(static c =>
+            {
+                c.Shell.Config.Email.StopActivity();
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[0];
+            }),
         },
 
         new()

@@ -39,6 +39,9 @@ internal enum CaptureScreen
     /// <summary>Settings, on the tools tab (STUDIO-21).</summary>
     SettingsTools,
 
+    /// <summary>Settings, on the e-mail tab (STUDIO-67): both modes, the expert sees every field.</summary>
+    SettingsEmail,
+
     /// <summary>Settings, on the MCP tab — expert only (STUDIO-21).</summary>
     SettingsMcp,
 
@@ -90,7 +93,7 @@ internal enum CaptureCategory
     /// <summary>Historique.</summary>
     History,
 
-    /// <summary>Settings and its seven tabs.</summary>
+    /// <summary>Settings and its eight tabs.</summary>
     Settings,
 
     /// <summary>Diagnostic.</summary>

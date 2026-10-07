@@ -15,7 +15,7 @@ internal sealed class FakeEmailLoginInteraction : IEmailLoginInteraction
     public string? UserCode { get; private set; }
 
     /// <inheritdoc />
-    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, CancellationToken cancellationToken)
+    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
         VerificationUri = verificationUri;
         UserCode = userCode;
@@ -28,4 +28,8 @@ internal sealed class FakeEmailLoginInteraction : IEmailLoginInteraction
 
     /// <inheritdoc />
     public Task<string?> ReadRedirectAsync(CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+
+    /// <inheritdoc />
+    public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("Nothing is ever pasted here.");
 }

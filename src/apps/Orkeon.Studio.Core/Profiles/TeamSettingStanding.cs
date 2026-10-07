@@ -59,7 +59,7 @@ public sealed record TeamSettingStanding
         ArgumentNullException.ThrowIfNull(strings);
 
         return Kind == TeamSettingKind.Missing
-            ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamsSettingMissing], Name)
+            ? strings.Format(StudioStringKeys.TeamsSettingMissing, Name)
             : Name;
     }
 

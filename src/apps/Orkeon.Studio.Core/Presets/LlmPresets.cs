@@ -537,9 +537,9 @@ public static class LlmPresets
                 return true;
 
             default:
-                error = string.Format(
+                error = strings.Format(
                     CultureInfo.InvariantCulture,
-                    strings[StudioStringKeys.PresetErrorUnknown],
+                    StudioStringKeys.PresetErrorUnknown,
                     preset,
                     string.Join(", ", Names));
                 return false;
@@ -623,17 +623,17 @@ public static class LlmPresets
         {
             var messages = new List<string>
             {
-                string.Format(
+                strings.Format(
                     CultureInfo.InvariantCulture,
-                    strings[StudioStringKeys.PresetGuidanceApiKeyEnv],
+                    StudioStringKeys.PresetGuidanceApiKeyEnv,
                     envName),
             };
 
             if (ReferenceFor(envName) is not null)
             {
-                messages.Add(string.Format(
+                messages.Add(strings.Format(
                     CultureInfo.InvariantCulture,
-                    strings[StudioStringKeys.PresetGuidanceNonDefaultEnv],
+                    StudioStringKeys.PresetGuidanceNonDefaultEnv,
                     envName));
             }
 
@@ -645,9 +645,9 @@ public static class LlmPresets
         {
             return
             [
-                string.Format(
+                strings.Format(
                     CultureInfo.InvariantCulture,
-                    strings[StudioStringKeys.PresetGuidanceInlineKeyWarning],
+                    StudioStringKeys.PresetGuidanceInlineKeyWarning,
                     DefaultApiKeyEnv),
             ];
         }

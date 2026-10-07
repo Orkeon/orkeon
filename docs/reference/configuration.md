@@ -461,8 +461,13 @@ it — and validated lazily: an account is validated the first time a tool or an
 command uses it, every problem reported at once, and a value the binder cannot even read (a
 misspelt right, a port in words) sets that one account aside instead of failing the host — a
 broken section never breaks a crew that sends no mail. Secrets are never values here, only the
-**names** of the environment variables that hold them. Provider walkthroughs and the
-key-by-key table: [E-mail tools](../guides/email.md).
+**names** of the environment variables that hold them (`Auth:PasswordEnvVar`,
+`Auth:ClientSecretEnvVar`), read as the variable `ApiKeyEnvVar` names is
+([above](#the-api-key-apikey-apikeyenvvar)): in the process environment, then — on Windows — in
+the user's persistent scope (`HKCU\Environment`), where Orkeon Studio remembers a password typed
+in **Settings › E-mail**; read, never copied into the process; the process environment alone on
+Linux and macOS. Provider walkthroughs and the key-by-key table:
+[E-mail tools](../guides/email.md#where-a-secret-variable-is-read).
 
 | Section | Configures |
 |---|---|

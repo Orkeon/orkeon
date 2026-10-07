@@ -260,9 +260,9 @@ public static class MountOverrideSemantics
         ArgumentNullException.ThrowIfNull(autoInjection);
         ArgumentNullException.ThrowIfNull(strings);
 
-        return ExplanationFor(strings) + string.Format(
+        return ExplanationFor(strings) + strings.Format(
             CultureInfo.InvariantCulture,
-            strings[StudioStringKeys.MountSemanticsThisLaunch],
+            StudioStringKeys.MountSemanticsThisLaunch,
             autoInjection.Count,
             string.Join(", ", autoInjection.Mounts));
     }

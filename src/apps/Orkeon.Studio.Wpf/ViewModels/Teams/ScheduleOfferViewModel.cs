@@ -90,7 +90,7 @@ public sealed class ScheduleOfferViewModel : ObservableObject
     {
         null => "",
         var daily when daily.StartsWith("daily@", StringComparison.OrdinalIgnoreCase) =>
-            string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardScheduleOfferDaily], daily["daily@".Length..]),
+            _strings.Format(StudioStringKeys.WizardScheduleOfferDaily, daily["daily@".Length..]),
         _ => _strings[StudioStringKeys.WizardScheduleOfferHourly],
     };
 
@@ -222,7 +222,7 @@ public sealed class ScheduleOfferViewModel : ObservableObject
             _dispatcher.Post(() =>
             {
                 IsOpen = false;
-                Outcome = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleInstallFailed], ex.Message);
+                Outcome = _strings.Format(StudioStringKeys.TeamsScheduleInstallFailed, ex.Message);
             });
             return;
         }
@@ -239,8 +239,8 @@ public sealed class ScheduleOfferViewModel : ObservableObject
             }
             else
             {
-                Outcome = string.Format(
-                    CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleInstallFailed], report.FailureReason);
+                Outcome = _strings.Format(
+                    StudioStringKeys.TeamsScheduleInstallFailed, report.FailureReason);
                 ManualCommand = report.ManualCommand;
             }
 

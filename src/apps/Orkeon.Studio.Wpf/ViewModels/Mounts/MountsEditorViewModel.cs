@@ -345,12 +345,12 @@ public sealed class MountsEditorViewModel : ObservableObject
         {
             var errors = ValidationMessages.Count(m => m.IsError);
             return errors == 0
-                ? string.Format(
+                ? _strings.Format(
                     CultureInfo.InvariantCulture,
-                    _strings[StudioStringKeys.MountsSummaryOk], Mounts.Count)
-                : string.Format(
+                    StudioStringKeys.MountsSummaryOk, Mounts.Count)
+                : _strings.Format(
                     CultureInfo.InvariantCulture,
-                    _strings[StudioStringKeys.MountsSummaryErrors], Mounts.Count, errors);
+                    StudioStringKeys.MountsSummaryErrors, Mounts.Count, errors);
         }
     }
 

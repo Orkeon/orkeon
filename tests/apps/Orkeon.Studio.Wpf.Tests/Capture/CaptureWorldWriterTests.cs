@@ -1,7 +1,10 @@
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
+using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
@@ -50,6 +53,93 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
 
             Assert.DoesNotContain(real, _worlds.Root, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    /// <summary>
+    /// STUDIO-67: the E-mail tab photographs a preset account and a custom one, read back through
+    /// the production document — and both are accounts the run would use, so no shot of the
+    /// campaign shows a warning the seed did not mean.
+    /// </summary>
+    [Fact]
+    public void The_seeded_settings_declare_a_gmail_account_an_outlook_one_and_a_custom_one_the_run_would_use()
+    {
+        var document = AppSettingsDocument.Parse(File.ReadAllText(_worlds.Seeded.SettingsPath));
+
+        Assert.Equal(3, document.Email.AccountNames.Count);
+        var accounts = document.Email.AccountNames.Select(name => document.Email.GetAccount(name)!).ToList();
+        Assert.Contains(accounts, account => account.Provider == "Gmail");
+        Assert.Contains(accounts, account => account.Provider == "Custom" && account.IncomingHost is not null && account.OutgoingHost is not null);
+        // STUDIO-70: the one that signs in with OAuth2 — the only kind a sign-in panel exists for.
+        var outlook = Assert.Single(accounts, account => account.Provider == "Outlook");
+        Assert.Equal("OAuth2", EmailAccountEffective.Of(outlook).AuthMethod);
+        Assert.All(document.Email.AccountNames, name => Assert.Empty(EmailAccountRules.Check(document, name)));
+        // The folders of the seed still stand beside the accounts, under the same root key.
+        Assert.NotEmpty(document.Mounts.RawEntries);
+        Assert.Empty(AppSettingsDocument.Parse(File.ReadAllText(_worlds.Pristine.SettingsPath)).Email.AccountNames);
+    }
+
+    /// <summary>
+    /// STUDIO-69: the E-mail tab asks the CLI what the engine makes of each account. In the
+    /// campaign that answer is a script, read back here through the production client: it names
+    /// exactly the seeded accounts, one ready, one that lacks its password and one that was never
+    /// signed in — the states worth a pixel — and the ready one is the one whose password the
+    /// seeded machine keeps.
+    /// </summary>
+    [Fact]
+    public async Task The_seeded_cli_answers_the_email_accounts_listing_with_one_account_ready_one_without_its_password_and_one_not_signed_in()
+    {
+        var document = AppSettingsDocument.Parse(
+            await File.ReadAllTextAsync(_worlds.Seeded.SettingsPath, TestContext.Current.CancellationToken));
+
+        var result = await new EmailCliClient(_worlds.Seeded.Runner)
+            .ListAsync(_worlds.Seeded.SettingsPath, TestContext.Current.CancellationToken);
+
+        Assert.Null(result.Failure);
+        Assert.Equal(
+            document.Email.AccountNames.Order(StringComparer.Ordinal),
+            result.Accounts.Select(account => account.Name).Order(StringComparer.Ordinal));
+        Assert.All(result.Accounts, account => Assert.False(account.IsSetAside));
+
+        var ready = Assert.Single(result.Accounts, account => account.Ready);
+        var waiting = Assert.Single(result.Accounts, account => account is { Ready: false, Auth: "Password" });
+        var signedOut = Assert.Single(result.Accounts, account => account is { Ready: false, Auth: "OAuth2" });
+        Assert.NotNull(_worlds.Seeded.KeyStore.Peek(document.Email.GetAccount(ready.Name)!.PasswordEnvVar!));
+        var missing = document.Email.GetAccount(waiting.Name)!.PasswordEnvVar!;
+        Assert.Null(_worlds.Seeded.KeyStore.Peek(missing));
+        Assert.Contains(missing, waiting.Problem, StringComparison.Ordinal);
+        Assert.Equal("Outlook", document.Email.GetAccount(signedOut.Name)!.Provider);
+        Assert.Contains($"orkeon email login {signedOut.Name}", signedOut.Problem, StringComparison.Ordinal);
+
+        // Nothing was spawned: the launch is in the scripted CLI's own record, with its file named.
+        Assert.Contains(_worlds.Seeded.Cli.Requests, request =>
+            request.Arguments is ["email", "accounts", "--json", "--settings", var path] && path == _worlds.Seeded.SettingsPath);
+    }
+
+    /// <summary>
+    /// STUDIO-70: the sign-in the campaign photographs is a script too, read back through the
+    /// production client — a device sign-in that says its page and its code, then waits for as
+    /// long as the stop needs it. The code is the fixture's made-up one: a real device code is a
+    /// secret while it lives, and none ever enters a campaign.
+    /// </summary>
+    [Fact]
+    public async Task The_seeded_cli_plays_a_device_sign_in_that_waits_with_a_made_up_code()
+    {
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var steps = new List<EmailLoginStep>();
+
+        var login = new EmailCliClient(_worlds.Seeded.Runner)
+            .LoginAsync("hotmail", _worlds.Seeded.SettingsPath, steps.Add, cancellationToken: stop.Token);
+
+        var code = Assert.Single(steps);
+        Assert.Equal(EmailLoginStepKind.DeviceCode, code.Kind);
+        Assert.Equal(StudioFixture.DeviceSignInCode, code.UserCode);
+        Assert.Equal("https://microsoft.com/devicelogin", code.Address);
+        Assert.Equal(TimeSpan.FromMinutes(15), code.ExpiresIn);
+        Assert.False(login.IsCompleted);
+
+        await stop.CancelAsync();
+        Assert.Equal(EmailCliFailureKind.Cancelled, (await login).Failure?.Kind);
+        Assert.Equal(0, _worlds.Seeded.Cli.LiveConversations);
     }
 
     [Fact]

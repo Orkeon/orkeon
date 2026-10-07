@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.History;
@@ -77,6 +78,34 @@ public sealed record StudioServices
     /// over the window's <see cref="ProcessRunner"/> — the binary the doctor and the launcher use.
     /// </summary>
     public UseCaseClient? UseCases { get; init; }
+
+    /// <summary>
+    /// What says whether each e-mail account is ready and tests its connection (STUDIO-69): the
+    /// <c>orkeon email</c> verbs. When null, a client over <see cref="ProcessRunner"/> — and none
+    /// at all when that is null too: the states are read on arrival on the tab, without a click,
+    /// so a settings tab built without a runner can never reach a binary by omission.
+    /// </summary>
+    public EmailCliClient? EmailCli { get; init; }
+
+    /// <summary>
+    /// The "later" of the E-mail tab's reading of its accounts' states (STUDIO-69): a save while
+    /// the tab shows asks <c>orkeon email accounts</c> once the edits pause, never once per key —
+    /// an instance of its own, for the same reason as <see cref="SuggestionDelay"/>. Immediate
+    /// when null: every save then reads at once.
+    /// </summary>
+    public IUiDelay? EmailStatesDelay { get; init; }
+
+    /// <summary>
+    /// Opens the address of an e-mail sign-in in the browser, on a click (STUDIO-70): an
+    /// <c>https</c> address and nothing else. Without one the address can only be copied.
+    /// </summary>
+    public IBrowserOpener? BrowserOpener { get; init; }
+
+    /// <summary>
+    /// The beat the countdown of an e-mail device code moves on (STUDIO-70) — a ticker of its
+    /// own, since one ticker keeps one beat; one that never beats when absent.
+    /// </summary>
+    public IUiTicker? SignInTicker { get; init; }
 
     /// <summary>Probes an LLM endpoint for the "Test connection" command.</summary>
     public ILlmEndpointProbe? LlmProbe { get; init; }
