@@ -21,7 +21,7 @@ public enum EmailSignInPhase
     /// <summary>The tokens are stored.</summary>
     Completed,
 
-    /// <summary>The verb refused or failed: what it said shows, and nothing is tried again.</summary>
+    /// <summary>The verb refused or failed: what it said shows, and nothing is tried again by itself.</summary>
     Failed,
 
     /// <summary>The device code outlived its time: a new sign-in is the only way on.</summary>
@@ -84,6 +84,8 @@ public sealed class EmailSignInViewModel : ObservableObject
     private DateTimeOffset? _deadline;
     private EmailCliFailure? _failure;
     private string _pastedRedirect = "";
+    private bool _redirectNotSent;
+    private bool _failedOnDeviceCode;
 
     /// <summary>
     /// A panel for <paramref name="account"/> as <paramref name="settingsPath"/> declares it.
@@ -117,7 +119,7 @@ public sealed class EmailSignInViewModel : ObservableObject
         CopyLinkCommand = new RelayCommand(() => { if (_address is { Length: > 0 } address) _clipboard.SetText(address); }, () => HasAddress);
         OpenCommand = new RelayCommand(Open, () => CanOpen);
         CancelCommand = new RelayCommand(Abandon);
-        RestartCommand = new RelayCommand(() => { if (IsExpired) Start(); }, () => IsExpired);
+        RestartCommand = new RelayCommand(() => { if (CanRestart) Start(); }, () => CanRestart);
     }
 
     /// <summary>The account being signed in, as the saved file names it.</summary>
@@ -143,6 +145,13 @@ public sealed class EmailSignInViewModel : ObservableObject
 
     /// <summary>Whether the device code outlived its time.</summary>
     public bool IsExpired => _phase == EmailSignInPhase.Expired;
+
+    /// <summary>
+    /// Whether "Start again" is offered: the code outlived its time, or the verb failed while
+    /// one showed — the verb gives up on the same deadline as the countdown, and its word may
+    /// land first. A click, never a retry of the panel's own.
+    /// </summary>
+    public bool CanRestart => IsExpired || (IsFailed && _failedOnDeviceCode);
 
     /// <summary>Whether a child is waiting on the person: the panel's one button then cancels, and closes otherwise.</summary>
     public bool IsWaiting => _phase is EmailSignInPhase.Starting or EmailSignInPhase.DeviceCode or EmailSignInPhase.AuthorizationUrl;
@@ -193,10 +202,19 @@ public sealed class EmailSignInViewModel : ObservableObject
         get => _pastedRedirect;
         set
         {
-            if (SetProperty(ref _pastedRedirect, value ?? ""))
-                SubmitRedirectCommand.RaiseCanExecuteChanged();
+            if (!SetProperty(ref _pastedRedirect, value ?? ""))
+                return;
+
+            SetRedirectNotSent(false);
+            SubmitRedirectCommand.RaiseCanExecuteChanged();
         }
     }
+
+    /// <summary>
+    /// Whether the last address pasted could not be handed to the verb — its input not open yet,
+    /// or closed already: the field keeps it, and says so until it is typed in or sent again.
+    /// </summary>
+    public bool RedirectNotSent => _redirectNotSent;
 
     /// <summary>
     /// Why the sign-in failed: the verb's sentence, in English, as printed — nothing is read out
@@ -204,7 +222,10 @@ public sealed class EmailSignInViewModel : ObservableObject
     /// </summary>
     public string? FailureDetail => _failure is { } failure ? _owner.FailureText(failure) : null;
 
-    /// <summary>Writes <see cref="PastedRedirect"/> to the verb, which judges it; the field is then cleared.</summary>
+    /// <summary>
+    /// Writes <see cref="PastedRedirect"/> to the verb, which judges it; the field is then cleared.
+    /// An address nothing read stays in the field, and <see cref="RedirectNotSent"/> says so.
+    /// </summary>
     public RelayCommand SubmitRedirectCommand { get; }
 
     /// <summary>Puts <see cref="Address"/> on the clipboard — the address, never the code.</summary>
@@ -216,7 +237,7 @@ public sealed class EmailSignInViewModel : ObservableObject
     /// <summary>"Cancel" while the verb waits — the child is stopped —, "Close" once it ended: the panel leaves the row.</summary>
     public RelayCommand CancelCommand { get; }
 
-    /// <summary>"Start again" once the code expired: a new sign-in, with a new code.</summary>
+    /// <summary>"Start again" once the code expired, or the verb failed while one showed: a new sign-in, with a new code.</summary>
     public RelayCommand RestartCommand { get; }
 
     /// <summary>
@@ -329,6 +350,7 @@ public sealed class EmailSignInViewModel : ObservableObject
         }
 
         _failure = ended.Failure;
+        _failedOnDeviceCode = IsDeviceCode;
         Show(EmailSignInPhase.Failed, keepFailure: true);
         return false;
     }
@@ -338,8 +360,23 @@ public sealed class EmailSignInViewModel : ObservableObject
         if (!IsAuthorizationUrl || string.IsNullOrWhiteSpace(_pastedRedirect))
             return;
 
-        _input?.PasteRedirect(_pastedRedirect);
+        // Clearing the field says the verb took the address: only what it was handed leaves it.
+        if (_input?.PasteRedirect(_pastedRedirect) != true)
+        {
+            SetRedirectNotSent(true);
+            return;
+        }
+
         PastedRedirect = "";
+    }
+
+    private void SetRedirectNotSent(bool value)
+    {
+        if (_redirectNotSent == value)
+            return;
+
+        _redirectNotSent = value;
+        OnPropertyChanged(nameof(RedirectNotSent));
     }
 
     private void Open()
@@ -379,16 +416,20 @@ public sealed class EmailSignInViewModel : ObservableObject
             _userCode = null;
             _deadline = null;
             _pastedRedirect = "";
+            _redirectNotSent = false;
         }
 
         if (!keepFailure)
+        {
             _failure = null;
+            _failedOnDeviceCode = false;
+        }
 
         OnPropertiesChanged(
             nameof(Phase), nameof(IsStarting), nameof(IsDeviceCode), nameof(IsAuthorizationUrl), nameof(IsCompleted),
-            nameof(IsFailed), nameof(IsExpired), nameof(IsWaiting), nameof(Address), nameof(HasAddress), nameof(CanOpen),
+            nameof(IsFailed), nameof(IsExpired), nameof(CanRestart), nameof(IsWaiting), nameof(Address), nameof(HasAddress), nameof(CanOpen),
             nameof(UserCode), nameof(DeviceCodeLine), nameof(HasExpiry), nameof(ExpiresInText), nameof(PastedRedirect),
-            nameof(FailureDetail));
+            nameof(RedirectNotSent), nameof(FailureDetail));
         SubmitRedirectCommand.RaiseCanExecuteChanged();
         CopyLinkCommand.RaiseCanExecuteChanged();
         OpenCommand.RaiseCanExecuteChanged();

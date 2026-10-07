@@ -6,6 +6,7 @@ using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Tests.Shared.Timing;
@@ -37,6 +38,8 @@ public sealed class EmailSignInViewModelTests
 
     private const string NoRefreshToken = "The provider issued no refresh token, so the sign-in would expire within the hour.";
 
+    private const string CodeExpired = "The sign-in code expired before the sign-in completed; run the login again.";
+
     private const string Three = """
         { "Orkeon": { "Tools": { "Email": { "Accounts": {
           "hotmail": { "Provider": "Outlook", "Address": "me@hotmail.com", "Rights": "Read",
@@ -48,7 +51,7 @@ public sealed class EmailSignInViewModelTests
                     "Auth": { "PasswordEnvVar": "WORK_MAIL_PASSWORD" } } } } } } }
         """;
 
-    private static readonly string DeviceCodeLine =
+    private const string DeviceCodeLine =
         $$"""{"v":2,"seq":1,"ts":"2026-10-07T09:00:00Z","kind":"email.login.device_code","verification_uri":"{{DevicePage}}","user_code":"{{UserCode}}","expires_in":900}""";
 
     private static string AuthorizationLine(string address) =>
@@ -114,7 +117,8 @@ public sealed class EmailSignInViewModelTests
         });
     }
 
-    private static Fixture Build(ScriptedOrkeonCli cli, IStudioStrings? strings = null, bool withBrowser = true)
+    private static Fixture Build(
+        ScriptedOrkeonCli cli, IStudioStrings? strings = null, bool withBrowser = true, IUiDispatcher? dispatcher = null)
     {
         var document = AppSettingsDocument.Parse(Three);
         var fixture = new Fixture { Cli = cli };
@@ -126,6 +130,7 @@ public sealed class EmailSignInViewModelTests
             keyStore: new FakeApiKeyStore(),
             cli: new EmailCliClient(Runner(cli)),
             isDirty: () => fixture.Dirty,
+            dispatcher: dispatcher,
             signIn: new EmailSignInServices
             {
                 Browser = withBrowser ? fixture.Browser : null,
@@ -321,6 +326,71 @@ public sealed class EmailSignInViewModelTests
     }
 
     [Fact]
+    public async Task A_failure_that_lands_before_the_last_beat_of_an_expired_code_offers_to_start_again_and_starts_nothing_itself()
+    {
+        // The verb and the countdown end on the same deadline: here the verb's word comes first.
+        var fixture = Build(DeviceCli());
+        var signIn = fixture.SignIn("hotmail");
+        var raised = new List<string>();
+        signIn.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+        var woken = 0;
+        signIn.RestartCommand.CanExecuteChanged += (_, _) => woken++;
+
+        fixture.Clock.Now += TimeSpan.FromMinutes(15);
+        fixture.Cli.Say("email login", ErrorLine("LoginRequired", CodeExpired));
+        await Guarded(signIn.Ended);
+
+        Assert.Equal(EmailSignInPhase.Failed, signIn.Phase);
+        Assert.Equal(CodeExpired, signIn.FailureDetail);
+        Assert.Null(signIn.UserCode);
+        // A code was on screen: a new one is one click away, as when the countdown ends first.
+        Assert.True(signIn.CanRestart);
+        Assert.True(signIn.RestartCommand.CanExecute(null));
+        Assert.Contains(nameof(EmailSignInViewModel.CanRestart), raised);
+        Assert.True(woken > 0);
+
+        // The beat that would have said "expired" changes nothing, and nothing starts by itself.
+        fixture.Ticker.Tick();
+        Assert.Equal(EmailSignInPhase.Failed, signIn.Phase);
+        Assert.Equal(CodeExpired, signIn.FailureDetail);
+        Assert.Equal(1, fixture.Runs("login"));
+
+        signIn.RestartCommand.Execute(null);
+
+        Assert.Equal(2, fixture.Runs("login"));
+        Assert.Equal(EmailSignInPhase.DeviceCode, signIn.Phase);
+        Assert.Equal(UserCode, signIn.UserCode);
+        Assert.Null(signIn.FailureDetail);
+        Assert.Equal(1, fixture.Cli.LiveConversations);
+    }
+
+    [Fact]
+    public async Task A_failure_that_lands_after_the_last_beat_of_an_expired_code_leaves_the_panel_on_expired()
+    {
+        // The interface thread is behind the child: the verb's last word waits in the queue while the beat runs.
+        var dispatcher = new QueuedUiDispatcher();
+        var fixture = Build(DeviceCli(), dispatcher: dispatcher);
+        var signIn = fixture.SignIn("hotmail");
+        dispatcher.Drain();
+        Assert.Equal(EmailSignInPhase.DeviceCode, signIn.Phase);
+
+        fixture.Clock.Now += TimeSpan.FromMinutes(15);
+        fixture.Cli.Say("email login", ErrorLine("LoginRequired", CodeExpired));
+        await Polling.WaitUntilAsync(() => dispatcher.Pending > 0);
+        fixture.Ticker.Tick();
+        Assert.Equal(EmailSignInPhase.Expired, signIn.Phase);
+
+        dispatcher.Drain();
+        await Guarded(signIn.Ended);
+
+        Assert.Equal(EmailSignInPhase.Expired, signIn.Phase);
+        Assert.Null(signIn.FailureDetail);
+        Assert.True(signIn.CanRestart);
+        Assert.True(signIn.RestartCommand.CanExecute(null));
+        Assert.Equal(1, fixture.Runs("login"));
+    }
+
+    [Fact]
     public async Task A_device_sign_in_that_completes_says_so_reads_the_states_again_and_the_account_turns_ready()
     {
         var fixture = Build(DeviceCli());
@@ -376,6 +446,7 @@ public sealed class EmailSignInViewModelTests
         Assert.Equal([Redirect], fixture.Cli.InputLines);
         Assert.Equal(EmailSignInPhase.Completed, signIn.Phase);
         Assert.Equal("", signIn.PastedRedirect);
+        Assert.False(signIn.RedirectNotSent);
         Assert.Equal(EmailAccountReadiness.Ready, fixture.Row("perso").StateKind);
         Assert.Equal(0, fixture.Cli.LiveConversations);
     }
@@ -393,6 +464,35 @@ public sealed class EmailSignInViewModelTests
         Assert.Equal(["https://example.com/not-the-redirect"], fixture.Cli.InputLines);
         Assert.Equal(EmailSignInPhase.AuthorizationUrl, signIn.Phase);
         Assert.Equal(1, fixture.Cli.LiveConversations);
+    }
+
+    [Fact]
+    public void An_address_the_verb_no_longer_reads_stays_in_the_field_and_the_panel_says_it_was_not_sent()
+    {
+        // The interface thread is behind the child: what the verb says lands when the queue is drained.
+        var dispatcher = new QueuedUiDispatcher();
+        var fixture = Build(BrowserCli(), dispatcher: dispatcher);
+        var signIn = fixture.SignIn("perso");
+        dispatcher.Drain();
+        Assert.Equal(EmailSignInPhase.AuthorizationUrl, signIn.Phase);
+        Assert.False(signIn.RedirectNotSent);
+
+        // The child left on a refusal, and its last word has not landed yet: the field still shows.
+        fixture.Cli.Say("email login", ErrorLine("LoginRequired", NoRefreshToken));
+        var raised = new List<string>();
+        signIn.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+        signIn.PastedRedirect = Redirect;
+        signIn.SubmitRedirectCommand.Execute(null);
+
+        // Nothing read it: clearing the field would say it was taken.
+        Assert.Empty(fixture.Cli.InputLines);
+        Assert.Equal(Redirect, signIn.PastedRedirect);
+        Assert.True(signIn.RedirectNotSent);
+        Assert.Contains(nameof(EmailSignInViewModel.RedirectNotSent), raised);
+
+        // The notice is of the address that was not sent: it leaves when the field is typed in again.
+        signIn.PastedRedirect = Redirect + "&again";
+        Assert.False(signIn.RedirectNotSent);
     }
 
     // ── copying and opening the address ──
@@ -510,6 +610,7 @@ public sealed class EmailSignInViewModelTests
         fixture.Clock.Now += TimeSpan.FromHours(1);
         fixture.Ticker.Tick();
         Assert.Equal(1, fixture.Runs("login"));
+        Assert.False(signIn.CanRestart);
         Assert.False(signIn.RestartCommand.CanExecute(null));
         Assert.Equal(0, fixture.Cli.LiveConversations);
         // Nothing was stored, so nothing changed for the engine: the states are not read again.

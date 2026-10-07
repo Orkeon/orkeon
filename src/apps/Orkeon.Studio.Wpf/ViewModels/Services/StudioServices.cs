@@ -88,6 +88,14 @@ public sealed record StudioServices
     public EmailCliClient? EmailCli { get; init; }
 
     /// <summary>
+    /// The "later" of the E-mail tab's reading of its accounts' states (STUDIO-69): a save while
+    /// the tab shows asks <c>orkeon email accounts</c> once the edits pause, never once per key —
+    /// an instance of its own, for the same reason as <see cref="SuggestionDelay"/>. Immediate
+    /// when null: every save then reads at once.
+    /// </summary>
+    public IUiDelay? EmailStatesDelay { get; init; }
+
+    /// <summary>
     /// Opens the address of an e-mail sign-in in the browser, on a click (STUDIO-70): an
     /// <c>https</c> address and nothing else. Without one the address can only be copied.
     /// </summary>

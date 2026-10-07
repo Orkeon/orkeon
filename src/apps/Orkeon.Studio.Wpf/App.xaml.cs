@@ -142,6 +142,9 @@ public partial class App : System.Windows.Application
                 BalanceTicker = new WpfTicker(Dispatcher),
                 // The countdown of an e-mail device code keeps a beat of its own too (STUDIO-70).
                 SignInTicker = new WpfTicker(Dispatcher),
+                // The E-mail tab asks the engine about its accounts once the saves pause, not at
+                // every key the novice types (STUDIO-69): a timer of its own, dropped on its own.
+                EmailStatesDelay = new WpfDelay(Dispatcher),
             },
             new StudioUiPreferences
             {

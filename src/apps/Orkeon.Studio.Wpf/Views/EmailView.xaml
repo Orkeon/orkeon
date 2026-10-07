@@ -354,6 +354,11 @@
                           </TextBox.InputBindings>
                         </TextBox>
                       </DockPanel>
+                      <!-- nothing read the address (the verb left, its end not landed yet): it stays in the field -->
+                      <TextBlock FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource WarningBrush}"
+                                 Text="{Binding [Studio.Settings.MailPasteRedirectNotSent], Source={x:Static services:I18n.Instance}}"
+                                 Visibility="{Binding RedirectNotSent, Converter={StaticResource BooleanToVisibility}}"/>
                     </StackPanel>
 
                     <!-- the three ends -->
@@ -368,7 +373,7 @@
                                Foreground="{DynamicResource WarningBrush}"
                                Text="{Binding [Studio.Settings.MailDeviceCodeExpired], Source={x:Static services:I18n.Instance}}"
                                Visibility="{Binding IsExpired, Converter={StaticResource BooleanToVisibility}}"/>
-                    <!-- a refusal: the verb's sentence as printed, never tried again -->
+                    <!-- a refusal: the verb's sentence as printed, never tried again unasked ("start again" below, when a code showed) -->
                     <StackPanel Visibility="{Binding IsFailed, Converter={StaticResource BooleanToVisibility}}">
                       <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
                                  Foreground="{DynamicResource WarningBrush}"
@@ -381,7 +386,7 @@
                     <!-- one way out, whatever the phase: it stops the child while one waits -->
                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                       <Button Style="{StaticResource BtnPrimary}" Margin="0,0,8,0" Command="{Binding RestartCommand}"
-                              Visibility="{Binding IsExpired, Converter={StaticResource BooleanToVisibility}}">
+                              Visibility="{Binding CanRestart, Converter={StaticResource BooleanToVisibility}}">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="rotate-ccw" Size="12" Margin="0,0,7,0"
                                                Foreground="{DynamicResource AccentFgBrush}"/>

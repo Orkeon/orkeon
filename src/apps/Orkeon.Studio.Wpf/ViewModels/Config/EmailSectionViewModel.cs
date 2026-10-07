@@ -26,9 +26,12 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// <para>
 /// Whether an account is ready is not Studio's to compute (STUDIO-69): it depends on the
 /// environment and the token store of the <c>orkeon</c> process. <see cref="RefreshStatesAsync"/>
-/// asks <c>orkeon email accounts</c> about the file as saved — on arrival on the tab and after a
-/// save, never at a keystroke — and each row's test asks <c>orkeon email check</c>, on a click
-/// only. <see cref="StopActivity"/> stops whatever of the two still runs.
+/// asks <c>orkeon email accounts</c> about the file as saved, at once — on arrival on the tab —,
+/// and <see cref="RefreshStatesSoon"/> asks once what moved has settled: the novice's file is
+/// saved at every keystroke, and a secret kept is a value, a name and a save, so the engine is
+/// asked when the saves pause, never once per key. Each row's test asks
+/// <c>orkeon email check</c>, on a click only. <see cref="StopActivity"/> stops whatever of the
+/// two still runs, and drops the reading that waited.
 /// </para>
 /// <para>
 /// An OAuth account is signed in and out from its row (STUDIO-70): the section starts
@@ -39,8 +42,12 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 public sealed class EmailSectionViewModel : DocumentSectionViewModel
 {
     /// <summary>The provider a new account's box opens on: the preset a first account most often uses.</summary>
-    private const string NewAccountProviderDefault = EmailAccountRowViewModel.Gmail;
+    private const string NewAccountProviderDefault = EmailSection.Values.Gmail;
 
+    /// <summary>How long the saves must pause before the states of the saved file are read again.</summary>
+    internal static readonly TimeSpan StatesPause = TimeSpan.FromMilliseconds(600);
+
+    private readonly IUiDelay _statesDelay;
     private readonly IStudioStrings _strings;
     private readonly Func<string?> _settingsPath;
     private readonly IPathPicker _picker;
@@ -72,7 +79,9 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// whether each account is ready and tests its connection (STUDIO-69): a section built
     /// without one reads no state and tests nothing. <paramref name="isDirty"/> says whether the
     /// document holds edits the file does not, and <paramref name="dispatcher"/> is where an
-    /// answer of the CLI lands.
+    /// answer of the CLI lands. <paramref name="statesDelay"/> is the pause
+    /// <see cref="RefreshStatesSoon"/> waits — none when null, and it must be the section's own:
+    /// a superseded pause is dropped with <c>CancelPending</c>.
     /// </summary>
     public EmailSectionViewModel(
         Func<AppSettingsDocument> document,
@@ -84,9 +93,11 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         EmailCliClient? cli = null,
         Func<bool>? isDirty = null,
         IUiDispatcher? dispatcher = null,
-        EmailSignInServices? signIn = null)
+        EmailSignInServices? signIn = null,
+        IUiDelay? statesDelay = null)
         : base(document, onChanged)
     {
+        _statesDelay = statesDelay ?? ImmediateUiDelay.Instance;
         _signInServices = signIn ?? new EmailSignInServices();
         _cli = cli;
         _isDirty = isDirty ?? (() => false);
@@ -349,10 +360,12 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// <summary>
     /// Asks <c>orkeon email accounts</c> what the engine makes of each account of the saved file,
     /// and says it on the rows. No network is involved, and no connection is ever tested here. A
-    /// reading still in flight is stopped: only the newest answer shows.
+    /// reading still in flight is stopped, and one that waited for a pause is dropped: only the
+    /// newest answer shows.
     /// </summary>
     public async Task RefreshStatesAsync()
     {
+        _statesDelay.CancelPending();
         if (_cli is null || _settingsPath() is not { Length: > 0 } path)
             return;
 
@@ -371,14 +384,30 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     }
 
     /// <summary>
+    /// The saved file moved, or a secret was kept: the states are read again once
+    /// <see cref="StatesPause"/> passed without another call — a burst of saves is one question
+    /// to the engine, asked when it ends.
+    /// </summary>
+    public void RefreshStatesSoon()
+    {
+        if (_cli is null)
+            return;
+
+        _statesDelay.CancelPending();
+        _statesDelay.After(StatesPause, () => _ = RefreshStatesAsync());
+    }
+
+    /// <summary>
     /// Stops what the tab still has running — a reading of the states, a connection test, a
     /// sign-out, a sign-in waiting on the person: called when the tab is left and when the window
-    /// closes, so that no <c>orkeon</c> process outlives the screen that asked for it. Every
+    /// closes, so that no <c>orkeon</c> process outlives the screen that asked for it — and none
+    /// starts for it later: the reading that waited for a pause is dropped. Every
     /// token has fired when this returns; a sign-in, which would wait for ever, has its standard
     /// input closed by then too (STUDIO-70).
     /// </summary>
     public void StopActivity()
     {
+        _statesDelay.CancelPending();
         Interlocked.Increment(ref _reading);
         Stop(listing: null);
         StopSignIns();
@@ -397,14 +426,15 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
 
     /// <summary>
     /// Runs <c>orkeon email check</c> on <paramref name="account"/>, as the saved file declares
-    /// it; null when the test was stopped, or could not be asked for.
+    /// it; null when the test was stopped — with the tab's activity, or by <paramref name="stop"/>,
+    /// the row's own —, or could not be asked for.
     /// </summary>
-    internal async Task<EmailCheckOutcome?> CheckAsync(string account)
+    internal async Task<EmailCheckOutcome?> CheckAsync(string account, CancellationToken stop)
     {
         if (_cli is null || _settingsPath() is not { Length: > 0 } path)
             return null;
 
-        var outcome = await RunAsync(listing: false, token => _cli.CheckAsync(account, path, token));
+        var outcome = await RunAsync(listing: false, token => _cli.CheckAsync(account, path, token), stop);
         return outcome.Kind == EmailCheckKind.Cancelled ? null : outcome;
     }
 
@@ -488,8 +518,15 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
             signIn.Tick();
     }
 
+    /// <summary>A value was kept under <paramref name="variable"/>: every line that stores under it says so.</summary>
+    internal void SecretStoredUnder(string variable)
+    {
+        foreach (var row in Accounts)
+            row.SecretKeptUnder(variable);
+    }
+
     /// <summary>A secret was kept: the saved file did not move, yet what the engine finds for the account did.</summary>
-    internal void SecretKept() => _ = RefreshStatesAsync();
+    internal void SecretKept() => RefreshStatesSoon();
 
     /// <summary>
     /// Why nothing could be read, for the row: the sentence of the home screen when the CLI is
@@ -502,10 +539,14 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// <summary>The sentence the create-a-team screen — the one Studio opens on — says of a missing CLI.</summary>
     internal string EngineMissingText => _strings[StudioStringKeys.WizardFailureEngineMissing];
 
-    /// <summary>Runs one CLI call under a token <see cref="Stop"/> can fire, and forgets the token when the call ends.</summary>
-    private async Task<T> RunAsync<T>(bool listing, Func<CancellationToken, Task<T>> call)
+    /// <summary>
+    /// Runs one CLI call under a token <see cref="Stop"/> can fire — and <paramref name="stop"/>
+    /// with it, when the caller has a reason of its own to stop —, and forgets the token when the
+    /// call ends.
+    /// </summary>
+    private async Task<T> RunAsync<T>(bool listing, Func<CancellationToken, Task<T>> call, CancellationToken stop = default)
     {
-        using var cancellation = new CancellationTokenSource();
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(stop);
         var entry = new Running(cancellation, listing);
         lock (_activity)
             _calls.Add(entry);
@@ -619,6 +660,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     {
         var index = Accounts.IndexOf(row);
         row.SignIn?.Abandon();
+        row.ForgetTest();
         Section.RemoveAccount(row.Name);
         Prune();
         Accounts.Remove(row);
@@ -789,16 +831,16 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// <summary>A provider as the list names it: the preset, with what choosing it means.</summary>
     private string ProviderLabel(string provider) => provider switch
     {
-        EmailAccountRowViewModel.Gmail => _strings[StudioStringKeys.MailProviderGmail],
-        EmailAccountRowViewModel.Outlook => _strings[StudioStringKeys.MailProviderOutlook],
-        EmailAccountRowViewModel.Custom => _strings[StudioStringKeys.MailProviderCustom],
+        EmailSection.Values.Gmail => _strings[StudioStringKeys.MailProviderGmail],
+        EmailSection.Values.Outlook => _strings[StudioStringKeys.MailProviderOutlook],
+        EmailSection.Values.Custom => _strings[StudioStringKeys.MailProviderCustom],
         _ => provider,
     };
 
     private string AuthMethodLabel(string method) => method switch
     {
-        EmailAccountRowViewModel.PasswordMethod => _strings[StudioStringKeys.MailAuthPassword],
-        EmailAccountRowViewModel.OAuth2Method => _strings[StudioStringKeys.MailAuthOAuth2],
+        EmailSection.Values.Password => _strings[StudioStringKeys.MailAuthPassword],
+        EmailSection.Values.OAuth2 => _strings[StudioStringKeys.MailAuthOAuth2],
         _ => method,
     };
 

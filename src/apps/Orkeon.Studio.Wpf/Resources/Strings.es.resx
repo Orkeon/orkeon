@@ -2151,6 +2151,9 @@
   <data name="Studio.Settings.MailPasteRedirectSend" xml:space="preserve">
     <value>Usar esta dirección</value>
   </data>
+  <data name="Studio.Settings.MailPasteRedirectNotSent" xml:space="preserve">
+    <value>Esta dirección no se envió: el inicio de sesión ya no lee. Inicie sesión de nuevo.</value>
+  </data>
   <data name="Studio.Settings.MailCopyLink" xml:space="preserve">
     <value>Copiar el enlace</value>
   </data>

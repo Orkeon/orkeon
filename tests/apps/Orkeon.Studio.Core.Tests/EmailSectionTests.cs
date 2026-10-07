@@ -276,6 +276,88 @@ public sealed class EmailSectionTests
         Assert.Null(document.GetNode("Orkeon:Tools:Email:Accounts:hotmail:Send"));
     }
 
+    /// <summary>
+    /// What is no object where the engine expects one came back as no field at all when the
+    /// account was read: written back with none, it is that same value. Removing it would turn
+    /// an account the run sets aside into one it uses with the preset, at an edit of another field.
+    /// </summary>
+    [Theory]
+    [InlineData("Incoming", "\"imap.example.org\"")]
+    [InlineData("Outgoing", "465")]
+    [InlineData("Auth", "\"oauth\"")]
+    [InlineData("Auth", "null")]
+    [InlineData("Send", "[ \"a@x.org\" ]")]
+    public void A_value_that_is_no_object_under_Incoming_Outgoing_Auth_or_Send_stays_as_written_when_nothing_is_set_under_it(string key, string value)
+    {
+        var json = $$"""{ "Orkeon": { "Tools": { "Email": { "Accounts": { "a": { "Address": "a@x.org", "{{key}}": {{value}} } } } } } }""";
+        var document = AppSettingsDocument.Parse(json);
+        var before = document.ToJson();
+
+        document.Email.SetAccount(document.Email.GetAccount("a")!);
+
+        Assert.Equal(before, document.ToJson());
+
+        document.Email.SetAccount(document.Email.GetAccount("a")! with { DisplayName = "A" });
+
+        var expected = AppSettingsDocument.Parse(json);
+        expected.SetString("Orkeon:Tools:Email:Accounts:a:DisplayName", "A");
+        Assert.Equal(expected.ToJson(), AppSettingsDocument.Parse(document.ToJson()).ToJson());
+    }
+
+    [Fact]
+    public void A_field_set_under_Auth_replaces_the_value_that_was_no_object()
+    {
+        var document = AppSettingsDocument.Parse(
+            """{ "Orkeon": { "Tools": { "Email": { "Accounts": { "a": { "Address": "a@x.org", "Auth": "oauth" } } } } } }""");
+
+        document.Email.SetAccount(document.Email.GetAccount("a")! with { AuthMethod = "OAuth2", ClientId = "client-1" });
+
+        Assert.Equal(AppSettingsDocument.Parse("""
+            { "Orkeon": { "Tools": { "Email": { "Accounts": { "a": {
+              "Address": "a@x.org", "Auth": { "Method": "OAuth2", "ClientId": "client-1" } } } } } } }
+            """).ToJson(), document.ToJson());
+    }
+
+    /// <summary>
+    /// The list is read as its texts alone: an entry that is none, or a value that is no list,
+    /// is not in what the form holds. Writing the same list back must not drop it.
+    /// </summary>
+    [Theory]
+    [InlineData("""[ "a@x.org", 42 ]""")]
+    [InlineData("""[ "a@x.org", null, { "x": 1 }, "*@y.org" ]""")]
+    [InlineData("""[ ]""")]
+    [InlineData("\"a@x.org\"")]
+    public void A_recipient_list_the_user_did_not_change_stays_as_the_file_wrote_it(string written)
+    {
+        var json = $$"""{ "Orkeon": { "Tools": { "Email": { "Accounts": { "a": { "Address": "a@x.org", "Send": { "AllowedRecipients": {{written}} } } } } } } }""";
+        var document = AppSettingsDocument.Parse(json);
+        var before = document.ToJson();
+
+        document.Email.SetAccount(document.Email.GetAccount("a")!);
+
+        Assert.Equal(before, document.ToJson());
+
+        document.Email.SetAccount(document.Email.GetAccount("a")! with { DisplayName = "A" });
+
+        var expected = AppSettingsDocument.Parse(json);
+        expected.SetString("Orkeon:Tools:Email:Accounts:a:DisplayName", "A");
+        Assert.Equal(expected.ToJson(), AppSettingsDocument.Parse(document.ToJson()).ToJson());
+    }
+
+    [Fact]
+    public void A_recipient_list_the_user_changed_replaces_the_one_the_file_wrote()
+    {
+        var document = AppSettingsDocument.Parse(
+            """{ "Orkeon": { "Tools": { "Email": { "Accounts": { "a": { "Address": "a@x.org", "Send": { "AllowedRecipients": [ "a@x.org", 42 ] } } } } } } }""");
+        var read = document.Email.GetAccount("a")!;
+
+        document.Email.SetAccount(read with { AllowedRecipients = [.. read.AllowedRecipients, "*@y.org"] });
+
+        Assert.Equal(
+            """["a@x.org","42","*@y.org"]""",
+            document.GetNode("Orkeon:Tools:Email:Accounts:a:Send:AllowedRecipients")!.ToJsonString());
+    }
+
     [Fact]
     public void Rights_are_written_in_the_engine_order_as_one_comma_separated_text()
     {
@@ -384,6 +466,46 @@ public sealed class EmailSectionTests
         var read = Assert.IsType<EmailAccountDefinition>(document.Email.GetAccount("new"));
         Assert.Equal(new EmailAccountDefinition { Name = "new" } with { AllowedRecipients = [] }, read with { AllowedRecipients = [] });
         Assert.Empty(read.AllowedRecipients);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("\"x\"")]
+    [InlineData("42")]
+    [InlineData("[ \"x\" ]")]
+    public void An_account_whose_value_is_no_object_reads_as_one_with_no_field_and_stays_as_written_until_a_field_is_set(string value)
+    {
+        var json = $$"""{ "Orkeon": { "Tools": { "Email": { "Accounts": { "work": {{value}}, "perso": { "Address": "me@gmail.com" } } } } } }""";
+        var document = AppSettingsDocument.Parse(json);
+        var before = document.ToJson();
+
+        // The engine lists it, and reads an account that declares nothing.
+        Assert.Equal(["work", "perso"], document.Email.AccountNames);
+        var read = Assert.IsType<EmailAccountDefinition>(document.Email.GetAccount("work"));
+        Assert.Equal(new EmailAccountDefinition { Name = "work" } with { AllowedRecipients = [] }, read with { AllowedRecipients = [] });
+        Assert.Empty(read.AllowedRecipients);
+
+        // Written back as read, it is the same value, unchanged.
+        document.Email.SetAccount(read);
+        Assert.Equal(before, document.ToJson());
+
+        // A field set is the user's word: the account's object replaces what stood there, in place.
+        document.Email.SetAccount(read with { Address = "me@example.com" });
+        Assert.Equal(["work", "perso"], document.Email.AccountNames);
+        Assert.Equal("me@example.com", document.GetString($"{EmailSection.AccountsPath}:work:Address"));
+    }
+
+    [Fact]
+    public void An_account_whose_value_is_no_object_is_removed_like_any_other()
+    {
+        var document = AppSettingsDocument.Parse(
+            """{ "Orkeon": { "Tools": { "Email": { "DefaultAccount": "work", "Accounts": { "work": null } } } } }""");
+
+        document.Email.RemoveAccount("work");
+
+        Assert.Empty(document.Email.AccountNames);
+        Assert.Null(document.Email.DefaultAccount);
+        Assert.Null(document.GetNode(EmailSection.AccountsPath));
     }
 
     [Fact]

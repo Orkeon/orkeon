@@ -38,19 +38,19 @@ public sealed class EmailSection
     internal EmailSection(AppSettingsDocument document) => _document = document;
 
     /// <summary>The <c>Provider</c> values the engine knows, in the spelling it binds.</summary>
-    public static IReadOnlyList<string> Providers { get; } = ["Custom", "Gmail", "Outlook"];
+    public static IReadOnlyList<string> Providers { get; } = [Values.Custom, Values.Gmail, Values.Outlook];
 
     /// <summary>The <c>Incoming:Protocol</c> values the engine knows.</summary>
-    public static IReadOnlyList<string> IncomingProtocols { get; } = ["Imap", "Pop3", "Graph"];
+    public static IReadOnlyList<string> IncomingProtocols { get; } = [Values.Imap, Values.Pop3, Values.Graph];
 
     /// <summary>The <c>Outgoing:Protocol</c> values the engine knows.</summary>
-    public static IReadOnlyList<string> OutgoingProtocols { get; } = ["Smtp", "Graph"];
+    public static IReadOnlyList<string> OutgoingProtocols { get; } = [Values.Smtp, Values.Graph];
 
     /// <summary>The <c>Security</c> values the engine knows, for the incoming and the outgoing side alike.</summary>
-    public static IReadOnlyList<string> Securities { get; } = ["SslOnConnect", "StartTls", "None"];
+    public static IReadOnlyList<string> Securities { get; } = [Values.SslOnConnect, Values.StartTls, Values.NoSecurity];
 
     /// <summary>The <c>Auth:Method</c> values the engine knows.</summary>
-    public static IReadOnlyList<string> AuthMethods { get; } = ["Password", "OAuth2"];
+    public static IReadOnlyList<string> AuthMethods { get; } = [Values.Password, Values.OAuth2];
 
     /// <summary>The names of the rights, in the order the engine lists them and Studio writes them.</summary>
     public static IReadOnlyList<string> Rights { get; } = ["Read", "Organize", "Draft", "Send", "Delete", "Purge"];
@@ -101,21 +101,19 @@ public sealed class EmailSection
 
     /// <summary>
     /// The account under <paramref name="name"/> (the exact spelling first, then without regard
-    /// to case), or null when no such object exists. <see cref="EmailAccountDefinition.Name"/>
-    /// carries the spelling the file holds.
+    /// to case), or null when the file holds no such name. <see cref="EmailAccountDefinition.Name"/>
+    /// carries the spelling the file holds. A value that is no object (<c>"work": null</c>) is an
+    /// account all the same, listed by <see cref="AccountNames"/> and by the engine: it reads as
+    /// one with no field.
     /// </summary>
     public EmailAccountDefinition? GetAccount(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        if (AccountsNode is not { } accounts
-            || FindKey(accounts, name) is not { } key
-            || accounts[key] is not JsonObject account)
-        {
+        if (AccountsNode is not { } accounts || FindKey(accounts, name) is not { } key)
             return null;
-        }
 
-        return ReadAccount(key, account);
+        return ReadAccount(key, accounts[key] as JsonObject);
     }
 
     /// <summary>
@@ -168,8 +166,12 @@ public sealed class EmailSection
     /// their keys. A value the file already holds in another spelling that reads the same
     /// (<c>"read,SEND"</c>, <c>"993"</c>) is left as it is, so saving an account the user did not
     /// change changes nothing — a number or a switch the engine cannot read included, which reads
-    /// as null and which a null leaves where it was. The account object itself stays, however
-    /// empty, so that it is still listed.
+    /// as null and which a null leaves where it was, and so do a value that is no object under
+    /// <c>Incoming</c>, <c>Outgoing</c>, <c>Auth</c> or <c>Send</c> while nothing is set under it,
+    /// and a recipient list written back as it was read. The account object itself stays, however
+    /// empty, so that it is still listed; a value that is no object (<c>"work": null</c>) stays
+    /// as written while the account brings no field, and gives way to the account's object as
+    /// soon as it brings one.
     /// </summary>
     /// <exception cref="ArgumentException">
     /// The name is blank, or differs from an existing account's only by case: the engine could not
@@ -186,11 +188,9 @@ public sealed class EmailSection
             throw new ArgumentException($"'{account.Name}' is the account '{key}' with another case: the engine reads them as one.", nameof(account));
 
         key ??= account.Name;
-        if (accounts[key] is not JsonObject target)
-        {
-            target = [];
-            accounts[key] = target;
-        }
+        var declared = accounts.ContainsKey(key);
+        var existing = accounts[key] as JsonObject;
+        var target = existing ?? [];
 
         WriteText(target, Keys.Provider, account.Provider);
         WriteText(target, Keys.Address, account.Address);
@@ -227,6 +227,11 @@ public sealed class EmailSection
         });
         WriteInt(target, Keys.TimeoutSeconds, account.TimeoutSeconds);
         WriteBoolean(target, Keys.SaveSentCopy, account.SaveSentCopy);
+
+        // What is no object under the name read as an account with no field: written back with
+        // none, it is that same value.
+        if (existing is null && (target.Count > 0 || !declared))
+            accounts[key] = target;
     }
 
     /// <summary>
@@ -441,9 +446,17 @@ public sealed class EmailSection
         Write(owner, Keys.Rights, JsonValue.Create(string.Join(", ", names)));
     }
 
+    /// <summary>
+    /// Writes the list, unless it is the one the file reads as: what is no text in the array
+    /// (<c>["a@x.org", 42]</c>), and what is no array at all, never came into the list that was
+    /// read, so the same list written back leaves the node as the file spelt it.
+    /// </summary>
     private static void WriteRecipients(JsonObject owner, IEnumerable<string> recipients)
     {
         var kept = recipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient)).ToList();
+        if (kept.SequenceEqual(ReadStrings(Node(owner, Keys.AllowedRecipients)), StringComparer.Ordinal))
+            return;
+
         if (kept.Count == 0)
         {
             Remove(owner, Keys.AllowedRecipients);
@@ -457,7 +470,12 @@ public sealed class EmailSection
         Write(owner, Keys.AllowedRecipients, array);
     }
 
-    /// <summary>Fills the object under <paramref name="key"/>, creating it when needed and removing it when it ends up empty.</summary>
+    /// <summary>
+    /// Fills the object under <paramref name="key"/>, creating it when needed and removing it when
+    /// it ends up empty. What is no object under the key (<c>"Auth": "oauth"</c>) read as no field:
+    /// it stays as written while nothing is set under it, and gives way to the object as soon as
+    /// something is.
+    /// </summary>
     private static void WriteObject(JsonObject owner, string key, Action<JsonObject> fill)
     {
         var existing = Node(owner, key) as JsonObject;
@@ -465,10 +483,62 @@ public sealed class EmailSection
 
         fill(child);
 
-        if (child.Count == 0)
+        if (existing is null)
+        {
+            if (child.Count > 0)
+                Write(owner, key, child);
+        }
+        else if (child.Count == 0)
+        {
             Remove(owner, key);
-        else if (existing is null)
-            Write(owner, key, child);
+        }
+    }
+
+    /// <summary>
+    /// The enumeration values the engine binds, one constant each, for the code that branches on
+    /// one: the rules, the effective values and the form. The lists above are made of them and of
+    /// nothing else, and a test holds each list to the engine's enumeration.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1034",
+        Justification = "The values read beside the keys they are written under (EmailSection.Values.Gmail); " +
+                        "a top-level class would detach them from the lists a test holds to the engine.")]
+    public static class Values
+    {
+        /// <summary>Provider: no preset — the hosts are given.</summary>
+        public const string Custom = "Custom";
+
+        /// <summary>Provider: the Gmail preset.</summary>
+        public const string Gmail = "Gmail";
+
+        /// <summary>Provider: the Outlook.com / Microsoft 365 preset.</summary>
+        public const string Outlook = "Outlook";
+
+        /// <summary>Incoming protocol: IMAP.</summary>
+        public const string Imap = "Imap";
+
+        /// <summary>Incoming protocol: POP3.</summary>
+        public const string Pop3 = "Pop3";
+
+        /// <summary>Incoming and outgoing protocol: Microsoft Graph.</summary>
+        public const string Graph = "Graph";
+
+        /// <summary>Outgoing protocol: SMTP.</summary>
+        public const string Smtp = "Smtp";
+
+        /// <summary>Security: TLS from the first byte.</summary>
+        public const string SslOnConnect = "SslOnConnect";
+
+        /// <summary>Security: a clear connection upgraded to TLS.</summary>
+        public const string StartTls = "StartTls";
+
+        /// <summary>Security: none — the engine allows it towards the loopback only.</summary>
+        public const string NoSecurity = "None";
+
+        /// <summary>Auth method: a password read from a variable.</summary>
+        public const string Password = "Password";
+
+        /// <summary>Auth method: OAuth2, signed in with <c>orkeon email login</c>.</summary>
+        public const string OAuth2 = "OAuth2";
     }
 
     /// <summary>

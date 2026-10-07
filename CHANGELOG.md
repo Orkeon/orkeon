@@ -105,18 +105,22 @@ French), in both modes, where the accounts are declared, renamed and removed in 
 - **Each account says whether it is ready, and a button tests the connection** (STUDIO-69). The
   state — « Ready », « Not ready » with the engine's sentence, « Set aside », or « Unknown » with
   the reason when the CLI is missing or failed — is what `orkeon email accounts --json` answers
-  for the file as saved, read on arrival on the tab, after each save and when a password is
-  stored, never at a keystroke; unsaved edits mark it « As of the saved file » and disable the
-  test. « Test the connection » runs `orkeon email check`: reachable with the number of
-  folders, to fix on this machine (exit code 1) or the server or the network (exit code 2),
-  over the sentence the command prints, shown as is. Both always pass `--settings`, through the
+  for the file as saved, read at once on arrival on the tab, then once the saves pause — one
+  reading for a burst of novice keystrokes, one for a password stored, never one process per
+  key; unsaved edits mark it « As of the saved file » and disable the test. « Test the
+  connection » runs `orkeon email check`: reachable with the number of folders, to fix on this
+  machine (exit code 1) or the server or the network (exit code 2),
+  over the sentence the command prints, shown as is; an edit or a rename of the account stops
+  its test and clears the verdict. Both always pass `--settings`, through the
   new `EmailCliClient` of Studio.Core; the test never runs on its own, and leaving the tab, the
   settings screen or Studio stops it.
 - **An OAuth account signs in and out from its row** (STUDIO-70). « Sign in » runs
   `orkeon email login --events jsonl` (above) on the file as saved — Studio runs no OAuth flow
   and holds no token — and a panel under the account says what to do while the command waits:
-  Microsoft's page and the code, in large, counted down, then « The code expired — start again »;
-  Google's address, and a field for the one the browser ended on. Studio opens nothing by
+  Microsoft's page and the code, in large, counted down, then « The code expired — start again »
+  (offered too when the command's own refusal of the expired code lands first); Google's
+  address, and a field for the one the browser ended on, which keeps an address the command no
+  longer reads and says it was not sent. Studio opens nothing by
   itself: the address shows in clear, with « Copy the link » and « Open in the browser », a
   click that only ever opens an absolute `https` address. A sign-in that ends well reads the
   states again and the account turns « Ready »; a refusal of the command — no refresh token, a

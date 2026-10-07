@@ -68,12 +68,12 @@ public sealed record EmailAccountEffective
     {
         ArgumentNullException.ThrowIfNull(definition);
 
-        var provider = EmailAccountRules.Member(EmailSection.Providers, definition.Provider) ?? EmailAccountRules.Custom;
-        var outlook = provider == EmailAccountRules.Outlook;
+        var provider = EmailAccountRules.Member(EmailSection.Providers, definition.Provider) ?? EmailSection.Values.Custom;
+        var outlook = provider == EmailSection.Values.Outlook;
         var incoming = EmailAccountRules.Member(EmailSection.IncomingProtocols, definition.IncomingProtocol)
-            ?? (outlook ? EmailAccountRules.Graph : EmailAccountRules.Imap);
+            ?? (outlook ? EmailSection.Values.Graph : EmailSection.Values.Imap);
         var method = EmailAccountRules.Member(EmailSection.AuthMethods, definition.AuthMethod)
-            ?? (!string.IsNullOrWhiteSpace(definition.ClientId) || outlook ? EmailAccountRules.OAuth2 : EmailAccountRules.Password);
+            ?? (!string.IsNullOrWhiteSpace(definition.ClientId) || outlook ? EmailSection.Values.OAuth2 : EmailSection.Values.Password);
         var username = string.IsNullOrWhiteSpace(definition.Username)
             ? EmailAccountRules.MailboxOf(definition.Address)
             : definition.Username.Trim();
@@ -81,13 +81,13 @@ public sealed record EmailAccountEffective
             : string.IsNullOrWhiteSpace(definition.Tenant) ? EmailAccountRules.DefaultTenant
             : definition.Tenant.Trim();
 
-        if (incoming == EmailAccountRules.Graph)
+        if (incoming == EmailSection.Values.Graph)
         {
             // Read through Graph, sent through Graph: no server, port or security on either side.
             return new EmailAccountEffective
             {
                 IncomingProtocol = incoming,
-                OutgoingProtocol = EmailAccountRules.Graph,
+                OutgoingProtocol = EmailSection.Values.Graph,
                 AuthMethod = method,
                 Username = username,
                 Tenant = tenant,
@@ -96,11 +96,11 @@ public sealed record EmailAccountEffective
             };
         }
 
-        var incomingSecurity = EmailAccountRules.Member(EmailSection.Securities, definition.IncomingSecurity) ?? EmailAccountRules.SslOnConnect;
-        var smtp = EmailAccountRules.Member(EmailSection.OutgoingProtocols, definition.OutgoingProtocol) != EmailAccountRules.Graph;
+        var incomingSecurity = EmailAccountRules.Member(EmailSection.Securities, definition.IncomingSecurity) ?? EmailSection.Values.SslOnConnect;
+        var smtp = EmailAccountRules.Member(EmailSection.OutgoingProtocols, definition.OutgoingProtocol) != EmailSection.Values.Graph;
         var outgoingHost = smtp ? Host(definition.OutgoingHost, EmailAccountRules.PresetSmtpHost(provider)) : null;
         var outgoingSecurity = EmailAccountRules.Member(EmailSection.Securities, definition.OutgoingSecurity)
-            ?? (outlook ? EmailAccountRules.StartTls : EmailAccountRules.SslOnConnect);
+            ?? (outlook ? EmailSection.Values.StartTls : EmailSection.Values.SslOnConnect);
         var canSend = outgoingHost is not null;
 
         return new EmailAccountEffective
@@ -109,7 +109,7 @@ public sealed record EmailAccountEffective
             IncomingHost = Host(definition.IncomingHost, EmailAccountRules.PresetIncomingHost(provider, incoming)),
             IncomingPort = definition.IncomingPort ?? EmailAccountRules.DefaultIncomingPort(incoming, incomingSecurity),
             IncomingSecurity = incomingSecurity,
-            OutgoingProtocol = smtp ? EmailAccountRules.Smtp : EmailAccountRules.Graph,
+            OutgoingProtocol = smtp ? EmailSection.Values.Smtp : EmailSection.Values.Graph,
             OutgoingHost = outgoingHost,
             OutgoingPort = smtp ? definition.OutgoingPort ?? EmailAccountRules.DefaultSmtpPort(outgoingSecurity) : null,
             OutgoingSecurity = smtp ? outgoingSecurity : null,
@@ -118,7 +118,7 @@ public sealed record EmailAccountEffective
             Tenant = tenant,
             // A custom SMTP server usually files nothing; a POP3 mailbox has no Sent folder to file into.
             SaveSentCopy = definition.SaveSentCopy
-                ?? (provider == EmailAccountRules.Custom && canSend && incoming != EmailAccountRules.Pop3),
+                ?? (provider == EmailSection.Values.Custom && canSend && incoming != EmailSection.Values.Pop3),
             CanSend = canSend,
         };
     }

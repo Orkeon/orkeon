@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using Orkeon.Studio.Core.Configuration;
@@ -37,13 +36,6 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// </summary>
 public sealed class EmailAccountRowViewModel : ObservableObject
 {
-    // The engine's spellings the form branches on, as EmailSection lists them.
-    internal const string Custom = "Custom";
-    internal const string Gmail = "Gmail";
-    internal const string Outlook = "Outlook";
-    internal const string PasswordMethod = "Password";
-    internal const string OAuth2Method = "OAuth2";
-
     private readonly EmailSectionViewModel _owner;
     private readonly IStudioStrings _strings;
     private EmailAccountDefinition _loaded;
@@ -83,10 +75,13 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     private string _renameText = "";
     private SecretRowViewModel? _password;
     private SecretRowViewModel? _clientSecret;
+    private bool _passwordKept;
+    private bool _clientSecretKept;
     private EmailAccountState? _state;
     private EmailCliFailure? _stateFailure;
     private EmailCheckOutcome? _lastCheck;
     private bool _isTesting;
+    private CancellationTokenSource? _test;
     private EmailSignInViewModel? _signIn;
     private bool _isConfirmingSignOut;
     private string? _signOutFailure;
@@ -474,7 +469,11 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         private set => SetProperty(ref _isTesting, value);
     }
 
-    /// <summary>The verdict of the last connection test; null before any, while one runs, and after one that was stopped.</summary>
+    /// <summary>
+    /// The verdict of the last connection test; null before any, while one runs, after one that
+    /// was stopped, and as soon as the account is edited or renamed — the verdict was of the
+    /// account as it stood.
+    /// </summary>
     public EmailCheckOutcome? LastCheck
     {
         get => _lastCheck;
@@ -523,7 +522,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// client id, or because it is an Outlook account: the only accounts a sign-in and a sign-out
     /// mean something for.
     /// </summary>
-    public bool ShowSignIn => _effective.AuthMethod == OAuth2Method;
+    public bool ShowSignIn => _effective.AuthMethod == EmailSection.Values.OAuth2;
 
     /// <summary>
     /// "Sign in": runs <c>orkeon email login</c> on the account as the saved file declares it,
@@ -599,10 +598,10 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// Whether the two hosts show: always for the expert, and for everyone when no preset names
     /// them — a Custom account has no server until its hosts are given.
     /// </summary>
-    public bool ShowHosts => _owner.IsExpert || Provider is not (Gmail or Outlook);
+    public bool ShowHosts => _owner.IsExpert || Provider is not (EmailSection.Values.Gmail or EmailSection.Values.Outlook);
 
     /// <summary>Whether the OAuth client id shows: for the expert, and for everyone once the account signs in with OAuth2.</summary>
-    public bool ShowClientId => _owner.IsExpert || _effective.AuthMethod == OAuth2Method;
+    public bool ShowClientId => _owner.IsExpert || _effective.AuthMethod == EmailSection.Values.OAuth2;
 
     /// <summary>
     /// Whether the sending rules show: as soon as the account may send, and always for the
@@ -626,7 +625,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     public bool ShowPassword => _password is not null;
 
     /// <summary>Whether the run will find the password: the file names a variable, and it holds a value.</summary>
-    public bool PasswordStored => IsStored(_password, _passwordEnvVar);
+    public bool PasswordStored => IsStored(_passwordKept, _passwordEnvVar);
 
     /// <summary>"Stored on this machine, outside any file" / "Not stored yet", localized — never the value.</summary>
     public string PasswordStatus => StoredText(PasswordStored);
@@ -644,7 +643,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     public bool ShowClientSecret => _clientSecret is not null;
 
     /// <summary>Whether the run will find the client secret.</summary>
-    public bool ClientSecretStored => IsStored(_clientSecret, _clientSecretEnvVar);
+    public bool ClientSecretStored => IsStored(_clientSecretKept, _clientSecretEnvVar);
 
     /// <summary>The state of the client secret, as <see cref="PasswordStatus"/>.</summary>
     public string ClientSecretStatus => StoredText(ClientSecretStored);
@@ -744,6 +743,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// <summary>The account moved under <paramref name="name"/> in the document: the row follows.</summary>
     internal void Renamed(string name)
     {
+        ForgetTest();
         _name = name;
         _loaded = _loaded with { Name = name };
         OnPropertiesChanged(nameof(Name), nameof(SignOutConfirmText));
@@ -758,20 +758,45 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// Puts each secret line on the variable it stores under: the one the file names, else the one
     /// derived from the account's name, clear of what the accounts of the file already name. Called
     /// by the owner of the list after every edit — another account naming a variable can move this
-    /// one's derived name. A line whose variable did not move is kept, with what is typed in it.
+    /// one's derived name. A line whose variable did not move is kept, with what is typed in it —
+    /// and with what the store said of its variable: the store is asked when a line is built, and
+    /// again only when a value is kept (<see cref="SecretKeptUnder"/>), never at an edit.
     /// </summary>
     internal void RefreshSecrets()
     {
         var taken = _owner.SecretVariables.ToList();
-        var password = _effective.AuthMethod == PasswordMethod;
-        var clientSecret = Provider == Gmail && _effective.AuthMethod == OAuth2Method;
+        var password = _effective.AuthMethod == EmailSection.Values.Password;
+        var clientSecret = Provider == EmailSection.Values.Gmail && _effective.AuthMethod == EmailSection.Values.OAuth2;
 
-        if (PutSecret(ref _password, password, _passwordEnvVar, EmailSecretNames.PasswordFor(_name, taken), StudioStringKeys.MailPassword))
+        if (PutSecret(ref _password, ref _passwordKept, password, _passwordEnvVar, EmailSecretNames.PasswordFor(_name, taken), StudioStringKeys.MailPassword))
             OnPropertiesChanged(nameof(Password), nameof(ShowPassword));
-        if (PutSecret(ref _clientSecret, clientSecret, _clientSecretEnvVar, EmailSecretNames.ClientSecretFor(_name, taken), StudioStringKeys.MailClientSecret))
+        if (PutSecret(ref _clientSecret, ref _clientSecretKept, clientSecret, _clientSecretEnvVar, EmailSecretNames.ClientSecretFor(_name, taken), StudioStringKeys.MailClientSecret))
             OnPropertiesChanged(nameof(ClientSecret), nameof(ShowClientSecret));
 
         RefreshSecretStates();
+    }
+
+    /// <summary>
+    /// A value was kept under <paramref name="variable"/>, by this account or by another that
+    /// names the same one: the lines that store under it ask the store again, and say it.
+    /// </summary>
+    internal void SecretKeptUnder(string variable)
+    {
+        var asked = false;
+        if (string.Equals(_password?.EnvName, variable, StringComparison.Ordinal))
+        {
+            _passwordKept = _password!.HasKey;
+            asked = true;
+        }
+
+        if (string.Equals(_clientSecret?.EnvName, variable, StringComparison.Ordinal))
+        {
+            _clientSecretKept = _clientSecret!.HasKey;
+            asked = true;
+        }
+
+        if (asked)
+            RefreshSecretStates();
     }
 
     /// <summary>
@@ -783,6 +808,26 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _state = state;
         _stateFailure = failure;
         RefreshState();
+    }
+
+    /// <summary>
+    /// The account moved — edited, renamed, removed: the test in flight is stopped, and neither
+    /// its verdict nor the one that shows says anything of the account as it now stands.
+    /// </summary>
+    internal void ForgetTest()
+    {
+        var test = _test;
+        _test = null;
+        try
+        {
+            test?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The test ended between the edit and the cancel; nothing left to stop.
+        }
+
+        LastCheck = null;
     }
 
     /// <summary>The document was edited or saved, or a sign-in moved: the test, the sign-in and the sign-out ask again whether they may run.</summary>
@@ -921,6 +966,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// <summary>Writes the account, then publishes what the edit moved: the watermarks and what each mode sees.</summary>
     private void Commit()
     {
+        ForgetTest();
         var definition = ToDefinition();
         _effective = EmailAccountEffective.Of(definition);
         _owner.Write(this);
@@ -934,9 +980,11 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// <summary>
     /// Builds, moves or drops one secret line; true when the line is another object than before.
     /// <paramref name="written"/> is the name the field holds, <paramref name="derived"/> the one
-    /// used while it is empty.
+    /// used while it is empty. <paramref name="kept"/> is whether the store holds a value under
+    /// the line's variable, asked once here: the real store reads the registry for a variable
+    /// the process does not hold, and the rows are refreshed at every edit.
     /// </summary>
-    private bool PutSecret(ref SecretRowViewModel? line, bool asked, string written, string derived, string labelKey)
+    private bool PutSecret(ref SecretRowViewModel? line, ref bool kept, bool asked, string written, string derived, string labelKey)
     {
         var variable = !asked ? null
             : written.Trim() is { Length: > 0 } named ? named
@@ -946,12 +994,13 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
         var typed = line?.KeyInput ?? "";
         if (line is not null)
-            line.PropertyChanged -= OnSecretChanged;
+            line.Stored -= OnSecretStored;
 
         line = variable is null ? null : new SecretRowViewModel(variable, _strings[labelKey], _owner.KeyStore, _strings) { KeyInput = typed };
         if (line is not null)
-            line.PropertyChanged += OnSecretChanged;
+            line.Stored += OnSecretStored;
 
+        kept = line is { HasKey: true };
         return true;
     }
 
@@ -960,19 +1009,19 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// like a name the expert typed; a name the file already holds is never written again, so
     /// neither a new password nor a renamed account moves the variable.
     /// </summary>
-    private void OnSecretChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnSecretStored(object? sender, EventArgs e)
     {
-        if (e.PropertyName != nameof(SecretRowViewModel.HasKey) || sender is not SecretRowViewModel { HasKey: true } line)
+        if (sender is not SecretRowViewModel line)
             return;
 
+        _owner.SecretStoredUnder(line.EnvName);
         if (ReferenceEquals(line, _password) && string.IsNullOrWhiteSpace(_passwordEnvVar))
             PasswordEnvVar = line.EnvName;
         else if (ReferenceEquals(line, _clientSecret) && string.IsNullOrWhiteSpace(_clientSecretEnvVar))
             ClientSecretEnvVar = line.EnvName;
-        else
-            RefreshSecretStates();
 
-        // A value under a variable the file already names saves nothing: the engine is asked again.
+        // A value under a variable the file already names saves nothing: the engine is asked again,
+        // once — with the save of a name just written, when there is one.
         _owner.SecretKept();
     }
 
@@ -982,14 +1031,22 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// </summary>
     private async Task TestAsync()
     {
+        using var test = new CancellationTokenSource();
+        _test = test;
         LastCheck = null;
         IsTesting = true;
         try
         {
-            LastCheck = await _owner.CheckAsync(_name);
+            var outcome = await _owner.CheckAsync(_name, test.Token);
+            // The account moved while the child answered: its verdict is of the account as it was.
+            if (ReferenceEquals(_test, test))
+                LastCheck = outcome;
         }
         finally
         {
+            if (ReferenceEquals(_test, test))
+                _test = null;
+
             IsTesting = false;
         }
     }
@@ -1033,8 +1090,8 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// Whether the run will find the secret: a value under a variable the file names. A value left
     /// under the derived name by an account removed since is not one the run reads.
     /// </summary>
-    private static bool IsStored(SecretRowViewModel? line, string written) =>
-        line is { HasKey: true } && !string.IsNullOrWhiteSpace(written);
+    private static bool IsStored(bool kept, string written) =>
+        kept && !string.IsNullOrWhiteSpace(written);
 
     private string StoredText(bool stored) =>
         _strings[stored ? StudioStringKeys.MailPasswordStored : StudioStringKeys.MailPasswordMissing];

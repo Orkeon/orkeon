@@ -96,6 +96,12 @@ public sealed class SecretRowViewModel : ObservableObject
     public AsyncRelayCommand StoreCommand { get; }
 
     /// <summary>
+    /// Raised once per value remembered, as soon as it is in place for the session —
+    /// <see cref="HasKey"/> is said twice, again once the value is kept for the next sessions.
+    /// </summary>
+    public event EventHandler? Stored;
+
+    /// <summary>
     /// Remembers the pasted key: in place for the session at once, kept for the next sessions
     /// off the interface thread, and a failure of that second half shown on the row.
     /// </summary>
@@ -112,6 +118,7 @@ public sealed class SecretRowViewModel : ObservableObject
         KeyInput = "";
         ShowStoreFailure(null);
         OnPropertiesChanged(nameof(HasKey), nameof(StatusText));
+        Stored?.Invoke(this, EventArgs.Empty);
 
         try
         {

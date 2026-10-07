@@ -2151,6 +2151,9 @@
   <data name="Studio.Settings.MailPasteRedirectSend" xml:space="preserve">
     <value>使用此地址</value>
   </data>
+  <data name="Studio.Settings.MailPasteRedirectNotSent" xml:space="preserve">
+    <value>此地址未发送：登录流程已不再读取。请重新登录。</value>
+  </data>
   <data name="Studio.Settings.MailCopyLink" xml:space="preserve">
     <value>复制链接</value>
   </data>

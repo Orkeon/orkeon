@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Text.Json.Nodes;
 using Orkeon.Studio.Core.Configuration;
+using static Orkeon.Studio.Core.Configuration.EmailSection.Values;
 
 namespace Orkeon.Studio.Core.Validation;
 
@@ -23,20 +24,6 @@ public static class EmailAccountRules
 {
     /// <summary>The longest account name the engine accepts.</summary>
     private const int MaxNameLength = 64;
-
-    // The spellings of EmailSection, by name: the members the rules branch on.
-    internal const string Custom = "Custom";
-    internal const string Gmail = "Gmail";
-    internal const string Outlook = "Outlook";
-    internal const string Imap = "Imap";
-    internal const string Pop3 = "Pop3";
-    internal const string Graph = "Graph";
-    internal const string Smtp = "Smtp";
-    internal const string SslOnConnect = "SslOnConnect";
-    internal const string StartTls = "StartTls";
-    internal const string NoSecurity = "None";
-    internal const string Password = "Password";
-    internal const string OAuth2 = "OAuth2";
 
     /// <summary>The tenant of an Outlook account that names none: personal Microsoft accounts.</summary>
     internal const string DefaultTenant = "consumers";

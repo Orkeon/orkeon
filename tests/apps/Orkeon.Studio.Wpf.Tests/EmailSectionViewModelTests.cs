@@ -577,6 +577,51 @@ public sealed partial class EmailSectionViewModelTests
         Assert.Null(document.GetNode("Orkeon"));
     }
 
+    [Theory]
+    [InlineData("null")]
+    [InlineData("\"x\"")]
+    public void An_account_whose_value_is_no_object_has_its_row_with_its_findings_and_is_edited_from_the_form(string value)
+    {
+        var (section, document, changes) = Build(
+            $$"""{ "Orkeon": { "Tools": { "Email": { "Accounts": { "work": {{value}}, "perso": { "Provider": "Gmail", "Address": "me@gmail.com" } } } } } }""");
+
+        // The engine lists the account and the name is taken: the form shows it, so that it can be fixed.
+        Assert.Equal(["work", "perso"], section.Accounts.Select(row => row.Name));
+        var work = section.Accounts[0];
+        Assert.Same(work, section.SelectedAccount);
+        Assert.Equal("", work.Address);
+        Assert.True(work.HasProblems);
+        Assert.Equal(0, changes());
+
+        work.Address = "me@example.com";
+
+        // An edit is the user's word: the account's object replaces what stood under the name.
+        Assert.Equal(1, changes());
+        Assert.Equal("me@example.com", document.GetString($"{Accounts}:work:Address"));
+        Assert.Equal(["work", "perso"], document.Email.AccountNames);
+    }
+
+    [Fact]
+    public void An_account_whose_value_is_no_object_is_removed_from_its_row_and_its_name_is_free_again()
+    {
+        var (section, document, _) = Build(
+            """{ "Orkeon": { "Tools": { "Email": { "Accounts": { "work": null, "perso": { "Provider": "Gmail", "Address": "me@gmail.com" } } } } } }""");
+        section.BeginAddCommand.Execute(null);
+        section.NewAccountName = "work";
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.MailNameTaken], section.AddRefusal);
+        section.CancelAddCommand.Execute(null);
+
+        var work = Assert.Single(section.Accounts, row => row.Name == "work");
+        section.RemoveAccountCommand.Execute(work);
+        work.ConfirmRemoveCommand.Execute(null);
+
+        Assert.Equal(["perso"], section.Accounts.Select(row => row.Name));
+        Assert.Equal(["perso"], document.Email.AccountNames);
+        section.BeginAddCommand.Execute(null);
+        section.NewAccountName = "work";
+        Assert.Null(section.AddRefusal);
+    }
+
     [Fact]
     public void Removing_the_last_account_leaves_what_the_file_holds_beside_the_section()
     {
@@ -955,6 +1000,79 @@ public sealed partial class EmailSectionViewModelTests
         Assert.Equal("EMAIL_HOME_PASSWORD", row.Password.EnvName);
         Assert.Equal(["EMAIL_HOME_PASSWORD"], keys.Saved.Keys);
         Assert.Equal(Stored, row.PasswordStatus);
+    }
+
+    [Fact]
+    public async Task Whether_a_secret_is_stored_is_read_once_per_variable_and_again_only_when_the_name_moves_or_a_value_is_kept()
+    {
+        var keys = new FakeApiKeyStore();
+        keys.Stage("GMAIL_APP_PASSWORD", "kept");
+        var (section, _, _) = Build(Two, keys: keys);
+        var perso = Row(section, "perso");
+        var work = Row(section, "work");
+        // What the view does: it reads what a row says of its secrets each time the row says it moved.
+        foreach (var row in section.Accounts)
+            row.PropertyChanged += (_, _) => ReadSecretStates(row);
+        ReadSecretStates(perso);
+        ReadSecretStates(work);
+        Assert.True(perso.PasswordStored);
+        Assert.False(work.PasswordStored);
+
+        // The store is asked once per line, however often the row is read.
+        Assert.Equal(["GMAIL_APP_PASSWORD", "WORK_MAIL_PASSWORD"], keys.Peeks);
+
+        // Typing in an account asks nothing, of that account or of its neighbours.
+        foreach (var typed in new[] { "M", "Me", "Me at home" })
+            perso.DisplayName = typed;
+        work.IncomingHost = "imap.example.org";
+        Assert.Equal(2, keys.Peeks.Count);
+
+        // The name moved: the line is another variable's, read once.
+        work.PasswordEnvVar = "OFFICE_MAIL_PASSWORD";
+        Assert.Equal(["GMAIL_APP_PASSWORD", "WORK_MAIL_PASSWORD", "OFFICE_MAIL_PASSWORD"], keys.Peeks);
+        Assert.False(work.PasswordStored);
+
+        // A value kept is read back once, and the row says it.
+        work.Password!.KeyInput = "s3cret";
+        await work.Password.StoreAsync();
+        Assert.True(work.PasswordStored);
+        Assert.Equal(Stored, work.PasswordStatus);
+        Assert.Equal(
+            ["GMAIL_APP_PASSWORD", "WORK_MAIL_PASSWORD", "OFFICE_MAIL_PASSWORD", "OFFICE_MAIL_PASSWORD"], keys.Peeks);
+    }
+
+    [Fact]
+    public async Task A_value_kept_under_a_variable_two_accounts_name_shows_as_stored_on_both()
+    {
+        var keys = new FakeApiKeyStore();
+        var (section, _, _) = Build("""
+            { "Orkeon": { "Tools": { "Email": { "Accounts": {
+              "one": { "Provider": "Gmail", "Address": "one@gmail.com", "Auth": { "PasswordEnvVar": "SHARED_PASSWORD" } },
+              "two": { "Provider": "Gmail", "Address": "two@gmail.com", "Auth": { "PasswordEnvVar": "SHARED_PASSWORD" } } } } } } }
+            """, keys: keys);
+        var one = Row(section, "one");
+        var two = Row(section, "two");
+        Assert.False(two.PasswordStored);
+        var raised = new List<string>();
+        two.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+
+        one.Password!.KeyInput = "s3cret";
+        await one.Password.StoreAsync();
+
+        // The run reads one variable for both: what the other row said of it is no longer true.
+        Assert.True(one.PasswordStored);
+        Assert.True(two.PasswordStored);
+        Assert.Contains(nameof(EmailAccountRowViewModel.PasswordStored), raised);
+    }
+
+    private static void ReadSecretStates(EmailAccountRowViewModel row)
+    {
+        _ = row.PasswordStored;
+        _ = row.PasswordStatus;
+        _ = row.PasswordVariable;
+        _ = row.ClientSecretStored;
+        _ = row.ClientSecretStatus;
+        _ = row.ClientSecretVariable;
     }
 
     [Fact]

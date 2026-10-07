@@ -14,8 +14,15 @@ public sealed class FakeApiKeyStore : IApiKeyStore
     /// </summary>
     public Exception? PersistFailure { get; set; }
 
+    /// <summary>Every variable peeked at, in order: the real store reads the registry for one the process does not hold.</summary>
+    public List<string> Peeks { get; } = [];
+
     /// <inheritdoc />
-    public string? Peek(string envName) => Saved.GetValueOrDefault(envName);
+    public string? Peek(string envName)
+    {
+        Peeks.Add(envName);
+        return Saved.GetValueOrDefault(envName);
+    }
 
     /// <summary>Stages a key, as a test's arrange step.</summary>
     public void Stage(string envName, string value) => Saved[envName] = value;

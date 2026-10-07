@@ -52,6 +52,12 @@ public sealed class FakeEmailCli : IProcessLauncher
     /// <summary>When true a listing parks instead of ending, until <see cref="Release"/> or its token.</summary>
     public bool HoldListings { get; set; }
 
+    /// <summary>
+    /// When true a held verb does not hear its token: it ends on its script at <see cref="Release"/>
+    /// all the same — the child whose answer was already on its way when it was stopped.
+    /// </summary>
+    public bool DeafToStop { get; set; }
+
     /// <summary>How many <c>email accounts</c> ran.</summary>
     public int ListRuns => Requests.Count(request => request.Arguments is ["email", "accounts", ..]);
 
@@ -111,7 +117,7 @@ public sealed class FakeEmailCli : IProcessLauncher
                     _parked.TrySetResult();
                 }
 
-                using var stop = cancellationToken.Register(() => gate.TrySetResult(false));
+                using var stop = DeafToStop ? default : cancellationToken.Register(() => gate.TrySetResult(false));
                 var released = await gate.Task;
                 lock (_gate)
                     _held.Remove(gate);

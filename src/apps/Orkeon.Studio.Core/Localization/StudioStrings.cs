@@ -1351,6 +1351,9 @@ public static class StudioStringKeys
     /// <summary>"Use this address" — sends the pasted address to the sign-in.</summary>
     public const string MailPasteRedirectSend = "Studio.Settings.MailPasteRedirectSend";
 
+    /// <summary>"This address was not sent: the sign-in is no longer reading. Sign in again." — the pasted address stays in its field.</summary>
+    public const string MailPasteRedirectNotSent = "Studio.Settings.MailPasteRedirectNotSent";
+
     /// <summary>"Copy the link"</summary>
     public const string MailCopyLink = "Studio.Settings.MailCopyLink";
 
@@ -2699,6 +2702,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailAuthorizationUrl] = "Open this address in a browser and allow the access:",
         [StudioStringKeys.MailPasteRedirect] = "If the browser cannot come back to this machine, paste the address it ended on:",
         [StudioStringKeys.MailPasteRedirectSend] = "Use this address",
+        [StudioStringKeys.MailPasteRedirectNotSent] = "This address was not sent: the sign-in is no longer reading. Sign in again.",
         [StudioStringKeys.MailCopyLink] = "Copy the link",
         [StudioStringKeys.MailOpenInBrowser] = "Open in the browser",
         [StudioStringKeys.MailSignedIn] = "Signed in",

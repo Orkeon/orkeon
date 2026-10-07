@@ -83,7 +83,8 @@ public sealed class ConfigTabViewModel : ObservableObject
                 Clipboard = seams.Clipboard,
                 Ticker = seams.SignInTicker,
                 Clock = seams.Clock,
-            });
+            },
+            seams.EmailStatesDelay);
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,

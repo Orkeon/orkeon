@@ -15,7 +15,7 @@ internal sealed class ConversationConsole : IDisposable
     private readonly TextWriter _originalError;
     private readonly TextReader _originalIn;
     private readonly LineWriter _out = new();
-    private readonly StringWriter _error = new();
+    private readonly LineWriter _error = new();
 
     public ConversationConsole()
     {
@@ -34,14 +34,7 @@ internal sealed class ConversationConsole : IDisposable
     public string Stdout => _out.Text;
 
     /// <summary>Everything written to standard error so far.</summary>
-    public string Stderr
-    {
-        get
-        {
-            lock (_error)
-                return _error.ToString();
-        }
-    }
+    public string Stderr => _error.Text;
 
     /// <summary>The standard-output line at <paramref name="index"/>, once the verb has written it.</summary>
     public Task<string> LineAsync(int index) => _out.LineAsync(index);
@@ -57,7 +50,7 @@ internal sealed class ConversationConsole : IDisposable
         _error.Dispose();
     }
 
-    /// <summary>Standard output as complete lines, each one awaitable by its index.</summary>
+    /// <summary>What a stream was written, read under the lock it is written under, and its complete lines, each one awaitable by its index.</summary>
     private sealed class LineWriter : TextWriter
     {
         private readonly Lock _gate = new();

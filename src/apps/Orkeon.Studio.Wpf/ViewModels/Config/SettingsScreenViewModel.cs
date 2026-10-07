@@ -83,10 +83,12 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
         // The file as saved is what the engine reads: a save moves what it says of the e-mail
         // accounts, so the tab asks again — while it shows, and never from another tab (STUDIO-69).
+        // Once the saves pause: the novice's file is saved at every keystroke, and a child per
+        // key would be started only to be stopped by the next.
         Config.Saved += (_, _) =>
         {
             if (IsMailsTab)
-                _ = Config.Email.RefreshStatesAsync();
+                Config.Email.RefreshStatesSoon();
         };
 
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
