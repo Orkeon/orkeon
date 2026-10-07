@@ -346,4 +346,249 @@ public sealed class EmailCliClientTests
         Assert.Equal(EmailCheckKind.Cancelled, outcome.Kind);
         Assert.Equal(1, launcher.StartCount);
     }
+
+    // ── the sign-in (STUDIO-70) ──
+
+    private const string Redirect = "http://127.0.0.1:53124/?code=auth-code-1&state=state-1";
+
+    private const string DeviceCodeLine =
+        """{"v":2,"seq":1,"ts":"2026-10-07T09:00:00Z","kind":"email.login.device_code","verification_uri":"https://microsoft.com/devicelogin","user_code":"WXYZ-1234","expires_in":900}""";
+
+    private const string AuthorizationLine =
+        """{"v":2,"seq":1,"ts":"2026-10-07T09:00:00Z","kind":"email.login.authorization_url","authorization_uri":"https://accounts.google.com/o/oauth2/v2/auth?client_id=c&state=state-1"}""";
+
+    private static string CompletedLine(int seq, string account) =>
+        $$"""{"v":2,"seq":{{seq}},"ts":"2026-10-07T09:00:05Z","kind":"email.login.completed","account":"{{account}}"}""";
+
+    private static string ErrorLine(int seq, string code, string message) =>
+        $$"""{"v":2,"seq":{{seq}},"ts":"2026-10-07T09:00:05Z","kind":"error","code":"{{code}}","message":"{{message}}","recoverable":false}""";
+
+    private static EmailCliClient CreateClient(IProcessLauncher launcher)
+    {
+        var probe = new FakeExecutableProbe { BaseDirectory = InstallDirectory }.WithFile(BinaryPath);
+        return new EmailCliClient(new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(probe, ["orkeon"])));
+    }
+
+    [Fact]
+    public async Task Signing_in_asks_for_events_on_the_named_settings_file_and_reads_the_device_code_then_the_completion()
+    {
+        var launcher = new FakeProcessLauncher()
+            .WithStandardError("Using settings: " + Settings)
+            .WithStandardOutput(DeviceCodeLine, CompletedLine(2, "hotmail"));
+        var steps = new List<EmailLoginStep>();
+
+        var ended = await CreateClient(launcher).LoginAsync("hotmail", Settings, steps.Add, cancellationToken: TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(launcher.Requests);
+        Assert.Equal(["email", "login", "hotmail", "--events", "jsonl", "--settings", Settings], request.Arguments);
+        // The verb reads its standard input to learn that Studio is still there: it is always piped.
+        Assert.NotNull(request.OnInputReady);
+
+        var code = Assert.Single(steps);
+        Assert.Equal(EmailLoginStepKind.DeviceCode, code.Kind);
+        Assert.Equal("https://microsoft.com/devicelogin", code.Address);
+        Assert.Equal("WXYZ-1234", code.UserCode);
+        Assert.Equal(TimeSpan.FromMinutes(15), code.ExpiresIn);
+
+        Assert.Equal(EmailLoginStepKind.Completed, ended.Kind);
+        Assert.Null(ended.Failure);
+    }
+
+    [Fact]
+    public async Task A_step_is_handed_over_while_the_verb_still_waits_and_the_pasted_address_goes_to_its_standard_input()
+    {
+        // The child speaks its address, then lives until it is answered: a sign-in is a conversation.
+        var launcher = new ConversingProcessLauncher { Reply = line => line == Redirect ? [CompletedLine(2, "perso")] : [] };
+        launcher.Opening.Add(AuthorizationLine);
+        var steps = new List<EmailLoginStep>();
+        var input = new EmailLoginInput();
+
+        var login = CreateClient(launcher).LoginAsync("perso", Settings, steps.Add, input, TestContext.Current.CancellationToken);
+
+        var shown = Assert.Single(steps);
+        Assert.Equal(EmailLoginStepKind.AuthorizationUrl, shown.Kind);
+        Assert.Equal("https://accounts.google.com/o/oauth2/v2/auth?client_id=c&state=state-1", shown.Address);
+        Assert.Null(shown.UserCode);
+        Assert.False(login.IsCompleted);
+
+        // As pasted from a browser: spaces around it, and never more than its one line.
+        Assert.True(input.PasteRedirect("  " + Redirect + "\r\n"));
+
+        var ended = await login;
+        Assert.Equal([Redirect], launcher.InputLines);
+        Assert.Equal(EmailLoginStepKind.Completed, ended.Kind);
+        // The dialogue is over once the verb said so: its input is closed, which is how it is let go.
+        Assert.Equal(1, launcher.ClosedInputs);
+        Assert.False(input.PasteRedirect(Redirect));
+    }
+
+    [Fact]
+    public void An_address_pasted_before_any_sign_in_reads_it_goes_nowhere()
+    {
+        var input = new EmailLoginInput();
+
+        Assert.False(input.PasteRedirect(Redirect));
+        Assert.False(input.PasteRedirect("   "));
+    }
+
+    [Fact]
+    public async Task A_line_that_is_no_event_or_an_event_of_another_vocabulary_is_ignored()
+    {
+        var launcher = new FakeProcessLauncher().WithStandardOutput(
+            "To sign e-mail account 'hotmail' in, open https://microsoft.com/devicelogin",
+            """{"v":2,"seq":1,"kind":"usecases.ready","count":3}""",
+            """{"kind":"email.login.device_code"}""",
+            DeviceCodeLine,
+            "{ not json",
+            CompletedLine(3, "hotmail"));
+        var steps = new List<EmailLoginStep>();
+
+        var ended = await CreateClient(launcher).LoginAsync("hotmail", Settings, steps.Add, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal([EmailLoginStepKind.DeviceCode], steps.Select(step => step.Kind));
+        Assert.Equal(EmailLoginStepKind.Completed, ended.Kind);
+    }
+
+    [Fact]
+    public async Task A_refusal_of_the_verb_ends_the_sign_in_with_its_code_and_its_message_as_printed()
+    {
+        const string Message = "The provider issued no refresh token, so the sign-in would expire within the hour.";
+        var launcher = new FakeProcessLauncher { ExitCode = 1 }
+            .WithStandardOutput(DeviceCodeLine, ErrorLine(2, "LoginRequired", Message));
+        var steps = new List<EmailLoginStep>();
+
+        var ended = await CreateClient(launcher).LoginAsync("hotmail", Settings, steps.Add, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Single(steps);
+        Assert.Equal(EmailLoginStepKind.Failed, ended.Kind);
+        Assert.NotNull(ended.Failure);
+        Assert.Equal(EmailCliFailureKind.Refused, ended.Failure.Kind);
+        Assert.Equal("LoginRequired", ended.Failure.Code);
+        Assert.Equal(Message, ended.Failure.Reason);
+        Assert.Equal(1, ended.Failure.ExitCode);
+    }
+
+    [Fact]
+    public async Task A_verb_that_stopped_without_an_event_is_a_failure_that_carries_what_it_said()
+    {
+        var launcher = new FakeProcessLauncher { ExitCode = 2 }.WithStandardError(
+            "Using settings: " + Settings,
+            "orkeon email login: unexpected error [System.Net.Http.HttpRequestException]: No route to host");
+
+        var ended = await CreateClient(launcher).LoginAsync("hotmail", Settings, _ => { }, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(EmailLoginStepKind.Failed, ended.Kind);
+        Assert.Equal(EmailCliFailureKind.Stopped, ended.Failure?.Kind);
+        Assert.Equal("unexpected error [System.Net.Http.HttpRequestException]: No route to host", ended.Failure!.Reason);
+        Assert.Equal(2, ended.Failure.ExitCode);
+    }
+
+    [Fact]
+    public async Task A_verb_that_ended_well_without_saying_it_completed_is_not_taken_for_a_sign_in()
+    {
+        // A CLI that predates the event mode prints its sentences and exits 0: nothing proves the tokens are stored.
+        var launcher = new FakeProcessLauncher().WithStandardOutput("Signed in: the tokens of e-mail account 'hotmail' are stored.");
+
+        var ended = await CreateClient(launcher).LoginAsync("hotmail", Settings, _ => { }, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(EmailLoginStepKind.Failed, ended.Kind);
+        Assert.Equal(EmailCliFailureKind.Unreadable, ended.Failure?.Kind);
+        Assert.Contains("email.login.completed", ended.Failure!.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Without_a_binary_the_sign_in_fails_as_engine_missing_and_spawns_nothing()
+    {
+        var launcher = new FakeProcessLauncher();
+
+        var ended = await CreateClient(launcher, binaryPresent: false)
+            .LoginAsync("hotmail", Settings, _ => { }, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(EmailLoginStepKind.Failed, ended.Kind);
+        Assert.Equal(EmailCliFailureKind.EngineMissing, ended.Failure?.Kind);
+        Assert.Equal(0, launcher.StartCount);
+    }
+
+    [Fact]
+    public async Task Cancelling_a_sign_in_closes_the_verbs_input_at_once_stops_the_child_and_says_so_instead_of_throwing()
+    {
+        // The verb waits without a deadline: only its token, or the end of its input, ends it.
+        var launcher = new FakeProcessLauncher { RunsUntilCancelled = true }.WithStandardOutput(AuthorizationLine);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var input = new EmailLoginInput();
+
+        var login = CreateClient(launcher).LoginAsync("perso", Settings, _ => { }, input, cts.Token);
+        Assert.False(login.IsCompleted);
+        Assert.False(launcher.InputClosed);
+
+        // Cancel, not CancelAsync: the input is closed before the call returns, on the caller's
+        // thread — what a window that is closing can still rely on.
+#pragma warning disable CA1849, S6966 // the synchronous call is the behaviour under test
+        cts.Cancel();
+#pragma warning restore CA1849, S6966
+        Assert.True(launcher.InputClosed);
+
+        var ended = await login;
+        Assert.Equal(EmailLoginStepKind.Failed, ended.Kind);
+        Assert.Equal(EmailCliFailureKind.Cancelled, ended.Failure?.Kind);
+        Assert.False(input.PasteRedirect(Redirect));
+        Assert.Equal(1, launcher.StartCount);
+    }
+
+    [Fact]
+    public async Task A_step_never_prints_the_device_code_nor_the_address_of_itself()
+    {
+        var launcher = new FakeProcessLauncher().WithStandardOutput(DeviceCodeLine, CompletedLine(2, "hotmail"));
+        var steps = new List<EmailLoginStep>();
+
+        await CreateClient(launcher).LoginAsync("hotmail", Settings, steps.Add, cancellationToken: TestContext.Current.CancellationToken);
+
+        // A record prints its members by default: this one must not, a device code is a secret while it lives.
+        var printed = Assert.Single(steps).ToString();
+        Assert.DoesNotContain("WXYZ-1234", printed, StringComparison.Ordinal);
+        Assert.DoesNotContain("devicelogin", printed, StringComparison.Ordinal);
+        Assert.Contains("DeviceCode", printed, StringComparison.Ordinal);
+    }
+
+    // ── the sign-out (STUDIO-70) ──
+
+    [Fact]
+    public async Task Signing_out_names_the_account_and_the_settings_file_and_a_zero_exit_is_no_failure()
+    {
+        var launcher = new FakeProcessLauncher()
+            .WithStandardError("Using settings: " + Settings)
+            .WithStandardOutput("Signed out: the tokens of e-mail account 'hotmail' are deleted.");
+
+        var failure = await CreateClient(launcher).LogoutAsync("hotmail", Settings, TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(launcher.Requests);
+        Assert.Equal(["email", "logout", "hotmail", "--settings", Settings], request.Arguments);
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public async Task A_refused_sign_out_carries_what_the_verb_said_without_its_prefix()
+    {
+        var launcher = new FakeProcessLauncher { ExitCode = 1 }.WithStandardError(
+            "Using settings: " + Settings,
+            "orkeon email logout: E-mail account 'perso' signs in with a password (Auth:PasswordEnvVar); there are no tokens to forget.");
+
+        var failure = await CreateClient(launcher).LogoutAsync("perso", Settings, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(failure);
+        Assert.Equal(EmailCliFailureKind.Stopped, failure.Kind);
+        Assert.Equal("E-mail account 'perso' signs in with a password (Auth:PasswordEnvVar); there are no tokens to forget.", failure.Reason);
+        Assert.Equal(1, failure.ExitCode);
+    }
+
+    [Fact]
+    public async Task Without_a_binary_the_sign_out_fails_as_engine_missing_and_spawns_nothing()
+    {
+        var launcher = new FakeProcessLauncher();
+
+        var failure = await CreateClient(launcher, binaryPresent: false).LogoutAsync("hotmail", Settings, TestContext.Current.CancellationToken);
+
+        Assert.Equal(EmailCliFailureKind.EngineMissing, failure?.Kind);
+        Assert.Equal(0, launcher.StartCount);
+    }
 }

@@ -17,6 +17,9 @@ public sealed class FakeLoginInteraction : IEmailLoginInteraction
     /// <summary>The device sign-in shown, when one was.</summary>
     public (string Account, Uri VerificationUri, string UserCode)? DeviceCode { get; private set; }
 
+    /// <summary>How long the device code shown was said to live.</summary>
+    public TimeSpan? DeviceCodeExpiresIn { get; private set; }
+
     /// <summary>The account the loopback sign-in was shown for.</summary>
     public string? AuthorizationAccount { get; private set; }
 
@@ -35,9 +38,10 @@ public sealed class FakeLoginInteraction : IEmailLoginInteraction
     }
 
     /// <inheritdoc />
-    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, CancellationToken cancellationToken)
+    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
         DeviceCode = (account, verificationUri, userCode);
+        DeviceCodeExpiresIn = expiresIn;
         return Task.CompletedTask;
     }
 

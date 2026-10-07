@@ -93,8 +93,10 @@ public sealed class CapturePlannerTests
         // sweep) = -8 shots.
         // STUDIO-67: +2 stops (reglages-mails, both modes, both themes, language sweep = +8;
         // reglages-mails-serveurs, the custom account with every field, expert only, both themes = +2).
-        Assert.Equal(65, CaptureCatalog.All.Count);
-        Assert.Equal(358, plan.Count);
+        // STUDIO-70: +1 stop (reglages-mails-connexion, the device sign-in panel of the Outlook
+        // account, both modes, both themes, language sweep) = +8 shots.
+        Assert.Equal(66, CaptureCatalog.All.Count);
+        Assert.Equal(366, plan.Count);
     }
 
     [Fact]

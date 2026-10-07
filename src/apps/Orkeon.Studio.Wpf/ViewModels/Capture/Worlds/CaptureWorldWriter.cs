@@ -85,6 +85,11 @@ internal static class CaptureWorldWriter
             .Answer("forge schedule", 0,
                 """{"v":2,"seq":1,"ts":"2026-09-24T08:00:00Z","kind":"schedule.state","path":"team","state":"installed","expression":"daily@07:00","family":"windows","names":["Orkeon team"]}""");
 
+        // STUDIO-70: the sign-in of an OAuth e-mail account is a conversation — it says what to
+        // do, then waits for as long as the stop that photographs its panel needs it.
+        if (plan.EmailLoginStream.Count > 0)
+            cli.Converse("email login", plan.EmailLoginStream, static _ => []);
+
         // STUDIO-39: the catalogue `usecases list` prints, and the search session the wizard keeps
         // open for its suggestions — a conversation that answers every query of the campaign.
         if (plan.UseCaseCatalog is { } catalog)

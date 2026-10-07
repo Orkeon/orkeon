@@ -125,6 +125,8 @@ public partial class App : System.Windows.Application
             {
                 Strings = I18nStudioStrings.Instance,
                 ShellOpener = ShellOpener.Instance,
+                // The address of an e-mail sign-in, on a click and https only (STUDIO-70).
+                BrowserOpener = BrowserOpener.Instance,
                 Clipboard = WpfClipboardService.Instance,
                 // The assistant's beats are timed; the ViewModels only know how to ask for
                 // "later", and this is the only place that knows what later means in WPF.
@@ -138,6 +140,8 @@ public partial class App : System.Windows.Application
                 UndoDelay = new WpfDelay(Dispatcher),
                 // The optional automatic balance reading keeps a beat of its own (STUDIO-35).
                 BalanceTicker = new WpfTicker(Dispatcher),
+                // The countdown of an e-mail device code keeps a beat of its own too (STUDIO-70).
+                SignInTicker = new WpfTicker(Dispatcher),
             },
             new StudioUiPreferences
             {

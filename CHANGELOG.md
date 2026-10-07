@@ -32,6 +32,29 @@ Docs: the e-mail guide (EN and FR) gains « Where a secret variable is read » a
 troubleshooting entry tells the two sentences apart; the configuration reference aligns the
 e-mail secrets on `ApiKeyEnvVar`.
 
+### Added — orkeon email login --events jsonl
+
+`orkeon email login` spoke to a person: a sentence with an address and a code, or an address to
+open and an invitation to paste the one the browser ends on. A program could not read either
+safely. With `--events jsonl` the verb writes each step of the sign-in as one JSON event on
+standard output — and nothing else there —, in the envelope of the run stream, under four kinds
+declared once in `Orkeon.Constants.Protocol.EmailEventKinds`: `email.login.device_code`
+(`verification_uri`, `user_code`, `expires_in`), `email.login.authorization_url`
+(`authorization_uri`), `email.login.completed` (`account`) and `error` (`code`, the e-mail error
+code; `message`; `recoverable`), which replaces the line on stderr. The exit codes did not move
+(STUDIO-70).
+
+- **Standard input is the driver's hold on the verb.** A line written to it is the address the
+  browser ended on — the fallback of the Google flow when the browser cannot reach this machine.
+  Closing it aborts the sign-in with exit code `130`, in the device flow too: the loopback wait
+  has no deadline, and a driver that goes away must not leave the verb listening on its port.
+  No deadline was added to the verb.
+- **Without the option nothing changed**: the same sentences, on the same streams.
+- **`IEmailLoginInteraction.ShowDeviceCodeAsync` takes the lifetime of the code** (`expiresIn`),
+  as the provider granted it: a C# host that implements the interface adds the parameter.
+
+Docs: the CLI reference and the e-mail guide (EN and FR) describe the option and its four kinds.
+
 ### Added — Studio: an E-mail settings tab
 
 The mail tools read their accounts from `Orkeon:Tools:Email`, and Studio sent whoever wanted one
@@ -89,10 +112,22 @@ French), in both modes, where the accounts are declared, renamed and removed in 
   over the sentence the command prints, shown as is. Both always pass `--settings`, through the
   new `EmailCliClient` of Studio.Core; the test never runs on its own, and leaving the tab, the
   settings screen or Studio stops it.
+- **An OAuth account signs in and out from its row** (STUDIO-70). « Sign in » runs
+  `orkeon email login --events jsonl` (above) on the file as saved — Studio runs no OAuth flow
+  and holds no token — and a panel under the account says what to do while the command waits:
+  Microsoft's page and the code, in large, counted down, then « The code expired — start again »;
+  Google's address, and a field for the one the browser ended on. Studio opens nothing by
+  itself: the address shows in clear, with « Copy the link » and « Open in the browser », a
+  click that only ever opens an absolute `https` address. A sign-in that ends well reads the
+  states again and the account turns « Ready »; a refusal of the command — no refresh token, a
+  client secret that is not stored — shows as printed and is never tried again. « Sign out »
+  asks first, then runs `orkeon email logout`. « Cancel », the code's expiry, another tab,
+  another screen and closing Studio each stop the command — its standard input is closed on the
+  spot, which the command reads as its driver leaving. A device code is shown in the panel and
+  kept nowhere else.
 
-The tab opens no connection on its own, and an OAuth account still signs in with
-`orkeon email login`. Docs: the Studio page (EN and FR) describes the tab, and the e-mail guide
-and the mailbox tutorial point to it.
+The tab opens no connection on its own: the test and the sign-in are clicks. Docs: the Studio
+page (EN and FR) describes the tab, and the e-mail guide and the mailbox tutorial point to it.
 
 ### Added — Studio's settings check judges the e-mail accounts as the run will
 

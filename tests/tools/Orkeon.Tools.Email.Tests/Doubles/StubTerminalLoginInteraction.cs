@@ -16,7 +16,7 @@ public sealed class StubTerminalLoginInteraction : IEmailLoginInteraction, IDisp
     public Task<Uri> AuthorizationShown => _authorizationShown.Task;
 
     /// <inheritdoc />
-    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, CancellationToken cancellationToken) =>
+    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken) =>
         Task.CompletedTask;
 
     /// <inheritdoc />

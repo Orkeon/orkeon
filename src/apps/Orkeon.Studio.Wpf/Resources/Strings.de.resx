@@ -2115,6 +2115,57 @@
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve">
     <value>Der Server hat abgelehnt oder nicht geantwortet</value>
   </data>
+  <data name="Studio.Settings.MailSignIn" xml:space="preserve">
+    <value>Anmelden</value>
+  </data>
+  <data name="Studio.Settings.MailSignOut" xml:space="preserve">
+    <value>Abmelden</value>
+  </data>
+  <data name="Studio.Settings.MailSignOutConfirm" xml:space="preserve">
+    <value>Die gespeicherten Token von {0} vergessen? Das Konto muss sich danach erneut anmelden.</value>
+  </data>
+  <data name="Studio.Settings.MailSignOutFailed" xml:space="preserve">
+    <value>Abmeldung nicht möglich</value>
+  </data>
+  <data name="Studio.Settings.MailSignInStarting" xml:space="preserve">
+    <value>Anmeldung wird gestartet…</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCode" xml:space="preserve">
+    <value>Öffnen Sie {0} und geben Sie diesen Code ein:</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
+    <value>Der Code läuft in {0} ab</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve">
+    <value>Der Code ist abgelaufen — beginnen Sie erneut</value>
+  </data>
+  <data name="Studio.Settings.MailSignInRestart" xml:space="preserve">
+    <value>Erneut beginnen</value>
+  </data>
+  <data name="Studio.Settings.MailAuthorizationUrl" xml:space="preserve">
+    <value>Öffnen Sie diese Adresse in einem Browser und erlauben Sie den Zugriff:</value>
+  </data>
+  <data name="Studio.Settings.MailPasteRedirect" xml:space="preserve">
+    <value>Wenn der Browser nicht zu diesem Rechner zurückkehren kann, fügen Sie die Adresse ein, bei der er stehen geblieben ist:</value>
+  </data>
+  <data name="Studio.Settings.MailPasteRedirectSend" xml:space="preserve">
+    <value>Diese Adresse verwenden</value>
+  </data>
+  <data name="Studio.Settings.MailCopyLink" xml:space="preserve">
+    <value>Link kopieren</value>
+  </data>
+  <data name="Studio.Settings.MailOpenInBrowser" xml:space="preserve">
+    <value>Im Browser öffnen</value>
+  </data>
+  <data name="Studio.Settings.MailSignedIn" xml:space="preserve">
+    <value>Angemeldet</value>
+  </data>
+  <data name="Studio.Settings.MailSignInFailed" xml:space="preserve">
+    <value>Die Anmeldung wurde nicht abgeschlossen</value>
+  </data>
+  <data name="Studio.Settings.MailSignInFailedHint" xml:space="preserve">
+    <value>Nichts wurde gespeichert. Der E-Mail-Leitfaden (docs/guides/email.md) erklärt jede Ablehnung.</value>
+  </data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve">
     <value>OAuth-Client-ID</value>
   </data>

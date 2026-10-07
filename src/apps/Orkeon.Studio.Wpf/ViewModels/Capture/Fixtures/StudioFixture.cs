@@ -19,6 +19,12 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 /// </summary>
 internal static class StudioFixture
 {
+    /// <summary>
+    /// The code the scripted device sign-in shows (STUDIO-70): made up, and recognisably so. A
+    /// real device code is a secret while it lives; none ever enters a campaign.
+    /// </summary>
+    public const string DeviceSignInCode = "DEMO-1234";
+
     /// <summary>Name of the profile the assistant runs on; the wizard's gate keys on it.</summary>
     public const string AssistantProfile = "Studio";
 
@@ -166,7 +172,7 @@ internal static class StudioFixture
         // STUDIO-67: the E-mail tab photographs a preset account and a custom one — the first
         // shows what a novice declares, the second every field of the expert form. Both are
         // accounts the run would use: no shot carries a warning the seed did not mean.
-        EmailJson = """{ "DefaultAccount": "perso", "Accounts": { "perso": { "Provider": "Gmail", "Address": "camille.durand@gmail.com", "DisplayName": "Camille Durand", "Rights": "Read, Organize, Draft", "Auth": { "PasswordEnvVar": "GMAIL_APP_PASSWORD" } }, "bureau": { "Provider": "Custom", "Address": "camille@atelier-durand.example", "Rights": "Read, Organize, Draft, Send", "Incoming": { "Host": "imap.atelier-durand.example" }, "Outgoing": { "Host": "smtp.atelier-durand.example", "Security": "StartTls" }, "Auth": { "PasswordEnvVar": "BUREAU_MAIL_PASSWORD" }, "Send": { "AllowedRecipients": [ "*@atelier-durand.example", "comptable@cabinet-martin.example" ], "MaxPerHour": 20 } } } }""",
+        EmailJson = """{ "DefaultAccount": "perso", "Accounts": { "perso": { "Provider": "Gmail", "Address": "camille.durand@gmail.com", "DisplayName": "Camille Durand", "Rights": "Read, Organize, Draft", "Auth": { "PasswordEnvVar": "GMAIL_APP_PASSWORD" } }, "hotmail": { "Provider": "Outlook", "Address": "camille.durand@outlook.com", "Rights": "Read, Organize", "Auth": { "ClientId": "11111111-2222-3333-4444-555555555555" } }, "bureau": { "Provider": "Custom", "Address": "camille@atelier-durand.example", "Rights": "Read, Organize, Draft, Send", "Incoming": { "Host": "imap.atelier-durand.example" }, "Outgoing": { "Host": "smtp.atelier-durand.example", "Security": "StartTls" }, "Auth": { "PasswordEnvVar": "BUREAU_MAIL_PASSWORD" }, "Send": { "AllowedRecipients": [ "*@atelier-durand.example", "comptable@cabinet-martin.example" ], "MaxPerHour": 20 } } } }""",
         ExtraSections = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["RateLimiting"] = """{ "RequestsPerMinute": 60, "MaxConcurrent": 4 }""",
@@ -298,13 +304,21 @@ internal static class StudioFixture
             ["GMAIL_APP_PASSWORD"] = "capture-only-gmail-app-password",
         },
         // The engine lists the accounts sorted by name, with its own sentence for the one that
-        // lacks its password: one ready, one not, the two states of the tab worth a pixel.
+        // lacks its password and for the one that was never signed in (STUDIO-70): one ready, two
+        // not, the states of the tab worth a pixel.
         EmailAccountsJson = """
             [
               { "name": "bureau", "address": "camille@atelier-durand.example", "provider": "Custom", "reads": "Imap", "sends": "Smtp", "rights": "Read, Organize, Draft, Send", "auth": "Password", "default": false, "ready": false, "problem": "The password of e-mail account 'bureau' is read from the environment variable BUREAU_MAIL_PASSWORD, which is set neither in the process environment nor in the user's." },
+              { "name": "hotmail", "address": "camille.durand@outlook.com", "provider": "Outlook", "reads": "Graph", "sends": "Graph", "rights": "Read, Organize", "auth": "OAuth2", "default": false, "ready": false, "problem": "E-mail account 'hotmail' needs an OAuth sign-in: run `orkeon email login hotmail` in a terminal." },
               { "name": "perso", "address": "camille.durand@gmail.com", "provider": "Gmail", "reads": "Imap", "sends": "Smtp", "rights": "Read, Organize, Draft", "auth": "Password", "default": true, "ready": true, "problem": null }
             ]
             """,
+        // STUDIO-70: what `orkeon email login --events jsonl` says of the Outlook account — the
+        // page and a made-up code, a quarter of an hour to type it — before it waits.
+        EmailLoginStream =
+        [
+            $$"""{"v":2,"seq":1,"ts":"2026-09-24T08:00:00Z","kind":"email.login.device_code","verification_uri":"https://microsoft.com/devicelogin","user_code":"{{DeviceSignInCode}}","expires_in":900}""",
+        ],
         DoctorJson = DoctorWithIssues,
         Sessions = [DryPauseSession, PassingSession, FailingSession, PromotedSession],
         RunStream = CaptureScripts.RunToSuccess,

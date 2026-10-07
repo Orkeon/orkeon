@@ -9,8 +9,12 @@ namespace Orkeon.Tools.Email.Administration;
 /// <summary>How an interactive sign-in talks to the person at the terminal.</summary>
 public interface IEmailLoginInteraction
 {
-    /// <summary>Tells the user to open <paramref name="verificationUri"/> and type <paramref name="userCode"/> (device sign-in).</summary>
-    Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, CancellationToken cancellationToken);
+    /// <summary>
+    /// Tells the user to open <paramref name="verificationUri"/> and type <paramref name="userCode"/>
+    /// (device sign-in). The code lives <paramref name="expiresIn"/>: past that, the sign-in fails
+    /// and has to be started again.
+    /// </summary>
+    Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken);
 
     /// <summary>Tells the user to open <paramref name="authorizationUri"/> in a browser (loopback sign-in).</summary>
     Task ShowAuthorizationUrlAsync(string account, Uri authorizationUri, CancellationToken cancellationToken);
@@ -207,7 +211,7 @@ public sealed class EmailAccountAdministration
         ResolvedEmailAccount account, OAuthSettings settings, string? secret, IEmailLoginInteraction interaction, CancellationToken cancellationToken)
     {
         var grant = await _oauth.RequestDeviceCodeAsync(settings, cancellationToken).ConfigureAwait(false);
-        await interaction.ShowDeviceCodeAsync(account.Name, grant.VerificationUri, grant.UserCode, cancellationToken).ConfigureAwait(false);
+        await interaction.ShowDeviceCodeAsync(account.Name, grant.VerificationUri, grant.UserCode, grant.ExpiresIn, cancellationToken).ConfigureAwait(false);
         return await _oauth.PollDeviceCodeAsync(settings, secret, grant, cancellationToken).ConfigureAwait(false);
     }
 

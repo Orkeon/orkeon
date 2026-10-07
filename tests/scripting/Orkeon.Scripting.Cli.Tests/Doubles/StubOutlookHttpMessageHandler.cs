@@ -29,6 +29,12 @@ internal sealed class StubOutlookHttpMessageHandler : HttpMessageHandler
     /// <summary>The request bodies, in order (empty for a request without one).</summary>
     public List<string> Bodies { get; } = [];
 
+    /// <summary>
+    /// What the token endpoint answers; the tokens of a completed sign-in unless a test scripts a
+    /// sign-in that stays pending, or one the provider granted no refresh token.
+    /// </summary>
+    public string TokenAnswer { get; set; } = Tokens;
+
     /// <summary>What Graph answers: any other status than 200 fails every Graph call with it.</summary>
     public HttpStatusCode GraphStatus { get; set; } = HttpStatusCode.OK;
 
@@ -49,7 +55,7 @@ internal sealed class StubOutlookHttpMessageHandler : HttpMessageHandler
             return Json(wellKnown.Length == 0 ? Folders : $$"""{ "id": "folder-{{wellKnown}}" }""");
         }
 
-        return Json(uri.AbsolutePath.EndsWith("/devicecode", StringComparison.Ordinal) ? DeviceCode : Tokens);
+        return Json(uri.AbsolutePath.EndsWith("/devicecode", StringComparison.Ordinal) ? DeviceCode : TokenAnswer);
     }
 
     private static HttpResponseMessage Json(string json, HttpStatusCode status = HttpStatusCode.OK) =>

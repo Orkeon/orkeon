@@ -74,7 +74,16 @@ public sealed class ConfigTabViewModel : ObservableObject
             () => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker, seams.KeyStore,
             seams.EmailCli ?? (seams.ProcessRunner is { } shared ? new EmailCliClient(shared) : null),
             () => _isDirty,
-            seams.Dispatcher);
+            seams.Dispatcher,
+            // Signing an OAuth account in (STUDIO-70): the browser is only opened on a click, and
+            // the countdown of a device code reads the window's clock on a beat of its own.
+            new EmailSignInServices
+            {
+                Browser = seams.BrowserOpener,
+                Clipboard = seams.Clipboard,
+                Ticker = seams.SignInTicker,
+                Clock = seams.Clock,
+            });
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,

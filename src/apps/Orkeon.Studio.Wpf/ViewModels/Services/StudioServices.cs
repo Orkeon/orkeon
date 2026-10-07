@@ -87,6 +87,18 @@ public sealed record StudioServices
     /// </summary>
     public EmailCliClient? EmailCli { get; init; }
 
+    /// <summary>
+    /// Opens the address of an e-mail sign-in in the browser, on a click (STUDIO-70): an
+    /// <c>https</c> address and nothing else. Without one the address can only be copied.
+    /// </summary>
+    public IBrowserOpener? BrowserOpener { get; init; }
+
+    /// <summary>
+    /// The beat the countdown of an e-mail device code moves on (STUDIO-70) — a ticker of its
+    /// own, since one ticker keeps one beat; one that never beats when absent.
+    /// </summary>
+    public IUiTicker? SignInTicker { get; init; }
+
     /// <summary>Probes an LLM endpoint for the "Test connection" command.</summary>
     public ILlmEndpointProbe? LlmProbe { get; init; }
 

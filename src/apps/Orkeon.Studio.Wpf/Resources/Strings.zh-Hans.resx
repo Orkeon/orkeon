@@ -2115,6 +2115,57 @@
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve">
     <value>服务器拒绝或没有响应</value>
   </data>
+  <data name="Studio.Settings.MailSignIn" xml:space="preserve">
+    <value>登录</value>
+  </data>
+  <data name="Studio.Settings.MailSignOut" xml:space="preserve">
+    <value>退出登录</value>
+  </data>
+  <data name="Studio.Settings.MailSignOutConfirm" xml:space="preserve">
+    <value>要忘记 {0} 已保存的令牌吗？该账户需要重新登录。</value>
+  </data>
+  <data name="Studio.Settings.MailSignOutFailed" xml:space="preserve">
+    <value>无法退出登录</value>
+  </data>
+  <data name="Studio.Settings.MailSignInStarting" xml:space="preserve">
+    <value>正在开始登录…</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCode" xml:space="preserve">
+    <value>打开 {0} 并输入此代码：</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
+    <value>代码将在 {0} 后过期</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve">
+    <value>代码已过期 — 请重新开始</value>
+  </data>
+  <data name="Studio.Settings.MailSignInRestart" xml:space="preserve">
+    <value>重新开始</value>
+  </data>
+  <data name="Studio.Settings.MailAuthorizationUrl" xml:space="preserve">
+    <value>在浏览器中打开此地址并允许访问：</value>
+  </data>
+  <data name="Studio.Settings.MailPasteRedirect" xml:space="preserve">
+    <value>如果浏览器无法返回这台计算机，请粘贴它最后停留的地址：</value>
+  </data>
+  <data name="Studio.Settings.MailPasteRedirectSend" xml:space="preserve">
+    <value>使用此地址</value>
+  </data>
+  <data name="Studio.Settings.MailCopyLink" xml:space="preserve">
+    <value>复制链接</value>
+  </data>
+  <data name="Studio.Settings.MailOpenInBrowser" xml:space="preserve">
+    <value>在浏览器中打开</value>
+  </data>
+  <data name="Studio.Settings.MailSignedIn" xml:space="preserve">
+    <value>已登录</value>
+  </data>
+  <data name="Studio.Settings.MailSignInFailed" xml:space="preserve">
+    <value>登录未完成</value>
+  </data>
+  <data name="Studio.Settings.MailSignInFailedHint" xml:space="preserve">
+    <value>未保存任何内容。电子邮件指南（docs/guides/email.md）说明了每种拒绝的含义。</value>
+  </data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve">
     <value>OAuth 客户端 ID</value>
   </data>

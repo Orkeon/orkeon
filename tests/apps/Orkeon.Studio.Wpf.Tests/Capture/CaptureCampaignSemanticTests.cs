@@ -161,6 +161,45 @@ public sealed class CaptureCampaignSemanticTests : IAsyncLifetime
         Assert.DoesNotContain(world.Cli.Requests, request => request.Arguments is ["email", "check", ..]);
     }
 
+    /// <summary>
+    /// STUDIO-70: the sign-in stop shows the panel of a device sign-in while the scripted
+    /// <c>orkeon email login</c> waits — the page, a made-up code, the time it has left —, opens
+    /// nothing, and its teardown leaves no child behind for the stops that follow.
+    /// </summary>
+    [Theory]
+    [InlineData(UiModeViewModel.Novice)]
+    [InlineData(UiModeViewModel.Expert)]
+    public async Task The_sign_in_stop_shows_the_device_code_panel_and_leaves_no_child_behind(string mode)
+    {
+        var appearance = new CaptureAppearance("fr", IsDark: false, mode);
+        var shells = await BuildShellsAsync(appearance);
+        var world = _worlds.For(CaptureWorldKind.Seeded);
+        var shell = shells[CaptureWorldKind.Seeded];
+        var stop = Assert.Single(CaptureCatalog.For(appearance, CaptureMatrix.Default), s => s.Name == "reglages-mails-connexion");
+        var context = new CaptureContext { Shell = shell, World = world, Surface = new RecordingCaptureSurface(), Appearance = appearance };
+
+        await stop.Arrange(context);
+
+        var row = shell.Config.Email.SelectedAccount;
+        Assert.NotNull(row);
+        Assert.True(row.ShowSignIn);
+        Assert.NotNull(row.SignIn);
+        Assert.True(row.SignIn.IsDeviceCode);
+        Assert.Equal(Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures.StudioFixture.DeviceSignInCode, row.SignIn.UserCode);
+        Assert.True(row.SignIn.HasExpiry);
+        Assert.True(row.SignIn.CanOpen);
+        Assert.Equal(1, world.Cli.LiveConversations);
+        Assert.Contains(world.Cli.Requests, request =>
+            request.Arguments is ["email", "login", _, "--events", "jsonl", "--settings", var path] && path == world.SettingsPath);
+
+        await stop.Teardown(context);
+        await context.DrainHeldAsync();
+
+        Assert.False(shell.Config.Email.IsSigningIn);
+        Assert.Equal(0, world.Cli.LiveConversations);
+        Assert.Same(shell.Config.Email.Accounts[0], shell.Config.Email.SelectedAccount);
+    }
+
     private async Task<Dictionary<CaptureWorldKind, MainWindowViewModel>> BuildShellsAsync(
         CaptureAppearance appearance)
     {

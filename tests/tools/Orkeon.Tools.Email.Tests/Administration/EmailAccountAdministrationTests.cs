@@ -82,6 +82,20 @@ public sealed class EmailAccountAdministrationTests
     }
 
     [Fact]
+    public async Task Should_say_how_long_the_device_code_lives_as_the_provider_granted_it()
+    {
+        // What a screen counts down from (STUDIO-70): the provider's own figure, not the default.
+        using var fixture = new AdministrationFixture(Accounts(("hotmail", TestAccounts.Outlook())));
+        fixture.Credentials.Handler.EnqueueJson("""{"device_code":"dev-1","user_code":"WDJB-MJHT","verification_uri":"https://microsoft.com/devicelogin","expires_in":600,"interval":5}""");
+        fixture.Credentials.Handler.EnqueueJson("""{"access_token":"at-1","refresh_token":"rt-1","expires_in":3600}""");
+        var interaction = new FakeLoginInteraction();
+
+        await fixture.Administration.LoginAsync("hotmail", interaction, Token);
+
+        Assert.Equal(TimeSpan.FromMinutes(10), interaction.DeviceCodeExpiresIn);
+    }
+
+    [Fact]
     public async Task Should_sign_in_through_the_browser_redirect_with_PKCE_and_the_client_secret()
     {
         using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));

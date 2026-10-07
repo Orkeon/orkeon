@@ -2115,6 +2115,57 @@
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve">
     <value>El servidor lo rechazó o no respondió</value>
   </data>
+  <data name="Studio.Settings.MailSignIn" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="Studio.Settings.MailSignOut" xml:space="preserve">
+    <value>Cerrar sesión</value>
+  </data>
+  <data name="Studio.Settings.MailSignOutConfirm" xml:space="preserve">
+    <value>¿Olvidar los tokens guardados de {0}? La cuenta tendrá que iniciar sesión de nuevo.</value>
+  </data>
+  <data name="Studio.Settings.MailSignOutFailed" xml:space="preserve">
+    <value>No se pudo cerrar la sesión</value>
+  </data>
+  <data name="Studio.Settings.MailSignInStarting" xml:space="preserve">
+    <value>Iniciando la sesión…</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCode" xml:space="preserve">
+    <value>Abra {0} e introduzca este código:</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
+    <value>El código caduca en {0}</value>
+  </data>
+  <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve">
+    <value>El código ha caducado — empiece de nuevo</value>
+  </data>
+  <data name="Studio.Settings.MailSignInRestart" xml:space="preserve">
+    <value>Empezar de nuevo</value>
+  </data>
+  <data name="Studio.Settings.MailAuthorizationUrl" xml:space="preserve">
+    <value>Abra esta dirección en un navegador y permita el acceso:</value>
+  </data>
+  <data name="Studio.Settings.MailPasteRedirect" xml:space="preserve">
+    <value>Si el navegador no puede volver a esta máquina, pegue la dirección en la que se detuvo:</value>
+  </data>
+  <data name="Studio.Settings.MailPasteRedirectSend" xml:space="preserve">
+    <value>Usar esta dirección</value>
+  </data>
+  <data name="Studio.Settings.MailCopyLink" xml:space="preserve">
+    <value>Copiar el enlace</value>
+  </data>
+  <data name="Studio.Settings.MailOpenInBrowser" xml:space="preserve">
+    <value>Abrir en el navegador</value>
+  </data>
+  <data name="Studio.Settings.MailSignedIn" xml:space="preserve">
+    <value>Sesión iniciada</value>
+  </data>
+  <data name="Studio.Settings.MailSignInFailed" xml:space="preserve">
+    <value>El inicio de sesión no se completó</value>
+  </data>
+  <data name="Studio.Settings.MailSignInFailedHint" xml:space="preserve">
+    <value>No se guardó nada. La guía de correo (docs/guides/email.md) explica cada rechazo.</value>
+  </data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve">
     <value>ID de cliente OAuth</value>
   </data>

@@ -30,6 +30,11 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// save, never at a keystroke — and each row's test asks <c>orkeon email check</c>, on a click
 /// only. <see cref="StopActivity"/> stops whatever of the two still runs.
 /// </para>
+/// <para>
+/// An OAuth account is signed in and out from its row (STUDIO-70): the section starts
+/// <c>orkeon email login</c>, keeps the panels of the sign-ins still open — one per account —,
+/// beats their countdown, and stops them with the rest of its activity.
+/// </para>
 /// </summary>
 public sealed class EmailSectionViewModel : DocumentSectionViewModel
 {
@@ -43,8 +48,11 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     private readonly EmailCliClient? _cli;
     private readonly Func<bool> _isDirty;
     private readonly IUiDispatcher _dispatcher;
+    private readonly EmailSignInServices _signInServices;
     private readonly Lock _activity = new();
     private readonly List<Running> _calls = [];
+    private readonly List<EmailSignInViewModel> _signIns = [];
+    private bool _beating;
     private EmailAccountsResult? _states;
     private int _reading;
     private EmailAccountRowViewModel? _selectedAccount;
@@ -75,9 +83,11 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         IApiKeyStore? keyStore = null,
         EmailCliClient? cli = null,
         Func<bool>? isDirty = null,
-        IUiDispatcher? dispatcher = null)
+        IUiDispatcher? dispatcher = null,
+        EmailSignInServices? signIn = null)
         : base(document, onChanged)
     {
+        _signInServices = signIn ?? new EmailSignInServices();
         _cli = cli;
         _isDirty = isDirty ?? (() => false);
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
@@ -96,10 +106,10 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         ConfirmAddCommand = new RelayCommand(ConfirmAdd, () => CanConfirmAdd);
         CancelAddCommand = new RelayCommand(() => IsAdding = false);
         RenameAccountCommand = new RelayCommand(
-            parameter => { if (parameter is EmailAccountRowViewModel row) Arm(row, rename: true); },
+            parameter => { if (parameter is EmailAccountRowViewModel row) Arm(row, r => r.BeginRename()); },
             parameter => parameter is EmailAccountRowViewModel);
         RemoveAccountCommand = new RelayCommand(
-            parameter => { if (parameter is EmailAccountRowViewModel row) Arm(row, rename: false); },
+            parameter => { if (parameter is EmailAccountRowViewModel row) Arm(row, r => r.BeginRemove()); },
             parameter => parameter is EmailAccountRowViewModel);
         BrowseCredentialsDirectoryCommand = new RelayCommand(BrowseCredentialsDirectory);
 
@@ -361,13 +371,17 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     }
 
     /// <summary>
-    /// Stops what the tab still has running — a reading of the states, a connection test: called
-    /// when the tab is left, so that no <c>orkeon</c> process outlives the screen that asked for it.
+    /// Stops what the tab still has running — a reading of the states, a connection test, a
+    /// sign-out, a sign-in waiting on the person: called when the tab is left and when the window
+    /// closes, so that no <c>orkeon</c> process outlives the screen that asked for it. Every
+    /// token has fired when this returns; a sign-in, which would wait for ever, has its standard
+    /// input closed by then too (STUDIO-70).
     /// </summary>
     public void StopActivity()
     {
         Interlocked.Increment(ref _reading);
         Stop(listing: null);
+        StopSignIns();
     }
 
     /// <summary>The document was edited or saved: the flag and what it gates are said again.</summary>
@@ -392,6 +406,86 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
 
         var outcome = await RunAsync(listing: false, token => _cli.CheckAsync(account, path, token));
         return outcome.Kind == EmailCheckKind.Cancelled ? null : outcome;
+    }
+
+    /// <summary>Whether a sign-in panel is open on one of the rows: in flight, or ended and not closed yet.</summary>
+    public bool IsSigningIn => _signIns.Count > 0;
+
+    /// <summary>
+    /// Starts <c>orkeon email login</c> on <paramref name="row"/>'s account, as the saved file
+    /// declares it, and returns the panel that follows it; null when it may not start — no client,
+    /// no file, or edits the file does not hold.
+    /// </summary>
+    internal EmailSignInViewModel? BeginSignIn(EmailAccountRowViewModel row)
+    {
+        if (_cli is null || _settingsPath() is not { Length: > 0 } path || _isDirty())
+            return null;
+
+        var signIn = new EmailSignInViewModel(
+            row.Name, this, _cli, path, _strings, _dispatcher, _signInServices,
+            moved: () =>
+            {
+                row.RefreshTest();
+                SyncBeat();
+            },
+            closed: ended =>
+            {
+                _signIns.Remove(ended);
+                row.SignInClosed(ended);
+                SyncBeat();
+                OnPropertyChanged(nameof(IsSigningIn));
+            });
+        _signIns.Add(signIn);
+        OnPropertyChanged(nameof(IsSigningIn));
+        signIn.Start();
+        return signIn;
+    }
+
+    /// <summary>
+    /// Runs <c>orkeon email logout</c> on <paramref name="account"/>, then reads the states again;
+    /// null when the tokens are forgotten — or the call was stopped —, why they are not otherwise.
+    /// </summary>
+    internal async Task<EmailCliFailure?> SignOutAsync(string account)
+    {
+        if (_cli is null || _settingsPath() is not { Length: > 0 } path)
+            return null;
+
+        var failure = await RunAsync(listing: false, token => _cli.LogoutAsync(account, path, token));
+        if (failure is null)
+            await RefreshStatesAsync();
+
+        return failure?.Kind == EmailCliFailureKind.Cancelled ? null : failure;
+    }
+
+    /// <summary>Arms the sign-out question of <paramref name="row"/>, and disarms every other question of the tab.</summary>
+    internal void ArmSignOut(EmailAccountRowViewModel row) => Arm(row, r => r.BeginSignOut());
+
+    /// <summary>Stops every sign-in still open and takes its panel off its row.</summary>
+    private void StopSignIns()
+    {
+        foreach (var signIn in _signIns.ToArray())
+            signIn.Abandon();
+    }
+
+    /// <summary>Keeps the one-second beat while a device code counts down, and only then.</summary>
+    private void SyncBeat()
+    {
+        var needed = _signIns.Exists(signIn => signIn.CountsDown);
+        if (needed == _beating)
+            return;
+
+        _beating = needed;
+        var ticker = _signInServices.Ticker ?? NullUiTicker.Instance;
+        if (needed)
+            ticker.StartBeat(TimeSpan.FromSeconds(1), TickSignIns);
+        else
+            ticker.StopBeat();
+    }
+
+    private void TickSignIns()
+    {
+        foreach (var signIn in _signIns.ToArray())
+            signIn.Tick();
     }
 
     /// <summary>A secret was kept: the saved file did not move, yet what the engine finds for the account did.</summary>
@@ -507,6 +601,8 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         if (string.Equals(row.Name, newName, StringComparison.Ordinal))
             return true;
 
+        // The sign-in in flight is the old name's: its tokens would be filed where no run looks.
+        row.SignIn?.Abandon();
         Section.RenameAccount(row.Name, newName);
         row.Renamed(newName);
         // The saved file still holds the old name: the state it had is not this account's.
@@ -522,6 +618,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     internal void Remove(EmailAccountRowViewModel row)
     {
         var index = Accounts.IndexOf(row);
+        row.SignIn?.Abandon();
         Section.RemoveAccount(row.Name);
         Prune();
         Accounts.Remove(row);
@@ -535,6 +632,8 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     private void Reload()
     {
         var selected = _selectedAccount?.Name;
+        // The rows are rebuilt: a panel has no row to show under any more.
+        StopSignIns();
         Accounts.Clear();
         foreach (var name in Section.AccountNames.Where(name => !string.IsNullOrWhiteSpace(name)))
         {
@@ -596,16 +695,13 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     }
 
     /// <summary>Arms one row's question and disarms every other, the add box included: one question at a time.</summary>
-    private void Arm(EmailAccountRowViewModel row, bool rename)
+    private void Arm(EmailAccountRowViewModel row, Action<EmailAccountRowViewModel> question)
     {
         IsAdding = false;
         foreach (var other in Accounts)
             other.Disarm();
 
-        if (rename)
-            row.BeginRename();
-        else
-            row.BeginRemove();
+        question(row);
     }
 
     private void BrowseCredentialsDirectory()

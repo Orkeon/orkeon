@@ -15,7 +15,7 @@ internal sealed class FakeEmailLoginInteraction : IEmailLoginInteraction
     public string? UserCode { get; private set; }
 
     /// <inheritdoc />
-    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, CancellationToken cancellationToken)
+    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
         VerificationUri = verificationUri;
         UserCode = userCode;

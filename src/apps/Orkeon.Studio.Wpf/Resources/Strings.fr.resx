@@ -735,6 +735,23 @@
   <data name="Studio.Settings.MailTestFailed" xml:space="preserve"><value>Connexion impossible</value></data>
   <data name="Studio.Settings.MailTestOperatorFixable" xml:space="preserve"><value>À corriger sur cette machine</value></data>
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve"><value>Le serveur a refusé ou n'a pas répondu</value></data>
+  <data name="Studio.Settings.MailSignIn" xml:space="preserve"><value>Se connecter</value></data>
+  <data name="Studio.Settings.MailSignOut" xml:space="preserve"><value>Se déconnecter</value></data>
+  <data name="Studio.Settings.MailSignOutConfirm" xml:space="preserve"><value>Oublier les jetons mémorisés de {0} ? Le compte devra se connecter à nouveau.</value></data>
+  <data name="Studio.Settings.MailSignOutFailed" xml:space="preserve"><value>Déconnexion impossible</value></data>
+  <data name="Studio.Settings.MailSignInStarting" xml:space="preserve"><value>Démarrage de la connexion…</value></data>
+  <data name="Studio.Settings.MailDeviceCode" xml:space="preserve"><value>Ouvrez {0} et saisissez ce code :</value></data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve"><value>Le code expire dans {0}</value></data>
+  <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve"><value>Le code a expiré — recommencez</value></data>
+  <data name="Studio.Settings.MailSignInRestart" xml:space="preserve"><value>Recommencer</value></data>
+  <data name="Studio.Settings.MailAuthorizationUrl" xml:space="preserve"><value>Ouvrez cette adresse dans un navigateur et autorisez l'accès :</value></data>
+  <data name="Studio.Settings.MailPasteRedirect" xml:space="preserve"><value>Si le navigateur ne peut pas revenir vers cette machine, collez l'adresse sur laquelle il s'est arrêté :</value></data>
+  <data name="Studio.Settings.MailPasteRedirectSend" xml:space="preserve"><value>Utiliser cette adresse</value></data>
+  <data name="Studio.Settings.MailCopyLink" xml:space="preserve"><value>Copier le lien</value></data>
+  <data name="Studio.Settings.MailOpenInBrowser" xml:space="preserve"><value>Ouvrir dans le navigateur</value></data>
+  <data name="Studio.Settings.MailSignedIn" xml:space="preserve"><value>Connecté</value></data>
+  <data name="Studio.Settings.MailSignInFailed" xml:space="preserve"><value>La connexion n'a pas abouti</value></data>
+  <data name="Studio.Settings.MailSignInFailedHint" xml:space="preserve"><value>Rien n'a été mémorisé. Le guide e-mail (docs/guides/email.md) explique chaque refus.</value></data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve"><value>Identifiant client OAuth</value></data>
   <data name="Studio.Settings.MailClientIdHint" xml:space="preserve"><value>L'identifiant de l'application que vous avez enregistrée chez Google ou Microsoft.</value></data>
   <data name="Studio.Settings.MailUsername" xml:space="preserve"><value>Nom d'utilisateur</value></data>

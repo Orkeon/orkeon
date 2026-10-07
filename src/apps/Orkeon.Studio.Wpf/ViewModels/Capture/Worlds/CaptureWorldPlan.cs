@@ -185,6 +185,13 @@ internal sealed record CaptureWorldPlan
     /// </summary>
     public string EmailAccountsJson { get; init; } = "[]";
 
+    /// <summary>
+    /// What <c>orkeon email login --events jsonl</c> says before it waits (STUDIO-70): the event
+    /// lines of a sign-in, played as a session that stays open until it is stopped — the panel of
+    /// a sign-in only exists while its child waits. Empty scripts no sign-in.
+    /// </summary>
+    public IReadOnlyList<string> EmailLoginStream { get; init; } = [];
+
     /// <summary>What <c>orkeon --version</c> answers.</summary>
     public string VersionLine { get; init; } = "orkeon 1.0.0-rc.2";
 

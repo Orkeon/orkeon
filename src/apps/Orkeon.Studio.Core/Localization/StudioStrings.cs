@@ -1313,6 +1313,59 @@ public static class StudioStringKeys
     /// <summary>"The server refused or did not answer" — the engine's sentence says which (exit code 2).</summary>
     public const string MailTestServerOrNetwork = "Studio.Settings.MailTestServerOrNetwork";
 
+    // ── signing an OAuth e-mail account in and out (STUDIO-70): the CLI does it, the tab says what to do meanwhile ──
+
+    /// <summary>"Sign in" — runs <c>orkeon email login</c> on an OAuth account.</summary>
+    public const string MailSignIn = "Studio.Settings.MailSignIn";
+
+    /// <summary>"Sign out" — asks first, then runs <c>orkeon email logout</c>.</summary>
+    public const string MailSignOut = "Studio.Settings.MailSignOut";
+
+    /// <summary>"Forget the stored tokens of {0}? The account will need a new sign-in."</summary>
+    public const string MailSignOutConfirm = "Studio.Settings.MailSignOutConfirm";
+
+    /// <summary>"Could not sign out" — what the CLI said follows, as printed.</summary>
+    public const string MailSignOutFailed = "Studio.Settings.MailSignOutFailed";
+
+    /// <summary>"Starting the sign-in…" — the verb has not said yet what to do.</summary>
+    public const string MailSignInStarting = "Studio.Settings.MailSignInStarting";
+
+    /// <summary>"Open {0} and enter this code:" — {0} is the page the provider names.</summary>
+    public const string MailDeviceCode = "Studio.Settings.MailDeviceCode";
+
+    /// <summary>"The code expires in {0}" — {0} is minutes and seconds.</summary>
+    public const string MailDeviceCodeExpiresIn = "Studio.Settings.MailDeviceCodeExpiresIn";
+
+    /// <summary>"The code expired — start again"</summary>
+    public const string MailDeviceCodeExpired = "Studio.Settings.MailDeviceCodeExpired";
+
+    /// <summary>"Start again" — a new sign-in, with a new code.</summary>
+    public const string MailSignInRestart = "Studio.Settings.MailSignInRestart";
+
+    /// <summary>"Open this address in a browser and allow the access:"</summary>
+    public const string MailAuthorizationUrl = "Studio.Settings.MailAuthorizationUrl";
+
+    /// <summary>"If the browser cannot come back to this machine, paste the address it ended on:"</summary>
+    public const string MailPasteRedirect = "Studio.Settings.MailPasteRedirect";
+
+    /// <summary>"Use this address" — sends the pasted address to the sign-in.</summary>
+    public const string MailPasteRedirectSend = "Studio.Settings.MailPasteRedirectSend";
+
+    /// <summary>"Copy the link"</summary>
+    public const string MailCopyLink = "Studio.Settings.MailCopyLink";
+
+    /// <summary>"Open in the browser" — only ever on a click, and only an https address.</summary>
+    public const string MailOpenInBrowser = "Studio.Settings.MailOpenInBrowser";
+
+    /// <summary>"Signed in"</summary>
+    public const string MailSignedIn = "Studio.Settings.MailSignedIn";
+
+    /// <summary>"The sign-in did not complete" — what the CLI said follows, as printed.</summary>
+    public const string MailSignInFailed = "Studio.Settings.MailSignInFailed";
+
+    /// <summary>"Nothing was stored. The e-mail guide (docs/guides/email.md) says what each refusal means."</summary>
+    public const string MailSignInFailedHint = "Studio.Settings.MailSignInFailedHint";
+
     /// <summary>"No key yet?"</summary>
     public const string ProfileKeyNoKeyYet = "Studio.Settings.KeyNoKeyYet";
 
@@ -2634,6 +2687,23 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailTestFailed] = "Could not connect",
         [StudioStringKeys.MailTestOperatorFixable] = "To fix on this machine",
         [StudioStringKeys.MailTestServerOrNetwork] = "The server refused or did not answer",
+        [StudioStringKeys.MailSignIn] = "Sign in",
+        [StudioStringKeys.MailSignOut] = "Sign out",
+        [StudioStringKeys.MailSignOutConfirm] = "Forget the stored tokens of {0}? The account will need a new sign-in.",
+        [StudioStringKeys.MailSignOutFailed] = "Could not sign out",
+        [StudioStringKeys.MailSignInStarting] = "Starting the sign-in…",
+        [StudioStringKeys.MailDeviceCode] = "Open {0} and enter this code:",
+        [StudioStringKeys.MailDeviceCodeExpiresIn] = "The code expires in {0}",
+        [StudioStringKeys.MailDeviceCodeExpired] = "The code expired — start again",
+        [StudioStringKeys.MailSignInRestart] = "Start again",
+        [StudioStringKeys.MailAuthorizationUrl] = "Open this address in a browser and allow the access:",
+        [StudioStringKeys.MailPasteRedirect] = "If the browser cannot come back to this machine, paste the address it ended on:",
+        [StudioStringKeys.MailPasteRedirectSend] = "Use this address",
+        [StudioStringKeys.MailCopyLink] = "Copy the link",
+        [StudioStringKeys.MailOpenInBrowser] = "Open in the browser",
+        [StudioStringKeys.MailSignedIn] = "Signed in",
+        [StudioStringKeys.MailSignInFailed] = "The sign-in did not complete",
+        [StudioStringKeys.MailSignInFailedHint] = "Nothing was stored. The e-mail guide (docs/guides/email.md) says what each refusal means.",
         [StudioStringKeys.ProfileKeyNoKeyYet] = "No key yet?",
         [StudioStringKeys.ProfileKeyOnVendorSite] = "on the provider's site",
         [StudioStringKeys.ProfileKeyExpertHint] = "setx ORKEON_Llm__ApiKey \"sk-…\" — read natively by the runtime, wins over any file",

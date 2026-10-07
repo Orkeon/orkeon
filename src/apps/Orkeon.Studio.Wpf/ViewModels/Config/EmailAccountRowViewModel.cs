@@ -28,6 +28,12 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// <see cref="State"/> is its answer for the file as saved, <see cref="TestCommand"/> its
 /// connection check. Its sentences show as printed, in English, under a localized label.
 /// </para>
+/// <para>
+/// An account that signs in with OAuth2 is signed in and out from here (STUDIO-70):
+/// <see cref="SignInCommand"/> opens the panel of <see cref="SignIn"/>, which follows
+/// <c>orkeon email login</c>; <see cref="SignOutCommand"/> asks first, then runs
+/// <c>orkeon email logout</c>. Both read the file as saved, like the test.
+/// </para>
 /// </summary>
 public sealed class EmailAccountRowViewModel : ObservableObject
 {
@@ -81,6 +87,9 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     private EmailCliFailure? _stateFailure;
     private EmailCheckOutcome? _lastCheck;
     private bool _isTesting;
+    private EmailSignInViewModel? _signIn;
+    private bool _isConfirmingSignOut;
+    private string? _signOutFailure;
 
     internal EmailAccountRowViewModel(EmailAccountDefinition account, EmailSectionViewModel owner, IStudioStrings strings)
     {
@@ -129,6 +138,10 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         ConfirmRemoveCommand = new RelayCommand(() => { if (_isConfirmingRemove) _owner.Remove(this); });
         CancelRemoveCommand = new RelayCommand(() => IsConfirmingRemove = false);
         TestCommand = new AsyncRelayCommand(TestAsync, () => _owner.CanTest);
+        SignInCommand = new RelayCommand(BeginSignIn, () => CanSign && _signIn is not { IsWaiting: true });
+        SignOutCommand = new RelayCommand(() => { if (CanSign) _owner.ArmSignOut(this); }, () => CanSign);
+        ConfirmSignOutCommand = new AsyncRelayCommand(SignOutAsync, () => _isConfirmingSignOut);
+        CancelSignOutCommand = new RelayCommand(() => IsConfirmingSignOut = false);
         RefreshProblems();
     }
 
@@ -503,6 +516,80 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         var outcome => outcome.Sentence,
     };
 
+    // ── signing in and out (STUDIO-70) ──
+
+    /// <summary>
+    /// Whether the account signs in with OAuth2, as its fields now resolve — by its method, by a
+    /// client id, or because it is an Outlook account: the only accounts a sign-in and a sign-out
+    /// mean something for.
+    /// </summary>
+    public bool ShowSignIn => _effective.AuthMethod == OAuth2Method;
+
+    /// <summary>
+    /// "Sign in": runs <c>orkeon email login</c> on the account as the saved file declares it,
+    /// and opens the panel that says what to do meanwhile. Disabled while the document holds
+    /// unsaved edits — the verb reads the file — and while a sign-in of this account waits.
+    /// </summary>
+    public RelayCommand SignInCommand { get; }
+
+    /// <summary>The sign-in panel of the account: in flight, or ended and not closed yet; null otherwise.</summary>
+    public EmailSignInViewModel? SignIn
+    {
+        get => _signIn;
+        private set
+        {
+            if (!SetProperty(ref _signIn, value))
+                return;
+
+            OnPropertyChanged(nameof(HasSignIn));
+            RefreshTest();
+        }
+    }
+
+    /// <summary>Whether a sign-in panel shows.</summary>
+    public bool HasSignIn => _signIn is not null;
+
+    /// <summary>"Sign out": asks first — nothing is forgotten until <see cref="ConfirmSignOutCommand"/>.</summary>
+    public RelayCommand SignOutCommand { get; }
+
+    /// <summary>Whether the sign-out question shows.</summary>
+    public bool IsConfirmingSignOut
+    {
+        get => _isConfirmingSignOut;
+        private set
+        {
+            if (SetProperty(ref _isConfirmingSignOut, value))
+                OnPropertyChanged(nameof(IsIdle));
+        }
+    }
+
+    /// <summary>"Forget the stored tokens of {name}? The account will need a new sign-in.", localized.</summary>
+    public string SignOutConfirmText =>
+        string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.MailSignOutConfirm], _name);
+
+    /// <summary>Runs <c>orkeon email logout</c> on the account, then reads the states again.</summary>
+    public AsyncRelayCommand ConfirmSignOutCommand { get; }
+
+    /// <summary>Closes the sign-out question; nothing was forgotten.</summary>
+    public RelayCommand CancelSignOutCommand { get; }
+
+    /// <summary>
+    /// Why the last sign-out did not happen: what the verb said, as printed, or the sentence of
+    /// the home screen without a CLI; null after one that did, and before any.
+    /// </summary>
+    public string? SignOutFailure
+    {
+        get => _signOutFailure;
+        private set
+        {
+            if (SetProperty(ref _signOutFailure, value))
+                OnPropertyChanged(nameof(HasSignOutFailure));
+        }
+    }
+
+    /// <summary>Whether a sign-out failure shows.</summary>
+    public bool HasSignOutFailure => _signOutFailure is not null;
+
     // ── what each mode sees ──
 
     /// <summary>Whether the expert's fields show.</summary>
@@ -622,7 +709,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     public RelayCommand CancelRemoveCommand { get; }
 
     /// <summary>Whether the row shows its action row: neither question is open.</summary>
-    public bool IsIdle => !_isRenaming && !_isConfirmingRemove;
+    public bool IsIdle => !_isRenaming && !_isConfirmingRemove && !_isConfirmingSignOut;
 
     internal void BeginRename()
     {
@@ -633,10 +720,25 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
     internal void BeginRemove() => IsConfirmingRemove = true;
 
+    internal void BeginSignOut()
+    {
+        SignOutFailure = null;
+        IsConfirmingSignOut = true;
+        ConfirmSignOutCommand.RaiseCanExecuteChanged();
+    }
+
     internal void Disarm()
     {
         IsRenaming = false;
         IsConfirmingRemove = false;
+        IsConfirmingSignOut = false;
+    }
+
+    /// <summary>The panel is done with — cancelled, closed, or stopped with the tab: it leaves the row.</summary>
+    internal void SignInClosed(EmailSignInViewModel signIn)
+    {
+        if (ReferenceEquals(_signIn, signIn))
+            SignIn = null;
     }
 
     /// <summary>The account moved under <paramref name="name"/> in the document: the row follows.</summary>
@@ -644,7 +746,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     {
         _name = name;
         _loaded = _loaded with { Name = name };
-        OnPropertyChanged(nameof(Name));
+        OnPropertiesChanged(nameof(Name), nameof(SignOutConfirmText));
     }
 
     internal void RefreshMode() =>
@@ -683,8 +785,13 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         RefreshState();
     }
 
-    /// <summary>The document was edited or saved: the test asks again whether it may run.</summary>
-    internal void RefreshTest() => TestCommand.RaiseCanExecuteChanged();
+    /// <summary>The document was edited or saved, or a sign-in moved: the test, the sign-in and the sign-out ask again whether they may run.</summary>
+    internal void RefreshTest()
+    {
+        TestCommand.RaiseCanExecuteChanged();
+        SignInCommand.RaiseCanExecuteChanged();
+        SignOutCommand.RaiseCanExecuteChanged();
+    }
 
     /// <summary>Reads again what the run will say of the account, as the document now holds it.</summary>
     internal void RefreshProblems()
@@ -701,9 +808,10 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _clientSecret?.RefreshTexts();
         RefreshSecretStates();
         RefreshState();
+        _signIn?.RefreshTexts();
         OnPropertiesChanged(
             nameof(RenameRefusal), nameof(HasRenameRefusal), nameof(AuthMethodPlaceholder),
-            nameof(LastCheckHeadline), nameof(LastCheckDetail));
+            nameof(LastCheckHeadline), nameof(LastCheckDetail), nameof(SignOutConfirmText));
     }
 
     /// <summary>A recipient line was typed in: the list is written again.</summary>
@@ -819,7 +927,8 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _loaded = definition;
         OnPropertiesChanged(
             nameof(Effective), nameof(IncomingPortPlaceholder), nameof(OutgoingPortPlaceholder), nameof(AuthMethodPlaceholder), nameof(SaveSentCopy),
-            nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients), nameof(ShowSendClosed));
+            nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients), nameof(ShowSendClosed), nameof(ShowSignIn));
+        RefreshTest();
     }
 
     /// <summary>
@@ -883,6 +992,32 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         {
             IsTesting = false;
         }
+    }
+
+    /// <summary>Whether the account may be signed in or out now: OAuth2, a CLI to ask, and nothing unsaved.</summary>
+    private bool CanSign => ShowSignIn && _owner.CanTest;
+
+    private void BeginSignIn()
+    {
+        if (!SignInCommand.CanExecute(null))
+            return;
+
+        // A panel that ended and was left open makes way for the new one.
+        _signIn?.Abandon();
+        SignOutFailure = null;
+        SignIn = _owner.BeginSignIn(this);
+    }
+
+    /// <summary>
+    /// The confirmed sign-out: the question closes, a sign-in of the account still waiting is
+    /// stopped — its tokens would land after the ones being forgotten —, and the verb runs.
+    /// </summary>
+    private async Task SignOutAsync()
+    {
+        IsConfirmingSignOut = false;
+        ConfirmSignOutCommand.RaiseCanExecuteChanged();
+        _signIn?.Abandon();
+        SignOutFailure = await _owner.SignOutAsync(_name) is { } failure ? _owner.FailureText(failure) : null;
     }
 
     private void RefreshState() =>

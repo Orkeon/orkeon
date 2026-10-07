@@ -15,7 +15,7 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// check over Graph, readiness, sign-out — runs offline.
 /// </summary>
 [Collection(CliCollection.Name)]
-public sealed class EmailCommandTests
+public sealed partial class EmailCommandTests
 {
     [Fact]
     public async Task Accounts_WithoutAnyAccount_SaysWhereToDeclareOne()
