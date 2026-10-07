@@ -154,24 +154,51 @@ Without `--model`, each provider gets **its own** model, not a generic one. Reso
 from the most explicit to the most general: `--model` > the `models` list of the campaign
 JSON > the catalog's `defaultModel`.
 
-| Provider | Default | Vision model | Candidate (`--candidates`, review of 2026-09-19) |
+| Provider | Default | Vision model | Candidates (`--candidates`, reviews of 2026-09-19 and 2026-10-07) |
 |---|---|---|---|
-| `openai` | `gpt-5.6-sol` | | `gpt-6-astra` |
-| `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1` |
+| `openai` | `gpt-5.6-sol` | | `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol` |
+| `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1`, `claude-sonnet-5-5`, `claude-haiku-5-5`, `claude-opus-5-5` |
 | `azure` | *(none — see below)* | | |
 | `ollama` | `llama3.2` | `llava` | `qwen3.5:4b` *(pull it first)* |
 | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | `zai-org/GLM-5.3-Flash` *(serverless, reads the image since the 2026-09-21 campaign)* | `zai-org/GLM-5.3-Flash`, `Qwen/Qwen3.5-9B` |
 | `deepseek` | `deepseek-flash` *(renamed 2026-09-19, campaigned 2026-09-21)* | *(the default sees)* | |
-| `kimi` | `kimi-k2.6` | | `kimi-k3` |
+| `kimi` | `kimi-k2.6` | | `kimi-k3`, `kimi-k2.7-code` |
 | `qwen` | `qwen3.7-plus` | | `qwen3.8-flash`, `qwen3.8-max` |
-| `mistral` | `mistral-medium-2604` | | |
+| `mistral` | `mistral-medium-2604` | | `mistral-large-4`, `mistral-small-2603` |
 | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | `Qwen/Qwen3.5-9B` |
-| `zai` | `glm-5.2` | `glm-4.6v-flash` | `glm-5.3`, `glm-5.3-flash` |
+| `zai` | `glm-5.2` | `glm-4.6v-flash` | `glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx` |
 | `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash` |
-| `grok` | `grok-4.6` | *(the default sees)* | |
+| `grok` | `grok-4.6` | *(the default sees)* | `grok-4.7` |
 | `minimax` | `MiniMax-M2` | `MiniMax-M3` *(the successor sees — measured 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M3` |
-| `openrouter` | `google/gemini-3.7-flash` | *(the default sees in direct — the transport is what the campaign measures)* | `google/gemini-3.8-flash` |
-| `mammouth` | `gemini-3.7-flash` | *(same model, bare id — what the proxy lets through is what the campaign measures)* | `gemini-3.8-flash` |
+| `openrouter` | `google/gemini-3.7-flash` | *(the default sees — M9 green on 2026-10-07, as in direct)* | `google/gemini-3.8-flash` |
+| `mammouth` | `gemini-3.7-flash` | *(the default sees — M9 green through the proxy on 2026-10-07)* | `gemini-3.8-flash` |
+
+### What each provider serves — `lib/served-models.json`
+
+A campaign is also when the list of models is read. `lib/served-models.json` is the dated
+snapshot of what each provider's own catalogue endpoint answered to the campaign key —
+every identifier, and beside it the options the endpoint publishes for that model: context
+and output cap (Anthropic, DeepSeek, Gemini, Mammouth, OpenRouter), default temperature
+(Gemini, Mistral), effort levels and their default (Anthropic, DeepSeek, OpenRouter),
+modalities and prices (Grok, Together), routed providers (HuggingFace), context and
+image / video / reasoning flags (Kimi). Four vendors publish identifiers and nothing else
+(OpenAI, Qwen, Z.AI, MiniMax) — and what a model *refuses* is published by none: it is
+only known by calling it, and lands in `requiredParams`.
+
+```bash
+# The identifiers alone, live:
+orkeon llm models -p mistral -k MISTRAL_API_KEY --json
+# What changed since the snapshot:
+jq -r '.providers.mistral.models | keys[]' llmproviders-test/lib/served-models.json
+```
+
+Nothing reads the snapshot at run time: it is the baseline the next campaign diffs against,
+and the source of the *Models served and their default options* section of
+`docs/reference/llm-providers-comparison.md`. A model found there and never campaigned is
+played once on M1, M5 and M7 in a throwaway `--out` root (`.out-*`, gitignored) to learn
+what it refuses, pinned in `requiredParams` accordingly, then run in full — and the full
+run still has the last word: Kimi's provider retries a refused temperature on buffered
+calls, so `kimi-k2.7-code` passed that pre-pass at 0 and only its streams showed the mandate.
 
 These identifiers come from the §6.x sections of the matrix, **not from the defaults compiled
 into the providers**: six of those are flagged there as withdrawn or wrong (G-01 to G-04,

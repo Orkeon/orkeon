@@ -2,11 +2,10 @@
 
 # Comparatif des fournisseurs LLM — Orkeon
 
-> État au 2026-09-30, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
+> État au 2026-10-07, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
 > et des `LlmProviderCapabilities` déclarées par chaque fournisseur.
-> Légende : ✓ supporté · ✗ absent · ◐ partiel/générique · † non campagné (déclaré depuis la
-> documentation du vendeur, en attente de la première campagne en exécution réelle — les
-> détails datés sont dans [la version anglaise](../../reference/llm-providers-comparison.md)).
+> Légende : ✓ supporté · ✗ absent · ◐ partiel/générique. Chaque fournisseur sauf Azure OpenAI
+> a une campagne en exécution réelle archivée ; OpenRouter et Mammouth AI depuis le 2026-10-07.
 
 | Fournisseur | Classe de base | Streaming SSE | Tool calling natif | Chat multi-tours (rôles tool) | Message système | top_p / stop | Grammaire GBNF | response_format | thinking | Vision | reasoning_content round-trip | Cache prompt | Métriques timing | Résilience Polly | Sanitization clé API |
 |---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
@@ -23,8 +22,8 @@
 | **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **MiniMax** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (accepté mais non contraignant — mesuré) | ✗ (toujours actif, inline, extrait) | ✓ | ✓ | ◐ auto | ✗ | ✓ | ✓ |
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **OpenRouter** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema (par endpoint) | ✓ budget (objet `reasoning`) | ✓ (par modèle) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposé) | ✓ | ✓ |
-| **Mammouth AI** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (non documenté) | ✗ (non documenté) | ✓ (par modèle) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **OpenRouter** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema (par endpoint) | ✓ budget (objet `reasoning`) | ✓ (par modèle) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposé) | ✓ | ✓ |
+| **Mammouth AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (accepté mais non contraignant — mesuré) | ✗ (`reasoning_effort` accepté, pas encore déclaré) | ✓ (par modèle) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✓ (`options`) | ◐ `Llm:Grammar` | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` sur `/api/generate`) | ✓ | ✓ |
 
 ## Comment lire les colonnes de capacités
@@ -121,8 +120,9 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   12 modes est passée contre `api.x.ai` via le dialecte OpenAI générique avant même que la
   classe du provider existe (2026-08-30, archivée sous `llmproviders-test/custom-endpoints/`).
   Les clés portent le préfixe `xai-`, que la factory infère.
-- **OpenRouter** † : la place de marché (445 modèles de 60 vendeurs le 2026-09-18) derrière
-  une seule clé, intégrée documentation d'abord (LLM-09) — aucune campagne archivée encore.
+- **OpenRouter** : la place de marché (465 modèles le 2026-10-07) derrière une seule clé,
+  intégrée documentation d'abord (LLM-09) et campagnée le 2026-10-07 (11/1 sur
+  `google/gemini-3.7-flash`, le rouge étant M10).
   Les identifiants sont `vendeur/modèle` (préfixe obligatoire), avec les suffixes `:free` /
   `:nitro` / `:floor` et le slug routeur `openrouter/auto` (utilisable, refusé comme défaut :
   le modèle servi dérive — la métadonnée `served_model` dit qui a répondu). La trace de
@@ -134,11 +134,16 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   `cache_write_tokens` / `reasoning_tokens` ; deux en-têtes d'attribution constants
   (`HTTP-Referer`, `X-OpenRouter-Title`) nomment Orkeon. `json_schema` est honoré par endpoint
   et le provider n'envoie pas `provider.require_parameters` : savoir si un schéma peut être
-  ignoré en silence ailleurs est la question de la première campagne. Le routage avancé
+  ignoré en silence ailleurs reste ouvert après la première campagne (M8 vert sur les trois
+  modèles joués). Le routage avancé
   (`provider {…}`, `models[]`, `plugins[]`) n'est pas exposé. Le préfixe de clé `sk-or-v1-`
-  n'est documenté que par des sources secondaires : la factory n'en infère rien encore.
-- **Mammouth AI** † : l'abonnement multi-modèles français dont les crédits API inclus pilotent
-  Orkeon, intégré documentation d'abord (LLM-09) — aucune campagne archivée encore. À trois
+  est confirmé sur une vraie clé (2026-10-07) ; la factory n'en infère rien encore. La
+  campagne a aussi confirmé `usage.cost` sur les deux chemins, `message.reasoning` avec
+  `reasoning_details[]` sur un modèle qui raisonne, et `openrouter/auto` qui nomme le modèle
+  ayant répondu.
+- **Mammouth AI** : l'abonnement multi-modèles français dont les crédits API inclus pilotent
+  Orkeon, intégré documentation d'abord (LLM-09) et campagné le 2026-10-07 (10/0/2 sur
+  `gemini-3.7-flash` : tous les modes exercés verts). À trois
   indices concordants (2026-09-18) l'API est un proxy LiteLLM ; rien dans le provider n'en
   dépend. Les identifiants sont les chaînes nues des vendeurs (`gpt-5.6-sol`,
   `claude-sonnet-5`, `gemini-3.7-flash`) : le provider se cible par hôte (`api.mammouth.ai`)
@@ -146,9 +151,11 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   `orkeon llm probe -p mammouth`) et n'est jamais inféré d'un nom de modèle — la même chaîne
   sans base URL continue d'aller chez le vendeur. Les settings d'un run ne portent aucune clé
   de provider : un run atteint Mammouth par son `BaseUrl`. Seuls `messages`, `model`, `temperature`,
-  `max_tokens`, `top_p` et `stream` sont documentés : `response_format` et le thinking
-  restent non déclarés (avertissement structuré, jamais un drop silencieux) tant que la
-  première campagne ne les a pas mesurés — la règle MiniMax ; la vision est déclarée depuis la
+  `max_tokens`, `top_p` et `stream` sont documentés. Mesuré le 2026-10-07 : les outils
+  passent, `response_format` est accepté mais un schéma strict ne contraint pas (le cas
+  MiniMax, il reste donc non déclaré), `reasoning_effort` est accepté et la trace d'un modèle
+  qui raisonne revient dans `reasoning_content` (pas encore déclaré — avertissement
+  structuré, jamais un drop silencieux) ; la vision est déclarée depuis la
   liste `text, image` du vendeur. Les tarifs sont les bornes hautes du vendeur
   (`gemini-3.7-flash` à 1,5 / 7,5 $/M, le double du direct).
 - **Clés identity-linked Anthropic** : refusent toute requête sans en-tête
@@ -289,11 +296,154 @@ sinon un modèle plus récent est un **candidat** tant qu'une campagne n'a pas a
 | Google Gemini | `gemini-3.7-flash` | oui — « génération précédente », sans date d'arrêt, 0,75 / 3,75 $/M jusqu'au 2026-12-31 puis 1,50 / 7,50 | `gemini-3.8-flash` (GA 2026-09-02, même prix, thinking `minimal` refusé) | premier candidat à une montée — **campagné le 2026-09-21** : `gemini-3.8-flash` 11/0/1 deux fois, identique à 3.7 mode pour mode sur le transport direct ; OpenRouter et Mammouth non joués (pas de clé) |
 | Grok (x.AI) | `grok-4.6` | oui — recommandé, 2 / 6 $/M sous 200K tokens de prompt, 4 / 12 au-delà | aucun | reste |
 | MiniMax | `MiniMax-M2` | oui — listé « legacy », sans date de retrait | `MiniMax-M3` (2026-06-01, 1M, entrée image + vidéo, mêmes 0,30 / 1,20) | reste — **campagné le 2026-09-21** : `MiniMax-M3` 9/1/2 puis 8/1/3 — il lit l'image (désormais compagnon vision du kit), M2 rouge comme M2, le bloc `<think>` inline découpé comme sur M2, 128 tokens en cache une fois ; la question du format de raisonnement est tranchée |
-| OpenRouter | `google/gemini-3.7-flash` | oui | `google/gemini-3.8-flash` (2026-09-02, même prix) | suit le défaut direct — non campagné le 2026-09-21 (pas de clé) |
-| Mammouth AI | `gemini-3.7-flash` | oui | `gemini-3.8-flash` | suit le défaut direct — non campagné le 2026-09-21 (pas de clé) |
+| OpenRouter | `google/gemini-3.7-flash` | oui | `google/gemini-3.8-flash` (2026-09-02, même prix) | suit le défaut direct — **campagné le 2026-10-07** : 11/1 sur les deux (M10 : champs de cache rendus à 0) |
+| Mammouth AI | `gemini-3.7-flash` | oui | `gemini-3.8-flash` | suit le défaut direct — **campagné le 2026-10-07** : 10/0/2 sur les deux, tous les modes exercés verts |
 
 `ModelPricingRegistry` suit les mêmes pages : la famille GPT-5.6 et `gpt-6-astra`, Sonnet 5 à
 2 / 10, Fable 5.1 / Fable 5 et Haiku 4.5.
+
+## Modèles servis et leurs options par défaut — lecture des catalogues du 2026-10-07
+
+La campagne du 2026-10-07 a lu l'endpoint de catalogue de chaque fournisseur avec la clé de
+campagne (`orkeon llm models -p <fournisseur>` rend les mêmes identifiants), puis joué le
+protocole sur chaque défaut, sur les candidats de la revue du 2026-09-19, et sur les modèles
+de chat courants que la liste montrait et qu'aucune campagne n'avait encore rencontrés. Il
+en sort trois sortes de faits, tenues séparées à dessein :
+
+- **ce que l'endpoint publie** d'un modèle — contexte, plafond de sortie, échantillonnage
+  par défaut, niveaux d'effort. La donnée du vendeur : lue, pas mesurée ;
+- **ce que le modèle impose** — une valeur qu'il refuse de voir changer. Aucun endpoint ne
+  la publie. On l'apprend en appelant le modèle (une passe sur M1, M5 et M7 aux réglages par
+  défaut de la sonde) et elle est consignée dans `requiredParams` ;
+- **ce que la campagne a mesuré** sur les douze modes automatisés.
+
+La liste complète — 1 442 identifiants pour quatorze fournisseurs, chacun avec les options
+que son endpoint publie — est
+[`llmproviders-test/lib/served-models.json`](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/lib/served-models.json),
+un instantané daté auquel la prochaine campagne se comparera. Azure OpenAI et Ollama n'ont
+pas de ligne : l'un sert les déploiements d'un compte, l'autre ce qu'une machine a tiré.
+
+| Fournisseur | Requête du catalogue | Identifiants | Ce qu'elle publie par modèle |
+|---|---|---|---|
+| OpenAI | `GET api.openai.com/v1/models` | 133 | les identifiants seuls |
+| Anthropic | `GET api.anthropic.com/v1/models` | 14 | contexte, plafond de sortie, niveaux d'effort, types de thinking, modalités |
+| DeepSeek | `GET api.deepseek.com/models` | 2 | contexte, plafond de sortie, modalités, niveaux d'effort et leur défaut |
+| Z.AI | `GET api.z.ai/api/paas/v4/models` | 11 | les identifiants seuls |
+| Kimi | `GET api.moonshot.ai/v1/models` | 4 | contexte, entrée image/vidéo, raisonnement |
+| Google Gemini | `GET generativelanguage.googleapis.com/v1beta/models` | 62 | contexte, plafond de sortie, température / topP / topK par défaut, température maximale, thinking |
+| Mistral AI | `GET api.mistral.ai/v1/models` | 55 | contexte, température par défaut, capacités, alias, dépréciation |
+| Qwen | `GET dashscope-intl.aliyuncs.com/compatible-mode/v1/models` | 172 | les identifiants seuls |
+| Grok (x.AI) | `GET api.x.ai/v1/language-models` | 8 | modalités, prix en $ par million de tokens, seuil de contexte long, alias |
+| MiniMax | `GET api.minimax.io/v1/models` | 8 | les identifiants seuls |
+| Together AI | `GET api.together.xyz/v1/models` | 264 | type, contexte, prix en $ par million de tokens |
+| HuggingFace | `GET router.huggingface.co/v1/models` | 137 | modalités et, par fournisseur routé : contexte, outils, sortie structurée |
+| OpenRouter | `GET openrouter.ai/api/v1/models` | 465 | contexte, plafond de sortie du premier endpoint, paramètres par défaut, raisonnement (obligatoire, effort par défaut, efforts acceptés) |
+| Mammouth AI | `GET api.mammouth.ai/v1/models` | 107 | contexte, plafond de sortie |
+
+Les modèles de chat de la génération courante, fournisseur par fournisseur. Un tiret dans les
+deux colonnes de taille signifie que l'endpoint ne publie pas le chiffre — pour ces modèles,
+les plafonds documentés sont ceux de la section suivante.
+
+| Fournisseur | Modèle | Contexte | Sortie max | Publié par l'endpoint | Imposé par le modèle (mesuré) | Campagne ✅/❌/➖ |
+|---|---|---|---|---|---|---|
+| OpenAI | `gpt-5.6-sol` *(défaut)* | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` avec des outils | 11/1/0 — ❌ M9 |
+|  | `gpt-5.6-terra` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` avec des outils | 11/1/0 — ❌ M9 |
+|  | `gpt-5.6-luna` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` avec des outils | 11/1/0 — ❌ M6 |
+|  | `gpt-6-sol` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` avec des outils | 11/1/0 — ❌ M9 |
+|  | `gpt-6-luna` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` avec des outils | 12/0/0 |
+|  | `gpt-6.1-sol` | — | — | — | `temperature` = `1` | 10/2/0 — ❌ M2, M5 |
+|  | `gpt-6-astra` | — | — | — | `temperature` = `1` | 10/2/0 — ❌ M2, M5 |
+| Anthropic | `claude-sonnet-5` *(défaut)* | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` `disabled` | `temperature` = `1` | 12/0/0 |
+|  | `claude-sonnet-5-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 12/0/0 |
+|  | `claude-haiku-5-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` `disabled` | `temperature` = `1` | 11/1/0 — ❌ M9 |
+|  | `claude-opus-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` `disabled` | `temperature` = `1` | 12/0/0 |
+|  | `claude-opus-5-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 10/2/0 — ❌ M5, M6 |
+|  | `claude-fable-5-1` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 11/1/0 — ❌ M6 |
+| DeepSeek | `deepseek-flash` *(défaut)* | 1 048 576 | 393 216 | effort par défaut `high` (sur `low` `high` `max`) · text + image | — | 12/0/0 |
+|  | `deepseek-v4-pro` | 1 048 576 | 393 216 | effort par défaut `high` (sur `low` `high` `max`) · text | — | 11/1/0 — ❌ M9 |
+| Z.AI | `glm-5.2` *(défaut)* | — | — | — | — | 10/2/0 — ❌ M9, M10 |
+|  | `glm-5.3` | — | — | — | — | 10/2/0 — ❌ M2, M9 |
+|  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
+|  | `glm-5.3-flashx` | — | — | — | — | 12/0/0 |
+| Kimi | `kimi-k2.6` *(défaut)* | 262 144 | — | image + vidéo + raisonnement | `temperature` = `1` | 10/1/1 — ❌ M8 |
+|  | `kimi-k3` | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 11/1/0 — ❌ M2 |
+|  | `kimi-k2.7-code` | 262 144 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
+| Google Gemini | `gemini-3.7-flash` *(défaut)* | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
+|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
+|  | `gemini-3.5-flash-lite` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 |
+|  | `gemini-3.1-pro-preview` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 10/1/1 — ❌ M5 |
+| Mistral AI | `mistral-medium-2604` *(défaut)* | 262 144 | — | `temperature` 1 · outils + raisonnement + vision | `reasoning_effort` ∈ {`high`, `none`} | 11/1/0 — ❌ M10 |
+|  | `mistral-large-4` | 524 288 | — | `temperature` 1 · outils + raisonnement + vision | `reasoning_effort` ∈ {`high`, `none`} | 11/1/0 — ❌ M10 (10/2/0 — ❌ M3, M6 avant le correctif des flux) |
+|  | `mistral-small-2603` | 262 144 | — | `temperature` 0.3 · outils + raisonnement + vision | `reasoning_effort` ∈ {`high`, `none`} | 11/1/0 — ❌ M9 |
+| Qwen | `qwen3.7-plus` *(défaut)* | — | — | — | — | 12/0/0 |
+|  | `qwen3.7-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
+|  | `qwen3.7-max` | — | — | — | — | 11/1/0 — ❌ M9 |
+|  | `qwen3.8-flash` | — | — | — | — | 12/0/0 |
+|  | `qwen3.8-max` | — | — | — | — | 12/0/0 |
+| Grok (x.AI) | `grok-4.6` *(défaut)* | — | — | text + image · 2 / 0.5 / 6 $/M entrée / cache / sortie | — | 12/0/0 |
+|  | `grok-4.7` | — | — | text + image · 2 / 0.5 / 6 $/M entrée / cache / sortie | — | 11/1/0 — ❌ M6 |
+| MiniMax | `MiniMax-M2` *(défaut)* | — | — | — | — | 7/2/3 — ❌ M2, M9 |
+|  | `MiniMax-M2.7` | — | — | — | — | 8/2/2 — ❌ M2, M9 |
+|  | `MiniMax-M3` | — | — | — | — | 9/1/2 — ❌ M2 |
+| Together AI | `meta-llama/Llama-3.3-70B-Instruct-Turbo` *(défaut)* | 131 072 | — | 1.04 / 1.04 $/M | — | 9/1/2 — ❌ M9 |
+|  | `zai-org/GLM-5.3-Flash` | 1 048 575 | — | 0.15 / 0.5 $/M | — | 11/0/1 |
+|  | `Qwen/Qwen3.5-9B` | 262 144 | — | 0.17 / 0.25 $/M | — | 10/0/2 |
+| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(défaut)* | jusqu'à 131 072 | — | 4 fournisseur(s) routé(s), 1 avec outils | — | 7/3/2 — ❌ M2, M5, M9 |
+|  | `Qwen/Qwen3.5-9B` | jusqu'à 262 144 | — | 4 fournisseur(s) routé(s), 3 avec outils | — | 10/0/2 |
+| OpenRouter | `google/gemini-3.7-flash` *(défaut)* | 1 048 576 | 65 536 | effort par défaut `medium` · raisonnement obligatoire | — | 11/1/0 — ❌ M10 |
+|  | `google/gemini-3.8-flash` | 1 048 576 | 65 536 | effort par défaut `medium` · raisonnement obligatoire | — | 11/1/0 — ❌ M10 |
+|  | `deepseek/deepseek-v4.1-flash` | 1 048 576 | 943 718 | effort par défaut `high` | — | 4/0/0 (M5, M7, M8, M10) |
+| Mammouth AI | `gemini-3.7-flash` *(défaut)* | 1 048 576 | 65 536 | — | — | 10/0/2 |
+|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | — | — | 10/0/2 |
+|  | `deepseek-v4.1-flash` | 1 048 576 | 1 048 576 | — | — | 1/0/2 (M5, M7, M8) |
+
+Ce que le tableau ne dit pas tout seul :
+
+- **OpenAI** — la génération 6 est listée (`gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol`, à côté
+  de `gpt-6-astra`). `gpt-6-sol`, `gpt-6-luna` et les deux tiers 5.6 jamais joués se
+  comportent comme le défaut : température 1 seulement, et les outils sur
+  `/v1/chat/completions` exigent `reasoning_effort: none`. `gpt-6.1-sol` se comporte comme
+  `gpt-6-astra` : il n'a pas de `none`, les outils y restent donc refusés (M2 sur le tableau
+  `messages`, M5) tant que le dialecte ne parle pas `/v1/responses`. M9 est le mode qui bouge
+  à la température imposée : `29`, `26` et `18` ont été lus pour 73 sur trois modèles.
+- **Anthropic** — `claude-sonnet-5-5`, `claude-opus-5-5` et `claude-haiku-5-5` sont listés,
+  le dernier le jour même de la campagne. Les quatre modèles campagnés pour la première fois
+  refusent une température épinglée dans les mots de `claude-sonnet-5`. `claude-opus-5-5`
+  répond à l'invite d'outil de la sonde par un HTTP 200, un `content` vide et
+  `stop_reason: "refusal"` (catégorie `cyber`) : le provider ne lit pas `stop_reason` et rend
+  une réponse vide — ses rouges M5 et M6 sont ce refus, pas l'appel d'outil. Le rouge M9 de
+  `claude-haiku-5-5` est celui de la sonde : le modèle répond `Seventy-three red`, le contrôle
+  cherche les chiffres.
+- **Mistral AI** — le compte n'est plus limité en débit, le défaut a donc de nouveau un
+  résultat (11/1, sa ligne du 2026-08-30). `mistral-large-4` raisonne par défaut et diffuse
+  `delta.content` sous la forme d'un tableau de morceaux typés : le flux texte levait une
+  exception dessus (M3) et le flux de chat perdait la trace et les premiers mots de la
+  réponse. Les deux flux lisent les deux formes depuis le 2026-10-07 ; rejoué sur ce
+  correctif, le modèle est à 11/1, M3 vert.
+- **Kimi** — joué une heure après les autres : le compte était d'abord suspendu pour solde
+  insuffisant (HTTP 429, `exceeded_current_quota_error`, que la politique de retry traite
+  comme une limite de débit). `kimi-k2.6` clôture toujours son `json_object` en markdown (M8,
+  comme le 2026-09-21) ; `kimi-k2.7-code` est le seul modèle Kimi dont tous les modes sont
+  verts. Lui aussi impose la température 1, ce que seuls ses flux ont montré : sur un appel
+  bufferisé le provider retente une fois avec la valeur imposée, les deux chemins de flux non.
+- **Z.AI** — `glm-5.3-flashx` est le deuxième modèle de la famille à passer tous les modes.
+  La liste omet `glm-4.6v-flash`, qui est servi (le compagnon vision, M9 vert le même jour) :
+  un catalogue n'est pas toute l'offre.
+- **Qwen** — une clé internationale n'est servie que par `dashscope-intl.aliyuncs.com` ;
+  l'endpoint compilé (`dashscope.aliyuncs.com`) lui répond 401. Régler `Llm:BaseUrl`.
+- **Gemini** — `gemini-3.5-flash-lite` est le seul modèle Gemini dont le détail du cache est
+  revenu (4077 tokens en cache) ; le rouge M5 de `gemini-3.1-pro-preview` ne s'est pas
+  reproduit en trois rejeux.
+- **OpenRouter et Mammouth AI** — premières campagnes, toutes deux sur le défaut Gemini du
+  parc : un modèle, trois transports. Direct 11/0/1, OpenRouter 11/1/0, Mammouth 10/0/2 — la
+  place de marché rend les champs de cache à 0 là où Google n'en rend aucun (M10), et les
+  deux ➖ de Mammouth sont les capacités que le provider ne déclare pas. Le catalogue
+  d'OpenRouter est le plus riche du parc : par modèle, les paramètres par défaut et le
+  caractère obligatoire du raisonnement.
+- **Servis aussi, non campagnés** — entre autres `claude-fable-5`, `claude-opus-4-8`,
+  `gemini-3.6-flash`, `gemini-3.5-flash`, `mistral-large-2512`, la famille `ministral`,
+  `grok-4.5`, `grok-4.3`, `MiniMax-M2.1`, `MiniMax-M2.5`, `glm-5.1`, `glm-5-turbo`,
+  `qwen3.6-plus`, `qwen3.5-plus`. L'instantané les liste tous.
 
 ## Plafonds de sortie — le maximum documenté par modèle (LLM-10)
 
@@ -350,11 +500,17 @@ réel ; rien n'est inféré.
 | Fournisseur | Modèle | Paramètre | Valeur obligatoire | Les mots du vendeur | Mesuré |
 |---|---|---|---|---|---|
 | Kimi | `kimi-k2.6` | `temperature` | `1` | `invalid temperature: only 1 is allowed for this model` | 2026-08-03 |
+| Kimi | `kimi-k2.7-code` | `temperature` | `1` — un appel bufferisé est retenté par le provider avec cette valeur, un flux est refusé | `invalid temperature: only 1 is allowed for this model` | 2026-10-07 |
 | OpenAI | `gpt-5.6-sol` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-08-30 |
 | OpenAI | `gpt-5.6-sol` | `reasoning_effort` | `"none"` quand la requête porte des function tools sur `/v1/chat/completions` | `Function tools with reasoning_effort are not supported for gpt-5.6-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.` | 2026-08-30 |
 | OpenAI | `gpt-6-astra` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-09-21 |
 | OpenAI | `gpt-6-astra` | `reasoning_effort` | **aucun `"none"` n'existe** (`low`, `medium`, `high`, `xhigh`) — le contournement Sol est impossible, les function tools restent refusés sur `/v1/chat/completions` tant que le dialecte ne parle pas `/v1/responses` | `'reasoning_effort' does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'.` — et sans lui, `Function tools with reasoning_effort are not supported for gpt-6-astra in /v1/chat/completions. To use function tools, use /v1/responses` | 2026-09-21 |
 | Anthropic | `claude-sonnet-5` | `temperature` | `1`, ou omettre le champ | `` `temperature` is deprecated for this model.`` (1 et l'omission passent ; 0 et 0.7 non) | 2026-08-30 |
+| OpenAI | `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-6-sol`, `gpt-6-luna` | `temperature` et `reasoning_effort` | comme `gpt-5.6-sol` : `1`, et `"none"` avec des outils | les deux phrases de `gpt-5.6-sol`, au nom du modèle près | 2026-10-07 |
+| OpenAI | `gpt-6.1-sol` | `temperature` et `reasoning_effort` | comme `gpt-6-astra` : `1`, et **pas de `"none"`** | `'reasoning_effort' does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'.` | 2026-10-07 |
+| Anthropic | `claude-opus-5`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` | `temperature` | `1`, ou omettre le champ | `` `temperature` is deprecated for this model.`` | 2026-10-07 |
+| Mistral | `mistral-large-4` | `reasoning_effort` | `high` ou `none` seulement | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-10-07 |
+| Mistral | `mistral-small-2603` | `reasoning_effort` | `high` ou `none` seulement | `reasoning_effort='low' is not supported for this model. Must be one of (<ReasoningEffort.none: 'none'>, <ReasoningEffort.high: 'high'>)` | 2026-10-07 |
 | Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` ou `none` seulement | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `top_p` | `1` explicite quand `temperature` vaut 0 et que le raisonnement est actif (l'omission n'y vaut PAS 1) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
 

@@ -34,7 +34,7 @@ decision and the alternatives it rejected are in [ADR-012](../adr/ADR-012-email-
 > Outlook.com through Microsoft Graph, and Outlook over IMAP and SMTP, have not been run
 > against a real account yet: their walkthroughs follow Microsoft's documentation, checked on
 > 2026-09-26. Treat them as campaign-pending — the way the OpenRouter and Mammouth providers
-> are documented.
+> were documented until their first campaign.
 
 ## The thirteen tools
 

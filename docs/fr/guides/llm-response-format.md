@@ -213,10 +213,8 @@ raison.
 | **Ollama** | `JsonSchema` | Dialecte propre (`format`). |
 | **DeepSeek**, Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. DeepSeek exige en plus le mot-clé `json` (ci-dessus). |
 | **MiniMax** | `None` | Accepté mais non contraignant — mesuré le 2026-08-30 (schéma ignoré, `json_object` clôturé en markdown) ; un format déclaré produit l'avertissement structuré de capacité. |
-| **OpenRouter** † | `JsonSchema` | Documenté par endpoint (2026-09-18, non campagné) ; le provider n'envoie pas `provider.require_parameters`, un schéma peut donc être ignoré par un endpoint qui ne le supporte pas — la question de la première campagne. |
-| **Mammouth AI** † | `None` | Non documenté sur le proxy (2026-09-18, non campagné) ; un format déclaré produit l'avertissement structuré de capacité tant qu'une campagne ne l'a pas mesuré. |
-
-† pas encore campagné.
+| **OpenRouter** | `JsonSchema` | Documenté par endpoint ; M8 vert sur les trois modèles campagnés le 2026-10-07. Le provider n'envoie pas `provider.require_parameters`, un schéma peut donc encore être ignoré par un endpoint qui ne le supporte pas — un M8 vert ne l'exclut pas. |
+| **Mammouth AI** | `None` | Accepté mais non contraignant — mesuré le 2026-10-07 (`json_object` rend du JSON nu, un schéma strict n'a pas contraint `gemini-3.7-flash`) ; un format déclaré produit l'avertissement structuré de capacité. |
 
 ## Livrables `structured_output`
 

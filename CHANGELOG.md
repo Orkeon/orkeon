@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a Mistral model that reasons no longer breaks a stream, and the fleet is campaigned again with its two aggregators (LLM-08)
+
+The campaign of 2026-10-07 ran the protocol against the fourteen cloud providers — OpenRouter
+and Mammouth AI for the first time — and read each provider's own model catalogue.
+
+- **A stream whose content deltas are arrays is read.** `mistral-large-4` reasons by default
+  and streams `delta.content` as an array of typed chunks, the shape the buffered path has
+  read since 2026-08-30. The text stream (`GenerateStreamingAsync`) threw
+  `InvalidOperationException` on the first one; the chat stream (`ChatStreamingAsync`)
+  dropped them — the reasoning trace, and the first words of the answer, which arrive inside
+  the chunk that closes the thinking. Both read the two shapes now, on every
+  OpenAI-compatible provider.
+- **OpenRouter and Mammouth AI have an archived campaign**: 11/1 and 10/0/2 on the fleet's
+  Gemini default. No declared capability changes; what each proxy lets through is recorded in
+  the [provider comparison](docs/reference/llm-providers-comparison.md).
+- **`llmproviders-test/lib/served-models.json`** is the dated list of what each provider
+  serves — 1 442 identifiers, with the options its catalogue endpoint publishes per model —
+  and the comparison page gains *Models served and their default options*. Twelve more models
+  have their mandatory values recorded (`requiredParams`): the GPT-5.6 and GPT-6 tiers, four
+  Claude models, two Mistral models, `kimi-k2.7-code`.
+
+Known and not fixed here: an Anthropic refusal (`stop_reason: "refusal"`, HTTP 200, empty
+content) is returned as an empty answer; a 429 that says the account is out of credit is
+retried like a rate limit; Kimi's retry on a mandated temperature covers buffered calls only,
+a stream surfaces the refusal; `orkeon llm models -p anthropic` cannot send the workspace
+header an identity-linked key requires.
+
 ### Changed — the e-mail tools read a password variable from the Windows user scope too
 
 The variable an account names for its password (`Auth:PasswordEnvVar`) or its OAuth client secret

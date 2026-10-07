@@ -290,11 +290,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 var choices = doc.RootElement.GetProperty("choices");
                 foreach (var choice in choices.EnumerateArray())
                 {
-                    if (choice.TryGetProperty("delta", out var delta) &&
-                        delta.TryGetProperty("content", out var content))
+                    if (choice.TryGetProperty("delta", out var delta))
                     {
-                        var token = content.GetString();
-                        if (token is not null)
+                        // The trace of an array-shaped delta has no channel on a text stream.
+                        var token = ExtractMessageContent(delta).Content;
+                        if (token.Length > 0)
                             yield return token;
                     }
                 }
@@ -502,18 +502,25 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     private static void AccumulateDelta(
         JsonElement delta, ChatStreamState state, List<LlmStreamEvent> events, string reasoningFieldName)
     {
-        if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+        // Both shapes of delta.content: the plain string, and the array of typed chunks Mistral
+        // streams while a model reasons — mistral-large-4 does by default, and its first words
+        // of answer arrive inside such a chunk (campaign of 2026-10-07: 123 array deltas for
+        // 4 strings; the text stream threw on the first one, this one dropped them).
+        var (answer, thinking) = ExtractMessageContent(delta);
+        if (thinking.Length > 0)
         {
-            var token = content.GetString();
-            if (!string.IsNullOrEmpty(token) && state.Splitter is { } splitter)
-            {
-                events.AddRange(Emit(splitter.Feed(token), state));
-            }
-            else if (!string.IsNullOrEmpty(token))
-            {
-                state.Content.Append(token);
-                events.Add(LlmStreamEvent.Content(token));
-            }
+            state.Reasoning.Append(thinking);
+            events.Add(LlmStreamEvent.Reasoning(thinking));
+        }
+
+        if (answer.Length > 0 && state.Splitter is { } splitter)
+        {
+            events.AddRange(Emit(splitter.Feed(answer), state));
+        }
+        else if (answer.Length > 0)
+        {
+            state.Content.Append(answer);
+            events.Add(LlmStreamEvent.Content(answer));
         }
 
         if (delta.TryGetProperty(reasoningFieldName, out var reasoning) && reasoning.ValueKind == JsonValueKind.String)
