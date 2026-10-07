@@ -1261,6 +1261,23 @@ public static class StudioStringKeys
     /// <summary>"Choose the folder that holds the sign-in tokens"</summary>
     public const string MailCredentialsDirectoryPick = "Studio.Settings.MailCredentialsDirectoryPick";
 
+    // ── the secrets of an e-mail account (STUDIO-68): typed in the form, kept outside any file ──
+
+    /// <summary>"Password or app password"</summary>
+    public const string MailPassword = "Studio.Settings.MailPassword";
+
+    /// <summary>"Stored on this machine, outside any file" — the state of a password or of a client secret.</summary>
+    public const string MailPasswordStored = "Studio.Settings.MailPasswordStored";
+
+    /// <summary>"Not stored yet"</summary>
+    public const string MailPasswordMissing = "Studio.Settings.MailPasswordMissing";
+
+    /// <summary>"Client secret (Google desktop application)"</summary>
+    public const string MailClientSecret = "Studio.Settings.MailClientSecret";
+
+    /// <summary>"Kept in the variable {0}"</summary>
+    public const string MailSecretVariable = "Studio.Settings.MailSecretVariable";
+
     /// <summary>"No key yet?"</summary>
     public const string ProfileKeyNoKeyYet = "Studio.Settings.KeyNoKeyYet";
 
@@ -2566,6 +2583,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailNameInvalid] = "A name holds letters, digits, '.', '_' and '-' only, starts with a letter or a digit, and has 64 characters at most.",
         [StudioStringKeys.MailNameTaken] = "Another account already answers to this name — upper and lower case are the same name.",
         [StudioStringKeys.MailCredentialsDirectoryPick] = "Choose the folder that holds the sign-in tokens",
+        [StudioStringKeys.MailPassword] = "Password or app password",
+        [StudioStringKeys.MailPasswordStored] = "Stored on this machine, outside any file",
+        [StudioStringKeys.MailPasswordMissing] = "Not stored yet",
+        [StudioStringKeys.MailClientSecret] = "Client secret (Google desktop application)",
+        [StudioStringKeys.MailSecretVariable] = "Kept in the variable {0}",
         [StudioStringKeys.ProfileKeyNoKeyYet] = "No key yet?",
         [StudioStringKeys.ProfileKeyOnVendorSite] = "on the provider's site",
         [StudioStringKeys.ProfileKeyExpertHint] = "setx ORKEON_Llm__ApiKey \"sk-…\" — read natively by the runtime, wins over any file",

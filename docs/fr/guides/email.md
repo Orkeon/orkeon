@@ -71,11 +71,16 @@ compte, fonctionne.
 Le chemin le plus court, et celui qu'on conseille pour Gmail : IMAP et SMTP avec un **mot de
 passe d'application**, un mot de passe de 16 caractères que Google génère pour une application.
 
-**Dans Orkeon Studio**, l'étape 4 est un formulaire : **Réglages › Mails** — « Ajouter un
-compte », son nom, Gmail, l'adresse, puis les droits à cocher. Studio écrit la section ci-dessous
-dans le fichier de réglages qu'il édite (l'onglet le nomme) ; une équipe lancée sur un autre
-fichier de réglages ne voit pas le compte. Le mot de passe se pose toujours dans une variable
-d'environnement (étapes 1 à 3), et le JSON reste la référence pour qui écrit le fichier à la main.
+**Dans Orkeon Studio**, les étapes 3 et 4 sont un formulaire : **Réglages › Mails** — « Ajouter
+un compte », son nom, Gmail, l'adresse, les droits à cocher, et le mot de passe d'application de
+l'étape 2, saisi dans le formulaire. Studio écrit la section ci-dessous dans le fichier de
+réglages qu'il édite (l'onglet le nomme) ; une équipe lancée sur un autre fichier de réglages ne
+voit pas le compte. Le mot de passe n'est dans aucun fichier : Studio le garde dans votre
+environnement utilisateur Windows, dans une variable qui porte le nom du compte
+(`EMAIL_GMAIL_PASSWORD` pour un compte appelé `gmail`), et écrit ce nom dans `PasswordEnvVar`.
+Un run l'y trouve, que Studio, un terminal ou une tâche planifiée le lance
+([où une variable de secret est lue](#où-une-variable-de-secret-est-lue)). Le JSON reste la
+référence pour qui écrit le fichier à la main.
 
 1. Activez la **validation en deux étapes** du compte Google (Compte Google › Sécurité). Les
    mots de passe d'application n'existent pas sans elle.
@@ -85,8 +90,10 @@ d'environnement (étapes 1 à 3), et le JSON reste la référence pour qui écri
    disponibles pour votre compte — un compte en Protection Avancée, ou un compte Google
    Workspace dont l'administrateur les a désactivés — passez par
    [Gmail avec OAuth2](#gmail-avec-oauth2).
-3. Mettez le mot de passe dans une variable d'environnement du processus qui lance vos crews —
-   pas dans un fichier. N'importe quel nom convient : le compte le nomme (`PasswordEnvVar`).
+3. Mettez le mot de passe dans une variable d'environnement — pas dans un fichier. N'importe
+   quel nom convient : le compte le nomme (`PasswordEnvVar`). Un run lit la variable dans
+   l'environnement de son propre processus, puis, sous Windows, dans l'environnement de
+   l'utilisateur, où `setx` la pose.
 
    ```bash
    export GMAIL_APP_PASSWORD='abcdefghijklmnop'        # bash / zsh
@@ -94,7 +101,7 @@ d'environnement (étapes 1 à 3), et le JSON reste la référence pour qui écri
 
    ```powershell
    $env:GMAIL_APP_PASSWORD = 'abcdefghijklmnop'        # PowerShell, cette session
-   setx GMAIL_APP_PASSWORD abcdefghijklmnop            # Windows, les sessions suivantes
+   setx GMAIL_APP_PASSWORD abcdefghijklmnop            # Windows, l'environnement de l'utilisateur : tout run le lit
    ```
 
 4. Déclarez le compte dans le fichier de réglages du crew (à côté de son `config.yaml`) ou
@@ -216,7 +223,8 @@ et reçoit la réponse sur une adresse de bouclage (`127.0.0.1`), avec PKCE.
    scope `https://mail.google.com/` et votre propre adresse comme **utilisateur test**.
 3. Créez un **ID client OAuth** de type **Application de bureau** (*Desktop app*). Copiez son ID
    client, et mettez son secret client dans une variable d'environnement
-   (`GOOGLE_CLIENT_SECRET` ci-dessous).
+   (`GOOGLE_CLIENT_SECRET` ci-dessous) — dans Orkeon Studio, saisissez-le dans le formulaire du
+   compte, qui le garde comme il garde un mot de passe.
 4. Déclarez le compte, sous `Orkeon:Tools:Email:Accounts` :
 
    ```json
@@ -292,8 +300,10 @@ le courrier envoyé, et une boîte POP3 n'a pas de dossier Envoyés). Quand aucu
 
 **Dans Orkeon Studio**, chaque clé ci-dessous a son champ dans **Réglages › Mails** (le mode
 expert les montre toutes, chacune avec sa clé en infobulle ; un champ laissé vide montre le défaut
-en filigrane) — voir [Orkeon Studio](../architecture/studio.md#les-comptes-e-mail-dans-les-réglages-studio-65-à-67).
-Ce qui suit est le fichier tel que le moteur le lit.
+en filigrane) — voir [Orkeon Studio](../architecture/studio.md#les-comptes-e-mail-dans-les-réglages-studio-65-à-68).
+Le mot de passe et le secret client de Gmail s'y saisissent aussi : Studio garde chacun dans une
+variable de l'environnement de l'utilisateur et n'écrit que le nom de la variable. Ce qui suit
+est le fichier tel que le moteur le lit.
 
 Tout se trouve sous `Orkeon:Tools:Email`. Rien n'est validé au démarrage d'un hôte — le runner lit
 seulement si un compte OAuth a besoin du magasin de jetons : la section e-mail est la seule exception
@@ -321,15 +331,34 @@ sans se connecter.
 | `…:Outgoing:Protocol`, `Host`, `Port`, `Security` | Le côté envoi : `Smtp`, ou `Graph` pour un compte lu via Graph | ceux du préréglage ; aucun pour `Custom` |
 | `…:Auth:Method` | `Password` ou `OAuth2` | `OAuth2` avec un `ClientId` ou le préréglage Outlook, sinon `Password` |
 | `…:Auth:Username` | L'identifiant de connexion | l'adresse |
-| `…:Auth:PasswordEnvVar` | Le **nom** de la variable d'environnement qui contient le mot de passe | obligatoire avec `Password` |
+| `…:Auth:PasswordEnvVar` | Le **nom** de la variable d'environnement qui contient le mot de passe ([où elle est lue](#où-une-variable-de-secret-est-lue)) | obligatoire avec `Password` |
 | `…:Auth:ClientId` | L'id client OAuth (application Google Cloud ou Microsoft Entra) | obligatoire avec `OAuth2` |
-| `…:Auth:ClientSecretEnvVar` | Le **nom** de la variable d'environnement qui contient le secret client | obligatoire pour Gmail en OAuth2 ; facultatif pour Outlook (un client Entra confidentiel) |
+| `…:Auth:ClientSecretEnvVar` | Le **nom** de la variable d'environnement qui contient le secret client, lue de la même façon | obligatoire pour Gmail en OAuth2 ; facultatif pour Outlook (un client Entra confidentiel) |
 | `…:Auth:Tenant` | Tenant Microsoft : `consumers`, `organizations`, `common` ou un id de tenant | `consumers` |
 | `…:Send:AllowedRecipients` | Qui peut recevoir : des adresses, `*@domaine`, `*` | vide — personne |
 | `…:Send:MaxRecipients` | Nombre maximal de destinataires d'un message | pas de plafond |
 | `…:Send:MaxPerHour` | Nombre maximal de messages envoyés par heure par le compte, par processus | pas de plafond |
 | `…:TimeoutSeconds` | Délai d'expiration des connexions IMAP, POP3 et SMTP | celui de la bibliothèque |
 | `…:SaveSentCopy` | Ajouter chaque message envoyé au dossier Envoyés | `true` pour un compte `Custom` qui envoie en SMTP et lit en IMAP, sinon `false` |
+
+### Où une variable de secret est lue
+
+`PasswordEnvVar` et `ClientSecretEnvVar` nomment une variable, jamais le secret. Sa valeur est
+lue quand le compte se connecte :
+
+- **Sous Windows**, dans l'environnement du processus qui lance le crew, puis dans
+  l'environnement persistant de l'utilisateur (`HKCU\Environment`), où `setx` et Orkeon Studio la
+  posent. Un terminal ouvert avant que le mot de passe soit mémorisé, et une équipe planifiée,
+  la trouvent quand même. La valeur est lue, jamais recopiée dans le processus : ce que le run
+  lance — un outil shell, un serveur MCP stdio — n'hérite d'aucun secret qu'il n'avait pas. Un
+  environnement utilisateur illisible (un compte de service sans profil) compte comme une
+  variable absente.
+- **Sous Linux et macOS**, dans l'environnement du processus seul : il n'y a pas
+  d'environnement utilisateur à lire, et une variable exportée dans un terminal est inconnue
+  d'un programme démarré ailleurs.
+
+`orkeon email accounts` et `orkeon email check` lisent de la même façon : un compte qu'ils
+disent prêt l'est pour un run lancé sous le même compte utilisateur.
 
 ## Droits et liste d'autorisation d'envoi
 
@@ -624,9 +653,14 @@ codes que le CLI traduit en codes de sortie.
 
 - **Gmail refuse le mot de passe** — le mot de passe du compte n'est pas accepté en IMAP et en
   SMTP ; utilisez un mot de passe d'application (plus haut), ou OAuth2.
-- **« … read from the environment variable X, which is not set »** — la variable existe dans
-  un autre shell, pas dans le processus qui lance le crew. Un programme démarré depuis le bureau
-  (Studio) ou un service ne voit pas une variable exportée dans un terminal.
+- **« … read from the environment variable X, which is not set »** (Linux, macOS) — la
+  variable existe dans un autre shell, pas dans le processus qui lance le crew : un programme
+  démarré depuis le bureau ou un service ne voit pas une variable exportée dans un terminal.
+- **« … which is set neither in the process environment nor in the user's »** (Windows) — le
+  run a cherché aux deux endroits ([où une variable de secret est lue](#où-une-variable-de-secret-est-lue)).
+  Saisissez le mot de passe dans Studio (Réglages › Mails) ou posez-le avec `setx`, sous le
+  compte Windows qui lance le crew ; une variable posée avec `$env:` dans un autre terminal
+  n'est à aucun des deux.
 - **« … needs an OAuth sign-in: run `orkeon email login <account>` »** — pas encore de jeton, ou
   le jeton de rafraîchissement a été révoqué ou a expiré (une application Google laissée en
   Test : 7 jours). Relancez le login.

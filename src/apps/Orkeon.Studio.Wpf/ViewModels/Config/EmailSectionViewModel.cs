@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -30,6 +31,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     private readonly IStudioStrings _strings;
     private readonly Func<string?> _settingsPath;
     private readonly IPathPicker _picker;
+    private readonly IApiKeyStore _keyStore;
     private EmailAccountRowViewModel? _selectedAccount;
     private bool _isExpert;
     private bool _isAdding;
@@ -41,19 +43,23 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// <summary>
     /// Binds the form to the <c>Orkeon:Tools:Email</c> section of the document.
     /// <paramref name="settingsPath"/> gives the file the document is saved to, for the line that
-    /// says where the accounts go; <paramref name="picker"/> browses for the token folder.
+    /// says where the accounts go; <paramref name="picker"/> browses for the token folder;
+    /// <paramref name="keyStore"/> keeps the passwords and the client secrets typed in the form,
+    /// the store of the model keys — the real environment when null.
     /// </summary>
     public EmailSectionViewModel(
         Func<AppSettingsDocument> document,
         Action onChanged,
         IStudioStrings? strings = null,
         Func<string?>? settingsPath = null,
-        IPathPicker? picker = null)
+        IPathPicker? picker = null,
+        IApiKeyStore? keyStore = null)
         : base(document, onChanged)
     {
         _strings = strings ?? EnglishStudioStrings.Instance;
         _settingsPath = settingsPath ?? (() => null);
         _picker = picker ?? NullPathPicker.Instance;
+        _keyStore = keyStore ?? new EnvironmentApiKeyStore();
 
         ProviderChoices = [.. EmailSection.Providers.Select(provider => new EmailChoiceViewModel(provider, () => ProviderLabel(provider)))];
         AuthMethodChoices = [Preset(), .. EmailSection.AuthMethods.Select(method => new EmailChoiceViewModel(method, () => AuthMethodLabel(method)))];
@@ -81,6 +87,15 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
 
     /// <summary>The document the rows read their findings from.</summary>
     internal AppSettingsDocument CurrentDocument => Document;
+
+    /// <summary>Where the rows keep a password or a client secret: never the document.</summary>
+    internal IApiKeyStore KeyStore => _keyStore;
+
+    /// <summary>
+    /// Every variable the accounts name for a secret, as their fields hold them: what a name
+    /// derived for another account must stay clear of.
+    /// </summary>
+    internal IEnumerable<string> SecretVariables => Accounts.SelectMany(row => row.SecretVariables);
 
     /// <inheritdoc />
     public override bool Exists => Document.GetNode(EmailSection.SectionPath) is not null;
@@ -325,6 +340,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     {
         Section.SetAccount(row.ToDefinition());
         RefreshProblems();
+        RefreshSecrets();
         NotifyDocumentChanged();
     }
 
@@ -341,6 +357,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         row.Renamed(newName);
         SyncDefaultAccountChoices();
         RefreshProblems();
+        RefreshSecrets();
         NotifyDocumentChanged();
         return true;
     }
@@ -355,6 +372,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         SelectedAccount = Accounts.Count == 0 ? null : Accounts[Math.Min(Math.Max(index, 0), Accounts.Count - 1)];
         SyncDefaultAccountChoices();
         RefreshProblems();
+        RefreshSecrets();
         NotifyDocumentChanged();
     }
 
@@ -368,6 +386,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
                 Accounts.Add(new EmailAccountRowViewModel(account, this, _strings));
         }
 
+        RefreshSecrets();
         SelectedAccount = Accounts.FirstOrDefault(row => string.Equals(row.Name, selected, StringComparison.Ordinal))
             ?? Accounts.FirstOrDefault();
         IsAdding = false;
@@ -408,6 +427,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         IsAdding = false;
         SyncDefaultAccountChoices();
         RefreshProblems();
+        RefreshSecrets();
         NotifyDocumentChanged();
     }
 
@@ -444,6 +464,13 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     {
         foreach (var row in Accounts)
             row.RefreshProblems();
+    }
+
+    /// <summary>The secret lines are built once every row is in the list: a derived name depends on what the others name.</summary>
+    private void RefreshSecrets()
+    {
+        foreach (var row in Accounts)
+            row.RefreshSecrets();
     }
 
     private void RefreshTexts()
@@ -516,8 +543,8 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
 
     private string AuthMethodLabel(string method) => method switch
     {
-        EmailAccountRowViewModel.Password => _strings[StudioStringKeys.MailAuthPassword],
-        EmailAccountRowViewModel.OAuth2 => _strings[StudioStringKeys.MailAuthOAuth2],
+        EmailAccountRowViewModel.PasswordMethod => _strings[StudioStringKeys.MailAuthPassword],
+        EmailAccountRowViewModel.OAuth2Method => _strings[StudioStringKeys.MailAuthOAuth2],
         _ => method,
     };
 

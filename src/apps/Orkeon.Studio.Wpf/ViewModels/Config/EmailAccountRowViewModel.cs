@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using Orkeon.Studio.Core.Configuration;
@@ -16,8 +17,10 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// file holds it (<see cref="Problems"/>). Every edit writes the whole account in place; a field
 /// emptied removes its key, and a value the user did not touch keeps the spelling the file had.
 /// <para>
-/// No secret lives here: the password and the client secret are read by the engine from the
-/// environment variables whose <i>names</i> the expert sees.
+/// The password and the client secret are typed here and never written (STUDIO-68): each goes
+/// to the key store under a variable — the one the file names, else one derived from the
+/// account's name, which the first value kept writes into the file. The engine reads the
+/// variable; the file only ever holds its <i>name</i>.
 /// </para>
 /// </summary>
 public sealed class EmailAccountRowViewModel : ObservableObject
@@ -26,8 +29,8 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     internal const string Custom = "Custom";
     internal const string Gmail = "Gmail";
     internal const string Outlook = "Outlook";
-    internal const string Password = "Password";
-    internal const string OAuth2 = "OAuth2";
+    internal const string PasswordMethod = "Password";
+    internal const string OAuth2Method = "OAuth2";
 
     private readonly EmailSectionViewModel _owner;
     private readonly IStudioStrings _strings;
@@ -66,6 +69,8 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     private bool _isRenaming;
     private bool _isConfirmingRemove;
     private string _renameText = "";
+    private SecretRowViewModel? _password;
+    private SecretRowViewModel? _clientSecret;
 
     internal EmailAccountRowViewModel(EmailAccountDefinition account, EmailSectionViewModel owner, IStudioStrings strings)
     {
@@ -389,7 +394,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     public bool ShowHosts => _owner.IsExpert || Provider is not (Gmail or Outlook);
 
     /// <summary>Whether the OAuth client id shows: for the expert, and for everyone once the account signs in with OAuth2.</summary>
-    public bool ShowClientId => _owner.IsExpert || _effective.AuthMethod == OAuth2;
+    public bool ShowClientId => _owner.IsExpert || _effective.AuthMethod == OAuth2Method;
 
     /// <summary>
     /// Whether the sending rules show: as soon as the account may send, and always for the
@@ -400,11 +405,47 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// <summary>Whether the account may send and lists nobody: the engine then refuses every recipient.</summary>
     public bool ShowSendClosed => CanSend && !Recipients.Any(line => !string.IsNullOrWhiteSpace(line.Pattern));
 
+    // ── the secrets: typed here, kept outside any file ──
+
     /// <summary>
-    /// Whether the novice reads that the password is set in an environment variable: an account
-    /// that signs in with a password, in the mode that does not show the variable's name.
+    /// The line the password is typed on, for an account that signs in with one; null otherwise.
+    /// It stores under the variable the file names, else under the one derived from the account's
+    /// name — and the first value kept writes that name into the file.
     /// </summary>
-    public bool ShowPasswordByVariable => !_owner.IsExpert && _effective.AuthMethod == Password;
+    public SecretRowViewModel? Password => _password;
+
+    /// <summary>Whether the password line shows.</summary>
+    public bool ShowPassword => _password is not null;
+
+    /// <summary>Whether the run will find the password: the file names a variable, and it holds a value.</summary>
+    public bool PasswordStored => IsStored(_password, _passwordEnvVar);
+
+    /// <summary>"Stored on this machine, outside any file" / "Not stored yet", localized — never the value.</summary>
+    public string PasswordStatus => StoredText(PasswordStored);
+
+    /// <summary>Where the password is kept, for the expert: "Kept in the variable X"; null for the novice, and while nothing is kept.</summary>
+    public string? PasswordVariable => VariableLine(_password, PasswordStored);
+
+    /// <summary>
+    /// The line the OAuth client secret is typed on: for a Gmail account that signs in with
+    /// OAuth2, the one case the engine requires it in; null otherwise.
+    /// </summary>
+    public SecretRowViewModel? ClientSecret => _clientSecret;
+
+    /// <summary>Whether the client-secret line shows.</summary>
+    public bool ShowClientSecret => _clientSecret is not null;
+
+    /// <summary>Whether the run will find the client secret.</summary>
+    public bool ClientSecretStored => IsStored(_clientSecret, _clientSecretEnvVar);
+
+    /// <summary>The state of the client secret, as <see cref="PasswordStatus"/>.</summary>
+    public string ClientSecretStatus => StoredText(ClientSecretStored);
+
+    /// <summary>Where the client secret is kept, as <see cref="PasswordVariable"/>.</summary>
+    public string? ClientSecretVariable => VariableLine(_clientSecret, ClientSecretStored);
+
+    /// <summary>The names the account's fields hold for its two variables, as typed.</summary>
+    internal IEnumerable<string> SecretVariables => [_passwordEnvVar, _clientSecretEnvVar];
 
     // ── renaming and removing, in place of the action row ──
 
@@ -487,7 +528,28 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
     internal void RefreshMode() =>
         OnPropertiesChanged(
-            nameof(ShowExpertFields), nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients), nameof(ShowPasswordByVariable));
+            nameof(ShowExpertFields), nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients),
+            nameof(PasswordVariable), nameof(ClientSecretVariable));
+
+    /// <summary>
+    /// Puts each secret line on the variable it stores under: the one the file names, else the one
+    /// derived from the account's name, clear of what the accounts of the file already name. Called
+    /// by the owner of the list after every edit — another account naming a variable can move this
+    /// one's derived name. A line whose variable did not move is kept, with what is typed in it.
+    /// </summary>
+    internal void RefreshSecrets()
+    {
+        var taken = _owner.SecretVariables.ToList();
+        var password = _effective.AuthMethod == PasswordMethod;
+        var clientSecret = Provider == Gmail && _effective.AuthMethod == OAuth2Method;
+
+        if (PutSecret(ref _password, password, _passwordEnvVar, EmailSecretNames.PasswordFor(_name, taken), StudioStringKeys.MailPassword))
+            OnPropertiesChanged(nameof(Password), nameof(ShowPassword));
+        if (PutSecret(ref _clientSecret, clientSecret, _clientSecretEnvVar, EmailSecretNames.ClientSecretFor(_name, taken), StudioStringKeys.MailClientSecret))
+            OnPropertiesChanged(nameof(ClientSecret), nameof(ShowClientSecret));
+
+        RefreshSecretStates();
+    }
 
     /// <summary>Reads again what the run will say of the account, as the document now holds it.</summary>
     internal void RefreshProblems()
@@ -500,6 +562,9 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     internal void RefreshTexts()
     {
         RefreshProblems();
+        _password?.RefreshTexts();
+        _clientSecret?.RefreshTexts();
+        RefreshSecretStates();
         OnPropertiesChanged(nameof(RenameRefusal), nameof(HasRenameRefusal), nameof(AuthMethodPlaceholder));
     }
 
@@ -616,8 +681,70 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _loaded = definition;
         OnPropertiesChanged(
             nameof(Effective), nameof(IncomingPortPlaceholder), nameof(OutgoingPortPlaceholder), nameof(AuthMethodPlaceholder), nameof(SaveSentCopy),
-            nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients), nameof(ShowSendClosed), nameof(ShowPasswordByVariable));
+            nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients), nameof(ShowSendClosed));
     }
+
+    /// <summary>
+    /// Builds, moves or drops one secret line; true when the line is another object than before.
+    /// <paramref name="written"/> is the name the field holds, <paramref name="derived"/> the one
+    /// used while it is empty.
+    /// </summary>
+    private bool PutSecret(ref SecretRowViewModel? line, bool asked, string written, string derived, string labelKey)
+    {
+        var variable = !asked ? null
+            : written.Trim() is { Length: > 0 } named ? named
+            : derived;
+        if (string.Equals(line?.EnvName, variable, StringComparison.Ordinal))
+            return false;
+
+        var typed = line?.KeyInput ?? "";
+        if (line is not null)
+            line.PropertyChanged -= OnSecretChanged;
+
+        line = variable is null ? null : new SecretRowViewModel(variable, _strings[labelKey], _owner.KeyStore, _strings) { KeyInput = typed };
+        if (line is not null)
+            line.PropertyChanged += OnSecretChanged;
+
+        return true;
+    }
+
+    /// <summary>
+    /// A value was kept. The first one names its variable in the file — the derived name, written
+    /// like a name the expert typed; a name the file already holds is never written again, so
+    /// neither a new password nor a renamed account moves the variable.
+    /// </summary>
+    private void OnSecretChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SecretRowViewModel.HasKey) || sender is not SecretRowViewModel { HasKey: true } line)
+            return;
+
+        if (ReferenceEquals(line, _password) && string.IsNullOrWhiteSpace(_passwordEnvVar))
+            PasswordEnvVar = line.EnvName;
+        else if (ReferenceEquals(line, _clientSecret) && string.IsNullOrWhiteSpace(_clientSecretEnvVar))
+            ClientSecretEnvVar = line.EnvName;
+        else
+            RefreshSecretStates();
+    }
+
+    private void RefreshSecretStates() =>
+        OnPropertiesChanged(
+            nameof(PasswordStored), nameof(PasswordStatus), nameof(PasswordVariable),
+            nameof(ClientSecretStored), nameof(ClientSecretStatus), nameof(ClientSecretVariable));
+
+    /// <summary>
+    /// Whether the run will find the secret: a value under a variable the file names. A value left
+    /// under the derived name by an account removed since is not one the run reads.
+    /// </summary>
+    private static bool IsStored(SecretRowViewModel? line, string written) =>
+        line is { HasKey: true } && !string.IsNullOrWhiteSpace(written);
+
+    private string StoredText(bool stored) =>
+        _strings[stored ? StudioStringKeys.MailPasswordStored : StudioStringKeys.MailPasswordMissing];
+
+    private string? VariableLine(SecretRowViewModel? line, bool stored) =>
+        _owner.IsExpert && stored && line is not null
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.MailSecretVariable], line.EnvName)
+            : null;
 
     /// <summary>The engine's spelling of <paramref name="written"/> when it is one of <paramref name="names"/> but for the case, else the text as written.</summary>
     private static string? Shown(IReadOnlyList<string> names, string? written) =>

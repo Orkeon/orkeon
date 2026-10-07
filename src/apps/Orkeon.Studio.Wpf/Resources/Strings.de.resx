@@ -2067,8 +2067,20 @@
   <data name="Studio.Settings.MailAuthMethod" xml:space="preserve">
     <value>Anmeldeverfahren</value>
   </data>
-  <data name="Studio.Settings.MailPasswordByVariable" xml:space="preserve">
-    <value>Das Passwort wird aus einer Umgebungsvariablen gelesen — siehe den E-Mail-Leitfaden.</value>
+  <data name="Studio.Settings.MailPassword" xml:space="preserve">
+    <value>Passwort oder App-Passwort</value>
+  </data>
+  <data name="Studio.Settings.MailPasswordStored" xml:space="preserve">
+    <value>Auf diesem Rechner gemerkt, außerhalb jeder Datei</value>
+  </data>
+  <data name="Studio.Settings.MailPasswordMissing" xml:space="preserve">
+    <value>Noch nicht gemerkt</value>
+  </data>
+  <data name="Studio.Settings.MailClientSecret" xml:space="preserve">
+    <value>Client-Secret (Google-Desktopanwendung)</value>
+  </data>
+  <data name="Studio.Settings.MailSecretVariable" xml:space="preserve">
+    <value>Liegt in der Variablen {0}</value>
   </data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve">
     <value>OAuth-Client-ID</value>

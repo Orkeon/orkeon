@@ -6,7 +6,9 @@
      carries the literal configuration key as a tooltip — technical identifiers, identical in
      every language, hence not routed through I18n; nothing the novice sees names a key, a port
      or a variable. The protocol and security values are the engine's own spelling and stay
-     untranslated. No secret is typed here: the engine reads it from an environment variable. -->
+     untranslated. A password and a client secret are typed in a masked box and kept by the key
+     store, outside any file (STUDIO-68): the file holds the name of their variable, which the
+     expert alone reads. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.EmailView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -358,7 +360,7 @@
               </StackPanel>
             </Border>
 
-            <!-- signing in: the method for everyone, the names of the variables for the expert -->
+            <!-- signing in: the method and the secret for everyone, the names of the variables for the expert -->
             <Border Style="{StaticResource Card}" Margin="0,0,0,16">
               <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
@@ -372,10 +374,39 @@
                           ItemsSource="{Binding DataContext.AuthMethodChoices, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                           SelectedValue="{Binding AuthMethod}" SelectedValuePath="Value" DisplayMemberPath="Label"
                           Tag="{Binding AuthMethodPlaceholder}"/>
-                <!-- STUDIO-68 replaces this sentence with the password field itself -->
-                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap"
-                           Text="{Binding [Studio.Settings.MailPasswordByVariable], Source={x:Static services:I18n.Instance}}"
-                           Visibility="{Binding ShowPasswordByVariable, Converter={StaticResource BooleanToVisibility}}"/>
+                <!-- the password itself (STUDIO-68), for an account that signs in with one: typed here, kept by the key store -->
+                <StackPanel Visibility="{Binding ShowPassword, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
+                             Text="{Binding [Studio.Settings.MailPassword], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel Orientation="Horizontal">
+                    <!-- A secret even in transit (T-31): masked while it is typed or pasted, wiped once kept. -->
+                    <PasswordBox Style="{StaticResource InputPassword}" Width="320" VerticalAlignment="Center" Margin="0,0,8,0"
+                                 views:PasswordBinding.Text="{Binding Password.KeyInput}"/>
+                    <Button Style="{StaticResource BtnGhost}" Command="{Binding Password.StoreCommand}"
+                            Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                  <!-- the state, never the value: saving again replaces what is kept -->
+                  <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding PasswordStatus}">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding PasswordStored}" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                  <!-- where it is kept: the expert's line, empty for the novice -->
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" TextWrapping="Wrap" Margin="0,2,0,0"
+                             Text="{Binding PasswordVariable}"
+                             Visibility="{Binding PasswordVariable, Converter={StaticResource StringPresentToVisibility}}"/>
+                  <!-- STUDIO-44: kept for this session even when the user scope refused it; the line says why -->
+                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                             Margin="0,4,0,0" Text="{Binding Password.StoreError}"
+                             Visibility="{Binding Password.HasStoreError, Converter={StaticResource BooleanToVisibility}}"/>
+                </StackPanel>
 
                 <StackPanel Visibility="{Binding ShowClientId, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
@@ -384,6 +415,40 @@
                            Text="{Binding ClientId, UpdateSourceTrigger=PropertyChanged}"/>
                   <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
                              Text="{Binding [Studio.Settings.MailClientIdHint], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+
+                <!-- the client secret, for Gmail signing in with OAuth2 alone: the one case the engine requires it in -->
+                <StackPanel Visibility="{Binding ShowClientSecret, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
+                             Text="{Binding [Studio.Settings.MailClientSecret], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel Orientation="Horizontal">
+                    <!-- A secret even in transit (T-31): masked while it is typed or pasted, wiped once kept. -->
+                    <PasswordBox Style="{StaticResource InputPassword}" Width="320" VerticalAlignment="Center" Margin="0,0,8,0"
+                                 views:PasswordBinding.Text="{Binding ClientSecret.KeyInput}"/>
+                    <Button Style="{StaticResource BtnGhost}" Command="{Binding ClientSecret.StoreCommand}"
+                            Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                  <!-- the state, never the value: saving again replaces what is kept -->
+                  <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding ClientSecretStatus}">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding ClientSecretStored}" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                  <!-- where it is kept: the expert's line, empty for the novice -->
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" TextWrapping="Wrap" Margin="0,2,0,0"
+                             Text="{Binding ClientSecretVariable}"
+                             Visibility="{Binding ClientSecretVariable, Converter={StaticResource StringPresentToVisibility}}"/>
+                  <!-- STUDIO-44: kept for this session even when the user scope refused it; the line says why -->
+                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                             Margin="0,4,0,0" Text="{Binding ClientSecret.StoreError}"
+                             Visibility="{Binding ClientSecret.HasStoreError, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
 
                 <StackPanel Visibility="{Binding ShowExpertFields, Converter={StaticResource BooleanToVisibility}}">

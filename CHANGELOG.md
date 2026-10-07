@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the e-mail tools read a password variable from the Windows user scope too
+
+The variable an account names for its password (`Auth:PasswordEnvVar`) or its OAuth client secret
+(`Auth:ClientSecretEnvVar`) was read in the process environment alone. A password stored for the
+user — by `setx`, or by Orkeon Studio — reached a program started afterwards by inheritance, and
+neither a terminal opened before it nor a scheduled task (STUDIO-68).
+
+- **The process environment, then the user's.** On Windows the e-mail tools now read the
+  variable in the process environment, then in the user's persistent scope (`HKCU\Environment`),
+  as an LLM key's variable is read. The first non-empty value wins, the process first.
+- **Read, never copied.** A secret found in the user scope is not written into the process: what
+  a run starts — a shell tool, a stdio MCP server — inherits no secret it did not have.
+- **A user scope that cannot be read is an absent variable** (a service account without a
+  profile): the call fails as it does without a password, and nothing else does.
+- **The failure says where it looked.** On Windows: « … is read from the environment variable X,
+  which is set neither in the process environment nor in the user's. » On Linux and macOS, which
+  have no user scope, nothing changes: the process environment alone, and the sentence keeps its
+  form (« …, which is not set. »).
+- **`orkeon email accounts` and `orkeon email check` follow**, and so does `orkeon-repl`: they
+  read through the same seam, so an account ready for a run is ready for the verb.
+
+Docs: the e-mail guide (EN and FR) gains « Where a secret variable is read » and its
+troubleshooting entry tells the two sentences apart; the configuration reference aligns the
+e-mail secrets on `ApiKeyEnvVar`.
+
 ### Added — Studio: an E-mail settings tab
 
 The mail tools read their accounts from `Orkeon:Tools:Email`, and Studio sent whoever wanted one
@@ -43,11 +68,21 @@ French), in both modes, where the accounts are declared, renamed and removed in 
 - **The Tools tab sends to it.** The line of the twelve mailbox tools reads « needs an e-mail
   account, declared in Settings › E-mail », in the five languages, and names neither the file
   nor a command.
+- **The password is typed in the form, and a run finds it** (STUDIO-68). An account that signs
+  in with a password has a masked field and a state — « Stored on this machine, outside any
+  file » or « Not stored yet », never the value. Studio hands the value to the store of the
+  model keys, under the variable the file names, else under one derived from the account
+  (`EMAIL_<ACCOUNT>_PASSWORD`; a `_2` when another account already names it, never an `ORKEON_`
+  prefix), and the first value kept writes that name into the file. A name the file holds is
+  never rewritten: neither a new password nor a renamed account moves the variable. A Gmail
+  account that signs in with OAuth2 has the same field for its client secret. No file — settings,
+  launcher or history — carries the value, and since the engine reads the user scope (above), a
+  launch from Studio, a terminal opened before the password was typed and a scheduled team all
+  find it; the launchers and the scheduled-run check did not change.
 
-No secret is typed in the tab and it opens no connection: the engine still reads the password
-from the environment variable the account names, and an OAuth account still signs in with
-`orkeon email login`. Docs: the Studio page (EN and FR) describes the tab, and the e-mail guide
-and the mailbox tutorial point to it.
+The tab opens no connection, and an OAuth account still signs in with `orkeon email login`.
+Docs: the Studio page (EN and FR) describes the tab, and the e-mail guide and the mailbox
+tutorial point to it.
 
 ### Added — Studio's settings check judges the e-mail accounts as the run will
 

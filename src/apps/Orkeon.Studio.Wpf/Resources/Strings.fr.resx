@@ -719,7 +719,11 @@
   <data name="Studio.Settings.MailMaxPerHour" xml:space="preserve"><value>Messages par heure, au plus</value></data>
   <data name="Studio.Settings.MailAuthTitle" xml:space="preserve"><value>Connexion</value></data>
   <data name="Studio.Settings.MailAuthMethod" xml:space="preserve"><value>Méthode de connexion</value></data>
-  <data name="Studio.Settings.MailPasswordByVariable" xml:space="preserve"><value>Le mot de passe est lu dans une variable d'environnement — voir le guide e-mail.</value></data>
+  <data name="Studio.Settings.MailPassword" xml:space="preserve"><value>Mot de passe ou mot de passe d'application</value></data>
+  <data name="Studio.Settings.MailPasswordStored" xml:space="preserve"><value>Mémorisé sur cette machine, hors de tout fichier</value></data>
+  <data name="Studio.Settings.MailPasswordMissing" xml:space="preserve"><value>Pas encore mémorisé</value></data>
+  <data name="Studio.Settings.MailClientSecret" xml:space="preserve"><value>Secret client (application de bureau Google)</value></data>
+  <data name="Studio.Settings.MailSecretVariable" xml:space="preserve"><value>Conservé dans la variable {0}</value></data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve"><value>Identifiant client OAuth</value></data>
   <data name="Studio.Settings.MailClientIdHint" xml:space="preserve"><value>L'identifiant de l'application que vous avez enregistrée chez Google ou Microsoft.</value></data>
   <data name="Studio.Settings.MailUsername" xml:space="preserve"><value>Nom d'utilisateur</value></data>

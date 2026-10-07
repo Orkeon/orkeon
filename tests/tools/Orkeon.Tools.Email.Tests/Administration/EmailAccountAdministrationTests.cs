@@ -47,6 +47,23 @@ public sealed class EmailAccountAdministrationTests
     }
 
     [Fact]
+    public async Task Should_call_an_account_ready_When_its_password_is_only_in_the_user_scope()
+    {
+        // `orkeon email accounts` reads through the seam the run reads through: a password Studio
+        // stored makes the account ready for the verb as it is for the run.
+        using var fixture = new AdministrationFixture(
+            Accounts(("perso", TestAccounts.Gmail())), TestAccounts.UserScope((TestAccounts.PasswordVariable, TestAccounts.Password)));
+        using var unset = new AdministrationFixture(Accounts(("perso", TestAccounts.Gmail())), TestAccounts.UserScope());
+
+        var ready = Assert.Single(await fixture.Administration.ListAsync(Token));
+        var notReady = Assert.Single(await unset.Administration.ListAsync(Token));
+
+        Assert.Equal((true, (string?)null), (ready.Ready, ready.Problem));
+        Assert.False(notReady.Ready);
+        Assert.EndsWith("which is set neither in the process environment nor in the user's.", notReady.Problem, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_sign_in_with_the_device_code_flow_and_store_the_tokens()
     {
         using var fixture = new AdministrationFixture(Accounts(("hotmail", TestAccounts.Outlook())));
@@ -269,8 +286,13 @@ public sealed class EmailAccountAdministrationTests
         private readonly EmailAccountRegistry _registry;
 
         public AdministrationFixture(EmailToolsOptions options, params (string Name, string Value)[] variables)
+            : this(options, TestAccounts.Environment([(TestAccounts.PasswordVariable, TestAccounts.Password), .. variables]))
         {
-            Credentials = new CredentialsFixture(TestAccounts.Environment([(TestAccounts.PasswordVariable, TestAccounts.Password), .. variables]));
+        }
+
+        public AdministrationFixture(EmailToolsOptions options, EmailEnvironment environment)
+        {
+            Credentials = new CredentialsFixture(environment);
             _registry = new EmailAccountRegistry(Microsoft.Extensions.Options.Options.Create(options));
             Administration = new EmailAccountAdministration(_registry, Credentials.Provider, Credentials.OAuth, Mailboxes);
         }

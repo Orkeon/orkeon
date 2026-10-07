@@ -66,7 +66,8 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         Location = new SettingsLocationViewModel(Picker, globalPathOverride, _strings);
         // After the location: the E-mail tab says which file its accounts are written to (STUDIO-67).
-        Email = new EmailSectionViewModel(() => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker);
+        // Its passwords go to the store of the model keys, never to the document (STUDIO-68).
+        Email = new EmailSectionViewModel(() => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker, seams.KeyStore);
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,

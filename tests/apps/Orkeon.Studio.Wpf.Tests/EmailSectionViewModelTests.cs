@@ -34,12 +34,21 @@ public sealed class EmailSectionViewModelTests
                     "Auth": { "PasswordEnvVar": "WORK_MAIL_PASSWORD" } } } } } } }
         """;
 
+    private const string Unnamed = """
+        { "Orkeon": { "Tools": { "Email": { "Accounts": { "perso": {
+          "Provider": "Gmail", "Address": "me@gmail.com", "Rights": "Read" } } } } } }
+        """;
+
+    private const string Stored = "Stored on this machine, outside any file";
+
+    private const string NotStored = "Not stored yet";
+
     private static (EmailSectionViewModel Section, AppSettingsDocument Document, Func<int> Changes) Build(
-        string json = "{}", IStudioStrings? strings = null)
+        string json = "{}", IStudioStrings? strings = null, FakeApiKeyStore? keys = null)
     {
         var document = AppSettingsDocument.Parse(json);
         var changes = 0;
-        var section = new EmailSectionViewModel(() => document, () => changes++, strings);
+        var section = new EmailSectionViewModel(() => document, () => changes++, strings, keyStore: keys ?? new FakeApiKeyStore());
         return (section, document, () => changes);
     }
 
@@ -48,12 +57,14 @@ public sealed class EmailSectionViewModelTests
     {
         public const string FrenchRights = "Un compte e-mail n'accorde aucun droit.";
         public const string FrenchPreset = "Laisser le préréglage";
+        public const string FrenchNotStored = "Pas encore mémorisé";
 
         private bool _french;
 
         public string this[string key] => (_french, key) switch
         {
             (true, StudioStringKeys.MailChoicePreset) => FrenchPreset,
+            (true, StudioStringKeys.MailPasswordMissing) => FrenchNotStored,
             (true, _) when key == ValidationMessageKey(ValidationCodes.EmailRights) => FrenchRights,
             _ => EnglishStudioStrings.Instance[key],
         };
@@ -830,14 +841,15 @@ public sealed class EmailSectionViewModelTests
         Assert.False(gmail.ShowHosts);
         Assert.False(gmail.ShowClientId);
         Assert.False(gmail.ShowRecipients);
-        Assert.True(gmail.ShowPasswordByVariable);
+        // The password is typed in both modes; the variable it is kept in is the expert's to read.
+        Assert.True(gmail.ShowPassword);
         // A custom account has no preset: its servers are the novice's to give.
         Assert.True(custom.ShowHosts);
         Assert.False(custom.ShowExpertFields);
 
         gmail.AuthMethod = "OAuth2";
         Assert.True(gmail.ShowClientId);
-        Assert.False(gmail.ShowPasswordByVariable);
+        Assert.False(gmail.ShowPassword);
         gmail.AuthMethod = "";
 
         var raised = new List<string>();
@@ -851,10 +863,240 @@ public sealed class EmailSectionViewModelTests
         // No key is the raw file's alone: the expert reaches the sending rules of an account that does not send yet.
         Assert.True(gmail.ShowRecipients);
         Assert.False(gmail.ShowSendClosed);
-        // The expert reads the names of the variables: the waiting sentence is the novice's.
-        Assert.False(gmail.ShowPasswordByVariable);
+        Assert.True(gmail.ShowPassword);
         Assert.Contains(nameof(EmailAccountRowViewModel.ShowExpertFields), raised);
         Assert.Contains(nameof(EmailAccountRowViewModel.ShowHosts), raised);
+    }
+
+    // ── the secrets (STUDIO-68) ──
+
+    [Fact]
+    public async Task A_password_typed_on_an_account_that_names_no_variable_writes_the_derived_name_and_keeps_the_value_out_of_the_file()
+    {
+        const string secret = "abcd efgh ijkl mnop";
+        var keys = new FakeApiKeyStore();
+        var (section, document, changes) = Build(Unnamed, keys: keys);
+        var row = Assert.Single(section.Accounts);
+        var password = row.Password;
+        Assert.NotNull(password);
+        Assert.Equal("EMAIL_PERSO_PASSWORD", password.EnvName);
+        Assert.Equal(NotStored, row.PasswordStatus);
+        Assert.False(row.PasswordStored);
+        Assert.True(row.HasProblems);
+        Assert.Null(document.GetNode($"{Accounts}:perso:Auth"));
+        var raised = new List<string>();
+        row.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+
+        password.KeyInput = secret;
+        Assert.Equal(0, changes());
+        await password.StoreAsync();
+
+        Assert.Equal("EMAIL_PERSO_PASSWORD", document.GetString($"{Accounts}:perso:Auth:PasswordEnvVar"));
+        Assert.Equal(secret, keys.Saved["EMAIL_PERSO_PASSWORD"]);
+        Assert.DoesNotContain(secret, document.ToJson(), StringComparison.Ordinal);
+        Assert.Equal(1, changes());
+        Assert.Equal("", password.KeyInput);
+        Assert.True(row.PasswordStored);
+        Assert.Equal(Stored, row.PasswordStatus);
+        Assert.Contains(nameof(EmailAccountRowViewModel.PasswordStatus), raised);
+        Assert.Contains(nameof(EmailAccountRowViewModel.PasswordStored), raised);
+        // The line is the same one, and the expert's field shows the name that was written.
+        Assert.Same(password, row.Password);
+        Assert.Equal("EMAIL_PERSO_PASSWORD", row.PasswordEnvVar);
+        // The account now names its password: the run has nothing left to say of it.
+        Assert.False(row.HasProblems);
+    }
+
+    [Fact]
+    public async Task A_password_typed_on_an_account_that_names_a_variable_changes_the_value_alone()
+    {
+        var keys = new FakeApiKeyStore();
+        keys.Stage("GMAIL_APP_PASSWORD", "the old one");
+        var (section, document, changes) = Build(Gmail, keys: keys);
+        var row = Assert.Single(section.Accounts);
+        var before = document.ToJson();
+        Assert.Equal("GMAIL_APP_PASSWORD", row.Password!.EnvName);
+        Assert.Equal(Stored, row.PasswordStatus);
+
+        row.Password.KeyInput = "the new one";
+        await row.Password.StoreAsync();
+
+        Assert.Equal("the new one", keys.Saved["GMAIL_APP_PASSWORD"]);
+        Assert.Equal(["GMAIL_APP_PASSWORD"], keys.Saved.Keys);
+        Assert.Equal(before, document.ToJson());
+        Assert.Equal(0, changes());
+        Assert.Equal(Stored, row.PasswordStatus);
+    }
+
+    [Fact]
+    public async Task Renaming_an_account_leaves_its_password_in_the_variable_the_file_names()
+    {
+        var keys = new FakeApiKeyStore();
+        var (section, document, _) = Build(Unnamed, keys: keys);
+        var row = Assert.Single(section.Accounts);
+        // Before a password is kept nothing is written, and the line follows the account's name.
+        section.RenameAccountCommand.Execute(row);
+        row.RenameText = "home";
+        row.ConfirmRenameCommand.Execute(null);
+        Assert.Equal("EMAIL_HOME_PASSWORD", row.Password!.EnvName);
+        row.Password.KeyInput = "s3cret";
+        await row.Password.StoreAsync();
+
+        section.RenameAccountCommand.Execute(row);
+        row.RenameText = "work";
+        row.ConfirmRenameCommand.Execute(null);
+
+        Assert.Equal("work", row.Name);
+        Assert.Equal("EMAIL_HOME_PASSWORD", document.GetString($"{Accounts}:work:Auth:PasswordEnvVar"));
+        Assert.Equal("EMAIL_HOME_PASSWORD", row.Password.EnvName);
+        Assert.Equal(["EMAIL_HOME_PASSWORD"], keys.Saved.Keys);
+        Assert.Equal(Stored, row.PasswordStatus);
+    }
+
+    [Fact]
+    public async Task Two_accounts_that_spell_the_same_variable_keep_their_passwords_apart()
+    {
+        var keys = new FakeApiKeyStore();
+        var (section, document, _) = Build("""
+            { "Orkeon": { "Tools": { "Email": { "Accounts": {
+              "a.b": { "Provider": "Gmail", "Address": "one@gmail.com", "Rights": "Read" },
+              "a-b": { "Provider": "Gmail", "Address": "two@gmail.com", "Rights": "Read" } } } } } }
+            """, keys: keys);
+        var first = section.Accounts[0];
+        var second = section.Accounts[1];
+        var raised = new List<string>();
+        second.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+
+        first.Password!.KeyInput = "one";
+        await first.Password.StoreAsync();
+
+        // The first took the name: the second's line moves to the next one, for everyone to see.
+        Assert.Equal("EMAIL_A_B_PASSWORD_2", second.Password!.EnvName);
+        Assert.Contains(nameof(EmailAccountRowViewModel.Password), raised);
+        Assert.Equal(NotStored, second.PasswordStatus);
+
+        second.Password.KeyInput = "two";
+        await second.Password.StoreAsync();
+
+        Assert.Equal("EMAIL_A_B_PASSWORD", document.GetString($"{Accounts}:a.b:Auth:PasswordEnvVar"));
+        Assert.Equal("EMAIL_A_B_PASSWORD_2", document.GetString($"{Accounts}:a-b:Auth:PasswordEnvVar"));
+        Assert.Equal(("one", "two"), (keys.Saved["EMAIL_A_B_PASSWORD"], keys.Saved["EMAIL_A_B_PASSWORD_2"]));
+    }
+
+    [Fact]
+    public async Task The_client_secret_is_asked_of_a_gmail_account_that_signs_in_with_oauth2_and_of_no_other()
+    {
+        const string secret = "GOCSPX-desktop-secret";
+        var keys = new FakeApiKeyStore();
+        var (section, document, _) = Build(Two, keys: keys);
+        var gmail = section.Accounts[0];
+        var custom = section.Accounts[1];
+        Assert.Null(gmail.ClientSecret);
+        Assert.False(gmail.ShowClientSecret);
+        Assert.Null(custom.ClientSecret);
+        Assert.NotNull(custom.Password);
+        var raised = new List<string>();
+        gmail.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+
+        gmail.AuthMethod = "OAuth2";
+
+        // OAuth2 asks for no password, and Google authenticates a desktop application by its secret.
+        Assert.Null(gmail.Password);
+        Assert.False(gmail.ShowPassword);
+        Assert.True(gmail.ShowClientSecret);
+        Assert.Equal("EMAIL_PERSO_CLIENT_SECRET", gmail.ClientSecret!.EnvName);
+        Assert.Equal(NotStored, gmail.ClientSecretStatus);
+        Assert.Contains(nameof(EmailAccountRowViewModel.ClientSecret), raised);
+        Assert.Contains(nameof(EmailAccountRowViewModel.ShowClientSecret), raised);
+
+        gmail.ClientSecret.KeyInput = secret;
+        await gmail.ClientSecret.StoreAsync();
+
+        Assert.Equal("EMAIL_PERSO_CLIENT_SECRET", document.GetString($"{Accounts}:perso:Auth:ClientSecretEnvVar"));
+        Assert.Equal(secret, keys.Saved["EMAIL_PERSO_CLIENT_SECRET"]);
+        Assert.DoesNotContain(secret, document.ToJson(), StringComparison.Ordinal);
+        Assert.True(gmail.ClientSecretStored);
+        Assert.Equal(Stored, gmail.ClientSecretStatus);
+        // The password's own variable is untouched: it was named before, and stays named.
+        Assert.Equal("GMAIL_APP_PASSWORD", document.GetString($"{Accounts}:perso:Auth:PasswordEnvVar"));
+
+        // Outlook signs in with OAuth2 and no client secret: neither line.
+        gmail.Provider = "Outlook";
+        Assert.Null(gmail.ClientSecret);
+        Assert.False(gmail.ShowClientSecret);
+        Assert.Null(gmail.Password);
+    }
+
+    [Fact]
+    public async Task A_store_that_cannot_keep_the_password_says_so_on_its_line()
+    {
+        var keys = new FakeApiKeyStore { PersistFailure = new InvalidOperationException("registry access denied") };
+        var (section, document, _) = Build(Unnamed, keys: keys);
+        var row = Assert.Single(section.Accounts);
+
+        row.Password!.KeyInput = "s3cret";
+        await row.Password.StoreAsync();
+
+        Assert.True(row.Password.HasStoreError);
+        Assert.Contains("registry access denied", row.Password.StoreError, StringComparison.Ordinal);
+        // In place for this session all the same, so the file names it.
+        Assert.Equal("EMAIL_PERSO_PASSWORD", document.GetString($"{Accounts}:perso:Auth:PasswordEnvVar"));
+        Assert.Equal(Stored, row.PasswordStatus);
+    }
+
+    [Fact]
+    public void The_password_line_follows_the_variable_the_expert_names_and_only_the_expert_reads_its_name()
+    {
+        var keys = new FakeApiKeyStore();
+        keys.Stage("GMAIL_APP_PASSWORD", "kept");
+        // A value left under the derived name by an account removed since: nothing the file names.
+        keys.Stage("EMAIL_PERSO_PASSWORD", "left behind");
+        var (section, document, _) = Build(Gmail, keys: keys);
+        var row = Assert.Single(section.Accounts);
+        Assert.Equal(Stored, row.PasswordStatus);
+        // The novice reads that it is kept, not where.
+        Assert.Null(row.PasswordVariable);
+
+        section.IsExpert = true;
+        Assert.Equal("Kept in the variable GMAIL_APP_PASSWORD", row.PasswordVariable);
+
+        row.PasswordEnvVar = "WORK_MAIL_PASSWORD";
+
+        Assert.Equal("WORK_MAIL_PASSWORD", row.Password!.EnvName);
+        Assert.Equal(NotStored, row.PasswordStatus);
+        Assert.Null(row.PasswordVariable);
+
+        // The field emptied: the key leaves the file, and the line goes back to the derived name —
+        // which the run does not read until a password typed here writes it.
+        row.PasswordEnvVar = "";
+
+        Assert.Null(document.GetNode($"{Accounts}:perso:Auth"));
+        Assert.Equal("EMAIL_PERSO_PASSWORD", row.Password.EnvName);
+        Assert.False(row.PasswordStored);
+        Assert.Equal(NotStored, row.PasswordStatus);
+        Assert.Equal(["EMAIL_PERSO_PASSWORD", "GMAIL_APP_PASSWORD"], keys.Saved.Keys.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task The_settings_screen_keeps_e_mail_secrets_in_the_store_it_keeps_the_model_keys_in()
+    {
+        var keys = new FakeApiKeyStore();
+        var tab = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+            KeyStore = keys,
+        });
+        tab.SetDocument(AppSettingsDocument.Parse(Unnamed));
+        var row = Assert.Single(tab.Email.Accounts);
+
+        row.Password!.KeyInput = "s3cret";
+        await row.Password.StoreAsync();
+
+        Assert.Equal("s3cret", keys.Saved["EMAIL_PERSO_PASSWORD"]);
+        Assert.True(tab.IsDirty);
+        Assert.Contains("\"PasswordEnvVar\": \"EMAIL_PERSO_PASSWORD\"", tab.RawJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("s3cret", tab.RawJson, StringComparison.Ordinal);
     }
 
     // ── another file, another language ──
@@ -908,6 +1150,8 @@ public sealed class EmailSectionViewModelTests
         Assert.NotEqual(english, Assert.Single(row.Problems).FriendlyText);
         Assert.Equal(SwitchableStrings.FrenchRights, row.Problems[0].FriendlyText);
         Assert.Contains(nameof(EmailAccountRowViewModel.Problems), raised);
+        Assert.Equal(SwitchableStrings.FrenchNotStored, row.PasswordStatus);
+        Assert.Contains(nameof(EmailAccountRowViewModel.PasswordStatus), raised);
         Assert.Contains(nameof(EmailSectionViewModel.SettingsFileLine), sectionRaised);
         Assert.Same(choices, section.AuthMethodChoices);
         Assert.Equal(SwitchableStrings.FrenchPreset, choices[0].Label);
