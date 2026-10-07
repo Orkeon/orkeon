@@ -238,7 +238,10 @@ consent page, for you to open in a browser, and receives the answer on a loopbac
    **When the browser runs on another machine** — WSL, a container, an SSH session — that
    last page cannot load: copy the address it ends on (`http://127.0.0.1:…/?state=…&code=…`)
    from the browser's address bar, paste it in the terminal and press Enter — or in the field
-   of Studio's panel.
+   of Studio's panel. An address that is not that one — cut short, the address you were told
+   to open, anything else — is not taken and the sign-in goes on waiting: the terminal says
+   why and asks for the complete address, and Studio's panel says the same under the field,
+   which keeps what you pasted so that you can correct it.
 
 **Keep the sign-in alive.** A Google application left in the **Testing** publishing status
 gets refresh tokens that expire after 7 days, after which every call asks for a new login.
@@ -631,8 +634,11 @@ decision is reusable: `EmailCredentialsLocation.NeedsTokenStore(section)` says w
 its `CredentialsDirectory`, and `TokenSubdirectory` is `email`. The public
 `EmailAccountAdministration` service (resolved from DI after `AddOrkeonEmailTools`) does what
 `orkeon email` does — list the accounts, sign one in through an `IEmailLoginInteraction` of
-yours, sign it out, check it; its failures are `EmailToolException`s carrying an
-`EmailErrorCode` a host can branch on, the codes the CLI maps to its exit codes.
+yours (four methods: show the device code, show the authorization address, read a pasted
+redirect, and `ShowRedirectRejectedAsync`, called with a one-sentence reason when a pasted line
+is not the redirect — the sign-in then goes on waiting), sign it out, check it; its failures
+are `EmailToolException`s carrying an `EmailErrorCode` a host can branch on, the codes the CLI
+maps to its exit codes.
 
 ## Troubleshooting
 
@@ -653,7 +659,12 @@ yours, sign it out, check it; its failures are `EmailToolException`s carrying an
   says so and offers « Start again », which asks for a new code.
 - **The browser cannot reach `127.0.0.1`** during a Google login — paste the final address
   into the terminal, or into the field of Studio's panel and « Use this address » (see
-  [Gmail with OAuth2](#gmail-with-oauth2)). "The redirect did not come
+  [Gmail with OAuth2](#gmail-with-oauth2)). "That is not the address the browser ended on",
+  followed by a reason ("The pasted text is not an address.", "The pasted address is the one
+  to open, not the one the browser ended on.", "The pasted address is not the redirect address
+  of this sign-in (…).", "The pasted address carries no authorization code: it may be cut
+  short."), means the line was not taken and the sign-in still waits: paste the whole address,
+  from `http://127.0.0.1` to its end. "The redirect did not come
   from this sign-in (state mismatch)" means the pasted address belongs to an earlier attempt.
 - **"The provider issued no refresh token"** — Microsoft: add `offline_access` to the
   application's permissions. Google: revoke the application's access in your Google

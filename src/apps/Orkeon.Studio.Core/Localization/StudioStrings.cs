@@ -1354,6 +1354,9 @@ public static class StudioStringKeys
     /// <summary>"This address was not sent: the sign-in is no longer reading. Sign in again." — the pasted address stays in its field.</summary>
     public const string MailPasteRedirectNotSent = "Studio.Settings.MailPasteRedirectNotSent";
 
+    /// <summary>"That is not the address the browser ended on:" — then the verb's sentence; the pasted address is back in its field.</summary>
+    public const string MailPasteRedirectRejected = "Studio.Settings.MailPasteRedirectRejected";
+
     /// <summary>"Copy the link"</summary>
     public const string MailCopyLink = "Studio.Settings.MailCopyLink";
 
@@ -2704,6 +2707,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailPasteRedirect] = "If the browser cannot come back to this machine, paste the address it ended on:",
         [StudioStringKeys.MailPasteRedirectSend] = "Use this address",
         [StudioStringKeys.MailPasteRedirectNotSent] = "This address was not sent: the sign-in is no longer reading. Sign in again.",
+        [StudioStringKeys.MailPasteRedirectRejected] = "That is not the address the browser ended on:",
         [StudioStringKeys.MailCopyLink] = "Copy the link",
         [StudioStringKeys.MailOpenInBrowser] = "Open in the browser",
         [StudioStringKeys.MailSignedIn] = "Signed in",

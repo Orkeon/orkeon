@@ -83,7 +83,6 @@ public sealed partial class EmailCommandTests
         // What a browser that could not reach this machine ends on: the registered loopback
         // address, with the code and the state of this very sign-in.
         var query = HttpUtility.ParseQueryString(authorization.Query);
-        console.Input.WriteLine("this line is not an address");
         console.Input.WriteLine($"{query["redirect_uri"]}?code=auth-code-1&state={query["state"]}");
 
         var exit = await login.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
@@ -96,6 +95,60 @@ public sealed partial class EmailCommandTests
         Assert.Equal("perso", events[1].GetProperty("account").GetString());
         Assert.Contains(identity.Bodies, body => body.Contains("code=auth-code-1", StringComparison.Ordinal)
             && body.Contains("client_secret=google-secret", StringComparison.Ordinal));
+        Assert.Single(Directory.GetFiles(Path.Combine(credentials, "email"), "perso-*.json"));
+    }
+
+    /// <summary>
+    /// A pasted line that is not the address the browser ended on is not swallowed: the driver
+    /// reads why, in a sentence that repeats nothing of the line, and the verb goes on waiting.
+    /// </summary>
+    [Fact]
+    public async Task Login_WithEvents_APastedLineThatIsNotTheRedirect_WritesARejectionThatDoesNotRepeatIt_ThenTheRightAddressCompletes()
+    {
+        using var scratch = new ScriptScratch();
+        var credentials = Path.Combine(scratch.Root, "credentials");
+        WriteGmailOAuthSettings(scratch, credentials);
+        using var identity = new StubOutlookHttpMessageHandler();
+        using var secret = new EnvironmentVariableScope(GoogleSecretVariable, "google-secret");
+        using var console = new ConversationConsole();
+
+        var login = EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        {
+            WorkingDirectoryOverride = scratch.Root,
+            Account = "perso",
+            Events = "jsonl",
+            ConfigureTestServices = Answering(identity),
+        });
+        using var shown = JsonDocument.Parse(await console.LineAsync(0).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken));
+        var query = HttpUtility.ParseQueryString(new Uri(shown.RootElement.GetProperty("authorization_uri").GetString()!).Query);
+
+        // Cut short by a careless copy: the address of this machine, without its code.
+        var cutShort = $"{query["redirect_uri"]}?state={query["state"]}";
+        console.Input.WriteLine("this line is not an address");
+        console.Input.WriteLine(cutShort);
+        using var first = JsonDocument.Parse(await console.LineAsync(1).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken));
+        using var second = JsonDocument.Parse(await console.LineAsync(2).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken));
+
+        Assert.Equal(EmailEventKinds.LoginRedirectRejected, first.RootElement.GetProperty("kind").GetString());
+        Assert.Equal("The pasted text is not an address.", first.RootElement.GetProperty("message").GetString());
+        Assert.Equal(EmailEventKinds.LoginRedirectRejected, second.RootElement.GetProperty("kind").GetString());
+        Assert.Equal("The pasted address carries no authorization code: it may be cut short.", second.RootElement.GetProperty("message").GetString());
+        // Neither the line nor the state it carried is written back.
+        Assert.DoesNotContain("this line", console.Stdout, StringComparison.Ordinal);
+        Assert.DoesNotContain(query["state"]!, console.Stdout[console.Stdout.IndexOf('\n', StringComparison.Ordinal)..], StringComparison.Ordinal);
+        // A rejected line is not a failed sign-in: the verb still waits.
+        Assert.False(login.IsCompleted);
+
+        console.Input.WriteLine($"{query["redirect_uri"]}?code=auth-code-1&state={query["state"]}");
+        var exit = await login.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+
+        Assert.Equal(Program.ExitOk, exit);
+        var events = EventLines(console.Stdout);
+        Assert.Equal(
+            [EmailEventKinds.LoginAuthorizationUrl, EmailEventKinds.LoginRedirectRejected, EmailEventKinds.LoginRedirectRejected, EmailEventKinds.LoginCompleted],
+            events.Select(e => e.GetProperty("kind").GetString()));
+        Assert.Equal([1, 2, 3, 4], events.Select(e => e.GetProperty("seq").GetInt32()));
+        Assert.DoesNotContain("orkeon email login", console.Stderr, StringComparison.Ordinal);
         Assert.Single(Directory.GetFiles(Path.Combine(credentials, "email"), "perso-*.json"));
     }
 
@@ -272,6 +325,8 @@ public sealed partial class EmailCommandTests
                 WorkingDirectoryOverride = scratch.Root, Account = "perso", Events = "jsonl", ConfigureTestServices = Answering(identity),
             });
             await console.LineAsync(0).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+            console.Input.WriteLine("this line is not an address");
+            await console.LineAsync(1).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
             console.Input.Close();
             await login.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
             written.UnionWith(EventLines(console.Stdout).Select(e => e.GetProperty("kind").GetString()!));
@@ -317,6 +372,52 @@ public sealed partial class EmailCommandTests
             + "Waiting for the sign-in to complete (Ctrl+C to abort)…" + newLine
             + "Signed in: the tokens of e-mail account 'hotmail' are stored. Agents can use it now." + newLine,
             console.Stdout);
+    }
+
+    /// <summary>
+    /// At a terminal the rejection is a sentence, where the two of the browser sign-in are: the
+    /// person reads that the line was not taken, why, and what to paste instead.
+    /// </summary>
+    [Fact]
+    public async Task Login_WithoutEvents_APastedLineThatIsNotTheRedirect_IsSaidOnTheTerminal_ThenTheRightAddressSignsIn()
+    {
+        using var scratch = new ScriptScratch();
+        var credentials = Path.Combine(scratch.Root, "credentials");
+        WriteGmailOAuthSettings(scratch, credentials);
+        using var identity = new StubOutlookHttpMessageHandler();
+        using var secret = new EnvironmentVariableScope(GoogleSecretVariable, "google-secret");
+        using var console = new ConversationConsole();
+
+        var login = EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        {
+            WorkingDirectoryOverride = scratch.Root,
+            Account = "perso",
+            ConfigureTestServices = Answering(identity),
+        });
+
+        // The address to open is the third of the five lines the browser sign-in prints.
+        var authorization = new Uri((await console.LineAsync(2).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken)).Trim());
+        await console.LineAsync(4).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+        var query = HttpUtility.ParseQueryString(authorization.Query);
+
+        console.Input.WriteLine($"{query["redirect_uri"]}?state={query["state"]}");
+        var rejection = await console.LineAsync(5).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            "That is not the address the browser ended on: The pasted address carries no authorization code: it may be cut short. "
+            + "Paste the complete address (http://127.0.0.1:…) and press Enter.",
+            rejection);
+        Assert.False(login.IsCompleted);
+
+        console.Input.WriteLine($"{query["redirect_uri"]}?code=auth-code-1&state={query["state"]}");
+        var exit = await login.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Equal(
+            "Signed in: the tokens of e-mail account 'perso' are stored. Agents can use it now.",
+            await console.LineAsync(6).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken));
+        Assert.DoesNotContain("orkeon email login", console.Stderr, StringComparison.Ordinal);
+        Assert.Single(Directory.GetFiles(Path.Combine(credentials, "email"), "perso-*.json"));
     }
 
     /// <summary>The event lines of <paramref name="stdout"/>: every line must be one JSON document.</summary>

@@ -253,7 +253,11 @@ et reçoit la réponse sur une adresse de bouclage (`127.0.0.1`), avec PKCE.
    **Quand le navigateur tourne sur une autre machine** — WSL, un conteneur, une session SSH —
    cette dernière page ne peut pas se charger : copiez l'adresse où elle aboutit
    (`http://127.0.0.1:…/?state=…&code=…`) depuis la barre d'adresse, collez-la dans le terminal
-   et appuyez sur Entrée — ou dans le champ du panneau de Studio.
+   et appuyez sur Entrée — ou dans le champ du panneau de Studio. Une adresse qui n'est pas
+   celle-là — tronquée, l'adresse qu'on vous a dit d'ouvrir, autre chose — n'est pas prise et
+   la connexion continue d'attendre : le terminal dit pourquoi et demande l'adresse complète,
+   et le panneau de Studio dit la même chose sous le champ, qui garde ce que vous avez collé
+   pour que vous le corrigiez.
 
 **Garder la connexion.** Une application Google laissée au statut de publication **Test**
 reçoit des jetons de rafraîchissement qui expirent au bout de 7 jours ; ensuite chaque appel
@@ -666,9 +670,12 @@ répondent « This host keeps no OAuth tokens ». La décision du runner est ré
 déclare un compte OAuth, `ConfiguredDirectory(section)` rend son `CredentialsDirectory`, et
 `TokenSubdirectory` vaut `email`. Le service public `EmailAccountAdministration` (résolu depuis
 la DI après `AddOrkeonEmailTools`) fait ce que fait `orkeon email` — lister les comptes, en
-connecter un via un `IEmailLoginInteraction` à vous, le déconnecter, le vérifier ; ses échecs
-sont des `EmailToolException` portant un `EmailErrorCode` sur lequel un hôte peut brancher, les
-codes que le CLI traduit en codes de sortie.
+connecter un via un `IEmailLoginInteraction` à vous (quatre méthodes : montrer le code
+d'appareil, montrer l'adresse d'autorisation, lire une redirection collée, et
+`ShowRedirectRejectedAsync`, appelée avec une raison d'une phrase quand une ligne collée n'est
+pas la redirection — la connexion continue alors d'attendre), le déconnecter, le vérifier ;
+ses échecs sont des `EmailToolException` portant un `EmailErrorCode` sur lequel un hôte peut
+brancher, les codes que le CLI traduit en codes de sortie.
 
 ## Dépannage
 
@@ -690,7 +697,12 @@ codes que le CLI traduit en codes de sortie.
   une fois le temps écoulé, le dit et propose « Recommencer », qui demande un nouveau code.
 - **Le navigateur n'atteint pas `127.0.0.1`** pendant un login Google — collez l'adresse finale
   dans le terminal, ou dans le champ du panneau de Studio puis « Utiliser cette adresse » (voir
-  [Gmail avec OAuth2](#gmail-avec-oauth2)). « The redirect did not come
+  [Gmail avec OAuth2](#gmail-avec-oauth2)). « That is not the address the browser ended on »,
+  suivi d'une raison (« The pasted text is not an address. », « The pasted address is the one
+  to open, not the one the browser ended on. », « The pasted address is not the redirect address
+  of this sign-in (…). », « The pasted address carries no authorization code: it may be cut
+  short. »), signifie que la ligne n'a pas été prise et que la connexion attend toujours :
+  collez l'adresse entière, de `http://127.0.0.1` jusqu'à sa fin. « The redirect did not come
   from this sign-in (state mismatch) » signifie que l'adresse collée appartient à une
   tentative précédente.
 - **« The provider issued no refresh token »** — Microsoft : ajoutez `offline_access` aux

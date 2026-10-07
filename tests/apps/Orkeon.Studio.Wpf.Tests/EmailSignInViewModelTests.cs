@@ -36,6 +36,13 @@ public sealed class EmailSignInViewModelTests
 
     private const string Redirect = "http://127.0.0.1:53124/?code=auth-code-1&state=state-1";
 
+    // The browser's address without its code, as a careless copy leaves it.
+    private const string CutShort = "http://127.0.0.1:53124/?state=state-1";
+
+    private const string NoCode = "The pasted address carries no authorization code: it may be cut short.";
+
+    private const string NotAnAddress = "The pasted text is not an address.";
+
     private const string NoRefreshToken = "The provider issued no refresh token, so the sign-in would expire within the hour.";
 
     private const string CodeExpired = "The sign-in code expired before the sign-in completed; run the login again.";
@@ -59,6 +66,9 @@ public sealed class EmailSignInViewModelTests
 
     private static string CompletedLine(string account) =>
         $$"""{"v":2,"seq":2,"ts":"2026-10-07T09:00:05Z","kind":"email.login.completed","account":"{{account}}"}""";
+
+    private static string RejectedLine(string message) =>
+        $$"""{"v":2,"seq":2,"ts":"2026-10-07T09:00:03Z","kind":"email.login.redirect_rejected","message":"{{message}}"}""";
 
     private static string ErrorLine(string code, string message) =>
         $$"""{"v":2,"seq":2,"ts":"2026-10-07T09:00:05Z","kind":"error","code":"{{code}}","message":"{{message}}","recoverable":false}""";
@@ -112,6 +122,20 @@ public sealed class EmailSignInViewModelTests
                 return [];
 
             // The tokens are stored: from here on the engine finds the account ready.
+            cli.Answer("email accounts", 0, Accounts(persoReady: true));
+            return [CompletedLine("perso")];
+        });
+    }
+
+    /// <summary>A browser sign-in that judges what is pasted, as the verb does: the redirect completes it, anything else is rejected with its reason.</summary>
+    private static ScriptedOrkeonCli JudgingBrowserCli()
+    {
+        var cli = new ScriptedOrkeonCli().Answer("email accounts", 0, Accounts());
+        return cli.Converse("email login", [AuthorizationLine(AuthorizationPage)], line =>
+        {
+            if (line != Redirect)
+                return [RejectedLine(line.StartsWith("http", StringComparison.Ordinal) ? NoCode : NotAnAddress)];
+
             cli.Answer("email accounts", 0, Accounts(persoReady: true));
             return [CompletedLine("perso")];
         });
@@ -464,6 +488,123 @@ public sealed class EmailSignInViewModelTests
         Assert.Equal(["https://example.com/not-the-redirect"], fixture.Cli.InputLines);
         Assert.Equal(EmailSignInPhase.AuthorizationUrl, signIn.Phase);
         Assert.Equal(1, fixture.Cli.LiveConversations);
+    }
+
+    [Fact]
+    public async Task An_address_the_verb_rejects_stays_in_the_field_with_the_verbs_sentence_and_the_panel_keeps_waiting()
+    {
+        var fixture = Build(JudgingBrowserCli());
+        await fixture.Section.RefreshStatesAsync();
+        var signIn = fixture.SignIn("perso");
+        Assert.False(signIn.RedirectRejected);
+        Assert.Null(signIn.RedirectRejectedDetail);
+        var raised = new List<string>();
+        signIn.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+
+        signIn.PastedRedirect = CutShort;
+        signIn.SubmitRedirectCommand.Execute(null);
+
+        // The verb judged it, and said why: its sentence shows as printed, and the address is there to be corrected.
+        Assert.Equal([CutShort], fixture.Cli.InputLines);
+        Assert.True(signIn.RedirectRejected);
+        Assert.Equal(NoCode, signIn.RedirectRejectedDetail);
+        Assert.Equal(CutShort, signIn.PastedRedirect);
+        Assert.Contains(nameof(EmailSignInViewModel.RedirectRejected), raised);
+        Assert.Contains(nameof(EmailSignInViewModel.RedirectRejectedDetail), raised);
+        // A rejected address is not a failed sign-in: the child lives, and the panel still waits on it.
+        Assert.Equal(EmailSignInPhase.AuthorizationUrl, signIn.Phase);
+        Assert.True(signIn.IsWaiting);
+        Assert.False(signIn.IsFailed);
+        Assert.Null(signIn.FailureDetail);
+        Assert.False(signIn.RedirectNotSent);
+        Assert.Equal(1, fixture.Cli.LiveConversations);
+        Assert.True(signIn.SubmitRedirectCommand.CanExecute(null));
+
+        // Corrected in place: the notice is of the address sent, and stays while the next one is typed.
+        signIn.PastedRedirect = Redirect;
+        Assert.True(signIn.RedirectRejected);
+        signIn.SubmitRedirectCommand.Execute(null);
+        await Guarded(signIn.Ended);
+
+        Assert.Equal([CutShort, Redirect], fixture.Cli.InputLines);
+        Assert.Equal(EmailSignInPhase.Completed, signIn.Phase);
+        Assert.False(signIn.RedirectRejected);
+        Assert.Null(signIn.RedirectRejectedDetail);
+        Assert.Equal("", signIn.PastedRedirect);
+        Assert.Equal(EmailAccountReadiness.Ready, fixture.Row("perso").StateKind);
+    }
+
+    [Fact]
+    public void A_rejected_address_comes_back_in_the_field_it_had_left_and_the_notice_leaves_with_the_next_one_sent()
+    {
+        // The interface thread is behind the child: what the verb says lands when the queue is drained.
+        var dispatcher = new QueuedUiDispatcher();
+        var fixture = Build(JudgingBrowserCli(), dispatcher: dispatcher);
+        var signIn = fixture.SignIn("perso");
+        dispatcher.Drain();
+
+        signIn.PastedRedirect = "not an address";
+        signIn.SubmitRedirectCommand.Execute(null);
+
+        // Handed to the verb, whose answer has not landed: the field is empty, as for an address it takes.
+        Assert.Equal("", signIn.PastedRedirect);
+        Assert.False(signIn.RedirectRejected);
+
+        dispatcher.Drain();
+
+        Assert.True(signIn.RedirectRejected);
+        Assert.Equal(NotAnAddress, signIn.RedirectRejectedDetail);
+        Assert.Equal("not an address", signIn.PastedRedirect);
+        Assert.Equal(EmailSignInPhase.AuthorizationUrl, signIn.Phase);
+
+        // Sent again: the notice was of the previous address, and leaves before the verb answers this one.
+        signIn.PastedRedirect = CutShort;
+        signIn.SubmitRedirectCommand.Execute(null);
+
+        Assert.False(signIn.RedirectRejected);
+        Assert.Null(signIn.RedirectRejectedDetail);
+        Assert.Equal("", signIn.PastedRedirect);
+
+        dispatcher.Drain();
+
+        Assert.True(signIn.RedirectRejected);
+        Assert.Equal(NoCode, signIn.RedirectRejectedDetail);
+        Assert.Equal(CutShort, signIn.PastedRedirect);
+        Assert.True(signIn.IsWaiting);
+    }
+
+    [Fact]
+    public void A_rejection_does_not_write_over_what_was_typed_since()
+    {
+        var dispatcher = new QueuedUiDispatcher();
+        var fixture = Build(JudgingBrowserCli(), dispatcher: dispatcher);
+        var signIn = fixture.SignIn("perso");
+        dispatcher.Drain();
+
+        signIn.PastedRedirect = CutShort;
+        signIn.SubmitRedirectCommand.Execute(null);
+        signIn.PastedRedirect = "http://127.0.0.1:53124/?co";
+        dispatcher.Drain();
+
+        Assert.True(signIn.RedirectRejected);
+        Assert.Equal("http://127.0.0.1:53124/?co", signIn.PastedRedirect);
+    }
+
+    [Fact]
+    public void Leaving_the_panel_forgets_the_rejection_and_the_address_it_was_of()
+    {
+        var fixture = Build(JudgingBrowserCli());
+        var signIn = fixture.SignIn("perso");
+        signIn.PastedRedirect = CutShort;
+        signIn.SubmitRedirectCommand.Execute(null);
+        Assert.True(signIn.RedirectRejected);
+
+        signIn.CancelCommand.Execute(null);
+
+        Assert.False(signIn.RedirectRejected);
+        Assert.Null(signIn.RedirectRejectedDetail);
+        Assert.Equal("", signIn.PastedRedirect);
+        Assert.Equal(0, fixture.Cli.LiveConversations);
     }
 
     [Fact]

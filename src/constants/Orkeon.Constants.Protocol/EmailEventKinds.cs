@@ -29,6 +29,13 @@ public static class EmailEventKinds
     /// </summary>
     public const string LoginAuthorizationUrl = "email.login.authorization_url";
 
+    /// <summary>
+    /// The line the driver wrote on standard input is not the address the browser ended on:
+    /// <c>message</c> says why, in one sentence that never repeats the line. The sign-in is not
+    /// over — the verb goes on waiting for the browser, or for another line.
+    /// </summary>
+    public const string LoginRedirectRejected = "email.login.redirect_rejected";
+
     /// <summary>The tokens of <c>account</c> are stored: the last line of a sign-in that succeeded.</summary>
     public const string LoginCompleted = "email.login.completed";
 
@@ -43,5 +50,5 @@ public static class EmailEventKinds
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as a step that silently never shows.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [LoginDeviceCode, LoginAuthorizationUrl, LoginCompleted, Error];
+    public static IReadOnlyList<string> All { get; } = [LoginDeviceCode, LoginAuthorizationUrl, LoginRedirectRejected, LoginCompleted, Error];
 }

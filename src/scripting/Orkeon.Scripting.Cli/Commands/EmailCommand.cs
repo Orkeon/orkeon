@@ -367,13 +367,18 @@ internal static class EmailCommand
             var line = await Console.In.ReadLineAsync(cancellationToken).ConfigureAwait(false);
             return line;
         }
+
+        public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken) =>
+            Console.Out.WriteLineAsync(
+                $"That is not the address the browser ended on: {reason} Paste the complete address (http://127.0.0.1:…) and press Enter.");
     }
 
     /// <summary>
     /// The sign-in a program drives (STUDIO-70): each step is an event line, and the redirect
-    /// address is whatever line the driver writes on standard input. That input is read from the
-    /// start, on a thread of its own — a read of a redirected input blocks its caller —, so that
-    /// its end is noticed in the device sign-in too, where nothing is ever pasted.
+    /// address is whatever line the driver writes on standard input — a line that is not one is
+    /// answered by an event too, never by silence. That input is read from the start, on a thread
+    /// of its own — a read of a redirected input blocks its caller —, so that its end is noticed
+    /// in the device sign-in too, where nothing is ever pasted.
     /// </summary>
     private sealed class EventLoginInteraction : IEmailLoginInteraction
     {
@@ -409,6 +414,12 @@ internal static class EmailCommand
             {
                 return null;
             }
+        }
+
+        public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken)
+        {
+            _events.LoginRedirectRejected(reason);
+            return Task.CompletedTask;
         }
 
         private void Pump(TextReader input, Action onInputClosed)

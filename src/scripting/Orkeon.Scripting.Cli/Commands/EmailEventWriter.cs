@@ -38,6 +38,10 @@ internal sealed class EmailEventWriter : OrkeonEventWriter
         Emit(EmailEventKinds.LoginAuthorizationUrl, new { authorization_uri = authorizationUri.AbsoluteUri });
     }
 
+    /// <summary>The line read on standard input is not the address the browser ended on; the sign-in goes on waiting.</summary>
+    public void LoginRedirectRejected(string message) =>
+        Emit(EmailEventKinds.LoginRedirectRejected, new { message });
+
     /// <summary>The tokens of <paramref name="account"/> are stored.</summary>
     public void LoginCompleted(string account) =>
         Emit(EmailEventKinds.LoginCompleted, new { account });

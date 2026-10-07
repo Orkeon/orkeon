@@ -360,6 +360,9 @@ public sealed class EmailCliClientTests
     private static string CompletedLine(int seq, string account) =>
         $$"""{"v":2,"seq":{{seq}},"ts":"2026-10-07T09:00:05Z","kind":"email.login.completed","account":"{{account}}"}""";
 
+    private static string RejectedLine(int seq, string message) =>
+        $$"""{"v":2,"seq":{{seq}},"ts":"2026-10-07T09:00:03Z","kind":"email.login.redirect_rejected","message":"{{message}}"}""";
+
     private static string ErrorLine(int seq, string code, string message) =>
         $$"""{"v":2,"seq":{{seq}},"ts":"2026-10-07T09:00:05Z","kind":"error","code":"{{code}}","message":"{{message}}","recoverable":false}""";
 
@@ -420,6 +423,35 @@ public sealed class EmailCliClientTests
         // The dialogue is over once the verb said so: its input is closed, which is how it is let go.
         Assert.Equal(1, launcher.ClosedInputs);
         Assert.False(input.PasteRedirect(Redirect));
+    }
+
+    [Fact]
+    public async Task An_address_the_verb_rejects_is_a_step_with_its_sentence_and_the_sign_in_goes_on()
+    {
+        const string NoCode = "The pasted address carries no authorization code: it may be cut short.";
+        var launcher = new ConversingProcessLauncher
+        {
+            Reply = line => line == Redirect ? [CompletedLine(3, "perso")] : [RejectedLine(2, NoCode)],
+        };
+        launcher.Opening.Add(AuthorizationLine);
+        var steps = new List<EmailLoginStep>();
+        var input = new EmailLoginInput();
+
+        var login = CreateClient(launcher).LoginAsync("perso", Settings, steps.Add, input, TestContext.Current.CancellationToken);
+        Assert.True(input.PasteRedirect("http://127.0.0.1:53124/?state=state-1"));
+
+        // Said while the verb still waits: the rejection ends nothing, and its input stays open.
+        Assert.Equal([EmailLoginStepKind.AuthorizationUrl, EmailLoginStepKind.RedirectRejected], steps.Select(step => step.Kind));
+        Assert.Equal(NoCode, steps[1].Message);
+        Assert.Null(steps[1].Address);
+        Assert.False(login.IsCompleted);
+        Assert.Equal(0, launcher.ClosedInputs);
+
+        Assert.True(input.PasteRedirect(Redirect));
+        var ended = await login;
+
+        Assert.Equal(EmailLoginStepKind.Completed, ended.Kind);
+        Assert.Equal(2, steps.Count);
     }
 
     [Fact]

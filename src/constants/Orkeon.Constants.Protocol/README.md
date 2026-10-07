@@ -27,7 +27,7 @@ This project is not distributed as a NuGet package of its own — its assembly s
 | `RunEventKinds` | The event kinds a run emits, plus `All` — the set, so a consumer can assert it handles every one. |
 | `RunEventErrorCodes` | The `code` of the `error` event a stopped run ends on: `crew_failed` or `crew_cancelled`. |
 | `UseCaseEventKinds` | The event kinds `orkeon usecases` exchanges with the process driving it — the search session's query and answer, the catalogue, a sheet, an export — plus `All`. |
-| `EmailEventKinds` | The event kinds `orkeon email login --events jsonl` writes for the process driving it — the device code, the authorization address, the completion, the refusal — plus `All`. |
+| `EmailEventKinds` | The event kinds `orkeon email login --events jsonl` writes for the process driving it — the device code, the authorization address, a pasted redirect that was rejected, the completion, the refusal — plus `All`. |
 
 ## License
 

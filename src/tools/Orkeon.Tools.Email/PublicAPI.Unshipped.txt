@@ -44,6 +44,7 @@ Orkeon.Tools.Email.Administration.IEmailLoginInteraction
 Orkeon.Tools.Email.Administration.IEmailLoginInteraction.ReadRedirectAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
 Orkeon.Tools.Email.Administration.IEmailLoginInteraction.ShowAuthorizationUrlAsync(string! account, System.Uri! authorizationUri, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Orkeon.Tools.Email.Administration.IEmailLoginInteraction.ShowDeviceCodeAsync(string! account, System.Uri! verificationUri, string! userCode, System.TimeSpan expiresIn, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Email.Administration.IEmailLoginInteraction.ShowRedirectRejectedAsync(string! account, string! reason, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Orkeon.Tools.Email.Auth.EmailTokenSet
 Orkeon.Tools.Email.Auth.EmailTokenSet.<Clone>$() -> Orkeon.Tools.Email.Auth.EmailTokenSet!
 Orkeon.Tools.Email.Auth.EmailTokenSet.AccessToken.get -> string!

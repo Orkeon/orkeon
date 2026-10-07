@@ -157,6 +157,63 @@ public sealed class EmailAccountAdministrationTests
     }
 
     [Fact]
+    public async Task Should_tell_the_interaction_why_a_pasted_line_is_rejected_without_repeating_it_and_go_on_waiting()
+    {
+        using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));
+        fixture.Credentials.Handler.EnqueueJson("""{"access_token":"ya29.at","refresh_token":"1//rt","expires_in":3599}""");
+        var pasted = new List<string>();
+        string Pasted(string line)
+        {
+            pasted.Add(line);
+            return line;
+        }
+
+        var interaction = new FakeLoginInteraction()
+            .Paste(_ => Pasted("not a url at all"))
+            .Paste(shown => Pasted(shown.AbsoluteUri))
+            .Paste(_ => Pasted("https://example.com/elsewhere?page=fake-page-1"))
+            .Paste(shown => Pasted($"{Query(shown)["redirect_uri"]}?scope=fake-scope-1"))
+            .Paste(shown => $"http://localhost:1/?code=pasted-code&state={Uri.EscapeDataString(Query(shown)["state"])}");
+
+        await fixture.Administration.LoginAsync("google", interaction, Token);
+
+        var redirect = Query(await interaction.AuthorizationShown)["redirect_uri"];
+        Assert.Equal(
+        [
+            ("google", "The pasted text is not an address."),
+            ("google", "The pasted address is the one to open, not the one the browser ended on."),
+            ("google", $"The pasted address is not the redirect address of this sign-in ({redirect})."),
+            ("google", "The pasted address carries no authorization code: it may be cut short."),
+        ], interaction.RedirectRejections);
+        // What was pasted may hold a code: no sentence says it again.
+        Assert.All(interaction.RedirectRejections, rejection =>
+        {
+            Assert.All(pasted, line => Assert.DoesNotContain(line, rejection.Reason, StringComparison.Ordinal));
+            Assert.DoesNotContain("fake-", rejection.Reason, StringComparison.Ordinal);
+        });
+        // A rejected line is not a failed sign-in: the next one, the right one, ends it.
+        Assert.Equal("pasted-code", Assert.Single(fixture.Credentials.Handler.Requests).Form["code"]);
+        Assert.Single(fixture.Credentials.Store.Tokens);
+    }
+
+    [Fact]
+    public async Task Should_say_nothing_of_an_empty_pasted_line()
+    {
+        using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));
+        fixture.Credentials.Handler.EnqueueJson("""{"access_token":"ya29.at","refresh_token":"1//rt","expires_in":3599}""");
+        var interaction = new FakeLoginInteraction()
+            .Paste(_ => "")
+            .Paste(_ => "   ")
+            .Paste(shown => $"http://localhost:1/?code=pasted-code&state={Uri.EscapeDataString(Query(shown)["state"])}");
+
+        await fixture.Administration.LoginAsync("google", interaction, Token);
+
+        Assert.Equal(3, interaction.PasteReads);
+        Assert.Empty(interaction.RedirectRejections);
+        Assert.Single(fixture.Credentials.Store.Tokens);
+    }
+
+    [Fact]
     public async Task Should_refuse_a_redirect_whose_state_is_not_the_one_it_issued()
     {
         using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));

@@ -36,6 +36,10 @@ public sealed class StubTerminalLoginInteraction : IEmailLoginInteraction, IDisp
         return Task.FromResult<string?>(null);
     }
 
+    /// <inheritdoc />
+    public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
     /// <summary>Ends the blocked read (end of input).</summary>
     public void Dispose() => _input.TrySetResult();
 }

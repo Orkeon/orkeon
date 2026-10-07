@@ -16,4 +16,5 @@ const Orkeon.Constants.Protocol.EmailEventKinds.Error = "error" -> string!
 const Orkeon.Constants.Protocol.EmailEventKinds.LoginAuthorizationUrl = "email.login.authorization_url" -> string!
 const Orkeon.Constants.Protocol.EmailEventKinds.LoginCompleted = "email.login.completed" -> string!
 const Orkeon.Constants.Protocol.EmailEventKinds.LoginDeviceCode = "email.login.device_code" -> string!
+const Orkeon.Constants.Protocol.EmailEventKinds.LoginRedirectRejected = "email.login.redirect_rejected" -> string!
 static Orkeon.Constants.Protocol.EmailEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!

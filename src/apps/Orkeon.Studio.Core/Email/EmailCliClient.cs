@@ -139,6 +139,12 @@ public enum EmailLoginStepKind
     /// <summary>The browser sign-in is open: a page to open, and the verb waits for the browser or a pasted address.</summary>
     AuthorizationUrl,
 
+    /// <summary>
+    /// The address pasted is not the one the browser ended on: <see cref="EmailLoginStep.Message"/>
+    /// says why, and the verb goes on waiting — the sign-in is not over.
+    /// </summary>
+    RedirectRejected,
+
     /// <summary>The tokens are stored: the sign-in ended well.</summary>
     Completed,
 
@@ -167,6 +173,12 @@ public sealed record EmailLoginStep
 
     /// <summary>How long the device code lives from the moment the step arrived.</summary>
     public TimeSpan? ExpiresIn { get; init; }
+
+    /// <summary>
+    /// Why the pasted address was rejected: the verb's sentence, in English, as printed. It never
+    /// repeats the address.
+    /// </summary>
+    public string? Message { get; init; }
 
     /// <summary>Why the sign-in ended without tokens.</summary>
     public EmailCliFailure? Failure { get; init; }
@@ -341,9 +353,9 @@ public sealed class EmailCliClient
     /// <summary>
     /// Runs <c>email login --events jsonl</c> on <paramref name="account"/> and follows it.
     /// <paramref name="onStep"/> receives what the person has to do — a device code, an address to
-    /// open — as the verb says it, while it still waits; the task ends with the step that closes
-    /// the sign-in, <see cref="EmailLoginStepKind.Completed"/> or
-    /// <see cref="EmailLoginStepKind.Failed"/>. Never throws for what the process did.
+    /// open, a pasted address the verb rejected — as the verb says it, while it still waits; the
+    /// task ends with the step that closes the sign-in, <see cref="EmailLoginStepKind.Completed"/>
+    /// or <see cref="EmailLoginStepKind.Failed"/>. Never throws for what the process did.
     /// <para>
     /// The verb waits without a deadline, and reads the end of its standard input as its driver
     /// leaving. So the input is always piped: closed here as soon as the verb said its last word,
@@ -397,6 +409,10 @@ public sealed class EmailCliClient
                                 break;
                             case EmailEventKinds.LoginAuthorizationUrl when orkeonEvent.GetString("authorization_uri") is { Length: > 0 } address:
                                 onStep(new EmailLoginStep { Kind = EmailLoginStepKind.AuthorizationUrl, Address = address });
+                                break;
+                            case EmailEventKinds.LoginRedirectRejected:
+                                // The verb still waits, and still reads: nothing is closed.
+                                onStep(new EmailLoginStep { Kind = EmailLoginStepKind.RedirectRejected, Message = orkeonEvent.GetString("message") ?? "" });
                                 break;
                             case EmailEventKinds.LoginCompleted:
                                 ended = EmailLoginStep.Completed;

@@ -177,11 +177,12 @@ public sealed class ConstantDriftTests
                 : ended.Failure is { } failure ? failure.Kind.ToString() : ended.Kind.ToString();
         }
 
-        // Four kinds, four distinct readings — and none of them "the verb said nothing I know".
+        // Five kinds, five distinct readings — and none of them "the verb said nothing I know".
         Assert.Equal(EmailEventKinds.All.Count, read.Values.Distinct(StringComparer.Ordinal).Count());
         Assert.DoesNotContain(nameof(EmailCliFailureKind.Unreadable), read.Values);
         Assert.Equal(nameof(EmailLoginStepKind.DeviceCode), read[EmailEventKinds.LoginDeviceCode]);
         Assert.Equal(nameof(EmailLoginStepKind.AuthorizationUrl), read[EmailEventKinds.LoginAuthorizationUrl]);
+        Assert.Equal(nameof(EmailLoginStepKind.RedirectRejected), read[EmailEventKinds.LoginRedirectRejected]);
         Assert.Equal(nameof(EmailLoginStepKind.Completed), read[EmailEventKinds.LoginCompleted]);
         Assert.Equal(nameof(EmailCliFailureKind.Refused), read[EmailEventKinds.Error]);
     }

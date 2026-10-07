@@ -749,6 +749,7 @@
   <data name="Studio.Settings.MailPasteRedirect" xml:space="preserve"><value>Si le navigateur ne peut pas revenir vers cette machine, collez l'adresse sur laquelle il s'est arrêté :</value></data>
   <data name="Studio.Settings.MailPasteRedirectSend" xml:space="preserve"><value>Utiliser cette adresse</value></data>
   <data name="Studio.Settings.MailPasteRedirectNotSent" xml:space="preserve"><value>Cette adresse n'a pas été envoyée : la connexion ne lit plus. Connectez-vous de nouveau.</value></data>
+  <data name="Studio.Settings.MailPasteRedirectRejected" xml:space="preserve"><value>Ce n'est pas l'adresse sur laquelle le navigateur s'est arrêté :</value></data>
   <data name="Studio.Settings.MailCopyLink" xml:space="preserve"><value>Copier le lien</value></data>
   <data name="Studio.Settings.MailOpenInBrowser" xml:space="preserve"><value>Ouvrir dans le navigateur</value></data>
   <data name="Studio.Settings.MailSignedIn" xml:space="preserve"><value>Connecté</value></data>

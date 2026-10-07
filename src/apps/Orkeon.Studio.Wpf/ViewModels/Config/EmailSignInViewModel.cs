@@ -50,7 +50,8 @@ public sealed record EmailSignInServices
 /// and stores the tokens where every run looks for them; this shows what the person has to do
 /// meanwhile, and waits. A device sign-in (Microsoft) is a page and a code, counted down on the
 /// clock it is given; a browser sign-in (Google) is an address, and a field for the one the
-/// browser ended on when it could not come back to this machine.
+/// browser ended on when it could not come back to this machine — an address the verb rejects
+/// comes back to that field with the verb's reason, and the panel goes on waiting.
 /// <para>
 /// Nothing is opened but on a click, and nothing but an <c>https</c> address: the address is the
 /// CLI's word, shown in clear as received. The code is a secret while it lives: it is held here
@@ -85,6 +86,8 @@ public sealed class EmailSignInViewModel : ObservableObject
     private EmailCliFailure? _failure;
     private string _pastedRedirect = "";
     private bool _redirectNotSent;
+    private string? _submittedRedirect;
+    private string? _redirectRejection;
     private bool _failedOnDeviceCode;
 
     /// <summary>
@@ -217,6 +220,16 @@ public sealed class EmailSignInViewModel : ObservableObject
     public bool RedirectNotSent => _redirectNotSent;
 
     /// <summary>
+    /// Whether the verb rejected the last address it was handed — cut short, another address,
+    /// plain text: the address is back in the field to be corrected, the verb still waits, and
+    /// the notice stays until an address is sent again.
+    /// </summary>
+    public bool RedirectRejected => _redirectRejection is not null;
+
+    /// <summary>Why the verb rejected the address: its sentence, in English, as printed; null when it rejected none.</summary>
+    public string? RedirectRejectedDetail => _redirectRejection;
+
+    /// <summary>
     /// Why the sign-in failed: the verb's sentence, in English, as printed — nothing is read out
     /// of it —, or the sentence of the home screen when the CLI is not on this machine.
     /// </summary>
@@ -224,7 +237,8 @@ public sealed class EmailSignInViewModel : ObservableObject
 
     /// <summary>
     /// Writes <see cref="PastedRedirect"/> to the verb, which judges it; the field is then cleared.
-    /// An address nothing read stays in the field, and <see cref="RedirectNotSent"/> says so.
+    /// An address nothing read stays in the field, and <see cref="RedirectNotSent"/> says so; one
+    /// the verb rejects comes back to it, and <see cref="RedirectRejected"/> says so.
     /// </summary>
     public RelayCommand SubmitRedirectCommand { get; }
 
@@ -331,7 +345,29 @@ public sealed class EmailSignInViewModel : ObservableObject
                 _address = step.Address;
                 Show(EmailSignInPhase.AuthorizationUrl, keep: true);
                 break;
+            case EmailLoginStepKind.RedirectRejected when IsAuthorizationUrl:
+                OnRedirectRejected(step.Message ?? "");
+                break;
         }
+    }
+
+    /// <summary>
+    /// The verb rejected the address it was handed, and still waits: its sentence shows, and the
+    /// address comes back in the field it left — unless something was typed there since.
+    /// </summary>
+    private void OnRedirectRejected(string reason)
+    {
+        var submitted = _submittedRedirect;
+        _submittedRedirect = null;
+        _redirectRejection = reason;
+        if (_pastedRedirect.Length == 0 && submitted is { Length: > 0 })
+        {
+            _pastedRedirect = submitted;
+            OnPropertyChanged(nameof(PastedRedirect));
+            SubmitRedirectCommand.RaiseCanExecuteChanged();
+        }
+
+        OnPropertiesChanged(nameof(RedirectRejected), nameof(RedirectRejectedDetail));
     }
 
     /// <summary>The child ended; true when it stored the tokens.</summary>
@@ -360,14 +396,28 @@ public sealed class EmailSignInViewModel : ObservableObject
         if (!IsAuthorizationUrl || string.IsNullOrWhiteSpace(_pastedRedirect))
             return;
 
-        // Clearing the field says the verb took the address: only what it was handed leaves it.
-        if (_input?.PasteRedirect(_pastedRedirect) != true)
+        // The notice of a rejection is of the address sent before: it leaves with this one.
+        if (_redirectRejection is not null)
         {
+            _redirectRejection = null;
+            OnPropertiesChanged(nameof(RedirectRejected), nameof(RedirectRejectedDetail));
+        }
+
+        // Kept while the verb judges it: an address it rejects goes back to the field.
+        var submitted = _pastedRedirect;
+        _submittedRedirect = submitted;
+
+        // Clearing the field says the verb took the address: only what it was handed leaves it.
+        if (_input?.PasteRedirect(submitted) != true)
+        {
+            _submittedRedirect = null;
             SetRedirectNotSent(true);
             return;
         }
 
-        PastedRedirect = "";
+        // The verb may have answered within the write: an address it rejected stays where it is.
+        if (_redirectRejection is null)
+            PastedRedirect = "";
     }
 
     private void SetRedirectNotSent(bool value)
@@ -417,6 +467,8 @@ public sealed class EmailSignInViewModel : ObservableObject
             _deadline = null;
             _pastedRedirect = "";
             _redirectNotSent = false;
+            _submittedRedirect = null;
+            _redirectRejection = null;
         }
 
         if (!keepFailure)
@@ -429,7 +481,7 @@ public sealed class EmailSignInViewModel : ObservableObject
             nameof(Phase), nameof(IsStarting), nameof(IsDeviceCode), nameof(IsAuthorizationUrl), nameof(IsCompleted),
             nameof(IsFailed), nameof(IsExpired), nameof(CanRestart), nameof(IsWaiting), nameof(Address), nameof(HasAddress), nameof(CanOpen),
             nameof(UserCode), nameof(DeviceCodeLine), nameof(HasExpiry), nameof(ExpiresInText), nameof(PastedRedirect),
-            nameof(RedirectNotSent), nameof(FailureDetail));
+            nameof(RedirectNotSent), nameof(RedirectRejected), nameof(RedirectRejectedDetail), nameof(FailureDetail));
         SubmitRedirectCommand.RaiseCanExecuteChanged();
         CopyLinkCommand.RaiseCanExecuteChanged();
         OpenCommand.RaiseCanExecuteChanged();

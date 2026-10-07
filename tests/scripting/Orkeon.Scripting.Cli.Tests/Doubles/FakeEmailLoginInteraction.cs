@@ -28,4 +28,8 @@ internal sealed class FakeEmailLoginInteraction : IEmailLoginInteraction
 
     /// <inheritdoc />
     public Task<string?> ReadRedirectAsync(CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+
+    /// <inheritdoc />
+    public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("Nothing is ever pasted here.");
 }

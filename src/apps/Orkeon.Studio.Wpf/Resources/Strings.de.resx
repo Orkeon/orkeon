@@ -2157,6 +2157,9 @@
   <data name="Studio.Settings.MailPasteRedirectNotSent" xml:space="preserve">
     <value>Diese Adresse wurde nicht gesendet: Die Anmeldung liest nicht mehr. Melden Sie sich erneut an.</value>
   </data>
+  <data name="Studio.Settings.MailPasteRedirectRejected" xml:space="preserve">
+    <value>Das ist nicht die Adresse, bei der der Browser stehen geblieben ist:</value>
+  </data>
   <data name="Studio.Settings.MailCopyLink" xml:space="preserve">
     <value>Link kopieren</value>
   </data>

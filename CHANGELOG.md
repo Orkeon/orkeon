@@ -37,12 +37,12 @@ e-mail secrets on `ApiKeyEnvVar`.
 `orkeon email login` spoke to a person: a sentence with an address and a code, or an address to
 open and an invitation to paste the one the browser ends on. A program could not read either
 safely. With `--events jsonl` the verb writes each step of the sign-in as one JSON event on
-standard output — and nothing else there —, in the envelope of the run stream, under four kinds
+standard output — and nothing else there —, in the envelope of the run stream, under five kinds
 declared once in `Orkeon.Constants.Protocol.EmailEventKinds`: `email.login.device_code`
 (`verification_uri`, `user_code`, `expires_in`), `email.login.authorization_url`
-(`authorization_uri`), `email.login.completed` (`account`) and `error` (`code`, the e-mail error
-code; `message`; `recoverable`), which replaces the line on stderr. The exit codes did not move
-(STUDIO-70).
+(`authorization_uri`), `email.login.redirect_rejected` (`message`), `email.login.completed`
+(`account`) and `error` (`code`, the e-mail error code; `message`; `recoverable`), which
+replaces the line on stderr. The exit codes did not move (STUDIO-70).
 
 - **Standard input is the driver's hold on the verb.** A line written to it is the address the
   browser ended on — the fallback of the Google flow when the browser cannot reach this machine.
@@ -52,8 +52,17 @@ code; `message`; `recoverable`), which replaces the line on stderr. The exit cod
 - **Without the option nothing changed**: the same sentences, on the same streams.
 - **`IEmailLoginInteraction.ShowDeviceCodeAsync` takes the lifetime of the code** (`expiresIn`),
   as the provider granted it: a C# host that implements the interface adds the parameter.
+- **A pasted line that is not the browser's address is said, no longer swallowed.** The sign-in
+  set it aside in silence and went on waiting; it still waits — a rejected line is not a failed
+  sign-in, and an empty one is still ignored —, but says why first, in one sentence that never
+  repeats the line (it may hold an authorization code): not an address, the address to open,
+  not the redirect address of this sign-in, or no authorization code. With `--events jsonl`
+  that is `email.login.redirect_rejected` (`message`); at a terminal, a sentence on standard
+  output that asks for the complete address — a sign-in where nothing is rejected prints what
+  it printed. `IEmailLoginInteraction` gains `ShowRedirectRejectedAsync(account, reason, …)`: a
+  C# host that implements the interface adds the method.
 
-Docs: the CLI reference and the e-mail guide (EN and FR) describe the option and its four kinds.
+Docs: the CLI reference and the e-mail guide (EN and FR) describe the option and its five kinds.
 
 ### Added — Studio: an E-mail settings tab
 
@@ -120,7 +129,9 @@ French), in both modes, where the accounts are declared, renamed and removed in 
   Microsoft's page and the code, in large, counted down, then « The code expired — start again »
   (offered too when the command's own refusal of the expired code lands first); Google's
   address, and a field for the one the browser ended on, which keeps an address the command no
-  longer reads and says it was not sent. Studio opens nothing by
+  longer reads and says it was not sent, and takes back an address the command rejects — cut
+  short, another address, plain text — under « That is not the address the browser ended on: »
+  and the command's sentence, while the panel goes on waiting. Studio opens nothing by
   itself: the address shows in clear, with « Copy the link » and « Open in the browser », a
   click that only ever opens an absolute `https` address. A sign-in that ends well reads the
   states again and the account turns « Ready »; a refusal of the command — no refresh token, a

@@ -359,6 +359,15 @@
                                  Foreground="{DynamicResource WarningBrush}"
                                  Text="{Binding [Studio.Settings.MailPasteRedirectNotSent], Source={x:Static services:I18n.Instance}}"
                                  Visibility="{Binding RedirectNotSent, Converter={StaticResource BooleanToVisibility}}"/>
+                      <!-- the verb rejected the address, and still waits: its sentence as printed, the address back in the field -->
+                      <StackPanel Margin="0,6,0,0"
+                                  Visibility="{Binding RedirectRejected, Converter={StaticResource BooleanToVisibility}}">
+                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{Binding [Studio.Settings.MailPasteRedirectRejected], Source={x:Static services:I18n.Instance}}"/>
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,2,0,0" TextWrapping="Wrap"
+                                   Text="{Binding RedirectRejectedDetail}"/>
+                      </StackPanel>
                     </StackPanel>
 
                     <!-- the three ends -->
