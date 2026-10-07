@@ -13,7 +13,7 @@
     "human-readable twin is the 'Per-model mandatory parameter values' section of",
     "docs/reference/llm-providers-comparison.md.",
     "",
-    "candidateModels records, PER PROVIDER, the successors a dated catalogue review (2026-09-19) found on the",
+    "candidateModels records, PER PROVIDER, the successors a dated catalogue review (2026-09-19, then 2026-10-07) found on the",
     "vendor's own API for the default — each with the reason it is a candidate and the red it is expected to",
     "show. `run-campaign.sh --candidates` (`-Candidates`) runs them after the default, same modes, on the automatic",
     "path only. A campaign is what promotes a candidate to default; the review alone never does."
@@ -43,11 +43,19 @@
       "apiKeyEnv": "OPENAI_API_KEY",
       "defaultModel": "gpt-5.6-sol",
       "candidateModels": [
-        { "id": "gpt-6-astra", "why": "Top tier above Sol (10 / 50 $/M, 2026-09-04). Effort low\u2026max with no `none`: the modes that pair function tools with reasoning measure whether Sol's `reasoning_effort: none` workaround is unnecessary or impossible there." }
+        { "id": "gpt-6-astra", "why": "Top tier above Sol (10 / 50 $/M, 2026-09-04). Effort low\u2026max with no `none`: the modes that pair function tools with reasoning measure whether Sol's `reasoning_effort: none` workaround is unnecessary or impossible there." },
+        { "id": "gpt-6-sol", "why": "Listed by the API on 2026-10-07, the 6 generation of the default's own tier. Keeps `reasoning_effort: none`, so Sol's two pins carry over unchanged (requiredParams): 11/1 on its first run, the red being M9 at the mandated temperature 1." },
+        { "id": "gpt-6-luna", "why": "The small tier of the 6 generation, listed on 2026-10-07. Same two pins as Sol; 12/12 on its first run." },
+        { "id": "gpt-6.1-sol", "why": "Listed on 2026-10-07. Behaves like gpt-6-astra, not like gpt-6-sol: no `reasoning_effort: none`, so function tools are refused on chat/completions \u2014 M2 (messages array) and M5 red until the dialect speaks /v1/responses." }
       ],
       "requiredParams": {
         "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" },
-        "gpt-6-astra": { "temperature": 1 }
+        "gpt-5.6-terra": { "temperature": 1, "thinkingEffort": "none" },
+        "gpt-5.6-luna": { "temperature": 1, "thinkingEffort": "none" },
+        "gpt-6-astra": { "temperature": 1 },
+        "gpt-6-sol": { "temperature": 1, "thinkingEffort": "none" },
+        "gpt-6-luna": { "temperature": 1, "thinkingEffort": "none" },
+        "gpt-6.1-sol": { "temperature": 1 }
       },
       "notes": [
         "Generic target of the `LlmProviderFactory` fallback: a green campaign here indirectly validates Docker Model Runner, vLLM and LM Studio. Proven live on 2026-08-30: 12/12 campaign against `api.x.ai` (`grok-4.6`, OpenAI dialect, base-url alone) — report under `custom-endpoints/`.",
@@ -55,7 +63,8 @@
         "Current models refuse `max_tokens` (2026-08-30 campaign: ten modes red on that one field). The OpenAI dialect writes `max_completion_tokens` since that date — accepted by the earlier generations too (verified on `gpt-4o-mini` the same day).",
         "`gpt-5.6-sol` refuses any temperature other than 1 (`'temperature' does not support 0 with this model`) — same class as `kimi-k2.6`, same remedy: the catalog pins it for this model (requiredParams) and the report header carries the value used.",
         "`gpt-5.6-sol` reasons by default and refuses function tools on chat/completions as long as `reasoning_effort` is not explicitly `none` (measured 2026-08-30, `none` unblocks the call). The catalog pins it for this model (`requiredParams`); M7 keeps probing thinking with its own explicit effort.",
-        "`gpt-6-astra` refuses any temperature other than 1 (`'temperature' does not support 0 with this model. Only the default (1) value is supported`, measured 2026-09-21 — first candidate run 2/10 on that cause alone) and, unlike Sol, has NO `reasoning_effort: none`: pinning it as for Sol turned the run into 3/9 (`does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'`). Without it, function tools on chat/completions are refused outright (`Function tools with reasoning_effort are not supported for gpt-6-astra in /v1/chat/completions. To use function tools, use /v1/responses`) — the Sol workaround is impossible there, which is what the review of 2026-09-19 asked the campaign to settle. The catalog pins the temperature only; M5 is expected red until the dialect learns /v1/responses. Both refused reports (06:35, 06:52) are kept as the trace."
+        "`gpt-6-astra` refuses any temperature other than 1 (`'temperature' does not support 0 with this model. Only the default (1) value is supported`, measured 2026-09-21 — first candidate run 2/10 on that cause alone) and, unlike Sol, has NO `reasoning_effort: none`: pinning it as for Sol turned the run into 3/9 (`does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'`). Without it, function tools on chat/completions are refused outright (`Function tools with reasoning_effort are not supported for gpt-6-astra in /v1/chat/completions. To use function tools, use /v1/responses`) — the Sol workaround is impossible there, which is what the review of 2026-09-19 asked the campaign to settle. The catalog pins the temperature only; M5 is expected red until the dialect learns /v1/responses. Both refused reports (06:35, 06:52) are kept as the trace.",
+        "Catalogue read of 2026-10-07 (133 ids, 5 never campaigned in the current chat tiers): `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-6-sol` and `gpt-6-luna` answer exactly like Sol — `'temperature' does not support 0 with this model. Only the default (1) value is supported.` and `Function tools with reasoning_effort are not supported for <model> in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.` — and take Sol's two pins (requiredParams): 11/1, 11/1, 11/1 and 12/12. `gpt-6.1-sol` quotes the same sentence but refuses `none` (`'reasoning_effort' does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'.`): pinned like `gpt-6-astra`, temperature only, 10/2 with M2 (messages array) and M5 red; its 3/9 report of 18:14, run with Sol's pins, is kept as the trace. M9 is the mode that moves at temperature 1: the default read `29`, `gpt-6-sol` `26`, `gpt-5.6-terra` `18` for 73 — model side, as on 2026-08-30 and 2026-09-21."
       ]
     },
     "anthropic": {
@@ -64,11 +73,18 @@
       "apiKeyEnv": "ANTHROPIC_API_KEY",
       "defaultModel": "claude-sonnet-5",
       "candidateModels": [
-        { "id": "claude-fable-5-1", "why": "New top tier (2026-09-01, 10 / 50 $/M). Thinking always on, forced `tool_choice` refused, temperature pinned like Sonnet 5 (requiredParams)." }
+        { "id": "claude-fable-5-1", "why": "New top tier (2026-09-01, 10 / 50 $/M). Thinking always on, forced `tool_choice` refused, temperature pinned like Sonnet 5 (requiredParams)." },
+        { "id": "claude-sonnet-5-5", "why": "The default's own tier, one generation on (listed 2026-09-28). Thinking adaptive only, temperature pinned (requiredParams); 12/12 on its first run, 2026-10-07." },
+        { "id": "claude-haiku-5-5", "why": "The small tier, listed on the day of the campaign (2026-10-07). Temperature pinned; 11/1, the red being the probe's own M9 check \u2014 the model answers `Seventy-three red`, the check looks for the digits." },
+        { "id": "claude-opus-5-5", "why": "Listed 2026-09-21. Temperature pinned; 10/2 \u2014 M5 and M6 come back empty because the API refuses the probe's wording (`stop_reason: refusal`, category `cyber`), which the provider reads as an empty answer. Not a default until that is told apart." }
       ],
       "requiredParams": {
         "claude-sonnet-5": { "temperature": 1 },
-        "claude-fable-5-1": { "temperature": 1 }
+        "claude-fable-5-1": { "temperature": 1 },
+        "claude-opus-5": { "temperature": 1 },
+        "claude-opus-5-5": { "temperature": 1 },
+        "claude-sonnet-5-5": { "temperature": 1 },
+        "claude-haiku-5-5": { "temperature": 1 }
       },
       "notes": [
         "Own dialect (Messages API): this is the provider carrying the most specific code.",
@@ -76,7 +92,9 @@
         "M10 only makes sense with an explicit breakpoint: without `cache_control`, Anthropic caches nothing (G-17). The harness enables it on its own here.",
         "M4 must confirm the native SSE delivered by LLM-05 (G-20), not a buffered fallback.",
         "Identity-linked keys require the `anthropic-workspace-id` header on every request (measured 2026-08-30). Declare `workspaceId` in the campaign JSON or pass `--workspace-id`; classic keys need nothing.",
-        "`claude-sonnet-5` refuses any explicit temperature other than 1 (`temperature is deprecated for this model`, measured 2026-08-30: 1 and omission pass, 0 and 0.7 do not) — same class as `kimi-k2.6` and `gpt-5.6-sol`, same remedy: the catalog pins it for this model (requiredParams), the report header carries the value used."
+        "`claude-sonnet-5` refuses any explicit temperature other than 1 (`temperature is deprecated for this model`, measured 2026-08-30: 1 and omission pass, 0 and 0.7 do not) — same class as `kimi-k2.6` and `gpt-5.6-sol`, same remedy: the catalog pins it for this model (requiredParams), the report header carries the value used.",
+        "Catalogue read of 2026-10-07 (14 ids; the endpoint publishes context, output cap, effort levels and thinking types per model — see served-models.json). Four more models refuse a pinned temperature in the same words (`temperature is deprecated for this model.`): `claude-opus-5`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` — pinned to 1 (requiredParams); 12/12, 10/2, 12/12, 11/1. The listing itself needs the workspace header on an identity-linked key, and `orkeon llm models` cannot send it: the list was read with a direct call. `GET /v1/organizations/workspaces` answers that same key with the workspace ids.",
+        "A refusal is NOT an empty answer, and the provider reads it as one (measured 2026-10-07): on `claude-opus-5-5` the probe's M5/M6 prompt (`the sealed probe code … cannot be guessed`) comes back HTTP 200 with `content: []`, `stop_reason: \"refusal\"` and `stop_details: {category: \"cyber\", explanation: …}` — 3 of 4 M5 and 4 of 4 M6. `AnthropicLlmProvider` does not read `stop_reason`, so the report shows `no tool call in the reply:` followed by nothing. On that model those reds measure the classifier meeting the probe's wording, not tool calling — `claude-sonnet-5`, `claude-sonnet-5-5`, `claude-opus-5` and `claude-haiku-5-5` answer the same prompt. `claude-fable-5-1` shows the same empty M6 since 2026-09-21 (three more today), but one direct call with the same wording was answered (`end_turn`, a text block): its cause is not established."
       ]
     },
     "azure": {
@@ -132,7 +150,8 @@
         "To **revalidate** despite the age of its proof: LLM-01 changed its default model and LLM-02 refactored it onto the capabilities base.",
         "M7 must confirm the `reasoning_content` round-trip — without it the API returns a 400.",
         "M8 must confirm the “word *json* absent from the prompt” guard.",
-        "Long the only provider in the fleet without a vision model, until `deepseek-v4-flash-vision-exp` (measured 2026-08-30: it reads a base64 image). Since V4.1 Flash (2026-09-10) vision is native on the Flash tier: the default `deepseek-flash` sees and the experimental companion is retired — M9 runs on the default, no `visionModel`. `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp` name retired models the API temporarily routes to V4.1 Flash (vendor pricing page, 2026-09-19); the 2026-09-07 campaign under the old name is to be replayed on `deepseek-flash`."
+        "Long the only provider in the fleet without a vision model, until `deepseek-v4-flash-vision-exp` (measured 2026-08-30: it reads a base64 image). Since V4.1 Flash (2026-09-10) vision is native on the Flash tier: the default `deepseek-flash` sees and the experimental companion is retired — M9 runs on the default, no `visionModel`. `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp` name retired models the API temporarily routes to V4.1 Flash (vendor pricing page, 2026-09-19); the 2026-09-07 campaign under the old name is to be replayed on `deepseek-flash`.",
+        "Catalogue read of 2026-10-07: two ids, `deepseek-flash` and `deepseek-v4-pro`, and the endpoint now publishes their options — 1 048 576 context, 393 216 output, effort levels `low` / `high` / `max` with `high` the default; image input on Flash only. `deepseek-v4-pro` campaigned for the first time: 11/1, the red being M9 (text-only, D-03 — it answers nothing about the image after 45 s). The default is 12/12 for the third campaign in a row."
       ]
     },
     "kimi": {
@@ -141,17 +160,21 @@
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "defaultModel": "kimi-k2.6",
       "candidateModels": [
-        { "id": "kimi-k3", "why": "Flagship (1M, 3 / 15 $/M). Temperature pinned to 1 (requiredParams); top_p, n and both penalties fixed; no `thinking` field accepted \u2014 the M7 toggle is expected red until the dialect learns it." }
+        { "id": "kimi-k3", "why": "Flagship (1M, 3 / 15 $/M). Temperature pinned to 1 (requiredParams); top_p, n and both penalties fixed; no `thinking` field accepted \u2014 the M7 toggle is expected red until the dialect learns it." },
+        { "id": "kimi-k2.7-code", "why": "The coding model, listed on 2026-10-07 (262 144 context, image + video + reasoning). Temperature pinned to 1 (requiredParams); 12/12 on its pinned run, cache read \u2014 the only Kimi model with every mode green that day." }
       ],
       "requiredParams": {
         "kimi-k2.6": { "temperature": 1 },
+        "kimi-k2.7-code": { "temperature": 1 },
         "kimi-k3": { "temperature": 1 }
       },
       "notes": [
         "`kimi-k2.6` **refuses any temperature other than 1** (`invalid temperature: only 1 is allowed for this model`) — the catalog pins it for this model (requiredParams), and the report header carries the value actually used. A Kimi verdict is not reproducible in the same sense as a verdict at temperature 0.",
         "Two regional endpoints with **separate accounts**: `api.moonshot.ai` (international, default) and `api.moonshot.cn` (mainland China).",
         "G-11 closed: check that the host resolved in the report header is the expected one.",
-        "The `moonshot-v1-*` series counts input + output within the same bound — its “8 K” is not an 8 K input window."
+        "The `moonshot-v1-*` series counts input + output within the same bound — its “8 K” is not an 8 K input window.",
+        "2026-10-07, two acts. At 18:09 the account was suspended (`exceeded_current_quota_error`, HTTP 429, `suspended due to insufficient balance`): the retry policy treats that 429 as a rate limit and spends its whole budget on every mode, so the run was stopped after nine minutes and nothing was archived — the refusal quotes the organisation and key ids. Topped up, the campaign ran at 19:15: `kimi-k2.6` 10/1/1 — M8 again, `json_object` comes back fenced in markdown as on 2026-09-21, and M10 without a cache breakdown; `kimi-k3` 11/1 — M2 on the messages array this time, cache read (7936 tokens, ratio 0.97), bare JSON. The catalogue lists four ids: `kimi-k2.6`, `kimi-k2.7-code`, `kimi-k2.7-code-highspeed` (262 144 context) and `kimi-k3` (1 048 576), all with image, video and reasoning.",
+        "`kimi-k2.7-code` mandates temperature 1 like its siblings, and the provider's own remedy hides it on half the paths (measured 2026-10-07): on a buffered call `KimiLlmProvider` reads `invalid temperature: only 1 is allowed for this model`, retries once with the mandated value and logs it — so M1, M5 and M7 pass at temperature 0 — while the two streaming paths have no such retry and surface the refusal (M3 and M4 red, 9/2/1 at 19:17, kept as the trace). Pinned in requiredParams; 12/12 one minute later, cache read (7936 tokens, ratio 0.98). A pre-pass on buffered modes alone cannot see a mandated temperature on this provider."
       ]
     },
     "moonshot": { "label": "Kimi (Moonshot AI)", "matrix": "§6.8", "aliasOf": "kimi" },
@@ -167,7 +190,8 @@
       "notes": [
         "Distinct international endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (G-12 closed).",
         "The only provider where the thinking budget is wired (`thinking_budget`): M7 is richer here than elsewhere. Validated live on 2026-08-30 (12/12, reasoning trace returned).",
-        "The DashScope implicit cache only engages above a high threshold: 0 cached tokens with the historical probe prefix (~2050 tokens, 3 measurements) but `cached_tokens: 4352` at 5809 prefix tokens (2026-08-30). The M10 probe sends ~8200 tokens since that date; the clean run archives 6528 cached, ratio 0.81."
+        "The DashScope implicit cache only engages above a high threshold: 0 cached tokens with the historical probe prefix (~2050 tokens, 3 measurements) but `cached_tokens: 4352` at 5809 prefix tokens (2026-08-30). The M10 probe sends ~8200 tokens since that date; the clean run archives 6528 cached, ratio 0.81.",
+        "2026-10-07: an international key (`sk-ws-…`) is refused by the compiled endpoint (`dashscope.aliyuncs.com`, 401 `Incorrect API key provided`) and by the US one; it is served by `dashscope-intl.aliyuncs.com` only — declare `baseUrl` in the campaign JSON, as the header of every report shows. 172 ids listed (ids only). `qwen3.7-plus`, `qwen3.8-flash` and `qwen3.8-max` are all 12/12 (the M2 red of `qwen3.8-flash` on 2026-09-21 did not come back); `qwen3.7-max` 11/1 (M9: text-only, `Unexpected item type in content`) and `qwen3.7-flash` 11/1 (M2 on the messages array) campaigned for the first time."
       ]
     },
     "mistral": {
@@ -175,15 +199,23 @@
       "matrix": "§6.10",
       "apiKeyEnv": "MISTRAL_API_KEY",
       "defaultModel": "mistral-medium-2604",
+      "candidateModels": [
+        { "id": "mistral-large-4", "why": "Listed 2026-10-07: 524 288 context, tools + reasoning + vision, reasons by default. Needs the streaming fix of that day (content deltas arrive as arrays of typed chunks) \u2014 10/2 before it (18:14), 11/1 after (19:37, M10)." },
+        { "id": "mistral-small-2603", "why": "262 144 context, tools + reasoning + vision, default temperature 0.3; 11/1 on its first run (M9 reads `7` for 73) and its cache is read (8192 tokens, ratio 1.00)." }
+      ],
       "requiredParams": {
-        "mistral-medium-2604": { "m7Effort": "high" }
+        "mistral-medium-2604": { "m7Effort": "high" },
+        "mistral-large-4": { "m7Effort": "high" },
+        "mistral-small-2603": { "m7Effort": "high" }
       },
       "notes": [
         "Run **without `--base-url`**: that is how, and only how, one verifies live that G-14 is closed — a bare `mistral-*` model must no longer head for `localhost:11434`.",
         "The host shown in the report header is the proof: `api.mistral.ai`, not `localhost`.",
         "`mistral-medium-2604` restricts `reasoning_effort` to `['high', 'none']` (measured 2026-08-30) — M7's default `low` is refused, hence the `m7Effort: high` in requiredParams.",
         "M10: the usage carries `prompt_tokens_details.cached_tokens` but the value stays 0 on an identical 5812-token prefix called twice (3 measurements, 2026-08-30). The field exists, the implicit cache does not engage — vendor red, not an Orkeon defect. Confirmed on the long prefix: still 0 at ~8200 tokens (2026-08-30).",
-        "Identifiers mix aliases and dated snapshots: confirm the id on the official model card before freezing it. The compiled default was exactly that trap: `mistral-medium-3-5-26-04` (a concatenation of the `-3-5` alias and the `26-04` vintage) was never served — `Invalid model`, measured 2026-08-30, corrected to `mistral-medium-2604`."
+        "Identifiers mix aliases and dated snapshots: confirm the id on the official model card before freezing it. The compiled default was exactly that trap: `mistral-medium-3-5-26-04` (a concatenation of the `-3-5` alias and the `26-04` vintage) was never served — `Invalid model`, measured 2026-08-30, corrected to `mistral-medium-2604`.",
+        "2026-10-07: the account is no longer rate-limited — the default is 11/1, its 2026-08-30 line, M10 still `0 cached` (the 2/10 of 2026-09-07 and 2026-09-21 measured the account). The catalogue (55 ids) publishes each model's context, capabilities, aliases and `default_model_temperature`: 1 for `mistral-medium-2604` and `mistral-large-4`, 0.3 for `mistral-small-2603`, `mistral-large-2512`, the ministral family and `codestral-2508`; `mistral-medium-2604` is now listed as an alias of `mistral-medium-latest`, with `mistral-medium-3-5` and `magistral-medium-latest`. `mistral-large-4` and `mistral-small-2603` restrict `reasoning_effort` to `high` / `none` like the default (`m7Effort`, requiredParams).",
+        "`mistral-large-4` reasons by default and streams `delta.content` as an ARRAY of typed chunks (123 array deltas for 4 strings on a count to five, 2026-10-07): the text stream threw `InvalidOperationException: The requested operation requires an element of type 'String', but the target element has type 'Array'` (M3 red, archived 18:14) and the chat stream dropped the trace and the first words of the answer. Both streams read the two shapes since that day; replayed on the fix at 19:37, M3 is green (50 chunks) and the run is 11/1 — that report was produced on the working tree carrying the fix, before it was committed, so the commit its header names is the one the fix sits on top of. Its cache is read where the default's is not (7660 tokens, ratio 0.92, at 18:14 — then 0 on the replay, M10 red)."
       ]
     },
     "huggingface": {
@@ -211,12 +243,14 @@
       "defaultModel": "glm-5.2",
       "candidateModels": [
         { "id": "glm-5.3", "why": "2026-08-18, same price as 5.2. Thinking cannot be disabled: an M7 toggle-off red is model-level, not a transport fact." },
-        { "id": "glm-5.3-flash", "why": "0.15 / 0.50 $/M with image + video input \u2014 would also retire the `glm-4.6v-flash` vision companion." }
+        { "id": "glm-5.3-flash", "why": "0.15 / 0.50 $/M with image + video input \u2014 would also retire the `glm-4.6v-flash` vision companion." },
+        { "id": "glm-5.3-flashx", "why": "The third model of the 5.3 family, listed since 2026-08-13 and campaigned on 2026-10-07: 12/12 \u2014 it sees, and its cache is read (8064 tokens, ratio 1.00)." }
       ],
       "visionModel": "glm-4.6v-flash",
       "notes": [
         "Traceability debt of its own: the only existing proof is a dated configuration comment. This campaign must produce an **archived output** for it.",
-        "To revalidate after LLM-02, which refactored it onto the capabilities base."
+        "To revalidate after LLM-02, which refactored it onto the capabilities base.",
+        "2026-10-07 (11 ids, ids only): `glm-5.2` 10/2 (M9 `1210`, M10 `0 cached`) and `glm-5.3` 10/2 (M2, M9 `1210`) unchanged; `glm-5.3-flash` 11/1 — M2 on the messages array, its first red in five runs; `glm-5.3-flashx` 12/12 on its first run. The three 5.3 models return no reasoning trace on M7 where `glm-5.2` does."
       ]
     },
     "glm": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
@@ -226,10 +260,14 @@
       "matrix": "§6.15",
       "apiKeyEnv": "XAI_API_KEY",
       "defaultModel": "grok-4.6",
+      "candidateModels": [
+        { "id": "grok-4.7", "why": "Listed by the API on 2026-10-07 at the price of 4.6 (2 / 6 $/M, 0.5 cached). 11/1 on its first run: native tools, schema, vision and cache green, no reasoning trace returned on M7, and M6 red \u2014 it announces the tool call in prose instead of writing the block." }
+      ],
       "notes": [
         "Fourteenth provider, arrived on 2026-08-30 preceded by its own proof: 12/12 campaign against `api.x.ai` through the generic OpenAI dialect BEFORE the class existed (archived under `custom-endpoints/`). Every declared capability is a measurement from that campaign.",
         "Keys carry the `xai-` prefix — the grok/groq near-homograph is exactly the confusion the factory's inference absorbs (`api.groq.com` refuses these keys, measured).",
-        "Implicit cache in the standard `cached_tokens` format (512 tokens, ratio 0.19 on the first M10 pass)."
+        "Implicit cache in the standard `cached_tokens` format (512 tokens, ratio 0.19 on the first M10 pass).",
+        "2026-10-07: `GET /v1/language-models` publishes modalities, prices and aliases for the 8 text models (`/v1/models` adds the image and video ids, 14 in all). `grok-4.6` 12/12 for the fifth campaign in a row; `grok-4.7` 11/1 (M6)."
       ]
     },
     "xai": {
@@ -251,7 +289,8 @@
         "Two regional endpoints with separate accounts: `api.minimax.io` (international, default) and `api.minimaxi.com` (mainland China) — same pattern as Kimi.",
         "First attempt on 2026-08-30: valid international key, catalog served (`MiniMax-M2` live, generations up to `MiniMax-M3` listed), but Token Plan exhausted — every billed mode answers `insufficient_balance_error` (402), typed errors end to end. The transport is validated; the campaign remains the pending proof, to rerun once the account is topped up.",
         "First campaign on 2026-08-30 (7/2/3 on `MiniMax-M2`, `sk-api-` key — `sk-cp-` keys are coding plans with their own quota). The three questions settled: (1) the trace arrives INLINE as a `<think>` block inside the content, no separate field — the Orkeon dialect extracts it to `reasoning_content` and re-injects it on replay as the doc requires; (2) no cache breakdown at 8k of prefix; (3) `response_format` accepted but NON-BINDING (schema ignored, json_object fenced in markdown) — the None declaration is a measurement.",
-        "M2 and M9 red: model behaviour (system ignored on both shapes; text-only, `I'm unable to view the image`). The VL family does not appear in the platform's `/models` catalog — but `MiniMax-M3`, listed there, reads the image (M9 ✅ twice on 2026-09-21): it is the vision companion since, and the candidate for the default. Its `<think>` block is split out like M2's (6 characters returned for 199 billed tokens on M1); M10 saw 128 cached tokens once (ratio 0.02) and no breakdown the second time."
+        "M2 and M9 red: model behaviour (system ignored on both shapes; text-only, `I'm unable to view the image`). The VL family does not appear in the platform's `/models` catalog — but `MiniMax-M3`, listed there, reads the image (M9 ✅ twice on 2026-09-21): it is the vision companion since, and the candidate for the default. Its `<think>` block is split out like M2's (6 characters returned for 199 billed tokens on M1); M10 saw 128 cached tokens once (ratio 0.02) and no breakdown the second time.",
+        "2026-10-07 (8 ids, ids only: M2, M2.1, M2.5, M2.7 and their `-highspeed` twins, M3): `MiniMax-M2` 7/2/3 unchanged; `MiniMax-M3` 9/1/2 (M2 red, it sees, 128 cached tokens); `MiniMax-M2.7` campaigned for the first time — 8/2/2: text-only like M2 (`I'm unable to see the image`), system message ignored on both shapes, and the first full cache read on this vendor (8059 tokens, ratio 1.00)."
       ]
     },
     "gemini": {
@@ -268,7 +307,8 @@
         "**M8 is no longer ➖**: measured on 2026-08-30, the compatibility surface accepts `response_format` `json_object` **and** `json_schema`, schema validated server-side (`additionalProperties` included). The provider declares `JsonSchema` since that date — the warning it used to emit refused something that works.",
         "M3/M4 stream in large blocks (~13 characters per event): a reply that is too short fits in a single chunk and reads like a buffered fallback. The probe asks for a hundred numbers since 2026-08-30 to discriminate (thirty were enough here, but claude-sonnet-5 coalesced thirty into a single delta).",
         "M7 is **effort only** (`reasoning_effort` translated to `thinking_level`): neither toggle nor token budget, unlike Qwen.",
-        "The default model sees: M9 is exercised on it, with no companion vision campaign."
+        "The default model sees: M9 is exercised on it, with no companion vision campaign.",
+        "2026-10-07: the native listing (`GET /v1beta/models`, 62 ids) publishes each model's options — 1 048 576 context and 65 536 output on every Flash and Pro text model, default `temperature` 1, `topP` 0.95, `topK` 64, `maxTemperature` 2. The default and `gemini-3.8-flash` are 11/0/1, mode for mode as on 2026-09-21. `gemini-3.5-flash-lite` 12/12 — the only Gemini model of the day whose cache breakdown comes back (4077 cached tokens, ratio 0.51); `gemini-3.1-pro-preview` 10/1/1, the red being one M5 with no tool call that three replays did not reproduce."
       ]
     },
     "google": { "label": "Google Gemini", "matrix": "§6.13", "aliasOf": "gemini" },
@@ -281,16 +321,16 @@
         { "id": "google/gemini-3.8-flash", "why": "Follows the direct Gemini candidate \u2014 the transport question is the same." }
       ],
       "notes": [
-        "Sixteenth sheet, WITHOUT execution proof: integrated on 2026-09-18 from the vendor documentation and cold calls (LLM-09), no key available. The first campaign is the pending proof — the Mistral lesson (compiled default never served) applies in full until a live M1 is archived.",
-        "Marketplace: 445 models from 60 vendors on 2026-09-18, `vendor/model` identifiers are mandatory (`anthropic/claude-sonnet-5`), suffixes `:free` / `:nitro` / `:floor`, router slugs `openrouter/auto` (refused as a default: the served model drifts, price -1). The default is the fleet's Gemini default under its marketplace id — one model, three transports: a red here with a green in direct (2026-08-30) is a fact about the transport.",
-        "Cheap text-only alternative for the transport comparison: `deepseek/deepseek-v4-flash` on M7/M8.",
-        "Question 1 — the `sk-or-v1-` key prefix is documented by secondary sources only: confirm it on the first key before the factory infers from it (the `xai-` pattern); the inference line waits for that.",
-        "Question 2 — `message.reasoning` / `delta.reasoning` really populated on a reasoning model (`deepseek/deepseek-v4-flash`), and the shape of `reasoning_details[]` for a later sheet.",
-        "Question 3 — `usage.cost` present on the buffered path AND in the final `usage` chunk of a stream (it arrives unasked; `stream_options.include_usage` is documented deprecated, no effect).",
-        "Question 4 — M8: a `json_schema` WITHOUT `provider.require_parameters` — does OpenRouter route to an endpoint that ignores it (the MiniMax case)? If so the JsonSchema declaration is too optimistic and D-09 reopens for that one field.",
-        "Question 5 — M10: `prompt_tokens_details.cached_tokens` and `cache_write_tokens` on the second request over an 8k prefix.",
-        "Question 6 — `: OPENROUTER PROCESSING` keep-alive comment lines observed at least once in the `LlmLoggingDelegatingHandler` logs, with no effect on the content.",
-        "Question 7 — the `model` echoed behind `openrouter/auto` (one request, for the documentation)."
+        "First campaign on 2026-10-07 (LLM-09's pending proof): `google/gemini-3.7-flash` 11/1 and `google/gemini-3.8-flash` 11/1 — every mode green but M10. One model, three transports: direct Gemini is 11/0/1 the same day, the difference being M10 alone — the marketplace returns the cache fields with 0 where Google's own endpoint returns no breakdown at all.",
+        "Marketplace: 465 models on 2026-10-07 (445 on 2026-09-18), `vendor/model` identifiers are mandatory (`anthropic/claude-sonnet-5`), suffixes `:free` / `:nitro` / `:floor` / `:batch`, router slugs `openrouter/auto` (refused as a default: the served model drifts). The catalogue publishes per model the context, the output cap of the top endpoint, `default_parameters` and a `reasoning` block (mandatory or not, default effort, supported efforts) — see served-models.json.",
+        "Question 1, answered: the key carries the `sk-or-v1-` prefix.",
+        "Question 2, answered: on a reasoning model (`deepseek/deepseek-v4.1-flash`) the trace comes back in `message.reasoning`, with `reasoning_details[]` beside it (`{type: \"reasoning.text\", format, index}`) and a `refusal` key; M7 archives `reasoning trace returned`. On the Gemini default M7 is accepted and returns no trace.",
+        "Question 3, answered: `usage.cost` arrives unasked on the buffered path (with `cost_details.upstream_inference_cost` and `is_byok`) AND in the final chunk of a stream.",
+        "Question 4, still open: M8 is green on both Gemini ids and on DeepSeek, but a green M8 does not show that a schema binds on every routed endpoint — `provider.require_parameters` is still not sent.",
+        "Question 5, answered per model: `prompt_tokens_details.cached_tokens` and `cache_write_tokens` are relayed — 8064 cached tokens, ratio 1.00, on `deepseek/deepseek-v4.1-flash`; 0 on both Gemini ids, twice, which is M10's red.",
+        "Question 6: no `: OPENROUTER PROCESSING` keep-alive line was seen on the streams of this campaign.",
+        "Question 7, answered: `openrouter/auto` echoed `deepseek/deepseek-v4.1-flash`, served by Together, on the one request sent.",
+        "Its error bodies carry the account's `user_id` beside the message: the M12 line of the two Gemini reports quoted it, and it is redacted there by hand (`user_[redacted]`). The probe quotes a vendor's error as it comes."
       ]
     },
     "mammouth": {
@@ -302,17 +342,16 @@
         { "id": "gemini-3.8-flash", "why": "Follows the direct Gemini candidate \u2014 what the proxy lets through is the question." }
       ],
       "notes": [
-        "Sixteenth sheet's twin, WITHOUT execution proof: integrated on 2026-09-18 from the vendor documentation and cold calls (LLM-09), no key available. The first campaign is the pending proof — the Mistral lesson applies in full until a live M1 is archived.",
-        "French multi-model subscription (12 / 24 / 72 € per month with 2 / 4 / 10 $ of API credits included, pay-as-you-go from the API settings); the API is, on three concordant clues, a LiteLLM proxy — what is undocumented is PROBABLY passed through to the upstream. Bare vendor identifiers (`gpt-5.6-sol`, `claude-sonnet-5`, `gemini-3.7-flash`): always name the provider by baseUrl or by key, never by model name.",
-        "The included credits (2 $ on Starter) cover a full campaign of the harness on `gemini-3.7-flash` (M1–M10, M12, M13). `mammouth-recommended` is refused as a default (routed alias). Cheap text-only alternative: `deepseek-v4-flash` on M5/M7/M8.",
-        "Question 1 — `tools`: passed through (M5 green) or ignored (M6, the text fallback, takes over)?",
-        "Question 2 — `response_format`: refused, accepted-non-binding (MiniMax) or binding — and with a schema? The declaration rises accordingly, as Gemini's did.",
-        "Question 3 — `reasoning_effort`: accepted? And in WHICH field does the trace come back — LiteLLM often normalises to `reasoning_content`, in which case EffortOnly is declared without a line of parsing.",
-        "Question 4 — M9 on the default (`gemini-3.7-flash` sees in direct).",
-        "Question 5 — M10: does the proxy relay `prompt_tokens_details.cached_tokens`?",
-        "Question 6 — M12: the shape of the 429 and the presence of `Retry-After` (quotas are not published).",
-        "Question 7 — the shape of the key: for the documentation, never for an inference, and for `LogSanitizer` — if it is neither `sk-…` nor covered by the `Bearer` pattern alone, its prefix joins `VendorPrefixedKeyPattern` and `LogSanitizerTests`.",
-        "Question 8 — `mammouth-recommended`: which model answers (`model` echo), one request."
+        "First campaign on 2026-10-07 (LLM-09's pending proof): `gemini-3.7-flash` 10/0/2 and `gemini-3.8-flash` 10/0/2 — every exercised mode green; M7 and M8 are ➖ because the provider declares neither capability, not because the proxy refuses them.",
+        "French multi-model subscription (12 / 24 / 72 € per month with 2 / 4 / 10 $ of API credits included, pay-as-you-go from the API settings). Bare vendor identifiers (`gpt-5.6-sol`, `claude-sonnet-5`, `gemini-3.7-flash`): always name the provider by baseUrl or by key, never by model name. 107 models on 2026-10-07 (100 on 2026-09-19); `GET /v1/models` publishes context and output cap per model — see served-models.json.",
+        "Question 1, answered: `tools` are passed through — M5 green on both Gemini ids and on `deepseek-v4.1-flash`.",
+        "Question 2, answered by direct calls: `response_format` is accepted, never refused. `json_object` returns bare JSON; a strict `json_schema` did NOT bind on `gemini-3.7-flash` (asked for prose, the reply starts in prose) — accepted but non-binding, the MiniMax case, so the None declaration stands.",
+        "Question 3, answered by direct calls: `reasoning_effort` is accepted. On `deepseek-v4.1-flash` the trace comes back in `reasoning_content` (46 reasoning tokens counted in `completion_tokens_details`); on `gemini-3.7-flash` no trace is returned. An EffortOnly declaration would need no parsing — it is not declared yet.",
+        "Question 4, answered: M9 green on the default and on `gemini-3.8-flash`.",
+        "Question 5, answered: `prompt_tokens_details.cached_tokens` is relayed (4076 cached tokens, ratio 0.51, on both Gemini ids), and the usage carries `cost`, `cost_details.upstream_inference_cost` and `is_byok` — the fields of OpenRouter's usage.",
+        "Question 6, still open: no 429 was met.",
+        "Question 7, answered: the key is `sk-` followed by 22 characters — covered by the `sk-` pattern.",
+        "Question 8, answered: `mammouth-recommended` echoes its own name, never the model behind it — one more reason it is refused as a default."
       ]
     }
   }

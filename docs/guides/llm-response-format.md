@@ -210,10 +210,8 @@ own error, which surfaces as `LlmResponse.Error` and fails the task with that re
 | **Ollama** | `JsonSchema` | Own dialect (`format`). |
 | **DeepSeek**, Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | Well-formed JSON guaranteed; a schema is downgraded with a warning. DeepSeek also requires the `json` keyword (above). |
 | **MiniMax** | `None` | Accepted but non-binding — measured 2026-08-30 (schema ignored, `json_object` fenced in markdown); a declared format produces the structured capability warning. |
-| **OpenRouter** † | `JsonSchema` | Documented per endpoint (2026-09-18, not campaigned); the provider does not send `provider.require_parameters`, so a schema may be ignored by an endpoint that lacks it — the first campaign's question. |
-| **Mammouth AI** † | `None` | Undocumented on the proxy (2026-09-18, not campaigned); a declared format produces the structured capability warning until a campaign measures it. |
-
-† not campaigned yet.
+| **OpenRouter** | `JsonSchema` | Documented per endpoint; M8 green on the three models campaigned on 2026-10-07. The provider does not send `provider.require_parameters`, so a schema may still be ignored by an endpoint that lacks it — a green M8 does not rule that out. |
+| **Mammouth AI** | `None` | Accepted but non-binding — measured 2026-10-07 (`json_object` returns bare JSON, a strict schema did not bind on `gemini-3.7-flash`); a declared format produces the structured capability warning. |
 
 ## `structured_output` deliverables
 

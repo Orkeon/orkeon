@@ -36,8 +36,8 @@ lui-même. La décision et les alternatives écartées sont dans
 > [Ce que la campagne Gmail a établi](#ce-que-la-campagne-gmail-a-établi). Hotmail et
 > Outlook.com via Microsoft Graph, et Outlook en IMAP et SMTP, n'ont pas encore été exécutés
 > contre un vrai compte : leurs parcours suivent la documentation de Microsoft, vérifiée le
-> 2026-09-26. Tenez-les pour en attente de campagne — comme sont documentés les fournisseurs
-> OpenRouter et Mammouth.
+> 2026-09-26. Tenez-les pour en attente de campagne — comme l'étaient les fournisseurs
+> OpenRouter et Mammouth jusqu'à leur première campagne.
 
 ## Les treize outils
 

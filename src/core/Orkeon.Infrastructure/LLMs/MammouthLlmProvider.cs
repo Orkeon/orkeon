@@ -18,7 +18,9 @@ namespace Orkeon.Infrastructure.LLMs;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Documentation-backed, not campaigned yet (LLM-09 §6). The quick-start documents
+/// Documentation-backed (LLM-09 §6), campaigned on 2026-10-07 — tools pass through,
+/// <c>response_format</c> is accepted but a strict schema does not bind, <c>reasoning_effort</c>
+/// is accepted. The quick-start documents
 /// <c>messages</c>, <c>model</c>, <c>temperature</c> (0–2), <c>max_tokens</c>, <c>top_p</c>,
 /// <c>stream</c> and the three roles — nothing else. Three concordant clues (the LiteLLM
 /// error shape, the <c>0.0.0.0:4000</c> left in the quick-start, the OpenClaw page naming

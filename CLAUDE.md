@@ -141,7 +141,7 @@ The project follows Clean Architecture with clear separation of concerns:
 **Working Features**:
 - ✅ Complete Agent, Task, Crew domain models with the full attribute surface
 - ✅ 91 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XLSX (read/write), XML, DirectoryRead, the e-mail family (IMAP/POP3/SMTP/Graph, EmailParser included), DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
-- ✅ 16 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM), Gemini, Grok (x.AI), MiniMax, plus the two aggregators OpenRouter and Mammouth AI (LLM-09 — documentation-first, campaign-pending)
+- ✅ 16 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM), Gemini, Grok (x.AI), MiniMax, plus the two aggregators OpenRouter and Mammouth AI (LLM-09 — documentation-first, campaigned 2026-10-07)
 - ✅ YAML configuration support
 - ✅ Memory abstractions (IMemoryProvider interface)
 - ✅ Tool validation framework with security, rate limiting, telemetry
@@ -231,8 +231,8 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ TogetherAI LLM provider implementation (`TogetherAiLlmProvider`)
 - ✅ HuggingFace LLM provider implementation (`HuggingFaceLlmProvider`)
 - ✅ Z.AI (Zhipu GLM) LLM provider implementation (`ZaiLlmProvider`, thinking; cached tokens read by the generic usage reader)
-- ✅ OpenRouter LLM provider implementation (`OpenRouterLlmProvider`, model marketplace — `vendor/model` ids, `reasoning` field + request object, `usage.cost`, attribution headers; documented 2026-09-18, not campaigned yet)
-- ✅ Mammouth AI LLM provider implementation (`MammouthLlmProvider`, French subscription proxy — bare vendor ids, reached by host or key only; documented 2026-09-18, not campaigned yet)
+- ✅ OpenRouter LLM provider implementation (`OpenRouterLlmProvider`, model marketplace — `vendor/model` ids, `reasoning` field + request object, `usage.cost`, attribution headers; documented 2026-09-18, campaigned 2026-10-07)
+- ✅ Mammouth AI LLM provider implementation (`MammouthLlmProvider`, French subscription proxy — bare vendor ids, reached by host or key only; documented 2026-09-18, campaigned 2026-10-07)
 - ✅ SQLite memory provider (`SqliteMemoryProvider`, Microsoft.Data.Sqlite — persistent storage, cosine vector search; wire with type `"sqlite"` in `MemoryProviderFactory`)
 - ✅ File system tools implementations
 - ✅ ChromaDB vector store (`ChromaDbMemoryProvider`)

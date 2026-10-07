@@ -58,7 +58,7 @@
     },
 
     "qwen": {
-      "_comment": "International endpoint: https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+      "_comment": "An international key is served by https://dashscope-intl.aliyuncs.com/compatible-mode/v1 only (401 on the compiled endpoint, measured 2026-10-07): declare it as baseUrl.",
       "apiKeyEnv": "DASHSCOPE_API_KEY",
       "modes": "M1,M2,M3,M4,M5",
       "models": ["qwen3.7-plus"]
@@ -100,13 +100,13 @@
     },
 
     "openrouter": {
-      "_comment": "Marketplace, vendor/model ids are mandatory. Not campaigned yet (LLM-09): the same model as the direct Gemini campaign, so a red here is a fact about the transport. Cheap text-only alternative: deepseek/deepseek-v4-flash.",
+      "_comment": "Marketplace, vendor/model ids are mandatory. Campaigned 2026-10-07 (11/1, M10): the same model as the direct Gemini campaign, so a red here is a fact about the transport. Cheap text-only alternative: deepseek/deepseek-v4.1-flash.",
       "apiKeyEnv": "OPENROUTER_API_KEY",
       "models": ["google/gemini-3.7-flash"]
     },
 
     "mammouth": {
-      "_comment": "LiteLLM proxy, bare vendor ids — the key names the provider, never the model. Not campaigned yet (LLM-09): the included subscription credits cover a full run on gemini-3.7-flash.",
+      "_comment": "LiteLLM proxy, bare vendor ids — the key names the provider, never the model. Campaigned 2026-10-07 (10/0/2): the included subscription credits cover a full run on gemini-3.7-flash.",
       "apiKeyEnv": "MAMMOUTH_API_KEY",
       "models": ["gemini-3.7-flash"]
     }

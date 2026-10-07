@@ -19,10 +19,11 @@ namespace Orkeon.Infrastructure.LLMs;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Documentation-backed, not campaigned yet (LLM-09 §6): the first live campaign settles the
-/// reasoning field on a reasoning model, <c>usage.cost</c> on both paths, whether a
-/// <c>json_schema</c> is honoured without <c>provider.require_parameters</c>, and the
-/// <c>sk-or-v1-</c> key prefix — the key inference waits for that confirmation.
+/// Documentation-backed (LLM-09 §6), campaigned on 2026-10-07: the reasoning field on a
+/// reasoning model, <c>usage.cost</c> on both paths and the <c>sk-or-v1-</c> key prefix are
+/// confirmed; whether a <c>json_schema</c> is honoured without
+/// <c>provider.require_parameters</c> on every routed endpoint is still open, and the key
+/// inference is not written yet.
 /// </para>
 /// <para>
 /// What OpenRouter reads and writes differently from the OpenAI dialect lives here and

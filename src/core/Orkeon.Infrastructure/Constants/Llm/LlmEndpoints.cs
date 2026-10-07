@@ -63,10 +63,10 @@ public static class LlmEndpoints
     /// <summary>Z.AI (Zhipu GLM) API base URL (OpenAI-compatible).</summary>
     public const string Zai = LlmProviderEndpoints.Zai;
 
-    /// <summary>OpenRouter API base URL (OpenAI-compatible marketplace). Documented 2026-09-18, not campaigned yet.</summary>
+    /// <summary>OpenRouter API base URL (OpenAI-compatible marketplace). Documented 2026-09-18, campaigned 2026-10-07.</summary>
     public const string OpenRouter = LlmProviderEndpoints.OpenRouter;
 
-    /// <summary>Mammouth AI API base URL (OpenAI-compatible proxy). Documented 2026-09-18, not campaigned yet.</summary>
+    /// <summary>Mammouth AI API base URL (OpenAI-compatible proxy). Documented 2026-09-18, campaigned 2026-10-07.</summary>
     public const string Mammouth = LlmProviderEndpoints.Mammouth;
 
     // ── Local / self-hosted ─────────────────────────────────────────────────
