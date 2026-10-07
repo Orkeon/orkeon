@@ -59,14 +59,14 @@ public sealed class EffectiveMountViewModel
     /// </summary>
     public string OriginDisplay => Selection switch
     {
-        EffectiveMountSelection.SelectedById => string.Format(
-            CultureInfo.InvariantCulture, _strings[StudioStringKeys.MountsOriginSelectedById], OriginName, Mount.SharedRootCount),
-        EffectiveMountSelection.NotSelected => string.Format(
-            CultureInfo.InvariantCulture, _strings[StudioStringKeys.MountsOriginNotSelected], OriginName),
-        EffectiveMountSelection.Conflict => string.Format(
-            CultureInfo.InvariantCulture, _strings[StudioStringKeys.MountsOriginConflict], OriginName, Mount.SharedRootCount),
-        _ when OverridesSettings => string.Format(
-            CultureInfo.InvariantCulture, _strings[StudioStringKeys.MountsOriginReplaces], OriginName, ReplacedSettingsMount),
+        EffectiveMountSelection.SelectedById => _strings.Format(
+            CultureInfo.InvariantCulture, StudioStringKeys.MountsOriginSelectedById, OriginName, Mount.SharedRootCount),
+        EffectiveMountSelection.NotSelected => _strings.Format(
+            CultureInfo.InvariantCulture, StudioStringKeys.MountsOriginNotSelected, OriginName),
+        EffectiveMountSelection.Conflict => _strings.Format(
+            CultureInfo.InvariantCulture, StudioStringKeys.MountsOriginConflict, OriginName, Mount.SharedRootCount),
+        _ when OverridesSettings => _strings.Format(
+            CultureInfo.InvariantCulture, StudioStringKeys.MountsOriginReplaces, OriginName, ReplacedSettingsMount),
         _ => OriginName,
     };
 
@@ -277,14 +277,14 @@ public sealed class LaunchMountsViewModel : ObservableObject
 
             if (OverriddenCount == 0)
             {
-                return string.Format(
+                return _strings.Format(
                     CultureInfo.InvariantCulture,
-                    _strings[StudioStringKeys.MountsEffectiveNone], EffectiveMounts.Count);
+                    StudioStringKeys.MountsEffectiveNone, EffectiveMounts.Count);
             }
 
-            return string.Format(
+            return _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.MountsEffectiveReplaced], EffectiveMounts.Count, OverriddenCount);
+                StudioStringKeys.MountsEffectiveReplaced, EffectiveMounts.Count, OverriddenCount);
         }
     }
 }

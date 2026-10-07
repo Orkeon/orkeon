@@ -29,13 +29,13 @@ public static class LlmProbeText
         // A configuration that cannot be probed, or a verdict with no request behind it (a front
         // reporting its own failure through Unreachable), has no step nor URL to name.
         if (result.Stage == LlmProbeStage.Configuration || result.Url is null)
-            return Format(culture, strings[StudioStringKeys.ProbeFailed], cause);
+            return strings.Format(culture, StudioStringKeys.ProbeFailed, cause);
 
         var stage = strings[result.Stage == LlmProbeStage.Completion
             ? StudioStringKeys.ProbeStageCompletion
             : StudioStringKeys.ProbeStageModels];
 
-        return Format(culture, strings[StudioStringKeys.ProbeFailedAtStage],
+        return strings.Format(culture, StudioStringKeys.ProbeFailedAtStage,
             stage, result.Url, Seconds(result.Elapsed, culture), cause);
     }
 
@@ -43,12 +43,12 @@ public static class LlmProbeText
     {
         if (result.Stage == LlmProbeStage.Completion && result.Model is { } model)
         {
-            return Format(culture, strings[StudioStringKeys.ProbeCompletionPassed],
+            return strings.Format(culture, StudioStringKeys.ProbeCompletionPassed,
                 model, Seconds(result.Elapsed, culture));
         }
 
         return result.ModelCount is { } count
-            ? Format(culture, strings[StudioStringKeys.ProbeReachable], count.ToString(culture))
+            ? strings.Format(culture, StudioStringKeys.ProbeReachable, count.ToString(culture))
             : strings[StudioStringKeys.ProbeReachableNoCount];
     }
 
@@ -56,19 +56,16 @@ public static class LlmProbeText
         result.Failure switch
         {
             LlmProbeFailure.NoBaseUrl => strings[StudioStringKeys.ProbeNoBaseUrl],
-            LlmProbeFailure.NotAbsoluteUrl => Format(culture, strings[StudioStringKeys.ProbeNotAbsoluteUrl], result.Detail ?? ""),
-            LlmProbeFailure.NotHttpUrl => Format(culture, strings[StudioStringKeys.ProbeNotHttpUrl], result.Detail ?? ""),
+            LlmProbeFailure.NotAbsoluteUrl => strings.Format(culture, StudioStringKeys.ProbeNotAbsoluteUrl, result.Detail ?? ""),
+            LlmProbeFailure.NotHttpUrl => strings.Format(culture, StudioStringKeys.ProbeNotHttpUrl, result.Detail ?? ""),
             LlmProbeFailure.NoCatalogue => strings[StudioStringKeys.ProbeNoCatalogue],
-            LlmProbeFailure.Timeout => Format(culture, strings[StudioStringKeys.ProbeTimeout],
+            LlmProbeFailure.Timeout => strings.Format(culture, StudioStringKeys.ProbeTimeout,
                 result.Timeout.TotalSeconds.ToString("0.#", culture)),
-            LlmProbeFailure.HttpStatus => Format(culture, strings[StudioStringKeys.ProbeHttpStatus],
+            LlmProbeFailure.HttpStatus => strings.Format(culture, StudioStringKeys.ProbeHttpStatus,
                 $"{result.StatusCode} {result.ReasonPhrase}".Trim(), result.Detail ?? "").TrimEnd(),
             _ => result.Detail ?? "",
         };
 
     private static string Seconds(TimeSpan elapsed, CultureInfo culture) =>
         elapsed.TotalSeconds.ToString("0.0", culture);
-
-    private static string Format(CultureInfo culture, string template, params object[] args) =>
-        string.Format(culture, template, args);
 }

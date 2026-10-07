@@ -22,11 +22,11 @@ public static class HostProfileText
 
         return check?.Status switch
         {
-            HostProfileStatus.Offered => Format(strings[StudioStringKeys.ProfileHostId], check.Id),
+            HostProfileStatus.Offered => strings.Format(StudioStringKeys.ProfileHostId, check.Id),
             HostProfileStatus.NoId => strings[StudioStringKeys.ProfileHostIdNone],
             HostProfileStatus.DefaultName => strings[StudioStringKeys.ProfileHostIdReserved],
-            HostProfileStatus.TakenBySetting => Format(strings[StudioStringKeys.ProfileHostIdTakenBySetting], check.Id, check.TakenBy),
-            HostProfileStatus.TakenByFile => Format(strings[StudioStringKeys.ProfileHostIdTakenByFile], check.Id),
+            HostProfileStatus.TakenBySetting => strings.Format(StudioStringKeys.ProfileHostIdTakenBySetting, check.Id, check.TakenBy),
+            HostProfileStatus.TakenByFile => strings.Format(StudioStringKeys.ProfileHostIdTakenByFile, check.Id),
             _ => null,
         };
     }
@@ -34,7 +34,4 @@ public static class HostProfileText
     /// <summary>Whether the line is a problem to show in the warning tone rather than the name to write.</summary>
     public static bool IsIssue(HostProfileCheck? check) =>
         check is { IsOffered: false, Status: not HostProfileStatus.NoProvider };
-
-    private static string Format(string pattern, params object?[] values) =>
-        string.Format(CultureInfo.CurrentCulture, pattern, values);
 }

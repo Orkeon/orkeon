@@ -92,7 +92,7 @@ public sealed class OrphanSessionViewModel : ObservableObject
     internal OrphanSessionViewModel(ForgeSolutionSummary summary, DiagnosticViewModel owner, IStudioStrings strings)
     {
         Summary = summary;
-        FolderLine = string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.DiagOrphanFolder], summary.PromotedTo);
+        FolderLine = strings.Format(StudioStringKeys.DiagOrphanFolder, summary.PromotedTo);
         AskCleanCommand = new RelayCommand(() => owner.ArmClean(this));
         ConfirmCleanCommand = new RelayCommand(() => owner.Clean(this));
         CancelCleanCommand = new RelayCommand(() => IsConfirmingClean = false);
@@ -254,8 +254,8 @@ public sealed class DiagnosticViewModel : ObservableObject
         HasIssues ? StudioStringKeys.DiagFixNeeded : StudioStringKeys.DiagAllGood];
 
     /// <summary>"{0} checks passed, {1} warning(s), {2} failure(s)." under the headline.</summary>
-    public string VerdictDetail => string.Format(
-        CultureInfo.CurrentCulture, _strings[StudioStringKeys.DiagCounts],
+    public string VerdictDetail => _strings.Format(
+        StudioStringKeys.DiagCounts,
         OkCount, WarningCount, FailureCount);
 
     /// <summary>There is something to copy once a run has produced checks or an error.</summary>
@@ -401,11 +401,11 @@ public sealed class DiagnosticViewModel : ObservableObject
         var warnings = report.Checks.Count(c => c.Status == DoctorStatus.Warning);
 
         return failures == 0 && warnings == 0
-            ? string.Format(
+            ? _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.DiagAllGreen], report.Checks.Count)
-            : string.Format(
+                StudioStringKeys.DiagAllGreen, report.Checks.Count)
+            : _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.DiagFindings], report.Checks.Count, failures, warnings);
+                StudioStringKeys.DiagFindings, report.Checks.Count, failures, warnings);
     }
 }

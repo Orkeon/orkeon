@@ -30,13 +30,13 @@ public static class UsageMetricsFormatter
         var chips = new List<string>(3);
 
         if (tokens is { } total)
-            chips.Add(string.Format(culture, strings[StudioStringKeys.UsageTokens], total.ToString("N0", culture)));
+            chips.Add(strings.Format(culture, StudioStringKeys.UsageTokens, total.ToString("N0", culture)));
 
         if (cacheHitTokens is { } hit && cacheMissTokens is { } miss && hit + miss > 0)
         {
             var percent = (long)Math.Round(100.0 * hit / (hit + miss));
-            chips.Add(string.Format(
-                culture, strings[StudioStringKeys.UsageCache], percent, hit.ToString("N0", culture)));
+            chips.Add(strings.Format(
+                culture, StudioStringKeys.UsageCache, percent, hit.ToString("N0", culture)));
         }
 
         if (durationMs is { } elapsed && elapsed >= 0)
@@ -52,8 +52,8 @@ public static class UsageMetricsFormatter
 
         var totalSeconds = (long)Math.Round(durationMs / 1000.0);
         return totalSeconds < 60
-            ? string.Format(culture, strings[StudioStringKeys.UsageSeconds], totalSeconds)
-            : string.Format(
-                culture, strings[StudioStringKeys.UsageMinutesSeconds], totalSeconds / 60, totalSeconds % 60);
+            ? strings.Format(culture, StudioStringKeys.UsageSeconds, totalSeconds)
+            : strings.Format(
+                culture, StudioStringKeys.UsageMinutesSeconds, totalSeconds / 60, totalSeconds % 60);
     }
 }

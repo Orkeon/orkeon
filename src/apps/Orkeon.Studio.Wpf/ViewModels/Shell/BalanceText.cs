@@ -47,22 +47,20 @@ internal static class BalanceText
         if (reading.Status != ProviderBalanceStatus.Available)
             return Join([State(reading.Status, strings), ReadAt(reading, strings)]);
 
-        var amounts = string.Format(
-            CultureInfo.CurrentCulture,
-            strings[reading.Scope == ProviderBalanceScope.ApiKey ? StudioStringKeys.BalanceKeyLimit : StudioStringKeys.BalanceAvailable],
+        var amounts = strings.Format(
+            reading.Scope == ProviderBalanceScope.ApiKey ? StudioStringKeys.BalanceKeyLimit : StudioStringKeys.BalanceAvailable,
             Amounts(reading));
 
         var threshold = readings.IsUnderThreshold(reading) && readings.ThresholdOf(reading.Provider) is { } value
-            ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.BalanceUnderThreshold], Threshold(value))
+            ? strings.Format(StudioStringKeys.BalanceUnderThreshold, Threshold(value))
             : null;
 
         return Join([amounts, threshold, ReadAt(reading, strings)]);
     }
 
     /// <summary>«read at 10:31», local time.</summary>
-    public static string ReadAt(ProviderBalanceResult reading, IStudioStrings strings) => string.Format(
-        CultureInfo.CurrentCulture,
-        strings[StudioStringKeys.BalanceReadAt],
+    public static string ReadAt(ProviderBalanceResult reading, IStudioStrings strings) => strings.Format(
+        StudioStringKeys.BalanceReadAt,
         reading.CheckedAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture));
 
     private static string Amount(ProviderBalanceAmount amount) =>

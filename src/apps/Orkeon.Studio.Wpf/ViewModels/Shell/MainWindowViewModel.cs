@@ -758,8 +758,8 @@ public sealed class MainWindowViewModel : ObservableObject
         else
             savedKey = StudioStringKeys.AllowedFoldersDeclared;
         CreateTeam.ReportStatus(saved
-            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, _strings[savedKey], folder, declared.VirtualPath)
-            : string.Format(System.Globalization.CultureInfo.CurrentCulture, _strings[StudioStringKeys.AllowedFoldersNotSaved], folder, Config.StatusMessage));
+            ? _strings.Format(savedKey, folder, declared.VirtualPath)
+            : _strings.Format(StudioStringKeys.AllowedFoldersNotSaved, folder, Config.StatusMessage));
 
         void Bind(string? target, MountDefinition picked)
         {

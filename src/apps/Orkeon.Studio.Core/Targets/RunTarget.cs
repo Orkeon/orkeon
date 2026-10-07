@@ -136,9 +136,9 @@ public static class RunTargetRequirements
     {
         ArgumentNullException.ThrowIfNull(strings);
 
-        return string.Format(
+        return strings.Format(
             CultureInfo.InvariantCulture,
-            strings[StudioStringKeys.TargetDirectoryRunNotice],
+            StudioStringKeys.TargetDirectoryRunNotice,
             MinimumCliVersion);
     }
 }

@@ -100,8 +100,8 @@ public sealed class ToolFamilyViewModel : ObservableObject
     public bool HasRequirements => Requirements.Count > 0;
 
     /// <summary>The line a family with nothing to configure ends on.</summary>
-    public string QuietLine => string.Format(
-        CultureInfo.CurrentCulture, _strings[StudioStringKeys.ToolFamilyQuietPattern], Tools.Count);
+    public string QuietLine => _strings.Format(
+        StudioStringKeys.ToolFamilyQuietPattern, Tools.Count);
 
     internal void RefreshLabels()
     {
@@ -160,5 +160,5 @@ public sealed class ToolRequirementViewModel : ObservableObject
     internal void RefreshText() => OnPropertyChanged(nameof(Text));
 
     private string Format(string key) =>
-        string.Format(CultureInfo.CurrentCulture, _strings[key], _tool.Argument ?? "");
+        _strings.Format(key, _tool.Argument ?? "");
 }

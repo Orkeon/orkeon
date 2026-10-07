@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Orkeon.Studio.Core.Localization;
 
 /// <summary>
@@ -15,6 +17,38 @@ public interface IStudioStrings
 
     /// <summary>Raised when the culture changes, so ViewModels can re-emit their bindings.</summary>
     event EventHandler? CultureChanged;
+}
+
+/// <summary>
+/// The one place a string of the port is formatted: the pattern is read from the table
+/// and its arguments are forwarded as the array they arrive in. A call site names the
+/// key, never the pattern -- <c>strings.Format(key, name)</c>, not
+/// <c>string.Format(culture, strings[key], name)</c> --, so that no <c>string.Format</c>
+/// is handed a pattern any entry of the table could be: a static analysis following the
+/// data flow counts every placeholder of every string against the arguments of every
+/// such call (CodeQL's <c>cs/invalid-string-formatting</c>, a false positive per call).
+/// A guard test keeps the direct form out of Core and the WPF front.
+/// </summary>
+public static class StudioStringsFormatting
+{
+    /// <summary>Formats the string of <paramref name="key"/> in the current culture.</summary>
+    /// <param name="strings">The localization port.</param>
+    /// <param name="key">The key of the pattern (rendered as itself when unknown, like the indexer).</param>
+    /// <param name="arguments">The values of the pattern's placeholders, in order.</param>
+    public static string Format(this IStudioStrings strings, string key, params object?[] arguments) =>
+        strings.Format(CultureInfo.CurrentCulture, key, arguments);
+
+    /// <summary>Formats the string of <paramref name="key"/> with <paramref name="provider"/>.</summary>
+    /// <param name="strings">The localization port.</param>
+    /// <param name="provider">Formats the arguments; the current culture when null, as <c>string.Format</c> reads it.</param>
+    /// <param name="key">The key of the pattern (rendered as itself when unknown, like the indexer).</param>
+    /// <param name="arguments">The values of the pattern's placeholders, in order.</param>
+    public static string Format(this IStudioStrings strings, IFormatProvider? provider, string key, params object?[] arguments)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return string.Format(provider, strings[key], arguments);
+    }
 }
 
 /// <summary>

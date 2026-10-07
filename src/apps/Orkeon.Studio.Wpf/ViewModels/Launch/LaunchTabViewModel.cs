@@ -450,9 +450,9 @@ public sealed class LaunchTabViewModel : ObservableObject
 
             return errors == 0 && warnings == 0
                 ? _strings[StudioStringKeys.LaunchReady]
-                : string.Format(
+                : _strings.Format(
                     CultureInfo.InvariantCulture,
-                    _strings[StudioStringKeys.ConfigErrorsWarnings], errors, warnings);
+                    StudioStringKeys.ConfigErrorsWarnings, errors, warnings);
         }
     }
 
@@ -568,7 +568,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             if (TeamSettingsPath is not { Length: > 0 } path || HasPin)
                 return null;
 
-            var line = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunSettingsTeamFile], path);
+            var line = _strings.Format(StudioStringKeys.RunSettingsTeamFile, path);
             return CardNamesAKnownSetting()
                 ? line + " " + _strings[StudioStringKeys.RunSettingsTeamFileProfileNote]
                 : line;
@@ -616,9 +616,9 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         if (HasBlockingErrors)
         {
-            StatusMessage = string.Format(
+            StatusMessage = _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.LaunchNotLaunchedErrors],
+                StudioStringKeys.LaunchNotLaunchedErrors,
                 ValidationMessages.Count(m => m.IsError));
             return null;
         }
@@ -673,9 +673,9 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         if (entry.Arguments.Count == 0)
         {
-            StatusMessage = string.Format(
+            StatusMessage = _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.LaunchNothingToReplay],
+                StudioStringKeys.LaunchNothingToReplay,
                 entry.Target);
             return null;
         }
@@ -743,7 +743,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             return null;
 
         return await _prepareLaunch(mountIds, settingsPath).ConfigureAwait(true) is { } refusal
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.LaunchSettingsNotSaved], refusal)
+            ? _strings.Format(StudioStringKeys.LaunchSettingsNotSaved, refusal)
             : null;
     }
 
@@ -759,17 +759,16 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         if (prepared.Created.Count > 0)
         {
-            Log.AppendNotice(string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.RunTeamFoldersCreated],
+            Log.AppendNotice(_strings.Format(
+                StudioStringKeys.RunTeamFoldersCreated,
                 string.Join(", ", prepared.Created)));
         }
 
         if (prepared.Failures is [var (folder, error), ..])
-            return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunTeamFolderCreateFailed], folder, error);
+            return _strings.Format(StudioStringKeys.RunTeamFolderCreateFailed, folder, error);
 
         if (prepared.MissingReadOnly is [var (missing, virtualPath), ..])
-            return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunTeamFolderMissingReadOnly], missing, virtualPath);
+            return _strings.Format(StudioStringKeys.RunTeamFolderMissingReadOnly, missing, virtualPath);
 
         return null;
     }
@@ -994,15 +993,14 @@ public sealed class LaunchTabViewModel : ObservableObject
         {
             var parts = new List<string>(4);
             if (_team.AgentCount is { } agents)
-                parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaAgents], agents));
+                parts.Add(_strings.Format(StudioStringKeys.RunMetaAgents, agents));
             foreach (var mountString in _team.Mounts)
             {
                 // "reads /docs · writes to /output" — the sidecar's mounts, in words.
                 if (MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null)
                 {
-                    parts.Add(string.Format(
-                        CultureInfo.CurrentCulture,
-                        _strings[mount.Rights == MountRights.ReadOnly ? StudioStringKeys.RunMetaReads : StudioStringKeys.RunMetaWrites],
+                    parts.Add(_strings.Format(
+                        mount.Rights == MountRights.ReadOnly ? StudioStringKeys.RunMetaReads : StudioStringKeys.RunMetaWrites,
                         mount.VirtualPath));
                 }
             }
@@ -1016,7 +1014,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             if (_team.Profile is { Length: > 0 } profile)
             {
                 var setting = _modelSettings is null ? profile : TeamSettingStanding.Of(profile, _modelSettings()).Label(_strings);
-                parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaProfile], setting));
+                parts.Add(_strings.Format(StudioStringKeys.RunMetaProfile, setting));
             }
 
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
@@ -1045,9 +1043,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>The refusal, naming the folders and the two ways out.</summary>
     public string UndeclaredFoldersMessage =>
         IsBlockedByUndeclaredFolders
-            ? string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.RunBlockedUndeclared],
+            ? _strings.Format(
+                StudioStringKeys.RunBlockedUndeclared,
                 string.Join(", ", UndeclaredTeamFolders))
             : "";
 
@@ -1063,9 +1060,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>The refusal, naming the ids and the two ways out.</summary>
     public string UnknownMountIdsMessage =>
         IsBlockedByUnknownMountIds
-            ? string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.RunBlockedUnknownMountId],
+            ? _strings.Format(
+                StudioStringKeys.RunBlockedUnknownMountId,
                 string.Join(", ", UnknownTeamMountIds))
             : "";
 
@@ -1210,7 +1206,7 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     /// <summary>"Open the result", or "Open the {n} result folders" when the run could write to several.</summary>
     public string OpenResultLabel => ResultFolders() is { Count: > 1 } many
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunOpenResults], many.Count)
+        ? _strings.Format(StudioStringKeys.RunOpenResults, many.Count)
         : _strings[StudioStringKeys.RunOpenResult];
 
     /// <summary>

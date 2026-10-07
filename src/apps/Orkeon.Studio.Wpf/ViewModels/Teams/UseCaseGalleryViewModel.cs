@@ -347,8 +347,8 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     public bool HasSuggestions => _suggested.Count > 0;
 
     /// <summary>« Close to your need (N) ».</summary>
-    public string SuggestedFilterLabel => string.Format(
-        CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardGallerySuggested], _suggested.Count);
+    public string SuggestedFilterLabel => _strings.Format(
+        StudioStringKeys.WizardGallerySuggested, _suggested.Count);
 
     /// <summary>Clears the search and every filter.</summary>
     public RelayCommand ClearFiltersCommand { get; }
@@ -377,7 +377,7 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     /// <summary>« 12 of 105 use cases ».</summary>
     public string CountLabel => _catalog is null
         ? ""
-        : string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardGalleryCount], _cards.Count, _catalog.Count);
+        : _strings.Format(StudioStringKeys.WizardGalleryCount, _cards.Count, _catalog.Count);
 
     /// <summary>« Import as is » (STUDIO-41): the expert's action on the cards, and the banner that follows it.</summary>
     public UseCaseImportViewModel Import { get; }

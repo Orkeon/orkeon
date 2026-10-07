@@ -176,7 +176,7 @@ public sealed class EmailSignInViewModel : ObservableObject
 
     /// <summary>"Open {page} and enter this code:", localized; null outside a device sign-in.</summary>
     public string? DeviceCodeLine => IsDeviceCode
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.MailDeviceCode], _address)
+        ? _strings.Format(StudioStringKeys.MailDeviceCode, _address)
         : null;
 
     /// <summary>Whether the device code has a known lifetime to count down.</summary>
@@ -195,7 +195,7 @@ public sealed class EmailSignInViewModel : ObservableObject
                 remaining = TimeSpan.Zero;
 
             var clock = string.Create(CultureInfo.InvariantCulture, $"{(int)remaining.TotalMinutes}:{remaining.Seconds:00}");
-            return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.MailDeviceCodeExpiresIn], clock);
+            return _strings.Format(StudioStringKeys.MailDeviceCodeExpiresIn, clock);
         }
     }
 

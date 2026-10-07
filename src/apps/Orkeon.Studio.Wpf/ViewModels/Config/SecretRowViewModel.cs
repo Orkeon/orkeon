@@ -74,7 +74,7 @@ public sealed class SecretRowViewModel : ObservableObject
     /// the line formed as it is read (STUDIO-56).
     /// </summary>
     public string? StoreError => _storeFailure is { } cause
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], cause)
+        ? _strings.Format(StudioStringKeys.ProfileKeyPersistFailed, cause)
         : null;
 
     /// <summary>Whether <see cref="StoreError"/> has something to say.</summary>

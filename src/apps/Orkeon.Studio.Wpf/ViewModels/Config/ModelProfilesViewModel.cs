@@ -117,9 +117,8 @@ public sealed class ModelProfileItemViewModel : ObservableObject
     /// </summary>
     public string? DefaultKeyVariableWarning =>
         !IsDefault && string.Equals(Profile.KeyEnvName?.Trim(), LlmPresets.DefaultApiKeyEnv, StringComparison.OrdinalIgnoreCase)
-            ? string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.ProfileDefaultKeyVariableWarning],
+            ? _strings.Format(
+                StudioStringKeys.ProfileDefaultKeyVariableWarning,
                 LlmPresets.DefaultApiKeyEnv,
                 LlmPresets.CustomApiKeyEnv)
             : null;
@@ -496,7 +495,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// the line formed as it is read (STUDIO-56).
     /// </summary>
     public string? KeyStoreError => _keyStoreFailure is { } cause
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], cause)
+        ? _strings.Format(StudioStringKeys.ProfileKeyPersistFailed, cause)
         : null;
 
     private void ShowKeyStoreFailure(string? cause)
@@ -513,9 +512,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     public string KeyBlockTitle =>
         _selectedProvider?.Kind == LlmPresetKind.Other
             ? _strings[StudioStringKeys.ProfileKeyTitleService]
-            : string.Format(
-                System.Globalization.CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.ProfileKeyTitleFor],
+            : _strings.Format(
+                StudioStringKeys.ProfileKeyTitleFor,
                 _selectedProvider?.Title ?? "");
 
     /// <summary>Where to get a key, when the vendor has a console we can name.</summary>
@@ -571,7 +569,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     public string? HostIdRenamedText =>
         _originalHostId is { } previous
         && !string.Equals(HostProfile.Id, previous, StringComparison.OrdinalIgnoreCase)
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileHostIdRenamed], previous)
+            ? _strings.Format(StudioStringKeys.ProfileHostIdRenamed, previous)
             : null;
 
     /// <summary>
@@ -582,7 +580,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// </summary>
     public string? HostKeyHint =>
         RequiresApiKey && HostProfile is { IsOffered: true }
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileHostKeyHint], ApiKeyEnvName)
+            ? _strings.Format(StudioStringKeys.ProfileHostKeyHint, ApiKeyEnvName)
             : null;
 
     private void OnHostProfileChanged() =>
@@ -728,7 +726,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// </summary>
     public string TimeoutHint =>
         _selectedProvider?.RecommendedTimeoutSeconds is { } recommended
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileTimeoutHintReasoning],
+            ? _strings.Format(StudioStringKeys.ProfileTimeoutHintReasoning,
                 recommended.ToString(CultureInfo.CurrentCulture), _selectedProvider.Title)
             : _strings[StudioStringKeys.ProfileTimeoutHint];
 
@@ -830,9 +828,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             {
                 null => _strings[StudioStringKeys.ProfileMaxTokensHintUnknown],
                 LlmModelOutputLimits.Unbounded => _strings[StudioStringKeys.ProfileMaxTokensHintUnbounded],
-                { } documented => string.Format(
-                    CultureInfo.CurrentCulture,
-                    _strings[StudioStringKeys.ProfileMaxTokensHintKnown],
+                { } documented => _strings.Format(
+                    StudioStringKeys.ProfileMaxTokensHintKnown,
                     documented.ToString("N0", CultureInfo.CurrentCulture)),
             };
         }
@@ -1223,7 +1220,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// read, so it follows the language (STUDIO-56).
     /// </summary>
     public string? LoadError => _loadFailure is { } cause
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileFileUnreadable], cause)
+        ? _strings.Format(StudioStringKeys.ProfileFileUnreadable, cause)
         : null;
 
     /// <summary>Whether the unreadable-file line shows.</summary>
@@ -1235,7 +1232,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// Cleared when an editor opens. Formed from its cause as it is read (STUDIO-56).
     /// </summary>
     public string? KeyStoreError => _keyStoreFailure is { } cause
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileKeyPersistFailed], cause)
+        ? _strings.Format(StudioStringKeys.ProfileKeyPersistFailed, cause)
         : null;
 
     /// <summary>Whether the key-not-kept line shows on the profile list.</summary>
@@ -1255,7 +1252,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// for the session, and the next change writes them again. Formed from its cause as it is read.
     /// </summary>
     public string? ProfileWriteError => _writeFailure is { } cause
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileFileNotWritten], cause)
+        ? _strings.Format(StudioStringKeys.ProfileFileNotWritten, cause)
         : null;
 
     /// <summary>Whether the file-not-written line shows.</summary>

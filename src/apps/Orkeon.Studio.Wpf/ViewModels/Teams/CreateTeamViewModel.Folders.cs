@@ -144,7 +144,7 @@ public sealed class WizardFolderRow : ObservableObject
     public string FolderLabel =>
         _directory
         ?? (_isInsideTeam
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardInsideTeamFolder], FolderName)
+            ? _strings.Format(StudioStringKeys.WizardInsideTeamFolder, FolderName)
             : _strings[StudioStringKeys.WizardFolderNotChosen]);
 
     /// <summary>The folder's name inside the team: <c>input</c> for <c>/workspace</c>, its own otherwise.</summary>
@@ -260,9 +260,9 @@ public sealed partial class CreateTeamViewModel
             foreach (var row in FolderRows)
             {
                 if (!TryNormalizeRootName(row.VirtualPath, out var root))
-                    return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardFolderInvalidName], row.VirtualPath);
+                    return _strings.Format(StudioStringKeys.WizardFolderInvalidName, row.VirtualPath);
                 if (roots.Contains(root, StringComparer.OrdinalIgnoreCase))
-                    return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardFolderTwice], root);
+                    return _strings.Format(StudioStringKeys.WizardFolderTwice, root);
                 roots.Add(root);
             }
 

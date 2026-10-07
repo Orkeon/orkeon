@@ -79,7 +79,7 @@ public sealed partial class CreateTeamViewModel
             }
             else
             {
-                StatusMessage = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardRephraseFailed], result.Error);
+                StatusMessage = _strings.Format(StudioStringKeys.WizardRephraseFailed, result.Error);
             }
 
             RefreshRephrase();

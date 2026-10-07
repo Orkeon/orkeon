@@ -166,9 +166,8 @@ public sealed class ComposeProgressViewModel : ObservableObject
             var facts = new List<string>(2);
             if (_reading.FileCount > 0)
             {
-                facts.Add(string.Format(
-                    CultureInfo.CurrentCulture,
-                    _strings[StudioStringKeys.ComposeFilesWritten],
+                facts.Add(_strings.Format(
+                    StudioStringKeys.ComposeFilesWritten,
                     _reading.FileCount));
             }
 

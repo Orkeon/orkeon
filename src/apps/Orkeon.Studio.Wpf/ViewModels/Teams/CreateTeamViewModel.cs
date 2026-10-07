@@ -812,8 +812,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>«moteur 1.0.0-rc.2», ready to sit next to the assistant's name.</summary>
     public string EngineLabel => HasEngineVersion
-        ? string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.ComposeEngineVersion], EngineVersion)
+        ? _strings.Format(
+            StudioStringKeys.ComposeEngineVersion, EngineVersion)
         : string.Empty;
 
     /// <summary>The "Consigne de composition" block.</summary>
@@ -909,20 +909,18 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             if (IsAssistantWaiting)
                 tail = Join(tail, _strings[StudioStringKeys.WizardDraftResume]);
             else if (Chat.Turns.Count > 0)
-                tail = Join(tail, string.Format(
-                    CultureInfo.CurrentCulture,
-                    _strings[StudioStringKeys.ChatStatusMessagesPattern],
+                tail = Join(tail, _strings.Format(
+                    StudioStringKeys.ChatStatusMessagesPattern,
                     Chat.Turns.Count));
 
-            return string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.WizardDraftStepPattern],
+            return _strings.Format(
+                StudioStringKeys.WizardDraftStepPattern,
                 _step, StepCount, tail);
         }
     }
 
-    private string Join(string left, string right) => string.Format(
-        CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardDraftJoinerPattern], left, right);
+    private string Join(string left, string right) => _strings.Format(
+        StudioStringKeys.WizardDraftJoinerPattern, left, right);
 
     private const int StepCount = 4;
 
@@ -1047,7 +1045,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>« Browse the use cases (105) » — N read from the catalogue, bare until it is.</summary>
     public string BrowseUseCasesLabel => Gallery.HasCatalog
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardGalleryBrowseCount], Gallery.Count)
+        ? _strings.Format(StudioStringKeys.WizardGalleryBrowseCount, Gallery.Count)
         : _strings[StudioStringKeys.WizardGalleryBrowse];
 
     /// <summary>Opens the gallery on the whole catalogue.</summary>
@@ -1065,7 +1063,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>« 2 close use cases ».</summary>
     public string CloseUseCasesLabel => _closeUseCases.Count == 1
         ? _strings[StudioStringKeys.WizardGalleryCloseOne]
-        : string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardGalleryCloseMany], _closeUseCases.Count);
+        : _strings.Format(StudioStringKeys.WizardGalleryCloseMany, _closeUseCases.Count);
 
     /// <summary>Their titles, one per line — the hint's tooltip.</summary>
     public string CloseUseCasesTitles => string.Join(Environment.NewLine, _closeUseCases.Select(card => card.Title));
@@ -1097,9 +1095,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>« Inspired by: Competitive watch » — the title in the UI's language.</summary>
     public string ReferenceUseCaseLabel => _referenceUseCaseId is { } id
-        ? string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.WizardGalleryReference],
+        ? _strings.Format(
+            StudioStringKeys.WizardGalleryReference,
             Gallery.Catalog?.Find(id)?.TitleIn(UseCaseLanguage) is { Length: > 0 } title ? title : id)
         : "";
 
@@ -1466,7 +1463,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         var declaredEntry = insideTeam ? null : DeclaredMounts.FindDeclared(mountString, declared);
         var shown = declaredEntry ?? mount;
         var folder = insideTeam && InsideTeamFolderName(mountString) is { } name
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardInsideTeamFolder], name)
+            ? _strings.Format(StudioStringKeys.WizardInsideTeamFolder, name)
             : shown.PhysicalPath;
         var unknownId = !insideTeam && DeclaredMounts.HasUnknownId(mountString, declared);
 
@@ -1475,7 +1472,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             shown.Rights == MountRights.ReadWrite,
             Agents: AgentsOf(mount.VirtualPath),
             Folder: unknownId
-                ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardUnknownMountId], mount.ShortId)
+                ? _strings.Format(StudioStringKeys.WizardUnknownMountId, mount.ShortId)
                 : folder,
             MountString: mountString,
             IsUndeclared: !DeclaredMounts.IsVouchedFor(mountString, declared, _reopenedTeamPath),
@@ -1551,9 +1548,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>The warning naming the roots the agents address and nothing will back.</summary>
     public string DroppedDerivedWarning =>
         HasDroppedDerivedRoots
-            ? string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.WizardDroppedDerived],
+            ? _strings.Format(
+                StudioStringKeys.WizardDroppedDerived,
                 string.Join(", ", DroppedDerivedRoots))
             : "";
 
@@ -2200,8 +2196,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         if (!IsEngineRunning)
             return false;
 
-        StatusMessage = string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardEngineBusy], BusySessionLabel());
+        StatusMessage = _strings.Format(
+            StudioStringKeys.WizardEngineBusy, BusySessionLabel());
         SessionActivated?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -2475,7 +2471,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // Nothing else is spliced in: what the model still needs it asks for itself during
         // the brief stage, and the answers reach it as real user messages.
         if (ComposeNotes.Consigne.Trim() is { Length: > 0 } consigne)
-            lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefConsigne], consigne));
+            lines.Add(_strings.Format(StudioStringKeys.WizardBriefConsigne, consigne));
 
         return string.Join(" ", lines);
     }
@@ -2656,9 +2652,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                     // No promoted event means no team on disk — a silent button would read
                     // as success, so the refusal is said out loud with what the engine said.
                     // Held in a field: the ordinary sync would repaint "ready" over it.
-                    _saveError = string.Format(
-                        CultureInfo.CurrentCulture,
-                        _strings[StudioStringKeys.WizardPromoteFailed],
+                    _saveError = _strings.Format(
+                        StudioStringKeys.WizardPromoteFailed,
                         _lastStderr ?? string.Create(CultureInfo.InvariantCulture, $"exit {result.ExitCode}"));
                     // STUDIO-13: the same card as step 1, with the promote command line and the
                     // whole stderr — the status line above keeps its one-line sentence.
@@ -2703,13 +2698,13 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleStopFailed], ex.Message);
+            return _strings.Format(StudioStringKeys.TeamsScheduleStopFailed, ex.Message);
         }
 
         if (report.Succeeded)
             return null;
 
-        var refusal = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleStopFailed], report.FailureReason);
+        var refusal = _strings.Format(StudioStringKeys.TeamsScheduleStopFailed, report.FailureReason);
         return report.ManualCommand is { Length: > 0 } manual ? $"{refusal} — {manual}" : refusal;
     }
 
@@ -2830,9 +2825,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     private string ChatMessageCount() => Chat.Turns.Count == 0
         ? ""
-        : string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[StudioStringKeys.ChatStatusMessagesPattern],
+        : _strings.Format(
+            StudioStringKeys.ChatStatusMessagesPattern,
             Chat.Turns.Count);
 
     private static string Clip(string text, int max) =>
@@ -3138,10 +3132,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             // reader which of the two had just finished.
             var role = task.AgentRole ?? task.TaskId ?? fallback;
             var text = task.Success
-                ? string.Format(
-                    CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardActivityDone],
+                ? _strings.Format(
+                    StudioStringKeys.WizardActivityDone,
                     role, Math.Round(task.DurationMs / 1000.0, 1))
-                : string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardActivityFailed], role);
+                : _strings.Format(StudioStringKeys.WizardActivityFailed, role);
 
             var detail = task.AgentRole is not null && task.TaskId is { Length: > 0 } id ? id : "";
             Activity.Add(new WizardActivityLine(text, detail, task.Success));
@@ -3232,7 +3226,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>The proposal's button: « Name it “Ma veille (2)” ».</summary>
     public string UseFreeTeamNameLabel =>
         _freeTeamName is { } name
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardUseFreeName], name)
+            ? _strings.Format(StudioStringKeys.WizardUseFreeName, name)
             : "";
 
     /// <summary>Whether a team holds the taken folder — the only occupant there is a way to.</summary>
@@ -3264,12 +3258,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _conflictingTeamPath = occupant == TeamFolderOccupant.Team ? destination : null;
         AdoptConflict = occupant switch
         {
-            TeamFolderOccupant.Team => string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenTeam],
+            TeamFolderOccupant.Team => _strings.Format(
+                StudioStringKeys.WizardNameTakenTeam,
                 TeamCatalog.NormalizeName(TeamCatalog.Describe(destination).Name), folder),
-            TeamFolderOccupant.Folder => string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenFolder], folder),
-            _ => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenFile], folder),
+            TeamFolderOccupant.Folder => _strings.Format(
+                StudioStringKeys.WizardNameTakenFolder, folder),
+            _ => _strings.Format(StudioStringKeys.WizardNameTakenFile, folder),
         };
         OnPropertiesChanged(nameof(FreeTeamName), nameof(UseFreeTeamNameLabel), nameof(CanOpenConflictingTeam));
         UseFreeTeamNameCommand.RaiseCanExecuteChanged();
@@ -3320,20 +3314,19 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// </summary>
     private string AdoptedLine(string adopted, ForgeWarningInfo? warning, TeamLaunchersResult launchers)
     {
-        var line = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardAdoptedLine], adopted);
+        var line = _strings.Format(StudioStringKeys.WizardAdoptedLine, adopted);
         var replaced = launchers.Outcome is TeamLaunchersOutcome.Written or TeamLaunchersOutcome.Unchanged;
         if (warning is not null && !(replaced && warning.Code == ForgeWarningCodes.LauncherTooLong))
         {
             line += " " + (warning.Code == ForgeWarningCodes.SessionNotRenamed
-                ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardSessionNotRenamed], warning.Message)
+                ? _strings.Format(StudioStringKeys.WizardSessionNotRenamed, warning.Message)
                 : warning.Message);
         }
 
         if (launchers.WindowsRefusal is { } refusal)
         {
-            line += " " + string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.WizardLauncherTooLong],
+            line += " " + _strings.Format(
+                StudioStringKeys.WizardLauncherTooLong,
                 refusal.Length,
                 TeamLauncherScript.WindowsCommandLimit,
                 refusal.LongestOption);
@@ -3458,8 +3451,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     {
         WizardFailureKind.EngineMissing => _strings[StudioStringKeys.WizardFailureEngineMissing],
         WizardFailureKind.ConfigRefused => _strings[StudioStringKeys.WizardFailureConfigRefused],
-        WizardFailureKind.EngineStopped => string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardFailureEngineStopped], exitCode),
+        WizardFailureKind.EngineStopped => _strings.Format(
+            StudioStringKeys.WizardFailureEngineStopped, exitCode),
         WizardFailureKind.PromoteRefused => _strings[StudioStringKeys.WizardFailurePromoteRefused],
         _ => _strings[StudioStringKeys.WizardFailureUnknown],
     };

@@ -189,9 +189,8 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// only file that carries them — a run reads one settings file, and a team launched on its
     /// own does not see these accounts.
     /// </summary>
-    public string SettingsFileLine => string.Format(
-        CultureInfo.CurrentCulture,
-        _strings[StudioStringKeys.MailSettingsFile],
+    public string SettingsFileLine => _strings.Format(
+        StudioStringKeys.MailSettingsFile,
         _settingsPath() is { Length: > 0 } path ? path : AppSettingsDocument.FileName);
 
     /// <summary>The providers, each with what choosing it means.</summary>

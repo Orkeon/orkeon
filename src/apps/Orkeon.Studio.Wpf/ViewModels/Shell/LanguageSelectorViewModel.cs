@@ -105,16 +105,14 @@ public sealed class LanguageSelectorViewModel : ObservableObject
     /// current language came from is the one thing the badge cannot say, and it decides
     /// whether changing the Windows language will still be followed.
     /// </summary>
-    public string MenuHeader => string.Format(
-        CultureInfo.CurrentCulture,
-        _strings[StudioStringKeys.LanguageHeaderPattern],
+    public string MenuHeader => _strings.Format(
+        StudioStringKeys.LanguageHeaderPattern,
         _strings[_isExplicit ? StudioStringKeys.LanguageChosen : StudioStringKeys.LanguageSystem],
         CurrentName);
 
     /// <summary>The language name with its source — system language or recorded choice — on the button.</summary>
-    public string Tooltip => string.Format(
-        CultureInfo.CurrentCulture,
-        _strings[StudioStringKeys.LanguageTooltipPattern],
+    public string Tooltip => _strings.Format(
+        StudioStringKeys.LanguageTooltipPattern,
         CurrentName,
         _strings[_isExplicit ? StudioStringKeys.LanguageFromChoice : StudioStringKeys.LanguageFromSystem]);
 

@@ -521,7 +521,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     }
 
     private string Format(string key, params object[] arguments) =>
-        string.Format(CultureInfo.CurrentCulture, _strings[key], arguments);
+        _strings.Format(key, arguments);
 
     private void RaiseDerived() => OnPropertiesChanged(
         nameof(IsAsking), nameof(Placeholder), nameof(SendLabel),

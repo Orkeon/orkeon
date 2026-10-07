@@ -36,9 +36,8 @@ internal static class MountLabels
 
         var readWrite = mount.Rights != MountRights.ReadOnly;
         return (
-            string.Format(
-                CultureInfo.CurrentCulture,
-                strings[readWrite ? StudioStringKeys.TeamsMountRw : StudioStringKeys.TeamsMountRo],
+            strings.Format(
+                readWrite ? StudioStringKeys.TeamsMountRw : StudioStringKeys.TeamsMountRo,
                 mount.VirtualPath),
             readWrite);
     }

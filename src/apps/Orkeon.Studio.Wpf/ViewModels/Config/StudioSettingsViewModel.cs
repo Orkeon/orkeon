@@ -110,17 +110,17 @@ public sealed class StudioSettingsViewModel : ObservableObject
     /// <summary>Where the shown path comes from: « set by ORKEON_STUDIO_TEAMS_ROOT », « set by --teams-root », « chosen here » or « default ».</summary>
     public string TeamsRootSourceText => _shownTeamsRoot.Source switch
     {
-        TeamsRootSource.Environment => string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.SettingsTeamsRootSourceEnvironment], TeamsRootLocator.EnvironmentVariable),
-        TeamsRootSource.Argument => string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.SettingsTeamsRootSourceArgument], Shell.StartupArguments.TeamsRootSwitch),
+        TeamsRootSource.Environment => _strings.Format(
+            StudioStringKeys.SettingsTeamsRootSourceEnvironment, TeamsRootLocator.EnvironmentVariable),
+        TeamsRootSource.Argument => _strings.Format(
+            StudioStringKeys.SettingsTeamsRootSourceArgument, Shell.StartupArguments.TeamsRootSwitch),
         TeamsRootSource.Preference => _strings[StudioStringKeys.SettingsTeamsRootSourcePreference],
         _ => _strings[StudioStringKeys.SettingsTeamsRootSourceDefault],
     };
 
     /// <summary>A value set for the root that could not be used — a relative path —, with its reason; null when every value was usable.</summary>
     public string? TeamsRootIgnoredText => TeamsRoot.IgnoredValue is { } ignored
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.SettingsTeamsRootIgnored], ignored, TeamsRoot.IgnoredReason)
+        ? _strings.Format(StudioStringKeys.SettingsTeamsRootIgnored, ignored, TeamsRoot.IgnoredReason)
         : null;
 
     /// <summary>Whether the card has an ignored value to name.</summary>
@@ -256,7 +256,7 @@ public sealed class ArchiveSuggestionChoice : ObservableObject
     public int Days { get; }
 
     /// <summary>What the combo says: «60 days».</summary>
-    public string Label => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.SettingsArchiveSuggestionDays], Days);
+    public string Label => _strings.Format(StudioStringKeys.SettingsArchiveSuggestionDays, Days);
 
     internal void RefreshLabel() => OnPropertyChanged(nameof(Label));
 }
@@ -277,7 +277,7 @@ public sealed class BalanceRefreshChoice : ObservableObject
 
     /// <summary>What the combo says.</summary>
     public string Label => Minutes is { } every
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.BalanceRefreshEvery], every)
+        ? _strings.Format(StudioStringKeys.BalanceRefreshEvery, every)
         : _strings[StudioStringKeys.BalanceRefreshOff];
 
     internal void RefreshLabel() => OnPropertyChanged(nameof(Label));
@@ -351,7 +351,7 @@ public sealed class BalanceThresholdRowViewModel : ObservableObject
 
     /// <summary>«last read: 110.00 CNY», or that nothing was read this session.</summary>
     public string Hint => _owner.LatestAmountOf(Provider) is { } reading
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.BalanceThresholdLastRead], BalanceText.Amounts(reading))
+        ? _strings.Format(StudioStringKeys.BalanceThresholdLastRead, BalanceText.Amounts(reading))
         : _strings[StudioStringKeys.BalanceThresholdNoReading];
 
     internal void RefreshHint() => OnPropertyChanged(nameof(Hint));

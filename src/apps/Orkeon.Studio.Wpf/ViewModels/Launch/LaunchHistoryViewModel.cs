@@ -152,8 +152,8 @@ public sealed class LaunchHistoryEntryViewModel : ObservableObject
         RunOutcome.Success => _strings[StudioStringKeys.HistOutcomeSuccess],
         RunOutcome.Cancelled => _strings[StudioStringKeys.HistOutcomeCancelled],
         RunOutcome.NotStarted => _strings[StudioStringKeys.HistOutcomeNotStarted],
-        _ => string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.HistOutcomeFailed], ExitCode ?? -1),
+        _ => _strings.Format(
+            StudioStringKeys.HistOutcomeFailed, ExitCode ?? -1),
     };
 
     /// <summary>Tone key the view maps to the status icon: ok | fail | warn | idle.</summary>

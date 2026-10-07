@@ -307,7 +307,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         SetDocument(document, path);
         Location.UseCustomPath(path);
-        StatusMessage = string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigLoaded], path);
+        StatusMessage = _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigLoaded, path);
         Saved?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -342,7 +342,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         }
 
         SetDocument(document, path);
-        StatusMessage = string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigLoaded], path);
+        StatusMessage = _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigLoaded, path);
         Saved?.Invoke(this, EventArgs.Empty);
     }
 
@@ -362,9 +362,9 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         if (HasBlockingErrors)
         {
-            StatusMessage = string.Format(
+            StatusMessage = _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.ConfigNotSavedErrors],
+                StudioStringKeys.ConfigNotSavedErrors,
                 ValidationMessages.Count(m => m.IsError));
             return false;
         }
@@ -383,20 +383,20 @@ public sealed class ConfigTabViewModel : ObservableObject
         {
             // A read-only or locked file must be SAID, not swallowed — the novice auto-save
             // has no Save button and no dirty flag to betray a silent loss.
-            StatusMessage = string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.ConfigNotSavedWriteFailed], ex.Message);
+            StatusMessage = _strings.Format(
+                StudioStringKeys.ConfigNotSavedWriteFailed, ex.Message);
             return false;
         }
 
         LoadedPath = path;
         IsDirty = false;
         StatusMessage = HasLlmWarning
-            ? string.Format(
+            ? _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.ConfigSavedLlmWarning],
+                StudioStringKeys.ConfigSavedLlmWarning,
                 path,
                 ValidationCodes.LlmSectionMissing)
-            : string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigSaved], path);
+            : _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigSaved, path);
 
         Saved?.Invoke(this, EventArgs.Empty);
         return true;
@@ -432,9 +432,9 @@ public sealed class ConfigTabViewModel : ObservableObject
 
             return errors == 0 && warnings == 0
                 ? _strings[StudioStringKeys.ConfigNoProblem]
-                : string.Format(
+                : _strings.Format(
                     CultureInfo.InvariantCulture,
-                    _strings[StudioStringKeys.ConfigErrorsWarnings], errors, warnings);
+                    StudioStringKeys.ConfigErrorsWarnings, errors, warnings);
         }
     }
 

@@ -433,8 +433,8 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         EmailAccountReadiness.Ready => _strings[StudioStringKeys.MailStateReady],
         EmailAccountReadiness.NotReady => _strings[StudioStringKeys.MailStateNotReady],
         EmailAccountReadiness.SetAside => _strings[StudioStringKeys.MailStateSetAside],
-        EmailAccountReadiness.Unknown => string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.MailStateUnknown], _owner.FailureText(_stateFailure!)),
+        EmailAccountReadiness.Unknown => _strings.Format(
+            StudioStringKeys.MailStateUnknown, _owner.FailureText(_stateFailure!)),
         _ => null,
     };
 
@@ -564,7 +564,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
     /// <summary>"Forget the stored tokens of {name}? The account will need a new sign-in.", localized.</summary>
     public string SignOutConfirmText =>
-        string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.MailSignOutConfirm], _name);
+        _strings.Format(StudioStringKeys.MailSignOutConfirm, _name);
 
     /// <summary>Runs <c>orkeon email logout</c> on the account, then reads the states again.</summary>
     public AsyncRelayCommand ConfirmSignOutCommand { get; }
@@ -1098,7 +1098,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
     private string? VariableLine(SecretRowViewModel? line, bool stored) =>
         _owner.IsExpert && stored && line is not null
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.MailSecretVariable], line.EnvName)
+            ? _strings.Format(StudioStringKeys.MailSecretVariable, line.EnvName)
             : null;
 
     /// <summary>The engine's spelling of <paramref name="written"/> when it is one of <paramref name="names"/> but for the case, else the text as written.</summary>

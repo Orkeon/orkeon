@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.Services;
 using Orkeon.Studio.Wpf.Services.Capture;
 
@@ -129,10 +130,6 @@ public sealed class TourOverlay : Grid
         Dispatcher.BeginInvoke(Layout, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1863",
-        Justification = "The format string is the CURRENT culture's: caching a CompositeFormat "
-                      + "here would keep rendering the previous language's shape after a hot switch, "
-                      + "which is the one thing this counter must not do.")]
     private void Layout()
     {
         var step = _steps[_index];
@@ -146,9 +143,8 @@ public sealed class TourOverlay : Grid
         // like every other assembled label (T-15). CompositeFormat is deliberately NOT
         // cached: the pattern changes with the language, and a cached one would keep
         // rendering the previous culture's shape after a hot switch.
-        _counter.Text = string.Format(
-            System.Globalization.CultureInfo.CurrentCulture,
-            I18n.T("Studio.Shell.CounterPattern"), _index + 1, _steps.Count);
+        _counter.Text = I18nStudioStrings.Instance.Format(
+            "Studio.Shell.CounterPattern", _index + 1, _steps.Count);
         _back.Visibility = _index > 0 ? Visibility.Visible : Visibility.Collapsed;
         _nextKeyHolder?.SetBinding(ContentControl.ContentProperty,
             new System.Windows.Data.Binding("[" + (_index == _steps.Count - 1 ? "Studio.Shell.Finish" : "Studio.Shell.Next") + "]") { Source = I18n.Instance });

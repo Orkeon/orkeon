@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.Services;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
@@ -176,9 +177,8 @@ public partial class App : System.Windows.Application
         // MessageBox the settings screen has, because the alternative is a team that silently
         // stops starting.
         _viewModel.Config.Mounts.ConfirmRemoval = (folder, teams) => MessageBox.Show(
-            string.Format(
-                System.Globalization.CultureInfo.CurrentCulture,
-                I18nStudioStrings.Instance[Orkeon.Studio.Core.Localization.StudioStringKeys.MountRemoveReferenced],
+            I18nStudioStrings.Instance.Format(
+                Orkeon.Studio.Core.Localization.StudioStringKeys.MountRemoveReferenced,
                 folder,
                 string.Join(", ", teams)),
             "Orkeon Studio",
