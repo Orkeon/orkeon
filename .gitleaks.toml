@@ -53,6 +53,10 @@ useDefault = true
 #   zai-secret-key-1234               the key HttpLlmEndpointProbeTests (Studio.Core.Tests)
 #                                     hands its fake Z.AI handler, to assert what the probe
 #                                     sends and that its diagnostic never prints it.
+#   GOCSPX=secret                     what EmailValidationTests (Studio.Core.Tests) writes where a
+#                                     variable NAME is expected (`Auth:ClientSecretEnvVar`), to prove
+#                                     Studio warns that it is no variable name and never repeats
+#                                     what was typed. Six letters of Google's prefix, `=`, a word.
 [[allowlists]]
 description = "Reviewed fake fixture and documentation values (listed individually, never by path)"
 regexes = [
@@ -71,6 +75,7 @@ regexes = [
   '''^"?03-finance-trading"?$''',
   '''^"?sk-from-the-variable-0123456789"?$''',
   '''^"?zai-secret-key-1234"?$''',
+  '''^"?GOCSPX=secret"?$''',
 ]
 
 # ── A credential that is a variable, not a value ─────────────────────────────────────
