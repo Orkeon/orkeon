@@ -17,6 +17,9 @@ public sealed class FakeLoginInteraction : IEmailLoginInteraction
     /// <summary>The device sign-in shown, when one was.</summary>
     public (string Account, Uri VerificationUri, string UserCode)? DeviceCode { get; private set; }
 
+    /// <summary>How long the device code shown was said to live.</summary>
+    public TimeSpan? DeviceCodeExpiresIn { get; private set; }
+
     /// <summary>The account the loopback sign-in was shown for.</summary>
     public string? AuthorizationAccount { get; private set; }
 
@@ -25,6 +28,9 @@ public sealed class FakeLoginInteraction : IEmailLoginInteraction
 
     /// <summary>How many times the paste prompt was read.</summary>
     public int PasteReads { get; private set; }
+
+    /// <summary>Every pasted line the sign-in said it rejected, in order.</summary>
+    public List<(string Account, string Reason)> RedirectRejections { get; } = [];
 
     /// <summary>Queues a pasted line, computed from the authorization address.</summary>
     public FakeLoginInteraction Paste(Func<Uri, string?> line)
@@ -35,9 +41,10 @@ public sealed class FakeLoginInteraction : IEmailLoginInteraction
     }
 
     /// <inheritdoc />
-    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, CancellationToken cancellationToken)
+    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
         DeviceCode = (account, verificationUri, userCode);
+        DeviceCodeExpiresIn = expiresIn;
         return Task.CompletedTask;
     }
 
@@ -61,5 +68,13 @@ public sealed class FakeLoginInteraction : IEmailLoginInteraction
         }
 
         return next?.Invoke(shown);
+    }
+
+    /// <inheritdoc />
+    public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken)
+    {
+        lock (_gate)
+            RedirectRejections.Add((account, reason));
+        return Task.CompletedTask;
     }
 }

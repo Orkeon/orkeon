@@ -155,12 +155,12 @@ public sealed class TargetSelectionViewModel : ObservableObject
     public string StatusDisplay => Detection switch
     {
         null => _strings[StudioStringKeys.TargetNone],
-        { Status: RunTargetDetectionStatus.Resolved, Target: { } target } => string.Format(
+        { Status: RunTargetDetectionStatus.Resolved, Target: { } target } => _strings.Format(
             CultureInfo.InvariantCulture,
-            _strings[StudioStringKeys.TargetResolved], Describe(target.Kind), target.RunPath),
-        { Status: RunTargetDetectionStatus.NeedsSelection } => string.Format(
+            StudioStringKeys.TargetResolved, Describe(target.Kind), target.RunPath),
+        { Status: RunTargetDetectionStatus.NeedsSelection } => _strings.Format(
             CultureInfo.InvariantCulture,
-            _strings[StudioStringKeys.TargetPickScript], Candidates.Count),
+            StudioStringKeys.TargetPickScript, Candidates.Count),
         // STUDIO-55: the explanation of the failure's code, in the language of the screen; the
         // detector's English line stays in the validation list's tooltip.
         { ErrorCode: { } code } when _strings[ValidationMessageViewModel.FriendlyKeyPrefix + code] is var explained

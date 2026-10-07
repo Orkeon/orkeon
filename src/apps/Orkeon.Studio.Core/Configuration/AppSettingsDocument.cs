@@ -44,6 +44,7 @@ public sealed class AppSettingsDocument
         LlmLogging = new LlmLoggingSection(this);
         Mcp = new McpSection(this);
         ShellTools = new ShellToolsSection(this);
+        Email = new EmailSection(this);
     }
 
     /// <summary>The mutable JSON tree backing this document — the raw-edit surface of the UIs.</summary>
@@ -72,6 +73,9 @@ public sealed class AppSettingsDocument
 
     /// <summary>Typed view over the <c>Orkeon:Tools:Shell</c> section (STUDIO-21).</summary>
     public ShellToolsSection ShellTools { get; }
+
+    /// <summary>Typed view over the <c>Orkeon:Tools:Email</c> section (STUDIO-65).</summary>
+    public EmailSection Email { get; }
 
     /// <summary>Creates an empty document (<c>{}</c>).</summary>
     public static AppSettingsDocument CreateEmpty() => new(new JsonObject());

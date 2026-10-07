@@ -52,13 +52,13 @@ public sealed class TeamFolderRowViewModel
         RightsBadge = MountRightsTokens.GetBadge(rights, strings);
         // An archived team's folders are still its folders (STUDIO-31, D-08): listed, its state said.
         var shownName = isArchived
-            ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersArchived], teamName)
+            ? strings.Format(StudioStringKeys.TeamFoldersArchived, teamName)
             : teamName;
         Label = origin switch
         {
-            { IsUnknownId: true } => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersUnknownId], shownName, virtualPath, origin.ShortId),
-            { IsDeclared: true } => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRowDeclared], shownName, virtualPath, folder, origin.ShortId),
-            _ => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRow], shownName, virtualPath, folder),
+            { IsUnknownId: true } => strings.Format(StudioStringKeys.TeamFoldersUnknownId, shownName, virtualPath, origin.ShortId),
+            { IsDeclared: true } => strings.Format(StudioStringKeys.TeamFoldersRowDeclared, shownName, virtualPath, folder, origin.ShortId),
+            _ => strings.Format(StudioStringKeys.TeamFoldersRow, shownName, virtualPath, folder),
         };
     }
 

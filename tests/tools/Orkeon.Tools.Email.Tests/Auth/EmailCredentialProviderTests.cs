@@ -41,6 +41,93 @@ public sealed class EmailCredentialProviderTests
     }
 
     [Fact]
+    public async Task Should_find_the_password_in_the_user_scope_When_the_process_does_not_hold_it_and_copy_nothing_into_the_process()
+    {
+        // Studio remembers a password in the user scope (HKCU\Environment): a terminal opened
+        // before it, or a scheduled task, has no copy in its environment block. The run reads the
+        // user scope and leaves the process alone — what it starts must not inherit the secret.
+        var name = "EMAIL_TEST_" + Guid.NewGuid().ToString("N");
+        var declared = TestAccounts.Gmail();
+        declared.Auth.PasswordEnvVar = name;
+        var account = TestAccounts.Resolve("perso", declared);
+        using var fixture = new CredentialsFixture(new EmailEnvironment(
+            Environment.GetEnvironmentVariable,
+            variable => variable == name ? "user-scope-password" : null));
+
+        var credential = await fixture.Provider.GetAsync(account, Token);
+        var again = await fixture.Provider.GetAsync(account, Token);
+
+        Assert.Equal(new PasswordCredential("someone@gmail.com", "user-scope-password"), credential);
+        Assert.Equal(credential, again);
+        Assert.Null(Environment.GetEnvironmentVariable(name));
+    }
+
+    [Fact]
+    public async Task Should_find_the_client_secret_in_the_user_scope_When_the_process_does_not_hold_it()
+    {
+        using var fixture = new CredentialsFixture(TestAccounts.UserScope(("ORKEON_TEST_GOOGLE_SECRET", "GOCSPX-user-scope")));
+        var account = GoogleAccount;
+        fixture.Store.With(EmailCredentialProvider.TokenKey(account), new EmailTokenSet { AccessToken = "old", RefreshToken = "rt", ExpiresAt = fixture.Time.GetUtcNow() });
+        fixture.Handler.EnqueueJson("""{"access_token":"new","expires_in":3600}""");
+
+        await fixture.Provider.GetAccessTokenAsync(account, Token);
+
+        Assert.Equal("GOCSPX-user-scope", Assert.Single(fixture.Handler.Requests).Form["client_secret"]);
+    }
+
+    [Fact]
+    public async Task Should_read_the_process_environment_first_When_both_scopes_hold_the_variable()
+    {
+        using var fixture = new CredentialsFixture(new EmailEnvironment(
+            variable => variable == TestAccounts.PasswordVariable ? "process-password" : null,
+            variable => variable == TestAccounts.PasswordVariable ? "user-password" : null));
+
+        var credential = await fixture.Provider.GetAsync(PasswordAccount, Token);
+
+        Assert.Equal(new PasswordCredential("someone@gmail.com", "process-password"), credential);
+    }
+
+    [Fact]
+    public async Task Should_read_a_user_scope_that_cannot_be_read_as_an_absent_variable()
+    {
+        // A registry read refused (a service account without a profile) is a password not found:
+        // the call fails as it does without one, and the readiness check says so instead of throwing.
+        using var fixture = new CredentialsFixture(new EmailEnvironment(
+            _ => null,
+            _ => throw new System.Security.SecurityException("registry access denied")));
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await fixture.Provider.GetAsync(PasswordAccount, Token));
+        var diagnosis = await fixture.Provider.DiagnoseAsync(PasswordAccount, Token);
+
+        Assert.Equal(EmailErrorCode.CredentialMissing, error.Code);
+        Assert.Equal(error.Message, diagnosis);
+        Assert.DoesNotContain("registry access denied", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_say_both_places_the_variable_was_looked_for_When_the_machine_has_a_user_scope()
+    {
+        using var windows = new CredentialsFixture(TestAccounts.UserScope());
+        using var elsewhere = new CredentialsFixture(TestAccounts.Environment());
+        var google = GoogleAccount;
+
+        var password = await Assert.ThrowsAsync<EmailToolException>(async () => await windows.Provider.GetAsync(PasswordAccount, Token));
+        var secret = Assert.Throws<EmailToolException>(() => windows.Provider.ReadClientSecret(google));
+        var secretElsewhere = Assert.Throws<EmailToolException>(() => elsewhere.Provider.ReadClientSecret(google));
+
+        Assert.Equal(
+            $"The password of e-mail account 'perso' is read from the environment variable {TestAccounts.PasswordVariable}, which is set neither in the process environment nor in the user's.",
+            password.Message);
+        Assert.Equal(
+            "The OAuth client secret of e-mail account 'google' is read from the environment variable ORKEON_TEST_GOOGLE_SECRET, which is set neither in the process environment nor in the user's.",
+            secret.Message);
+        // Linux and macOS have no user scope: the sentence keeps its form (the password's is pinned above).
+        Assert.Equal(
+            "The OAuth client secret of e-mail account 'google' is read from the environment variable ORKEON_TEST_GOOGLE_SECRET, which is not set.",
+            secretElsewhere.Message);
+    }
+
+    [Fact]
     public async Task Should_serve_a_fresh_stored_token_without_calling_the_identity_provider_and_then_from_memory()
     {
         using var fixture = new CredentialsFixture();

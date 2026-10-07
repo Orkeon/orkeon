@@ -16,7 +16,7 @@ public sealed class StubTerminalLoginInteraction : IEmailLoginInteraction, IDisp
     public Task<Uri> AuthorizationShown => _authorizationShown.Task;
 
     /// <inheritdoc />
-    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, CancellationToken cancellationToken) =>
+    public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken) =>
         Task.CompletedTask;
 
     /// <inheritdoc />
@@ -35,6 +35,10 @@ public sealed class StubTerminalLoginInteraction : IEmailLoginInteraction, IDisp
         _ = _input.Task.Wait(TimeSpan.FromMinutes(1), CancellationToken.None);
         return Task.FromResult<string?>(null);
     }
+
+    /// <inheritdoc />
+    public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 
     /// <summary>Ends the blocked read (end of input).</summary>
     public void Dispose() => _input.TrySetResult();

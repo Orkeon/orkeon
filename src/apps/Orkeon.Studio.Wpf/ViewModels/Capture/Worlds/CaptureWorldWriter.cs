@@ -77,10 +77,18 @@ internal static class CaptureWorldWriter
             .Answer("--version", 0, plan.VersionLine)
             .Answer("run", 0, [.. plan.RunStream])
             .Answer("forge", 0, [.. plan.ForgeStream])
+            // STUDIO-69: the E-mail tab asks what the engine makes of each account. A pair of its
+            // own: `email check`, the verb that connects, has no script and is never asked for.
+            .Answer("email accounts", 0, plan.EmailAccountsJson)
             // STUDIO-27: a card says where its schedule stands only once the engine answered, so the
             // seeded schedules are said to be installed — the green badge is an answer, not a sidecar.
             .Answer("forge schedule", 0,
                 """{"v":2,"seq":1,"ts":"2026-09-24T08:00:00Z","kind":"schedule.state","path":"team","state":"installed","expression":"daily@07:00","family":"windows","names":["Orkeon team"]}""");
+
+        // STUDIO-70: the sign-in of an OAuth e-mail account is a conversation — it says what to
+        // do, then waits for as long as the stop that photographs its panel needs it.
+        if (plan.EmailLoginStream.Count > 0)
+            cli.Converse("email login", plan.EmailLoginStream, static _ => []);
 
         // STUDIO-39: the catalogue `usecases list` prints, and the search session the wizard keeps
         // open for its suggestions — a conversation that answers every query of the campaign.
@@ -170,7 +178,9 @@ internal static class CaptureWorldWriter
             $"  \"Llm\": {plan.LlmJson}",
             "  \"Orkeon\": { \"FileSystem\": { \"Mounts\": "
                 + JsonSerializer.Serialize(mounts)
-                + " } }",
+                + " }"
+                + (plan.EmailJson is { } email ? ", \"Tools\": { \"Email\": " + email + " }" : "")
+                + " }",
         };
         sections.AddRange(plan.ExtraSections.Select(section => $"  \"{section.Key}\": {section.Value}"));
 

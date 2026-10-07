@@ -5,11 +5,12 @@ using Orkeon.Studio.Wpf.ViewModels.Shell;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
-/// The unified Settings screen (design v3): one nav entry, seven inner tabs. Novice sees the
-/// four that matter — the AI model, the authorized folders, the tools (their keys and what
-/// each one needs, STUDIO-21) and Studio itself (STUDIO-35); the limits-and-logs tab, the MCP
-/// servers and the raw-JSON tab are expert-only, and a switch back to novice while one of them
-/// is showing falls back to the model tab rather than leaving a blank screen.
+/// The unified Settings screen (design v3): one nav entry, eight inner tabs. Novice sees the
+/// five that matter — the AI model, the authorized folders, the tools (their keys and what
+/// each one needs, STUDIO-21), the e-mail accounts (STUDIO-67) and Studio itself (STUDIO-35);
+/// the limits-and-logs tab, the MCP servers and the raw-JSON tab are expert-only, and a switch
+/// back to novice while one of them is showing falls back to the model tab rather than leaving
+/// a blank screen.
 /// </summary>
 public sealed class SettingsScreenViewModel : ObservableObject
 {
@@ -33,6 +34,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
     /// <summary>How Studio itself behaves on this machine (STUDIO-35): the balance, and what STUDIO-32 adds.</summary>
     public const string StudioTab = "studio";
+
+    /// <summary>The e-mail accounts the mail tools use (STUDIO-67); both modes, the expert sees every field.</summary>
+    public const string MailsTab = "mails";
 
     private readonly UiModeViewModel _mode;
     private string _activeTab = ModelTab;
@@ -64,6 +68,8 @@ public sealed class SettingsScreenViewModel : ObservableObject
         Studio = studio ?? new StudioSettingsViewModel();
         _mode = mode;
         _mode.PropertyChanged += OnModeChanged;
+        // The E-mail form is in both modes and shows more to the expert (STUDIO-67).
+        Config.Email.IsExpert = _mode.IsExpert;
 
         // Novice auto-save (audit 07/16): the novice screen shows no Save button, so every
         // edit saves the document. Listening to each edit rather than the dirty transition
@@ -73,6 +79,16 @@ public sealed class SettingsScreenViewModel : ObservableObject
         {
             if (_mode.IsNovice && Config.SaveCommand.CanExecute(null))
                 Config.SaveCommand.Execute(null);
+        };
+
+        // The file as saved is what the engine reads: a save moves what it says of the e-mail
+        // accounts, so the tab asks again — while it shows, and never from another tab (STUDIO-69).
+        // Once the saves pause: the novice's file is saved at every keystroke, and a child per
+        // key would be started only to be stopped by the next.
+        Config.Saved += (_, _) =>
+        {
+            if (IsMailsTab)
+                Config.Email.RefreshStatesSoon();
         };
 
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
@@ -88,6 +104,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
         ShowToolsCommand = new RelayCommand(() => ActiveTab = ToolsTab);
         ShowMcpCommand = new RelayCommand(() => ActiveTab = McpTab);
         ShowStudioCommand = new RelayCommand(() => ActiveTab = StudioTab);
+        ShowMailsCommand = new RelayCommand(() => ActiveTab = MailsTab);
     }
 
     /// <summary>The settings-document editor the tabs render.</summary>
@@ -118,15 +135,23 @@ public sealed class SettingsScreenViewModel : ObservableObject
         get => _activeTab;
         set
         {
-            var requested = value is FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab ? value : ModelTab;
+            var requested = value is FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab or MailsTab ? value : ModelTab;
             if (_mode.IsNovice && requested is LimitsTab or JsonTab or McpTab)
                 requested = ModelTab;
 
+            var wasMails = IsMailsTab;
             if (SetProperty(ref _activeTab, requested))
             {
                 OnPropertiesChanged(
                     nameof(IsModelTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
-                    nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab));
+                    nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab), nameof(IsMailsTab));
+
+                // The e-mail tab asks the engine about its accounts on arrival, and stops what it
+                // was running when it is left: a connection test never outlives its tab (STUDIO-69).
+                if (IsMailsTab)
+                    _ = Config.Email.RefreshStatesAsync();
+                else if (wasMails)
+                    Config.Email.StopActivity();
             }
         }
     }
@@ -152,6 +177,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// <summary>True while the Studio tab shows.</summary>
     public bool IsStudioTab => _activeTab == StudioTab;
 
+    /// <summary>True while the e-mail tab shows.</summary>
+    public bool IsMailsTab => _activeTab == MailsTab;
+
     /// <summary>Shows the model tab.</summary>
     public RelayCommand ShowModelCommand { get; }
 
@@ -173,11 +201,31 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// <summary>Shows the Studio tab.</summary>
     public RelayCommand ShowStudioCommand { get; }
 
+    /// <summary>Shows the e-mail tab.</summary>
+    public RelayCommand ShowMailsCommand { get; }
+
+    /// <summary>
+    /// The screen shows again — its sidebar entry was chosen: the e-mail tab, when it is the one
+    /// showing, reads the states of its accounts again (STUDIO-69).
+    /// </summary>
+    public void Enter()
+    {
+        if (IsMailsTab)
+            _ = Config.Email.RefreshStatesAsync();
+    }
+
+    /// <summary>
+    /// The screen is left — another sidebar entry, or the window closing: whatever the e-mail tab
+    /// still has running is stopped, so that no <c>orkeon</c> process outlives it (STUDIO-69).
+    /// </summary>
+    public void Leave() => Config.Email.StopActivity();
+
     private void OnModeChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is not (nameof(UiModeViewModel.IsNovice) or nameof(UiModeViewModel.Mode)))
             return;
 
+        Config.Email.IsExpert = _mode.IsExpert;
         if (_mode.IsNovice && (IsLimitsTab || IsJsonTab || IsMcpTab))
             ActiveTab = ModelTab;
     }

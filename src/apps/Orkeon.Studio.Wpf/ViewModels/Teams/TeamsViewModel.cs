@@ -175,7 +175,7 @@ public sealed class TeamCardViewModel : ObservableObject
             null or "" => strings[StudioStringKeys.TeamsOnDemand],
             "hourly" => strings[StudioStringKeys.TeamsHourly],
             var schedule when schedule.StartsWith("daily@", StringComparison.Ordinal) =>
-                string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamsDaily], schedule["daily@".Length..]),
+                strings.Format(StudioStringKeys.TeamsDaily, schedule["daily@".Length..]),
             var schedule => schedule,
         };
         // STUDIO-32 (D-02): an archived card offers « Restore » and « Delete », nothing else — it is
@@ -778,25 +778,25 @@ public sealed class TeamCardViewModel : ObservableObject
 
             var date = startedAt.ToLocalTime().ToString("d", CultureInfo.CurrentCulture);
             if (LastOutcome is not { } outcome)
-                return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsLastRunDate], date);
+                return _strings.Format(StudioStringKeys.TeamsLastRunDate, date);
 
-            return string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsLastRun], date,
+            return _strings.Format(
+                StudioStringKeys.TeamsLastRun, date,
                 _strings[outcome == RunOutcome.Success ? StudioStringKeys.TeamsRunOk : StudioStringKeys.TeamsRunFail]);
         }
     }
 
     /// <summary>« Archived on 24/09/2026 » — an archived card's meta part, in place of its schedule (STUDIO-32).</summary>
     public string ArchivedDisplay => Summary.ArchivedAt is { } archivedAt
-        ? string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchivedOn],
+        ? _strings.Format(
+            StudioStringKeys.TeamsArchivedOn,
             archivedAt.ToLocalTime().ToString("d", CultureInfo.CurrentCulture))
         : _strings[StudioStringKeys.TeamsArchivedBadge];
 
     /// <summary>« n agents » when the folder shows agent files.</summary>
     public string? AgentCountDisplay =>
         Summary.AgentCount is { } count
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaAgents], count)
+            ? _strings.Format(StudioStringKeys.RunMetaAgents, count)
             : null;
 
     /// <summary>Whether the agent-count meta part exists.</summary>
@@ -808,7 +808,7 @@ public sealed class TeamCardViewModel : ObservableObject
     /// </summary>
     public string? ProfileDisplay =>
         Summary.Profile is { Length: > 0 } profile
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSettingLabel], _owner.SettingOf(Summary)?.Label(_strings) ?? profile)
+            ? _strings.Format(StudioStringKeys.TeamsSettingLabel, _owner.SettingOf(Summary)?.Label(_strings) ?? profile)
             : null;
 
     /// <summary>
@@ -1174,7 +1174,7 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>« Archives (3) » — the toggle's label.</summary>
     public string ArchivesLabel =>
-        string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchivesLabel], ArchivedTeams.Count);
+        _strings.Format(StudioStringKeys.TeamsArchivesLabel, ArchivedTeams.Count);
 
     /// <summary>Every card, active then archived: what the schedule answers and the last runs are laid on.</summary>
     private IEnumerable<TeamCardViewModel> AllCards => Teams.Concat(ArchivedTeams);
@@ -1199,7 +1199,7 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>« No team matches “abc”. » — said, with the way back; empty otherwise.</summary>
     public string NoMatchLine => HasNoMatch
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSearchNoMatch], _searchText.Trim())
+        ? _strings.Format(StudioStringKeys.TeamsSearchNoMatch, _searchText.Trim())
         : "";
 
     /// <summary>Whether resumable sessions are listed.</summary>
@@ -1294,10 +1294,10 @@ public sealed class TeamsViewModel : ObservableObject
     public string UndoNotice => _undo switch
     {
         null => "",
-        [{ ScheduleStopped: true } team] => string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchivedScheduleStoppedUndo], team.Name),
-        [var team] => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchivedUndo], team.Name),
-        var teams => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchivedManyUndo], teams.Count),
+        [{ ScheduleStopped: true } team] => _strings.Format(
+            StudioStringKeys.TeamsArchivedScheduleStoppedUndo, team.Name),
+        [var team] => _strings.Format(StudioStringKeys.TeamsArchivedUndo, team.Name),
+        var teams => _strings.Format(StudioStringKeys.TeamsArchivedManyUndo, teams.Count),
     };
 
     /// <summary>« Undo » — every team the last archive gesture took out of the list comes back.</summary>
@@ -1327,10 +1327,10 @@ public sealed class TeamsViewModel : ObservableObject
     public string ArchiveSuggestionLine => _suggested switch
     {
         [] => "",
-        [var team] => string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSuggestionOne], team.Name, _suggestionDays),
-        var teams => string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSuggestionMany], teams.Count, _suggestionDays),
+        [var team] => _strings.Format(
+            StudioStringKeys.TeamsSuggestionOne, team.Name, _suggestionDays),
+        var teams => _strings.Format(
+            StudioStringKeys.TeamsSuggestionMany, teams.Count, _suggestionDays),
     };
 
     /// <summary>The names of the teams listed, when there are several — exactly what « Archive » archives.</summary>
@@ -1545,7 +1545,7 @@ public sealed class TeamsViewModel : ObservableObject
         if (!report.Succeeded)
         {
             card.ReportSchedule(
-                string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleInstallFailed], report.FailureReason),
+                _strings.Format(StudioStringKeys.TeamsScheduleInstallFailed, report.FailureReason),
                 report.ManualCommand);
             return;
         }
@@ -1565,7 +1565,7 @@ public sealed class TeamsViewModel : ObservableObject
         if (!report.Succeeded)
         {
             card.ReportSchedule(
-                string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleStopFailed], report.FailureReason),
+                _strings.Format(StudioStringKeys.TeamsScheduleStopFailed, report.FailureReason),
                 report.ManualCommand);
             return;
         }
@@ -1701,7 +1701,7 @@ public sealed class TeamsViewModel : ObservableObject
             if (!report.Succeeded)
             {
                 card.ReportArchive(
-                    string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchiveUnscheduleFailed], report.FailureReason),
+                    _strings.Format(StudioStringKeys.TeamsArchiveUnscheduleFailed, report.FailureReason),
                     report.ManualCommand);
                 return;
             }
@@ -1952,7 +1952,7 @@ public sealed class TeamsViewModel : ObservableObject
         // Said either way (review D10): a refused export (existing destination, disk)
         // that looks identical to a successful one teaches the user nothing.
         StatusMessage = TeamCatalog.ExportTo(path, destination) is { } exported
-            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsExportedTo], exported)
+            ? _strings.Format(StudioStringKeys.TeamsExportedTo, exported)
             : _strings[StudioStringKeys.TeamsExportFailed];
     }
 
@@ -1989,9 +1989,9 @@ public sealed class TeamsViewModel : ObservableObject
             var settings = WorkshopSiblings.CopySettings(TeamsRoot, FolderNameOf(path), copySlug);
             var folder = $"{WorkshopLayout.SettingsFolder}/{copySlug}";
             if (settings.Moved.Count > 0)
-                StatusMessage = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsDuplicateSettingsCopied], folder);
+                StatusMessage = _strings.Format(StudioStringKeys.TeamsDuplicateSettingsCopied, folder);
             else if (!settings.Succeeded)
-                StatusMessage = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsDuplicateSettingsNotCopied], folder);
+                StatusMessage = _strings.Format(StudioStringKeys.TeamsDuplicateSettingsNotCopied, folder);
         }
 
         Refresh();
@@ -2053,8 +2053,8 @@ public sealed class TeamsViewModel : ObservableObject
         // a mount set — would be left to the renamed team: refused before the engine is asked (STUDIO-64).
         if (moves && WorkshopSiblings.TakenTrees(TeamsRoot, FolderNameOf(folder)) is { Count: > 0 } takenTrees)
         {
-            card.RefuseRename(string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameSiblingTaken],
+            card.RefuseRename(_strings.Format(
+                StudioStringKeys.TeamsRenameSiblingTaken,
                 TreeNames(takenTrees, FolderNameOf(folder))));
             return;
         }
@@ -2062,7 +2062,7 @@ public sealed class TeamsViewModel : ObservableObject
         var report = await RenameThroughEngineAsync(team.Path, name).ConfigureAwait(true);
         if (!report.Succeeded)
         {
-            card.RefuseRename(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameFailed], report.FailureReason));
+            card.RefuseRename(_strings.Format(StudioStringKeys.TeamsRenameFailed, report.FailureReason));
             return;
         }
 
@@ -2112,11 +2112,11 @@ public sealed class TeamsViewModel : ObservableObject
         return TeamCatalog.OccupantOf(folder) switch
         {
             TeamFolderOccupant.None => null,
-            TeamFolderOccupant.Team => string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenTeam],
+            TeamFolderOccupant.Team => _strings.Format(
+                StudioStringKeys.WizardNameTakenTeam,
                 TeamCatalog.NormalizeName(TeamCatalog.Describe(folder).Name), name),
-            TeamFolderOccupant.Folder => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenFolder], name),
-            _ => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenFile], name),
+            TeamFolderOccupant.Folder => _strings.Format(StudioStringKeys.WizardNameTakenFolder, name),
+            _ => _strings.Format(StudioStringKeys.WizardNameTakenFile, name),
         };
     }
 
@@ -2184,8 +2184,8 @@ public sealed class TeamsViewModel : ObservableObject
     {
         var parts = new List<string>
         {
-            string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenamed],
+            _strings.Format(
+                StudioStringKeys.TeamsRenamed,
                 name, System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(renamed))),
         };
 
@@ -2195,8 +2195,8 @@ public sealed class TeamsViewModel : ObservableObject
         var stayed = siblings is null ? [] : siblings.Kept.Concat(siblings.Taken).Distinct(StringComparer.Ordinal).ToList();
         if (stayed.Count > 0)
         {
-            parts.Add(string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameSiblingsKept],
+            parts.Add(_strings.Format(
+                StudioStringKeys.TeamsRenameSiblingsKept,
                 TreeNames(stayed, FolderNameOf(from)), FolderNameOf(from)));
         }
         else if (siblings is { Moved.Count: > 0 })
@@ -2211,8 +2211,8 @@ public sealed class TeamsViewModel : ObservableObject
             .ToList();
         if (stranded.Count > 0)
         {
-            parts.Add(string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameStrandedFolders], string.Join(", ", stranded)));
+            parts.Add(_strings.Format(
+                StudioStringKeys.TeamsRenameStrandedFolders, string.Join(", ", stranded)));
         }
 
         parts.AddRange(warnings);
@@ -2247,7 +2247,7 @@ public sealed class TeamsViewModel : ObservableObject
             if (!report.Succeeded)
             {
                 card.RefuseDelete(
-                    string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsDeleteUnscheduleFailed], report.FailureReason),
+                    _strings.Format(StudioStringKeys.TeamsDeleteUnscheduleFailed, report.FailureReason),
                     report.ManualCommand);
                 return;
             }
@@ -2264,8 +2264,8 @@ public sealed class TeamsViewModel : ObservableObject
                 return;
             }
 
-            StatusMessage = string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchivedToWorkshop],
+            StatusMessage = _strings.Format(
+                StudioStringKeys.TeamsArchivedToWorkshop,
                 $"{WorkshopLayout.ArchiveFolder}/{FolderNameOf(archived.Destination)}");
         }
         else if (!TeamCatalog.Delete(team.Path))

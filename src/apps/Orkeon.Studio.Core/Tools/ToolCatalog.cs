@@ -25,8 +25,9 @@ public enum ToolRequirement
     /// An e-mail account declared in the settings file, under the section named in
     /// <see cref="ToolInfo.Argument"/>. Neither a key nor a call parameter: the tool is registered
     /// with or without one and, until an account is declared, refuses every call saying what to
-    /// declare (<c>email_accounts</c> lists none). Studio has no form for it — the account is
-    /// written in the file, and an OAuth account then signs in once with <c>orkeon email login</c>.
+    /// declare (<c>email_accounts</c> lists none). The accounts are declared in Studio's E-mail
+    /// settings tab (STUDIO-67), which is where the Settings screen sends the reader; the section
+    /// stays the argument, as the key the file holds them under.
     /// </summary>
     EmailAccount,
 }

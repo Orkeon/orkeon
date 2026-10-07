@@ -65,7 +65,7 @@ public sealed class MountEditorViewModel : ObservableObject
             if (Id is null)
                 return "";
             var key = IsIdNew ? StudioStringKeys.MountIdAssignedOnSave : StudioStringKeys.MountId;
-            return string.Format(CultureInfo.CurrentCulture, _strings[key], Id.ToString());
+            return _strings.Format(key, Id.ToString());
         }
     }
 
@@ -88,7 +88,7 @@ public sealed class MountEditorViewModel : ObservableObject
 
     /// <summary>"Used by Veille, Audit", or empty.</summary>
     public string UsedByDisplay => IsReferenced
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.MountUsedBy], string.Join(", ", UsedByTeams))
+        ? _strings.Format(StudioStringKeys.MountUsedBy, string.Join(", ", UsedByTeams))
         : "";
 
     /// <summary>Gives the row an id when it has none; returns whether one was assigned.</summary>

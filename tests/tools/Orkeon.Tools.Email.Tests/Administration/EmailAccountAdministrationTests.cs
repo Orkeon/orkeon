@@ -47,6 +47,23 @@ public sealed class EmailAccountAdministrationTests
     }
 
     [Fact]
+    public async Task Should_call_an_account_ready_When_its_password_is_only_in_the_user_scope()
+    {
+        // `orkeon email accounts` reads through the seam the run reads through: a password Studio
+        // stored makes the account ready for the verb as it is for the run.
+        using var fixture = new AdministrationFixture(
+            Accounts(("perso", TestAccounts.Gmail())), TestAccounts.UserScope((TestAccounts.PasswordVariable, TestAccounts.Password)));
+        using var unset = new AdministrationFixture(Accounts(("perso", TestAccounts.Gmail())), TestAccounts.UserScope());
+
+        var ready = Assert.Single(await fixture.Administration.ListAsync(Token));
+        var notReady = Assert.Single(await unset.Administration.ListAsync(Token));
+
+        Assert.Equal((true, (string?)null), (ready.Ready, ready.Problem));
+        Assert.False(notReady.Ready);
+        Assert.EndsWith("which is set neither in the process environment nor in the user's.", notReady.Problem, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_sign_in_with_the_device_code_flow_and_store_the_tokens()
     {
         using var fixture = new AdministrationFixture(Accounts(("hotmail", TestAccounts.Outlook())));
@@ -62,6 +79,20 @@ public sealed class EmailAccountAdministrationTests
         Assert.Equal(EmailCredentialProvider.TokenKey(fixture.Resolve("hotmail")), stored.Key);
         Assert.Equal(("at-1", "rt-1"), (stored.Value.AccessToken, stored.Value.RefreshToken));
         Assert.Equal(3, fixture.Credentials.Handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Should_say_how_long_the_device_code_lives_as_the_provider_granted_it()
+    {
+        // What a screen counts down from (STUDIO-70): the provider's own figure, not the default.
+        using var fixture = new AdministrationFixture(Accounts(("hotmail", TestAccounts.Outlook())));
+        fixture.Credentials.Handler.EnqueueJson("""{"device_code":"dev-1","user_code":"WDJB-MJHT","verification_uri":"https://microsoft.com/devicelogin","expires_in":600,"interval":5}""");
+        fixture.Credentials.Handler.EnqueueJson("""{"access_token":"at-1","refresh_token":"rt-1","expires_in":3600}""");
+        var interaction = new FakeLoginInteraction();
+
+        await fixture.Administration.LoginAsync("hotmail", interaction, Token);
+
+        Assert.Equal(TimeSpan.FromMinutes(10), interaction.DeviceCodeExpiresIn);
     }
 
     [Fact]
@@ -122,6 +153,63 @@ public sealed class EmailAccountAdministrationTests
         var form = Assert.Single(fixture.Credentials.Handler.Requests).Form;
         Assert.Equal("pasted-code", form["code"]);
         Assert.StartsWith("http://127.0.0.1:", form["redirect_uri"], StringComparison.Ordinal);
+        Assert.Single(fixture.Credentials.Store.Tokens);
+    }
+
+    [Fact]
+    public async Task Should_tell_the_interaction_why_a_pasted_line_is_rejected_without_repeating_it_and_go_on_waiting()
+    {
+        using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));
+        fixture.Credentials.Handler.EnqueueJson("""{"access_token":"ya29.at","refresh_token":"1//rt","expires_in":3599}""");
+        var pasted = new List<string>();
+        string Pasted(string line)
+        {
+            pasted.Add(line);
+            return line;
+        }
+
+        var interaction = new FakeLoginInteraction()
+            .Paste(_ => Pasted("not a url at all"))
+            .Paste(shown => Pasted(shown.AbsoluteUri))
+            .Paste(_ => Pasted("https://example.com/elsewhere?page=fake-page-1"))
+            .Paste(shown => Pasted($"{Query(shown)["redirect_uri"]}?scope=fake-scope-1"))
+            .Paste(shown => $"http://localhost:1/?code=pasted-code&state={Uri.EscapeDataString(Query(shown)["state"])}");
+
+        await fixture.Administration.LoginAsync("google", interaction, Token);
+
+        var redirect = Query(await interaction.AuthorizationShown)["redirect_uri"];
+        Assert.Equal(
+        [
+            ("google", "The pasted text is not an address."),
+            ("google", "The pasted address is the one to open, not the one the browser ended on."),
+            ("google", $"The pasted address is not the redirect address of this sign-in ({redirect})."),
+            ("google", "The pasted address carries no authorization code: it may be cut short."),
+        ], interaction.RedirectRejections);
+        // What was pasted may hold a code: no sentence says it again.
+        Assert.All(interaction.RedirectRejections, rejection =>
+        {
+            Assert.All(pasted, line => Assert.DoesNotContain(line, rejection.Reason, StringComparison.Ordinal));
+            Assert.DoesNotContain("fake-", rejection.Reason, StringComparison.Ordinal);
+        });
+        // A rejected line is not a failed sign-in: the next one, the right one, ends it.
+        Assert.Equal("pasted-code", Assert.Single(fixture.Credentials.Handler.Requests).Form["code"]);
+        Assert.Single(fixture.Credentials.Store.Tokens);
+    }
+
+    [Fact]
+    public async Task Should_say_nothing_of_an_empty_pasted_line()
+    {
+        using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));
+        fixture.Credentials.Handler.EnqueueJson("""{"access_token":"ya29.at","refresh_token":"1//rt","expires_in":3599}""");
+        var interaction = new FakeLoginInteraction()
+            .Paste(_ => "")
+            .Paste(_ => "   ")
+            .Paste(shown => $"http://localhost:1/?code=pasted-code&state={Uri.EscapeDataString(Query(shown)["state"])}");
+
+        await fixture.Administration.LoginAsync("google", interaction, Token);
+
+        Assert.Equal(3, interaction.PasteReads);
+        Assert.Empty(interaction.RedirectRejections);
         Assert.Single(fixture.Credentials.Store.Tokens);
     }
 
@@ -269,8 +357,13 @@ public sealed class EmailAccountAdministrationTests
         private readonly EmailAccountRegistry _registry;
 
         public AdministrationFixture(EmailToolsOptions options, params (string Name, string Value)[] variables)
+            : this(options, TestAccounts.Environment([(TestAccounts.PasswordVariable, TestAccounts.Password), .. variables]))
         {
-            Credentials = new CredentialsFixture(TestAccounts.Environment([(TestAccounts.PasswordVariable, TestAccounts.Password), .. variables]));
+        }
+
+        public AdministrationFixture(EmailToolsOptions options, EmailEnvironment environment)
+        {
+            Credentials = new CredentialsFixture(environment);
             _registry = new EmailAccountRegistry(Microsoft.Extensions.Options.Options.Create(options));
             Administration = new EmailAccountAdministration(_registry, Credentials.Provider, Credentials.OAuth, Mailboxes);
         }

@@ -326,7 +326,7 @@ public sealed class UseCaseImportViewModel : ObservableObject
     }
 
     private string Format(string key, params object[] arguments) =>
-        string.Format(CultureInfo.CurrentCulture, _strings[key], arguments);
+        _strings.Format(key, arguments);
 
     /// <summary>Posts <paramref name="action"/> and completes once it ran on the UI thread.</summary>
     private Task PostAndAwaitAsync(Action action)

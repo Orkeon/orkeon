@@ -29,7 +29,7 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
         UnavailableNote = unavailableNote;
         ShortId = mount?.ShortId ?? "";
         SharedRootNote = mount is not null && sharedRootCount > 1
-            ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.AllowedFoldersSharedRoot], sharedRootCount, mount.VirtualPath)
+            ? strings.Format(StudioStringKeys.AllowedFoldersSharedRoot, sharedRootCount, mount.VirtualPath)
             : null;
         // ADR-008: a mount string the parser refuses has no virtual spelling — say so rather
         // than dumping the raw string, which carries the folder on this machine.
@@ -181,9 +181,8 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
     public bool HasRows => Rows.Count > 0;
 
     /// <summary>The footer's count of what the add-to-team button would add.</summary>
-    public string Summary => string.Format(
-        CultureInfo.CurrentCulture,
-        _strings[StudioStringKeys.AllowedFoldersSummary],
+    public string Summary => _strings.Format(
+        StudioStringKeys.AllowedFoldersSummary,
         Rows.Count(r => r.IsChecked));
 
     /// <summary>Whether at least one selectable row is checked.</summary>
@@ -228,8 +227,8 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
     /// remember which row it was.
     /// </summary>
     public string Title => TargetVirtualPath is { } target
-        ? string.Format(
-            CultureInfo.CurrentCulture, _strings[StudioStringKeys.AllowedFoldersBindTitle], target)
+        ? _strings.Format(
+            StudioStringKeys.AllowedFoldersBindTitle, target)
         : _strings[StudioStringKeys.AllowedFoldersTitle];
 
     /// <summary>
@@ -360,9 +359,8 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
         // the disk pick declares a new entry under /output for that, with an id of its own.
         if (TargetVirtualPath is { } target && !mount.SameRootAs(target))
         {
-            return string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.AllowedFoldersOtherRoot], mount.VirtualPath, target);
+            return _strings.Format(
+                StudioStringKeys.AllowedFoldersOtherRoot, mount.VirtualPath, target);
         }
 
         var root = MountDefinition.NormalizeRoot(TargetVirtualPath ?? mount.VirtualPath);
@@ -378,8 +376,7 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
         // answered, where replacing what sits behind it is the whole point of the gesture.
         return TargetVirtualPath is not null
             ? null
-            : string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.AllowedFoldersConflict], mount.VirtualPath);
+            : _strings.Format(
+                StudioStringKeys.AllowedFoldersConflict, mount.VirtualPath);
     }
 }

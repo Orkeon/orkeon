@@ -173,7 +173,7 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     public ObservableCollection<TeamMountRowViewModel> Rows { get; } = [];
 
     /// <summary>The modal's title: the folders of team X.</summary>
-    public string Title => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamMountsTitle], _teamName);
+    public string Title => _strings.Format(StudioStringKeys.TeamMountsTitle, _teamName);
 
     /// <summary>The footer's plain-words summary of what a save would keep.</summary>
     public string Summary
@@ -185,8 +185,8 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
                 return _strings[StudioStringKeys.TeamMountsNone];
 
             var virtualPaths = Rows.Where(r => r.IsChecked).Select(r => r.VirtualPath);
-            return string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamMountsSummary],
+            return _strings.Format(
+                StudioStringKeys.TeamMountsSummary,
                 kept.Count, string.Join(", ", virtualPaths));
         }
     }

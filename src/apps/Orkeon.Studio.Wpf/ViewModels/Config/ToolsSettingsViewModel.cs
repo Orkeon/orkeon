@@ -100,8 +100,8 @@ public sealed class ToolFamilyViewModel : ObservableObject
     public bool HasRequirements => Requirements.Count > 0;
 
     /// <summary>The line a family with nothing to configure ends on.</summary>
-    public string QuietLine => string.Format(
-        CultureInfo.CurrentCulture, _strings[StudioStringKeys.ToolFamilyQuietPattern], Tools.Count);
+    public string QuietLine => _strings.Format(
+        StudioStringKeys.ToolFamilyQuietPattern, Tools.Count);
 
     internal void RefreshLabels()
     {
@@ -149,7 +149,8 @@ public sealed class ToolRequirementViewModel : ObservableObject
         ToolRequirement.OnlyWithStoredKey => Format(StudioStringKeys.ToolOnlyWithStoredKey),
         ToolRequirement.ParametersAtCall => _strings[StudioStringKeys.ToolParametersAtCall],
         ToolRequirement.ExpertSetting => Format(StudioStringKeys.ToolExpertSetting),
-        ToolRequirement.EmailAccount => Format(StudioStringKeys.ToolNeedsEmailAccount),
+        // The sentence sends to the E-mail tab (STUDIO-67); the section the tool names is not said.
+        ToolRequirement.EmailAccount => _strings[StudioStringKeys.ToolNeedsEmailAccount],
         _ => "",
     };
 
@@ -159,5 +160,5 @@ public sealed class ToolRequirementViewModel : ObservableObject
     internal void RefreshText() => OnPropertyChanged(nameof(Text));
 
     private string Format(string key) =>
-        string.Format(CultureInfo.CurrentCulture, _strings[key], _tool.Argument ?? "");
+        _strings.Format(key, _tool.Argument ?? "");
 }

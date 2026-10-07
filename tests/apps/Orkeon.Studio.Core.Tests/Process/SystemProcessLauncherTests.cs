@@ -92,6 +92,46 @@ public sealed class SystemProcessLauncherTests
         Assert.Equal(["got:première:deuxième"], lines);
     }
 
+    /// <summary>
+    /// What the e-mail sign-in relies on to never outlive Studio (STUDIO-70): the verb waits
+    /// without a deadline and reads the end of its standard input as its driver leaving. Closing
+    /// the writer — which the operating system also does when the process that holds it ends —
+    /// is seen by a real child as the end of its input, and it ends on its own: no signal, no kill.
+    /// </summary>
+    [Fact]
+    public async Task A_child_that_reads_its_standard_input_ends_on_its_own_once_that_input_is_closed()
+    {
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
+
+        IProcessInputWriter? input = null;
+        var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lines = new List<string>();
+        var gate = new object();
+
+        var run = SystemProcessLauncher.Instance.RunAsync(
+            Script("echo waiting; cat > /dev/null; echo gone") with { OnInputReady = writer => input = writer },
+            line =>
+            {
+                lock (gate)
+                    lines.Add(line.Text);
+                if (line.Text == "waiting")
+                    waiting.TrySetResult();
+            },
+            TestContext.Current.CancellationToken);
+
+        await waiting.Task.WaitAsync(TestTimeout, TestContext.Current.CancellationToken);
+        Assert.False(run.IsCompleted);
+
+        input!.Close();
+        var result = await run.WaitAsync(TestTimeout, TestContext.Current.CancellationToken);
+
+        Assert.False(result.WasCancelled);
+        Assert.Equal(RunOutcome.Success, result.Outcome);
+        Assert.Equal(ProcessTerminationMode.Exited, result.Termination);
+        lock (gate)
+            Assert.Equal(["waiting", "gone"], lines);
+    }
+
     [Fact]
     public async Task Writing_to_a_finished_child_reports_false_instead_of_throwing()
     {

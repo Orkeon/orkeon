@@ -34,6 +34,8 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
     private readonly Dictionary<string, CliAnswer> _answers = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Conversation> _conversations = new(StringComparer.Ordinal);
     private readonly HashSet<string> _heldVerbs = new(StringComparer.Ordinal);
+    private readonly List<Session> _sessions = [];
+    private int _stoppedConversations;
 
     private Action<ProcessOutputLine>? _live;
     private TaskCompletionSource<int>? _parked;
@@ -79,6 +81,40 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
     /// </summary>
     public void Hold(string verb) => _heldVerbs.Add(verb);
 
+    /// <summary>How many sessions are open: started, and neither ended on their closed stdin nor stopped.</summary>
+    public int LiveConversations
+    {
+        get
+        {
+            lock (_sessions)
+                return _sessions.Count;
+        }
+    }
+
+    /// <summary>How many sessions their token stopped — the launcher's way of killing a child.</summary>
+    public int StoppedConversations => Volatile.Read(ref _stoppedConversations);
+
+    /// <summary>
+    /// Makes every open session of <paramref name="verb"/> speak <paramref name="lines"/> on its
+    /// own channel, unasked (STUDIO-70): a sign-in says it completed when the person is done in
+    /// the browser, not in answer to a line. Without an open session the lines fall on the floor.
+    /// </summary>
+    public void Say(string verb, params string[] lines)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(verb);
+        ArgumentNullException.ThrowIfNull(lines);
+
+        Session[] listening;
+        lock (_sessions)
+            listening = [.. _sessions.Where(session => string.Equals(session.Verb, verb, StringComparison.Ordinal))];
+
+        foreach (var session in listening)
+        {
+            foreach (var line in lines)
+                session.Output?.Invoke(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, line));
+        }
+    }
+
     /// <summary>True while a run is parked waiting for <see cref="Release"/>.</summary>
     public bool IsParked => _parked is not null;
 
@@ -109,7 +145,7 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
 
         var verb = VerbOf(request);
         if (_conversations.TryGetValue(verb, out var conversation))
-            return await ConverseAsync(request, conversation, onOutput, cancellationToken);
+            return await ConverseAsync(verb, request, conversation, onOutput, cancellationToken);
 
         var answer = _answers.TryGetValue(verb, out var scripted)
             ? scripted
@@ -187,26 +223,62 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
 
     /// <summary>A session run: its own output channel, open until its stdin closes or it is cancelled.</summary>
     private async Task<ProcessRunResult> ConverseAsync(
+        string verb,
         ProcessLaunchRequest request,
         Conversation conversation,
         Action<ProcessOutputLine>? onOutput,
         CancellationToken cancellationToken)
     {
-        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        request.OnInputReady?.Invoke(new ConversingInputWriter(this, conversation, onOutput, closed));
+        var session = new Session(verb, onOutput);
+        lock (_sessions)
+            _sessions.Add(session);
+
+        request.OnInputReady?.Invoke(new ConversingInputWriter(this, conversation, session));
 
         foreach (var line in conversation.Opening)
             onOutput?.Invoke(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, line));
 
-        using var abandon = cancellationToken.Register(() => closed.TrySetResult());
-        await closed.Task;
+        using var abandon = cancellationToken.Register(() => End(session, stopped: true));
+        await session.Ended.Task;
 
-        return cancellationToken.IsCancellationRequested
+        return session.Stopped
             ? ProcessRunResult.FromCancellation(
                 rawExitCode: -1,
                 ProcessTerminationOutcome.Of(ProcessTerminationMode.StoppedBySignal),
                 TimeSpan.Zero)
             : ProcessRunResult.FromExitCode(0, TimeSpan.Zero);
+    }
+
+    /// <summary>
+    /// Ends <paramref name="session"/> once — on its closed stdin, or stopped by its token — and
+    /// counts it out on the spot: what a test reads right after the cause is already true.
+    /// </summary>
+    private void End(Session session, bool stopped)
+    {
+        lock (_sessions)
+        {
+            if (!_sessions.Remove(session))
+                return;
+
+            session.Stopped = stopped;
+        }
+
+        if (stopped)
+            Interlocked.Increment(ref _stoppedConversations);
+
+        session.Ended.TrySetResult();
+    }
+
+    /// <summary>One open session: the verb it plays, the channel it speaks on, and how it ended.</summary>
+    private sealed class Session(string verb, Action<ProcessOutputLine>? output)
+    {
+        public string Verb { get; } = verb;
+
+        public Action<ProcessOutputLine>? Output { get; } = output;
+
+        public TaskCompletionSource Ended { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool Stopped { get; set; }
     }
 
     /// <summary>What a session says when it starts, and how it answers a line.</summary>
@@ -216,22 +288,21 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
     private sealed class ConversingInputWriter(
         ScriptedOrkeonCli owner,
         Conversation conversation,
-        Action<ProcessOutputLine>? onOutput,
-        TaskCompletionSource closed) : IProcessInputWriter
+        Session session) : IProcessInputWriter
     {
         public bool TryWriteLine(string line)
         {
-            if (closed.Task.IsCompleted)
+            if (session.Ended.Task.IsCompleted)
                 return false;
 
             owner.InputLines.Add(line);
             foreach (var answer in conversation.Reply(line))
-                onOutput?.Invoke(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, answer));
+                session.Output?.Invoke(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, answer));
 
             return true;
         }
 
-        public void Close() => closed.TrySetResult();
+        public void Close() => owner.End(session, stopped: false);
     }
 
     private sealed class ScriptedInputWriter(ScriptedOrkeonCli owner) : IProcessInputWriter

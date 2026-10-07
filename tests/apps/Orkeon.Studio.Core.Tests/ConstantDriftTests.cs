@@ -3,15 +3,19 @@ using Orkeon.Constants.FileSystem;
 using System.Reflection;
 using System.Text.Json;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Constants.Protocol;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Run;
 using Orkeon.Studio.Core.Storage;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.Tests.Doubles;
 using Orkeon.Studio.Core.Validation;
 
 namespace Orkeon.Studio.Core.Tests;
@@ -145,6 +149,42 @@ public sealed class ConstantDriftTests
         Assert.All(engine, kind => Assert.Equal(
             string.Equals(kind, LlmUsageOperations.Agent, StringComparison.Ordinal),
             RunCostOperations.IsAgentWork(kind)));
+    }
+
+    /// <summary>
+    /// The sign-in of an e-mail account is a stream the CLI writes and Studio reads (STUDIO-70),
+    /// and a kind Studio does not read is not an error anywhere: the panel would simply never say
+    /// what to do. Every kind the shared vocabulary declares must therefore come out of the client
+    /// as something — a step, the completion, or the refusal — and never be skipped. The other
+    /// half, that the CLI writes these kinds and no other, is pinned by <c>EmailCommandTests</c>.
+    /// </summary>
+    [Fact]
+    public async Task Every_kind_of_the_email_sign_in_is_read_by_studio()
+    {
+        var read = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var kind in EmailEventKinds.All)
+        {
+            var launcher = new FakeProcessLauncher().WithStandardOutput(
+                $$"""{"v":2,"seq":1,"kind":"{{kind}}","verification_uri":"https://example.com/device","user_code":"CODE","expires_in":60,"authorization_uri":"https://example.com/auth","account":"a","code":"LoginRequired","message":"refused"}""");
+            var probe = new FakeExecutableProbe { BaseDirectory = "/opt/orkeon" }.WithFile("/opt/orkeon/orkeon");
+            var client = new EmailCliClient(new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(probe, ["orkeon"])));
+            var steps = new List<EmailLoginStep>();
+
+            var ended = await client.LoginAsync("a", "/tmp/appsettings.json", steps.Add, cancellationToken: TestContext.Current.CancellationToken);
+
+            read[kind] = steps.Count > 0
+                ? steps[0].Kind.ToString()
+                : ended.Failure is { } failure ? failure.Kind.ToString() : ended.Kind.ToString();
+        }
+
+        // Five kinds, five distinct readings — and none of them "the verb said nothing I know".
+        Assert.Equal(EmailEventKinds.All.Count, read.Values.Distinct(StringComparer.Ordinal).Count());
+        Assert.DoesNotContain(nameof(EmailCliFailureKind.Unreadable), read.Values);
+        Assert.Equal(nameof(EmailLoginStepKind.DeviceCode), read[EmailEventKinds.LoginDeviceCode]);
+        Assert.Equal(nameof(EmailLoginStepKind.AuthorizationUrl), read[EmailEventKinds.LoginAuthorizationUrl]);
+        Assert.Equal(nameof(EmailLoginStepKind.RedirectRejected), read[EmailEventKinds.LoginRedirectRejected]);
+        Assert.Equal(nameof(EmailLoginStepKind.Completed), read[EmailEventKinds.LoginCompleted]);
+        Assert.Equal(nameof(EmailCliFailureKind.Refused), read[EmailEventKinds.Error]);
     }
 
     private static string BuiltVersion() =>

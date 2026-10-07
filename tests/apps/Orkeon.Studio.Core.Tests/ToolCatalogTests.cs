@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Orkeon.Domain.Attributes;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Tools;
 using Orkeon.Tools.Email.DependencyInjection;
 
@@ -132,5 +133,19 @@ public sealed partial class ToolCatalogTests
         });
         Assert.Equal("Orkeon:Tools:Email:Accounts", ToolCatalog.EmailAccounts);
         Assert.Equal(ToolRequirement.None, Assert.Single(email.Tools, t => t.Name == EmailParser).Requirement);
+    }
+
+    /// <summary>
+    /// STUDIO-67 — Studio has a form for the accounts, so the sentence of the requirement sends to
+    /// Settings › E-mail: it names neither the section of the file nor <c>orkeon email login</c>.
+    /// </summary>
+    [Fact]
+    public void The_email_account_requirement_reads_as_a_pointer_to_the_email_settings_tab()
+    {
+        var sentence = EnglishStudioStrings.Instance[StudioStringKeys.ToolNeedsEmailAccount];
+
+        Assert.Equal("needs an e-mail account, declared in Settings › E-mail", sentence);
+        Assert.Contains(EnglishStudioStrings.Instance[StudioStringKeys.ShellMails], sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("{0}", sentence, StringComparison.Ordinal);
     }
 }

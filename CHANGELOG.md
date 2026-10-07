@@ -34,6 +34,187 @@ retried like a rate limit; Kimi's retry on a mandated temperature covers buffere
 a stream surfaces the refusal; `orkeon llm models -p anthropic` cannot send the workspace
 header an identity-linked key requires.
 
+### Changed — the e-mail tools read a password variable from the Windows user scope too
+
+The variable an account names for its password (`Auth:PasswordEnvVar`) or its OAuth client secret
+(`Auth:ClientSecretEnvVar`) was read in the process environment alone. A password stored for the
+user — by `setx`, or by Orkeon Studio — reached a program started afterwards by inheritance, and
+neither a terminal opened before it nor a scheduled task (STUDIO-68).
+
+- **The process environment, then the user's.** On Windows the e-mail tools now read the
+  variable in the process environment, then in the user's persistent scope (`HKCU\Environment`),
+  as an LLM key's variable is read. The first non-empty value wins, the process first.
+- **Read, never copied.** A secret found in the user scope is not written into the process: what
+  a run starts — a shell tool, a stdio MCP server — inherits no secret it did not have.
+- **A user scope that cannot be read is an absent variable** (a service account without a
+  profile): the call fails as it does without a password, and nothing else does.
+- **The failure says where it looked.** On Windows: « … is read from the environment variable X,
+  which is set neither in the process environment nor in the user's. » On Linux and macOS, which
+  have no user scope, nothing changes: the process environment alone, and the sentence keeps its
+  form (« …, which is not set. »).
+- **`orkeon email accounts` and `orkeon email check` follow**, and so does `orkeon-repl`: they
+  read through the same seam, so an account ready for a run is ready for the verb.
+
+Docs: the e-mail guide (EN and FR) gains « Where a secret variable is read » and its
+troubleshooting entry tells the two sentences apart; the configuration reference aligns the
+e-mail secrets on `ApiKeyEnvVar`.
+
+### Added — orkeon email login --events jsonl
+
+`orkeon email login` spoke to a person: a sentence with an address and a code, or an address to
+open and an invitation to paste the one the browser ends on. A program could not read either
+safely. With `--events jsonl` the verb writes each step of the sign-in as one JSON event on
+standard output — and nothing else there —, in the envelope of the run stream, under five kinds
+declared once in `Orkeon.Constants.Protocol.EmailEventKinds`: `email.login.device_code`
+(`verification_uri`, `user_code`, `expires_in`), `email.login.authorization_url`
+(`authorization_uri`), `email.login.redirect_rejected` (`message`), `email.login.completed`
+(`account`) and `error` (`code`, the e-mail error code; `message`; `recoverable`), which
+replaces the line on stderr. The exit codes did not move (STUDIO-70).
+
+- **Standard input is the driver's hold on the verb.** A line written to it is the address the
+  browser ended on — the fallback of the Google flow when the browser cannot reach this machine.
+  Closing it aborts the sign-in with exit code `130`, in the device flow too: the loopback wait
+  has no deadline, and a driver that goes away must not leave the verb listening on its port.
+  No deadline was added to the verb.
+- **Without the option nothing changed**: the same sentences, on the same streams.
+- **`IEmailLoginInteraction.ShowDeviceCodeAsync` takes the lifetime of the code** (`expiresIn`),
+  as the provider granted it: a C# host that implements the interface adds the parameter.
+- **A pasted line that is not the browser's address is said, no longer swallowed.** The sign-in
+  set it aside in silence and went on waiting; it still waits — a rejected line is not a failed
+  sign-in, and an empty one is still ignored —, but says why first, in one sentence that never
+  repeats the line (it may hold an authorization code): not an address, the address to open,
+  not the redirect address of this sign-in, or no authorization code. With `--events jsonl`
+  that is `email.login.redirect_rejected` (`message`); at a terminal, a sentence on standard
+  output that asks for the complete address — a sign-in where nothing is rejected prints what
+  it printed. `IEmailLoginInteraction` gains `ShowRedirectRejectedAsync(account, reason, …)`: a
+  C# host that implements the interface adds the method.
+
+Docs: the CLI reference and the e-mail guide (EN and FR) describe the option and its five kinds.
+
+### Added — Studio: an E-mail settings tab
+
+The mail tools read their accounts from `Orkeon:Tools:Email`, and Studio sent whoever wanted one
+to the settings file and to a command line. Settings has an eighth tab, **E-mail** (« Mails » in
+French), in both modes, where the accounts are declared, renamed and removed in a form
+(STUDIO-65, STUDIO-67).
+
+- **The settings document reads and writes the section** (STUDIO-65). `AppSettingsDocument.Email`
+  lists, reads, writes, renames and removes the accounts and carries `DefaultAccount`,
+  `Screening:WithholdRejected` and `CredentialsDirectory`. A key Studio does not model stays
+  where it was, a value the user did not change keeps the spelling the file had, and nothing is
+  written as an empty string, an empty object or an empty list.
+- **The novice declares an account without reading a key name.** A small box asks for the name,
+  the provider and the address and writes only once validated; the form then shows the provider,
+  the address, the name shown to recipients, the six rights as six sentences, the sign-in method
+  — the OAuth client ID once it is OAuth2 —, the allowed recipients as soon as « Send » is
+  ticked, and the two server names of an account no preset fills. Every edit saves the file.
+- **The expert sees every key.** The protocols, ports and securities of both sides, the user
+  name, the names of the two secret variables, the Microsoft tenant, the sending quotas, the
+  timeout, the copy of sent mail, and the two settings of the section, each with its
+  configuration key as a tooltip. No key is reachable through the raw file alone.
+- **A field left empty says what it is worth.** The watermark is what the engine will use —
+  `imap.gmail.com`, port 993, OAuth2 for Outlook — and changing the provider moves it without
+  rewriting what was typed.
+- **Each account says what the run will say of it**, as the file holds it: an unknown key, a
+  value the engine cannot read, a missing right. They are warnings — an incomplete account stops
+  no save, of the account or of any other setting.
+- **Renaming and removing ask first, and say what they leave.** An account that signs in with
+  OAuth2 must sign in again under its new name, since its token file carries the old one;
+  the password stays in its environment variable; removing an account leaves that variable and
+  the tokens on the machine. `DefaultAccount` follows a rename and goes with its account.
+- **The tab says which file it writes.** A run reads one settings file: a team launched on
+  another one does not see these accounts, and Studio lays nothing over a launch to give them.
+- **The Tools tab sends to it.** The line of the twelve mailbox tools reads « needs an e-mail
+  account, declared in Settings › E-mail », in the five languages, and names neither the file
+  nor a command.
+- **The password is typed in the form, and a run finds it** (STUDIO-68). An account that signs
+  in with a password has a masked field and a state — « Stored on this machine, outside any
+  file » or « Not stored yet », never the value. Studio hands the value to the store of the
+  model keys, under the variable the file names, else under one derived from the account
+  (`EMAIL_<ACCOUNT>_PASSWORD`; a `_2` when another account already names it, never an `ORKEON_`
+  prefix), and the first value kept writes that name into the file. A name the file holds is
+  never rewritten: neither a new password nor a renamed account moves the variable. A Gmail
+  account that signs in with OAuth2 has the same field for its client secret. No file — settings,
+  launcher or history — carries the value, and since the engine reads the user scope (above), a
+  launch from Studio, a terminal opened before the password was typed and a scheduled team all
+  find it; the launchers and the scheduled-run check did not change.
+- **Each account says whether it is ready, and a button tests the connection** (STUDIO-69). The
+  state — « Ready », « Not ready » with the engine's sentence, « Set aside », or « Unknown » with
+  the reason when the CLI is missing or failed — is what `orkeon email accounts --json` answers
+  for the file as saved, read at once on arrival on the tab, then once the saves pause — one
+  reading for a burst of novice keystrokes, one for a password stored, never one process per
+  key; unsaved edits mark it « As of the saved file » and disable the test. « Test the
+  connection » runs `orkeon email check`: reachable with the number of folders, to fix on this
+  machine (exit code 1) or the server or the network (exit code 2),
+  over the sentence the command prints, shown as is; an edit or a rename of the account stops
+  its test and clears the verdict. Both always pass `--settings`, through the
+  new `EmailCliClient` of Studio.Core; the test never runs on its own, and leaving the tab, the
+  settings screen or Studio stops it.
+- **An OAuth account signs in and out from its row** (STUDIO-70). « Sign in » runs
+  `orkeon email login --events jsonl` (above) on the file as saved — Studio runs no OAuth flow
+  and holds no token — and a panel under the account says what to do while the command waits:
+  Microsoft's page and the code, in large, counted down, then « The code expired — start again »
+  (offered too when the command's own refusal of the expired code lands first); Google's
+  address, and a field for the one the browser ended on, which keeps an address the command no
+  longer reads and says it was not sent, and takes back an address the command rejects — cut
+  short, another address, plain text — under « That is not the address the browser ended on: »
+  and the command's sentence, while the panel goes on waiting. Studio opens nothing by
+  itself: the address shows in clear, with « Copy the link » and « Open in the browser », a
+  click that only ever opens an absolute `https` address. A sign-in that ends well reads the
+  states again and the account turns « Ready »; a refusal of the command — no refresh token, a
+  client secret that is not stored — shows as printed and is never tried again. « Sign out »
+  asks first, then runs `orkeon email logout`. « Cancel », the code's expiry, another tab,
+  another screen and closing Studio each stop the command — its standard input is closed on the
+  spot, which the command reads as its driver leaving. A device code is shown in the panel and
+  kept nowhere else.
+
+The tab opens no connection on its own: the test and the sign-in are clicks. Docs: the Studio
+page (EN and FR) describes the tab, and the e-mail guide and the mailbox tutorial point to it.
+
+### Added — Studio's settings check judges the e-mail accounts as the run will
+
+An e-mail account declared wrong stops no run: the engine sets it aside, and says why when a
+tool or `orkeon email` names it. Studio said nothing of `Orkeon:Tools:Email`, so a misspelt
+right or a missing host was first heard of at a tool call (STUDIO-66).
+
+- **The settings check reads each account as the engine does.** A name the engine refuses, a
+  key no account carries, a value its binder cannot read, a missing address or right, servers
+  that do not hold together, a sign-in that does not fit the provider, a recipient pattern or a
+  quota it refuses, the right to send without an outgoing server, a `DefaultAccount` that names
+  no account, a `Screening:WithholdRejected` that is neither true nor false: each is said in
+  the engine's own sentence, at the key that fixes it (`STUDIO-MAIL-NAME`, `-KEY`, `-VALUE`,
+  `-ADDRESS`, `-RIGHTS`, `-SERVER`, `-AUTH`, `-SEND`, `-DEFAULT`, `-SCREENING`), with its
+  plain-language line in the five languages. The file is judged as it is written: an empty
+  `Incoming:Host` blocks the preset's host, and an unreadable value is all the engine says of
+  the account that holds it.
+- **Every finding is a warning, and the file saves.** The run does not refuse to start on a
+  broken account, so Studio does not refuse to save one. The one error is
+  `STUDIO-MAIL-DUPLICATE`: two account names equal but for the case whose objects set one same
+  key — the JSON configuration refuses a key written twice, and no run can read the file. When
+  the two share no key the run reads one account made of both, and the finding is a warning.
+- **Two keys equal but for the case in one object are said too.** `Provider` and `provider` in
+  an account, `Host` and `host` under `Incoming`, `DefaultAccount` and `defaultaccount` in the
+  section: the JSON configuration refuses the second, no run starts, and the check said nothing.
+  `STUDIO-MAIL-TWIN` names both spellings at the key, alone on the account that carries them —
+  an error when both set one same configuration key, a warning when they are objects the
+  configuration merges, of which Studio reads and edits one only. The severity is held to the
+  configuration a run composes, which also corrects `STUDIO-MAIL-DUPLICATE` on an empty account
+  followed by a twin name that holds a value: refused by the run, and now an error.
+- **A field left blank has a value Studio can show.** `EmailAccountEffective.Of` gives what
+  the engine resolves from the provider preset — protocols, hosts, ports, securities, the
+  sign-in method, the login name, the tenant, whether a sent copy is kept, whether the account
+  can send — without writing any of it.
+- **Held to the engine.** Studio Core does not reference `Orkeon.Tools.Email`, so
+  `EmailAccountRules` spells its rules again; `EmailValidationOracleTests` hands every row —
+  accounts Studio writes and accounts written by hand — to the engine's binder, registry and
+  resolver, and the verdict, the problems of each family and the effective values must agree.
+  Two rules differ on purpose: a `PasswordEnvVar` or `ClientSecretEnvVar` that cannot be a
+  variable's name is a warning of Studio's own, its value never repeated; and the address is
+  read more loosely than by the engine, which parses it with MimeKit.
+
+The findings show in the validation list of the Settings screen; no screen edits an account
+yet.
+
 ### Changed — the release smokes check the notices of every payload, and the runner image says what its build context holds (GAP-52)
 
 Since GAP-45 every published payload carries its license, `THIRD-PARTY-NOTICES.md` and, for

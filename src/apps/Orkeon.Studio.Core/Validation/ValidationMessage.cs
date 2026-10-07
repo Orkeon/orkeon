@@ -119,4 +119,53 @@ public static class ValidationCodes
 
     /// <summary>An MCP server's environment block carries what looks like a secret, in clear text.</summary>
     public const string McpEnvLooksSecret = "STUDIO-MCP-ENV-SECRET";
+
+    /// <summary>An e-mail account name the engine refuses (STUDIO-66): the account is set aside.</summary>
+    public const string EmailName = "STUDIO-MAIL-NAME";
+
+    /// <summary>
+    /// Two e-mail account names equal but for the case — with <see cref="EmailTwin"/>, the e-mail
+    /// findings that are an error: the JSON configuration refuses a key written twice without regard
+    /// to case, so no run reads the file. A warning when the two share no key, which the run reads
+    /// as one account.
+    /// </summary>
+    public const string EmailDuplicate = "STUDIO-MAIL-DUPLICATE";
+
+    /// <summary>
+    /// Two keys equal but for the case in one object of <c>Orkeon:Tools:Email</c> (<c>Provider</c>
+    /// and <c>provider</c>) — an error when both set one same key, which the JSON configuration
+    /// refuses: no run reads the file. A warning when they are objects that share no key, which the
+    /// run reads as one while Studio reads and edits one of them only.
+    /// </summary>
+    public const string EmailTwin = "STUDIO-MAIL-TWIN";
+
+    /// <summary>A key no e-mail account carries: the engine sets the account aside.</summary>
+    public const string EmailKey = "STUDIO-MAIL-KEY";
+
+    /// <summary>A value of an e-mail account the engine cannot read (a misspelt right, a port in words).</summary>
+    public const string EmailValue = "STUDIO-MAIL-VALUE";
+
+    /// <summary>An e-mail account without an address, or with a text that is none.</summary>
+    public const string EmailAddress = "STUDIO-MAIL-ADDRESS";
+
+    /// <summary>An e-mail account that grants no right.</summary>
+    public const string EmailRights = "STUDIO-MAIL-RIGHTS";
+
+    /// <summary>The servers of an e-mail account: host, port, protocol, security, timeout.</summary>
+    public const string EmailServer = "STUDIO-MAIL-SERVER";
+
+    /// <summary>How an e-mail account signs in: method, variable names, client id, tenant.</summary>
+    public const string EmailAuth = "STUDIO-MAIL-AUTH";
+
+    /// <summary>The sending side of an e-mail account: recipients, quotas, <c>Send</c> without an outgoing server.</summary>
+    public const string EmailSend = "STUDIO-MAIL-SEND";
+
+    /// <summary><c>Orkeon:Tools:Email:DefaultAccount</c> names no declared account.</summary>
+    public const string EmailDefault = "STUDIO-MAIL-DEFAULT";
+
+    /// <summary>
+    /// <c>Orkeon:Tools:Email:Screening:WithholdRejected</c> is neither true nor false: the engine sets
+    /// every account aside until it is.
+    /// </summary>
+    public const string EmailScreening = "STUDIO-MAIL-SCREENING";
 }

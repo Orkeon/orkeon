@@ -3,8 +3,9 @@
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET.
 
 **Orkeon.Constants.Protocol** declares the wire vocabulary two Orkeon processes exchange: the
-event kinds a run streams as it executes (`run.started`, `task.completed`, `llm.delta`, …), and
-the ones the use-case search answers with (`usecases.results`, …). It **depends on nothing** — no
+event kinds a run streams as it executes (`run.started`, `task.completed`, `llm.delta`, …), the
+ones the use-case search answers with (`usecases.results`, …), and the ones the sign-in of an
+e-mail account says its steps with (`email.login.device_code`, …). It **depends on nothing** — no
 Orkeon project, no third-party package — so any layer may reference it without dragging the
 runtime along ([ADR-009](https://github.com/Orkeon/orkeon/blob/main/docs/adr/ADR-009-shared-constants-satellites.md)).
 
@@ -26,6 +27,7 @@ This project is not distributed as a NuGet package of its own — its assembly s
 | `RunEventKinds` | The event kinds a run emits, plus `All` — the set, so a consumer can assert it handles every one. |
 | `RunEventErrorCodes` | The `code` of the `error` event a stopped run ends on: `crew_failed` or `crew_cancelled`. |
 | `UseCaseEventKinds` | The event kinds `orkeon usecases` exchanges with the process driving it — the search session's query and answer, the catalogue, a sheet, an export — plus `All`. |
+| `EmailEventKinds` | The event kinds `orkeon email login --events jsonl` writes for the process driving it — the device code, the authorization address, a pasted redirect that was rejected, the completion, the refusal — plus `All`. |
 
 ## License
 

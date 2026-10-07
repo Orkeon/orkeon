@@ -164,7 +164,7 @@ public sealed class StatusBarViewModel : ObservableObject
 
     /// <summary>Names the default profile the provider and the model come from.</summary>
     public string? ProfileTip => _profiles?.Set.Default is { } profile
-        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.StatusBarProfileTip], profile.Name)
+        ? _strings.Format(StudioStringKeys.StatusBarProfileTip, profile.Name)
         : null;
 
     /// <summary>The profile shows at rest, to the expert, when there is one to show.</summary>

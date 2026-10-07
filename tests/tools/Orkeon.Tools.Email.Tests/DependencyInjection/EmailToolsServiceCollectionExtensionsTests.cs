@@ -86,6 +86,27 @@ public sealed class EmailToolsServiceCollectionExtensionsTests
         Assert.NotNull(provider.GetRequiredService<EmailAccountAdministration>());
     }
 
+    [Fact]
+    public async Task Should_read_secrets_from_the_machine_process_then_user_scope_where_one_exists()
+    {
+        // The registered provider reads the machine's own environment. A variable no machine
+        // holds is looked for in both scopes under Windows, and in the process alone elsewhere:
+        // the sentence says which. Read only — no test sets a variable of the machine.
+        var name = "EMAIL_TEST_" + Guid.NewGuid().ToString("N");
+        var declared = TestAccounts.Gmail();
+        declared.Auth.PasswordEnvVar = name;
+        using var provider = Build(services => services.AddOrkeonEmailTools(EmptyConfiguration()));
+        var credentials = provider.GetRequiredService<EmailCredentialProvider>();
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () =>
+            await credentials.GetAsync(TestAccounts.Resolve("perso", declared), Token));
+
+        var looked = OperatingSystem.IsWindows() ? "is set neither in the process environment nor in the user's" : "is not set";
+        Assert.Equal(
+            $"The password of e-mail account 'perso' is read from the environment variable {name}, which {looked}.",
+            error.Message);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

@@ -15,7 +15,7 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// check over Graph, readiness, sign-out — runs offline.
 /// </summary>
 [Collection(CliCollection.Name)]
-public sealed class EmailCommandTests
+public sealed partial class EmailCommandTests
 {
     [Fact]
     public async Task Accounts_WithoutAnyAccount_SaysWhereToDeclareOne()
@@ -73,6 +73,46 @@ public sealed class EmailCommandTests
         Assert.Equal("perso", account.GetProperty("name").GetString());
         Assert.True(account.GetProperty("default").GetBoolean());
         Assert.False(account.GetProperty("ready").GetBoolean());
+    }
+
+    /// <summary>
+    /// The contract Orkeon Studio reads (STUDIO-69): its settings screen pairs each account with
+    /// its state by these names. A property renamed or dropped here leaves every account
+    /// "unknown" there, so the ten names are pinned, for an account the engine resolved and for
+    /// one it set aside alike.
+    /// </summary>
+    [Fact]
+    public async Task Accounts_Json_CarriesTheTenPropertiesStudioReads()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "Orkeon": { "Tools": { "Email": { "Accounts": {
+                "perso":  { "Provider": "Gmail", "Address": "me@gmail.com", "Rights": "Read",
+                            "Auth": { "PasswordEnvVar": "ORKEON_TEST_EMAIL_UNSET_VARIABLE" } },
+                "broken": { "Provider": "Gmail", "Address": "me@gmail.com" }
+            } } } } }
+            """);
+        using var console = new TestConsole();
+
+        var exit = await EmailCommand.ExecuteAccountsAsync(new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
+
+        Assert.Equal(Program.ExitOk, exit);
+        using var document = JsonDocument.Parse(console.Stdout);
+        var accounts = document.RootElement.EnumerateArray().ToList();
+        Assert.Equal(2, accounts.Count);
+        string[] expected = ["address", "auth", "default", "name", "problem", "provider", "reads", "ready", "rights", "sends"];
+        foreach (var account in accounts)
+            Assert.Equal(expected, account.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+
+        var perso = accounts.Single(account => account.GetProperty("name").GetString() == "perso");
+        Assert.Equal("Imap", perso.GetProperty("reads").GetString());
+        Assert.Equal("Password", perso.GetProperty("auth").GetString());
+        Assert.Contains("ORKEON_TEST_EMAIL_UNSET_VARIABLE", perso.GetProperty("problem").GetString(), StringComparison.Ordinal);
+
+        var broken = accounts.Single(account => account.GetProperty("name").GetString() == "broken");
+        Assert.Equal("?", broken.GetProperty("provider").GetString());
+        Assert.False(broken.GetProperty("ready").GetBoolean());
+        Assert.Contains("Rights is required", broken.GetProperty("problem").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]

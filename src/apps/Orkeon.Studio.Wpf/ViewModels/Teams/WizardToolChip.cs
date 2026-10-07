@@ -58,7 +58,7 @@ public static class WizardToolChips
         // A scoped tool whose mount the caller could not name says what it does, without
         // inventing a folder: the old code answered «/docs» whatever the blueprint said.
         return scope is { Length: > 0 }
-            ? new WizardToolChip(string.Format(CultureInfo.CurrentCulture, strings[patternKey], scope), icon)
+            ? new WizardToolChip(strings.Format(patternKey, scope), icon)
             : new WizardToolChip(strings[patternKey].Replace(" {0}", "", StringComparison.Ordinal), icon);
     }
 }

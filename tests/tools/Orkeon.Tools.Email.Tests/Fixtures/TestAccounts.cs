@@ -29,6 +29,16 @@ internal static class TestAccounts
     /// <summary>An environment holding the test password.</summary>
     public static EmailEnvironment PasswordEnvironment() => Environment((PasswordVariable, Password));
 
+    /// <summary>
+    /// The environment of a machine that has a user scope (Windows): the process holds nothing,
+    /// the user scope exactly <paramref name="variables"/>.
+    /// </summary>
+    public static EmailEnvironment UserScope(params (string Name, string Value)[] variables)
+    {
+        var values = variables.ToDictionary(v => v.Name, v => v.Value, StringComparer.Ordinal);
+        return new EmailEnvironment(_ => null, name => values.GetValueOrDefault(name));
+    }
+
     /// <summary>A custom IMAP/SMTP account declaration with explicit hosts.</summary>
     public static EmailAccountOptions Custom(EmailRights rights = EmailRights.Read)
     {

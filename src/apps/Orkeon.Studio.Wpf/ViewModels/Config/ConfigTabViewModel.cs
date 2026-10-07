@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
@@ -65,6 +66,25 @@ public sealed class ConfigTabViewModel : ObservableObject
         Mounts.Changed += OnMountsChanged;
 
         Location = new SettingsLocationViewModel(Picker, globalPathOverride, _strings);
+        // After the location: the E-mail tab says which file its accounts are written to (STUDIO-67).
+        // Its passwords go to the store of the model keys, never to the document (STUDIO-68).
+        // The state of each account comes from the CLI, over the runner the window shares — none
+        // when the tab was built without one: the states are read without a click (STUDIO-69).
+        Email = new EmailSectionViewModel(
+            () => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker, seams.KeyStore,
+            seams.EmailCli ?? (seams.ProcessRunner is { } shared ? new EmailCliClient(shared) : null),
+            () => _isDirty,
+            seams.Dispatcher,
+            // Signing an OAuth account in (STUDIO-70): the browser is only opened on a click, and
+            // the countdown of a device code reads the window's clock on a beat of its own.
+            new EmailSignInServices
+            {
+                Browser = seams.BrowserOpener,
+                Clipboard = seams.Clipboard,
+                Ticker = seams.SignInTicker,
+                Clock = seams.Clock,
+            },
+            seams.EmailStatesDelay);
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,
@@ -85,6 +105,8 @@ public sealed class ConfigTabViewModel : ObservableObject
         {
             if (e.PropertyName is nameof(SettingsLocationViewModel.CanSave))
                 SaveCommand.RaiseCanExecuteChanged();
+            if (e.PropertyName is nameof(SettingsLocationViewModel.EffectivePath))
+                Email.RefreshSettingsFile();
         };
         // The explicit Validate lands its verdict in the status line (audit 07/16): the
         // novice screen has no validation card any more, the summary is the feedback.
@@ -121,9 +143,11 @@ public sealed class ConfigTabViewModel : ObservableObject
     /// <summary>The <c>MCP</c> form of the MCP tab (STUDIO-21).</summary>
     public McpSectionViewModel Mcp { get; }
 
+    /// <summary>The <c>Orkeon:Tools:Email</c> form of the E-mail tab (STUDIO-67).</summary>
+    public EmailSectionViewModel Email { get; }
+
     /// <summary>The <c>Orkeon:FileSystem:Mounts</c> editor (spec §4.5).</summary>
     public MountsEditorViewModel Mounts { get; }
-
 
     /// <summary>The save-location picker and resolution chain (spec §4.3).</summary>
     public SettingsLocationViewModel Location { get; }
@@ -160,7 +184,12 @@ public sealed class ConfigTabViewModel : ObservableObject
     public bool IsDirty
     {
         get => _isDirty;
-        private set => SetProperty(ref _isDirty, value);
+        private set
+        {
+            // The e-mail tab shows the states of the file as saved, and says so while it differs.
+            if (SetProperty(ref _isDirty, value))
+                Email.RefreshSavedFile();
+        }
     }
 
     /// <summary>The outcome of the last load, save or validation.</summary>
@@ -232,6 +261,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         LlmLogging.Refresh();
         ShellTools.Refresh();
         Mcp.Refresh();
+        Email.Refresh();
         Mounts.Load(_document.Mounts.RawEntries);
 
         IsDirty = false;
@@ -277,7 +307,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         SetDocument(document, path);
         Location.UseCustomPath(path);
-        StatusMessage = string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigLoaded], path);
+        StatusMessage = _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigLoaded, path);
         Saved?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -312,7 +342,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         }
 
         SetDocument(document, path);
-        StatusMessage = string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigLoaded], path);
+        StatusMessage = _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigLoaded, path);
         Saved?.Invoke(this, EventArgs.Empty);
     }
 
@@ -332,9 +362,9 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         if (HasBlockingErrors)
         {
-            StatusMessage = string.Format(
+            StatusMessage = _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.ConfigNotSavedErrors],
+                StudioStringKeys.ConfigNotSavedErrors,
                 ValidationMessages.Count(m => m.IsError));
             return false;
         }
@@ -353,20 +383,20 @@ public sealed class ConfigTabViewModel : ObservableObject
         {
             // A read-only or locked file must be SAID, not swallowed — the novice auto-save
             // has no Save button and no dirty flag to betray a silent loss.
-            StatusMessage = string.Format(
-                CultureInfo.CurrentCulture, _strings[StudioStringKeys.ConfigNotSavedWriteFailed], ex.Message);
+            StatusMessage = _strings.Format(
+                StudioStringKeys.ConfigNotSavedWriteFailed, ex.Message);
             return false;
         }
 
         LoadedPath = path;
         IsDirty = false;
         StatusMessage = HasLlmWarning
-            ? string.Format(
+            ? _strings.Format(
                 CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.ConfigSavedLlmWarning],
+                StudioStringKeys.ConfigSavedLlmWarning,
                 path,
                 ValidationCodes.LlmSectionMissing)
-            : string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigSaved], path);
+            : _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigSaved, path);
 
         Saved?.Invoke(this, EventArgs.Empty);
         return true;
@@ -402,9 +432,9 @@ public sealed class ConfigTabViewModel : ObservableObject
 
             return errors == 0 && warnings == 0
                 ? _strings[StudioStringKeys.ConfigNoProblem]
-                : string.Format(
+                : _strings.Format(
                     CultureInfo.InvariantCulture,
-                    _strings[StudioStringKeys.ConfigErrorsWarnings], errors, warnings);
+                    StudioStringKeys.ConfigErrorsWarnings, errors, warnings);
         }
     }
 
