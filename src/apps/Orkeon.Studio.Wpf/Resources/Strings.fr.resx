@@ -724,6 +724,17 @@
   <data name="Studio.Settings.MailPasswordMissing" xml:space="preserve"><value>Pas encore mémorisé</value></data>
   <data name="Studio.Settings.MailClientSecret" xml:space="preserve"><value>Secret client (application de bureau Google)</value></data>
   <data name="Studio.Settings.MailSecretVariable" xml:space="preserve"><value>Conservé dans la variable {0}</value></data>
+  <data name="Studio.Settings.MailStateReady" xml:space="preserve"><value>Prêt</value></data>
+  <data name="Studio.Settings.MailStateNotReady" xml:space="preserve"><value>Pas prêt</value></data>
+  <data name="Studio.Settings.MailStateSetAside" xml:space="preserve"><value>Mis de côté</value></data>
+  <data name="Studio.Settings.MailStateUnknown" xml:space="preserve"><value>Inconnu — {0}</value></data>
+  <data name="Studio.Settings.MailStateOfSavedFile" xml:space="preserve"><value>État du fichier enregistré — enregistrez pour vérifier à nouveau</value></data>
+  <data name="Studio.Settings.MailTest" xml:space="preserve"><value>Tester la connexion</value></data>
+  <data name="Studio.Settings.MailTesting" xml:space="preserve"><value>Connexion en cours…</value></data>
+  <data name="Studio.Settings.MailTestReachable" xml:space="preserve"><value>Joignable</value></data>
+  <data name="Studio.Settings.MailTestFailed" xml:space="preserve"><value>Connexion impossible</value></data>
+  <data name="Studio.Settings.MailTestOperatorFixable" xml:space="preserve"><value>À corriger sur cette machine</value></data>
+  <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve"><value>Le serveur a refusé ou n'a pas répondu</value></data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve"><value>Identifiant client OAuth</value></data>
   <data name="Studio.Settings.MailClientIdHint" xml:space="preserve"><value>L'identifiant de l'application que vous avez enregistrée chez Google ou Microsoft.</value></data>
   <data name="Studio.Settings.MailUsername" xml:space="preserve"><value>Nom d'utilisateur</value></data>

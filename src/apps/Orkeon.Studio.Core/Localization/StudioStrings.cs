@@ -1278,6 +1278,41 @@ public static class StudioStringKeys
     /// <summary>"Kept in the variable {0}"</summary>
     public const string MailSecretVariable = "Studio.Settings.MailSecretVariable";
 
+    // ── what the engine makes of an e-mail account, and its connection test (STUDIO-69) ──
+
+    /// <summary>"Ready"</summary>
+    public const string MailStateReady = "Studio.Settings.MailStateReady";
+
+    /// <summary>"Not ready" — the engine's own sentence follows, as printed.</summary>
+    public const string MailStateNotReady = "Studio.Settings.MailStateNotReady";
+
+    /// <summary>"Set aside" — the findings of the form already say why.</summary>
+    public const string MailStateSetAside = "Studio.Settings.MailStateSetAside";
+
+    /// <summary>"Unknown — {0}": the CLI is missing or failed, and {0} says which.</summary>
+    public const string MailStateUnknown = "Studio.Settings.MailStateUnknown";
+
+    /// <summary>"As of the saved file — save to check again": the document holds unsaved edits.</summary>
+    public const string MailStateOfSavedFile = "Studio.Settings.MailStateOfSavedFile";
+
+    /// <summary>"Test the connection"</summary>
+    public const string MailTest = "Studio.Settings.MailTest";
+
+    /// <summary>"Connecting…"</summary>
+    public const string MailTesting = "Studio.Settings.MailTesting";
+
+    /// <summary>"Reachable" — the engine's sentence follows, with the number of folders.</summary>
+    public const string MailTestReachable = "Studio.Settings.MailTestReachable";
+
+    /// <summary>"Could not connect" — the CLI gave no verdict on the account.</summary>
+    public const string MailTestFailed = "Studio.Settings.MailTestFailed";
+
+    /// <summary>"To fix on this machine" — a setting, a secret or a sign-in is missing (exit code 1).</summary>
+    public const string MailTestOperatorFixable = "Studio.Settings.MailTestOperatorFixable";
+
+    /// <summary>"The server refused or did not answer" — the engine's sentence says which (exit code 2).</summary>
+    public const string MailTestServerOrNetwork = "Studio.Settings.MailTestServerOrNetwork";
+
     /// <summary>"No key yet?"</summary>
     public const string ProfileKeyNoKeyYet = "Studio.Settings.KeyNoKeyYet";
 
@@ -2588,6 +2623,17 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailPasswordMissing] = "Not stored yet",
         [StudioStringKeys.MailClientSecret] = "Client secret (Google desktop application)",
         [StudioStringKeys.MailSecretVariable] = "Kept in the variable {0}",
+        [StudioStringKeys.MailStateReady] = "Ready",
+        [StudioStringKeys.MailStateNotReady] = "Not ready",
+        [StudioStringKeys.MailStateSetAside] = "Set aside",
+        [StudioStringKeys.MailStateUnknown] = "Unknown — {0}",
+        [StudioStringKeys.MailStateOfSavedFile] = "As of the saved file — save to check again",
+        [StudioStringKeys.MailTest] = "Test the connection",
+        [StudioStringKeys.MailTesting] = "Connecting…",
+        [StudioStringKeys.MailTestReachable] = "Reachable",
+        [StudioStringKeys.MailTestFailed] = "Could not connect",
+        [StudioStringKeys.MailTestOperatorFixable] = "To fix on this machine",
+        [StudioStringKeys.MailTestServerOrNetwork] = "The server refused or did not answer",
         [StudioStringKeys.ProfileKeyNoKeyYet] = "No key yet?",
         [StudioStringKeys.ProfileKeyOnVendorSite] = "on the provider's site",
         [StudioStringKeys.ProfileKeyExpertHint] = "setx ORKEON_Llm__ApiKey \"sk-…\" — read natively by the runtime, wins over any file",

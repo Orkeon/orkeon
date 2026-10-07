@@ -293,7 +293,18 @@ internal static class StudioFixture
         ApiKeys = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [DeepSeekKeyVariable] = "capture-only-deepseek-key",
+            // STUDIO-69: the Gmail account's app password is kept, the custom account's is not —
+            // which is exactly what the scripted `email accounts` below says of the two.
+            ["GMAIL_APP_PASSWORD"] = "capture-only-gmail-app-password",
         },
+        // The engine lists the accounts sorted by name, with its own sentence for the one that
+        // lacks its password: one ready, one not, the two states of the tab worth a pixel.
+        EmailAccountsJson = """
+            [
+              { "name": "bureau", "address": "camille@atelier-durand.example", "provider": "Custom", "reads": "Imap", "sends": "Smtp", "rights": "Read, Organize, Draft, Send", "auth": "Password", "default": false, "ready": false, "problem": "The password of e-mail account 'bureau' is read from the environment variable BUREAU_MAIL_PASSWORD, which is set neither in the process environment nor in the user's." },
+              { "name": "perso", "address": "camille.durand@gmail.com", "provider": "Gmail", "reads": "Imap", "sends": "Smtp", "rights": "Read, Organize, Draft", "auth": "Password", "default": true, "ready": true, "problem": null }
+            ]
+            """,
         DoctorJson = DoctorWithIssues,
         Sessions = [DryPauseSession, PassingSession, FailingSession, PromotedSession],
         RunStream = CaptureScripts.RunToSuccess,

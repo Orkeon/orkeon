@@ -15,7 +15,7 @@ namespace Orkeon.Studio.Wpf.Tests;
 /// validated, a rename and a removal that ask first, and what the run will say of each account
 /// said on its row.
 /// </summary>
-public sealed class EmailSectionViewModelTests
+public sealed partial class EmailSectionViewModelTests
 {
     private const string Accounts = "Orkeon:Tools:Email:Accounts";
 
@@ -58,6 +58,8 @@ public sealed class EmailSectionViewModelTests
         public const string FrenchRights = "Un compte e-mail n'accorde aucun droit.";
         public const string FrenchPreset = "Laisser le préréglage";
         public const string FrenchNotStored = "Pas encore mémorisé";
+        public const string FrenchNotReady = "Pas prêt";
+        public const string FrenchReachable = "Joignable";
 
         private bool _french;
 
@@ -65,6 +67,8 @@ public sealed class EmailSectionViewModelTests
         {
             (true, StudioStringKeys.MailChoicePreset) => FrenchPreset,
             (true, StudioStringKeys.MailPasswordMissing) => FrenchNotStored,
+            (true, StudioStringKeys.MailStateNotReady) => FrenchNotReady,
+            (true, StudioStringKeys.MailTestReachable) => FrenchReachable,
             (true, _) when key == ValidationMessageKey(ValidationCodes.EmailRights) => FrenchRights,
             _ => EnglishStudioStrings.Instance[key],
         };

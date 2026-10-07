@@ -285,7 +285,7 @@ the message itself is sent.
 
 **In Orkeon Studio**, every key below has its field in **Settings › E-mail** (the expert mode
 shows them all, each with its key as a tooltip; a field left empty shows the default as a
-watermark) — see [Orkeon Studio](../architecture/studio.md#e-mail-accounts-in-the-settings-studio-65-to-68).
+watermark) — see [Orkeon Studio](../architecture/studio.md#e-mail-accounts-in-the-settings-studio-65-to-69).
 The password and the Gmail client secret are typed there too: Studio keeps each in a variable of
 the user's environment and writes only the variable's name. What follows is the file as the
 engine reads it.
@@ -549,6 +549,13 @@ credentials or an authorization the provider refused (a state mismatch included)
 cancelled. The tools never start a sign-in themselves: an OAuth account without a usable token
 answers "run `orkeon email login <account>`". The full reference is in the
 [CLI reference](../reference/cli.md#orkeon-email).
+
+In Orkeon Studio, the state and the test are in Settings › E-mail: each account says whether
+it is ready — what `orkeon email accounts --json` answers for the settings file the tab
+writes, as saved — and « Test the connection » runs `orkeon email check` on it, with no
+terminal. The verdict follows the exit code — reachable, to fix on this machine, or the server
+or the network — over the sentence the command prints, shown as is
+([E-mail accounts in the settings](../architecture/studio.md#e-mail-accounts-in-the-settings-studio-65-to-69)).
 
 ## Where the tokens live
 

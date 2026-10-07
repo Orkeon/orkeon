@@ -2082,6 +2082,39 @@
   <data name="Studio.Settings.MailSecretVariable" xml:space="preserve">
     <value>Se conserva en la variable {0}</value>
   </data>
+  <data name="Studio.Settings.MailStateReady" xml:space="preserve">
+    <value>Lista</value>
+  </data>
+  <data name="Studio.Settings.MailStateNotReady" xml:space="preserve">
+    <value>No está lista</value>
+  </data>
+  <data name="Studio.Settings.MailStateSetAside" xml:space="preserve">
+    <value>Apartada</value>
+  </data>
+  <data name="Studio.Settings.MailStateUnknown" xml:space="preserve">
+    <value>Desconocido — {0}</value>
+  </data>
+  <data name="Studio.Settings.MailStateOfSavedFile" xml:space="preserve">
+    <value>Estado del archivo guardado — guarde para comprobarlo de nuevo</value>
+  </data>
+  <data name="Studio.Settings.MailTest" xml:space="preserve">
+    <value>Probar la conexión</value>
+  </data>
+  <data name="Studio.Settings.MailTesting" xml:space="preserve">
+    <value>Conectando…</value>
+  </data>
+  <data name="Studio.Settings.MailTestReachable" xml:space="preserve">
+    <value>Accesible</value>
+  </data>
+  <data name="Studio.Settings.MailTestFailed" xml:space="preserve">
+    <value>No se pudo conectar</value>
+  </data>
+  <data name="Studio.Settings.MailTestOperatorFixable" xml:space="preserve">
+    <value>Hay que corregirlo en este equipo</value>
+  </data>
+  <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve">
+    <value>El servidor lo rechazó o no respondió</value>
+  </data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve">
     <value>ID de cliente OAuth</value>
   </data>

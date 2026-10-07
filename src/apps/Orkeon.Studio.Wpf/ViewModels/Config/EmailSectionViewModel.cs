@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Validation;
@@ -22,6 +23,13 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// account without a name or an address must not reach it between two keystrokes. A rename and
 /// a removal ask first, on the row, and say what they leave on the machine.
 /// </para>
+/// <para>
+/// Whether an account is ready is not Studio's to compute (STUDIO-69): it depends on the
+/// environment and the token store of the <c>orkeon</c> process. <see cref="RefreshStatesAsync"/>
+/// asks <c>orkeon email accounts</c> about the file as saved — on arrival on the tab and after a
+/// save, never at a keystroke — and each row's test asks <c>orkeon email check</c>, on a click
+/// only. <see cref="StopActivity"/> stops whatever of the two still runs.
+/// </para>
 /// </summary>
 public sealed class EmailSectionViewModel : DocumentSectionViewModel
 {
@@ -32,6 +40,13 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     private readonly Func<string?> _settingsPath;
     private readonly IPathPicker _picker;
     private readonly IApiKeyStore _keyStore;
+    private readonly EmailCliClient? _cli;
+    private readonly Func<bool> _isDirty;
+    private readonly IUiDispatcher _dispatcher;
+    private readonly Lock _activity = new();
+    private readonly List<Running> _calls = [];
+    private EmailAccountsResult? _states;
+    private int _reading;
     private EmailAccountRowViewModel? _selectedAccount;
     private bool _isExpert;
     private bool _isAdding;
@@ -45,7 +60,11 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// <paramref name="settingsPath"/> gives the file the document is saved to, for the line that
     /// says where the accounts go; <paramref name="picker"/> browses for the token folder;
     /// <paramref name="keyStore"/> keeps the passwords and the client secrets typed in the form,
-    /// the store of the model keys — the real environment when null.
+    /// the store of the model keys — the real environment when null. <paramref name="cli"/> says
+    /// whether each account is ready and tests its connection (STUDIO-69): a section built
+    /// without one reads no state and tests nothing. <paramref name="isDirty"/> says whether the
+    /// document holds edits the file does not, and <paramref name="dispatcher"/> is where an
+    /// answer of the CLI lands.
     /// </summary>
     public EmailSectionViewModel(
         Func<AppSettingsDocument> document,
@@ -53,9 +72,15 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         IStudioStrings? strings = null,
         Func<string?>? settingsPath = null,
         IPathPicker? picker = null,
-        IApiKeyStore? keyStore = null)
+        IApiKeyStore? keyStore = null,
+        EmailCliClient? cli = null,
+        Func<bool>? isDirty = null,
+        IUiDispatcher? dispatcher = null)
         : base(document, onChanged)
     {
+        _cli = cli;
+        _isDirty = isDirty ?? (() => false);
+        _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings ?? EnglishStudioStrings.Instance;
         _settingsPath = settingsPath ?? (() => null);
         _picker = picker ?? NullPathPicker.Instance;
@@ -303,6 +328,135 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// <summary>Arms the removal confirmation of the row given as parameter; removes nothing on its own.</summary>
     public RelayCommand RemoveAccountCommand { get; }
 
+    // ── the state of each account, and its connection test (STUDIO-69) ──
+
+    /// <summary>
+    /// Whether the document holds edits the file does not: the states shown are then those of the
+    /// file as saved, and the connection test — which reads that file too — waits for the save.
+    /// </summary>
+    public bool IsStateOfSavedFile => _isDirty();
+
+    /// <summary>
+    /// Asks <c>orkeon email accounts</c> what the engine makes of each account of the saved file,
+    /// and says it on the rows. No network is involved, and no connection is ever tested here. A
+    /// reading still in flight is stopped: only the newest answer shows.
+    /// </summary>
+    public async Task RefreshStatesAsync()
+    {
+        if (_cli is null || _settingsPath() is not { Length: > 0 } path)
+            return;
+
+        var reading = Interlocked.Increment(ref _reading);
+        Stop(listing: true);
+
+        var result = await RunAsync(listing: true, token => _cli.ListAsync(path, token));
+        if (reading != Volatile.Read(ref _reading) || result.Failure?.Kind == EmailCliFailureKind.Cancelled)
+            return;
+
+        _dispatcher.Post(() =>
+        {
+            _states = result;
+            ApplyStates();
+        });
+    }
+
+    /// <summary>
+    /// Stops what the tab still has running — a reading of the states, a connection test: called
+    /// when the tab is left, so that no <c>orkeon</c> process outlives the screen that asked for it.
+    /// </summary>
+    public void StopActivity()
+    {
+        Interlocked.Increment(ref _reading);
+        Stop(listing: null);
+    }
+
+    /// <summary>The document was edited or saved: the flag and what it gates are said again.</summary>
+    internal void RefreshSavedFile()
+    {
+        OnPropertyChanged(nameof(IsStateOfSavedFile));
+        foreach (var row in Accounts)
+            row.RefreshTest();
+    }
+
+    /// <summary>Whether a row may start a connection test: a client to ask, a file to name, and nothing unsaved.</summary>
+    internal bool CanTest => _cli is not null && _settingsPath() is { Length: > 0 } && !_isDirty();
+
+    /// <summary>
+    /// Runs <c>orkeon email check</c> on <paramref name="account"/>, as the saved file declares
+    /// it; null when the test was stopped, or could not be asked for.
+    /// </summary>
+    internal async Task<EmailCheckOutcome?> CheckAsync(string account)
+    {
+        if (_cli is null || _settingsPath() is not { Length: > 0 } path)
+            return null;
+
+        var outcome = await RunAsync(listing: false, token => _cli.CheckAsync(account, path, token));
+        return outcome.Kind == EmailCheckKind.Cancelled ? null : outcome;
+    }
+
+    /// <summary>A secret was kept: the saved file did not move, yet what the engine finds for the account did.</summary>
+    internal void SecretKept() => _ = RefreshStatesAsync();
+
+    /// <summary>
+    /// Why nothing could be read, for the row: the sentence of the home screen when the CLI is
+    /// not on this machine — localized —, else what the CLI said, as printed.
+    /// </summary>
+    internal string FailureText(EmailCliFailure failure) => failure.Kind == EmailCliFailureKind.EngineMissing
+        ? EngineMissingText
+        : failure.Reason;
+
+    /// <summary>The sentence the create-a-team screen — the one Studio opens on — says of a missing CLI.</summary>
+    internal string EngineMissingText => _strings[StudioStringKeys.WizardFailureEngineMissing];
+
+    /// <summary>Runs one CLI call under a token <see cref="Stop"/> can fire, and forgets the token when the call ends.</summary>
+    private async Task<T> RunAsync<T>(bool listing, Func<CancellationToken, Task<T>> call)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var entry = new Running(cancellation, listing);
+        lock (_activity)
+            _calls.Add(entry);
+
+        try
+        {
+            return await call(cancellation.Token);
+        }
+        finally
+        {
+            lock (_activity)
+                _calls.Remove(entry);
+        }
+    }
+
+    /// <summary>Stops the readings (<see langword="true"/>), or everything that runs (<see langword="null"/>).</summary>
+    private void Stop(bool? listing)
+    {
+        Running[] stopped;
+        lock (_activity)
+            stopped = [.. _calls.Where(call => listing is null || call.Listing == listing)];
+
+        foreach (var call in stopped)
+        {
+            try
+            {
+                call.Cancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The call ended between the snapshot and the cancel; nothing left to stop.
+            }
+        }
+    }
+
+    /// <summary>Pairs each row with the engine's answer for its name — compared without case, as the engine does.</summary>
+    private void ApplyStates()
+    {
+        foreach (var row in Accounts)
+            row.SetState(_states?.Find(row.Name), _states?.Failure);
+    }
+
+    /// <summary>One CLI call in flight: its token, and whether it is a reading of the states.</summary>
+    private sealed record Running(CancellationTokenSource Cancellation, bool Listing);
+
     /// <inheritdoc />
     public override void Refresh()
     {
@@ -355,6 +509,8 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
 
         Section.RenameAccount(row.Name, newName);
         row.Renamed(newName);
+        // The saved file still holds the old name: the state it had is not this account's.
+        ApplyStates();
         SyncDefaultAccountChoices();
         RefreshProblems();
         RefreshSecrets();
@@ -387,6 +543,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         }
 
         RefreshSecrets();
+        ApplyStates();
         SelectedAccount = Accounts.FirstOrDefault(row => string.Equals(row.Name, selected, StringComparison.Ordinal))
             ?? Accounts.FirstOrDefault();
         IsAdding = false;
@@ -423,6 +580,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
 
         var row = new EmailAccountRowViewModel(written, this, _strings);
         Accounts.Add(row);
+        ApplyStates();
         SelectedAccount = row;
         IsAdding = false;
         SyncDefaultAccountChoices();

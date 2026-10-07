@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
@@ -67,7 +68,13 @@ public sealed class ConfigTabViewModel : ObservableObject
         Location = new SettingsLocationViewModel(Picker, globalPathOverride, _strings);
         // After the location: the E-mail tab says which file its accounts are written to (STUDIO-67).
         // Its passwords go to the store of the model keys, never to the document (STUDIO-68).
-        Email = new EmailSectionViewModel(() => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker, seams.KeyStore);
+        // The state of each account comes from the CLI, over the runner the window shares — none
+        // when the tab was built without one: the states are read without a click (STUDIO-69).
+        Email = new EmailSectionViewModel(
+            () => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker, seams.KeyStore,
+            seams.EmailCli ?? (seams.ProcessRunner is { } shared ? new EmailCliClient(shared) : null),
+            () => _isDirty,
+            seams.Dispatcher);
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,
@@ -167,7 +174,12 @@ public sealed class ConfigTabViewModel : ObservableObject
     public bool IsDirty
     {
         get => _isDirty;
-        private set => SetProperty(ref _isDirty, value);
+        private set
+        {
+            // The e-mail tab shows the states of the file as saved, and says so while it differs.
+            if (SetProperty(ref _isDirty, value))
+                Email.RefreshSavedFile();
+        }
     }
 
     /// <summary>The outcome of the last load, save or validation.</summary>

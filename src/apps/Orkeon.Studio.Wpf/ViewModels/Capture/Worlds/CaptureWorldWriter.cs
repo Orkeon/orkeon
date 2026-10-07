@@ -77,6 +77,9 @@ internal static class CaptureWorldWriter
             .Answer("--version", 0, plan.VersionLine)
             .Answer("run", 0, [.. plan.RunStream])
             .Answer("forge", 0, [.. plan.ForgeStream])
+            // STUDIO-69: the E-mail tab asks what the engine makes of each account. A pair of its
+            // own: `email check`, the verb that connects, has no script and is never asked for.
+            .Answer("email accounts", 0, plan.EmailAccountsJson)
             // STUDIO-27: a card says where its schedule stands only once the engine answered, so the
             // seeded schedules are said to be installed — the green badge is an answer, not a sidecar.
             .Answer("forge schedule", 0,

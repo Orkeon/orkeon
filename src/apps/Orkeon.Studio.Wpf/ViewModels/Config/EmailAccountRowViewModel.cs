@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.ViewModels.Common;
@@ -21,6 +22,11 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// to the key store under a variable — the one the file names, else one derived from the
 /// account's name, which the first value kept writes into the file. The engine reads the
 /// variable; the file only ever holds its <i>name</i>.
+/// </para>
+/// <para>
+/// Whether the account is ready, and whether it connects, is the engine's to say (STUDIO-69):
+/// <see cref="State"/> is its answer for the file as saved, <see cref="TestCommand"/> its
+/// connection check. Its sentences show as printed, in English, under a localized label.
 /// </para>
 /// </summary>
 public sealed class EmailAccountRowViewModel : ObservableObject
@@ -71,6 +77,10 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     private string _renameText = "";
     private SecretRowViewModel? _password;
     private SecretRowViewModel? _clientSecret;
+    private EmailAccountState? _state;
+    private EmailCliFailure? _stateFailure;
+    private EmailCheckOutcome? _lastCheck;
+    private bool _isTesting;
 
     internal EmailAccountRowViewModel(EmailAccountDefinition account, EmailSectionViewModel owner, IStudioStrings strings)
     {
@@ -118,6 +128,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         CancelRenameCommand = new RelayCommand(() => IsRenaming = false);
         ConfirmRemoveCommand = new RelayCommand(() => { if (_isConfirmingRemove) _owner.Remove(this); });
         CancelRemoveCommand = new RelayCommand(() => IsConfirmingRemove = false);
+        TestCommand = new AsyncRelayCommand(TestAsync, () => _owner.CanTest);
         RefreshProblems();
     }
 
@@ -382,6 +393,116 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// <summary>Whether the run will set the account aside.</summary>
     public bool HasProblems => _problems.Count > 0;
 
+    // ── what the engine makes of the account, and the connection test (STUDIO-69) ──
+
+    /// <summary>
+    /// What <c>orkeon email accounts</c> answered for the account as the file was last saved;
+    /// <see cref="EmailAccountReadiness.None"/> until an answer names it.
+    /// </summary>
+    public EmailAccountReadiness StateKind
+    {
+        get
+        {
+            if (_stateFailure is not null)
+                return EmailAccountReadiness.Unknown;
+
+            return _state switch
+            {
+                null => EmailAccountReadiness.None,
+                { IsSetAside: true } => EmailAccountReadiness.SetAside,
+                { Ready: true } => EmailAccountReadiness.Ready,
+                _ => EmailAccountReadiness.NotReady,
+            };
+        }
+    }
+
+    /// <summary>
+    /// The state, localized: "Ready", "Not ready", "Set aside", or "Unknown — why" when the CLI
+    /// is missing or failed; null while there is none.
+    /// </summary>
+    public string? State => StateKind switch
+    {
+        EmailAccountReadiness.Ready => _strings[StudioStringKeys.MailStateReady],
+        EmailAccountReadiness.NotReady => _strings[StudioStringKeys.MailStateNotReady],
+        EmailAccountReadiness.SetAside => _strings[StudioStringKeys.MailStateSetAside],
+        EmailAccountReadiness.Unknown => string.Format(
+            CultureInfo.CurrentCulture, _strings[StudioStringKeys.MailStateUnknown], _owner.FailureText(_stateFailure!)),
+        _ => null,
+    };
+
+    /// <summary>
+    /// The engine's sentence on what a not-ready account lacks, in English, as printed — it names
+    /// the variable or the sign-in to run. Null otherwise: an account set aside already says why
+    /// through <see cref="Problems"/>, and the reason of an unknown state is in <see cref="State"/>.
+    /// </summary>
+    public string? StateDetail =>
+        StateKind == EmailAccountReadiness.NotReady && _state?.Problem is { Length: > 0 } problem ? problem : null;
+
+    /// <summary>Whether the row has a state to show.</summary>
+    public bool HasState => StateKind != EmailAccountReadiness.None;
+
+    /// <summary>Whether <see cref="StateDetail"/> has something to say.</summary>
+    public bool HasStateDetail => StateDetail is not null;
+
+    /// <summary>Whether the engine found the account ready to connect.</summary>
+    public bool IsReady => StateKind == EmailAccountReadiness.Ready;
+
+    /// <summary>
+    /// "Test the connection": runs <c>orkeon email check</c> on the account as the saved file
+    /// declares it — a real connection, sign-in and folder listing. Only ever started here, by a
+    /// click; disabled while the document holds unsaved edits, and while a test already runs.
+    /// </summary>
+    public AsyncRelayCommand TestCommand { get; }
+
+    /// <summary>Whether a connection test is in flight.</summary>
+    public bool IsTesting
+    {
+        get => _isTesting;
+        private set => SetProperty(ref _isTesting, value);
+    }
+
+    /// <summary>The verdict of the last connection test; null before any, while one runs, and after one that was stopped.</summary>
+    public EmailCheckOutcome? LastCheck
+    {
+        get => _lastCheck;
+        private set
+        {
+            if (SetProperty(ref _lastCheck, value))
+                OnPropertiesChanged(nameof(HasLastCheck), nameof(LastCheckReachable), nameof(LastCheckHeadline), nameof(LastCheckDetail));
+        }
+    }
+
+    /// <summary>Whether a verdict shows.</summary>
+    public bool HasLastCheck => _lastCheck is not null;
+
+    /// <summary>Whether the last test connected.</summary>
+    public bool LastCheckReachable => _lastCheck?.Kind == EmailCheckKind.Reachable;
+
+    /// <summary>
+    /// The verdict, localized: "Reachable", "To fix on this machine", "The server refused or did
+    /// not answer" — the exit code of the verb is all that tells them apart — or "Could not
+    /// connect" when the CLI gave no verdict on the account.
+    /// </summary>
+    public string? LastCheckHeadline => _lastCheck?.Kind switch
+    {
+        null => null,
+        EmailCheckKind.Reachable => _strings[StudioStringKeys.MailTestReachable],
+        EmailCheckKind.OperatorFixable => _strings[StudioStringKeys.MailTestOperatorFixable],
+        EmailCheckKind.ServerOrNetwork => _strings[StudioStringKeys.MailTestServerOrNetwork],
+        _ => _strings[StudioStringKeys.MailTestFailed],
+    };
+
+    /// <summary>
+    /// The engine's sentence, in English, as printed: the number of folders on success, what was
+    /// refused otherwise — shown as is, never read. Without a CLI, the sentence of the home screen.
+    /// </summary>
+    public string? LastCheckDetail => _lastCheck switch
+    {
+        null => null,
+        { Kind: EmailCheckKind.Unavailable, ExitCode: null } => _owner.EngineMissingText,
+        var outcome => outcome.Sentence,
+    };
+
     // ── what each mode sees ──
 
     /// <summary>Whether the expert's fields show.</summary>
@@ -551,6 +672,20 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         RefreshSecretStates();
     }
 
+    /// <summary>
+    /// What the last reading of the saved file says of the account: the engine's answer for its
+    /// name, or why no answer came back; neither when the file does not hold the account.
+    /// </summary>
+    internal void SetState(EmailAccountState? state, EmailCliFailure? failure)
+    {
+        _state = state;
+        _stateFailure = failure;
+        RefreshState();
+    }
+
+    /// <summary>The document was edited or saved: the test asks again whether it may run.</summary>
+    internal void RefreshTest() => TestCommand.RaiseCanExecuteChanged();
+
     /// <summary>Reads again what the run will say of the account, as the document now holds it.</summary>
     internal void RefreshProblems()
     {
@@ -565,7 +700,10 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _password?.RefreshTexts();
         _clientSecret?.RefreshTexts();
         RefreshSecretStates();
-        OnPropertiesChanged(nameof(RenameRefusal), nameof(HasRenameRefusal), nameof(AuthMethodPlaceholder));
+        RefreshState();
+        OnPropertiesChanged(
+            nameof(RenameRefusal), nameof(HasRenameRefusal), nameof(AuthMethodPlaceholder),
+            nameof(LastCheckHeadline), nameof(LastCheckDetail));
     }
 
     /// <summary>A recipient line was typed in: the list is written again.</summary>
@@ -724,7 +862,32 @@ public sealed class EmailAccountRowViewModel : ObservableObject
             ClientSecretEnvVar = line.EnvName;
         else
             RefreshSecretStates();
+
+        // A value under a variable the file already names saves nothing: the engine is asked again.
+        _owner.SecretKept();
     }
+
+    /// <summary>
+    /// One connection test: "connecting" while the CLI runs, then its verdict — none when the
+    /// test was stopped, since a test nobody waited for says nothing of the account.
+    /// </summary>
+    private async Task TestAsync()
+    {
+        LastCheck = null;
+        IsTesting = true;
+        try
+        {
+            LastCheck = await _owner.CheckAsync(_name);
+        }
+        finally
+        {
+            IsTesting = false;
+        }
+    }
+
+    private void RefreshState() =>
+        OnPropertiesChanged(
+            nameof(StateKind), nameof(State), nameof(StateDetail), nameof(HasState), nameof(HasStateDetail), nameof(IsReady));
 
     private void RefreshSecretStates() =>
         OnPropertiesChanged(
@@ -762,6 +925,25 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
     private static bool Unread(string text) =>
         text.Trim() is { Length: > 0 } typed && !int.TryParse(typed, NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+}
+
+/// <summary>What the engine makes of an account of the saved file (STUDIO-69).</summary>
+public enum EmailAccountReadiness
+{
+    /// <summary>No answer names the account: nothing was read yet, or the saved file does not hold it.</summary>
+    None,
+
+    /// <summary>It has everything it needs to connect.</summary>
+    Ready,
+
+    /// <summary>A secret or a sign-in is missing; the engine's sentence says which.</summary>
+    NotReady,
+
+    /// <summary>Its declaration is refused: no run will use it.</summary>
+    SetAside,
+
+    /// <summary>The CLI is missing, or failed: nothing is known of the account.</summary>
+    Unknown,
 }
 
 /// <summary>

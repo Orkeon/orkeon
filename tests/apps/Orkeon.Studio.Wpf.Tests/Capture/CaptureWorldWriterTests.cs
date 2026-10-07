@@ -1,5 +1,6 @@
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
@@ -72,6 +73,39 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
         // The folders of the seed still stand beside the accounts, under the same root key.
         Assert.NotEmpty(document.Mounts.RawEntries);
         Assert.Empty(AppSettingsDocument.Parse(File.ReadAllText(_worlds.Pristine.SettingsPath)).Email.AccountNames);
+    }
+
+    /// <summary>
+    /// STUDIO-69: the E-mail tab asks the CLI what the engine makes of each account. In the
+    /// campaign that answer is a script, read back here through the production client: it names
+    /// exactly the seeded accounts, one ready and one that lacks its password — the two states
+    /// worth a pixel — and the ready one is the one whose password the seeded machine keeps.
+    /// </summary>
+    [Fact]
+    public async Task The_seeded_cli_answers_the_email_accounts_listing_with_one_account_ready_and_one_not()
+    {
+        var document = AppSettingsDocument.Parse(
+            await File.ReadAllTextAsync(_worlds.Seeded.SettingsPath, TestContext.Current.CancellationToken));
+
+        var result = await new EmailCliClient(_worlds.Seeded.Runner)
+            .ListAsync(_worlds.Seeded.SettingsPath, TestContext.Current.CancellationToken);
+
+        Assert.Null(result.Failure);
+        Assert.Equal(
+            document.Email.AccountNames.Order(StringComparer.Ordinal),
+            result.Accounts.Select(account => account.Name).Order(StringComparer.Ordinal));
+        Assert.All(result.Accounts, account => Assert.False(account.IsSetAside));
+
+        var ready = Assert.Single(result.Accounts, account => account.Ready);
+        var waiting = Assert.Single(result.Accounts, account => !account.Ready);
+        Assert.NotNull(_worlds.Seeded.KeyStore.Peek(document.Email.GetAccount(ready.Name)!.PasswordEnvVar!));
+        var missing = document.Email.GetAccount(waiting.Name)!.PasswordEnvVar!;
+        Assert.Null(_worlds.Seeded.KeyStore.Peek(missing));
+        Assert.Contains(missing, waiting.Problem, StringComparison.Ordinal);
+
+        // Nothing was spawned: the launch is in the scripted CLI's own record, with its file named.
+        Assert.Contains(_worlds.Seeded.Cli.Requests, request =>
+            request.Arguments is ["email", "accounts", "--json", "--settings", var path] && path == _worlds.Seeded.SettingsPath);
     }
 
     [Fact]

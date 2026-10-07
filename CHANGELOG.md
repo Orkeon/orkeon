@@ -79,10 +79,20 @@ French), in both modes, where the accounts are declared, renamed and removed in 
   launcher or history — carries the value, and since the engine reads the user scope (above), a
   launch from Studio, a terminal opened before the password was typed and a scheduled team all
   find it; the launchers and the scheduled-run check did not change.
+- **Each account says whether it is ready, and a button tests the connection** (STUDIO-69). The
+  state — « Ready », « Not ready » with the engine's sentence, « Set aside », or « Unknown » with
+  the reason when the CLI is missing or failed — is what `orkeon email accounts --json` answers
+  for the file as saved, read on arrival on the tab, after each save and when a password is
+  stored, never at a keystroke; unsaved edits mark it « As of the saved file » and disable the
+  test. « Test the connection » runs `orkeon email check`: reachable with the number of
+  folders, to fix on this machine (exit code 1) or the server or the network (exit code 2),
+  over the sentence the command prints, shown as is. Both always pass `--settings`, through the
+  new `EmailCliClient` of Studio.Core; the test never runs on its own, and leaving the tab, the
+  settings screen or Studio stops it.
 
-The tab opens no connection, and an OAuth account still signs in with `orkeon email login`.
-Docs: the Studio page (EN and FR) describes the tab, and the e-mail guide and the mailbox
-tutorial point to it.
+The tab opens no connection on its own, and an OAuth account still signs in with
+`orkeon email login`. Docs: the Studio page (EN and FR) describes the tab, and the e-mail guide
+and the mailbox tutorial point to it.
 
 ### Added — Studio's settings check judges the e-mail accounts as the run will
 

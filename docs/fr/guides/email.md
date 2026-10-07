@@ -300,7 +300,7 @@ le courrier envoyé, et une boîte POP3 n'a pas de dossier Envoyés). Quand aucu
 
 **Dans Orkeon Studio**, chaque clé ci-dessous a son champ dans **Réglages › Mails** (le mode
 expert les montre toutes, chacune avec sa clé en infobulle ; un champ laissé vide montre le défaut
-en filigrane) — voir [Orkeon Studio](../architecture/studio.md#les-comptes-e-mail-dans-les-réglages-studio-65-à-68).
+en filigrane) — voir [Orkeon Studio](../architecture/studio.md#les-comptes-e-mail-dans-les-réglages-studio-65-à-69).
 Le mot de passe et le secret client de Gmail s'y saisissent aussi : Studio garde chacun dans une
 variable de l'environnement de l'utilisateur et n'écrit que le nom de la variable. Ce qui suit
 est le fichier tel que le moteur le lit.
@@ -578,6 +578,13 @@ réseau — échec de connexion, identifiants ou autorisation refusés par le fo
 « state mismatch » compris) ; `130` annulation. Les outils ne lancent jamais de connexion eux-mêmes : un compte
 OAuth sans jeton utilisable répond « run `orkeon email login <account>` ». La référence
 complète est dans la [référence CLI](../reference/cli.md#orkeon-email).
+
+Dans Orkeon Studio, l'état et le test sont dans Réglages › Mails : chaque compte dit s'il est
+prêt — ce que répond `orkeon email accounts --json` pour le fichier de réglages que l'onglet
+écrit, tel qu'enregistré — et « Tester la connexion » lance `orkeon email check` dessus, sans
+terminal. Le verdict suit le code de sortie — joignable, à corriger sur cette machine, ou le
+serveur ou le réseau — au-dessus de la phrase que la commande imprime, montrée telle quelle
+([Les comptes e-mail dans les réglages](../architecture/studio.md#les-comptes-e-mail-dans-les-réglages-studio-65-à-69)).
 
 ## Où vivent les jetons
 

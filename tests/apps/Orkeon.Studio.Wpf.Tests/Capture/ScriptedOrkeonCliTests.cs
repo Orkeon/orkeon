@@ -44,6 +44,20 @@ public sealed class ScriptedOrkeonCliTests
         Assert.Equal("cycle", await FirstLineAsync(cli, Ask("forge")));
     }
 
+    /// <summary>
+    /// STUDIO-69: <c>email accounts</c> is scripted as a pair, like <c>forge reopen</c> — the
+    /// settings tab reads its states from it — and <c>email check</c>, which no stop asks for,
+    /// borrows nothing from it: a connection test of the campaign would get no sentence at all.
+    /// </summary>
+    [Fact]
+    public async Task The_email_accounts_listing_has_a_script_of_its_own_that_no_other_email_verb_borrows()
+    {
+        var cli = new ScriptedOrkeonCli().Answer("email accounts", 0, "[]");
+
+        Assert.Equal("[]", await FirstLineAsync(cli, Ask("email", "accounts", "--json", "--settings", "/cfg/appsettings.json")));
+        Assert.Null(await FirstLineAsync(cli, Ask("email", "check", "perso", "--settings", "/cfg/appsettings.json")));
+    }
+
     [Fact]
     public async Task An_unscripted_verb_succeeds_silently_rather_than_throwing()
     {

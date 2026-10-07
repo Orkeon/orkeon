@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.History;
@@ -77,6 +78,14 @@ public sealed record StudioServices
     /// over the window's <see cref="ProcessRunner"/> — the binary the doctor and the launcher use.
     /// </summary>
     public UseCaseClient? UseCases { get; init; }
+
+    /// <summary>
+    /// What says whether each e-mail account is ready and tests its connection (STUDIO-69): the
+    /// <c>orkeon email</c> verbs. When null, a client over <see cref="ProcessRunner"/> — and none
+    /// at all when that is null too: the states are read on arrival on the tab, without a click,
+    /// so a settings tab built without a runner can never reach a binary by omission.
+    /// </summary>
+    public EmailCliClient? EmailCli { get; init; }
 
     /// <summary>Probes an LLM endpoint for the "Test connection" command.</summary>
     public ILlmEndpointProbe? LlmProbe { get; init; }

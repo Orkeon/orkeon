@@ -103,10 +103,14 @@ internal static class SettingsStops
             Because = "The E-mail tab (STUDIO-67): the line that says which file the accounts are "
                     + "written to, the two seeded accounts and the form of the Gmail one — its rights "
                     + "as six sentences, its sign-in method, and nothing else for the novice; the "
-                    + "expert pass adds the servers, the variable names and the section card.",
+                    + "expert pass adds the servers, the variable names and the section card. Each "
+                    + "account carries the dot of its state (STUDIO-69): the Gmail one is ready, and "
+                    + "says so above the button that tests its connection.",
             Covers = ["Config.Email.HasAccounts", "Config.Email.HasSelectedAccount"],
-            CoversFalse = ["Config.Email.IsAdding"],
+            CoversFalse = ["Config.Email.IsAdding", "Config.Email.IsStateOfSavedFile"],
             SweepsLanguages = true,
+            // The window reads the states when the tab arrives; a walk without a window asks here.
+            Arrange = static c => c.Shell.Config.Email.RefreshStatesAsync(),
         },
 
         new()
@@ -117,10 +121,15 @@ internal static class SettingsStops
             Modes = CaptureModes.Expert,
             Because = "The custom account in the expert form: no preset fills its servers, so the "
                     + "two hosts are its own and every other field shows what the engine will use as "
-                    + "a watermark; it may send, and its allowed recipients are listed one per line.",
+                    + "a watermark; it may send, and its allowed recipients are listed one per line. "
+                    + "Its password is not stored, so its state is « not ready » with the engine's "
+                    + "own sentence, which names the variable (STUDIO-69).",
             Covers = ["Config.Email.IsExpert", "Config.Email.HasSelectedAccount"],
-            Arrange = CaptureAction.Sync(static c =>
-                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[^1]),
+            Arrange = static async c =>
+            {
+                await c.Shell.Config.Email.RefreshStatesAsync();
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[^1];
+            },
             Teardown = CaptureAction.Sync(static c =>
                 c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[0]),
         },

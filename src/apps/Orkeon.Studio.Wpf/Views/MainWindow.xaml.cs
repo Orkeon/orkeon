@@ -78,6 +78,13 @@ public partial class MainWindow : Window
         // closing it closes the session's stdin, the CLI's own clean exit.
         Closed += (_, _) => shell.CreateTeam.CloseUseCaseSession();
 
+        // The e-mail tab asks the CLI about its accounts and can test a connection (STUDIO-69):
+        // what it has running stops with the screen - another sidebar entry, or the window
+        // closing - and the states are read again when the screen comes back onto that tab.
+        NavSettings.Checked += (_, _) => shell.Settings.Enter();
+        NavSettings.Unchecked += (_, _) => shell.Settings.Leave();
+        Closed += (_, _) => shell.Settings.Leave();
+
         // The conversation follows the screen it is mounted on: what a free question with
         // no keyword gets back, and what the primer says on an empty thread, both depend
         // on where the user actually stands (T-06).

@@ -8,13 +8,38 @@
      or a variable. The protocol and security values are the engine's own spelling and stay
      untranslated. A password and a client secret are typed in a masked box and kept by the key
      store, outside any file (STUDIO-68): the file holds the name of their variable, which the
-     expert alone reads. -->
+     expert alone reads. Each account says what the engine makes of it as the file was last
+     saved - a dot and a word, from `orkeon email accounts` - and "Test the connection" runs
+     `orkeon email check` (STUDIO-69): the engine's sentences show as printed, in English, under
+     a localized label, and the test is the only thing here that touches the network. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.EmailView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
+  <UserControl.Resources>
+    <!-- STUDIO-69: the state of an account as a dot - green when the engine finds it ready,
+         amber when it lacks something or is set aside, muted when nothing could be read.
+         DataContext: EmailAccountRowViewModel; the values are EmailAccountReadiness names. -->
+    <Style x:Key="MailStateDot" TargetType="Ellipse">
+      <Setter Property="Width" Value="8"/>
+      <Setter Property="Height" Value="8"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Fill" Value="{DynamicResource InkMutedBrush}"/>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding StateKind}" Value="Ready">
+          <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding StateKind}" Value="NotReady">
+          <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding StateKind}" Value="SetAside">
+          <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </UserControl.Resources>
   <StackPanel>
 
     <!-- ══ the head: what the tab is, the file it writes, the default account ══ -->
@@ -125,6 +150,10 @@
         <ListBox.ItemTemplate>
           <DataTemplate>
             <DockPanel LastChildFill="True">
+              <!-- STUDIO-69: what the engine makes of the account, before it is opened -->
+              <Ellipse DockPanel.Dock="Left" Style="{StaticResource MailStateDot}" Margin="0,0,8,0"
+                       ToolTip="{Binding State}"
+                       Visibility="{Binding HasState, Converter={StaticResource BooleanToVisibility}}"/>
               <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="12" TextWrapping="NoWrap"
                          VerticalAlignment="Center" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
               <!-- an account the run will set aside says so before it is opened -->
@@ -177,6 +206,54 @@
                                Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
                   </StackPanel>
                 </DockPanel>
+
+                <!-- STUDIO-69: what the engine makes of the account as the file was last saved,
+                     then the connection test. Nothing here is computed by Studio. -->
+                <StackPanel Margin="0,10,0,0">
+                  <DockPanel LastChildFill="True"
+                             Visibility="{Binding HasState, Converter={StaticResource BooleanToVisibility}}">
+                    <Ellipse DockPanel.Dock="Left" Style="{StaticResource MailStateDot}" VerticalAlignment="Top"
+                             Margin="0,5,7,0"/>
+                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                               Foreground="{DynamicResource InkBrush}" Text="{Binding State}"/>
+                  </DockPanel>
+                  <!-- the engine's own sentence: it names the variable to fill or the sign-in to run -->
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="15,3,0,0" Text="{Binding StateDetail}"
+                             Visibility="{Binding HasStateDetail, Converter={StaticResource BooleanToVisibility}}"/>
+                  <!-- unsaved edits: the state is the saved file's, and the test waits for the save -->
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
+                             Text="{Binding [Studio.Settings.MailStateOfSavedFile], Source={x:Static services:I18n.Instance}}"
+                             Visibility="{Binding DataContext.IsStateOfSavedFile, RelativeSource={RelativeSource AncestorType=views:EmailView}, Converter={StaticResource BooleanToVisibility}}"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <!-- the one gesture that connects for real: never run on its own, stopped when the tab is left -->
+                    <Button Style="{StaticResource BtnGhost}" Command="{Binding TestCommand}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
+                        <TextBlock Text="{Binding [Studio.Settings.MailTest], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                    <TextBlock Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"
+                               Text="{Binding [Studio.Settings.MailTesting], Source={x:Static services:I18n.Instance}}"
+                               Visibility="{Binding IsTesting, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
+                  <!-- the verdict: a localized word, then the engine's sentence as printed -->
+                  <StackPanel Margin="0,8,0,0"
+                              Visibility="{Binding HasLastCheck, Converter={StaticResource BooleanToVisibility}}">
+                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding LastCheckHeadline}">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding LastCheckReachable}" Value="True">
+                              <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,2,0,0" Text="{Binding LastCheckDetail}"/>
+                  </StackPanel>
+                </StackPanel>
 
                 <!-- D-07: the rename editor says what a rename costs before it moves anything -->
                 <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentBrush}"

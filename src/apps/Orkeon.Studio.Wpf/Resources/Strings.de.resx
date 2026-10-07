@@ -2082,6 +2082,39 @@
   <data name="Studio.Settings.MailSecretVariable" xml:space="preserve">
     <value>Liegt in der Variablen {0}</value>
   </data>
+  <data name="Studio.Settings.MailStateReady" xml:space="preserve">
+    <value>Bereit</value>
+  </data>
+  <data name="Studio.Settings.MailStateNotReady" xml:space="preserve">
+    <value>Nicht bereit</value>
+  </data>
+  <data name="Studio.Settings.MailStateSetAside" xml:space="preserve">
+    <value>Zurückgestellt</value>
+  </data>
+  <data name="Studio.Settings.MailStateUnknown" xml:space="preserve">
+    <value>Unbekannt — {0}</value>
+  </data>
+  <data name="Studio.Settings.MailStateOfSavedFile" xml:space="preserve">
+    <value>Stand der gespeicherten Datei — speichern, um erneut zu prüfen</value>
+  </data>
+  <data name="Studio.Settings.MailTest" xml:space="preserve">
+    <value>Verbindung testen</value>
+  </data>
+  <data name="Studio.Settings.MailTesting" xml:space="preserve">
+    <value>Verbindung wird hergestellt …</value>
+  </data>
+  <data name="Studio.Settings.MailTestReachable" xml:space="preserve">
+    <value>Erreichbar</value>
+  </data>
+  <data name="Studio.Settings.MailTestFailed" xml:space="preserve">
+    <value>Verbindung nicht möglich</value>
+  </data>
+  <data name="Studio.Settings.MailTestOperatorFixable" xml:space="preserve">
+    <value>Auf diesem Rechner zu beheben</value>
+  </data>
+  <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve">
+    <value>Der Server hat abgelehnt oder nicht geantwortet</value>
+  </data>
   <data name="Studio.Settings.MailClientId" xml:space="preserve">
     <value>OAuth-Client-ID</value>
   </data>

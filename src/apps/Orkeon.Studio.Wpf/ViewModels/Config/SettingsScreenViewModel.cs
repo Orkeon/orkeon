@@ -81,6 +81,14 @@ public sealed class SettingsScreenViewModel : ObservableObject
                 Config.SaveCommand.Execute(null);
         };
 
+        // The file as saved is what the engine reads: a save moves what it says of the e-mail
+        // accounts, so the tab asks again — while it shows, and never from another tab (STUDIO-69).
+        Config.Saved += (_, _) =>
+        {
+            if (IsMailsTab)
+                _ = Config.Email.RefreshStatesAsync();
+        };
+
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
         // The folders tab re-reads the teams' own folders on arrival: the section is a view
         // over the sidecars, and a team adopted or deleted since the last visit must show.
@@ -129,11 +137,19 @@ public sealed class SettingsScreenViewModel : ObservableObject
             if (_mode.IsNovice && requested is LimitsTab or JsonTab or McpTab)
                 requested = ModelTab;
 
+            var wasMails = IsMailsTab;
             if (SetProperty(ref _activeTab, requested))
             {
                 OnPropertiesChanged(
                     nameof(IsModelTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
                     nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab), nameof(IsMailsTab));
+
+                // The e-mail tab asks the engine about its accounts on arrival, and stops what it
+                // was running when it is left: a connection test never outlives its tab (STUDIO-69).
+                if (IsMailsTab)
+                    _ = Config.Email.RefreshStatesAsync();
+                else if (wasMails)
+                    Config.Email.StopActivity();
             }
         }
     }
@@ -185,6 +201,22 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
     /// <summary>Shows the e-mail tab.</summary>
     public RelayCommand ShowMailsCommand { get; }
+
+    /// <summary>
+    /// The screen shows again — its sidebar entry was chosen: the e-mail tab, when it is the one
+    /// showing, reads the states of its accounts again (STUDIO-69).
+    /// </summary>
+    public void Enter()
+    {
+        if (IsMailsTab)
+            _ = Config.Email.RefreshStatesAsync();
+    }
+
+    /// <summary>
+    /// The screen is left — another sidebar entry, or the window closing: whatever the e-mail tab
+    /// still has running is stopped, so that no <c>orkeon</c> process outlives it (STUDIO-69).
+    /// </summary>
+    public void Leave() => Config.Email.StopActivity();
 
     private void OnModeChanged(object? sender, PropertyChangedEventArgs e)
     {

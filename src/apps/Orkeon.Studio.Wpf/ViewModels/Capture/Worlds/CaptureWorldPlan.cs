@@ -177,6 +177,14 @@ internal sealed record CaptureWorldPlan
     /// <summary>What <c>orkeon doctor --json</c> answers.</summary>
     public string DoctorJson { get; init; } = "[]";
 
+    /// <summary>
+    /// What <c>orkeon email accounts --json</c> answers (STUDIO-69): what the engine makes of each
+    /// account of <see cref="EmailJson"/>, which the E-mail tab shows as a state on its rows. A
+    /// script, like every other answer of the CLI here — no account of a campaign is ever asked
+    /// about for real, and none is connected to.
+    /// </summary>
+    public string EmailAccountsJson { get; init; } = "[]";
+
     /// <summary>What <c>orkeon --version</c> answers.</summary>
     public string VersionLine { get; init; } = "orkeon 1.0.0-rc.2";
 
