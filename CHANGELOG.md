@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a settings section no shipped binary reads is reported at start
+
+`ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp` and eight other sections are read by a host
+written in C# only. Written in the settings of `orkeon run`, `orkeon-host` or `orkeon-repl`, they
+were read by nothing and nobody was told: the run started without the limit, the budget or the
+screening its operator had written.
+
+- **Each shipped host says it at its start**, once per section and per process, on stderr and on
+  its logger, then starts — the exit code is the run's:
+  `WARNING: ToolRateLimiting is read by no component of this host: a C# host reads it through
+  AddOrkeonToolRateLimiting(). The calls to the model are limited by RateLimiting, which this
+  host reads.` `orkeon-repl` writes it as `orkeon-repl: warning: …` before its console opens.
+- **The list is computed** from the settings catalogue — a section present in the configuration,
+  the file or the `ORKEON_` environment, that no shipped binary reads and this composition does
+  not read either. Eleven today: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`,
+  `Orkeon:Monitoring`, `Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`,
+  `Orkeon:VectorSearch`, `Orkeon:Checkpointing`, `Orkeon:ExecutionState:Persistence`.
+- **Not reported**: a section another shipped binary reads (`Orkeon:Host` in a file `orkeon run`
+  shares with the daemon), a root section Orkeon does not know, a single value at the path of a
+  section, and a section a C# host reads because it registered what reads it.
+- **`orkeon doctor`**: one `runner-settings` line at `warn` per section, beside the `fail` lines;
+  the exit code is unchanged.
+- **The refusal of an unknown key** ends on the command that lists the keys of its section:
+  `` `orkeon settings Orkeon:Guardian` lists its keys. ``
+- Docs (EN, FR): `opt-in-subsystems.md` says at the head of each subsystem that no shipped binary
+  activates it; `configuration.md` gains "When a setting is only reported"; `cli.md` says what
+  `runner-settings` warns of.
+
+Nothing that was refused becomes a notice, and nothing that was accepted is refused.
+
 ### Added — `orkeon settings` lists every setting by category, offline
 
 The CLI's help named its verbs and an address; whoever installed Orkeon without the repository

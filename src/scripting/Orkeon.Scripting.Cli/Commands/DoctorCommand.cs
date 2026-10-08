@@ -446,10 +446,11 @@ internal static class DoctorCommand
     /// GAP-40: what <c>orkeon run</c> refuses at its start on the same settings file, judged by the
     /// same construction — the guards the run applies to the file's mounts, then the host it builds
     /// (<see cref="RunCommand.AddCliRagServices"/> included, so the ONNX reranker is offered) and its
-    /// start validation. One <c>fail</c> line per refusal, each naming its key; one <c>ok</c> line
-    /// otherwise. A refusal the build itself raises is the only line, as the run reports it. Skipped
-    /// when the <c>Llm</c> section is already refused: the run stops on it first, and the line above
-    /// says why.
+    /// start validation. One <c>fail</c> line per refusal, each naming its key, and one <c>warn</c>
+    /// line per section the file writes that no component of the run's host reads — the run starts,
+    /// and says the same on stderr; one <c>ok</c> line when there is neither. A refusal the build
+    /// itself raises is the only line, as the run reports it. Skipped when the <c>Llm</c> section is
+    /// already refused: the run stops on it first, and the line above says why.
     /// </summary>
     private static IEnumerable<DoctorCheckResult> CheckRunnerSettings(LlmContext llm)
     {
@@ -464,16 +465,20 @@ internal static class DoctorCommand
         if (RunnerExecution.CheckSettingsMounts(llm.SettingsPath) is { } mounts)
             return [new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = mounts }];
 
-        var refusals = RunnerHost.ValidateSettings(llm.SettingsPath, (_, services) =>
+        var verdict = RunnerHost.InspectSettings(llm.SettingsPath, (_, services) =>
         {
             services.AddOrkeonHumanInput();
             services.AddSemanticSearchTool();
             RunCommand.AddCliRagServices(services);
         });
-        if (refusals.Count == 0)
+        if (verdict.Refusals.Count == 0 && verdict.Notices.Count == 0)
             return [new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = "the settings pass the start validation of orkeon run" }];
 
-        return refusals.Select(refusal => new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = refusal });
+        return
+        [
+            .. verdict.Refusals.Select(refusal => new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = refusal }),
+            .. verdict.Notices.Select(notice => new DoctorCheckResult { Check = Check, Status = StatusWarn, Detail = notice }),
+        ];
     }
 
     private static async Task<DoctorCheckResult> CheckLlmReachabilityAsync(LlmContext llm, CancellationToken ct)

@@ -315,6 +315,55 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Contains("orkeon run", line.Detail, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A section Orkeon knows and no shipped binary reads is not a refusal — a run starts on that
+    /// file — and it is not nothing either: one <c>warn</c> line per section, the sentence the run
+    /// writes on stderr.
+    /// </summary>
+    [Fact]
+    public async Task RunnerSettings_WarnsOfEachSectionNoShippedBinaryReads_AndExits0()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            {
+              "RaggableTree": { "Enabled": false },
+              "ToolRateLimiting": { "GlobalToolRequestsPerMinute": 10 },
+              "Orkeon": { "Dlp": { "Enabled": true }, "Host": { "Crews": [] } }
+            }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitOk, exit);
+        var runner = lines.Where(l => l.Check == "runner-settings").ToList();
+        Assert.Equal(2, runner.Count);
+        Assert.All(runner, l => Assert.Equal("warn", l.Status));
+        Assert.Contains(runner, l => l.Detail.StartsWith("ToolRateLimiting is read by no component of this host", StringComparison.Ordinal)
+                                     && l.Detail.Contains("AddOrkeonToolRateLimiting()", StringComparison.Ordinal));
+        Assert.Contains(runner, l => l.Detail.StartsWith("Orkeon:Dlp is read by no component of this host", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunnerSettings_ReportsARefusalAndANotice_OnTheSameFile()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            {
+              "RaggableTree": { "Enabled": false },
+              "TokenBudget": { "MaxTokensPerCrew": 1000 },
+              "Orkeon": { "Guardian": { "Enabled": "oui" } }
+            }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var runner = lines.Where(l => l.Check == "runner-settings").ToList();
+        Assert.Equal(2, runner.Count);
+        Assert.Contains(runner, l => l.Status == "fail" && l.Detail.Contains("Orkeon:Guardian:Enabled", StringComparison.Ordinal));
+        Assert.Contains(runner, l => l.Status == "warn" && l.Detail.StartsWith("TokenBudget is read by no component of this host", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task RunnerSettings_IsSkipped_WhenTheLlmSectionIsAlreadyRefused()
     {

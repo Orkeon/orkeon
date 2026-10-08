@@ -165,6 +165,7 @@ public static partial class RunnerHost
 
             LogMountDecisions(host, decisions);
             WarnIfEmailTokensUnavailable(host, decisions);
+            AnnounceSettingsNotices(host.Services, WarnOnStderr);
             WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
             ActivateTelemetry(host);
             return host;
@@ -311,6 +312,20 @@ public static partial class RunnerHost
     /// <param name="configureServices">What the runner adds to the host, as for a run.</param>
     internal static IReadOnlyList<string> ValidateSettings(
         string? settingsPath,
+        Action<HostBuilderContext, IServiceCollection>? configureServices) =>
+        InspectSettings(settingsPath, configureServices).Refusals;
+
+    /// <summary>
+    /// The refusals of <see cref="ValidateSettings(string?, Action{HostBuilderContext, IServiceCollection}?)"/>
+    /// and, of the same host built once, what it would only report at its start: the sections the
+    /// settings write that no component of it reads (<see cref="SettingsValidation.Notices"/>).
+    /// Nothing is printed and nothing is counted as said: the run that follows still says it. A host
+    /// the build itself refuses has no notice — the run stops before it could say one.
+    /// </summary>
+    /// <param name="settingsPath">The settings file a run would read, or null.</param>
+    /// <param name="configureServices">What the runner adds to the host, as for a run.</param>
+    internal static SettingsVerdict InspectSettings(
+        string? settingsPath,
         Action<HostBuilderContext, IServiceCollection>? configureServices)
     {
         IHost host;
@@ -327,12 +342,49 @@ public static partial class RunnerHost
         }
         catch (RunnerSettingsException ex)
         {
-            return [ex.Message];
+            return new SettingsVerdict([ex.Message], []);
         }
 
         using (host)
-            return ValidateSettings(host.Services);
+            return new SettingsVerdict(ValidateSettings(host.Services), SettingsValidation.Notices(host.Services));
     }
+
+    /// <summary>The notices this process has said: a section is reported once, however many hosts it builds.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> s_noticesSaid = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Says, once per process each, the sections the settings write that no component of this host
+    /// reads (<see cref="SettingsValidation.Notices"/>): through <paramref name="say"/> — stderr for a
+    /// runner, never the standard output, which is the run's — and as a warning of the host's logger.
+    /// The host starts all the same and its exit code is the run's. A daemon that builds a host per
+    /// run, a command that builds two, say it once.
+    /// </summary>
+    /// <param name="services">The built container.</param>
+    /// <param name="say">Where a notice is written, one call per notice.</param>
+    /// <returns>The notices said by this call.</returns>
+    internal static IReadOnlyList<string> AnnounceSettingsNotices(IServiceProvider services, Action<string> say)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(say);
+
+        var notices = SettingsValidation.Notices(services).Where(notice => s_noticesSaid.TryAdd(notice, 0)).ToList();
+        if (notices.Count == 0)
+            return notices;
+
+        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Hosting.RunnerHost");
+        foreach (var notice in notices)
+        {
+            say(notice);
+            LogSettingsNotice(logger, notice);
+        }
+
+        return notices;
+    }
+
+    private static void WarnOnStderr(string notice) => Console.Error.WriteLine("WARNING: " + notice);
+
+    [LoggerMessage(EventId = 14, Level = LogLevel.Warning, Message = "{Notice}")]
+    private static partial void LogSettingsNotice(ILogger logger, string notice);
 
     /// <summary>A setting a registration or a check refused, as the one type every entry point translates (GAP-35).</summary>
     private static RunnerSettingsException Refused(InvalidOperationException ex) => new(ex.Message, ex);

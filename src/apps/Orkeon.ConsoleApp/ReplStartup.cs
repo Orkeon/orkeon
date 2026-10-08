@@ -23,7 +23,8 @@ internal sealed record ReplLaunch(IHost? Host, int ExitCode, ScriptedCommandsCli
 /// start validation of the runner host — values, keys, names, <c>Orkeon:Rag:LlmProfile</c>. A
 /// <c>--settings</c> file it cannot read is named. Each refusal is one line, <c>orkeon-repl: …</c>,
 /// and the exit code 1, before the console opens: the REPL used to open on a file <c>orkeon run</c>
-/// refuses, and its first command failed on it.
+/// refuses, and its first command failed on it. A section the settings write that no shipped binary
+/// reads is one line too, <c>orkeon-repl: warning: …</c>, and the console opens.
 /// </summary>
 internal static class ReplStartup
 {
@@ -34,7 +35,7 @@ internal static class ReplStartup
     /// <param name="args">The process arguments.</param>
     /// <param name="effectiveUi">The UI mode the flags resolved.</param>
     /// <param name="replWordWrap">The <c>--repl-wrap</c> choice.</param>
-    /// <param name="report">Where a refusal is written: stderr, or a test's sink.</param>
+    /// <param name="report">Where a refusal or a notice is written: stderr, or a test's sink.</param>
     public static ReplLaunch Prepare(string[] args, UiMode effectiveUi, bool replWordWrap, Action<string> report)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -68,6 +69,10 @@ internal static class ReplStartup
             host.Dispose();
             return Refused(report, refusal, scriptedOpts);
         }
+
+        // What the settings write and no component of the REPL reads: said before the console
+        // opens, as a runner says it, and the REPL starts.
+        RunnerHost.AnnounceSettingsNotices(host.Services, notice => report($"orkeon-repl: warning: {notice}"));
 
         return new ReplLaunch(host, 0, scriptedOpts);
     }

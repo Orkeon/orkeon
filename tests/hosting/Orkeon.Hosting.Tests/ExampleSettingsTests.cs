@@ -10,7 +10,8 @@ namespace Orkeon.Hosting.Tests;
 /// <c>Llm:ApiKeyEnvironmentVariable</c>, which nothing reads, sat in two of them, and the smoke fixture
 /// still wrote <c>Orkeon:Rag:ConnectionString</c> — its database stayed in memory, and the search
 /// process could find nothing the ingestion process had written. What depends on the machine — the
-/// mounts' folders, the variables holding the keys — is not judged here: the settings are.
+/// mounts' folders, the variables holding the keys — is not judged here: the settings are. And none
+/// writes a section that no shipped binary reads, which a run would report at its start.
 /// </summary>
 public sealed class ExampleSettingsTests
 {
@@ -40,7 +41,7 @@ public sealed class ExampleSettingsTests
     [MemberData(nameof(Files))]
     public void An_example_settings_file_passes_the_start_validation_of_orkeon_run(string file)
     {
-        var refusals = RunnerHost.ValidateSettings(
+        var verdict = RunnerHost.InspectSettings(
             Path.Combine(RepositoryRoot(), file),
             (_, services) =>
             {
@@ -48,7 +49,9 @@ public sealed class ExampleSettingsTests
                 services.AddSemanticSearchTool();
             });
 
-        Assert.Empty(refusals);
+        Assert.Empty(verdict.Refusals);
+        // Nor a section the run would only report: a file handed to an operator writes nothing no shipped binary reads.
+        Assert.Empty(verdict.Notices);
     }
 
     [Fact]

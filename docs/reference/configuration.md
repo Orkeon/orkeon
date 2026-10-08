@@ -99,7 +99,8 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   together, a sub-section another reader declares included: `Orkeon:Guardian:Enabeld`,
   `Llm:Provider` (nothing reads it: the provider follows from `BaseUrl` and the model). A key GAP-08
   removed — `Memory:ConnectionString`, `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions`,
-  `Orkeon:Pinecone:Environment` — is refused with its migration. A section name under `Orkeon:` and
+  `Orkeon:Pinecone:Environment` — is refused with its migration. The refusal of an unknown key ends on the command that lists the
+  keys of its section — `` `orkeon settings Orkeon:Guardian` lists its keys ``. A section name under `Orkeon:` and
   under the groups `Orkeon:Cli`, `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` and `Security`
   must be one Orkeon reads (`SettingsSections`); the refusal proposes the closest
   (`Orkeon:Guardain` → `Orkeon:Guardian`). Keys and section names are compared without case, as the
@@ -118,13 +119,38 @@ prefix, and nothing tells a misspelt section there from a variable of the machin
 beyond its levels, `Secrets`, the keys of a dictionary (`Llm:Profiles:<name>`, `MCP:Servers:<id>`,
 `…:Env:<VAR>`, `Orkeon:Consensus:RoleWeights:<role>`, `Orkeon:Tools:Email:Accounts:<name>`) and the
 indices of a list, and the keys of a section this host does not read — `orkeon run` leaves
-`Orkeon:Host` to the daemon, which judges it. **The e-mail accounts are the exception**: an account
+`Orkeon:Host` to the daemon, which judges it; a section **no** shipped binary reads is
+reported, not judged ([below](#when-a-setting-is-only-reported)). **The e-mail accounts are the exception**: an account
 holding a value or a key that cannot be read is set aside and reported when a call or
 `orkeon email` names it, and the others keep working ([e-mail](../guides/email.md)).
 
 A C# host that starts (`StartAsync`, a .NET Aspire AppHost) refuses the values and the names its
 Orkeon registrations bind — each is registered with `ValidateOnStart` —; the keys of its sections
 stay its own. A container built by hand and never started judges nothing until an option is read.
+
+### When a setting is only reported
+
+A section Orkeon knows and **no shipped binary reads** is not refused: a settings file shared
+between `orkeon run` and a host written in C# is a legitimate one. It is not read in silence
+either — the run would start without the limit, the budget or the screening the file describes.
+Each shipped host says it at its start, once per section and per process, on stderr (the standard
+output stays the run's) and on its logger, then starts; the exit code is the run's:
+
+```text
+WARNING: ToolRateLimiting is read by no component of this host: a C# host reads it through AddOrkeonToolRateLimiting(). The calls to the model are limited by RateLimiting, which this host reads.
+```
+
+`orkeon doctor` reports the same sentence as a `warn` row of `runner-settings`, one per section,
+and still exits `0`. The sections are those the settings catalogue marks as read by no shipped
+binary: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
+`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
+`Orkeon:Checkpointing` and `Orkeon:ExecutionState:Persistence`
+([opt-in subsystems](./opt-in-subsystems.md)). The list is computed, not written: a section a
+shipped binary starts to read leaves it. Not reported: a section another shipped binary reads
+(`Orkeon:Host` in a file `orkeon run` reads), a root section Orkeon does not know, and a section
+the host itself reads because its C# composition registered what reads it. The `ORKEON_`
+environment writes a section as the file does:
+`ORKEON_ToolRateLimiting__GlobalToolRequestsPerMinute` gets the same line.
 
 ## Find a setting
 

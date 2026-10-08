@@ -15,6 +15,17 @@ path consumes them yet**: registering them by default bloated the DI container
 with no benefit and masked their real status. The move to opt-in makes their
 activation **intentional, documented and verifiable**.
 
+**No shipped binary activates them.** `orkeon run`, `orkeon-host` and `orkeon-repl` call none of
+the extensions that read these sections: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
+`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
+`Orkeon:Checkpointing` and `Orkeon:ExecutionState:Persistence`. Written in the
+settings of one of those binaries, such a section is read by nothing: the run starts without the
+limit, the budget or the screening it describes. The binary says so at its start — one line on
+stderr per section, naming the extension a host written in C# reads it through — and
+`orkeon doctor` reports it as a `warn` line of `runner-settings`. It starts all the same: a
+settings file shared with a C# host is a legitimate one. See
+[When a setting is refused](./configuration.md#when-a-setting-is-refused).
+
 Each activation extension is **self-contained**: it registers (via `TryAdd*`)
 all the dependencies the subsystem needs that are not already provided by
 the host. Prerequisites common to all of them: logging
@@ -56,10 +67,10 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
 | Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
 | Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
-| Plugin system | `AddOrkeonPlugins(...)` (never registered implicitly) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — directory discovery, isolated collectible `AssemblyLoadContext`s; ⚠️ loaded assemblies run with full trust — see [Plugins](../architecture/plugins.md) | Beta |
+| Plugin system | `AddOrkeonPlugins(...)` (never registered implicitly; no shipped binary calls it, so none reads `Plugins`) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — directory discovery, isolated collectible `AssemblyLoadContext`s; ⚠️ loaded assemblies run with full trust — see [Plugins](../architecture/plugins.md) | Beta |
 | Local on-device embeddings | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, no API key) — first link of the embedding resolution chain | Beta |
 | External memory providers (Redis, SQLite, ChromaDB, Pinecone, LanceDB) + migration | A type — `Memory:Provider`, a crew's `memoryProvider:`, `Orkeon:Rag:Provider` — plus that provider's host section (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), all bound by `AddOrkeonInfrastructure()`; `MemoryProviderFactory` hands out one shared instance per type, which connects on first use. `AddOrkeonRedisMemory(configuration)` makes Redis the application-wide `IMemoryProvider`; `AddOrkeonLanceDb`/`AddOrkeonChromaDb`/`AddOrkeonPinecone(configuration)` expose the shared provider by its class (the last two are called by `AddOrkeonInfrastructure(configuration)` when their section exists) · `AddOrkeonMemoryMigration()` | Infrastructure | `RedisMemoryProvider`, `LanceDbMemoryProvider` (+ `LanceDbMigrationService`), `MemoryMigrationService` — see [Memory system](../architecture/memory-system.md#selection-by-configuration) | Beta |
-| Cognitive memory | `AddOrkeonCognitiveMemory(configuration)` (`Orkeon:CognitiveMemory`) | Infrastructure | `ICognitiveMemoryService` — LLM analysis, contradiction detection, consolidation, composite recall scoring; needs an `ILlmProvider` and an `IEmbeddingProvider` — see [Memory system](../architecture/memory-system.md#cognitive-memory) | Experimental |
+| Cognitive memory | `AddOrkeonCognitiveMemory(configuration)` (`Orkeon:CognitiveMemory`; no shipped binary calls it) | Infrastructure | `ICognitiveMemoryService` — LLM analysis, contradiction detection, consolidation, composite recall scoring; needs an `ILlmProvider` and an `IEmbeddingProvider` — see [Memory system](../architecture/memory-system.md#cognitive-memory) | Experimental |
 | LLM exchange logging | `AddLlmExchangeLogging(logDirectory, options?)` (full JSONL capture + structured summary, handler injected into every `IHttpClientFactory` client) — wired by `RunnerHost` only when a run passes `--llm-log` (`LlmLogging` section) | Infrastructure | `ILlmExchangeLogger`, `LlmLoggingDelegatingHandler` — see [LLM providers](../architecture/llm-providers.md) | Beta |
 | Human input tool | `AddOrkeonHumanInput()` (auto-approve fallback provider) / `AddOrkeonHumanInput<TProvider>()` — wired by the runner execution path | Infrastructure | `human_input` (`IBaseTool`), `IHumanInputProvider` | Beta |
 | Session tools | `AddOrkeonSessionTools(configuration?)` (`Llm:AvailableModels`) — wired by `RunnerHost` and the REPL | Infrastructure | `session_store`, `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats`; `ISessionBufferService`, `ICategoryMemoryStore` — see [Coding agent (TS)](../architecture/coding-agent-ts.md) | Beta |
@@ -174,6 +185,8 @@ partial (flagged case by case below).
 
 ## Monitoring backend — `AddOrkeonMonitoring(...)`
 
+- **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` do not
+  read `Orkeon:Monitoring`, and say so at their start when the settings write it.
 - **Role**: in-process aggregation of Orkeon metrics (`MeterListener` on
   `OrkeonMetrics`) and exploration of recent traces (circular buffer) for
   exposure through a host endpoint (dashboard, diagnostic API).
@@ -227,6 +240,9 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
 
 ## DLP — `AddOrkeonDlp()`
 
+- **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` do not
+  read `Orkeon:Dlp`, and say so at their start when the settings write it: DLP screens nothing
+  there. What they do screen is set by `Security:Prompt` and `Security:ToolResults`.
 - **Role**: data loss prevention — PII detection through regular
   expressions (`IPiiDetector`), per-channel policies (`IDlpPolicyProvider`,
   `Orkeon:Dlp` section) and 5 channel interceptors (tool output, delegation, logs,
@@ -242,6 +258,9 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
 
 ## Tool rate-limiting & token budget — `AddOrkeonToolRateLimiting()`
 
+- **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` read
+  neither `ToolRateLimiting` nor `TokenBudget`, and say so at their start when the settings write
+  one. The limits they apply are those of the model calls: `RateLimiting`.
 - **Role**: per-tool rate limiting (`IToolRateLimiter`, `ToolRateLimiting`
   section) and per-agent/crew token budget tracking
   (`ITokenBudgetTracker`, `TokenBudget` section).
@@ -316,6 +335,8 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
 
 ## Multi-modal content (vision) — `AddOrkeonMultiModal(...)`
 
+- **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` do not
+  read `Orkeon:MultiModal`, and say so at their start when the settings write it.
 - **Status: real (R3.9)** — vision is wired end to end: image contents
   flow from the `MultiModalContent` abstractions (Domain) to provider payloads via
   `LlmMessage.MultiModalContent`. `AnthropicLlmProvider` emits image content
@@ -429,6 +450,9 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
 
 ## Execution state persistence — `AddCrewExecutionStatePersistence(...)` (R3.8)
 
+- **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` read
+  neither `Orkeon:ExecutionState:Persistence` nor the Postgres store's `Orkeon:Checkpointing`, and
+  say so at their start when the settings write one.
 - **Role**: durable persistence of crew execution states
   (`ScopedCrewExecutionStateManager`) in a checkpointing state store
   (`IStateStore`): every transition (creation, update, completion, archiving)

@@ -70,4 +70,21 @@ public sealed class ReplStartupTests : IDisposable
         Assert.Equal(0, launch.ExitCode);
         Assert.Empty(_reported);
     }
+
+    /// <summary>
+    /// A section Orkeon knows and no shipped binary reads refuses nothing: it is one line before the
+    /// console opens, as a runner writes it on stderr, and the console opens.
+    /// </summary>
+    [Fact]
+    public void A_section_no_shipped_binary_reads_is_one_warning_line_and_the_host_is_yielded()
+    {
+        var launch = Start("""{ "ToolRateLimiting": { "GlobalToolRequestsPerMinute": 10 } }""");
+
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        Assert.Equal(0, launch.ExitCode);
+        var line = Assert.Single(_reported);
+        Assert.StartsWith("orkeon-repl: warning: ToolRateLimiting is read by no component of this host", line, StringComparison.Ordinal);
+        Assert.Contains("AddOrkeonToolRateLimiting()", line, StringComparison.Ordinal);
+    }
 }

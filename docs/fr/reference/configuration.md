@@ -109,7 +109,8 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   `Orkeon:Guardian:Enabeld`, `Llm:Provider` (rien ne la lit : le fournisseur se déduit de `BaseUrl`
   et du modèle). Une clé que GAP-08 a retirée — `Memory:ConnectionString`,
   `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions`, `Orkeon:Pinecone:Environment` — est
-  refusée avec sa migration. Un nom de section sous `Orkeon:` et sous les groupes `Orkeon:Cli`,
+  refusée avec sa migration. Le refus d'une clé inconnue se termine par la commande qui liste les
+  clés de sa section — `` `orkeon settings Orkeon:Guardian` lists its keys ``. Un nom de section sous `Orkeon:` et sous les groupes `Orkeon:Cli`,
   `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` et `Security` doit être l'une de celles
   qu'Orkeon lit (`SettingsSections`) ; le refus propose la plus proche (`Orkeon:Guardain` →
   `Orkeon:Guardian`). Clés et noms de section se comparent sans tenir compte de la casse, comme la
@@ -128,7 +129,8 @@ d'environnement sans préfixe, et rien n'y distingue une section mal écrite d'u
 machine —, `Logging` au-delà de ses niveaux, `Secrets`, les clés d'un dictionnaire
 (`Llm:Profiles:<nom>`, `MCP:Servers:<id>`, `…:Env:<VAR>`, `Orkeon:Consensus:RoleWeights:<rôle>`,
 `Orkeon:Tools:Email:Accounts:<nom>`) et les index d'une liste, et les clés d'une section que cet hôte
-ne lit pas — `orkeon run` laisse `Orkeon:Host` au démon, qui la juge. **Les comptes e-mail sont
+ne lit pas — `orkeon run` laisse `Orkeon:Host` au démon, qui la juge ; une section qu'**aucun**
+binaire livré ne lit est signalée, pas jugée ([ci-dessous](#quand-un-réglage-est-seulement-signalé)). **Les comptes e-mail sont
 l'exception** : un compte qui porte une valeur ou une clé illisible est mis de côté et signalé quand
 un appel ou `orkeon email` le nomme, et les autres continuent de fonctionner ([e-mail](../guides/email.md)).
 
@@ -136,6 +138,31 @@ Un hôte C# qui démarre (`StartAsync`, un AppHost .NET Aspire) refuse les valeu
 ses inscriptions Orkeon — chacune est inscrite avec `ValidateOnStart` — ; les clés de ses sections
 restent les siennes. Un conteneur bâti à la main et jamais démarré ne juge rien tant qu'aucune option
 n'est lue.
+
+### Quand un réglage est seulement signalé
+
+Une section qu'Orkeon connaît et qu'**aucun binaire livré ne lit** n'est pas refusée : un fichier
+de réglages partagé entre `orkeon run` et un hôte écrit en C# est légitime. Elle n'est pas lue en
+silence non plus — le run démarrerait sans la limite, le budget ou le filtrage que le fichier
+décrit. Chaque hôte livré le dit à son démarrage, une fois par section et par processus, sur
+stderr (la sortie standard reste celle du run) et dans son journal, puis démarre ; le code de
+sortie est celui du run :
+
+```text
+WARNING: ToolRateLimiting is read by no component of this host: a C# host reads it through AddOrkeonToolRateLimiting(). The calls to the model are limited by RateLimiting, which this host reads.
+```
+
+`orkeon doctor` rapporte la même phrase en ligne `warn` de `runner-settings`, une par section, et
+sort toujours en `0`. Les sections sont celles que le catalogue des réglages marque comme lues par
+aucun binaire livré : `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
+`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
+`Orkeon:Checkpointing` et `Orkeon:ExecutionState:Persistence`
+([sous-systèmes opt-in](./opt-in-subsystems.md)). La liste est calculée, pas écrite : une section
+qu'un binaire livré se met à lire en sort. Ne sont pas signalées : une section qu'un autre binaire
+livré lit (`Orkeon:Host` dans un fichier que lit `orkeon run`), une section de la racine
+qu'Orkeon ne connaît pas, et une section que l'hôte lit lui-même parce que sa composition C# a
+enregistré ce qui la lit. L'environnement `ORKEON_` écrit une section comme le fichier :
+`ORKEON_ToolRateLimiting__GlobalToolRequestsPerMinute` reçoit la même ligne.
 
 ## Trouver un réglage
 

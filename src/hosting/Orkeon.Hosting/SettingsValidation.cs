@@ -10,6 +10,21 @@ using Orkeon.Constants.Configuration;
 namespace Orkeon.Hosting;
 
 /// <summary>
+/// What a shipped host makes of its settings before it starts: what it refuses, each a sentence
+/// naming its key, and what it only reports — a section it knows and no component of it reads.
+/// </summary>
+/// <param name="Refusals">What stops the start; empty when the host may start.</param>
+/// <param name="Notices">What the host says and starts with (<see cref="SettingsValidation.Notices"/>).</param>
+internal sealed record SettingsVerdict(IReadOnlyList<string> Refusals, IReadOnlyList<string> Notices);
+
+/// <summary>
+/// What a notice adds for a section its reader most likely wrote for something this host does read.
+/// </summary>
+/// <param name="Sentence">The sentence, naming the sections it points to.</param>
+/// <param name="Sections">The sections it points to: each one a shipped host reads.</param>
+internal sealed record SettingsNoticeHint(string Sentence, IReadOnlyList<string> Sections);
+
+/// <summary>
 /// The start validation of a shipped host (GAP-40): every setting it reads is judged before the host
 /// is handed out, whether the run uses it or not, and every refusal names its key. In this order:
 /// <list type="number">
@@ -24,9 +39,42 @@ namespace Orkeon.Hosting;
 /// Nothing is built but the options and the named factories, which hold functions: no store, provider,
 /// model or connection. Only what the binder, a rule, the names or the keys refuse becomes a refusal —
 /// a defect of the code keeps its exception and its stack.
+/// <para>
+/// Beside the refusals, <see cref="Notices"/>: the sections the file writes that Orkeon knows and no
+/// shipped host reads. They refuse nothing — a file shared with a host written in C# is legitimate —
+/// and they are said, because a run without the limit or the screening its operator wrote is worse
+/// than a line on stderr.
+/// </para>
 /// </summary>
 internal static class SettingsValidation
 {
+    /// <summary>
+    /// The section the plugins are loaded from. Its registration binds it while it registers, without
+    /// a declaration, and lives in an assembly this one does not reference: the registry it leaves in
+    /// the container is what says the section was read.
+    /// </summary>
+    private const string PluginsSection = "Plugins";
+
+    private const string PluginsAssembly = "Orkeon.Plugins";
+
+    private const string PluginRegistryType = "Orkeon.Plugins.IPluginRegistry";
+
+    /// <summary>
+    /// What comes close to a section no shipped host reads, where whoever wrote it most likely meant
+    /// something this host does read. Written by hand, and held by a test to sections every shipped
+    /// host reads — the list of the sections reported is not written: it is the catalogue's.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, SettingsNoticeHint> NoticeHints { get; } =
+        new Dictionary<string, SettingsNoticeHint>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ToolRateLimiting"] = new(
+                "The calls to the model are limited by RateLimiting, which this host reads.",
+                ["RateLimiting"]),
+            ["Orkeon:Dlp"] = new(
+                "Data-loss prevention is not active: what this host screens is set by Security:Prompt and Security:ToolResults.",
+                ["Security:Prompt", "Security:ToolResults"]),
+        };
+
     /// <summary>
     /// The keys GAP-08 removed, with what replaces them: still read as absent, they are refused with
     /// the migration the changelog gave rather than as an unknown key.
@@ -72,6 +120,72 @@ internal static class SettingsValidation
         refusals.AddRange(UnknownSectionNames(configuration));
         refusals.AddRange(UnknownKeys(configuration, declarations));
         return [.. refusals.Distinct(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// What the host reports and starts with: every section the configuration writes — the file or
+    /// the environment — that the settings catalogue knows, that no shipped host reads, and that this
+    /// composition does not read either. One sentence per section, naming it and the registration a
+    /// host written in C# reads it through, then what comes close when something does
+    /// (<see cref="NoticeHints"/>). Computed from the catalogue: a section a shipped host starts to
+    /// read leaves the list by itself.
+    /// <para>
+    /// Not reported: a section another shipped host reads (<c>Orkeon:Host</c> in a file
+    /// <c>orkeon run</c> shares with the daemon), a root section Orkeon does not know — the root
+    /// stays open —, and a single value at the path of a section, which is an environment variable
+    /// of that name rather than a section.
+    /// </para>
+    /// </summary>
+    /// <param name="services">The built container.</param>
+    public static IReadOnlyList<string> Notices(IServiceProvider services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        var configuration = services.GetRequiredService<IConfiguration>();
+        HashSet<string>? read = null;
+        var notices = new List<string>();
+        foreach (var section in SettingsCatalog.Complete.Sections)
+        {
+            if (section.Hosts.Count > 0 || !configuration.GetSection(section.Path).GetChildren().Any())
+                continue;
+
+            read ??= SectionsRead(services);
+            if (read.Any(path => string.Equals(path, section.Path, StringComparison.OrdinalIgnoreCase) || IsBelow(section.Path, path)))
+                continue;
+
+            notices.Add(Notice(section));
+        }
+
+        return notices;
+    }
+
+    /// <summary>
+    /// The sections this composition reads: those its registrations declared, those they registered
+    /// as read without a declaration, and the plugins' when their registry is there.
+    /// </summary>
+    private static HashSet<string> SectionsRead(IServiceProvider services)
+    {
+        var read = services.GetServices<SettingsDeclaration>().Select(declaration => declaration.Path)
+            .Concat(services.GetServices<SettingsSource>().Select(source => source.Path))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // An assembly that is not loaded registered nothing.
+        var registry = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(assembly => string.Equals(assembly.GetName().Name, PluginsAssembly, StringComparison.Ordinal))
+            ?.GetType(PluginRegistryType);
+        if (registry is not null && services.GetService(registry) is not null)
+            read.Add(PluginsSection);
+
+        return read;
+    }
+
+    private static string Notice(SettingsCatalogSection section)
+    {
+        var reader = section.Registration is { } registration
+            ? $"a C# host reads it through {registration}()."
+            : "no shipped host reads it.";
+        var close = NoticeHints.TryGetValue(section.Path, out var hint) ? " " + hint.Sentence : string.Empty;
+        return $"{section.Path} is read by no component of this host: {reader}{close}";
     }
 
     /// <summary>
@@ -299,8 +413,19 @@ internal static class SettingsValidation
         var known = shape.Named.Keys.ToList();
         var closest = Closest(child.Key, known);
         return $"{child.Path} is not a setting: {section.Path} carries {string.Join(", ", known)}."
-               + (closest is null ? string.Empty : $" Did you mean {section.Path}:{closest}?");
+               + (closest is null ? string.Empty : $" Did you mean {section.Path}:{closest}?")
+               + ListedBy(section.Path);
     }
+
+    /// <summary>
+    /// Where the keys of the section holding <paramref name="path"/> are listed with their type, their
+    /// default and their meaning: the verb of the CLI, by the catalogue's name of that section. Empty
+    /// for a section the catalogue does not know — a host's own, declared in C#.
+    /// </summary>
+    private static string ListedBy(string path) =>
+        SettingsCatalog.Complete.SectionCovering(path) is { } section
+            ? $" `orkeon settings {section.Path}` lists its keys."
+            : string.Empty;
 
     /// <summary>
     /// The known name <paramref name="name"/> is likely a misspelling of — two edits away at most, a

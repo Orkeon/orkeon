@@ -18,11 +18,44 @@ public sealed class HostExampleSettingsTests
         var settings = Path.Combine(RepositoryRoot(), "examples", "service-host", "appsettings.host.json");
         var noCrewMount = new HostCrewMountPlan([], new Dictionary<string, string>(), []);
 
-        var refusals = RunnerHost.ValidateSettings(
+        var verdict = RunnerHost.InspectSettings(
             settings,
             (context, services) => services.AddHostServices(context.Configuration, noCrewMount));
 
-        Assert.Empty(refusals);
+        Assert.Empty(verdict.Refusals);
+        Assert.Empty(verdict.Notices);
+    }
+
+    /// <summary>
+    /// The daemon reports what a runner reports — a section Orkeon knows and no shipped binary reads —
+    /// and says nothing of its own section, which <c>orkeon run</c> leaves to it.
+    /// </summary>
+    [Fact]
+    public void The_daemon_reports_a_section_no_shipped_binary_reads_and_not_its_own()
+    {
+        var directory = Directory.CreateTempSubdirectory("orkeon-host-notices-").FullName;
+        try
+        {
+            var settings = Path.Combine(directory, "host.json");
+            File.WriteAllText(settings, """
+                {
+                  "RaggableTree": { "Enabled": false },
+                  "Orkeon": { "Host": { "RunTimeout": "00:10:00" }, "Dlp": { "Enabled": true } }
+                }
+                """);
+            var noCrewMount = new HostCrewMountPlan([], new Dictionary<string, string>(), []);
+
+            var verdict = RunnerHost.InspectSettings(
+                settings,
+                (context, services) => services.AddHostServices(context.Configuration, noCrewMount));
+
+            Assert.Empty(verdict.Refusals);
+            Assert.StartsWith("Orkeon:Dlp is read by no component of this host", Assert.Single(verdict.Notices), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]
