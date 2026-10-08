@@ -110,6 +110,13 @@ jobs:
       # prerelease only after the pushed index has dropped it - proved against a fake gh.
       - name: Test the apt dev channel against a fake gh
         run: bash scripts/apt/test-publish-dev.sh
+      # The version of a build off a tag (scripts/resolve-version.sh, read by publish.yml,
+      # the apt dev channel and package-installers.sh): the dev version of a CI run, the
+      # local form of any other commit, the tag's version on a tagged one - in throwaway
+      # repositories. The runner carries PowerShell 7, so resolve-version.ps1 is held to
+      # the same answers here; the resolve-version-windows job below adds Windows PowerShell 5.1.
+      - name: Test the off-tag version resolver
+        run: bash scripts/test-resolve-version.sh
       # Release asset names (scripts/check-release-assets.sh): no character GitHub rewrites
       # on upload, and every asset listed in a checksum manifest.
       - name: Test the release asset-name guard
@@ -201,3 +208,14 @@ jobs:
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore -warnaserror
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
+
+  # scripts/resolve-version.ps1 under the two PowerShells a Windows machine has: Windows
+  # PowerShell 5.1, the one installed with the system, and PowerShell 7. The bench is the
+  # one build-test runs; under Git Bash it finds both and compares each with the shell script.
+  resolve-version-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Test the off-tag version resolver (bash, Windows PowerShell 5.1, PowerShell 7)
+        shell: bash
+        run: bash scripts/test-resolve-version.sh

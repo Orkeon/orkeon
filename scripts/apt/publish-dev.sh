@@ -12,10 +12,10 @@
 #   scripts/apt/publish-dev.sh upload [--tag apt-dev] --published <Packages> <file.deb>...
 #   scripts/apt/publish-dev.sh prune [--tag apt-dev] --index <Packages> [--apply]
 #
-# version prints the dev version of CI run <n>, numbered as publish.yml numbers the NuGet
-# dev builds: `version=<prefix>-<suffix>.dev.<n>` (the upstream version and asset names) and
-# `deb_version=<prefix>~<suffix>.dev.<n>` (the Debian Version: `~` sorts it below the next
-# prerelease and the final). A props version without a suffix moves the dev builds to the
+# version prints the dev version of CI run <n>, as scripts/resolve-version.sh computes it for
+# the NuGet dev builds of publish.yml too: `version=<prefix>-<suffix>.dev.<n>` (the upstream
+# version and asset names) and `deb_version=<prefix>~<suffix>.dev.<n>` (the Debian Version:
+# `~` sorts it below the next prerelease and the final). A props version without a suffix moves the dev builds to the
 # next patch: 1.0.0 gives 1.0.1-dev.<n>, Debian 1.0.1~dev.<n>.
 #
 # ensure-release creates the prerelease when it is missing, on <commit sha>, never marked
@@ -76,21 +76,13 @@ cmd_version() {
   done
   [[ -f "$props" ]] || usage "version: --props names no file"
   [[ "$run" =~ ^[1-9][0-9]*$ ]] || usage "version: --run takes the CI run number, got '$run'"
-  local prefix suffix
-  prefix="$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' "$props" | head -n1)"
-  suffix="$(sed -n 's/.*<VersionSuffix>\(.*\)<\/VersionSuffix>.*/\1/p' "$props" | head -n1)"
-  [[ "$prefix" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || die "$props: VersionPrefix '$prefix' is not Major.Minor.Patch"
-  # Same rule as publish.yml's publish-dev job, so a NuGet dev build and an apt dev build of
-  # one CI run carry one number.
-  if [[ -n "$suffix" ]]; then
-    suffix="$suffix.dev.$run"
-  else
-    prefix="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
-    suffix="dev.$run"
-  fi
-  [[ "$suffix" =~ ^[0-9A-Za-z.]+$ ]] || die "$props: VersionSuffix gives '$suffix', which a Debian version cannot carry"
-  echo "version=$prefix-$suffix"
-  echo "deb_version=$prefix~$suffix"
+  # scripts/resolve-version.sh numbers the build, as it does for publish.yml's publish-dev
+  # job: a NuGet dev build and an apt dev build of one CI run carry one number.
+  local version deb_version
+  version="$(bash "$here/../resolve-version.sh" --props "$props" --run "$run")"
+  deb_version="$(bash "$here/../resolve-version.sh" --props "$props" --run "$run" --format deb)"
+  echo "version=$version"
+  echo "deb_version=$deb_version"
 }
 
 cmd_ensure_release() {

@@ -5,7 +5,9 @@
   $Apps table). PowerShell mirror of scripts/package-installers.sh, intended
   for local Windows use.
 .PARAMETER Version
-  Package version. Default: git describe (v-stripped), then src/Directory.Build.props.
+  Package version. Default: what scripts/resolve-version.ps1 answers — the tag's version
+  when HEAD is the commit a v* tag points to, <props version>.local.<commit date> on any
+  other commit: a build off a tag never carries the name of the release before it.
 .PARAMETER Rids
   RIDs to package. Default: win-x64 only. Unix RIDs are refused unless -Force:
   archives produced on Windows lose the executable bits — build those on
@@ -54,14 +56,8 @@ if (-not $Python -or $LASTEXITCODE -ne 0) {
 
 # --- Version -----------------------------------------------------------------
 if (-not $Version) {
-    $tag = git -C $RepoRoot describe --tags --match 'v*' --abbrev=0 2>$null
-    if ($LASTEXITCODE -eq 0 -and $tag) { $Version = $tag -replace '^v', '' }
-}
-if (-not $Version) {
-    $props = Get-Content (Join-Path $RepoRoot 'src\Directory.Build.props') -Raw
-    $prefix = [regex]::Match($props, '<VersionPrefix>(.*?)</VersionPrefix>').Groups[1].Value
-    $suffix = [regex]::Match($props, '<VersionSuffix>(.*?)</VersionSuffix>').Groups[1].Value
-    $Version = if ($suffix) { "$prefix-$suffix" } else { $prefix }
+    $Version = & (Join-Path $PSScriptRoot 'resolve-version.ps1') -Props (Join-Path $RepoRoot 'src\Directory.Build.props')
+    if ($LASTEXITCODE -ne 0) { $Version = '' }
 }
 if (-not $Version) { throw 'Could not resolve a version; pass -Version.' }
 

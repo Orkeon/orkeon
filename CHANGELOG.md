@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a build off a tag no longer takes the release's version
+
+`scripts/package-installers.sh` and `.ps1`, run without a version on a commit that is no
+release, named their archives after the newest `v*` tag: a zip built from `main` was called
+`orkeon-cli-1.0.0-rc.4-win-x64.zip` and its `orkeon --version` answered `1.0.0-rc.4`, like
+the release. The version of such a build was also computed in three places.
+
+- **One calculation**, `scripts/resolve-version.sh`, with a PowerShell twin
+  (`scripts/resolve-version.ps1`, Windows PowerShell 5.1 included) held to the same answers by
+  `scripts/test-resolve-version.sh`. `publish.yml`, the apt dev channel and both
+  `package-installers` scripts read it.
+- **A build made from a checkout is `<props version>.local.<stamp>`**, `<stamp>` being the
+  commit's date, `YYYYMMDDHHMM` in UTC — `1.0.0-rc.4.local.202610080430`. It sorts above the
+  dev builds of the same props version and below the next one, and a shallow clone gives the
+  same answer. On the commit a `v*` tag points to, the version is still the tag's.
+- **The dev versions do not change**: `<props version>.dev.<CI run>` for the NuGet and the
+  apt dev builds of one CI run.
+- A manual run of `release.yml` therefore produces artifacts in the local form. Passing
+  `--version` (`-Version`) still decides, as before.
+
 ### Fixed — a Mistral model that reasons no longer breaks a stream, and the fleet is campaigned again with its two aggregators (LLM-08)
 
 The campaign of 2026-10-07 ran the protocol against the fourteen cloud providers — OpenRouter

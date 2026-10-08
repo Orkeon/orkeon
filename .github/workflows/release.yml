@@ -119,7 +119,9 @@ jobs:
 
       # On a tag the version is the tag minus its leading v. On workflow_dispatch
       # there is no tag to read, so --version is omitted and the packaging scripts
-      # fall back to their own resolution (git describe, then Directory.Build.props).
+      # ask scripts/resolve-version.sh: the artifacts of a manual run carry the local
+      # form, <props version>.local.<commit date>, never the version of a release -
+      # unless the run is dispatched on the very commit a v* tag points to.
       - name: Resolve the packaging arguments
         id: pkg
         run: |

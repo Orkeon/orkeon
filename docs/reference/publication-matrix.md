@@ -156,6 +156,20 @@ same script removes those in a one-off, reviewed run (`--include-untagged`, dry 
   a `packages.lock.json` in locked mode. Float (`*-*`, and `dotnet restore --force-evaluate`
   to move to the newest) to follow the channel; pin a tagged version for anything durable.
 - A dev build is not a release: no attestation, no SBOM, nothing on NuGet.org.
+- **Two forms off a tag, one calculation.** `scripts/resolve-version.sh` (and its PowerShell
+  twin `scripts/resolve-version.ps1`) names every build that is not a release:
+
+  | Form | Comes from | Example |
+  |---|---|---|
+  | `<props version>.dev.<n>` | CI alone — `publish.yml` and `apt-dev.yml`, `n` being the CI run number | `1.0.0-rc.4.dev.412` |
+  | `<props version>.local.<stamp>` | a build made from a checkout — `scripts/package-installers.sh` or `.ps1` without a version, a manual run of `release.yml` | `1.0.0-rc.4.local.202610080430` |
+
+  `<stamp>` is the committer date of the commit built, `YYYYMMDDHHMM` in UTC: it orders two
+  local builds, and a shallow clone gives the same one. Uncommitted changes do not move it.
+  SemVer sorts a local build above every dev build of the same props version and below the
+  next one, so a machine installed from the sources is never taken for an older build. On
+  the commit a `v*` tag points to, the same scripts answer the tag's version. `dotnet build`
+  is not concerned: the assemblies of a plain build carry the props version.
 - Once the feed is a source, `--prerelease` and floating versions resolve dev builds for
   every Orkeon package, the NuGet.org ones included; `--version` pins a release.
 - GitHub Packages requires a token even for a public repository: a personal access token
@@ -486,4 +500,4 @@ print the runtime install commands rather than failing at first launch.
   `release.yml`, a run artefact named `sbom` in `publish.yml`. How to verify any of it, and
   why a nuget.org download must shed its repository signature first, is in
   [Verify what you install](../guides/verify-what-you-install.md).
-- Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.4`), the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it. The dev channel derives its `<version>.dev.<n>` from it.
+- Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.4`), the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it. The dev channel derives its `<version>.dev.<n>` from it, a build made from a checkout its `<version>.local.<stamp>` (see *Dev channel* above).

@@ -166,6 +166,21 @@ est signalée, pas supprimée — le même script les retire lors d'un passage p
   passer à la plus récente) pour suivre le canal ; épinglez une version taggée pour tout usage
   durable.
 - Un build dev n'est pas une release : ni attestation, ni SBOM, rien sur NuGet.org.
+- **Deux formes hors tag, un seul calcul.** `scripts/resolve-version.sh` (et son jumeau
+  PowerShell `scripts/resolve-version.ps1`) nomme tout build qui n'est pas une release :
+
+  | Forme | D'où elle vient | Exemple |
+  |---|---|---|
+  | `<version des props>.dev.<n>` | la CI seule — `publish.yml` et `apt-dev.yml`, `n` étant le numéro du run de CI | `1.0.0-rc.4.dev.412` |
+  | `<version des props>.local.<horodatage>` | un build fait depuis un clone — `scripts/package-installers.sh` ou `.ps1` sans version, un run manuel de `release.yml` | `1.0.0-rc.4.local.202610080430` |
+
+  `<horodatage>` est la date de commit du commit construit, `AAAAMMJJHHMM` en UTC : elle
+  ordonne deux builds locaux, et un clone superficiel donne la même. Les changements non
+  commis ne la déplacent pas. SemVer classe un build local au-dessus de tous les builds dev
+  de la même version des props et sous la suivante : un poste installé depuis les sources ne
+  passe jamais pour un build plus ancien. Sur le commit que désigne un tag `v*`, les mêmes
+  scripts répondent la version du tag. `dotnet build` n'est pas concerné : les assemblies
+  d'un build ordinaire portent la version des props.
 - Une fois le flux déclaré comme source, `--prerelease` et les versions flottantes résolvent
   les builds dev de tous les paquets Orkeon, ceux de NuGet.org compris ; `--version` épingle
   une release.
@@ -512,4 +527,4 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   `publish.yml`. Comment vérifier tout cela, et pourquoi un téléchargement nuget.org doit
   d'abord perdre sa signature repository, est dans
   [Vérifier ce que vous installez](../guides/verify-what-you-install.md).
-- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.4`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<version>.dev.<n>`.
+- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.4`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<version>.dev.<n>`, un build fait depuis un clone son `<version>.local.<horodatage>` (voir *Canal dev* plus haut).

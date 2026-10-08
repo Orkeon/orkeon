@@ -55,6 +55,7 @@ if ! command -v apt-ftparchive >/dev/null 2>&1 && [ "${1:-}" != --inside ]; then
     || { echo "test-publish-dev: could not install apt-utils in $IMAGE" >&2; exit 1; }
   dexec "$name" mkdir -p /repo/scripts /repo/src /repo/.github/workflows
   docker cp "$here" "$name:/repo/scripts/apt"
+  docker cp "$repo/scripts/resolve-version.sh" "$name:/repo/scripts/resolve-version.sh"
   docker cp "$repo/src/Directory.Build.props" "$name:/repo/src/Directory.Build.props"
   docker cp "$repo/.github/workflows/publish.yml" "$name:/repo/.github/workflows/publish.yml"
   st=0
@@ -73,7 +74,8 @@ props() { # <prefix> <suffix>
 version() { code=0; out="$(bash "$script" version --props "$work/props" --run "$1" 2>&1)" || code=$?; }
 
 # publish.yml's own "Resolve the dev version" step, run as written: the apt and NuGet dev
-# builds of one CI run must carry one version.
+# builds of one CI run must carry one version. Both read scripts/resolve-version.sh, whose
+# own bench is scripts/test-resolve-version.sh: what is held here is that each still calls it.
 awk '
   /- name: Resolve the dev version/ { found = 1 }
   found && /run: \|/ { match($0, /^ */); indent = RLENGTH; inrun = 1; next }
@@ -81,8 +83,9 @@ awk '
 ' "$repo/.github/workflows/publish.yml" > "$work/publish-yml-version.sh"
 nuget_version() { # <run>: the version publish.yml computes from $work/props
   local d="$work/nuget"
-  rm -rf "$d"; mkdir -p "$d/src"
+  rm -rf "$d"; mkdir -p "$d/src" "$d/scripts"
   cp "$work/props" "$d/src/Directory.Build.props"
+  cp "$repo/scripts/resolve-version.sh" "$d/scripts/resolve-version.sh"
   (cd "$d" && CI_RUN="$1" GITHUB_OUTPUT="$d/out" bash "$work/publish-yml-version.sh" >/dev/null && sed -n 's/^version=//p' out)
 }
 

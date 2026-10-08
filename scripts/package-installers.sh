@@ -22,8 +22,10 @@
 # caller states which trees still have a consumer. The full set alone leaves
 # ~2.6 GB of them behind, which the release runner does not have to spare.
 #
-# Version resolution: --version > git describe of the newest v* tag (v-stripped; the
-# apt-dev tag of the apt dev builds is no version) > src/Directory.Build.props.
+# Version resolution: --version, else scripts/resolve-version.sh — the tag's version when
+# HEAD is the commit a v* tag points to (the apt-dev tag of the apt dev builds is no
+# version), <props version>.local.<commit date> on any other commit: a build off a tag
+# never carries the name of the release before it.
 # esbuild is fetched per-RID straight from the npm registry (no npm/node needed);
 # the version comes from tools/scripting-esbuild/package-lock.json.
 #
@@ -88,13 +90,7 @@ stage_kept() { # $1=rid
 
 # --- Version -----------------------------------------------------------------
 if [[ -z "$VERSION" ]]; then
-  VERSION="$(git -C "$REPO_ROOT" describe --tags --match 'v*' --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-fi
-if [[ -z "$VERSION" ]]; then
-  props="$REPO_ROOT/src/Directory.Build.props"
-  prefix="$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' "$props" | head -1)"
-  suffix="$(sed -n 's/.*<VersionSuffix>\(.*\)<\/VersionSuffix>.*/\1/p' "$props" | head -1)"
-  VERSION="${prefix}${suffix:+-$suffix}"
+  VERSION="$(bash "$REPO_ROOT/scripts/resolve-version.sh" --props "$REPO_ROOT/src/Directory.Build.props")" || VERSION=""
 fi
 [[ -n "$VERSION" ]] || { echo "Could not resolve a version; pass --version." >&2; exit 1; }
 
