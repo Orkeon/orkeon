@@ -222,6 +222,44 @@ archives de gouvernance, pas de la documentation vivante : ils vivent dans le d�
 gouvernance privé des mainteneurs, hors de `docs/`, si bien que le contrat de parité
 s'applique à tout l'arbre documentaire sans exception.
 
+#### Ajouter un réglage
+
+Un réglage s'écrit une fois, dans le code qui le lit. Le catalogue des réglages, les tableaux de
+`docs/reference/configuration.md`, `orkeon settings` et le fichier d'exemple d'une installation en
+sont produits, et les tests échouent tant qu'ils ne le sont pas :
+
+1. **La propriété et son commentaire.** Ajoutez la propriété au type d'options dans lequel sa
+   section est lue, avec son défaut et un `<summary>` XML : cette phrase est le sens de la clé
+   partout où elle est listée. Une section neuve se déclare là où elle est enregistrée
+   (`AddOrkeonSettings<T>(path)`, `DeclareSettings`).
+2. **Sa catégorie.** Une section neuve reçoit une ligne dans `SettingsCategories`
+   (`src/constants/Orkeon.Constants.Configuration`), et son titre avec ses deux marqueurs
+   (`<!-- settings:Son:Chemin -->` … `<!-- /settings -->`) dans la page de référence et dans son
+   miroir français.
+3. **La phrase française.** Ajoutez la clé, par son chemin, à
+   `docs/fr/reference/configuration.settings.json` : le tableau français y prend son sens.
+4. **Régénérez**, dans cet ordre — chaque étape écrit ce que lit la suivante :
+
+   ```bash
+   export UPDATE_PRODUCED_FILES=1
+   # 1. the catalogue: the library's file first, then the file of each binary
+   dotnet test tests/hosting/Orkeon.Hosting.Tests --filter "FullyQualifiedName~SettingsCatalogFile"
+   dotnet test tests/scripting/Orkeon.Scripting.Cli.Tests --filter "FullyQualifiedName~SettingsCatalogFile"
+   dotnet test tests/hosting/Orkeon.Host.Tests --filter "FullyQualifiedName~SettingsCatalogFile"
+   dotnet test tests/apps/Orkeon.ConsoleApp.Tests --filter "FullyQualifiedName~SettingsCatalogFile"
+   # 2. build again: the catalogue is embedded in Orkeon.Hosting
+   dotnet build Orkeon.sln --no-restore
+   # 3. the tables of the reference page (EN, FR), then the sample file of an installation
+   dotnet test tests/hosting/Orkeon.Hosting.Tests --no-build --filter "FullyQualifiedName~SettingsReferencePage"
+   dotnet test tests/hosting/Orkeon.Hosting.Tests --no-build --filter "FullyQualifiedName~SettingsSampleFile"
+   unset UPDATE_PRODUCED_FILES
+   ```
+
+Les mêmes tests tiennent ensuite tout le reste à la clé neuve : un fichier de réglages sous
+`examples/`, un bloc `json` de la documentation ou un défaut cité à côté d'une clé que le code ne
+confirme plus fait échouer la suite, en nommant le fichier et la clé. Un bloc qui montre à dessein
+ce qu'un hôte refuse porte `<!-- settings-check:off -->` sur la ligne au-dessus de sa clôture.
+
 ### Tests
 
 * Écrivez des tests unitaires pour les nouvelles fonctionnalités

@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Tests — the settings files, the documentation's blocks and its quoted defaults are held to the code
+
+Nothing tied what the repository says of a setting to what the code reads: a template of the
+examples, a `json` block of a page or a default quoted in a sentence could name a key that does
+not exist, and stay.
+
+- **A settings file of the repository writes only keys of the settings catalogue** — the 17
+  files of `examples/`, the `.json.example` templates among them, the sample of an installation,
+  the fixture of the release smokes and the settings Orkeon Studio's screenshots are taken on:
+  each key is known, the names an operator chooses aside, each value is one its key can take, and
+  a retired key fails with its migration. The failure names the file, the key and the closest
+  one. The capture campaign's settings wrote `RateLimiting:RequestsPerMinute`,
+  `RateLimiting:MaxConcurrent` and `Llm:Provider`, which nothing reads: they are
+  `GlobalRequestsPerMinute`, `MaxConcurrentRequests` and `Llm:BaseUrl` now.
+- **A `json` block of the documentation** (English and French, the READMEs of the examples
+  included) that writes a section Orkeon reads writes only its keys. A block that is no settings
+  text is not judged; one that shows on purpose what a host refuses carries
+  `<!-- settings-check:off -->` on the line above its fence.
+- **A default quoted beside a key** — `` `Llm:MaxRetries` (10 by default) ``, a row of a table
+  with a "Default" column — is the one of the code, in every page, units and separators set
+  aside. The RAG page gave `Orkeon:Rag:Retrieval:CandidateK` 50; under the default profile it is
+  5, and the page says so.
+- **The reference page**: a table that is no longer the one the catalogue produces fails by the
+  name of its section, with the command that writes it again.
+- **The catalogue's sentences keep the space before a name that opens with a dot**: "the .NET
+  stack", where `Logging`, `Logging:Console` and `Orkeon:Scripting:Limits:RecursionLimit` read
+  "the.NET".
+- The settings files and the pages are listed from what git knows, so a clone that keeps other
+  projects under `examples/others` does not walk them: the tests of the examples' settings,
+  which did not end there, run in seconds.
+- `CONTRIBUTING` (EN, FR): "Adding a setting" — the property and its comment, its category, the
+  French sentence, and the commands that produce the catalogue, the tables and the sample again.
+
 ### Changed — the sample settings file of an install lists every setting at its default
 
 `appsettings.sample.json`, at the root of every installation, was a copy of the examples' default

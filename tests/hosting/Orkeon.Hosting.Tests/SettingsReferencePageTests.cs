@@ -64,8 +64,48 @@ public sealed class SettingsReferencePageTests
     [Theory]
     [InlineData(SettingsReferencePages.English)]
     [InlineData(SettingsReferencePages.French)]
-    public void The_tables_of_the_page_are_the_ones_the_catalogue_produces(string page) =>
-        ProducedFile.AssertCurrent(page, Reference(page).Apply(Text(page)), SettingsReferencePages.Regenerate);
+    public void The_tables_of_the_page_are_the_ones_the_catalogue_produces(string page)
+    {
+        var reference = Reference(page);
+        var text = Text(page);
+        if (!ProducedFile.Writing)
+        {
+            // Named first: "line 612 differs" sends nobody to the options whose default changed.
+            var stale = reference.StaleBlocks(text);
+            Assert.True(
+                stale.Count == 0,
+                $"{page} is not what the settings catalogue produces for: {string.Join(", ", stale)}. A key, a default or a comment changed " +
+                $"there since the page was written. Write the tables again: {SettingsReferencePages.Regenerate}");
+        }
+
+        ProducedFile.AssertCurrent(page, reference.Apply(text), SettingsReferencePages.Regenerate);
+    }
+
+    [Fact]
+    public void A_key_added_or_a_default_changed_makes_the_table_of_its_section_stale_and_no_other()
+    {
+        if (ProducedFile.Writing)
+            return;
+
+        var page = Text(SettingsReferencePages.English);
+        var queue = Catalog.Setting("RateLimiting:QueueLimit")!;
+
+        var withOneMoreKey = new SettingsCatalog(
+            Catalog.Sections,
+            Catalog.Settings.Append(queue with { Path = "RateLimiting:BurstLimit" }));
+        var withAnotherDefault = new SettingsCatalog(
+            Catalog.Sections,
+            Catalog.Settings.Select(entry => ReferenceEquals(entry, queue) ? queue with { Default = "6" } : entry));
+
+        // The index counts the keys of each category: one more key moves it too.
+        Assert.Equal(
+            ["the index of the categories", "RateLimiting"],
+            new SettingsReference(withOneMoreKey, SettingsReferenceLanguage.English).StaleBlocks(page));
+        Assert.Equal(
+            ["RateLimiting"],
+            new SettingsReference(withAnotherDefault, SettingsReferenceLanguage.English).StaleBlocks(page));
+        Assert.Empty(new SettingsReference(Catalog, SettingsReferenceLanguage.English).StaleBlocks(page));
+    }
 
     [Fact]
     public void The_french_sentences_cover_every_key_and_no_other()

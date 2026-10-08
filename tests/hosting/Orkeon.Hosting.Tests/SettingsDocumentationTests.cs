@@ -31,6 +31,12 @@ public sealed class SettingsDocumentationTests
                   <see cref="F:{typeof(Documented).FullName!.Replace('+', '.')}.DefaultLimit"/>.
                   </summary>
                 </member>
+                <member name="P:{typeof(Documented).FullName!.Replace('+', '.')}.Dotted">
+                  <summary>
+                  The logs of the host: .NET's own configuration (<see cref="P:Some.Options.Level"/>) , well before the
+                  .NET stack overflows .
+                  </summary>
+                </member>
                 <member name="T:{typeof(Documented).FullName!.Replace('+', '.')}">
                   <summary>The tree of the pipeline (v2, plan §8.1), bound from <c>Orkeon:Rag</c>.</summary>
                 </member>
@@ -61,6 +67,12 @@ public sealed class SettingsDocumentationTests
             s_documentation.Of(typeof(Documented).GetProperty(nameof(Documented.Accessed))!));
 
     [Fact]
+    public void A_name_that_opens_with_a_dot_keeps_the_space_before_it() =>
+        Assert.Equal(
+            "The logs of the host: .NET's own configuration (`Options.Level`), well before the .NET stack overflows.",
+            s_documentation.Of(typeof(Documented).GetProperty(nameof(Documented.Dotted))!));
+
+    [Fact]
     public void A_property_takes_the_sentence_of_the_type_it_inherits_it_from() =>
         Assert.StartsWith(
             "Maximum requests",
@@ -81,6 +93,8 @@ public sealed class SettingsDocumentationTests
         public int Standard { get; set; }
 
         public int Silent { get; set; }
+
+        public int Dotted { get; set; }
 
         public const int DefaultLimit = 7;
 

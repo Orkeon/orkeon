@@ -15,24 +15,15 @@ namespace Orkeon.Hosting.Tests;
 /// </summary>
 public sealed class ExampleSettingsTests
 {
-    /// <summary>Build outputs carry copies of the files; only the tracked sources are judged.</summary>
-    private static readonly string[] s_outputs = ["bin", "obj", "obj-linux", "node_modules"];
-
+    /// <summary>
+    /// The tracked files, as git lists them: a crawl of <c>examples/</c> walks whatever a clone keeps
+    /// there beside the examples — build outputs, other projects under <c>examples/others</c> — and
+    /// does not end on a slow mount.
+    /// </summary>
     public static TheoryData<string> Files()
     {
-        var root = RepositoryRoot();
-        var examples = Path.Combine(root, "examples");
-        var found = Directory.EnumerateFiles(examples, "*appsettings*.json", SearchOption.AllDirectories)
-            .Concat(Directory.EnumerateFiles(examples, "*.json.example", SearchOption.AllDirectories))
-            .Concat(Directory.EnumerateFiles(Path.Combine(root, "scripts", "smoke-onboarding", "fixtures"), "*.json"))
-            .Where(path => !Path.GetRelativePath(root, path)
-                .Split(Path.DirectorySeparatorChar)
-                .Any(segment => s_outputs.Contains(segment, StringComparer.Ordinal)))
-            .Select(path => Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/'))
-            .Order(StringComparer.Ordinal);
-
         var data = new TheoryData<string>();
-        foreach (var file in found)
+        foreach (var file in RepositorySettingsFiles.OfTheExamples())
             data.Add(file);
         return data;
     }

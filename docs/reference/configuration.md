@@ -1520,7 +1520,7 @@ depth of 64 and 30 s by default.
 |---|---|---|---|
 | `ExecutionTimeout` | duration | `"00:00:30"` | Maximum wall-clock time the engine is allowed to run, in total — the time spent waiting for a tool or a model counts. Default: 30 seconds, a ceiling for scripts of unknown provenance; a trusted long run raises it. |
 | `MemoryLimitBytes` | integer | `104857600` | Maximum cumulative memory the engine is allowed to allocate, in bytes — counted since the engine was created, not at its peak. Default: 100 MB, a ceiling for scripts of unknown provenance; a trusted run that needs more raises it. |
-| `RecursionLimit` | integer | `64` | Maximum recursion depth before the engine throws. Default: 64: it catches runaway recursion well before the.NET stack overflows and leaves room for legitimately nested script logic. A trusted script may raise it. |
+| `RecursionLimit` | integer | `64` | Maximum recursion depth before the engine throws. Default: 64: it catches runaway recursion well before the .NET stack overflows and leaves room for legitimately nested script logic. A trusted script may raise it. |
 <!-- /settings -->
 
 ### `Orkeon:Scripting:Toolchain`
@@ -1768,7 +1768,7 @@ Logs, traces and metrics.
 
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
-| `Console` | any | — |  | The console logger's own section: its `LogLevel` by category, `FormatterName`, `FormatterOptions` and the other keys of.NET's console logger. |
+| `Console` | any | — |  | The console logger's own section: its `LogLevel` by category, `FormatterName`, `FormatterOptions` and the other keys of .NET's console logger. |
 | `LogLevel:<name>` | enum | — | `Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None` | The lowest level logged, by category: `Default` for every category without a line of its own, a namespace such as `Orkeon.Infrastructure` for what it logs. A level that is none refuses the start, naming the key. |
 <!-- /settings -->
 

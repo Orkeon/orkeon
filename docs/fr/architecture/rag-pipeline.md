@@ -354,7 +354,7 @@ Liée par-dessus le preset sélectionné — chaque clé est une surcharge indiv
 | `Orkeon:Rag:LlmProfile` | profil par défaut | Le profil LLM de l'hôte (`Llm:Profiles:<nom>`) auquel va chaque appel de modèle du sous-système — génération, transformateurs, reranker listwise, évaluateur et vérificateur d'ancrage correctifs, classifieur `llm`, juge d'évaluation ; un nom inconnu fait refuser le démarrage de l'hôte en listant les profils connus |
 | `Orkeon:Rag:Provider` | ambiant | Type du provider de document store (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance` ; un type inconnu échoue bruyamment) ; non défini = `IMemoryProvider` ambiant. La connexion est la section hôte propre de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), et le store partage avec la mémoire des crews l'instance de ce type que tient la factory |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks conservés pour l'assemblage du contexte (le `RagQuery.TopN` de l'appelant l'emporte) |
-| `Orkeon:Rag:Retrieval:CandidateK` | 50 | Étage large de la cascade (toujours ≥ TopN final) |
+| `Orkeon:Rag:Retrieval:CandidateK` | 5 (`fast`) | Étage large de la cascade (toujours ≥ TopN final) ; `fast` n'en a pas et prend `TopK`, un profil qui rerank prend 50, `quality` 100 |
 | `Orkeon:Rag:Retrieval:MinScore` | aucun | Plancher optionnel sur le score brut (l'ancien plancher global 0.7 a délibérément disparu) |
 | `Orkeon:Rag:Retrieval:Hybrid:Enabled` | false (`fast`) | Mode hybride par défaut ; raccourci à plat `Retrieval:Hybrid = true` accepté |
 | `Orkeon:Rag:Retrieval:Hybrid:RrfK` | 60 | Constante de Reciprocal Rank Fusion |

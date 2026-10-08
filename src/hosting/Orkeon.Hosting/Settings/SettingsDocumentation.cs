@@ -253,7 +253,11 @@ internal sealed partial class SettingsDocumentation
     [GeneratedRegex(@"\s*\((?=[^()]*(?:\b(?!AES-|SHA-|ADR-|RFC-|ISO-|UTF-|TLS-)[A-Z]{2,}-\d+\b|\b(?:plan|guide) §))[^()]*\)")]
     private static partial Regex WorkItems();
 
-    [GeneratedRegex(@"\s+([,.;:])")]
+    /// <summary>
+    /// The space a removed bracket or a nested element leaves before a mark that closes a clause.
+    /// A dot that opens a name — ".NET", ".ork.ts" — closes nothing: its space stays.
+    /// </summary>
+    [GeneratedRegex(@"\s+([,.;:])(?=\s|$|[)\]])")]
     private static partial Regex SpaceBeforePunctuation();
 
     /// <summary>"Gets or sets ", "Gets ", and the "a value indicating " that may follow, at the head of a summary.</summary>

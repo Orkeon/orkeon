@@ -159,6 +159,34 @@ internal sealed partial class SettingsReference
     }
 
     /// <summary>
+    /// The blocks of <paramref name="page"/> that are not what <see cref="Apply"/> would write, by
+    /// what they hold: the path of a section, or "the index of the categories". Empty when the page
+    /// is current — what a failure names, so that it sends to the section that changed.
+    /// </summary>
+    public IReadOnlyList<string> StaleBlocks(string page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        var normalized = page.Replace("\r\n", "\n", StringComparison.Ordinal);
+        var stale = new List<string>();
+        if (IndexBlock().Match(normalized) is { Success: true } index
+            && !string.Equals(index.Value, $"{IndexOpeningMarker}\n{Index()}{IndexClosingMarker}", StringComparison.Ordinal))
+        {
+            stale.Add("the index of the categories");
+        }
+
+        foreach (Match block in SectionBlock().Matches(normalized))
+        {
+            if (_catalog.Section(block.Groups["path"].Value) is { } section
+                && !string.Equals(block.Groups["body"].Value, Section(section.Path), StringComparison.Ordinal))
+            {
+                stale.Add(section.Path);
+            }
+        }
+
+        return stale;
+    }
+
+    /// <summary>
     /// What keeps <paramref name="page"/> from being the reference of this catalogue, one sentence
     /// each: a section without a block or with two, a block that names no section, a section or a
     /// category without its heading, a missing index. Empty when the page has a place for everything.

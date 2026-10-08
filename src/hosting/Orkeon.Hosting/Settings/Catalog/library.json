@@ -425,7 +425,7 @@
       "path": "Logging",
       "category": "observability",
       "hosts": [],
-      "description": "The logs of the host:.NET's logging configuration. A shipped host logs warnings and above on one line; `--verbose` raises the level for a run without touching this section."
+      "description": "The logs of the host: .NET's logging configuration. A shipped host logs warnings and above on one line; `--verbose` raises the level for a run without touching this section."
     },
     {
       "path": "Orkeon:Monitoring",
@@ -2543,7 +2543,7 @@
       "section": "Orkeon:Scripting:Limits",
       "type": "integer",
       "default": 64,
-      "description": "Maximum recursion depth before the engine throws. Default: 64: it catches runaway recursion well before the.NET stack overflows and leaves room for legitimately nested script logic. A trusted script may raise it."
+      "description": "Maximum recursion depth before the engine throws. Default: 64: it catches runaway recursion well before the .NET stack overflows and leaves room for legitimately nested script logic. A trusted script may raise it."
     },
     {
       "path": "Orkeon:Scripting:Toolchain:EsbuildPath",
@@ -2746,7 +2746,7 @@
       "path": "Logging:Console",
       "section": "Logging",
       "type": "any",
-      "description": "The console logger's own section: its `LogLevel` by category, `FormatterName`, `FormatterOptions` and the other keys of.NET's console logger."
+      "description": "The console logger's own section: its `LogLevel` by category, `FormatterName`, `FormatterOptions` and the other keys of .NET's console logger."
     },
     {
       "path": "Logging:LogLevel:<name>",

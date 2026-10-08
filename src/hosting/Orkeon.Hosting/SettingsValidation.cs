@@ -98,6 +98,12 @@ internal static class SettingsValidation
             "console shows, or remove it and let the provider look the host up.",
     };
 
+    /// <summary>
+    /// The retired keys, each with the sentence that refuses it: what a guard of the settings files
+    /// nobody starts — the examples, the blocks of the documentation — refuses in the same words.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> RetiredKeys => s_retiredKeys;
+
     /// <summary>The seven levels a <c>LogLevel</c> key takes.</summary>
     private static readonly string[] s_logLevels = Enum.GetNames<LogLevel>();
 

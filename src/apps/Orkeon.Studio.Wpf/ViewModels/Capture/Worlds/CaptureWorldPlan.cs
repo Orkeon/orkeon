@@ -142,7 +142,7 @@ internal sealed record CaptureWorldPlan
     public IReadOnlyList<MountSeed> DeclaredMounts { get; init; } = [];
 
     /// <summary>The LLM section of <c>appsettings.json</c>, as a JSON object body.</summary>
-    public string LlmJson { get; init; } = """{ "Provider": "ollama", "Model": "qwen3:8b" }""";
+    public string LlmJson { get; init; } = """{ "BaseUrl": "http://localhost:11434/v1", "Model": "qwen3:8b" }""";
 
     /// <summary>
     /// The <c>Orkeon:Tools:Email</c> section of <c>appsettings.json</c>, as a JSON object body; null
