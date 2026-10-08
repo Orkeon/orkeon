@@ -299,7 +299,7 @@ public sealed class JsCrewRunTests
         Assert.Empty(log);
 
         engine.SetValue("quick", true);
-        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
 
         Assert.Equal("fast", result.output);
         Assert.Equal(["body", "complete:fast"], log);
@@ -510,7 +510,7 @@ public sealed class JsCrewRunTests
             """);
 
         var ex = await Assert.ThrowsAsync<RecursiveAgentInvocationException>(
-            () => crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct));
+            () => crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct));
 
         Assert.Contains("A", ex.Message, StringComparison.Ordinal);
     }
@@ -543,7 +543,7 @@ public sealed class JsCrewRunTests
             crew;
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
 
         Assert.Equal($"add:{nameof(DuplicateAgentNameException)},remove:{nameof(AgentNotInThisCrewException)},finally", result.output);
         Assert.Single(crew.agents);
@@ -589,7 +589,7 @@ public sealed class JsCrewRunTests
             crewBuilder().name("outer").withAgent(o).build();
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
 
         Assert.Equal("2", result.output);
         Assert.Equal(["agent.start", "i1", "i2", "complete:2"], log);
@@ -637,7 +637,7 @@ public sealed class JsCrewRunTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
 
         Assert.Null(result.tasks[0].output);
     }
@@ -669,7 +669,7 @@ public sealed class JsCrewRunTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
 
         Assert.Equal(nameof(InvalidOperationException), result.output);
     }

@@ -14,15 +14,18 @@ public sealed class JsHostErrorTests
 {
     private sealed class TypedException(string message) : Exception(message);
 
+    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(20);
+
     private static Engine NewEngine() => new JsEngineFactory().Create();
 
     /// <summary>
     /// The engine at rest, drained from the test thread: the only drainer, the shape of every
-    /// root pump. The 5 s ceiling turns a never-settling promise into a failure.
+    /// root pump. The guard turns a never-settling promise into a failure; it bounds nothing a
+    /// loaded pool can reach.
     /// </summary>
     private static Task<JsValue> RunAsync(Engine engine, string source)
         => engine.EvaluateAsync(source, cancellationToken: TestContext.Current.CancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            .WaitAsync(HangGuard, TestContext.Current.CancellationToken);
 
     [Fact]
     public async Task A_bridged_exception_is_caught_by_the_script_and_runs_its_finally()

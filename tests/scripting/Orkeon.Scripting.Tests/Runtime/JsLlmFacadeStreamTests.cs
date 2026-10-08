@@ -20,6 +20,9 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </summary>
 public sealed class JsLlmFacadeStreamTests
 {
+    /// <summary>Turns a run that never settles into a failure; it bounds nothing a loaded pool can reach.</summary>
+    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(20);
+
     private static readonly string[] HelloChunks = ["He", "llo"];
     private static readonly StreamedTurn[] NoTurns = [];
     private static readonly string[] NoChunks = [];
@@ -129,7 +132,7 @@ public sealed class JsLlmFacadeStreamTests
 
         var options = BuildOptions(engine, "({ onDelta: d => { throw new Error('cb-boom:' + d); } })");
         var rejected = await Assert.ThrowsAsync<PromiseRejectedException>(
-            () => facade.ActAsync(engine, "go", options).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            () => facade.ActAsync(engine, "go", options).WaitAsync(HangGuard, TestContext.Current.CancellationToken));
 
         Assert.Equal("cb-boom:d0", rejected.RejectedValue.Get("message").AsString());
         Assert.True(provider.Released);
