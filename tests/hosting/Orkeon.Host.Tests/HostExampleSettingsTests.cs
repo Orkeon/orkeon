@@ -27,6 +27,25 @@ public sealed class HostExampleSettingsTests
     }
 
     /// <summary>
+    /// The sample settings an installation carries write every key the daemon reads at its default,
+    /// <c>Orkeon:Host</c> included: the daemon takes the file as it is, refuses nothing and reports
+    /// nothing.
+    /// </summary>
+    [Fact]
+    public void The_sample_settings_of_an_installation_pass_the_daemons_start_validation()
+    {
+        var settings = Path.Combine(RepositoryRoot(), "scripts", "installer-assets", "appsettings.sample.json");
+        var noCrewMount = new HostCrewMountPlan([], new Dictionary<string, string>(), []);
+
+        var verdict = RunnerHost.InspectSettings(
+            settings,
+            (context, services) => services.AddHostServices(context.Configuration, noCrewMount));
+
+        Assert.Empty(verdict.Refusals);
+        Assert.Empty(verdict.Notices);
+    }
+
+    /// <summary>
     /// The daemon reports what a runner reports — a section Orkeon knows and no shipped binary reads —
     /// and says nothing of its own section, which <c>orkeon run</c> leaves to it.
     /// </summary>

@@ -1,4 +1,5 @@
 using Orkeon.Cli.TerminalGui.Hosting;
+using Orkeon.Tests.Shared.Produced;
 
 namespace Orkeon.ConsoleApp.Tests.DependencyInjection;
 
@@ -64,6 +65,24 @@ public sealed class ReplStartupTests : IDisposable
     public void Accepted_settings_yield_the_host_and_report_nothing()
     {
         var launch = Start("""{ "Orkeon": { "Cli": { "Tui": { "SpinnerVerbs": [ "thinking" ] } } } }""");
+
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        Assert.Equal(0, launch.ExitCode);
+        Assert.Empty(_reported);
+    }
+
+    /// <summary>
+    /// The sample settings an installation carries write every key the REPL reads at its default,
+    /// <c>Orkeon:Cli:Tui</c> included: copied as they are, the console opens and nothing is said.
+    /// </summary>
+    [Fact]
+    public void The_sample_settings_of_an_installation_yield_the_host_and_report_nothing()
+    {
+        var sample = ProducedFile.Read("scripts/installer-assets/appsettings.sample.json");
+        Assert.NotNull(sample);
+
+        var launch = Start(sample);
 
         using var host = launch.Host;
         Assert.NotNull(host);

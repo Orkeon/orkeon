@@ -76,6 +76,16 @@ a crew can name ([below](#studio-writes-this-section)), and every launch from St
 them all, keys included, as `ORKEON_Llm__Profiles__<id>__*`. No file is ever generated: the
 composition is in-memory.
 
+**A file to start from.** Every installation carries `appsettings.sample.json` at the root of
+what its channel installs, beside `VERSION`: every key a shipped binary reads, by category, at
+its default — produced from the settings catalogue, the one `orkeon settings` lists. No binary
+loads it. Copied as it is in place of the settings file, it changes nothing: each key it writes
+holds the value that key has when it is left out, and what cannot be written that way — a key
+without a default, a secret, a list, an entry under a name you choose, a key a RAG profile sets,
+the whole `Llm` section — is shown as a comment to uncomment. It is JSON with `//` comments and a
+comma after every member, which the settings readers take (the runners and Orkeon Studio); a
+strict JSON parser does not.
+
 ## When a setting is refused
 
 Every shipped host — `orkeon run` in every form (`--validate`, `--list-tools`, `mcp serve`, the

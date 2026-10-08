@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the sample settings file of an install lists every setting at its default
+
+`appsettings.sample.json`, at the root of every installation, was a copy of the examples' default
+file: twelve keys, at the values of a local model. It is produced from the settings catalogue now.
+
+- **Every key a shipped binary reads** — 56 sections, 305 keys —, by category, each section under
+  a line that says who reads it. `RateLimiting` is there at 60, 30, 20, 0 and 5.
+- **It can be copied**: put in place of the settings file as it is, no host refuses it, none
+  reports it, and each host binds what it binds without a file. It writes a key only when that
+  key is a single value at a constant default (163 of them); everything else is shown as a
+  comment to uncomment — a key without a default, a secret, a list, an entry under a name or an
+  index, a key a RAG profile sets, and the whole `Llm` section, since one of its keys written
+  gives the host a default model and hides the warning that none is configured.
+- **JSON with `//` comments and a comma after every member**, which .NET's configuration, the
+  runners and Orkeon Studio read. A strict JSON parser does not.
+- `package-installers.sh` and `.ps1` ship `scripts/installer-assets/appsettings.sample.json`; a
+  test holds that file to what the catalogue produces. `examples/appsettings/appsettings.json`,
+  the default of every example, is unchanged.
+- Docs (EN, FR): `configuration.md` says where the file of an installation is and what copying
+  it does; the README of an archive too.
+
 ### Fixed — a settings section no shipped binary reads is reported at start
 
 `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp` and eight other sections are read by a host

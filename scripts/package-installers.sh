@@ -310,8 +310,10 @@ for RID in $RIDS; do
     *)     printf 'tarball\n' > "$ROOT/INSTALL-CHANNEL" ;;
   esac
   # Reference config only. The live one lives in %APPDATA%\Orkeon (or
-  # $XDG_CONFIG_HOME/orkeon); this copy is here to be read, not loaded.
-  cp "$REPO_ROOT/examples/appsettings/appsettings.json" "$ROOT/appsettings.sample.json"
+  # $XDG_CONFIG_HOME/orkeon); this copy is here to be read, not loaded. Every key a
+  # shipped binary reads, at its default: produced from the settings catalogue and
+  # held to it by a test (Orkeon.Hosting, SettingsSampleFile), never edited by hand.
+  cp "$ASSETS/appsettings.sample.json" "$ROOT/appsettings.sample.json"
   # Deployment assets (GATE-05/WINSVC-01): the systemd unit and the SCM
   # registration script ship with the daemon they install. Full set only — the
   # cli set has no orkeon-host, and the MSI harvests the cli tree

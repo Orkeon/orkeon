@@ -72,6 +72,9 @@ categories, `orkeon settings <section>` the keys of a section with their type, d
 meaning, `orkeon settings <word>` whatever is named or described with a word. It shows
 defaults, not what this machine has set; `orkeon doctor` judges the file.
 
+`appsettings.sample.json`, at the root of this install, lists the same settings at their
+default, by category: a file to read, or to copy — as it is, it changes nothing.
+
 ## Contents
 
 The CLI archive (`orkeon-cli-{{VERSION}}-{{RID}}`) ships `bin/orkeon` — the first row
@@ -96,7 +99,7 @@ libexec/esbuild-bin/esbuild   shared esbuild binary used to transpile .ork.ts sc
 deploy/                  service-host deployment assets (systemd unit, SCM registration script) — multi-app archive only
 VERSION                  plain-text version string (drives the Add/Remove Programs entry)
 INSTALL-CHANNEL          one word: the channel this tree is installed through, which `orkeon doctor` names
-appsettings.sample.json  reference-only config sample, see "First run" above
+appsettings.sample.json  every setting this install reads, at its default, by category — to read, or to copy: it changes nothing as it is; `orkeon settings <section>` describes each key
 LICENSE.md               Orkeon's license (MIT)
 THIRD-PARTY-NOTICES.md   the notices of the third-party components this archive redistributes
 licenses/                the license and third-party notices of the bundled .NET runtime, one folder per runtime pack

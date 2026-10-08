@@ -238,8 +238,10 @@ foreach ($rid in $Rids) {
     $channel = if ($rid -like 'win-*') { 'zip' } else { 'tarball' }
     [IO.File]::WriteAllText((Join-Path $root 'INSTALL-CHANNEL'), "$channel`n")
     # Reference config only. The live one lives in %APPDATA%\Orkeon; this copy is
-    # here to be read, not loaded.
-    Copy-Item (Join-Path $RepoRoot 'examples/appsettings/appsettings.json') (Join-Path $root 'appsettings.sample.json')
+    # here to be read, not loaded. Every key a shipped binary reads, at its default:
+    # produced from the settings catalogue and held to it by a test (Orkeon.Hosting,
+    # SettingsSampleFile), never edited by hand -- mirrors package-installers.sh.
+    Copy-Item (Join-Path $Assets 'appsettings.sample.json') (Join-Path $root 'appsettings.sample.json')
     # Deployment assets (GATE-05/WINSVC-01): the systemd unit and the SCM
     # registration script ship with the daemon they install. Full set only (the
     # cli set has no orkeon-host; the MSI harvests the cli tree).

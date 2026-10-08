@@ -204,6 +204,22 @@ internal static class SettingsCatalogBuilder
         return [.. entries.Select(entry => profiled.Contains(entry.Path) && entry.DefaultNote is null ? entry with { DefaultNote = note } : entry)];
     }
 
+    /// <summary>
+    /// The keys at <paramref name="path"/> with the values <paramref name="options"/> holds, read as
+    /// those of a new instance are for the catalogue: what one host bound, to set beside what
+    /// another bound — a settings file that changes nothing gives the same list as no file.
+    /// </summary>
+    /// <param name="path">The section's configuration path.</param>
+    /// <param name="options">The bound options.</param>
+    public static IReadOnlyList<SettingsCatalogEntry> ValuesOf(string path, object options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var walk = new Walk(SettingsDocumentation.Empty, secret: false);
+        walk.Node(path, options.GetType(), options, string.Empty);
+        return walk.Entries;
+    }
+
     private static List<SettingsCatalogEntry> Walked(SettingsSource source, object? defaults, string description, SettingsDocumentation documentation)
     {
         var walk = new Walk(documentation, source.Secret);

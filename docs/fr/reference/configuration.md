@@ -84,6 +84,16 @@ qu'une crew peut nommer ([plus bas](#studio-écrit-cette-section)), et chaque la
 Studio les porte tous, clés comprises, en `ORKEON_Llm__Profiles__<id>__*`. Aucun fichier n'est
 jamais généré : la composition est en mémoire.
 
+**Un fichier d'où partir.** Chaque installation porte `appsettings.sample.json` à la racine de ce
+que son canal installe, à côté de `VERSION` : chaque clé qu'un binaire livré lit, par catégorie,
+à son défaut — produit depuis le catalogue des réglages, celui que liste `orkeon settings`. Aucun
+binaire ne le charge. Copié tel quel à la place du fichier de réglages, il ne change rien : chaque
+clé qu'il écrit porte la valeur qu'elle a quand on l'omet, et ce qui ne s'écrit pas ainsi — une
+clé sans défaut, un secret, une liste, une entrée sous un nom que vous choisissez, une clé qu'un
+profil RAG fixe, la section `Llm` entière — est montré en commentaire, à décommenter. C'est du
+JSON avec des commentaires `//` et une virgule après chaque membre, que les lecteurs de réglages
+acceptent (les runners et Orkeon Studio) ; un analyseur JSON strict, non.
+
 ## Quand un réglage est refusé
 
 Chaque hôte livré — `orkeon run` sous toutes ses formes (`--validate`, `--list-tools`, `mcp serve`,
