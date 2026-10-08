@@ -269,7 +269,10 @@ le job `msi` smoke le MSI service de la même façon, plus une réinstallation s
 lui-même. Chacun vérifie aussi les notices de ce qu'il a installé : la licence,
 `THIRD-PARTY-NOTICES.md` et un `licenses/<pack>/` par runtime .NET qu'une application embarque,
 les runtimes étant lus dans la charge utile elle-même (chaque `*.runtimeconfig.json`), pas dans
-une liste. Tous installent depuis les artefacts **de job**, jamais depuis la Release : une
+une liste. Et chacun affirme le **canal** que nomme son installation — `zip`, `msi`,
+`msi-host`, `deb` ou `tarball` : le fichier `INSTALL-CHANNEL` que chaque emballage écrit à la
+racine de ce qu'il installe, relu par `orkeon --version --verbose` (dans le fichier lui-même
+pour le MSI service, qui n'embarque pas de CLI). Tous installent depuis les artefacts **de job**, jamais depuis la Release : une
 charge utile cassée est donc attrapée avant toute publication — le job `release` les a tous en
 `needs`.
 

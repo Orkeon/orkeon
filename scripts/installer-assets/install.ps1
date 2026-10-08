@@ -184,10 +184,11 @@ if (Test-Path -LiteralPath $InstallDir) {
 # .json (when the archive ships one) is reference-only -- real user config
 # always lives under %APPDATA%\Orkeon, never here. The third-party notices and
 # licenses\ (the bundled .NET runtime's license and notices) go wherever the
-# bits they cover go, as in an MSI install.
+# bits they cover go, as in an MSI install. INSTALL-CHANNEL is the word the
+# packaging wrote for `orkeon doctor`: which channel this install came through.
 if (Test-Path -LiteralPath $InstallDir) { Remove-Item -LiteralPath $InstallDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-foreach ($item in 'bin', 'libexec', 'README.md', 'LICENSE.md', 'THIRD-PARTY-NOTICES.md', 'licenses', 'install.ps1', 'VERSION', 'appsettings.sample.json') {
+foreach ($item in 'bin', 'libexec', 'README.md', 'LICENSE.md', 'THIRD-PARTY-NOTICES.md', 'licenses', 'install.ps1', 'VERSION', 'INSTALL-CHANNEL', 'appsettings.sample.json') {
     $p = Join-Path $src $item
     if (Test-Path -LiteralPath $p) { Copy-Item -LiteralPath $p -Destination $InstallDir -Recurse -Force }
 }

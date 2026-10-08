@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon doctor` names the channel Orkeon was installed through
+
+There are eight ways to install Orkeon and as many to update it; nothing in an installation
+said which one had been used.
+
+- **A marker, `INSTALL-CHANNEL`**, one word at the root of what each packaging installs:
+  `zip`, `tarball`, `msi`, `msi-host`, `deb`, `homebrew`, `source`. It is written by whoever
+  packs — `package-installers`, the two MSI builds, `package-deb.sh`, the Homebrew formula —
+  and carried by `install.ps1` and `install.sh`. An MSI is harvested from the zip's tree and
+  installs its own marker in place of the zip's.
+- **`orkeon doctor` gains `install-channel`**, after `dotnet-runtime`: the channel, the
+  version that runs and the command that updates that channel. It never fails: an
+  installation older than the marker, or a build tree, answers `unknown` and stays `ok`;
+  a marker that names no channel is a warning. The dotnet tool carries no marker and is
+  known by its path. A Debian package answers `deb` and gives both commands — the apt
+  repository's and the downloaded package's —, since nothing in it tells the two apart.
+  `doctor --json` therefore lists one more check.
+- **`orkeon --version --verbose`** adds a `channel: <channel>` line under the version line,
+  which `orkeon --version` alone still prints unchanged.
+- The channel names are constants of `Orkeon.Constants.FileSystem` (`InstallChannels`).
+- Every installer smoke asserts the channel of what it installed: the Windows zip, both
+  MSIs, the Debian package, the macOS and Linux tarballs.
+
 ### Documentation — what a Windows machine needs before installing
 
 The install pages said "self-contained, no .NET needed" and then `.\install.ps1`, without a

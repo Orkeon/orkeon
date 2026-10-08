@@ -75,7 +75,12 @@ internal static class Program
 
         if (CliUsage.IsVersionToken(args[0]))
         {
-            await Console.Out.WriteLineAsync(CliUsage.VersionLine).ConfigureAwait(false);
+            // The bare form keeps its single line: scripts read it. --verbose adds to it.
+            if (args.Skip(1).Any(CliUsage.IsVerboseToken))
+                await Console.Out.WriteAsync(CliUsage.RenderVerboseVersion(InstallChannelReader.Read())).ConfigureAwait(false);
+            else
+                await Console.Out.WriteLineAsync(CliUsage.VersionLine).ConfigureAwait(false);
+
             return ExitOk;
         }
 

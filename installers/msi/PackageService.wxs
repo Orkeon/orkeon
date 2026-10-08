@@ -49,6 +49,7 @@
     StageRoot          the full-archive tree root (LICENSE.md,
                         THIRD-PARTY-NOTICES.md, licenses\, VERSION,
                         appsettings.sample.json)
+    ChannelMarker      the INSTALL-CHANNEL file of this package ("msi-host")
 
   Same WiX v5.0.2 doctrine as Package.wxs (see its header: v5 pinned in
   .config\dotnet-tools.json, v6/v7 gated by the OSMF EULA (WIX7015), schema
@@ -149,6 +150,9 @@
       <Files Include="$(var.StageRoot)\LICENSE.md" />
       <Files Include="$(var.StageRoot)\THIRD-PARTY-NOTICES.md" />
       <Files Include="$(var.StageRoot)\VERSION" />
+      <!-- INSTALL-CHANNEL as build-msi-service.ps1 wrote it for this package
+           ("msi-host"), not the staging tree's, which is the zip's. -->
+      <Files Include="$(var.ChannelMarker)" />
       <Files Include="$(var.StageRoot)\appsettings.sample.json" />
     </ComponentGroup>
 

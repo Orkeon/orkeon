@@ -291,6 +291,14 @@ for RID in $RIDS; do
   # Plain-text version marker: install.ps1 reads it for the Add/Remove Programs
   # entry, and it lets a user identify an already-extracted tree.
   printf '%s\n' "$VERSION" > "$ROOT/VERSION"
+  # The channel this tree is installed through, one word that `orkeon doctor` and
+  # `orkeon --version --verbose` read back (Orkeon.Constants.FileSystem.InstallChannels).
+  # Said by whoever packs, never guessed from the tree: an MSI or a Debian package built
+  # from this tree writes its own word in place of this one.
+  case "$RID" in
+    win-*) printf 'zip\n' > "$ROOT/INSTALL-CHANNEL" ;;
+    *)     printf 'tarball\n' > "$ROOT/INSTALL-CHANNEL" ;;
+  esac
   # Reference config only. The live one lives in %APPDATA%\Orkeon (or
   # $XDG_CONFIG_HOME/orkeon); this copy is here to be read, not loaded.
   cp "$REPO_ROOT/examples/appsettings/appsettings.json" "$ROOT/appsettings.sample.json"

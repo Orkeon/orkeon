@@ -61,6 +61,34 @@ public sealed class TopLevelHelpTests
     }
 
     /// <summary>
+    /// <c>--verbose</c> adds the install channel on a line of its own; the first line stays the
+    /// one <c>--version</c> writes alone, which scripts read.
+    /// </summary>
+    [Fact]
+    public async Task VerboseVersion_KeepsTheVersionLineFirst_AndNamesTheChannel()
+    {
+        using var console = new TestConsole();
+
+        var exit = await Program.DispatchAsync(["--version", "--verbose"]);
+
+        Assert.Equal(Program.ExitOk, exit);
+        var lines = console.Stdout.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, lines.Length);
+        Assert.Equal(CliUsage.VersionLine, lines[0]);
+        Assert.StartsWith("channel: ", lines[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Version_Alone_IsStillOneLine()
+    {
+        using var console = new TestConsole();
+
+        await Program.DispatchAsync(["--version"]);
+
+        Assert.Equal(CliUsage.VersionLine + Environment.NewLine, console.Stdout);
+    }
+
+    /// <summary>
     /// A first token that is neither a verb nor a plausible crew path is a typo, and saying so
     /// beats the <c>run</c> parser's answer to the same typo ("script not found: doctr").
     /// </summary>

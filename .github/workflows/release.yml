@@ -533,6 +533,17 @@ jobs:
           if ($fails.Count -gt 0) { $doctorOut; throw "orkeon doctor reported $($fails.Count) failing check(s)" }
           Write-Host "PASS doctor -- $($results.Count) checks, no failure"
 
+          # The install names its channel, and it is this package's: the MSI harvests
+          # the zip's tree, whose marker says "zip", and installs its own in its place.
+          $ErrorActionPreference = 'Continue'
+          $versionOut = & $orkeonCmd --version --verbose 2>"$logsDir\version.err.txt"
+          $versionExit = $LASTEXITCODE
+          $ErrorActionPreference = $previousEap
+          if ($versionExit -ne 0) { Get-Content "$logsDir\version.err.txt"; throw "orkeon --version --verbose exited $versionExit" }
+          $channelLines = @($versionOut | Where-Object { $_ -like 'channel: *' })
+          if ($channelLines.Count -ne 1 -or $channelLines[0] -cne 'channel: msi') { $versionOut; throw "expected 'channel: msi', got '$($channelLines -join ' | ')'" }
+          Write-Host 'PASS install-channel -- the install names its channel: msi'
+
           Write-Host "==> msiexec /x $msi /qn"
           $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$msi`"", '/qn', '/l*v', "$logsDir\uninstall.log") -Wait -PassThru
           if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { Get-Content "$logsDir\uninstall.log" -Tail 60; throw "msiexec /x exited $($p.ExitCode)" }

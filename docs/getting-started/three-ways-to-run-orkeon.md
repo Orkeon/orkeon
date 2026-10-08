@@ -566,6 +566,10 @@ Updating is installing the newer version through the channel you installed with.
 settings are not part of any install: the `appsettings.json` that `orkeon init` wrote stays
 where it is, whichever channel you update.
 
+Not sure which channel that was? **`orkeon doctor` tells you**: its `install-channel` line
+names the channel this install came through and the command that updates it.
+`orkeon --version --verbose` prints the same channel on a line of its own, for a script.
+
 | Installed with | Move to the latest release |
 |---|---|
 | The dotnet tool | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
@@ -577,7 +581,7 @@ where it is, whichever channel you update.
 | Container | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` moves with each release |
 | From source | `git pull`; the next `dotnet run` rebuilds |
 
-`orkeon --version` then prints the version that runs: `orkeon <version>`.
+`orkeon --version` then prints the version that runs: `orkeon <version>`. An install made before `orkeon doctor` learned to name its channel answers `unknown` there until it is updated once.
 
 ### Follow `main`: the dev channel
 

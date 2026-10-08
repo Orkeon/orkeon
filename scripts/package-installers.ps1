@@ -220,6 +220,12 @@ foreach ($rid in $Rids) {
     # entry, and it lets a user identify an already-extracted tree. LF-terminated
     # to stay byte-identical with the archive package-installers.sh produces.
     [IO.File]::WriteAllText((Join-Path $root 'VERSION'), "$Version`n")
+    # The channel this tree is installed through, one word that `orkeon doctor` and
+    # `orkeon --version --verbose` read back (Orkeon.Constants.FileSystem.InstallChannels).
+    # Said by whoever packs, never guessed from the tree: an MSI built from this tree
+    # writes its own word in place of this one -- mirrors package-installers.sh.
+    $channel = if ($rid -like 'win-*') { 'zip' } else { 'tarball' }
+    [IO.File]::WriteAllText((Join-Path $root 'INSTALL-CHANNEL'), "$channel`n")
     # Reference config only. The live one lives in %APPDATA%\Orkeon; this copy is
     # here to be read, not loaded.
     Copy-Item (Join-Path $RepoRoot 'examples/appsettings/appsettings.json') (Join-Path $root 'appsettings.sample.json')

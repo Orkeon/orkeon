@@ -56,6 +56,20 @@ internal static class CliUsage
     /// <summary>The single line <c>orkeon --version</c> writes: the tool name and its version.</summary>
     public static string VersionLine => "orkeon " + Version;
 
+    /// <summary>
+    /// What <c>orkeon --version --verbose</c> writes: the version line, unchanged, then the
+    /// channel this build was installed through — one <c>name: value</c> line a program reads.
+    /// </summary>
+    public static string RenderVerboseVersion(InstallChannelReading channel)
+    {
+        ArgumentNullException.ThrowIfNull(channel);
+        return VersionLine + Environment.NewLine + "channel: " + channel.Channel + Environment.NewLine;
+    }
+
+    /// <summary>Whether <paramref name="token"/> asks for the detailed form of an answer.</summary>
+    public static bool IsVerboseToken(string token) =>
+        string.Equals(token, "--verbose", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Whether <paramref name="token"/> asks for the usage listing.</summary>
     public static bool IsHelpToken(string token) => Matches(HelpTokens, token);
 
@@ -102,6 +116,7 @@ internal static class CliUsage
         text.AppendLine();
         text.Append("  orkeon <command> --help".PadRight(width + 24)).AppendLine("the options of that command");
         text.Append("  orkeon --version".PadRight(width + 24)).AppendLine("the version of this build");
+        text.Append("  orkeon --version --verbose".PadRight(width + 24)).AppendLine("… and the channel it was installed through");
         text.AppendLine();
         text.AppendLine("Documentation: https://github.com/Orkeon/orkeon");
 

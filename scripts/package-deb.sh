@@ -151,6 +151,10 @@ rm -rf "$PKG_DIR"
 mkdir -p "$PKG_DIR/DEBIAN" "$PKG_DIR/usr/bin" "$PKG_DIR/usr/lib/orkeon" "$PKG_DIR/usr/share/doc/orkeon"
 
 cp -R "$SRC_STAGE/libexec/orkeon/." "$PKG_DIR/usr/lib/orkeon/"
+# The channel `orkeon doctor` names (Orkeon.Constants.FileSystem.InstallChannels), beside
+# the apphost: this package, whether apt fetched it from the repository or it was
+# downloaded -- no file inside it can tell which. The staging tree says `tarball`.
+printf 'deb\n' > "$PKG_DIR/usr/lib/orkeon/INSTALL-CHANNEL"
 mkdir -p "$PKG_DIR/usr/lib/orkeon/esbuild-bin"
 cp "$SRC_STAGE/libexec/esbuild-bin/esbuild" "$PKG_DIR/usr/lib/orkeon/esbuild-bin/esbuild"
 

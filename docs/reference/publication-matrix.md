@@ -256,7 +256,10 @@ looping and lands in the event log — and the `msi` job smokes the service MSI 
 plus a silent reinstall of itself. Every one of them also checks the notices of what it
 installed: the license, `THIRD-PARTY-NOTICES.md` and one `licenses/<pack>/` per .NET runtime an
 application bundles, the runtimes being read from the payload itself (each
-`*.runtimeconfig.json`), not from a list. All of them install from the **job** artifacts, never
+`*.runtimeconfig.json`), not from a list. And each asserts the **channel** its install names —
+`zip`, `msi`, `msi-host`, `deb` or `tarball`: the `INSTALL-CHANNEL` file every packaging writes
+at the root of what it installs, read back through `orkeon --version --verbose` (from the file
+itself for the service MSI, which carries no CLI). All of them install from the **job** artifacts, never
 from the Release, so a broken payload is caught before anything is published — the `release`
 job `needs` them all.
 

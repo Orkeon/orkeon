@@ -32,6 +32,9 @@
        are green rather than merely non-failing — doctor only *warns* on a missing
        esbuild / model / grammar, so "no fail" alone would not catch a stripped
        archive (WIN-03);
+   6b. `orkeon --version --verbose` names the channel the install came through,
+       `zip`: the INSTALL-CHANNEL marker the packaging wrote reached the install
+       directory;
     7. `orkeon run <offline crew>` exits 0 and prints the WIN-01 warning;
     8. `orkeon rag ingest` + `orkeon rag search` retrieve with citations and
        scores, fully offline;
@@ -454,6 +457,22 @@ if ($doctor.ExitCode -gt 1) {
             Step-Pass 'doctor' $note
         }
     }
+}
+
+# ---------------------------------------------------------------------------- #
+# 6b. The install channel: the marker the packaging wrote, read back by the CLI
+# ---------------------------------------------------------------------------- #
+Write-Section 'orkeon --version --verbose'
+$channel = Invoke-Orkeon -Label 'version-verbose' -Arguments @('--version', '--verbose')
+$channelLines = @($channel.StdOut -split "`r?`n" | Where-Object { $_ -like 'channel: *' })
+if ($channel.ExitCode -ne 0) {
+    Write-Tail $channel.ErrFile
+    Step-Fail 'install-channel' "exit $($channel.ExitCode) (expected 0)"
+} elseif ($channelLines.Count -ne 1 -or $channelLines[0] -cne 'channel: zip') {
+    Write-Tail $channel.OutFile 5
+    Step-Fail 'install-channel' "expected 'channel: zip', got '$($channelLines -join ' | ')'"
+} else {
+    Step-Pass 'install-channel' 'the install names its channel: zip'
 }
 
 # ---------------------------------------------------------------------------- #

@@ -29,6 +29,9 @@ internal sealed class DoctorCommandOptions
 
     /// <summary>Test seam: overrides <see cref="Directory.GetCurrentDirectory"/>.</summary>
     internal string? WorkingDirectoryOverride { get; set; }
+
+    /// <summary>Test seam: overrides <see cref="AppContext.BaseDirectory"/> for the install channel.</summary>
+    internal string? InstallDirectoryOverride { get; set; }
 }
 
 /// <summary>One diagnostic result. The <c>--json</c> schema is a CI contract — keep it stable.</summary>
@@ -143,7 +146,8 @@ internal static class DoctorCommand
         try
         {
             var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
-            var results = await RunChecksAsync(cwd, cts.Token).ConfigureAwait(false);
+            var installDirectory = options.InstallDirectoryOverride ?? AppContext.BaseDirectory;
+            var results = await RunChecksAsync(cwd, installDirectory, cts.Token).ConfigureAwait(false);
 
             if (options.Json)
                 Console.WriteLine(JsonSerializer.Serialize(results));
@@ -164,13 +168,15 @@ internal static class DoctorCommand
         }
     }
 
-    private static async Task<IReadOnlyList<DoctorCheckResult>> RunChecksAsync(string cwd, CancellationToken ct)
+    private static async Task<IReadOnlyList<DoctorCheckResult>> RunChecksAsync(
+        string cwd, string installDirectory, CancellationToken ct)
     {
         var llm = ReadLlmContext(cwd);
 
         return
         [
             CheckDotnetRuntime(),
+            CheckInstallChannel(installDirectory),
             CheckAppSettings(llm),
             CheckLlmConfig(llm),
             CheckLlmProfiles(llm),
@@ -316,6 +322,30 @@ internal static class DoctorCommand
             return ".dll";
 
         return OperatingSystem.IsMacOS() ? ".dylib" : ".so";
+    }
+
+    /// <summary>
+    /// Names the channel this build was installed through and how that channel is updated.
+    /// Informative: an installation without a marker is older than the marker, or a build
+    /// tree, and is reported as such. Only a marker that exists and names nothing is a warning.
+    /// </summary>
+    private static DoctorCheckResult CheckInstallChannel(string installDirectory)
+    {
+        var reading = InstallChannelReader.Read(installDirectory);
+        var update = InstallChannelReader.UpdateHint(reading.Channel);
+        var origin = reading.Channel == InstallChannels.Unknown
+            ? reading.Problem
+                ?? $"no {InstallChannels.MarkerFile} marker (an installation older than the marker, or a build tree)"
+            : null;
+
+        return new DoctorCheckResult
+        {
+            Check = "install-channel",
+            Status = reading.Problem is null ? StatusOk : StatusWarn,
+            Detail = origin is null
+                ? $"{reading.Channel} — orkeon {CliUsage.Version}; to update: {update}"
+                : $"{reading.Channel} — {origin}; orkeon {CliUsage.Version}; to update: {update}",
+        };
     }
 
     private static DoctorCheckResult CheckDotnetRuntime()

@@ -110,6 +110,13 @@ try {
     $msiPath = Join-Path $OutDir $msiName
     if (Test-Path -LiteralPath $msiPath) { Remove-Item -LiteralPath $msiPath -Force }
 
+    # The channel an install laid down by this package names (see build-msi.ps1): written
+    # beside the output, never into the staging tree, which says `zip`.
+    $channelDir = Join-Path $OutDir '_msi-channel\msi-host'
+    New-Item -ItemType Directory -Force -Path $channelDir | Out-Null
+    $channelMarker = Join-Path $channelDir 'INSTALL-CHANNEL'
+    [IO.File]::WriteAllText($channelMarker, "msi-host`n")
+
     Write-Host "==> wix build -> $msiPath"
     # -bindpath installers\msi: License.rtf is referenced with no folder prefix
     # (same sharing as Package.wxs — one license, two products).
@@ -119,6 +126,7 @@ try {
         -d "OrkeonVersionFull=$Version" `
         -d "HostPublishDir=$hostPublishDir" `
         -d "StageRoot=$StageDir" `
+        -d "ChannelMarker=$channelMarker" `
         -ext WixToolset.UI.wixext `
         -ext WixToolset.Util.wixext `
         -bindpath $MsiSrc `

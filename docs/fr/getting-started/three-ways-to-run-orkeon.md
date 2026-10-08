@@ -598,6 +598,11 @@ Mettre à jour, c'est installer la version plus récente par le canal qui a serv
 l'installation. Vos réglages ne font partie d'aucune installation : l'`appsettings.json`
 écrit par `orkeon init` reste où il est, quel que soit le canal mis à jour.
 
+Vous ne savez plus quel canal c'était ? **`orkeon doctor` vous le dit** : sa ligne
+`install-channel` nomme le canal par lequel cette installation est passée et la commande qui
+le met à jour. `orkeon --version --verbose` imprime le même canal sur une ligne à part, pour
+un script.
+
 | Installé avec | Passer à la dernière release |
 |---|---|
 | Le tool dotnet | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
@@ -609,7 +614,7 @@ l'installation. Vos réglages ne font partie d'aucune installation : l'`appsetti
 | Conteneur | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` avance à chaque release |
 | Depuis les sources | `git pull` ; le prochain `dotnet run` recompile |
 
-`orkeon --version` affiche ensuite la version qui tourne : `orkeon <version>`.
+`orkeon --version` affiche ensuite la version qui tourne : `orkeon <version>`. Une installation faite avant qu'`orkeon doctor` sache nommer son canal y répond `unknown` jusqu'à sa prochaine mise à jour.
 
 ### Suivre `main` : le canal dev
 

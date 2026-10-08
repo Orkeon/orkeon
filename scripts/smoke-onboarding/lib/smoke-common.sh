@@ -315,6 +315,24 @@ smoke_step_init() {
   fi
 }
 
+# smoke_step_install_channel <expected> — `orkeon --version --verbose` names the
+# channel the install came through: the INSTALL-CHANNEL marker the packaging wrote
+# is where the CLI looks for it, and says what this format is.
+smoke_step_install_channel() {
+  local expected="$1" got
+  smoke_log "orkeon --version --verbose"
+  smoke_run_orkeon version-verbose --version --verbose
+  got="$(sed -n 's/^channel: //p' "$ORK_OUT" | tr -d '\r')"
+  if [[ $ORK_EC -ne 0 ]]; then
+    tail -n 10 "$ORK_ERR" | sed 's/^/    | /'
+    smoke_fail "install-channel" "exit $ORK_EC (expected 0)"
+  elif [[ "$got" == "$expected" ]]; then
+    smoke_pass "install-channel" "the install names its channel: $expected"
+  else
+    smoke_fail "install-channel" "expected 'channel: $expected', got '${got:-nothing}'"
+  fi
+}
+
 # smoke_step_doctor — `orkeon doctor --json` (WIN-03): no check may report fail,
 # and the three payload-backed checks must be ok rather than merely non-failing.
 smoke_step_doctor() {

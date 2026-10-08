@@ -5,3 +5,14 @@ const Orkeon.Constants.FileSystem.ConventionalNames.PosixTeamLauncher = "run.sh"
 const Orkeon.Constants.FileSystem.ConventionalNames.ScheduleDirectory = "schedule" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.ScheduleInstallationFile = "installed.json" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.WindowsTeamLauncher = "run.cmd" -> string!
+Orkeon.Constants.FileSystem.InstallChannels
+const Orkeon.Constants.FileSystem.InstallChannels.Deb = "deb" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.DotnetTool = "dotnet-tool" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Homebrew = "homebrew" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.MarkerFile = "INSTALL-CHANNEL" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Msi = "msi" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.MsiHost = "msi-host" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Source = "source" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Tarball = "tarball" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Unknown = "unknown" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Zip = "zip" -> string!

@@ -14,6 +14,7 @@
    1b. the notices were installed with it: LICENSE.md, THIRD-PARTY-NOTICES.md
        and one licenses\<pack>\ per .NET runtime the host bundles (GAP-52,
        lib\notices-windows.ps1);
+   1c. the install names its channel: INSTALL-CHANNEL says `msi-host`;
     2. the service is registered under NT SERVICE\Orkeon, Auto, with a quoted
        ImagePath carrying --settings and --working-dir pointing at
        ProgramData\Orkeon; the data directory exists with Modify for the
@@ -110,6 +111,18 @@ try {
     # What PackageService.wxs installs of the notices, read back from the install
     # directory: the license, the third-party notices, licenses\ (GAP-52).
     Add-Result 'notices' (Invoke-OrkeonNoticesAssertions -Root $installRoot)
+
+    # The install names its channel. No CLI ships in this package to read the marker
+    # back, so the file itself is read: build-msi-service.ps1 wrote "msi-host" for it,
+    # in place of the "zip" of the tree the package was harvested from.
+    $channelFile = Join-Path $installRoot 'INSTALL-CHANNEL'
+    if (-not (Test-Path -LiteralPath $channelFile)) {
+        $problems += "install-channel: $channelFile is missing"
+    } else {
+        $channel = (Get-Content -LiteralPath $channelFile -Raw).Trim()
+        if ($channel -cne 'msi-host') { $problems += "install-channel: expected 'msi-host', got '$channel'" }
+        else { Write-Host '  [install-channel] the install names its channel: msi-host' }
+    }
 
     # -- 2. Registration assertions (shared with the ZIP channel) ----------------
     Add-Result 'registration' (Invoke-OrkeonServiceRegistrationAssertions `

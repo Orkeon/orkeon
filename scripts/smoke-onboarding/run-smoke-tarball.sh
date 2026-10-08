@@ -25,6 +25,8 @@
 #   4. `orkeon init --provider none --force` writes the per-user config (WIN-02);
 #   5. `orkeon doctor --json` reports no failure, and the three payload-backed
 #      checks are green rather than merely non-failing (WIN-03);
+#  5b. `orkeon --version --verbose` names the channel, `tarball`: install.sh
+#      carried the archive's marker into the install directory;
 #   6. `orkeon run <offline crew>` exits 0 and prints the WIN-01 warning;
 #   7. `orkeon rag ingest` + `orkeon rag search` retrieve with citations and
 #      scores, fully offline;
@@ -265,6 +267,8 @@ fi
 # --------------------------------------------------------------------------- #
 smoke_step_init
 smoke_step_doctor
+# install.sh carried the archive's marker into the install directory.
+smoke_step_install_channel tarball
 smoke_step_run
 smoke_step_rag
 
