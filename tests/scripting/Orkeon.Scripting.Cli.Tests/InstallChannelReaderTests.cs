@@ -203,7 +203,7 @@ public sealed class InstallChannelReaderTests : IDisposable
     [InlineData(".nuget/packages/Orkeon.Scripting.Cli/1.0.0/tools/net10.0/any")]
     public void WithoutAMarker_TheToolIsKnownByItsPath(string relative)
     {
-        var directory = Path.Combine(_scratch.Root, Path.Combine(relative.Split('/')));
+        var directory = Path.Combine([_scratch.Root, .. relative.Split('/')]);
         Directory.CreateDirectory(directory);
 
         var reading = InstallChannelReader.Read(directory);
@@ -218,7 +218,7 @@ public sealed class InstallChannelReaderTests : IDisposable
     [InlineData("orkeon.scripting.cli/tools")]
     public void APathThatOnlyLooksLikeIt_IsNotTheTool(string relative)
     {
-        var directory = Path.Combine(_scratch.Root, Path.Combine(relative.Split('/')));
+        var directory = Path.Combine([_scratch.Root, .. relative.Split('/')]);
         Directory.CreateDirectory(directory);
 
         Assert.Equal(InstallChannels.Unknown, InstallChannelReader.Read(directory).Channel);
