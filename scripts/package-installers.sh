@@ -311,6 +311,10 @@ for RID in $RIDS; do
   fi
   if [[ "$RID" == win-* ]]; then
     cp "$ASSETS/install.ps1" "$ROOT/install.ps1"
+    # install.cmd is what a double-click runs: it starts install.ps1 on the PowerShell
+    # Windows ships, under an execution policy that holds for that one command. cmd.exe
+    # wants CRLF, whatever line endings the checkout this archive is packed from has.
+    awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$ASSETS/install.cmd" > "$ROOT/install.cmd"
   else
     cp "$ASSETS/install.sh" "$ROOT/install.sh"
     chmod +x "$ROOT/install.sh"

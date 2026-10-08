@@ -225,7 +225,7 @@ public sealed class InstallChannelReaderTests : IDisposable
     }
 
     [Theory]
-    [InlineData(InstallChannels.Zip, "install.ps1")]
+    [InlineData(InstallChannels.Zip, "install.cmd")]
     [InlineData(InstallChannels.Msi, "orkeon-<version>-win-x64.msi")]
     [InlineData(InstallChannels.MsiHost, "orkeon-host-<version>-win-x64.msi")]
     [InlineData(InstallChannels.Tarball, "install.sh")]

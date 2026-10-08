@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 <#
 .SYNOPSIS
   Builds the per-machine Orkeon Service Host MSI (WINSVC-02 P3) from an

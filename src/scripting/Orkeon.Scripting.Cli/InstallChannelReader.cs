@@ -77,7 +77,7 @@ internal static class InstallChannelReader
     /// <summary>The one-line way to move an installation of <paramref name="channel"/> to a newer version.</summary>
     public static string UpdateHint(string channel) => channel switch
     {
-        InstallChannels.Zip => "extract the new orkeon-cli-<version>-win-x64.zip and run its install.ps1",
+        InstallChannels.Zip => "extract the new orkeon-cli-<version>-win-x64.zip and run its install.cmd",
         InstallChannels.Msi => "run the new orkeon-<version>-win-x64.msi",
         InstallChannels.MsiHost => "run the new orkeon-host-<version>-win-x64.msi",
         InstallChannels.Tarball => "extract the new tarball and run its install.sh",

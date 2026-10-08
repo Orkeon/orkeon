@@ -3,33 +3,45 @@
   Released-artefact smoke for the Windows CLI archive (WIN-06).
 
 .DESCRIPTION
-  Extracts orkeon-cli-<ver>-win-x64.zip, installs it with the bundled install.ps1,
-  walks the whole onboarding chain on the installed binary, then uninstalls and
-  checks the removal is clean. It is the Windows twin of run-smoke-deb.sh (LIN-02):
+  Extracts orkeon-cli-<ver>-win-x64.zip, installs it with the bundled install.cmd,
+  installs it a second time over the first with install.ps1, walks the whole
+  onboarding chain on the installed binary, then uninstalls and checks the
+  removal is clean. It is the Windows twin of run-smoke-deb.sh (LIN-02):
   same fixtures (fixtures\offline-crew.yaml, fixtures\rag-corpus,
   fixtures\rag-settings.json), same assertions, only the install/uninstall phase
   differs.
 
   What it exercises, end to end, on the *published* archive:
-    1. the archive layout survived packaging (bin\orkeon.cmd, install.ps1, VERSION);
-    2. the payload survived it too — esbuild.exe, the BGE-micro-v2 embedding model
+    1. the archive layout survived packaging (bin\orkeon.cmd, install.ps1,
+       install.cmd, VERSION), and install.cmd is what cmd.exe wants: ASCII, CRLF;
+    2. the payload survived it too -- esbuild.exe, the BGE-micro-v2 embedding model
        and the 7 whitelisted tree-sitter grammars (WIN-04 pruning);
    2b. the notices came with it: LICENSE.md, THIRD-PARTY-NOTICES.md and one
        licenses\<pack>\ per .NET runtime an application bundles -- asserted on
        the archive, then again on the tree install.ps1 made of it (GAP-52); the
        assertions live in lib\notices-windows.ps1, shared with the msi job and
        the two service smokes;
-    3. install.ps1 installs, registers an Add/Remove Programs entry and adds its
-       bin\ folder to the user PATH (WIN-05);
+    3. install.cmd installs -- the launcher a double-click runs: Windows
+       PowerShell, an execution policy that holds for that one command, its
+       arguments passed through -- then install.ps1 registers an Add/Remove
+       Programs entry and adds its bin\ folder to the user PATH (WIN-05);
+   3b. installing again over that installation replaces it: the same tree, file
+       for file, one PATH entry and not two, the same DisplayVersion. This
+       second install runs install.ps1 in the PowerShell that runs this smoke,
+       so both PowerShell editions go through it across the two CI steps;
     4. a fresh session resolves `orkeon` from that PATH entry alone;
    4b. Orkeon Studio shipped and starts: bin\orkeon-studio.cmd and
        libexec\orkeon-studio\Orkeon.Studio.exe are installed, and
        `orkeon-studio --smoke-exit` opens the WPF window, lets it render and
-       exits 0 (STUDIO-08, spec §8.4) -- the assertions live in
+       exits 0 (STUDIO-08, spec section 8.4) -- the assertions live in
        lib\studio-windows.ps1, shared with the MSI job;
+   4c. while a program of the installation is running (Orkeon Studio, left
+       open), install.ps1 refuses to install and refuses to uninstall, names
+       the process, and leaves the installation in place intact: the same
+       tree, and `orkeon --version` still answers;
     5. `orkeon init --provider none --force` writes %APPDATA%\Orkeon (WIN-02);
     6. `orkeon doctor --json` reports no fail, and the three payload-backed checks
-       are green rather than merely non-failing — doctor only *warns* on a missing
+       are green rather than merely non-failing -- doctor only *warns* on a missing
        esbuild / model / grammar, so "no fail" alone would not catch a stripped
        archive (WIN-03);
    6b. `orkeon --version --verbose` names the channel the install came through,
@@ -45,7 +57,10 @@
   `orkeon doctor` stays the liveness probe here: a version line proves the
   entry point started, doctor proves the payload shipped.
 
-  Compatible with Windows PowerShell 5.1 and PowerShell 7.
+  Compatible with Windows PowerShell 5.1 and PowerShell 7: release.yml runs it
+  under both (`shell: pwsh`, then `shell: powershell`). This file stays ASCII:
+  Windows PowerShell reads a script without a byte-order mark in the ANSI code
+  page, where a UTF-8 dash becomes three characters, one of them a quote.
 
 .PARAMETER ArchivePath
   The orkeon-cli-<ver>-win-x64.zip to smoke.
@@ -70,6 +85,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell draws a progress bar per archive entry; on an archive of a
+# few thousand files that bar is most of Expand-Archive's time.
+$ProgressPreference = 'SilentlyContinue'
 
 $fixtures = Join-Path $PSScriptRoot 'fixtures'
 
@@ -144,58 +162,70 @@ function Write-Tail([string]$Path, [int]$Lines = 10) {
 }
 
 # ---------------------------------------------------------------------------- #
-# Native-command helper
+# Native-command helpers
 # ---------------------------------------------------------------------------- #
-# Runs the installed orkeon.cmd from the scratch working directory, capturing the
-# two streams into separate files. $ErrorActionPreference is relaxed for the call:
-# in Windows PowerShell 5.1, a native command that writes to stderr under a `2>`
-# redirection raises NativeCommandError when the preference is 'Stop' -- which
-# every one of these invocations does (the WIN-01 warning is on stderr by design).
-function Invoke-Orkeon {
+# One argument of a cmd.exe command line: quoted when it holds a space or a
+# character cmd.exe gives a meaning to. No argument of this smoke holds a quote.
+function Format-CmdArgument([string]$Value) {
+    if ($Value -eq '' -or $Value -match '[\s&|<>^()%!,;=]') { return '"' + $Value + '"' }
+    return $Value
+}
+
+# Runs a .cmd with its arguments through cmd.exe and captures the two streams,
+# apart, into $script:LogDir\<Label>.out.txt and .err.txt.
+# The process is started directly rather than with `& <cmd> 1> out 2> err`:
+# Windows PowerShell 5.1 turns every stderr line of a redirected native command
+# into an error record -- a terminating one under $ErrorActionPreference =
+# 'Stop', and otherwise one it formats and wraps before writing it, which
+# breaks a message read back from the file. Read as text from the two pipes,
+# what the command wrote is the same under both PowerShell editions.
+function Invoke-CmdCaptured {
     param(
         [Parameter(Mandatory = $true)][string]$Label,
-        [Parameter(Mandatory = $true)][string[]]$Arguments
+        [Parameter(Mandatory = $true)][string]$CommandPath,
+        [string[]]$Arguments = @(),
+        [Parameter(Mandatory = $true)][string]$WorkingDirectory
     )
 
     $outFile = Join-Path $script:LogDir "$Label.out.txt"
     $errFile = Join-Path $script:LogDir "$Label.err.txt"
 
+    $commandLine = '"' + $CommandPath + '"'
+    foreach ($argument in $Arguments) { $commandLine += ' ' + (Format-CmdArgument $argument) }
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $env:ComSpec
+    # /s: cmd.exe strips the first and the last quote and runs what is between
+    # them as it stands, quoted path and quoted arguments included.
+    $startInfo.Arguments = '/d /s /c "' + $commandLine + '"'
+    $startInfo.WorkingDirectory = $WorkingDirectory
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
     $code = -1
-    $launchError = $null
-    $previous = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
+    $stdout = ''
+    $stderr = ''
     try {
-        Push-Location -LiteralPath $script:RunDir
-        try {
-            & $script:OrkeonCmd @Arguments 1> $outFile 2> $errFile
-            $code = $LASTEXITCODE
-        } catch {
-            # A missing/unlaunchable orkeon.cmd throws CommandNotFoundException, which
-            # stays terminating whatever the preference is. Turn it into a normal
-            # non-zero result so the caller reports a FAIL instead of the script dying.
-            $launchError = $_.Exception.Message
-        } finally {
-            Pop-Location
-        }
-    } finally {
-        $ErrorActionPreference = $previous
+        $process = [System.Diagnostics.Process]::Start($startInfo)
+        # Both pipes are drained while the process runs: read one after the
+        # other, a command that fills the second pipe's buffer never exits.
+        $outTask = $process.StandardOutput.ReadToEndAsync()
+        $errTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $stdout = [string]$outTask.Result
+        $stderr = [string]$errTask.Result
+        $code = $process.ExitCode
+        $process.Dispose()
+    } catch {
+        # cmd.exe itself could not be started: a normal non-zero result, so the
+        # caller reports a FAIL instead of the script dying.
+        $stderr = "could not launch $CommandPath -- $($_.Exception.Message)"
     }
 
-    $stdout = ''
-    if (Test-Path -LiteralPath $outFile) {
-        $raw = Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue
-        if ($raw) { $stdout = $raw }
-    }
-    $stderr = ''
-    if (Test-Path -LiteralPath $errFile) {
-        $raw = Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue
-        if ($raw) { $stderr = $raw }
-    }
-    if ($launchError) {
-        $line = "could not launch $script:OrkeonCmd -- $launchError"
-        Add-Content -LiteralPath $errFile -Value $line -ErrorAction SilentlyContinue
-        $stderr = $line + "`n" + $stderr
-    }
+    [System.IO.File]::WriteAllText($outFile, $stdout)
+    [System.IO.File]::WriteAllText($errFile, $stderr)
 
     return [PSCustomObject]@{
         ExitCode = $code
@@ -204,6 +234,54 @@ function Invoke-Orkeon {
         OutFile  = $outFile
         ErrFile  = $errFile
     }
+}
+
+# Runs the installed orkeon.cmd from the scratch working directory. Every one of
+# these invocations may write to stderr (the WIN-01 warning is there by design).
+function Invoke-Orkeon {
+    param(
+        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
+    )
+
+    return Invoke-CmdCaptured -Label $Label -CommandPath $script:OrkeonCmd -Arguments $Arguments -WorkingDirectory $script:RunDir
+}
+
+# The files of a tree, as sorted relative paths: what "the same installation"
+# means when an install is replaced, or refused.
+function Get-TreeListing([string]$Root) {
+    if (-not (Test-Path -LiteralPath $Root)) { return @() }
+    $prefix = $Root.TrimEnd('\') + '\'
+    return @(Get-ChildItem -LiteralPath $Root -Recurse -File -Force |
+        ForEach-Object { $_.FullName.Substring($prefix.Length) } |
+        Sort-Object)
+}
+
+# What differs between two listings, in a few words; '' when nothing does.
+function Compare-TreeListing([string[]]$Before, [string[]]$After) {
+    if ($Before.Count -eq 0) { return 'the tree was empty before' }
+    if ($After.Count -eq 0) { return 'the tree is empty' }
+    if (($Before -join "`n") -ceq ($After -join "`n")) { return '' }
+    $difference = @(Compare-Object -ReferenceObject $Before -DifferenceObject $After)
+    $gone = @($difference | Where-Object { $_.SideIndicator -eq '<=' } | ForEach-Object { $_.InputObject })
+    $new = @($difference | Where-Object { $_.SideIndicator -eq '=>' } | ForEach-Object { $_.InputObject })
+    $parts = @()
+    if ($gone.Count -gt 0) { $parts += "$($gone.Count) file(s) gone (" + (($gone | Select-Object -First 3) -join ', ') + ')' }
+    if ($new.Count -gt 0) { $parts += "$($new.Count) file(s) new (" + (($new | Select-Object -First 3) -join ', ') + ')' }
+    return ($parts -join '; ')
+}
+
+# The processes whose executable lives under a directory -- the question
+# install.ps1 asks before it deletes one.
+function Get-ProcessesUnder([string]$Root) {
+    $prefix = $Root.TrimEnd('\') + '\'
+    $found = @()
+    foreach ($process in @(Get-Process -ErrorAction SilentlyContinue)) {
+        $path = $null
+        try { $path = $process.Path } catch { $path = $null }
+        if ($path -and $path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { $found += $process }
+    }
+    return $found
 }
 
 # Reads the user PATH the way install.ps1 writes it: raw (unexpanded) from the
@@ -277,6 +355,7 @@ $esbuildDir = Join-Path (Join-Path $archiveRoot 'libexec') 'esbuild-bin'
 $expected = New-Object System.Collections.ArrayList
 [void]$expected.Add((Join-Path (Join-Path $archiveRoot 'bin') 'orkeon.cmd'))
 [void]$expected.Add((Join-Path $archiveRoot 'install.ps1'))
+[void]$expected.Add((Join-Path $archiveRoot 'install.cmd'))
 [void]$expected.Add((Join-Path $archiveRoot 'VERSION'))
 [void]$expected.Add((Join-Path $appDir 'orkeon.exe'))
 # Orkeon Studio rides in the same win-x64 cli staging tree (STUDIO-07): its
@@ -298,28 +377,91 @@ if ($missing.Count -gt 0) {
     Step-Pass 'payload' "launcher + esbuild.exe + BGE-micro-v2 model + $($keptGrammars.Count) tree-sitter libraries present"
 }
 
+# install.cmd is read by cmd.exe: plain ASCII, and every line ended by CRLF --
+# whatever the checkout the archive was packed from made of the file.
+$installCmd = Join-Path $archiveRoot 'install.cmd'
+if (Test-Path -LiteralPath $installCmd) {
+    $launcherBytes = [System.IO.File]::ReadAllBytes($installCmd)
+    $nonAscii = 0
+    $bareLineFeeds = 0
+    for ($i = 0; $i -lt $launcherBytes.Length; $i++) {
+        $byte = $launcherBytes[$i]
+        if ($byte -gt 126 -or ($byte -lt 32 -and $byte -ne 9 -and $byte -ne 10 -and $byte -ne 13)) { $nonAscii++ }
+        if ($byte -eq 10 -and ($i -eq 0 -or $launcherBytes[$i - 1] -ne 13)) { $bareLineFeeds++ }
+    }
+    if ($launcherBytes.Length -eq 0) {
+        Step-Fail 'launcher' 'install.cmd is empty'
+    } elseif ($nonAscii -gt 0 -or $bareLineFeeds -gt 0) {
+        Step-Fail 'launcher' "install.cmd holds $nonAscii non-ASCII byte(s) and $bareLineFeeds line(s) ended by LF alone (cmd.exe wants ASCII and CRLF)"
+    } else {
+        Step-Pass 'launcher' 'install.cmd is ASCII, CRLF throughout'
+    }
+}
+
 # The notices package-installers.sh puts in the archive; the runtimes to expect
 # are read from the applications themselves (GAP-52).
 Step-Notices 'notices' $archiveRoot
 
 # ---------------------------------------------------------------------------- #
-# 3. install.ps1
+# 3. install.cmd -- what a double-click runs
 # ---------------------------------------------------------------------------- #
-Write-Section 'install.ps1'
+# The launcher starts install.ps1 on Windows PowerShell under an execution policy
+# of its own, whatever PowerShell runs this smoke and whatever the machine's
+# policy is; -InstallDir going through proves its arguments do.
+Write-Section 'install.cmd'
 $installPs1 = Join-Path $archiveRoot 'install.ps1'
 $binDir = Join-Path $installDir 'bin'
 $installFailed = $false
-try {
-    & $installPs1 -InstallDir $installDir
-    Step-Pass 'install' "installed to $installDir"
-} catch {
-    Step-Fail 'install' "install.ps1 threw: $($_.Exception.Message)"
+$launched = Invoke-CmdCaptured -Label 'install-cmd' -CommandPath $installCmd -Arguments @('-InstallDir', $installDir) -WorkingDirectory $archiveRoot
+foreach ($line in @($launched.StdOut -split "`r?`n" | Where-Object { $_ })) { Write-Info $line }
+if ($launched.ExitCode -ne 0) {
+    Write-Tail $launched.ErrFile 20
+    Step-Fail 'install' "install.cmd exited $($launched.ExitCode) (expected 0)"
     $installFailed = $true
+} elseif (-not (Test-Path -LiteralPath (Join-Path $binDir 'orkeon.cmd'))) {
+    Step-Fail 'install' "install.cmd exited 0 but $binDir\orkeon.cmd does not exist"
+    $installFailed = $true
+} else {
+    Step-Pass 'install' "install.cmd installed to $installDir"
 }
 
 if ($installFailed) {
     Write-Host 'SMOKE FAILED (nothing installed, later steps are moot)' -ForegroundColor Red
     exit 1
+}
+
+# ---------------------------------------------------------------------------- #
+# 3b. install.ps1 again, over the installation in place
+# ---------------------------------------------------------------------------- #
+# A reinstall replaces: the same tree, one PATH entry, the same Add/Remove
+# Programs entry. Run in this PowerShell -- the first install ran in the one
+# install.cmd picks -- so that both editions execute install.ps1.
+Write-Section 'install.ps1, over the installation in place'
+$treeFirst = @(Get-TreeListing $installDir)
+try {
+    & $installPs1 -InstallDir $installDir
+    $treeSecond = @(Get-TreeListing $installDir)
+    $difference = Compare-TreeListing $treeFirst $treeSecond
+    if ($difference) {
+        Step-Fail 'reinstall' "the second install did not leave the tree of the first: $difference"
+    } else {
+        Step-Pass 'reinstall' "replaced in place, $($treeSecond.Count) files, the same as after the first install"
+    }
+} catch {
+    Step-Fail 'reinstall' "install.ps1 threw over an existing install: $($_.Exception.Message)"
+}
+
+$pathEntriesForBin = @((Get-UserPathRaw) -split ';' | Where-Object { $_ -eq $binDir })
+if ($pathEntriesForBin.Count -eq 1) {
+    Step-Pass 'reinstall-path' "$binDir is on the user PATH once"
+} else {
+    Step-Fail 'reinstall-path' "$binDir is on the user PATH $($pathEntriesForBin.Count) time(s) after two installs (expected 1)"
+}
+
+foreach ($travelled in 'install.ps1', 'install.cmd') {
+    if (-not (Test-Path -LiteralPath (Join-Path $installDir $travelled))) {
+        Step-Fail 'reinstall-copy' "$travelled was not copied into $installDir"
+    }
 }
 
 # install.ps1 copies the notices only when the archive carries them, without a
@@ -390,6 +532,69 @@ if ($studio.Problems.Count -gt 0) {
 }
 
 # ---------------------------------------------------------------------------- #
+# 4c. A program of the installation is running: the installer refuses, intact
+# ---------------------------------------------------------------------------- #
+# Windows does not delete a running executable: without install.ps1's guard the
+# delete-and-replace stops half-way through the tree. Orkeon Studio left open is
+# the case a user meets; started here without --smoke-exit, it stays open.
+Write-Section 'install.ps1 while Orkeon Studio is running'
+$studioExe = Join-Path $installDir 'libexec\orkeon-studio\Orkeon.Studio.exe'
+if (-not (Test-Path -LiteralPath $studioExe)) {
+    Step-Fail 'running-install' "nothing to leave running: $studioExe is missing"
+} else {
+    $treeBefore = @(Get-TreeListing $installDir)
+    $studioProcess = Start-Process -FilePath $studioExe -PassThru
+    try {
+        # Past its startup: a process that exits at once would prove nothing.
+        Start-Sleep -Seconds 5
+        if ($studioProcess.HasExited) {
+            Step-Fail 'running-install' 'Orkeon Studio exited before the installer could meet it'
+        } else {
+            $named = [regex]::Escape("Orkeon.Studio (PID $($studioProcess.Id))")
+            foreach ($attempt in @(
+                    @{ Label = 'running-install';   What = 'install';   Script = $installPs1;                             Extra = @{} },
+                    @{ Label = 'running-uninstall'; What = 'uninstall'; Script = (Join-Path $installDir 'install.ps1'); Extra = @{ Uninstall = $true } })) {
+                $refusal = $null
+                $extra = $attempt.Extra
+                try {
+                    & $attempt.Script -InstallDir $installDir @extra
+                } catch {
+                    $refusal = $_.Exception.Message
+                }
+                $difference = Compare-TreeListing $treeBefore @(Get-TreeListing $installDir)
+                if (-not $refusal) {
+                    Step-Fail $attempt.Label "the $($attempt.What) went ahead while Orkeon Studio was running"
+                } elseif ($refusal -notmatch $named) {
+                    Step-Fail $attempt.Label "refused, but without naming the running process: $refusal"
+                } elseif ($difference) {
+                    Step-Fail $attempt.Label "refused, but the installation changed: $difference"
+                } else {
+                    Step-Pass $attempt.Label "refused, names Orkeon.Studio (PID $($studioProcess.Id)), $($treeBefore.Count) files untouched"
+                }
+            }
+        }
+    } finally {
+        # Close what this step opened, and whatever it started in turn, before
+        # the steps below -- the real uninstall among them -- meet it.
+        foreach ($leftover in @(Get-ProcessesUnder $installDir)) {
+            Stop-Process -Id $leftover.Id -Force -ErrorAction SilentlyContinue
+        }
+        $deadline = (Get-Date).AddSeconds(30)
+        while (@(Get-ProcessesUnder $installDir).Count -gt 0 -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 500
+        }
+    }
+
+    $stillThere = Invoke-Orkeon -Label 'version-after-refusal' -Arguments @('--version')
+    if ($stillThere.ExitCode -eq 0 -and $stillThere.StdOut -match [regex]::Escape($version)) {
+        Step-Pass 'running-intact' "orkeon --version still answers $version"
+    } else {
+        Write-Tail $stillThere.ErrFile
+        Step-Fail 'running-intact' "orkeon --version exited $($stillThere.ExitCode) after the refusals: '$($stillThere.StdOut.Trim())'"
+    }
+}
+
+# ---------------------------------------------------------------------------- #
 # 5. orkeon init (WIN-02)
 # ---------------------------------------------------------------------------- #
 Write-Section 'orkeon init --provider none --force'
@@ -423,7 +628,10 @@ if ($doctor.ExitCode -gt 1) {
 } else {
     $results = $null
     try {
-        $results = @($doctor.StdOut | ConvertFrom-Json)
+        # Enumerated one by one: Windows PowerShell's ConvertFrom-Json hands a JSON
+        # array down the pipeline as a single object, PowerShell 7 as its items.
+        $parsed = $doctor.StdOut | ConvertFrom-Json
+        $results = @($parsed | ForEach-Object { $_ })
     } catch {
         $results = $null
     }

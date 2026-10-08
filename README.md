@@ -173,12 +173,12 @@ Runner, Ollama, or a model embedded in the container image) — see the
 Select-String -Path SHA256SUMS -Pattern 'win-x64\.zip'   # the two hashes must match
 
 Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cli-<version>-win-x64
-.\install.ps1        # or: msiexec /i orkeon-<version>-win-x64.msi -- pick one channel, not both
+.\install.cmd        # or double-click it. Or: msiexec /i orkeon-<version>-win-x64.msi -- pick one channel, not both
 orkeon init          # in a NEW terminal: pick your LLM provider and model
 orkeon run crew.yaml
 ```
 
-> **"Running scripts is disabled on this system"?** That is Windows' execution policy, on any machine that has never run a script. Run the installer under a policy that holds for this one command and changes no setting: `powershell -ExecutionPolicy Bypass -File .\install.ps1`. A zip downloaded by a browser may also be blocked — `Unblock-File .\orkeon-cli-<version>-win-x64.zip` before extracting. The `.msi` is not code-signed: SmartScreen shows *"Windows protected your PC"* — **More info** → **Run anyway**, once you have checked the file. `install.ps1` is written for Windows PowerShell 5.1 and proven at each release under PowerShell 7 (`pwsh`). Details: [Before you start](docs/getting-started/three-ways-to-run-orkeon.md#before-you-start).
+> **Nothing to set up first.** `install.cmd` runs `install.ps1` on the PowerShell that ships with Windows, under an execution policy that holds for that one command: no PowerShell 7 to install, no `Set-ExecutionPolicy`, no setting changed — each release installs the archive under Windows PowerShell 5.1 and under PowerShell 7. Windows may ask you to confirm a file a browser downloaded; `Unblock-File .\orkeon-cli-<version>-win-x64.zip` before extracting avoids the question. Running it again over an installation replaces it — close Orkeon Studio first, the installer refuses while it is open. A policy your organization sets overrules the launcher: only a signed script runs there. The `.msi` is not code-signed: SmartScreen shows *"Windows protected your PC"* — **More info** → **Run anyway**, once you have checked the file. Details: [Before you start](docs/getting-started/three-ways-to-run-orkeon.md#before-you-start).
 
 **Debian / Ubuntu** (amd64, arm64) — add the signed Orkeon apt source once: the block to copy, with its key check and its `stable` / `rc` / `dev` channels, is in [Install with apt](docs/guides/install-with-apt.md). Then Orkeon is a package like any other — self-contained too, no `dotnet-runtime` package pulled in:
 

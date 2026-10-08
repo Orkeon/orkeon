@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 <#
 .SYNOPSIS
   Builds the per-user Orkeon MSI (WIN-07) from a package-installers.ps1

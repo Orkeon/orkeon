@@ -314,10 +314,14 @@ jobs:
   # plus the Orkeon Studio payload and its `--smoke-exit` start/close smoke
   # (STUDIO-08) — this job is the only place a WPF window is ever opened, so a
   # Studio that fails to resolve its XAML or its runtime surfaces here.
+  # The smoke runs twice, once per PowerShell: under `pwsh` (PowerShell 7), then
+  # under `powershell` (Windows PowerShell 5.1, the one a Windows machine has
+  # before anything is installed on it). install.ps1 is written for both, and
+  # each run installs with install.cmd first -- the launcher a double-click runs.
   smoke-windows:
     runs-on: windows-latest
     needs: installers
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -330,7 +334,7 @@ jobs:
       # unreachable afterwards) and -Keep keeps its logs\ subfolder around on
       # a pass too, not just on failure (run-smoke.ps1's own default), so the
       # upload-artifact step below always has something to attach.
-      - name: Smoke the installed CLI
+      - name: Smoke the installed CLI (PowerShell 7)
         shell: pwsh
         run: |
           $zip = Get-ChildItem artifacts -Filter 'orkeon-cli-*-win-x64.zip' | Select-Object -First 1
@@ -338,11 +342,40 @@ jobs:
           ./scripts/smoke-onboarding/run-smoke.ps1 -ArchivePath $zip.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke" -Keep
           exit $LASTEXITCODE
 
+      # The same smoke, from the first line to the last, on the PowerShell that
+      # ships with Windows. It runs whatever the step above answered: a failure
+      # under one PowerShell alone is the information. Its own work directory,
+      # so the two sets of logs are uploaded side by side.
+      - name: Smoke the installed CLI (Windows PowerShell 5.1)
+        if: ${{ !cancelled() }}
+        shell: powershell
+        run: |
+          $zip = Get-ChildItem artifacts -Filter 'orkeon-cli-*-win-x64.zip' | Select-Object -First 1
+          if (-not $zip) { throw 'No orkeon-cli-*-win-x64.zip in the downloaded artefact.' }
+          ./scripts/smoke-onboarding/run-smoke.ps1 -ArchivePath $zip.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke-ps51" -Keep
+          exit $LASTEXITCODE
+
+      # The scripts that pack and build need PowerShell 7 and say so: started
+      # under Windows PowerShell, package-installers.ps1 must stop on its
+      # #Requires line -- one sentence naming the version -- before it does
+      # anything, not on a parameter error half-way through.
+      - name: The packaging script asks for PowerShell 7 by name
+        if: ${{ !cancelled() }}
+        shell: powershell
+        run: |
+          $refusal = $null
+          try { ./scripts/package-installers.ps1 -AppSet cli } catch { $refusal = $_.Exception.Message }
+          if (-not $refusal) { throw 'package-installers.ps1 ran under Windows PowerShell 5.1.' }
+          if ($refusal -notmatch 'requires' -or $refusal -notmatch '7\.0') { throw "package-installers.ps1 stopped, but not on its #Requires line: $refusal" }
+          Write-Host "PASS -- $refusal"
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: orkeon-smoke-windows-logs
-          path: ${{ runner.temp }}/orkeon-smoke/logs
+          path: |
+            ${{ runner.temp }}/orkeon-smoke/logs
+            ${{ runner.temp }}/orkeon-smoke-ps51/logs
           if-no-files-found: ignore
           retention-days: 1
 
@@ -457,6 +490,14 @@ jobs:
 
           if (-not (Test-Path -LiteralPath $orkeonCmd)) { throw "$orkeonCmd not found after install" }
           Write-Host "PASS install -- $orkeonCmd exists"
+
+          # install.ps1 and install.cmd are the ZIP channel's installer and its
+          # launcher: Package.wxs keeps both out of this package, whose tree is
+          # otherwise the zip's.
+          foreach ($zipOnly in 'install.ps1', 'install.cmd') {
+            if (Test-Path -LiteralPath (Join-Path $installDir $zipOnly)) { throw "$zipOnly was installed by the MSI: it belongs to the ZIP channel alone" }
+          }
+          Write-Host 'PASS zip-only -- neither install.ps1 nor install.cmd in the MSI install'
 
           # The notices Package.wxs harvests with the rest of the stage tree (GAP-52).
           # Same assertions as the ZIP channel, shared from lib\notices-windows.ps1:

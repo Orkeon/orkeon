@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the Windows zip installs by double-click, on the PowerShell Windows ships
+
+Installing `orkeon-cli-<version>-win-x64.zip` took a PowerShell window, a policy to lift
+(`Set-ExecutionPolicy`, or the `-ExecutionPolicy Bypass` command the page gave) and, as far
+as any release had proven, PowerShell 7. Installing a second time over a first could stop
+half-way.
+
+- **`install.cmd`**, beside `install.ps1` in both Windows archives: it starts the script on
+  Windows PowerShell 5.1 — the one installed with Windows — under an execution policy that
+  holds for that one command, and changes no setting of the machine. Double-clicked, its
+  window stays open on the result; from a terminal it returns at once, with the script's
+  exit code. Its arguments go through (`install.cmd -Uninstall`, `-InstallDir <folder>`).
+  It travels into the install directory with `install.ps1`; neither is in the MSI.
+- **A reinstall that cannot run is refused before it changes anything.** `install.ps1`
+  lists the processes started from the install directory — Orkeon Studio left open, a crew
+  still running — and, if there is one, names it and stops: the installation in place is
+  intact. Until now the delete of the previous tree failed on the first locked file and
+  left neither the old installation nor the new one. `-Uninstall` refuses the same way.
+- **Proven under both PowerShell editions.** `smoke-windows` runs the whole Windows smoke
+  twice, under `pwsh` and under `powershell`, and the smoke gains three passes: an install
+  through `install.cmd`; a second install over the first (the same tree, one `PATH` entry,
+  the same *Installed apps* version); an install and an uninstall attempted while Orkeon
+  Studio runs, both refused with its name. The MSI smoke asserts neither file is installed.
+- `install.ps1` declares `#Requires -Version 5.1`; `package-installers.ps1`, `build-msi.ps1`
+  and `build-msi-service.ps1` declare `#Requires -Version 7.0`, so Windows PowerShell says
+  which version they need instead of failing on a parameter.
+- `orkeon doctor` tells a zip installation to run `install.cmd` to update.
+- Docs (EN, FR): the README, *three ways to run Orkeon*, the publication matrix and the
+  README of every archive present `install.cmd` first; *Before you start* is reduced to
+  what remains true — a file from the Internet may be confirmed, and a policy set by an
+  organization (Group Policy) overrules the launcher: only a signed script runs there.
+
 ### Added — `orkeon doctor` names the channel Orkeon was installed through
 
 There are eight ways to install Orkeon and as many to update it; nothing in an installation

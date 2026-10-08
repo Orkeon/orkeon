@@ -116,7 +116,7 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Equal("ok", channel.GetProperty("status").GetString());
         Assert.StartsWith("zip — ", detail, StringComparison.Ordinal);
         Assert.Contains("orkeon " + CliUsage.Version, detail, StringComparison.Ordinal);
-        Assert.Contains("install.ps1", detail, StringComparison.Ordinal);
+        Assert.Contains("install.cmd", detail, StringComparison.Ordinal);
     }
 
     /// <summary>An installation older than the marker answers <c>unknown</c>, without an error.</summary>

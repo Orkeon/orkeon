@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 <#
 .SYNOPSIS
   Builds per-OS installer archives containing all Orkeon CLI executables,
@@ -20,6 +21,11 @@
   apps for the platform (win-x64: orkeon-studio; linux-*: orkeon-studio-config +
   orkeon-studio-run; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
 .NOTES
+  Requires PowerShell 7 (`pwsh`): the lockfile is read with ConvertFrom-Json -AsHashtable,
+  which Windows PowerShell 5.1 does not have. The #Requires line above turns that into
+  one sentence instead of a parameter error. Only the packaging needs it: install.ps1,
+  which this script puts in the archive, runs on the PowerShell Windows ships.
+
   Requires Python 3 (`python` on PATH): scripts/third-party-notices.py copies the
   license and notices of the .NET runtime every self-contained publish bundles into
   licenses\<pack>\.
@@ -237,6 +243,11 @@ foreach ($rid in $Rids) {
     }
     if ($rid -like 'win-*') {
         Copy-Item (Join-Path $Assets 'install.ps1') (Join-Path $root 'install.ps1')
+        # install.cmd is what a double-click runs: it starts install.ps1 on the PowerShell
+        # Windows ships, under an execution policy that holds for that one command. cmd.exe
+        # wants CRLF, whatever line endings this checkout has -- mirrors package-installers.sh.
+        $launcher = (Get-Content (Join-Path $Assets 'install.cmd') -Raw) -replace "`r?`n", "`r`n"
+        [IO.File]::WriteAllText((Join-Path $root 'install.cmd'), $launcher, [Text.Encoding]::ASCII)
     } else {
         Copy-Item (Join-Path $Assets 'install.sh') (Join-Path $root 'install.sh')
     }

@@ -19,7 +19,7 @@ public static class InstallChannels
     /// </summary>
     public const string MarkerFile = "INSTALL-CHANNEL";
 
-    /// <summary>The Windows zip, installed by its <c>install.ps1</c>.</summary>
+    /// <summary>The Windows zip, installed by its <c>install.cmd</c>, the launcher of <c>install.ps1</c>.</summary>
     public const string Zip = "zip";
 
     /// <summary>The per-user Windows MSI of the CLI.</summary>

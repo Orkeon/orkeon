@@ -64,11 +64,11 @@ Chaque [GitHub Release](https://github.com/Orkeon/orkeon/releases) attache un
 
 | Artefact | Contenu | Prérequis runtime | Idéal pour |
 |---|---|---|---|
-| **`orkeon-cli-<version>-win-x64.zip`** | le CLI `orkeon` + **Orkeon Studio** (`orkeon-studio`, l'application de bureau) + `install.ps1` | pas de .NET — self-contained. `install.ps1` est un script PowerShell : voir [Avant de commencer](#avant-de-commencer) | **Windows : le téléchargement recommandé** |
+| **`orkeon-cli-<version>-win-x64.zip`** | le CLI `orkeon` + **Orkeon Studio** (`orkeon-studio`, l'application de bureau) + `install.cmd` et `install.ps1` | pas de .NET — self-contained. Double-cliquez `install.cmd` : il tourne sur le PowerShell livré avec Windows. Voir [Avant de commencer](#avant-de-commencer) | **Windows : le téléchargement recommandé** |
 | **`orkeon-<version>-win-x64.msi`** | les deux mêmes, MSI per-user, avec un raccourci menu Démarrer « Orkeon Studio » | pas de .NET — self-contained. Non signé : Windows demande avant de le lancer, voir [Avant de commencer](#avant-de-commencer) | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
 | **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + les deux applications terminal **Orkeon Studio** | aucun — self-contained | **Debian / Ubuntu** — de préférence depuis le [dépôt apt](../guides/install-with-apt.md), qui sert ces mêmes paquets et leurs mises à jour |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (pas de Studio en V1 — le canal d'onboarding macOS reste CLI seul) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
-| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-host`…) + les applications Studio que la plateforme supporte + `install.sh` / `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL et l'hôte de service |
+| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-host`…) + les applications Studio que la plateforme supporte + `install.sh` / `install.cmd` et `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL et l'hôte de service |
 | **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | le seul CLI `orkeon` — **sans esbuild** : un script `.ork.ts` demande `npm install -g esbuild` (ou `ORKEON_ESBUILD_PATH`) ; les crews YAML non. `orkeon typings` écrit les typings d'éditeur | **SDK** .NET 10 | Obtenir uniquement le CLI sur un poste qui compile déjà du .NET |
 
 `<rid>` vaut `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) ou
@@ -109,30 +109,26 @@ vous changez.
 
 Aucun des deux canaux n'a besoin de .NET. Ce que Windows lui-même peut mettre en travers :
 
-- **PowerShell.** `install.ps1` est écrit pour Windows PowerShell 5.1, celui qui est installé
-  avec Windows, et pour PowerShell 7 (`pwsh`). Ce que chaque release prouve sur une vraie
-  machine Windows, c'est l'installation sous **PowerShell 7** : si `install.ps1` échoue sous
-  5.1, lancez-le depuis `pwsh`.
-- **Politique d'exécution.** Un poste Windows qui n'a jamais lancé de script refuse
-  `.\install.ps1` : *« l'exécution de scripts est désactivée sur ce système »*. Lancez-le sous
-  une politique qui ne vaut que pour cette commande, et ne change aucun réglage du poste :
-
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File .\install.ps1              # installation
-  powershell -ExecutionPolicy Bypass -File .\install.ps1 -Uninstall   # désinstallation
-  ```
-
-  ou levez la politique pour la fenêtre PowerShell où vous êtes, et seulement jusqu'à sa
-  fermeture : `Set-ExecutionPolicy -Scope Process Bypass`. Ne changez jamais la politique du
-  poste ni celle de votre compte pour installer Orkeon.
-- **Fichier bloqué.** Un zip téléchargé par un navigateur est marqué comme venant
-  d'Internet, et ce qu'on en extrait peut l'être aussi ; sous la politique `RemoteSigned`,
-  PowerShell refuse alors le script. Levez la marque avant d'extraire — `Unblock-File
-  .\orkeon-cli-<version>-win-x64.zip` — ou sur le script extrait, `Unblock-File
-  .\install.ps1`.
-- **Une politique imposée par votre organisation** (stratégie de groupe) n'est levée par
-  rien de ce qui précède : elle l'emporte sur l'option comme sur `-Scope Process`. Voyez
-  votre administrateur, ou passez par un poste où vous avez le droit de lancer des scripts.
+- **PowerShell.** Rien à installer. Le zip contient `install.cmd`, qui lance `install.ps1`
+  sur Windows PowerShell 5.1, celui qui est installé avec Windows ; `install.ps1` est écrit
+  pour lui et pour PowerShell 7 (`pwsh`). Chaque release installe l'archive sur une vraie
+  machine Windows sous l'un et sous l'autre.
+- **Politique d'exécution.** Rien à changer. Un poste Windows qui n'a jamais lancé de script
+  refuse `.\install.ps1` tapé dans PowerShell — *« l'exécution de scripts est désactivée sur
+  ce système »* — et `install.cmd` est la réponse à cela : il lance le script sous une
+  politique qui ne vaut que pour cette commande et ne change aucun réglage du poste. Ne
+  changez jamais la politique du poste ni celle de votre compte pour installer Orkeon. Si
+  vous lancez le script vous-même, la même politique d'une seule commande s'écrit
+  `powershell -ExecutionPolicy Bypass -File .\install.ps1`.
+- **Un fichier venu d'Internet.** Un zip téléchargé par un navigateur est marqué comme
+  venant d'Internet, et ce que l'Explorateur en extrait l'est aussi : Windows peut vous
+  demander de confirmer avant de lancer `install.cmd`. La marque n'arrête pas le lanceur.
+  Pour qu'aucune question ne soit posée, levez-la avant d'extraire : `Unblock-File
+  .\orkeon-cli-<version>-win-x64.zip`.
+- **Une politique imposée par votre organisation** (stratégie de groupe) l'emporte sur
+  l'option du lanceur : là, seul un script signé tourne, et l'installeur d'Orkeon ne l'est
+  pas. Voyez votre administrateur, ou passez par un poste où vous avez le droit de lancer
+  des scripts.
 - **SmartScreen.** Aucun des deux MSI n'est signé — `orkeon-<version>-win-x64.msi` ici, pas
   plus que celui de l'[hôte de service](../architecture/service-host.md),
   `orkeon-host-<version>-win-x64.msi`. Windows affiche *« Windows a protégé votre
@@ -144,14 +140,21 @@ Aucun des deux canaux n'a besoin de .NET. Ce que Windows lui-même peut mettre e
 
 #### Installer
 
+Canal A — le zip (recommandé). Extrayez-le, puis **double-cliquez `install.cmd`** : la
+fenêtre reste ouverte sur le résultat. Ou depuis un terminal, PowerShell ou `cmd` :
+
 ```powershell
-# Canal A — ZIP + install.ps1 (recommandé)
 Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .
 cd orkeon-cli-<version>-win-x64
-.\install.ps1     # -> %LOCALAPPDATA%\Programs\Orkeon, PATH utilisateur, entrée « Applications installées »
-.\install.ps1 -Uninstall
-# « l'exécution de scripts est désactivée sur ce système » ? Voir « Avant de commencer » plus haut.
+.\install.cmd     # -> %LOCALAPPDATA%\Programs\Orkeon, PATH utilisateur, entrée « Applications installées »
+.\install.cmd -Uninstall
 ```
+
+`install.cmd` passe ses arguments à `install.ps1` (`-InstallDir <dossier>`, `-Uninstall`)
+et rend son code de sortie. Installer par-dessus une installation la remplace — c'est
+ainsi que le canal zip se met à jour. **Fermez Orkeon Studio et laissez finir une crew en
+cours d'abord** : tant qu'un programme de l'installation tourne, l'installeur refuse, le
+nomme, et laisse l'installation comme elle était.
 
 ```powershell
 # Canal B — MSI (double-clic, ou en silencieux)
@@ -570,7 +573,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
 - **Vous voulez juste voir tourner une crew ?** Prenez un binaire de release
   (voie 2) ou le conteneur (voie 3) et pointez `orkeon run` sur n'importe quel
   `config.yaml`.
-  - Sur **Windows** : `orkeon-cli-<version>-win-x64.zip` + `install.ps1`, ou le
+  - Sur **Windows** : `orkeon-cli-<version>-win-x64.zip` + `install.cmd`, ou le
     MSI si vous préférez le double-clic. Un canal à la fois.
   - Sur **Debian / Ubuntu** : le [dépôt apt](../guides/install-with-apt.md), puis
     `sudo apt install orkeon orkeon-archive-keyring`.
@@ -607,7 +610,7 @@ un script.
 |---|---|
 | Le tool dotnet | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
 | Des paquets NuGet, dans un projet | `dotnet add package Orkeon --prerelease` — et `Orkeon.Tools` si le projet le référence — réécrit la version |
-| Zip Windows, tarball macOS ou Linux | Extraire la nouvelle archive et lancer son `install.ps1` / `install.sh` : il supprime l'installation précédente et met la nouvelle à sa place |
+| Zip Windows, tarball macOS ou Linux | Extraire la nouvelle archive et lancer son `install.cmd` / `install.sh` : il supprime l'installation précédente et met la nouvelle à sa place. Sous Windows, fermer Orkeon Studio d'abord : l'installeur refuse tant qu'un programme de l'installation tourne |
 | MSI Windows | Lancer le nouveau MSI : il remplace celui qui est installé, y compris entre deux pré-releases |
 | Le dépôt apt | `sudo apt update && sudo apt upgrade` |
 | Un paquet Debian téléchargé | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` sur ARM) — ou passer au [dépôt apt](../guides/install-with-apt.md), qui se met à jour seul |

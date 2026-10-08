@@ -29,24 +29,26 @@ Linux / macOS:
 ./install.sh --uninstall
 ```
 
-Windows (PowerShell):
+Windows — double-click `install.cmd`, or from a terminal (PowerShell or `cmd`):
 
 ```powershell
-.\install.ps1                # installs to %LOCALAPPDATA%\Programs\Orkeon, updates user PATH
-.\install.ps1 -Uninstall
+.\install.cmd                # installs to %LOCALAPPDATA%\Programs\Orkeon, updates user PATH
+.\install.cmd -Uninstall
 ```
 
-`install.ps1` is written for Windows PowerShell 5.1 and for PowerShell 7. On a machine
-that has never run a script, Windows refuses it ("running scripts is disabled on this
-system"); run it under a policy that holds for this one command and changes no setting:
+`install.cmd` starts `install.ps1` on the PowerShell that ships with Windows, under an
+execution policy that holds for that one command: no PowerShell 7 to install, no
+`Set-ExecutionPolicy`, no setting of the machine changed. Its arguments go through
+(`-InstallDir <folder>`, `-Uninstall`). `install.ps1` itself is written for Windows
+PowerShell 5.1 and for PowerShell 7, should you rather run it yourself.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1
-```
+Running it again over an installation replaces it. Close Orkeon Studio and let a running
+crew finish first: while a program of the installation is running, the installer refuses,
+names it, and leaves the installation as it was.
 
-If the archive was downloaded by a browser, `Unblock-File .\install.ps1` lifts the mark
-Windows put on it. A policy your organization sets is not lifted by either: ask your
-administrator.
+If the archive was downloaded by a browser, Windows may ask you to confirm before it runs
+`install.cmd`. A policy your organization sets (Group Policy) overrules the launcher:
+only a signed script runs there — ask your administrator.
 
 ## First run
 

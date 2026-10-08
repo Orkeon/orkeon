@@ -210,7 +210,7 @@ scripting DSL).
 | Artifact | Built by | Contents | Runtime |
 |---|---|---|---|
 | `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every launcher — `orkeon`, `orkeon-slim`, `orkeon-repl`, `orkeon-host` — + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon`, `orkeon-host` and the Studio apps self-contained, the rest framework-dependent |
-| `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `orkeon-studio` (WPF Orkeon Studio) + `install.ps1` | self-contained |
+| `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `orkeon-studio` (WPF Orkeon Studio) + `install.cmd` and `install.ps1` | self-contained |
 | `orkeon_<version>_amd64.deb` / `orkeon_<version>_arm64.deb` | `package-deb.sh --arch amd64\|arm64` (reuses the `linux-x64` and `linux-arm64` staging trees — one publish, two packages per architecture) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (`libicu78` down to `libicu70`, `libssl3t64 \| libssl3`, `libc6 (>= 2.34)`…, so Debian 12/13 and Ubuntu 22.04 to 26.04), never on `dotnet-runtime-*`; `Recommends: orkeon-archive-keyring`; ships `md5sums` (`dpkg -V orkeon`); byte-identical across two builds of the same commit (`SOURCE_DATE_EPOCH`) |
 | `orkeon-archive-keyring_<YYYY.MM.DD>_all.deb` | `package-keyring-deb.sh`, once per keyring version (a date, such as `2026.10.04`, from `installers/apt/keyring.version`); later Releases attach the bytes already published, never a rebuild | `/usr/share/keyrings/orkeon-archive-keyring.gpg`, the public key of the [apt repository](#the-apt-repository) | — |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI + `orkeon-studio` (WPF, with an "Orkeon Studio" Start-menu shortcut), same pruned publish as the zip | self-contained |
@@ -230,7 +230,7 @@ says self-contained; what the Windows ones need from Windows is not in that colu
 
 | Artifact | On the machine |
 |---|---|
-| `orkeon-cli-<version>-win-x64.zip`, `orkeon-<version>-win-x64.zip` | PowerShell, to run `install.ps1` — written for Windows PowerShell 5.1, smoked under PowerShell 7 (`smoke-windows`) — and an execution policy that lets a script run: on a machine that never ran one, `powershell -ExecutionPolicy Bypass -File .\install.ps1`. A zip a browser downloaded may have to be unblocked first (`Unblock-File`) |
+| `orkeon-cli-<version>-win-x64.zip`, `orkeon-<version>-win-x64.zip` | nothing to install, no setting to change: `install.cmd` starts `install.ps1` on Windows PowerShell 5.1, the one Windows ships, under an execution policy that holds for that one command. `install.ps1` is written for 5.1 and for PowerShell 7, and `smoke-windows` installs the CLI zip under both. Windows may ask to confirm a file a browser downloaded (`Unblock-File` on the zip avoids it); a policy set by Group Policy overrules the launcher — only a signed script runs there |
 | `orkeon-<version>-win-x64.msi` | nothing to install. Not code-signed: SmartScreen names an unknown publisher and asks before running it |
 | `orkeon-host-<version>-win-x64.msi` | administrator rights (per-machine). Not code-signed either: same SmartScreen screen, and an elevation prompt without a publisher |
 
@@ -301,7 +301,7 @@ The `orkeon` CLI is distributed through **eight channels**:
 | Channel | Artifact | Runtime | Audience |
 |---|---|---|---|
 | NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. Part of the NuGet.org lineup (PUB-25) — publishable since the package dropped from 262.5 MB to 137.6 MB (iOS/Android onnxruntime natives excluded); first push at `v1.0.0-rc.3` |
-| Windows zip + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel. Ships `orkeon-studio` (WPF Orkeon Studio) next to the CLI |
+| Windows zip + `install.cmd` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel. Ships `orkeon-studio` (WPF Orkeon Studio) next to the CLI |
 | Windows MSI (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, double-click install and an "Installed apps" entry. Ships `orkeon-studio` with a Start-menu shortcut. One channel at a time: the MSI refuses to install over a zip install |
 | Debian / Ubuntu apt repository | the `.deb` packages below, indexed on the `apt` branch (channels `stable`, `rc`, `dev`) | self-contained | Debian / Ubuntu, amd64 and arm64 — the recommended channel: `apt install`, `apt upgrade`. See [The apt repository](#the-apt-repository) |
 | Debian package | `orkeon_<version>_amd64.deb` / `_arm64.deb` | self-contained | Debian / Ubuntu without the repository (one version, no updates). Ships the `orkeon-studio-config` / `orkeon-studio-run` TUIs next to the CLI |

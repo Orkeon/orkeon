@@ -145,12 +145,14 @@
       itself, see install.ps1's header). Shipping it inside the MSI would let
       a user run the ZIP channel's uninstall logic against an MSI-managed
       install, which is exactly what the "one channel at a time" boundary
-      forbids.
+      forbids. install.cmd, the launcher that starts it on a double-click, is
+      excluded with it and for the same reason.
     -->
     <ComponentGroup Id="PayloadComponents" Directory="INSTALLFOLDER">
       <!-- WIX0004: Exclude is a child element in WiX v5, not an attribute. -->
       <Files Include="$(var.PublishDir)\**">
         <Exclude Files="$(var.PublishDir)\install.ps1" />
+        <Exclude Files="$(var.PublishDir)\install.cmd" />
         <!-- The staging tree is the zip's: its marker says "zip". -->
         <Exclude Files="$(var.PublishDir)\INSTALL-CHANNEL" />
       </Files>
