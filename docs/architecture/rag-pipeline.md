@@ -351,7 +351,7 @@ Bound over the selected preset — every key is an individual override.
 | `Orkeon:Rag:LlmProfile` | default profile | The host LLM profile (`Llm:Profiles:<name>`) every model call of the subsystem goes to — generation, transformers, listwise reranker, corrective evaluator and groundedness checker, `llm` classifier, evaluation judge; an unknown name refuses the host start, listing the known ones |
 | `Orkeon:Rag:Provider` | ambient | Document-store provider type (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance`; unknown fails loudly); unset = ambient `IMemoryProvider`. The connection is that provider's own host section (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), and the store shares the factory's instance of that type with crew memory |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks kept for context assembly (call-site `RagQuery.TopN` wins) |
-| `Orkeon:Rag:Retrieval:CandidateK` | 50 | Wide stage of the cascade (always ≥ final TopN) |
+| `Orkeon:Rag:Retrieval:CandidateK` | 5 (`fast`) | Wide stage of the cascade (always ≥ final TopN); `fast` has none and takes `TopK`, a profile that reranks takes 50, `quality` 100 |
 | `Orkeon:Rag:Retrieval:MinScore` | none | Optional raw-score floor (the legacy global 0.7 floor is deliberately gone) |
 | `Orkeon:Rag:Retrieval:Hybrid:Enabled` | false (`fast`) | Default hybrid mode; flat shorthand `Retrieval:Hybrid = true` accepted |
 | `Orkeon:Rag:Retrieval:Hybrid:RrfK` | 60 | Reciprocal Rank Fusion constant |

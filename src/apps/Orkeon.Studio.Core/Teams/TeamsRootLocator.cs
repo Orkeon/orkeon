@@ -1,4 +1,5 @@
 using Orkeon.Compliance.Vfs;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Studio.Core.Teams;
 
@@ -59,7 +60,7 @@ public static class TeamsRootLocator
     // path before any VFS mount exists; nothing on disk is touched here.
 
     /// <summary>The variable naming the teams root, read by the WPF application and the run TUI alike.</summary>
-    public const string EnvironmentVariable = "ORKEON_STUDIO_TEAMS_ROOT";
+    public const string EnvironmentVariable = EnvironmentVariableNames.StudioTeamsRoot;
 
     /// <summary>
     /// Resolves the teams root in force: the variable, then <paramref name="argument"/>, then

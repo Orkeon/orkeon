@@ -22,9 +22,13 @@ public sealed record ScriptingLimitsOptions
     public const string SectionName = "Orkeon:Scripting:Limits";
 
     /// <summary>
-    /// Maximum cumulative memory the engine is allowed to allocate, in bytes.
-    /// Default: <strong>100 MB</strong> — an <c>Untrusted</c>-by-default profile
-    /// for <c>.ork.ts</c> scripts of unknown provenance (see R2.6 / SEC-009).
+    /// Maximum cumulative memory the engine is allowed to allocate, in bytes — counted
+    /// since the engine was created, not at its peak. Default: <strong>100 MB</strong>, a
+    /// ceiling for scripts of unknown provenance; a trusted run that needs more raises it.
+    /// </summary>
+    /// <remarks>
+    /// An <c>Untrusted</c>-by-default profile for <c>.ork.ts</c> scripts of unknown
+    /// provenance (see R2.6 / SEC-009).
     ///
     /// IMPORTANT: Jint's <c>LimitMemory</c> is <strong>cumulative</strong>, not
     /// peak. It uses <c>GC.GetAllocatedBytesForCurrentThread()</c> and counts
@@ -44,22 +48,27 @@ public sealed record ScriptingLimitsOptions
     /// <c>JsCrew.RunAsync</c>) counts every agent body's allocations against one budget, the
     /// way a script already did — not one fresh window per body — so a many-agent run that
     /// allocates raises the limit.
-    /// </summary>
+    /// </remarks>
     public long MemoryLimitBytes { get; init; } = 100L * 1024 * 1024;
 
     /// <summary>
-    /// Maximum recursion depth before the engine throws. Default: <strong>64</strong>
-    /// (lowered from 100 for the strict <c>Untrusted</c> profile). Catches runaway
-    /// recursion well before the .NET stack overflow while leaving room for
-    /// legitimately nested script logic. Trusted scripts may raise it via
-    /// <c>Orkeon:Scripting:Limits:RecursionLimit</c>.
+    /// Maximum recursion depth before the engine throws. Default: <strong>64</strong>:
+    /// it catches runaway recursion well before the .NET stack overflows and leaves room
+    /// for legitimately nested script logic. A trusted script may raise it.
     /// </summary>
+    /// <remarks>
+    /// Lowered from 100 for the strict <c>Untrusted</c> profile; raised through
+    /// <c>Orkeon:Scripting:Limits:RecursionLimit</c>.
+    /// </remarks>
     public int RecursionLimit { get; init; } = 64;
 
     /// <summary>
-    /// Maximum wall-clock time the engine is allowed to run, in total.
-    /// Default: <strong>30 seconds</strong> — strict <c>Untrusted</c> profile
-    /// (see R2.6 / SEC-009).
+    /// Maximum wall-clock time the engine is allowed to run, in total — the time spent
+    /// waiting for a tool or a model counts. Default: <strong>30 seconds</strong>, a ceiling
+    /// for scripts of unknown provenance; a trusted long run raises it.
+    /// </summary>
+    /// <remarks>
+    /// Strict <c>Untrusted</c> profile (see R2.6 / SEC-009).
     ///
     /// IMPORTANT: this configures Jint's <c>TimeoutInterval</c>, which is
     /// <strong>wall-clock</strong>, not JS-bytecode CPU time. Time spent
@@ -77,6 +86,6 @@ public sealed record ScriptingLimitsOptions
     /// invocation of the run function to its last settled promise, the way a script
     /// already did — not once per agent body — so a host driving a run longer than this
     /// raises the limit.
-    /// </summary>
+    /// </remarks>
     public TimeSpan ExecutionTimeout { get; init; } = TimeSpan.FromSeconds(30);
 }

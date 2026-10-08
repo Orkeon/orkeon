@@ -46,7 +46,12 @@ internal sealed record HostedCrewOptions
 
     /// <summary>
     /// The folders this host grants THIS crew, as mount strings
-    /// (<c>&lt;physical&gt;:&lt;virtual&gt;:&lt;rights&gt;</c>).
+    /// (<c>&lt;physical&gt;:&lt;virtual&gt;:&lt;rights&gt;</c>): a mount namespace of its own for
+    /// each run, so two hosted crews may both address <c>/output</c> over two different folders.
+    /// Empty (the default) keeps the host's mounts for that crew. A granted folder must lie under
+    /// the workspace root, or under <c>PathSecurity:AdditionalAllowedDirectories</c>.
+    /// </summary>
+    /// <remarks>
     /// <para>
     /// Declared by the host, never by the crew: the host grants, the crew does not demand.
     /// They are entered as a per-run mount namespace, so two hosted crews may both address
@@ -64,7 +69,7 @@ internal sealed record HostedCrewOptions
     /// refused there. Grant folders under that root, or widen it with
     /// <c>PathSecurity:AdditionalAllowedDirectories</c>.
     /// </para>
-    /// </summary>
+    /// </remarks>
     public IReadOnlyList<string> Mounts { get; init; } = [];
 
 }
@@ -98,7 +103,7 @@ internal sealed record OrkeonHostOptions
     public TimeSpan ShutdownGracePeriod { get; init; } = TimeSpan.FromSeconds(20);
 
     /// <summary>
-    /// The LLM profiles (<c>Llm:Profiles:&lt;name&gt;</c>) the hosted crews may name, GAP-17.
+    /// The LLM profiles (<c>Llm:Profiles:&lt;name&gt;</c>) the hosted crews may name (GAP-17).
     /// The service runs crews it does not control: unset, every profile the configuration
     /// defines is offered; set, only those listed — a crew naming another one fails to load,
     /// the run with it. The default profile (the <c>Llm</c> section) is always offered, so

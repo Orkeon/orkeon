@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Scripting.Configuration;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Scripting.Toolchain;
 
@@ -205,7 +206,7 @@ public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
             return _options.EsbuildPath;
 
         // 2) Environment variable.
-        var envPath = Environment.GetEnvironmentVariable("ORKEON_ESBUILD_PATH");
+        var envPath = Environment.GetEnvironmentVariable(EnvironmentVariableNames.EsbuildPath);
         if (!string.IsNullOrWhiteSpace(envPath) && File.Exists(envPath))
             return envPath;
 

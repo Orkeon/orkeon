@@ -166,6 +166,21 @@ est signalée, pas supprimée — le même script les retire lors d'un passage p
   passer à la plus récente) pour suivre le canal ; épinglez une version taggée pour tout usage
   durable.
 - Un build dev n'est pas une release : ni attestation, ni SBOM, rien sur NuGet.org.
+- **Deux formes hors tag, un seul calcul.** `scripts/resolve-version.sh` (et son jumeau
+  PowerShell `scripts/resolve-version.ps1`) nomme tout build qui n'est pas une release :
+
+  | Forme | D'où elle vient | Exemple |
+  |---|---|---|
+  | `<version des props>.dev.<n>` | la CI seule — `publish.yml` et `apt-dev.yml`, `n` étant le numéro du run de CI | `1.0.0-rc.4.dev.412` |
+  | `<version des props>.local.<horodatage>` | un build fait depuis un clone — `scripts/package-installers.sh` ou `.ps1` sans version, un run manuel de `release.yml` | `1.0.0-rc.4.local.202610080430` |
+
+  `<horodatage>` est la date de commit du commit construit, `AAAAMMJJHHMM` en UTC : elle
+  ordonne deux builds locaux, et un clone superficiel donne la même. Les changements non
+  commis ne la déplacent pas. SemVer classe un build local au-dessus de tous les builds dev
+  de la même version des props et sous la suivante : un poste installé depuis les sources ne
+  passe jamais pour un build plus ancien. Sur le commit que désigne un tag `v*`, les mêmes
+  scripts répondent la version du tag. `dotnet build` n'est pas concerné : les assemblies
+  d'un build ordinaire portent la version des props.
 - Une fois le flux déclaré comme source, `--prerelease` et les versions flottantes résolvent
   les builds dev de tous les paquets Orkeon, ceux de NuGet.org compris ; `--version` épingle
   une release.
@@ -206,7 +221,7 @@ remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 | Artefact | Produit par | Contenu | Runtime |
 |---|---|---|---|
 | `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (`--app-set full` par défaut) | tous les launchers — `orkeon`, `orkeon-slim`, `orkeon-repl`, `orkeon-host` — + les apps Orkeon Studio admises par leur filtre RID (le WPF `orkeon-studio` est réservé à `win-x64` ; les deux TUI partout) + un esbuild partagé + l'arbre `deploy/` (unité systemd, script d'enregistrement SCM, Dockerfile.host) | mixte : `orkeon`, `orkeon-host` et les apps Studio self-contained, les autres framework-dependent |
-| `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | le CLI `orkeon` + `orkeon-studio` (Orkeon Studio WPF) + `install.ps1` | self-contained |
+| `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | le CLI `orkeon` + `orkeon-studio` (Orkeon Studio WPF) + `install.cmd` et `install.ps1` | self-contained |
 | `orkeon_<version>_amd64.deb` / `orkeon_<version>_arm64.deb` | `package-deb.sh --arch amd64\|arm64` (réutilise les arbres de staging `linux-x64` et `linux-arm64` — un publish, deux paquets par architecture) | le CLI `orkeon` en `/usr/bin/orkeon` + les TUI Studio en `/usr/bin/orkeon-studio-config` et `/usr/bin/orkeon-studio-run` | self-contained ; `Depends` uniquement sur des bibliothèques système (`libicu78` jusqu'à `libicu70`, `libssl3t64 \| libssl3`, `libc6 (>= 2.34)`…, donc Debian 12/13 et Ubuntu 22.04 à 26.04), jamais sur `dotnet-runtime-*` ; `Recommends: orkeon-archive-keyring` ; livre ses `md5sums` (`dpkg -V orkeon`) ; identique à l'octet près entre deux builds du même commit (`SOURCE_DATE_EPOCH`) |
 | `orkeon-archive-keyring_<YYYY.MM.DD>_all.deb` | `package-keyring-deb.sh`, une fois par version du trousseau (une date, comme `2026.10.04`, tirée de `installers/apt/keyring.version`) ; les Releases suivantes rattachent les octets déjà publiés, jamais une reconstruction | `/usr/share/keyrings/orkeon-archive-keyring.gpg`, la clé publique du [dépôt apt](#le-dépôt-apt) | — |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, portée per-user), moissonnant le zip CLI extrait | le CLI `orkeon` + `orkeon-studio` (WPF, avec un raccourci menu Démarrer « Orkeon Studio »), même publish élagué que le zip | self-contained |
@@ -220,6 +235,19 @@ remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 `orkeon-host` est livré dans l'archive complète (`--app-set full`), self-contained : un daemon supervisé par systemd ou le SCM Windows ne doit pas dépendre d'un runtime que quelqu'un peut mettre à jour sous ses pieds. Ce n'est **pas** un dotnet tool — il s'installe en service, il ne s'invoque pas depuis un shell. Sous Windows il est aussi livré comme **MSI per-machine** dédié (`orkeon-host-<version>-win-x64.msi`), produit distinct du MSI per-user du CLI : les deux coexistent, et le paquet enregistre le service déclarativement — même compte, mêmes chemins, même politique de redémarrage que le canal script.
 
 Ses artefacts de déploiement vivent dans [`deploy/`](https://github.com/orkeon/orkeon/tree/main/deploy) et sont livrés dans l'archive complète aux côtés du daemon : une unité systemd (`Type=notify`, redémarrage sur échec — les erreurs de configuration sortent en 78 et ne bouclent pas —, durcie), un script PowerShell qui l'enregistre auprès du SCM, et un Dockerfile. Aucun des trois ne porte de secret — le jeton du bot et les clés d'API sont nommés par variable d'environnement dans la configuration et fournis par la machine, donc une unité ou une couche d'image peut être lue par n'importe qui sans rien divulguer.
+
+**Ce qu'il faut sur le poste.** Aucun artefact de ce tableau n'a besoin de .NET là où sa
+colonne *Runtime* dit self-contained ; ce que ceux de Windows attendent de Windows n'est pas
+dans cette colonne :
+
+| Artefact | Sur le poste |
+|---|---|
+| `orkeon-cli-<version>-win-x64.zip`, `orkeon-<version>-win-x64.zip` | rien à installer, aucun réglage à changer : `install.cmd` lance `install.ps1` sur Windows PowerShell 5.1, celui que Windows livre, sous une politique d'exécution qui ne vaut que pour cette commande. `install.ps1` est écrit pour 5.1 et pour PowerShell 7, et `smoke-windows` installe le zip du CLI sous l'un et sous l'autre. Windows peut demander de confirmer un fichier téléchargé par un navigateur (`Unblock-File` sur le zip l'évite) ; une politique imposée par stratégie de groupe l'emporte sur le lanceur — là, seul un script signé tourne |
+| `orkeon-<version>-win-x64.msi` | rien à installer. Non signé : SmartScreen annonce un éditeur inconnu et demande avant de le lancer |
+| `orkeon-host-<version>-win-x64.msi` | les droits d'administrateur (per-machine). Non signé non plus : même écran SmartScreen, et une invite d'élévation sans éditeur |
+
+Les étapes que suit un lecteur sont dans
+[Avant de commencer](../getting-started/three-ways-to-run-orkeon.md#avant-de-commencer).
 
 Deux fichiers de sommes plutôt qu'un : le job ubuntu `installers` écrit `SHA256SUMS` avant que
 le MSI n'existe — il est construit plus tard, sur `windows-latest`. Chaque fichier de sommes
@@ -241,7 +269,10 @@ le job `msi` smoke le MSI service de la même façon, plus une réinstallation s
 lui-même. Chacun vérifie aussi les notices de ce qu'il a installé : la licence,
 `THIRD-PARTY-NOTICES.md` et un `licenses/<pack>/` par runtime .NET qu'une application embarque,
 les runtimes étant lus dans la charge utile elle-même (chaque `*.runtimeconfig.json`), pas dans
-une liste. Tous installent depuis les artefacts **de job**, jamais depuis la Release : une
+une liste. Et chacun affirme le **canal** que nomme son installation — `zip`, `msi`,
+`msi-host`, `deb` ou `tarball` : le fichier `INSTALL-CHANNEL` que chaque emballage écrit à la
+racine de ce qu'il installe, relu par `orkeon --version --verbose` (dans le fichier lui-même
+pour le MSI service, qui n'embarque pas de CLI). Tous installent depuis les artefacts **de job**, jamais depuis la Release : une
 charge utile cassée est donc attrapée avant toute publication — le job `release` les a tous en
 `needs`.
 
@@ -286,7 +317,7 @@ Le CLI `orkeon` est distribué via **huit canaux** :
 | Canal | Artefact | Runtime | Public |
 |---|---|---|---|
 | Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. Fait partie du lineup NuGet.org (PUB-25) — publiable depuis que le paquet est passé de 262,5 Mo à 137,6 Mo (natifs onnxruntime iOS/Android exclus) ; premier push au tag `v1.0.0-rc.3` |
-| Zip Windows + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | onboarding Windows — le canal recommandé. Livre `orkeon-studio` (Orkeon Studio WPF) à côté du CLI |
+| Zip Windows + `install.cmd` | `orkeon-cli-<version>-win-x64.zip` | self-contained | onboarding Windows — le canal recommandé. Livre `orkeon-studio` (Orkeon Studio WPF) à côté du CLI |
 | MSI Windows (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, installation au double-clic et entrée « Applications installées ». Livre `orkeon-studio` avec un raccourci menu Démarrer. Un canal à la fois : le MSI refuse de s'installer par-dessus une install zip |
 | Dépôt apt Debian / Ubuntu | les paquets `.deb` ci-dessous, indexés sur la branche `apt` (canaux `stable`, `rc`, `dev`) | self-contained | Debian / Ubuntu, amd64 et arm64 — le canal recommandé : `apt install`, `apt upgrade`. Voir [Le dépôt apt](#le-dépôt-apt) |
 | Paquet Debian | `orkeon_<version>_amd64.deb` / `_arm64.deb` | self-contained | Debian / Ubuntu sans le dépôt (une version, sans mise à jour). Livre les TUI `orkeon-studio-config` / `orkeon-studio-run` à côté du CLI |
@@ -512,4 +543,4 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   `publish.yml`. Comment vérifier tout cela, et pourquoi un téléchargement nuget.org doit
   d'abord perdre sa signature repository, est dans
   [Vérifier ce que vous installez](../guides/verify-what-you-install.md).
-- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.4`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<version>.dev.<n>`.
+- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.4`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<version>.dev.<n>`, un build fait depuis un clone son `<version>.local.<horodatage>` (voir *Canal dev* plus haut).

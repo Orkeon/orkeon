@@ -4,8 +4,9 @@ Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI a
 
 ## Prerequisite
 
-**If `bin/` holds `orkeon` alone** (the CLI archive): none. It is self-contained —
-the .NET runtime ships inside it.
+**If this is the CLI archive** (`bin/` holds `orkeon` and, on Windows and Linux, the
+Orkeon Studio apps): no .NET. Everything in it is self-contained — the .NET runtime
+ships inside.
 
 **If `bin/` holds every launcher** (the multi-app archive): `orkeon`,
 `orkeon-host` and the Orkeon Studio apps are self-contained;
@@ -28,12 +29,26 @@ Linux / macOS:
 ./install.sh --uninstall
 ```
 
-Windows (PowerShell):
+Windows — double-click `install.cmd`, or from a terminal (PowerShell or `cmd`):
 
 ```powershell
-.\install.ps1                # installs to %LOCALAPPDATA%\Programs\Orkeon, updates user PATH
-.\install.ps1 -Uninstall
+.\install.cmd                # installs to %LOCALAPPDATA%\Programs\Orkeon, updates user PATH
+.\install.cmd -Uninstall
 ```
+
+`install.cmd` starts `install.ps1` on the PowerShell that ships with Windows, under an
+execution policy that holds for that one command: no PowerShell 7 to install, no
+`Set-ExecutionPolicy`, no setting of the machine changed. Its arguments go through
+(`-InstallDir <folder>`, `-Uninstall`). `install.ps1` itself is written for Windows
+PowerShell 5.1 and for PowerShell 7, should you rather run it yourself.
+
+Running it again over an installation replaces it. Close Orkeon Studio and let a running
+crew finish first: while a program of the installation is running, the installer refuses,
+names it, and leaves the installation as it was.
+
+If the archive was downloaded by a browser, Windows may ask you to confirm before it runs
+`install.cmd`. A policy your organization sets (Group Policy) overrules the launcher:
+only a signed script runs there — ask your administrator.
 
 ## First run
 
@@ -41,7 +56,8 @@ In a **new** terminal (so the PATH change is picked up):
 
 ```sh
 orkeon init      # pick an LLM provider and model; writes the global per-user config
-orkeon doctor    # nine checks: runtime, config, LLM reachability, esbuild, grammars, ...
+orkeon doctor    # checks the install: runtime, config, LLM reachability, esbuild, grammars, ...
+orkeon settings  # every setting a host reads, by category: type, default, meaning - offline
 orkeon run crew.yaml
 ```
 
@@ -51,10 +67,21 @@ directory, which every (re)install deletes. Run with no `Llm` section configured
 and Orkeon warns on stderr, then falls back to an echo provider that replays your
 prompt instead of answering it: that warning means `orkeon init` has not run yet.
 
+What that file may hold is listed by the tool itself, offline: `orkeon settings` gives the
+categories, `orkeon settings <section>` the keys of a section with their type, default and
+meaning, `orkeon settings <word>` whatever is named or described with a word. It shows
+defaults, not what this machine has set; `orkeon doctor` judges the file.
+
+`appsettings.sample.json`, at the root of this install, lists the same settings at their
+default, by category: a file to read, or to copy — as it is, it changes nothing.
+
 ## Contents
 
-The CLI archive (`orkeon-cli-{{VERSION}}-{{RID}}`) ships `bin/orkeon` alone — the
-first row below. The multi-app archive ships every command in this table.
+The CLI archive (`orkeon-cli-{{VERSION}}-{{RID}}`) ships `bin/orkeon` — the first row
+below — and the Orkeon Studio apps of its platform: `orkeon-studio` (the desktop app) on
+Windows, `orkeon-studio-config` and `orkeon-studio-run` (the terminal apps) on Linux,
+none on macOS. The multi-app archive ships every command in this table, and the Studio
+apps too.
 
 | Command | Description |
 |---|---|
@@ -71,7 +98,8 @@ libexec/                 one self-contained publish per application
 libexec/esbuild-bin/esbuild   shared esbuild binary used to transpile .ork.ts scripts
 deploy/                  service-host deployment assets (systemd unit, SCM registration script) — multi-app archive only
 VERSION                  plain-text version string (drives the Add/Remove Programs entry)
-appsettings.sample.json  reference-only config sample, see "First run" above
+INSTALL-CHANNEL          one word: the channel this tree is installed through, which `orkeon doctor` names
+appsettings.sample.json  every setting this install reads, at its default, by category — to read, or to copy: it changes nothing as it is; `orkeon settings <section>` describes each key
 LICENSE.md               Orkeon's license (MIT)
 THIRD-PARTY-NOTICES.md   the notices of the third-party components this archive redistributes
 licenses/                the license and third-party notices of the bundled .NET runtime, one folder per runtime pack

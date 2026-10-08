@@ -7,6 +7,334 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation — the environment variables Orkeon reads, in one table
+
+A variable that carries a setting had its rule, well explained. A variable a binary reads by its
+own name had no list: seventeen names scattered over the documentation, eleven of them absent
+from the configuration reference and three written nowhere.
+
+- **`docs/reference/configuration.md` gains "Environment variables"** (and its French mirror),
+  after the categories, in three tables: the variables that **carry a setting**
+  (`ORKEON_<Section>__<Key>`, the same without the prefix, `ORKEON_<NAME>` for a secret); the
+  ones a binary **reads by their name**, each with who reads it, the value it takes and what it
+  does; the settings keys that **name a variable** (`Llm:ApiKeyEnvVar`, …) and where that
+  variable is read. One paragraph says what is only passed on to a child process.
+- **Three variables come out of the shadow**: `TUI_DRIVER` (`windows`, `dotnet` or `ansi`) and
+  `TUI_DIAG` (`1`), the diagnosis switches of the text interfaces, and `OLLAMA_BASE_URL`, the
+  address the Ollama provider takes when it is given none.
+- **`orkeon settings env`** prints the same three lists in the terminal, offline, and `--json`
+  hands them to a program. `env` is that list and not the word: what the word names among the
+  settings follows it.
+- **Each name is written once**, in `EnvironmentVariableNames` (`Orkeon.Constants.Configuration`),
+  with the row the page and the verb read. A test holds both pages to it: a variable added
+  without its row fails, and so does a row for a variable the code does not know.
+- `orkeon email` and `orkeon rag` read `ORKEON_DEBUG` as every other verb does — `1`, `true` or
+  `yes` — where they took `1` alone.
+- `docs/reference/cli.md`: each variable it names links to the table.
+
+### Tests — the settings files, the documentation's blocks and its quoted defaults are held to the code
+
+Nothing tied what the repository says of a setting to what the code reads: a template of the
+examples, a `json` block of a page or a default quoted in a sentence could name a key that does
+not exist, and stay.
+
+- **A settings file of the repository writes only keys of the settings catalogue** — the 17
+  files of `examples/`, the `.json.example` templates among them, the sample of an installation,
+  the fixture of the release smokes and the settings Orkeon Studio's screenshots are taken on:
+  each key is known, the names an operator chooses aside, each value is one its key can take, and
+  a retired key fails with its migration. The failure names the file, the key and the closest
+  one. The capture campaign's settings wrote `RateLimiting:RequestsPerMinute`,
+  `RateLimiting:MaxConcurrent` and `Llm:Provider`, which nothing reads: they are
+  `GlobalRequestsPerMinute`, `MaxConcurrentRequests` and `Llm:BaseUrl` now.
+- **A `json` block of the documentation** (English and French, the READMEs of the examples
+  included) that writes a section Orkeon reads writes only its keys. A block that is no settings
+  text is not judged; one that shows on purpose what a host refuses carries
+  `<!-- settings-check:off -->` on the line above its fence.
+- **A default quoted beside a key** — `` `Llm:MaxRetries` (10 by default) ``, a row of a table
+  with a "Default" column — is the one of the code, in every page, units and separators set
+  aside. The RAG page gave `Orkeon:Rag:Retrieval:CandidateK` 50; under the default profile it is
+  5, and the page says so.
+- **The reference page**: a table that is no longer the one the catalogue produces fails by the
+  name of its section, with the command that writes it again.
+- **The catalogue's sentences keep the space before a name that opens with a dot**: "the .NET
+  stack", where `Logging`, `Logging:Console` and `Orkeon:Scripting:Limits:RecursionLimit` read
+  "the.NET".
+- The settings files and the pages are listed from what git knows, so a clone that keeps other
+  projects under `examples/others` does not walk them: the tests of the examples' settings,
+  which did not end there, run in seconds.
+- `CONTRIBUTING` (EN, FR): "Adding a setting" — the property and its comment, its category, the
+  French sentence, and the commands that produce the catalogue, the tables and the sample again.
+
+### Changed — the sample settings file of an install lists every setting at its default
+
+`appsettings.sample.json`, at the root of every installation, was a copy of the examples' default
+file: twelve keys, at the values of a local model. It is produced from the settings catalogue now.
+
+- **Every key a shipped binary reads** — 56 sections, 305 keys —, by category, each section under
+  a line that says who reads it. `RateLimiting` is there at 60, 30, 20, 0 and 5.
+- **It can be copied**: put in place of the settings file as it is, no host refuses it, none
+  reports it, and each host binds what it binds without a file. It writes a key only when that
+  key is a single value at a constant default (163 of them); everything else is shown as a
+  comment to uncomment — a key without a default, a secret, a list, an entry under a name or an
+  index, a key a RAG profile sets, and the whole `Llm` section, since one of its keys written
+  gives the host a default model and hides the warning that none is configured.
+- **JSON with `//` comments and a comma after every member**, which .NET's configuration, the
+  runners and Orkeon Studio read. A strict JSON parser does not.
+- `package-installers.sh` and `.ps1` ship `scripts/installer-assets/appsettings.sample.json`; a
+  test holds that file to what the catalogue produces. `examples/appsettings/appsettings.json`,
+  the default of every example, is unchanged.
+- Docs (EN, FR): `configuration.md` says where the file of an installation is and what copying
+  it does; the README of an archive too.
+
+### Fixed — a settings section no shipped binary reads is reported at start
+
+`ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp` and eight other sections are read by a host
+written in C# only. Written in the settings of `orkeon run`, `orkeon-host` or `orkeon-repl`, they
+were read by nothing and nobody was told: the run started without the limit, the budget or the
+screening its operator had written.
+
+- **Each shipped host says it at its start**, once per section and per process, on stderr and on
+  its logger, then starts — the exit code is the run's:
+  `WARNING: ToolRateLimiting is read by no component of this host: a C# host reads it through
+  AddOrkeonToolRateLimiting(). The calls to the model are limited by RateLimiting, which this
+  host reads.` `orkeon-repl` writes it as `orkeon-repl: warning: …` before its console opens.
+- **The list is computed** from the settings catalogue — a section present in the configuration,
+  the file or the `ORKEON_` environment, that no shipped binary reads and this composition does
+  not read either. Eleven today: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`,
+  `Orkeon:Monitoring`, `Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`,
+  `Orkeon:VectorSearch`, `Orkeon:Checkpointing`, `Orkeon:ExecutionState:Persistence`.
+- **Not reported**: a section another shipped binary reads (`Orkeon:Host` in a file `orkeon run`
+  shares with the daemon), a root section Orkeon does not know, a single value at the path of a
+  section, and a section a C# host reads because it registered what reads it.
+- **`orkeon doctor`**: one `runner-settings` line at `warn` per section, beside the `fail` lines;
+  the exit code is unchanged.
+- **The refusal of an unknown key** ends on the command that lists the keys of its section:
+  `` `orkeon settings Orkeon:Guardian` lists its keys. ``
+- Docs (EN, FR): `opt-in-subsystems.md` says at the head of each subsystem that no shipped binary
+  activates it; `configuration.md` gains "When a setting is only reported"; `cli.md` says what
+  `runner-settings` warns of.
+
+Nothing that was refused becomes a notice, and nothing that was accepted is refused.
+
+### Added — `orkeon settings` lists every setting by category, offline
+
+The CLI's help named its verbs and an address; whoever installed Orkeon without the repository
+had nothing that said what a settings file may hold.
+
+- **`orkeon settings`** answers from the catalogue the tool carries: the eleven categories with
+  the sections of each, then `orkeon settings <category>`, `<section>` (every key with its type,
+  its default, the values a closed list accepts and its meaning), `<key>`, or `<word>` — what is
+  named or described with it, looked for where a word starts (`rate` finds `RateLimiting` and
+  `ToolRateLimiting`, not `FallbackStrategy`). A name the operator chose stands where the
+  catalogue writes `<name>`: `Llm:Profiles:fast:Model` is found. A name that designates nothing
+  exits 1 and names the closest one.
+- **Who reads a section** is said for each: the shipped binaries, or `a C# host only —
+  AddOrkeonToolRateLimiting()` for a section no shipped binary reads. `--host run|host|repl`
+  narrows every listing to what one binary reads.
+- **`--all`** lists everything by category; **`--json`** writes the catalogue itself — one
+  object, `sections` and `settings`, the same bytes on every machine —, documented as a
+  contract in the CLI reference. It follows a name and `--host`.
+- The verb opens no settings file, builds no host and reaches no network: it answers the same
+  where the settings file is refused or the folder cannot be written, and no output carries a
+  secret — a key that holds one is marked `secret` and has no default. It shows what a key is
+  worth when nothing sets it, not what the machine has set: `orkeon doctor` stays the verb that
+  judges a file. The listing holds in 100 columns.
+- `orkeon --help` names the verb and now ends on the documentation site and the configuration
+  reference, instead of the repository's address. `orkeon settings` stays the verb in a folder
+  that holds a `settings/` directory.
+- The README of an archive names the verb in "First run".
+
+### Documentation — every setting has a line: its type, its default, who reads it
+
+The configuration reference named almost every setting and defined almost none: two keys out of
+three were a name in a sentence, filed by spelling ("Sections outside the `Orkeon:` prefix"), and
+nothing said which binary reads a section.
+
+- **`docs/reference/configuration.md`, by category** (and its French mirror): after "Where
+  settings are read from" and "When a setting is refused", which do not move, a part "Find a
+  setting" — the eleven categories, each section linked — then one part per category and, in
+  it, one sub-part per section: what it does, **who reads it**, and a table with one row per
+  key — key, type, default, allowed values, meaning. 67 sections, 351 keys.
+- **The tables are produced from the settings catalogue**, between two markers
+  (`<!-- settings:RateLimiting -->` … `<!-- /settings -->`); the prose around them stays
+  written. A test holds both pages to the code: a key added to the engine, a default that
+  changes or a comment that is reworded fails it until the tables are written again
+  (`UPDATE_PRODUCED_FILES=1`, on `SettingsReferencePageTests`).
+- **Rate and budgets** sets `RateLimiting` (the calls to the model, in every host) beside
+  `ToolRateLimiting` and `TokenBudget` (a host written in C# only), and says the difference in
+  its first sentence. The eleven sections no shipped binary reads say so, with the registration
+  that reads them.
+- **`Llm`** is a table followed by its three cautions, each under a title: the timeout and the
+  models that think, `MaxTokens` as a pin, `Grammar`.
+- **The French meanings** are kept by hand in `docs/fr/reference/configuration.settings.json`,
+  one sentence per key; the same test refuses a key without a sentence and a sentence without a
+  key.
+- **A key's sentence reads as a key**: the catalogue drops the "Gets or sets" of a property
+  comment, names a neighbouring key by its own name, a constant by its value and an enumeration
+  value by its name; a few summaries too long for a table keep their detail in remarks.
+- `README`, the documentation index, `security.md`, `studio.md`, `yaml-schema.md` and
+  `local-models.md` link to the section they cite; `security.md` no longer copies the defaults
+  of `RateLimiting`.
+
+### Added — the settings a host reads can be listed
+
+Orkeon knew the exact list of its settings — it refuses a key that is not on it — and nobody
+could read that list: each help surface kept a partial copy by hand. Nothing an operator sees
+yet; the reference page and a CLI verb are built on it.
+
+- **A settings catalogue**, internal to `Orkeon.Hosting` (`SettingsCatalog`): 67 sections and
+  351 keys — every section one of the three shipped binaries reads, and every section a public
+  registration reads in a host written in C#. Each key has its type, its default, its allowed
+  values when they are a closed list, and a sentence: the summary of the XML comment of the
+  property it is read into. A secret is marked and never carries a value; a default that
+  depends on the moment is said in words.
+- **Eleven categories, by use** (`SettingsCategories`, in `Orkeon.Constants.Configuration`):
+  models, rate and budgets, memory and vectors, RAG, files and sandbox, security, tools,
+  orchestration and persistence, scripts and console, service host and A2A, observability. A
+  section belongs to one; a test refuses a section the table does not file.
+- **Who reads what is computed** from what each composition declares: `orkeon` reads 46
+  sections, `orkeon-host` 52, `orkeon-repl` 41. Eleven sections (46 keys) are read by no
+  shipped binary, only by a C# host that calls their registration: `ToolRateLimiting`,
+  `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`, `Orkeon:CognitiveMemory`,
+  `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`, `Orkeon:Checkpointing`
+  and `Orkeon:ExecutionState:Persistence`.
+- The catalogue is embedded in `Orkeon.Hosting` — four produced files under
+  `Settings/Catalog` —, so it answers without a container, a settings file or the repository.
+  A test in each binary's project holds its file to what that binary declares, and fails with
+  the command that writes it again.
+- The sections read raw — `Llm`, `LlmLogging`, `RaggableTree`, `Orkeon:CrewFactory`,
+  `Orkeon:Security:PermissionGate`, `Orkeon:Cli:ConsoleStreaming`, `Orkeon:Cli:Tui` — gained a
+  comment per key and a default named once, where its reader applies it.
+
+The start validation refuses exactly what it refused.
+
+### Added — install from a clone with one command
+
+Installing the `orkeon` built from a clone took seven lines nobody had written down: read
+the version out of the props, count commits, call the packager with it, find the staging
+tree, run its installer.
+
+- **`scripts/install-from-source.ps1`** (Windows, PowerShell 7) and
+  **`scripts/install-from-source.sh`** (Linux, macOS): from the clone, one command builds
+  the tree of the CLI archive for the machine and installs it with the archive's own
+  installer. `orkeon --version` answers the version of the checkout —
+  `1.0.0-rc.4.local.<commit date>` off a tag — and `orkeon doctor` names the channel
+  `source`. Run again after a `git pull`, it replaces the installation.
+- **Every missing prerequisite is named before anything is compiled**, all of them in one
+  run, each with where to get it: a .NET SDK that satisfies `global.json` (told apart from
+  no SDK at all), git, Python 3, `tar` — and `curl` and `openssl` on Linux and macOS. The
+  script installs none of it. Started from Windows PowerShell 5.1, the Windows one says
+  that the build needs PowerShell 7 and where to get it.
+- Options: the app set (`-AppSet full` / `--app-set full`), the destination
+  (`-InstallDir` / `--prefix`), a dry run (`-WhatIf` / `--dry-run`) and the uninstall
+  (`-Uninstall` / `--uninstall`, which builds nothing).
+- **`package-installers.sh --no-archive`** / **`package-installers.ps1 -NoArchive`**
+  prepare the staging tree and stop there: no archive, no `SHA256SUMS`. The scripts above
+  pass it; CI never does.
+- `orkeon doctor` tells a `source` installation to `git pull` and run the script again.
+- Docs (EN, FR): *Install what you just cloned* in
+  [three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md#install-what-you-just-cloned),
+  referred to by the prerequisites table, the update table, the README and
+  `CONTRIBUTING.md`.
+
+### Added — the Windows zip installs by double-click, on the PowerShell Windows ships
+
+Installing `orkeon-cli-<version>-win-x64.zip` took a PowerShell window, a policy to lift
+(`Set-ExecutionPolicy`, or the `-ExecutionPolicy Bypass` command the page gave) and, as far
+as any release had proven, PowerShell 7. Installing a second time over a first could stop
+half-way.
+
+- **`install.cmd`**, beside `install.ps1` in both Windows archives: it starts the script on
+  Windows PowerShell 5.1 — the one installed with Windows — under an execution policy that
+  holds for that one command, and changes no setting of the machine. Double-clicked, its
+  window stays open on the result; from a terminal it returns at once, with the script's
+  exit code. Its arguments go through (`install.cmd -Uninstall`, `-InstallDir <folder>`).
+  It travels into the install directory with `install.ps1`; neither is in the MSI.
+- **A reinstall that cannot run is refused before it changes anything.** `install.ps1`
+  lists the processes started from the install directory — Orkeon Studio left open, a crew
+  still running — and, if there is one, names it and stops: the installation in place is
+  intact. Until now the delete of the previous tree failed on the first locked file and
+  left neither the old installation nor the new one. `-Uninstall` refuses the same way.
+- **Proven under both PowerShell editions.** `smoke-windows` runs the whole Windows smoke
+  twice, under `pwsh` and under `powershell`, and the smoke gains three passes: an install
+  through `install.cmd`; a second install over the first (the same tree, one `PATH` entry,
+  the same *Installed apps* version); an install and an uninstall attempted while Orkeon
+  Studio runs, both refused with its name. The MSI smoke asserts neither file is installed.
+- `install.ps1` declares `#Requires -Version 5.1`; `package-installers.ps1`, `build-msi.ps1`
+  and `build-msi-service.ps1` declare `#Requires -Version 7.0`, so Windows PowerShell says
+  which version they need instead of failing on a parameter.
+- `orkeon doctor` tells a zip installation to run `install.cmd` to update.
+- Docs (EN, FR): the README, *three ways to run Orkeon*, the publication matrix and the
+  README of every archive present `install.cmd` first; *Before you start* is reduced to
+  what remains true — a file from the Internet may be confirmed, and a policy set by an
+  organization (Group Policy) overrules the launcher: only a signed script runs there.
+
+### Added — `orkeon doctor` names the channel Orkeon was installed through
+
+There are eight ways to install Orkeon and as many to update it; nothing in an installation
+said which one had been used.
+
+- **A marker, `INSTALL-CHANNEL`**, one word at the root of what each packaging installs:
+  `zip`, `tarball`, `msi`, `msi-host`, `deb`, `homebrew`, `source`. It is written by whoever
+  packs — `package-installers`, the two MSI builds, `package-deb.sh`, the Homebrew formula —
+  and carried by `install.ps1` and `install.sh`. An MSI is harvested from the zip's tree and
+  installs its own marker in place of the zip's.
+- **`orkeon doctor` gains `install-channel`**, after `dotnet-runtime`: the channel, the
+  version that runs and the command that updates that channel. It never fails: an
+  installation older than the marker, or a build tree, answers `unknown` and stays `ok`;
+  a marker that names no channel is a warning. The dotnet tool carries no marker and is
+  known by its path. A Debian package answers `deb` and gives both commands — the apt
+  repository's and the downloaded package's —, since nothing in it tells the two apart.
+  `doctor --json` therefore lists one more check.
+- **`orkeon --version --verbose`** adds a `channel: <channel>` line under the version line,
+  which `orkeon --version` alone still prints unchanged.
+- The channel names are constants of `Orkeon.Constants.FileSystem` (`InstallChannels`).
+- Every installer smoke asserts the channel of what it installed: the Windows zip, both
+  MSIs, the Debian package, the macOS and Linux tarballs.
+
+### Documentation — what a Windows machine needs before installing
+
+The install pages said "self-contained, no .NET needed" and then `.\install.ps1`, without a
+word on what Windows asks of a script or of an unsigned installer.
+
+- **Before you start**, in [three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md#before-you-start)
+  and, shorter, in the README: which PowerShell runs `install.ps1` and under which one each
+  release proves it; the command to use when Windows answers *"running scripts is disabled
+  on this system"* — `powershell -ExecutionPolicy Bypass -File .\install.ps1`, which changes
+  no setting of the machine —; `Unblock-File` for a zip a browser downloaded; what a policy
+  set by an organization does to all of that.
+- **Both MSIs are described as not code-signed**, the service host's included (it was said
+  of the per-user one alone), with the SmartScreen screen to expect and the checks to run
+  first.
+- **From source**: a table of what it takes to run an example (the .NET 10 SDK, git) and
+  what it takes to build an installer archive (Python 3, `tar`, PowerShell 7 on Windows,
+  access to nuget.org and `registry.npmjs.org`).
+- The publication matrix gains *What the machine needs* for the Windows artifacts; the
+  README embedded in every archive carries the same commands.
+- Stale texts: the archive README no longer says the CLI archive holds `orkeon` alone (the
+  Windows and Linux ones carry Orkeon Studio), nor counts the checks of `orkeon doctor` —
+  no page does any more; a sentence cut in half on the French page is whole again.
+
+### Fixed — a build off a tag no longer takes the release's version
+
+`scripts/package-installers.sh` and `.ps1`, run without a version on a commit that is no
+release, named their archives after the newest `v*` tag: a zip built from `main` was called
+`orkeon-cli-1.0.0-rc.4-win-x64.zip` and its `orkeon --version` answered `1.0.0-rc.4`, like
+the release. The version of such a build was also computed in three places.
+
+- **One calculation**, `scripts/resolve-version.sh`, with a PowerShell twin
+  (`scripts/resolve-version.ps1`, Windows PowerShell 5.1 included) held to the same answers by
+  `scripts/test-resolve-version.sh`. `publish.yml`, the apt dev channel and both
+  `package-installers` scripts read it.
+- **A build made from a checkout is `<props version>.local.<stamp>`**, `<stamp>` being the
+  commit's date, `YYYYMMDDHHMM` in UTC — `1.0.0-rc.4.local.202610080430`. It sorts above the
+  dev builds of the same props version and below the next one, and a shallow clone gives the
+  same answer. On the commit a `v*` tag points to, the version is still the tag's.
+- **The dev versions do not change**: `<props version>.dev.<CI run>` for the NuGet and the
+  apt dev builds of one CI run.
+- A manual run of `release.yml` therefore produces artifacts in the local form. Passing
+  `--version` (`-Version`) still decides, as before.
+
 ### Fixed — a Mistral model that reasons no longer breaks a stream, and the fleet is campaigned again with its two aggregators (LLM-08)
 
 The campaign of 2026-10-07 ran the protocol against the fourteen cloud providers — OpenRouter

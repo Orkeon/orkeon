@@ -168,14 +168,15 @@ internal static class StudioFixture
             new("archives", "/archives", "ro"),
             new("disparu", "/perdu", "ro"),
         ],
-        LlmJson = """{ "Provider": "deepseek", "Model": "deepseek-chat" }""",
+        // The keys a run reads: the endpoint names the provider, `Llm:Provider` is no setting.
+        LlmJson = $$"""{ "BaseUrl": "{{LlmProviderEndpoints.DeepSeek}}", "Model": "deepseek-chat" }""",
         // STUDIO-67: the E-mail tab photographs a preset account and a custom one — the first
         // shows what a novice declares, the second every field of the expert form. Both are
         // accounts the run would use: no shot carries a warning the seed did not mean.
         EmailJson = """{ "DefaultAccount": "perso", "Accounts": { "perso": { "Provider": "Gmail", "Address": "camille.durand@gmail.com", "DisplayName": "Camille Durand", "Rights": "Read, Organize, Draft", "Auth": { "PasswordEnvVar": "GMAIL_APP_PASSWORD" } }, "hotmail": { "Provider": "Outlook", "Address": "camille.durand@outlook.com", "Rights": "Read, Organize", "Auth": { "ClientId": "11111111-2222-3333-4444-555555555555" } }, "bureau": { "Provider": "Custom", "Address": "camille@atelier-durand.example", "Rights": "Read, Organize, Draft, Send", "Incoming": { "Host": "imap.atelier-durand.example" }, "Outgoing": { "Host": "smtp.atelier-durand.example", "Security": "StartTls" }, "Auth": { "PasswordEnvVar": "BUREAU_MAIL_PASSWORD" }, "Send": { "AllowedRecipients": [ "*@atelier-durand.example", "comptable@cabinet-martin.example" ], "MaxPerHour": 20 } } } }""",
         ExtraSections = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["RateLimiting"] = """{ "RequestsPerMinute": 60, "MaxConcurrent": 4 }""",
+            ["RateLimiting"] = """{ "GlobalRequestsPerMinute": 60, "MaxConcurrentRequests": 4 }""",
             ["Logging"] = """{ "LogLevel": { "Default": "Information" } }""",
             // STUDIO-21: the MCP tab photographs both transports at once.
             ["MCP"] = """{ "Servers": { "fichiers": { "Command": "npx", "Args": ["-y", "@modelcontextprotocol/server-filesystem", "/data/docs"], "Env": { "NODE_ENV": "production" } }, "distant": { "Transport": "Sse", "Url": "https://mcp.example.com/rpc" } } }""",

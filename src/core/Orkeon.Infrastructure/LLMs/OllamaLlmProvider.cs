@@ -13,6 +13,7 @@ using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
 using Orkeon.Infrastructure.LLMs.Converters;
 using Orkeon.Infrastructure.Security;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -30,7 +31,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     /// <summary>
     /// Environment variable name for overriding the Ollama base URL.
     /// </summary>
-    private const string OllamaBaseUrlEnvVar = "OLLAMA_BASE_URL";
+    private const string OllamaBaseUrlEnvVar = EnvironmentVariableNames.OllamaBaseUrl;
 
     private readonly string _baseUrl;
 

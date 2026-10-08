@@ -1,0 +1,63 @@
+{
+  "host": "orkeon-repl",
+  "reads": [
+    "Llm",
+    "Logging",
+    "Memory",
+    "Orkeon:ChromaDb",
+    "Orkeon:Cli:ConsoleStreaming",
+    "Orkeon:Cli:ScriptCommands",
+    "Orkeon:Cli:ScriptHost",
+    "Orkeon:Cli:Session",
+    "Orkeon:Cli:Tui",
+    "Orkeon:CodeSandbox",
+    "Orkeon:CodeSandbox:Docker",
+    "Orkeon:Consensus",
+    "Orkeon:CostTracking",
+    "Orkeon:CrewMemory",
+    "Orkeon:EmbeddingCache",
+    "Orkeon:Embeddings",
+    "Orkeon:Encryption",
+    "Orkeon:FileSystem",
+    "Orkeon:Guardian",
+    "Orkeon:LanceDb",
+    "Orkeon:Pinecone",
+    "Orkeon:Rag",
+    "Orkeon:Rag:Ingestion",
+    "Orkeon:Rag:QueryRouting",
+    "Orkeon:Rag:Retrieval:Hybrid",
+    "Orkeon:Rag:WebFallback",
+    "Orkeon:Redis",
+    "Orkeon:Sandbox",
+    "Orkeon:Security:PermissionGate",
+    "Orkeon:Sqlite",
+    "Orkeon:TokenCounter",
+    "Orkeon:Tools:Email",
+    "Orkeon:Tools:Shell",
+    "PathSecurity",
+    "RateLimiting",
+    "Secrets",
+    "Security:Audit",
+    "Security:Prompt",
+    "Security:ToolResults",
+    "Security:Url",
+    "Security:Vault"
+  ],
+  "sections": [
+    {
+      "path": "Orkeon:Cli:Tui",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "description": "The split-pane console's own settings."
+    }
+  ],
+  "settings": [
+    {
+      "path": "Orkeon:Cli:Tui:SpinnerVerbs",
+      "section": "Orkeon:Cli:Tui",
+      "type": "list of string",
+      "default": [],
+      "description": "The verbs the status line cycles through while the model works (\"Thinking\", \"Reading\"…). Left out or empty, the console's own list."
+    }
+  ]
+}

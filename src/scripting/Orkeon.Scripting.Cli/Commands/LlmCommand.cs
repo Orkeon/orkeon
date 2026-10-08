@@ -6,6 +6,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.ToolCalling;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Scripting.Cli.Commands;
 
@@ -58,9 +59,9 @@ internal sealed class LlmProbeCommandOptions
     public string? M7Effort { get; set; }
 
     /// <summary>Environment variable holding the API key. Never the key itself.</summary>
-    [Option('k', "api-key-env", Required = false, Default = "ORKEON_LLM_API_KEY",
+    [Option('k', "api-key-env", Required = false, Default = EnvironmentVariableNames.LlmCommandApiKey,
         HelpText = "Name of the environment variable holding the API key. The key itself is never accepted on the command line.")]
-    public string ApiKeyEnv { get; set; } = "ORKEON_LLM_API_KEY";
+    public string ApiKeyEnv { get; set; } = EnvironmentVariableNames.LlmCommandApiKey;
 
     /// <summary>Modes to exercise, comma-separated. Defaults to every supported mode.</summary>
     [Option("modes", Required = false,
@@ -110,9 +111,9 @@ internal sealed class LlmModelsCommandOptions
     public string? BaseUrl { get; set; }
 
     /// <summary>Environment variable holding the API key. Never the key itself.</summary>
-    [Option('k', "api-key-env", Required = false, Default = "ORKEON_LLM_API_KEY",
+    [Option('k', "api-key-env", Required = false, Default = EnvironmentVariableNames.LlmCommandApiKey,
         HelpText = "Name of the environment variable holding the API key.")]
-    public string ApiKeyEnv { get; set; } = "ORKEON_LLM_API_KEY";
+    public string ApiKeyEnv { get; set; } = EnvironmentVariableNames.LlmCommandApiKey;
 
     /// <summary>Shell-style glob restricting the listing.</summary>
     [Option('f', "filter", Required = false, HelpText = "Shell-style glob, e.g. 'gpt-5.6-*'.")]

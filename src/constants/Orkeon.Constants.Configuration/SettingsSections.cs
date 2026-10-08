@@ -11,7 +11,8 @@ namespace Orkeon.Constants.Configuration;
 /// nothing tells a misspelt section there from a variable of the machine.
 /// </para>
 /// <para>
-/// A section a component starts to read is added here, or every host refuses it.
+/// A section a component starts to read is added here, or every host refuses it — and filed under a
+/// category in <see cref="SettingsCategories"/>, which lists the sections of the root too.
 /// </para>
 /// </summary>
 public static class SettingsSections

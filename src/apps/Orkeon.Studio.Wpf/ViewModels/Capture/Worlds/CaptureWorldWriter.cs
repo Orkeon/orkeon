@@ -156,8 +156,12 @@ internal static class CaptureWorldWriter
         return new LaunchHistory { Entries = [.. entries] };
     }
 
-    /// <summary>The settings file, with every declared folder resolved to a real path.</summary>
-    private static string Settings(CaptureWorldPlan plan, string data)
+    /// <summary>
+    /// The settings file, with every declared folder resolved to a real path under
+    /// <paramref name="data"/>. Internal: a test keeps what each plan writes beside the suite, where
+    /// the guard of the engine's settings holds it to the keys the engine reads.
+    /// </summary>
+    internal static string Settings(CaptureWorldPlan plan, string data)
     {
         // A team's own folder is never declared in the settings (STUDIO-14, P-1): a plan that
         // tried would photograph the very duplication the design rules out.

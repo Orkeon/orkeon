@@ -1,3 +1,5 @@
+using Orkeon.Constants.Configuration;
+
 namespace Orkeon.Cli.TerminalGui.Hosting;
 
 /// <summary>
@@ -12,8 +14,8 @@ public static class TtyDetector
         // Fully qualified — the sibling `Orkeon.Cli.TerminalGui.Console` namespace
         // shadows `System.Console` for unqualified references in this assembly.
         if (System.Console.IsInputRedirected || System.Console.IsOutputRedirected) return false;
-        if (string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase)) return false;
-        if (OperatingSystem.IsLinux() && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TERM"))) return false;
+        if (string.Equals(Environment.GetEnvironmentVariable(EnvironmentVariableNames.ContinuousIntegration), "true", StringComparison.OrdinalIgnoreCase)) return false;
+        if (OperatingSystem.IsLinux() && string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentVariableNames.Terminal))) return false;
         return true;
     }
 

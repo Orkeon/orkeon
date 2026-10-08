@@ -239,23 +239,14 @@ jobs:
       # A props version without a suffix is a stable one, released or about to be:
       # <prefix>-dev.<n> would sort BELOW it and the channel would silently serve the
       # release instead, so the dev builds move to the next patch (1.0.1-dev.<n>).
+      # scripts/resolve-version.sh holds that rule, for this job and for the apt dev channel
+      # (apt-dev.yml): one CI run, one version, whatever the package.
       - name: Resolve the dev version
         id: ver
         run: |
-          prefix=$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' src/Directory.Build.props)
-          suffix=$(sed -n 's/.*<VersionSuffix>\(.*\)<\/VersionSuffix>.*/\1/p' src/Directory.Build.props)
-          if [[ ! "$prefix" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            echo "::error::src/Directory.Build.props: VersionPrefix '$prefix' is not Major.Minor.Patch."
-            exit 1
-          fi
-          if [ -n "$suffix" ]; then
-            suffix="$suffix.dev.$CI_RUN"
-          else
-            prefix="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
-            suffix="dev.$CI_RUN"
-          fi
-          { echo "prefix=$prefix"; echo "suffix=$suffix"; echo "version=$prefix-$suffix"; } >> "$GITHUB_OUTPUT"
-          echo "Dev version: $prefix-$suffix (CI run #$CI_RUN)"
+          version=$(bash scripts/resolve-version.sh --props src/Directory.Build.props --run "$CI_RUN")
+          { echo "prefix=${version%%-*}"; echo "suffix=${version#*-}"; echo "version=$version"; } >> "$GITHUB_OUTPUT"
+          echo "Dev version: $version (CI run #$CI_RUN)"
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with: { dotnet-version: '10.0.x' }
       # One pack, restore and build included. ContinuousIntegrationBuild must reach the

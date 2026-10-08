@@ -29,6 +29,9 @@ internal sealed class DoctorCommandOptions
 
     /// <summary>Test seam: overrides <see cref="Directory.GetCurrentDirectory"/>.</summary>
     internal string? WorkingDirectoryOverride { get; set; }
+
+    /// <summary>Test seam: overrides <see cref="AppContext.BaseDirectory"/> for the install channel.</summary>
+    internal string? InstallDirectoryOverride { get; set; }
 }
 
 /// <summary>One diagnostic result. The <c>--json</c> schema is a CI contract — keep it stable.</summary>
@@ -143,7 +146,8 @@ internal static class DoctorCommand
         try
         {
             var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
-            var results = await RunChecksAsync(cwd, cts.Token).ConfigureAwait(false);
+            var installDirectory = options.InstallDirectoryOverride ?? AppContext.BaseDirectory;
+            var results = await RunChecksAsync(cwd, installDirectory, cts.Token).ConfigureAwait(false);
 
             if (options.Json)
                 Console.WriteLine(JsonSerializer.Serialize(results));
@@ -164,13 +168,15 @@ internal static class DoctorCommand
         }
     }
 
-    private static async Task<IReadOnlyList<DoctorCheckResult>> RunChecksAsync(string cwd, CancellationToken ct)
+    private static async Task<IReadOnlyList<DoctorCheckResult>> RunChecksAsync(
+        string cwd, string installDirectory, CancellationToken ct)
     {
         var llm = ReadLlmContext(cwd);
 
         return
         [
             CheckDotnetRuntime(),
+            CheckInstallChannel(installDirectory),
             CheckAppSettings(llm),
             CheckLlmConfig(llm),
             CheckLlmProfiles(llm),
@@ -318,6 +324,30 @@ internal static class DoctorCommand
         return OperatingSystem.IsMacOS() ? ".dylib" : ".so";
     }
 
+    /// <summary>
+    /// Names the channel this build was installed through and how that channel is updated.
+    /// Informative: an installation without a marker is older than the marker, or a build
+    /// tree, and is reported as such. Only a marker that exists and names nothing is a warning.
+    /// </summary>
+    private static DoctorCheckResult CheckInstallChannel(string installDirectory)
+    {
+        var reading = InstallChannelReader.Read(installDirectory);
+        var update = InstallChannelReader.UpdateHint(reading.Channel);
+        var origin = reading.Channel == InstallChannels.Unknown
+            ? reading.Problem
+                ?? $"no {InstallChannels.MarkerFile} marker (an installation older than the marker, or a build tree)"
+            : null;
+
+        return new DoctorCheckResult
+        {
+            Check = "install-channel",
+            Status = reading.Problem is null ? StatusOk : StatusWarn,
+            Detail = origin is null
+                ? $"{reading.Channel} — orkeon {CliUsage.Version}; to update: {update}"
+                : $"{reading.Channel} — {origin}; orkeon {CliUsage.Version}; to update: {update}",
+        };
+    }
+
     private static DoctorCheckResult CheckDotnetRuntime()
     {
         // Self-contained publishes carry the host resolver next to the app; a
@@ -416,10 +446,11 @@ internal static class DoctorCommand
     /// GAP-40: what <c>orkeon run</c> refuses at its start on the same settings file, judged by the
     /// same construction — the guards the run applies to the file's mounts, then the host it builds
     /// (<see cref="RunCommand.AddCliRagServices"/> included, so the ONNX reranker is offered) and its
-    /// start validation. One <c>fail</c> line per refusal, each naming its key; one <c>ok</c> line
-    /// otherwise. A refusal the build itself raises is the only line, as the run reports it. Skipped
-    /// when the <c>Llm</c> section is already refused: the run stops on it first, and the line above
-    /// says why.
+    /// start validation. One <c>fail</c> line per refusal, each naming its key, and one <c>warn</c>
+    /// line per section the file writes that no component of the run's host reads — the run starts,
+    /// and says the same on stderr; one <c>ok</c> line when there is neither. A refusal the build
+    /// itself raises is the only line, as the run reports it. Skipped when the <c>Llm</c> section is
+    /// already refused: the run stops on it first, and the line above says why.
     /// </summary>
     private static IEnumerable<DoctorCheckResult> CheckRunnerSettings(LlmContext llm)
     {
@@ -434,16 +465,20 @@ internal static class DoctorCommand
         if (RunnerExecution.CheckSettingsMounts(llm.SettingsPath) is { } mounts)
             return [new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = mounts }];
 
-        var refusals = RunnerHost.ValidateSettings(llm.SettingsPath, (_, services) =>
+        var verdict = RunnerHost.InspectSettings(llm.SettingsPath, (_, services) =>
         {
             services.AddOrkeonHumanInput();
             services.AddSemanticSearchTool();
             RunCommand.AddCliRagServices(services);
         });
-        if (refusals.Count == 0)
+        if (verdict.Refusals.Count == 0 && verdict.Notices.Count == 0)
             return [new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = "the settings pass the start validation of orkeon run" }];
 
-        return refusals.Select(refusal => new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = refusal });
+        return
+        [
+            .. verdict.Refusals.Select(refusal => new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = refusal }),
+            .. verdict.Notices.Select(notice => new DoctorCheckResult { Check = Check, Status = StatusWarn, Detail = notice }),
+        ];
     }
 
     private static async Task<DoctorCheckResult> CheckLlmReachabilityAsync(LlmContext llm, CancellationToken ct)

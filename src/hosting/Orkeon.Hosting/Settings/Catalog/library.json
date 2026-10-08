@@ -1,0 +1,2808 @@
+{
+  "sections": [
+    {
+      "path": "Evaluation",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonEvaluation",
+      "description": "Configuration options for the evaluation framework."
+    },
+    {
+      "path": "Llm",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonLlmProfiles",
+      "description": "The model every call runs on unless a crew names a profile: the provider follows from `BaseUrl`, then from the model's name, then from the shape of the key. Without this section a host runs on the echo provider, and says so once."
+    },
+    {
+      "path": "LlmLogging",
+      "category": "models",
+      "hosts": [],
+      "description": "What the log of LLM exchanges keeps of each request and response — read with `--llm-log` only, which says where the log goes."
+    },
+    {
+      "path": "Orkeon:CostTracking",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonCostTracking",
+      "description": "Configuration options for cost tracking and budget management. Bind to \"Orkeon:CostTracking\" configuration section."
+    },
+    {
+      "path": "Orkeon:TokenCounter",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonCostTracking",
+      "description": "Configuration options for token counting approximation. Bind to \"Orkeon:TokenCounter\" configuration section."
+    },
+    {
+      "path": "RateLimiting",
+      "category": "rate-and-budgets",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "The host's caps on model requests — the `RateLimiting` section. Every model call of the host counts, once, at the entrance of its provider: an agent's turns, the manager, the planner, the RAG pipeline, the judges, the cognitive memory, a script's `ctx.llm`. Embeddings do not."
+    },
+    {
+      "path": "TokenBudget",
+      "category": "rate-and-budgets",
+      "hosts": [],
+      "registration": "AddOrkeonToolRateLimiting",
+      "description": "Configuration options for token budget tracking and limits."
+    },
+    {
+      "path": "ToolRateLimiting",
+      "category": "rate-and-budgets",
+      "hosts": [],
+      "registration": "AddOrkeonToolRateLimiting",
+      "description": "Configuration options for tool invocation rate limiting."
+    },
+    {
+      "path": "Memory",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "The root `Memory` section: the TYPE of the application-wide memory provider, whose connection comes from that provider's own section (`Orkeon:Redis`, …). Bound and judged at the host's start by `AddOrkeonInfrastructure()`: a type the factory does not serve, or one whose section lacks what it needs, refuses the start."
+    },
+    {
+      "path": "Orkeon:ChromaDb",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonChromaDb",
+      "description": "Configuration options for the ChromaDB memory provider. Targets the ChromaDB REST API v2 (servers ≥ 0.6.x, including 1.x); the legacy `/api/v1` surface was removed by recent ChromaDB releases."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonCognitiveMemory",
+      "description": "Configuration options for the cognitive memory system."
+    },
+    {
+      "path": "Orkeon:CrewMemory",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "The bounds of what a crew recalls before each task, bound to the `CrewMemoryOptions.SectionName` section by `AddOrkeonInfrastructure()`. A crew with `memory: true` recalls at most `CrewMemoryOptions.RecallLimit` of its memories, those whose cosine similarity to the task reaches `CrewMemoryOptions.MinScore`, cut to `CrewMemoryOptions.MaxChars` characters in all."
+    },
+    {
+      "path": "Orkeon:EmbeddingCache",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonVectorSearch",
+      "description": "Configuration options for the embedding cache."
+    },
+    {
+      "path": "Orkeon:Embeddings",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonVectorSearch",
+      "description": "Configuration options for embedding providers."
+    },
+    {
+      "path": "Orkeon:Encryption",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonEncryption",
+      "description": "Configuration options for AES-256-GCM encryption."
+    },
+    {
+      "path": "Orkeon:LanceDb",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonLanceDb",
+      "description": "Configuration options for the LanceDB memory provider, backed by a remote LanceDB Cloud / Enterprise server speaking the Lance REST Namespace protocol (`https://docs.lancedb.com/api-reference/rest/`)."
+    },
+    {
+      "path": "Orkeon:Pinecone",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonPinecone",
+      "description": "Configuration options for the Pinecone memory provider, bound from the host's `Orkeon:Pinecone` section."
+    },
+    {
+      "path": "Orkeon:Redis",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonRedisMemory",
+      "description": "Connection options of the Redis memory provider, bound from the host's `Orkeon:Redis` section. Every path that selects Redis by type — the application-wide `Memory:Provider`, a crew's `memoryProvider:`, `Orkeon:Rag:Provider`, `AddOrkeonRedisMemory` — connects with these."
+    },
+    {
+      "path": "Orkeon:Sqlite",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "Configuration options for the SQLite memory provider."
+    },
+    {
+      "path": "Orkeon:VectorSearch",
+      "category": "memory-and-vectors",
+      "hosts": [],
+      "registration": "AddOrkeonVectorSearch",
+      "description": "Configuration options for vector similarity search."
+    },
+    {
+      "path": "Orkeon:Rag",
+      "category": "rag",
+      "hosts": [],
+      "registration": "AddOrkeonCorrectiveRag",
+      "description": "Complete configuration tree of the RAG query pipeline, bound from the `Orkeon:Rag` configuration section. A `RagOptions.Profile` selects a preset (`RagProfilePresets`); every value can then be overridden individually through configuration — profile = preset, configuration = override."
+    },
+    {
+      "path": "Orkeon:Rag:Ingestion",
+      "category": "rag",
+      "hosts": [],
+      "registration": "AddOrkeonRag",
+      "description": "Options of the `DefaultIngestionPipeline`. Bound from configuration section `Orkeon:Rag:Ingestion` by `AddOrkeonRag`."
+    },
+    {
+      "path": "Orkeon:Rag:QueryRouting",
+      "category": "rag",
+      "hosts": [],
+      "registration": "AddOrkeonQueryRouting",
+      "description": "Adaptive-RAG query-routing configuration, bound from the `Orkeon:Rag:QueryRouting` configuration section. Selects the `IQueryComplexityClassifier` implementation used to route queries (`NoRetrieval` / `SingleShot` / `Iterative`)."
+    },
+    {
+      "path": "Orkeon:Rag:Retrieval:Hybrid",
+      "category": "rag",
+      "hosts": [],
+      "registration": "AddOrkeonRag",
+      "description": "Hybrid-retrieval options, bound from the `Orkeon:Rag:Retrieval:Hybrid` configuration section. The shorthand flat value `Orkeon:Rag:Retrieval:Hybrid = true` is also accepted and maps to `HybridRetrievalOptions.Enabled`."
+    },
+    {
+      "path": "Orkeon:Rag:WebFallback",
+      "category": "rag",
+      "hosts": [],
+      "registration": "AddOrkeonRagWebFallback",
+      "description": "Transport options of the opt-in RAG web search fallback: endpoint, authentication, timeout and suspicious-content policy of `WebSearchDocumentRetriever`. Standalone options class bound on `Orkeon:Rag:WebFallback` — intentionally NOT part of `RagOptions` to keep the web egress surface a separate, explicit opt-in. Disabled by default; an enabled fallback without an endpoint is treated as disabled and loudly logged."
+    },
+    {
+      "path": "Orkeon:CodeSandbox",
+      "category": "files-and-sandbox",
+      "hosts": [],
+      "registration": "AddOrkeonCodeSandbox",
+      "description": "Configuration options for the code sandbox. Bound from configuration section \"Orkeon:CodeSandbox\"."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:Docker",
+      "category": "files-and-sandbox",
+      "hosts": [],
+      "registration": "AddOrkeonCodeSandbox",
+      "description": "Configuration options specific to the Docker sandbox."
+    },
+    {
+      "path": "Orkeon:FileSystem",
+      "category": "files-and-sandbox",
+      "hosts": [],
+      "registration": "AddOrkeonFileSystem",
+      "description": "Configuration options for the virtual file system. Bound from the \"Orkeon:FileSystem\" configuration section."
+    },
+    {
+      "path": "Orkeon:Sandbox",
+      "category": "files-and-sandbox",
+      "hosts": [],
+      "registration": "AddOrkeonFileSystem",
+      "description": "Configuration options for the sandbox virtual file system mount. Bind from the \"Orkeon:Sandbox\" configuration section."
+    },
+    {
+      "path": "PathSecurity",
+      "category": "files-and-sandbox",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "Configuration options for path security validation."
+    },
+    {
+      "path": "Orkeon:Dlp",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonDlp",
+      "description": "Configuration options for the DLP system."
+    },
+    {
+      "path": "Orkeon:Guardian",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonGuardian",
+      "description": "Configuration options for the guardian system, bound from `Orkeon:Guardian`. The guardian is on by default: it blocks High and Critical findings only and never rewrites content. A block or a warning is logged and written to the audit trail (`Security:Audit`)."
+    },
+    {
+      "path": "Orkeon:Security:PermissionGate",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonPermissionGate",
+      "description": "The permission gate of tool calls: off, every call runs. On, a tool that only reads passes and the others need an approval, by permission mode."
+    },
+    {
+      "path": "Secrets",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "A secret by its name — `Secrets:TAVILY_API_KEY` —, where the secret chain looks after the `ORKEON_<NAME>` environment variable and before a vault. A value written here is in clear in the settings file."
+    },
+    {
+      "path": "Security:Audit",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "Configuration options for the audit trail system."
+    },
+    {
+      "path": "Security:Prompt",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "Configuration options for prompt security and injection detection."
+    },
+    {
+      "path": "Security:ToolResults",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "Configuration options for tool result sanitization (`Security:ToolResults`). The length of a result is bounded by one rule only, `AgentDefaults.ResolveMaxToolResultLength`, applied by the tool-invocation pipeline before this sanitizer runs."
+    },
+    {
+      "path": "Security:Url",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "Configuration options for URL security validation to prevent SSRF attacks."
+    },
+    {
+      "path": "Security:Vault",
+      "category": "security",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "Configuration options for secret vault providers."
+    },
+    {
+      "path": "BRAVE_API_KEY",
+      "category": "tools",
+      "hosts": [],
+      "description": "The key of the Brave Search API. Set — here or as the environment variable of the same name —, it registers the `brave_search` tool; left out, the tool is not offered."
+    },
+    {
+      "path": "MCP",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonMcp",
+      "description": "Top-level MCP configuration options: the client's. No option starts the server — `AddOrkeonMcpServer` registers it and `orkeon mcp serve` runs it."
+    },
+    {
+      "path": "MCP:Server",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonMcpServer",
+      "description": "Configuration for the Orkeon MCP server."
+    },
+    {
+      "path": "Orkeon:MultiModal",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonMultiModal",
+      "description": "Configuration options for multi-modal content support."
+    },
+    {
+      "path": "Orkeon:Tools:Email",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonEmailTools",
+      "description": "The `Orkeon:Tools:Email` section, bound by `EmailOptionsBinder`. Nothing here is validated at bind time, and binding never throws: an account is checked when a tool or a command first uses it, so a broken e-mail section never breaks a crew that sends no mail."
+    },
+    {
+      "path": "Orkeon:Tools:Shell",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonCodeTools",
+      "description": "The `Orkeon:Tools:Shell` section: what `ShellCommandTool` may run. Bound by `AddOrkeonCodeTools` and validated when a host starts — an `AllowInterpreters` the binder cannot convert used to surface when the registry built the tool, an unhandled exception out of `--list-tools`."
+    },
+    {
+      "path": "Plugins",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonPlugins",
+      "description": "Options controlling plugin discovery and loading. Bound from the `\"Plugins\"` configuration section by the `AddOrkeonPlugins(IFileSystemService, IConfiguration)` overload, or configured through the `Action<OrkeonPluginsOptions>` delegate overload."
+    },
+    {
+      "path": "RaggableTree",
+      "category": "tools",
+      "hosts": [],
+      "description": "The semantic index of a codebase and its tools (`index_codebase`, `codebase_search`, `symbol_detail`…). What an index covers — languages, exclusions, root alias — is an argument of each `index_codebase` call, never a setting."
+    },
+    {
+      "path": "Orkeon:Checkpointing",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonPostgresCheckpointing",
+      "description": "Configuration options for `PostgresStateStore`."
+    },
+    {
+      "path": "Orkeon:Consensus",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonConsensus",
+      "description": "Options for configuring the consensual process strategy."
+    },
+    {
+      "path": "Orkeon:CrewFactory",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "description": "The switches of the crew factory a shipped host reads."
+    },
+    {
+      "path": "Orkeon:ExecutionState:Persistence",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddCrewExecutionStatePersistence",
+      "description": "Options controlling durable persistence of crew execution states (`ScopedCrewExecutionStateManager` → `IStateStore`)."
+    },
+    {
+      "path": "Orkeon:Cli:ConsoleStreaming",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddLlmConsoleStreaming",
+      "description": "Whether the interactive console prints a model's answer as it arrives."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddScriptCommands",
+      "description": "Full appsettings binding for the CLI scripted-commands subsystem (spec §6.4). Bound to the `Orkeon:Cli:ScriptCommands` section by `ScriptingCliServiceCollectionExtensions.AddScriptCommands`."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptHost",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddScriptCommands",
+      "description": "Options for `ScriptHostFacade` — chiefly the virtual directories scanned for `<name>/crew.ork.ts` crews. The host populates `ScriptHostFacadeOptions.CrewDirectories` from its mount bootstrap; empty means no crews are resolvable."
+    },
+    {
+      "path": "Orkeon:Cli:Session",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddOrkeonSessionTools",
+      "description": "The `Orkeon:Cli:Session` section: what a session budgets against. Bound and judged at the host's start by `AddOrkeonSessionTools` — `token_budget` used to read it at each call and fall back on its default, in silence, for a value it could not read."
+    },
+    {
+      "path": "Orkeon:Scripting:Limits",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "description": "Sandboxing limits applied to every script engine. Bound to the `Orkeon:Scripting:Limits` configuration section."
+    },
+    {
+      "path": "Orkeon:Scripting:Toolchain",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "description": "Toolchain settings for the scripting runtime. Bound to the `Orkeon:Scripting:Toolchain` configuration section by `ScriptingToolchainOptions.FromConfiguration`, which every host that builds an `EsbuildTranspiler` goes through (`EsbuildTranspiler.Create`)."
+    },
+    {
+      "path": "A2A",
+      "category": "service-host-and-a2a",
+      "hosts": [],
+      "registration": "AddOrkeonA2A",
+      "description": "Top-level A2A protocol configuration options (section `A2A`). Calling `AddOrkeonA2A` is what turns the protocol on; `A2AOptions.EnableServer` adds the hosted server on top of the client stack."
+    },
+    {
+      "path": "A2A:Security",
+      "category": "service-host-and-a2a",
+      "hosts": [],
+      "registration": "AddOrkeonA2A",
+      "description": "Security options for A2A protocol communications, including mTLS configuration."
+    },
+    {
+      "path": "A2A:Security:AzureAD",
+      "category": "service-host-and-a2a",
+      "hosts": [],
+      "registration": "AddOrkeonA2A",
+      "description": "Configuration options for Azure AD authentication."
+    },
+    {
+      "path": "A2A:Security:Oidc",
+      "category": "service-host-and-a2a",
+      "hosts": [],
+      "registration": "AddOrkeonA2A",
+      "description": "Configuration options for generic OIDC authentication."
+    },
+    {
+      "path": "Logging",
+      "category": "observability",
+      "hosts": [],
+      "description": "The logs of the host: .NET's logging configuration. A shipped host logs warnings and above on one line; `--verbose` raises the level for a run without touching this section."
+    },
+    {
+      "path": "Orkeon:Monitoring",
+      "category": "observability",
+      "hosts": [],
+      "registration": "AddOrkeonMonitoring",
+      "description": "Configuration options for the monitoring backend. Bind to `Orkeon:Monitoring` in appsettings.json."
+    },
+    {
+      "path": "Telemetry",
+      "category": "observability",
+      "hosts": [],
+      "registration": "AddOrkeonTelemetry",
+      "description": "Configuration options for Orkeon telemetry. Bind from the \"Telemetry\" section in appsettings.json."
+    }
+  ],
+  "settings": [
+    {
+      "path": "Evaluation:EnableLlmJudge",
+      "section": "Evaluation",
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the default evaluation suite also runs the LLM-as-Judge evaluators (coherence, fluency, groundedness). Requires an IChatClient in DI. Default: false. Bound from the `Evaluation` section."
+    },
+    {
+      "path": "Llm:ApiKey",
+      "section": "Llm",
+      "type": "string",
+      "secret": true,
+      "description": "The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file."
+    },
+    {
+      "path": "Llm:ApiKeyEnvVar",
+      "section": "Llm",
+      "type": "string",
+      "description": "The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope."
+    },
+    {
+      "path": "Llm:AvailableModels",
+      "section": "Llm",
+      "type": "list of string",
+      "default": [],
+      "description": "The models a scripted `/model` may offer: a list, or one comma-separated value."
+    },
+    {
+      "path": "Llm:BaseUrl",
+      "section": "Llm",
+      "type": "string",
+      "description": "The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to."
+    },
+    {
+      "path": "Llm:Grammar",
+      "section": "Llm",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning."
+    },
+    {
+      "path": "Llm:MaxRetries",
+      "section": "Llm",
+      "type": "integer",
+      "default": 10,
+      "description": "How many times a call that fails on a passing error is tried again; `0` never retries."
+    },
+    {
+      "path": "Llm:MaxTokens",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The most tokens an answer may hold: a pin. Left out, a request carries the documented maximum of its model, and 4096 for a model the catalogue does not know."
+    },
+    {
+      "path": "Llm:Model",
+      "section": "Llm",
+      "type": "string",
+      "description": "The model's name. Left out, the provider runs its own default model."
+    },
+    {
+      "path": "Llm:Profiles:<name>:ApiKey",
+      "section": "Llm",
+      "type": "string",
+      "secret": true,
+      "description": "The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file."
+    },
+    {
+      "path": "Llm:Profiles:<name>:ApiKeyEnvVar",
+      "section": "Llm",
+      "type": "string",
+      "description": "The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope."
+    },
+    {
+      "path": "Llm:Profiles:<name>:BaseUrl",
+      "section": "Llm",
+      "type": "string",
+      "description": "The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Grammar",
+      "section": "Llm",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning."
+    },
+    {
+      "path": "Llm:Profiles:<name>:MaxRetries",
+      "section": "Llm",
+      "type": "integer",
+      "default": 10,
+      "description": "How many times a call that fails on a passing error is tried again; `0` never retries."
+    },
+    {
+      "path": "Llm:Profiles:<name>:MaxTokens",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The most tokens an answer may hold: a pin. Left out, a request carries the documented maximum of its model, and 4096 for a model the catalogue does not know."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Model",
+      "section": "Llm",
+      "type": "string",
+      "description": "The model's name. Left out, the provider runs its own default model."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Temperature",
+      "section": "Llm",
+      "type": "number",
+      "description": "The sampling temperature. Left out, none is sent and the model applies its own."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Thinking:Effort",
+      "section": "Llm",
+      "type": "string",
+      "description": "How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Thinking:Enabled",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Whether the model thinks before it answers. Left out, the provider's own behaviour."
+    },
+    {
+      "path": "Llm:Profiles:<name>:TimeoutSeconds",
+      "section": "Llm",
+      "type": "integer",
+      "default": 30,
+      "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
+    },
+    {
+      "path": "Llm:Temperature",
+      "section": "Llm",
+      "type": "number",
+      "description": "The sampling temperature. Left out, none is sent and the model applies its own."
+    },
+    {
+      "path": "Llm:Thinking:Effort",
+      "section": "Llm",
+      "type": "string",
+      "description": "How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own."
+    },
+    {
+      "path": "Llm:Thinking:Enabled",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Whether the model thinks before it answers. Left out, the provider's own behaviour."
+    },
+    {
+      "path": "Llm:TimeoutSeconds",
+      "section": "Llm",
+      "type": "integer",
+      "default": 30,
+      "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
+    },
+    {
+      "path": "LlmLogging:FullEmbeddingLog",
+      "section": "LlmLogging",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether an embedding vector is logged at full length. `false` replaces each one by its first and last two values: the exchange keeps its shape and loses its megabytes."
+    },
+    {
+      "path": "LlmLogging:LogStreamingExchanges",
+      "section": "LlmLogging",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether a streamed exchange is logged: its request, and the answer once the stream has ended."
+    },
+    {
+      "path": "LlmLogging:MaxBodyLengthChars",
+      "section": "LlmLogging",
+      "type": "integer",
+      "default": 0,
+      "description": "The most characters logged of one request or response body; `0` logs it whole."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:CompletionPricePerMillion",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "default": 0,
+      "description": "Cost per million completion (output) tokens in the specified currency."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:Currency",
+      "section": "Orkeon:CostTracking",
+      "type": "string",
+      "default": "USD",
+      "description": "Currency for pricing (default: USD)."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:EffectiveDate",
+      "section": "Orkeon:CostTracking",
+      "type": "date-time",
+      "defaultNote": "the moment the value is read",
+      "description": "Date when this pricing became effective."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:EmbeddingPricePerMillion",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "description": "Cost per million embedding tokens (null if not an embedding model)."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:ModelPattern",
+      "section": "Orkeon:CostTracking",
+      "type": "string",
+      "default": "",
+      "description": "Model name or pattern (e.g., \"gpt-4o\", \"claude-3-opus\")."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:PromptPricePerMillion",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "default": 0,
+      "description": "Cost per million prompt (input) tokens in the specified currency."
+    },
+    {
+      "path": "Orkeon:CostTracking:DefaultCrewBudget:AlertThresholdPercent",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "default": 80,
+      "description": "Percentage of budget at which a warning alert is fired (default: 80%)."
+    },
+    {
+      "path": "Orkeon:CostTracking:DefaultCrewBudget:MaxCallsPerMinute",
+      "section": "Orkeon:CostTracking",
+      "type": "integer",
+      "description": "Maximum LLM calls per minute (null = unlimited)."
+    },
+    {
+      "path": "Orkeon:CostTracking:DefaultCrewBudget:MaxCostUsd",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "description": "Maximum total cost in USD (null = unlimited)."
+    },
+    {
+      "path": "Orkeon:CostTracking:DefaultCrewBudget:MaxTokens",
+      "section": "Orkeon:CostTracking",
+      "type": "integer",
+      "description": "Maximum total tokens (null = unlimited)."
+    },
+    {
+      "path": "Orkeon:CostTracking:Enabled",
+      "section": "Orkeon:CostTracking",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether cost tracking is enabled (default: true)."
+    },
+    {
+      "path": "Orkeon:TokenCounter:CharsPerToken",
+      "section": "Orkeon:TokenCounter",
+      "type": "number",
+      "default": 3.5,
+      "description": "Average number of characters per token (default: 3.5)."
+    },
+    {
+      "path": "Orkeon:TokenCounter:SpecialTokenOverhead",
+      "section": "Orkeon:TokenCounter",
+      "type": "integer",
+      "default": 2,
+      "description": "Number of special tokens overhead (e.g., BOS/EOS) per request (default: 2)."
+    },
+    {
+      "path": "Orkeon:TokenCounter:TokensPerMessage",
+      "section": "Orkeon:TokenCounter",
+      "type": "integer",
+      "default": 4,
+      "description": "Number of overhead tokens per message in chat format (default: 4)."
+    },
+    {
+      "path": "Orkeon:TokenCounter:TokensPerReply",
+      "section": "Orkeon:TokenCounter",
+      "type": "integer",
+      "default": 3,
+      "description": "Number of overhead tokens for the reply priming (default: 3)."
+    },
+    {
+      "path": "RateLimiting:AgentRequestsPerMinute",
+      "section": "RateLimiting",
+      "type": "integer",
+      "default": 20,
+      "description": "Maximum model requests per minute of each agent — each agent instance, not each role: it bounds the agent's own window with its `maxRpm`, the stricter winning, and a request over it waits its turn instead of failing. Read by the execution orchestrator and the manager."
+    },
+    {
+      "path": "RateLimiting:GlobalRequestsPerMinute",
+      "section": "RateLimiting",
+      "type": "integer",
+      "default": 60,
+      "description": "Maximum model requests per minute across all providers and agents. A request over it is held in a queue of `QueueLimit`, then retried, then failed."
+    },
+    {
+      "path": "RateLimiting:MaxConcurrentRequests",
+      "section": "RateLimiting",
+      "type": "integer",
+      "default": 0,
+      "description": "Maximum number of concurrent (in-flight) model requests. 0 means no concurrency limit (rate limiting only)."
+    },
+    {
+      "path": "RateLimiting:ProviderRequestsPerMinute",
+      "section": "RateLimiting",
+      "type": "integer",
+      "default": 30,
+      "description": "Maximum model requests per minute per provider, held and refused like the global cap."
+    },
+    {
+      "path": "RateLimiting:QueueLimit",
+      "section": "RateLimiting",
+      "type": "integer",
+      "default": 5,
+      "description": "Maximum number of requests the global, per-provider and concurrency caps hold in a queue when they are reached; a request beyond it is refused, then retried."
+    },
+    {
+      "path": "TokenBudget:MaxCostPerCrew",
+      "section": "TokenBudget",
+      "type": "number",
+      "default": 10.0,
+      "description": "Maximum estimated cost per crew in USD. 0 means unlimited."
+    },
+    {
+      "path": "TokenBudget:MaxTokensPerAgent",
+      "section": "TokenBudget",
+      "type": "integer",
+      "default": 100000,
+      "description": "Maximum tokens per agent. 0 means unlimited."
+    },
+    {
+      "path": "TokenBudget:MaxTokensPerCrew",
+      "section": "TokenBudget",
+      "type": "integer",
+      "default": 500000,
+      "description": "Maximum tokens per crew. 0 means unlimited."
+    },
+    {
+      "path": "ToolRateLimiting:DefaultToolRequestsPerMinute",
+      "section": "ToolRateLimiting",
+      "type": "integer",
+      "default": 30,
+      "description": "Default maximum requests per minute for tools without a specific limit."
+    },
+    {
+      "path": "ToolRateLimiting:GlobalToolRequestsPerMinute",
+      "section": "ToolRateLimiting",
+      "type": "integer",
+      "default": 120,
+      "description": "Maximum tool requests per minute across all tools."
+    },
+    {
+      "path": "ToolRateLimiting:ToolSpecificLimits:<name>",
+      "section": "ToolRateLimiting",
+      "type": "integer",
+      "defaultNote": "FileWriteTool = 15, HttpApiTool = 20, SecureCodeInterpreterTool = 5, WebScrapeTool = 10",
+      "description": "Per-tool rate limits, keyed by tool name."
+    },
+    {
+      "path": "Memory:Provider",
+      "section": "Memory",
+      "type": "string",
+      "description": "The provider type — `inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`, or an alias. Unset is the in-memory provider."
+    },
+    {
+      "path": "Orkeon:ChromaDb:BaseUrl",
+      "section": "Orkeon:ChromaDb",
+      "type": "uri",
+      "default": "http://localhost:8000/",
+      "description": "The base URL of the ChromaDB server."
+    },
+    {
+      "path": "Orkeon:ChromaDb:CollectionName",
+      "section": "Orkeon:ChromaDb",
+      "type": "string",
+      "default": "orkeon_memories",
+      "description": "The collection name to use for storing memories."
+    },
+    {
+      "path": "Orkeon:ChromaDb:Database",
+      "section": "Orkeon:ChromaDb",
+      "type": "string",
+      "default": "default_database",
+      "description": "The database addressed by the v2 API (`/api/v2/tenants/{tenant}/databases/{database}/...`). Defaults to `default_database`. Non-default databases must already exist on the server."
+    },
+    {
+      "path": "Orkeon:ChromaDb:DefaultTopK",
+      "section": "Orkeon:ChromaDb",
+      "type": "integer",
+      "default": 10,
+      "description": "The default number of results to return from queries."
+    },
+    {
+      "path": "Orkeon:ChromaDb:Tenant",
+      "section": "Orkeon:ChromaDb",
+      "type": "string",
+      "default": "default_tenant",
+      "description": "The tenant addressed by the v2 API (`/api/v2/tenants/{tenant}/...`). Defaults to `default_tenant`. Non-default tenants must already exist on the server."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:AnalysisModel",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "string",
+      "description": "Optional model override for analysis calls. Null (or blank) runs them on the provider's own model."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:AnalysisTemperature",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 0.1,
+      "description": "Temperature for LLM analysis calls. Default: 0.1."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:ContradictionCandidateCount",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "integer",
+      "default": 10,
+      "description": "Number of existing memories to check for contradictions. Default: 10."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:ImportanceWeight",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 0.2,
+      "description": "Weight for importance in composite scoring. Default: 0.2."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:MinScore",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 0.1,
+      "description": "Minimum composite score threshold. Default: 0.1."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:RecencyWeight",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 0.3,
+      "description": "Weight for temporal recency in composite scoring. Default: 0.3."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:SemanticWeight",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 0.5,
+      "description": "Weight for semantic similarity in composite scoring. Default: 0.5."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:TagFilter",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "list of string",
+      "default": [],
+      "description": "Optional filter by tags (any match)."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:TopK",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "integer",
+      "default": 10,
+      "description": "Maximum number of results to return. Default: 10."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:TypeFilter",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "enum",
+      "values": [
+        "ShortTerm",
+        "LongTerm",
+        "Episodic",
+        "Entity",
+        "Procedural"
+      ],
+      "description": "Optional filter by memory type."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:EnableContradictionDetection",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to enable contradiction detection on remember. Default: true."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:EnableLlmAnalysis",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to enable LLM-based content analysis on remember. Default: true."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:PruningMinAgeDays",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "integer",
+      "default": 30,
+      "description": "Minimum age in days before a memory can be pruned. Default: 30."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:PruningThreshold",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 0.1,
+      "description": "Importance threshold below which memories are candidates for pruning. Default: 0.1."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:RecencyHalfLifeHours",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 69,
+      "description": "Half-life for recency decay in hours (exp(-ln2/halfLife * ageHours)). Default: 69.0."
+    },
+    {
+      "path": "Orkeon:CrewMemory:MaxChars",
+      "section": "Orkeon:CrewMemory",
+      "type": "integer",
+      "default": 4000,
+      "description": "How many characters of memory content a task's prompt receives at most, all recalled memories together. 4,000 by default; the last memory that does not fit is cut."
+    },
+    {
+      "path": "Orkeon:CrewMemory:MinScore",
+      "section": "Orkeon:CrewMemory",
+      "type": "number",
+      "default": 0.6,
+      "description": "The least cosine similarity between a task and a memory for the memory to be recalled. 0.6 by default, measured on the local embedding model (BGE-micro-v2), on which the same task of an earlier run scores 0.72 and above and an unrelated English task 0.53 and below. Its scale is the embedder's: another model needs its own measure."
+    },
+    {
+      "path": "Orkeon:CrewMemory:RecallLimit",
+      "section": "Orkeon:CrewMemory",
+      "type": "integer",
+      "default": 5,
+      "description": "How many memories a task recalls at most. 5 by default; 0 recalls nothing (the crew still stores what its tasks produce)."
+    },
+    {
+      "path": "Orkeon:EmbeddingCache:MaxCacheSizeBytes",
+      "section": "Orkeon:EmbeddingCache",
+      "type": "integer",
+      "default": 104857600,
+      "description": "Maximum total size of the cache in bytes."
+    },
+    {
+      "path": "Orkeon:EmbeddingCache:SlidingExpirationMinutes",
+      "section": "Orkeon:EmbeddingCache",
+      "type": "integer",
+      "default": 60,
+      "description": "Sliding expiration time in minutes for cached embeddings."
+    },
+    {
+      "path": "Orkeon:Embeddings:BatchSize",
+      "section": "Orkeon:Embeddings",
+      "type": "integer",
+      "default": 100,
+      "description": "Maximum batch size for bulk embedding requests."
+    },
+    {
+      "path": "Orkeon:Embeddings:Dimension",
+      "section": "Orkeon:Embeddings",
+      "type": "integer",
+      "default": 1536,
+      "description": "The dimension of the embedding vectors."
+    },
+    {
+      "path": "Orkeon:Embeddings:EnableCache",
+      "section": "Orkeon:Embeddings",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to enable embedding caching."
+    },
+    {
+      "path": "Orkeon:Embeddings:Model",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "text-embedding-3-small",
+      "description": "The model name to use for embeddings."
+    },
+    {
+      "path": "Orkeon:Embeddings:Provider",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "openai",
+      "description": "The embedding provider to use (e.g., \"openai\", \"ollama\")."
+    },
+    {
+      "path": "Orkeon:Encryption:Enabled",
+      "section": "Orkeon:Encryption",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether encryption is enabled."
+    },
+    {
+      "path": "Orkeon:Encryption:KeySizeInBits",
+      "section": "Orkeon:Encryption",
+      "type": "integer",
+      "default": 256,
+      "description": "Key size in bits (128, 192, or 256)."
+    },
+    {
+      "path": "Orkeon:Encryption:SecretName",
+      "section": "Orkeon:Encryption",
+      "type": "string",
+      "default": "orkeon-encryption-key",
+      "description": "The secret name used to retrieve the encryption key from `ISecretProvider`."
+    },
+    {
+      "path": "Orkeon:LanceDb:ApiKey",
+      "section": "Orkeon:LanceDb",
+      "type": "string",
+      "secret": true,
+      "description": "The API key sent in the `x-api-key` header."
+    },
+    {
+      "path": "Orkeon:LanceDb:CreateFullTextIndexOnInit",
+      "section": "Orkeon:LanceDb",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the provider creates a full-text (FTS) index on the `content` column when it creates the table. Server-side full-text search requires this index; creation failures are logged as warnings and surface later as server errors on `SearchAsync`."
+    },
+    {
+      "path": "Orkeon:LanceDb:Database",
+      "section": "Orkeon:LanceDb",
+      "type": "string",
+      "description": "The optional database name sent in the `x-lancedb-database` header (Enterprise deployments behind a shared/private endpoint)."
+    },
+    {
+      "path": "Orkeon:LanceDb:DefaultTopK",
+      "section": "Orkeon:LanceDb",
+      "type": "integer",
+      "default": 10,
+      "description": "The default number of results to return from queries."
+    },
+    {
+      "path": "Orkeon:LanceDb:DistanceType",
+      "section": "Orkeon:LanceDb",
+      "type": "string",
+      "default": "cosine",
+      "description": "The distance metric used by server-side vector search (`cosine`, `l2` or `dot`). The provider converts the returned `_distance` to a similarity score as `1 - distance`, which is only meaningful for the default `cosine` metric."
+    },
+    {
+      "path": "Orkeon:LanceDb:EmbeddingDimension",
+      "section": "Orkeon:LanceDb",
+      "type": "integer",
+      "default": 1536,
+      "description": "The embedding vector dimension of the table's fixed-size `vector` column. Must match the embeddings stored through the provider."
+    },
+    {
+      "path": "Orkeon:LanceDb:Endpoint",
+      "section": "Orkeon:LanceDb",
+      "type": "string",
+      "default": "",
+      "description": "The base URL of the LanceDB Cloud/Enterprise REST endpoint (e.g. `https://my-deployment.us-east-1.api.lancedb.com`)."
+    },
+    {
+      "path": "Orkeon:LanceDb:FullTextWeight",
+      "section": "Orkeon:LanceDb",
+      "type": "number",
+      "default": 0.3,
+      "description": "The weight applied to the server-side full-text (BM25) ranking when fusing hybrid search results."
+    },
+    {
+      "path": "Orkeon:LanceDb:MinSimilarityScore",
+      "section": "Orkeon:LanceDb",
+      "type": "number",
+      "default": 0,
+      "description": "The minimum similarity score threshold for vector search results."
+    },
+    {
+      "path": "Orkeon:LanceDb:TableName",
+      "section": "Orkeon:LanceDb",
+      "type": "string",
+      "default": "orkeon_memories",
+      "description": "The table name used for storing memories."
+    },
+    {
+      "path": "Orkeon:LanceDb:VectorWeight",
+      "section": "Orkeon:LanceDb",
+      "type": "number",
+      "default": 0.7,
+      "description": "The weight applied to the server-side vector similarity ranking when fusing hybrid search results."
+    },
+    {
+      "path": "Orkeon:Pinecone:ApiKey",
+      "section": "Orkeon:Pinecone",
+      "type": "string",
+      "secret": true,
+      "description": "The Pinecone API key."
+    },
+    {
+      "path": "Orkeon:Pinecone:Host",
+      "section": "Orkeon:Pinecone",
+      "type": "string",
+      "description": "The index host, as Pinecone reports it (e.g. `orkeon-memories-abc1234.svc.aped-4627-b74a.pinecone.io`; a scheme is optional). When empty, the provider asks the control plane once, on first use (`GET https://api.pinecone.io/indexes/{IndexName}`), and uses the `host` it returns."
+    },
+    {
+      "path": "Orkeon:Pinecone:IndexName",
+      "section": "Orkeon:Pinecone",
+      "type": "string",
+      "default": "orkeon-memories",
+      "description": "The name of the Pinecone index."
+    },
+    {
+      "path": "Orkeon:Pinecone:Namespace",
+      "section": "Orkeon:Pinecone",
+      "type": "string",
+      "default": "default",
+      "description": "The namespace within the index."
+    },
+    {
+      "path": "Orkeon:Redis:ConnectionString",
+      "section": "Orkeon:Redis",
+      "type": "string",
+      "secret": true,
+      "description": "The StackExchange.Redis connection string (e.g. `localhost:6379`, or `redis.internal:6379,password=…,ssl=true`)."
+    },
+    {
+      "path": "Orkeon:Redis:KeyPrefix",
+      "section": "Orkeon:Redis",
+      "type": "string",
+      "default": "orkeon:memory:",
+      "description": "The prefix namespacing every key the provider writes."
+    },
+    {
+      "path": "Orkeon:Sqlite:ConnectionString",
+      "section": "Orkeon:Sqlite",
+      "type": "string",
+      "secret": true,
+      "description": "The SQLite connection string (e.g. `\"Data Source=/data/orkeon-memory.db\"` or `\"Data Source=:memory:\"`). Defaults to an in-memory database (`Data Source=:memory:`); a file `Data Source` is a virtual path, which must point at a writable mount."
+    },
+    {
+      "path": "Orkeon:Sqlite:DefaultTopK",
+      "section": "Orkeon:Sqlite",
+      "type": "integer",
+      "default": 10,
+      "description": "The default number of results returned by vector queries."
+    },
+    {
+      "path": "Orkeon:Sqlite:MinSimilarityScore",
+      "section": "Orkeon:Sqlite",
+      "type": "number",
+      "default": 0,
+      "description": "The minimum similarity score threshold for vector search results."
+    },
+    {
+      "path": "Orkeon:Sqlite:TableName",
+      "section": "Orkeon:Sqlite",
+      "type": "string",
+      "default": "memory_items",
+      "description": "The table name used for storing memory items. Must match `^[A-Za-z_][A-Za-z0-9_]*$`: the identifier is interpolated into SQL statements. Checked when a host starts and again at construction."
+    },
+    {
+      "path": "Orkeon:VectorSearch:DefaultMinScore",
+      "section": "Orkeon:VectorSearch",
+      "type": "number",
+      "default": 0.7,
+      "description": "The default minimum similarity score threshold."
+    },
+    {
+      "path": "Orkeon:VectorSearch:DefaultTopK",
+      "section": "Orkeon:VectorSearch",
+      "type": "integer",
+      "default": 10,
+      "description": "The default number of top results to return."
+    },
+    {
+      "path": "Orkeon:VectorSearch:PreferVectorSearch",
+      "section": "Orkeon:VectorSearch",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to prefer vector search over text-based search when available."
+    },
+    {
+      "path": "Orkeon:Rag:Collection",
+      "section": "Orkeon:Rag",
+      "type": "string",
+      "description": "Default collection queried when the call site names none."
+    },
+    {
+      "path": "Orkeon:Rag:Context:MaxTokens",
+      "section": "Orkeon:Rag",
+      "type": "integer",
+      "default": 2000,
+      "description": "Context budget in tokens (1 token ≈ 4 characters heuristic; excess chunks are dropped, never silently generated over)."
+    },
+    {
+      "path": "Orkeon:Rag:Context:Ordering",
+      "section": "Orkeon:Rag",
+      "type": "string",
+      "default": "edges",
+      "description": "Chunk layout inside the context block: `edges` (default — anti-Lost-in-the-Middle: odd ranks 1, 3, 5… open the block, even ranks …6, 4, 2 close it, so the two best chunks sit at the extremities) or `linear` (plain rank order). Citation markers stay rank-based (`[1]` = best chunk) whatever the layout."
+    },
+    {
+      "path": "Orkeon:Rag:Corrective:MaxIterations",
+      "section": "Orkeon:Rag",
+      "type": "integer",
+      "default": 3,
+      "description": "Maximum number of corrective iterations (query rewrites — whether triggered by an `Incorrect` retrieval verdict or by an ungrounded answer) before the pipeline generates with the best chunks available. Defaults to `3`."
+    },
+    {
+      "path": "Orkeon:Rag:Corrective:WebFallback:Enabled",
+      "section": "Orkeon:Rag",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the web fallback may fire. Off by default (opt-in): retrieval stays strictly local unless the host explicitly enables it AND registers a web document retriever."
+    },
+    {
+      "path": "Orkeon:Rag:Corrective:WebFallback:MaxResults",
+      "section": "Orkeon:Rag",
+      "type": "integer",
+      "default": 3,
+      "description": "Maximum number of web documents requested from the retriever. Defaults to `3`."
+    },
+    {
+      "path": "Orkeon:Rag:Generation:MaxOutputTokens",
+      "section": "Orkeon:Rag",
+      "type": "integer",
+      "description": "Maximum output tokens passed to the chat client."
+    },
+    {
+      "path": "Orkeon:Rag:Generation:SystemPrompt",
+      "section": "Orkeon:Rag",
+      "type": "string",
+      "description": "Grounded system prompt; `null` selects the pipeline default (anti-hallucination, `[n]` markers)."
+    },
+    {
+      "path": "Orkeon:Rag:Generation:Temperature",
+      "section": "Orkeon:Rag",
+      "type": "number",
+      "description": "Sampling temperature passed to the chat client."
+    },
+    {
+      "path": "Orkeon:Rag:Groundedness:Enabled",
+      "section": "Orkeon:Rag",
+      "type": "boolean",
+      "default": false,
+      "defaultNote": "under the default profile, `fast`: each profile sets its own",
+      "description": "Whether the answer is verified against the retrieved context after generation. Requires an `IGroundednessChecker` registration; enabled without one, the stage is traced as skipped."
+    },
+    {
+      "path": "Orkeon:Rag:LlmProfile",
+      "section": "Orkeon:Rag",
+      "type": "string",
+      "description": "The host LLM profile (`Llm:Profiles:<name>`) every model call of the subsystem goes to — grounded generation, the query transformers, the listwise reranker, the corrective graph's evaluator and groundedness checker, the `llm` classifier and the evaluation judge. Null, blank or `default` is the host's default profile. A host key: one profile for the whole subsystem, which no preset sets."
+    },
+    {
+      "path": "Orkeon:Rag:Profile",
+      "section": "Orkeon:Rag",
+      "type": "string",
+      "default": "fast",
+      "description": "Profile name (`fast`, `balanced`, `quality`, `adaptive`, `corrective`). Defaults to `fast` — `balanced` needs the opt-in ONNX reranker package. Unknown names fail loudly."
+    },
+    {
+      "path": "Orkeon:Rag:Provider",
+      "section": "Orkeon:Rag",
+      "type": "string",
+      "description": "The memory-provider type backing the RAG document store: `inmemory`, `in-memory`, `redis`, `sqlite`, `chromadb`, `chroma`, `pinecone`, `lancedb`, `lance`. `null` or empty selects the ambient container provider."
+    },
+    {
+      "path": "Orkeon:Rag:QueryTransform:Mode",
+      "section": "Orkeon:Rag",
+      "type": "string",
+      "default": "none",
+      "description": "Transformer name resolved through the query-transformer factory: `none` (default), `multi-query`, `rag-fusion` or `hyde`. `none` skips the stage; unknown names fail loudly."
+    },
+    {
+      "path": "Orkeon:Rag:QueryTransform:VariantCount",
+      "section": "Orkeon:Rag",
+      "type": "integer",
+      "default": 3,
+      "description": "Number of variants requested from non-`none` transformers."
+    },
+    {
+      "path": "Orkeon:Rag:Rerank:Enabled",
+      "section": "Orkeon:Rag",
+      "type": "boolean",
+      "default": false,
+      "defaultNote": "under the default profile, `fast`: each profile sets its own",
+      "description": "Whether the rerank stage runs. Disabled, candidates are truncated to TopN in retrieval order."
+    },
+    {
+      "path": "Orkeon:Rag:Rerank:Kind",
+      "section": "Orkeon:Rag",
+      "type": "string",
+      "default": "none",
+      "defaultNote": "under the default profile, `fast`: each profile sets its own",
+      "description": "Reranker name resolved through the reranker factory (`none`/`noop`, `llm`/`listwise`, `onnx`/`cross-encoder` — the latter via the opt-in `Orkeon.Rag.Onnx` package). Unknown names fail loudly."
+    },
+    {
+      "path": "Orkeon:Rag:Rerank:TopN",
+      "section": "Orkeon:Rag",
+      "type": "integer",
+      "default": 5,
+      "description": "Default number of chunks kept after reranking (a call-site `RagQuery.TopN` wins)."
+    },
+    {
+      "path": "Orkeon:Rag:Retrieval:CandidateK",
+      "section": "Orkeon:Rag",
+      "type": "integer",
+      "default": 5,
+      "defaultNote": "under the default profile, `fast`: each profile sets its own",
+      "description": "Number of candidates retrieved before fusion/rerank (wide stage of the 50 → 5 cascade). The pipeline always retrieves at least the final TopN."
+    },
+    {
+      "path": "Orkeon:Rag:Retrieval:MinScore",
+      "section": "Orkeon:Rag",
+      "type": "number",
+      "description": "Optional score floor applied to raw retrieval scores before fusion. `null` (default) applies none — the toxic global 0.7 floor of the legacy subsystem is deliberately gone."
+    },
+    {
+      "path": "Orkeon:Rag:Retrieval:Mmr:Enabled",
+      "section": "Orkeon:Rag",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether MMR diversification runs at the fusion/dedup stage. Off by default."
+    },
+    {
+      "path": "Orkeon:Rag:Retrieval:Mmr:Lambda",
+      "section": "Orkeon:Rag",
+      "type": "number",
+      "default": 0.7,
+      "description": "Relevance/diversity trade-off in `[0, 1]`: `1` keeps the pure relevance order, `0` maximises diversity. Defaults to `0.7`."
+    },
+    {
+      "path": "Orkeon:Rag:Retrieval:TopK",
+      "section": "Orkeon:Rag",
+      "type": "integer",
+      "default": 5,
+      "description": "Default number of chunks kept for context assembly (a call-site `RagQuery.TopN` wins)."
+    },
+    {
+      "path": "Orkeon:Rag:Ingestion:DefaultChunkingStrategy",
+      "section": "Orkeon:Rag:Ingestion",
+      "type": "string",
+      "default": "recursive",
+      "description": "Chunking strategy resolved by the chunking factory when an `IngestionRequest` names none. Defaults to `recursive`."
+    },
+    {
+      "path": "Orkeon:Rag:Ingestion:ManifestDirectory",
+      "section": "Orkeon:Rag:Ingestion",
+      "type": "string",
+      "default": "/output/rag/manifests",
+      "description": "Virtual directory (VFS path) holding the per-collection ingestion manifests (`{collection}.json`). Defaults to `/output/rag/manifests` — under the conventional writable `/output` mount, next to other run artifacts."
+    },
+    {
+      "path": "Orkeon:Rag:QueryRouting:Classifier",
+      "section": "Orkeon:Rag:QueryRouting",
+      "type": "string",
+      "default": "heuristic",
+      "description": "Classifier name: `heuristic` (default — safe, deterministic, works without any LLM) or `llm`. Unknown names fail loudly at resolution. When `llm` is selected but no `IChatClient` is registered, the heuristic classifier is used as the documented fallback (with a warning) rather than failing."
+    },
+    {
+      "path": "Orkeon:Rag:Retrieval:Hybrid:Enabled",
+      "section": "Orkeon:Rag:Retrieval:Hybrid",
+      "type": "boolean",
+      "default": false,
+      "defaultNote": "under the default profile, `fast`: each profile sets its own",
+      "description": "Whether retrieval fuses lexical (BM25 / native full-text) and vector rankings. Honoured per query through the hybrid-capable document store."
+    },
+    {
+      "path": "Orkeon:Rag:Retrieval:Hybrid:RrfK",
+      "section": "Orkeon:Rag:Retrieval:Hybrid",
+      "type": "integer",
+      "default": 60,
+      "description": "Reciprocal Rank Fusion constant (must be positive; 60 is the standard)."
+    },
+    {
+      "path": "Orkeon:Rag:WebFallback:ApiKeyEnvVar",
+      "section": "Orkeon:Rag:WebFallback",
+      "type": "string",
+      "default": "",
+      "description": "Name of the environment variable holding the API key, sent as an `Authorization: Bearer` header when set. Empty = no auth header. The key itself never lives in configuration files."
+    },
+    {
+      "path": "Orkeon:Rag:WebFallback:Enabled",
+      "section": "Orkeon:Rag:WebFallback",
+      "type": "boolean",
+      "default": false,
+      "description": "Master switch of the transport. Default `false` — strict opt-in."
+    },
+    {
+      "path": "Orkeon:Rag:WebFallback:Endpoint",
+      "section": "Orkeon:Rag:WebFallback",
+      "type": "string",
+      "default": "",
+      "description": "Search endpoint URL of a SearxNG-compatible JSON API (queried as `{Endpoint}?q={query}&format=json`, expecting a `results[].url` JSON array). Empty = disabled (logged)."
+    },
+    {
+      "path": "Orkeon:Rag:WebFallback:MaxResults",
+      "section": "Orkeon:Rag:WebFallback",
+      "type": "integer",
+      "default": 3,
+      "description": "Maximum number of search results fetched per query. Default 3."
+    },
+    {
+      "path": "Orkeon:Rag:WebFallback:SuspiciousAction",
+      "section": "Orkeon:Rag:WebFallback",
+      "type": "enum",
+      "default": "Flag",
+      "values": [
+        "Flag",
+        "Discard"
+      ],
+      "description": "What to do with documents the injection validator flags as `Suspicious`: keep them flagged in metadata (default) or discard them. Rejected documents are always discarded."
+    },
+    {
+      "path": "Orkeon:Rag:WebFallback:Timeout",
+      "section": "Orkeon:Rag:WebFallback",
+      "type": "duration",
+      "default": "00:00:10",
+      "description": "Per-request timeout (search call and each page download). Default 10 s."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:AllowHostExecution",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Explicit, noisy opt-in to allow executing code on a sandbox that provides NO OS-level isolation (the host process runner) when an isolating sandbox (Docker) is unavailable. Left `false`, code execution is refused rather than run on the host; `true` is RCE-equivalent on the host, for trusted code in a trusted environment only."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:DefaultPermissions:AllowedPaths",
+      "section": "Orkeon:CodeSandbox",
+      "type": "list of string",
+      "default": [],
+      "description": "List of allowed file paths."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:DefaultPermissions:AllowFileRead",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow reading files."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:DefaultPermissions:AllowFileWrite",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow writing files."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:DefaultPermissions:AllowNetworkAccess",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow network access."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:DefaultPermissions:AllowProcessExec",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow spawning child processes."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:DefaultPermissions:AllowReflection",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow reflection APIs."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:DefaultPermissions:WorkingDirectory",
+      "section": "Orkeon:CodeSandbox",
+      "type": "string",
+      "description": "Working directory for the sandbox."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:MaxMemoryBytes",
+      "section": "Orkeon:CodeSandbox",
+      "type": "integer",
+      "default": 268435456,
+      "description": "Maximum memory in bytes (default: 256 MB)."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:MaxOutputBytes",
+      "section": "Orkeon:CodeSandbox",
+      "type": "integer",
+      "default": 50000,
+      "description": "Maximum output bytes (default: 50 KB)."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:SecurityOptions:AllowedNamespaces",
+      "section": "Orkeon:CodeSandbox",
+      "type": "list of string",
+      "default": ["System", "System.Collections.Generic", "System.Linq", "System.Text", "System.Text.Json", "System.Text.RegularExpressions", "System.Math"],
+      "description": "Namespaces that are allowed in using directives."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:SecurityOptions:AllowFileIO",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow file I/O operations."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:SecurityOptions:AllowNetworking",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow networking operations."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:SecurityOptions:AllowProcessExec",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow spawning processes."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:SecurityOptions:AllowReflection",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow reflection APIs."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:SecurityOptions:AllowUnsafeCode",
+      "section": "Orkeon:CodeSandbox",
+      "type": "boolean",
+      "default": false,
+      "description": "Allow unsafe code blocks."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:SecurityOptions:BlockedTypes",
+      "section": "Orkeon:CodeSandbox",
+      "type": "list of string",
+      "default": ["System.Diagnostics.Process", "System.IO.File", "System.IO.Directory", "System.Reflection.Assembly", "System.Runtime.InteropServices.Marshal", "System.Net.Sockets.Socket", "System.AppDomain"],
+      "description": "Types that are always blocked."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:TimeoutSeconds",
+      "section": "Orkeon:CodeSandbox",
+      "type": "integer",
+      "default": 30,
+      "description": "Default execution timeout in seconds."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:Docker:ImageName",
+      "section": "Orkeon:CodeSandbox:Docker",
+      "type": "string",
+      "default": "mcr.microsoft.com/dotnet/sdk:10.0-alpine",
+      "description": "Docker image to use for code execution."
+    },
+    {
+      "path": "Orkeon:CodeSandbox:Docker:PullImageOnStartup",
+      "section": "Orkeon:CodeSandbox:Docker",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to pull the image on startup."
+    },
+    {
+      "path": "Orkeon:FileSystem:InternalMounts",
+      "section": "Orkeon:FileSystem",
+      "type": "list of string",
+      "default": [],
+      "description": "Infrastructure mounts, same grammar as `Mounts`: resolvable by the host, absent from `list_mounts`, the agent prompt's mount table and access-denied messages, and refused to every tool. This is where a runner puts what it needs the VFS to reach but no agent has any business addressing — the LLM exchange log directory, for one."
+    },
+    {
+      "path": "Orkeon:FileSystem:Mounts",
+      "section": "Orkeon:FileSystem",
+      "type": "list of string",
+      "default": [],
+      "description": "Mount definitions in the format \"physical:virtual:rights[;subpath:rights;...]\"."
+    },
+    {
+      "path": "Orkeon:Sandbox:CleanupOrphansOlderThan",
+      "section": "Orkeon:Sandbox",
+      "type": "duration",
+      "default": "1.00:00:00",
+      "description": "Age threshold for orphaned session directories. Directories older than this value are deleted by the janitor on startup. Defaults to 24 hours."
+    },
+    {
+      "path": "Orkeon:Sandbox:EphemeralRoot",
+      "section": "Orkeon:Sandbox",
+      "type": "string",
+      "description": "Root directory under which per-session sandbox directories are created. When `null`, defaults to `Path.Combine(Path.GetTempPath(), \"orkeon-sandbox\")`."
+    },
+    {
+      "path": "Orkeon:Sandbox:VirtualPath",
+      "section": "Orkeon:Sandbox",
+      "type": "string",
+      "default": "/sandbox",
+      "description": "Virtual path at which the sandbox is mounted. Defaults to `/sandbox`."
+    },
+    {
+      "path": "PathSecurity:AdditionalAllowedDirectories",
+      "section": "PathSecurity",
+      "type": "list of string",
+      "default": [],
+      "description": "Additional directories that are allowed beyond the workspace root."
+    },
+    {
+      "path": "PathSecurity:AdditionalBlockedExtensions",
+      "section": "PathSecurity",
+      "type": "list of string",
+      "default": [],
+      "description": "Additional file extensions to block beyond the built-in list."
+    },
+    {
+      "path": "PathSecurity:DefaultWorkspaceRoot",
+      "section": "PathSecurity",
+      "type": "string",
+      "description": "The default workspace root directory. If null, defaults to the current working directory."
+    },
+    {
+      "path": "PathSecurity:MaxFileSizeBytes",
+      "section": "PathSecurity",
+      "type": "integer",
+      "default": 52428800,
+      "description": "Maximum allowed file size in bytes. Default: 50 MB."
+    },
+    {
+      "path": "PathSecurity:ResolveSymlinks",
+      "section": "PathSecurity",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to resolve symlinks and verify the target is within the workspace. Default: true."
+    },
+    {
+      "path": "Orkeon:Dlp:ChannelPolicies:<name>",
+      "section": "Orkeon:Dlp",
+      "type": "any",
+      "description": "Per-channel policy overrides."
+    },
+    {
+      "path": "Orkeon:Dlp:DefaultAction",
+      "section": "Orkeon:Dlp",
+      "type": "enum",
+      "default": "Audit",
+      "values": [
+        "Allow",
+        "Mask",
+        "Block",
+        "Audit"
+      ],
+      "description": "The default action for all channels."
+    },
+    {
+      "path": "Orkeon:Dlp:Enabled",
+      "section": "Orkeon:Dlp",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether DLP is globally enabled."
+    },
+    {
+      "path": "Orkeon:Guardian:DefaultPolicy:DelegationGuardEnabled",
+      "section": "Orkeon:Guardian",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the delegation phase (depth, self-delegation, cycles) runs."
+    },
+    {
+      "path": "Orkeon:Guardian:DefaultPolicy:InputGuardEnabled",
+      "section": "Orkeon:Guardian",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the input phase (prompt-injection screening of the composed user prompt) runs."
+    },
+    {
+      "path": "Orkeon:Guardian:DefaultPolicy:MaxDelegationDepth",
+      "section": "Orkeon:Guardian",
+      "type": "integer",
+      "default": 5,
+      "description": "How many synchronous delegations may nest before the next one is blocked."
+    },
+    {
+      "path": "Orkeon:Guardian:DefaultPolicy:ToolGuardEnabled",
+      "section": "Orkeon:Guardian",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the tool phase (path traversal, SSRF and SQL injection in tool arguments) runs."
+    },
+    {
+      "path": "Orkeon:Guardian:Enabled",
+      "section": "Orkeon:Guardian",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls."
+    },
+    {
+      "path": "Orkeon:Security:PermissionGate:Enabled",
+      "section": "Orkeon:Security:PermissionGate",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the gate is registered. Left `false`, no tool call is gated."
+    },
+    {
+      "path": "Orkeon:Security:PermissionGate:Interactive",
+      "section": "Orkeon:Security:PermissionGate",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether an approval channel exists to ask an operator. No shipped host has one: left `false`, a call that needs an approval is refused, and the model reads the reason as the tool's result."
+    },
+    {
+      "path": "Secrets:<name>",
+      "section": "Secrets",
+      "type": "string",
+      "secret": true,
+      "description": "A secret by its name — `Secrets:TAVILY_API_KEY` —, where the secret chain looks after the `ORKEON_<NAME>` environment variable and before a vault. A value written here is in clear in the settings file."
+    },
+    {
+      "path": "Security:Audit:AuditDirectory",
+      "section": "Security:Audit",
+      "type": "string",
+      "default": "./audit-logs",
+      "description": "Directory where audit log files are stored."
+    },
+    {
+      "path": "Security:Audit:Enabled",
+      "section": "Security:Audit",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether audit logging is enabled."
+    },
+    {
+      "path": "Security:Audit:EnabledCategories",
+      "section": "Security:Audit",
+      "type": "list of enum",
+      "default": [],
+      "values": [
+        "LlmCall",
+        "ToolExecution",
+        "FileAccess",
+        "HttpRequest",
+        "SecurityEvent",
+        "CrewLifecycle",
+        "AgentDecision",
+        "MemoryOperation",
+        "ConfigChange"
+      ],
+      "description": "Categories to log. Empty means all categories are enabled."
+    },
+    {
+      "path": "Security:Audit:MinSeverity",
+      "section": "Security:Audit",
+      "type": "enum",
+      "default": "Info",
+      "values": [
+        "Debug",
+        "Info",
+        "Warning",
+        "Error",
+        "Critical"
+      ],
+      "description": "Minimum severity level for events to be logged."
+    },
+    {
+      "path": "Security:Audit:RetentionDays",
+      "section": "Security:Audit",
+      "type": "integer",
+      "default": 90,
+      "description": "Number of days to retain audit logs."
+    },
+    {
+      "path": "Security:Prompt:CustomPatterns",
+      "section": "Security:Prompt",
+      "type": "list of string",
+      "default": [],
+      "description": "Custom regex patterns to detect in addition to built-in patterns."
+    },
+    {
+      "path": "Security:Prompt:EnableExfiltrationDetection",
+      "section": "Security:Prompt",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to enable detection of data exfiltration attempts. Default is true."
+    },
+    {
+      "path": "Security:Prompt:Policy",
+      "section": "Security:Prompt",
+      "type": "enum",
+      "default": "Block",
+      "values": [
+        "None",
+        "Warn",
+        "Block"
+      ],
+      "description": "The policy the Guardian's input phase applies to the composed user prompt. Default `Block`: a High or Critical pattern fails the task before any provider call, a lower one is logged and audited; the prompt is never rewritten."
+    },
+    {
+      "path": "Security:ToolResults:Policy",
+      "section": "Security:ToolResults",
+      "type": "enum",
+      "default": "Warn",
+      "values": [
+        "None",
+        "Warn",
+        "Block"
+      ],
+      "description": "The policy applied to a successful tool result. Default `Warn`: the result reaches the model tagged as data and any injection pattern is logged and audited. `Block` withholds a result carrying a High or Critical pattern (the model is told so); `None` passes results untouched and untagged."
+    },
+    {
+      "path": "Security:ToolResults:TrustedTools",
+      "section": "Security:ToolResults",
+      "type": "list of string",
+      "default": ["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send"],
+      "description": "Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012) — tagging them again would stack two envelopes. Entries from configuration are added to these."
+    },
+    {
+      "path": "Security:Url:AllowedDomains",
+      "section": "Security:Url",
+      "type": "list of string",
+      "default": [],
+      "description": "If non-empty, only these domains (and their subdomains) are allowed."
+    },
+    {
+      "path": "Security:Url:AllowedSchemes",
+      "section": "Security:Url",
+      "type": "list of string",
+      "default": ["http", "https"],
+      "description": "Allowed URL schemes. Defaults to http and https."
+    },
+    {
+      "path": "Security:Url:BlockedDomains",
+      "section": "Security:Url",
+      "type": "list of string",
+      "default": [],
+      "description": "Domains (and their subdomains) that are explicitly blocked."
+    },
+    {
+      "path": "Security:Url:BlockedPorts",
+      "section": "Security:Url",
+      "type": "list of integer",
+      "default": [22, 23, 25, 110, 143, 445, 3306, 5432, 6379, 27017],
+      "description": "Ports that are blocked from access (common service ports)."
+    },
+    {
+      "path": "Security:Url:BlockPrivateIPs",
+      "section": "Security:Url",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to block requests to private/internal IP ranges. Defaults to true."
+    },
+    {
+      "path": "Security:Url:ResolveDNS",
+      "section": "Security:Url",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to resolve DNS and check the resolved IP against private ranges. Defaults to true."
+    },
+    {
+      "path": "Security:Vault:AzureKeyVaultUri",
+      "section": "Security:Vault",
+      "type": "uri",
+      "description": "URI of Azure Key Vault (e.g. https://my-vault.vault.azure.net/)"
+    },
+    {
+      "path": "Security:Vault:CacheTtl",
+      "section": "Security:Vault",
+      "type": "duration",
+      "default": "00:05:00",
+      "description": "Cache TTL for secrets in memory (default: 5 min)"
+    },
+    {
+      "path": "Security:Vault:DpapiSecretsDirectory",
+      "section": "Security:Vault",
+      "type": "string",
+      "description": "Directory for DPAPI secret store (Windows only)"
+    },
+    {
+      "path": "Security:Vault:UseAwsSecretsManager",
+      "section": "Security:Vault",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to use AWS Secrets Manager"
+    },
+    {
+      "path": "BRAVE_API_KEY",
+      "section": "BRAVE_API_KEY",
+      "type": "string",
+      "secret": true,
+      "description": "The key of the Brave Search API. Set — here or as the environment variable of the same name —, it registers the `brave_search` tool; left out, the tool is not offered."
+    },
+    {
+      "path": "MCP:Enabled",
+      "section": "MCP",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether MCP is enabled at all."
+    },
+    {
+      "path": "MCP:Servers:<name>:Args",
+      "section": "MCP",
+      "type": "list of string",
+      "default": [],
+      "description": "Command-line arguments for the server process."
+    },
+    {
+      "path": "MCP:Servers:<name>:Command",
+      "section": "MCP",
+      "type": "string",
+      "default": "",
+      "description": "Command to launch the MCP server process (for stdio transport)."
+    },
+    {
+      "path": "MCP:Servers:<name>:Env:<name>",
+      "section": "MCP",
+      "type": "string",
+      "description": "Environment variables for the server process."
+    },
+    {
+      "path": "MCP:Servers:<name>:Transport",
+      "section": "MCP",
+      "type": "enum",
+      "default": "Stdio",
+      "values": [
+        "Stdio",
+        "Sse"
+      ],
+      "description": "Transport type to use."
+    },
+    {
+      "path": "MCP:Servers:<name>:Url",
+      "section": "MCP",
+      "type": "uri",
+      "description": "URL endpoint for SSE transport."
+    },
+    {
+      "path": "MCP:Server:Name",
+      "section": "MCP:Server",
+      "type": "string",
+      "default": "Orkeon",
+      "description": "Server name advertised during MCP initialization."
+    },
+    {
+      "path": "MCP:Server:Version",
+      "section": "MCP:Server",
+      "type": "string",
+      "default": "1.0.0",
+      "description": "Server version advertised during MCP initialization."
+    },
+    {
+      "path": "Orkeon:MultiModal:Enabled",
+      "section": "Orkeon:MultiModal",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether multi-modal content is enabled."
+    },
+    {
+      "path": "Orkeon:MultiModal:MaxAudioDurationSeconds",
+      "section": "Orkeon:MultiModal",
+      "type": "integer",
+      "default": 300,
+      "description": "Maximum allowed audio duration in seconds (default: 300 seconds / 5 minutes)."
+    },
+    {
+      "path": "Orkeon:MultiModal:MaxImageSizeBytes",
+      "section": "Orkeon:MultiModal",
+      "type": "integer",
+      "default": 20971520,
+      "description": "Maximum allowed image size in bytes (default: 20 MB)."
+    },
+    {
+      "path": "Orkeon:MultiModal:SupportedAudioFormats",
+      "section": "Orkeon:MultiModal",
+      "type": "list of string",
+      "default": ["audio/wav", "audio/mp3", "audio/ogg"],
+      "description": "List of supported audio MIME types."
+    },
+    {
+      "path": "Orkeon:MultiModal:SupportedImageFormats",
+      "section": "Orkeon:MultiModal",
+      "type": "list of string",
+      "default": ["image/png", "image/jpeg", "image/gif", "image/webp"],
+      "description": "List of supported image MIME types."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Address",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "The account's address; also the `From` of every message it sends."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Auth:ClientId",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "OAuth client id (Google Cloud or Microsoft Entra application)."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Auth:ClientSecretEnvVar",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "Name of the environment variable holding the OAuth client secret (Google desktop clients)."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Auth:Method",
+      "section": "Orkeon:Tools:Email",
+      "type": "enum",
+      "values": [
+        "Password",
+        "OAuth2"
+      ],
+      "description": "`Password` or `OAuth2`."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Auth:PasswordEnvVar",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "Name of the environment variable holding the password or app password."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Auth:Tenant",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "Microsoft tenant: `consumers` (default), `organizations`, `common` or a tenant id."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Auth:Username",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "Login name; defaults to the address."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:DisplayName",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "Display name paired with `Address` in `From`."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Incoming:Host",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "Server host name."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Incoming:Port",
+      "section": "Orkeon:Tools:Email",
+      "type": "integer",
+      "description": "Server port."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Incoming:Protocol",
+      "section": "Orkeon:Tools:Email",
+      "type": "enum",
+      "values": [
+        "Imap",
+        "Pop3",
+        "Graph"
+      ],
+      "description": "`Imap`, `Pop3` or `Graph`; the preset decides when unset."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Incoming:Security",
+      "section": "Orkeon:Tools:Email",
+      "type": "enum",
+      "values": [
+        "SslOnConnect",
+        "StartTls",
+        "None"
+      ],
+      "description": "Transport security."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Outgoing:Host",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "Server host name."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Outgoing:Port",
+      "section": "Orkeon:Tools:Email",
+      "type": "integer",
+      "description": "Server port."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Outgoing:Protocol",
+      "section": "Orkeon:Tools:Email",
+      "type": "enum",
+      "values": [
+        "Smtp",
+        "Graph"
+      ],
+      "description": "`Smtp` or `Graph`; the preset decides when unset."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Outgoing:Security",
+      "section": "Orkeon:Tools:Email",
+      "type": "enum",
+      "values": [
+        "SslOnConnect",
+        "StartTls",
+        "None"
+      ],
+      "description": "Transport security."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Provider",
+      "section": "Orkeon:Tools:Email",
+      "type": "enum",
+      "default": "Custom",
+      "values": [
+        "Custom",
+        "Gmail",
+        "Outlook"
+      ],
+      "description": "The preset: `Gmail`, `Outlook` or `Custom` (the default)."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Rights",
+      "section": "Orkeon:Tools:Email",
+      "type": "enum",
+      "default": "None",
+      "values": [
+        "None",
+        "Read",
+        "Organize",
+        "Draft",
+        "Send",
+        "Delete",
+        "Purge"
+      ],
+      "description": "What an agent may do, e.g. `\"Read, Organize, Draft\"`. Mandatory."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:SaveSentCopy",
+      "section": "Orkeon:Tools:Email",
+      "type": "boolean",
+      "description": "Whether a sent message is appended to the Sent folder. Unset follows the preset: Gmail, Outlook and Graph file sent mail themselves, a custom server usually does not."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Send:AllowedRecipients",
+      "section": "Orkeon:Tools:Email",
+      "type": "list of string",
+      "default": [],
+      "description": "Who may receive mail from this account: an address, `*@domain`, or `*` for anyone. Empty means nobody: sending is closed until an operator opens it."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Send:MaxPerHour",
+      "section": "Orkeon:Tools:Email",
+      "type": "integer",
+      "description": "Most messages this process sends per hour from the account. Unset means no cap."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:Send:MaxRecipients",
+      "section": "Orkeon:Tools:Email",
+      "type": "integer",
+      "description": "Most recipients one message may have. Unset leaves the limit to the server."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Accounts:<name>:TimeoutSeconds",
+      "section": "Orkeon:Tools:Email",
+      "type": "integer",
+      "description": "Protocol timeout in seconds. Unset keeps the library default."
+    },
+    {
+      "path": "Orkeon:Tools:Email:CredentialsDirectory",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "Physical directory holding the OAuth tokens, for a host whose per-user settings directory is not the right one (a service account). Read by the host, not by the tools."
+    },
+    {
+      "path": "Orkeon:Tools:Email:DefaultAccount",
+      "section": "Orkeon:Tools:Email",
+      "type": "string",
+      "description": "The account a call uses when it names none. Optional with a single account."
+    },
+    {
+      "path": "Orkeon:Tools:Email:Screening:WithholdRejected",
+      "section": "Orkeon:Tools:Email",
+      "type": "boolean",
+      "default": false,
+      "description": "When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it."
+    },
+    {
+      "path": "Orkeon:Tools:Shell:AllowedCommands",
+      "section": "Orkeon:Tools:Shell",
+      "type": "list of string",
+      "default": [],
+      "description": "A full replacement of the default allowlist, verbatim; it cancels `AllowInterpreters` and re-enables the git read-only restriction. Empty keeps the default allowlist."
+    },
+    {
+      "path": "Orkeon:Tools:Shell:AllowInterpreters",
+      "section": "Orkeon:Tools:Shell",
+      "type": "boolean",
+      "default": false,
+      "description": "Enables the interpreters (`node`, `dotnet`, `npm`, `find`) and the mutating git subcommands — RCE-equivalent on the host, for trusted coding-agent hosts only. Default false."
+    },
+    {
+      "path": "Orkeon:Tools:Shell:ExtraAllowedCommands",
+      "section": "Orkeon:Tools:Shell",
+      "type": "list of string",
+      "default": [],
+      "description": "Commands added on top of the default (or replacement) allowlist, such as `make`."
+    },
+    {
+      "path": "Plugins:ContinueOnError",
+      "section": "Plugins",
+      "type": "boolean",
+      "default": false,
+      "description": "When `true`, a plugin assembly that fails to load or to configure its services is recorded in `IPluginRegistry.Failures` and the remaining candidates keep loading. When `false` (default), the first failure throws a `PluginLoadException` (fail fast)."
+    },
+    {
+      "path": "Plugins:Directory",
+      "section": "Plugins",
+      "type": "string",
+      "default": "/plugins",
+      "description": "Virtual path (VFS) of the directory scanned for plugin assemblies. Must start with `/` and resolve inside a configured mount. Default: `/plugins`."
+    },
+    {
+      "path": "Plugins:SearchPattern",
+      "section": "Plugins",
+      "type": "string",
+      "default": "*.dll",
+      "description": "Simple glob pattern applied to candidate assembly file names (e.g. `*.dll`, `MyCompany.*.dll`). Candidates must additionally carry the `.dll` extension regardless of the pattern. Default: `*.dll`."
+    },
+    {
+      "path": "Plugins:SharedAssemblyPrefixes",
+      "section": "Plugins",
+      "type": "list of string",
+      "default": ["Orkeon.", "Orkeon.Rag.Abstractions", "Microsoft.Extensions."],
+      "description": "Assembly simple-name prefixes that are never loaded into the plugin's isolated `AssemblyLoadContext`; resolution defers to the host (default) context instead, so contract types (e.g. `IOrkeonPlugin`, `IBaseTool`, `IServiceCollection`) keep a single identity shared between the host and the plugin. Defaults: `Orkeon.`, `Orkeon.Rag.Abstractions` and `Microsoft.Extensions.`."
+    },
+    {
+      "path": "RaggableTree:Embedding:ApiKey",
+      "section": "RaggableTree",
+      "type": "string",
+      "secret": true,
+      "description": "The key of a remote provider. The local provider needs none."
+    },
+    {
+      "path": "RaggableTree:Embedding:BaseUrl",
+      "section": "RaggableTree",
+      "type": "string",
+      "description": "The `http://` or `https://` address of the provider's endpoint, when it is not the provider's own."
+    },
+    {
+      "path": "RaggableTree:Embedding:Dimensions",
+      "section": "RaggableTree",
+      "type": "integer",
+      "description": "The size of the vectors, for a model that lets it be chosen. Left out, the model's own."
+    },
+    {
+      "path": "RaggableTree:Embedding:MaxTextChars",
+      "section": "RaggableTree",
+      "type": "integer",
+      "description": "The most characters of one text sent to the model; what is longer is cut. Left out, the provider's own limit."
+    },
+    {
+      "path": "RaggableTree:Embedding:Model",
+      "section": "RaggableTree",
+      "type": "string",
+      "description": "The embedding model. Left out, the provider uses its own — `bge-micro-v2` for the local one."
+    },
+    {
+      "path": "RaggableTree:Embedding:Provider",
+      "section": "RaggableTree",
+      "type": "enum",
+      "default": "LocalSmartComponents",
+      "values": [
+        "None",
+        "OpenAI",
+        "Ollama",
+        "Onnx",
+        "LocalSmartComponents"
+      ],
+      "description": "Who computes the embeddings, any case. The default runs on the machine: no key, no network."
+    },
+    {
+      "path": "RaggableTree:Enabled",
+      "section": "RaggableTree",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the index and its tools are registered. `false` leaves them out of the host."
+    },
+    {
+      "path": "Orkeon:Checkpointing:AutoMigrate",
+      "section": "Orkeon:Checkpointing",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to auto-create the schema and tables on first use."
+    },
+    {
+      "path": "Orkeon:Checkpointing:ConnectionString",
+      "section": "Orkeon:Checkpointing",
+      "type": "string",
+      "secret": true,
+      "description": "The PostgreSQL connection string."
+    },
+    {
+      "path": "Orkeon:Checkpointing:MaxHistoryPerSession",
+      "section": "Orkeon:Checkpointing",
+      "type": "integer",
+      "default": 1000,
+      "description": "The maximum number of version entries per session (default: 1000)."
+    },
+    {
+      "path": "Orkeon:Checkpointing:SchemaName",
+      "section": "Orkeon:Checkpointing",
+      "type": "string",
+      "default": "orkeon",
+      "description": "The schema name (default: \"orkeon\")."
+    },
+    {
+      "path": "Orkeon:Consensus:EnableDiscussion",
+      "section": "Orkeon:Consensus",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether discussion rounds are enabled when consensus is not reached. During discussion, agents receive the context of other agents' results."
+    },
+    {
+      "path": "Orkeon:Consensus:FallbackStrategy",
+      "section": "Orkeon:Consensus",
+      "type": "enum",
+      "default": "AcceptBestScore",
+      "values": [
+        "AcceptBestScore",
+        "Fail",
+        "ManagerDecision"
+      ],
+      "description": "The fallback strategy when consensus cannot be reached."
+    },
+    {
+      "path": "Orkeon:Consensus:MaxVotingRounds",
+      "section": "Orkeon:Consensus",
+      "type": "integer",
+      "default": 3,
+      "description": "The maximum number of voting rounds before applying fallback. A round runs every agent on the task, then collects one ballot per agent."
+    },
+    {
+      "path": "Orkeon:Consensus:RoleWeights:<name>",
+      "section": "Orkeon:Consensus",
+      "type": "number",
+      "description": "Role-based weights for weighted consensus voting. Key is the agent role, value is the weight multiplier."
+    },
+    {
+      "path": "Orkeon:Consensus:VotingOptions:AllowAbstention",
+      "section": "Orkeon:Consensus",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether abstention is allowed. When true (the default), an abstention only counts toward the quorum. When false, an abstention counts as a vote against every choice: it stays in the denominator of each share, and it breaks unanimity. A Borda count, which has no share threshold, then reaches no consensus while anyone abstains."
+    },
+    {
+      "path": "Orkeon:Consensus:VotingOptions:ConsensusThreshold",
+      "section": "Orkeon:Consensus",
+      "type": "number",
+      "default": 66.7,
+      "description": "The consensus threshold percentage. Used by SuperMajority and WeightedConsensus types."
+    },
+    {
+      "path": "Orkeon:Consensus:VotingOptions:ConsensusType",
+      "section": "Orkeon:Consensus",
+      "type": "enum",
+      "default": "Majority",
+      "values": [
+        "Majority",
+        "SuperMajority",
+        "Unanimity",
+        "WeightedConsensus",
+        "BordaCount"
+      ],
+      "description": "The consensus type to use."
+    },
+    {
+      "path": "Orkeon:Consensus:VotingOptions:QuorumPercent",
+      "section": "Orkeon:Consensus",
+      "type": "number",
+      "default": 50,
+      "description": "The quorum, in percent: the minimum share of expressed ballots among all ballots. Below it, no consensus is reached, whatever the expressed ballots say."
+    },
+    {
+      "path": "Orkeon:Consensus:VotingOptions:UseWeightedVotes",
+      "section": "Orkeon:Consensus",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to use weighted votes."
+    },
+    {
+      "path": "Orkeon:CrewFactory:StrictTools",
+      "section": "Orkeon:CrewFactory",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether a tool a crew names and the registry does not hold fails the crew's load, listing the unknown names and the available ones. `false` drops the tool with a warning instead — the library's lenient behaviour, which the shipped hosts turn off."
+    },
+    {
+      "path": "Orkeon:ExecutionState:Persistence:DeleteFromStoreOnArchive",
+      "section": "Orkeon:ExecutionState:Persistence",
+      "type": "boolean",
+      "default": false,
+      "description": "When `true`, archiving an execution (completion or expiry cleanup) also deletes its persisted entry from the state store. Default: `false` — the final snapshot is kept in the store so that status queries keep working after the in-memory entry is evicted."
+    },
+    {
+      "path": "Orkeon:ExecutionState:Persistence:Enabled",
+      "section": "Orkeon:ExecutionState:Persistence",
+      "type": "boolean",
+      "default": false,
+      "description": "Enables durable persistence of execution states. Default: `false` (in-memory only, identical to the historical behavior)."
+    },
+    {
+      "path": "Orkeon:Cli:ConsoleStreaming:Enabled",
+      "section": "Orkeon:Cli:ConsoleStreaming",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:ContinueOnConflict",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "boolean",
+      "default": true,
+      "description": "When false, two scripts declaring the same command name is a fatal startup error."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:Directories",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "list of string",
+      "default": [],
+      "description": "Virtual paths scanned for `*.cmd.ts`. First directory wins on conflict."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:Enabled",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "boolean",
+      "default": true,
+      "description": "Master switch. False ⇒ discovery is skipped, registry is empty."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:EsbuildTranspile",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "boolean",
+      "default": true,
+      "description": "When false, `*.cmd.js` only (no TS transpile). Test/debug; production keeps this true."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:FailFastOnInvalidScript",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the first invalid script aborts the loader (use in CI)."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:FallbackCommandName",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "string",
+      "default": "assistant",
+      "description": "Name of the scripted command that handles free text (a REPL line not prefixed with `/`). In the coding-agent surface this is the interactive assistant wired to the `main-loop` crew. Empty/unknown ⇒ free text yields the unknown-command message instead of being routed."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:Limits:ExecutionTimeout",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "duration",
+      "default": "00:05:00",
+      "description": "Hard timeout for a single command invocation. Default: 5 minutes."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:Limits:MemoryLimitBytes",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "integer",
+      "default": 67108864,
+      "description": "Memory cap in bytes. Default: 64 MB (spec §8.1 CLI profile)."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:Limits:RecursionLimit",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "integer",
+      "default": 100,
+      "description": "Recursion depth cap. Default: 100 (inherited from spec §8.1 — same as global)."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptCommands:MaxScripts",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "integer",
+      "default": 50,
+      "description": "Hard cap on the number of engines kept in cache."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptHost:CrewDirectories",
+      "section": "Orkeon:Cli:ScriptHost",
+      "type": "list of string",
+      "default": [],
+      "description": "Virtual directories under which crews live as `<dir>/<name>/crew.ork.ts`. Resolution tries each directory in order; first match wins."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptHost:CrewFileName",
+      "section": "Orkeon:Cli:ScriptHost",
+      "type": "string",
+      "default": "crew.ork.ts",
+      "description": "The crew entry-file name resolved under each `<dir>/<name>/`."
+    },
+    {
+      "path": "Orkeon:Cli:ScriptHost:RunCrewTimeout",
+      "section": "Orkeon:Cli:ScriptHost",
+      "type": "duration",
+      "default": "00:10:00",
+      "description": "Upper bound on a single synchronous `script-host.runCrew` call. When it expires, the calling script receives a clear `TimeoutException`, the abandoned run is cancelled cooperatively, and the engine/REPL thread is always released. Default: 10 minutes — generous on purpose, since `runCrew` is meant for short crews (long workflows should go through `runCrewAsync`'s ticket cycle). Zero or a negative value disables the bound."
+    },
+    {
+      "path": "Orkeon:Cli:Session:ContextWindowTokens",
+      "section": "Orkeon:Cli:Session",
+      "type": "integer",
+      "description": "The model's context window, in tokens: a number above zero. Unset is `200000`."
+    },
+    {
+      "path": "Orkeon:Scripting:Limits:ExecutionTimeout",
+      "section": "Orkeon:Scripting:Limits",
+      "type": "duration",
+      "default": "00:00:30",
+      "description": "Maximum wall-clock time the engine is allowed to run, in total — the time spent waiting for a tool or a model counts. Default: 30 seconds, a ceiling for scripts of unknown provenance; a trusted long run raises it."
+    },
+    {
+      "path": "Orkeon:Scripting:Limits:MemoryLimitBytes",
+      "section": "Orkeon:Scripting:Limits",
+      "type": "integer",
+      "default": 104857600,
+      "description": "Maximum cumulative memory the engine is allowed to allocate, in bytes — counted since the engine was created, not at its peak. Default: 100 MB, a ceiling for scripts of unknown provenance; a trusted run that needs more raises it."
+    },
+    {
+      "path": "Orkeon:Scripting:Limits:RecursionLimit",
+      "section": "Orkeon:Scripting:Limits",
+      "type": "integer",
+      "default": 64,
+      "description": "Maximum recursion depth before the engine throws. Default: 64: it catches runaway recursion well before the .NET stack overflows and leaves room for legitimately nested script logic. A trusted script may raise it."
+    },
+    {
+      "path": "Orkeon:Scripting:Toolchain:EsbuildPath",
+      "section": "Orkeon:Scripting:Toolchain",
+      "type": "string",
+      "description": "Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to a PATH lookup."
+    },
+    {
+      "path": "Orkeon:Scripting:Toolchain:EsbuildTimeout",
+      "section": "Orkeon:Scripting:Toolchain",
+      "type": "duration",
+      "default": "00:00:30",
+      "description": "Maximum time esbuild has to transpile a single source. Default: 30 s."
+    },
+    {
+      "path": "A2A:AgentDescription",
+      "section": "A2A",
+      "type": "string",
+      "default": "Orkeon A2A Agent",
+      "description": "The agent description advertised in the agent card."
+    },
+    {
+      "path": "A2A:AgentName",
+      "section": "A2A",
+      "type": "string",
+      "default": "Orkeon",
+      "description": "The agent name advertised in the agent card."
+    },
+    {
+      "path": "A2A:AgentVersion",
+      "section": "A2A",
+      "type": "string",
+      "default": "1.0.0",
+      "description": "The agent version advertised in the agent card."
+    },
+    {
+      "path": "A2A:ContactUrl",
+      "section": "A2A",
+      "type": "uri",
+      "description": "Contact URL for the provider field in the agent card."
+    },
+    {
+      "path": "A2A:EnableServer",
+      "section": "A2A",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to run an A2A server exposing local agents for remote task submission: registers `IA2AServer` and a hosted service that starts it with the host."
+    },
+    {
+      "path": "A2A:Host",
+      "section": "A2A",
+      "type": "string",
+      "default": "http://localhost",
+      "description": "The host/prefix for the A2A HTTP server (e.g., \"http://localhost\")."
+    },
+    {
+      "path": "A2A:Organization",
+      "section": "A2A",
+      "type": "string",
+      "description": "Organization name for the provider field in the agent card."
+    },
+    {
+      "path": "A2A:Port",
+      "section": "A2A",
+      "type": "integer",
+      "default": 5002,
+      "description": "The port for the A2A HTTP server to listen on."
+    },
+    {
+      "path": "A2A:TimeoutSeconds",
+      "section": "A2A",
+      "type": "integer",
+      "default": 30,
+      "description": "Timeout in seconds for outbound HTTP requests to remote agents."
+    },
+    {
+      "path": "A2A:Security:AllowedAuthSchemes",
+      "section": "A2A:Security",
+      "type": "list of string",
+      "default": [],
+      "description": "Authentication schemes the server accepts on its task endpoints: `Bearer` and/or `ApiKey`. Empty means no authentication is required. Each declared scheme is validated, not merely matched (`A2ACredentialValidator`): a bearer token by a registered `IAuthenticationProvider` (`A2A:Security:AzureAD` / `A2A:Security:Oidc`), an API key against `ApiKeySecretNames`. The server refuses to start when a declared scheme has no validator."
+    },
+    {
+      "path": "A2A:Security:ApiKeySecretNames",
+      "section": "A2A:Security",
+      "type": "list of string",
+      "default": [],
+      "description": "Names of the secrets holding the API keys the `ApiKey` scheme accepts (`Authorization: ApiKey <key>`). Each name is read through the `ISecretProvider` on every request — `ORKEON_<NAME>` with the default chain — so keys never sit in the configuration file and rotate without a restart."
+    },
+    {
+      "path": "A2A:Security:ClientAuthScheme",
+      "section": "A2A:Security",
+      "type": "string",
+      "description": "Client side: the scheme of the credential the client sends on every task call (`Authorization: <scheme> <credential>`) — `Bearer` or `ApiKey`, matching what the peer declares in its `AllowedAuthSchemes`. Empty means the client sends no `Authorization` header. Agent-card discovery never carries it."
+    },
+    {
+      "path": "A2A:Security:ClientCertificatePassword",
+      "section": "A2A:Security",
+      "type": "string",
+      "secret": true,
+      "description": "Password for the client certificate private key."
+    },
+    {
+      "path": "A2A:Security:ClientCertificatePath",
+      "section": "A2A:Security",
+      "type": "string",
+      "description": "Path to the client certificate file for mTLS authentication."
+    },
+    {
+      "path": "A2A:Security:ClientCredentialSecretName",
+      "section": "A2A:Security",
+      "type": "string",
+      "description": "Client side: name of the secret holding the credential sent with `ClientAuthScheme`, read through the `ISecretProvider` on every call (`ORKEON_<NAME>` with the default chain) so it never sits in the configuration file and rotates without a restart. A call fails before any request when it cannot be read."
+    },
+    {
+      "path": "A2A:Security:RequireMutualTls",
+      "section": "A2A:Security",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether mTLS is required for server-to-server communication. When enabled, the server requires a client certificate that chains to one of the `TrustedCertificateAuthorities` or matches one of the `TrustedClientCertificateThumbprints`; starting the server without any configured trust anchor throws (fail-closed) — mere presence and date validity of a certificate is not authentication."
+    },
+    {
+      "path": "A2A:Security:TrustedCertificateAuthorities",
+      "section": "A2A:Security",
+      "type": "list of string",
+      "default": [],
+      "description": "List of trusted certificate authority certificate paths. Client side: when set, only servers presenting certificates signed by these CAs are trusted (private-CA pinning). Server side: when `RequireMutualTls` is enabled, incoming client certificates must chain to one of these CAs (unless pinned via `TrustedClientCertificateThumbprints`)."
+    },
+    {
+      "path": "A2A:Security:TrustedClientCertificateThumbprints",
+      "section": "A2A:Security",
+      "type": "list of string",
+      "default": [],
+      "description": "Thumbprints (hex, case-insensitive) of client certificates accepted by the server when `RequireMutualTls` is enabled — exact pinning, checked before the `TrustedCertificateAuthorities` chain validation. Pinned certificates are still rejected outside their validity window."
+    },
+    {
+      "path": "A2A:Security:AzureAD:Authority",
+      "section": "A2A:Security:AzureAD",
+      "type": "string",
+      "default": "",
+      "description": "Authority URL (e.g. https://login.microsoftonline.com/{tenantId}/v2.0)."
+    },
+    {
+      "path": "A2A:Security:AzureAD:ClientId",
+      "section": "A2A:Security:AzureAD",
+      "type": "string",
+      "default": "",
+      "description": "Application (client) ID registered in Azure AD."
+    },
+    {
+      "path": "A2A:Security:AzureAD:TenantId",
+      "section": "A2A:Security:AzureAD",
+      "type": "string",
+      "default": "",
+      "description": "Azure AD tenant ID."
+    },
+    {
+      "path": "A2A:Security:AzureAD:ValidAudiences",
+      "section": "A2A:Security:AzureAD",
+      "type": "list of string",
+      "default": [],
+      "description": "Valid audiences for token validation."
+    },
+    {
+      "path": "A2A:Security:AzureAD:ValidIssuers",
+      "section": "A2A:Security:AzureAD",
+      "type": "list of string",
+      "default": [],
+      "description": "Valid token issuers. Defaults to standard Azure AD issuers for the tenant."
+    },
+    {
+      "path": "A2A:Security:Oidc:Authority",
+      "section": "A2A:Security:Oidc",
+      "type": "string",
+      "default": "",
+      "description": "OIDC authority URL (e.g. https://login.example.com/realms/myapp)."
+    },
+    {
+      "path": "A2A:Security:Oidc:ClientId",
+      "section": "A2A:Security:Oidc",
+      "type": "string",
+      "default": "",
+      "description": "Client ID registered with the OIDC provider."
+    },
+    {
+      "path": "A2A:Security:Oidc:RequireHttpsMetadata",
+      "section": "A2A:Security:Oidc",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to require HTTPS for the metadata endpoint. Defaults to true."
+    },
+    {
+      "path": "A2A:Security:Oidc:ValidAudiences",
+      "section": "A2A:Security:Oidc",
+      "type": "list of string",
+      "default": [],
+      "description": "Valid audiences for token validation."
+    },
+    {
+      "path": "Logging:Console",
+      "section": "Logging",
+      "type": "any",
+      "description": "The console logger's own section: its `LogLevel` by category, `FormatterName`, `FormatterOptions` and the other keys of .NET's console logger."
+    },
+    {
+      "path": "Logging:LogLevel:<name>",
+      "section": "Logging",
+      "type": "enum",
+      "values": [
+        "Trace",
+        "Debug",
+        "Information",
+        "Warning",
+        "Error",
+        "Critical",
+        "None"
+      ],
+      "description": "The lowest level logged, by category: `Default` for every category without a line of its own, a namespace such as `Orkeon.Infrastructure` for what it logs. A level that is none refuses the start, naming the key."
+    },
+    {
+      "path": "Orkeon:Monitoring:MaxTraceHistory",
+      "section": "Orkeon:Monitoring",
+      "type": "integer",
+      "default": 1000,
+      "description": "Maximum number of completed traces kept in the circular buffer. Older traces are evicted when this limit is reached."
+    },
+    {
+      "path": "Orkeon:Monitoring:MetricsRetentionMinutes",
+      "section": "Orkeon:Monitoring",
+      "type": "integer",
+      "default": 60,
+      "description": "Number of minutes to retain detailed metrics data."
+    },
+    {
+      "path": "Orkeon:Monitoring:TraceSourcePrefix",
+      "section": "Orkeon:Monitoring",
+      "type": "string",
+      "default": "Orkeon",
+      "description": "Prefix of the activity-source names whose traces are captured. Defaults to every Orkeon source; narrow it to watch one subsystem — or, in a test, to a name nothing else emits, since the listener is process-wide and would otherwise pick up unrelated activity."
+    },
+    {
+      "path": "Telemetry:Enabled",
+      "section": "Telemetry",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether telemetry is enabled. Default is true."
+    },
+    {
+      "path": "Telemetry:MaxMemoryMB",
+      "section": "Telemetry",
+      "type": "integer",
+      "default": 2048,
+      "description": "The maximum memory threshold in MB for health checks. Default is 2048 MB."
+    },
+    {
+      "path": "Telemetry:OtlpEndpoint",
+      "section": "Telemetry",
+      "type": "string",
+      "description": "The OTLP (OpenTelemetry Protocol) exporter endpoint. When set, traces and metrics are exported to this endpoint. Example: \"http://localhost:4317\" for gRPC or \"http://localhost:4318\" for HTTP."
+    }
+  ]
+}

@@ -4,6 +4,7 @@ using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Profiles;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Studio.Core.Presets;
 
@@ -133,7 +134,7 @@ public static class LlmPresets
     public const string None = LlmProviderKeys.None;
 
     /// <summary>The environment variable the runtime reads natively (<c>AddEnvironmentVariables("ORKEON_")</c>).</summary>
-    public const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
+    public const string DefaultApiKeyEnv = EnvironmentVariableNames.LlmApiKeySetting;
 
     /// <summary>
     /// The variable a « Compatible OpenAI » model setting keeps its key in (STUDIO-49), shared by
@@ -142,7 +143,7 @@ public static class LlmPresets
     /// in the user scope, the card's key became the default key of every run of the user, whatever
     /// its setting or endpoint. A setting created before keeps its variable; its card says so.
     /// </summary>
-    public const string CustomApiKeyEnv = "ORKEON_CUSTOM_LLM_API_KEY";
+    public const string CustomApiKeyEnv = EnvironmentVariableNames.CustomLlmApiKey;
 
     /// <summary>
     /// The timeout the profile editor pre-fills for a provider whose default model reasons

@@ -192,7 +192,7 @@ public static partial class LlmSettings
             TimeoutSeconds = ReadInt(section, "TimeoutSeconds", strict),
             Thinking = ReadThinking(section),
             // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
-            GrammarEnabled = ReadBool(section, ConfigurationKeys.LlmGrammar) ?? false,
+            GrammarEnabled = ReadBool(section, ConfigurationKeys.LlmGrammar) ?? LlmProfileShape.DefaultGrammar,
         };
 
         return ReadInt(section, "MaxRetries", strict) is { } maxRetries

@@ -16,6 +16,7 @@ public sealed class DoctorCommandTests : IDisposable
     private static readonly string[] ExpectedChecks =
     [
         "dotnet-runtime",
+        "install-channel",
         "appsettings",
         "llm-config",
         "llm-profiles",
@@ -84,6 +85,85 @@ public sealed class DoctorCommandTests : IDisposable
 
         Assert.Equal("ok", reranker.GetProperty("status").GetString());
         Assert.Contains("MB", reranker.GetProperty("detail").GetString()!, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The check names the channel the marker gives, the version that runs and the command
+    /// that updates that channel — and never fails a run: it informs.
+    /// </summary>
+    [Fact]
+    public async Task TheInstallChannelCheck_NamesTheChannelAndHowToUpdateIt()
+    {
+        using var scratch = new ScriptScratch();
+        var executable = Path.Combine(scratch.Root, "install", "libexec", "orkeon");
+        Directory.CreateDirectory(executable);
+        scratch.WriteFile(Path.Combine("install", Orkeon.Constants.FileSystem.InstallChannels.MarkerFile), "zip\n");
+        using var console = new TestConsole();
+
+        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        {
+            Json = true,
+            WorkingDirectoryOverride = scratch.Root,
+            InstallDirectoryOverride = executable,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var channel = doc.RootElement.EnumerateArray()
+            .Single(e => e.GetProperty("check").GetString() == "install-channel");
+        var detail = channel.GetProperty("detail").GetString()!;
+
+        Assert.Equal("ok", channel.GetProperty("status").GetString());
+        Assert.StartsWith("zip — ", detail, StringComparison.Ordinal);
+        Assert.Contains("orkeon " + CliUsage.Version, detail, StringComparison.Ordinal);
+        Assert.Contains("install.cmd", detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>An installation older than the marker answers <c>unknown</c>, without an error.</summary>
+    [Fact]
+    public async Task TheInstallChannelCheck_WithoutAMarker_IsUnknownAndStillOk()
+    {
+        using var scratch = new ScriptScratch();
+        using var console = new TestConsole();
+
+        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        {
+            Json = true,
+            WorkingDirectoryOverride = scratch.Root,
+            InstallDirectoryOverride = scratch.OutDir,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var channel = doc.RootElement.EnumerateArray()
+            .Single(e => e.GetProperty("check").GetString() == "install-channel");
+
+        Assert.Equal("ok", channel.GetProperty("status").GetString());
+        Assert.StartsWith("unknown — ", channel.GetProperty("detail").GetString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>A marker that names nothing is worth a warning, never a failed run.</summary>
+    [Fact]
+    public async Task TheInstallChannelCheck_OnAMarkerThatNamesNothing_Warns_AndExits0()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile(Path.Combine("out", Orkeon.Constants.FileSystem.InstallChannels.MarkerFile), "snap\n");
+        using var console = new TestConsole();
+
+        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        {
+            Json = true,
+            WorkingDirectoryOverride = scratch.Root,
+            InstallDirectoryOverride = scratch.OutDir,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var channel = doc.RootElement.EnumerateArray()
+            .Single(e => e.GetProperty("check").GetString() == "install-channel");
+
+        Assert.Equal("warn", channel.GetProperty("status").GetString());
+        Assert.Contains("'snap'", channel.GetProperty("detail").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -233,6 +313,55 @@ public sealed class DoctorCommandTests : IDisposable
         var line = Assert.Single(lines, l => l.Check == "runner-settings");
         Assert.Equal("ok", line.Status);
         Assert.Contains("orkeon run", line.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A section Orkeon knows and no shipped binary reads is not a refusal — a run starts on that
+    /// file — and it is not nothing either: one <c>warn</c> line per section, the sentence the run
+    /// writes on stderr.
+    /// </summary>
+    [Fact]
+    public async Task RunnerSettings_WarnsOfEachSectionNoShippedBinaryReads_AndExits0()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            {
+              "RaggableTree": { "Enabled": false },
+              "ToolRateLimiting": { "GlobalToolRequestsPerMinute": 10 },
+              "Orkeon": { "Dlp": { "Enabled": true }, "Host": { "Crews": [] } }
+            }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitOk, exit);
+        var runner = lines.Where(l => l.Check == "runner-settings").ToList();
+        Assert.Equal(2, runner.Count);
+        Assert.All(runner, l => Assert.Equal("warn", l.Status));
+        Assert.Contains(runner, l => l.Detail.StartsWith("ToolRateLimiting is read by no component of this host", StringComparison.Ordinal)
+                                     && l.Detail.Contains("AddOrkeonToolRateLimiting()", StringComparison.Ordinal));
+        Assert.Contains(runner, l => l.Detail.StartsWith("Orkeon:Dlp is read by no component of this host", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunnerSettings_ReportsARefusalAndANotice_OnTheSameFile()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            {
+              "RaggableTree": { "Enabled": false },
+              "TokenBudget": { "MaxTokensPerCrew": 1000 },
+              "Orkeon": { "Guardian": { "Enabled": "oui" } }
+            }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var runner = lines.Where(l => l.Check == "runner-settings").ToList();
+        Assert.Equal(2, runner.Count);
+        Assert.Contains(runner, l => l.Status == "fail" && l.Detail.Contains("Orkeon:Guardian:Enabled", StringComparison.Ordinal));
+        Assert.Contains(runner, l => l.Status == "warn" && l.Detail.StartsWith("TokenBudget is read by no component of this host", StringComparison.Ordinal));
     }
 
     [Fact]

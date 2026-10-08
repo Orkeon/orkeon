@@ -36,19 +36,30 @@ public static class PermissionGateExtensions
         // with every declared section's (GAP-40), whether the gate is on or not.
         services.DeclareSettingsShape(SectionName, typeof(PermissionGateSettingsShape));
         var section = configuration.GetSection(SectionName);
-        if (!section.GetValue("Enabled", false))
+        var defaults = new PermissionGateSettingsShape();
+        if (!section.GetValue("Enabled", defaults.Enabled))
             return services;
 
-        var interactive = section.GetValue("Interactive", false);
+        var interactive = section.GetValue("Interactive", defaults.Interactive);
         services.TryAddSingleton<IPermissionGate>(_ => new ModePermissionGate(interactive));
         return services;
     }
 }
 
-/// <summary>The keys of <c>Orkeon:Security:PermissionGate</c> (GAP-40). Never instantiated: its properties are the keys.</summary>
-internal abstract class PermissionGateSettingsShape
+/// <summary>
+/// The permission gate of tool calls: off, every call runs. On, a tool that only reads passes and
+/// the others need an approval, by permission mode.
+/// </summary>
+/// <remarks>Its properties are the keys, and their values on a new instance the defaults the registration applies: nothing binds it.</remarks>
+internal sealed class PermissionGateSettingsShape
 {
+    /// <summary>Whether the gate is registered. Left <c>false</c>, no tool call is gated.</summary>
     public bool Enabled { get; set; }
 
+    /// <summary>
+    /// Whether an approval channel exists to ask an operator. No shipped host has one: left
+    /// <c>false</c>, a call that needs an approval is refused, and the model reads the reason as the
+    /// tool's result.
+    /// </summary>
     public bool Interactive { get; set; }
 }

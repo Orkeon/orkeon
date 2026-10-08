@@ -144,7 +144,9 @@ autres modes ordonnent leurs tâches eux-mêmes, et le chargement nomme chaque t
 d'ignorer le drapeau (voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
 Un `maxRpm` de 0 ou moins — sur la crew ou sur un agent — et un `maxIter` de 0 ou moins font échouer le
 chargement aussi, en nommant la crew ou l'agent : omettre `maxRpm:`, c'est n'avoir aucune limite, omettre
-`maxIter:`, c'est le défaut (20). Ils étaient remplacés, par 10 et 15, sans un mot.
+`maxIter:`, c'est le défaut (20). Ils étaient remplacés, par 10 et 15, sans un mot. Les plafonds propres
+de l'hôte sur les appels au modèle — qui bornent le `maxRpm` d'un agent, le plus strict l'emportant — sont
+les réglages de [`RateLimiting`](../reference/configuration.md#ratelimiting).
 
 Un message nomme un agent ou une tâche par sa clé — `Agent 'researcher' must have a goal.` —, une
 configuration bâtie en code par son identifiant.

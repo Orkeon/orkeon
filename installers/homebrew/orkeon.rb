@@ -37,6 +37,9 @@ class Orkeon < Formula
     # symlinks to locate its root, which is not how a Cellar layout works, so
     # it is replaced by the wrapper written below.
     libexec.install "libexec/orkeon", "libexec/esbuild-bin"
+    # The channel `orkeon doctor` names: the tarball's own marker says "tarball" and is
+    # not installed, this formula writes its own.
+    (libexec/"INSTALL-CHANNEL").write "homebrew\n"
     doc.install "README.md"
     pkgshare.install "appsettings.sample.json"
 

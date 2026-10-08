@@ -3,6 +3,10 @@
 ###############################################################################
 * text=auto eol=lf
 *.sh text eol=lf
+# A batch file is read by cmd.exe, which wants CRLF (a label after a bare LF can
+# be missed): LF in the repository, CRLF in every working tree, Linux included,
+# since the Windows archives are packed there. A *.cmd.tmpl is not concerned.
+*.cmd text eol=crlf
 # Scripts baked into the orkeon-runners image (some have no extension)
 docker/* text eol=lf
 ###############################################################################

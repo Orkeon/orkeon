@@ -20,6 +20,8 @@
                         Same tree package-installers.ps1 -AppSet cli zips up;
                         harvested wholesale via <Files>, no separate file list
                         to keep in sync.
+    ChannelMarker      the INSTALL-CHANNEL file of this package ("msi"), installed
+                        in place of the staging tree's, which says "zip".
 
   Built and validated against WiX v5.0.2 specifically (schema namespace stays
   "v4" regardless — that is not a typo, the wxs schema itself simply hasn't
@@ -143,13 +145,20 @@
       itself, see install.ps1's header). Shipping it inside the MSI would let
       a user run the ZIP channel's uninstall logic against an MSI-managed
       install, which is exactly what the "one channel at a time" boundary
-      forbids.
+      forbids. install.cmd, the launcher that starts it on a double-click, is
+      excluded with it and for the same reason.
     -->
     <ComponentGroup Id="PayloadComponents" Directory="INSTALLFOLDER">
       <!-- WIX0004: Exclude is a child element in WiX v5, not an attribute. -->
       <Files Include="$(var.PublishDir)\**">
         <Exclude Files="$(var.PublishDir)\install.ps1" />
+        <Exclude Files="$(var.PublishDir)\install.cmd" />
+        <!-- The staging tree is the zip's: its marker says "zip". -->
+        <Exclude Files="$(var.PublishDir)\INSTALL-CHANNEL" />
       </Files>
+      <!-- INSTALL-CHANNEL as build-msi.ps1 wrote it for this package ("msi"): the
+           channel `orkeon doctor` names for an install this MSI laid down. -->
+      <Files Include="$(var.ChannelMarker)" />
     </ComponentGroup>
 
     <!--

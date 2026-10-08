@@ -43,6 +43,13 @@
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" />
   </ItemGroup>
 
+  <!-- The settings catalogue (SettingsCatalog.Complete): produced by the tests that hold each
+       file to what its composition declares, embedded so the catalogue answers without a
+       container, a settings file or the repository. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Settings\Catalog\*.json" LogicalName="%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="CommandLineParser" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />

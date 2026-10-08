@@ -157,7 +157,7 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 | **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu (amd64, arm64) : les démarrages rapides ci-dessous. macOS : l'archive CLI ci-dessous (`osx-arm64`, `osx-x64`). Pour qui veut aussi le REPL ou le host de service, c'est l'archive multi-applications `orkeon-<version>-<rid>.tar.gz` des [releases](https://github.com/Orkeon/orkeon/releases), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
 | **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon --prerelease` — le framework complet en un seul paquet, depuis [nuget.org](https://www.nuget.org/packages/Orkeon) (le flux public : aucune source à ajouter, aucun token). Ajoutez au besoin [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (les familles d'outils intégrés) et les opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — ce dernier épingle un amont en préversion, `SmartComponents.LocalEmbeddings`, et continuera après la 1.0 : voir les [limitations](docs/fr/reference/limitations.md) —, `Orkeon.Interop.AgentFramework`, `Orkeon.Hosting.Aspire`) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md). Le tool CLI `orkeon` et l'image conteneur ci-dessus sont inchangés | [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
 | **Vérifier ce que vous téléchargez** | Chaque paquet et installeur porte une attestation de provenance de build signée par GitHub et une ligne `SHA256SUMS` : `gh attestation verify <fichier> --repo Orkeon/orkeon` — aucune confiance en cette page n'est requise | [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md) |
-| **Contribuer au framework** | `git clone` (**sans** `--recursive`) + `dotnet build Orkeon.sln` | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
+| **Contribuer au framework** | `git clone` (**sans** `--recursive`) + `dotnet build Orkeon.sln`. Pour installer sur votre `PATH` ce que vous avez compilé : `./scripts/install-from-source.sh` (`.\scripts\install-from-source.ps1` sous Windows) | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
 
 > **Clonez sans `--recursive`.** Ce dépôt déclare des **sous-modules privés de
 > mainteneurs** : ils ne sont pas disponibles dans un clone
@@ -165,7 +165,7 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 > un `git submodule update` en échec sur ces chemins est attendu et sans
 > conséquence — voir [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
 
-**Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis :
+**Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis. :
 
 ```powershell
 # Vérifiez d'abord le téléchargement : chaque release publie un asset SHA256SUMS (SHA256SUMS.msi pour le .msi)
@@ -173,10 +173,12 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 Select-String -Path SHA256SUMS -Pattern 'win-x64\.zip'   # les deux empreintes doivent coïncider
 
 Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cli-<version>-win-x64
-.\install.ps1        # ou : msiexec /i orkeon-<version>-win-x64.msi -- un seul canal, pas les deux
+.\install.cmd        # ou double-cliquez-le. Ou : msiexec /i orkeon-<version>-win-x64.msi -- un seul canal, pas les deux
 orkeon init          # dans un NOUVEAU terminal : choisissez le fournisseur LLM et le modèle
 orkeon run crew.yaml
 ```
+
+> **Rien à préparer.** `install.cmd` lance `install.ps1` sur le PowerShell livré avec Windows, sous une politique d'exécution qui ne vaut que pour cette commande : pas de PowerShell 7 à installer, pas de `Set-ExecutionPolicy`, aucun réglage changé — chaque release installe l'archive sous Windows PowerShell 5.1 et sous PowerShell 7. Windows peut demander de confirmer un fichier téléchargé par un navigateur ; `Unblock-File .\orkeon-cli-<version>-win-x64.zip` avant d'extraire évite la question. Le relancer par-dessus une installation la remplace — fermez Orkeon Studio d'abord, l'installeur refuse tant qu'il est ouvert. Une politique imposée par votre organisation l'emporte sur le lanceur : là, seul un script signé tourne. Le `.msi` n'est pas signé : SmartScreen affiche *« Windows a protégé votre ordinateur »* — **Informations complémentaires** → **Exécuter quand même**, une fois le fichier vérifié. Détails : [Avant de commencer](docs/fr/getting-started/three-ways-to-run-orkeon.md#avant-de-commencer).
 
 **Debian / Ubuntu** (amd64, arm64) — ajoutez une fois la source apt signée d'Orkeon : le bloc à copier, avec la vérification de la clé et les canaux `stable` / `rc` / `dev`, est dans [Installer avec apt](docs/fr/guides/install-with-apt.md). Orkeon est ensuite un paquet comme un autre — self-contained lui aussi, aucun paquet `dotnet-runtime` tiré :
 
@@ -251,7 +253,7 @@ Chaque nombre ci-dessous est recompté depuis l'arborescence à chaque run CI �
 | **Sélection d'agents configurable** | Une tâche qui ne nomme aucun agent va au premier disponible (`FirstFit`, le défaut), à la meilleure correspondance lexicale de compétences (`Skill`) ou à l'agent le plus proche par similarité d'embeddings (`Embedding`, qui exige un vrai fournisseur d'embeddings) — `OrkeonApplicationOptions.AgentSelectionStrategy` |
 | **Checkpointing & reprise** | État d'exécution persisté dans des state stores enfichables (InMemory, fichier JSON, SQLite, PostgreSQL) ; time-travel via `CheckpointManager` (fork, replay, diff) et `ResumeEngine` pour reprendre les exécutions interrompues |
 | **Communication A2A** | Protocole Agent-to-Agent avec découverte, `A2AClient`/`A2AServer`, un repository d'agents scopé au-dessus d'un store d'enregistrement partagé, et application optionnelle de mTLS / identifiants (certificat client + `RequireMutualTls` côté serveur ; `AllowedAuthSchemes` avec jetons `Bearer` validés et secrets `ApiKey`) |
-| **Sous-systèmes opt-in** | A2A, monitoring, rate-limiting des outils, benchmarking, multimodal, hooks de kickoff et d'autres — aucun n'est enregistré par défaut, chacun s'active via son extension dédiée `AddOrkeonXxx()` — voir la [référence des opt-in](docs/fr/reference/opt-in-subsystems.md) |
+| **Sous-systèmes opt-in** | A2A, monitoring, rate-limiting des outils ([`ToolRateLimiting`](docs/fr/reference/configuration.md#toolratelimiting) — les limites sur les appels au modèle, [`RateLimiting`](docs/fr/reference/configuration.md#ratelimiting), s'appliquent dans tout hôte), benchmarking, multimodal, hooks de kickoff et d'autres — aucun n'est enregistré par défaut, chacun s'active via son extension dédiée `AddOrkeonXxx()` — voir la [référence des opt-in](docs/fr/reference/opt-in-subsystems.md) |
 
 ---
 
@@ -348,6 +350,8 @@ dotnet build Orkeon.sln -p:SkipScriptingNpmInstall=true
 ```
 
 Si npm est indisponible, le build réussit quand même ; esbuild est alors résolu depuis le `PATH` à l'exécution.
+
+Pour installer l'`orkeon` que vous avez compilé — sur votre `PATH`, à la version de votre checkout, comme l'installe une archive de release — lancez `./scripts/install-from-source.sh` (`.\scripts\install-from-source.ps1` sous Windows, depuis PowerShell 7). Il nomme chaque prérequis manquant avant de compiler quoi que ce soit : [Installer ce que vous venez de cloner](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-ce-que-vous-venez-de-cloner).
 
 ---
 

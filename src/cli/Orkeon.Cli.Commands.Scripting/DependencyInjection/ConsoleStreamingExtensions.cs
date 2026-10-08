@@ -35,7 +35,7 @@ public static class ConsoleStreamingExtensions
         // host starts (GAP-40), whether streaming is on or not.
         services.DeclareSettingsShape(SectionName, typeof(ConsoleStreamingSettingsShape));
         var section = configuration.GetSection(SectionName);
-        if (!section.GetValue("Enabled", false))
+        if (!section.GetValue("Enabled", new ConsoleStreamingSettingsShape().Enabled))
             return services;
 
         services.TryAddSingleton<ILlmDeltaSink>(sp =>
@@ -44,8 +44,10 @@ public static class ConsoleStreamingExtensions
     }
 }
 
-/// <summary>The keys of <c>Orkeon:Cli:ConsoleStreaming</c> (GAP-40). Never instantiated: its properties are the keys.</summary>
-internal abstract class ConsoleStreamingSettingsShape
+/// <summary>Whether the interactive console prints a model's answer as it arrives.</summary>
+/// <remarks>Its property is the key, and its value on a new instance the default the registration applies: nothing binds it.</remarks>
+internal sealed class ConsoleStreamingSettingsShape
 {
+    /// <summary>Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end.</summary>
     public bool Enabled { get; set; }
 }

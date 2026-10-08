@@ -7,6 +7,7 @@
 #   scripts/package-installers.sh [--version X.Y.Z[-suffix]] [--rids "linux-x64 ..."]
 #                                 [--out artifacts/installers] [-c Release]
 #                                 [--app-set full|cli] [--keep-stage all|none|"RIDS"]
+#                                 [--no-archive]
 #
 # --app-set cli ships the `orkeon` CLI plus the Orkeon Studio apps for the
 # platform (win-x64: `orkeon-studio`; linux-*: `orkeon-studio-config` +
@@ -22,8 +23,15 @@
 # caller states which trees still have a consumer. The full set alone leaves
 # ~2.6 GB of them behind, which the release runner does not have to spare.
 #
-# Version resolution: --version > git describe of the newest v* tag (v-stripped; the
-# apt-dev tag of the apt dev builds is no version) > src/Directory.Build.props.
+# --no-archive prepares the staging trees and stops there: no tar.gz, no zip, no
+# SHA256SUMS. The tree is then the only thing produced, so every one is kept,
+# whatever --keep-stage says. It is what scripts/install-from-source.sh passes --
+# it installs the tree and has no use for an archive of it. CI never passes it.
+#
+# Version resolution: --version, else scripts/resolve-version.sh — the tag's version when
+# HEAD is the commit a v* tag points to (the apt-dev tag of the apt dev builds is no
+# version), <props version>.local.<commit date> on any other commit: a build off a tag
+# never carries the name of the release before it.
 # esbuild is fetched per-RID straight from the npm registry (no npm/node needed);
 # the version comes from tools/scripting-esbuild/package-lock.json.
 #
@@ -40,6 +48,7 @@ OUT="$REPO_ROOT/artifacts/installers"
 CONFIG="Release"
 APP_SET="full"
 KEEP_STAGE="all"
+ARCHIVE=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,8 +57,9 @@ while [[ $# -gt 0 ]]; do
     --out)     OUT="$2"; shift 2 ;;
     --app-set) APP_SET="$2"; shift 2 ;;
     --keep-stage) KEEP_STAGE="$2"; shift 2 ;;
+    --no-archive) ARCHIVE=0; shift ;;
     -c|--configuration) CONFIG="$2"; shift 2 ;;
-    -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -78,7 +88,9 @@ case "$KEEP_STAGE" in
 esac
 
 # True when the staging tree of RID $1 must survive its archive (see --keep-stage).
+# Without an archive (--no-archive) the tree is the product: always kept.
 stage_kept() { # $1=rid
+  [[ "$ARCHIVE" -eq 1 ]] || return 0
   case "$KEEP_STAGE" in
     all)  return 0 ;;
     none) return 1 ;;
@@ -88,13 +100,7 @@ stage_kept() { # $1=rid
 
 # --- Version -----------------------------------------------------------------
 if [[ -z "$VERSION" ]]; then
-  VERSION="$(git -C "$REPO_ROOT" describe --tags --match 'v*' --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-fi
-if [[ -z "$VERSION" ]]; then
-  props="$REPO_ROOT/src/Directory.Build.props"
-  prefix="$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' "$props" | head -1)"
-  suffix="$(sed -n 's/.*<VersionSuffix>\(.*\)<\/VersionSuffix>.*/\1/p' "$props" | head -1)"
-  VERSION="${prefix}${suffix:+-$suffix}"
+  VERSION="$(bash "$REPO_ROOT/scripts/resolve-version.sh" --props "$REPO_ROOT/src/Directory.Build.props")" || VERSION=""
 fi
 [[ -n "$VERSION" ]] || { echo "Could not resolve a version; pass --version." >&2; exit 1; }
 
@@ -295,9 +301,19 @@ for RID in $RIDS; do
   # Plain-text version marker: install.ps1 reads it for the Add/Remove Programs
   # entry, and it lets a user identify an already-extracted tree.
   printf '%s\n' "$VERSION" > "$ROOT/VERSION"
+  # The channel this tree is installed through, one word that `orkeon doctor` and
+  # `orkeon --version --verbose` read back (Orkeon.Constants.FileSystem.InstallChannels).
+  # Said by whoever packs, never guessed from the tree: an MSI or a Debian package built
+  # from this tree writes its own word in place of this one.
+  case "$RID" in
+    win-*) printf 'zip\n' > "$ROOT/INSTALL-CHANNEL" ;;
+    *)     printf 'tarball\n' > "$ROOT/INSTALL-CHANNEL" ;;
+  esac
   # Reference config only. The live one lives in %APPDATA%\Orkeon (or
-  # $XDG_CONFIG_HOME/orkeon); this copy is here to be read, not loaded.
-  cp "$REPO_ROOT/examples/appsettings/appsettings.json" "$ROOT/appsettings.sample.json"
+  # $XDG_CONFIG_HOME/orkeon); this copy is here to be read, not loaded. Every key a
+  # shipped binary reads, at its default: produced from the settings catalogue and
+  # held to it by a test (Orkeon.Hosting, SettingsSampleFile), never edited by hand.
+  cp "$ASSETS/appsettings.sample.json" "$ROOT/appsettings.sample.json"
   # Deployment assets (GATE-05/WINSVC-01): the systemd unit and the SCM
   # registration script ship with the daemon they install. Full set only — the
   # cli set has no orkeon-host, and the MSI harvests the cli tree
@@ -307,6 +323,10 @@ for RID in $RIDS; do
   fi
   if [[ "$RID" == win-* ]]; then
     cp "$ASSETS/install.ps1" "$ROOT/install.ps1"
+    # install.cmd is what a double-click runs: it starts install.ps1 on the PowerShell
+    # Windows ships, under an execution policy that holds for that one command. cmd.exe
+    # wants CRLF, whatever line endings the checkout this archive is packed from has.
+    awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$ASSETS/install.cmd" > "$ROOT/install.cmd"
   else
     cp "$ASSETS/install.sh" "$ROOT/install.sh"
     chmod +x "$ROOT/install.sh"
@@ -325,7 +345,9 @@ for RID in $RIDS; do
   fi
 
   # Archive
-  if [[ "$RID" == win-* ]]; then
+  if [[ "$ARCHIVE" -eq 0 ]]; then
+    echo "    -> $ROOT  (--no-archive: the tree, no archive)"
+  elif [[ "$RID" == win-* ]]; then
     rm -f "$OUT/$PKG.zip"
     make_zip "$STAGE" "$PKG" "$OUT/$PKG.zip"
     echo "    -> $OUT/$PKG.zip"
@@ -343,6 +365,13 @@ for RID in $RIDS; do
     echo "    pruned staging tree $ROOT"
   fi
 done
+
+# No archive was written (--no-archive): SHA256SUMS, which lists archives, is left as it
+# is -- it may describe the archives of an earlier run, and still does.
+if [[ "$ARCHIVE" -eq 0 ]]; then
+  echo "==> Done. Staging trees in $STAGE (no archive, no SHA256SUMS)."
+  exit 0
+fi
 
 # `|| true`: with a single --rids one of the globs matches nothing, and under
 # `set -o pipefail` a failing ls would abort the script after all the work is

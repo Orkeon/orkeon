@@ -25,6 +25,8 @@
 #   4. `orkeon doctor --json` reports no ❌, and the three payload-backed checks
 #      are green, not merely non-failing (that is what makes a missing esbuild /
 #      model / grammar fail the smoke — doctor only warns on those);
+#  4b. `orkeon --version --verbose` names the channel, `deb`: the marker the
+#      package wrote beside the apphost;
 #   5. `orkeon run <offline crew>` exits 0 and prints the WIN-01 warning;
 #   6. `orkeon rag ingest` + `orkeon rag search` retrieve with citations and
 #      scores, fully offline;
@@ -203,6 +205,13 @@ fi
 # --------------------------------------------------------------------------- #
 smoke_step_init
 smoke_step_doctor
+# The package says it is one: its marker sits beside the apphost. A binary handed over
+# with --orkeon was installed by nobody here, and may say anything.
+if [[ "$STUDIO_INSTALLED" == true ]]; then
+  smoke_step_install_channel deb
+else
+  smoke_skip "install-channel" "--orkeon given"
+fi
 smoke_step_run
 smoke_step_rag
 

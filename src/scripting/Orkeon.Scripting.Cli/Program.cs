@@ -24,8 +24,9 @@ internal static class Program
     /// parses its own tail — `orkeon rag ingest` (RAG-03/C3, RAG-04/C1), `orkeon llm probe`
     /// (LLM-08/C1), `orkeon init` (WIN-02), `orkeon doctor` (WIN-03), `orkeon forge`
     /// (FORGE-03), `orkeon usecases search` (STUDIO-38), `orkeon email login` (MAIL-05),
-    /// `orkeon typings` (GAP-13), `orkeon mcp serve` (GAP-24) — so the
-    /// option grammars never collide.
+    /// `orkeon typings` (GAP-13), `orkeon mcp serve` (GAP-24), `orkeon settings` — so the
+    /// option grammars never collide. A verb is looked up before a first word is taken for a crew
+    /// to run: `orkeon settings` stays the verb where a `settings/` folder exists.
     /// </summary>
     private static readonly Dictionary<string, Func<string[], Task<int>>> Verbs =
         new(StringComparer.OrdinalIgnoreCase)
@@ -33,6 +34,7 @@ internal static class Program
             ["run"] = RunAsync,
             ["init"] = InitCommand.DispatchAsync,
             ["doctor"] = DoctorCommand.DispatchAsync,
+            ["settings"] = SettingsCommand.DispatchAsync,
             ["llm"] = LlmCommand.DispatchAsync,
             ["rag"] = RagCommand.DispatchAsync,
             // A lambda rather than a method group: the forge dispatch carries an optional
@@ -75,7 +77,12 @@ internal static class Program
 
         if (CliUsage.IsVersionToken(args[0]))
         {
-            await Console.Out.WriteLineAsync(CliUsage.VersionLine).ConfigureAwait(false);
+            // The bare form keeps its single line: scripts read it. --verbose adds to it.
+            if (args.Skip(1).Any(CliUsage.IsVerboseToken))
+                await Console.Out.WriteAsync(CliUsage.RenderVerboseVersion(InstallChannelReader.Read())).ConfigureAwait(false);
+            else
+                await Console.Out.WriteLineAsync(CliUsage.VersionLine).ConfigureAwait(false);
+
             return ExitOk;
         }
 

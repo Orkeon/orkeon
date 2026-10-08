@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-  Orkeon Studio assertions for the two Windows channels (STUDIO-08, spec §8.4).
+  Orkeon Studio assertions for the two Windows channels (STUDIO-08, spec section 8.4).
 
 .DESCRIPTION
   Dot-sourced, never executed. It is the PowerShell counterpart of
   lib\smoke-common.sh's smoke_step_studio_* helpers, and the single place the ZIP
   channel (run-smoke.ps1) and the MSI channel (the `msi` job in
-  .github\workflows\release.yml) share their Studio checks — the two install to
+  .github\workflows\release.yml) share their Studio checks -- the two install to
   different roots but lay out the same tree underneath, so the assertions must
   not be written twice and allowed to drift.
 
@@ -24,7 +24,7 @@
   console or exits.
 #>
 
-# Invoke-OrkeonStudioWindowsSmoke — asserts the Studio payload of an installed
+# Invoke-OrkeonStudioWindowsSmoke -- asserts the Studio payload of an installed
 # tree and runs the headless start/exit smoke on it.
 #
 #   -InstallRoot              the install directory (the one holding bin\ and libexec\)
@@ -33,7 +33,7 @@
 #   -ExpectStartMenuShortcut  also require the "Orkeon Studio" Start-menu shortcut
 #                             (the MSI channel adds one; the ZIP channel does not)
 #
-# Returns [pscustomobject]@{ Problems = @(...); Notes = @(...) } — an empty
+# Returns [pscustomobject]@{ Problems = @(...); Notes = @(...) } -- an empty
 # Problems array is the pass.
 function Invoke-OrkeonStudioWindowsSmoke {
     [CmdletBinding()]

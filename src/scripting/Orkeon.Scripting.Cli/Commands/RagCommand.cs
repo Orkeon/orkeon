@@ -436,7 +436,7 @@ internal static class RagCommand
             var root = Orkeon.Scripting.Internal.JsExceptionUnwrap.UnwrapToInnermost(ex);
             await Console.Error.WriteLineAsync(
                 $"orkeon rag {verb}: unexpected error [{root.GetType().FullName}]: {root.Message}").ConfigureAwait(false);
-            if (Environment.GetEnvironmentVariable("ORKEON_DEBUG") == "1")
+            if (RunnerEnvironment.DebugDiagnostics)
                 await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
         }

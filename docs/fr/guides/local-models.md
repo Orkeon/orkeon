@@ -195,6 +195,8 @@ par Orkeon épinglent donc le rate limiter :
 "RateLimiting": { "MaxConcurrentRequests": 1 }
 ```
 
+Les cinq clés de la section, avec leurs défauts, sont dans la
+[référence de configuration](../reference/configuration.md#ratelimiting).
 Si vous écrivez votre propre fichier de settings, conservez ce bloc —
 **absent ou à `0`, la concurrence est ILLIMITÉE** (le limiteur ne s'active que
 pour les valeurs `> 0`), et les crews parallèles ou consensuels ouvriront

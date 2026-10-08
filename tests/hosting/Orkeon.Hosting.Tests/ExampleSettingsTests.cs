@@ -10,28 +10,20 @@ namespace Orkeon.Hosting.Tests;
 /// <c>Llm:ApiKeyEnvironmentVariable</c>, which nothing reads, sat in two of them, and the smoke fixture
 /// still wrote <c>Orkeon:Rag:ConnectionString</c> — its database stayed in memory, and the search
 /// process could find nothing the ingestion process had written. What depends on the machine — the
-/// mounts' folders, the variables holding the keys — is not judged here: the settings are.
+/// mounts' folders, the variables holding the keys — is not judged here: the settings are. And none
+/// writes a section that no shipped binary reads, which a run would report at its start.
 /// </summary>
 public sealed class ExampleSettingsTests
 {
-    /// <summary>Build outputs carry copies of the files; only the tracked sources are judged.</summary>
-    private static readonly string[] s_outputs = ["bin", "obj", "obj-linux", "node_modules"];
-
+    /// <summary>
+    /// The tracked files, as git lists them: a crawl of <c>examples/</c> walks whatever a clone keeps
+    /// there beside the examples — build outputs, other projects under <c>examples/others</c> — and
+    /// does not end on a slow mount.
+    /// </summary>
     public static TheoryData<string> Files()
     {
-        var root = RepositoryRoot();
-        var examples = Path.Combine(root, "examples");
-        var found = Directory.EnumerateFiles(examples, "*appsettings*.json", SearchOption.AllDirectories)
-            .Concat(Directory.EnumerateFiles(examples, "*.json.example", SearchOption.AllDirectories))
-            .Concat(Directory.EnumerateFiles(Path.Combine(root, "scripts", "smoke-onboarding", "fixtures"), "*.json"))
-            .Where(path => !Path.GetRelativePath(root, path)
-                .Split(Path.DirectorySeparatorChar)
-                .Any(segment => s_outputs.Contains(segment, StringComparer.Ordinal)))
-            .Select(path => Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/'))
-            .Order(StringComparer.Ordinal);
-
         var data = new TheoryData<string>();
-        foreach (var file in found)
+        foreach (var file in RepositorySettingsFiles.OfTheExamples())
             data.Add(file);
         return data;
     }
@@ -40,7 +32,7 @@ public sealed class ExampleSettingsTests
     [MemberData(nameof(Files))]
     public void An_example_settings_file_passes_the_start_validation_of_orkeon_run(string file)
     {
-        var refusals = RunnerHost.ValidateSettings(
+        var verdict = RunnerHost.InspectSettings(
             Path.Combine(RepositoryRoot(), file),
             (_, services) =>
             {
@@ -48,7 +40,9 @@ public sealed class ExampleSettingsTests
                 services.AddSemanticSearchTool();
             });
 
-        Assert.Empty(refusals);
+        Assert.Empty(verdict.Refusals);
+        // Nor a section the run would only report: a file handed to an operator writes nothing no shipped binary reads.
+        Assert.Empty(verdict.Notices);
     }
 
     [Fact]

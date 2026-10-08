@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 <#
 .SYNOPSIS
   Builds per-OS installer archives containing all Orkeon CLI executables,
@@ -5,7 +6,9 @@
   $Apps table). PowerShell mirror of scripts/package-installers.sh, intended
   for local Windows use.
 .PARAMETER Version
-  Package version. Default: git describe (v-stripped), then src/Directory.Build.props.
+  Package version. Default: what scripts/resolve-version.ps1 answers — the tag's version
+  when HEAD is the commit a v* tag points to, <props version>.local.<commit date> on any
+  other commit: a build off a tag never carries the name of the release before it.
 .PARAMETER Rids
   RIDs to package. Default: win-x64 only. Unix RIDs are refused unless -Force:
   archives produced on Windows lose the executable bits — build those on
@@ -17,7 +20,16 @@
   archive; 'cli' ships the `orkeon` onboarding binary plus the Orkeon Studio
   apps for the platform (win-x64: orkeon-studio; linux-*: orkeon-studio-config +
   orkeon-studio-run; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
+.PARAMETER NoArchive
+  Prepares the staging tree (artifacts\installers\_stage\<name>) and stops there: no
+  zip, no SHA256SUMS. It is what scripts\install-from-source.ps1 passes -- it installs
+  the tree and has no use for an archive of it. CI never passes it.
 .NOTES
+  Requires PowerShell 7 (`pwsh`): the lockfile is read with ConvertFrom-Json -AsHashtable,
+  which Windows PowerShell 5.1 does not have. The #Requires line above turns that into
+  one sentence instead of a parameter error. Only the packaging needs it: install.ps1,
+  which this script puts in the archive, runs on the PowerShell Windows ships.
+
   Requires Python 3 (`python` on PATH): scripts/third-party-notices.py copies the
   license and notices of the .NET runtime every self-contained publish bundles into
   licenses\<pack>\.
@@ -30,7 +42,8 @@ param(
     [string]$Configuration = 'Release',
     [ValidateSet('full', 'cli')]
     [string]$AppSet = 'full',
-    [switch]$Force
+    [switch]$Force,
+    [switch]$NoArchive
 )
 $ErrorActionPreference = 'Stop'
 
@@ -54,14 +67,8 @@ if (-not $Python -or $LASTEXITCODE -ne 0) {
 
 # --- Version -----------------------------------------------------------------
 if (-not $Version) {
-    $tag = git -C $RepoRoot describe --tags --match 'v*' --abbrev=0 2>$null
-    if ($LASTEXITCODE -eq 0 -and $tag) { $Version = $tag -replace '^v', '' }
-}
-if (-not $Version) {
-    $props = Get-Content (Join-Path $RepoRoot 'src\Directory.Build.props') -Raw
-    $prefix = [regex]::Match($props, '<VersionPrefix>(.*?)</VersionPrefix>').Groups[1].Value
-    $suffix = [regex]::Match($props, '<VersionSuffix>(.*?)</VersionSuffix>').Groups[1].Value
-    $Version = if ($suffix) { "$prefix-$suffix" } else { $prefix }
+    $Version = & (Join-Path $PSScriptRoot 'resolve-version.ps1') -Props (Join-Path $RepoRoot 'src\Directory.Build.props')
+    if ($LASTEXITCODE -ne 0) { $Version = '' }
 }
 if (-not $Version) { throw 'Could not resolve a version; pass -Version.' }
 
@@ -224,9 +231,17 @@ foreach ($rid in $Rids) {
     # entry, and it lets a user identify an already-extracted tree. LF-terminated
     # to stay byte-identical with the archive package-installers.sh produces.
     [IO.File]::WriteAllText((Join-Path $root 'VERSION'), "$Version`n")
+    # The channel this tree is installed through, one word that `orkeon doctor` and
+    # `orkeon --version --verbose` read back (Orkeon.Constants.FileSystem.InstallChannels).
+    # Said by whoever packs, never guessed from the tree: an MSI built from this tree
+    # writes its own word in place of this one -- mirrors package-installers.sh.
+    $channel = if ($rid -like 'win-*') { 'zip' } else { 'tarball' }
+    [IO.File]::WriteAllText((Join-Path $root 'INSTALL-CHANNEL'), "$channel`n")
     # Reference config only. The live one lives in %APPDATA%\Orkeon; this copy is
-    # here to be read, not loaded.
-    Copy-Item (Join-Path $RepoRoot 'examples/appsettings/appsettings.json') (Join-Path $root 'appsettings.sample.json')
+    # here to be read, not loaded. Every key a shipped binary reads, at its default:
+    # produced from the settings catalogue and held to it by a test (Orkeon.Hosting,
+    # SettingsSampleFile), never edited by hand -- mirrors package-installers.sh.
+    Copy-Item (Join-Path $Assets 'appsettings.sample.json') (Join-Path $root 'appsettings.sample.json')
     # Deployment assets (GATE-05/WINSVC-01): the systemd unit and the SCM
     # registration script ship with the daemon they install. Full set only (the
     # cli set has no orkeon-host; the MSI harvests the cli tree).
@@ -235,12 +250,19 @@ foreach ($rid in $Rids) {
     }
     if ($rid -like 'win-*') {
         Copy-Item (Join-Path $Assets 'install.ps1') (Join-Path $root 'install.ps1')
+        # install.cmd is what a double-click runs: it starts install.ps1 on the PowerShell
+        # Windows ships, under an execution policy that holds for that one command. cmd.exe
+        # wants CRLF, whatever line endings this checkout has -- mirrors package-installers.sh.
+        $launcher = (Get-Content (Join-Path $Assets 'install.cmd') -Raw) -replace "`r?`n", "`r`n"
+        [IO.File]::WriteAllText((Join-Path $root 'install.cmd'), $launcher, [Text.Encoding]::ASCII)
     } else {
         Copy-Item (Join-Path $Assets 'install.sh') (Join-Path $root 'install.sh')
     }
 
     # Archive
-    if ($rid -like 'win-*') {
+    if ($NoArchive) {
+        Write-Host "    -> $root  (-NoArchive: the tree, no archive)"
+    } elseif ($rid -like 'win-*') {
         $zip = Join-Path $Out "$pkgName.zip"
         if (Test-Path $zip) { Remove-Item $zip }
         Compress-Archive -Path $root -DestinationPath $zip
@@ -251,6 +273,13 @@ foreach ($rid in $Rids) {
         if ($LASTEXITCODE -ne 0) { throw "tar failed for $pkgName" }
         Write-Host "    -> $tarball  (WARNING: exec bits not preserved from Windows)"
     }
+}
+
+# No archive was written (-NoArchive): SHA256SUMS, which lists archives, is left as it
+# is -- it may describe the archives of an earlier run, and still does.
+if ($NoArchive) {
+    Write-Host "==> Done. Staging trees in $Stage (no archive, no SHA256SUMS)."
+    return
 }
 
 # Checksums

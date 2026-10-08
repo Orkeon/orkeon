@@ -1,3 +1,4 @@
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   Orkeon installer (Windows).
@@ -8,6 +9,16 @@
   never touches %APPDATA%\Orkeon, which is where user configuration lives --
   the InstallDir itself is never a safe place for it, since every (re)install
   deletes it outright.
+
+  Runs on Windows PowerShell 5.1, the one Windows ships, and on PowerShell 7.
+  install.cmd, beside this file, starts it on the former under an execution
+  policy that holds for that one command: it is what a double-click runs, and
+  it passes its arguments through (install.cmd -Uninstall).
+
+  Installing over an installation replaces it. While a program of that
+  installation is running -- Orkeon Studio left open, a crew still going --
+  both the install and the uninstall refuse, name the process and change
+  nothing.
 .PARAMETER InstallDir
   Target directory. Default: $env:LOCALAPPDATA\Programs\Orkeon
 .PARAMETER Uninstall
@@ -120,6 +131,36 @@ function Test-MsiChannelInstalled {
     return $false
 }
 
+# --- "Orkeon is running" guard --------------------------------------------------
+# Windows does not let the executable of a running process be deleted. Without
+# this guard, the recursive delete of the install directory stops on the first
+# locked file, half-way through the tree: neither the previous installation nor
+# the new one is left standing. Listing the processes started from the install
+# directory first turns that into a refusal that changes nothing.
+# A process whose path cannot be read (another user's, an elevated one) is not
+# listed: for that one the delete fails as it did before.
+
+function Get-ProcessesRunningFrom([string]$Dir) {
+    if (-not (Test-Path -LiteralPath $Dir)) { return @() }
+    $prefix = [IO.Path]::GetFullPath($Dir).TrimEnd('\') + '\'
+    $found = @()
+    foreach ($process in @(Get-Process -ErrorAction SilentlyContinue)) {
+        $path = $null
+        try { $path = $process.Path } catch { $path = $null }
+        if ($path -and $path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) {
+            $found += $process
+        }
+    }
+    return $found
+}
+
+function Assert-NothingRunsFrom([string]$Dir) {
+    $running = @(Get-ProcessesRunningFrom $Dir)
+    if ($running.Count -eq 0) { return }
+    $names = ($running | Sort-Object ProcessName, Id | ForEach-Object { "$($_.ProcessName) (PID $($_.Id))" }) -join ', '
+    throw "Orkeon is running from ${Dir}: $names. Close it, then run this again -- nothing was changed, the installation in place is intact."
+}
+
 # --- Legacy user-config migration guard ---------------------------------------
 # Installs that predate this change may have written appsettings.json straight
 # into the InstallDir. Rescue it into %APPDATA%\Orkeon before the
@@ -146,6 +187,7 @@ function Move-LegacyUserConfig([string]$OldInstallDir, [string]$ConfigDir) {
 # --- Uninstall ------------------------------------------------------------------
 
 if ($Uninstall) {
+    Assert-NothingRunsFrom $InstallDir
     if (Test-Path -LiteralPath $InstallDir) { Remove-Item -LiteralPath $InstallDir -Recurse -Force }
     Remove-UserPathEntry $binDir
     Remove-ArpEntry
@@ -174,20 +216,25 @@ if (Test-MsiChannelInstalled) {
     throw "Orkeon is already installed via the MSI channel (see 'Orkeon' in Add/Remove Programs). Uninstall it first, then run this installer again -- only one Orkeon channel can be active at a time."
 }
 
+# Before the first change to the machine: the legacy-config move below is one.
+Assert-NothingRunsFrom $InstallDir
+
 if (Test-Path -LiteralPath $InstallDir) {
     Move-LegacyUserConfig -OldInstallDir $InstallDir -ConfigDir $configDir
 }
 
 # Delete-and-replace for clean upgrades. install.ps1 is copied alongside the
 # rest so -Uninstall keeps working later even if the extracted archive is
-# long gone (the ARP UninstallString points at this copy). appsettings.sample
+# long gone (the ARP UninstallString points at this copy), and install.cmd,
+# its launcher, travels with it. appsettings.sample
 # .json (when the archive ships one) is reference-only -- real user config
 # always lives under %APPDATA%\Orkeon, never here. The third-party notices and
 # licenses\ (the bundled .NET runtime's license and notices) go wherever the
-# bits they cover go, as in an MSI install.
+# bits they cover go, as in an MSI install. INSTALL-CHANNEL is the word the
+# packaging wrote for `orkeon doctor`: which channel this install came through.
 if (Test-Path -LiteralPath $InstallDir) { Remove-Item -LiteralPath $InstallDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-foreach ($item in 'bin', 'libexec', 'README.md', 'LICENSE.md', 'THIRD-PARTY-NOTICES.md', 'licenses', 'install.ps1', 'VERSION', 'appsettings.sample.json') {
+foreach ($item in 'bin', 'libexec', 'README.md', 'LICENSE.md', 'THIRD-PARTY-NOTICES.md', 'licenses', 'install.ps1', 'install.cmd', 'VERSION', 'INSTALL-CHANNEL', 'appsettings.sample.json') {
     $p = Join-Path $src $item
     if (Test-Path -LiteralPath $p) { Copy-Item -LiteralPath $p -Destination $InstallDir -Recurse -Force }
 }

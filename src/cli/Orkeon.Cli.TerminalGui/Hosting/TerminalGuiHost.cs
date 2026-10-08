@@ -1,6 +1,7 @@
 using Orkeon.Cli.TerminalGui.Layout;
 using Terminal.Gui.App;
 using Terminal.Gui.Views;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Cli.TerminalGui.Hosting;
 
@@ -11,7 +12,7 @@ namespace Orkeon.Cli.TerminalGui.Hosting;
 public sealed class TerminalGuiHost : IAsyncDisposable
 {
     private static readonly bool DiagEnabled =
-        string.Equals(Environment.GetEnvironmentVariable("TUI_DIAG"), "1", StringComparison.Ordinal);
+        string.Equals(Environment.GetEnvironmentVariable(EnvironmentVariableNames.TuiDiagnostics), "1", StringComparison.Ordinal);
 
     private readonly TerminalGuiOptions _options;
     private readonly TuiIntegration _integration;
@@ -47,7 +48,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     public void Initialize()
     {
         if (_initialized) return;
-        Diag($"Initialize() — TERM={Environment.GetEnvironmentVariable("TERM")} " +
+        Diag($"Initialize() — TERM={Environment.GetEnvironmentVariable(EnvironmentVariableNames.Terminal)} " +
              $"IsInputRedirected={System.Console.IsInputRedirected} IsOutputRedirected={System.Console.IsOutputRedirected}");
         // Skip Application.Init() if Terminal.Gui has already been initialized externally
         // (e.g. by a test fixture). The flag drives the matching DisposeAsync decision.
@@ -57,7 +58,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
             // in WSL and many container terminals. DOTNET (uses System.Console) works in
             // every interactive terminal we've tested. Windows still gets the native driver.
             // Override via env var TUI_DRIVER (windows|dotnet|ansi) for debugging.
-            var requested = Environment.GetEnvironmentVariable("TUI_DRIVER");
+            var requested = Environment.GetEnvironmentVariable(EnvironmentVariableNames.TuiDriver);
             string driver;
             if (!string.IsNullOrWhiteSpace(requested))
             {

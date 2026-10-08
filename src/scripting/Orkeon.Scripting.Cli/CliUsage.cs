@@ -20,6 +20,15 @@ internal static class CliUsage
     /// <param name="Summary">The single line shown next to it in the command list.</param>
     internal sealed record CliVerb(string Name, string Summary);
 
+    /// <summary>The documentation site: the docs tree and the API reference, published at each release.</summary>
+    public const string DocumentationSite = "https://orkeon.github.io/orkeon/";
+
+    /// <summary>
+    /// The configuration reference on that site — every setting by category, a line per key —, of
+    /// which <c>orkeon settings</c> is the offline form.
+    /// </summary>
+    public const string SettingsReference = DocumentationSite + "docs/reference/configuration.html";
+
     /// <summary>Reported when the assembly carries no version attribute at all.</summary>
     public const string UnknownVersion = "0.0.0";
 
@@ -41,6 +50,7 @@ internal static class CliUsage
         new("run", "Run a crew: a YAML crew, a .ork.ts script, or a crew directory."),
         new("init", "Configure this machine: pick an LLM provider, write the settings file."),
         new("doctor", "Diagnose the installation: runtime, settings, esbuild, embeddings, tree-sitter."),
+        new("settings", "List every setting a host reads, by category: type, default, meaning — offline."),
         new("llm", "Probe an LLM provider against the test protocol."),
         new("rag", "Ingest, search and evaluate a RAG collection."),
         new("forge", "The Atelier: turn a need in plain words into a validated crew."),
@@ -55,6 +65,20 @@ internal static class CliUsage
 
     /// <summary>The single line <c>orkeon --version</c> writes: the tool name and its version.</summary>
     public static string VersionLine => "orkeon " + Version;
+
+    /// <summary>
+    /// What <c>orkeon --version --verbose</c> writes: the version line, unchanged, then the
+    /// channel this build was installed through — one <c>name: value</c> line a program reads.
+    /// </summary>
+    public static string RenderVerboseVersion(InstallChannelReading channel)
+    {
+        ArgumentNullException.ThrowIfNull(channel);
+        return VersionLine + Environment.NewLine + "channel: " + channel.Channel + Environment.NewLine;
+    }
+
+    /// <summary>Whether <paramref name="token"/> asks for the detailed form of an answer.</summary>
+    public static bool IsVerboseToken(string token) =>
+        string.Equals(token, "--verbose", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Whether <paramref name="token"/> asks for the usage listing.</summary>
     public static bool IsHelpToken(string token) => Matches(HelpTokens, token);
@@ -102,8 +126,10 @@ internal static class CliUsage
         text.AppendLine();
         text.Append("  orkeon <command> --help".PadRight(width + 24)).AppendLine("the options of that command");
         text.Append("  orkeon --version".PadRight(width + 24)).AppendLine("the version of this build");
+        text.Append("  orkeon --version --verbose".PadRight(width + 24)).AppendLine("… and the channel it was installed through");
         text.AppendLine();
-        text.AppendLine("Documentation: https://github.com/Orkeon/orkeon");
+        text.Append("Documentation: ").AppendLine(DocumentationSite);
+        text.Append("Settings:      ").AppendLine(SettingsReference);
 
         return text.ToString();
     }

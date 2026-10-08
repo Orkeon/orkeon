@@ -107,6 +107,8 @@ cp -R "$SRC/bin" "$SRC/libexec" "$LIB_DIR/"
 [ -d "$SRC/licenses" ]                 && cp -R "$SRC/licenses" "$LIB_DIR/"
 [ -f "$SRC/README.md" ]                && cp "$SRC/README.md" "$LIB_DIR/"
 [ -f "$SRC/VERSION" ]                  && cp "$SRC/VERSION" "$LIB_DIR/"
+# The word the packaging wrote for `orkeon doctor`: which channel this install came through.
+[ -f "$SRC/INSTALL-CHANNEL" ]          && cp "$SRC/INSTALL-CHANNEL" "$LIB_DIR/"
 [ -f "$SRC/appsettings.sample.json" ]  && cp "$SRC/appsettings.sample.json" "$LIB_DIR/"
 # install.sh travels with the rest so it can still be found and re-run with
 # --uninstall once the extracted archive it came from is long gone (parity

@@ -2,6 +2,7 @@ using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Studio.Run.Launcher;
 using Terminal.Gui.App;
 using TerminalApp = Terminal.Gui.App.Application;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Studio.Run.Views;
 
@@ -65,7 +66,7 @@ internal static class LauncherApplication
     /// </summary>
     private static string DriverName()
     {
-        var requested = Environment.GetEnvironmentVariable("TUI_DRIVER");
+        var requested = Environment.GetEnvironmentVariable(EnvironmentVariableNames.TuiDriver);
         if (!string.IsNullOrWhiteSpace(requested))
         {
 #pragma warning disable CA1308 // the driver registry keys are lowercase; this is not a comparison normalization

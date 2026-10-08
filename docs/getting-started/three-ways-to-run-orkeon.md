@@ -43,6 +43,62 @@ This is the most flexible path — it can run **every** example and picks up you
 local code changes. Full walkthrough, LLM-profile setup, and
 troubleshooting: [Run your first example](./run-your-first-example.md).
 
+What the machine needs depends on how far you go:
+
+| To… | You need |
+|---|---|
+| **Run an example** (`dotnet run`, above) | the **.NET 10 SDK**, 10.0.300 or later (`dotnet --version`; `global.json` pins it), and **git**. The first build restores its packages from nuget.org |
+| **Build an installer archive** from the clone (`scripts/package-installers.sh`, or `scripts/package-installers.ps1` on Windows), or [install what you just cloned](#install-what-you-just-cloned), which builds one and checks all of this first | the two above, plus: **Python 3** — `python3` on the `PATH`, `python` on Windows (the Microsoft Store alias of that name does not count); **`tar`**; network access to **nuget.org** and to **`registry.npmjs.org`**, where the script fetches the esbuild binary it bundles. On Windows the script needs **PowerShell 7** (`pwsh`): Windows PowerShell 5.1, the one installed with the system, stops on it. On Linux the script also calls `curl`, `openssl` and `sha256sum` |
+
+An archive built this way is installed like a downloaded one — see
+[Release binary](#2-release-binary) below, its Windows prerequisites included.
+
+### Install what you just cloned
+
+`dotnet run` runs the CLI from the clone. To have the `orkeon` you built on your `PATH` —
+the installation a release archive makes, at the version of your checkout — one command,
+from the clone:
+
+```powershell
+git clone https://github.com/Orkeon/orkeon.git
+cd orkeon
+.\scripts\install-from-source.ps1     # Windows, from PowerShell 7 (pwsh)
+```
+
+```bash
+./scripts/install-from-source.sh      # Linux, macOS
+```
+
+The script first checks what the build needs — the second row of the table above — and
+names **everything** that is missing in one go, with where to get it, before it compiles
+anything. It installs none of it for you. It then builds the tree of the CLI archive for
+your machine, without writing the archive (several minutes; the first run restores NuGet
+packages and fetches the esbuild binary, a later one downloads nothing that is cached), and
+installs it with the archive's own installer: `%LOCALAPPDATA%\Programs\Orkeon` on Windows,
+`~/.local` elsewhere.
+
+`orkeon --version` then answers the version of your checkout —
+`1.0.0-rc.4.local.<commit date>` off a tag, never the name of a release — and
+`orkeon doctor` names the channel `source`.
+
+| Windows | Linux, macOS | |
+|---|---|---|
+| `-AppSet full` | `--app-set full` | every launcher — the REPL and the service host too — instead of the CLI set |
+| `-InstallDir <folder>` | `--prefix <dir>` | where to install; `--modify-path` also goes through to `install.sh` |
+| `-WhatIf` | `--dry-run` | stop after the checks, and print the version and the commands it would run |
+| `-Uninstall` | `--uninstall` | remove the installation. Builds nothing; your configuration stays |
+
+- **After a `git pull`, run it again**: the installation is replaced, and the version moves
+  with the commit.
+- **Windows**: the build needs PowerShell 7. Started from Windows PowerShell 5.1, the
+  script says so, and where to get it. If Orkeon is installed through the MSI, or running
+  from the install directory, the installer refuses and the script relays its sentence.
+- **Debian and Ubuntu**: the [apt repository](../guides/install-with-apt.md)'s `dev` channel
+  serves the builds of `main` without a build on your machine. The script says so, and
+  carries on.
+- A shallow clone (`git clone --depth 1`) works. The private maintainer submodules are not
+  needed, and not touched.
+
 ---
 
 ## 2. Release binary
@@ -53,11 +109,11 @@ Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) attaches a
 
 | Artifact | What's inside | Runtime prerequisite | Best for |
 |---|---|---|---|
-| **`orkeon-cli-<version>-win-x64.zip`** | the `orkeon` CLI + **Orkeon Studio** (`orkeon-studio`, the desktop app) + `install.ps1` | none — self-contained | **Windows: the recommended download** |
-| **`orkeon-<version>-win-x64.msi`** | the same two, per-user MSI, with an "Orkeon Studio" Start-menu shortcut | none — self-contained | Windows, if you'd rather double-click and get an "Installed apps" entry |
+| **`orkeon-cli-<version>-win-x64.zip`** | the `orkeon` CLI + **Orkeon Studio** (`orkeon-studio`, the desktop app) + `install.cmd` and `install.ps1` | no .NET — self-contained. Double-click `install.cmd`: it runs on the PowerShell Windows ships. See [Before you start](#before-you-start) | **Windows: the recommended download** |
+| **`orkeon-<version>-win-x64.msi`** | the same two, per-user MSI, with an "Orkeon Studio" Start-menu shortcut | no .NET — self-contained. Not code-signed: Windows asks before it runs it, see [Before you start](#before-you-start) | Windows, if you'd rather double-click and get an "Installed apps" entry |
 | **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | the `orkeon` CLI at `/usr/bin/orkeon` + the two **Orkeon Studio** terminal apps | none — self-contained | **Debian / Ubuntu** — best installed from the [apt repository](../guides/install-with-apt.md), which serves these same packages and their updates |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS onboarding channel stays CLI-only) | none — self-contained | **macOS**, Apple Silicon and Intel respectively |
-| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **every** launcher (`orkeon`, `orkeon-repl`, `orkeon-host`…) + the Studio apps their platform supports + `install.sh` / `install.ps1` | mixed — see the command table below | The REPL and the service host |
+| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **every** launcher (`orkeon`, `orkeon-repl`, `orkeon-host`…) + the Studio apps their platform supports + `install.sh` / `install.cmd` and `install.ps1` | mixed — see the command table below | The REPL and the service host |
 | **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | the `orkeon` CLI — **without esbuild**: a `.ork.ts` script needs `npm install -g esbuild` (or `ORKEON_ESBUILD_PATH`); YAML crews do not. `orkeon typings` writes the editor typings | .NET 10 **SDK** | Getting just the CLI on a dev box that already builds .NET |
 
 `<rid>` is `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) or
@@ -91,22 +147,58 @@ Two channels, both per-user (no administrator rights, nothing written outside
 your profile). **Install one channel at a time** — the MSI refuses to install
 over a ZIP install, so uninstall the other one first if you switch.
 
+#### Before you start
+
+Neither channel needs .NET. What Windows itself may put in the way:
+
+- **PowerShell.** Nothing to install. The zip carries `install.cmd`, which starts
+  `install.ps1` on Windows PowerShell 5.1, the one installed with Windows; `install.ps1`
+  is written for it and for PowerShell 7 (`pwsh`). Every release installs the archive on
+  a real Windows machine under both.
+- **Execution policy.** Nothing to change. A Windows machine that has never run a script
+  refuses `.\install.ps1` typed in PowerShell — *"running scripts is disabled on this
+  system"* — and `install.cmd` is the answer to that: it runs the script under a policy
+  that holds for that one command and changes no setting of the machine. Never change
+  the policy of the machine or of your account to install Orkeon. Should you run the
+  script yourself, the same one-command policy is
+  `powershell -ExecutionPolicy Bypass -File .\install.ps1`.
+- **A file from the Internet.** A zip downloaded by a browser is marked as coming from
+  the Internet, and so is what Explorer extracts from it: Windows may ask you to confirm
+  before it runs `install.cmd`. The mark does not stop the launcher. To have no question
+  asked, lift it before extracting: `Unblock-File .\orkeon-cli-<version>-win-x64.zip`.
+- **A policy your organization sets** (Group Policy) overrules the launcher's option:
+  there, only a signed script runs, and Orkeon's installer is not signed. Ask your
+  administrator, or use a machine where you are allowed to run scripts.
+- **SmartScreen.** Neither MSI is code-signed — `orkeon-<version>-win-x64.msi` here, nor
+  the [service host's](../architecture/service-host.md) `orkeon-host-<version>-win-x64.msi`.
+  Windows shows *"Windows protected your PC"* with an unknown publisher: **More info** →
+  **Run anyway**. Check what you downloaded first — its checksum and its build
+  attestation, in [Verify what you install](../guides/verify-what-you-install.md) — since
+  the warning says nothing about the file itself. Or use the ZIP channel.
+
+#### Install
+
+Channel A — the zip (recommended). Extract it, then **double-click `install.cmd`**: the
+window stays open on the result. Or from a terminal, PowerShell or `cmd`:
+
 ```powershell
-# Channel A — ZIP + install.ps1 (recommended)
 Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .
 cd orkeon-cli-<version>-win-x64
-.\install.ps1     # -> %LOCALAPPDATA%\Programs\Orkeon, user PATH, "Installed apps" entry
-.\install.ps1 -Uninstall
+.\install.cmd     # -> %LOCALAPPDATA%\Programs\Orkeon, user PATH, "Installed apps" entry
+.\install.cmd -Uninstall
 ```
+
+`install.cmd` passes its arguments to `install.ps1` (`-InstallDir <folder>`,
+`-Uninstall`) and returns its exit code. Installing over an installation replaces it —
+that is how the zip channel updates. **Close Orkeon Studio and let a running crew
+finish first**: while a program of the installation is running, the installer refuses,
+names it, and leaves the installation as it was.
 
 ```powershell
 # Channel B — MSI (double-click, or silently)
 msiexec /i orkeon-<version>-win-x64.msi          # same install dir, same PATH entry
 msiexec /x orkeon-<version>-win-x64.msi /qn      # uninstall
 ```
-
-The MSI is **not code-signed**, so SmartScreen shows a publisher warning on
-first run — "More info" → "Run anyway", or use the ZIP channel.
 
 Either way, your configuration lives in `%APPDATA%\Orkeon\appsettings.json`, and
 **both uninstallers leave it alone**. (An `appsettings.json` left behind in an
@@ -201,7 +293,7 @@ Open a **new** terminal (so the PATH change is picked up), then:
 
 ```bash
 orkeon init      # writes the global config: which LLM, which model, which endpoint
-orkeon doctor    # 10 checks: runtime, config, LLM profiles, LLM reachability, esbuild, grammars, …
+orkeon doctor    # checks the install: runtime, config, LLM profiles, LLM reachability, esbuild, grammars, …
 orkeon run path/to/crew.yaml
 ```
 
@@ -496,7 +588,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
 
 - **Just want to see a crew run?** Grab a release binary (way 2) or the container
   (way 3) and point `orkeon run` at any `config.yaml`.
-  - On **Windows**: `orkeon-cli-<version>-win-x64.zip` + `install.ps1`, or the
+  - On **Windows**: `orkeon-cli-<version>-win-x64.zip` + `install.cmd`, or the
     MSI if you prefer double-clicking. One channel at a time.
   - On **Debian / Ubuntu**: the [apt repository](../guides/install-with-apt.md), then
     `sudo apt install orkeon orkeon-archive-keyring`.
@@ -521,18 +613,22 @@ Updating is installing the newer version through the channel you installed with.
 settings are not part of any install: the `appsettings.json` that `orkeon init` wrote stays
 where it is, whichever channel you update.
 
+Not sure which channel that was? **`orkeon doctor` tells you**: its `install-channel` line
+names the channel this install came through and the command that updates it.
+`orkeon --version --verbose` prints the same channel on a line of its own, for a script.
+
 | Installed with | Move to the latest release |
 |---|---|
 | The dotnet tool | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
 | NuGet packages, in a project | `dotnet add package Orkeon --prerelease` — and `Orkeon.Tools` if the project references it — rewrites the version |
-| Windows zip, macOS or Linux tarball | Extract the new archive and run its `install.ps1` / `install.sh`: it deletes the previous install and puts the new one in its place |
+| Windows zip, macOS or Linux tarball | Extract the new archive and run its `install.cmd` / `install.sh`: it deletes the previous install and puts the new one in its place. On Windows, close Orkeon Studio first: the installer refuses while a program of the installation is running |
 | Windows MSI | Run the new MSI: it replaces the installed one, between two pre-releases too |
 | The apt repository | `sudo apt update && sudo apt upgrade` |
 | A downloaded Debian package | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` on ARM) — or move to the [apt repository](../guides/install-with-apt.md), which updates by itself |
 | Container | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` moves with each release |
-| From source | `git pull`; the next `dotnet run` rebuilds |
+| From source | `git pull`; the next `dotnet run` rebuilds. An installation made [from the clone](#install-what-you-just-cloned): `git pull`, then run `scripts/install-from-source` again |
 
-`orkeon --version` then prints the version that runs: `orkeon <version>`.
+`orkeon --version` then prints the version that runs: `orkeon <version>`. An install made before `orkeon doctor` learned to name its channel answers `unknown` there until it is updated once.
 
 ### Follow `main`: the dev channel
 

@@ -1,3 +1,5 @@
+using Orkeon.Constants.Configuration;
+
 namespace Orkeon.Host.Gateway;
 
 /// <summary>
@@ -18,7 +20,7 @@ internal sealed record DiscordChannelOptions
     public bool Enabled { get; init; }
 
     /// <summary>Name of the environment variable holding the bot token.</summary>
-    public string TokenEnvironmentVariable { get; init; } = "ORKEON_DISCORD_TOKEN";
+    public string TokenEnvironmentVariable { get; init; } = EnvironmentVariableNames.DiscordToken;
 
     /// <summary>
     /// Discord user ids allowed to talk to the bot. **Empty denies everyone** — a bot on a

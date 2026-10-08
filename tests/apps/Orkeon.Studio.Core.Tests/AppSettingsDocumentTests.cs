@@ -88,11 +88,32 @@ public sealed class AppSettingsDocumentTests
         Assert.NotNull(reparsed.GetNode("TotallyUnknownSection:Deep:Deeper"));
     }
 
+    /// <summary>
+    /// The sample an installation carries, <c>appsettings.sample.json</c>, is JSON with comments and
+    /// a comma after every member — produced from the engine's settings, by category. An operator
+    /// who copies it and opens it in Studio gets a document, and the model-call limits at the
+    /// engine's defaults; the <c>Llm</c> section, which the file only shows, is not there.
+    /// </summary>
+    [Fact]
+    public void The_sample_an_installation_ships_is_read_comments_and_all()
+    {
+        var document = AppSettingsDocument.Parse(File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "scripts", "installer-assets", "appsettings.sample.json")));
+
+        Assert.Equal(RateLimitingSection.DefaultGlobalRequestsPerMinute, document.GetInt32("RateLimiting:GlobalRequestsPerMinute"));
+        Assert.Equal(RateLimitingSection.DefaultProviderRequestsPerMinute, document.GetInt32("RateLimiting:ProviderRequestsPerMinute"));
+        Assert.Equal(RateLimitingSection.DefaultAgentRequestsPerMinute, document.GetInt32("RateLimiting:AgentRequestsPerMinute"));
+        Assert.Equal(RateLimitingSection.DefaultMaxConcurrentRequests, document.GetInt32("RateLimiting:MaxConcurrentRequests"));
+        Assert.Equal(RateLimitingSection.DefaultQueueLimit, document.GetInt32("RateLimiting:QueueLimit"));
+        Assert.False(document.ContainsPath("Llm"));
+        Assert.NotNull(AppSettingsDocument.Parse(document.ToJson()).GetNode("RateLimiting"));
+    }
+
     [Fact]
     public void Round_trip_of_the_shipped_sample_is_stable()
     {
-        // examples/appsettings/appsettings.json, the file the archives ship as
-        // appsettings.sample.json.
+        // The default settings file of the examples, examples/appsettings/appsettings.json: a file
+        // an operator may well start from.
         const string sample = """
             {
               "Llm": {
@@ -301,4 +322,7 @@ public sealed class AppSettingsDocumentTests
 
         Assert.False(document.Llm.Exists);
     }
+
+    private static string RepositoryRoot([System.Runtime.CompilerServices.CallerFilePath] string thisFile = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(thisFile)!, "..", "..", ".."));
 }

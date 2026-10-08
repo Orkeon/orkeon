@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 <#
 .SYNOPSIS
   Builds the per-user Orkeon MSI (WIN-07) from a package-installers.ps1
@@ -148,6 +149,15 @@ try {
     $msiPath = Join-Path $OutDir $msiName
     if (Test-Path -LiteralPath $msiPath) { Remove-Item -LiteralPath $msiPath -Force }
 
+    # The channel `orkeon doctor` names. The staging tree is the zip's and says `zip`;
+    # an install laid down by this package must say `msi`. Written beside the output,
+    # never into the staging tree -- the same tree may still be zipped or installed by
+    # install.ps1 -- and Package.wxs takes this file in place of the tree's.
+    $channelDir = Join-Path $OutDir '_msi-channel\msi'
+    New-Item -ItemType Directory -Force -Path $channelDir | Out-Null
+    $channelMarker = Join-Path $channelDir 'INSTALL-CHANNEL'
+    [IO.File]::WriteAllText($channelMarker, "msi`n")
+
     Write-Host "==> wix build -> $msiPath"
     # -bindpath installers\msi: Package.wxs is compiled with the repo root as
     # the working directory (this Push-Location), but its WixVariable
@@ -159,6 +169,7 @@ try {
         -d "OrkeonVersion=$MsiVersion" `
         -d "OrkeonVersionFull=$Version" `
         -d "PublishDir=$StageDir" `
+        -d "ChannelMarker=$channelMarker" `
         -ext WixToolset.UI.wixext `
         -bindpath $MsiSrc `
         -o $msiPath `

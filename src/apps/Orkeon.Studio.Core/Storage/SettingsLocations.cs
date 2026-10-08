@@ -2,6 +2,7 @@ using System.Globalization;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Studio.Core.Storage;
 
@@ -49,7 +50,7 @@ public static class SettingsLocations
 
         if (OperatingSystem.IsMacOS())
         {
-            var xdg = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+            var xdg = Environment.GetEnvironmentVariable(EnvironmentVariableNames.XdgConfigHome);
             configRoot = !string.IsNullOrEmpty(xdg) && Path.IsPathRooted(xdg)
                 ? xdg
                 : ""; // falls through to the home-derived ~/.config below

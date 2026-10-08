@@ -300,8 +300,9 @@ dotnet add package Orkeon.Hosting.Aspire --prerelease
 dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # l'exécutable `orkeon` que lance AddOrkeonCrewRun
 ```
 
-`orkeon-host` vient des archives d'installation complètes ou du MSI per-machine du service
-([service host](../architecture/service-host.md)) ; passez son chemin en `command` s'il n'est pas sur
+`orkeon-host` vient des archives d'installation complètes ou du MSI per-machine du service — qui
+n'est pas signé : Windows demande avant de le lancer, voir le
+[service host](../architecture/service-host.md#windows) — ; passez son chemin en `command` s'il n'est pas sur
 le `PATH`. Lancez ensuite l'AppHost avec `dotnet run` et ouvrez le tableau de bord.
 
 **Ce qui circule.** Vers chaque processus : ses arguments et les variables `ORKEON_` fixées par

@@ -75,6 +75,13 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 > `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`
 > — `--ignore-exit-code 8` because most modules hold no test of either category.
 
+> **To install what you built**: `./scripts/install-from-source.sh`
+> (`.\scripts\install-from-source.ps1` on Windows, from PowerShell 7) puts the `orkeon` of
+> your checkout on your `PATH`, the way a release archive installs it, and names every
+> missing prerequisite before it compiles anything — see
+> [Install what you just cloned](docs/getting-started/three-ways-to-run-orkeon.md#install-what-you-just-cloned).
+> Run it again after a `git pull`.
+
 > **Note** — this repository declares **private maintainer submodules**: clone
 > **without** `--recursive` (as above). The build, the tests and the whole contribution
 > workflow do not need them; a failing `git submodule update` on those paths is expected
@@ -207,6 +214,43 @@ stub mirror and flag it for translation.
 Dated audit snapshots (e.g. GO/NO-GO publication reports) are governance records, not
 living documentation: they live in the maintainers' private governance repository, outside
 `docs/`, so the parity contract applies to the whole documentation tree without exception.
+
+#### Adding a setting
+
+A setting is written once, in the code that reads it. The settings catalogue, the tables of
+`docs/reference/configuration.md`, `orkeon settings` and the sample file of an installation are
+produced from it, and the tests fail until they are:
+
+1. **The property and its comment.** Add the property to the options type its section is read
+   into, with its default and an XML `<summary>`: that sentence is the key's meaning everywhere it
+   is listed. A new section is declared where it is registered (`AddOrkeonSettings<T>(path)`,
+   `DeclareSettings`).
+2. **Its category.** A new section gets a line in `SettingsCategories`
+   (`src/constants/Orkeon.Constants.Configuration`), and its heading with its two markers
+   (`<!-- settings:Its:Path -->` … `<!-- /settings -->`) in the reference page and its French mirror.
+3. **The French sentence.** Add the key, by its path, to
+   `docs/fr/reference/configuration.settings.json`: the French table takes its meaning there.
+4. **Regenerate**, in this order — each step writes what the next one reads:
+
+   ```bash
+   export UPDATE_PRODUCED_FILES=1
+   # 1. the catalogue: the library's file first, then the file of each binary
+   dotnet test tests/hosting/Orkeon.Hosting.Tests --filter "FullyQualifiedName~SettingsCatalogFile"
+   dotnet test tests/scripting/Orkeon.Scripting.Cli.Tests --filter "FullyQualifiedName~SettingsCatalogFile"
+   dotnet test tests/hosting/Orkeon.Host.Tests --filter "FullyQualifiedName~SettingsCatalogFile"
+   dotnet test tests/apps/Orkeon.ConsoleApp.Tests --filter "FullyQualifiedName~SettingsCatalogFile"
+   # 2. build again: the catalogue is embedded in Orkeon.Hosting
+   dotnet build Orkeon.sln --no-restore
+   # 3. the tables of the reference page (EN, FR), then the sample file of an installation
+   dotnet test tests/hosting/Orkeon.Hosting.Tests --no-build --filter "FullyQualifiedName~SettingsReferencePage"
+   dotnet test tests/hosting/Orkeon.Hosting.Tests --no-build --filter "FullyQualifiedName~SettingsSampleFile"
+   unset UPDATE_PRODUCED_FILES
+   ```
+
+The same tests then hold everything else to the new key: a settings file under `examples/`, a
+`json` block of the documentation or a default quoted beside a key that the code no longer agrees
+with fails the suite, naming the file and the key. A block that shows on purpose what a host
+refuses carries `<!-- settings-check:off -->` on the line above its fence.
 
 ### Testing
 
