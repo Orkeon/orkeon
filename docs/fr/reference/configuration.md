@@ -192,7 +192,7 @@ une clé inconnue ([plus haut](#quand-un-réglage-est-refusé)) — et un test l
 inventaire est dans l'outil, hors ligne** : `orkeon settings` liste les catégories,
 `orkeon settings RateLimiting` les clés d'une section, `orkeon settings rate` tout ce à quoi un
 mot correspond, et `orkeon settings --json` donne le catalogue entier à un programme
-([CLI](./cli.md)).
+([CLI](./cli.md#orkeon-settings)).
 
 Les options d'un fichier de crew — `maxRpm`, `llm: { profile: … }`, `memoryProvider:`, `rag:`,
 `mounts:` — ne sont pas des réglages d'hôte : elles sont décrites dans le

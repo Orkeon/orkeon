@@ -16,7 +16,7 @@ namespace Orkeon.Scripting.Cli.Tests;
 public sealed class TopLevelHelpTests
 {
     /// <summary>Every verb the usage must name, whatever the wording around it.</summary>
-    private static readonly string[] ExpectedVerbs = ["run", "init", "doctor", "llm", "rag", "forge", "usecases", "email", "typings", "mcp"];
+    private static readonly string[] ExpectedVerbs = ["run", "init", "doctor", "settings", "llm", "rag", "forge", "usecases", "email", "typings", "mcp"];
 
     [Theory]
     [InlineData("--help")]

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon settings` lists every setting by category, offline
+
+The CLI's help named its verbs and an address; whoever installed Orkeon without the repository
+had nothing that said what a settings file may hold.
+
+- **`orkeon settings`** answers from the catalogue the tool carries: the eleven categories with
+  the sections of each, then `orkeon settings <category>`, `<section>` (every key with its type,
+  its default, the values a closed list accepts and its meaning), `<key>`, or `<word>` — what is
+  named or described with it, looked for where a word starts (`rate` finds `RateLimiting` and
+  `ToolRateLimiting`, not `FallbackStrategy`). A name the operator chose stands where the
+  catalogue writes `<name>`: `Llm:Profiles:fast:Model` is found. A name that designates nothing
+  exits 1 and names the closest one.
+- **Who reads a section** is said for each: the shipped binaries, or `a C# host only —
+  AddOrkeonToolRateLimiting()` for a section no shipped binary reads. `--host run|host|repl`
+  narrows every listing to what one binary reads.
+- **`--all`** lists everything by category; **`--json`** writes the catalogue itself — one
+  object, `sections` and `settings`, the same bytes on every machine —, documented as a
+  contract in the CLI reference. It follows a name and `--host`.
+- The verb opens no settings file, builds no host and reaches no network: it answers the same
+  where the settings file is refused or the folder cannot be written, and no output carries a
+  secret — a key that holds one is marked `secret` and has no default. It shows what a key is
+  worth when nothing sets it, not what the machine has set: `orkeon doctor` stays the verb that
+  judges a file. The listing holds in 100 columns.
+- `orkeon --help` names the verb and now ends on the documentation site and the configuration
+  reference, instead of the repository's address. `orkeon settings` stays the verb in a folder
+  that holds a `settings/` directory.
+- The README of an archive names the verb in "First run".
+
 ### Documentation — every setting has a line: its type, its default, who reads it
 
 The configuration reference named almost every setting and defined almost none: two keys out of

@@ -2,7 +2,7 @@
 
 # Référence du CLI `orkeon`
 
-L'outil en ligne de commande `orkeon` est le point d'entrée principal du framework : il exécute les crews YAML et les scripts TypeScript (`.ork.ts`), transforme un besoin en langage courant en crew (l'Atelier), génère une configuration, sonde les fournisseurs LLM, pilote le sous-système RAG, cherche dans les cas d'usage d'exemple, connecte des comptes e-mail, écrit les typings d'éditeur du DSL de scripting, sert ses outils à un client MCP et diagnostique une installation. Il est construit depuis `src/scripting/Orkeon.Scripting.Cli` et se packe comme dotnet tool `orkeon` :
+L'outil en ligne de commande `orkeon` est le point d'entrée principal du framework : il exécute les crews YAML et les scripts TypeScript (`.ork.ts`), transforme un besoin en langage courant en crew (l'Atelier), génère une configuration, sonde les fournisseurs LLM, pilote le sous-système RAG, cherche dans les cas d'usage d'exemple, connecte des comptes e-mail, écrit les typings d'éditeur du DSL de scripting, sert ses outils à un client MCP, diagnostique une installation et liste chaque réglage qu'un hôte lit. Il est construit depuis `src/scripting/Orkeon.Scripting.Cli` et se packe comme dotnet tool `orkeon` :
 
 ```bash
 dotnet tool install --global Orkeon.Scripting.Cli --prerelease
@@ -15,7 +15,7 @@ Mettez le tool à jour avec `dotnet tool update --global Orkeon.Scripting.Cli --
 
 **Codes de sortie** (stables) : `0` OK · `1` erreur de script/config (fichier manquant, script invalide, échec de validation, réglage refusé par le host) · `2` le run a échoué — une erreur runtime inattendue, un service que le host n'a pas pu construire au démarrage, ou une équipe qui a tourné sans réussir (une tâche sans réponse finale, un disjoncteur déclenché, un consensus non atteint) · `130` annulé par Ctrl+C. Sur un code `2`, la **dernière ligne de stderr** est `ERROR: <raison>` — la phrase qui dit pourquoi ; le type de l'exception et sa trace de pile ne sont journalisés qu'en `--verbose 2` (ou `ORKEON_DEBUG=1`). **Un réglage que le host refuse** — une valeur qu'il ne convertit pas ou qu'une règle de sa section refuse, une clé qu'aucune section ne porte (une clé qui n'est plus un réglage parmi elles), un nom de section ou de composant qu'il ne connaît pas (un fournisseur de mémoire, un reranker, un profil RAG, un niveau de journal), un profil LLM qu'il ne sait pas construire, un fichier de réglages qu'il ne peut pas lire (nommé, avec la ligne et la position), une adresse qui n'en est pas une (`RaggableTree:Embedding:BaseUrl`, `Telemetry:OtlpEndpoint`) — sort en `1` sur une ligne qui le nomme, la dernière de stderr, avant le chargement de l'équipe et avant tout appel au modèle. Tout réglage que le host lit est jugé à son démarrage, que le run s'en serve ou non — `Logging` compris —, hors comptes e-mail : un compte illisible est mis de côté et signalé quand on le nomme ([quand un réglage est refusé](./configuration.md#quand-un-réglage-est-refusé)). La ligne est `ERROR: <raison>` pour `orkeon run` sur une équipe YAML, un dossier d'équipe ou un `.ork.ts` déclaratif, `--validate`, `--list-tools` et `orkeon mcp serve` (un run `--events jsonl` ferme toujours son flux sur `run.finished`, `exitCode` `1`), `orkeon run: <raison>` pour un script procédural, `orkeon forge: <raison>` pour la forge ; `ORKEON_DEBUG=1` imprime l'exception et sa pile avant elle.
 
-**La ligne de commande.** `orkeon`, `orkeon --help`, `orkeon -h` et `orkeon help` impriment la liste des commandes et sortent avec `0` ; `orkeon <commande> --help` imprime les options d'une commande. `orkeon --version` (ou `orkeon version`) imprime `orkeon <version>` — `-v` n'est pas la version, c'est `--verbose`. `orkeon --version --verbose` garde cette ligne et en ajoute une seconde, `channel: <canal>` : le canal par lequel ce build a été installé, tel que [`orkeon doctor`](#orkeon-doctor) le nomme, pour qu'un programme le lise. Les commandes sont `run`, `init`, `doctor`, `llm`, `rag`, `forge`, `usecases`, `email`, `typings` et `mcp`, reconnues avant toute autre chose. Le verbe `run` est facultatif : un premier argument qui commence par `-`, ou qui se lit comme une crew — il contient un `/` ou un `\`, se termine par `.ork.ts`, `.ork.js`, `.ts`, `.js`, `.yaml` ou `.yml`, ou nomme un fichier ou un dossier existant — est confié à `orkeon run`. Tout autre mot est refusé avec `orkeon: unknown command '<mot>'` et le code `1`.
+**La ligne de commande.** `orkeon`, `orkeon --help`, `orkeon -h` et `orkeon help` impriment la liste des commandes et sortent avec `0` ; `orkeon <commande> --help` imprime les options d'une commande. `orkeon --version` (ou `orkeon version`) imprime `orkeon <version>` — `-v` n'est pas la version, c'est `--verbose`. `orkeon --version --verbose` garde cette ligne et en ajoute une seconde, `channel: <canal>` : le canal par lequel ce build a été installé, tel que [`orkeon doctor`](#orkeon-doctor) le nomme, pour qu'un programme le lise. Les commandes sont `run`, `init`, `doctor`, `settings`, `llm`, `rag`, `forge`, `usecases`, `email`, `typings` et `mcp`, reconnues avant toute autre chose — `orkeon settings` reste donc la commande même dans un dossier qui contient un répertoire `settings/`. La liste se termine par deux adresses : le site de documentation, et la [référence de configuration](./configuration.md) que [`orkeon settings`](#orkeon-settings) donne hors ligne. Le verbe `run` est facultatif : un premier argument qui commence par `-`, ou qui se lit comme une crew — il contient un `/` ou un `\`, se termine par `.ork.ts`, `.ork.js`, `.ts`, `.js`, `.yaml` ou `.yml`, ou nomme un fichier ou un dossier existant — est confié à `orkeon run`. Tout autre mot est refusé avec `orkeon: unknown command '<mot>'` et le code `1`.
 
 ## `orkeon run`
 
@@ -306,6 +306,99 @@ Diagnostic d'installation : dit en moins de 15 secondes ce qui fonctionne et ce 
 ```bash
 orkeon doctor --json
 ```
+
+## `orkeon settings`
+
+```bash
+orkeon settings                            # les onze catégories, et les sections de chacune
+orkeon settings rate-and-budgets           # une catégorie : ses sections, et qui lit chacune
+orkeon settings RateLimiting               # une section : chaque clé, son type, son défaut, son sens
+orkeon settings RateLimiting:QueueLimit    # une clé
+orkeon settings rate                       # un mot : ce qu'il nomme ou décrit
+orkeon settings --all                      # chaque section et chaque clé, par catégorie
+orkeon settings --json                     # le même inventaire, pour un programme
+orkeon settings --host host                # seulement ce que lit orkeon-host
+```
+
+Liste dans le terminal, hors ligne, les réglages qu'un hôte lit — ce qu'un fichier de réglages peut contenir : l'inventaire de la [référence de configuration](./configuration.md), donné par l'outil lui-même. Il répond depuis le catalogue que l'outil embarque, produit à partir du code qui lit les réglages : il n'ouvre aucun fichier de réglages, ne construit aucun hôte et ne touche pas au réseau. Il répond donc pareil dans un dossier dont un run refuse l'`appsettings.json`, il fonctionne dans un dossier où il ne peut pas écrire, et il n'écrit rien. Ce qu'il montre est ce que vaut une clé quand rien ne la règle, **pas ce que cette machine a réglé** : [`orkeon doctor`](#orkeon-doctor) reste le verbe qui juge un fichier. Une clé qui porte un secret est marquée `secret` et n'a pas de défaut — aucune sortie du verbe ne contient la valeur d'une clé.
+
+```text
+$ orkeon settings RateLimiting
+RateLimiting — Rate and budgets (rate-and-budgets)
+Read by: orkeon, orkeon-host, orkeon-repl
+
+  The host's caps on model requests — the `RateLimiting` section. Every model call of the host
+  counts, once, at the entrance of its provider: …
+
+  RateLimiting:AgentRequestsPerMinute     integer  default: 20
+      Maximum model requests per minute of each agent — …
+  RateLimiting:GlobalRequestsPerMinute    integer  default: 60
+      Maximum model requests per minute across all providers and agents. …
+  RateLimiting:MaxConcurrentRequests      integer  default: 0
+      Maximum number of concurrent (in-flight) model requests. 0 means no concurrency limit (rate
+      limiting only).
+  RateLimiting:ProviderRequestsPerMinute  integer  default: 30
+      Maximum model requests per minute per provider, held and refused like the global cap.
+  RateLimiting:QueueLimit                 integer  default: 5
+      Maximum number of requests the global, per-provider and concurrency caps hold in a queue when
+      they are reached; a request beyond it is refused, then retried.
+```
+
+La sortie est en anglais, comme le reste du CLI.
+
+**Ce qu'un nom désigne**, essayé dans cet ordre, quelle que soit sa casse :
+
+1. **une catégorie**, par son identifiant ou son titre — `models`, `rate-and-budgets`, `memory-and-vectors`, `rag`, `files-and-sandbox`, `security`, `tools`, `orchestration-and-persistence`, `scripts-and-console`, `service-host-and-a2a`, `observability` : ses sections, chacune avec son nombre de clés, qui la lit et la première phrase de ce qu'elle configure ;
+2. **une section**, par son chemin (`RateLimiting`, `Orkeon:Rag:WebFallback`) : qui la lit, ce qu'elle configure, puis chaque clé — chemin, type, défaut, les valeurs qu'une liste fermée accepte, et son sens ;
+3. **une clé**, par son chemin. Un nom ou un indice à vous tient la place de ce que le catalogue écrit `<name>` ou `<i>` : `orkeon settings Llm:Profiles:fast:Model` trouve `Llm:Profiles:<name>:Model` (écrit avec les chevrons, le chemin demande des guillemets dans un shell) ;
+4. **un mot** : ce qu'il nomme, puis ce qu'il ne fait que décrire — les sections avec qui les lit, les clés sur une ligne chacune. Le mot est cherché là où un mot commence, dans les chemins et dans les descriptions : `rate` trouve `RateLimiting` et `ToolRateLimiting`, pas `FallbackStrategy`.
+
+Un nom qui ne désigne rien sort en `1` et nomme le plus proche qui existe. La liste ne dépasse jamais 100 colonnes.
+
+**Qui lit une section** est dit pour chacune : `Read by: orkeon, orkeon-host, orkeon-repl`, ou `Read by: a C# host only — AddOrkeonToolRateLimiting()` pour une section qu'aucun binaire livré ne lit — écrite dans le fichier de réglages d'`orkeon run`, une telle section est sans effet ; la liste des catégories la marque d'un `*`.
+
+| Option | Description |
+|---|---|
+| `--all` | Chaque section et chaque clé, par catégorie. Ne prend pas de nom. |
+| `--json` | Le catalogue à la place de la liste (ci-dessous). Suit un nom et `--host`. |
+| `--host <run\|host\|repl>` | Seulement ce qu'un binaire lit : `run` est `orkeon` (tout verbe qui construit l'hôte de run), `host` est `orkeon-host`, `repl` est `orkeon-repl` ; le nom du binaire est accepté aussi. Sans elle, tout ce qu'Orkeon lit, chaque section disant qui la lit. Un nom que le binaire choisi ne lit pas sort en `1` et dit qui le lit. |
+
+**`--json` est un contrat**, comme `doctor --json` : un objet à deux tableaux, écrit sur stdout et rien d'autre.
+
+```json
+{
+  "sections": [
+    { "path": "RateLimiting", "category": "rate-and-budgets",
+      "hosts": ["orkeon", "orkeon-host", "orkeon-repl"],
+      "registration": "AddOrkeonInfrastructure", "description": "…" }
+  ],
+  "settings": [
+    { "path": "RateLimiting:QueueLimit", "section": "RateLimiting", "type": "integer",
+      "default": 5, "description": "…" },
+    { "path": "MCP:Servers:<name>:Transport", "section": "MCP", "type": "enum",
+      "default": "Stdio", "values": ["Stdio", "Sse"], "description": "…" },
+    { "path": "Llm:ApiKey", "section": "Llm", "type": "string", "secret": true, "description": "…" }
+  ]
+}
+```
+
+| Champ | Dans | Sens |
+|---|---|---|
+| `path` | les deux | Le chemin de configuration. Un nom que l'opérateur choisit s'écrit `<name>`, un indice `<i>`. |
+| `category` | section | L'un des onze identifiants de catégorie ci-dessus. |
+| `hosts` | section | Les binaires livrés qui la lisent, parmi `orkeon`, `orkeon-host` et `orkeon-repl`. Toujours présent ; vide quand aucun ne la lit. |
+| `registration` | section | L'enregistrement public par lequel un hôte écrit en C# lit la section. Absent quand seule la composition propre d'un binaire livré la lit. |
+| `section` | clé | Le chemin de la section à laquelle la clé appartient. |
+| `type` | clé | `string`, `integer`, `number`, `boolean`, `duration`, `uri`, `date-time`, `enum`, `any`, ou `list of` suivi de l'un d'eux. |
+| `default` | clé | La valeur quand rien ne règle la clé, en valeur JSON. Absent quand il n'y en a pas, ou pas qui s'écrive — un secret, une valeur qui dépend de l'instant. |
+| `defaultNote` | clé | Ce que la valeur ne peut pas dire, en mots : ce qui tient lieu d'un défaut qui n'est pas une constante, les entrées qu'un dictionnaire porte au départ, ce dont le défaut dépend. Absent sinon. |
+| `values` | clé | Les valeurs qu'un `enum` accepte. Absent sinon. |
+| `secret` | clé | `true` quand la valeur est un secret ; une telle clé n'a ni `default` ni `defaultNote`. Absent sinon. |
+| `description` | les deux | Ce que la section configure, ce que la clé veut dire. |
+
+Les sections viennent par catégorie, dans l'ordre de la liste, puis par chemin ; les clés dans l'ordre de leurs sections, puis par chemin. Le même build écrit les mêmes octets sur toute machine : ni date, ni chemin, des fins de ligne LF. Avec un nom ou `--host` la forme est la même et le contenu plus étroit — une catégorie ou une section donne ses sections et leurs clés, une clé sa section et elle-même, un mot ce qu'il a trouvé. Un champ peut s'ajouter plus tard : lisez ceux que vous connaissez.
+
+Codes de sortie : `0` listé ; `1` un nom qui ne désigne rien ou que le binaire de `--host` ne lit pas, une option inconnue, un `--host` qui n'est aucun des trois.
 
 ## `orkeon-repl` — la console interactive séparée
 

@@ -176,7 +176,7 @@ The tables are produced from the code — the catalogue of settings a host refus
 with ([above](#when-a-setting-is-refused)) — and a test holds them to it. **The same inventory is
 in the tool, offline**: `orkeon settings` lists the categories, `orkeon settings RateLimiting` the
 keys of a section, `orkeon settings rate` whatever a word matches, and `orkeon settings --json`
-hands the whole catalogue to a program ([CLI](./cli.md)).
+hands the whole catalogue to a program ([CLI](./cli.md#orkeon-settings)).
 
 The options of a crew file — `maxRpm`, `llm: { profile: … }`, `memoryProvider:`, `rag:`,
 `mounts:` — are not host settings: they are described in the

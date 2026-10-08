@@ -57,6 +57,7 @@ In a **new** terminal (so the PATH change is picked up):
 ```sh
 orkeon init      # pick an LLM provider and model; writes the global per-user config
 orkeon doctor    # checks the install: runtime, config, LLM reachability, esbuild, grammars, ...
+orkeon settings  # every setting a host reads, by category: type, default, meaning - offline
 orkeon run crew.yaml
 ```
 
@@ -65,6 +66,11 @@ Configuration lives at `%APPDATA%\Orkeon\appsettings.json` (Windows) or
 directory, which every (re)install deletes. Run with no `Llm` section configured
 and Orkeon warns on stderr, then falls back to an echo provider that replays your
 prompt instead of answering it: that warning means `orkeon init` has not run yet.
+
+What that file may hold is listed by the tool itself, offline: `orkeon settings` gives the
+categories, `orkeon settings <section>` the keys of a section with their type, default and
+meaning, `orkeon settings <word>` whatever is named or described with a word. It shows
+defaults, not what this machine has set; `orkeon doctor` judges the file.
 
 ## Contents
 

@@ -2,7 +2,7 @@
 
 # `orkeon` CLI reference
 
-The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), turns a need in plain words into a crew (the Atelier), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, searches the example use cases, signs e-mail accounts in, writes the editor typings of the scripting DSL, serves its tools to an MCP client, and diagnoses an installation. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
+The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), turns a need in plain words into a crew (the Atelier), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, searches the example use cases, signs e-mail accounts in, writes the editor typings of the scripting DSL, serves its tools to an MCP client, diagnoses an installation, and lists every setting a host reads. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
 
 ```bash
 dotnet tool install --global Orkeon.Scripting.Cli --prerelease
@@ -15,7 +15,7 @@ Update the tool with `dotnet tool update --global Orkeon.Scripting.Cli --prerele
 
 **Exit codes** (stable): `0` OK · `1` script/config error (missing file, invalid script, validation failure, a setting the host refuses) · `2` the run failed — an unexpected runtime error, a service the host could not build at kickoff, or a crew that ran and did not succeed (a task without a final answer, a tripped circuit breaker, a consensus not reached) · `130` cancelled with Ctrl+C. On exit `2` the **last stderr line** is `ERROR: <reason>` — the sentence that says why; the exception type and its stack trace are logged only at `--verbose 2` (or `ORKEON_DEBUG=1`). **A setting the host refuses** — a value it cannot convert or that a rule of its section refuses, a key no section carries (one that is no setting any more among them), a section or a component's name it does not know (a memory provider, a reranker, a RAG profile, a log level), an LLM profile it cannot build, a settings file it cannot read (named, with the line and the position), an address that is no address (`RaggableTree:Embedding:BaseUrl`, `Telemetry:OtlpEndpoint`) — exits `1` with one line naming it, the last on stderr, before the crew loads and before any model is called. Every setting the host reads is judged at its start, whether the run uses it or not — `Logging` included —, except the e-mail accounts: an account that cannot be read is set aside and reported when it is named ([when a setting is refused](./configuration.md#when-a-setting-is-refused)). The line is `ERROR: <reason>` for `orkeon run` on a YAML crew, a crew directory or a declarative `.ork.ts`, `--validate`, `--list-tools` and `orkeon mcp serve` (an `--events jsonl` run still closes its stream on `run.finished`, `exitCode` `1`), `orkeon run: <reason>` for a procedural script, `orkeon forge: <reason>` for the forge; `ORKEON_DEBUG=1` prints the exception and its stack before it.
 
-**The command line.** `orkeon`, `orkeon --help`, `orkeon -h` and `orkeon help` print the command list and exit `0`; `orkeon <command> --help` prints the options of one command. `orkeon --version` (or `orkeon version`) prints `orkeon <version>` — `-v` is not the version, it is `--verbose`. `orkeon --version --verbose` keeps that line and adds a second one, `channel: <channel>`: the channel this build was installed through, as [`orkeon doctor`](#orkeon-doctor) names it, for a program to read. The commands are `run`, `init`, `doctor`, `llm`, `rag`, `forge`, `usecases`, `email`, `typings` and `mcp`, matched before anything else. The `run` verb is optional: a first token that starts with `-`, or that reads as a crew — it holds a `/` or a `\`, ends with `.ork.ts`, `.ork.js`, `.ts`, `.js`, `.yaml` or `.yml`, or names an existing file or folder — is handed to `orkeon run`. Any other word is refused with `orkeon: unknown command '<word>'` and exit `1`.
+**The command line.** `orkeon`, `orkeon --help`, `orkeon -h` and `orkeon help` print the command list and exit `0`; `orkeon <command> --help` prints the options of one command. `orkeon --version` (or `orkeon version`) prints `orkeon <version>` — `-v` is not the version, it is `--verbose`. `orkeon --version --verbose` keeps that line and adds a second one, `channel: <channel>`: the channel this build was installed through, as [`orkeon doctor`](#orkeon-doctor) names it, for a program to read. The commands are `run`, `init`, `doctor`, `settings`, `llm`, `rag`, `forge`, `usecases`, `email`, `typings` and `mcp`, matched before anything else — so `orkeon settings` is the command even in a folder that holds a `settings/` directory. The listing ends on two addresses: the documentation site, and the [configuration reference](./configuration.md) that [`orkeon settings`](#orkeon-settings) gives offline. The `run` verb is optional: a first token that starts with `-`, or that reads as a crew — it holds a `/` or a `\`, ends with `.ork.ts`, `.ork.js`, `.ts`, `.js`, `.yaml` or `.yml`, or names an existing file or folder — is handed to `orkeon run`. Any other word is refused with `orkeon: unknown command '<word>'` and exit `1`.
 
 ## `orkeon run`
 
@@ -303,6 +303,97 @@ Installation diagnostic: says in under 15 seconds what works and what is missing
 ```bash
 orkeon doctor --json
 ```
+
+## `orkeon settings`
+
+```bash
+orkeon settings                            # the eleven categories, and the sections of each
+orkeon settings rate-and-budgets           # a category: its sections, and who reads each
+orkeon settings RateLimiting               # a section: every key with its type, default and meaning
+orkeon settings RateLimiting:QueueLimit    # one key
+orkeon settings rate                       # a word: whatever is named or described with it
+orkeon settings --all                      # every section and every key, by category
+orkeon settings --json                     # the same inventory, for a program
+orkeon settings --host host                # only what orkeon-host reads
+```
+
+Lists the settings a host reads — what a settings file may hold — in the terminal, offline: the inventory of the [configuration reference](./configuration.md), from the tool itself. It answers from the catalogue the tool carries, which is produced from the code that reads the settings: it opens no settings file, builds no host and reaches no network. So it answers the same in a folder whose `appsettings.json` a run refuses, it works in a folder it cannot write to, and it writes nothing. What it shows is what a key is worth when nothing sets it, **not what this machine has set**: [`orkeon doctor`](#orkeon-doctor) is the verb that judges a file. A key that holds a secret is marked `secret` and has no default — no output of the verb carries a key's value.
+
+```text
+$ orkeon settings RateLimiting
+RateLimiting — Rate and budgets (rate-and-budgets)
+Read by: orkeon, orkeon-host, orkeon-repl
+
+  The host's caps on model requests — the `RateLimiting` section. Every model call of the host
+  counts, once, at the entrance of its provider: …
+
+  RateLimiting:AgentRequestsPerMinute     integer  default: 20
+      Maximum model requests per minute of each agent — …
+  RateLimiting:GlobalRequestsPerMinute    integer  default: 60
+      Maximum model requests per minute across all providers and agents. …
+  RateLimiting:MaxConcurrentRequests      integer  default: 0
+      Maximum number of concurrent (in-flight) model requests. 0 means no concurrency limit (rate
+      limiting only).
+  RateLimiting:ProviderRequestsPerMinute  integer  default: 30
+      Maximum model requests per minute per provider, held and refused like the global cap.
+  RateLimiting:QueueLimit                 integer  default: 5
+      Maximum number of requests the global, per-provider and concurrency caps hold in a queue when
+      they are reached; a request beyond it is refused, then retried.
+```
+
+**What a name designates**, tried in this order, whatever its case:
+
+1. **a category**, by its id or its title — `models`, `rate-and-budgets`, `memory-and-vectors`, `rag`, `files-and-sandbox`, `security`, `tools`, `orchestration-and-persistence`, `scripts-and-console`, `service-host-and-a2a`, `observability`: its sections, each with its number of keys, who reads it and the first sentence of what it configures;
+2. **a section**, by its path (`RateLimiting`, `Orkeon:Rag:WebFallback`): who reads it, what it configures, then every key — path, type, default, the values a closed list accepts, and its meaning;
+3. **a key**, by its path. A name or an index of yours stands where the catalogue writes `<name>` or `<i>`: `orkeon settings Llm:Profiles:fast:Model` finds `Llm:Profiles:<name>:Model` (written with the brackets, the path needs quotes in a shell);
+4. **a word**: what is named with it, then what is only described with it — sections with who reads them, keys one line each. The word is looked for where a word starts, in the paths and in the descriptions: `rate` finds `RateLimiting` and `ToolRateLimiting`, not `FallbackStrategy`.
+
+A name that designates nothing exits `1` and names the closest one there is. The listing never exceeds 100 columns.
+
+**Who reads a section** is said for each: `Read by: orkeon, orkeon-host, orkeon-repl`, or `Read by: a C# host only — AddOrkeonToolRateLimiting()` for a section no shipped binary reads — written in the settings file of `orkeon run`, such a section has no effect; the list of categories marks it with a `*`.
+
+| Option | Description |
+|---|---|
+| `--all` | Every section and every key, by category. Takes no name. |
+| `--json` | The catalogue instead of the listing (below). Follows a name and `--host`. |
+| `--host <run\|host\|repl>` | Only what one binary reads: `run` is `orkeon` (every verb that builds the runner host), `host` is `orkeon-host`, `repl` is `orkeon-repl`; the name of the binary is accepted too. Without it, everything Orkeon reads, each section saying who reads it. A name the chosen binary does not read exits `1` and says who reads it. |
+
+**`--json` is a contract**, like `doctor --json`: one object with two arrays, written on stdout and nothing else.
+
+```json
+{
+  "sections": [
+    { "path": "RateLimiting", "category": "rate-and-budgets",
+      "hosts": ["orkeon", "orkeon-host", "orkeon-repl"],
+      "registration": "AddOrkeonInfrastructure", "description": "…" }
+  ],
+  "settings": [
+    { "path": "RateLimiting:QueueLimit", "section": "RateLimiting", "type": "integer",
+      "default": 5, "description": "…" },
+    { "path": "MCP:Servers:<name>:Transport", "section": "MCP", "type": "enum",
+      "default": "Stdio", "values": ["Stdio", "Sse"], "description": "…" },
+    { "path": "Llm:ApiKey", "section": "Llm", "type": "string", "secret": true, "description": "…" }
+  ]
+}
+```
+
+| Field | In | Meaning |
+|---|---|---|
+| `path` | both | The configuration path. A name the operator chooses is written `<name>`, an index `<i>`. |
+| `category` | section | One of the eleven category ids above. |
+| `hosts` | section | The shipped binaries that read it, among `orkeon`, `orkeon-host` and `orkeon-repl`. Always present; empty when none does. |
+| `registration` | section | The public registration a host written in C# reads the section through. Absent when only a shipped binary's own composition reads it. |
+| `section` | key | The path of the section the key belongs to. |
+| `type` | key | `string`, `integer`, `number`, `boolean`, `duration`, `uri`, `date-time`, `enum`, `any`, or `list of` one of these. |
+| `default` | key | The value when nothing sets the key, as a JSON value. Absent when there is none, or none that can be written — a secret, a value that depends on the moment. |
+| `defaultNote` | key | What the value cannot say, in words: what stands for a default that is no constant, the entries a dictionary starts with, what the default depends on. Absent otherwise. |
+| `values` | key | The values an `enum` accepts. Absent otherwise. |
+| `secret` | key | `true` when the value is a secret; such a key has neither `default` nor `defaultNote`. Absent otherwise. |
+| `description` | both | What the section configures, what the key means. |
+
+Sections come by category, in the order of the listing, then by path; keys in the order of their sections, then by path. The same build writes the same bytes on every machine: no date, no path, line feeds. With a name or `--host` the shape is the same and the content narrower — a category or a section gives its sections and their keys, a key its section and itself, a word what it found. A field may be added later: read the ones you know.
+
+Exit codes: `0` listed; `1` a name that designates nothing or that the `--host` binary does not read, an unknown option, a `--host` that is none of the three.
 
 ## `orkeon-repl` — the separate interactive console
 
