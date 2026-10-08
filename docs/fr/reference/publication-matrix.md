@@ -236,6 +236,19 @@ remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 
 Ses artefacts de déploiement vivent dans [`deploy/`](https://github.com/orkeon/orkeon/tree/main/deploy) et sont livrés dans l'archive complète aux côtés du daemon : une unité systemd (`Type=notify`, redémarrage sur échec — les erreurs de configuration sortent en 78 et ne bouclent pas —, durcie), un script PowerShell qui l'enregistre auprès du SCM, et un Dockerfile. Aucun des trois ne porte de secret — le jeton du bot et les clés d'API sont nommés par variable d'environnement dans la configuration et fournis par la machine, donc une unité ou une couche d'image peut être lue par n'importe qui sans rien divulguer.
 
+**Ce qu'il faut sur le poste.** Aucun artefact de ce tableau n'a besoin de .NET là où sa
+colonne *Runtime* dit self-contained ; ce que ceux de Windows attendent de Windows n'est pas
+dans cette colonne :
+
+| Artefact | Sur le poste |
+|---|---|
+| `orkeon-cli-<version>-win-x64.zip`, `orkeon-<version>-win-x64.zip` | PowerShell, pour lancer `install.ps1` — écrit pour Windows PowerShell 5.1, passé au smoke sous PowerShell 7 (`smoke-windows`) — et une politique d'exécution qui laisse tourner un script : sur un poste qui n'en a jamais lancé, `powershell -ExecutionPolicy Bypass -File .\install.ps1`. Un zip téléchargé par un navigateur peut devoir être débloqué d'abord (`Unblock-File`) |
+| `orkeon-<version>-win-x64.msi` | rien à installer. Non signé : SmartScreen annonce un éditeur inconnu et demande avant de le lancer |
+| `orkeon-host-<version>-win-x64.msi` | les droits d'administrateur (per-machine). Non signé non plus : même écran SmartScreen, et une invite d'élévation sans éditeur |
+
+Les étapes que suit un lecteur sont dans
+[Avant de commencer](../getting-started/three-ways-to-run-orkeon.md#avant-de-commencer).
+
 Deux fichiers de sommes plutôt qu'un : le job ubuntu `installers` écrit `SHA256SUMS` avant que
 le MSI n'existe — il est construit plus tard, sur `windows-latest`. Chaque fichier de sommes
 est produit par le job qui a produit l'artefact qu'il couvre.

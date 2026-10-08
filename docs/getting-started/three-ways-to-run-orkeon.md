@@ -43,6 +43,16 @@ This is the most flexible path — it can run **every** example and picks up you
 local code changes. Full walkthrough, LLM-profile setup, and
 troubleshooting: [Run your first example](./run-your-first-example.md).
 
+What the machine needs depends on how far you go:
+
+| To… | You need |
+|---|---|
+| **Run an example** (`dotnet run`, above) | the **.NET 10 SDK**, 10.0.300 or later (`dotnet --version`; `global.json` pins it), and **git**. The first build restores its packages from nuget.org |
+| **Build an installer archive** from the clone (`scripts/package-installers.sh`, or `scripts/package-installers.ps1` on Windows) | the two above, plus: **Python 3** — `python3` on the `PATH`, `python` on Windows (the Microsoft Store alias of that name does not count); **`tar`**; network access to **nuget.org** and to **`registry.npmjs.org`**, where the script fetches the esbuild binary it bundles. On Windows the script needs **PowerShell 7** (`pwsh`): Windows PowerShell 5.1, the one installed with the system, stops on it. On Linux the script also calls `curl`, `openssl` and `sha256sum` |
+
+An archive built this way is installed like a downloaded one — see
+[Release binary](#2-release-binary) below, its Windows prerequisites included.
+
 ---
 
 ## 2. Release binary
@@ -53,8 +63,8 @@ Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) attaches a
 
 | Artifact | What's inside | Runtime prerequisite | Best for |
 |---|---|---|---|
-| **`orkeon-cli-<version>-win-x64.zip`** | the `orkeon` CLI + **Orkeon Studio** (`orkeon-studio`, the desktop app) + `install.ps1` | none — self-contained | **Windows: the recommended download** |
-| **`orkeon-<version>-win-x64.msi`** | the same two, per-user MSI, with an "Orkeon Studio" Start-menu shortcut | none — self-contained | Windows, if you'd rather double-click and get an "Installed apps" entry |
+| **`orkeon-cli-<version>-win-x64.zip`** | the `orkeon` CLI + **Orkeon Studio** (`orkeon-studio`, the desktop app) + `install.ps1` | no .NET — self-contained. `install.ps1` is a PowerShell script: see [Before you start](#before-you-start) | **Windows: the recommended download** |
+| **`orkeon-<version>-win-x64.msi`** | the same two, per-user MSI, with an "Orkeon Studio" Start-menu shortcut | no .NET — self-contained. Not code-signed: Windows asks before it runs it, see [Before you start](#before-you-start) | Windows, if you'd rather double-click and get an "Installed apps" entry |
 | **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | the `orkeon` CLI at `/usr/bin/orkeon` + the two **Orkeon Studio** terminal apps | none — self-contained | **Debian / Ubuntu** — best installed from the [apt repository](../guides/install-with-apt.md), which serves these same packages and their updates |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS onboarding channel stays CLI-only) | none — self-contained | **macOS**, Apple Silicon and Intel respectively |
 | **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **every** launcher (`orkeon`, `orkeon-repl`, `orkeon-host`…) + the Studio apps their platform supports + `install.sh` / `install.ps1` | mixed — see the command table below | The REPL and the service host |
@@ -91,12 +101,50 @@ Two channels, both per-user (no administrator rights, nothing written outside
 your profile). **Install one channel at a time** — the MSI refuses to install
 over a ZIP install, so uninstall the other one first if you switch.
 
+#### Before you start
+
+Neither channel needs .NET. What Windows itself may put in the way:
+
+- **PowerShell.** `install.ps1` is written for Windows PowerShell 5.1, the one installed
+  with Windows, and for PowerShell 7 (`pwsh`). What every release proves on a real
+  Windows machine is the install under **PowerShell 7**: should `install.ps1` fail under
+  5.1, run it from `pwsh`.
+- **Execution policy.** A Windows machine that has never run a script refuses
+  `.\install.ps1`: *"running scripts is disabled on this system"*. Run it under a policy
+  that holds for that one command, and changes no setting of the machine:
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\install.ps1              # install
+  powershell -ExecutionPolicy Bypass -File .\install.ps1 -Uninstall   # uninstall
+  ```
+
+  or lift the policy for the PowerShell window you are in, and only until you close it:
+  `Set-ExecutionPolicy -Scope Process Bypass`. Never change the policy of the machine or of
+  your account to install Orkeon.
+- **Blocked file.** A zip downloaded by a browser is marked as coming from the Internet,
+  and so can be what you extract from it; under the `RemoteSigned` policy PowerShell then
+  refuses the script. Lift the mark before extracting — `Unblock-File
+  .\orkeon-cli-<version>-win-x64.zip` — or on the extracted script, `Unblock-File
+  .\install.ps1`.
+- **A policy your organization sets** (Group Policy) is not lifted by any of the above:
+  the option and `-Scope Process` are both overruled by it. Ask your administrator, or
+  use a machine where you are allowed to run scripts.
+- **SmartScreen.** Neither MSI is code-signed — `orkeon-<version>-win-x64.msi` here, nor
+  the [service host's](../architecture/service-host.md) `orkeon-host-<version>-win-x64.msi`.
+  Windows shows *"Windows protected your PC"* with an unknown publisher: **More info** →
+  **Run anyway**. Check what you downloaded first — its checksum and its build
+  attestation, in [Verify what you install](../guides/verify-what-you-install.md) — since
+  the warning says nothing about the file itself. Or use the ZIP channel.
+
+#### Install
+
 ```powershell
 # Channel A — ZIP + install.ps1 (recommended)
 Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .
 cd orkeon-cli-<version>-win-x64
 .\install.ps1     # -> %LOCALAPPDATA%\Programs\Orkeon, user PATH, "Installed apps" entry
 .\install.ps1 -Uninstall
+# "running scripts is disabled on this system"? See "Before you start" above.
 ```
 
 ```powershell
@@ -104,9 +152,6 @@ cd orkeon-cli-<version>-win-x64
 msiexec /i orkeon-<version>-win-x64.msi          # same install dir, same PATH entry
 msiexec /x orkeon-<version>-win-x64.msi /qn      # uninstall
 ```
-
-The MSI is **not code-signed**, so SmartScreen shows a publisher warning on
-first run — "More info" → "Run anyway", or use the ZIP channel.
 
 Either way, your configuration lives in `%APPDATA%\Orkeon\appsettings.json`, and
 **both uninstallers leave it alone**. (An `appsettings.json` left behind in an
@@ -201,7 +246,7 @@ Open a **new** terminal (so the PATH change is picked up), then:
 
 ```bash
 orkeon init      # writes the global config: which LLM, which model, which endpoint
-orkeon doctor    # 10 checks: runtime, config, LLM profiles, LLM reachability, esbuild, grammars, …
+orkeon doctor    # checks the install: runtime, config, LLM profiles, LLM reachability, esbuild, grammars, …
 orkeon run path/to/crew.yaml
 ```
 

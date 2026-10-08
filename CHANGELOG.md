@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation — what a Windows machine needs before installing
+
+The install pages said "self-contained, no .NET needed" and then `.\install.ps1`, without a
+word on what Windows asks of a script or of an unsigned installer.
+
+- **Before you start**, in [three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md#before-you-start)
+  and, shorter, in the README: which PowerShell runs `install.ps1` and under which one each
+  release proves it; the command to use when Windows answers *"running scripts is disabled
+  on this system"* — `powershell -ExecutionPolicy Bypass -File .\install.ps1`, which changes
+  no setting of the machine —; `Unblock-File` for a zip a browser downloaded; what a policy
+  set by an organization does to all of that.
+- **Both MSIs are described as not code-signed**, the service host's included (it was said
+  of the per-user one alone), with the SmartScreen screen to expect and the checks to run
+  first.
+- **From source**: a table of what it takes to run an example (the .NET 10 SDK, git) and
+  what it takes to build an installer archive (Python 3, `tar`, PowerShell 7 on Windows,
+  access to nuget.org and `registry.npmjs.org`).
+- The publication matrix gains *What the machine needs* for the Windows artifacts; the
+  README embedded in every archive carries the same commands.
+- Stale texts: the archive README no longer says the CLI archive holds `orkeon` alone (the
+  Windows and Linux ones carry Orkeon Studio), nor counts the checks of `orkeon doctor` —
+  no page does any more; a sentence cut in half on the French page is whole again.
+
 ### Fixed — a build off a tag no longer takes the release's version
 
 `scripts/package-installers.sh` and `.ps1`, run without a version on a commit that is no

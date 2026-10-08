@@ -165,7 +165,7 @@ Runner, Ollama, or a model embedded in the container image) — see the
 > `git submodule update` on those paths is expected and harmless — see
 > [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Windows** — download `orkeon-cli-<version>-win-x64.zip` (or the `.msi`) from the [releases](https://github.com/Orkeon/orkeon/releases); it is self-contained, no .NET needed:
+**Windows** — download `orkeon-cli-<version>-win-x64.zip` (or the `.msi`) from the [releases](https://github.com/Orkeon/orkeon/releases); it is self-contained, no .NET needed.:
 
 ```powershell
 # Verify the download first: every release ships a SHA256SUMS asset (SHA256SUMS.msi for the .msi)
@@ -177,6 +177,8 @@ Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cl
 orkeon init          # in a NEW terminal: pick your LLM provider and model
 orkeon run crew.yaml
 ```
+
+> **"Running scripts is disabled on this system"?** That is Windows' execution policy, on any machine that has never run a script. Run the installer under a policy that holds for this one command and changes no setting: `powershell -ExecutionPolicy Bypass -File .\install.ps1`. A zip downloaded by a browser may also be blocked — `Unblock-File .\orkeon-cli-<version>-win-x64.zip` before extracting. The `.msi` is not code-signed: SmartScreen shows *"Windows protected your PC"* — **More info** → **Run anyway**, once you have checked the file. `install.ps1` is written for Windows PowerShell 5.1 and proven at each release under PowerShell 7 (`pwsh`). Details: [Before you start](docs/getting-started/three-ways-to-run-orkeon.md#before-you-start).
 
 **Debian / Ubuntu** (amd64, arm64) — add the signed Orkeon apt source once: the block to copy, with its key check and its `stable` / `rc` / `dev` channels, is in [Install with apt](docs/guides/install-with-apt.md). Then Orkeon is a package like any other — self-contained too, no `dotnet-runtime` package pulled in:
 

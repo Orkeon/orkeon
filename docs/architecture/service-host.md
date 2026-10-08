@@ -265,6 +265,11 @@ same service declaratively (double-click, or `msiexec /i ... /qn`). Everything
 below about the account, the paths, secrets, recovery and the event log holds
 for both channels; only the registration mechanics differ.
 
+The MSI is **not code-signed**. Windows shows *"Windows protected your PC"* with an unknown
+publisher when you double-click it — **More info** → **Run anyway** — and the elevation
+prompt names no publisher either. Check the file first, against `SHA256SUMS.msi` and its
+build attestation: [Verify what you install](../guides/verify-what-you-install.md).
+
 For the script channel: extract the archive under `C:\Program Files\Orkeon`,
 put your configuration under `C:\ProgramData\Orkeon` (the mirrors of
 `/opt/orkeon` and `/etc/orkeon`), and run the bundled script — those paths are

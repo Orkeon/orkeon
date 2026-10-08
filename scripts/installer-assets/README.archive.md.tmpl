@@ -4,8 +4,9 @@ Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI a
 
 ## Prerequisite
 
-**If `bin/` holds `orkeon` alone** (the CLI archive): none. It is self-contained —
-the .NET runtime ships inside it.
+**If this is the CLI archive** (`bin/` holds `orkeon` and, on Windows and Linux, the
+Orkeon Studio apps): no .NET. Everything in it is self-contained — the .NET runtime
+ships inside.
 
 **If `bin/` holds every launcher** (the multi-app archive): `orkeon`,
 `orkeon-host` and the Orkeon Studio apps are self-contained;
@@ -35,13 +36,25 @@ Windows (PowerShell):
 .\install.ps1 -Uninstall
 ```
 
+`install.ps1` is written for Windows PowerShell 5.1 and for PowerShell 7. On a machine
+that has never run a script, Windows refuses it ("running scripts is disabled on this
+system"); run it under a policy that holds for this one command and changes no setting:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+If the archive was downloaded by a browser, `Unblock-File .\install.ps1` lifts the mark
+Windows put on it. A policy your organization sets is not lifted by either: ask your
+administrator.
+
 ## First run
 
 In a **new** terminal (so the PATH change is picked up):
 
 ```sh
 orkeon init      # pick an LLM provider and model; writes the global per-user config
-orkeon doctor    # nine checks: runtime, config, LLM reachability, esbuild, grammars, ...
+orkeon doctor    # checks the install: runtime, config, LLM reachability, esbuild, grammars, ...
 orkeon run crew.yaml
 ```
 
@@ -53,8 +66,11 @@ prompt instead of answering it: that warning means `orkeon init` has not run yet
 
 ## Contents
 
-The CLI archive (`orkeon-cli-{{VERSION}}-{{RID}}`) ships `bin/orkeon` alone — the
-first row below. The multi-app archive ships every command in this table.
+The CLI archive (`orkeon-cli-{{VERSION}}-{{RID}}`) ships `bin/orkeon` — the first row
+below — and the Orkeon Studio apps of its platform: `orkeon-studio` (the desktop app) on
+Windows, `orkeon-studio-config` and `orkeon-studio-run` (the terminal apps) on Linux,
+none on macOS. The multi-app archive ships every command in this table, and the Studio
+apps too.
 
 | Command | Description |
 |---|---|

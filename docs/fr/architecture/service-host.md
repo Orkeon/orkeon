@@ -268,6 +268,12 @@ déclarativement (double-clic, ou `msiexec /i ... /qn`). Tout ce qui suit sur le
 compte, les chemins, les secrets, la récupération et le journal d'événements
 vaut pour les deux canaux ; seule la mécanique d'enregistrement diffère.
 
+Le MSI **n'est pas signé**. Windows affiche *« Windows a protégé votre ordinateur »* avec un
+éditeur inconnu au double-clic — **Informations complémentaires** → **Exécuter quand
+même** — et l'invite d'élévation ne nomme pas d'éditeur non plus. Vérifiez d'abord le
+fichier, contre `SHA256SUMS.msi` et son attestation de build :
+[Vérifier ce que vous installez](../guides/verify-what-you-install.md).
+
 Pour le canal script : extrayez l'archive sous `C:\Program Files\Orkeon`,
 posez votre configuration sous `C:\ProgramData\Orkeon` (les miroirs de
 `/opt/orkeon` et `/etc/orkeon`), puis lancez le script embarqué — ces chemins

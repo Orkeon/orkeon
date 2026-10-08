@@ -165,7 +165,7 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 > un `git submodule update` en échec sur ces chemins est attendu et sans
 > conséquence — voir [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
 
-**Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis :
+**Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis. :
 
 ```powershell
 # Vérifiez d'abord le téléchargement : chaque release publie un asset SHA256SUMS (SHA256SUMS.msi pour le .msi)
@@ -177,6 +177,8 @@ Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cl
 orkeon init          # dans un NOUVEAU terminal : choisissez le fournisseur LLM et le modèle
 orkeon run crew.yaml
 ```
+
+> **« L'exécution de scripts est désactivée sur ce système » ?** C'est la politique d'exécution de Windows, sur tout poste qui n'a jamais lancé de script. Lancez l'installeur sous une politique qui ne vaut que pour cette commande et ne change aucun réglage : `powershell -ExecutionPolicy Bypass -File .\install.ps1`. Un zip téléchargé par un navigateur peut aussi être bloqué — `Unblock-File .\orkeon-cli-<version>-win-x64.zip` avant d'extraire. Le `.msi` n'est pas signé : SmartScreen affiche *« Windows a protégé votre ordinateur »* — **Informations complémentaires** → **Exécuter quand même**, une fois le fichier vérifié. `install.ps1` est écrit pour Windows PowerShell 5.1 et prouvé à chaque release sous PowerShell 7 (`pwsh`). Détails : [Avant de commencer](docs/fr/getting-started/three-ways-to-run-orkeon.md#avant-de-commencer).
 
 **Debian / Ubuntu** (amd64, arm64) — ajoutez une fois la source apt signée d'Orkeon : le bloc à copier, avec la vérification de la clé et les canaux `stable` / `rc` / `dev`, est dans [Installer avec apt](docs/fr/guides/install-with-apt.md). Orkeon est ensuite un paquet comme un autre — self-contained lui aussi, aucun paquet `dotnet-runtime` tiré :
 
