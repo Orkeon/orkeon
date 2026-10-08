@@ -31,10 +31,19 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </remarks>
 public sealed class JsLlmFacadeConcurrentStreamTests
 {
+    /// <summary>
+    /// A hang guard, not a bound on the run: Jint rejects a promise still pending after
+    /// <c>PromiseTimeout</c> — ten seconds by default, which a loaded pool can spend on the hops
+    /// between the seven enumerations alone.
+    /// </summary>
+    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(60);
+
+    private static Engine NewEngine() => new(options => options.Constraints.PromiseTimeout = HangGuard);
+
     [Fact]
     public async Task Seven_concurrent_streams_report_their_own_usage_and_reasoning()
     {
-        using var engine = new Engine();
+        using var engine = NewEngine();
         var provider = new InterleavingProvider();
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
         engine.SetValue("llm", facade);
@@ -66,7 +75,7 @@ public sealed class JsLlmFacadeConcurrentStreamTests
     [Fact]
     public async Task Seven_concurrent_streams_yield_their_own_text()
     {
-        using var engine = new Engine();
+        using var engine = NewEngine();
         var provider = new InterleavingProvider();
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
         engine.SetValue("llm", facade);
