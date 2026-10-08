@@ -229,7 +229,9 @@ jobs:
       # instead of failing on a parameter. Under PowerShell 7, -WhatIf goes through the
       # prerequisite check and the version, prints the two commands and runs neither.
       # cmd.exe merges the two streams: under 5.1, a native command's redirected stderr
-      # would otherwise end the step on its first line.
+      # would otherwise end the step on its first line. The refusal's exit code 1 is the
+      # one expected: it is cleared once checked, because the runner ends a PowerShell
+      # step on the last $LASTEXITCODE.
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with: { dotnet-version: '10.0.x' }
       - name: The source installer asks for PowerShell 7 by name (Windows PowerShell 5.1)
@@ -241,6 +243,7 @@ jobs:
           $text = $out -join "`n"
           if ($code -ne 1) { throw "install-from-source.ps1 exited ${code} under Windows PowerShell (expected 1)." }
           if ($text -notmatch 'PowerShell 7' -or $text -notmatch 'Nothing was built') { throw 'install-from-source.ps1 stopped under Windows PowerShell without naming PowerShell 7.' }
+          $global:LASTEXITCODE = 0
       - name: The source installer's dry run (PowerShell 7)
         shell: pwsh
         run: |
