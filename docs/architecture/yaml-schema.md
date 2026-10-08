@@ -140,7 +140,9 @@ instead of ignoring it. And so does a task's `asyncExecution: true` outside `pro
 that asks for it rather than ignore the flag (see [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
 A `maxRpm` of 0 or less — on the crew or on an agent — and a `maxIter` of 0 or less fail the load too,
 naming the crew or the agent: leave `maxRpm:` out for no limit, `maxIter:` out for the default (20). They
-used to be replaced, by 10 and 15, without a word.
+used to be replaced, by 10 and 15, without a word. The host's own caps on model calls — which bound an
+agent's `maxRpm`, the stricter winning — are the settings of
+[`RateLimiting`](../reference/configuration.md#ratelimiting).
 
 A message names an agent or a task by its key — `Agent 'researcher' must have a goal.` —, a
 configuration built in code by its identifier.

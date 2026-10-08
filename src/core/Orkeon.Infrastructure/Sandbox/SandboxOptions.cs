@@ -26,12 +26,14 @@ public class SandboxOptions
     /// <summary>
     /// Explicit, noisy opt-in to allow executing code on a sandbox that provides NO OS-level
     /// isolation (the host process runner) when an isolating sandbox (Docker) is unavailable.
-    /// <para>
+    /// Left <c>false</c>, code execution is refused rather than run on the host; <c>true</c> is
+    /// RCE-equivalent on the host, for trusted code in a trusted environment only.
+    /// </summary>
+    /// <remarks>
     /// Default is <c>false</c> (fail-closed): if no OS-isolating sandbox is available, code
     /// execution is REFUSED rather than silently falling back to the host. Set this to <c>true</c>
     /// only for trusted, non-LLM code in a trusted environment — it is RCE-equivalent on the host.
-    /// </para>
-    /// </summary>
+    /// </remarks>
     public bool AllowHostExecution { get; set; }
 
     /// <summary>

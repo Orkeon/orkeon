@@ -253,7 +253,7 @@ Every number below is recomputed from the tree on each CI run — `bash scripts/
 | **Configurable agent selection** | A task that names no agent goes to the first available one (`FirstFit`, the default), to the best lexical skill match (`Skill`), or to the closest agent by embedding similarity (`Embedding`, which needs a real embedding provider) — `OrkeonApplicationOptions.AgentSelectionStrategy` |
 | **Checkpointing & resume** | Execution state persisted to pluggable state stores (InMemory, JSON file, SQLite, PostgreSQL); `CheckpointManager` time-travel (fork, replay, diff) and `ResumeEngine` to resume interrupted runs |
 | **A2A communication** | Agent-to-Agent protocol with discovery, `A2AClient`/`A2AServer`, a scoped agent repository over a shared registration store, and optional mTLS / credential enforcement (client certificate + server-side `RequireMutualTls`; `AllowedAuthSchemes` with validated `Bearer` tokens and `ApiKey` secrets) |
-| **Opt-in subsystems** | A2A, monitoring, tool rate-limiting, benchmarking, multimodal, kickoff hooks and more — none registered by default, each enabled via its dedicated `AddOrkeonXxx()` extension — see the [opt-in reference](docs/reference/opt-in-subsystems.md) |
+| **Opt-in subsystems** | A2A, monitoring, tool rate-limiting ([`ToolRateLimiting`](docs/reference/configuration.md#toolratelimiting) — the limits on model calls, [`RateLimiting`](docs/reference/configuration.md#ratelimiting), apply in every host), benchmarking, multimodal, kickoff hooks and more — none registered by default, each enabled via its dedicated `AddOrkeonXxx()` extension — see the [opt-in reference](docs/reference/opt-in-subsystems.md) |
 
 ---
 

@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation — every setting has a line: its type, its default, who reads it
+
+The configuration reference named almost every setting and defined almost none: two keys out of
+three were a name in a sentence, filed by spelling ("Sections outside the `Orkeon:` prefix"), and
+nothing said which binary reads a section.
+
+- **`docs/reference/configuration.md`, by category** (and its French mirror): after "Where
+  settings are read from" and "When a setting is refused", which do not move, a part "Find a
+  setting" — the eleven categories, each section linked — then one part per category and, in
+  it, one sub-part per section: what it does, **who reads it**, and a table with one row per
+  key — key, type, default, allowed values, meaning. 67 sections, 351 keys.
+- **The tables are produced from the settings catalogue**, between two markers
+  (`<!-- settings:RateLimiting -->` … `<!-- /settings -->`); the prose around them stays
+  written. A test holds both pages to the code: a key added to the engine, a default that
+  changes or a comment that is reworded fails it until the tables are written again
+  (`UPDATE_PRODUCED_FILES=1`, on `SettingsReferencePageTests`).
+- **Rate and budgets** sets `RateLimiting` (the calls to the model, in every host) beside
+  `ToolRateLimiting` and `TokenBudget` (a host written in C# only), and says the difference in
+  its first sentence. The eleven sections no shipped binary reads say so, with the registration
+  that reads them.
+- **`Llm`** is a table followed by its three cautions, each under a title: the timeout and the
+  models that think, `MaxTokens` as a pin, `Grammar`.
+- **The French meanings** are kept by hand in `docs/fr/reference/configuration.settings.json`,
+  one sentence per key; the same test refuses a key without a sentence and a sentence without a
+  key.
+- **A key's sentence reads as a key**: the catalogue drops the "Gets or sets" of a property
+  comment, names a neighbouring key by its own name, a constant by its value and an enumeration
+  value by its name; a few summaries too long for a table keep their detail in remarks.
+- `README`, the documentation index, `security.md`, `studio.md`, `yaml-schema.md` and
+  `local-models.md` link to the section they cite; `security.md` no longer copies the defaults
+  of `RateLimiting`.
+
 ### Added — the settings a host reads can be listed
 
 Orkeon knew the exact list of its settings — it refuses a key that is not on it — and nobody

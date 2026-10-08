@@ -88,7 +88,7 @@
       "section": "Orkeon:Host",
       "type": "string",
       "default": "http://localhost",
-      "description": "The listener's scheme and host name: `http://localhost` by default, `http://+` for every interface. No port (that is `HostA2AOptions.Port`) and no path."
+      "description": "The listener's scheme and host name: `http://localhost` by default, `http://+` for every interface. No port (that is `Port`) and no path."
     },
     {
       "path": "Orkeon:Host:A2A:Port",
@@ -108,7 +108,7 @@
       "section": "Orkeon:Host",
       "type": "list of string",
       "default": [],
-      "description": "The folders this host grants THIS crew, as mount strings (`<physical>:<virtual>:<rights>`). Declared by the host, never by the crew: the host grants, the crew does not demand. They are entered as a per-run mount namespace, so two hosted crews may both address `/output` over two different physical folders — the boot registry is one flat set where a virtual path has to be globally unique, which is why `HostCrewMounts` otherwise has to rename them (`/crews`, `/crews-1`, …). Empty (the default) keeps the boot mounts for that crew, unchanged. Second gate. Resolving in the run's namespace is not the whole story: `IPathValidator` is a process-wide singleton whose allowed roots are captured at boot, so a granted folder outside the process workspace root resolves here and is then refused there. Grant folders under that root, or widen it with `PathSecurity:AdditionalAllowedDirectories`."
+      "description": "The folders this host grants THIS crew, as mount strings (`<physical>:<virtual>:<rights>`): a mount namespace of its own for each run, so two hosted crews may both address `/output` over two different folders. Empty (the default) keeps the host's mounts for that crew. A granted folder must lie under the workspace root, or under `PathSecurity:AdditionalAllowedDirectories`."
     },
     {
       "path": "Orkeon:Host:Crews:<i>:Name",
@@ -190,7 +190,7 @@
       "path": "Orkeon:Host:Discord:Routes:<name>",
       "section": "Orkeon:Host:Discord",
       "type": "string",
-      "description": "Which crew each room reaches: a Discord channel id (the channel threads are opened in) mapped to a hosted crew's name. A thread opened in a routed channel starts that crew; a thread anywhere else starts `DiscordChannelOptions.DefaultCrew`. A route to a crew the host does not declare, or a key that is not a channel id, refuses the start."
+      "description": "Which crew each room reaches: a Discord channel id (the channel threads are opened in) mapped to a hosted crew's name. A thread opened in a routed channel starts that crew; a thread anywhere else starts `DefaultCrew`. A route to a crew the host does not declare, or a key that is not a channel id, refuses the start."
     },
     {
       "path": "Orkeon:Host:Discord:TokenEnvironmentVariable",

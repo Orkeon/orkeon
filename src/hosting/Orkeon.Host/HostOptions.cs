@@ -46,7 +46,12 @@ internal sealed record HostedCrewOptions
 
     /// <summary>
     /// The folders this host grants THIS crew, as mount strings
-    /// (<c>&lt;physical&gt;:&lt;virtual&gt;:&lt;rights&gt;</c>).
+    /// (<c>&lt;physical&gt;:&lt;virtual&gt;:&lt;rights&gt;</c>): a mount namespace of its own for
+    /// each run, so two hosted crews may both address <c>/output</c> over two different folders.
+    /// Empty (the default) keeps the host's mounts for that crew. A granted folder must lie under
+    /// the workspace root, or under <c>PathSecurity:AdditionalAllowedDirectories</c>.
+    /// </summary>
+    /// <remarks>
     /// <para>
     /// Declared by the host, never by the crew: the host grants, the crew does not demand.
     /// They are entered as a per-run mount namespace, so two hosted crews may both address
@@ -64,7 +69,7 @@ internal sealed record HostedCrewOptions
     /// refused there. Grant folders under that root, or widen it with
     /// <c>PathSecurity:AdditionalAllowedDirectories</c>.
     /// </para>
-    /// </summary>
+    /// </remarks>
     public IReadOnlyList<string> Mounts { get; init; } = [];
 
 }

@@ -191,6 +191,8 @@ pins the rate limiter:
 "RateLimiting": { "MaxConcurrentRequests": 1 }
 ```
 
+The five keys of the section, with their defaults, are in the
+[configuration reference](../reference/configuration.md#ratelimiting).
 If you write your own settings file, keep that block — **absent or `0` means
 UNLIMITED concurrency** (the limiter only engages for values `> 0`), and
 parallel or consensual crews will happily open one connection per agent.

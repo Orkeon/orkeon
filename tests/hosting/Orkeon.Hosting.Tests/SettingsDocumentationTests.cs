@@ -24,6 +24,13 @@ public sealed class SettingsDocumentationTests
                 <member name="P:{typeof(Documented).FullName!.Replace('+', '.')}.Standard">
                   <summary>Encrypted at rest (AES-256), as the e-mail decision says (ADR-012).</summary>
                 </member>
+                <member name="P:{typeof(Documented).FullName!.Replace('+', '.')}.Accessed">
+                  <summary>
+                  Gets or sets a value indicating whether the cap applies: over <see cref="P:{typeof(Documented).FullName!.Replace('+', '.')}.Plain"/>
+                  requests, <see cref="F:{typeof(Mode).FullName!.Replace('+', '.')}.Strict"/> refuses. Defaults to
+                  <see cref="F:{typeof(Documented).FullName!.Replace('+', '.')}.DefaultLimit"/>.
+                  </summary>
+                </member>
                 <member name="T:{typeof(Documented).FullName!.Replace('+', '.')}">
                   <summary>The tree of the pipeline (v2, plan §8.1), bound from <c>Orkeon:Rag</c>.</summary>
                 </member>
@@ -48,6 +55,12 @@ public sealed class SettingsDocumentationTests
     }
 
     [Fact]
+    public void A_summary_reads_as_a_key_not_as_a_property() =>
+        Assert.Equal(
+            "Whether the cap applies: over `Plain` requests, `Strict` refuses. Defaults to `7`.",
+            s_documentation.Of(typeof(Documented).GetProperty(nameof(Documented.Accessed))!));
+
+    [Fact]
     public void A_property_takes_the_sentence_of_the_type_it_inherits_it_from() =>
         Assert.StartsWith(
             "Maximum requests",
@@ -68,6 +81,16 @@ public sealed class SettingsDocumentationTests
         public int Standard { get; set; }
 
         public int Silent { get; set; }
+
+        public const int DefaultLimit = 7;
+
+        public Mode Accessed { get; set; }
+    }
+
+    private enum Mode
+    {
+        Lenient,
+        Strict,
     }
 
     private sealed class Inheriting : Documented;

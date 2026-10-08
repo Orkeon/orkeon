@@ -731,7 +731,7 @@
       "section": "RateLimiting",
       "type": "integer",
       "default": 60,
-      "description": "Maximum model requests per minute across all providers and agents. A request over it is held in a queue of `RateLimitingOptions.QueueLimit`, then retried, then failed."
+      "description": "Maximum model requests per minute across all providers and agents. A request over it is held in a queue of `QueueLimit`, then retried, then failed."
     },
     {
       "path": "RateLimiting:MaxConcurrentRequests",
@@ -807,35 +807,35 @@
       "section": "Orkeon:ChromaDb",
       "type": "uri",
       "default": "http://localhost:8000/",
-      "description": "Gets or sets the base URL of the ChromaDB server."
+      "description": "The base URL of the ChromaDB server."
     },
     {
       "path": "Orkeon:ChromaDb:CollectionName",
       "section": "Orkeon:ChromaDb",
       "type": "string",
       "default": "orkeon_memories",
-      "description": "Gets or sets the collection name to use for storing memories."
+      "description": "The collection name to use for storing memories."
     },
     {
       "path": "Orkeon:ChromaDb:Database",
       "section": "Orkeon:ChromaDb",
       "type": "string",
       "default": "default_database",
-      "description": "Gets or sets the database addressed by the v2 API (`/api/v2/tenants/{tenant}/databases/{database}/...`). Defaults to `default_database`. Non-default databases must already exist on the server."
+      "description": "The database addressed by the v2 API (`/api/v2/tenants/{tenant}/databases/{database}/...`). Defaults to `default_database`. Non-default databases must already exist on the server."
     },
     {
       "path": "Orkeon:ChromaDb:DefaultTopK",
       "section": "Orkeon:ChromaDb",
       "type": "integer",
       "default": 10,
-      "description": "Gets or sets the default number of results to return from queries."
+      "description": "The default number of results to return from queries."
     },
     {
       "path": "Orkeon:ChromaDb:Tenant",
       "section": "Orkeon:ChromaDb",
       "type": "string",
       "default": "default_tenant",
-      "description": "Gets or sets the tenant addressed by the v2 API (`/api/v2/tenants/{tenant}/...`). Defaults to `default_tenant`. Non-default tenants must already exist on the server."
+      "description": "The tenant addressed by the v2 API (`/api/v2/tenants/{tenant}/...`). Defaults to `default_tenant`. Non-default tenants must already exist on the server."
     },
     {
       "path": "Orkeon:CognitiveMemory:AnalysisModel",
@@ -1043,145 +1043,145 @@
       "section": "Orkeon:LanceDb",
       "type": "string",
       "secret": true,
-      "description": "Gets or sets the API key sent in the `x-api-key` header."
+      "description": "The API key sent in the `x-api-key` header."
     },
     {
       "path": "Orkeon:LanceDb:CreateFullTextIndexOnInit",
       "section": "Orkeon:LanceDb",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets a value indicating whether the provider creates a full-text (FTS) index on the `content` column when it creates the table. Server-side full-text search requires this index; creation failures are logged as warnings and surface later as server errors on `SearchAsync`."
+      "description": "Whether the provider creates a full-text (FTS) index on the `content` column when it creates the table. Server-side full-text search requires this index; creation failures are logged as warnings and surface later as server errors on `SearchAsync`."
     },
     {
       "path": "Orkeon:LanceDb:Database",
       "section": "Orkeon:LanceDb",
       "type": "string",
-      "description": "Gets or sets the optional database name sent in the `x-lancedb-database` header (Enterprise deployments behind a shared/private endpoint)."
+      "description": "The optional database name sent in the `x-lancedb-database` header (Enterprise deployments behind a shared/private endpoint)."
     },
     {
       "path": "Orkeon:LanceDb:DefaultTopK",
       "section": "Orkeon:LanceDb",
       "type": "integer",
       "default": 10,
-      "description": "Gets or sets the default number of results to return from queries."
+      "description": "The default number of results to return from queries."
     },
     {
       "path": "Orkeon:LanceDb:DistanceType",
       "section": "Orkeon:LanceDb",
       "type": "string",
       "default": "cosine",
-      "description": "Gets or sets the distance metric used by server-side vector search (`cosine`, `l2` or `dot`). The provider converts the returned `_distance` to a similarity score as `1 - distance`, which is only meaningful for the default `cosine` metric."
+      "description": "The distance metric used by server-side vector search (`cosine`, `l2` or `dot`). The provider converts the returned `_distance` to a similarity score as `1 - distance`, which is only meaningful for the default `cosine` metric."
     },
     {
       "path": "Orkeon:LanceDb:EmbeddingDimension",
       "section": "Orkeon:LanceDb",
       "type": "integer",
       "default": 1536,
-      "description": "Gets or sets the embedding vector dimension of the table's fixed-size `vector` column. Must match the embeddings stored through the provider."
+      "description": "The embedding vector dimension of the table's fixed-size `vector` column. Must match the embeddings stored through the provider."
     },
     {
       "path": "Orkeon:LanceDb:Endpoint",
       "section": "Orkeon:LanceDb",
       "type": "string",
       "default": "",
-      "description": "Gets or sets the base URL of the LanceDB Cloud/Enterprise REST endpoint (e.g. `https://my-deployment.us-east-1.api.lancedb.com`)."
+      "description": "The base URL of the LanceDB Cloud/Enterprise REST endpoint (e.g. `https://my-deployment.us-east-1.api.lancedb.com`)."
     },
     {
       "path": "Orkeon:LanceDb:FullTextWeight",
       "section": "Orkeon:LanceDb",
       "type": "number",
       "default": 0.3,
-      "description": "Gets or sets the weight applied to the server-side full-text (BM25) ranking when fusing hybrid search results."
+      "description": "The weight applied to the server-side full-text (BM25) ranking when fusing hybrid search results."
     },
     {
       "path": "Orkeon:LanceDb:MinSimilarityScore",
       "section": "Orkeon:LanceDb",
       "type": "number",
       "default": 0,
-      "description": "Gets or sets the minimum similarity score threshold for vector search results."
+      "description": "The minimum similarity score threshold for vector search results."
     },
     {
       "path": "Orkeon:LanceDb:TableName",
       "section": "Orkeon:LanceDb",
       "type": "string",
       "default": "orkeon_memories",
-      "description": "Gets or sets the table name used for storing memories."
+      "description": "The table name used for storing memories."
     },
     {
       "path": "Orkeon:LanceDb:VectorWeight",
       "section": "Orkeon:LanceDb",
       "type": "number",
       "default": 0.7,
-      "description": "Gets or sets the weight applied to the server-side vector similarity ranking when fusing hybrid search results."
+      "description": "The weight applied to the server-side vector similarity ranking when fusing hybrid search results."
     },
     {
       "path": "Orkeon:Pinecone:ApiKey",
       "section": "Orkeon:Pinecone",
       "type": "string",
       "secret": true,
-      "description": "Gets or sets the Pinecone API key."
+      "description": "The Pinecone API key."
     },
     {
       "path": "Orkeon:Pinecone:Host",
       "section": "Orkeon:Pinecone",
       "type": "string",
-      "description": "Gets or sets the index host, as Pinecone reports it (e.g. `orkeon-memories-abc1234.svc.aped-4627-b74a.pinecone.io`; a scheme is optional). When empty, the provider asks the control plane once, on first use (`GET https://api.pinecone.io/indexes/{IndexName}`), and uses the `host` it returns."
+      "description": "The index host, as Pinecone reports it (e.g. `orkeon-memories-abc1234.svc.aped-4627-b74a.pinecone.io`; a scheme is optional). When empty, the provider asks the control plane once, on first use (`GET https://api.pinecone.io/indexes/{IndexName}`), and uses the `host` it returns."
     },
     {
       "path": "Orkeon:Pinecone:IndexName",
       "section": "Orkeon:Pinecone",
       "type": "string",
       "default": "orkeon-memories",
-      "description": "Gets or sets the name of the Pinecone index."
+      "description": "The name of the Pinecone index."
     },
     {
       "path": "Orkeon:Pinecone:Namespace",
       "section": "Orkeon:Pinecone",
       "type": "string",
       "default": "default",
-      "description": "Gets or sets the namespace within the index."
+      "description": "The namespace within the index."
     },
     {
       "path": "Orkeon:Redis:ConnectionString",
       "section": "Orkeon:Redis",
       "type": "string",
       "secret": true,
-      "description": "Gets or sets the StackExchange.Redis connection string (e.g. `localhost:6379`, or `redis.internal:6379,password=…,ssl=true`)."
+      "description": "The StackExchange.Redis connection string (e.g. `localhost:6379`, or `redis.internal:6379,password=…,ssl=true`)."
     },
     {
       "path": "Orkeon:Redis:KeyPrefix",
       "section": "Orkeon:Redis",
       "type": "string",
       "default": "orkeon:memory:",
-      "description": "Gets or sets the prefix namespacing every key the provider writes."
+      "description": "The prefix namespacing every key the provider writes."
     },
     {
       "path": "Orkeon:Sqlite:ConnectionString",
       "section": "Orkeon:Sqlite",
       "type": "string",
       "secret": true,
-      "description": "Gets or sets the SQLite connection string (e.g. `\"Data Source=/data/orkeon-memory.db\"` or `\"Data Source=:memory:\"`). Defaults to an in-memory database so the framework default never writes an ungoverned file to disk. When a file `Data Source` is supplied, its path is resolved and validated through the virtual file system before being handed to Microsoft.Data.Sqlite, so it must point at a writable VFS mount."
+      "description": "The SQLite connection string (e.g. `\"Data Source=/data/orkeon-memory.db\"` or `\"Data Source=:memory:\"`). Defaults to an in-memory database (`Data Source=:memory:`); a file `Data Source` is a virtual path, which must point at a writable mount."
     },
     {
       "path": "Orkeon:Sqlite:DefaultTopK",
       "section": "Orkeon:Sqlite",
       "type": "integer",
       "default": 10,
-      "description": "Gets or sets the default number of results returned by vector queries."
+      "description": "The default number of results returned by vector queries."
     },
     {
       "path": "Orkeon:Sqlite:MinSimilarityScore",
       "section": "Orkeon:Sqlite",
       "type": "number",
       "default": 0,
-      "description": "Gets or sets the minimum similarity score threshold for vector search results."
+      "description": "The minimum similarity score threshold for vector search results."
     },
     {
       "path": "Orkeon:Sqlite:TableName",
       "section": "Orkeon:Sqlite",
       "type": "string",
       "default": "memory_items",
-      "description": "Gets or sets the table name used for storing memory items. Must match `^[A-Za-z_][A-Za-z0-9_]*$`: the identifier is interpolated into SQL statements. Checked when a host starts and again at construction."
+      "description": "The table name used for storing memory items. Must match `^[A-Za-z_][A-Za-z0-9_]*$`: the identifier is interpolated into SQL statements. Checked when a host starts and again at construction."
     },
     {
       "path": "Orkeon:VectorSearch:DefaultMinScore",
@@ -1229,7 +1229,7 @@
       "section": "Orkeon:Rag",
       "type": "integer",
       "default": 3,
-      "description": "Maximum number of corrective iterations (query rewrites — whether triggered by an `Incorrect` retrieval verdict or by an ungrounded answer) before the pipeline generates with the best chunks available. Defaults to `RagCorrectiveOptions.DefaultMaxIterations`."
+      "description": "Maximum number of corrective iterations (query rewrites — whether triggered by an `Incorrect` retrieval verdict or by an ungrounded answer) before the pipeline generates with the best chunks available. Defaults to `3`."
     },
     {
       "path": "Orkeon:Rag:Corrective:WebFallback:Enabled",
@@ -1243,7 +1243,7 @@
       "section": "Orkeon:Rag",
       "type": "integer",
       "default": 3,
-      "description": "Maximum number of web documents requested from the retriever. Defaults to `RagWebFallbackOptions.DefaultMaxResults`."
+      "description": "Maximum number of web documents requested from the retriever. Defaults to `3`."
     },
     {
       "path": "Orkeon:Rag:Generation:MaxOutputTokens",
@@ -1282,13 +1282,13 @@
       "section": "Orkeon:Rag",
       "type": "string",
       "default": "fast",
-      "description": "Profile name (`fast`, `balanced`, `quality`, `adaptive`, `corrective`). Defaults to `RagDefaults.DefaultProfile` (`fast` — `balanced` needs the opt-in ONNX reranker package). Unknown names fail loudly."
+      "description": "Profile name (`fast`, `balanced`, `quality`, `adaptive`, `corrective`). Defaults to `fast` — `balanced` needs the opt-in ONNX reranker package. Unknown names fail loudly."
     },
     {
       "path": "Orkeon:Rag:Provider",
       "section": "Orkeon:Rag",
       "type": "string",
-      "description": "Gets or sets the memory-provider type backing the RAG document store: `inmemory`, `in-memory`, `redis`, `sqlite`, `chromadb`, `chroma`, `pinecone`, `lancedb`, `lance`. `null` or empty selects the ambient container provider."
+      "description": "The memory-provider type backing the RAG document store: `inmemory`, `in-memory`, `redis`, `sqlite`, `chromadb`, `chroma`, `pinecone`, `lancedb`, `lance`. `null` or empty selects the ambient container provider."
     },
     {
       "path": "Orkeon:Rag:QueryTransform:Mode",
@@ -1353,7 +1353,7 @@
       "section": "Orkeon:Rag",
       "type": "number",
       "default": 0.7,
-      "description": "Relevance/diversity trade-off in `[0, 1]`: `1` keeps the pure relevance order, `0` maximises diversity. Defaults to `MmrOptions.DefaultLambda`."
+      "description": "Relevance/diversity trade-off in `[0, 1]`: `1` keeps the pure relevance order, `0` maximises diversity. Defaults to `0.7`."
     },
     {
       "path": "Orkeon:Rag:Retrieval:TopK",
@@ -1381,7 +1381,7 @@
       "section": "Orkeon:Rag:QueryRouting",
       "type": "string",
       "default": "heuristic",
-      "description": "Classifier name: `QueryRoutingOptions.HeuristicClassifier` (default — safe, deterministic, works without any LLM) or `QueryRoutingOptions.LlmClassifier`. Unknown names fail loudly at resolution. When `llm` is selected but no `IChatClient` is registered, the heuristic classifier is used as the documented fallback (with a warning) rather than failing."
+      "description": "Classifier name: `heuristic` (default — safe, deterministic, works without any LLM) or `llm`. Unknown names fail loudly at resolution. When `llm` is selected but no `IChatClient` is registered, the heuristic classifier is used as the documented fallback (with a warning) rather than failing."
     },
     {
       "path": "Orkeon:Rag:Retrieval:Hybrid:Enabled",
@@ -1435,7 +1435,7 @@
         "Flag",
         "Discard"
       ],
-      "description": "What to do with documents the injection validator flags as `PromptInjectionVerdict.Suspicious`: keep them flagged in metadata (default) or discard them. Rejected documents are always discarded."
+      "description": "What to do with documents the injection validator flags as `Suspicious`: keep them flagged in metadata (default) or discard them. Rejected documents are always discarded."
     },
     {
       "path": "Orkeon:Rag:WebFallback:Timeout",
@@ -1449,7 +1449,7 @@
       "section": "Orkeon:CodeSandbox",
       "type": "boolean",
       "default": false,
-      "description": "Explicit, noisy opt-in to allow executing code on a sandbox that provides NO OS-level isolation (the host process runner) when an isolating sandbox (Docker) is unavailable. Default is `false` (fail-closed): if no OS-isolating sandbox is available, code execution is REFUSED rather than silently falling back to the host. Set this to `true` only for trusted, non-LLM code in a trusted environment — it is RCE-equivalent on the host."
+      "description": "Explicit, noisy opt-in to allow executing code on a sandbox that provides NO OS-level isolation (the host process runner) when an isolating sandbox (Docker) is unavailable. Left `false`, code execution is refused rather than run on the host; `true` is RCE-equivalent on the host, for trusted code in a trusted environment only."
     },
     {
       "path": "Orkeon:CodeSandbox:DefaultPermissions:AllowedPaths",
@@ -1588,7 +1588,7 @@
       "section": "Orkeon:FileSystem",
       "type": "list of string",
       "default": [],
-      "description": "Infrastructure mounts, same grammar as `FileSystemOptions.Mounts`, registered with `MountVisibility.Internal`: resolvable, but absent from `GetAvailableMounts()` and therefore from `list_mounts`, the agent prompt's mount table and access-denied messages. This is where a runner puts what it needs the VFS to reach but no agent has any business addressing — the LLM exchange log directory, for one. The mount-string grammar has no room for a visibility token, which is why this is a separate list rather than a fourth field. A boundary, not just a hiding place. The `IFileSystemService` every tool holds refuses these mounts, and reports them exactly like a path that does not exist. Infrastructure that must reach one asks for `PrivilegedFileSystemAccess` by name. It used to be a hiding place — resolvable for anyone who typed the name, and the names are documented — so a single `file_read /llm-logs/…` handed an agent every prompt of the run."
+      "description": "Infrastructure mounts, same grammar as `Mounts`: resolvable by the host, absent from `list_mounts`, the agent prompt's mount table and access-denied messages, and refused to every tool. This is where a runner puts what it needs the VFS to reach but no agent has any business addressing — the LLM exchange log directory, for one."
     },
     {
       "path": "Orkeon:FileSystem:Mounts",
@@ -1655,7 +1655,7 @@
       "path": "Orkeon:Dlp:ChannelPolicies:<name>",
       "section": "Orkeon:Dlp",
       "type": "any",
-      "description": "Gets per-channel policy overrides."
+      "description": "Per-channel policy overrides."
     },
     {
       "path": "Orkeon:Dlp:DefaultAction",
@@ -1668,49 +1668,49 @@
         "Block",
         "Audit"
       ],
-      "description": "Gets the default action for all channels."
+      "description": "The default action for all channels."
     },
     {
       "path": "Orkeon:Dlp:Enabled",
       "section": "Orkeon:Dlp",
       "type": "boolean",
       "default": true,
-      "description": "Gets whether DLP is globally enabled."
+      "description": "Whether DLP is globally enabled."
     },
     {
       "path": "Orkeon:Guardian:DefaultPolicy:DelegationGuardEnabled",
       "section": "Orkeon:Guardian",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets a value indicating whether the delegation phase (depth, self-delegation, cycles) runs."
+      "description": "Whether the delegation phase (depth, self-delegation, cycles) runs."
     },
     {
       "path": "Orkeon:Guardian:DefaultPolicy:InputGuardEnabled",
       "section": "Orkeon:Guardian",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets a value indicating whether the input phase (prompt-injection screening of the composed user prompt) runs."
+      "description": "Whether the input phase (prompt-injection screening of the composed user prompt) runs."
     },
     {
       "path": "Orkeon:Guardian:DefaultPolicy:MaxDelegationDepth",
       "section": "Orkeon:Guardian",
       "type": "integer",
       "default": 5,
-      "description": "Gets or sets how many synchronous delegations may nest before the next one is blocked."
+      "description": "How many synchronous delegations may nest before the next one is blocked."
     },
     {
       "path": "Orkeon:Guardian:DefaultPolicy:ToolGuardEnabled",
       "section": "Orkeon:Guardian",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets a value indicating whether the tool phase (path traversal, SSRF and SQL injection in tool arguments) runs."
+      "description": "Whether the tool phase (path traversal, SSRF and SQL injection in tool arguments) runs."
     },
     {
       "path": "Orkeon:Guardian:Enabled",
       "section": "Orkeon:Guardian",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets a value indicating whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls."
+      "description": "Whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls."
     },
     {
       "path": "Orkeon:Security:PermissionGate:Enabled",
@@ -1810,7 +1810,7 @@
         "Warn",
         "Block"
       ],
-      "description": "The policy the Guardian's input phase applies to the composed user prompt. Default `SanitizationPolicy.Block`: a High or Critical pattern fails the task before any provider call, a lower one is logged and audited; the prompt is never rewritten."
+      "description": "The policy the Guardian's input phase applies to the composed user prompt. Default `Block`: a High or Critical pattern fails the task before any provider call, a lower one is logged and audited; the prompt is never rewritten."
     },
     {
       "path": "Security:ToolResults:Policy",
@@ -1822,7 +1822,7 @@
         "Warn",
         "Block"
       ],
-      "description": "The policy applied to a successful tool result. Default `SanitizationPolicy.Warn`: the result reaches the model tagged as data and any injection pattern is logged and audited. `SanitizationPolicy.Block` withholds a result carrying a High or Critical pattern (the model is told so); `SanitizationPolicy.None` passes results untouched and untagged."
+      "description": "The policy applied to a successful tool result. Default `Warn`: the result reaches the model tagged as data and any injection pattern is logged and audited. `Block` withholds a result carrying a High or Critical pattern (the model is told so); `None` passes results untouched and untagged."
     },
     {
       "path": "Security:ToolResults:TrustedTools",
@@ -2049,7 +2049,7 @@
       "path": "Orkeon:Tools:Email:Accounts:<name>:DisplayName",
       "section": "Orkeon:Tools:Email",
       "type": "string",
-      "description": "Display name paired with `EmailAccountOptions.Address` in `From`."
+      "description": "Display name paired with `Address` in `From`."
     },
     {
       "path": "Orkeon:Tools:Email:Accounts:<name>:Incoming:Host",
@@ -2201,7 +2201,7 @@
       "section": "Orkeon:Tools:Shell",
       "type": "list of string",
       "default": [],
-      "description": "A full replacement of the default allowlist, verbatim; it cancels `ShellToolOptions.AllowInterpreters` and re-enables the git read-only restriction. Empty keeps the default allowlist."
+      "description": "A full replacement of the default allowlist, verbatim; it cancels `AllowInterpreters` and re-enables the git read-only restriction. Empty keeps the default allowlist."
     },
     {
       "path": "Orkeon:Tools:Shell:AllowInterpreters",
@@ -2302,35 +2302,35 @@
       "section": "Orkeon:Checkpointing",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets whether to auto-create the schema and tables on first use."
+      "description": "Whether to auto-create the schema and tables on first use."
     },
     {
       "path": "Orkeon:Checkpointing:ConnectionString",
       "section": "Orkeon:Checkpointing",
       "type": "string",
       "secret": true,
-      "description": "Gets or sets the PostgreSQL connection string."
+      "description": "The PostgreSQL connection string."
     },
     {
       "path": "Orkeon:Checkpointing:MaxHistoryPerSession",
       "section": "Orkeon:Checkpointing",
       "type": "integer",
       "default": 1000,
-      "description": "Gets or sets the maximum number of version entries per session (default: 1000)."
+      "description": "The maximum number of version entries per session (default: 1000)."
     },
     {
       "path": "Orkeon:Checkpointing:SchemaName",
       "section": "Orkeon:Checkpointing",
       "type": "string",
       "default": "orkeon",
-      "description": "Gets or sets the schema name (default: \"orkeon\")."
+      "description": "The schema name (default: \"orkeon\")."
     },
     {
       "path": "Orkeon:Consensus:EnableDiscussion",
       "section": "Orkeon:Consensus",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets whether discussion rounds are enabled when consensus is not reached. During discussion, agents receive the context of other agents' results."
+      "description": "Whether discussion rounds are enabled when consensus is not reached. During discussion, agents receive the context of other agents' results."
     },
     {
       "path": "Orkeon:Consensus:FallbackStrategy",
@@ -2342,34 +2342,34 @@
         "Fail",
         "ManagerDecision"
       ],
-      "description": "Gets or sets the fallback strategy when consensus cannot be reached."
+      "description": "The fallback strategy when consensus cannot be reached."
     },
     {
       "path": "Orkeon:Consensus:MaxVotingRounds",
       "section": "Orkeon:Consensus",
       "type": "integer",
       "default": 3,
-      "description": "Gets or sets the maximum number of voting rounds before applying fallback. A round runs every agent on the task, then collects one ballot per agent."
+      "description": "The maximum number of voting rounds before applying fallback. A round runs every agent on the task, then collects one ballot per agent."
     },
     {
       "path": "Orkeon:Consensus:RoleWeights:<name>",
       "section": "Orkeon:Consensus",
       "type": "number",
-      "description": "Gets or sets role-based weights for weighted consensus voting. Key is the agent role, value is the weight multiplier."
+      "description": "Role-based weights for weighted consensus voting. Key is the agent role, value is the weight multiplier."
     },
     {
       "path": "Orkeon:Consensus:VotingOptions:AllowAbstention",
       "section": "Orkeon:Consensus",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets whether abstention is allowed. When true (the default), an abstention only counts toward the quorum. When false, an abstention counts as a vote against every choice: it stays in the denominator of each share, and it breaks unanimity. A Borda count, which has no share threshold, then reaches no consensus while anyone abstains."
+      "description": "Whether abstention is allowed. When true (the default), an abstention only counts toward the quorum. When false, an abstention counts as a vote against every choice: it stays in the denominator of each share, and it breaks unanimity. A Borda count, which has no share threshold, then reaches no consensus while anyone abstains."
     },
     {
       "path": "Orkeon:Consensus:VotingOptions:ConsensusThreshold",
       "section": "Orkeon:Consensus",
       "type": "number",
       "default": 66.7,
-      "description": "Gets or sets the consensus threshold percentage. Used by SuperMajority and WeightedConsensus types."
+      "description": "The consensus threshold percentage. Used by SuperMajority and WeightedConsensus types."
     },
     {
       "path": "Orkeon:Consensus:VotingOptions:ConsensusType",
@@ -2383,21 +2383,21 @@
         "WeightedConsensus",
         "BordaCount"
       ],
-      "description": "Gets or sets the consensus type to use."
+      "description": "The consensus type to use."
     },
     {
       "path": "Orkeon:Consensus:VotingOptions:QuorumPercent",
       "section": "Orkeon:Consensus",
       "type": "number",
       "default": 50,
-      "description": "Gets or sets the quorum, in percent: the minimum share of expressed ballots among all ballots. Below it, no consensus is reached, whatever the expressed ballots say."
+      "description": "The quorum, in percent: the minimum share of expressed ballots among all ballots. Below it, no consensus is reached, whatever the expressed ballots say."
     },
     {
       "path": "Orkeon:Consensus:VotingOptions:UseWeightedVotes",
       "section": "Orkeon:Consensus",
       "type": "boolean",
       "default": false,
-      "description": "Gets or sets whether to use weighted votes."
+      "description": "Whether to use weighted votes."
     },
     {
       "path": "Orkeon:CrewFactory:StrictTools",
@@ -2522,28 +2522,28 @@
       "path": "Orkeon:Cli:Session:ContextWindowTokens",
       "section": "Orkeon:Cli:Session",
       "type": "integer",
-      "description": "The model's context window, in tokens: a number above zero. Unset is `CliSessionOptions.DefaultContextWindowTokens`."
+      "description": "The model's context window, in tokens: a number above zero. Unset is `200000`."
     },
     {
       "path": "Orkeon:Scripting:Limits:ExecutionTimeout",
       "section": "Orkeon:Scripting:Limits",
       "type": "duration",
       "default": "00:00:30",
-      "description": "Maximum wall-clock time the engine is allowed to run, in total. Default: 30 seconds — strict `Untrusted` profile. IMPORTANT: this configures Jint's `TimeoutInterval`, which is wall-clock, not JS-bytecode CPU time. Time spent awaiting a C# Task from JS (e.g. `await Tools.indexCodebase(...)`) IS counted — the engine's internal Stopwatch keeps ticking while the host runs async work. This is a security ceiling that bounds how long a hostile script can pin a thread. Trusted long-running design-spec runs must opt in explicitly by raising `Orkeon:Scripting:Limits:ExecutionTimeout` in appsettings. The strict default stays tight. One window per root pump: a crew run the CLR drives (the `globalThis.crew` handoff through `ScriptHost`, `JsCrew.RunAsync`) runs under it from the invocation of the run function to its last settled promise, the way a script already did — not once per agent body — so a host driving a run longer than this raises the limit."
+      "description": "Maximum wall-clock time the engine is allowed to run, in total — the time spent waiting for a tool or a model counts. Default: 30 seconds, a ceiling for scripts of unknown provenance; a trusted long run raises it."
     },
     {
       "path": "Orkeon:Scripting:Limits:MemoryLimitBytes",
       "section": "Orkeon:Scripting:Limits",
       "type": "integer",
       "default": 104857600,
-      "description": "Maximum cumulative memory the engine is allowed to allocate, in bytes. Default: 100 MB — an `Untrusted`-by-default profile for `.ork.ts` scripts of unknown provenance. IMPORTANT: Jint's `LimitMemory` is cumulative, not peak. It uses `GC.GetAllocatedBytesForCurrentThread()` and counts every allocation since the engine was created — including short-lived intermediates from template-literal concatenation, JSON serialization of tool calls, esbuild bundle parsing, etc. This is a security ceiling that bounds local DoS by a pathological or hostile script. Trusted production runs that genuinely need more memory (e.g. RaggableTree bundling) must opt in explicitly: raise `Orkeon:Scripting:Limits:MemoryLimitBytes` in appsettings, or set `--memory-limit-mb 0` on the CLI (translates to a large ceiling) for a fully trusted run. The strict default stays tight. One window per root pump, like `ScriptingLimitsOptions.ExecutionTimeout`: a crew run the CLR drives (the `globalThis.crew` handoff through `ScriptHost`, `JsCrew.RunAsync`) counts every agent body's allocations against one budget, the way a script already did — not one fresh window per body — so a many-agent run that allocates raises the limit."
+      "description": "Maximum cumulative memory the engine is allowed to allocate, in bytes — counted since the engine was created, not at its peak. Default: 100 MB, a ceiling for scripts of unknown provenance; a trusted run that needs more raises it."
     },
     {
       "path": "Orkeon:Scripting:Limits:RecursionLimit",
       "section": "Orkeon:Scripting:Limits",
       "type": "integer",
       "default": 64,
-      "description": "Maximum recursion depth before the engine throws. Default: 64 (lowered from 100 for the strict `Untrusted` profile). Catches runaway recursion well before the.NET stack overflow while leaving room for legitimately nested script logic. Trusted scripts may raise it via `Orkeon:Scripting:Limits:RecursionLimit`."
+      "description": "Maximum recursion depth before the engine throws. Default: 64: it catches runaway recursion well before the.NET stack overflows and leaves room for legitimately nested script logic. A trusted script may raise it."
     },
     {
       "path": "Orkeon:Scripting:Toolchain:EsbuildPath",
@@ -2624,7 +2624,7 @@
       "section": "A2A:Security",
       "type": "list of string",
       "default": [],
-      "description": "Authentication schemes the server accepts on its task endpoints: `Bearer` and/or `ApiKey`. Empty means no authentication is required. Each declared scheme is validated, not merely matched (`A2ACredentialValidator`): a bearer token by a registered `IAuthenticationProvider` (`A2A:Security:AzureAD` / `A2A:Security:Oidc`), an API key against `A2ASecurityOptions.ApiKeySecretNames`. The server refuses to start when a declared scheme has no validator."
+      "description": "Authentication schemes the server accepts on its task endpoints: `Bearer` and/or `ApiKey`. Empty means no authentication is required. Each declared scheme is validated, not merely matched (`A2ACredentialValidator`): a bearer token by a registered `IAuthenticationProvider` (`A2A:Security:AzureAD` / `A2A:Security:Oidc`), an API key against `ApiKeySecretNames`. The server refuses to start when a declared scheme has no validator."
     },
     {
       "path": "A2A:Security:ApiKeySecretNames",
@@ -2637,7 +2637,7 @@
       "path": "A2A:Security:ClientAuthScheme",
       "section": "A2A:Security",
       "type": "string",
-      "description": "Client side: the scheme of the credential the client sends on every task call (`Authorization: <scheme> <credential>`) — `Bearer` or `ApiKey`, matching what the peer declares in its `A2ASecurityOptions.AllowedAuthSchemes`. Empty means the client sends no `Authorization` header. Agent-card discovery never carries it."
+      "description": "Client side: the scheme of the credential the client sends on every task call (`Authorization: <scheme> <credential>`) — `Bearer` or `ApiKey`, matching what the peer declares in its `AllowedAuthSchemes`. Empty means the client sends no `Authorization` header. Agent-card discovery never carries it."
     },
     {
       "path": "A2A:Security:ClientCertificatePassword",
@@ -2656,28 +2656,28 @@
       "path": "A2A:Security:ClientCredentialSecretName",
       "section": "A2A:Security",
       "type": "string",
-      "description": "Client side: name of the secret holding the credential sent with `A2ASecurityOptions.ClientAuthScheme`, read through the `ISecretProvider` on every call (`ORKEON_<NAME>` with the default chain) so it never sits in the configuration file and rotates without a restart. A call fails before any request when it cannot be read."
+      "description": "Client side: name of the secret holding the credential sent with `ClientAuthScheme`, read through the `ISecretProvider` on every call (`ORKEON_<NAME>` with the default chain) so it never sits in the configuration file and rotates without a restart. A call fails before any request when it cannot be read."
     },
     {
       "path": "A2A:Security:RequireMutualTls",
       "section": "A2A:Security",
       "type": "boolean",
       "default": false,
-      "description": "Whether mTLS is required for server-to-server communication. When enabled, the server requires a client certificate that chains to one of the `A2ASecurityOptions.TrustedCertificateAuthorities` or matches one of the `A2ASecurityOptions.TrustedClientCertificateThumbprints`; starting the server without any configured trust anchor throws (fail-closed) — mere presence and date validity of a certificate is not authentication."
+      "description": "Whether mTLS is required for server-to-server communication. When enabled, the server requires a client certificate that chains to one of the `TrustedCertificateAuthorities` or matches one of the `TrustedClientCertificateThumbprints`; starting the server without any configured trust anchor throws (fail-closed) — mere presence and date validity of a certificate is not authentication."
     },
     {
       "path": "A2A:Security:TrustedCertificateAuthorities",
       "section": "A2A:Security",
       "type": "list of string",
       "default": [],
-      "description": "List of trusted certificate authority certificate paths. Client side: when set, only servers presenting certificates signed by these CAs are trusted (private-CA pinning). Server side: when `A2ASecurityOptions.RequireMutualTls` is enabled, incoming client certificates must chain to one of these CAs (unless pinned via `A2ASecurityOptions.TrustedClientCertificateThumbprints`)."
+      "description": "List of trusted certificate authority certificate paths. Client side: when set, only servers presenting certificates signed by these CAs are trusted (private-CA pinning). Server side: when `RequireMutualTls` is enabled, incoming client certificates must chain to one of these CAs (unless pinned via `TrustedClientCertificateThumbprints`)."
     },
     {
       "path": "A2A:Security:TrustedClientCertificateThumbprints",
       "section": "A2A:Security",
       "type": "list of string",
       "default": [],
-      "description": "Thumbprints (hex, case-insensitive) of client certificates accepted by the server when `A2ASecurityOptions.RequireMutualTls` is enabled — exact pinning, checked before the `A2ASecurityOptions.TrustedCertificateAuthorities` chain validation. Pinned certificates are still rejected outside their validity window."
+      "description": "Thumbprints (hex, case-insensitive) of client certificates accepted by the server when `RequireMutualTls` is enabled — exact pinning, checked before the `TrustedCertificateAuthorities` chain validation. Pinned certificates are still rejected outside their validity window."
     },
     {
       "path": "A2A:Security:AzureAD:Authority",
@@ -2789,20 +2789,20 @@
       "section": "Telemetry",
       "type": "boolean",
       "default": true,
-      "description": "Gets or sets whether telemetry is enabled. Default is true."
+      "description": "Whether telemetry is enabled. Default is true."
     },
     {
       "path": "Telemetry:MaxMemoryMB",
       "section": "Telemetry",
       "type": "integer",
       "default": 2048,
-      "description": "Gets or sets the maximum memory threshold in MB for health checks. Default is 2048 MB."
+      "description": "The maximum memory threshold in MB for health checks. Default is 2048 MB."
     },
     {
       "path": "Telemetry:OtlpEndpoint",
       "section": "Telemetry",
       "type": "string",
-      "description": "Gets or sets the OTLP (OpenTelemetry Protocol) exporter endpoint. When set, traces and metrics are exported to this endpoint. Example: \"http://localhost:4317\" for gRPC or \"http://localhost:4318\" for HTTP."
+      "description": "The OTLP (OpenTelemetry Protocol) exporter endpoint. When set, traces and metrics are exported to this endpoint. Example: \"http://localhost:4317\" for gRPC or \"http://localhost:4318\" for HTTP."
     }
   ]
 }
