@@ -1,0 +1,203 @@
+{
+  "host": "orkeon-host",
+  "reads": [
+    "A2A",
+    "A2A:Security",
+    "A2A:Security:AzureAD",
+    "A2A:Security:Oidc",
+    "BRAVE_API_KEY",
+    "Llm",
+    "LlmLogging",
+    "Logging",
+    "MCP",
+    "MCP:Server",
+    "Memory",
+    "Orkeon:ChromaDb",
+    "Orkeon:Cli:Session",
+    "Orkeon:CodeSandbox",
+    "Orkeon:CodeSandbox:Docker",
+    "Orkeon:Consensus",
+    "Orkeon:CostTracking",
+    "Orkeon:CrewFactory",
+    "Orkeon:CrewMemory",
+    "Orkeon:EmbeddingCache",
+    "Orkeon:Embeddings",
+    "Orkeon:Encryption",
+    "Orkeon:FileSystem",
+    "Orkeon:Guardian",
+    "Orkeon:Host",
+    "Orkeon:Host:Discord",
+    "Orkeon:LanceDb",
+    "Orkeon:Pinecone",
+    "Orkeon:Rag",
+    "Orkeon:Rag:Ingestion",
+    "Orkeon:Rag:QueryRouting",
+    "Orkeon:Rag:Retrieval:Hybrid",
+    "Orkeon:Rag:WebFallback",
+    "Orkeon:Redis",
+    "Orkeon:Sandbox",
+    "Orkeon:Scripting:Limits",
+    "Orkeon:Scripting:Toolchain",
+    "Orkeon:Security:PermissionGate",
+    "Orkeon:Sqlite",
+    "Orkeon:TokenCounter",
+    "Orkeon:Tools:Email",
+    "Orkeon:Tools:Shell",
+    "PathSecurity",
+    "RaggableTree",
+    "RateLimiting",
+    "Secrets",
+    "Security:Audit",
+    "Security:Prompt",
+    "Security:ToolResults",
+    "Security:Url",
+    "Security:Vault",
+    "Telemetry"
+  ],
+  "sections": [
+    {
+      "path": "Orkeon:Host",
+      "category": "service-host-and-a2a",
+      "hosts": [],
+      "description": "The service's configuration, bound from the `Orkeon:Host` section. **No secret is ever written here.** A bot token or an API key is referenced by the *name* of an environment variable, never by value — the same rule the LLM providers already follow, and one a chat bot does not get to break."
+    },
+    {
+      "path": "Orkeon:Host:Discord",
+      "category": "service-host-and-a2a",
+      "hosts": [],
+      "description": "The Discord channel's configuration. **The token is named, never written.** `DiscordChannelOptions.TokenEnvironmentVariable` holds the *name* of an environment variable; the value never touches the configuration file, a commit or a container image layer. The LLM providers already follow this rule, and a bot token — which can read every message a server sends — does not get an exception."
+    }
+  ],
+  "settings": [
+    {
+      "path": "Orkeon:Host:A2A:Crews",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "The hosted crews other agents may run, by name — one skill each. None by default."
+    },
+    {
+      "path": "Orkeon:Host:A2A:Enabled",
+      "section": "Orkeon:Host",
+      "type": "boolean",
+      "default": false,
+      "description": "Serves the exposed crews over A2A. Off, the host listens on no port."
+    },
+    {
+      "path": "Orkeon:Host:A2A:Host",
+      "section": "Orkeon:Host",
+      "type": "string",
+      "default": "http://localhost",
+      "description": "The listener's scheme and host name: `http://localhost` by default, `http://+` for every interface. No port (that is `HostA2AOptions.Port`) and no path."
+    },
+    {
+      "path": "Orkeon:Host:A2A:Port",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 5002,
+      "description": "The listener's port."
+    },
+    {
+      "path": "Orkeon:Host:Crews:<i>:Description",
+      "section": "Orkeon:Host",
+      "type": "string",
+      "description": "What the crew does, in a sentence: the description of its skill on the A2A agent card when `Orkeon:Host:A2A` exposes it. Read from the configuration, never from the crew definition — the card is built without loading a crew. Optional."
+    },
+    {
+      "path": "Orkeon:Host:Crews:<i>:Mounts",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "The folders this host grants THIS crew, as mount strings (`<physical>:<virtual>:<rights>`). Declared by the host, never by the crew: the host grants, the crew does not demand. They are entered as a per-run mount namespace, so two hosted crews may both address `/output` over two different physical folders — the boot registry is one flat set where a virtual path has to be globally unique, which is why `HostCrewMounts` otherwise has to rename them (`/crews`, `/crews-1`, …). Empty (the default) keeps the boot mounts for that crew, unchanged. Second gate. Resolving in the run's namespace is not the whole story: `IPathValidator` is a process-wide singleton whose allowed roots are captured at boot, so a granted folder outside the process workspace root resolves here and is then refused there. Grant folders under that root, or widen it with `PathSecurity:AdditionalAllowedDirectories`."
+    },
+    {
+      "path": "Orkeon:Host:Crews:<i>:Name",
+      "section": "Orkeon:Host",
+      "type": "string",
+      "default": "",
+      "description": "The name the channels and the operator use to refer to it."
+    },
+    {
+      "path": "Orkeon:Host:Crews:<i>:Path",
+      "section": "Orkeon:Host",
+      "type": "string",
+      "default": "",
+      "description": "Path to the crew definition — a YAML file, a multi-file crew directory, or an `.ork.ts` script. The same targets `orkeon run` accepts."
+    },
+    {
+      "path": "Orkeon:Host:Crews:<i>:Profile:MaxConcurrentRuns",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 4,
+      "description": "How many runs of this crew may be in flight at once. Bounded on purpose: a daemon that accepts unlimited concurrent runs is a daemon that dies under its first burst."
+    },
+    {
+      "path": "Orkeon:Host:LlmProfiles",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "The LLM profiles (`Llm:Profiles:<name>`) the hosted crews may name. The service runs crews it does not control: unset, every profile the configuration defines is offered; set, only those listed — a crew naming another one fails to load, the run with it. The default profile (the `Llm` section) is always offered, so `[\"default\"]` offers it alone. Every entry must name a defined profile."
+    },
+    {
+      "path": "Orkeon:Host:RunTimeout",
+      "section": "Orkeon:Host",
+      "type": "duration",
+      "default": "00:30:00",
+      "description": "How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon."
+    },
+    {
+      "path": "Orkeon:Host:ShutdownGracePeriod",
+      "section": "Orkeon:Host",
+      "type": "duration",
+      "default": "00:00:20",
+      "description": "How long the host waits for in-flight runs on shutdown before giving up. Systemd sends SIGKILL after its own timeout, so this must stay under it."
+    },
+    {
+      "path": "Orkeon:Host:Discord:AllowedUserIds",
+      "section": "Orkeon:Host:Discord",
+      "type": "list of string",
+      "default": [],
+      "description": "Discord user ids allowed to talk to the bot. **Empty denies everyone** — a bot on a public server with an open door spends someone's API budget on strangers."
+    },
+    {
+      "path": "Orkeon:Host:Discord:DefaultCrew",
+      "section": "Orkeon:Host:Discord",
+      "type": "string",
+      "description": "The crew a room without a route reaches. Unset, it is the first crew declared under `Orkeon:Host:Crews`; set, it must name one of them."
+    },
+    {
+      "path": "Orkeon:Host:Discord:Enabled",
+      "section": "Orkeon:Host:Discord",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the channel is switched on. Off unless a deployment says otherwise."
+    },
+    {
+      "path": "Orkeon:Host:Discord:GuildIds",
+      "section": "Orkeon:Host:Discord",
+      "type": "list of string",
+      "default": [],
+      "description": "Guild (server) ids to register the slash commands in. **Empty registers them globally**, which needs no configuration but is cached by Discord for up to an hour; naming guilds makes `/status` and `/stop` available immediately — the dev loop."
+    },
+    {
+      "path": "Orkeon:Host:Discord:ProgressInterval",
+      "section": "Orkeon:Host:Discord",
+      "type": "duration",
+      "default": "00:00:02",
+      "description": "How long progress updates are spaced out. Discord's rate limit is per channel and unforgiving; a message per agent thought would exhaust it inside one crew."
+    },
+    {
+      "path": "Orkeon:Host:Discord:Routes:<name>",
+      "section": "Orkeon:Host:Discord",
+      "type": "string",
+      "description": "Which crew each room reaches: a Discord channel id (the channel threads are opened in) mapped to a hosted crew's name. A thread opened in a routed channel starts that crew; a thread anywhere else starts `DiscordChannelOptions.DefaultCrew`. A route to a crew the host does not declare, or a key that is not a channel id, refuses the start."
+    },
+    {
+      "path": "Orkeon:Host:Discord:TokenEnvironmentVariable",
+      "section": "Orkeon:Host:Discord",
+      "type": "string",
+      "default": "ORKEON_DISCORD_TOKEN",
+      "description": "Name of the environment variable holding the bot token."
+    }
+  ]
+}

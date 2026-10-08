@@ -98,7 +98,7 @@ internal sealed record OrkeonHostOptions
     public TimeSpan ShutdownGracePeriod { get; init; } = TimeSpan.FromSeconds(20);
 
     /// <summary>
-    /// The LLM profiles (<c>Llm:Profiles:&lt;name&gt;</c>) the hosted crews may name, GAP-17.
+    /// The LLM profiles (<c>Llm:Profiles:&lt;name&gt;</c>) the hosted crews may name (GAP-17).
     /// The service runs crews it does not control: unset, every profile the configuration
     /// defines is offered; set, only those listed — a crew naming another one fails to load,
     /// the run with it. The default profile (the <c>Llm</c> section) is always offered, so

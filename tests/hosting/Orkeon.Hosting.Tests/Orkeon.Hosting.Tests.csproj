@@ -19,6 +19,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
+    <!-- The settings catalogue lists what every public registration reads: the two libraries the
+         runner host does not reference are referenced here, so their sections are described too. -->
+    <ProjectReference Include="..\..\..\src\cli\Orkeon.Cli.Commands.Scripting\Orkeon.Cli.Commands.Scripting.csproj" />
+    <ProjectReference Include="..\..\..\src\plugins\Orkeon.Plugins\Orkeon.Plugins.csproj" />
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
   </ItemGroup>
 </Project>

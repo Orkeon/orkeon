@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the settings a host reads can be listed
+
+Orkeon knew the exact list of its settings — it refuses a key that is not on it — and nobody
+could read that list: each help surface kept a partial copy by hand. Nothing an operator sees
+yet; the reference page and a CLI verb are built on it.
+
+- **A settings catalogue**, internal to `Orkeon.Hosting` (`SettingsCatalog`): 67 sections and
+  351 keys — every section one of the three shipped binaries reads, and every section a public
+  registration reads in a host written in C#. Each key has its type, its default, its allowed
+  values when they are a closed list, and a sentence: the summary of the XML comment of the
+  property it is read into. A secret is marked and never carries a value; a default that
+  depends on the moment is said in words.
+- **Eleven categories, by use** (`SettingsCategories`, in `Orkeon.Constants.Configuration`):
+  models, rate and budgets, memory and vectors, RAG, files and sandbox, security, tools,
+  orchestration and persistence, scripts and console, service host and A2A, observability. A
+  section belongs to one; a test refuses a section the table does not file.
+- **Who reads what is computed** from what each composition declares: `orkeon` reads 46
+  sections, `orkeon-host` 52, `orkeon-repl` 41. Eleven sections (46 keys) are read by no
+  shipped binary, only by a C# host that calls their registration: `ToolRateLimiting`,
+  `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`, `Orkeon:CognitiveMemory`,
+  `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`, `Orkeon:Checkpointing`
+  and `Orkeon:ExecutionState:Persistence`.
+- The catalogue is embedded in `Orkeon.Hosting` — four produced files under
+  `Settings/Catalog` —, so it answers without a container, a settings file or the repository.
+  A test in each binary's project holds its file to what that binary declares, and fails with
+  the command that writes it again.
+- The sections read raw — `Llm`, `LlmLogging`, `RaggableTree`, `Orkeon:CrewFactory`,
+  `Orkeon:Security:PermissionGate`, `Orkeon:Cli:ConsoleStreaming`, `Orkeon:Cli:Tui` — gained a
+  comment per key and a default named once, where its reader applies it.
+
+The start validation refuses exactly what it refused.
+
 ### Added — install from a clone with one command
 
 Installing the `orkeon` built from a clone took seven lines nobody had written down: read

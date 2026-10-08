@@ -7,3 +7,22 @@ const Orkeon.Constants.Configuration.OperatorMessages.LlmApiKeyReferenceUnresolv
 Orkeon.Constants.Configuration.SettingsSections
 static Orkeon.Constants.Configuration.SettingsSections.Containers.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Constants.Configuration.SettingsSections.Known.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Constants.Configuration.SettingsCategory
+Orkeon.Constants.Configuration.SettingsCategory.SettingsCategory(string! id, string! title) -> void
+Orkeon.Constants.Configuration.SettingsCategory.Id.get -> string!
+Orkeon.Constants.Configuration.SettingsCategory.Title.get -> string!
+Orkeon.Constants.Configuration.SettingsCategories
+const Orkeon.Constants.Configuration.SettingsCategories.Models = "models" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.RateAndBudgets = "rate-and-budgets" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.MemoryAndVectors = "memory-and-vectors" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.Rag = "rag" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.FilesAndSandbox = "files-and-sandbox" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.Security = "security" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.Tools = "tools" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.OrchestrationAndPersistence = "orchestration-and-persistence" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.ScriptsAndConsole = "scripts-and-console" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.ServiceHostAndA2A = "service-host-and-a2a" -> string!
+const Orkeon.Constants.Configuration.SettingsCategories.Observability = "observability" -> string!
+static Orkeon.Constants.Configuration.SettingsCategories.All.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Configuration.SettingsCategory!>!
+static Orkeon.Constants.Configuration.SettingsCategories.BySection.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+static Orkeon.Constants.Configuration.SettingsCategories.Of(string! sectionPath) -> string?

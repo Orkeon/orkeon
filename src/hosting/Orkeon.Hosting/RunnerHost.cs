@@ -197,6 +197,81 @@ public static partial class RunnerHost
                 ConfigureRunnerServices(context, services, mounts.LlmLogVirtualPath, configureLogging, configureServices));
 
     /// <summary>
+    /// The registrations of a runner host over <paramref name="configuration"/>, and no host: what
+    /// the settings catalogue reads a composition's sections from (<see cref="SettingsCatalogBuilder.SourcesOf"/>).
+    /// Nothing is built, no file is opened and no setting is judged — <paramref name="configuration"/>
+    /// is the caller's, in memory, and decides which optional registrations are made: a section a
+    /// host reads only once a switch is on is declared only when that switch is.
+    /// </summary>
+    /// <param name="configuration">The configuration the registrations read their switches from.</param>
+    /// <param name="configureServices">What the binary adds to the runner host, as for a run.</param>
+    internal static IServiceCollection Compose(
+        IConfiguration configuration,
+        Action<HostBuilderContext, IServiceCollection>? configureServices = null)
+    {
+        var context = CompositionContext(configuration);
+        var services = new ServiceCollection();
+        // A log path, so the section read with --llm-log is declared too.
+        ConfigureRunnerServices(context, services, RunnerVirtualRoots.LlmLogs, (_, logging) => logging.ClearProviders(), configureServices);
+        return services;
+    }
+
+    /// <summary>
+    /// The context a composition registers its services under when no host is built
+    /// (<see cref="Compose"/>, and the interactive console's own composition): <paramref name="configuration"/>
+    /// and a production environment, nothing of the machine.
+    /// </summary>
+    internal static HostBuilderContext CompositionContext(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        return new HostBuilderContext(new Dictionary<object, object>())
+        {
+            Configuration = configuration,
+            HostingEnvironment = new Microsoft.Extensions.Hosting.Internal.HostingEnvironment
+            {
+                ApplicationName = typeof(RunnerHost).Assembly.GetName().Name ?? string.Empty,
+                EnvironmentName = Environments.Production,
+            },
+        };
+    }
+
+    /// <summary>
+    /// The <c>Logging</c> section, which the generic host builds its logger from and
+    /// <see cref="SettingsValidation.CheckLogging"/> judges before it does. Read, not declared: its
+    /// keys are those of .NET's logging configuration and stay open.
+    /// </summary>
+    internal static SettingsSource LoggingSettings { get; } = new("Logging", typeof(LoggingSettingsShape));
+
+    /// <summary><c>BRAVE_API_KEY</c>, one key at the root of the configuration.</summary>
+    internal static SettingsSource BraveKeySetting { get; } = new("BRAVE_API_KEY", typeof(string))
+    {
+        Description =
+            "The key of the Brave Search API. Set — here or as the environment variable of the same name —, " +
+            "it registers the `brave_search` tool; left out, the tool is not offered.",
+        Secret = true,
+    };
+
+    /// <summary>
+    /// The logs of the host: .NET's logging configuration. A shipped host logs warnings and above on
+    /// one line; <c>--verbose</c> raises the level for a run without touching this section.
+    /// </summary>
+    private sealed class LoggingSettingsShape
+    {
+        /// <summary>
+        /// The lowest level logged, by category: <c>Default</c> for every category without a line of
+        /// its own, a namespace such as <c>Orkeon.Infrastructure</c> for what it logs. A level that is
+        /// none refuses the start, naming the key.
+        /// </summary>
+        public Dictionary<string, LogLevel>? LogLevel { get; set; }
+
+        /// <summary>
+        /// The console logger's own section: its <c>LogLevel</c> by category, <c>FormatterName</c>,
+        /// <c>FormatterOptions</c> and the other keys of .NET's console logger.
+        /// </summary>
+        public object? Console { get; set; }
+    }
+
+    /// <summary>
     /// The start validation of a built host (GAP-40), shared by <see cref="Build"/>, the REPL and
     /// <c>orkeon doctor</c>: every refusal, in order, each one sentence naming its key — the values
     /// of every declared section (the binder, its rules, the names they hold), the section names
@@ -976,7 +1051,7 @@ public static partial class RunnerHost
         // A host can still opt back out via "Orkeon:CrewFactory:StrictTools": false.
         services.DeclareSettingsShape(CrewFactorySection, typeof(CrewFactorySettingsShape));
         var strictTools = context.Configuration.GetValue(
-            $"{CrewFactorySection}:StrictTools", defaultValue: true);
+            $"{CrewFactorySection}:StrictTools", defaultValue: new CrewFactorySettingsShape().StrictTools);
         services.Configure<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>(
             o => o.StrictTools = strictTools);
 
@@ -1081,6 +1156,7 @@ public static partial class RunnerHost
         // chunks semantically instead of pinning full pages in their context.
         services.AddOrkeonCacheSearchTool();
 
+        services.AddSingleton(BraveKeySetting);
         var braveKey = context.Configuration["BRAVE_API_KEY"]
             ?? Environment.GetEnvironmentVariable("BRAVE_API_KEY");
         if (!string.IsNullOrEmpty(braveKey))
@@ -1153,10 +1229,16 @@ public static partial class RunnerHost
     /// <summary>The section of the crew factory's switches.</summary>
     private const string CrewFactorySection = "Orkeon:CrewFactory";
 
-    /// <summary>The keys of <c>Orkeon:CrewFactory</c> a runner reads (GAP-40). Never instantiated: its properties are the keys.</summary>
-    private abstract class CrewFactorySettingsShape
+    /// <summary>The switches of the crew factory a shipped host reads.</summary>
+    /// <remarks>Its properties are the keys, and their values on a new instance the defaults the host applies: nothing binds it.</remarks>
+    private sealed class CrewFactorySettingsShape
     {
-        public bool StrictTools { get; set; }
+        /// <summary>
+        /// Whether a tool a crew names and the registry does not hold fails the crew's load, listing
+        /// the unknown names and the available ones. <c>false</c> drops the tool with a warning
+        /// instead — the library's lenient behaviour, which the shipped hosts turn off.
+        /// </summary>
+        public bool StrictTools { get; set; } = true;
     }
 
     private static void ConfigureRunnerLogging(
@@ -1169,6 +1251,7 @@ public static partial class RunnerHost
         // know threw from the build, a sentence without the key, past every barrier — and systemd
         // restarted orkeon-host on it every ten seconds.
         SettingsValidation.CheckLogging(context.Configuration);
+        services.AddSingleton(LoggingSettings);
 
         // Logging (customizable, sensible default)
         if (configureLogging != null)
@@ -1211,11 +1294,12 @@ public static partial class RunnerHost
         // used to fall back on the default in silence. Its keys are judged too.
         services.DeclareSettingsShape(LlmLoggingSection, typeof(LlmLoggingSettingsShape));
         var llmLogSection = context.Configuration.GetSection(LlmLoggingSection);
+        var defaults = new LlmLoggingSettingsShape();
         var llmOpts = new LlmLoggingOptions
         {
-            FullEmbeddingLog = ReadBool(llmLogSection, "FullEmbeddingLog") ?? true,
-            LogStreamingExchanges = ReadBool(llmLogSection, "LogStreamingExchanges") ?? true,
-            MaxBodyLengthChars = ReadInt(llmLogSection, "MaxBodyLengthChars") ?? 0,
+            FullEmbeddingLog = ReadBool(llmLogSection, "FullEmbeddingLog") ?? defaults.FullEmbeddingLog,
+            LogStreamingExchanges = ReadBool(llmLogSection, "LogStreamingExchanges") ?? defaults.LogStreamingExchanges,
+            MaxBodyLengthChars = ReadInt(llmLogSection, "MaxBodyLengthChars") ?? defaults.MaxBodyLengthChars,
         };
         services.AddLlmExchangeLogging(logDir, llmOpts);
     }
@@ -1223,14 +1307,27 @@ public static partial class RunnerHost
     /// <summary>The section of the LLM exchange logging (<c>--llm-log</c>).</summary>
     private const string LlmLoggingSection = "LlmLogging";
 
-    /// <summary>The keys of <c>LlmLogging</c> (GAP-40). Never instantiated: its properties are the keys.</summary>
-    private abstract class LlmLoggingSettingsShape
+    /// <summary>
+    /// What the log of LLM exchanges keeps of each request and response — read with <c>--llm-log</c>
+    /// only, which says where the log goes.
+    /// </summary>
+    /// <remarks>
+    /// Its properties are the keys, and their values on a new instance the defaults the host applies:
+    /// those of <see cref="LlmLoggingOptions"/>.
+    /// </remarks>
+    private sealed class LlmLoggingSettingsShape
     {
-        public bool FullEmbeddingLog { get; set; }
+        /// <summary>
+        /// Whether an embedding vector is logged at full length. <c>false</c> replaces each one by its
+        /// first and last two values: the exchange keeps its shape and loses its megabytes.
+        /// </summary>
+        public bool FullEmbeddingLog { get; set; } = LlmLoggingOptions.Default.FullEmbeddingLog;
 
-        public bool LogStreamingExchanges { get; set; }
+        /// <summary>Whether a streamed exchange is logged: its request, and the answer once the stream has ended.</summary>
+        public bool LogStreamingExchanges { get; set; } = LlmLoggingOptions.Default.LogStreamingExchanges;
 
-        public int MaxBodyLengthChars { get; set; }
+        /// <summary>The most characters logged of one request or response body; <c>0</c> logs it whole.</summary>
+        public int MaxBodyLengthChars { get; set; } = LlmLoggingOptions.Default.MaxBodyLengthChars;
     }
 
     /// <summary>A switch of a section read raw: <c>true</c> or <c>false</c>, any case; blank is unset; anything else is refused by its key.</summary>
@@ -1317,7 +1414,7 @@ public static partial class RunnerHost
             MaxTextChars = ReadInt(embeddingSection, "MaxTextChars"),
         };
 
-        if (section.Exists() && !section.GetValue("Enabled", defaultValue: true))
+        if (section.Exists() && !section.GetValue("Enabled", defaultValue: new RaggableTreeSettingsShape().Enabled))
             return;
 
         var options = new RaggableTreeOptions
@@ -1355,7 +1452,7 @@ public static partial class RunnerHost
     {
         var raw = embedding["Provider"];
         if (string.IsNullOrWhiteSpace(raw))
-            return EmbeddingProviderKind.LocalSmartComponents;
+            return new RaggableTreeEmbeddingShape().Provider;
 
         var names = Enum.GetNames<EmbeddingProviderKind>();
         var name = names.FirstOrDefault(known => string.Equals(known, raw.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -1365,27 +1462,40 @@ public static partial class RunnerHost
                 $"{embedding.Path}:Provider is '{raw}', which is not an embedding provider: write one of {string.Join(", ", names)}.");
     }
 
-    /// <summary>The keys of <c>RaggableTree</c> (GAP-15, GAP-40). Never instantiated: its properties are the keys.</summary>
-    private abstract class RaggableTreeSettingsShape
+    /// <summary>
+    /// The semantic index of a codebase and its tools (<c>index_codebase</c>, <c>codebase_search</c>,
+    /// <c>symbol_detail</c>…). What an index covers — languages, exclusions, root alias — is an
+    /// argument of each <c>index_codebase</c> call, never a setting.
+    /// </summary>
+    /// <remarks>Its properties are the keys, and their values on a new instance the defaults the host applies: nothing binds it.</remarks>
+    private sealed class RaggableTreeSettingsShape
     {
-        public bool Enabled { get; set; }
+        /// <summary>Whether the index and its tools are registered. <c>false</c> leaves them out of the host.</summary>
+        public bool Enabled { get; set; } = true;
 
+        /// <summary>The embeddings the index searches with.</summary>
         public RaggableTreeEmbeddingShape? Embedding { get; set; }
     }
 
     /// <summary>The keys of <c>RaggableTree:Embedding</c>.</summary>
-    private abstract class RaggableTreeEmbeddingShape
+    private sealed class RaggableTreeEmbeddingShape
     {
-        public string? Provider { get; set; }
+        /// <summary>Who computes the embeddings, any case. The default runs on the machine: no key, no network.</summary>
+        public EmbeddingProviderKind Provider { get; set; } = EmbeddingProviderKind.LocalSmartComponents;
 
+        /// <summary>The embedding model. Left out, the provider uses its own — <c>bge-micro-v2</c> for the local one.</summary>
         public string? Model { get; set; }
 
+        /// <summary>The key of a remote provider. The local provider needs none.</summary>
         public string? ApiKey { get; set; }
 
+        /// <summary>The <c>http://</c> or <c>https://</c> address of the provider's endpoint, when it is not the provider's own.</summary>
         public string? BaseUrl { get; set; }
 
+        /// <summary>The size of the vectors, for a model that lets it be chosen. Left out, the model's own.</summary>
         public int? Dimensions { get; set; }
 
+        /// <summary>The most characters of one text sent to the model; what is longer is cut. Left out, the provider's own limit.</summary>
         public int? MaxTextChars { get; set; }
     }
 

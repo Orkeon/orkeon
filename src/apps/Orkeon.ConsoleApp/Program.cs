@@ -303,14 +303,23 @@ static class Program
     /// <summary>The section of the Terminal.Gui console's own settings.</summary>
     const string TuiSection = "Orkeon:Cli:Tui";
 
-    /// <summary>The keys of <c>Orkeon:Cli:Tui</c> (GAP-40). Never instantiated: its properties are the keys.</summary>
-    abstract class TuiSettingsShape
+    /// <summary>The split-pane console's own settings.</summary>
+    /// <remarks>Its property is the key; nothing binds it.</remarks>
+    sealed class TuiSettingsShape
     {
+        /// <summary>
+        /// The verbs the status line cycles through while the model works ("Thinking", "Reading"…).
+        /// Left out or empty, the console's own list.
+        /// </summary>
         public List<string>? SpinnerVerbs { get; set; }
     }
 
     static void ConfigureLogging(IServiceCollection services, UiMode effectiveUi)
     {
+        // The Logging section, which the generic host builds this console's logger from and the
+        // start judges first: read, so the settings catalogue lists it for this binary too.
+        services.AddSingleton(Orkeon.Hosting.RunnerHost.LoggingSettings);
+
         // NOSONAR — console logger only, no remote sinks; no secrets are logged (LLM keys are
         // redacted in the HTTP provider layer before reaching the logger). Safe by review.
         services.AddLogging(builder => // NOSONAR
