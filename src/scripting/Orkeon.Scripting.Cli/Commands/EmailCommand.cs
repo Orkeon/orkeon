@@ -294,7 +294,7 @@ internal static class EmailCommand
         catch (Exception ex)
         {
             await FailAsync(verb, events, EmailEventWriter.UnexpectedCode, $"unexpected error [{ex.GetType().FullName}]: {ex.Message}").ConfigureAwait(false);
-            if (Environment.GetEnvironmentVariable("ORKEON_DEBUG") == "1")
+            if (RunnerEnvironment.DebugDiagnostics)
                 await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
         }

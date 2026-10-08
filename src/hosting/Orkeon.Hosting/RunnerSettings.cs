@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Orkeon.Constants.FileSystem;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Hosting;
 
@@ -60,7 +61,7 @@ public static class RunnerSettings
         // macos-latest smoke run: init wrote where neither the docs nor resolution looked.
         if (OperatingSystem.IsMacOS())
         {
-            var xdg = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+            var xdg = Environment.GetEnvironmentVariable(EnvironmentVariableNames.XdgConfigHome);
             appData = !string.IsNullOrEmpty(xdg) && Path.IsPathRooted(xdg)
                 ? xdg
                 : ""; // falls through to the home-derived ~/.config below
@@ -160,7 +161,7 @@ public static class RunnerSettings
     }
 
     /// <summary>The prefix of the environment variables every Orkeon host reads as configuration, prefix removed.</summary>
-    private const string OrkeonEnvironmentPrefix = "ORKEON_";
+    private const string OrkeonEnvironmentPrefix = EnvironmentVariableNames.SettingsPrefix;
 
     /// <summary>
     /// What to tell an operator about a settings file the configuration cannot read (GAP-35): the

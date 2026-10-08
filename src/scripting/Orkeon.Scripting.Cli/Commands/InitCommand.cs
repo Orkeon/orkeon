@@ -71,7 +71,7 @@ internal static class InitCommand
     private static readonly JsonSerializerOptions s_indentedJson = new() { WriteIndented = true };
 
     /// <summary>The env var the runtime configuration reads natively (AddEnvironmentVariables("ORKEON_")).</summary>
-    private const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
+    private const string DefaultApiKeyEnv = EnvironmentVariableNames.LlmApiKeySetting;
 
     /// <summary>
     /// Docker Model Runner defaults. Shared with the committed appsettings template and with

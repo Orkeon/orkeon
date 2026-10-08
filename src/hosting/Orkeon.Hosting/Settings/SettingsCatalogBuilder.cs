@@ -68,7 +68,7 @@ internal static class SettingsCatalogBuilder
     /// </summary>
     public static IReadOnlyDictionary<string, string?> EverySwitchOn { get; } = new Dictionary<string, string?>
     {
-        ["BRAVE_API_KEY"] = "catalogue",
+        [EnvironmentVariableNames.BraveApiKey] = "catalogue",
         ["MCP:Servers:catalogue:Command"] = "catalogue",
         ["Orkeon:Security:PermissionGate:Enabled"] = "true",
         ["Orkeon:Cli:ConsoleStreaming:Enabled"] = "true",

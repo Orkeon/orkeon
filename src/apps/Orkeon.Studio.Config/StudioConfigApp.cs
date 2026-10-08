@@ -7,6 +7,7 @@ using Orkeon.Studio.Config.Views;
 // Aliased under a distinct name: the bare name `Application` binds to the enclosing
 // `Orkeon.Application` namespace here, and the alias marks the Terminal.Gui call sites.
 using TerminalApp = Terminal.Gui.App.Application;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Studio.Config;
 
@@ -88,7 +89,7 @@ internal static class StudioConfigApp
 
     private static string DriverName()
     {
-        var requested = Environment.GetEnvironmentVariable("TUI_DRIVER");
+        var requested = Environment.GetEnvironmentVariable(EnvironmentVariableNames.TuiDriver);
         if (!string.IsNullOrWhiteSpace(requested))
             return requested.Trim();
 

@@ -244,7 +244,7 @@ public static partial class RunnerHost
     internal static SettingsSource LoggingSettings { get; } = new("Logging", typeof(LoggingSettingsShape));
 
     /// <summary><c>BRAVE_API_KEY</c>, one key at the root of the configuration.</summary>
-    internal static SettingsSource BraveKeySetting { get; } = new("BRAVE_API_KEY", typeof(string))
+    internal static SettingsSource BraveKeySetting { get; } = new(EnvironmentVariableNames.BraveApiKey, typeof(string))
     {
         Description =
             "The key of the Brave Search API. Set — here or as the environment variable of the same name —, " +
@@ -1209,8 +1209,8 @@ public static partial class RunnerHost
         services.AddOrkeonCacheSearchTool();
 
         services.AddSingleton(BraveKeySetting);
-        var braveKey = context.Configuration["BRAVE_API_KEY"]
-            ?? Environment.GetEnvironmentVariable("BRAVE_API_KEY");
+        var braveKey = context.Configuration[EnvironmentVariableNames.BraveApiKey]
+            ?? Environment.GetEnvironmentVariable(EnvironmentVariableNames.BraveApiKey);
         if (!string.IsNullOrEmpty(braveKey))
             services.AddOrkeonBraveSearchTool(braveKey);
 

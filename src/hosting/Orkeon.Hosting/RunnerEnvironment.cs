@@ -1,3 +1,5 @@
+using Orkeon.Constants.Configuration;
+
 namespace Orkeon.Hosting;
 
 /// <summary>
@@ -10,10 +12,10 @@ namespace Orkeon.Hosting;
 public static class RunnerEnvironment
 {
     /// <summary>Environment variable read by <see cref="AllowExternalMounts"/>.</summary>
-    public const string AllowExternalMountsVariable = "ORKEON_ALLOW_EXTERNAL_MOUNTS";
+    public const string AllowExternalMountsVariable = EnvironmentVariableNames.AllowExternalMounts;
 
     /// <summary>Environment variable read by <see cref="DebugDiagnostics"/>.</summary>
-    public const string DebugVariable = "ORKEON_DEBUG";
+    public const string DebugVariable = EnvironmentVariableNames.Debug;
 
     /// <summary>
     /// Environment variable <c>orkeon mcp serve</c> sets in its own environment before it connects
@@ -23,7 +25,7 @@ public static class RunnerEnvironment
     /// after 30 s. Like <see cref="DebugVariable"/>, the <c>ORKEON_</c> configuration layer also
     /// reads it, as a key (<c>MCP_SERVE</c>) no setting is.
     /// </summary>
-    public const string McpServeVariable = "ORKEON_MCP_SERVE";
+    public const string McpServeVariable = EnvironmentVariableNames.McpServe;
 
     /// <summary>
     /// True when an <c>orkeon mcp serve</c> started this process: <see cref="McpServeVariable"/> is

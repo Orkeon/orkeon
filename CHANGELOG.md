@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation — the environment variables Orkeon reads, in one table
+
+A variable that carries a setting had its rule, well explained. A variable a binary reads by its
+own name had no list: seventeen names scattered over the documentation, eleven of them absent
+from the configuration reference and three written nowhere.
+
+- **`docs/reference/configuration.md` gains "Environment variables"** (and its French mirror),
+  after the categories, in three tables: the variables that **carry a setting**
+  (`ORKEON_<Section>__<Key>`, the same without the prefix, `ORKEON_<NAME>` for a secret); the
+  ones a binary **reads by their name**, each with who reads it, the value it takes and what it
+  does; the settings keys that **name a variable** (`Llm:ApiKeyEnvVar`, …) and where that
+  variable is read. One paragraph says what is only passed on to a child process.
+- **Three variables come out of the shadow**: `TUI_DRIVER` (`windows`, `dotnet` or `ansi`) and
+  `TUI_DIAG` (`1`), the diagnosis switches of the text interfaces, and `OLLAMA_BASE_URL`, the
+  address the Ollama provider takes when it is given none.
+- **`orkeon settings env`** prints the same three lists in the terminal, offline, and `--json`
+  hands them to a program. `env` is that list and not the word: what the word names among the
+  settings follows it.
+- **Each name is written once**, in `EnvironmentVariableNames` (`Orkeon.Constants.Configuration`),
+  with the row the page and the verb read. A test holds both pages to it: a variable added
+  without its row fails, and so does a row for a variable the code does not know.
+- `orkeon email` and `orkeon rag` read `ORKEON_DEBUG` as every other verb does — `1`, `true` or
+  `yes` — where they took `1` alone.
+- `docs/reference/cli.md`: each variable it names links to the table.
+
 ### Tests — the settings files, the documentation's blocks and its quoted defaults are held to the code
 
 Nothing tied what the repository says of a setting to what the code reads: a template of the

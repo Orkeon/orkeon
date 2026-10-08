@@ -23,6 +23,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
+    <!-- The names of the environment variables the text interfaces read (TUI_DRIVER, TUI_DIAG,
+         CI, TERM): a zero-dependency satellite (ADR-009), referenced by the two Studio terminal
+         applications through this project. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -26,3 +26,31 @@ const Orkeon.Constants.Configuration.SettingsCategories.Observability = "observa
 static Orkeon.Constants.Configuration.SettingsCategories.All.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Configuration.SettingsCategory!>!
 static Orkeon.Constants.Configuration.SettingsCategories.BySection.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 static Orkeon.Constants.Configuration.SettingsCategories.Of(string! sectionPath) -> string?
+Orkeon.Constants.Configuration.EnvironmentVariableNames
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.SettingsPrefix = "ORKEON_" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.LlmApiKeySetting = "ORKEON_Llm__ApiKey" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.AllowExternalMounts = "ORKEON_ALLOW_EXTERNAL_MOUNTS" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.Debug = "ORKEON_DEBUG" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.McpServe = "ORKEON_MCP_SERVE" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.EsbuildPath = "ORKEON_ESBUILD_PATH" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.CliDirectory = "ORKEON_CLI_DIR" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.StudioTeamsRoot = "ORKEON_STUDIO_TEAMS_ROOT" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.LlmCommandApiKey = "ORKEON_LLM_API_KEY" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.CustomLlmApiKey = "ORKEON_CUSTOM_LLM_API_KEY" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.DiscordToken = "ORKEON_DISCORD_TOKEN" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.BraveApiKey = "BRAVE_API_KEY" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.OtlpEndpoint = "OTEL_EXPORTER_OTLP_ENDPOINT" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.OllamaBaseUrl = "OLLAMA_BASE_URL" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.TuiDriver = "TUI_DRIVER" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.TuiDiagnostics = "TUI_DIAG" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.XdgConfigHome = "XDG_CONFIG_HOME" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.ContinuousIntegration = "CI" -> string!
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.Terminal = "TERM" -> string!
+static Orkeon.Constants.Configuration.EnvironmentVariableNames.ReadByName.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Configuration.EnvironmentVariableEntry!>!
+static Orkeon.Constants.Configuration.EnvironmentVariableNames.NamingKeySuffixes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Constants.Configuration.EnvironmentVariableEntry
+Orkeon.Constants.Configuration.EnvironmentVariableEntry.EnvironmentVariableEntry(string! name, System.Collections.Generic.IReadOnlyList<string!>! readBy, string! value, string! effect) -> void
+Orkeon.Constants.Configuration.EnvironmentVariableEntry.Name.get -> string!
+Orkeon.Constants.Configuration.EnvironmentVariableEntry.ReadBy.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Constants.Configuration.EnvironmentVariableEntry.Value.get -> string!
+Orkeon.Constants.Configuration.EnvironmentVariableEntry.Effect.get -> string!

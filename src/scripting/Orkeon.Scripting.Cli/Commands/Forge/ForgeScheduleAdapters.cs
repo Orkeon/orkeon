@@ -1,5 +1,6 @@
 using System.Xml;
 using System.Xml.Linq;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
@@ -306,7 +307,7 @@ internal sealed class SystemdUserScheduleAdapter(IForgeOsCommands commands, stri
     /// </summary>
     public static string DefaultUnitDirectory()
     {
-        var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+        var configHome = Environment.GetEnvironmentVariable(EnvironmentVariableNames.XdgConfigHome);
         var root = configHome is { Length: > 0 } && Path.IsPathRooted(configHome)
             ? configHome
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");

@@ -1,4 +1,5 @@
 using Orkeon.Compliance.Vfs;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Studio.Core.Process;
 
@@ -70,7 +71,7 @@ public sealed class OrkeonBinaryLocator
     public const string ExecutableBaseName = "orkeon";
 
     /// <summary>Environment variable naming the directory that holds the CLI.</summary>
-    public const string DirectoryEnvironmentVariable = "ORKEON_CLI_DIR";
+    public const string DirectoryEnvironmentVariable = EnvironmentVariableNames.CliDirectory;
 
     /// <summary>
     /// Process-wide directory override, set once at startup from the front-end's

@@ -99,7 +99,7 @@ public static class ToolCatalog
     public const string OpenAiImageKeyEnv = "ORKEON_OPENAI_API_KEY";
 
     /// <summary>The Brave key of <c>brave_search</c>, read as-is by the runner host, without a prefix.</summary>
-    public const string BraveKeyEnv = "BRAVE_API_KEY";
+    public const string BraveKeyEnv = EnvironmentVariableNames.BraveApiKey;
 
     /// <summary>The keys the tools need, in the order the card lists them.</summary>
 #pragma warning disable S1075 // URIs should not be hardcoded — the vendors' own key consoles, public and stable; the card opens them for the user

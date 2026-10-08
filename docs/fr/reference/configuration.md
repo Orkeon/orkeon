@@ -4,7 +4,8 @@
 
 Cette page est la carte unique des réglages que lit Orkeon : d'où ils viennent, quand l'un d'eux
 est refusé, puis **chaque clé, par catégorie** — son type, son défaut, son sens et l'hôte qui la
-lit ([Trouver un réglage](#trouver-un-réglage)). Une section qui ne prend effet qu'après un
+lit ([Trouver un réglage](#trouver-un-réglage)) —, et enfin les
+[variables d'environnement](#variables-denvironnement) que lit Orkeon. Une section qui ne prend effet qu'après un
 enregistrement dédié le dit — voir [Sous-systèmes opt-in](./opt-in-subsystems.md) pour le
 détail de chacun.
 
@@ -62,7 +63,9 @@ Le même préfixe `ORKEON_` alimente aussi `EnvironmentSecretProvider` (résolut
 secrets, p. ex. `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY` ; la clé Tavily de l'outil
 `web_search` est `ORKEON_TAVILY_API_KEY`). Le second maillon de cette chaîne est la
 section `Secrets` du fichier (`Secrets:TAVILY_API_KEY`), la variable d'environnement
-l'emportant quand les deux existent.
+l'emportant quand les deux existent. Les variables qu'un binaire lit par leur propre nom —
+elles ne portent aucun réglage — sont listées avec les autres dans
+[Variables d'environnement](#variables-denvironnement).
 
 **Ce que cela signifie en pratique.** Le fichier est la base durable et partagée ; tout
 ce qui se pose dessus est un calque éphémère qui vit et meurt avec un processus. La
@@ -235,6 +238,10 @@ Les options d'un fichier de crew — `maxRpm`, `llm: { profile: … }`, `memoryP
 `mounts:` — ne sont pas des réglages d'hôte : elles sont décrites dans le
 [schéma YAML](../architecture/yaml-schema.md). Cette page en nomme une là où elle borne ou
 sélectionne un réglage d'hôte.
+
+Les variables d'environnement ont leur propre partie, après les catégories : celles qui portent
+un réglage, celles qu'un binaire lit par leur nom — `ORKEON_DEBUG`, `TUI_DRIVER` — et celles
+qu'un réglage nomme ([Variables d'environnement](#variables-denvironnement)).
 
 ## Modèles
 
@@ -1859,6 +1866,84 @@ Le backend de monitoring. Opt-in : `AddOrkeonMonitoring(configuration)`.
 | `MetricsRetentionMinutes` | entier | `60` | Nombre de minutes de conservation des métriques détaillées. |
 | `TraceSourcePrefix` | chaîne | `"Orkeon"` | Préfixe des noms de sources d'activité dont les traces sont capturées. Par défaut toutes les sources Orkeon ; resserrez-le pour observer un seul sous-système — ou, dans un test, sur un nom que rien d'autre n'émet, puisque l'écouteur vaut pour tout le processus et capterait sinon une activité sans rapport. |
 <!-- /settings -->
+
+## Variables d'environnement
+
+Trois sortes de variables d'environnement atteignent Orkeon : celles qui **portent un réglage**,
+celles qu'un binaire **lit par leur nom**, et celles **qu'un réglage nomme**. `orkeon settings env`
+imprime les trois mêmes listes dans le terminal, hors ligne ([CLI](./cli.md#orkeon-settings)).
+
+### Les variables qui portent un réglage
+
+Tout réglage de cette page peut venir de l'environnement plutôt que du fichier : la variable est
+le chemin du réglage, `__` entre ses niveaux. L'ordre des couches, la règle sur la casse et les
+deux orthographes qu'un réglage a sous Linux et macOS sont dans
+[D'où viennent les réglages](#doù-viennent-les-réglages).
+
+| Variable | Ce qu'elle est | Où elle se place |
+|---|---|---|
+| `ORKEON_<Section>__<Clé>` | Tout réglage, par son chemin : `ORKEON_Llm__Model` est `Llm:Model`, `ORKEON_RateLimiting__MaxConcurrentRequests` est `RateLimiting:MaxConcurrentRequests`, `ORKEON_Orkeon__Rag__Profile` est `Orkeon:Rag:Profile`. `ORKEON_Llm__ApiKey` est la variable qu'`orkeon init` et Orkeon Studio proposent pour la clé du modèle par défaut. | Par-dessus le fichier de réglages : la variable l'emporte. |
+| `<Section>__<Clé>` | Le même réglage sans le préfixe : `Llm__Model`. | Sous le fichier de réglages : le fichier l'emporte. |
+| `ORKEON_<NOM>` | Un secret, par son nom : `ORKEON_TAVILY_API_KEY` est la clé de `web_search`, `ORKEON_OPENAI_API_KEY` celle d'`image_generation`. | Le premier maillon de la chaîne des secrets, avant `Secrets:<NOM>` dans le fichier. |
+
+Une variable du tableau suivant qui commence par `ORKEON_` passe aussi par cette couche, comme
+une clé qu'aucun réglage n'est — `ORKEON_DEBUG` est la clé `DEBUG` de la racine. La racine de la
+configuration reste ouverte ([plus haut](#quand-un-réglage-est-refusé)) : elle ne refuse rien.
+
+### Les variables qu'un binaire lit par leur nom
+
+Ce ne sont pas des réglages : aucune clé de cette page n'en tient lieu, et le binaire nommé lit
+la variable lui-même. La liste est celle que porte le code — un test y tient ce tableau.
+
+| Variable | Lue par | Valeur | Effet |
+|---|---|---|---|
+| `ORKEON_ALLOW_EXTERNAL_MOUNTS` | `orkeon` | `1`, `true` ou `yes` | Vaut `--allow-external-mounts` pour chaque `orkeon run` et chaque `orkeon rag` : un `--mount` peut désigner un dossier hors du répertoire courant. Un déploiement en bac à sable la pose une fois, sa propre frontière tenant lieu d'isolation. |
+| `ORKEON_DEBUG` | `orkeon` | `1`, `true` ou `yes` | Une erreur inattendue imprime son exception — la chaîne des types et la pile — au lieu d'une ligne. |
+| `ORKEON_MCP_SERVE` | `orkeon` | posée par `orkeon mcp serve`, jamais à la main | Marque chaque processus que lance `orkeon mcp serve`. Sous elle, `orkeon mcp serve` refuse de démarrer : des réglages qui le rangent parmi leurs propres serveurs MCP ne peuvent pas le lancer en boucle. |
+| `ORKEON_ESBUILD_PATH` | `orkeon`, `orkeon-host`, `orkeon-repl` | le chemin d'un exécutable esbuild | Où un script `.ork.ts` trouve esbuild, après `Orkeon:Scripting:Toolchain:EsbuildPath` et avant la copie livrée à côté du binaire. Les lanceurs d'une installation la posent sur l'esbuild qu'ils livrent quand elle est absente. |
+| `ORKEON_LLM_API_KEY` | `orkeon` | une clé d'API | La variable où `orkeon llm probe` et `orkeon llm models` lisent la clé quand `--api-key-env` n'en nomme pas d'autre. |
+| `BRAVE_API_KEY` | `orkeon`, `orkeon-host` | une clé d'API Brave Search | Inscrit l'outil `brave_search`. Elle est lue d'abord comme une clé de configuration : le fichier de réglages et `ORKEON_BRAVE_API_KEY` la donnent aussi. |
+| `ORKEON_DISCORD_TOKEN` | `orkeon-host` | un jeton de bot Discord | Le jeton du canal Discord : le défaut de `Orkeon:Host:Discord:TokenEnvironmentVariable`, qui peut nommer une autre variable. |
+| `OLLAMA_BASE_URL` | `orkeon`, `orkeon-host`, `orkeon-repl` | l'adresse d'un serveur Ollama | L'adresse que prend le fournisseur Ollama quand on ne lui en donne aucune : `Llm:BaseUrl` l'emporte, et `http://localhost:11434` est ce qui reste sans l'une ni l'autre. |
+| `ORKEON_CLI_DIR` | `orkeon-studio`, `orkeon-studio-config`, `orkeon-studio-run` | un dossier | Où Orkeon Studio cherche l'exécutable `orkeon`, après `--cli-dir` et son propre dossier d'installation, avant le `PATH`. |
+| `ORKEON_STUDIO_TEAMS_ROOT` | `orkeon-studio`, `orkeon-studio-run` | un dossier, par son chemin complet | Le dossier où Orkeon Studio range ses équipes. Elle l'emporte sur `--teams-root` et sur le dossier choisi dans Réglages › Studio. |
+| `ORKEON_CUSTOM_LLM_API_KEY` | `orkeon-studio`, `orkeon-studio-config` | une clé d'API | La variable qu'Orkeon Studio propose pour la clé d'un réglage de modèle « compatible OpenAI », et qu'il écrit dans l'`ApiKeyEnvVar` de ce réglage : un run la lit par cette clé, pas par ce nom. |
+| `TUI_DRIVER` | `orkeon-repl`, `orkeon-studio-config`, `orkeon-studio-run` | `windows`, `dotnet` ou `ansi` | Le pilote Terminal.Gui des interfaces texte, pour le diagnostic. Absente : `windows` sous Windows, `dotnet` ailleurs — `ansi` ne dessine rien sous WSL ni dans bien des terminaux de conteneur. |
+| `TUI_DIAG` | `orkeon-repl` | `1` | La console à deux volets écrit des lignes `[tui-diag]` sur stderr pendant son démarrage : le terminal, le pilote choisi. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `orkeon`, `orkeon-host` | l'adresse d'un collecteur OTLP | Active l'export OpenTelemetry quand `Telemetry:OtlpEndpoint` est vide ; l'exportateur lit lui-même l'adresse, et les autres variables `OTEL_EXPORTER_OTLP_*`. |
+| `XDG_CONFIG_HOME` | `orkeon`, `orkeon-host`, `orkeon-repl`, `orkeon-studio-config`, `orkeon-studio-run` | un dossier, par son chemin absolu | Sous Linux et macOS, la racine des réglages par utilisateur — `$XDG_CONFIG_HOME/Orkeon/appsettings.json`, `~/.config` quand elle est absente — et des unités systemd utilisateur qu'installe `orkeon forge schedule`. |
+| `CI` | `orkeon-repl`, `orkeon-studio-config`, `orkeon-studio-run` | `true` | Aucune interface texte ne s'ouvre : `orkeon-repl` se replie sur sa console simple, les deux applications terminal de Studio disent qu'il leur faut un terminal et s'arrêtent. |
+| `TERM` | `orkeon-repl`, `orkeon-studio-config`, `orkeon-studio-run` | un type de terminal | Sous Linux, absente ou vide, elle a l'effet de `CI=true` : il n'y a pas de terminal où dessiner. |
+
+**Transmises, pas lues.** L'outil `shell_command` remet à la commande qu'il lance une liste fixe
+de variables de l'hôte — `PATH`, `HOME`, la locale, les dossiers temporaires, `DOTNET_ROOT`,
+`NUGET_PACKAGES` et ce qu'il faut à Windows pour lancer un programme —, et le bac à sable de code
+bâtit un environnement plus réduit encore : ni l'un ni l'autre ne les lit comme des réglages, et
+aucune clé ne passe par là. `PATH` est aussi l'endroit où un script `.ork.ts` cherche esbuild en
+dernier, et Orkeon Studio l'exécutable `orkeon` ; `HOME` est lue quand le système ne nomme aucun
+dossier de profil, pour placer les réglages par utilisateur. Les variables écrites sous
+`MCP:Servers:<nom>:Env` sont celles de l'opérateur : Orkeon les remet au serveur qu'il lance et
+n'en lit aucune. L'image de conteneur a ses propres variables, lues par son script d'entrée et
+non par les binaires — `ORKEON_RUNNER` et ses voisines
+([trois façons de lancer Orkeon](../getting-started/three-ways-to-run-orkeon.md#3-conteneur)).
+
+### Les variables qu'un réglage nomme
+
+Une clé qui finit par `EnvVar` ou `EnvironmentVariable` porte le **nom** d'une variable, jamais
+une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit chacune.
+
+| Clé | Ce que porte la variable qu'elle nomme | Lue où |
+|---|---|---|
+| `Llm:ApiKeyEnvVar` | La clé d'API du modèle par défaut, lue quand aucun `Llm:ApiKey` n'est résolu ([la clé d'API](#la-clé-dapi-apikey-apikeyenvvar)). | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Llm:Profiles:<nom>:ApiKeyEnvVar` | La clé d'API de ce profil, lue de la même façon. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Email:Accounts:<nom>:Auth:PasswordEnvVar` | Le mot de passe, ou mot de passe d'application, du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Email:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
+| `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
+
+La variable conventionnelle de chaque fournisseur — `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, … — est
+un nom à écrire dans `ApiKeyEnvVar` :
+[Clés d'API : la variable par fournisseur](./llm-providers-comparison.md#clés-dapi--la-variable-par-fournisseur).
 
 ---
 

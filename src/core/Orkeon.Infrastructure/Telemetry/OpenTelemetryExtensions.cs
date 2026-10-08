@@ -8,6 +8,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Orkeon.Infrastructure.Telemetry.HealthChecks;
 using Orkeon.Application.Configuration;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Infrastructure.Telemetry;
 
@@ -188,7 +189,7 @@ public static class OpenTelemetryExtensions
         public static OtlpRoute Resolve(TelemetryOptions options)
         {
             var endpoint = string.IsNullOrEmpty(options.OtlpEndpoint) ? null : options.OtlpEndpoint;
-            var fromEnvironment = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT"));
+            var fromEnvironment = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentVariableNames.OtlpEndpoint));
             return new OtlpRoute(endpoint, endpoint is not null || fromEnvironment);
         }
     }

@@ -94,7 +94,8 @@ internal sealed record SettingsCommandOptions
 /// <summary>
 /// <c>orkeon settings</c> — the settings a host reads, in the terminal: the categories, then a
 /// category, a section, a key, or whatever a word names or describes; <c>--all</c> for everything
-/// and <c>--json</c> for the catalogue itself.
+/// and <c>--json</c> for the catalogue itself. <c>orkeon settings env</c> lists the environment
+/// variables Orkeon reads (<see cref="EnvironmentVariableNames"/>).
 /// </summary>
 /// <remarks>
 /// It shows what a settings file may hold and what each key is worth when nothing sets it — not
@@ -110,6 +111,9 @@ internal static class SettingsCommand
 
     private const string Prefix = "orkeon settings: ";
 
+    /// <summary>The word that asks for the environment variables instead of a setting.</summary>
+    private const string EnvironmentForm = "env";
+
     /// <summary>The forms of the verb, shown by <c>--help</c> and under the categories.</summary>
     private static readonly string Forms = string.Join(
         Environment.NewLine,
@@ -118,6 +122,7 @@ internal static class SettingsCommand
         "  orkeon settings <section>         the keys of a section: type, default, meaning",
         "  orkeon settings <key>             one key",
         "  orkeon settings <word>            whatever is named or described with the word",
+        "  orkeon settings env               the environment variables Orkeon reads",
         "  orkeon settings --all             every section and every key, by category",
         "  orkeon settings --json            the same inventory for a program; follows a name and --host",
         "  orkeon settings --host <binary>   only what one binary reads: run, host or repl",
@@ -136,6 +141,18 @@ internal static class SettingsCommand
 
         if (options.Error is not null)
             return await RefuseAsync(options.Error).ConfigureAwait(false);
+
+        if (string.Equals(options.Name, EnvironmentForm, StringComparison.OrdinalIgnoreCase))
+        {
+            if (options.All || options.Host is not null)
+            {
+                return await RefuseAsync(
+                    "`orkeon settings env` takes --json and nothing else: each variable says who reads it.").ConfigureAwait(false);
+            }
+
+            await Console.Out.WriteAsync(options.Json ? EnvironmentJson() : EnvironmentVariables()).ConfigureAwait(false);
+            return Program.ExitOk;
+        }
 
         var catalog = options.Host is null ? SettingsCatalog.Complete : SettingsCatalog.Complete.ForHost(options.Host);
         var selection = options.Name is null ? Selection.Everything(catalog) : Selection.Exact(catalog, options.Name);
@@ -178,6 +195,107 @@ internal static class SettingsCommand
         page.Line();
         page.Line("Reference: " + CliUsage.SettingsReference);
         return page.ToString();
+    }
+
+    // ── the environment variables ──
+
+    /// <summary>The settings keys that hold the name of a variable, as the catalogue writes them.</summary>
+    private static List<string> KeysNamingAVariable() =>
+    [
+        .. SettingsCatalog.Complete.Settings
+            .Select(setting => setting.Path)
+            .Where(path => EnvironmentVariableNames.NamingKeySuffixes.Any(suffix => path.EndsWith(suffix, StringComparison.Ordinal))),
+    ];
+
+    /// <summary>
+    /// The three kinds of environment variables Orkeon reads: the ones that carry a setting, the
+    /// ones a binary reads by their name, the ones a setting names — then what the word
+    /// <c>env</c> names among the settings, which this form would otherwise hide.
+    /// </summary>
+    private static string EnvironmentVariables()
+    {
+        const string Prefixed = EnvironmentVariableNames.SettingsPrefix;
+        var byName = EnvironmentVariableNames.ReadByName;
+        var page = new Page();
+        page.Wrapped(
+            $"Environment variables Orkeon reads: any setting by its path, {byName.Count} by their name, and those a setting names.",
+            indent: 0);
+
+        page.Line();
+        page.Line("A setting, by its path");
+        page.Line($"  {Prefixed}<Section>__<Key>");
+        page.Wrapped(
+            $"Any setting, over the settings file, `__` between the levels of its path: {Prefixed}Llm__Model is " +
+            $"Llm:Model, {Prefixed}RateLimiting__MaxConcurrentRequests is RateLimiting:MaxConcurrentRequests, " +
+            $"{Prefixed}Orkeon__Rag__Profile is Orkeon:Rag:Profile.",
+            indent: 6);
+        page.Line("  <Section>__<Key>");
+        page.Wrapped("The same setting without the prefix, under the settings file: Llm__Model.", indent: 6);
+        page.Line($"  {Prefixed}<NAME>");
+        page.Wrapped(
+            $"A secret by its name, before the `Secrets` section of the file: {Prefixed}TAVILY_API_KEY is the key of `web_search`.",
+            indent: 6);
+
+        page.Line();
+        page.Line("A variable a binary reads by its name");
+        var nameWidth = byName.Max(entry => entry.Name.Length);
+        foreach (var entry in byName)
+        {
+            page.Line($"  {entry.Name.PadRight(nameWidth)}  {entry.Value}");
+            page.Wrapped("Read by: " + string.Join(", ", entry.ReadBy), indent: 6);
+            page.Wrapped(entry.Effect, indent: 6);
+        }
+
+        page.Line();
+        page.Line("A variable a setting names: the key holds the name of the variable, never its value");
+        foreach (var key in KeysNamingAVariable())
+            page.Line("  " + key);
+        page.Line();
+        page.Line("  `orkeon settings <key>` describes each of these keys.");
+
+        var catalog = SettingsCatalog.Complete;
+        if (Selection.Word(catalog, EnvironmentForm) is { } found)
+        {
+            page.Line();
+            Found(page, catalog, found);
+        }
+
+        page.Line();
+        page.Line("Reference: " + CliUsage.SettingsReference + "#environment-variables");
+        return page.ToString();
+    }
+
+    /// <summary>The same table for a program: stable, in the order of the listing.</summary>
+    private static string EnvironmentJson()
+    {
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer, SettingsCatalog.WriterOptions))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("settingsPrefix", EnvironmentVariableNames.SettingsPrefix);
+            writer.WriteStartArray("variables");
+            foreach (var entry in EnvironmentVariableNames.ReadByName)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("name", entry.Name);
+                writer.WriteStartArray("readBy");
+                foreach (var binary in entry.ReadBy)
+                    writer.WriteStringValue(binary);
+                writer.WriteEndArray();
+                writer.WriteString("value", entry.Value);
+                writer.WriteString("effect", entry.Effect);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+            writer.WriteStartArray("namedBySettings");
+            foreach (var key in KeysNamingAVariable())
+                writer.WriteStringValue(key);
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        }
+
+        return Encoding.UTF8.GetString(buffer.ToArray()) + "\n";
     }
 
     // ── what a name designates ──

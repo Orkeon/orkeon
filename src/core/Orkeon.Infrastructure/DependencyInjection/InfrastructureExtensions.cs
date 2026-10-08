@@ -54,6 +54,7 @@ using Orkeon.Infrastructure.DomainEvents;
 using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.Templating;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Infrastructure.DependencyInjection;
 
@@ -435,7 +436,7 @@ public static class InfrastructureExtensions
 
         var providers = new List<ISecretProvider>
         {
-            new EnvironmentSecretProvider("ORKEON_"),
+            new EnvironmentSecretProvider(EnvironmentVariableNames.SettingsPrefix),
             new ConfigurationSecretProvider(config, "Secrets"),
         };
 
