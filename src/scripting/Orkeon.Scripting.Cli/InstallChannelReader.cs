@@ -86,7 +86,8 @@ internal static class InstallChannelReader
             + "updates with the system; else `sudo apt install ./orkeon_<version>_<arch>.deb` (the package cannot tell "
             + "which of the two brought it: docs/guides/install-with-apt.md)",
         InstallChannels.Homebrew => "brew upgrade orkeon",
-        InstallChannels.Source => "git pull in the clone, then build and install the archive again",
+        InstallChannels.Source =>
+            "git pull in the clone, then run scripts/install-from-source.ps1 (Windows) or scripts/install-from-source.sh again",
         InstallChannels.DotnetTool => "dotnet tool update -g Orkeon.Scripting.Cli (--prerelease for a pre-release)",
         _ => "install the newer version the way this one was installed — "
             + "https://github.com/Orkeon/orkeon/blob/main/docs/getting-started/three-ways-to-run-orkeon.md#update-orkeon",

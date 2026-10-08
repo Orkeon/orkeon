@@ -157,7 +157,7 @@ Runner, Ollama, or a model embedded in the container image) — see the
 | **Install the `orkeon` CLI** | Windows and Debian/Ubuntu (amd64, arm64): the quickstarts below. macOS: the CLI tarball below (`osx-arm64`, `osx-x64`). Anyone who also wants the REPL or the service host takes the multi-app `orkeon-<version>-<rid>.tar.gz` from the [releases](https://github.com/Orkeon/orkeon/releases), then `./install.sh` | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
 | **Embed Orkeon in your app** | `dotnet add package Orkeon --prerelease` — the complete framework in one package, from [nuget.org](https://www.nuget.org/packages/Orkeon) (the public feed: no extra source, no token). Optionally add [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (the built-in tool families) and the opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — the latter pins a pre-release upstream, `SmartComponents.LocalEmbeddings`, and will keep doing so past 1.0: see [limitations](docs/reference/limitations.md) —, `Orkeon.Interop.AgentFramework`, `Orkeon.Hosting.Aspire`) — see the [publication matrix](docs/reference/publication-matrix.md). The `orkeon` CLI tool and the container image above are unchanged | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
 | **Verify what you download** | Every package and installer carries a GitHub-signed build provenance attestation and a `SHA256SUMS` line: `gh attestation verify <file> --repo Orkeon/orkeon` — no trust in this page required | [Verify what you install](docs/guides/verify-what-you-install.md) |
-| **Hack on the framework** | `git clone` (**without** `--recursive`) + `dotnet build Orkeon.sln` | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
+| **Hack on the framework** | `git clone` (**without** `--recursive`) + `dotnet build Orkeon.sln`. To install what you built on your `PATH`: `./scripts/install-from-source.sh` (`.\scripts\install-from-source.ps1` on Windows) | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
 
 > **Clone without `--recursive`.** This repository declares **private maintainer
 > submodules**: they are not available in a public clone. Nothing in the
@@ -350,6 +350,8 @@ dotnet build Orkeon.sln -p:SkipScriptingNpmInstall=true
 ```
 
 If npm is unavailable the build still succeeds; esbuild is then resolved from `PATH` at runtime.
+
+To install the `orkeon` you built — on your `PATH`, at the version of your checkout, the way a release archive installs it — run `./scripts/install-from-source.sh` (`.\scripts\install-from-source.ps1` on Windows, from PowerShell 7). It names every missing prerequisite before it compiles anything: [Install what you just cloned](docs/getting-started/three-ways-to-run-orkeon.md#install-what-you-just-cloned).
 
 ---
 

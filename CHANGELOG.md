@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — install from a clone with one command
+
+Installing the `orkeon` built from a clone took seven lines nobody had written down: read
+the version out of the props, count commits, call the packager with it, find the staging
+tree, run its installer.
+
+- **`scripts/install-from-source.ps1`** (Windows, PowerShell 7) and
+  **`scripts/install-from-source.sh`** (Linux, macOS): from the clone, one command builds
+  the tree of the CLI archive for the machine and installs it with the archive's own
+  installer. `orkeon --version` answers the version of the checkout —
+  `1.0.0-rc.4.local.<commit date>` off a tag — and `orkeon doctor` names the channel
+  `source`. Run again after a `git pull`, it replaces the installation.
+- **Every missing prerequisite is named before anything is compiled**, all of them in one
+  run, each with where to get it: a .NET SDK that satisfies `global.json` (told apart from
+  no SDK at all), git, Python 3, `tar` — and `curl` and `openssl` on Linux and macOS. The
+  script installs none of it. Started from Windows PowerShell 5.1, the Windows one says
+  that the build needs PowerShell 7 and where to get it.
+- Options: the app set (`-AppSet full` / `--app-set full`), the destination
+  (`-InstallDir` / `--prefix`), a dry run (`-WhatIf` / `--dry-run`) and the uninstall
+  (`-Uninstall` / `--uninstall`, which builds nothing).
+- **`package-installers.sh --no-archive`** / **`package-installers.ps1 -NoArchive`**
+  prepare the staging tree and stop there: no archive, no `SHA256SUMS`. The scripts above
+  pass it; CI never does.
+- `orkeon doctor` tells a `source` installation to `git pull` and run the script again.
+- Docs (EN, FR): *Install what you just cloned* in
+  [three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md#install-what-you-just-cloned),
+  referred to by the prerequisites table, the update table, the README and
+  `CONTRIBUTING.md`.
+
 ### Added — the Windows zip installs by double-click, on the PowerShell Windows ships
 
 Installing `orkeon-cli-<version>-win-x64.zip` took a PowerShell window, a policy to lift

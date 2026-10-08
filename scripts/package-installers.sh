@@ -7,6 +7,7 @@
 #   scripts/package-installers.sh [--version X.Y.Z[-suffix]] [--rids "linux-x64 ..."]
 #                                 [--out artifacts/installers] [-c Release]
 #                                 [--app-set full|cli] [--keep-stage all|none|"RIDS"]
+#                                 [--no-archive]
 #
 # --app-set cli ships the `orkeon` CLI plus the Orkeon Studio apps for the
 # platform (win-x64: `orkeon-studio`; linux-*: `orkeon-studio-config` +
@@ -21,6 +22,11 @@
 # one instead of publishing it a second time, so pruning is opt-in and the
 # caller states which trees still have a consumer. The full set alone leaves
 # ~2.6 GB of them behind, which the release runner does not have to spare.
+#
+# --no-archive prepares the staging trees and stops there: no tar.gz, no zip, no
+# SHA256SUMS. The tree is then the only thing produced, so every one is kept,
+# whatever --keep-stage says. It is what scripts/install-from-source.sh passes --
+# it installs the tree and has no use for an archive of it. CI never passes it.
 #
 # Version resolution: --version, else scripts/resolve-version.sh — the tag's version when
 # HEAD is the commit a v* tag points to (the apt-dev tag of the apt dev builds is no
@@ -42,6 +48,7 @@ OUT="$REPO_ROOT/artifacts/installers"
 CONFIG="Release"
 APP_SET="full"
 KEEP_STAGE="all"
+ARCHIVE=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -50,8 +57,9 @@ while [[ $# -gt 0 ]]; do
     --out)     OUT="$2"; shift 2 ;;
     --app-set) APP_SET="$2"; shift 2 ;;
     --keep-stage) KEEP_STAGE="$2"; shift 2 ;;
+    --no-archive) ARCHIVE=0; shift ;;
     -c|--configuration) CONFIG="$2"; shift 2 ;;
-    -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -80,7 +88,9 @@ case "$KEEP_STAGE" in
 esac
 
 # True when the staging tree of RID $1 must survive its archive (see --keep-stage).
+# Without an archive (--no-archive) the tree is the product: always kept.
 stage_kept() { # $1=rid
+  [[ "$ARCHIVE" -eq 1 ]] || return 0
   case "$KEEP_STAGE" in
     all)  return 0 ;;
     none) return 1 ;;
@@ -333,7 +343,9 @@ for RID in $RIDS; do
   fi
 
   # Archive
-  if [[ "$RID" == win-* ]]; then
+  if [[ "$ARCHIVE" -eq 0 ]]; then
+    echo "    -> $ROOT  (--no-archive: the tree, no archive)"
+  elif [[ "$RID" == win-* ]]; then
     rm -f "$OUT/$PKG.zip"
     make_zip "$STAGE" "$PKG" "$OUT/$PKG.zip"
     echo "    -> $OUT/$PKG.zip"
@@ -351,6 +363,13 @@ for RID in $RIDS; do
     echo "    pruned staging tree $ROOT"
   fi
 done
+
+# No archive was written (--no-archive): SHA256SUMS, which lists archives, is left as it
+# is -- it may describe the archives of an earlier run, and still does.
+if [[ "$ARCHIVE" -eq 0 ]]; then
+  echo "==> Done. Staging trees in $STAGE (no archive, no SHA256SUMS)."
+  exit 0
+fi
 
 # `|| true`: with a single --rids one of the globs matches nothing, and under
 # `set -o pipefail` a failing ls would abort the script after all the work is

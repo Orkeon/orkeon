@@ -121,6 +121,11 @@ jobs:
       # on upload, and every asset listed in a checksum manifest.
       - name: Test the release asset-name guard
         run: bash scripts/test-check-release-assets.sh
+      # scripts/install-from-source.sh, the one command that installs a clone: what it owes
+      # before it compiles anything - every missing prerequisite named in one run, with where
+      # to get it - proved on a PATH the bench composes out of stub tools. Nothing is built.
+      - name: Test the prerequisite check of the source installer
+        run: bash scripts/test-install-from-source.sh
       # Scripting-DSL contract gate: the shipped .ork.ts examples are typechecked against
       # the shipped Typings/*.d.ts. The examples are also executed by the test suite, so
       # agreement here means the declarations and the Jint runtime describe one API. Seven
@@ -219,3 +224,29 @@ jobs:
       - name: Test the off-tag version resolver (bash, Windows PowerShell 5.1, PowerShell 7)
         shell: bash
         run: bash scripts/test-resolve-version.sh
+      # scripts/install-from-source.ps1 under the same two PowerShells. Windows PowerShell
+      # cannot run the build: the script must say so, name PowerShell 7 and build nothing,
+      # instead of failing on a parameter. Under PowerShell 7, -WhatIf goes through the
+      # prerequisite check and the version, prints the two commands and runs neither.
+      # cmd.exe merges the two streams: under 5.1, a native command's redirected stderr
+      # would otherwise end the step on its first line.
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with: { dotnet-version: '10.0.x' }
+      - name: The source installer asks for PowerShell 7 by name (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          $out = cmd /c "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install-from-source.ps1 -WhatIf 2>&1"
+          $code = $LASTEXITCODE
+          $out
+          $text = $out -join "`n"
+          if ($code -ne 1) { throw "install-from-source.ps1 exited ${code} under Windows PowerShell (expected 1)." }
+          if ($text -notmatch 'PowerShell 7' -or $text -notmatch 'Nothing was built') { throw 'install-from-source.ps1 stopped under Windows PowerShell without naming PowerShell 7.' }
+      - name: The source installer's dry run (PowerShell 7)
+        shell: pwsh
+        run: |
+          $out = cmd /c "pwsh -NoProfile -File scripts\install-from-source.ps1 -WhatIf 2>&1"
+          $code = $LASTEXITCODE
+          $out
+          $text = $out -join "`n"
+          if ($code -ne 0) { throw "install-from-source.ps1 -WhatIf exited ${code} (expected 0: every prerequisite is on this runner)." }
+          if ($text -notmatch 'Would run:' -or $text -notmatch '-NoArchive' -or $text -notmatch 'install\.ps1 -InstallDir') { throw 'install-from-source.ps1 -WhatIf did not print the two commands it would run.' }

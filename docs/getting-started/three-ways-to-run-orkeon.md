@@ -48,10 +48,56 @@ What the machine needs depends on how far you go:
 | To… | You need |
 |---|---|
 | **Run an example** (`dotnet run`, above) | the **.NET 10 SDK**, 10.0.300 or later (`dotnet --version`; `global.json` pins it), and **git**. The first build restores its packages from nuget.org |
-| **Build an installer archive** from the clone (`scripts/package-installers.sh`, or `scripts/package-installers.ps1` on Windows) | the two above, plus: **Python 3** — `python3` on the `PATH`, `python` on Windows (the Microsoft Store alias of that name does not count); **`tar`**; network access to **nuget.org** and to **`registry.npmjs.org`**, where the script fetches the esbuild binary it bundles. On Windows the script needs **PowerShell 7** (`pwsh`): Windows PowerShell 5.1, the one installed with the system, stops on it. On Linux the script also calls `curl`, `openssl` and `sha256sum` |
+| **Build an installer archive** from the clone (`scripts/package-installers.sh`, or `scripts/package-installers.ps1` on Windows), or [install what you just cloned](#install-what-you-just-cloned), which builds one and checks all of this first | the two above, plus: **Python 3** — `python3` on the `PATH`, `python` on Windows (the Microsoft Store alias of that name does not count); **`tar`**; network access to **nuget.org** and to **`registry.npmjs.org`**, where the script fetches the esbuild binary it bundles. On Windows the script needs **PowerShell 7** (`pwsh`): Windows PowerShell 5.1, the one installed with the system, stops on it. On Linux the script also calls `curl`, `openssl` and `sha256sum` |
 
 An archive built this way is installed like a downloaded one — see
 [Release binary](#2-release-binary) below, its Windows prerequisites included.
+
+### Install what you just cloned
+
+`dotnet run` runs the CLI from the clone. To have the `orkeon` you built on your `PATH` —
+the installation a release archive makes, at the version of your checkout — one command,
+from the clone:
+
+```powershell
+git clone https://github.com/Orkeon/orkeon.git
+cd orkeon
+.\scripts\install-from-source.ps1     # Windows, from PowerShell 7 (pwsh)
+```
+
+```bash
+./scripts/install-from-source.sh      # Linux, macOS
+```
+
+The script first checks what the build needs — the second row of the table above — and
+names **everything** that is missing in one go, with where to get it, before it compiles
+anything. It installs none of it for you. It then builds the tree of the CLI archive for
+your machine, without writing the archive (several minutes; the first run restores NuGet
+packages and fetches the esbuild binary, a later one downloads nothing that is cached), and
+installs it with the archive's own installer: `%LOCALAPPDATA%\Programs\Orkeon` on Windows,
+`~/.local` elsewhere.
+
+`orkeon --version` then answers the version of your checkout —
+`1.0.0-rc.4.local.<commit date>` off a tag, never the name of a release — and
+`orkeon doctor` names the channel `source`.
+
+| Windows | Linux, macOS | |
+|---|---|---|
+| `-AppSet full` | `--app-set full` | every launcher — the REPL and the service host too — instead of the CLI set |
+| `-InstallDir <folder>` | `--prefix <dir>` | where to install; `--modify-path` also goes through to `install.sh` |
+| `-WhatIf` | `--dry-run` | stop after the checks, and print the version and the commands it would run |
+| `-Uninstall` | `--uninstall` | remove the installation. Builds nothing; your configuration stays |
+
+- **After a `git pull`, run it again**: the installation is replaced, and the version moves
+  with the commit.
+- **Windows**: the build needs PowerShell 7. Started from Windows PowerShell 5.1, the
+  script says so, and where to get it. If Orkeon is installed through the MSI, or running
+  from the install directory, the installer refuses and the script relays its sentence.
+- **Debian and Ubuntu**: the [apt repository](../guides/install-with-apt.md)'s `dev` channel
+  serves the builds of `main` without a build on your machine. The script says so, and
+  carries on.
+- A shallow clone (`git clone --depth 1`) works. The private maintainer submodules are not
+  needed, and not touched.
 
 ---
 
@@ -580,7 +626,7 @@ names the channel this install came through and the command that updates it.
 | The apt repository | `sudo apt update && sudo apt upgrade` |
 | A downloaded Debian package | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` on ARM) — or move to the [apt repository](../guides/install-with-apt.md), which updates by itself |
 | Container | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` moves with each release |
-| From source | `git pull`; the next `dotnet run` rebuilds |
+| From source | `git pull`; the next `dotnet run` rebuilds. An installation made [from the clone](#install-what-you-just-cloned): `git pull`, then run `scripts/install-from-source` again |
 
 `orkeon --version` then prints the version that runs: `orkeon <version>`. An install made before `orkeon doctor` learned to name its channel answers `unknown` there until it is updated once.
 

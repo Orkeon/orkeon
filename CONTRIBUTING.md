@@ -75,6 +75,13 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 > `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`
 > — `--ignore-exit-code 8` because most modules hold no test of either category.
 
+> **To install what you built**: `./scripts/install-from-source.sh`
+> (`.\scripts\install-from-source.ps1` on Windows, from PowerShell 7) puts the `orkeon` of
+> your checkout on your `PATH`, the way a release archive installs it, and names every
+> missing prerequisite before it compiles anything — see
+> [Install what you just cloned](docs/getting-started/three-ways-to-run-orkeon.md#install-what-you-just-cloned).
+> Run it again after a `git pull`.
+
 > **Note** — this repository declares **private maintainer submodules**: clone
 > **without** `--recursive` (as above). The build, the tests and the whole contribution
 > workflow do not need them; a failing `git submodule update` on those paths is expected

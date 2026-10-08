@@ -232,7 +232,7 @@ public sealed class InstallChannelReaderTests : IDisposable
     [InlineData(InstallChannels.Deb, "sudo apt update && sudo apt upgrade")]
     [InlineData(InstallChannels.Deb, "docs/guides/install-with-apt.md")]
     [InlineData(InstallChannels.Homebrew, "brew upgrade orkeon")]
-    [InlineData(InstallChannels.Source, "git pull")]
+    [InlineData(InstallChannels.Source, "scripts/install-from-source.sh")]
     [InlineData(InstallChannels.DotnetTool, "dotnet tool update -g Orkeon.Scripting.Cli")]
     [InlineData(InstallChannels.Unknown, "three-ways-to-run-orkeon.md#update-orkeon")]
     public void EveryChannel_HasTheCommandThatUpdatesIt(string channel, string expected)

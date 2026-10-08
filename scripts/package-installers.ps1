@@ -20,6 +20,10 @@
   archive; 'cli' ships the `orkeon` onboarding binary plus the Orkeon Studio
   apps for the platform (win-x64: orkeon-studio; linux-*: orkeon-studio-config +
   orkeon-studio-run; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
+.PARAMETER NoArchive
+  Prepares the staging tree (artifacts\installers\_stage\<name>) and stops there: no
+  zip, no SHA256SUMS. It is what scripts\install-from-source.ps1 passes -- it installs
+  the tree and has no use for an archive of it. CI never passes it.
 .NOTES
   Requires PowerShell 7 (`pwsh`): the lockfile is read with ConvertFrom-Json -AsHashtable,
   which Windows PowerShell 5.1 does not have. The #Requires line above turns that into
@@ -38,7 +42,8 @@ param(
     [string]$Configuration = 'Release',
     [ValidateSet('full', 'cli')]
     [string]$AppSet = 'full',
-    [switch]$Force
+    [switch]$Force,
+    [switch]$NoArchive
 )
 $ErrorActionPreference = 'Stop'
 
@@ -253,7 +258,9 @@ foreach ($rid in $Rids) {
     }
 
     # Archive
-    if ($rid -like 'win-*') {
+    if ($NoArchive) {
+        Write-Host "    -> $root  (-NoArchive: the tree, no archive)"
+    } elseif ($rid -like 'win-*') {
         $zip = Join-Path $Out "$pkgName.zip"
         if (Test-Path $zip) { Remove-Item $zip }
         Compress-Archive -Path $root -DestinationPath $zip
@@ -264,6 +271,13 @@ foreach ($rid in $Rids) {
         if ($LASTEXITCODE -ne 0) { throw "tar failed for $pkgName" }
         Write-Host "    -> $tarball  (WARNING: exec bits not preserved from Windows)"
     }
+}
+
+# No archive was written (-NoArchive): SHA256SUMS, which lists archives, is left as it
+# is -- it may describe the archives of an earlier run, and still does.
+if ($NoArchive) {
+    Write-Host "==> Done. Staging trees in $Stage (no archive, no SHA256SUMS)."
+    return
 }
 
 # Checksums
