@@ -221,7 +221,7 @@ orkeon rag eval --dataset examples/rag/eval/golden.yaml \
 orkeon email accounts [--settings <fichier>] [--json]                 # les comptes déclarés, leurs droits, si chacun est prêt
 orkeon email login <compte> [--settings <fichier>] [--events jsonl]   # connecter un compte OAuth2 et enregistrer ses jetons
 orkeon email logout <compte> [--settings <fichier>]                   # oublier les jetons enregistrés d'un compte OAuth
-orkeon email check <compte> [--settings <fichier>]                    # se connecter, s'authentifier, lister les dossiers
+orkeon email check <compte> [--settings <fichier>] [--events jsonl]   # se connecter, s'authentifier, lister les dossiers
 ```
 
 Le côté opérateur des outils e-mail ([guide](../guides/email.md)) : ce qui est déclaré sous
@@ -250,7 +250,7 @@ répond « run `orkeon email login <account>` ».
   Avec **`--events jsonl`**, c'est un programme qui pilote la connexion au lieu d'une personne
   qui la lit — c'est ainsi qu'Orkeon Studio la lance. La sortie standard porte alors un
   événement JSON par ligne et rien d'autre, dans l'enveloppe du
-  [flux d'événements du run](../architecture/run-event-bus.md), sous cinq types déclarés une
+  [flux d'événements du run](../architecture/run-event-bus.md), sous les types déclarés une
   seule fois dans `Orkeon.Constants.Protocol.EmailEventKinds` : `email.login.device_code`
   (`verification_uri`, `user_code`, `expires_in` en secondes), `email.login.authorization_url`
   (`authorization_uri`), `email.login.redirect_rejected` (`message`),
@@ -267,7 +267,12 @@ répond « run `orkeon email login <account>` ».
 - **`logout`** supprime les jetons enregistrés d'un compte OAuth, et le dit quand il n'y en avait
   pas ; un compte à mot de passe n'en a pas et est refusé.
 - **`check`** se connecte, s'authentifie et liste les dossiers, puis affiche leur nombre et les
-  compteurs de la boîte de réception.
+  compteurs de la boîte de réception. Avec **`--events jsonl`**, le verdict est un événement
+  sur une ligne de la sortie standard : `email.check.completed` (`account`, `folders`,
+  `inbox_total`, `inbox_unread`, et `summary`, la phrase imprimée sans l'option), ou `error` avec
+  son `code` — c'est ainsi qu'Orkeon Studio sait qu'un test refusé attend une connexion ou un
+  mot de passe, et désigne son propre bouton ou champ plutôt qu'un terminal. Le code de sortie
+  est celui que le verbe a sans l'option.
 
 `-s, --settings <chemin>` se résout comme pour `orkeon run`, ancré sur le répertoire courant :
 le fichier explicite, sinon `appsettings.json` dans le répertoire courant, sinon un

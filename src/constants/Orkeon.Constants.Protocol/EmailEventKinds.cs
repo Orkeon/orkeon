@@ -1,8 +1,8 @@
 namespace Orkeon.Constants.Protocol;
 
 /// <summary>
-/// The event kinds <c>orkeon email login --events jsonl</c> writes for whatever drives it
-/// (STUDIO-70).
+/// The event kinds <c>orkeon email login --events jsonl</c> and <c>orkeon email check --events
+/// jsonl</c> write for whatever drives them (STUDIO-70).
 /// <para>
 /// Same protocol as the run stream — one JSON document per line, the envelope of
 /// <see cref="RunEventKinds"/> — and the same reason to declare the vocabulary once: the CLI
@@ -40,6 +40,14 @@ public static class EmailEventKinds
     public const string LoginCompleted = "email.login.completed";
 
     /// <summary>
+    /// <c>orkeon email check --events jsonl</c> connected, signed in and listed the folders of
+    /// <c>account</c>: <c>folders</c> how many, <c>inbox_total</c> and <c>inbox_unread</c> the
+    /// inbox counts when it has one, and <c>summary</c> the sentence the verb prints without the
+    /// option — for a driver that shows the engine's words as printed.
+    /// </summary>
+    public const string CheckCompleted = "email.check.completed";
+
+    /// <summary>
     /// The sign-in was refused or failed — the run stream's kind, with its shape: <c>code</c>
     /// (the e-mail error code, such as <c>CredentialMissing</c>), <c>message</c> and
     /// <c>recoverable</c>. The exit code is the one the verb has without events.
@@ -47,8 +55,14 @@ public static class EmailEventKinds
     public const string Error = RunEventKinds.Error;
 
     /// <summary>
-    /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
-    /// as a step that silently never shows.
+    /// Every kind <c>orkeon email login --events jsonl</c> writes, so a consumer can assert it
+    /// handles them all rather than discovering a gap as a step that silently never shows.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [LoginDeviceCode, LoginAuthorizationUrl, LoginRedirectRejected, LoginCompleted, Error];
+    public static IReadOnlyList<string> Login { get; } = [LoginDeviceCode, LoginAuthorizationUrl, LoginRedirectRejected, LoginCompleted, Error];
+
+    /// <summary>Every kind <c>orkeon email check --events jsonl</c> writes: the verdict, or the refusal.</summary>
+    public static IReadOnlyList<string> Check { get; } = [CheckCompleted, Error];
+
+    /// <summary>Every kind of the two verbs, each once.</summary>
+    public static IReadOnlyList<string> All { get; } = [LoginDeviceCode, LoginAuthorizationUrl, LoginRedirectRejected, LoginCompleted, CheckCompleted, Error];
 }

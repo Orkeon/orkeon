@@ -138,8 +138,9 @@ public sealed class CaptureCampaignSemanticTests : IAsyncLifetime
         var surface = new RecordingCaptureSurface();
         var world = _worlds.For(CaptureWorldKind.Seeded);
         var shell = shells[CaptureWorldKind.Seeded];
+        // The stops of the seeded machine: the empty-state stop stands on the pristine one, where there is no account to read.
         var stops = CaptureCatalog.For(appearance, CaptureMatrix.Default)
-            .Where(stop => stop.Screen == CaptureScreen.SettingsEmail)
+            .Where(stop => stop.Screen == CaptureScreen.SettingsEmail && stop.World == CaptureWorldKind.Seeded)
             .ToList();
         Assert.NotEmpty(stops);
 

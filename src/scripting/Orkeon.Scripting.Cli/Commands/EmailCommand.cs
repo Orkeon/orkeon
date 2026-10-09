@@ -70,6 +70,11 @@ internal sealed class EmailCheckCommandOptions : EmailCommandOptionsBase
     /// <summary>The account to check.</summary>
     [Value(0, Required = true, MetaName = "account", HelpText = "The account name.")]
     public string Account { get; set; } = string.Empty;
+
+    /// <summary><c>--events jsonl</c>: the verdict as one event line on stdout, for a program that drives the check.</summary>
+    [Option("events", Required = false,
+        HelpText = "jsonl: write the verdict as one event line on stdout — the folder counts, or the error with its code (the way Orkeon Studio drives it).")]
+    public string? Events { get; set; }
 }
 
 /// <summary>
@@ -207,22 +212,44 @@ internal static class EmailCommand
     public static Task<int> ExecuteCheckAsync(EmailCheckCommandOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+        if (options.Events is { } format && !string.Equals(format, EventsFormat, StringComparison.OrdinalIgnoreCase))
+        {
+            return Console.Error.WriteLineAsync(
+                $"orkeon email check: unsupported --events format '{format}' — the only one is {EventsFormat}.")
+                .ContinueWith(_ => Program.ExitScriptError, TaskScheduler.Default);
+        }
+
+        // With events (STUDIO-69), the verdict is one event line — the counts on success, the
+        // error with its code on a refusal — so that a driver reads what happened instead of a sentence.
+        var events = options.Events is null ? null : new EmailEventWriter(Console.Out);
         return GuardedAsync("check", options, async (administration, ct) =>
         {
             var result = await administration.CheckAsync(options.Account, ct).ConfigureAwait(false);
-            var inbox = string.Empty;
-            if (result.InboxTotal is { } total)
-            {
-                var unreadPart = result.InboxUnread is { } unread
-                    ? string.Create(CultureInfo.InvariantCulture, $", {unread} unread")
-                    : string.Empty;
-                inbox = string.Create(CultureInfo.InvariantCulture, $", inbox {total} message(s){unreadPart}");
-            }
-            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
-                    $"E-mail account '{result.Account}' is reachable: {result.Folders} folder(s){inbox}."))
-                .ConfigureAwait(false);
+            var summary = RenderCheck(result);
+            if (events is null)
+                await Console.Out.WriteLineAsync(summary).ConfigureAwait(false);
+            else
+                events.CheckCompleted(result.Account, result.Folders, result.InboxTotal, result.InboxUnread, summary);
+
             return Program.ExitOk;
-        });
+        }, events);
+    }
+
+    /// <summary>The sentence of a check that connected: the folder count and the inbox counts.</summary>
+    internal static string RenderCheck(EmailCheckResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        var inbox = string.Empty;
+        if (result.InboxTotal is { } total)
+        {
+            var unreadPart = result.InboxUnread is { } unread
+                ? string.Create(CultureInfo.InvariantCulture, $", {unread} unread")
+                : string.Empty;
+            inbox = string.Create(CultureInfo.InvariantCulture, $", inbox {total} message(s){unreadPart}");
+        }
+
+        return string.Create(CultureInfo.InvariantCulture,
+            $"E-mail account '{result.Account}' is reachable: {result.Folders} folder(s){inbox}.");
     }
 
     /// <summary>The human listing of <paramref name="accounts"/>.</summary>

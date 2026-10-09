@@ -71,6 +71,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     private string _maxPerHour;
     private int? _maxPerHourNumber;
     private bool _isRenaming;
+    private string _activeTab = AccountTab;
     private bool _isConfirmingRemove;
     private string _renameText = "";
     private SecretRowViewModel? _password;
@@ -137,7 +138,79 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         SignOutCommand = new RelayCommand(() => { if (CanSign) _owner.ArmSignOut(this); }, () => CanSign);
         ConfirmSignOutCommand = new AsyncRelayCommand(SignOutAsync, () => _isConfirmingSignOut);
         CancelSignOutCommand = new RelayCommand(() => IsConfirmingSignOut = false);
+        ShowAccountTabCommand = new RelayCommand(() => ActiveTab = AccountTab);
+        ShowRightsTabCommand = new RelayCommand(() => ActiveTab = RightsTab);
+        ShowAuthTabCommand = new RelayCommand(() => ActiveTab = AuthTab);
+        ShowServersTabCommand = new RelayCommand(() => ActiveTab = ServersTab);
         RefreshProblems();
+    }
+
+    // ── the four tabs of the form ──
+
+    /// <summary>The tab of the account itself: its provider, its address, the name shown to recipients.</summary>
+    public const string AccountTab = "account";
+
+    /// <summary>The tab of what an agent may do: the six rights, the recipients, the quotas.</summary>
+    public const string RightsTab = "rights";
+
+    /// <summary>The tab of the sign-in: the method, the secrets, the variables, the tenant.</summary>
+    public const string AuthTab = "auth";
+
+    /// <summary>The tab of the two servers; it exists only while <see cref="ShowHosts"/> holds.</summary>
+    public const string ServersTab = "servers";
+
+    /// <summary>
+    /// The showing tab of the form. The head of the account — its state, its actions, what the
+    /// run will say of it — stays above whichever shows. The servers tab exists only while the
+    /// hosts show: asked for when a preset fills them, it falls back to the account tab, and the
+    /// form folds back to it when a preset takes the hosts over.
+    /// </summary>
+    public string ActiveTab
+    {
+        get => _activeTab;
+        set
+        {
+            var requested = value is RightsTab or AuthTab or ServersTab ? value : AccountTab;
+            if (requested == ServersTab && !ShowHosts)
+                requested = AccountTab;
+
+            if (SetProperty(ref _activeTab, requested))
+            {
+                OnPropertiesChanged(nameof(IsAccountTab), nameof(IsRightsTab), nameof(IsAuthTab), nameof(IsServersTab));
+                _owner.TabMoved(this);
+            }
+        }
+    }
+
+    /// <summary>True while the account tab shows.</summary>
+    public bool IsAccountTab => _activeTab == AccountTab;
+
+    /// <summary>True while the rights tab shows.</summary>
+    public bool IsRightsTab => _activeTab == RightsTab;
+
+    /// <summary>True while the sign-in tab shows.</summary>
+    public bool IsAuthTab => _activeTab == AuthTab;
+
+    /// <summary>True while the servers tab shows.</summary>
+    public bool IsServersTab => _activeTab == ServersTab;
+
+    /// <summary>Shows the account tab.</summary>
+    public RelayCommand ShowAccountTabCommand { get; }
+
+    /// <summary>Shows the rights tab.</summary>
+    public RelayCommand ShowRightsTabCommand { get; }
+
+    /// <summary>Shows the sign-in tab.</summary>
+    public RelayCommand ShowAuthTabCommand { get; }
+
+    /// <summary>Shows the servers tab.</summary>
+    public RelayCommand ShowServersTabCommand { get; }
+
+    /// <summary>The hosts may have gone with a preset or a mode: a tab that no longer exists is left.</summary>
+    private void KeepTabReachable()
+    {
+        if (_activeTab == ServersTab && !ShowHosts)
+            ActiveTab = AccountTab;
     }
 
     /// <summary>The name the file holds the account under: what an agent passes as <c>account</c>.</summary>
@@ -480,7 +553,11 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _lastCheck, value))
-                OnPropertiesChanged(nameof(HasLastCheck), nameof(LastCheckReachable), nameof(LastCheckHeadline), nameof(LastCheckDetail));
+            {
+                OnPropertiesChanged(
+                    nameof(HasLastCheck), nameof(LastCheckReachable), nameof(LastCheckHeadline), nameof(LastCheckDetail),
+                    nameof(LastCheckHint), nameof(HasLastCheckHint));
+            }
         }
     }
 
@@ -495,14 +572,32 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// not answer" — the exit code of the verb is all that tells them apart — or "Could not
     /// connect" when the CLI gave no verdict on the account.
     /// </summary>
-    public string? LastCheckHeadline => _lastCheck?.Kind switch
+    public string? LastCheckHeadline => _lastCheck switch
     {
         null => null,
-        EmailCheckKind.Reachable => _strings[StudioStringKeys.MailTestReachable],
-        EmailCheckKind.OperatorFixable => _strings[StudioStringKeys.MailTestOperatorFixable],
-        EmailCheckKind.ServerOrNetwork => _strings[StudioStringKeys.MailTestServerOrNetwork],
+        // A refusal Studio answers with a gesture of its own: the headline names it, the hint below says where.
+        { Code: EmailCheckCodes.LoginRequired } => _strings[StudioStringKeys.MailTestSignInFirst],
+        { Code: EmailCheckCodes.CredentialMissing } => _strings[StudioStringKeys.MailTestSecretFirst],
+        { Kind: EmailCheckKind.Reachable } => _strings[StudioStringKeys.MailTestReachable],
+        { Kind: EmailCheckKind.OperatorFixable } => _strings[StudioStringKeys.MailTestOperatorFixable],
+        { Kind: EmailCheckKind.ServerOrNetwork } => _strings[StudioStringKeys.MailTestServerOrNetwork],
         _ => _strings[StudioStringKeys.MailTestFailed],
     };
+
+    /// <summary>
+    /// What to do from here, when the engine's sentence sends to a terminal: the verb's error code
+    /// says what is missing, and the screen has the gesture — « Sign in » on the row, the password
+    /// field of the Sign-in tab. Null for every other verdict.
+    /// </summary>
+    public string? LastCheckHint => _lastCheck?.Code switch
+    {
+        EmailCheckCodes.LoginRequired => _strings[StudioStringKeys.MailTestSignInFirstHint],
+        EmailCheckCodes.CredentialMissing => _strings[StudioStringKeys.MailTestSecretFirstHint],
+        _ => null,
+    };
+
+    /// <summary>Whether the verdict comes with a gesture of Studio's.</summary>
+    public bool HasLastCheckHint => LastCheckHint is not null;
 
     /// <summary>
     /// The engine's sentence, in English, as printed: the number of folders on success, what was
@@ -602,6 +697,38 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
     /// <summary>Whether the OAuth client id shows: for the expert, and for everyone once the account signs in with OAuth2.</summary>
     public bool ShowClientId => _owner.IsExpert || _effective.AuthMethod == EmailSection.Values.OAuth2;
+
+    // The expert's sign-in fields show when the account's method or provider calls for them, or
+    // when the file already holds them: a key the file carries must stay reachable, and a key
+    // nothing uses — the tenant of a Gmail account, the password variable of an OAuth2 one — is
+    // noise, which the user reads as something to fill.
+
+    /// <summary>Whether the name of the password variable shows: the expert, signing in with a password — or a file that names one.</summary>
+    public bool ShowPasswordEnvVar =>
+        _owner.IsExpert && (_effective.AuthMethod == EmailSection.Values.Password || !string.IsNullOrWhiteSpace(_passwordEnvVar));
+
+    /// <summary>Whether the name of the client-secret variable shows: the expert, on a Gmail account signing in with OAuth2 — or a file that names one.</summary>
+    public bool ShowClientSecretEnvVar =>
+        _owner.IsExpert
+        && ((Provider == EmailSection.Values.Gmail && _effective.AuthMethod == EmailSection.Values.OAuth2) || !string.IsNullOrWhiteSpace(_clientSecretEnvVar));
+
+    /// <summary>Whether either secret variable shows, for the sentence that explains both.</summary>
+    public bool ShowSecretVariables => ShowPasswordEnvVar || ShowClientSecretEnvVar;
+
+    /// <summary>Whether the Microsoft tenant shows: the expert, on an Outlook account — or a file that names one.</summary>
+    public bool ShowTenant =>
+        _owner.IsExpert && (Provider == EmailSection.Values.Outlook || !string.IsNullOrWhiteSpace(_tenant));
+
+    /// <summary>
+    /// The sign-in methods the list offers: the section's, without « Password » on an Outlook
+    /// account — Outlook.com and Microsoft 365 no longer accept one from a mail client, and the
+    /// engine refuses it — unless the file still holds it, so that what it holds shows.
+    /// </summary>
+    public IEnumerable<EmailChoiceViewModel> AuthMethodChoices =>
+        _owner.AuthMethodChoices.Where(choice =>
+            choice.Value != EmailSection.Values.Password
+            || Provider != EmailSection.Values.Outlook
+            || string.Equals(_authMethod, EmailSection.Values.Password, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Whether the sending rules show: as soon as the account may send, and always for the
@@ -749,10 +876,14 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         OnPropertiesChanged(nameof(Name), nameof(SignOutConfirmText));
     }
 
-    internal void RefreshMode() =>
+    internal void RefreshMode()
+    {
         OnPropertiesChanged(
             nameof(ShowExpertFields), nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients),
+            nameof(ShowPasswordEnvVar), nameof(ShowClientSecretEnvVar), nameof(ShowSecretVariables), nameof(ShowTenant),
             nameof(PasswordVariable), nameof(ClientSecretVariable));
+        KeepTabReachable();
+    }
 
     /// <summary>
     /// Puts each secret line on the variable it stores under: the one the file names, else the one
@@ -856,7 +987,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _signIn?.RefreshTexts();
         OnPropertiesChanged(
             nameof(RenameRefusal), nameof(HasRenameRefusal), nameof(AuthMethodPlaceholder),
-            nameof(LastCheckHeadline), nameof(LastCheckDetail), nameof(SignOutConfirmText));
+            nameof(LastCheckHeadline), nameof(LastCheckDetail), nameof(LastCheckHint), nameof(SignOutConfirmText));
     }
 
     /// <summary>A recipient line was typed in: the list is written again.</summary>
@@ -973,7 +1104,10 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _loaded = definition;
         OnPropertiesChanged(
             nameof(Effective), nameof(IncomingPortPlaceholder), nameof(OutgoingPortPlaceholder), nameof(AuthMethodPlaceholder), nameof(SaveSentCopy),
-            nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients), nameof(ShowSendClosed), nameof(ShowSignIn));
+            nameof(ShowHosts), nameof(ShowClientId), nameof(ShowRecipients), nameof(ShowSendClosed), nameof(ShowSignIn),
+            nameof(ShowPasswordEnvVar), nameof(ShowClientSecretEnvVar), nameof(ShowSecretVariables), nameof(ShowTenant),
+            nameof(AuthMethodChoices));
+        KeepTabReachable();
         RefreshTest();
     }
 

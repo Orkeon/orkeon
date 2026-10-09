@@ -703,7 +703,12 @@
   <data name="Studio.Settings.MailProblemsTitle" xml:space="preserve"><value>En l'état, une exécution ne peut pas utiliser ce compte :</value></data>
   <data name="Studio.Settings.MailNumberUnread" xml:space="preserve"><value>Un champ numérique contient autre chose qu'un nombre entier : il n'est pas écrit.</value></data>
   <data name="Studio.Settings.MailDisplayName" xml:space="preserve"><value>Nom affiché aux destinataires</value></data>
-  <data name="Studio.Settings.MailRightsTitle" xml:space="preserve"><value>Ce qu'un agent peut faire</value></data>
+  <data name="Studio.Settings.MailTabAccount" xml:space="preserve"><value>Compte</value></data>
+  <data name="Studio.Settings.MailTabRights" xml:space="preserve"><value>Droits</value></data>
+  <data name="Studio.Settings.MailTabAuth" xml:space="preserve"><value>Connexion</value></data>
+  <data name="Studio.Settings.MailTabServers" xml:space="preserve"><value>Serveurs</value></data>
+  <data name="Studio.Settings.MailSectionShow" xml:space="preserve"><value>Afficher</value></data>
+  <data name="Studio.Settings.MailSectionHide" xml:space="preserve"><value>Masquer</value></data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve"><value>Rien de coché, rien de permis : le moteur refuse un compte qui n'accorde aucun droit.</value></data>
   <data name="Studio.Settings.MailRightRead" xml:space="preserve"><value>Lire — lister les dossiers, chercher, lire les messages et enregistrer les pièces jointes</value></data>
   <data name="Studio.Settings.MailRightOrganize" xml:space="preserve"><value>Organiser — créer et renommer des dossiers, déplacer des messages, les marquer lus ou suivis</value></data>
@@ -718,7 +723,6 @@
   <data name="Studio.Settings.MailSendClosed" xml:space="preserve"><value>Personne ne peut encore recevoir de courrier de ce compte : listez les destinataires autorisés.</value></data>
   <data name="Studio.Settings.MailMaxRecipients" xml:space="preserve"><value>Destinataires par message, au plus</value></data>
   <data name="Studio.Settings.MailMaxPerHour" xml:space="preserve"><value>Messages par heure, au plus</value></data>
-  <data name="Studio.Settings.MailAuthTitle" xml:space="preserve"><value>Connexion</value></data>
   <data name="Studio.Settings.MailAuthMethod" xml:space="preserve"><value>Méthode de connexion</value></data>
   <data name="Studio.Settings.MailPassword" xml:space="preserve"><value>Mot de passe ou mot de passe d'application</value></data>
   <data name="Studio.Settings.MailPasswordStored" xml:space="preserve"><value>Mémorisé sur cette machine, hors de tout fichier</value></data>
@@ -736,6 +740,10 @@
   <data name="Studio.Settings.MailTestFailed" xml:space="preserve"><value>Connexion impossible</value></data>
   <data name="Studio.Settings.MailTestOperatorFixable" xml:space="preserve"><value>À corriger sur cette machine</value></data>
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve"><value>Le serveur a refusé ou n'a pas répondu</value></data>
+  <data name="Studio.Settings.MailTestSignInFirst" xml:space="preserve"><value>Connectez-vous d'abord</value></data>
+  <data name="Studio.Settings.MailTestSignInFirstHint" xml:space="preserve"><value>« Se connecter », ci-dessus, ouvre la connexion ; le test réussit une fois le compte connecté.</value></data>
+  <data name="Studio.Settings.MailTestSecretFirst" xml:space="preserve"><value>Mémorisez d'abord le mot de passe</value></data>
+  <data name="Studio.Settings.MailTestSecretFirstHint" xml:space="preserve"><value>Saisissez-le dans l'onglet Connexion et enregistrez-le ; le test réussit une fois qu'il est mémorisé.</value></data>
   <data name="Studio.Settings.MailSignIn" xml:space="preserve"><value>Se connecter</value></data>
   <data name="Studio.Settings.MailSignOut" xml:space="preserve"><value>Se déconnecter</value></data>
   <data name="Studio.Settings.MailSignOutConfirm" xml:space="preserve"><value>Oublier les jetons mémorisés de {0} ? Le compte devra se connecter à nouveau.</value></data>
@@ -762,7 +770,6 @@
   <data name="Studio.Settings.MailClientSecretEnvVar" xml:space="preserve"><value>Nom de la variable qui contient le secret client OAuth</value></data>
   <data name="Studio.Settings.MailEnvVarHint" xml:space="preserve"><value>Un nom, jamais le secret lui-même : le moteur lit la variable au moment de se connecter.</value></data>
   <data name="Studio.Settings.MailTenant" xml:space="preserve"><value>Locataire Microsoft</value></data>
-  <data name="Studio.Settings.MailServersTitle" xml:space="preserve"><value>Serveurs de messagerie</value></data>
   <data name="Studio.Settings.MailIncoming" xml:space="preserve"><value>Lecture du courrier</value></data>
   <data name="Studio.Settings.MailOutgoing" xml:space="preserve"><value>Envoi du courrier</value></data>
   <data name="Studio.Settings.MailProtocol" xml:space="preserve"><value>Protocole</value></data>

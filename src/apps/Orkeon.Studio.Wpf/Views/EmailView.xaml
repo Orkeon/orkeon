@@ -43,6 +43,31 @@
         </DataTrigger>
       </Style.Triggers>
     </Style>
+    <!-- The tabs of an account's form: the settings strip's underline, one size down. The active
+         one reads its Tag, as the strip does. -->
+    <Style x:Key="MailTab" TargetType="Button">
+      <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,0,16,0"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Underline" Padding="2,0,2,6" BorderThickness="0,0,0,2" BorderBrush="Transparent">
+              <ContentPresenter/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                <Setter TargetName="Underline" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+              </DataTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </UserControl.Resources>
   <StackPanel>
 
@@ -93,7 +118,7 @@
                    Text="{Binding [Studio.Settings.MailNewTitle], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,5"
                    Text="{Binding [Studio.Settings.MailName], Source={x:Static services:I18n.Instance}}"/>
-        <TextBox Style="{StaticResource InputMono}" MaxWidth="320" HorizontalAlignment="Left"
+        <TextBox Style="{StaticResource InputMono}" Width="320" HorizontalAlignment="Left"
                  Text="{Binding NewAccountName, UpdateSourceTrigger=PropertyChanged}"/>
         <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
                    Text="{Binding [Studio.Settings.MailNameHint], Source={x:Static services:I18n.Instance}}"/>
@@ -104,7 +129,7 @@
                   SelectedValue="{Binding NewAccountProvider}" SelectedValuePath="Value" DisplayMemberPath="Label"/>
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,5"
                    Text="{Binding [Studio.Settings.MailAddress], Source={x:Static services:I18n.Instance}}"/>
-        <TextBox Style="{StaticResource Input}" MaxWidth="320" HorizontalAlignment="Left"
+        <TextBox Style="{StaticResource Input}" Width="320" HorizontalAlignment="Left"
                  Text="{Binding NewAccountAddress, UpdateSourceTrigger=PropertyChanged}"/>
         <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,8,0,0"
                    TextWrapping="Wrap" Text="{Binding AddRefusal}"
@@ -172,8 +197,76 @@
       </ListBox>
     </Border>
 
+    <!-- ══ the settings of the section (expert): they apply to every account, so they sit under
+         the list and above the form of one — folded, since the form is what the tab is opened for ══ -->
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+            Visibility="{Binding IsExpert, Converter={StaticResource BooleanToVisibility}}">
+      <StackPanel>
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Center"
+                  Command="{Binding ToggleSectionCommand}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Size="12" Margin="0,0,6,0">
+                <controls:LucideIcon.Style>
+                  <Style TargetType="controls:LucideIcon">
+                    <Setter Property="Kind" Value="chevron-down"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsSectionOpen}" Value="True">
+                        <Setter Property="Kind" Value="chevron-up"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </controls:LucideIcon.Style>
+              </controls:LucideIcon>
+              <TextBlock>
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Text" Value="{Binding [Studio.Settings.MailSectionShow], Source={x:Static services:I18n.Instance}}"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsSectionOpen}" Value="True">
+                        <Setter Property="Text" Value="{Binding [Studio.Settings.MailSectionHide], Source={x:Static services:I18n.Instance}}"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </StackPanel>
+          </Button>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <controls:LucideIcon Kind="sliders-horizontal" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+            <TextBlock Style="{StaticResource CardTitle}" ToolTip="Orkeon:Tools:Email"
+                       Text="{Binding [Studio.Settings.MailSectionTitle], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </DockPanel>
+        <StackPanel Visibility="{Binding IsSectionOpen, Converter={StaticResource BooleanToVisibility}}">
+          <CheckBox Margin="0,10,0,0" IsChecked="{Binding WithholdRejected}" Foreground="{DynamicResource InkBrush}"
+                    ToolTip="Screening:WithholdRejected"
+                    Content="{Binding [Studio.Settings.MailWithholdRejected], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource Hint}" Margin="24,3,0,0" TextWrapping="Wrap"
+                     Text="{Binding [Studio.Settings.MailWithholdRejectedHint], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="CredentialsDirectory"
+                     Text="{Binding [Studio.Settings.MailCredentialsDirectory], Source={x:Static services:I18n.Instance}}"/>
+          <DockPanel MaxWidth="620" HorizontalAlignment="Left">
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="8,0,0,0"
+                    Command="{Binding BrowseCredentialsDirectoryCommand}"
+                    Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
+            <TextBox Style="{StaticResource InputMono}" Width="480"
+                     Text="{Binding CredentialsDirectory, UpdateSourceTrigger=LostFocus}"
+                     Tag="{Binding [Studio.Settings.MailCredentialsDirectoryDefault], Source={x:Static services:I18n.Instance}}"/>
+          </DockPanel>
+          <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                     Text="{Binding [Studio.Settings.MailCredentialsDirectoryHint], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
     <!-- ══ the selected account ══ -->
-    <ContentControl Content="{Binding SelectedAccount}" Focusable="False">
+    <!-- T-30: the form exists WITH a selection, not before one. An explicit ContentTemplate is
+         instantiated even over a null Content: without this gate, a machine with no account
+         shows the whole form of nobody, every conditional panel open at once — each Visibility
+         binding fails on the null context and keeps its default, Visible. -->
+    <ContentControl Content="{Binding SelectedAccount}" Focusable="False"
+                    Visibility="{Binding HasSelectedAccount, Converter={StaticResource BooleanToVisibility}}">
       <ContentControl.ContentTemplate>
         <DataTemplate>
           <StackPanel>
@@ -272,6 +365,9 @@
                       </TextBlock.Style>
                     </TextBlock>
                     <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,2,0,0" Text="{Binding LastCheckDetail}"/>
+                    <!-- the engine's sentence sends to a terminal; when its code names something this screen does, the gesture is said here -->
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding LastCheckHint}"
+                               Visibility="{Binding HasLastCheckHint, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                   <!-- STUDIO-70: a sign-out the verb refused - a localized word, then its sentence as printed -->
                   <StackPanel Margin="0,8,0,0"
@@ -522,7 +618,30 @@
                            Text="{Binding [Studio.Settings.MailNumberUnread], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding HasUnreadNumber, Converter={StaticResource BooleanToVisibility}}"/>
 
-                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
+              </StackPanel>
+            </Border>
+
+            <!-- the form, in four tabs: the account, its rights, its sign-in, its servers. The head
+                 above keeps the state and the verdict whichever shows; the servers tab exists only
+                 while the hosts do (ShowHosts), and the ViewModel folds back to the account tab
+                 when a preset takes them over. -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+              <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                  <Button Style="{StaticResource MailTab}" Command="{Binding ShowAccountTabCommand}" Tag="{Binding IsAccountTab}"
+                          Content="{Binding [Studio.Settings.MailTabAccount], Source={x:Static services:I18n.Instance}}"/>
+                  <Button Style="{StaticResource MailTab}" Command="{Binding ShowRightsTabCommand}" Tag="{Binding IsRightsTab}"
+                          Content="{Binding [Studio.Settings.MailTabRights], Source={x:Static services:I18n.Instance}}"/>
+                  <Button Style="{StaticResource MailTab}" Command="{Binding ShowAuthTabCommand}" Tag="{Binding IsAuthTab}"
+                          Content="{Binding [Studio.Settings.MailTabAuth], Source={x:Static services:I18n.Instance}}"/>
+                  <Button Style="{StaticResource MailTab}" Command="{Binding ShowServersTabCommand}" Tag="{Binding IsServersTab}"
+                          Content="{Binding [Studio.Settings.MailTabServers], Source={x:Static services:I18n.Instance}}"
+                          Visibility="{Binding ShowHosts, Converter={StaticResource BooleanToVisibility}}"/>
+                </StackPanel>
+
+                <!-- ── the account ── -->
+                <StackPanel Visibility="{Binding IsAccountTab, Converter={StaticResource BooleanToVisibility}}">
+                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5"
                            Text="{Binding [Studio.Settings.MailProvider], Source={x:Static services:I18n.Instance}}"/>
                 <ComboBox MaxWidth="520" HorizontalAlignment="Left"
                           ItemsSource="{Binding DataContext.ProviderChoices, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
@@ -530,24 +649,17 @@
                           Tag="{Binding [Studio.Settings.MailProviderCustom], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                            Text="{Binding [Studio.Settings.MailAddress], Source={x:Static services:I18n.Instance}}"/>
-                <TextBox Style="{StaticResource Input}" MaxWidth="320" HorizontalAlignment="Left"
+                <TextBox Style="{StaticResource Input}" Width="320" HorizontalAlignment="Left"
                          Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}"/>
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                            Text="{Binding [Studio.Settings.MailDisplayName], Source={x:Static services:I18n.Instance}}"/>
-                <TextBox Style="{StaticResource Input}" MaxWidth="320" HorizontalAlignment="Left"
+                <TextBox Style="{StaticResource Input}" Width="320" HorizontalAlignment="Left"
                          Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}"/>
-              </StackPanel>
-            </Border>
-
-            <!-- the rights: six switches, a sentence each; none ticked and the engine refuses the account -->
-            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-              <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                  <controls:LucideIcon Kind="badge-check" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-                  <TextBlock Style="{StaticResource CardTitle}"
-                             Text="{Binding [Studio.Settings.MailRightsTitle], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
-                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+
+                <!-- ── the rights: six switches, a sentence each; none ticked and the engine refuses the account ── -->
+                <StackPanel Visibility="{Binding IsRightsTab, Converter={StaticResource BooleanToVisibility}}">
+                <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" TextWrapping="Wrap"
                            Text="{Binding [Studio.Settings.MailRightsIntro], Source={x:Static services:I18n.Instance}}"/>
                 <CheckBox Margin="0,12,0,0" IsChecked="{Binding CanRead}" Foreground="{DynamicResource InkBrush}"
                           Content="{Binding [Studio.Settings.MailRightRead], Source={x:Static services:I18n.Instance}}"/>
@@ -618,21 +730,14 @@
                           Content="{Binding [Studio.Settings.MailRightDelete], Source={x:Static services:I18n.Instance}}"/>
                 <CheckBox Margin="0,7,0,0" IsChecked="{Binding CanPurge}" Foreground="{DynamicResource InkBrush}"
                           Content="{Binding [Studio.Settings.MailRightPurge], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Border>
-
-            <!-- signing in: the method and the secret for everyone, the names of the variables for the expert -->
-            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-              <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                  <controls:LucideIcon Kind="key-round" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-                  <TextBlock Style="{StaticResource CardTitle}"
-                             Text="{Binding [Studio.Settings.MailAuthTitle], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
+
+                <!-- ── signing in: the method and the secret for everyone, the names of the variables for the expert ── -->
+                <StackPanel Visibility="{Binding IsAuthTab, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5"
                            Text="{Binding [Studio.Settings.MailAuthMethod], Source={x:Static services:I18n.Instance}}"/>
                 <ComboBox MaxWidth="420" HorizontalAlignment="Left"
-                          ItemsSource="{Binding DataContext.AuthMethodChoices, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
+                          ItemsSource="{Binding AuthMethodChoices}"
                           SelectedValue="{Binding AuthMethod}" SelectedValuePath="Value" DisplayMemberPath="Label"
                           Tag="{Binding AuthMethodPlaceholder}"/>
                 <!-- the password itself (STUDIO-68), for an account that signs in with one: typed here, kept by the key store -->
@@ -672,7 +777,7 @@
                 <StackPanel Visibility="{Binding ShowClientId, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                              Text="{Binding [Studio.Settings.MailClientId], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBox Style="{StaticResource InputMono}" MaxWidth="520" HorizontalAlignment="Left"
+                  <TextBox Style="{StaticResource InputMono}" Width="520" HorizontalAlignment="Left"
                            Text="{Binding ClientId, UpdateSourceTrigger=PropertyChanged}"/>
                   <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
                              Text="{Binding [Studio.Settings.MailClientIdHint], Source={x:Static services:I18n.Instance}}"/>
@@ -715,35 +820,35 @@
                 <StackPanel Visibility="{Binding ShowExpertFields, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="Auth:Username"
                              Text="{Binding [Studio.Settings.MailUsername], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBox Style="{StaticResource Input}" MaxWidth="320" HorizontalAlignment="Left"
+                  <TextBox Style="{StaticResource Input}" Width="320" HorizontalAlignment="Left"
                            Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding Effective.Username}"/>
-                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="Auth:PasswordEnvVar"
-                             Text="{Binding [Studio.Settings.MailPasswordEnvVar], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBox Style="{StaticResource InputMono}" MaxWidth="320" HorizontalAlignment="Left"
-                           Text="{Binding PasswordEnvVar, UpdateSourceTrigger=PropertyChanged}"/>
-                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="Auth:ClientSecretEnvVar"
-                             Text="{Binding [Studio.Settings.MailClientSecretEnvVar], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBox Style="{StaticResource InputMono}" MaxWidth="320" HorizontalAlignment="Left"
-                           Text="{Binding ClientSecretEnvVar, UpdateSourceTrigger=PropertyChanged}"/>
+                  <!-- each secret variable, and the tenant, when the method or the provider calls for it — or the file holds it -->
+                  <StackPanel Visibility="{Binding ShowPasswordEnvVar, Converter={StaticResource BooleanToVisibility}}">
+                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="Auth:PasswordEnvVar"
+                               Text="{Binding [Studio.Settings.MailPasswordEnvVar], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBox Style="{StaticResource InputMono}" Width="320" HorizontalAlignment="Left"
+                             Text="{Binding PasswordEnvVar, UpdateSourceTrigger=PropertyChanged}"/>
+                  </StackPanel>
+                  <StackPanel Visibility="{Binding ShowClientSecretEnvVar, Converter={StaticResource BooleanToVisibility}}">
+                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="Auth:ClientSecretEnvVar"
+                               Text="{Binding [Studio.Settings.MailClientSecretEnvVar], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBox Style="{StaticResource InputMono}" Width="320" HorizontalAlignment="Left"
+                             Text="{Binding ClientSecretEnvVar, UpdateSourceTrigger=PropertyChanged}"/>
+                  </StackPanel>
                   <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                             Text="{Binding [Studio.Settings.MailEnvVarHint], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="Auth:Tenant"
-                             Text="{Binding [Studio.Settings.MailTenant], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBox Style="{StaticResource InputMono}" MaxWidth="320" HorizontalAlignment="Left"
-                           Text="{Binding Tenant, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding Effective.Tenant}"/>
+                             Text="{Binding [Studio.Settings.MailEnvVarHint], Source={x:Static services:I18n.Instance}}"
+                             Visibility="{Binding ShowSecretVariables, Converter={StaticResource BooleanToVisibility}}"/>
+                  <StackPanel Visibility="{Binding ShowTenant, Converter={StaticResource BooleanToVisibility}}">
+                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="Auth:Tenant"
+                               Text="{Binding [Studio.Settings.MailTenant], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBox Style="{StaticResource InputMono}" Width="320" HorizontalAlignment="Left"
+                             Text="{Binding Tenant, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding Effective.Tenant}"/>
+                  </StackPanel>
                 </StackPanel>
-              </StackPanel>
-            </Border>
+                </StackPanel>
 
-            <!-- the servers: the two hosts for an account no preset fills, everything for the expert -->
-            <Border Style="{StaticResource Card}" Margin="0,0,0,16"
-                    Visibility="{Binding ShowHosts, Converter={StaticResource BooleanToVisibility}}">
-              <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                  <controls:LucideIcon Kind="hard-drive" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-                  <TextBlock Style="{StaticResource CardTitle}"
-                             Text="{Binding [Studio.Settings.MailServersTitle], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
+                <!-- ── the servers: the two hosts for an account no preset fills, everything for the expert ── -->
+                <StackPanel Visibility="{Binding IsServersTab, Converter={StaticResource BooleanToVisibility}}">
 
                 <!-- reading -->
                 <TextBlock Style="{StaticResource Eyebrow}" Margin="0,10,0,0"
@@ -758,7 +863,7 @@
                 </StackPanel>
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5"
                            Text="{Binding [Studio.Settings.MailHost], Source={x:Static services:I18n.Instance}}"/>
-                <TextBox Style="{StaticResource InputMono}" MaxWidth="320" HorizontalAlignment="Left"
+                <TextBox Style="{StaticResource InputMono}" Width="320" HorizontalAlignment="Left"
                          Text="{Binding IncomingHost, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding Effective.IncomingHost}"/>
                 <StackPanel Visibility="{Binding ShowExpertFields, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5" ToolTip="Incoming:Port"
@@ -786,7 +891,7 @@
                 </StackPanel>
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5"
                            Text="{Binding [Studio.Settings.MailHost], Source={x:Static services:I18n.Instance}}"/>
-                <TextBox Style="{StaticResource InputMono}" MaxWidth="320" HorizontalAlignment="Left"
+                <TextBox Style="{StaticResource InputMono}" Width="320" HorizontalAlignment="Left"
                          Text="{Binding OutgoingHost, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding Effective.OutgoingHost}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
                            Text="{Binding [Studio.Settings.MailOutgoingHostHint], Source={x:Static services:I18n.Instance}}"/>
@@ -812,6 +917,7 @@
                             ToolTip="SaveSentCopy"
                             Content="{Binding [Studio.Settings.MailSaveSentCopy], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
+                </StackPanel>
               </StackPanel>
             </Border>
 
@@ -819,35 +925,6 @@
         </DataTemplate>
       </ContentControl.ContentTemplate>
     </ContentControl>
-
-    <!-- ══ the settings of the section (expert): they apply to every account ══ -->
-    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
-            Visibility="{Binding IsExpert, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-          <controls:LucideIcon Kind="sliders-horizontal" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-          <TextBlock Style="{StaticResource CardTitle}" ToolTip="Orkeon:Tools:Email"
-                     Text="{Binding [Studio.Settings.MailSectionTitle], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-        <CheckBox Margin="0,10,0,0" IsChecked="{Binding WithholdRejected}" Foreground="{DynamicResource InkBrush}"
-                  ToolTip="Screening:WithholdRejected"
-                  Content="{Binding [Studio.Settings.MailWithholdRejected], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource Hint}" Margin="24,3,0,0" TextWrapping="Wrap"
-                   Text="{Binding [Studio.Settings.MailWithholdRejectedHint], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="CredentialsDirectory"
-                   Text="{Binding [Studio.Settings.MailCredentialsDirectory], Source={x:Static services:I18n.Instance}}"/>
-        <DockPanel MaxWidth="620" HorizontalAlignment="Left">
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="8,0,0,0"
-                  Command="{Binding BrowseCredentialsDirectoryCommand}"
-                  Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
-          <TextBox Style="{StaticResource InputMono}" Width="480"
-                   Text="{Binding CredentialsDirectory, UpdateSourceTrigger=LostFocus}"
-                   Tag="{Binding [Studio.Settings.MailCredentialsDirectoryDefault], Source={x:Static services:I18n.Instance}}"/>
-        </DockPanel>
-        <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                   Text="{Binding [Studio.Settings.MailCredentialsDirectoryHint], Source={x:Static services:I18n.Instance}}"/>
-      </StackPanel>
-    </Border>
 
   </StackPanel>
 </UserControl>

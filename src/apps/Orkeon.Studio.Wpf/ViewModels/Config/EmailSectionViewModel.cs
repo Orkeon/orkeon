@@ -91,6 +91,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     private EmailAccountRowViewModel? _selectedAccount;
     private bool _isExpert;
     private bool _isAdding;
+    private bool _isSectionOpen;
     private bool _syncingChoices;
     private string _newAccountName = "";
     private string _newAccountProvider = NewAccountProviderDefault;
@@ -141,6 +142,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
             parameter => { if (parameter is EmailAccountRowViewModel row) Arm(row, r => r.BeginRemove()); },
             parameter => parameter is EmailAccountRowViewModel);
         BrowseCredentialsDirectoryCommand = new RelayCommand(BrowseCredentialsDirectory);
+        ToggleSectionCommand = new RelayCommand(() => IsSectionOpen = !IsSectionOpen);
 
         // The rows do not listen: the owner of the list refreshes what they say (STUDIO-56).
         _strings.CultureChanged += (_, _) => RefreshTexts();
@@ -177,12 +179,41 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         set
         {
             if (SetProperty(ref _selectedAccount, value))
+            {
                 OnPropertyChanged(nameof(HasSelectedAccount));
+                RefreshTabGates();
+            }
         }
     }
 
     /// <summary>Whether an account's form shows.</summary>
     public bool HasSelectedAccount => _selectedAccount is not null;
+
+    // The tab of the selected account's form, as four gates of the section: the capture catalogue
+    // reads its gates from the shell down, and a path through SelectedAccount resolves to nothing
+    // while no account is selected — these do, and say false.
+
+    /// <summary>Whether the selected account's form is on its account tab.</summary>
+    public bool ShowsAccountTab => _selectedAccount?.IsAccountTab == true;
+
+    /// <summary>Whether the selected account's form is on its rights tab.</summary>
+    public bool ShowsRightsTab => _selectedAccount?.IsRightsTab == true;
+
+    /// <summary>Whether the selected account's form is on its sign-in tab.</summary>
+    public bool ShowsAuthTab => _selectedAccount?.IsAuthTab == true;
+
+    /// <summary>Whether the selected account's form is on its servers tab.</summary>
+    public bool ShowsServersTab => _selectedAccount?.IsServersTab == true;
+
+    /// <summary>The selected account's form moved to another tab, or the selection moved.</summary>
+    internal void TabMoved(EmailAccountRowViewModel row)
+    {
+        if (ReferenceEquals(row, _selectedAccount))
+            RefreshTabGates();
+    }
+
+    private void RefreshTabGates() =>
+        OnPropertiesChanged(nameof(ShowsAccountTab), nameof(ShowsRightsTab), nameof(ShowsAuthTab), nameof(ShowsServersTab));
 
     /// <summary>
     /// Whether the expert's fields show: the protocols, ports and securities, the user name, the
@@ -294,6 +325,20 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
 
     /// <summary>Opens the folder dialog for <see cref="CredentialsDirectory"/>.</summary>
     public RelayCommand BrowseCredentialsDirectoryCommand { get; }
+
+    /// <summary>
+    /// Whether the card of the two settings of the section is unfolded (expert). It sits under
+    /// the list of accounts, since it is about none of them, and folded: the form of the
+    /// selected account is what the tab is opened for.
+    /// </summary>
+    public bool IsSectionOpen
+    {
+        get => _isSectionOpen;
+        set => SetProperty(ref _isSectionOpen, value);
+    }
+
+    /// <summary>Unfolds or folds the card of the section's settings.</summary>
+    public RelayCommand ToggleSectionCommand { get; }
 
     // ── the box that adds an account ──
 

@@ -57,6 +57,29 @@ public sealed partial class EmailCommandTests
     }
 
     [Fact]
+    public async Task Check_WithEvents_WhenTheAccountNeedsASignIn_WritesOneErrorEventWithItsCode_AndNothingElse()
+    {
+        using var scratch = new ScriptScratch();
+        WriteOutlookSettings(scratch, Path.Combine(scratch.Root, "credentials"));
+        using var console = new ConversationConsole();
+
+        var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions
+        {
+            WorkingDirectoryOverride = scratch.Root,
+            Account = "hotmail",
+            Events = "jsonl",
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var error = Assert.Single(EventLines(console.Stdout));
+        Assert.Equal(EmailEventKinds.Error, error.GetProperty("kind").GetString());
+        // The code is what a driver acts on: Studio answers it with its own « Sign in » button.
+        Assert.Equal("LoginRequired", error.GetProperty("code").GetString());
+        Assert.Contains("needs an OAuth sign-in", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("orkeon email check", console.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Login_WithEvents_TheBrowserSignIn_WritesTheAddress_TakesTheRedirectPastedOnStandardInput_ThenCompletes()
     {
         using var scratch = new ScriptScratch();
@@ -343,7 +366,7 @@ public sealed partial class EmailCommandTests
             written.UnionWith(EventLines(console.Stdout).Select(e => e.GetProperty("kind").GetString()!));
         }
 
-        Assert.Equal(EmailEventKinds.All.Order(StringComparer.Ordinal), written.Order(StringComparer.Ordinal));
+        Assert.Equal(EmailEventKinds.Login.Order(StringComparer.Ordinal), written.Order(StringComparer.Ordinal));
     }
 
     /// <summary>

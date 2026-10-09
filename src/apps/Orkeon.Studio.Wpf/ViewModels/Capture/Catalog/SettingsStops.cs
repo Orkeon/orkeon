@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
@@ -97,6 +98,22 @@ internal static class SettingsStops
 
         new()
         {
+            Name = "reglages-mails-vide",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsEmail,
+            World = CaptureWorldKind.Pristine,
+            Because = "No account at all: the head of the E-mail tab alone — the file the accounts "
+                    + "would go to, the sentence that says none is declared, and « Add an account » — "
+                    + "with no form under it. The form of the selected account used to show over "
+                    + "nothing, every conditional panel of it open at once (sign-in, rename, removal, "
+                    + "sign-out), because an explicit ContentTemplate is instantiated over a null "
+                    + "Content and every Visibility binding then keeps its default.",
+            CoversFalse = ["Config.Email.HasAccounts", "Config.Email.HasSelectedAccount", "Config.Email.IsAdding"],
+            SweepsLanguages = true,
+        },
+
+        new()
+        {
             Name = "reglages-mails",
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsEmail,
@@ -119,19 +136,67 @@ internal static class SettingsStops
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsEmail,
             Modes = CaptureModes.Expert,
-            Because = "The custom account in the expert form: no preset fills its servers, so the "
-                    + "two hosts are its own and every other field shows what the engine will use as "
-                    + "a watermark; it may send, and its allowed recipients are listed one per line. "
-                    + "Its password is not stored, so its state is « not ready » with the engine's "
-                    + "own sentence, which names the variable (STUDIO-69).",
-            Covers = ["Config.Email.IsExpert", "Config.Email.HasSelectedAccount"],
+            Because = "The custom account on the Servers tab of the expert form: no preset fills "
+                    + "its servers, so the two hosts are its own and every other field shows what the "
+                    + "engine will use as a watermark. Its password is not stored, so its state is "
+                    + "« not ready » with the engine's own sentence, which names the variable "
+                    + "(STUDIO-69); the head keeps it above whichever tab shows.",
+            Covers = ["Config.Email.IsExpert", "Config.Email.HasSelectedAccount", "Config.Email.ShowsServersTab"],
             Arrange = static async c =>
             {
                 await c.Shell.Config.Email.RefreshStatesAsync();
                 c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[^1];
+                c.Shell.Config.Email.SelectedAccount!.ActiveTab = EmailAccountRowViewModel.ServersTab;
             },
             Teardown = CaptureAction.Sync(static c =>
-                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[0]),
+            {
+                c.Shell.Config.Email.SelectedAccount!.ActiveTab = EmailAccountRowViewModel.AccountTab;
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[0];
+            }),
+        },
+
+        new()
+        {
+            Name = "reglages-mails-droits",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsEmail,
+            Because = "The Rights tab of the custom account, which may send: the six rights as six "
+                    + "sentences, and under « Send » its allowed recipients one per line, with the "
+                    + "add button; the expert pass adds the two sending quotas. The form of an "
+                    + "account is four tabs so that none of them scrolls.",
+            Covers = ["Config.Email.HasSelectedAccount", "Config.Email.ShowsRightsTab"],
+            CoversFalse = ["Config.Email.ShowsAccountTab"],
+            Arrange = static async c =>
+            {
+                await c.Shell.Config.Email.RefreshStatesAsync();
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[^1];
+                c.Shell.Config.Email.SelectedAccount!.ActiveTab = EmailAccountRowViewModel.RightsTab;
+            },
+            Teardown = CaptureAction.Sync(static c =>
+            {
+                c.Shell.Config.Email.SelectedAccount!.ActiveTab = EmailAccountRowViewModel.AccountTab;
+                c.Shell.Config.Email.SelectedAccount = c.Shell.Config.Email.Accounts[0];
+            }),
+        },
+
+        new()
+        {
+            Name = "reglages-mails-identifiants",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsEmail,
+            Because = "The Sign-in tab of the Gmail account: the method left to the preset, the "
+                    + "masked password with its state — stored, never shown — and, for the expert, "
+                    + "the names of the two secret variables and the Microsoft tenant, each with "
+                    + "its key as a tooltip (STUDIO-68).",
+            Covers = ["Config.Email.HasSelectedAccount", "Config.Email.ShowsAuthTab"],
+            CoversFalse = ["Config.Email.ShowsAccountTab"],
+            Arrange = static async c =>
+            {
+                await c.Shell.Config.Email.RefreshStatesAsync();
+                c.Shell.Config.Email.SelectedAccount!.ActiveTab = EmailAccountRowViewModel.AuthTab;
+            },
+            Teardown = CaptureAction.Sync(static c =>
+                c.Shell.Config.Email.SelectedAccount!.ActiveTab = EmailAccountRowViewModel.AccountTab),
         },
 
         new()

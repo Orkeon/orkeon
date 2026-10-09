@@ -35,12 +35,15 @@ public static class EmailArgumentsBuilder
         return [Verb, AccountsVerb, "--json", "--settings", settingsPath];
     }
 
-    /// <summary><c>email check &lt;account&gt; --settings &lt;file&gt;</c>: a real connection, sign-in and folder listing.</summary>
+    /// <summary>
+    /// <c>email check &lt;account&gt; --events jsonl --settings &lt;file&gt;</c>: a real connection,
+    /// sign-in and folder listing, its verdict one event line — the counts, or the error with its code.
+    /// </summary>
     public static IReadOnlyList<string> BuildCheck(string account, string settingsPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(account);
         ArgumentException.ThrowIfNullOrWhiteSpace(settingsPath);
-        return [Verb, CheckVerb, account, "--settings", settingsPath];
+        return [Verb, CheckVerb, account, "--events", "jsonl", "--settings", settingsPath];
     }
 
     /// <summary>
@@ -284,7 +287,25 @@ public enum EmailCheckKind
 /// verb's own prefix on a refusal. Shown as is: nothing is read out of it.
 /// </param>
 /// <param name="ExitCode">The child's exit code, when it ran and ended.</param>
-public sealed record EmailCheckOutcome(EmailCheckKind Kind, string Sentence, int? ExitCode = null);
+/// <param name="Code">
+/// The e-mail error code of a refusal, as the verb's <c>error</c> event names it
+/// (<see cref="EmailCheckCodes"/>); null on success, and when the verb printed no event.
+/// </param>
+public sealed record EmailCheckOutcome(EmailCheckKind Kind, string Sentence, int? ExitCode = null, string? Code = null);
+
+/// <summary>
+/// The error codes of a refused check that Studio answers with a gesture of its own: the engine's
+/// sentence sends to a terminal, and the screen has the button. Spelt as the engine's
+/// <c>EmailErrorCode</c> names them.
+/// </summary>
+public static class EmailCheckCodes
+{
+    /// <summary>An OAuth account has no usable token: « Sign in », on the row, is the gesture.</summary>
+    public const string LoginRequired = "LoginRequired";
+
+    /// <summary>A named secret is not set: the password field of the Sign-in tab is the gesture.</summary>
+    public const string CredentialMissing = "CredentialMissing";
+}
 
 /// <summary>
 /// The Studio side of <c>orkeon email</c> (STUDIO-69, STUDIO-70): <c>accounts --json</c> to say
@@ -338,14 +359,41 @@ public sealed class EmailCliClient
     {
         var (run, stdout, stderr) = await RunAsync(EmailArgumentsBuilder.BuildCheck(account, settingsPath), cancellationToken).ConfigureAwait(false);
 
+        // The verdict is an event line (the counts, or the error with its code); a verb that
+        // printed a sentence instead — an older CLI — is read as before.
+        string? summary = null;
+        string? code = null;
+        string? message = null;
+        foreach (var line in stdout)
+        {
+            if (!OrkeonEventParser.TryParse(line, out var orkeonEvent))
+                continue;
+
+            switch (orkeonEvent!.Kind)
+            {
+                case EmailEventKinds.CheckCompleted:
+                    summary = orkeonEvent.GetString("summary");
+                    break;
+                case EmailEventKinds.Error:
+                    code = orkeonEvent.GetString("code");
+                    message = orkeonEvent.GetString("message");
+                    break;
+            }
+        }
+
+        var refused = message is { Length: > 0 } ? message : Said(run, stderr, EmailArgumentsBuilder.CheckVerb);
         return run.Outcome switch
         {
             RunOutcome.NotStarted => new EmailCheckOutcome(EmailCheckKind.Unavailable, run.Description),
             RunOutcome.Cancelled => new EmailCheckOutcome(EmailCheckKind.Cancelled, run.Description, run.ExitCode),
             RunOutcome.Success => new EmailCheckOutcome(
-                EmailCheckKind.Reachable, stdout.LastOrDefault(line => !string.IsNullOrWhiteSpace(line))?.Trim() ?? run.Description, run.ExitCode),
-            RunOutcome.ScriptError => new EmailCheckOutcome(EmailCheckKind.OperatorFixable, Said(run, stderr, EmailArgumentsBuilder.CheckVerb), run.ExitCode),
-            RunOutcome.RuntimeError => new EmailCheckOutcome(EmailCheckKind.ServerOrNetwork, Said(run, stderr, EmailArgumentsBuilder.CheckVerb), run.ExitCode),
+                EmailCheckKind.Reachable,
+                summary is { Length: > 0 }
+                    ? summary
+                    : stdout.LastOrDefault(line => !string.IsNullOrWhiteSpace(line) && !OrkeonEventParser.TryParse(line, out _))?.Trim() ?? run.Description,
+                run.ExitCode),
+            RunOutcome.ScriptError => new EmailCheckOutcome(EmailCheckKind.OperatorFixable, refused, run.ExitCode, code),
+            RunOutcome.RuntimeError => new EmailCheckOutcome(EmailCheckKind.ServerOrNetwork, refused, run.ExitCode, code),
             _ => new EmailCheckOutcome(EmailCheckKind.Unavailable, run.Description, run.ExitCode),
         };
     }

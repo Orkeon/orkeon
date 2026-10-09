@@ -260,7 +260,7 @@ public sealed class EmailCliClientTests
         var outcome = await CreateClient(launcher).CheckAsync("perso", Settings, TestContext.Current.CancellationToken);
 
         var request = Assert.Single(launcher.Requests);
-        Assert.Equal(["email", "check", "perso", "--settings", Settings], request.Arguments);
+        Assert.Equal(["email", "check", "perso", "--events", "jsonl", "--settings", Settings], request.Arguments);
         Assert.Equal(EmailCheckKind.Reachable, outcome.Kind);
         // The sentence is the engine's, as printed: nothing is read out of it.
         Assert.Equal(Sentence, outcome.Sentence);
@@ -279,6 +279,37 @@ public sealed class EmailCliClientTests
         Assert.Equal(EmailCheckKind.OperatorFixable, outcome.Kind);
         Assert.Equal("E-mail account 'perso' has no password: the environment variable GMAIL_APP_PASSWORD is not set.", outcome.Sentence);
         Assert.Equal(1, outcome.ExitCode);
+    }
+
+    [Fact]
+    public async Task An_error_event_gives_the_refusal_its_code_and_its_message()
+    {
+        var launcher = new FakeProcessLauncher { ExitCode = 1 }
+            .WithStandardError("Using settings: " + Settings)
+            .WithStandardOutput(
+                """{"v":1,"seq":1,"ts":"2026-10-09T10:00:00Z","kind":"error","code":"LoginRequired","message":"E-mail account 'perso' needs an OAuth sign-in: run `orkeon email login perso` in a terminal.","recoverable":false}""");
+
+        var outcome = await CreateClient(launcher).CheckAsync("perso", Settings, TestContext.Current.CancellationToken);
+
+        Assert.Equal(EmailCheckKind.OperatorFixable, outcome.Kind);
+        Assert.Equal(EmailCheckCodes.LoginRequired, outcome.Code);
+        Assert.Equal("E-mail account 'perso' needs an OAuth sign-in: run `orkeon email login perso` in a terminal.", outcome.Sentence);
+        Assert.Equal(1, outcome.ExitCode);
+    }
+
+    [Fact]
+    public async Task A_completed_event_is_reachable_with_the_engines_summary_and_no_code()
+    {
+        var launcher = new FakeProcessLauncher()
+            .WithStandardError("Using settings: " + Settings)
+            .WithStandardOutput(
+                """{"v":1,"seq":1,"ts":"2026-10-09T10:00:00Z","kind":"email.check.completed","account":"perso","folders":12,"inbox_total":340,"inbox_unread":3,"summary":"E-mail account 'perso' is reachable: 12 folder(s), inbox 340 message(s), 3 unread."}""");
+
+        var outcome = await CreateClient(launcher).CheckAsync("perso", Settings, TestContext.Current.CancellationToken);
+
+        Assert.Equal(EmailCheckKind.Reachable, outcome.Kind);
+        Assert.Null(outcome.Code);
+        Assert.Equal("E-mail account 'perso' is reachable: 12 folder(s), inbox 340 message(s), 3 unread.", outcome.Sentence);
     }
 
     [Fact]

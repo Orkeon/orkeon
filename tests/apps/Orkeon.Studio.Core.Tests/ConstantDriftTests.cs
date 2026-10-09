@@ -162,7 +162,7 @@ public sealed class ConstantDriftTests
     public async Task Every_kind_of_the_email_sign_in_is_read_by_studio()
     {
         var read = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var kind in EmailEventKinds.All)
+        foreach (var kind in EmailEventKinds.Login)
         {
             var launcher = new FakeProcessLauncher().WithStandardOutput(
                 $$"""{"v":2,"seq":1,"kind":"{{kind}}","verification_uri":"https://example.com/device","user_code":"CODE","expires_in":60,"authorization_uri":"https://example.com/auth","account":"a","code":"LoginRequired","message":"refused"}""");
@@ -178,13 +178,44 @@ public sealed class ConstantDriftTests
         }
 
         // Five kinds, five distinct readings — and none of them "the verb said nothing I know".
-        Assert.Equal(EmailEventKinds.All.Count, read.Values.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(EmailEventKinds.Login.Count, read.Values.Distinct(StringComparer.Ordinal).Count());
         Assert.DoesNotContain(nameof(EmailCliFailureKind.Unreadable), read.Values);
         Assert.Equal(nameof(EmailLoginStepKind.DeviceCode), read[EmailEventKinds.LoginDeviceCode]);
         Assert.Equal(nameof(EmailLoginStepKind.AuthorizationUrl), read[EmailEventKinds.LoginAuthorizationUrl]);
         Assert.Equal(nameof(EmailLoginStepKind.RedirectRejected), read[EmailEventKinds.LoginRedirectRejected]);
         Assert.Equal(nameof(EmailLoginStepKind.Completed), read[EmailEventKinds.LoginCompleted]);
         Assert.Equal(nameof(EmailCliFailureKind.Refused), read[EmailEventKinds.Error]);
+    }
+
+    /// <summary>
+    /// The connection check is the other stream (STUDIO-69): its two kinds must each come out of
+    /// the client as what they mean — the verdict with the engine's sentence, the refusal with its
+    /// code — and the two verbs' vocabularies, taken together, are the whole one.
+    /// </summary>
+    [Fact]
+    public async Task Every_kind_of_the_email_check_is_read_by_studio()
+    {
+        var probe = new FakeExecutableProbe { BaseDirectory = "/opt/orkeon" }.WithFile("/opt/orkeon/orkeon");
+
+        var completed = new FakeProcessLauncher().WithStandardOutput(
+            $$"""{"v":2,"seq":1,"kind":"{{EmailEventKinds.CheckCompleted}}","account":"a","folders":3,"inbox_total":10,"inbox_unread":1,"summary":"reachable: 3 folder(s)"}""");
+        var reachable = await new EmailCliClient(new OrkeonProcessRunner(completed, new OrkeonBinaryLocator(probe, ["orkeon"])))
+            .CheckAsync("a", "/tmp/appsettings.json", TestContext.Current.CancellationToken);
+        Assert.Equal(EmailCheckKind.Reachable, reachable.Kind);
+        Assert.Equal("reachable: 3 folder(s)", reachable.Sentence);
+        Assert.Null(reachable.Code);
+
+        var error = new FakeProcessLauncher { ExitCode = 1 }.WithStandardOutput(
+            $$"""{"v":2,"seq":1,"kind":"{{EmailEventKinds.Error}}","code":"LoginRequired","message":"refused","recoverable":false}""");
+        var refused = await new EmailCliClient(new OrkeonProcessRunner(error, new OrkeonBinaryLocator(probe, ["orkeon"])))
+            .CheckAsync("a", "/tmp/appsettings.json", TestContext.Current.CancellationToken);
+        Assert.Equal(EmailCheckKind.OperatorFixable, refused.Kind);
+        Assert.Equal("refused", refused.Sentence);
+        Assert.Equal(EmailCheckCodes.LoginRequired, refused.Code);
+
+        Assert.Equal(
+            EmailEventKinds.All.Order(StringComparer.Ordinal),
+            EmailEventKinds.Login.Concat(EmailEventKinds.Check).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
     }
 
     private static string BuiltVersion() =>

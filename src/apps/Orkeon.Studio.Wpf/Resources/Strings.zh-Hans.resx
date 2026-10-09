@@ -2019,8 +2019,23 @@
   <data name="Studio.Settings.MailDisplayName" xml:space="preserve">
     <value>向收件人显示的名称</value>
   </data>
-  <data name="Studio.Settings.MailRightsTitle" xml:space="preserve">
-    <value>智能体可以做什么</value>
+  <data name="Studio.Settings.MailTabAccount" xml:space="preserve">
+    <value>账户</value>
+  </data>
+  <data name="Studio.Settings.MailTabRights" xml:space="preserve">
+    <value>权限</value>
+  </data>
+  <data name="Studio.Settings.MailTabAuth" xml:space="preserve">
+    <value>登录</value>
+  </data>
+  <data name="Studio.Settings.MailTabServers" xml:space="preserve">
+    <value>服务器</value>
+  </data>
+  <data name="Studio.Settings.MailSectionShow" xml:space="preserve">
+    <value>显示</value>
+  </data>
+  <data name="Studio.Settings.MailSectionHide" xml:space="preserve">
+    <value>隐藏</value>
   </data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve">
     <value>未勾选即不允许：引擎会拒绝未授予任何权限的账户。</value>
@@ -2063,9 +2078,6 @@
   </data>
   <data name="Studio.Settings.MailMaxPerHour" xml:space="preserve">
     <value>每小时发送邮件上限</value>
-  </data>
-  <data name="Studio.Settings.MailAuthTitle" xml:space="preserve">
-    <value>登录</value>
   </data>
   <data name="Studio.Settings.MailAuthMethod" xml:space="preserve">
     <value>登录方式</value>
@@ -2117,6 +2129,18 @@
   </data>
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve">
     <value>服务器拒绝或没有响应</value>
+  </data>
+  <data name="Studio.Settings.MailTestSignInFirst" xml:space="preserve">
+    <value>请先登录</value>
+  </data>
+  <data name="Studio.Settings.MailTestSignInFirstHint" xml:space="preserve">
+    <value>上方的「登录」会打开登录流程；账户登录后测试即可通过。</value>
+  </data>
+  <data name="Studio.Settings.MailTestSecretFirst" xml:space="preserve">
+    <value>请先保存密码</value>
+  </data>
+  <data name="Studio.Settings.MailTestSecretFirstHint" xml:space="preserve">
+    <value>在「登录」标签页中输入并保存；密码保存后测试即可通过。</value>
   </data>
   <data name="Studio.Settings.MailSignIn" xml:space="preserve">
     <value>登录</value>
@@ -2195,9 +2219,6 @@
   </data>
   <data name="Studio.Settings.MailTenant" xml:space="preserve">
     <value>Microsoft 租户</value>
-  </data>
-  <data name="Studio.Settings.MailServersTitle" xml:space="preserve">
-    <value>邮件服务器</value>
   </data>
   <data name="Studio.Settings.MailIncoming" xml:space="preserve">
     <value>收取邮件</value>
