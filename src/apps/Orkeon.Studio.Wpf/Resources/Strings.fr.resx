@@ -793,6 +793,8 @@
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Vide : rien n'est envoyé — le modèle applique son propre défaut. Certains modèles imposent une valeur — Kimi K3 n'accepte que 1.</value></data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve"><value>Délai de réponse (s, optionnel)</value></data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Vide : le défaut du moteur, 30 s. Un modèle qui réfléchit avant de répondre demande couramment 600 s.</value></data>
+  <data name="Studio.Settings.LblStreamIdle" xml:space="preserve"><value>Silence maximal du flux (s, optionnel)</value></data>
+  <data name="Studio.Settings.StreamIdleHint" xml:space="preserve"><value>Vide : pas de borne d'inactivité — le délai de réponse borne l'appel entier. Renseignée, une réponse en flux silencieuse plus longtemps échoue comme un appel expiré.</value></data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve"><value>Dossiers de « {0} »</value></data>
   <data name="Studio.Teams.None" xml:space="preserve"><value>Sans dossier, cette équipe ne pourra ni lire ni écrire de fichier.</value></data>
   <data name="Studio.Teams.Summary" xml:space="preserve"><value>{0} dossiers : {1}</value></data>

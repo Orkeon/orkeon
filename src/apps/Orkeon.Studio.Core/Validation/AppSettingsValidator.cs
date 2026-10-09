@@ -87,7 +87,7 @@ public sealed class AppSettingsValidator
     // The keys of a section of the Llm shape — Llm itself and each entry of Llm:Profiles —, by the
     // kind the run reads them as (LlmSettings): relative to the section.
     private static readonly string[] LlmStringKeys = ["Model", "BaseUrl", "ApiKey", ConfigurationKeys.LlmApiKeyEnvVar, "Thinking:Effort"];
-    private static readonly string[] LlmIntegerKeys = ["MaxTokens", "TimeoutSeconds", "MaxRetries"];
+    private static readonly string[] LlmIntegerKeys = ["MaxTokens", "TimeoutSeconds", "StreamIdleSeconds", "MaxRetries"];
     private static readonly string[] LlmBooleanKeys = ["Thinking:Enabled", ConfigurationKeys.LlmGrammar];
 
     // The words that make an environment value read as a secret: written in clear in the

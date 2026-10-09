@@ -27,7 +27,8 @@ public static class ResiliencePolicies
     /// </remarks>
     /// <param name="exception">The exception a send failed with.</param>
     public static bool IsHttpClientTimeout(Exception? exception) =>
-        exception is TaskCanceledException { InnerException: TimeoutException };
+        exception is TaskCanceledException { InnerException: TimeoutException }
+            or HttpRequestException { InnerException: Polly.Timeout.TimeoutRejectedException };
 
     /// <summary>The transient failures that come back in seconds: a request error, a 5xx, a 408.</summary>
     private static PolicyBuilder<HttpResponseMessage> HandleTransientHttpStatusOrRequestError()

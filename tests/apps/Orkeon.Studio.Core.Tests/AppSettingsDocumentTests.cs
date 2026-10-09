@@ -17,7 +17,7 @@ public sealed class AppSettingsDocumentTests
 
     private static readonly string[] DeeperEntries = ["a", "b"];
 
-    private static readonly string[] NumericPaths = ["Llm:MaxTokens", "Llm:TimeoutSeconds", "Llm:Temperature"];
+    private static readonly string[] NumericPaths = ["Llm:MaxTokens", "Llm:TimeoutSeconds", "Llm:StreamIdleSeconds", "Llm:Temperature"];
 
     private const string DocumentWithUnknownKeys = """
         {

@@ -68,6 +68,13 @@ public sealed record ModelProfile
     public int? TimeoutSeconds { get; init; }
 
     /// <summary>
+    /// The longest silence, in seconds, this profile allows between two lines of a streamed
+    /// answer, or null for no idle bound: the stream then runs under the timeout alone, which
+    /// bounds the whole call (LLM-12).
+    /// </summary>
+    public int? StreamIdleSeconds { get; init; }
+
+    /// <summary>
     /// Maximum response length in tokens this profile pins, or null to leave the cap to the
     /// engine: the model's documented maximum, or 4096 for a model the catalogue does not
     /// know (LLM-10). Before that, the engine sent 4096 for every model — a budget a reasoning
@@ -151,6 +158,7 @@ public sealed record ModelProfile
             ApiKeyPlaceholder = LlmPresets.PlaceholderKeyOf(LlmPresets.CardOf(this)),
             Temperature = Temperature,
             TimeoutSeconds = TimeoutSeconds is > 0 ? TimeoutSeconds : null,
+            StreamIdleSeconds = StreamIdleSeconds is > 0 ? StreamIdleSeconds : null,
             MaxTokens = MaxTokens is > 0 ? MaxTokens : null,
             ThinkingEnabled = ThinkingEnabled,
             ThinkingEffort = string.IsNullOrWhiteSpace(ThinkingEffort) ? null : ThinkingEffort.Trim(),
@@ -213,7 +221,7 @@ public sealed record ModelProfile
     /// </summary>
     private static readonly string[] OverriddenFields =
     [
-        "Model", "BaseUrl", "Temperature", "TimeoutSeconds", "MaxTokens", "Thinking__Enabled", "Thinking__Effort", "ApiKey",
+        "Model", "BaseUrl", "Temperature", "TimeoutSeconds", "StreamIdleSeconds", "MaxTokens", "Thinking__Enabled", "Thinking__Effort", "ApiKey",
     ];
 
     private static string HostProfilePrefix(string id) => $"{DefaultSectionPrefix}Profiles__{id.Trim()}__";
@@ -231,6 +239,8 @@ public sealed record ModelProfile
             overrides[prefix + "Temperature"] = temperature.ToString(CultureInfo.InvariantCulture);
         if (TimeoutSeconds is { } timeout and > 0)
             overrides[prefix + "TimeoutSeconds"] = timeout.ToString(CultureInfo.InvariantCulture);
+        if (StreamIdleSeconds is { } idle and > 0)
+            overrides[prefix + "StreamIdleSeconds"] = idle.ToString(CultureInfo.InvariantCulture);
         if (MaxTokens is { } maxTokens and > 0)
             overrides[prefix + "MaxTokens"] = maxTokens.ToString(CultureInfo.InvariantCulture);
         if (ThinkingEnabled is { } thinking)

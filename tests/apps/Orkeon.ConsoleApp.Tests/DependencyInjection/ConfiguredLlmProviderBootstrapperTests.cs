@@ -92,13 +92,15 @@ public sealed class ConfiguredLlmProviderBootstrapperTests
             ("Llm:BaseUrl", "https://api.moonshot.ai/v1"),
             ("Llm:Temperature", "0.2"),
             ("Llm:MaxTokens", "2048"),
-            ("Llm:TimeoutSeconds", "90"));
+            ("Llm:TimeoutSeconds", "90"),
+            ("Llm:StreamIdleSeconds", "40"));
 
         Assert.Equal("kimi-k2", config.Model);
         Assert.Equal(new Uri("https://api.moonshot.ai/v1"), config.BaseUrl);
         Assert.Equal(0.2, config.Temperature);
         Assert.Equal(2048, config.MaxTokens);
         Assert.Equal(90, config.TimeoutSeconds);
+        Assert.Equal(40, config.StreamIdleSeconds);
     }
 
     // ── STUDIO-49: the key a section names ──────────────────────────────────

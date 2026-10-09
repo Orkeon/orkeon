@@ -145,6 +145,7 @@ public sealed class LlmProfilesSection
         ApiKeyEnvVar = document.GetString($"{path}:{ConfigurationKeys.LlmApiKeyEnvVar}"),
         Temperature = document.GetDouble($"{path}:Temperature"),
         TimeoutSeconds = document.GetInt32($"{path}:TimeoutSeconds"),
+        StreamIdleSeconds = document.GetInt32($"{path}:StreamIdleSeconds"),
         MaxTokens = document.GetInt32($"{path}:MaxTokens"),
         ThinkingEnabled = document.GetBoolean($"{path}:{ConfigurationKeys.ThinkingSection}:Enabled"),
         ThinkingEffort = document.GetString($"{path}:{ConfigurationKeys.ThinkingSection}:Effort"),
@@ -167,6 +168,7 @@ public sealed class LlmProfilesSection
         document.SetString($"{path}:{ConfigurationKeys.LlmApiKeyEnvVar}", entry.ApiKeyEnvVar);
         document.SetDouble($"{path}:Temperature", entry.Temperature);
         document.SetInt32($"{path}:TimeoutSeconds", entry.TimeoutSeconds);
+        document.SetInt32($"{path}:StreamIdleSeconds", entry.StreamIdleSeconds);
         document.SetInt32($"{path}:MaxTokens", entry.MaxTokens);
         document.SetBoolean($"{thinking}:Enabled", entry.ThinkingEnabled);
         document.SetString($"{thinking}:Effort", entry.ThinkingEffort);
@@ -263,6 +265,9 @@ public sealed record LlmProfileEntry
 
     /// <summary><c>TimeoutSeconds</c>, when pinned.</summary>
     public int? TimeoutSeconds { get; init; }
+
+    /// <summary><c>StreamIdleSeconds</c>, when pinned (LLM-12).</summary>
+    public int? StreamIdleSeconds { get; init; }
 
     /// <summary><c>MaxTokens</c>, when pinned.</summary>
     public int? MaxTokens { get; init; }

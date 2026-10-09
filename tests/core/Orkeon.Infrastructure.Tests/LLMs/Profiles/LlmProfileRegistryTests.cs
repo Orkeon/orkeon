@@ -196,6 +196,7 @@ public sealed class LlmProfileRegistryTests
     /// </summary>
     [Theory]
     [InlineData("Llm:TimeoutSeconds", "600s")]
+    [InlineData("Llm:StreamIdleSeconds", "5s")]
     [InlineData("Llm:Temperature", "warm")]
     [InlineData("Llm:MaxRetries", "a few")]
     [InlineData("Llm:Thinking:Enabled", "yes")]

@@ -67,6 +67,14 @@ internal class LlmProfileShape
     /// </summary>
     public int? TimeoutSeconds { get; set; } = LlmDefaults.DefaultTimeoutSeconds;
 
+    /// <summary>
+    /// The longest silence a streamed answer may hold between two of its chunks, in seconds.
+    /// Left out, nothing bounds it: <c>TimeoutSeconds</c> alone bounds the whole call, streamed
+    /// or not. A model that thinks before it writes may stay silent for a while: set it only
+    /// above that silence, or turn its thinking off.
+    /// </summary>
+    public int? StreamIdleSeconds { get; set; }
+
     /// <summary>How many times a call that fails on a passing error is tried again; <c>0</c> never retries.</summary>
     public int? MaxRetries { get; set; } = LlmDefaults.DefaultMaxRetries;
 

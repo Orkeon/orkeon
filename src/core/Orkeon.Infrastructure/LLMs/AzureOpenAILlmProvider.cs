@@ -225,39 +225,49 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
 
         var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
 
-        HttpResponseMessage? response = null;
-        try
+        // The call's budget (LLM-12): Llm:TimeoutSeconds over headers and body, Llm:StreamIdleSeconds
+        // between two lines. This sequence has no metadata channel, so an elapsed bound — or a
+        // stream closed before any token — throws, like the two failures above.
+        using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
+        var finished = false;
+        var yieldedAnything = false;
+        var sent = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
+        if (sent is null)
+            throw new HttpRequestException(StreamFailureMessage(budget, finished, yieldedAnything, 0, ProviderDisplayName));
+        using var response = sent;
+
+        if (!response.IsSuccessStatusCode)
         {
-            response = await SendStreamingRequestAsync(client, endpoint, json, cancellationToken).ConfigureAwait(false);
+            LogAzureStreamingError(response.StatusCode);
+            throw await StreamingRejectionAsync(response, ProviderDisplayName, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
-            if (!response.IsSuccessStatusCode)
+        // Azure OpenAI uses OpenAI-compatible SSE format
+        await foreach (var data in ReadSseStreamAsync(response, budget, cancellationToken).ConfigureAwait(false))
+        {
+            using var doc = JsonDocument.Parse(data);
+            var choices = doc.RootElement.GetProperty("choices");
+            foreach (var choice in choices.EnumerateArray())
             {
-                LogAzureStreamingError(response.StatusCode);
-                throw await StreamingRejectionAsync(response, ProviderDisplayName, cancellationToken)
-                    .ConfigureAwait(false);
-            }
+                if (choice.TryGetProperty("finish_reason", out var finishReason) && finishReason.ValueKind == JsonValueKind.String)
+                    finished = true;
 
-            // Azure OpenAI uses OpenAI-compatible SSE format
-            await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
-            {
-                using var doc = JsonDocument.Parse(data);
-                var choices = doc.RootElement.GetProperty("choices");
-                foreach (var choice in choices.EnumerateArray())
+                if (choice.TryGetProperty("delta", out var delta) &&
+                    delta.TryGetProperty("content", out var content))
                 {
-                    if (choice.TryGetProperty("delta", out var delta) &&
-                        delta.TryGetProperty("content", out var content))
+                    var token = content.GetString();
+                    if (token is not null)
                     {
-                        var token = content.GetString();
-                        if (token is not null)
-                            yield return token;
+                        yieldedAnything = yieldedAnything || token.Length > 0;
+                        yield return token;
                     }
                 }
             }
         }
-        finally
-        {
-            response?.Dispose();
-        }
+
+        if (StreamFailureMessage(budget, finished, yieldedAnything, 0, ProviderDisplayName) is { } failure)
+            throw new HttpRequestException(failure);
     }
 
     /// <summary>

@@ -251,6 +251,18 @@ public sealed class ResiliencePoliciesTests : IDisposable
         Assert.False(ResiliencePolicies.IsHttpClientTimeout(null));
     }
 
+    /// <summary>
+    /// The wrapper <c>ExecuteHttpRequestAsync</c> puts around a Polly timeout is a timeout too,
+    /// so the sentence naming <c>Llm:TimeoutSeconds</c> comes out of it as well (LLM-12).
+    /// </summary>
+    [Fact]
+    public void IsHttpClientTimeout_RecognisesThePollyTimeoutWrapper()
+    {
+        Assert.True(ResiliencePolicies.IsHttpClientTimeout(
+            new HttpRequestException("LLM API request timed out.", new Polly.Timeout.TimeoutRejectedException())));
+        Assert.False(ResiliencePolicies.IsHttpClientTimeout(new HttpRequestException("refused", new IOException())));
+    }
+
     [Fact]
     public async Task ShouldRetryATimeoutOnce_WhenGetLlmApiPolicyKeepsTimingOut()
     {

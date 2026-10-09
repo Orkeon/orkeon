@@ -849,6 +849,17 @@
               </StackPanel>
             </Grid>
 
+            <!-- stream idle bound (LLM-12): the longest silence between two lines of a streamed
+                 answer. Empty = none; the timeout above bounds the whole call either way. -->
+            <StackPanel Margin="0,14,0,0"
+                        Visibility="{Binding ShowFields, Converter={StaticResource BooleanToVisibility}}">
+              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblStreamIdle], Source={x:Static services:I18n.Instance}}"/>
+              <TextBox Style="{StaticResource InputMono}" Width="90" HorizontalAlignment="Left"
+                       Text="{Binding StreamIdleText, UpdateSourceTrigger=PropertyChanged}"/>
+              <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                         Text="{Binding [Studio.Settings.StreamIdleHint], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+
             <!-- thinking (LLM-11): the switch the run of 2026-09-20 had nowhere to live. Provider
                  default lets the model decide (on for Kimi K2.6, DeepSeek V4, GLM); off is the
                  way out of a timeout when the task does not need the reasoning pass; the effort

@@ -282,6 +282,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private int _settingsGeneration;
     private string _temperatureText = "";
     private string _timeoutText = "";
+    private string _streamIdleText = "";
     private string _maxTokensText = "";
     private bool? _thinkingEnabled;
     private string _thinkingEffortText = "";
@@ -313,6 +314,9 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             : "";
         _timeoutText = profile.TimeoutSeconds is { } timeout
             ? timeout.ToString(CultureInfo.InvariantCulture)
+            : "";
+        _streamIdleText = profile.StreamIdleSeconds is { } streamIdle
+            ? streamIdle.ToString(CultureInfo.InvariantCulture)
             : "";
         _maxTokensText = profile.MaxTokens is { } maxTokens
             ? maxTokens.ToString(CultureInfo.InvariantCulture)
@@ -584,6 +588,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         // A typed tuning value that does not parse must block the save, not vanish silently.
         && (_temperatureText.Trim().Length == 0 || ParsedTemperature is not null)
         && (_timeoutText.Trim().Length == 0 || ParsedTimeoutSeconds is not null)
+        && (_streamIdleText.Trim().Length == 0 || ParsedStreamIdleSeconds is not null)
         && (_maxTokensText.Trim().Length == 0 || ParsedMaxTokens is not null);
 
     /// <summary>True while the typed name already belongs to another profile.</summary>
@@ -838,6 +843,27 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             : null;
 
     /// <summary>
+    /// The longest silence allowed between two lines of a streamed answer, in seconds, as typed —
+    /// empty for no idle bound: the stream then runs under the timeout alone, which bounds the
+    /// whole call (LLM-12).
+    /// </summary>
+    public string StreamIdleText
+    {
+        get => _streamIdleText;
+        set
+        {
+            if (SetProperty(ref _streamIdleText, value ?? ""))
+                SaveCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>The typed idle bound, or null when empty, unparseable, or non-positive.</summary>
+    public int? ParsedStreamIdleSeconds =>
+        int.TryParse(_streamIdleText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
+            ? value
+            : null;
+
+    /// <summary>
     /// The pinned maximum response length in tokens, as typed — empty leaves the cap to the
     /// engine, which sends the model's documented maximum (LLM-10); <see cref="MaxTokensHint"/>
     /// says what that is for this model. Before LLM-10 the engine sent 4096 for every model, a
@@ -915,6 +941,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             BaseUrl = _baseUrl,
             Temperature = ParsedTemperature,
             TimeoutSeconds = ParsedTimeoutSeconds,
+            StreamIdleSeconds = ParsedStreamIdleSeconds,
             MaxTokens = ParsedMaxTokens,
             ThinkingEnabled = _thinkingEnabled,
             ThinkingEffort = string.IsNullOrWhiteSpace(_thinkingEffortText) ? null : _thinkingEffortText.Trim(),

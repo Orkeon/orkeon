@@ -776,8 +776,15 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                         var delay = RetryAfterDelay(response) ?? StreamingBackoff(attempt);
                         LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, reason);
                         NotifyRetryScheduled(attempt, delay, reason, endpoint?.Host);
+                        if (!await WaitBeforeRetryAsync(delay, cancellationToken).ConfigureAwait(false))
+                        {
+                            // The call's budget ran out while waiting to retry (LLM-12): the
+                            // vendor's last answer is the failure, not the wait — the caller
+                            // reads it with its own token, so its own cancellation still throws.
+                            return response;
+                        }
+
                         response.Dispose();
-                        await System.Threading.Tasks.Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                     }
                     catch (HttpRequestException ex) when (attempt < maxAttempts)
                     {
@@ -785,9 +792,11 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                         NotifyRetryScheduled(attempt, StreamingBackoff(attempt), ex.Message, endpoint?.Host);
                         await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
                     }
-                    catch (TaskCanceledException ex) when (attempt < maxAttempts && !cancellationToken.IsCancellationRequested)
+                    catch (TaskCanceledException ex) when (attempt <= StreamingTimeoutRetries && !cancellationToken.IsCancellationRequested)
                     {
-                        // HttpClient.Timeout expired before headers — not a user cancellation.
+                        // HttpClient.Timeout expired before headers — not a user cancellation. Re-sent
+                        // on the buffered path's budget (once), not Llm:MaxRetries: every attempt
+                        // costs the whole timeout (LLM-12).
                         LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
                         NotifyRetryScheduled(attempt, StreamingBackoff(attempt), ex.Message, endpoint?.Host);
                         await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
@@ -798,6 +807,20 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             {
                 NotifyCallSettled();
             }
+        }
+    }
+
+    /// <summary>The retry wait; false when <paramref name="cancellationToken"/> ended it first.</summary>
+    private static async Task<bool> WaitBeforeRetryAsync(TimeSpan delay, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await System.Threading.Tasks.Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
         }
     }
 

@@ -20,4 +20,13 @@ public static class LlmResponseMetadataKeys
     /// refused request).
     /// </summary>
     public const string ErrorType = "error_type";
+
+    /// <summary>
+    /// Set to <see langword="true"/> on a streamed answer whose provider closed the stream
+    /// without its finish marker (<c>finish_reason</c> or <c>[DONE]</c>, <c>message_stop</c>,
+    /// <c>done: true</c>) after some content had arrived: the answer is served as it came, and
+    /// this flag says it may be cut short. A stream closed before any answer is not an answer
+    /// at all — it carries <see cref="Error"/> instead (LLM-12).
+    /// </summary>
+    public const string StreamTruncated = "stream_truncated";
 }

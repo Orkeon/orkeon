@@ -643,13 +643,22 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         var client = CreateHttpClient(effectiveConfig);
 
         var state = new OllamaStreamState();
+        // The call runs under Llm:TimeoutSeconds whole, and Llm:StreamIdleSeconds between two
+        // lines (LLM-12); the Completed event then carries the failure, never an empty answer.
+        using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
         HttpResponseMessage? response = null;
         try
         {
-            response = await SendStreamingRequestAsync(client, endpoint, json, cancellationToken)
-                .ConfigureAwait(false);
+            response = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
+            // Null exactly when a bound elapsed before the headers (CA1508 cannot see the catch
+            // that returns it, so the budget is the condition).
+            if (budget.Elapsed is not null)
+            {
+                yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
+                yield break;
+            }
 
-            if (!response.IsSuccessStatusCode)
+            if (!response!.IsSuccessStatusCode)
             {
                 LogStreamingError(response.StatusCode);
                 yield return LlmStreamEvent.Complete(
@@ -657,7 +666,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 yield break;
             }
 
-            await foreach (var line in ReadNdjsonStreamAsync(response, cancellationToken).ConfigureAwait(false))
+            await foreach (var line in ReadNdjsonStreamAsync(response, budget).WithCancellation(cancellationToken).ConfigureAwait(false))
             {
                 foreach (var ev in ReadStreamLine(line, state, useChatEndpoint))
                     yield return ev;
@@ -668,7 +677,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             response?.Dispose();
         }
 
-        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig));
+        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
     }
 
     /// <summary>Mutable accumulation state of one streamed Ollama completion.</summary>
@@ -680,6 +689,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         public int? CompletionTokens { get; set; }
         /// <summary>Raw <c>tool_calls</c> of the frame that carried them, kept for the final response.</summary>
         public string? ToolCallsJson { get; set; }
+
+        /// <summary>Whether the <c>done: true</c> frame — the end of a complete answer — was read.</summary>
+        public bool Finished { get; set; }
     }
 
     /// <summary>
@@ -712,6 +724,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 && done.ValueKind is JsonValueKind.True or JsonValueKind.False
                 && done.GetBoolean())
             {
+                state.Finished = true;
                 state.PromptTokens = ReadInt(root, "prompt_eval_count") ?? state.PromptTokens;
                 state.CompletionTokens = ReadInt(root, "eval_count") ?? state.CompletionTokens;
             }
@@ -760,7 +773,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     /// returned — including the synthesized OpenAI body, so a streamed tool call is readable by
     /// the same parser as a buffered one.
     /// </summary>
-    private LlmResponse BuildStreamedResponse(OllamaStreamState state, LlmConfig config)
+    private LlmResponse BuildStreamedResponse(OllamaStreamState state, LlmConfig config, StreamReadBudget budget)
     {
         var content = state.Content.ToString();
 
@@ -768,8 +781,15 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         if (state.Thinking.Length > 0)
             metadata.Add("reasoning_content", state.Thinking.ToString());
 
+        // An elapsed bound or a stream cut before any answer: `error` + `error_type` over the
+        // partial content, and no synthesized body — nothing of a failed stream is an instruction (LLM-12).
+        var failed = ApplyStreamOutcome(
+            metadata, budget, state.Finished,
+            hasAnswer: content.Length > 0 || state.ToolCallsJson is { Length: > 0 },
+            state.Thinking.Length, "Ollama");
+
         string? rawBody = null;
-        if (state.ToolCallsJson is { Length: > 0 } toolCallsJson)
+        if (!failed && state.ToolCallsJson is { Length: > 0 } toolCallsJson)
         {
             using var doc = JsonDocument.Parse(
                 $$"""{"tool_calls":{{toolCallsJson}}}""");
@@ -814,13 +834,22 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
         var json = SerializeToJson(payload.ToDictionary());
 
+        // The call runs under Llm:TimeoutSeconds whole, and Llm:StreamIdleSeconds between two
+        // lines (LLM-12); an elapsed bound or a stream cut before any text fails the sequence.
+        using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
+        var finished = false;
+        var yieldedAnything = false;
         HttpResponseMessage? response = null;
         try
         {
-            response = await SendStreamingRequestAsync(
-                client, new Uri($"{_baseUrl}/api/generate"), json, cancellationToken).ConfigureAwait(false);
+            response = await TrySendStreamingRequestAsync(
+                client, new Uri($"{_baseUrl}/api/generate"), json, budget).ConfigureAwait(false);
+            // Null exactly when a bound elapsed before the headers (CA1508 cannot see the catch
+            // that returns it, so the budget is the condition).
+            if (budget.Elapsed is not null)
+                throw new HttpRequestException(StreamFailureMessage(budget, finished: false, hasAnswer: false, 0, "Ollama"));
 
-            if (!response.IsSuccessStatusCode)
+            if (!response!.IsSuccessStatusCode)
             {
                 LogStreamingError(response.StatusCode);
                 throw await StreamingRejectionAsync(response, "Ollama", cancellationToken)
@@ -828,18 +857,24 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             }
 
             // Ollama uses NDJSON format: {"response":"token","done":false}
-            await foreach (var line in ReadNdjsonStreamAsync(response, cancellationToken).ConfigureAwait(false))
+            await foreach (var line in ReadNdjsonStreamAsync(response, budget).WithCancellation(cancellationToken).ConfigureAwait(false))
             {
                 using var doc = JsonDocument.Parse(line);
 
                 if (doc.RootElement.TryGetProperty("done", out var doneEl) && doneEl.GetBoolean())
-                    yield break;
+                {
+                    finished = true;
+                    break;
+                }
 
                 if (doc.RootElement.TryGetProperty("response", out var responseEl))
                 {
                     var token = responseEl.GetString();
                     if (token is not null)
+                    {
+                        yieldedAnything |= token.Length > 0;
                         yield return token;
+                    }
                 }
             }
         }
@@ -847,6 +882,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         {
             response?.Dispose();
         }
+
+        if (StreamFailureMessage(budget, finished, yieldedAnything, 0, "Ollama") is { } failure)
+            throw new HttpRequestException(failure);
     }
 
     /// <summary>

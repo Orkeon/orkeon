@@ -111,12 +111,13 @@ public sealed class ModelProfileSetTests
         Assert.Equal("", overrides["ORKEON_Llm__ApiKey"]);
         Assert.Equal("", overrides["ORKEON_Llm__ApiKeyEnvVar"]);
         Assert.Equal("", overrides["ORKEON_Llm__TimeoutSeconds"]);
+        Assert.Equal("", overrides["ORKEON_Llm__StreamIdleSeconds"]);
 
         var empty = new ModelProfile { Name = "empty" }.EnvironmentOverrides();
         Assert.Equal(
             [
                 "ORKEON_Llm__ApiKey", "ORKEON_Llm__ApiKeyEnvVar", "ORKEON_Llm__BaseUrl", "ORKEON_Llm__MaxTokens",
-                "ORKEON_Llm__Model", "ORKEON_Llm__Temperature", "ORKEON_Llm__Thinking__Effort",
+                "ORKEON_Llm__Model", "ORKEON_Llm__StreamIdleSeconds", "ORKEON_Llm__Temperature", "ORKEON_Llm__Thinking__Effort",
                 "ORKEON_Llm__Thinking__Enabled", "ORKEON_Llm__TimeoutSeconds",
             ],
             empty.Keys.Order(StringComparer.Ordinal));
@@ -328,6 +329,20 @@ public sealed class ProfileTemperatureTests
         Assert.Equal("180", profile.EnvironmentOverrides()["ORKEON_Llm__TimeoutSeconds"]);
         Assert.Equal("", (profile with { TimeoutSeconds = null }).EnvironmentOverrides()["ORKEON_Llm__TimeoutSeconds"]);
         Assert.Equal("", (profile with { TimeoutSeconds = 0 }).EnvironmentOverrides()["ORKEON_Llm__TimeoutSeconds"]);
+    }
+
+    [Fact]
+    public void The_pinned_stream_idle_bound_rides_the_launch_and_an_unpinned_one_is_blank()
+    {
+        // LLM-12: the idle bound of a streamed answer travels like the timeout — set when pinned,
+        // blanked (read as absent) when the profile pins none or a non-positive value.
+        var profile = new ModelProfile { Name = "GLM", Model = "glm-5.3-flash", StreamIdleSeconds = 45 };
+
+        Assert.Equal("45", profile.EnvironmentOverrides()["ORKEON_Llm__StreamIdleSeconds"]);
+        Assert.Equal("", (profile with { StreamIdleSeconds = null }).EnvironmentOverrides()["ORKEON_Llm__StreamIdleSeconds"]);
+        Assert.Equal("", (profile with { StreamIdleSeconds = 0 }).EnvironmentOverrides()["ORKEON_Llm__StreamIdleSeconds"]);
+        Assert.Null((profile with { StreamIdleSeconds = 0 }).ToHostEntry("glm").StreamIdleSeconds);
+        Assert.Equal(45, profile.ToHostEntry("glm").StreamIdleSeconds);
     }
 
     /// <summary>

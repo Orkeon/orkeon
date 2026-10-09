@@ -2289,6 +2289,12 @@
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
     <value>Vacío: el valor por defecto del motor, 30 s. Un modelo que razona antes de responder suele necesitar 600 s.</value>
   </data>
+  <data name="Studio.Settings.LblStreamIdle" xml:space="preserve">
+    <value>Silencio máximo del flujo (s, opcional)</value>
+  </data>
+  <data name="Studio.Settings.StreamIdleHint" xml:space="preserve">
+    <value>Vacío: sin límite de inactividad — el tiempo de respuesta acota la llamada entera. Definido, una respuesta en flujo que calla más tiempo falla como llamada expirada.</value>
+  </data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>Carpetas de «{0}»</value>
   </data>

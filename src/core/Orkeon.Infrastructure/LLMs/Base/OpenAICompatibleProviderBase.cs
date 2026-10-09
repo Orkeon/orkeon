@@ -260,51 +260,65 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
         var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
 
-        HttpResponseMessage? response = null;
-        try
-        {
-            response = await SendStreamingRequestAsync(client, endpoint, json, cancellationToken).ConfigureAwait(false);
+        // The call's budget: Llm:TimeoutSeconds over headers and body, Llm:StreamIdleSeconds between
+        // two lines. A text stream has no metadata channel, so an elapsed bound — or a stream the
+        // vendor closed before any token — fails the sequence the way a refusal does (LLM-12).
+        using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
+        var finished = false;
+        var yieldedAnything = false;
+        var sent = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
+        if (sent is null)
+            throw new HttpRequestException(StreamFailureMessage(budget, finished, yieldedAnything, 0, ProviderDisplayName));
+        using var response = sent;
 
-            if (!response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
+        {
+            LogStreamingError(response.StatusCode, ProviderDisplayName);
+            throw await StreamingRejectionAsync(response, ProviderDisplayName, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        await foreach (var data in ReadSseStreamAsync(response, budget, cancellationToken).ConfigureAwait(false))
+        {
+            using var doc = JsonDocument.Parse(data);
+
+            // A vendor that fails AFTER the 200 (OpenRouter: an upstream 502 arrives as an
+            // SSE event carrying a root-level `error`) used to end this sequence normally,
+            // truncated content and all — the silence StreamingRejectionAsync removed for
+            // the pre-stream refusal, reintroduced one chunk later. Same channel, same
+            // exception: the sequence has no metadata, so it fails (D-07).
+            if (TryReadStreamError(doc.RootElement, out var streamError))
             {
-                LogStreamingError(response.StatusCode, ProviderDisplayName);
-                throw await StreamingRejectionAsync(response, ProviderDisplayName, cancellationToken)
-                    .ConfigureAwait(false);
+                LogMidStreamError(ProviderDisplayName, streamError.Label, streamError.SanitizedMessage);
+                throw MidStreamRejection(streamError);
             }
 
-            await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
+            var choices = doc.RootElement.GetProperty("choices");
+            foreach (var choice in choices.EnumerateArray())
             {
-                using var doc = JsonDocument.Parse(data);
+                if (HasFinishReason(choice))
+                    finished = true;
 
-                // A vendor that fails AFTER the 200 (OpenRouter: an upstream 502 arrives as an
-                // SSE event carrying a root-level `error`) used to end this sequence normally,
-                // truncated content and all — the silence StreamingRejectionAsync removed for
-                // the pre-stream refusal, reintroduced one chunk later. Same channel, same
-                // exception: the sequence has no metadata, so it fails (D-07).
-                if (TryReadStreamError(doc.RootElement, out var streamError))
+                if (choice.TryGetProperty("delta", out var delta))
                 {
-                    LogMidStreamError(ProviderDisplayName, streamError.Label, streamError.SanitizedMessage);
-                    throw MidStreamRejection(streamError);
-                }
-
-                var choices = doc.RootElement.GetProperty("choices");
-                foreach (var choice in choices.EnumerateArray())
-                {
-                    if (choice.TryGetProperty("delta", out var delta))
+                    // The trace of an array-shaped delta has no channel on a text stream.
+                    var token = ExtractMessageContent(delta).Content;
+                    if (token.Length > 0)
                     {
-                        // The trace of an array-shaped delta has no channel on a text stream.
-                        var token = ExtractMessageContent(delta).Content;
-                        if (token.Length > 0)
-                            yield return token;
+                        yieldedAnything = true;
+                        yield return token;
                     }
                 }
             }
         }
-        finally
-        {
-            response?.Dispose();
-        }
+
+        if (StreamFailureMessage(budget, finished, yieldedAnything, 0, ProviderDisplayName) is { } failure)
+            throw new HttpRequestException(failure);
     }
+
+    /// <summary>Whether a streamed choice carries the dialect's finish marker (<c>finish_reason</c>, any value).</summary>
+    private static bool HasFinishReason(JsonElement choice) =>
+        choice.TryGetProperty("finish_reason", out var finishReason) && finishReason.ValueKind == JsonValueKind.String;
 
     /// <summary>
     /// Streams a multi-message chat completion over SSE: emits
@@ -359,10 +373,21 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         {
             Splitter = LeadingReasoningTag is { } tag ? new LeadingReasoningSplitter(tag) : null,
         };
+        // The call's budget: Llm:TimeoutSeconds over headers and body (the meaning it has on a
+        // buffered call), Llm:StreamIdleSeconds between two lines. An elapsed bound ends the read
+        // and the Completed event carries the failure, never an empty answer (LLM-12).
+        using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
         HttpResponseMessage? response = null;
         try
         {
-            response = await SendStreamingRequestAsync(client, endpoint, json, cancellationToken).ConfigureAwait(false);
+            var sent = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
+            if (sent is null)
+            {
+                yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
+                yield break;
+            }
+
+            response = sent;
 
             if (!response.IsSuccessStatusCode)
             {
@@ -372,7 +397,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 yield break;
             }
 
-            await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
+            await foreach (var data in ReadSseStreamAsync(response, budget, cancellationToken).ConfigureAwait(false))
             {
                 foreach (var ev in ParseChatStreamChunk(data, state, ReasoningFieldName))
                     yield return ev;
@@ -395,7 +420,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 yield return ev;
         }
 
-        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig));
+        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
     }
 
     /// <summary>Mutable accumulation state of one streamed chat completion.</summary>
@@ -403,6 +428,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     {
         public StringBuilder Content { get; } = new();
         public StringBuilder Reasoning { get; } = new();
+        /// <summary>Whether a choice carried <c>finish_reason</c>: the dialect's own finish marker (LLM-12).</summary>
+        public bool Finished { get; set; }
         /// <summary>The live split of the dialect's leading reasoning block (<see cref="LeadingReasoningTag"/>); null without one.</summary>
         public LeadingReasoningSplitter? Splitter { get; init; }
         /// <summary>Tool-call fragments accumulated by stream index.</summary>
@@ -479,6 +506,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
             foreach (var choice in choices.EnumerateArray())
             {
+                if (HasFinishReason(choice))
+                    state.Finished = true;
+
                 if (choice.TryGetProperty("delta", out var delta) && delta.ValueKind == JsonValueKind.Object)
                     AccumulateDelta(delta, state, events, reasoningFieldName);
             }
@@ -793,7 +823,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// iso-shape with <see cref="ParseSuccessResponse"/>, including the synthesized
     /// tool-calls body when the model streamed tool calls.
     /// </summary>
-    private LlmResponse BuildStreamedResponse(ChatStreamState state, LlmConfig effectiveConfig)
+    private LlmResponse BuildStreamedResponse(ChatStreamState state, LlmConfig effectiveConfig, StreamReadBudget budget)
     {
         var (finalContent, dialectReasoning) = SplitReasoningFromContent(state.Content.ToString());
         var metadata = LlmResponseMetadata.CreateBuilder().AddProvider(Name);
@@ -819,6 +849,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 .AddErrorType("APIError");
         }
 
+        // An elapsed bound, or a stream closed before any answer, is a failed call in the same
+        // channel; a stream closed without its marker after some answer is flagged (LLM-12).
+        var failed = state.Error is null && ApplyStreamOutcome(
+            metadata, budget, state.Finished,
+            hasAnswer: finalContent.Length > 0 || state.ToolCalls.Count > 0,
+            state.Reasoning.Length, ProviderDisplayName);
+
         return new LlmResponse
         {
             Content = finalContent,
@@ -833,7 +870,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             // The body the buffered path returns, rebuilt: when the model streamed tool calls, and on
             // the native protocol always — the text-protocol fallback reads a call the model wrote as
             // text in the body's content, as it reads the buffered body (GAP-32).
-            RawResponseBody = state.Error is null
+            RawResponseBody = state.Error is null && !failed
                 && (state.ToolCalls.Count > 0 || _toolCallingStrategy?.SupportsNativeToolCalling == true)
                     ? SynthesizeChatBody(state)
                     : null,
@@ -933,15 +970,16 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         {
             return await SendChatRequestAsync(messages, effectiveConfig, cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException ex)
-        {
-            return HandleApiException(ex, effectiveConfig);
-        }
-        catch (HttpRequestException ex)
-        {
-            return HandleApiException(ex, effectiveConfig);
-        }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex
+            is OperationCanceledException
+            or HttpRequestException
+            // KeyNotFoundException: missing JSON properties (e.g. missing "usage");
+            // InvalidOperationException: GetProperty on an undefined element (empty "choices") —
+            // the same list GenerateAsync catches, so a malformed body is a failed call with a
+            // sanitized reason rather than an exception thrown into the agent loop (LLM-12).
+            or KeyNotFoundException
+            or InvalidOperationException
+            or JsonException)
         {
             return HandleApiException(ex, effectiveConfig);
         }

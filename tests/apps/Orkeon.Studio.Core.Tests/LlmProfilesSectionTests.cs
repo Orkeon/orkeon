@@ -124,6 +124,7 @@ public sealed class LlmProfilesSectionTests
             ApiKeyEnvVar = "ANTHROPIC_API_KEY",
             Temperature = 0.2,
             TimeoutSeconds = 120,
+            StreamIdleSeconds = 45,
             ThinkingEnabled = false,
         });
 
@@ -131,6 +132,7 @@ public sealed class LlmProfilesSectionTests
         Assert.Equal("claude-opus-5", document.GetString("Llm:Profiles:claude:Model"));
         Assert.Equal(0.2, document.GetDouble("Llm:Profiles:claude:Temperature"));
         Assert.Equal(120, document.GetInt32("Llm:Profiles:claude:TimeoutSeconds"));
+        Assert.Equal(45, document.GetInt32("Llm:Profiles:claude:StreamIdleSeconds"));
         Assert.False(document.GetBoolean("Llm:Profiles:claude:Thinking:Enabled"));
         Assert.Equal(2, document.GetInt32("Llm:Profiles:claude:MaxRetries"));
         // STUDIO-49: the entry names the variable holding its key, and holds no key.

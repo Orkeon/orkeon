@@ -16,7 +16,8 @@ public class LlmFormTests
                 "ApiKey": "sk-test",
                 "Temperature": 0.4,
                 "MaxTokens": 2048,
-                "TimeoutSeconds": 90
+                "TimeoutSeconds": 90,
+                "StreamIdleSeconds": 45
               }
             }
             """);
@@ -30,6 +31,7 @@ public class LlmFormTests
         Assert.Equal("0.4", form.Temperature);
         Assert.Equal("2048", form.MaxTokens);
         Assert.Equal("90", form.TimeoutSeconds);
+        Assert.Equal("45", form.StreamIdleSeconds);
     }
 
     [Fact]
@@ -169,6 +171,7 @@ public class LlmFormTests
         Assert.Equal(0.2, document.Llm.Temperature);
         Assert.Equal(512, document.Llm.MaxTokens);
         Assert.Null(document.Llm.TimeoutSeconds);
+        Assert.Null(document.Llm.StreamIdleSeconds);
     }
 
     [Fact]

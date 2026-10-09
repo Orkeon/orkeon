@@ -321,7 +321,9 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     /// properties of an update without an id are the response's — where the buffered call puts the
     /// vendor's cost (M.E.AI moves an identified update's properties onto its message). The call is
     /// metered once, with the provider's usage. A provider that does not stream answers buffered, as
-    /// the same two updates. A refusal fails the enumeration, like the buffered call.
+    /// the same two updates. A refusal fails the enumeration, like the buffered call — and so does a
+    /// stream that failed after some text arrived (an elapsed bound, a vendor error mid-stream): the
+    /// fragments already written to the sink are not an answer (LLM-12).
     /// </remarks>
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
@@ -364,7 +366,11 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
         // A stream that ended without its final response answered what it streamed.
         final ??= new LlmResponse { Content = streamed.ToString() };
-        if (string.IsNullOrEmpty(final.Content) && ProviderFailure(final) is { } failure)
+
+        // A failed stream is not an answer, whatever arrived before it failed: an elapsed
+        // Llm:TimeoutSeconds or Llm:StreamIdleSeconds mid-answer, a vendor error after the 200
+        // (LLM-12). The buffered path keeps its empty-content guard — the text it maps is whole.
+        if (ProviderFailure(final) is { } failure)
             throw failure;
 
         yield return FinalUpdate(MapResponse(final), streamed.ToString());

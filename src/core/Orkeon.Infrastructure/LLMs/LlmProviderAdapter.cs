@@ -39,6 +39,14 @@ public sealed class LlmProviderAdapter : IBasicLlmProvider
     {
         var messages = new[] { LlmMessage.User(message) };
         var response = await _llmProvider.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);
+
+        // A failed call is not an empty answer. This string-only contract had no channel for the
+        // provider's refusal, so a timeout came back as "" and the legacy text loop blamed
+        // Llm:MaxTokens — the gap LLM-11 closed on the chat client and left here, outside the
+        // runners' path; closed the same way now (LLM-12). An empty answer still is one.
+        if (string.IsNullOrEmpty(response.Content) && response.Error is { } failure)
+            throw new HttpRequestException(failure);
+
         return response.Content;
     }
 
