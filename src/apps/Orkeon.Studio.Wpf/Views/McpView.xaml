@@ -54,7 +54,7 @@
                 <StackPanel>
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
                              Text="{Binding [Studio.Settings.McpId], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBox Style="{StaticResource InputMono}" MaxWidth="320" HorizontalAlignment="Left"
+                  <TextBox Style="{StaticResource InputMono}" Width="320" HorizontalAlignment="Left"
                            Text="{Binding IdText, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
               </DockPanel>

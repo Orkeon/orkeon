@@ -2019,8 +2019,23 @@
   <data name="Studio.Settings.MailDisplayName" xml:space="preserve">
     <value>Angezeigter Absendername</value>
   </data>
-  <data name="Studio.Settings.MailRightsTitle" xml:space="preserve">
-    <value>Was ein Agent tun darf</value>
+  <data name="Studio.Settings.MailTabAccount" xml:space="preserve">
+    <value>Konto</value>
+  </data>
+  <data name="Studio.Settings.MailTabRights" xml:space="preserve">
+    <value>Rechte</value>
+  </data>
+  <data name="Studio.Settings.MailTabAuth" xml:space="preserve">
+    <value>Anmeldung</value>
+  </data>
+  <data name="Studio.Settings.MailTabServers" xml:space="preserve">
+    <value>Server</value>
+  </data>
+  <data name="Studio.Settings.MailSectionShow" xml:space="preserve">
+    <value>Anzeigen</value>
+  </data>
+  <data name="Studio.Settings.MailSectionHide" xml:space="preserve">
+    <value>Ausblenden</value>
   </data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve">
     <value>Nichts angekreuzt, nichts erlaubt: Die Engine lehnt ein Konto ab, das kein Recht gewährt.</value>
@@ -2063,9 +2078,6 @@
   </data>
   <data name="Studio.Settings.MailMaxPerHour" xml:space="preserve">
     <value>Höchstzahl der Nachrichten pro Stunde</value>
-  </data>
-  <data name="Studio.Settings.MailAuthTitle" xml:space="preserve">
-    <value>Anmeldung</value>
   </data>
   <data name="Studio.Settings.MailAuthMethod" xml:space="preserve">
     <value>Anmeldeverfahren</value>
@@ -2117,6 +2129,18 @@
   </data>
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve">
     <value>Der Server hat abgelehnt oder nicht geantwortet</value>
+  </data>
+  <data name="Studio.Settings.MailTestSignInFirst" xml:space="preserve">
+    <value>Zuerst anmelden</value>
+  </data>
+  <data name="Studio.Settings.MailTestSignInFirstHint" xml:space="preserve">
+    <value>„Anmelden“ oben öffnet die Anmeldung; der Test gelingt, sobald das Konto angemeldet ist.</value>
+  </data>
+  <data name="Studio.Settings.MailTestSecretFirst" xml:space="preserve">
+    <value>Zuerst das Passwort speichern</value>
+  </data>
+  <data name="Studio.Settings.MailTestSecretFirstHint" xml:space="preserve">
+    <value>Tragen Sie es im Reiter Anmeldung ein und speichern Sie es; der Test gelingt, sobald es hinterlegt ist.</value>
   </data>
   <data name="Studio.Settings.MailSignIn" xml:space="preserve">
     <value>Anmelden</value>
@@ -2195,9 +2219,6 @@
   </data>
   <data name="Studio.Settings.MailTenant" xml:space="preserve">
     <value>Microsoft-Mandant</value>
-  </data>
-  <data name="Studio.Settings.MailServersTitle" xml:space="preserve">
-    <value>E-Mail-Server</value>
   </data>
   <data name="Studio.Settings.MailIncoming" xml:space="preserve">
     <value>Post lesen</value>

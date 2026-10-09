@@ -95,8 +95,12 @@ public sealed class CapturePlannerTests
         // reglages-mails-serveurs, the custom account with every field, expert only, both themes = +2).
         // STUDIO-70: +1 stop (reglages-mails-connexion, the device sign-in panel of the Outlook
         // account, both modes, both themes, language sweep) = +8 shots.
-        Assert.Equal(66, CaptureCatalog.All.Count);
-        Assert.Equal(366, plan.Count);
+        // 2026-10-09: +1 stop (reglages-mails-vide, the E-mail tab of the pristine machine — the
+        // form of nobody used to show there —, both modes, both themes, language sweep) = +8 shots.
+        // 2026-10-09: +2 stops (reglages-mails-droits and reglages-mails-identifiants, the Rights and
+        // Sign-in tabs of an account's form, both modes, both themes) = +8 shots.
+        Assert.Equal(69, CaptureCatalog.All.Count);
+        Assert.Equal(382, plan.Count);
     }
 
     [Fact]

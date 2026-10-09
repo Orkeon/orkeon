@@ -703,7 +703,12 @@
   <data name="Studio.Settings.MailProblemsTitle" xml:space="preserve"><value>As it stands, a run cannot use this account:</value></data>
   <data name="Studio.Settings.MailNumberUnread" xml:space="preserve"><value>A number field holds something that is not a whole number: it is not written.</value></data>
   <data name="Studio.Settings.MailDisplayName" xml:space="preserve"><value>Name shown to recipients</value></data>
-  <data name="Studio.Settings.MailRightsTitle" xml:space="preserve"><value>What an agent may do</value></data>
+  <data name="Studio.Settings.MailTabAccount" xml:space="preserve"><value>Account</value></data>
+  <data name="Studio.Settings.MailTabRights" xml:space="preserve"><value>Rights</value></data>
+  <data name="Studio.Settings.MailTabAuth" xml:space="preserve"><value>Sign-in</value></data>
+  <data name="Studio.Settings.MailTabServers" xml:space="preserve"><value>Servers</value></data>
+  <data name="Studio.Settings.MailSectionShow" xml:space="preserve"><value>Show</value></data>
+  <data name="Studio.Settings.MailSectionHide" xml:space="preserve"><value>Hide</value></data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve"><value>Nothing ticked, nothing allowed: the engine refuses an account that grants no right.</value></data>
   <data name="Studio.Settings.MailRightRead" xml:space="preserve"><value>Read — list the folders, search, read messages and save attachments</value></data>
   <data name="Studio.Settings.MailRightOrganize" xml:space="preserve"><value>Organize — create and rename folders, move messages, mark them read or flagged</value></data>
@@ -718,7 +723,6 @@
   <data name="Studio.Settings.MailSendClosed" xml:space="preserve"><value>Nobody can receive mail from this account yet: list the allowed recipients.</value></data>
   <data name="Studio.Settings.MailMaxRecipients" xml:space="preserve"><value>Most recipients per message</value></data>
   <data name="Studio.Settings.MailMaxPerHour" xml:space="preserve"><value>Most messages per hour</value></data>
-  <data name="Studio.Settings.MailAuthTitle" xml:space="preserve"><value>Signing in</value></data>
   <data name="Studio.Settings.MailAuthMethod" xml:space="preserve"><value>Sign-in method</value></data>
   <data name="Studio.Settings.MailPassword" xml:space="preserve"><value>Password or app password</value></data>
   <data name="Studio.Settings.MailPasswordStored" xml:space="preserve"><value>Stored on this machine, outside any file</value></data>
@@ -736,6 +740,10 @@
   <data name="Studio.Settings.MailTestFailed" xml:space="preserve"><value>Could not connect</value></data>
   <data name="Studio.Settings.MailTestOperatorFixable" xml:space="preserve"><value>To fix on this machine</value></data>
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve"><value>The server refused or did not answer</value></data>
+  <data name="Studio.Settings.MailTestSignInFirst" xml:space="preserve"><value>Sign in first</value></data>
+  <data name="Studio.Settings.MailTestSignInFirstHint" xml:space="preserve"><value>« Sign in », above, opens the sign-in; the test passes once the account is signed in.</value></data>
+  <data name="Studio.Settings.MailTestSecretFirst" xml:space="preserve"><value>Store the password first</value></data>
+  <data name="Studio.Settings.MailTestSecretFirstHint" xml:space="preserve"><value>Type it on the Sign-in tab and save it; the test passes once it is stored.</value></data>
   <data name="Studio.Settings.MailSignIn" xml:space="preserve"><value>Sign in</value></data>
   <data name="Studio.Settings.MailSignOut" xml:space="preserve"><value>Sign out</value></data>
   <data name="Studio.Settings.MailSignOutConfirm" xml:space="preserve"><value>Forget the stored tokens of {0}? The account will need a new sign-in.</value></data>
@@ -762,7 +770,6 @@
   <data name="Studio.Settings.MailClientSecretEnvVar" xml:space="preserve"><value>Name of the variable that holds the OAuth client secret</value></data>
   <data name="Studio.Settings.MailEnvVarHint" xml:space="preserve"><value>A name, never the secret itself: the engine reads the variable when it connects.</value></data>
   <data name="Studio.Settings.MailTenant" xml:space="preserve"><value>Microsoft tenant</value></data>
-  <data name="Studio.Settings.MailServersTitle" xml:space="preserve"><value>Mail servers</value></data>
   <data name="Studio.Settings.MailIncoming" xml:space="preserve"><value>Reading mail</value></data>
   <data name="Studio.Settings.MailOutgoing" xml:space="preserve"><value>Sending mail</value></data>
   <data name="Studio.Settings.MailProtocol" xml:space="preserve"><value>Protocol</value></data>

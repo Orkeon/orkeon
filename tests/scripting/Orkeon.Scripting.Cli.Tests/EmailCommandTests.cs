@@ -1,3 +1,4 @@
+using Orkeon.Constants.Protocol;
 using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -202,6 +203,28 @@ public sealed partial class EmailCommandTests
             Assert.Contains("E-mail account 'hotmail' is reachable: 2 folder(s), inbox 12 message(s), 3 unread.", console.Stdout, StringComparison.Ordinal);
             // The stored access token was still fresh: the check went to Graph only.
             Assert.All(graph.Requests, path => Assert.StartsWith("/v1.0/me/mailFolders", path, StringComparison.Ordinal));
+        }
+
+        // Driven with events, the same check is one event line: the counts, and the sentence as printed above.
+        using (var graph = new StubOutlookHttpMessageHandler())
+        using (var console = new TestConsole())
+        {
+            var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions
+            {
+                WorkingDirectoryOverride = scratch.Root,
+                Account = "hotmail",
+                Events = "jsonl",
+                ConfigureTestServices = Answering(graph),
+            });
+
+            Assert.Equal(Program.ExitOk, exit);
+            using var completed = JsonDocument.Parse(console.Stdout.Trim());
+            Assert.Equal(EmailEventKinds.CheckCompleted, completed.RootElement.GetProperty("kind").GetString());
+            Assert.Equal("hotmail", completed.RootElement.GetProperty("account").GetString());
+            Assert.Equal(2, completed.RootElement.GetProperty("folders").GetInt32());
+            Assert.Equal(12, completed.RootElement.GetProperty("inbox_total").GetInt32());
+            Assert.Equal(3, completed.RootElement.GetProperty("inbox_unread").GetInt32());
+            Assert.Equal("E-mail account 'hotmail' is reachable: 2 folder(s), inbox 12 message(s), 3 unread.", completed.RootElement.GetProperty("summary").GetString());
         }
 
         using (var console = new TestConsole())

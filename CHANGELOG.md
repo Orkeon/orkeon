@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Studio's E-mail tab: the form of an account is four tabs
+
+The form of the selected account was one column of four cards — the account, its rights, its
+sign-in, its servers — that scrolled well past the window. It is now four tabs, Account, Rights,
+Sign-in and Servers, under a head that stays whichever shows: the name, the state, the test and
+sign-in buttons, and what the run will say of the account. The Servers tab exists only while the
+hosts show, and the form folds back to Account when a preset takes them over. The expert's card
+of the two settings of the section — the screening switch, the token folder — moves under the list
+of accounts, since it is about none of them, folded until opened. The capture campaign photographs
+the Rights and Sign-in tabs, and the servers shot opens its tab.
+
+The expert's Sign-in tab showed every key whatever the account: the password variable under
+OAuth2, the Microsoft tenant on a Gmail account. Each of the three — the password variable, the
+client-secret variable, the tenant — now shows when the method or the provider calls for it, or
+when the file already holds it. And the list of methods of an Outlook account no longer offers
+« Password », which Outlook.com and Microsoft 365 refuse from a mail client, unless the file still
+holds it.
+
+### Changed — a refused connection test says what to do from Studio
+
+`orkeon email check` takes `--events jsonl`: its verdict is then one event line —
+`email.check.completed` with the counts and the printed sentence, or `error` with the e-mail
+error code. Studio runs the check that way and reads the code: a test refused for want of an
+OAuth sign-in is headed « Sign in first » and points at the « Sign in » button of the row, one
+refused for want of a password is headed « Store the password first » and points at the field
+of the Sign-in tab — the engine's sentence, which sends to a terminal, stays under it as printed.
+An older CLI that prints a sentence is read as before.
+
+### Fixed — Studio's E-mail tab no longer shows the form of nobody on a machine with no account
+
+With no e-mail account declared, the tab said so and then showed, under that sentence, the
+whole form of an account that did not exist — every one of its conditional panels open at once:
+the sign-in in flight with its three contradictory ends (« signed in », « the code expired »,
+« the sign-in failed »), the rename editor, the removal and sign-out questions, the problems list,
+the recipients block, fields shrunk to squares and empty lists. One cause: the form is a
+`ContentControl` with an explicit `ContentTemplate`, which WPF instantiates even over a null
+`Content`; every `Visibility` binding of the form then failed on the null context and kept its
+default. The control is now gated on `HasSelectedAccount` (the T-30 rule the mounts editor
+already followed), and the capture campaign photographs the tab of the pristine machine
+(`reglages-mails-vide`), asserting the gate false, so the state cannot regress unseen.
+
+The fields of the box that adds an account — and every empty field of an account's form — were
+squares the size of a character: a `TextBox` has no width of its own, and left-aligned under a
+`MaxWidth` alone it measures to its text. They carry a `Width` now, as the other fields of the tab
+already did (the MCP server id too), and a conformity test holds every left-aligned editable
+`TextBox` of the views to it.
+
 ### Documentation — the environment variables Orkeon reads, in one table
 
 A variable that carries a setting had its rule, well explained. A variable a binary reads by its

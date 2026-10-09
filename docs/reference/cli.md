@@ -221,7 +221,7 @@ orkeon rag eval --dataset examples/rag/eval/golden.yaml \
 orkeon email accounts [--settings <file>] [--json]                  # the declared accounts, their rights, whether each is ready
 orkeon email login <account> [--settings <file>] [--events jsonl]   # sign an OAuth2 account in and store its tokens
 orkeon email logout <account> [--settings <file>]                   # forget the stored tokens of an OAuth account
-orkeon email check <account> [--settings <file>]                    # connect, authenticate, list the folders
+orkeon email check <account> [--settings <file>] [--events jsonl]   # connect, authenticate, list the folders
 ```
 
 The operator's side of the e-mail tools ([guide](../guides/email.md)): what is declared under
@@ -248,7 +248,7 @@ Agents never run these — a tool that finds no usable token answers
   nothing to log in to and is refused.
   With **`--events jsonl`** a program drives the sign-in instead of a person reading it — the
   way Orkeon Studio runs it. Standard output then carries one JSON event per line and nothing
-  else, in the envelope of the [run event stream](../architecture/run-event-bus.md), under five
+  else, in the envelope of the [run event stream](../architecture/run-event-bus.md), under the
   kinds declared once in `Orkeon.Constants.Protocol.EmailEventKinds`:
   `email.login.device_code` (`verification_uri`, `user_code`, `expires_in` in seconds),
   `email.login.authorization_url` (`authorization_uri`), `email.login.redirect_rejected`
@@ -264,7 +264,12 @@ Agents never run these — a tool that finds no usable token answers
 - **`logout`** deletes the stored tokens of an OAuth account, and says so when there were none;
   a password account has none and is refused.
 - **`check`** connects, authenticates and lists the folders, then prints how many there are
-  and the inbox counts.
+  and the inbox counts. With **`--events jsonl`** the verdict is one event line on standard
+  output instead: `email.check.completed` (`account`, `folders`, `inbox_total`, `inbox_unread`,
+  and `summary`, the sentence printed without the option), or `error` with its `code` — which is
+  how Orkeon Studio knows that a refused test wants a sign-in or a password, and points at its
+  own button or field rather than at a terminal. The exit code is the one the verb has without
+  the option.
 
 `-s, --settings <path>` resolves like `orkeon run`, anchored at the current directory: the
 explicit file, else `appsettings.json` in the current directory, else an

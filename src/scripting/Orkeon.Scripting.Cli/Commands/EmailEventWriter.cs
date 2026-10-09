@@ -49,4 +49,8 @@ internal sealed class EmailEventWriter : OrkeonEventWriter
     /// <summary>The sign-in was refused or failed; the verb is about to exit on the code it has without events.</summary>
     public void Error(string code, string message) =>
         Emit(EmailEventKinds.Error, new { code, message, recoverable = false });
+
+    /// <summary>The check connected and listed the folders: the counts, and the sentence the verb prints without events.</summary>
+    public void CheckCompleted(string account, int folders, int? inboxTotal, int? inboxUnread, string summary) =>
+        Emit(EmailEventKinds.CheckCompleted, new { account, folders, inbox_total = inboxTotal, inbox_unread = inboxUnread, summary });
 }

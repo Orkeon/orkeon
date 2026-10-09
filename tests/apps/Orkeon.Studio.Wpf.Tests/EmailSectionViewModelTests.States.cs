@@ -378,7 +378,7 @@ public sealed partial class EmailSectionViewModelTests
         Assert.False(perso.HasLastCheck);
         // A second click cannot start a second connection.
         Assert.False(perso.TestCommand.CanExecute(null));
-        Assert.Equal(["email", "check", "perso", "--settings", SettingsFile], cli.Requests[^1].Arguments);
+        Assert.Equal(["email", "check", "perso", "--events", "jsonl", "--settings", SettingsFile], cli.Requests[^1].Arguments);
 
         cli.Release();
         await testing.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
@@ -416,6 +416,45 @@ public sealed partial class EmailSectionViewModelTests
         Assert.False(perso.LastCheckReachable);
         Assert.Equal(headline, perso.LastCheckHeadline);
         Assert.Equal(sentence, perso.LastCheckDetail);
+    }
+
+    [Fact]
+    public async Task A_test_refused_for_want_of_a_sign_in_says_to_sign_in_from_here()
+    {
+        var cli = new FakeEmailCli
+        {
+            AccountsOutput = PersoReadyWorkNot,
+            CheckExitCode = 1,
+            CheckOutput = """{"v":1,"seq":1,"ts":"2026-10-09T10:00:00Z","kind":"error","code":"LoginRequired","message":"E-mail account 'perso' needs an OAuth sign-in: run `orkeon email login perso` in a terminal.","recoverable":false}""",
+        };
+        var (section, _) = BuildWithCli(Two, cli);
+        var perso = Row(section, "perso");
+
+        await perso.TestCommand.ExecuteAsync();
+
+        // The engine's sentence sends to a terminal; the screen has the button, and says so.
+        Assert.Equal("Sign in first", perso.LastCheckHeadline);
+        Assert.StartsWith("E-mail account 'perso' needs an OAuth sign-in", perso.LastCheckDetail, StringComparison.Ordinal);
+        Assert.True(perso.HasLastCheckHint);
+        Assert.Equal("« Sign in », above, opens the sign-in; the test passes once the account is signed in.", perso.LastCheckHint);
+    }
+
+    [Fact]
+    public async Task A_test_refused_for_want_of_a_secret_says_where_to_type_it()
+    {
+        var cli = new FakeEmailCli
+        {
+            AccountsOutput = PersoReadyWorkNot,
+            CheckExitCode = 1,
+            CheckOutput = """{"v":1,"seq":1,"ts":"2026-10-09T10:00:00Z","kind":"error","code":"CredentialMissing","message":"The password of e-mail account 'perso' is read from the environment variable GMAIL_APP_PASSWORD, which is not set.","recoverable":false}""",
+        };
+        var (section, _) = BuildWithCli(Two, cli);
+        var perso = Row(section, "perso");
+
+        await perso.TestCommand.ExecuteAsync();
+
+        Assert.Equal("Store the password first", perso.LastCheckHeadline);
+        Assert.Equal("Type it on the Sign-in tab and save it; the test passes once it is stored.", perso.LastCheckHint);
     }
 
     [Fact]

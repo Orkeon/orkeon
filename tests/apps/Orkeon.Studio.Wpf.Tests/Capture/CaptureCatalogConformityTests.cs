@@ -186,6 +186,30 @@ public sealed partial class CaptureCatalogConformityTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// The form of the selected e-mail account is a ContentControl with an explicit
+    /// ContentTemplate, which WPF instantiates even over a null Content: on a machine with no
+    /// account, every Visibility binding of the form then fails on the null context and keeps its
+    /// default, and the form of nobody shows with every conditional panel open at once. The
+    /// control itself must be gated on the selection (T-30), by the gate the empty-state stop
+    /// drives to false.
+    /// </summary>
+    [Fact]
+    public void The_email_account_form_is_gated_on_a_selected_account()
+    {
+        var markup = ReadSource("Views", "EmailView.xaml");
+        var start = markup.IndexOf("<ContentControl Content=\"{Binding SelectedAccount}\"", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the form of the selected account is no longer a ContentControl on SelectedAccount");
+
+        var tag = markup[start..markup.IndexOf('>', start)];
+        Assert.Contains(
+            "Visibility=\"{Binding HasSelectedAccount, Converter={StaticResource BooleanToVisibility}}\"",
+            tag, StringComparison.Ordinal);
+
+        var stop = Assert.Single(CaptureCatalog.All, stop => stop.Name == "reglages-mails-vide");
+        Assert.Contains("Config.Email.HasSelectedAccount", stop.CoversFalse);
+    }
+
+    /// <summary>
     /// A new endless storyboard with no pose is a new screen whose PNG differs on every run of the
     /// campaign for no reason — exactly the noise that makes a fidelity diff useless.
     /// </summary>

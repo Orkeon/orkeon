@@ -1347,6 +1347,18 @@ public static class StudioStringKeys
     /// <summary>"The server refused or did not answer" — the engine's sentence says which (exit code 2).</summary>
     public const string MailTestServerOrNetwork = "Studio.Settings.MailTestServerOrNetwork";
 
+    /// <summary>"Sign in first" — the check was refused for want of an OAuth sign-in (code LoginRequired).</summary>
+    public const string MailTestSignInFirst = "Studio.Settings.MailTestSignInFirst";
+
+    /// <summary>The gesture that answers it: « Sign in », on the row.</summary>
+    public const string MailTestSignInFirstHint = "Studio.Settings.MailTestSignInFirstHint";
+
+    /// <summary>"Store the password first" — the check was refused for want of a secret (code CredentialMissing).</summary>
+    public const string MailTestSecretFirst = "Studio.Settings.MailTestSecretFirst";
+
+    /// <summary>The gesture that answers it: the password field of the Sign-in tab.</summary>
+    public const string MailTestSecretFirstHint = "Studio.Settings.MailTestSecretFirstHint";
+
     // ── signing an OAuth e-mail account in and out (STUDIO-70): the CLI does it, the tab says what to do meanwhile ──
 
     /// <summary>"Sign in" — runs <c>orkeon email login</c> on an OAuth account.</summary>
@@ -2728,6 +2740,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailTestFailed] = "Could not connect",
         [StudioStringKeys.MailTestOperatorFixable] = "To fix on this machine",
         [StudioStringKeys.MailTestServerOrNetwork] = "The server refused or did not answer",
+        [StudioStringKeys.MailTestSignInFirst] = "Sign in first",
+        [StudioStringKeys.MailTestSignInFirstHint] = "« Sign in », above, opens the sign-in; the test passes once the account is signed in.",
+        [StudioStringKeys.MailTestSecretFirst] = "Store the password first",
+        [StudioStringKeys.MailTestSecretFirstHint] = "Type it on the Sign-in tab and save it; the test passes once it is stored.",
         [StudioStringKeys.MailSignIn] = "Sign in",
         [StudioStringKeys.MailSignOut] = "Sign out",
         [StudioStringKeys.MailSignOutConfirm] = "Forget the stored tokens of {0}? The account will need a new sign-in.",

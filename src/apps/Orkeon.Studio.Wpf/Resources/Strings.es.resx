@@ -2019,8 +2019,23 @@
   <data name="Studio.Settings.MailDisplayName" xml:space="preserve">
     <value>Nombre mostrado a los destinatarios</value>
   </data>
-  <data name="Studio.Settings.MailRightsTitle" xml:space="preserve">
-    <value>Lo que un agente puede hacer</value>
+  <data name="Studio.Settings.MailTabAccount" xml:space="preserve">
+    <value>Cuenta</value>
+  </data>
+  <data name="Studio.Settings.MailTabRights" xml:space="preserve">
+    <value>Permisos</value>
+  </data>
+  <data name="Studio.Settings.MailTabAuth" xml:space="preserve">
+    <value>Inicio de sesión</value>
+  </data>
+  <data name="Studio.Settings.MailTabServers" xml:space="preserve">
+    <value>Servidores</value>
+  </data>
+  <data name="Studio.Settings.MailSectionShow" xml:space="preserve">
+    <value>Mostrar</value>
+  </data>
+  <data name="Studio.Settings.MailSectionHide" xml:space="preserve">
+    <value>Ocultar</value>
   </data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve">
     <value>Nada marcado, nada permitido: el motor rechaza una cuenta que no concede ningún derecho.</value>
@@ -2063,9 +2078,6 @@
   </data>
   <data name="Studio.Settings.MailMaxPerHour" xml:space="preserve">
     <value>Máximo de mensajes por hora</value>
-  </data>
-  <data name="Studio.Settings.MailAuthTitle" xml:space="preserve">
-    <value>Inicio de sesión</value>
   </data>
   <data name="Studio.Settings.MailAuthMethod" xml:space="preserve">
     <value>Método de inicio de sesión</value>
@@ -2117,6 +2129,18 @@
   </data>
   <data name="Studio.Settings.MailTestServerOrNetwork" xml:space="preserve">
     <value>El servidor lo rechazó o no respondió</value>
+  </data>
+  <data name="Studio.Settings.MailTestSignInFirst" xml:space="preserve">
+    <value>Inicie sesión primero</value>
+  </data>
+  <data name="Studio.Settings.MailTestSignInFirstHint" xml:space="preserve">
+    <value>« Iniciar sesión », arriba, abre el inicio de sesión; la prueba pasa una vez conectada la cuenta.</value>
+  </data>
+  <data name="Studio.Settings.MailTestSecretFirst" xml:space="preserve">
+    <value>Guarde primero la contraseña</value>
+  </data>
+  <data name="Studio.Settings.MailTestSecretFirstHint" xml:space="preserve">
+    <value>Escríbala en la pestaña Inicio de sesión y guárdela; la prueba pasa una vez almacenada.</value>
   </data>
   <data name="Studio.Settings.MailSignIn" xml:space="preserve">
     <value>Iniciar sesión</value>
@@ -2195,9 +2219,6 @@
   </data>
   <data name="Studio.Settings.MailTenant" xml:space="preserve">
     <value>Inquilino de Microsoft</value>
-  </data>
-  <data name="Studio.Settings.MailServersTitle" xml:space="preserve">
-    <value>Servidores de correo</value>
   </data>
   <data name="Studio.Settings.MailIncoming" xml:space="preserve">
     <value>Lectura del correo</value>

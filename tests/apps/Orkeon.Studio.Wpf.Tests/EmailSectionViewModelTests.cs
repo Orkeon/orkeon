@@ -91,6 +91,7 @@ public sealed partial class EmailSectionViewModelTests
     {
         var (section, document, changes) = Build();
         Assert.False(section.HasAccounts);
+        Assert.False(section.HasSelectedAccount);
         Assert.False(section.Exists);
 
         section.BeginAddCommand.Execute(null);
@@ -112,6 +113,7 @@ public sealed partial class EmailSectionViewModelTests
         Assert.Equal(1, changes());
         var row = Assert.Single(section.Accounts);
         Assert.Same(row, section.SelectedAccount);
+        Assert.True(section.HasSelectedAccount);
         Assert.Equal("perso", row.Name);
         Assert.Equal("Gmail", document.GetString($"{Accounts}:perso:Provider"));
         Assert.Equal("me@gmail.com", document.GetString($"{Accounts}:perso:Address"));
@@ -572,6 +574,8 @@ public sealed partial class EmailSectionViewModelTests
 
         Assert.False(section.HasAccounts);
         Assert.Null(section.SelectedAccount);
+        // The form of the selected account folds with it: nothing stands open over nobody.
+        Assert.False(section.HasSelectedAccount);
         // The section goes with its last key, and the objects it emptied above it: no empty object stays.
         Assert.False(section.Exists);
         Assert.Null(document.GetNode("Orkeon"));
@@ -915,6 +919,125 @@ public sealed partial class EmailSectionViewModelTests
         Assert.True(gmail.ShowPassword);
         Assert.Contains(nameof(EmailAccountRowViewModel.ShowExpertFields), raised);
         Assert.Contains(nameof(EmailAccountRowViewModel.ShowHosts), raised);
+    }
+
+    [Fact]
+    public void The_form_opens_on_its_account_tab_and_the_servers_tab_exists_only_while_the_hosts_show()
+    {
+        var (section, _, _) = Build(Two);
+        var gmail = section.Accounts[0];
+        var custom = section.Accounts[1];
+
+        Assert.Equal(EmailAccountRowViewModel.AccountTab, gmail.ActiveTab);
+        Assert.True(gmail.IsAccountTab);
+        Assert.False(gmail.IsRightsTab);
+        // The section says the same of the selected account's form, for the capture catalogue's gates.
+        Assert.Same(gmail, section.SelectedAccount);
+        Assert.True(section.ShowsAccountTab);
+
+        gmail.ShowRightsTabCommand.Execute(null);
+        Assert.True(gmail.IsRightsTab);
+        Assert.False(gmail.IsAccountTab);
+        Assert.True(section.ShowsRightsTab);
+        Assert.False(section.ShowsAccountTab);
+        section.SelectedAccount = custom;
+        Assert.True(section.ShowsAccountTab);
+        section.SelectedAccount = null;
+        Assert.False(section.ShowsAccountTab);
+        Assert.False(section.ShowsRightsTab);
+        section.SelectedAccount = gmail;
+
+        // A novice Gmail account has no servers tab: asked for, it falls back to the account.
+        gmail.ShowServersTabCommand.Execute(null);
+        Assert.True(gmail.IsAccountTab);
+        Assert.False(gmail.IsServersTab);
+
+        // A custom account has: the expert mode leaving takes nothing from it.
+        custom.ShowServersTabCommand.Execute(null);
+        Assert.True(custom.IsServersTab);
+
+        // A preset taking the hosts over folds the form back to the account tab.
+        custom.Provider = "Gmail";
+        Assert.False(custom.ShowHosts);
+        Assert.True(custom.IsAccountTab);
+
+        // The expert sees the hosts of every account, and keeps the tab when the mode leaves… unless it goes with it.
+        section.IsExpert = true;
+        gmail.ShowServersTabCommand.Execute(null);
+        Assert.True(gmail.IsServersTab);
+        var raised = new List<string>();
+        gmail.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+        section.IsExpert = false;
+        Assert.True(gmail.IsAccountTab);
+        Assert.Contains(nameof(EmailAccountRowViewModel.IsServersTab), raised);
+
+        // An unknown name is the account tab.
+        gmail.ActiveTab = "nowhere";
+        Assert.True(gmail.IsAccountTab);
+    }
+
+    [Fact]
+    public void The_expert_sign_in_fields_show_when_the_method_or_the_provider_calls_for_them_or_the_file_holds_them()
+    {
+        var (section, _, _) = Build(Two);
+        var gmail = section.Accounts[0];
+        var custom = section.Accounts[1];
+
+        // The novice sees none of the three.
+        Assert.False(gmail.ShowPasswordEnvVar);
+        Assert.False(gmail.ShowClientSecretEnvVar);
+        Assert.False(gmail.ShowTenant);
+
+        section.IsExpert = true;
+
+        // A Gmail account on a password: its password variable, no client secret, no tenant.
+        Assert.True(gmail.ShowPasswordEnvVar);
+        Assert.False(gmail.ShowClientSecretEnvVar);
+        Assert.True(gmail.ShowSecretVariables);
+        Assert.False(gmail.ShowTenant);
+
+        // On OAuth2: the client secret's variable — and the password's stays while the file names one.
+        gmail.AuthMethod = "OAuth2";
+        Assert.True(gmail.ShowClientSecretEnvVar);
+        Assert.True(gmail.ShowPasswordEnvVar);
+        gmail.PasswordEnvVar = "";
+        Assert.False(gmail.ShowPasswordEnvVar);
+        gmail.PasswordEnvVar = "GMAIL_APP_PASSWORD";
+        gmail.AuthMethod = "";
+
+        // An Outlook account: OAuth2 by its preset, no client secret, the tenant — and no « Password » in its list.
+        custom.PasswordEnvVar = "";
+        custom.Provider = "Outlook";
+        Assert.False(custom.ShowPasswordEnvVar);
+        Assert.False(custom.ShowClientSecretEnvVar);
+        Assert.False(custom.ShowSecretVariables);
+        Assert.True(custom.ShowTenant);
+        Assert.DoesNotContain(custom.AuthMethodChoices, choice => choice.Value == "Password");
+        Assert.Contains(gmail.AuthMethodChoices, choice => choice.Value == "Password");
+
+        // A file that holds the key keeps its field, whatever the method: nothing the file carries is out of reach.
+        custom.PasswordEnvVar = "OLD_PASSWORD";
+        Assert.True(custom.ShowPasswordEnvVar);
+        custom.PasswordEnvVar = "";
+        Assert.False(custom.ShowPasswordEnvVar);
+        gmail.Tenant = "contoso.onmicrosoft.com";
+        Assert.True(gmail.ShowTenant);
+
+        // A file that still says « Password » on an Outlook account shows it, so that what it holds shows.
+        custom.AuthMethod = "Password";
+        Assert.Contains(custom.AuthMethodChoices, choice => choice.Value == "Password");
+    }
+
+    [Fact]
+    public void The_settings_of_the_section_are_folded_until_opened()
+    {
+        var (section, _, _) = Build(Two);
+        Assert.False(section.IsSectionOpen);
+
+        section.ToggleSectionCommand.Execute(null);
+        Assert.True(section.IsSectionOpen);
+        section.ToggleSectionCommand.Execute(null);
+        Assert.False(section.IsSectionOpen);
     }
 
     // ── the secrets (STUDIO-68) ──
