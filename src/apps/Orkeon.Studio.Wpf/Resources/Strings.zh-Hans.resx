@@ -2289,6 +2289,12 @@
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
     <value>留空：引擎默认 30 秒。会先思考再回答的模型通常需要 600 秒。</value>
   </data>
+  <data name="Studio.Settings.LblStreamIdle" xml:space="preserve">
+    <value>流式静默上限（秒，可选）</value>
+  </data>
+  <data name="Studio.Settings.StreamIdleHint" xml:space="preserve">
+    <value>留空：不设静默上限，由响应超时约束整个调用。设定后，流式回答静默超过该时长即按超时调用失败。</value>
+  </data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>「{0}」的文件夹</value>
   </data>

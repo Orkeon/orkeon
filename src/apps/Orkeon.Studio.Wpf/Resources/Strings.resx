@@ -793,6 +793,8 @@
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Empty: nothing is sent — the model applies its own default. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve"><value>Response timeout (s, optional)</value></data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Empty: the engine's default, 30 s. A model that thinks before it answers routinely needs 600 s.</value></data>
+  <data name="Studio.Settings.LblStreamIdle" xml:space="preserve"><value>Stream idle bound (s, optional)</value></data>
+  <data name="Studio.Settings.StreamIdleHint" xml:space="preserve"><value>Empty: no idle bound — the timeout bounds the whole call. Set, a streamed answer that stays silent longer than this fails as a timed-out call.</value></data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve"><value>Folders of “{0}”</value></data>
   <data name="Studio.Teams.None" xml:space="preserve"><value>Without a folder, this team can neither read nor write any file.</value></data>
   <data name="Studio.Teams.Summary" xml:space="preserve"><value>{0} folders: {1}</value></data>

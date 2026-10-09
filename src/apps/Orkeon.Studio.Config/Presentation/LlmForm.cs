@@ -47,6 +47,9 @@ internal sealed class LlmForm : ISettingsForm
     /// <summary>Request timeout in seconds.</summary>
     public string TimeoutSeconds { get; set; } = "";
 
+    /// <summary>The longest silence between two lines of a streamed answer, in seconds (LLM-12).</summary>
+    public string StreamIdleSeconds { get; set; } = "";
+
     /// <summary>
     /// Thinking switch (<c>Llm:Thinking:Enabled</c>): "true", "false", or blank for the
     /// provider's default — on for Kimi K2.6, DeepSeek V4 and GLM (LLM-11).
@@ -165,6 +168,7 @@ internal sealed class LlmForm : ISettingsForm
         Temperature = document.GetWritten($"{LlmSection.SectionPath}:Temperature");
         MaxTokens = document.GetWritten($"{LlmSection.SectionPath}:MaxTokens");
         TimeoutSeconds = document.GetWritten($"{LlmSection.SectionPath}:TimeoutSeconds");
+        StreamIdleSeconds = document.GetWritten($"{LlmSection.SectionPath}:StreamIdleSeconds");
         ThinkingEnabled = document.GetWritten($"{LlmSection.SectionPath}:Thinking:Enabled");
         Profiles =
         [
@@ -190,6 +194,9 @@ internal sealed class LlmForm : ISettingsForm
         if (!FieldText.TryReadInt32(TimeoutSeconds, "Llm:TimeoutSeconds", out var timeout, out var timeoutError))
             errors.Add(timeoutError!);
 
+        if (!FieldText.TryReadInt32(StreamIdleSeconds, "Llm:StreamIdleSeconds", out var streamIdle, out var streamIdleError))
+            errors.Add(streamIdleError!);
+
         if (!FieldText.TryReadBoolean(ThinkingEnabled, "Llm:Thinking:Enabled", out var thinking, out var thinkingError))
             errors.Add(thinkingError!);
 
@@ -211,6 +218,7 @@ internal sealed class LlmForm : ISettingsForm
         section.Temperature = temperature;
         section.MaxTokens = maxTokens;
         section.TimeoutSeconds = timeout;
+        section.StreamIdleSeconds = streamIdle;
         section.ThinkingEnabled = thinking;
 
         return [];

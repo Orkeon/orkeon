@@ -24,6 +24,7 @@ public sealed class HostLlmProfilesTests
         Model = "deepseek-v4-flash",
         KeyEnvName = "DEEPSEEK_API_KEY",
         TimeoutSeconds = 600,
+        StreamIdleSeconds = 45,
     };
 
     private static ModelProfile Zai(string name = "Z.AI") => new()
@@ -98,6 +99,7 @@ public sealed class HostLlmProfilesTests
         Assert.Equal("https://api.deepseek.com", deepseek?.BaseUrl);
         Assert.Equal("deepseek-v4-flash", deepseek?.Model);
         Assert.Equal(600, deepseek?.TimeoutSeconds);
+        Assert.Equal(45, deepseek?.StreamIdleSeconds);
         Assert.False(document.Llm.Profiles.Get("z-ai")?.ThinkingEnabled);
         // STUDIO-49: each entry names the variable holding its key — a run outside Studio reads
         // it — and no key is written anywhere.
@@ -369,6 +371,7 @@ public sealed class HostLlmProfilesTests
         Assert.Equal("https://api.deepseek.com", environment["ORKEON_Llm__Profiles__deepseek__BaseUrl"]);
         Assert.Equal("deepseek-v4-flash", environment["ORKEON_Llm__Profiles__deepseek__Model"]);
         Assert.Equal("600", environment["ORKEON_Llm__Profiles__deepseek__TimeoutSeconds"]);
+        Assert.Equal("45", environment["ORKEON_Llm__Profiles__deepseek__StreamIdleSeconds"]);
         Assert.Equal("false", environment["ORKEON_Llm__Profiles__z-ai__Thinking__Enabled"]);
         // A key that is not remembered is not invented, and a setting offered to no crew rides nowhere.
         Assert.False(environment.ContainsKey("ORKEON_Llm__Profiles__z-ai__ApiKey"));

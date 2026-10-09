@@ -733,12 +733,21 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
 
+        // The call runs under Llm:TimeoutSeconds whole, and Llm:StreamIdleSeconds between two
+        // lines (LLM-12); an elapsed bound or a stream cut before any text fails the sequence.
+        using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
+        var finished = false;
+        var yieldedAnything = false;
         HttpResponseMessage? response = null;
         try
         {
-            response = await SendStreamingRequestAsync(client, endpoint, json, cancellationToken).ConfigureAwait(false);
+            response = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
+            // Null exactly when a bound elapsed before the headers (CA1508 cannot see the catch
+            // that returns it, so the budget is the condition).
+            if (budget.Elapsed is not null)
+                throw new HttpRequestException(StreamFailureMessage(budget, finished: false, hasAnswer: false, 0, "Anthropic"));
 
-            if (!response.IsSuccessStatusCode)
+            if (!response!.IsSuccessStatusCode)
             {
                 LogStreamingError(response.StatusCode);
                 throw await StreamingRejectionAsync(response, "Anthropic", cancellationToken)
@@ -746,19 +755,24 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             }
 
             // Anthropic SSE uses event types: content_block_delta with delta.text
-            await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
+            await foreach (var data in ReadSseStreamAsync(response, budget, cancellationToken).ConfigureAwait(false))
             {
                 using var doc = JsonDocument.Parse(data);
                 if (doc.RootElement.TryGetProperty("type", out var typeEl))
                 {
                     var eventType = typeEl.GetString();
+                    if (eventType == "message_stop")
+                        finished = true;
                     if (eventType == "content_block_delta" &&
                         doc.RootElement.TryGetProperty("delta", out var delta) &&
                         delta.TryGetProperty("text", out var textEl))
                     {
                         var token = textEl.GetString();
                         if (token is not null)
+                        {
+                            yieldedAnything |= token.Length > 0;
                             yield return token;
+                        }
                     }
                 }
             }
@@ -767,6 +781,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         {
             response?.Dispose();
         }
+
+        if (StreamFailureMessage(budget, finished, yieldedAnything, 0, "Anthropic") is { } failure)
+            throw new HttpRequestException(failure);
     }
 
     /// <summary>
@@ -811,12 +828,22 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         var json = JsonSerializer.Serialize(payload, JsonOptions);
 
         var state = new AnthropicStreamState();
+        // The call runs under Llm:TimeoutSeconds whole, and Llm:StreamIdleSeconds between two
+        // lines (LLM-12); the Completed event then carries the failure, never an empty answer.
+        using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
         HttpResponseMessage? response = null;
         try
         {
-            response = await SendStreamingRequestAsync(client, endpoint, json, cancellationToken).ConfigureAwait(false);
+            response = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
+            // Null exactly when a bound elapsed before the headers (CA1508 cannot see the catch
+            // that returns it, so the budget is the condition).
+            if (budget.Elapsed is not null)
+            {
+                yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
+                yield break;
+            }
 
-            if (!response.IsSuccessStatusCode)
+            if (!response!.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 LogStreamingError(response.StatusCode);
@@ -825,10 +852,14 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 yield break;
             }
 
-            await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
+            await foreach (var data in ReadSseStreamAsync(response, budget, cancellationToken).ConfigureAwait(false))
             {
                 foreach (var ev in ParseStreamEvent(data, state))
                     yield return ev;
+
+                // The vendor said the stream failed: nothing after that frame is an answer.
+                if (state.Error is not null)
+                    break;
             }
         }
         finally
@@ -836,7 +867,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             response?.Dispose();
         }
 
-        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig));
+        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
     }
 
     /// <summary>Accumulation state of one streamed Messages API response.</summary>
@@ -848,6 +879,16 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         /// <summary>The <c>tool_use</c> blocks streamed so far, by block index: id, name, input JSON.</summary>
         public SortedDictionary<int, StreamedToolUse> ToolUses { get; } = new();
+
+        /// <summary>Whether the <c>message_stop</c> event — the end of a complete answer — was read.</summary>
+        public bool Finished { get; set; }
+
+        /// <summary>
+        /// The <c>error</c> event the vendor sent after the HTTP 200
+        /// (<c>{"type":"error","error":{"type","message"}}</c>), when the stream failed mid-way:
+        /// the vendor's error type and its sanitized message.
+        /// </summary>
+        public (string Label, string SanitizedMessage)? Error { get; set; }
     }
 
     /// <summary>One streamed <c>tool_use</c> block: its id and name, then its input as JSON fragments.</summary>
@@ -922,12 +963,38 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                     }
                     break;
 
+                // The end of a complete answer. A stream that closes without it was cut short (LLM-12).
+                case "message_stop":
+                    state.Finished = true;
+                    break;
+
+                // A failure after the HTTP 200, in the vendor's documented shape. It used to fall
+                // into the default case and the stream completed cleanly, truncated.
+                case "error":
+                    state.Error = ReadStreamError(root);
+                    break;
+
                 default:
                     break;
             }
         }
 
         return events;
+    }
+
+    /// <summary>The vendor's <c>error.type</c> and sanitized <c>error.message</c> of a mid-stream <c>error</c> event.</summary>
+    private static (string Label, string SanitizedMessage) ReadStreamError(JsonElement root)
+    {
+        if (!root.TryGetProperty("error", out var error) || error.ValueKind != JsonValueKind.Object)
+            return ("mid-stream", "the stream failed without a message");
+
+        var label = error.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.String
+            ? type.GetString() ?? "mid-stream"
+            : "mid-stream";
+        var message = error.TryGetProperty("message", out var msg) && msg.ValueKind == JsonValueKind.String
+            ? msg.GetString() ?? string.Empty
+            : string.Empty;
+        return (label, Security.LogSanitizer.SanitizeString(message));
     }
 
     private static int BlockIndex(JsonElement root) =>
@@ -955,7 +1022,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// Builds the terminal response of a streamed completion — same shape as the buffered
     /// <see cref="ParseResponse"/> result, so callers cannot tell the two paths apart.
     /// </summary>
-    private LlmResponse BuildStreamedResponse(AnthropicStreamState state, LlmConfig config)
+    private LlmResponse BuildStreamedResponse(AnthropicStreamState state, LlmConfig config, StreamReadBudget budget)
     {
         var metadata = LlmResponseMetadata.CreateBuilder()
             .AddProvider(Name)
@@ -968,6 +1035,25 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             metadata.Add("cache_creation_input_tokens", created);
         if (state.Usage.CacheReadTokens is { } read)
             metadata.Add("cache_read_input_tokens", read);
+
+        // A vendor error after the 200, else an elapsed bound or a stream cut before any answer:
+        // the response carries `error` + `error_type` over the partial content, and nothing of a
+        // failed stream is served as an instruction (LLM-12).
+        bool failed;
+        if (state.Error is { } error)
+        {
+            metadata
+                .AddError($"Anthropic API error: {error.Label} - {error.SanitizedMessage}")
+                .AddErrorType("APIError");
+            failed = true;
+        }
+        else
+        {
+            failed = ApplyStreamOutcome(
+                metadata, budget, state.Finished,
+                hasAnswer: state.Content.Length > 0 || state.ToolUses.Count > 0,
+                state.Reasoning.Length, "Anthropic");
+        }
 
         return new LlmResponse
         {
@@ -983,7 +1069,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             // parsers read: the tool calls the model streamed, and the text in which the
             // text-protocol fallback reads a call written as text —, so a streamed turn calls its
             // tools (GAP-32). Like the buffered body, only when tools travel natively.
-            RawResponseBody = _toolCallingStrategy?.SupportsNativeToolCalling == true
+            RawResponseBody = !failed && _toolCallingStrategy?.SupportsNativeToolCalling == true
                 ? SynthesizeMessageBody(state)
                 : null,
         };

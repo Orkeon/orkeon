@@ -300,6 +300,7 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
         { "Llm:Profiles:local-gpu:Temperature", "\"warm\"" },
         { "Llm:Profiles:local-gpu:MaxTokens", "600.0" },
         { "Llm:Profiles:local-gpu:TimeoutSeconds", "\"600s\"" },
+        { "Llm:Profiles:local-gpu:StreamIdleSeconds", "\"45s\"" },
         { "Llm:Profiles:local-gpu:MaxRetries", "1.5" },
         { "Llm:Profiles:local-gpu:BaseUrl", "\"not a url\"" },
         { "Llm:Profiles:local-gpu:ApiKeyEnvVar", "\"MY KEY\"" },
@@ -308,6 +309,7 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
         { "Llm:Temperature", "\"Infinity\"" },
         { "Llm:MaxTokens", "\"4096x\"" },
         { "Llm:TimeoutSeconds", "600.5" },
+        { "Llm:StreamIdleSeconds", "45.5" },
         { "Llm:ApiKey", "\"${OPENAI_API_KEY}\"" },
         { "Llm:Thinking:Enabled", "\"on\"" },
     };

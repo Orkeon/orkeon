@@ -253,6 +253,15 @@ public class VoValidationTests
     }
 
     [Fact]
+    public void LlmConfig_CreateValidated_ShouldRejectANonPositiveStreamIdleSeconds_AndAcceptNone()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            LlmConfig.CreateValidated(ModelGpt4, streamIdleSeconds: 0));
+        Assert.Null(LlmConfig.CreateValidated(ModelGpt4).StreamIdleSeconds);
+        Assert.Equal(30, LlmConfig.CreateValidated(ModelGpt4, streamIdleSeconds: 30).StreamIdleSeconds);
+    }
+
+    [Fact]
     public void LlmConfig_CreateValidated_ShouldRejectNegativeMaxRetries()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>

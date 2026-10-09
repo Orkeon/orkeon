@@ -304,7 +304,10 @@ public class AnthropicParityTests
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(
             HttpStatusCode.TooManyRequests, """{"error":{"message":"rate limited"}}""");
-        using var provider = CreateProvider(BaseConfig(), handler);
+        // No connect retries: the ten re-sends of a 429 wait longer than the call's default
+        // Llm:TimeoutSeconds, which now bounds the streamed call whole (LLM-12), and this test
+        // is about the shape of the refusal, not the retry budget.
+        using var provider = CreateProvider(BaseConfig() with { MaxRetries = 0 }, handler);
 
         var events = new List<LlmStreamEvent>();
         await foreach (var ev in provider.ChatStreamingAsync(

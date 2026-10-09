@@ -132,6 +132,15 @@ public sealed record LlmConfig
     /// </summary>
     public int? TimeoutSeconds { get; init; }
     /// <summary>
+    /// The longest silence a streamed answer may hold between two of its lines, in seconds, or
+    /// null when nothing bounds it (<c>Llm:StreamIdleSeconds</c>). <see cref="TimeoutSeconds"/>
+    /// bounds the whole call, streamed or not; this one catches a stream the provider keeps open
+    /// without writing to it — a model that thinks for minutes before its first token, a gateway
+    /// that stopped forwarding — before the whole budget is spent (LLM-12). Unset by default:
+    /// a provider that streams nothing for a while is not wrong.
+    /// </summary>
+    public int? StreamIdleSeconds { get; init; }
+    /// <summary>
     /// Gets the maximum number of retries on transient failures (bound from <c>Llm:MaxRetries</c>).
     /// Drives the HTTP resilience policy of the buffered path and the connect-phase retry
     /// budget of the streaming path.
@@ -265,6 +274,7 @@ public sealed record LlmConfig
             WorkspaceId = string.IsNullOrWhiteSpace(WorkspaceId) ? provider.WorkspaceId : WorkspaceId,
             CustomParameters = MergeCustomParameters(provider.CustomParameters, CustomParameters),
             TimeoutSeconds = TimeoutSeconds ?? provider.TimeoutSeconds,
+            StreamIdleSeconds = StreamIdleSeconds ?? provider.StreamIdleSeconds,
             Tools = Tools ?? provider.Tools,
             GrammarGbnf = string.IsNullOrWhiteSpace(GrammarGbnf) ? provider.GrammarGbnf : GrammarGbnf,
             Thinking = Thinking ?? provider.Thinking,
@@ -319,7 +329,8 @@ public sealed record LlmConfig
         int? timeoutSeconds = null,
         int maxRetries = LlmDefaults.DefaultMaxRetries,
         string? apiKey = null,
-        Uri? baseUrl = null)
+        Uri? baseUrl = null,
+        int? streamIdleSeconds = null)
 #pragma warning restore S107
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(model);
@@ -339,6 +350,8 @@ public sealed record LlmConfig
                 $"PresencePenalty must be between -2.0 and 2.0, but was {presencePenalty}.");
         if (timeoutSeconds is <= 0)
             throw new ArgumentOutOfRangeException(nameof(timeoutSeconds), "TimeoutSeconds must be positive when pinned; leave it null for the provider's timeout.");
+        if (streamIdleSeconds is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(streamIdleSeconds), "StreamIdleSeconds must be positive when pinned; leave it null to disable the idle bound.");
         ArgumentOutOfRangeException.ThrowIfNegative(maxRetries);
 
         return new LlmConfig(model, apiKey)
@@ -349,6 +362,7 @@ public sealed record LlmConfig
             FrequencyPenalty = frequencyPenalty,
             PresencePenalty = presencePenalty,
             TimeoutSeconds = timeoutSeconds,
+            StreamIdleSeconds = streamIdleSeconds,
             MaxRetries = maxRetries,
             BaseUrl = baseUrl
         };

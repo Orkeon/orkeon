@@ -18,6 +18,7 @@ public sealed class AppSettingsValidatorRunRulesTests
     [
         "Llm:MaxTokens",
         "Llm:TimeoutSeconds",
+        "Llm:StreamIdleSeconds",
         "Llm:MaxRetries",
         "RateLimiting:MaxConcurrentRequests",
         "RateLimiting:GlobalRequestsPerMinute",
@@ -88,6 +89,7 @@ public sealed class AppSettingsValidatorRunRulesTests
         { "Temperature", "1e400" },
         { "MaxTokens", "600.0" },
         { "TimeoutSeconds", "\"600s\"" },
+        { "StreamIdleSeconds", "\"45s\"" },
         { "MaxRetries", "1.5" },
         { "BaseUrl", "\"not a url\"" },
         { "BaseUrl", "\"localhost:8080/v1\"" },

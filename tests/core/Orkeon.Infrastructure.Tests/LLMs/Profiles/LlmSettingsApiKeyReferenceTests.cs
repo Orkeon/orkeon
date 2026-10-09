@@ -209,6 +209,7 @@ public sealed class LlmSettingsApiKeyReferenceTests
             ("Llm:ApiKeyEnvVar", ""),
             ("Llm:Temperature", ""),
             ("Llm:TimeoutSeconds", ""),
+            ("Llm:StreamIdleSeconds", ""),
             ("Llm:MaxTokens", ""),
             ("Llm:MaxRetries", ""),
             ("Llm:Thinking:Enabled", ""),
@@ -216,6 +217,7 @@ public sealed class LlmSettingsApiKeyReferenceTests
             ("Llm:Profiles:z-ai:Model", "glm-5"),
             ("Llm:Profiles:z-ai:Temperature", ""),
             ("Llm:Profiles:z-ai:TimeoutSeconds", " "),
+            ("Llm:Profiles:z-ai:StreamIdleSeconds", " "),
             ("Llm:Profiles:z-ai:Thinking:Effort", ""));
 
         var config = LlmSettings.ReadDefault(configuration, Empty);
@@ -225,12 +227,31 @@ public sealed class LlmSettingsApiKeyReferenceTests
         // A blank temperature sets none: the model applies its own (GAP-36).
         Assert.Null(config.Temperature);
         Assert.Null(config.TimeoutSeconds);
+        Assert.Null(config.StreamIdleSeconds);
         Assert.Null(config.MaxTokens);
         Assert.Equal(LlmDefaults.DefaultMaxRetries, config.MaxRetries);
         Assert.Null(config.Thinking);
         Assert.Null(profile.Temperature);
         Assert.Null(profile.TimeoutSeconds);
+        Assert.Null(profile.StreamIdleSeconds);
         Assert.Null(profile.Thinking);
+    }
+
+    [Fact]
+    public void StreamIdleSeconds_binds_on_the_default_and_on_a_profile()
+    {
+        var configuration = Configuration(
+            ("Llm:BaseUrl", "https://api.z.ai/api/paas/v4"),
+            ("Llm:Model", "glm-5"),
+            ("Llm:StreamIdleSeconds", "45"),
+            ("Llm:Profiles:z-ai:Model", "glm-5"),
+            ("Llm:Profiles:z-ai:StreamIdleSeconds", "120"));
+
+        var config = LlmSettings.ReadDefault(configuration, Empty);
+        var profile = Assert.Single(LlmSettings.ReadProfiles(configuration, Empty)).Config;
+
+        Assert.Equal(45, config.StreamIdleSeconds);
+        Assert.Equal(120, profile.StreamIdleSeconds);
     }
 
     [Fact]

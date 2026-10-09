@@ -2040,6 +2040,14 @@ public static class StudioStringKeys
     /// <summary>"Thinking"</summary>
     public const string ProfileThinkingLabel = "Studio.Settings.ProfileLblThinking";
 
+    // LLM-12 — the profile's stream idle bound ---------------------------------------------
+
+    /// <summary>"Stream idle bound (s, optional)"</summary>
+    public const string ProfileStreamIdleLabel = "Studio.Settings.LblStreamIdle";
+
+    /// <summary>"Empty: no idle bound — the timeout bounds the whole call. …"</summary>
+    public const string ProfileStreamIdleHint = "Studio.Settings.StreamIdleHint";
+
     /// <summary>"Provider default"</summary>
     public const string ProfileThinkingProviderDefault = "Studio.Settings.ProfileThinkingProviderDefault";
 
@@ -2975,6 +2983,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileTimeoutHint] = "Empty: the engine's default, 30 s. A model that thinks before it answers routinely needs 600 s.",
         [StudioStringKeys.ProfileTimeoutHintReasoning] = "{0} s pre-filled: {1}'s default model thinks before it answers, and a thinking answer routinely outlasts the engine's 30 s. Type another value to override.",
         [StudioStringKeys.ProfileThinkingLabel] = "Thinking",
+        [StudioStringKeys.ProfileStreamIdleLabel] = "Stream idle bound (s, optional)",
+        [StudioStringKeys.ProfileStreamIdleHint] = "Empty: no idle bound — the timeout bounds the whole call. Set, a streamed answer that stays silent longer than this fails as a timed-out call.",
         [StudioStringKeys.ProfileThinkingProviderDefault] = "Provider default",
         [StudioStringKeys.ProfileThinkingOn] = "On",
         [StudioStringKeys.ProfileThinkingOff] = "Off",

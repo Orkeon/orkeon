@@ -105,6 +105,16 @@ public sealed partial class LlmSection
     }
 
     /// <summary>
+    /// The longest silence allowed between two lines of a streamed answer, in seconds
+    /// (<c>Llm:StreamIdleSeconds</c>); null leaves the stream bounded by the timeout alone (LLM-12).
+    /// </summary>
+    public int? StreamIdleSeconds
+    {
+        get => _document.GetInt32($"{SectionPath}:StreamIdleSeconds");
+        set => _document.SetInt32($"{SectionPath}:StreamIdleSeconds", value);
+    }
+
+    /// <summary>
     /// Thinking switch (<c>Llm:Thinking:Enabled</c>): null leaves the provider's default —
     /// on for Kimi K2.6, DeepSeek V4 and GLM. The runner reads the same key (LLM-11).
     /// </summary>

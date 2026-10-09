@@ -30,6 +30,9 @@ public class ChatClientAgentLoopStreamingTests
 
         public int StreamedCalls { get; private set; }
 
+        /// <summary>The failure every turn ends with after its updates, when the stream fails (LLM-12).</summary>
+        public Func<Exception>? FailureAfterUpdates { get; set; }
+
         public void Enqueue(params ChatResponseUpdate[] updates) => _turns.Enqueue(updates);
 
         public System.Threading.Tasks.Task<ChatResponse> GetResponseAsync(
@@ -46,6 +49,9 @@ public class ChatClientAgentLoopStreamingTests
                 await System.Threading.Tasks.Task.Yield();
                 yield return update;
             }
+
+            if (FailureAfterUpdates is { } failure)
+                throw failure();
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null) => null;
@@ -134,5 +140,25 @@ public class ChatClientAgentLoopStreamingTests
             Assert.Equal("task-1", e.TaskId);
             Assert.Equal("Writer", e.AgentRole);
         });
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_streamed_turn_whose_stream_fails_mid_answer_fails_the_task_with_the_providers_reason()
+    {
+        // LLM-12: Llm:TimeoutSeconds elapsed after the first fragments of a Studio run. The
+        // adapter fails the enumeration; the loop exits LlmCallFailed with that sentence and
+        // never retries without tools — the fragments already streamed are not an answer.
+        const string reason = "Z.AI did not answer within Llm:TimeoutSeconds = 30 s: the HTTP timeout elapsed";
+        using var client = new StreamingChatClient { FailureAfterUpdates = () => new HttpRequestException(reason) };
+        client.Enqueue(new ChatResponseUpdate(ChatRole.Assistant, "Hel"));
+        var sink = new RecordingSink();
+
+        var result = await RunAsync(BuildLoop(client, sink));
+
+        Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
+        Assert.Equal(reason, result.LastError);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Equal(1, client.StreamedCalls);   // no tool-free retry
+        Assert.Equal(["Hel"], sink.Calls);       // what was streamed, no turn end
     }
 }

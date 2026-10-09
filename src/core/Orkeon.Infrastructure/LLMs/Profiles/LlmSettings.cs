@@ -13,7 +13,8 @@ namespace Orkeon.Infrastructure.LLMs.Profiles;
 /// profiles under <c>Llm:Profiles:&lt;name&gt;</c>, each of the same shape (GAP-17). One reader
 /// for both, so a profile accepts exactly the keys the default section does: <c>BaseUrl</c>,
 /// <c>ApiKey</c>, <c>ApiKeyEnvVar</c>, <c>Model</c>, <c>Temperature</c>, <c>MaxTokens</c>,
-/// <c>TimeoutSeconds</c>, <c>MaxRetries</c>, <c>Thinking:{Enabled,Effort}</c> and <c>Grammar</c>.
+/// <c>TimeoutSeconds</c>, <c>StreamIdleSeconds</c>, <c>MaxRetries</c>, <c>Thinking:{Enabled,Effort}</c>
+/// and <c>Grammar</c>.
 /// A key left out sets nothing: no <c>Temperature</c> sends none, and the model applies its own
 /// (GAP-36) — the reader filled in the engine's 0.7, which the default models of OpenAI and
 /// Anthropic refuse.
@@ -190,6 +191,8 @@ public static partial class LlmSettings
             MaxTokens = ReadInt(section, "MaxTokens", strict),
             // Absent = not pinned: the provider runs on LlmDefaults.DefaultTimeoutSeconds (30 s).
             TimeoutSeconds = ReadInt(section, "TimeoutSeconds", strict),
+            // Absent = not bounded: only TimeoutSeconds bounds a streamed call (LLM-12).
+            StreamIdleSeconds = ReadInt(section, "StreamIdleSeconds", strict),
             Thinking = ReadThinking(section),
             // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
             GrammarEnabled = ReadBool(section, ConfigurationKeys.LlmGrammar) ?? LlmProfileShape.DefaultGrammar,

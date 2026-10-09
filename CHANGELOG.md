@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a streamed LLM call that does not end is a failed call, never an empty answer
+
+A Studio run streams every agent turn, and a streamed request is sent with
+`ResponseHeadersRead`: `HttpClient.Timeout` stopped counting once the headers were in, so a GLM
+or Kimi model that thinks for minutes before its first token hung the run past any
+`Llm:TimeoutSeconds`, and a stream the provider closed without an answer came back as an empty
+answer that the agent loop blamed on `Llm:MaxTokens` and retried without tools — the very
+misreading LLM-11 removed from the buffered path (LLM-12).
+
+- **`Llm:TimeoutSeconds` bounds a streamed call whole**, headers and body, on every streaming
+  path (the OpenAI dialect, Azure, Anthropic, Ollama; chat and text streams). An elapsed bound
+  ends the chat stream with the failure in its final response (`error` naming the setting,
+  `error_type` `TaskCanceledException`), the partial content kept and no `RawResponseBody`; the
+  text stream throws the same sentence. The caller's own cancellation still propagates as such.
+- **`Llm:StreamIdleSeconds`** (new, unset by default, per profile too) bounds the silence between
+  two streamed chunks: `error_type` `StreamIdleTimeout`, a sentence naming the setting and the
+  ways out. Studio's profile editor and the configuration TUI carry the field.
+- **A stream closed without its finish marker** (`finish_reason` or `[DONE]`, `message_stop`,
+  `done: true`) **is a failed call** when no answer text and no tool call arrived
+  (`error_type` `StreamTruncated`, the sentence saying how much reasoning was streamed); with
+  some answer it is served as it came, flagged `stream_truncated` in its metadata. Anthropic's
+  mid-stream `error` event is read as the OpenAI dialect's root-level `error` already was.
+- **The chat-client adapter fails a streamed turn on any `error`**, partial content or not: a
+  timeout in the middle of an answer is not an answer. The legacy text loop's adapter
+  (`IBasicLlmProvider`) throws the provider's reason too instead of returning an empty string.
+- The headers phase of a stream re-sends an elapsed `HttpClient.Timeout` once
+  (`LlmTimeoutRetries`), as the buffered path does, instead of up to `Llm:MaxRetries` times;
+  the OpenAI dialect's `ChatAsync` reports an answer without `choices` or `usage` as a sanitized
+  failure instead of letting the parser's exception escape.
+
 ### Changed — Studio's E-mail tab: the form of an account is four tabs
 
 The form of the selected account was one column of four cards — the account, its rights, its

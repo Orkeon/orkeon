@@ -214,4 +214,28 @@ public class LlmProviderToChatClientAdapterStreamingTests
 
         Assert.Equal("rate limited", failure.Message);
     }
+
+    [Fact]
+    public async Task A_stream_that_failed_after_some_text_fails_too_whatever_arrived_before()
+    {
+        // LLM-12: Llm:TimeoutSeconds elapsed mid-answer. The fragments already written to the
+        // sink are not an answer; the buffered path keeps serving a refusal that carries text.
+        var timedOut = new LlmResponse
+        {
+            Content = "Hel",
+            Metadata = new Dictionary<string, object>
+            {
+                [LlmResponseMetadataKeys.Error] = "Kimi did not answer within Llm:TimeoutSeconds = 1 s",
+                [LlmResponseMetadataKeys.ErrorType] = nameof(TaskCanceledException),
+            },
+        };
+        var provider = Provider(timedOut, "Hel");
+        using var adapter = new LlmProviderToChatClientAdapter(provider);
+
+        var failure = await Assert.ThrowsAsync<HttpRequestException>(() => adapter
+            .GetStreamingResponseAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken)
+            .ToChatResponseAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal("Kimi did not answer within Llm:TimeoutSeconds = 1 s", failure.Message);
+    }
 }

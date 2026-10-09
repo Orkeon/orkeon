@@ -210,6 +210,21 @@ public sealed class LlmConfigInheritFromTests
         Assert.Equal(600, (LlmConfig.OnProfile() with { TimeoutSeconds = 600 }).ResolveTimeoutSeconds());
     }
 
+    /// <summary>
+    /// <c>Llm:StreamIdleSeconds</c> follows the timeout's rule (LLM-12): a call that pins nothing
+    /// takes the provider's, the call's wins, and nobody's stays unset — no idle bound.
+    /// </summary>
+    [Fact]
+    public void The_stream_idle_bound_is_inherited_like_the_timeout()
+    {
+        var provider = LlmConfig.Create("m") with { StreamIdleSeconds = 45 };
+
+        Assert.Equal(45, LlmConfig.OnProfile().InheritFrom(provider).StreamIdleSeconds);
+        Assert.Equal(10, (LlmConfig.OnProfile() with { StreamIdleSeconds = 10 }).InheritFrom(provider).StreamIdleSeconds);
+        Assert.Null(LlmConfig.OnProfile().InheritFrom(LlmConfig.Create("m")).StreamIdleSeconds);
+        Assert.Null(LlmConfig.Create("m").StreamIdleSeconds);
+    }
+
     [Fact]
     public void InheritFrom_refuses_a_missing_provider_configuration() =>
         Assert.Throws<ArgumentNullException>(() => LlmConfig.OnProfile().InheritFrom(null!));

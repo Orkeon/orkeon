@@ -15,6 +15,7 @@ public sealed class AppSettingsValidatorTests
     [
         "Llm:MaxTokens",
         "Llm:TimeoutSeconds",
+        "Llm:StreamIdleSeconds",
         "RateLimiting:MaxConcurrentRequests",
         "RateLimiting:GlobalRequestsPerMinute",
         "RateLimiting:ProviderRequestsPerMinute",

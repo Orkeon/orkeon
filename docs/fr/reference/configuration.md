@@ -187,7 +187,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:TokenCounter`](#orkeontokencounter) | 42 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:TokenCounter`](#orkeontokencounter) | 44 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -199,7 +199,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-67 sections, 351 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (11) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Plugins`](#plugins), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+67 sections, 353 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (11) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Plugins`](#plugins), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -295,10 +295,12 @@ avec ses propres clés.
 | `Profiles:<nom>:MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
 | `Profiles:<nom>:MaxTokens` | entier | — | Le plus grand nombre de tokens qu'une réponse peut contenir : un épinglage. Omise, une requête porte le maximum documenté de son modèle, et 4096 pour un modèle que le catalogue ne connaît pas. |
 | `Profiles:<nom>:Model` | chaîne | — | Le nom du modèle. Omis, le fournisseur utilise son propre modèle par défaut. |
+| `Profiles:<nom>:StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Profiles:<nom>:Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
 | `Profiles:<nom>:Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
 | `Profiles:<nom>:Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `Profiles:<nom>:TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
+| `StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
 | `Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
 | `Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
@@ -328,6 +330,14 @@ défaut, trop court pour un modèle qui réfléchit avant de répondre (Kimi K2.
 le font par défaut) : mettez 600 s, ou coupez la réflexion avec `Thinking:Enabled = false`. Un
 appel qui atteint le délai est réessayé une fois, puis fait échouer sa tâche avec un message qui
 nomme le réglage — il n'est jamais rapporté comme une réponse vide (LLM-11).
+
+Le délai borne l'appel entier, en flux ou non : un appel en flux (tout run Studio ou `--events`)
+n'était borné que jusqu'à l'arrivée de ses en-têtes, et un modèle qui réfléchissait plusieurs
+minutes avant son premier jeton suspendait le run (LLM-12). `StreamIdleSeconds` ajoute une
+seconde borne, omise par défaut : la plus longue absence de réponse entre deux fragments du flux.
+Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : fixez-la au-dessus de
+ce silence, ou coupez la réflexion. L'une ou l'autre borne atteinte est un appel échoué dont le
+message nomme le réglage — jamais une réponse vide.
 
 #### `MaxTokens` est un épinglage
 

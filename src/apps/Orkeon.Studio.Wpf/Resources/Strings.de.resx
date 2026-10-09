@@ -2289,6 +2289,12 @@
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
     <value>Leer: Standard der Engine, 30 s. Ein Modell, das vor der Antwort nachdenkt, braucht regelmäßig 600 s.</value>
   </data>
+  <data name="Studio.Settings.LblStreamIdle" xml:space="preserve">
+    <value>Stream-Leerlaufgrenze (s, optional)</value>
+  </data>
+  <data name="Studio.Settings.StreamIdleHint" xml:space="preserve">
+    <value>Leer: keine Leerlaufgrenze — das Timeout begrenzt den gesamten Aufruf. Gesetzt, schlägt eine gestreamte Antwort, die länger schweigt, als abgelaufener Aufruf fehl.</value>
+  </data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>Ordner von «{0}»</value>
   </data>

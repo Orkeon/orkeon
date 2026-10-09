@@ -1258,6 +1258,45 @@ public sealed class EditorTemperatureTests
         Assert.Equal(180, saved.TimeoutSeconds);
     }
 
+    [Fact]
+    public async Task The_stream_idle_field_round_trips_and_an_unparseable_value_blocks_the_save()
+    {
+        // LLM-12: the idle bound of a streamed answer is a field like the timeout — empty pins
+        // nothing, a whole number is saved, letters block the save instead of vanishing.
+        var store = new InMemoryModelProfileStore();
+        await store.SaveAsync(new ModelProfileSet
+        {
+            Profiles = [new ModelProfile { Name = "GLM", Provider = "Z.AI", BaseUrl = "https://api.z.ai/api/paas/v4", Model = "glm-5.3-flash", StreamIdleSeconds = 45 }],
+            DefaultProfile = "GLM",
+        }, TestContext.Current.CancellationToken);
+
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
+        var profiles = new ModelProfilesViewModel(store, config.Llm);
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        profiles.BeginEdit(profiles.Set.Profiles[0]);
+        Assert.Equal("45", profiles.Editor!.StreamIdleText);
+
+        profiles.Editor.StreamIdleText = "soon";
+        Assert.Null(profiles.Editor.ParsedStreamIdleSeconds);
+        Assert.False(profiles.Editor.SaveCommand.CanExecute(null));
+
+        profiles.Editor.StreamIdleText = " 60 ";
+        Assert.Equal(60, profiles.Editor.ParsedStreamIdleSeconds);
+        Assert.True(profiles.Editor.SaveCommand.CanExecute(null));
+        profiles.Editor.SaveCommand.Execute(null);
+        Assert.Equal(60, (await store.LoadAsync(TestContext.Current.CancellationToken)).Set.Profiles[0].StreamIdleSeconds);
+
+        profiles.BeginEdit(profiles.Set.Profiles[0]);
+        profiles.Editor!.StreamIdleText = "";
+        profiles.Editor.SaveCommand.Execute(null);
+        Assert.Null((await store.LoadAsync(TestContext.Current.CancellationToken)).Set.Profiles[0].StreamIdleSeconds);
+    }
+
     /// <summary>
     /// STUDIO-12 C5b: the response budget is editable from the profile — the novice path —
     /// not only from the expert Settings tab. Empty leaves the engine default; a typed value

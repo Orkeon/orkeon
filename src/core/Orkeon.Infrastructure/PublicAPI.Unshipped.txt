@@ -823,3 +823,30 @@ static Orkeon.Infrastructure.DependencyInjection.SettingsServiceCollectionExtens
 static Orkeon.Infrastructure.Memory.Sqlite.SqliteMemoryOptions.TableNameProblem(string? tableName) -> string?
 static Orkeon.Infrastructure.Session.CliSessionOptions.ContextWindowProblem(Orkeon.Infrastructure.Session.CliSessionOptions! options) -> string?
 *REMOVED*Orkeon.Infrastructure.Tools.TokenBudgetTool.TokenBudgetTool(Orkeon.Application.Interfaces.Ports.ISessionBufferService! buffer, Microsoft.Extensions.Configuration.IConfiguration? configuration = null) -> void
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamBudgetKind
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamBudgetKind.Idle = 1 -> Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamBudgetKind
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamBudgetKind.Total = 0 -> Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamBudgetKind
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.ArmIdle() -> System.Threading.CancellationToken
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.CharactersStreamed.get -> long
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.Dispose() -> void
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.Elapsed.get -> Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamBudgetKind?
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.IdleSeconds.get -> int?
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.LineRead(string! line) -> void
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.SawTerminator.get -> bool
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.SawTerminator.set -> void
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.Token.get -> System.Threading.CancellationToken
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.TotalSeconds.get -> int
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.TryMarkElapsed(System.OperationCanceledException! exception) -> bool
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.TrySendStreamingRequestAsync(System.Net.Http.HttpClient! client, System.Uri! endpoint, string! jsonPayload, Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget! budget) -> System.Threading.Tasks.Task<System.Net.Http.HttpResponseMessage?>!
+const Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamIdleTimeoutErrorType = "StreamIdleTimeout" -> string!
+const Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamTruncatedErrorType = "StreamTruncated" -> string!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ApplyStreamOutcome(Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata, Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget! budget, bool finished, bool hasAnswer, int reasoningCharacters, string! providerDisplayName) -> bool
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadNdjsonStreamAsync(System.Net.Http.HttpResponseMessage! response, Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget! budget) -> System.Collections.Generic.IAsyncEnumerable<string!>!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadSseStreamAsync(System.Net.Http.HttpResponseMessage! response, Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget! budget, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadStreamLinesAsync(System.Net.Http.HttpResponseMessage! response, Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget! budget) -> System.Collections.Generic.IAsyncEnumerable<string!>!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamFailureMessage(Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget! budget, bool finished, bool hasAnswer, int reasoningCharacters, string! providerDisplayName) -> string?
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamFailureType(Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget! budget) -> string!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamIdleFailureMessage(string! providerDisplayName, int idleSeconds, long charactersStreamed) -> string!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget.Start(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig, System.Threading.CancellationToken callerToken) -> Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamReadBudget!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamTruncatedFailureMessage(string! providerDisplayName, int reasoningCharacters) -> string!

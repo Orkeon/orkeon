@@ -1069,7 +1069,10 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TimeoutSeconds.get -> int?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.InheritFrom(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! provider) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResolveTimeoutSeconds() -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTimeoutSeconds = 30 -> int
-static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double? temperature = null, int? maxTokens = null, double? topP = null, double frequencyPenalty = 0, double presencePenalty = 0, int? timeoutSeconds = null, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double? temperature = null, int? maxTokens = null, double? topP = null, double frequencyPenalty = 0, double presencePenalty = 0, int? timeoutSeconds = null, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null, int? streamIdleSeconds = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.StreamIdleSeconds.get -> int?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.StreamIdleSeconds.init -> void
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.StreamTruncated = "stream_truncated" -> string!
 *REMOVED*Orkeon.Domain.Agent.Agent.CollaborateWith(Orkeon.Domain.Common.AgentId! collaboratorId, Orkeon.Domain.Common.TaskId! taskId) -> Orkeon.Domain.Common.CollaborationId!
 *REMOVED*Orkeon.Domain.Agent.Agent.CompleteTask(Orkeon.Domain.Task.ValueObjects.TaskOutput! output) -> void
 *REMOVED*Orkeon.Domain.Agent.Agent.CurrentTask.get -> Orkeon.Domain.Common.TaskId?

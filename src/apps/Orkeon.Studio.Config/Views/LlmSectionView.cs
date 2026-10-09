@@ -32,6 +32,7 @@ internal sealed class LlmSectionView : SectionView
     private readonly TextField _temperature;
     private readonly TextField _maxTokens;
     private readonly TextField _timeout;
+    private readonly TextField _streamIdle;
     private readonly TextField _thinking;
     private readonly Label _provider;
     private readonly Label _apiKeyWarning;
@@ -65,6 +66,7 @@ internal sealed class LlmSectionView : SectionView
         _maxTokens = FormLayout.AddField(this, 10, "Max tokens", _form.MaxTokens);
         _timeout = FormLayout.AddField(this, 11, "Timeout (seconds)", _form.TimeoutSeconds);
         _thinking = FormLayout.AddField(this, 12, "Thinking (true / false, blank = provider default)", _form.ThinkingEnabled);
+        _streamIdle = FormLayout.AddField(this, 13, "Stream idle (seconds, blank = none)", _form.StreamIdleSeconds);
 
         _testConnection = new Button { X = FormLayout.Margin, Y = 14, Text = "Test connection" };
         _testConnection.Accepting += (_, _) => TestConnection();
@@ -104,6 +106,7 @@ internal sealed class LlmSectionView : SectionView
         _temperature.Text = _form.Temperature;
         _maxTokens.Text = _form.MaxTokens;
         _timeout.Text = _form.TimeoutSeconds;
+        _streamIdle.Text = _form.StreamIdleSeconds;
         _thinking.Text = _form.ThinkingEnabled;
         _provider.Text = ProviderLine(_form.DetectedProvider);
         ProfileLines = ProfileLinesOf(_form);
@@ -131,6 +134,7 @@ internal sealed class LlmSectionView : SectionView
         _form.Temperature = _temperature.Text ?? "";
         _form.MaxTokens = _maxTokens.Text ?? "";
         _form.TimeoutSeconds = _timeout.Text ?? "";
+        _form.StreamIdleSeconds = _streamIdle.Text ?? "";
         _form.ThinkingEnabled = _thinking.Text ?? "";
     }
 
@@ -224,6 +228,7 @@ internal sealed class LlmSectionView : SectionView
             _temperature.Dispose();
             _maxTokens.Dispose();
             _timeout.Dispose();
+            _streamIdle.Dispose();
             _thinking.Dispose();
             _provider.Dispose();
             _apiKeyWarning.Dispose();

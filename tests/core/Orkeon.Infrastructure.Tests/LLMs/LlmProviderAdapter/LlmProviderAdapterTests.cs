@@ -121,6 +121,53 @@ public class LlmProviderAdapterTests
 
     #region ChatAsync Tests
 
+    /// <summary>A provider whose call failed: no content, the reason in the metadata (LLM-11 shape).</summary>
+    private sealed class FailedCallProvider : ILlmProvider
+    {
+        public const string Reason = "Kimi did not answer within Llm:TimeoutSeconds = 180 s";
+
+        public string Name => "FailedCall";
+
+        public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Failed());
+
+        public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Failed());
+
+        private static LlmResponse Failed() => new()
+        {
+            Content = string.Empty,
+            Metadata = new Dictionary<string, object>
+            {
+                [LlmResponseMetadataKeys.Error] = Reason,
+                [LlmResponseMetadataKeys.ErrorType] = nameof(TaskCanceledException),
+            },
+        };
+    }
+
+    [Fact]
+    public async Task ShouldThrowTheProvidersReason_WhenTheCallFailed()
+    {
+        // LLM-12: this string-only contract used to hand the legacy text loop "" for a timeout,
+        // which it then blamed on Llm:MaxTokens — the gap LLM-11 closed everywhere else.
+        var adapter = new LlmProviderAdapter(new FailedCallProvider());
+
+        var failure = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            adapter.ChatAsync("Hello", cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(FailedCallProvider.Reason, failure.Message);
+    }
+
+    [Fact]
+    public async Task ShouldReturnAnEmptyAnswer_WhenTheModelSimplySaidNothing()
+    {
+        var adapter = new LlmProviderAdapter(new TestLlmProvider(responseContent: ""));
+
+        var response = await adapter.ChatAsync("Hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(string.Empty, response);
+    }
+
     [Fact]
     public async Task ShouldCallProviderAndReturnContent_WhenChatAsyncWithSimpleMessage()
     {

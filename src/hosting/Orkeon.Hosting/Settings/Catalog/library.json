@@ -548,6 +548,12 @@
       "description": "The model's name. Left out, the provider runs its own default model."
     },
     {
+      "path": "Llm:Profiles:<name>:StreamIdleSeconds",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The longest silence a streamed answer may hold between two of its chunks, in seconds. Left out, nothing bounds it: `TimeoutSeconds` alone bounds the whole call, streamed or not. A model that thinks before it writes may stay silent for a while: set it only above that silence, or turn its thinking off."
+    },
+    {
       "path": "Llm:Profiles:<name>:Temperature",
       "section": "Llm",
       "type": "number",
@@ -571,6 +577,12 @@
       "type": "integer",
       "default": 30,
       "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
+    },
+    {
+      "path": "Llm:StreamIdleSeconds",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The longest silence a streamed answer may hold between two of its chunks, in seconds. Left out, nothing bounds it: `TimeoutSeconds` alone bounds the whole call, streamed or not. A model that thinks before it writes may stay silent for a while: set it only above that silence, or turn its thinking off."
     },
     {
       "path": "Llm:Temperature",
