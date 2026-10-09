@@ -6,7 +6,7 @@ namespace Orkeon.Studio.Core.Configuration;
 /// accepts reads the same here. Written as the engine reads it, <c>"Read, Organize, Draft"</c>.
 /// </summary>
 [Flags]
-public enum EmailRight
+public enum EmailRights
 {
     /// <summary>Nothing granted: the engine refuses the account.</summary>
     None = 0,

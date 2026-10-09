@@ -107,13 +107,10 @@ public sealed class ExecutionPlanParser : IExecutionPlanParser
         if (element.ValueKind != JsonValueKind.Object)
             return null;
 
-        foreach (var property in element.EnumerateObject())
-        {
-            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
-                return property.Value;
-        }
-
-        return null;
+        return element.EnumerateObject()
+            .Where(property => string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+            .Select(property => (JsonElement?)property.Value)
+            .FirstOrDefault();
     }
 
     /// <summary>A task number, written as a JSON number or as a string of digits.</summary>

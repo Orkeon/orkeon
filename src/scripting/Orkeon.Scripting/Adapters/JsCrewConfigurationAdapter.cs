@@ -342,10 +342,10 @@ public static class JsCrewConfigurationAdapter
         // 2. The JsTool instances of .withAutonomousTool* contribute their names — the
         //    instances themselves are registered by the loader (CollectScriptTools) before
         //    resolution runs.
-        foreach (var tool in builder.AutonomousTools)
+        foreach (var toolName in builder.AutonomousTools.Select(tool => tool.Name))
         {
-            if (!names.Contains(tool.Name, StringComparer.Ordinal))
-                names.Add(tool.Name);
+            if (!names.Contains(toolName, StringComparer.Ordinal))
+                names.Add(toolName);
         }
         return names.Count > 0 ? names : Array.Empty<string>();
     }

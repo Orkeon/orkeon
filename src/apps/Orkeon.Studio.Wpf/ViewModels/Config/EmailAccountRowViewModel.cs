@@ -45,7 +45,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     private string? _provider;
     private string _address;
     private string _displayName;
-    private EmailRight _rights;
+    private EmailRights _rights;
     private string? _rightsRaw;
     private string? _incomingProtocol;
     private string _incomingHost;
@@ -173,43 +173,43 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// <summary>List folders, search, read messages and save attachments.</summary>
     public bool CanRead
     {
-        get => Has(EmailRight.Read);
-        set => SetRight(EmailRight.Read, value);
+        get => Has(EmailRights.Read);
+        set => SetRight(EmailRights.Read, value);
     }
 
     /// <summary>Create and rename folders, move messages, set marks.</summary>
     public bool CanOrganize
     {
-        get => Has(EmailRight.Organize);
-        set => SetRight(EmailRight.Organize, value);
+        get => Has(EmailRights.Organize);
+        set => SetRight(EmailRights.Organize, value);
     }
 
     /// <summary>Save drafts without sending them.</summary>
     public bool CanDraft
     {
-        get => Has(EmailRight.Draft);
-        set => SetRight(EmailRight.Draft, value);
+        get => Has(EmailRights.Draft);
+        set => SetRight(EmailRights.Draft, value);
     }
 
     /// <summary>Send messages, to the allowed recipients only.</summary>
     public bool CanSend
     {
-        get => Has(EmailRight.Send);
-        set => SetRight(EmailRight.Send, value);
+        get => Has(EmailRights.Send);
+        set => SetRight(EmailRights.Send, value);
     }
 
     /// <summary>Move messages to the trash.</summary>
     public bool CanDelete
     {
-        get => Has(EmailRight.Delete);
-        set => SetRight(EmailRight.Delete, value);
+        get => Has(EmailRights.Delete);
+        set => SetRight(EmailRights.Delete, value);
     }
 
     /// <summary>Delete messages permanently.</summary>
     public bool CanPurge
     {
-        get => Has(EmailRight.Purge);
-        set => SetRight(EmailRight.Purge, value);
+        get => Has(EmailRights.Purge);
+        set => SetRight(EmailRights.Purge, value);
     }
 
     // ── the reading side ──
@@ -896,9 +896,9 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         MaxPerHour = _maxPerHourNumber,
     };
 
-    private bool Has(EmailRight right) => (_rights & right) != EmailRight.None;
+    private bool Has(EmailRights right) => (_rights & right) != EmailRights.None;
 
-    private void SetRight(EmailRight right, bool granted, [CallerMemberName] string? propertyName = null)
+    private void SetRight(EmailRights right, bool granted, [CallerMemberName] string? propertyName = null)
     {
         if (Has(right) == granted)
             return;
@@ -986,9 +986,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// </summary>
     private bool PutSecret(ref SecretRowViewModel? line, ref bool kept, bool asked, string written, string derived, string labelKey)
     {
-        var variable = !asked ? null
-            : written.Trim() is { Length: > 0 } named ? named
-            : derived;
+        var variable = asked ? NamedOrDerived(written, derived) : null;
         if (string.Equals(line?.EnvName, variable, StringComparison.Ordinal))
             return false;
 
@@ -1108,10 +1106,16 @@ public sealed class EmailAccountRowViewModel : ObservableObject
             : names.FirstOrDefault(name => string.Equals(name, written, StringComparison.OrdinalIgnoreCase)) ?? written;
 
     /// <summary>The text to write: the file's own when the field still shows it, else what was typed, trimmed, and null when blank.</summary>
-    private static string? Text(string typed, string? loaded) =>
-        string.Equals(typed, loaded ?? "", StringComparison.Ordinal)
-            ? loaded
-            : string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+    private static string? Text(string typed, string? loaded)
+    {
+        if (string.Equals(typed, loaded ?? "", StringComparison.Ordinal))
+            return loaded;
+        return string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+    }
+
+    /// <summary>The variable name as written when one was, else the derived one.</summary>
+    private static string NamedOrDerived(string written, string derived) =>
+        written.Trim() is { Length: > 0 } named ? named : derived;
 
     private static string NumberText(int? number) => number?.ToString(CultureInfo.InvariantCulture) ?? "";
 

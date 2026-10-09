@@ -57,8 +57,7 @@ public sealed partial class EmailSectionViewModelTests
             strings,
             () => SettingsFile,
             keyStore: keys ?? new FakeApiKeyStore(),
-            cli: Client(cli, binaryPresent),
-            isDirty: dirty);
+            engine: new EmailCliSeams { Cli = Client(cli, binaryPresent), IsDirty = dirty });
         return (section, cli);
     }
 

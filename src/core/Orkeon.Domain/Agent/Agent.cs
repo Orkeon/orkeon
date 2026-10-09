@@ -237,34 +237,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     }
 
     /// <summary>
-    /// Why the agent's own provider cannot come with the rest of <paramref name="options"/>, or null
-    /// (GAP-34): a host profile besides it — the agent runs on one or the other —, or, on a provider
-    /// that runs its own tools, Orkeon tools or delegation it would never call.
-    /// </summary>
-    private static string? OwnProviderRefusal(AgentCreateOptions options)
-    {
-        if (options.Llm is not { } llm)
-            return null;
-
-        var who = $"Agent '{options.Role.Value}'";
-        if (!AgentLlmRules.NamesNoProfile(options.LlmConfig?.Profile))
-        {
-            return $"{who} is given its own provider ({llm.Name}) and the host profile '{options.LlmConfig!.Profile!.Trim()}': " +
-                "an agent runs on one or the other. Remove the profile from its LlmConfig to run on its own provider, " +
-                "or remove the provider to run on the profile.";
-        }
-
-        if (!llm.Capabilities.RunsOwnTools)
-            return null;
-
-        var tools = (options.Tools ?? []).Select(tool => tool.Name).ToList();
-        if (options.AllowDelegation)
-            tools.AddRange(AgentLlmRules.DelegationTools);
-
-        return tools.Count == 0 ? null : AgentLlmRules.OwnToolsRefusal(who, llm.Name, tools);
-    }
-
-    /// <summary>
     /// Creates a new agent with the specified parameters.
     /// Convenience overload that delegates to <see cref="Create(AgentCreateOptions)"/>.
     /// </summary>
@@ -308,6 +280,34 @@ public sealed class Agent : AggregateRoot<AgentId>
         });
     }
 #pragma warning restore S107
+
+    /// <summary>
+    /// Why the agent's own provider cannot come with the rest of <paramref name="options"/>, or null
+    /// (GAP-34): a host profile besides it — the agent runs on one or the other —, or, on a provider
+    /// that runs its own tools, Orkeon tools or delegation it would never call.
+    /// </summary>
+    private static string? OwnProviderRefusal(AgentCreateOptions options)
+    {
+        if (options.Llm is not { } llm)
+            return null;
+
+        var who = $"Agent '{options.Role.Value}'";
+        if (!AgentLlmRules.NamesNoProfile(options.LlmConfig?.Profile))
+        {
+            return $"{who} is given its own provider ({llm.Name}) and the host profile '{options.LlmConfig!.Profile!.Trim()}': " +
+                "an agent runs on one or the other. Remove the profile from its LlmConfig to run on its own provider, " +
+                "or remove the provider to run on the profile.";
+        }
+
+        if (!llm.Capabilities.RunsOwnTools)
+            return null;
+
+        var tools = (options.Tools ?? []).Select(tool => tool.Name).ToList();
+        if (options.AllowDelegation)
+            tools.AddRange(AgentLlmRules.DelegationTools);
+
+        return tools.Count == 0 ? null : AgentLlmRules.OwnToolsRefusal(who, llm.Name, tools);
+    }
 
     /// <summary>
     /// Injects the agent selection strategy as a delegate.

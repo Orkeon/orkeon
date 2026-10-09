@@ -4,6 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Orkeon.Constants.Configuration;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Tools.Email.Configuration;
+using EngineEmailRights = Orkeon.Tools.Email.Configuration.EmailRights;
+using StudioEmailRights = Orkeon.Studio.Core.Configuration.EmailRights;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -366,7 +368,7 @@ public sealed class EmailSectionTests
         document.Email.SetAccount(new EmailAccountDefinition
         {
             Name = "a",
-            Rights = EmailRight.Draft | EmailRight.Read | EmailRight.Organize,
+            Rights = StudioEmailRights.Draft | StudioEmailRights.Read | StudioEmailRights.Organize,
         });
 
         Assert.Equal("Read, Organize, Draft", document.GetString("Orkeon:Tools:Email:Accounts:a:Rights"));
@@ -374,11 +376,11 @@ public sealed class EmailSectionTests
     }
 
     [Theory]
-    [InlineData("Read, Organize, Draft", EmailRight.Read | EmailRight.Organize | EmailRight.Draft)]
-    [InlineData("read,SEND", EmailRight.Read | EmailRight.Send)]
-    [InlineData("3", EmailRight.Read | EmailRight.Organize)]
-    [InlineData("Purge", EmailRight.Purge)]
-    public void Rights_are_read_without_regard_to_case_and_in_their_numeric_form(string written, EmailRight expected)
+    [InlineData("Read, Organize, Draft", StudioEmailRights.Read | StudioEmailRights.Organize | StudioEmailRights.Draft)]
+    [InlineData("read,SEND", StudioEmailRights.Read | StudioEmailRights.Send)]
+    [InlineData("3", StudioEmailRights.Read | StudioEmailRights.Organize)]
+    [InlineData("Purge", StudioEmailRights.Purge)]
+    public void Rights_are_read_without_regard_to_case_and_in_their_numeric_form(string written, StudioEmailRights expected)
     {
         var document = AppSettingsDocument.Parse(
             $$"""{ "Orkeon": { "Tools": { "Email": { "Accounts": { "a": { "Rights": "{{written}}" } } } } } }""");
@@ -400,13 +402,13 @@ public sealed class EmailSectionTests
             $$"""{ "Orkeon": { "Tools": { "Email": { "Accounts": { "a": { "Rights": "{{written}}" } } } } } }""");
 
         var account = document.Email.GetAccount("a")!;
-        Assert.Equal(EmailRight.None, account.Rights);
+        Assert.Equal(StudioEmailRights.None, account.Rights);
         Assert.Equal(written, account.RightsRaw);
 
         document.Email.SetAccount(account);
         Assert.Equal(written, document.GetString("Orkeon:Tools:Email:Accounts:a:Rights"));
 
-        document.Email.SetAccount(account with { Rights = EmailRight.Read });
+        document.Email.SetAccount(account with { Rights = StudioEmailRights.Read });
         Assert.Equal("Read", document.GetString("Orkeon:Tools:Email:Accounts:a:Rights"));
         Assert.Null(document.Email.GetAccount("a")!.RightsRaw);
     }
@@ -416,7 +418,7 @@ public sealed class EmailSectionTests
     {
         var document = AppSettingsDocument.Parse(GuideQuickStart);
 
-        document.Email.SetAccount(document.Email.GetAccount("gmail")! with { Rights = EmailRight.None });
+        document.Email.SetAccount(document.Email.GetAccount("gmail")! with { Rights = StudioEmailRights.None });
 
         Assert.Null(document.GetNode("Orkeon:Tools:Email:Accounts:gmail:Rights"));
     }
@@ -715,7 +717,7 @@ public sealed class EmailSectionTests
                 Provider = "Gmail",
                 Address = "me@gmail.com",
                 DisplayName = "Me",
-                Rights = EmailRight.Read | EmailRight.Send,
+                Rights = StudioEmailRights.Read | StudioEmailRights.Send,
                 TimeoutSeconds = 30,
                 SaveSentCopy = true,
                 IncomingProtocol = "Imap",
@@ -746,7 +748,7 @@ public sealed class EmailSectionTests
         email.SetAccount(email.GetAccount("work")! with
         {
             Address = "you@gmail.com",
-            Rights = EmailRight.Read,
+            Rights = StudioEmailRights.Read,
             IncomingPort = 993,
             OutgoingSecurity = "StartTls",
             PasswordEnvVar = "OTHER_PASSWORD",
@@ -779,7 +781,7 @@ public sealed class EmailSectionTests
         Assert.Equal("/srv/other", options.CredentialsDirectory);
         Assert.False(options.Screening.WithholdRejected);
         Assert.Equal("you@gmail.com", bound.Address);
-        Assert.Equal(EmailRights.Read, bound.Rights);
+        Assert.Equal(EngineEmailRights.Read, bound.Rights);
         Assert.Equal(993, bound.Incoming.Port);
         Assert.Equal(TransportSecurity.StartTls, bound.Outgoing.Security);
         Assert.Equal("OTHER_PASSWORD", bound.Auth.PasswordEnvVar);
@@ -801,7 +803,7 @@ public sealed class EmailSectionTests
         {
             Address = null,
             DisplayName = null,
-            Rights = EmailRight.None,
+            Rights = StudioEmailRights.None,
             TimeoutSeconds = null,
             SaveSentCopy = null,
             IncomingProtocol = null,
@@ -881,7 +883,7 @@ public sealed class EmailSectionTests
         Provider = "Custom",
         Address = "me@example.com",
         DisplayName = "Me",
-        Rights = EmailRight.Read | EmailRight.Organize | EmailRight.Draft | EmailRight.Send | EmailRight.Delete | EmailRight.Purge,
+        Rights = StudioEmailRights.Read | StudioEmailRights.Organize | StudioEmailRights.Draft | StudioEmailRights.Send | StudioEmailRights.Delete | StudioEmailRights.Purge,
         TimeoutSeconds = 30,
         SaveSentCopy = false,
         IncomingProtocol = "Imap",

@@ -88,6 +88,8 @@ public sealed class CSharpHostStartValidationTests
             ("Orkeon:Rag:Profile", "fast"));
 
         await host.StartAsync(TestContext.Current.CancellationToken);
+        var lifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
+        Assert.True(lifetime.ApplicationStarted.IsCancellationRequested);
         await host.StopAsync(TestContext.Current.CancellationToken);
     }
 }

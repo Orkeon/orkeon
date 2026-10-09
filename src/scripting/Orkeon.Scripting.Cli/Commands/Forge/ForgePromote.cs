@@ -191,6 +191,56 @@ internal static class ForgePromoter
     }
 
     /// <summary>
+    /// A non-empty destination, refused unless it is the folder this very session is linked to by
+    /// rule R (STUDIO-25) — where it promoted to, or that folder moved or renamed since; never a
+    /// copy of it —, then cleared of what the promotion regenerates: the generated artifacts
+    /// (crew/, schedule/, launchers, FORGE.md), everything else — sidecar, user files, outputs —
+    /// preserved. Omitting the schedule on a re-adoption removes its artifacts: the folder says
+    /// what is true. The record of what forge schedule installed stays (STUDIO-52): the
+    /// registration is still there, and its names are the only way back to it.
+    /// </summary>
+    private static void ClearForUpdate(ForgeSession session, string destination, bool copySettings)
+    {
+        var link = ForgeTeamLink.Of(session, destination);
+        if (link == TeamSessionLinkKind.Copy)
+        {
+            throw new InvalidOperationException(
+                $"'{destination}' is not empty: it is a copy of '{session.Document.PromotedTo}', the folder this session"
+                + " promoted to. Promote into a fresh directory, or give the copy a session of its own with `forge reopen`.");
+        }
+
+        if (!TeamSessionLink.IsLinked(link))
+            throw new InvalidOperationException($"'{destination}' is not empty — promote into a fresh directory.");
+
+        DeleteIfExists(Path.Combine(destination, ForgeYamlRenderer.CrewDirectoryName));
+        ClearScheduleArtifacts(destination);
+
+        // A previous promote's settings copy usually carries API keys: when this
+        // re-adoption does not ask for one, a stale unreferenced copy must not
+        // linger in a folder FORGE.md invites sharing.
+        if (!copySettings)
+            File.Delete(Path.Combine(destination, SettingsFileName));
+    }
+
+    /// <summary>
+    /// The settings reference of the launch scripts: copied into the folder only on explicit
+    /// request — a settings file usually carries API keys, and FORGE.md invites sharing the
+    /// folder. Without the copy the scripts point at the resolved file in place (this machine),
+    /// or omit --settings entirely and let <c>orkeon run</c> resolve.
+    /// </summary>
+    private static (string? Reference, bool IsRelative) SettingsReferenceOf(string destination, string? settingsPath, bool copySettings)
+    {
+        if (settingsPath is null)
+            return (null, false);
+        if (!copySettings)
+            return (Path.GetFullPath(settingsPath), false);
+
+        // overwrite: a re-adoption may find the previous promote's copy in place.
+        File.Copy(settingsPath, Path.Combine(destination, SettingsFileName), overwrite: true);
+        return (SettingsFileName, true);
+    }
+
+    /// <summary>
     /// Writes the promoted folder. Throws <see cref="InvalidOperationException"/> on a
     /// precondition the user can fix (non-empty destination, missing crew) — the command
     /// maps those to exit 1 and the session stays Ready, retryable.
@@ -219,51 +269,14 @@ internal static class ForgePromoter
         // the schedule on a re-adoption removes its artifacts: the folder says what is true. The
         // record of what forge schedule installed stays (STUDIO-52): the registration is still
         // there, and its names are the only way back to it.
-        var updating = false;
-        if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
-        {
-            var link = ForgeTeamLink.Of(session, destination);
-            if (link == TeamSessionLinkKind.Copy)
-            {
-                throw new InvalidOperationException(
-                    $"'{destination}' is not empty: it is a copy of '{session.Document.PromotedTo}', the folder this session"
-                    + " promoted to. Promote into a fresh directory, or give the copy a session of its own with `forge reopen`.");
-            }
-
-            if (!TeamSessionLink.IsLinked(link))
-                throw new InvalidOperationException($"'{destination}' is not empty — promote into a fresh directory.");
-
-            updating = true;
-            DeleteIfExists(Path.Combine(destination, ForgeYamlRenderer.CrewDirectoryName));
-            ClearScheduleArtifacts(destination);
-
-            // A previous promote's settings copy usually carries API keys: when this
-            // re-adoption does not ask for one, a stale unreferenced copy must not
-            // linger in a folder FORGE.md invites sharing.
-            if (!copySettings)
-                File.Delete(Path.Combine(destination, SettingsFileName));
-        }
+        var updating = Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any();
+        if (updating)
+            ClearForUpdate(session, destination, copySettings);
 
         Directory.CreateDirectory(destination);
         CopyDirectory(crewSource, Path.Combine(destination, ForgeYamlRenderer.CrewDirectoryName));
 
-        // The settings reference of the launch scripts: copied into the folder only on
-        // explicit request — a settings file usually carries API keys, and FORGE.md invites
-        // sharing the folder. Without the copy the scripts point at the resolved file in
-        // place (this machine), or omit --settings entirely and let `orkeon run` resolve.
-        string? settingsReference = null;
-        var settingsIsRelative = false;
-        if (settingsPath is not null && copySettings)
-        {
-            // overwrite: a re-adoption may find the previous promote's copy in place.
-            File.Copy(settingsPath, Path.Combine(destination, SettingsFileName), overwrite: true);
-            settingsReference = SettingsFileName;
-            settingsIsRelative = true;
-        }
-        else if (settingsPath is not null)
-        {
-            settingsReference = Path.GetFullPath(settingsPath);
-        }
+        var (settingsReference, settingsIsRelative) = SettingsReferenceOf(destination, settingsPath, copySettings);
 
         var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName);
         var verdict = session.TryLoadArtifact<ForgeVerdict>(ForgeSession.VerdictFileName);

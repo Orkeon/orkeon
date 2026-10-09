@@ -208,7 +208,7 @@ public sealed class HttpProviderBalanceProbe : IProviderBalanceProbe, IDisposabl
         try
         {
             using var document = JsonDocument.Parse(body);
-            return dialect.Read(document.RootElement, baseUri) ?? UnexpectedShape;
+            return dialect.Parse(document.RootElement, baseUri) ?? UnexpectedShape;
         }
         catch (JsonException)
         {
@@ -353,11 +353,11 @@ public sealed class HttpProviderBalanceProbe : IProviderBalanceProbe, IDisposabl
 
     /// <summary>A verified HTTP dialect: the path from the host root, and the reader of the answer.</summary>
     /// <param name="Path">Absolute path of the balance endpoint on the endpoint's host.</param>
-    /// <param name="Read">
+    /// <param name="Parse">
     /// Turns the answer into a reading, or null when it is not in the documented shape. It also
     /// gets the endpoint, for the one answer whose meaning depends on the host (Kimi's currency).
     /// </param>
-    private sealed record BalanceDialect(string Path, Func<JsonElement, Uri, BalanceReading?> Read);
+    private sealed record BalanceDialect(string Path, Func<JsonElement, Uri, BalanceReading?> Parse);
 
     /// <summary>What the probe learned, before it is stamped and attributed.</summary>
     private sealed record BalanceReading(

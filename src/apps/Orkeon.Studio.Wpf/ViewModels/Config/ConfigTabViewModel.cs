@@ -72,19 +72,22 @@ public sealed class ConfigTabViewModel : ObservableObject
         // when the tab was built without one: the states are read without a click (STUDIO-69).
         Email = new EmailSectionViewModel(
             () => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker, seams.KeyStore,
-            seams.EmailCli ?? (seams.ProcessRunner is { } shared ? new EmailCliClient(shared) : null),
-            () => _isDirty,
-            seams.Dispatcher,
-            // Signing an OAuth account in (STUDIO-70): the browser is only opened on a click, and
-            // the countdown of a device code reads the window's clock on a beat of its own.
-            new EmailSignInServices
+            new EmailCliSeams
             {
-                Browser = seams.BrowserOpener,
-                Clipboard = seams.Clipboard,
-                Ticker = seams.SignInTicker,
-                Clock = seams.Clock,
-            },
-            seams.EmailStatesDelay);
+                Cli = seams.EmailCli ?? (seams.ProcessRunner is { } shared ? new EmailCliClient(shared) : null),
+                IsDirty = () => _isDirty,
+                Dispatcher = seams.Dispatcher,
+                // Signing an OAuth account in (STUDIO-70): the browser is only opened on a click, and
+                // the countdown of a device code reads the window's clock on a beat of its own.
+                SignIn = new EmailSignInServices
+                {
+                    Browser = seams.BrowserOpener,
+                    Clipboard = seams.Clipboard,
+                    Ticker = seams.SignInTicker,
+                    Clock = seams.Clock,
+                },
+                StatesDelay = seams.EmailStatesDelay,
+            });
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,

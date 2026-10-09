@@ -568,14 +568,22 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// never closed (a reply cut by <c>max_tokens</c>) is reasoning to its end; a tag later in
     /// the content is content.
     /// </summary>
-    private sealed class LeadingReasoningSplitter(string tag)
+    private sealed class LeadingReasoningSplitter
     {
-        private readonly string _open = $"<{tag}>";
-        private readonly string _close = $"</{tag}>";
-        private readonly StringBuilder _pending = new();
-        private Phase _phase = Phase.Detecting;
+        private readonly string _open;
+        private readonly string _close;
+        private readonly StringBuilder _pending;
+        private Phase _phase;
 
         private enum Phase { Detecting, InBlock, AfterBlock, Content }
+
+        public LeadingReasoningSplitter(string tag)
+        {
+            _open = $"<{tag}>";
+            _close = $"</{tag}>";
+            _pending = new StringBuilder();
+            _phase = Phase.Detecting;
+        }
 
         public List<(bool Reasoning, string Text)> Feed(string token)
         {
@@ -592,64 +600,80 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             return pieces;
         }
 
+        /// <summary>
+        /// Runs the phases on what is pending until one has to wait for more input (or, when
+        /// <paramref name="final"/>, until everything pending is emitted). Each step returns
+        /// whether the next phase can run on what is left.
+        /// </summary>
         private void Advance(List<(bool Reasoning, string Text)> pieces, bool final)
         {
-            while (true)
+            var proceed = true;
+            while (proceed)
             {
                 var pending = _pending.ToString();
-                switch (_phase)
+                proceed = _phase switch
                 {
-                    case Phase.Detecting:
-                    {
-                        var trimmed = pending.TrimStart();
-                        if (trimmed.StartsWith(_open, StringComparison.Ordinal))
-                        {
-                            _pending.Clear().Append(trimmed[_open.Length..]);
-                            _phase = Phase.InBlock;
-                            continue;
-                        }
-
-                        if (!final && _open.StartsWith(trimmed, StringComparison.Ordinal))
-                            return; // nothing but whitespace, or the opening tag still arriving
-
-                        _phase = Phase.Content;
-                        continue;
-                    }
-
-                    case Phase.InBlock:
-                    {
-                        var close = pending.IndexOf(_close, StringComparison.Ordinal);
-                        if (close >= 0)
-                        {
-                            pieces.Add((true, pending[..close]));
-                            _pending.Clear().Append(pending[(close + _close.Length)..]);
-                            _phase = Phase.AfterBlock;
-                            continue;
-                        }
-
-                        // Keep back what could be the start of the closing tag; the rest is reasoning.
-                        var keep = final ? 0 : HeldBack(pending);
-                        pieces.Add((true, pending[..^keep]));
-                        _pending.Clear().Append(pending[^keep..]);
-                        return;
-                    }
-
-                    case Phase.AfterBlock:
-                    {
-                        var rest = pending.TrimStart();
-                        _pending.Clear().Append(rest);
-                        if (rest.Length == 0)
-                            return;
-                        _phase = Phase.Content;
-                        continue;
-                    }
-
-                    default:
-                        pieces.Add((false, pending));
-                        _pending.Clear();
-                        return;
-                }
+                    Phase.Detecting => DetectOpening(pending, final),
+                    Phase.InBlock => ReadBlock(pieces, pending, final),
+                    Phase.AfterBlock => SkipAfterBlock(pending),
+                    _ => EmitContent(pieces, pending),
+                };
             }
+        }
+
+        /// <summary>Looks for the opening tag at the start; waits while it could still arrive.</summary>
+        private bool DetectOpening(string pending, bool final)
+        {
+            var trimmed = pending.TrimStart();
+            if (trimmed.StartsWith(_open, StringComparison.Ordinal))
+            {
+                _pending.Clear().Append(trimmed[_open.Length..]);
+                _phase = Phase.InBlock;
+                return true;
+            }
+
+            if (!final && _open.StartsWith(trimmed, StringComparison.Ordinal))
+                return false; // nothing but whitespace, or the opening tag still arriving
+
+            _phase = Phase.Content;
+            return true;
+        }
+
+        /// <summary>Emits the block's text as reasoning up to the closing tag, or as far as it safely can.</summary>
+        private bool ReadBlock(List<(bool Reasoning, string Text)> pieces, string pending, bool final)
+        {
+            var close = pending.IndexOf(_close, StringComparison.Ordinal);
+            if (close >= 0)
+            {
+                pieces.Add((true, pending[..close]));
+                _pending.Clear().Append(pending[(close + _close.Length)..]);
+                _phase = Phase.AfterBlock;
+                return true;
+            }
+
+            // Keep back what could be the start of the closing tag; the rest is reasoning.
+            var keep = final ? 0 : HeldBack(pending);
+            pieces.Add((true, pending[..^keep]));
+            _pending.Clear().Append(pending[^keep..]);
+            return false;
+        }
+
+        /// <summary>Drops the whitespace after the block; what follows is content.</summary>
+        private bool SkipAfterBlock(string pending)
+        {
+            var rest = pending.TrimStart();
+            _pending.Clear().Append(rest);
+            if (rest.Length == 0)
+                return false;
+            _phase = Phase.Content;
+            return true;
+        }
+
+        private bool EmitContent(List<(bool Reasoning, string Text)> pieces, string pending)
+        {
+            pieces.Add((false, pending));
+            _pending.Clear();
+            return false;
         }
 
         /// <summary>The length of the longest end of <paramref name="text"/> that begins the closing tag.</summary>

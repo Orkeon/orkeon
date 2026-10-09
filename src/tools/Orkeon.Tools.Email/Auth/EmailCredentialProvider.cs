@@ -51,10 +51,12 @@ internal sealed record EmailEnvironment(Func<string, string?> Process, Func<stri
     public string Unset => User is null ? "is not set" : "is set neither in the process environment nor in the user's";
 
     /// <summary>The first non-empty value of <paramref name="name"/>, the process before the user scope; null when neither holds one.</summary>
-    public string? Read(string name) =>
-        Process(name) is { Length: > 0 } inProcess ? inProcess
-        : ReadUserScope(name) is { Length: > 0 } inUserScope ? inUserScope
-        : null;
+    public string? Read(string name)
+    {
+        if (Process(name) is { Length: > 0 } inProcess)
+            return inProcess;
+        return ReadUserScope(name) is { Length: > 0 } inUserScope ? inUserScope : null;
+    }
 
     /// <summary>
     /// The user scope, read only. A scope that cannot be read — the registry refused, a service

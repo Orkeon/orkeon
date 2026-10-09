@@ -195,31 +195,39 @@ internal sealed record ForgeBlueprint
         var taskKeys = KeysOf(Tasks, static t => t.Key);
 
         if (!string.IsNullOrWhiteSpace(Manager))
-        {
-            var process = string.IsNullOrWhiteSpace(Crew?.Process) ? "sequential" : Crew.Process.Trim();
-            if (IsKnownProcess(process) && !Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.From(process).AcceptsManagerAgent)
-            {
-                errors.Add(
-                    $"'manager' is '{Manager}', but 'crew.process' is '{process}', which has no manager: the agent would only be "
-                    + "one more worker. Remove 'manager', or use 'hierarchical' (the manager assigns each task and reviews its "
-                    + "output) or 'consensual' (it arbitrates the vote when it fails).");
-            }
-
-            if (!agentKeys.Contains(Manager))
-                errors.Add($"'manager' names agent '{Manager}', which does not exist. Agents: {Listed(agentKeys)}.");
-        }
+            ValidateManager(errors, agentKeys);
 
         for (var i = 0; i < (Tasks?.Count ?? 0); i++)
-        {
-            var task = Tasks![i];
-            if (!string.IsNullOrWhiteSpace(task.Agent) && !agentKeys.Contains(task.Agent))
-                errors.Add($"tasks[{i}] ('{task.Key}'): 'agent' names '{task.Agent}', which does not exist. Agents: {Listed(agentKeys)}.");
+            ValidateTaskReferences(errors, i, Tasks![i], agentKeys, taskKeys);
+    }
 
-            foreach (var dependency in task.Dependencies ?? [])
-            {
-                if (!taskKeys.Contains(dependency))
-                    errors.Add($"tasks[{i}] ('{task.Key}'): depends on '{dependency}', which does not exist. Tasks: {Listed(taskKeys)}.");
-            }
+    /// <summary>The manager names an agent of the plan, in a process that has a manager.</summary>
+    private void ValidateManager(List<string> errors, List<string> agentKeys)
+    {
+        var process = string.IsNullOrWhiteSpace(Crew?.Process) ? "sequential" : Crew.Process.Trim();
+        if (IsKnownProcess(process) && !Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.From(process).AcceptsManagerAgent)
+        {
+            errors.Add(
+                $"'manager' is '{Manager}', but 'crew.process' is '{process}', which has no manager: the agent would only be "
+                + "one more worker. Remove 'manager', or use 'hierarchical' (the manager assigns each task and reviews its "
+                + "output) or 'consensual' (it arbitrates the vote when it fails).");
+        }
+
+        if (!agentKeys.Contains(Manager!))
+            errors.Add($"'manager' names agent '{Manager}', which does not exist. Agents: {Listed(agentKeys)}.");
+    }
+
+    /// <summary>A task's agent and dependencies name an agent and tasks of the plan.</summary>
+    private static void ValidateTaskReferences(
+        List<string> errors, int index, ForgeBlueprintTask task, List<string> agentKeys, List<string> taskKeys)
+    {
+        if (!string.IsNullOrWhiteSpace(task.Agent) && !agentKeys.Contains(task.Agent))
+            errors.Add($"tasks[{index}] ('{task.Key}'): 'agent' names '{task.Agent}', which does not exist. Agents: {Listed(agentKeys)}.");
+
+        foreach (var dependency in task.Dependencies ?? [])
+        {
+            if (!taskKeys.Contains(dependency))
+                errors.Add($"tasks[{index}] ('{task.Key}'): depends on '{dependency}', which does not exist. Tasks: {Listed(taskKeys)}.");
         }
     }
 

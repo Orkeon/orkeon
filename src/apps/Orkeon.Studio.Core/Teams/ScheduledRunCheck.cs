@@ -77,9 +77,13 @@ public static class ScheduledRunCheck
             .ToList();
 
         // A refusal first, the setting's before the folders'; then what the run takes instead.
-        return setting is { Issue: ScheduledRunIssue.SettingRefused }
-            ? [setting, .. folders]
-            : [.. folders, .. setting is null ? [] : new[] { setting }];
+        if (setting is { Issue: ScheduledRunIssue.SettingRefused })
+            return [setting, .. folders];
+
+        if (setting is not null)
+            folders.Add(setting);
+
+        return folders;
     }
 
     /// <summary>What the scheduled run makes of the team's setting; null when it takes it as Studio shows it, or names none.</summary>

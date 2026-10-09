@@ -315,7 +315,7 @@ public static class EmailAccountRules
             findings.Add(ValidationCodes.EmailAddress, EmailSection.Keys.Address, $"Address '{address}' is not an e-mail address");
 
         var rights = definition.Rights & EmailSection.AllRights;
-        if (rights == EmailRight.None)
+        if (rights == EmailRights.None)
         {
             findings.Add(ValidationCodes.EmailRights, EmailSection.Keys.Rights,
                 "Rights is required and says what an agent may do, e.g. \"Rights\": \"Read, Organize, Draft\"");
@@ -332,7 +332,7 @@ public static class EmailAccountRules
         if (definition.TimeoutSeconds is <= 0)
             findings.Add(ValidationCodes.EmailServer, EmailSection.Keys.TimeoutSeconds, "TimeoutSeconds must be positive");
 
-        if (rights.HasFlag(EmailRight.Send) && !effective.CanSend)
+        if (rights.HasFlag(EmailRights.Send) && !effective.CanSend)
         {
             findings.Add(ValidationCodes.EmailSend, OutgoingHostKey,
                 "Rights grant Send but the account declares no outgoing server (Outgoing:Host)");
@@ -395,20 +395,39 @@ public static class EmailAccountRules
     private static void ResolveAuth(EmailAccountDefinition definition, string provider, EmailAccountEffective effective, Findings findings)
     {
         if (effective.AuthMethod == Password)
-        {
-            if (provider == Outlook)
-            {
-                findings.Add(ValidationCodes.EmailAuth, AuthMethodKey,
-                    "Outlook.com and Microsoft 365 no longer accept passwords for mail clients: use Auth:Method OAuth2 with a ClientId");
-            }
+            ResolvePassword(definition, provider, findings);
+        else
+            ResolveOAuth2(definition, provider, effective, findings);
 
-            if (string.IsNullOrWhiteSpace(definition.PasswordEnvVar))
+        // Studio's own, and never the value: it may be the secret, pasted in the field that names it.
+        foreach (var (key, variable) in new[] { (PasswordEnvVarKey, definition.PasswordEnvVar), (ClientSecretEnvVarKey, definition.ClientSecretEnvVar) })
+        {
+            if (!LlmSection.IsVariableName(variable))
             {
-                findings.Add(ValidationCodes.EmailAuth, PasswordEnvVarKey,
-                    "Auth:PasswordEnvVar is required: the NAME of the environment variable holding the password, never the password itself");
+                findings.Add(ValidationCodes.EmailAuth, key,
+                    $"{key} must be the name of an environment variable (no '=', space or line break), never the secret itself");
             }
         }
-        else if (string.IsNullOrWhiteSpace(definition.ClientId))
+    }
+
+    private static void ResolvePassword(EmailAccountDefinition definition, string provider, Findings findings)
+    {
+        if (provider == Outlook)
+        {
+            findings.Add(ValidationCodes.EmailAuth, AuthMethodKey,
+                "Outlook.com and Microsoft 365 no longer accept passwords for mail clients: use Auth:Method OAuth2 with a ClientId");
+        }
+
+        if (string.IsNullOrWhiteSpace(definition.PasswordEnvVar))
+        {
+            findings.Add(ValidationCodes.EmailAuth, PasswordEnvVarKey,
+                "Auth:PasswordEnvVar is required: the NAME of the environment variable holding the password, never the password itself");
+        }
+    }
+
+    private static void ResolveOAuth2(EmailAccountDefinition definition, string provider, EmailAccountEffective effective, Findings findings)
+    {
+        if (string.IsNullOrWhiteSpace(definition.ClientId))
         {
             findings.Add(ValidationCodes.EmailAuth, ClientIdKey,
                 "Auth:ClientId is required for OAuth2 (the id of your Google Cloud or Microsoft Entra application)");
@@ -431,16 +450,6 @@ public static class EmailAccountRules
         {
             findings.Add(ValidationCodes.EmailAuth, AuthMethodKey,
                 "OAuth2 is available with the Gmail and Outlook presets; a Custom account signs in with a password");
-        }
-
-        // Studio's own, and never the value: it may be the secret, pasted in the field that names it.
-        foreach (var (key, variable) in new[] { (PasswordEnvVarKey, definition.PasswordEnvVar), (ClientSecretEnvVarKey, definition.ClientSecretEnvVar) })
-        {
-            if (!LlmSection.IsVariableName(variable))
-            {
-                findings.Add(ValidationCodes.EmailAuth, key,
-                    $"{key} must be the name of an environment variable (no '=', space or line break), never the secret itself");
-            }
         }
     }
 
@@ -495,9 +504,9 @@ public static class EmailAccountRules
         {
             Kind.Integer => int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) ? null : $"{key} '{text}' is not a whole number",
             Kind.Boolean => bool.TryParse(text, out _) ? null : $"{key} '{text}' is neither true nor false",
-            Kind.Rights => EnumerationValue(EmailSection.Rights, text, flags: true) is { } value && (value & ~(long)EmailSection.AllRights) == 0
+            Kind.Rights => EnumerationValue(EmailSection.RightNames, text, flags: true) is { } value && (value & ~(long)EmailSection.AllRights) == 0
                 ? null
-                : $"{key} '{text}' is not a list of {string.Join(", ", EmailSection.Rights)}, separated by commas",
+                : $"{key} '{text}' is not a list of {string.Join(", ", EmailSection.RightNames)}, separated by commas",
             _ => Member(NamesOf(kind), text) is not null ? null : $"{key} '{text}' is not one of {string.Join(", ", NamesOf(kind))}",
         };
     }
@@ -537,7 +546,7 @@ public static class EmailAccountRules
                 .FirstOrDefault();
             if (index is { } found)
                 value |= flags ? 1L << found : found;
-            else if (!(flags && string.Equals(token, nameof(EmailRight.None), StringComparison.OrdinalIgnoreCase)))
+            else if (!(flags && string.Equals(token, nameof(EmailRights.None), StringComparison.OrdinalIgnoreCase)))
                 return null;
         }
 
@@ -548,7 +557,7 @@ public static class EmailAccountRules
     private static string? WrittenText(EmailAccountDefinition definition, string key) => key switch
     {
         EmailSection.Keys.Provider => definition.Provider,
-        EmailSection.Keys.Rights => (definition.Rights & EmailSection.AllRights) == EmailRight.None ? definition.RightsRaw : null,
+        EmailSection.Keys.Rights => (definition.Rights & EmailSection.AllRights) == EmailRights.None ? definition.RightsRaw : null,
         IncomingProtocolKey => definition.IncomingProtocol,
         IncomingSecurityKey => definition.IncomingSecurity,
         OutgoingProtocolKey => definition.OutgoingProtocol,
@@ -596,11 +605,17 @@ public static class EmailAccountRules
     }
 
     /// <summary>The findings of one account, each a warning at a key under the account's path.</summary>
-    private sealed class Findings(string name)
+    private sealed class Findings
     {
-        private readonly string _path = $"{EmailSection.AccountsPath}:{name}";
+        private readonly string _path;
 
-        public List<ValidationMessage> Messages { get; } = [];
+        public Findings(string name)
+        {
+            _path = $"{EmailSection.AccountsPath}:{name}";
+            Messages = [];
+        }
+
+        public List<ValidationMessage> Messages { get; }
 
         public void Add(string code, string key, string text) =>
             Messages.Add(ValidationMessage.Warning(code, text, key.Length == 0 ? _path : $"{_path}:{key}"));

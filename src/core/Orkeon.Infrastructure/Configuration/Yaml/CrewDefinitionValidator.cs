@@ -21,7 +21,6 @@ public static class CrewDefinitionValidator
         ArgumentNullException.ThrowIfNull(config);
 
         var errors = new List<string>();
-        var warnings = new List<string>();
 
         ValidateCrewBasicFields(config, errors);
         ValidateAgents(config, errors);
@@ -32,10 +31,11 @@ public static class CrewDefinitionValidator
         ValidateAsyncExecution(config, errors);
         ValidateMounts(config, errors);
 
+        // The validator raises no warning of its own: a loader's go through its logger.
         return new CrewDefinitionValidationResult(
             errors.Count == 0,
             errors.AsReadOnly(),
-            warnings.AsReadOnly());
+            []);
     }
 
     /// <summary>
@@ -248,15 +248,15 @@ public static class CrewDefinitionValidator
         if (config.Process.AcceptsAsyncExecution || config.Tasks is null)
             return;
 
-        foreach (var task in config.Tasks.Where(t => t.AsyncExecution))
-        {
-            var description = task.Description.Length <= 60 ? task.Description : string.Concat(task.Description.AsSpan(0, 57), "...");
-            errors.Add(
-                $"Task '{description}' asks for asyncExecution, which the {config.Process.Value} process does not honour: " +
-                "it orders its tasks itself. Use the Sequential process (an async task runs alongside the tasks after it) " +
-                "or Parallel, or remove asyncExecution.");
-        }
+        errors.AddRange(config.Tasks.Where(t => t.AsyncExecution).Select(task =>
+            $"Task '{Abbreviate(task.Description)}' asks for asyncExecution, which the {config.Process.Value} process does not honour: " +
+            "it orders its tasks itself. Use the Sequential process (an async task runs alongside the tasks after it) " +
+            "or Parallel, or remove asyncExecution."));
     }
+
+    /// <summary>A task description short enough for a message: cut at 60 characters with an ellipsis.</summary>
+    private static string Abbreviate(string description) =>
+        description.Length <= 60 ? description : string.Concat(description.AsSpan(0, 57), "...");
 
     /// <summary>Returns true when the task dependency graph contains at least one cycle.</summary>
     public static bool HasCircularDependencies(IReadOnlyList<TaskConfiguration> tasks)

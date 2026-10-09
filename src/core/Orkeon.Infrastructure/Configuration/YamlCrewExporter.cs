@@ -334,15 +334,18 @@ public partial class YamlCrewExporter
             : new ThinkingYamlConfig { Enabled = thinking.Enabled, Effort = thinking.Effort, BudgetTokens = thinking.BudgetTokens };
 
     /// <summary>The <c>cache:</c> block; null when it marks no breakpoint, as the loader reads one.</summary>
-    private static CacheYamlConfig? MapCache(LlmCacheConfig? cache) =>
-        cache is { RequestsAnyBreakpoint: true }
-            ? new CacheYamlConfig
-            {
-                System = cache.CacheSystemPrompt ? true : null,
-                Tools = cache.CacheTools ? true : null,
-                Ttl = cache.Ttl,
-            }
-            : null;
+    private static CacheYamlConfig? MapCache(LlmCacheConfig? cache)
+    {
+        if (cache is not { RequestsAnyBreakpoint: true })
+            return null;
+
+        return new CacheYamlConfig
+        {
+            System = cache.CacheSystemPrompt ? true : null,
+            Tools = cache.CacheTools ? true : null,
+            Ttl = cache.Ttl,
+        };
+    }
 
     /// <summary>
     /// A <c>guardrails:</c> block, agent's or task's, as the configuration carries it: a preset is

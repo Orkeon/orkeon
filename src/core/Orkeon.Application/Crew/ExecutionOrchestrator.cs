@@ -330,7 +330,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // Input phase: the prompt the provider is about to read — previous outputs and
                 // retrieved knowledge included — is screened first. A block is a readable task
                 // failure; a warning is logged and audited, and the prompt is never rewritten.
-                var inputVerdict = await CheckInputAsync(agent, task, context, userPrompt, cancellationToken).ConfigureAwait(false);
+                var inputVerdict = await CheckInputAsync(agent, context, userPrompt, cancellationToken).ConfigureAwait(false);
                 if (inputVerdict is { IsAllowed: false })
                 {
                     var reason = $"Blocked by Guardian (input): {inputVerdict.Reason}";
@@ -352,7 +352,16 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
 
                 var loopResult = await ExecuteWithProviderAsync(
-                    agent, task, llm.Loop, systemPrompt, userPrompt, context, toolsUsed, cancellationToken).ConfigureAwait(false);
+                    new ExecutionInvocationContext(
+                        Agent: agent,
+                        Task: task,
+                        SystemPrompt: systemPrompt,
+                        UserPrompt: userPrompt,
+                        Context: context,
+                        ToolsUsed: toolsUsed,
+                        Stopwatch: new System.Diagnostics.Stopwatch()),
+                    llm.Loop,
+                    cancellationToken).ConfigureAwait(false);
 
                 // A call the provider never answered leaves nothing to validate, and a correction
                 // round would only ask the same model again — the retries belong to the provider
@@ -437,7 +446,6 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// </summary>
     private async System.Threading.Tasks.Task<GuardResult?> CheckInputAsync(
         DomainAgent agent,
-        CrewTask task,
         SimpleExecutionContext context,
         string userPrompt,
         CancellationToken cancellationToken)
@@ -488,20 +496,16 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// Returns an <see cref="AgentLoopResult"/> with output text, token count, and structured exit reason.
     /// </summary>
     private async System.Threading.Tasks.Task<AgentLoopResult> ExecuteWithProviderAsync(
-        DomainAgent agent,
-        CrewTask task,
+        ExecutionInvocationContext invocation,
         ChatClientAgentLoop? profileLoop,
-        string systemPrompt,
-        string userPrompt,
-        SimpleExecutionContext context,
-        List<Domain.Tools.ToolUsage> toolsUsed,
         CancellationToken cancellationToken)
     {
+        var (agent, task, systemPrompt, userPrompt, _, toolsUsed, sw) = invocation;
         ExecutionLog.LogLlmRequestStart(_logger, agent.Role, task.Id, _chatClient != null ? "IChatClient" : "IBasicLlmProvider");
         ExecutionLog.LogLlmSystemPrompt(_logger, agent.Role, systemPrompt);
         ExecutionLog.LogLlmUserPrompt(_logger, agent.Role, userPrompt);
 
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        sw.Start();
 
         if (profileLoop is not null)
         {
@@ -523,16 +527,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             return loopResult;
         }
 
-        // Fallback: multi-turn with legacy IBasicLlmProvider
-        var invocation = new ExecutionInvocationContext(
-            Agent: agent,
-            Task: task,
-            SystemPrompt: systemPrompt,
-            UserPrompt: userPrompt,
-            Context: context,
-            ToolsUsed: toolsUsed,
-            Stopwatch: sw);
-
+        // Fallback: multi-turn with legacy IBasicLlmProvider.
         // Prefer native tool calling when a full provider and strategy are available
         if (_fullProvider != null && _toolCallingStrategy?.SupportsNativeToolCalling == true)
         {

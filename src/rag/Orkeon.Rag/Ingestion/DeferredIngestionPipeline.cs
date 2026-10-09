@@ -11,9 +11,11 @@ namespace Orkeon.Rag.Ingestion;
 /// them, and an unknown <c>Orkeon:Rag:Provider</c> failed every crew. The failure now
 /// belongs to the first ingestion, with the same message.
 /// </summary>
-internal sealed class DeferredIngestionPipeline(Func<IIngestionPipeline> resolve) : IIngestionPipeline
+internal sealed class DeferredIngestionPipeline : IIngestionPipeline
 {
-    private readonly Lazy<IIngestionPipeline> _inner = new(resolve);
+    private readonly Lazy<IIngestionPipeline> _inner;
+
+    public DeferredIngestionPipeline(Func<IIngestionPipeline> resolve) => _inner = new(resolve);
 
     public Task<IngestionReport> IngestAsync(
         IngestionRequest request,

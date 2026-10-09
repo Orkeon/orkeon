@@ -36,7 +36,8 @@ public sealed record ExecutionPlan
         var seen = new HashSet<TaskId>();
         foreach (var task in planned)
         {
-            ArgumentNullException.ThrowIfNull(task, nameof(tasks));
+            if (task is null)
+                throw new ArgumentNullException(nameof(tasks));
             if (!seen.Add(task.TaskId))
                 throw new ArgumentException($"Task {task.TaskId} has two plans; a plan holds one per task.", nameof(tasks));
         }

@@ -39,7 +39,7 @@ public sealed class JsLlmFacadeActPermissionTests
             PermissionVerdict.Deny($"tool '{toolName}' is not permitted in mode '{mode}'."));
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: gate);
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { PermissionGate = gate });
 
         var result = await facade.ActAsync(engine, "write something", null);
 
@@ -64,7 +64,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var gate = new ScriptedGate((_, _) => PermissionVerdict.Allow());
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: gate);
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { PermissionGate = gate });
 
         var options = EvalOptions(engine, "({ permissionMode: \"acceptEdits\" })");
         var result = await facade.ActAsync(engine, "read something", options);
@@ -88,7 +88,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var budget = new Orkeon.Domain.Autonomous.AgentExecutionBudget { MaxToolCalls = 5 };
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget, gate);
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget, PermissionGate = gate });
 
         await facade.ActAsync(engine, "write", null);
 
@@ -108,7 +108,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var gate = new ScriptedGate((_, _) => PermissionVerdict.Allow());
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: gate);
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { PermissionGate = gate });
 
         await facade.ActAsync(engine, "probe", null);
 
@@ -127,7 +127,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var gate = new ScriptedGate((_, _) => PermissionVerdict.Allow());
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, Array.Empty<IBaseTool>(), budget: null, permissionGate: gate);
+            engine, provider, CancellationToken.None, Array.Empty<IBaseTool>(), new JsLlmActGuards { PermissionGate = gate });
 
         var result = await facade.ActAsync(engine, "probe", null);
 
@@ -173,7 +173,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var pipeline = new Orkeon.Application.Services.Security.ToolInvocationPipeline(guardian, new TaggingSanitizer());
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: null,
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, guards: null,
             new JsLlmObservability { ToolInvocation = pipeline, AgentName = "scraper" });
 
         await facade.ActAsync(engine, "read the page", null);
@@ -200,7 +200,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var pipeline = new Orkeon.Application.Services.Security.ToolInvocationPipeline(guardian);
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: null,
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, guards: null,
             new JsLlmObservability { ToolInvocation = pipeline });
 
         await facade.ActAsync(engine, "read", null);

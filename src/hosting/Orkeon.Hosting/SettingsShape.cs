@@ -101,16 +101,8 @@ internal sealed class SettingsShape
     private static SettingsShape Of(Type type, HashSet<Type> visiting)
     {
         var target = Nullable.GetUnderlyingType(type) ?? type;
-        if (target == typeof(object) || typeof(IConfiguration).IsAssignableFrom(target) || IsJsonValue(target))
-            return new SettingsShape { Open = true };
-        if (IsValue(target))
-            return new SettingsShape { Number = target == typeof(double) || target == typeof(float) ? target : null };
-        if (DictionaryValueType(target) is { } valueType)
-            return new SettingsShape { Entries = Of(valueType, visiting) };
-        if (typeof(IDictionary).IsAssignableFrom(target))
-            return new SettingsShape { Open = true };
-        if (ItemType(target) is { } itemType)
-            return new SettingsShape { Entries = Of(itemType, visiting) };
+        if (Leaf(target, visiting) is { } leaf)
+            return leaf;
 
         // A type that contains itself takes anything below its second appearance.
         if (!visiting.Add(target))
@@ -122,16 +114,37 @@ internal sealed class SettingsShape
             if (property.GetIndexParameters().Length > 0 || property.GetMethod is null)
                 continue;
 
-            var key = property.GetCustomAttribute<ConfigurationKeyNameAttribute>()?.Name ?? property.Name;
-            var below = Of(property.PropertyType, visiting);
-            if (shape.Named.TryGetValue(key, out var existing))
-                existing.Merge(below);
-            else
-                shape.Named[key] = below;
+            shape.AddNamed(property.GetCustomAttribute<ConfigurationKeyNameAttribute>()?.Name ?? property.Name, Of(property.PropertyType, visiting));
         }
 
         visiting.Remove(target);
         return shape;
+    }
+
+    /// <summary>The shape of a type the binder does not walk property by property — open, a value, a dictionary, a list —, or null for an object with properties.</summary>
+    private static SettingsShape? Leaf(Type target, HashSet<Type> visiting)
+    {
+        if (target == typeof(object) || typeof(IConfiguration).IsAssignableFrom(target) || IsJsonValue(target))
+            return new SettingsShape { Open = true };
+        if (IsValue(target))
+            return new SettingsShape { Number = target == typeof(double) || target == typeof(float) ? target : null };
+        if (DictionaryValueType(target) is { } valueType)
+            return new SettingsShape { Entries = Of(valueType, visiting) };
+        if (typeof(IDictionary).IsAssignableFrom(target))
+            return new SettingsShape { Open = true };
+        if (ItemType(target) is { } itemType)
+            return new SettingsShape { Entries = Of(itemType, visiting) };
+
+        return null;
+    }
+
+    /// <summary>Adds the shape below <paramref name="key"/>, merged into the one already there when two properties share a key.</summary>
+    private void AddNamed(string key, SettingsShape below)
+    {
+        if (Named.TryGetValue(key, out var existing))
+            existing.Merge(below);
+        else
+            Named[key] = below;
     }
 
     /// <summary>What the binder converts from text: a primitive, an enum, a string, and every type whose converter reads text.</summary>

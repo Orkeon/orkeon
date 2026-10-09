@@ -203,19 +203,19 @@ public partial class MemoryCoordinator : IMemoryCoordinator
     {
         var recalled = new List<RecalledMemory>();
         var remaining = _options.MaxChars;
-        foreach (var hit in hits)
+        foreach (var item in hits.Select(hit => hit.Item))
         {
             if (remaining <= TruncationMarker.Length)
                 break;
 
-            var content = hit.Item.Content;
+            var content = item.Content;
             if (content.Length > remaining)
                 content = string.Concat(content.AsSpan(0, remaining - TruncationMarker.Length), TruncationMarker);
 
             recalled.Add(new RecalledMemory(
-                StoredAt(hit.Item),
-                Property(hit.Item, AgentRoleProperty),
-                Property(hit.Item, TaskDescriptionProperty),
+                StoredAt(item),
+                Property(item, AgentRoleProperty),
+                Property(item, TaskDescriptionProperty),
                 content));
             remaining -= content.Length;
         }
@@ -296,12 +296,15 @@ public partial class MemoryCoordinator : IMemoryCoordinator
         $"{description}\n{(output.Length > MaxEmbeddedOutputChars ? output[..MaxEmbeddedOutputChars] : output)}";
 
     /// <summary>Where the crew's memory lives, as a warning or a refusal names it.</summary>
-    private string StoreOf(CrewId crewId) =>
-        _registry.GetProvider(crewId) is { } type
-            ? $"the '{type}' store"
-            : _registry.GetName(crewId) is not null
-                ? "the host's default store (Memory:Provider)"
-                : "an in-process store";
+    private string StoreOf(CrewId crewId)
+    {
+        if (_registry.GetProvider(crewId) is { } type)
+            return $"the '{type}' store";
+
+        return _registry.GetName(crewId) is not null
+            ? "the host's default store (Memory:Provider)"
+            : "an in-process store";
+    }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Crew '{Crew}': recalled {Count} memories for task {TaskId}")]
     private partial void LogMemoriesRecalled(int count, string crew, object taskId);

@@ -515,7 +515,7 @@ internal static class RagCommand
                 : null,
             configureServices: (ctx, services) =>
             {
-                // The RAG subsystem and its tools come with every runner host (GAP-02);
+                // The RAG subsystem and its tools come with every runner host (GAP-02), and
                 // test doubles registered here are the last registration, so they win.
                 options.ConfigureTestServices?.Invoke(ctx, services);
                 // ONNX cross-encoder (embedded weights via Orkeon.Rag.Onnx.Model):

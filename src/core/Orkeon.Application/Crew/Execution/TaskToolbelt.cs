@@ -38,11 +38,7 @@ public static class TaskToolbelt
         var belt = new List<IBaseTool>();
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var tool in agent.Tools.Concat(task.Tools))
-        {
-            if (names.Add(tool.Name))
-                belt.Add(tool);
-        }
+        belt.AddRange(agent.Tools.Concat(task.Tools).Where(tool => names.Add(tool.Name)));
 
         if (task.HumanInput
             && registeredTools?.FirstOrDefault(t => string.Equals(t.Name, HumanInputToolName, StringComparison.OrdinalIgnoreCase)) is { } humanInput

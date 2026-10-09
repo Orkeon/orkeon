@@ -415,16 +415,9 @@ internal sealed class CrewRunOutcome
     /// tokens it did produce kept — with a <see cref="CrewHookStatus.Failed"/> terminal event
     /// carrying the same reason; otherwise a successful crew and a completion event.
     /// </summary>
-    internal async Task<DomainCrewOutput> CompleteAsync(
-        CrewHookDispatcher hooks,
-        string crewId,
-        DateTimeOffset startedAt,
-        IEnumerable<TaskExecutionSnapshot> taskSnapshots,
-        IEnumerable<DomainTaskOutput> taskOutputs,
-        TimeSpan executionTime,
-        CrewMetadata metadata,
-        string output)
+    internal async Task<DomainCrewOutput> CompleteAsync(CrewHookDispatcher hooks, CrewRunSummary run)
     {
+        var (crewId, startedAt, taskSnapshots, taskOutputs, executionTime, metadata, output) = run;
         if (HasFailures)
         {
             var reason = Reason;
@@ -452,3 +445,16 @@ internal sealed class CrewRunOutcome
             metadata: metadata);
     }
 }
+
+/// <summary>
+/// What a run hands its outcome to end on: the crew and when it started, the snapshots the hooks
+/// heard, the task outputs, the run's duration, its metadata and its final output.
+/// </summary>
+internal sealed record CrewRunSummary(
+    string CrewId,
+    DateTimeOffset StartedAt,
+    IEnumerable<TaskExecutionSnapshot> TaskSnapshots,
+    IEnumerable<DomainTaskOutput> TaskOutputs,
+    TimeSpan ExecutionTime,
+    CrewMetadata Metadata,
+    string Output);

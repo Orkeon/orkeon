@@ -109,8 +109,8 @@ public static class InfrastructureExtensions
         // See docs/reference/opt-in-subsystems.md.
 
         // === Phase 10: Vector Store Providers (N5) ===
-        // The concrete ChromaDB / Pinecone providers stay resolvable when their section exists;
-        // they are the factory's shared instances, connected from those sections (GAP-08).
+        // The concrete ChromaDB / Pinecone providers stay resolvable when their section exists.
+        // They are the factory's shared instances, connected from those sections (GAP-08).
         if (configuration.GetSection(Memory.ChromaDb.ChromaDbOptions.SectionName).Exists())
             services.AddOrkeonChromaDb(configuration);
         if (configuration.GetSection(Memory.Pinecone.PineconeOptions.SectionName).Exists())

@@ -263,13 +263,20 @@ internal static class SettingsSampleFile
         || path.StartsWith(section + ConfigurationPath.KeyDelimiter, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>One name of the file's tree: an object, or a key when the catalogue has an entry at its path.</summary>
-    private sealed class Node(string name, string path)
+    private sealed class Node
     {
-        public string Name { get; } = name;
+        public Node(string name, string path)
+        {
+            Name = name;
+            Path = path;
+            Children = [];
+        }
 
-        public string Path { get; } = path;
+        public string Name { get; }
 
-        public List<Node> Children { get; } = [];
+        public string Path { get; }
+
+        public List<Node> Children { get; }
 
         public SettingsCatalogSection? Section { get; set; }
 

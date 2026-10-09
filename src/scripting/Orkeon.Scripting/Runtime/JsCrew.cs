@@ -381,9 +381,14 @@ public sealed partial class JsCrew
         var pacedAgents = _agents.Where(agent => agent.Builder.MaxRpmValue is not null).Select(agent => $"'{agent.name}'").ToList();
         if (MaxRpm is not null || pacedAgents.Count > 0)
         {
-            var declared = MaxRpm is { } crewLimit
-                ? pacedAgents.Count > 0 ? $"maxRpm({crewLimit}) and agent(s) {string.Join(", ", pacedAgents)} declare maxRpm" : $"maxRpm({crewLimit})"
-                : $"agent(s) {string.Join(", ", pacedAgents)} declare maxRpm";
+            var agentsDeclare = $"agent(s) {string.Join(", ", pacedAgents)} declare maxRpm";
+            string declared;
+            if (MaxRpm is not { } crewLimit)
+                declared = agentsDeclare;
+            else if (pacedAgents.Count > 0)
+                declared = $"maxRpm({crewLimit}) and {agentsDeclare}";
+            else
+                declared = $"maxRpm({crewLimit})";
             LogProceduralShapeIgnores(_logger,
                 $"crew '{name}' declares {declared}, which this run will not apply: maxRpm bounds the turns of "
                 + "the declarative shape's agents, and ctx.llm calls are no agent turns — the host's RateLimiting "

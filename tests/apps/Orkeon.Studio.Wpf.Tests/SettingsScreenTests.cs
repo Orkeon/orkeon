@@ -1023,12 +1023,15 @@ public sealed class SettingsRemediationTests
             SettingsStore = new FakeAppSettingsStore(),
             Directories = new FakeDirectoryProbe(),
         });
-        var profiles = new ModelProfilesViewModel(store, config.Llm, loadTeams: () =>
-        [
-            new TeamSummary { Name = "Veille", Slug = "veille", Path = "/teams/veille",
-                Metadata = new StudioTeamMetadata { Profile = "Local" } },
-            new TeamSummary { Name = "Contrats", Slug = "contrats", Path = "/teams/contrats" },
-        ]);
+        var profiles = new ModelProfilesViewModel(store, config.Llm, links: new ModelProfilesLinks
+        {
+            LoadTeams = () =>
+            [
+                new TeamSummary { Name = "Veille", Slug = "veille", Path = "/teams/veille",
+                    Metadata = new StudioTeamMetadata { Profile = "Local" } },
+                new TeamSummary { Name = "Contrats", Slug = "contrats", Path = "/teams/contrats" },
+            ],
+        });
         await profiles.InitializeAsync(TestContext.Current.CancellationToken);
 
         var card = Assert.Single(profiles.Profiles);

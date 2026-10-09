@@ -106,9 +106,13 @@ public sealed record ProviderBalanceTarget(ProviderBalanceAccount Account, strin
     {
         ArgumentNullException.ThrowIfNull(keys);
 
-        var key = typedKey is { } typed && !string.IsNullOrWhiteSpace(typed)
-            ? typed.Trim()
-            : Account.KeyVariable.Length > 0 ? keys.Peek(Account.KeyVariable) : null;
+        string? key;
+        if (typedKey is { } typed && !string.IsNullOrWhiteSpace(typed))
+            key = typed.Trim();
+        else if (Account.KeyVariable.Length > 0)
+            key = keys.Peek(Account.KeyVariable);
+        else
+            key = null;
 
         return new LlmProbeRequest { BaseUrl = BaseUrl, ApiKey = key };
     }

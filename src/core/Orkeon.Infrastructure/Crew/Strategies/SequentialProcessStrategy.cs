@@ -108,17 +108,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         {
             // Setup inside the barrier — an agent-less crew is the everyday failure, and it
             // has to produce a terminal event like any other exit.
-            var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
-
-            // Register agent entities and add delegation tools
-            foreach (var agent in agents)
-            {
-                _delegationProvider.RegisterAgentEntity(agent);
-                _delegationProvider.AddDelegationToolsToAgent(agent);
-            }
-
-            if (agents.Count == 0 && crew.Tasks.Count > 0)
-                throw new InvalidOperationException("No agents available for sequential execution");
+            var agents = await LoadAndRegisterAgentsAsync(crew).ConfigureAwait(false);
 
             _delegationProvider.UpdateExecutionContext(run.ContextNow());
 
@@ -143,16 +133,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
                     .ConfigureAwait(false);
 
-                // A launched task this one depends on is waited for first (GAP-22): its outcome
-                // decides whether this one runs, and its output joins the context it reads.
-                await JoinDependenciesAsync(run, task).ConfigureAwait(false);
-
-                if (run.Outcome.BlockingDependency(task) is { } blockedBy)
-                    await SkipBlockedTaskAsync(run, position, task, agent, blockedBy).ConfigureAwait(false);
-                else if (task.AsyncExecution)
-                    await LaunchAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
-                else
-                    await RunTaskAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
+                await DispatchTaskAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
             }
 
             // Nothing outlives the run: the crew waits for every task it launched (GAP-22),
@@ -180,9 +161,9 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             else
                 LogSequentialExecutionCompletedForCrew(crew.Id, totalTime);
 
-            return await run.Outcome.CompleteAsync(
-                _hooks, crew.Id.Value.ToString(), startedAt, run.TaskSnapshots,
-                domainResults, totalTime, metadata, finalOutput).ConfigureAwait(false);
+            return await run.Outcome.CompleteAsync(_hooks, new CrewRunSummary(
+                crew.Id.Value.ToString(), startedAt, run.TaskSnapshots,
+                domainResults, totalTime, metadata, finalOutput)).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
         {
@@ -208,6 +189,45 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
+    }
+
+    /// <summary>
+    /// The crew's agents, each registered with the delegation provider and given its delegation
+    /// tools; a crew with tasks and no agent is refused.
+    /// </summary>
+    private async System.Threading.Tasks.Task<List<DomainAgent>> LoadAndRegisterAgentsAsync(DomainCrew crew)
+    {
+        var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
+
+        // Register agent entities and add delegation tools
+        foreach (var agent in agents)
+        {
+            _delegationProvider.RegisterAgentEntity(agent);
+            _delegationProvider.AddDelegationToolsToAgent(agent);
+        }
+
+        if (agents.Count == 0 && crew.Tasks.Count > 0)
+            throw new InvalidOperationException("No agents available for sequential execution");
+
+        return agents;
+    }
+
+    /// <summary>
+    /// One task in its turn: a launched task it depends on is waited for first (GAP-22) — its outcome
+    /// decides whether this one runs, and its output joins the context it reads —, then the task is
+    /// skipped, launched alongside the run (<c>asyncExecution</c>) or run while the run waits.
+    /// </summary>
+    private async System.Threading.Tasks.Task DispatchTaskAsync(
+        SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task, DomainAgent agent, CancellationToken cancellationToken)
+    {
+        await JoinDependenciesAsync(run, task).ConfigureAwait(false);
+
+        if (run.Outcome.BlockingDependency(task) is { } blockedBy)
+            await SkipBlockedTaskAsync(run, position, task, agent, blockedBy).ConfigureAwait(false);
+        else if (task.AsyncExecution)
+            await LaunchAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
+        else
+            await RunTaskAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -12,6 +12,32 @@ using Orkeon.Studio.Wpf.ViewModels.Services;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
+/// What the E-mail section needs to talk to the CLI (STUDIO-69). <see cref="Cli"/> says whether
+/// each account is ready and tests its connection; <see cref="IsDirty"/> says whether the document
+/// holds edits the file does not, and <see cref="Dispatcher"/> is where an answer of the CLI lands.
+/// <see cref="StatesDelay"/> is the pause <see cref="EmailSectionViewModel.RefreshStatesSoon"/>
+/// waits — none when null, and it must be the section's own: a superseded pause is dropped with
+/// <c>CancelPending</c>. <see cref="SignIn"/> is what a sign-in panel needs beside the CLI.
+/// </summary>
+public sealed record EmailCliSeams
+{
+    /// <summary>The CLI the states are read and the connections tested on; none reads nothing.</summary>
+    public EmailCliClient? Cli { get; init; }
+
+    /// <summary>Whether the document holds edits the file does not; never, when null.</summary>
+    public Func<bool>? IsDirty { get; init; }
+
+    /// <summary>Where an answer of the CLI lands; immediate when null.</summary>
+    public IUiDispatcher? Dispatcher { get; init; }
+
+    /// <summary>The seams of the sign-in panels.</summary>
+    public EmailSignInServices? SignIn { get; init; }
+
+    /// <summary>The pause the saved file's states wait to be read again; none when null.</summary>
+    public IUiDelay? StatesDelay { get; init; }
+}
+
+/// <summary>
 /// The <c>Orkeon:Tools:Email</c> form of the E-mail tab (STUDIO-67, both modes): one row per
 /// account, the account a call uses when it names none and, for the expert, the two settings of
 /// the section. Every edit writes in place through <see cref="EmailSection"/>, so a key Studio
@@ -75,13 +101,9 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     /// <paramref name="settingsPath"/> gives the file the document is saved to, for the line that
     /// says where the accounts go; <paramref name="picker"/> browses for the token folder;
     /// <paramref name="keyStore"/> keeps the passwords and the client secrets typed in the form,
-    /// the store of the model keys — the real environment when null. <paramref name="cli"/> says
-    /// whether each account is ready and tests its connection (STUDIO-69): a section built
-    /// without one reads no state and tests nothing. <paramref name="isDirty"/> says whether the
-    /// document holds edits the file does not, and <paramref name="dispatcher"/> is where an
-    /// answer of the CLI lands. <paramref name="statesDelay"/> is the pause
-    /// <see cref="RefreshStatesSoon"/> waits — none when null, and it must be the section's own:
-    /// a superseded pause is dropped with <c>CancelPending</c>.
+    /// the store of the model keys — the real environment when null. <paramref name="engine"/> is
+    /// what the section needs to talk to the CLI (STUDIO-69): a section built without one reads
+    /// no state and tests nothing.
     /// </summary>
     public EmailSectionViewModel(
         Func<AppSettingsDocument> document,
@@ -90,18 +112,14 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
         Func<string?>? settingsPath = null,
         IPathPicker? picker = null,
         IApiKeyStore? keyStore = null,
-        EmailCliClient? cli = null,
-        Func<bool>? isDirty = null,
-        IUiDispatcher? dispatcher = null,
-        EmailSignInServices? signIn = null,
-        IUiDelay? statesDelay = null)
+        EmailCliSeams? engine = null)
         : base(document, onChanged)
     {
-        _statesDelay = statesDelay ?? ImmediateUiDelay.Instance;
-        _signInServices = signIn ?? new EmailSignInServices();
-        _cli = cli;
-        _isDirty = isDirty ?? (() => false);
-        _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
+        _statesDelay = engine?.StatesDelay ?? ImmediateUiDelay.Instance;
+        _signInServices = engine?.SignIn ?? new EmailSignInServices();
+        _cli = engine?.Cli;
+        _isDirty = engine?.IsDirty ?? (() => false);
+        _dispatcher = engine?.Dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings ?? EnglishStudioStrings.Instance;
         _settingsPath = settingsPath ?? (() => null);
         _picker = picker ?? NullPathPicker.Instance;
@@ -451,7 +469,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
             return null;
 
         var signIn = new EmailSignInViewModel(
-            row.Name, this, _cli, path, _strings, _dispatcher, _signInServices,
+            row.Name, this, new EmailSignInEnvironment(_cli, path, _strings, _dispatcher, _signInServices),
             moved: () =>
             {
                 row.RefreshTest();

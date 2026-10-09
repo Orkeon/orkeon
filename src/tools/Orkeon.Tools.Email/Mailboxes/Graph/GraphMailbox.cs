@@ -136,22 +136,31 @@ internal sealed class GraphMailbox : IMailbox
         var next = NextLink(root) is { } nextLink ? Cursor(nextLink, 0) : null;
         var messages = new List<MessageSummaryInfo>();
         if (root.TryGetProperty("value", out var value) && value.ValueKind == JsonValueKind.Array)
-        {
-            var count = value.GetArrayLength();
-            var position = 0;
-            foreach (var item in value.EnumerateArray())
-            {
-                // A cursor into this server page resumes past what an earlier call returned of it.
-                if (++position <= skip)
-                    continue;
-
-                var summary = Summarize(item) with { ResumeCursor = position < count ? Cursor(address, position) : next };
-                if (!textual || GraphQueries.PostFilter(search, summary))
-                    messages.Add(summary);
-            }
-        }
+            messages.AddRange(ReadPage(value, address, skip, next, summary => !textual || GraphQueries.PostFilter(search, summary)));
 
         return new MessagePage(messages, next);
+    }
+
+    /// <summary>
+    /// The summaries of the server page <paramref name="value"/> at <paramref name="address"/>
+    /// that <paramref name="keep"/> accepts, past its first <paramref name="skip"/> messages; each
+    /// carries the cursor that resumes right after it, <paramref name="next"/> for the last one.
+    /// </summary>
+    private static IEnumerable<MessageSummaryInfo> ReadPage(
+        JsonElement value, Uri address, int skip, string? next, Func<MessageSummaryInfo, bool> keep)
+    {
+        var count = value.GetArrayLength();
+        var position = 0;
+        foreach (var item in value.EnumerateArray())
+        {
+            // A cursor into this server page resumes past what an earlier call returned of it.
+            if (++position <= skip)
+                continue;
+
+            var summary = Summarize(item) with { ResumeCursor = position < count ? Cursor(address, position) : next };
+            if (keep(summary))
+                yield return summary;
+        }
     }
 
     /// <inheritdoc />
@@ -302,13 +311,10 @@ internal sealed class GraphMailbox : IMailbox
 
                 foreach (var item in value.EnumerateArray())
                 {
-                    var name = ReadString(item, "displayName") ?? string.Empty;
-                    var path = prefix.Length == 0 ? name : $"{prefix}/{name}";
-                    var id = ReadString(item, "id") ?? string.Empty;
-                    var folder = ReadFolder(item, path, roles.GetValueOrDefault(id));
+                    var folder = ReadChild(item, prefix, roles);
                     folders.Add(folder);
                     if (ReadInt(item, "childFolderCount") > 0 && depth + 1 < MaxDepth)
-                        pending.Enqueue((folder.Id, path, depth + 1));
+                        pending.Enqueue((folder.Id, folder.Info.Path, depth + 1));
                 }
             }
         }
@@ -316,6 +322,15 @@ internal sealed class GraphMailbox : IMailbox
         _folders = folders;
         _foldersLoadedAt = _time.GetUtcNow();
         return folders;
+    }
+
+    /// <summary>The folder <paramref name="item"/> describes, under <paramref name="prefix"/>, with the role its id has in <paramref name="roles"/>.</summary>
+    private static GraphFolder ReadChild(JsonElement item, string prefix, Dictionary<string, string> roles)
+    {
+        var name = ReadString(item, "displayName") ?? string.Empty;
+        var path = prefix.Length == 0 ? name : $"{prefix}/{name}";
+        var id = ReadString(item, "id") ?? string.Empty;
+        return ReadFolder(item, path, roles.GetValueOrDefault(id));
     }
 
     private async Task<Dictionary<string, string>> LoadRolesAsync(CancellationToken cancellationToken)

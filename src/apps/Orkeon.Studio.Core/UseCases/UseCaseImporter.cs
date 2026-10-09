@@ -4,6 +4,20 @@ using Orkeon.Studio.Core.Teams;
 namespace Orkeon.Studio.Core.UseCases;
 
 /// <summary>A use case imported as a team (STUDIO-41), or why it was not.</summary>
+/// <summary>
+/// What an import asks: the use case <paramref name="UseCaseId"/>, imported as
+/// <paramref name="TeamFolder"/> under <paramref name="TeamsRoot"/>, named <paramref name="TeamName"/>
+/// — a folder the caller found free —, exported in <paramref name="Language"/>, arrived at
+/// <paramref name="AddedAt"/>.
+/// </summary>
+public sealed record UseCaseImportRequest(
+    string UseCaseId,
+    string TeamName,
+    string TeamFolder,
+    string TeamsRoot,
+    string? Language,
+    DateTimeOffset AddedAt);
+
 public sealed record UseCaseImportResult
 {
     /// <summary>The new team folder, under the teams root; null when <see cref="Failure"/> says why.</summary>
@@ -49,22 +63,20 @@ public static class UseCaseImporter
     }
 
     /// <summary>
-    /// Exports <paramref name="useCaseId"/> and imports it as <paramref name="teamFolder"/>, named
-    /// <paramref name="teamName"/> — a folder the caller found free. What the CLI answered and what
-    /// the disk refused are typed failures, and none leaves anything in the teams root. The team's
-    /// arrival, <paramref name="addedAt"/>, is its first activity (STUDIO-32).
+    /// Exports the use case <paramref name="request"/> names and imports it as the team folder it
+    /// says, under the team name it says — a folder the caller found free. What the CLI answered
+    /// and what the disk refused are typed failures, and none leaves anything in the teams root.
+    /// The team's arrival, the request's <see cref="UseCaseImportRequest.AddedAt"/>, is its first
+    /// activity (STUDIO-32).
     /// </summary>
     public static async Task<UseCaseImportResult> ImportAsync(
         UseCaseClient client,
-        string useCaseId,
-        string teamName,
-        string teamFolder,
-        string teamsRoot,
-        string? language,
-        DateTimeOffset addedAt,
+        UseCaseImportRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(request);
+        var (useCaseId, teamName, teamFolder, teamsRoot, language, addedAt) = request;
         ArgumentException.ThrowIfNullOrWhiteSpace(useCaseId);
         ArgumentException.ThrowIfNullOrWhiteSpace(teamName);
         ArgumentException.ThrowIfNullOrWhiteSpace(teamFolder);

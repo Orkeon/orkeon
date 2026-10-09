@@ -84,10 +84,11 @@ public static class EphemeralSearchExtensions
     }
 
     /// <summary>The engine, built at the first search.</summary>
-    private sealed class DeferredEphemeralCollectionSearch(Func<IEphemeralCollectionSearch> create)
-        : IEphemeralCollectionSearch
+    private sealed class DeferredEphemeralCollectionSearch : IEphemeralCollectionSearch
     {
-        private readonly Lazy<IEphemeralCollectionSearch> _inner = new(create);
+        private readonly Lazy<IEphemeralCollectionSearch> _inner;
+
+        public DeferredEphemeralCollectionSearch(Func<IEphemeralCollectionSearch> create) => _inner = new(create);
 
         public Task<EphemeralSearchResult> SearchAsync(
             EphemeralSearchRequest request,

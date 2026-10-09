@@ -495,13 +495,7 @@ internal static class DoctorCommand
             ? CatalogKeyByProviderType.GetValueOrDefault(llm.ProviderTypeName)
             : null;
 
-        var baseUrl = llm.BaseUrl;
-        if (baseUrl is null && catalogKey is not null)
-        {
-            try { baseUrl = LlmCatalogClient.ResolveBaseUrl(catalogKey, null); }
-            catch (NotSupportedException) { /* no default endpoint either */ }
-        }
-
+        var baseUrl = llm.BaseUrl ?? DefaultBaseUrl(catalogKey);
         if (baseUrl is null)
             return new DoctorCheckResult { Check = Check, Status = StatusWarn, Detail = "skipped (no base URL to probe)" };
 
@@ -522,14 +516,38 @@ internal static class DoctorCommand
         if (catalogKey is null)
             return new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = $"endpoint {baseUrl} accepts TCP connections (no catalogue endpoint to query)" };
 
+        return await ProbeCatalogueAsync(Check, catalogKey, baseUrl, llm.ApiKey, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The provider's default endpoint for a catalogue key; null without a key, or when the provider declares none.</summary>
+    private static string? DefaultBaseUrl(string? catalogKey)
+    {
+        if (catalogKey is null)
+            return null;
+
+        try
+        {
+            return LlmCatalogClient.ResolveBaseUrl(catalogKey, null);
+        }
+        catch (NotSupportedException)
+        {
+            // no default endpoint either
+            return null;
+        }
+    }
+
+    /// <summary>The catalogue request, and what each way it can fail says of the endpoint.</summary>
+    private static async Task<DoctorCheckResult> ProbeCatalogueAsync(
+        string check, string catalogKey, string baseUrl, string? apiKey, CancellationToken ct)
+    {
         using var client = new HttpClient { Timeout = CatalogTimeout };
         try
         {
             var models = await LlmCatalogClient
-                .ListAsync(client, catalogKey, baseUrl.TrimEnd('/'), llm.ApiKey, ct).ConfigureAwait(false);
+                .ListAsync(client, catalogKey, baseUrl.TrimEnd('/'), apiKey, ct).ConfigureAwait(false);
             return new DoctorCheckResult
             {
-                Check = Check,
+                Check = check,
                 Status = StatusOk,
                 Detail = $"endpoint {baseUrl} reachable — serves {models.Count} model(s)",
             };
@@ -543,25 +561,25 @@ internal static class DoctorCommand
                 or HttpRequestError.ConnectionError
                 or HttpRequestError.SecureConnectionError)
         {
-            return new DoctorCheckResult { Check = Check, Status = StatusFail, Detail = $"endpoint {baseUrl} unreachable: {ex.Message}" };
+            return new DoctorCheckResult { Check = check, Status = StatusFail, Detail = $"endpoint {baseUrl} unreachable: {ex.Message}" };
         }
         catch (HttpRequestException ex)
         {
             // The server answered — reachable, but the catalogue call was rejected (bad key, …).
-            return new DoctorCheckResult { Check = Check, Status = StatusWarn, Detail = $"endpoint {baseUrl} reachable, but the catalogue request failed: {ex.Message}" };
+            return new DoctorCheckResult { Check = check, Status = StatusWarn, Detail = $"endpoint {baseUrl} reachable, but the catalogue request failed: {ex.Message}" };
         }
         catch (TaskCanceledException)
         {
             return new DoctorCheckResult
             {
-                Check = Check,
+                Check = check,
                 Status = StatusFail,
                 Detail = $"endpoint {baseUrl} timed out after {CatalogTimeout.TotalSeconds:N0}s",
             };
         }
         catch (JsonException ex)
         {
-            return new DoctorCheckResult { Check = Check, Status = StatusWarn, Detail = $"endpoint {baseUrl} reachable, but returned an unexpected payload: {ex.Message}" };
+            return new DoctorCheckResult { Check = check, Status = StatusWarn, Detail = $"endpoint {baseUrl} reachable, but returned an unexpected payload: {ex.Message}" };
         }
     }
 

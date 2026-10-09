@@ -211,21 +211,8 @@ public partial class StdioMcpTransport : IMcpTransport
                     break;
                 }
 
-                if (string.IsNullOrWhiteSpace(line)) continue;
-
-                try
-                {
-                    var response = JsonSerializer.Deserialize<JsonRpcResponse>(line);
-                    if (response?.Id is { } responseId &&
-                        _pendingRequests.TryRemove(responseId.GetRawText(), out var tcs))
-                    {
-                        tcs.TrySetResult(response);
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    LogFailedToParseResponse(ex, line);
-                }
+                if (!string.IsNullOrWhiteSpace(line))
+                    DispatchResponse(line);
             }
         }
         catch (OperationCanceledException)
@@ -238,24 +225,50 @@ public partial class StdioMcpTransport : IMcpTransport
         }
         finally
         {
-            // The server went away on its own — its output ended, or it exited — rather than being
-            // disconnected by this side: say why, before the requests waiting on it fail with it.
-            var serverLeft = endOfOutput || (_process is { HasExited: true } && !ct.IsCancellationRequested);
-            var disconnection = serverLeft
-                ? await DescribeDisconnectionAsync().ConfigureAwait(false)
-                : new InvalidOperationException("Transport disconnected.");
-            _disconnection = disconnection;
-            _isConnected = false;
-            // A request registers itself, then reads _isConnected; this side writes _isConnected,
-            // then reads the registered requests. The fence keeps the two from missing each other.
-            Interlocked.MemoryBarrier();
-            // Complete any remaining pending requests with errors
-            foreach (var kvp in _pendingRequests)
-            {
-                kvp.Value.TrySetException(disconnection);
-            }
-            _pendingRequests.Clear();
+            await DisconnectAsync(endOfOutput, ct).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>Hands one line of the server's stdout to the request waiting for it, if any.</summary>
+    private void DispatchResponse(string line)
+    {
+        try
+        {
+            var response = JsonSerializer.Deserialize<JsonRpcResponse>(line);
+            if (response?.Id is { } responseId &&
+                _pendingRequests.TryRemove(responseId.GetRawText(), out var tcs))
+            {
+                tcs.TrySetResult(response);
+            }
+        }
+        catch (JsonException ex)
+        {
+            LogFailedToParseResponse(ex, line);
+        }
+    }
+
+    /// <summary>
+    /// Marks the transport disconnected and fails every request still waiting. The server went
+    /// away on its own — its output ended, or it exited — rather than being disconnected by this
+    /// side: say why, before the requests waiting on it fail with it.
+    /// </summary>
+    private async Task DisconnectAsync(bool endOfOutput, CancellationToken ct)
+    {
+        var serverLeft = endOfOutput || (_process is { HasExited: true } && !ct.IsCancellationRequested);
+        var disconnection = serverLeft
+            ? await DescribeDisconnectionAsync().ConfigureAwait(false)
+            : new InvalidOperationException("Transport disconnected.");
+        _disconnection = disconnection;
+        _isConnected = false;
+        // A request registers itself, then reads _isConnected; this side writes _isConnected,
+        // then reads the registered requests. The fence keeps the two from missing each other.
+        Interlocked.MemoryBarrier();
+        // Complete any remaining pending requests with errors
+        foreach (var kvp in _pendingRequests)
+        {
+            kvp.Value.TrySetException(disconnection);
+        }
+        _pendingRequests.Clear();
     }
 
     /// <summary>

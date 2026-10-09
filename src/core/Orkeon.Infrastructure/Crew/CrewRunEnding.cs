@@ -28,7 +28,7 @@ internal static class CrewRunEnding
         /// <summary>Whether the hook heard the crew fail — and a streamed run's <c>error</c> went out.</summary>
         public bool FailureReported => Volatile.Read(ref _failureReported) != 0;
 
-        internal void Record(bool failed)
+        internal void Set(bool failed)
         {
             Interlocked.Exchange(ref _reported, 1);
             if (failed)
@@ -46,7 +46,7 @@ internal static class CrewRunEnding
     }
 
     /// <summary>Records that the run in progress reported its end; nothing outside a run.</summary>
-    internal static void Record(bool failed) => Ambient.Value?.Record(failed);
+    internal static void Record(bool failed) => Ambient.Value?.Set(failed);
 
     private sealed class Scope(Mark? enclosing) : IDisposable
     {

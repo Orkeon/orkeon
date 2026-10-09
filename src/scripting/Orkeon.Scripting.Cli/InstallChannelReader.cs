@@ -115,11 +115,8 @@ internal static class InstallChannelReader
         if (value.Length == 0)
             return new InstallChannelReading(InstallChannels.Unknown, $"{InstallChannels.MarkerFile} is empty");
 
-        foreach (var channel in MarkerChannels)
-        {
-            if (string.Equals(value, channel, StringComparison.Ordinal))
-                return new InstallChannelReading(channel);
-        }
+        if (Array.Find(MarkerChannels, channel => string.Equals(value, channel, StringComparison.Ordinal)) is { } known)
+            return new InstallChannelReading(known);
 
         return new InstallChannelReading(
             InstallChannels.Unknown,
