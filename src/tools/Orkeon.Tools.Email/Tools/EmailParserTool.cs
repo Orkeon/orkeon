@@ -59,7 +59,9 @@ internal sealed class EmailParserTool : ToolBase<EmailParserRequest, EmailReadRe
 
             using (message)
             {
-                return EmailToolHelpers.BuildRead(message, _screen, request.Offset, request.MaxChars, EmailToolHelpers.ResultBudget(Name), folder: path);
+                return EmailToolHelpers.BuildRead(
+                    message, _screen, request.Offset, request.MaxChars, EmailToolHelpers.ResultBudget(Name),
+                    new EmailReadOrigin { Folder = path });
             }
         }
     }

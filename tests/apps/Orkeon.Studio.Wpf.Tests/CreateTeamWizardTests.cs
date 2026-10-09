@@ -3009,7 +3009,7 @@ public partial class CreateTeamWizardTests
         Assert.Empty(shell.Config.Mounts.CurrentMountStrings);
         Assert.Empty(store.SavedPaths);
         Assert.Empty(wizard.TeamMounts);
-        Assert.True(wizard.MountRows.Count == 0);
+        Assert.Empty(wizard.MountRows);
         Assert.Equal(statusBefore, wizard.StatusMessage);
     }
 

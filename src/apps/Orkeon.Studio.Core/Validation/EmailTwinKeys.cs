@@ -63,19 +63,25 @@ internal static class EmailTwinKeys
         }
     }
 
-    private static ValidationMessage Finding(string first, string key, string? refused, string path) =>
-        refused is null
-            ? ValidationMessage.Warning(
+    private static ValidationMessage Finding(string first, string key, string? refused, string path)
+    {
+        if (refused is null)
+        {
+            return ValidationMessage.Warning(
                 ValidationCodes.EmailTwin,
                 $"Keys '{first}' and '{key}' differ only by case: the run reads them as one, the keys of both together, " +
                 "while Studio reads and edits one of them only. Merge them into one.",
-                path)
-            : ValidationMessage.Error(
-                ValidationCodes.EmailTwin,
-                $"Keys '{first}' and '{key}' differ only by case and both set " +
-                $"{(refused.Length == 0 ? "a value" : refused)}: the configuration refuses a key written twice, " +
-                "so no run can read this file. Keep one.",
                 path);
+        }
+
+        var what = refused.Length == 0 ? "a value" : refused;
+        return ValidationMessage.Error(
+            ValidationCodes.EmailTwin,
+            $"Keys '{first}' and '{key}' differ only by case and both set " +
+            $"{what}: the configuration refuses a key written twice, " +
+            "so no run can read this file. Keep one.",
+            path);
+    }
 
     private static string Spelling(string key) =>
         Spellings.FirstOrDefault(known => string.Equals(known, key, StringComparison.OrdinalIgnoreCase)) ?? key;
@@ -103,31 +109,17 @@ internal static class EmailTwinKeys
         }
 
         /// <summary>The configuration keys <paramref name="node"/> sets, relative to it, and whether each is refused when already held.</summary>
-        private static IEnumerable<(string Path, bool Refusable)> Leaves(JsonNode? node, string path)
-        {
-            switch (node)
+        private static IEnumerable<(string Path, bool Refusable)> Leaves(JsonNode? node, string path) =>
+            node switch
             {
-                case JsonObject { Count: > 0 } container:
-                    foreach (var (key, value) in container)
-                    {
-                        foreach (var leaf in Leaves(value, path.Length == 0 ? key : $"{path}:{key}"))
-                            yield return leaf;
-                    }
+                JsonObject { Count: > 0 } container => container.SelectMany(property => Leaves(property.Value, Under(path, property.Key))),
+                JsonArray { Count: > 0 } array => array.SelectMany((item, index) =>
+                    Leaves(item, Under(path, string.Create(CultureInfo.InvariantCulture, $"{index}")))),
+                _ => [(path, node is not (JsonObject or JsonArray))],
+            };
 
-                    break;
-                case JsonArray { Count: > 0 } array:
-                    for (var index = 0; index < array.Count; index++)
-                    {
-                        var item = string.Create(CultureInfo.InvariantCulture, $"{index}");
-                        foreach (var leaf in Leaves(array[index], path.Length == 0 ? item : $"{path}:{item}"))
-                            yield return leaf;
-                    }
-
-                    break;
-                default:
-                    yield return (path, node is not (JsonObject or JsonArray));
-                    break;
-            }
-        }
+        /// <summary>The configuration path of <paramref name="key"/> under <paramref name="path"/>; the key itself at the root.</summary>
+        private static string Under(string path, string key) =>
+            path.Length == 0 ? key : $"{path}:{key}";
     }
 }

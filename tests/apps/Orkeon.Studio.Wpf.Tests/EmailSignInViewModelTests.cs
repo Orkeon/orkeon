@@ -152,15 +152,18 @@ public sealed class EmailSignInViewModelTests
             strings,
             () => SettingsFile,
             keyStore: new FakeApiKeyStore(),
-            cli: new EmailCliClient(Runner(cli)),
-            isDirty: () => fixture.Dirty,
-            dispatcher: dispatcher,
-            signIn: new EmailSignInServices
+            engine: new EmailCliSeams
             {
-                Browser = withBrowser ? fixture.Browser : null,
-                Clipboard = fixture.Clipboard,
-                Ticker = fixture.Ticker,
-                Clock = fixture.Clock,
+                Cli = new EmailCliClient(Runner(cli)),
+                IsDirty = () => fixture.Dirty,
+                Dispatcher = dispatcher,
+                SignIn = new EmailSignInServices
+                {
+                    Browser = withBrowser ? fixture.Browser : null,
+                    Clipboard = fixture.Clipboard,
+                    Ticker = fixture.Ticker,
+                    Clock = fixture.Clock,
+                },
             });
         return fixture;
     }
@@ -767,7 +770,10 @@ public sealed class EmailSignInViewModelTests
         var document = AppSettingsDocument.Parse(Three);
         var section = new EmailSectionViewModel(
             () => document, () => { }, settingsPath: () => SettingsFile, keyStore: new FakeApiKeyStore(),
-            cli: new EmailCliClient(new OrkeonProcessRunner(cli, new OrkeonBinaryLocator(new FakeExecutableProbe()))));
+            engine: new EmailCliSeams
+            {
+                Cli = new EmailCliClient(new OrkeonProcessRunner(cli, new OrkeonBinaryLocator(new FakeExecutableProbe()))),
+            });
         var hotmail = section.Accounts.Single(row => row.Name == "hotmail");
 
         hotmail.SignInCommand.Execute(null);

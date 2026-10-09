@@ -31,7 +31,7 @@ public sealed class EmailSection
     public const string AccountsPath = SectionPath + ":" + Keys.Accounts;
 
     /// <summary>Every right the engine declares, together: a bit outside them is no right.</summary>
-    internal static readonly EmailRight AllRights = Enum.GetValues<EmailRight>().Aggregate(EmailRight.None, (all, right) => all | right);
+    internal static readonly EmailRights AllRights = Enum.GetValues<EmailRights>().Aggregate(EmailRights.None, (all, right) => all | right);
 
     private readonly AppSettingsDocument _document;
 
@@ -53,7 +53,7 @@ public sealed class EmailSection
     public static IReadOnlyList<string> AuthMethods { get; } = [Values.Password, Values.OAuth2];
 
     /// <summary>The names of the rights, in the order the engine lists them and Studio writes them.</summary>
-    public static IReadOnlyList<string> Rights { get; } = ["Read", "Organize", "Draft", "Send", "Delete", "Purge"];
+    public static IReadOnlyList<string> RightNames { get; } = ["Read", "Organize", "Draft", "Send", "Delete", "Purge"];
 
     /// <summary>The account names, as the file spells them, in document order.</summary>
     public IReadOnlyList<string> AccountNames => AccountsNode is { } accounts ? [.. accounts.Select(property => property.Key)] : [];
@@ -128,7 +128,7 @@ public sealed class EmailSection
         var auth = Node(account, Keys.Auth) as JsonObject;
         var send = Node(account, Keys.Send) as JsonObject;
         var rights = ReadText(account, Keys.Rights);
-        var parsed = TryParseRights(rights, out var granted) ? granted : EmailRight.None;
+        var parsed = TryParseRights(rights, out var granted) ? granted : EmailRights.None;
 
         return new EmailAccountDefinition
         {
@@ -137,7 +137,7 @@ public sealed class EmailSection
             Address = ReadText(account, Keys.Address),
             DisplayName = ReadText(account, Keys.DisplayName),
             Rights = parsed,
-            RightsRaw = parsed == EmailRight.None && !string.IsNullOrWhiteSpace(rights) ? rights : null,
+            RightsRaw = parsed == EmailRights.None && !string.IsNullOrWhiteSpace(rights) ? rights : null,
             TimeoutSeconds = ReadInt(account, Keys.TimeoutSeconds),
             SaveSentCopy = AppSettingsDocument.ReadBoolean(Node(account, Keys.SaveSentCopy)),
             IncomingProtocol = ReadText(incoming, Keys.Protocol),
@@ -368,13 +368,13 @@ public sealed class EmailSection
     /// Reads the rights the way the binder's converter does (names without regard to case, or a
     /// number), and refuses what it would refuse: a number with an undefined bit, and nothing granted.
     /// </summary>
-    private static bool TryParseRights(string? text, out EmailRight rights)
+    private static bool TryParseRights(string? text, out EmailRights rights)
     {
-        rights = EmailRight.None;
+        rights = EmailRights.None;
         if (text is null
-            || !Enum.TryParse(text, ignoreCase: true, out EmailRight parsed)
-            || parsed == EmailRight.None
-            || (parsed & ~AllRights) != EmailRight.None)
+            || !Enum.TryParse(text, ignoreCase: true, out EmailRights parsed)
+            || parsed == EmailRights.None
+            || (parsed & ~AllRights) != EmailRights.None)
         {
             return false;
         }
@@ -433,7 +433,7 @@ public sealed class EmailSection
     private static void WriteRights(JsonObject owner, EmailAccountDefinition account)
     {
         var granted = account.Rights & AllRights;
-        if (granted == EmailRight.None)
+        if (granted == EmailRights.None)
         {
             WriteText(owner, Keys.Rights, account.RightsRaw);
             return;
@@ -442,7 +442,7 @@ public sealed class EmailSection
         if (TryParseRights(ReadText(owner, Keys.Rights), out var written) && written == granted)
             return;
 
-        var names = Enum.GetValues<EmailRight>().Where(right => right != EmailRight.None && granted.HasFlag(right));
+        var names = Enum.GetValues<EmailRights>().Where(right => right != EmailRights.None && granted.HasFlag(right));
         Write(owner, Keys.Rights, JsonValue.Create(string.Join(", ", names)));
     }
 

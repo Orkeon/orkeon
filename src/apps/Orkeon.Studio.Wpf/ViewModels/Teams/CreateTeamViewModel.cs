@@ -1095,10 +1095,15 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>« Inspired by: Competitive watch » — the title in the UI's language.</summary>
     public string ReferenceUseCaseLabel => _referenceUseCaseId is { } id
-        ? _strings.Format(
-            StudioStringKeys.WizardGalleryReference,
-            Gallery.Catalog?.Find(id)?.TitleIn(UseCaseLanguage) is { Length: > 0 } title ? title : id)
+        ? _strings.Format(StudioStringKeys.WizardGalleryReference, ReferenceUseCaseTitle(id))
         : "";
+
+    /// <summary>The reference's title in the use case's language, else its id when the catalogue has none.</summary>
+    private string ReferenceUseCaseTitle(string id)
+    {
+        var title = Gallery.Catalog?.Find(id)?.TitleIn(UseCaseLanguage);
+        return title is { Length: > 0 } ? title : id;
+    }
 
     /// <summary>The chip's ✕: the reference goes, the need stays as written.</summary>
     public RelayCommand RemoveReferenceUseCaseCommand { get; }
@@ -2605,66 +2610,16 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 scheduleStopped = true;
             }
 
-            var result = await _client.PromoteAsync(slug, destination, adopted, schedule, _workspace, OnEvent, OnRaw)
+            var result = await _client.PromoteAsync(
+                    new ForgePromoteRequest(slug, destination, adopted, schedule), _workspace, OnEvent, OnRaw)
                 .ConfigureAwait(false);
             await PostAndAwaitAsync(() =>
             {
                 FinishRun(result, commandLine);
                 if (_model.Promotion is { } promotion)
-                {
-                    // A re-adoption has no step-1 need: the sidecar's description must
-                    // survive the rewrite, not be blanked by it.
-                    var description = _need.Trim() is { Length: > 0 } need
-                        ? need
-                        : TeamCatalog.Describe(promotion.Path).Description ?? "";
-                    var mounts = SidecarMounts();
-                    // Merged, never rebuilt (STUDIO-31, D-02): the adoption writes the fields it
-                    // owns, and a « Modify » keeps the others — the archive flag, the last run.
-                    TeamCatalog.UpdateMetadata(promotion.Path, current => current with
-                    {
-                        Name = adopted,
-                        Description = description,
-                        Profile = AdoptProfileName,
-                        Schedule = schedule,
-                        Mounts = mounts.Count > 0 ? mounts : null,
-                    });
-                    // STUDIO-50: the launchers the engine just wrote mount the team's own folders
-                    // and nothing else; written again from the sidecar, the run the operating
-                    // system schedules takes the team's setting and every folder a Studio launch
-                    // gives it. STUDIO-51: a run.cmd that launches nothing is said below.
-                    var launchers = TeamLaunchers.Regenerate(promotion.Path, _launcherContext());
-                    TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));
-                    // The engine's last warning is said, not dropped (STUDIO-26, D-05) — read now:
-                    // the reset below replaces the model.
-                    var warning = _model.LastWarning;
-                    // The tunnel ends here (STUDIO-20): the team lives in My teams now, so the
-                    // wizard goes back to a blank step 1 — the same slate as « Start over » — and
-                    // the one line that stays says where the team went. The finally block's sync
-                    // keeps it: a fresh model has no finished status to paint over it.
-                    ResetToStepOne();
-                    StatusMessage = scheduleStopped
-                        ? AdoptedLine(adopted, warning, launchers) + " " + _strings[StudioStringKeys.WizardScheduleStopped]
-                        : AdoptedLine(adopted, warning, launchers);
-                    adoptedPath = promotion.Path;
-                }
+                    adoptedPath = RecordAdoption(promotion, adopted, schedule, scheduleStopped);
                 else
-                {
-                    // No promoted event means no team on disk — a silent button would read
-                    // as success, so the refusal is said out loud with what the engine said.
-                    // Held in a field: the ordinary sync would repaint "ready" over it.
-                    _saveError = _strings.Format(
-                        StudioStringKeys.WizardPromoteFailed,
-                        _lastStderr ?? string.Create(CultureInfo.InvariantCulture, $"exit {result.ExitCode}"));
-                    // STUDIO-13: the same card as step 1, with the promote command line and the
-                    // whole stderr — the status line above keeps its one-line sentence.
-                    FailWith(
-                        WizardFailureKind.PromoteRefused,
-                        StderrText() is { Length: > 0 } stderr
-                            ? stderr
-                            : string.Create(CultureInfo.InvariantCulture, $"No `promoted` event came back (exit {result.ExitCode})."),
-                        commandLine,
-                        result.ExitCode);
-                }
+                    ReportPromoteRefused(result, commandLine);
             }).ConfigureAwait(false);
 
             // STUDIO-27 (D-05): a scheduled team is not scheduled until the operating system says
@@ -2680,6 +2635,69 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 SyncFromModel();
             }).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// The team the engine just promoted is written into its sidecar and its launchers, said in
+    /// the status line, and the wizard goes back to a blank step 1. Returns the team's path.
+    /// </summary>
+    private string RecordAdoption(ForgePromotion promotion, string adopted, string? schedule, bool scheduleStopped)
+    {
+        // A re-adoption has no step-1 need: the sidecar's description must
+        // survive the rewrite, not be blanked by it.
+        var description = _need.Trim() is { Length: > 0 } need
+            ? need
+            : TeamCatalog.Describe(promotion.Path).Description ?? "";
+        var mounts = SidecarMounts();
+        // Merged, never rebuilt (STUDIO-31, D-02): the adoption writes the fields it
+        // owns, and a « Modify » keeps the others — the archive flag, the last run.
+        TeamCatalog.UpdateMetadata(promotion.Path, current => current with
+        {
+            Name = adopted,
+            Description = description,
+            Profile = AdoptProfileName,
+            Schedule = schedule,
+            Mounts = mounts.Count > 0 ? mounts : null,
+        });
+        // STUDIO-50: the launchers the engine just wrote mount the team's own folders
+        // and nothing else; written again from the sidecar, the run the operating
+        // system schedules takes the team's setting and every folder a Studio launch
+        // gives it. STUDIO-51: a run.cmd that launches nothing is said below.
+        var launchers = TeamLaunchers.Regenerate(promotion.Path, _launcherContext());
+        TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));
+        // The engine's last warning is said, not dropped (STUDIO-26, D-05) — read now:
+        // the reset below replaces the model.
+        var warning = _model.LastWarning;
+        // The tunnel ends here (STUDIO-20): the team lives in My teams now, so the
+        // wizard goes back to a blank step 1 — the same slate as « Start over » — and
+        // the one line that stays says where the team went. The finally block's sync
+        // keeps it: a fresh model has no finished status to paint over it.
+        ResetToStepOne();
+        StatusMessage = scheduleStopped
+            ? AdoptedLine(adopted, warning, launchers) + " " + _strings[StudioStringKeys.WizardScheduleStopped]
+            : AdoptedLine(adopted, warning, launchers);
+        return promotion.Path;
+    }
+
+    /// <summary>
+    /// No promoted event means no team on disk — a silent button would read as success, so the
+    /// refusal is said out loud with what the engine said, in the status line and on the failure card.
+    /// </summary>
+    private void ReportPromoteRefused(ProcessRunResult result, string commandLine)
+    {
+        // Held in a field: the ordinary sync would repaint "ready" over it.
+        _saveError = _strings.Format(
+            StudioStringKeys.WizardPromoteFailed,
+            _lastStderr ?? string.Create(CultureInfo.InvariantCulture, $"exit {result.ExitCode}"));
+        // STUDIO-13: the same card as step 1, with the promote command line and the
+        // whole stderr — the status line above keeps its one-line sentence.
+        FailWith(
+            WizardFailureKind.PromoteRefused,
+            StderrText() is { Length: > 0 } stderr
+                ? stderr
+                : string.Create(CultureInfo.InvariantCulture, $"No `promoted` event came back (exit {result.ExitCode})."),
+            commandLine,
+            result.ExitCode);
     }
 
     /// <summary>

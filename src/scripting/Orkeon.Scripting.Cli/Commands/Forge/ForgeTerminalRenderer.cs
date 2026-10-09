@@ -67,26 +67,11 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                 break;
 
             case "brief.ready":
-                _console.WriteLine("✔ Brief captured — acceptance criteria locked in.");
-                if (e.TryGetProperty("heldFolders", out var held) && held.ValueKind == JsonValueKind.Array
-                    && held.GetArrayLength() > 0)
-                {
-                    _console.WriteLine("Folders kept inside the team — drop files or sub-folders there before the trial:");
-                    foreach (var folder in held.EnumerateArray())
-                        _console.WriteLine($"  {Text(folder, "path")} ({Text(folder, "role")}) → {Text(folder, "dir")}");
-                }
-
+                RenderBriefReady(e);
                 break;
 
             case "folders.proposed":
-                _console.WriteLine("Folders of the team:");
-                foreach (var folder in e.GetProperty("folders").EnumerateArray())
-                {
-                    var purpose = Text(folder, "purpose");
-                    _console.WriteLine(
-                        $"  {Text(folder, "path")} ({Text(folder, "role")})" + (purpose.Length > 0 ? $" — {purpose}" : ""));
-                }
-
+                RenderFoldersProposed(e);
                 break;
 
             case "blueprint.ready":
@@ -98,17 +83,7 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                 break;
 
             case "validation.result":
-                if (e.GetProperty("ok").GetBoolean())
-                {
-                    _console.WriteLine("✔ VALIDATION OK");
-                }
-                else
-                {
-                    _console.WriteLine("✖ VALIDATION FAILED");
-                    foreach (var error in e.GetProperty("errors").EnumerateArray())
-                        _console.WriteLine($"    - {error.GetString()}");
-                }
-
+                RenderValidationResult(e);
                 break;
 
             case "repair.started":
@@ -116,14 +91,7 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                 break;
 
             case "promoted":
-                _console.WriteLine($"✔ PROMOTED → {Text(e, "path")}");
-                _console.WriteLine($"  launch: {Text(e, "launcher")}");
-                if (e.TryGetProperty("install", out var install) && install.ValueKind == JsonValueKind.String)
-                {
-                    _console.WriteLine($"  schedule: install it with `orkeon forge schedule \"{Text(e, "path")}\"`");
-                    _console.WriteLine($"  or by hand: {install.GetString()}");
-                }
-
+                RenderPromoted(e);
                 break;
 
             case "schedule.state":
@@ -131,11 +99,7 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                 break;
 
             case "session.renamed":
-                _console.WriteLine(
-                    $"  session renamed after the team: {Text(e, "from")} → {Text(e, "to")}"
-                    + (e.TryGetProperty("suffixed", out var suffixed) && suffixed.ValueKind == JsonValueKind.True
-                        ? " (another session already had that name)"
-                        : ""));
+                RenderSessionRenamed(e);
                 break;
 
             case "team.renamed":
@@ -164,6 +128,65 @@ internal sealed class ForgeTerminalRenderer : TextWriter
         }
 
         _console.Flush();
+    }
+
+    /// <summary>The brief is captured; the folders the session keeps inside the team, when it holds any.</summary>
+    private void RenderBriefReady(JsonElement e)
+    {
+        _console.WriteLine("✔ Brief captured — acceptance criteria locked in.");
+        if (!e.TryGetProperty("heldFolders", out var held) || held.ValueKind != JsonValueKind.Array || held.GetArrayLength() == 0)
+            return;
+
+        _console.WriteLine("Folders kept inside the team — drop files or sub-folders there before the trial:");
+        foreach (var folder in held.EnumerateArray())
+            _console.WriteLine($"  {Text(folder, "path")} ({Text(folder, "role")}) → {Text(folder, "dir")}");
+    }
+
+    /// <summary>The folders proposed for the team, each with its role and what it holds.</summary>
+    private void RenderFoldersProposed(JsonElement e)
+    {
+        _console.WriteLine("Folders of the team:");
+        foreach (var folder in e.GetProperty("folders").EnumerateArray())
+        {
+            var purpose = Text(folder, "purpose");
+            _console.WriteLine(
+                $"  {Text(folder, "path")} ({Text(folder, "role")})" + (purpose.Length > 0 ? $" — {purpose}" : ""));
+        }
+    }
+
+    /// <summary>The validation's verdict, and each error when it failed.</summary>
+    private void RenderValidationResult(JsonElement e)
+    {
+        if (e.GetProperty("ok").GetBoolean())
+        {
+            _console.WriteLine("✔ VALIDATION OK");
+            return;
+        }
+
+        _console.WriteLine("✖ VALIDATION FAILED");
+        foreach (var error in e.GetProperty("errors").EnumerateArray())
+            _console.WriteLine($"    - {error.GetString()}");
+    }
+
+    /// <summary>Where the team was promoted, how to launch it, and how to install its schedule when it has one.</summary>
+    private void RenderPromoted(JsonElement e)
+    {
+        _console.WriteLine($"✔ PROMOTED → {Text(e, "path")}");
+        _console.WriteLine($"  launch: {Text(e, "launcher")}");
+        if (e.TryGetProperty("install", out var install) && install.ValueKind == JsonValueKind.String)
+        {
+            _console.WriteLine($"  schedule: install it with `orkeon forge schedule \"{Text(e, "path")}\"`");
+            _console.WriteLine($"  or by hand: {install.GetString()}");
+        }
+    }
+
+    /// <summary>The session renamed after its team, and whether a suffix told it apart from another.</summary>
+    private void RenderSessionRenamed(JsonElement e)
+    {
+        var suffixed = e.TryGetProperty("suffixed", out var flag) && flag.ValueKind == JsonValueKind.True;
+        _console.WriteLine(
+            $"  session renamed after the team: {Text(e, "from")} → {Text(e, "to")}"
+            + (suffixed ? " (another session already had that name)" : ""));
     }
 
     /// <summary>A folder's schedule, in one line: what runs it, what to do about it, or that nothing does.</summary>

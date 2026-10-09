@@ -93,11 +93,8 @@ public sealed class MainWindowViewModel : ObservableObject
         // wizard, the import, the trial, My teams and the launcher read one catalogue. A screen
         // handed the raw parameter would fall back to the default on its own, and list another
         // folder than the Launch tab.
-        var teamsHome = teamsRoot ?? teamsRootResolution?.Path ?? TeamCatalog.DefaultRoot();
-        TeamsRoot = teamsRootResolution is { } resolved && string.Equals(resolved.Path, teamsHome, StringComparison.Ordinal)
-            ? resolved
-            : new TeamsRootResolution(
-                teamsHome, teamsRoot is null ? TeamsRootSource.Default : TeamsRootSource.Argument, null, null);
+        TeamsRoot = ResolveTeamsRoot(teamsRoot, teamsRootResolution);
+        var teamsHome = TeamsRoot.Path;
         // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
         // on Windows — where the global appsettings, the model profiles and the history
         // already live): sessions are resumable app state, not documents, unlike the
@@ -164,12 +161,14 @@ public sealed class MainWindowViewModel : ObservableObject
         Settings = new SettingsScreenViewModel(
             Config,
             // « Used by » counts the archived teams too (STUDIO-31, D-08).
-            new ModelProfilesViewModel(profileStore, Config.Llm, strings, llmProbe, keyStore,
-                loadTeams: () => TeamCatalog.List(teamsHome, TeamListFilter.All),
-                balances: Balances,
-                shellOpener: shellOpener,
+            new ModelProfilesViewModel(profileStore, Config.Llm, strings, llmProbe, keyStore, new ModelProfilesLinks
+            {
+                LoadTeams = () => TeamCatalog.List(teamsHome, TeamListFilter.All),
+                Balances = Balances,
+                ShellOpener = shellOpener,
                 // STUDIO-52: a renamed setting's teams follow it before the change is mirrored.
-                followRename: FollowRenamedSetting),
+                FollowRename = FollowRenamedSetting,
+            }),
             Mode,
             // STUDIO-14 settings (D-13, P-1): the folders tab also lists each adopted team's own
             // folders, read from the sidecars and written nowhere — a team's folders are vouched
@@ -220,8 +219,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 // opener the team cards use, gated the same way.
                 ShellOpener = shellOpener,
                 // STUDIO-39: the gallery reads the catalogue of the binary every other screen
-                // runs, through the same runner; the suggestions pause on a timer of their own;
-                // the problem a chosen case writes is read in the language the window speaks.
+                // runs, through the same runner. The suggestions pause on a timer of their own,
+                // and the problem a chosen case writes is read in the language the window speaks.
                 UseCases = seams.UseCases ?? new UseCaseClient(runner),
                 SuggestionDelay = seams.SuggestionDelay,
                 UiLanguage = () => Language.Current,
@@ -331,7 +330,30 @@ public sealed class MainWindowViewModel : ObservableObject
         var effectiveStrings = strings ?? EnglishStudioStrings.Instance;
         _strings = effectiveStrings;
         TeamMounts = new TeamMountsDialogViewModel(strings, declaredMounts: declaredMounts, launcherContext: launcherContext);
-        Teams.MountsRequested += (_, e) =>
+        WireScreenEvents(launcherContext, effectiveStrings, picker);
+    }
+
+    /// <summary>
+    /// The teams root every screen reads under (STUDIO-61): the resolution handed in when it names
+    /// the root in force, else a resolution of the bare argument or of the default.
+    /// </summary>
+    private static TeamsRootResolution ResolveTeamsRoot(string? teamsRoot, TeamsRootResolution? teamsRootResolution)
+    {
+        var teamsHome = teamsRoot ?? teamsRootResolution?.Path ?? TeamCatalog.DefaultRoot();
+        if (teamsRootResolution is { } resolved && string.Equals(resolved.Path, teamsHome, StringComparison.Ordinal))
+            return resolved;
+
+        var source = teamsRoot is null ? TeamsRootSource.Default : TeamsRootSource.Argument;
+        return new TeamsRootResolution(teamsHome, source, null, null);
+    }
+
+    /// <summary>
+    /// The screens, built, listen to one another: a gesture on one refreshes what the others
+    /// show. Subscribed once, for the life of the window.
+    /// </summary>
+    private void WireScreenEvents(Func<TeamLauncherContext> launcherContext, IStudioStrings effectiveStrings, IPathPicker? picker)
+    {
+        Teams.MountsRequested += (sender, e) =>
             TeamMounts.Open(e.Card.Summary.Path, e.Card.Name, e.Card.Mounts,
                 onSaved: launchers =>
                 {
@@ -392,7 +414,7 @@ public sealed class MainWindowViewModel : ObservableObject
         Teams.SessionDeleted += (_, e) => CreateTeam.ForgetSession(e.Session.Directory);
         // STUDIO-28: a renamed team's launches were rewritten in the history (D-04) — the Run
         // screen's list reloads — and a launcher aimed at the former folder follows the team.
-        Teams.TeamRenamed += (_, e) =>
+        Teams.TeamRenamed += (sender, e) =>
         {
             _ = Launch.History.LoadAsync();
             Launch.FollowRenamedTeam(e.From, e.Path);
@@ -401,7 +423,7 @@ public sealed class MainWindowViewModel : ObservableObject
         };
         // An adoption or an import may bring a schedule: its card asks the engine where it stands
         // (STUDIO-27, D-05) — and the wizard's « Install » says what it did.
-        CreateTeam.TeamAdopted += (_, e) =>
+        CreateTeam.TeamAdopted += (sender, e) =>
         {
             Teams.Refresh();
             Test.RefreshTeams();
@@ -425,7 +447,7 @@ public sealed class MainWindowViewModel : ObservableObject
             if (e.PropertyName == nameof(StudioSettingsViewModel.Current))
                 Teams.RefreshArchiveSuggestion();
         };
-        Import.TeamImported += (_, e) =>
+        Import.TeamImported += (sender, e) =>
         {
             // STUDIO-52: an imported team's launchers name the other machine's settings file, setting
             // and folders: they are written for this one at once — never at startup.

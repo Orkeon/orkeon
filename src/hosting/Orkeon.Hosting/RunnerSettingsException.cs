@@ -14,7 +14,9 @@ namespace Orkeon.Hosting;
 /// with exit 1 — <c>email</c>, <c>rag</c>, <c>--list-tools</c>, <c>mcp serve</c> — catch.
 /// </para>
 /// </summary>
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
 public sealed class RunnerSettingsException : InvalidOperationException
+#pragma warning restore S3925
 {
     /// <summary>Creates the exception with a generic reason; prefer the message overload.</summary>
     public RunnerSettingsException()

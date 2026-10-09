@@ -105,7 +105,7 @@ public sealed class JsLlmFacadeStreamTests
         var gate = new AllowAllGate();
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget, gate);
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget, PermissionGate = gate });
 
         engine.SetValue("__deltas", new List<object>());
         var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d), permissionMode: \"acceptEdits\" })");
@@ -202,8 +202,8 @@ public sealed class JsLlmFacadeStreamTests
         var sink = new RecordingSink();
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, tools: null, budget: null,
-            permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
+            engine, provider, CancellationToken.None, tools: null, guards: null,
+            observability: new JsLlmObservability { DeltaSink = sink });
 
         var result = await facade.ActAsync(engine, "go", null);
 
@@ -224,8 +224,8 @@ public sealed class JsLlmFacadeStreamTests
         var sink = new RecordingSink();
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, tools: null, budget: null,
-            permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
+            engine, provider, CancellationToken.None, tools: null, guards: null,
+            observability: new JsLlmObservability { DeltaSink = sink });
 
         engine.SetValue("__deltas", new List<object>());
         var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d) })");
@@ -257,8 +257,8 @@ public sealed class JsLlmFacadeStreamTests
         var sink = new RecordingSink();
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null,
-            permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, guards: null,
+            observability: new JsLlmObservability { DeltaSink = sink });
 
         var result = await facade.ActAsync(engine, "read then answer", null);
 
@@ -276,8 +276,8 @@ public sealed class JsLlmFacadeStreamTests
         var sink = new RecordingSink();
 
         var facade = new JsLlmFacade(
-            engine, provider, CancellationToken.None, tools: null, budget: null,
-            permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
+            engine, provider, CancellationToken.None, tools: null, guards: null,
+            observability: new JsLlmObservability { DeltaSink = sink });
 
         var result = await facade.ActAsync(engine, "go", null);
 

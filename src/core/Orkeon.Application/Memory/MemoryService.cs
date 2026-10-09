@@ -252,9 +252,10 @@ internal class CrewMemorySystem : ICrewMemorySystem, IDisposable
     {
         ArgumentNullException.ThrowIfNull(crewId);
         ShortTerm = new SimpleShortTermMemory();
-        LongTerm = provider is not null
-            ? new ProviderBackedLongTermMemory(provider, string.IsNullOrWhiteSpace(scope) ? crewId.ToString() : scope)
-            : new InternalLongTermMemory();
+        if (provider is not null)
+            LongTerm = new ProviderBackedLongTermMemory(provider, string.IsNullOrWhiteSpace(scope) ? crewId.ToString() : scope);
+        else
+            LongTerm = new InternalLongTermMemory();
         Entities = new SimpleEntityMemory();
         Contextual = new SimpleContextualMemory(ShortTerm, LongTerm);
     }

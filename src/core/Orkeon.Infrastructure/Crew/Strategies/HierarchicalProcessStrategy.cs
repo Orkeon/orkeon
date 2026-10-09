@@ -169,6 +169,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             // own assign/review usage belongs to no task, so no task's figure carries it; the
             // run's token meter counts it through the metered provider (STUDIO-42).
             var tokenTally = new TokenUsageTally();
+            var run = new HierarchicalRun(
+                workerAgents, managerLlm, managerRole, applicationTaskOutputs, tokenTally, outcome, results, taskSnapshots);
 
             // The manager hands the tasks out one after another, so the order is the
             // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
@@ -191,26 +193,15 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 // "Task failed: …" where its input should be.
                 if (outcome.BlockingDependency(task) is { } blockedBy)
                 {
-                    var skipReason = await outcome.RecordSkipAsync(task, UnassignedRole, blockedBy).ConfigureAwait(false);
-                    LogTaskSkippedAfterDependency(task.Id, blockedBy);
-                    var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agentId: null, blockedBy);
-                    results.Add(skippedDomain);
-                    applicationTaskOutputs.Add(skippedApp);
-                    context = context with { PreviousOutputs = applicationTaskOutputs };
-                    var skipped = CrewRunOutcome.SkippedSnapshot(task.Id, UnassignedRole, skipReason);
-                    taskSnapshots.Add(skipped);
-                    await _hooks.TaskCompletedAsync(skipped, cancellationToken).ConfigureAwait(false);
+                    context = await SkipBlockedTaskAsync(run, task, context, blockedBy, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
 
                 // The loop is sequential, so the tally's delta around one task IS that
                 // task's usage — revision re-executions included (W-08).
-                var tokensBefore = tokenTally.TotalTokens;
-                var cacheHitBefore = tokenTally.CacheHitTokens;
-                var cacheMissBefore = tokenTally.CacheMissTokens;
+                var before = TokenUsageSnapshot.Of(tokenTally);
 
-                var processed = await ProcessSingleTaskAsync(
-                    task, workerAgents, managerLlm, context, applicationTaskOutputs, tokenTally, outcome, cancellationToken).ConfigureAwait(false);
+                var processed = await ProcessSingleTaskAsync(task, run, context, cancellationToken).ConfigureAwait(false);
 
                 if (processed.Assignee is null)
                 {
@@ -221,34 +212,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                     continue;
                 }
 
-                var (domainOutput, appOutput) = (processed.Domain!, processed.Application!);
-                results.Add(domainOutput);
-                applicationTaskOutputs.Add(appOutput);
                 context = processed.Context!;
-
-                // The agent the manager assigned ends the task it started — its revisions were
-                // part of its work on it (GAP-21).
-                if (domainOutput.Success)
-                    await outcome.RecordSuccessAsync(task, domainOutput).ConfigureAwait(false);
-                else
-                    await outcome.RecordFailureAsync(task, processed.Assignee.Role.Value, processed.Error).ConfigureAwait(false);
-
-                var snapshot = new TaskExecutionSnapshot
-                {
-                    TaskId = taskId.Value.ToString(),
-                    // The role, not the agent's GUID the output carries: the start event names
-                    // the role and a watcher pairs the two by it (STUDIO-17).
-                    AgentRole = processed.Assignee.Role.Value,
-                    Success = domainOutput.Success,
-                    Duration = domainOutput.ExecutionTime,
-                    CompletedAt = DateTimeOffset.UtcNow,
-                    ToolCallCount = appOutput.ToolsUsed?.Count ?? 0,
-                    TokensUsed = tokenTally.TotalTokens - tokensBefore,
-                    CacheHitTokens = tokenTally.CacheHitTokens - cacheHitBefore,
-                    CacheMissTokens = tokenTally.CacheMissTokens - cacheMissBefore,
-                };
-                taskSnapshots.Add(snapshot);
-                await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                await RecordProcessedTaskAsync(run, task, processed, before, cancellationToken).ConfigureAwait(false);
             }
 
             return await BuildCrewOutputAsync(
@@ -276,6 +241,82 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             throw;
         }
     }
+
+    /// <summary>
+    /// A task blocked by a dependency that did not succeed: recorded as skipped and never run — a
+    /// failed output for the crew's result and the next tasks' context, which is returned derived
+    /// (GAP-30), and a skipped snapshot for the hooks.
+    /// </summary>
+    private async Task<SimpleExecutionContext> SkipBlockedTaskAsync(
+        HierarchicalRun run, CrewTask task, SimpleExecutionContext context, TaskId blockedBy, CancellationToken cancellationToken)
+    {
+        var skipReason = await run.Outcome.RecordSkipAsync(task, UnassignedRole, blockedBy).ConfigureAwait(false);
+        LogTaskSkippedAfterDependency(task.Id, blockedBy);
+        var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agentId: null, blockedBy);
+        run.Results.Add(skippedDomain);
+        run.ApplicationTaskOutputs.Add(skippedApp);
+        var skipped = CrewRunOutcome.SkippedSnapshot(task.Id, UnassignedRole, skipReason);
+        run.TaskSnapshots.Add(skipped);
+        await _hooks.TaskCompletedAsync(skipped, cancellationToken).ConfigureAwait(false);
+        return context with { PreviousOutputs = run.ApplicationTaskOutputs };
+    }
+
+    /// <summary>
+    /// A task the manager had run: its outputs join the run's, the agent the manager assigned ends
+    /// the task it started — its revisions were part of its work on it (GAP-21) —, and its snapshot,
+    /// metered on the tally's delta around it, goes to the hooks.
+    /// </summary>
+    private async Task RecordProcessedTaskAsync(
+        HierarchicalRun run, CrewTask task, ProcessedTask processed, TokenUsageSnapshot before, CancellationToken cancellationToken)
+    {
+        var (domainOutput, appOutput) = (processed.Domain!, processed.Application!);
+        run.Results.Add(domainOutput);
+        run.ApplicationTaskOutputs.Add(appOutput);
+
+        if (domainOutput.Success)
+            await run.Outcome.RecordSuccessAsync(task, domainOutput).ConfigureAwait(false);
+        else
+            await run.Outcome.RecordFailureAsync(task, processed.Assignee!.Role.Value, processed.Error).ConfigureAwait(false);
+
+        var snapshot = new TaskExecutionSnapshot
+        {
+            TaskId = task.Id.Value.ToString(),
+            // The role, not the agent's GUID the output carries: the start event names
+            // the role and a watcher pairs the two by it (STUDIO-17).
+            AgentRole = processed.Assignee!.Role.Value,
+            Success = domainOutput.Success,
+            Duration = domainOutput.ExecutionTime,
+            CompletedAt = DateTimeOffset.UtcNow,
+            ToolCallCount = appOutput.ToolsUsed?.Count ?? 0,
+            TokensUsed = run.TokenTally.TotalTokens - before.Total,
+            CacheHitTokens = run.TokenTally.CacheHitTokens - before.CacheHit,
+            CacheMissTokens = run.TokenTally.CacheMissTokens - before.CacheMiss,
+        };
+        run.TaskSnapshots.Add(snapshot);
+        await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The tally's counters at one moment, to meter one task on the delta around it.</summary>
+    private readonly record struct TokenUsageSnapshot(int Total, long CacheHit, long CacheMiss)
+    {
+        public static TokenUsageSnapshot Of(TokenUsageTally tally) =>
+            new(tally.TotalTokens, tally.CacheHitTokens, tally.CacheMissTokens);
+    }
+
+    /// <summary>
+    /// What one hierarchical run works with from task to task: the workers and the LLM the manager
+    /// hands the tasks out on, under its role; the outputs so far, the token tally (R10.8), the
+    /// outcome (GAP-03, GAP-21), the results and the snapshots the hooks heard.
+    /// </summary>
+    private sealed record HierarchicalRun(
+        List<DomainAgent> WorkerAgents,
+        ManagerLlm ManagerLlm,
+        string ManagerRole,
+        List<ApplicationTaskOutput> ApplicationTaskOutputs,
+        TokenUsageTally TokenTally,
+        CrewRunOutcome Outcome,
+        List<DomainTaskOutput> Results,
+        List<TaskExecutionSnapshot> TaskSnapshots);
 
     private async Task<List<DomainAgent>> GetWorkerAgentsAsync(DomainCrew crew, AgentId? managerAgentId)
     {
@@ -307,20 +348,16 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
     private async Task<ProcessedTask> ProcessSingleTaskAsync(
         CrewTask task,
-        List<DomainAgent> workerAgents,
-        ManagerLlm managerLlm,
+        HierarchicalRun run,
         SimpleExecutionContext context,
-        List<ApplicationTaskOutput> applicationTaskOutputs,
-        TokenUsageTally tokenTally,
-        CrewRunOutcome outcome,
         CancellationToken cancellationToken)
     {
         LogManagerProcessingTask(task.Id);
 
-        var assignment = await _managerAgent.AssignTaskAsync(task, workerAgents, context, managerLlm).ConfigureAwait(false);
+        var assignment = await _managerAgent.AssignTaskAsync(task, run.WorkerAgents, context, run.ManagerLlm).ConfigureAwait(false);
         LogManagerAssignedTaskToAgent(assignment.TaskId, assignment.AssignedAgent, assignment.Reason);
 
-        var assignedAgent = workerAgents.FirstOrDefault(a => a.Id == assignment.AssignedAgent);
+        var assignedAgent = run.WorkerAgents.FirstOrDefault(a => a.Id == assignment.AssignedAgent);
         if (assignedAgent == null)
         {
             LogAssignedAgentNotFound(assignment.AssignedAgent);
@@ -332,13 +369,13 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             .ConfigureAwait(false);
         // The agent the manager assigned starts the task — re-assigned to it when the crew declared
         // another (GAP-21).
-        await outcome.RecordStartAsync(task, assignedAgent).ConfigureAwait(false);
+        await run.Outcome.RecordStartAsync(task, assignedAgent).ConfigureAwait(false);
 
         var (domainOutput, appOutput, error) = await ExecuteWithRevisionLoopAsync(
-            assignedAgent, task, task.Id, managerLlm, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
+            assignedAgent, task, task.Id, run.ManagerLlm, context, run.ApplicationTaskOutputs, run.TokenTally, cancellationToken).ConfigureAwait(false);
 
         // Derived, never rebuilt: a context's init settings survive from task to task (GAP-30).
-        var updatedContext = context with { PreviousOutputs = applicationTaskOutputs };
+        var updatedContext = context with { PreviousOutputs = run.ApplicationTaskOutputs };
 
         return new ProcessedTask(assignedAgent, assignment.AssignedAgent, domainOutput, appOutput, updatedContext, error);
     }
@@ -536,9 +573,9 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
         // A task the manager kept rejecting, or whose worker failed, fails the crew (GAP-03):
         // "[NEEDS REVISION]" used to sit in a crew reported as completed.
-        return await outcome.CompleteAsync(
-            _hooks, crew.Id.ToString(), startTime, taskSnapshots,
-            results, totalExecutionTime, metadata, finalOutput).ConfigureAwait(false);
+        return await outcome.CompleteAsync(_hooks, new CrewRunSummary(
+            crew.Id.ToString(), startTime, taskSnapshots,
+            results, totalExecutionTime, metadata, finalOutput)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

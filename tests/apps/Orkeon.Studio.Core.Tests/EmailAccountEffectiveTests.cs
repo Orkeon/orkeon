@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Orkeon.Constants.Configuration;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Tools.Email.Configuration;
+using StudioEmailRights = Orkeon.Studio.Core.Configuration.EmailRights;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -14,7 +15,7 @@ namespace Orkeon.Studio.Core.Tests;
 /// </summary>
 public sealed class EmailAccountEffectiveTests
 {
-    private const EmailRight Rights = EmailRight.Read | EmailRight.Organize | EmailRight.Draft;
+    private const StudioEmailRights Rights = StudioEmailRights.Read | StudioEmailRights.Organize | StudioEmailRights.Draft;
 
     private static readonly EmailAccountDefinition Gmail = new()
     {

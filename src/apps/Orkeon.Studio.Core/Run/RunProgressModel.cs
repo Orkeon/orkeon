@@ -381,187 +381,216 @@ public sealed class RunProgressModel
     {
         ArgumentNullException.ThrowIfNull(orkeonEvent);
 
-        switch (orkeonEvent.Kind)
+        var changed = orkeonEvent.Kind switch
         {
-            case RunEventKinds.RunStarted:
-                Target = orkeonEvent.GetString("target");
-                Streaming = orkeonEvent.GetBool("stream") ?? false;
-                StartedAt = ReadTimestamp(orkeonEvent);
-                break;
+            RunEventKinds.RunStarted => ApplyRunStarted(orkeonEvent),
+            RunEventKinds.TaskStarted => ApplyTaskStarted(orkeonEvent),
+            RunEventKinds.TaskCompleted => ApplyTaskCompleted(orkeonEvent),
+            RunEventKinds.ToolCalled => ApplyToolCalled(orkeonEvent),
+            RunEventKinds.ToolReturned => Returned(orkeonEvent),   // a return nothing was waiting for changes nothing
+            RunEventKinds.DelegationStarted => ApplyDelegationStarted(orkeonEvent),
+            RunEventKinds.AgentSpawned => ApplyAgentSpawned(orkeonEvent),
+            RunEventKinds.CostUpdated => ApplyCostUpdated(orkeonEvent),
+            RunEventKinds.LlmDelta => ApplyLlmDelta(orkeonEvent),
+            RunEventKinds.InputNeeded => ApplyInputNeeded(orkeonEvent),
+            RunEventKinds.InputGiven => ApplyInputGiven(orkeonEvent),
+            RunEventKinds.HubMessage => ApplyHubMessage(orkeonEvent),
+            RunEventKinds.Error => ApplyError(orkeonEvent),
+            RunEventKinds.RunFinished => ApplyRunFinished(orkeonEvent),
+            _ => false,   // nothing changed, so nothing to announce
+        };
 
-            case RunEventKinds.TaskStarted:
-                // The run's own clock, when it parses; null otherwise — a screen shows "since
-                // HH:mm:ss" or nothing, never a time it made up.
-                _running.Add(new RunTaskInFlight(
-                    orkeonEvent.GetString("taskId"),
-                    orkeonEvent.GetString("agentRole"),
-                    ReadTimestamp(orkeonEvent)));
-                break;
+        if (changed)
+            Changed?.Invoke(this, new RunProgressChangedEventArgs(orkeonEvent.Kind));
+    }
 
-            case RunEventKinds.TaskCompleted:
-                var finished = new RunTaskProgress(
-                    orkeonEvent.GetString("taskId"),
-                    orkeonEvent.GetString("agentRole"),
-                    orkeonEvent.GetBool("success") ?? false,
-                    orkeonEvent.GetInt64("durationMs") ?? 0,
-                    orkeonEvent.GetInt64("tokens"),
-                    (int?)orkeonEvent.GetInt64("toolCalls"),
-                    // A task that never ran because a dependency failed (LLM-11): not started,
-                    // completed with success=false, and told apart from a failure by this flag.
-                    orkeonEvent.GetBool("skipped") ?? false);
-                _tasks.Add(finished);
-                Settle(finished.TaskId, finished.AgentRole);
-                break;
+    private bool ApplyRunStarted(OrkeonEvent orkeonEvent)
+    {
+        Target = orkeonEvent.GetString("target");
+        Streaming = orkeonEvent.GetBool("stream") ?? false;
+        StartedAt = ReadTimestamp(orkeonEvent);
+        return true;
+    }
 
-            case RunEventKinds.ToolCalled:
-                if (orkeonEvent.GetString("toolName") is not { Length: > 0 } calledTool)
-                    return;   // a call that names no tool is nothing a screen can show
+    private bool ApplyTaskStarted(OrkeonEvent orkeonEvent)
+    {
+        // The run's own clock, when it parses; null otherwise — a screen shows "since
+        // HH:mm:ss" or nothing, never a time it made up.
+        _running.Add(new RunTaskInFlight(
+            orkeonEvent.GetString("taskId"),
+            orkeonEvent.GetString("agentRole"),
+            ReadTimestamp(orkeonEvent)));
+        return true;
+    }
 
-                _activeTools.Open(ToolKey(orkeonEvent), new RunToolInFlight(calledTool, ReadTimestamp(orkeonEvent)));
-                ToolCallCount++;
-                break;
+    private bool ApplyTaskCompleted(OrkeonEvent orkeonEvent)
+    {
+        var finished = new RunTaskProgress(
+            orkeonEvent.GetString("taskId"),
+            orkeonEvent.GetString("agentRole"),
+            orkeonEvent.GetBool("success") ?? false,
+            orkeonEvent.GetInt64("durationMs") ?? 0,
+            orkeonEvent.GetInt64("tokens"),
+            (int?)orkeonEvent.GetInt64("toolCalls"),
+            // A task that never ran because a dependency failed (LLM-11): not started,
+            // completed with success=false, and told apart from a failure by this flag.
+            orkeonEvent.GetBool("skipped") ?? false);
+        _tasks.Add(finished);
+        Settle(finished.TaskId, finished.AgentRole);
+        return true;
+    }
 
-            case RunEventKinds.ToolReturned:
-                if (!Returned(orkeonEvent))
-                    return;   // a return nothing was waiting for changes nothing
+    private bool ApplyToolCalled(OrkeonEvent orkeonEvent)
+    {
+        if (orkeonEvent.GetString("toolName") is not { Length: > 0 } calledTool)
+            return false;   // a call that names no tool is nothing a screen can show
 
-                break;
+        _activeTools.Open(ToolKey(orkeonEvent), new RunToolInFlight(calledTool, ReadTimestamp(orkeonEvent)));
+        ToolCallCount++;
+        return true;
+    }
 
-            case RunEventKinds.DelegationStarted:
-                // Reported instead of the delegation's tool.called, and closed by that call's
-                // tool.returned — there is no delegation.finished. A handover naming no
-                // coworker is still one under way.
-                _activeDelegations.Open(ToolKey(orkeonEvent), new RunDelegationInFlight(
-                    orkeonEvent.GetString("toRole"),
-                    ReadTimestamp(orkeonEvent)));
-                break;
+    private bool ApplyDelegationStarted(OrkeonEvent orkeonEvent)
+    {
+        // Reported instead of the delegation's tool.called, and closed by that call's
+        // tool.returned — there is no delegation.finished. A handover naming no
+        // coworker is still one under way.
+        _activeDelegations.Open(ToolKey(orkeonEvent), new RunDelegationInFlight(
+            orkeonEvent.GetString("toRole"),
+            ReadTimestamp(orkeonEvent)));
+        return true;
+    }
 
-            case RunEventKinds.AgentSpawned:
-                _spawnedAgents.Add(new RunSpawnedAgent(
-                    orkeonEvent.GetString("role"),
-                    orkeonEvent.GetString("reason"),
-                    ReadTimestamp(orkeonEvent)));
-                break;
+    private bool ApplyAgentSpawned(OrkeonEvent orkeonEvent)
+    {
+        _spawnedAgents.Add(new RunSpawnedAgent(
+            orkeonEvent.GetString("role"),
+            orkeonEvent.GetString("reason"),
+            ReadTimestamp(orkeonEvent)));
+        return true;
+    }
 
-            case RunEventKinds.CostUpdated:
-                // Only what the CLI actually emits. The first version read `usd` and
-                // `budgetRemaining` — fields the writer never produced — so the screen was
-                // built against a fiction. The split and the vendor's charge arrive with every
-                // reading since STUDIO-29; a field a line leaves out stays null here.
-                // Every call of the run is on the meter since STUDIO-42 — a judge's, a RAG
-                // pipeline's, the manager's: their readings move the figures and leave the model
-                // named, which is the one the agents work on.
-                var agentWork = RunCostOperations.IsAgentWork(orkeonEvent.GetString("operation"));
-                var standing = orkeonEvent.GetInt64("tokens") ?? 0;
-                var spent = standing - (Cost?.Tokens ?? 0);
-                if (spent > 0)
-                {
-                    var spentOn = orkeonEvent.GetString("provider") ?? string.Empty;
-                    _tokensByProvider[spentOn] = _tokensByProvider.GetValueOrDefault(spentOn) + spent;
-                }
-
-                Cost = new RunCost(
-                    orkeonEvent.GetInt64("tokens") ?? 0,
-                    agentWork ? orkeonEvent.GetString("model") : Cost?.Model,
-                    agentWork ? orkeonEvent.GetString("provider") : Cost?.Provider,
-                    orkeonEvent.GetInt64("promptTokens"),
-                    orkeonEvent.GetInt64("completionTokens"),
-                    orkeonEvent.GetInt64("cacheHitTokens"),
-                    orkeonEvent.GetInt64("cacheMissTokens"),
-                    orkeonEvent.GetInt64("estimatedTokens"),
-                    orkeonEvent.GetDecimal("cost"),
-                    orkeonEvent.GetString("currency"),
-                    orkeonEvent.GetString("costSource"));
-                break;
-
-            case RunEventKinds.LlmDelta:
-                _generated.Append(orkeonEvent.GetString("text"));
-                break;
-
-            case RunEventKinds.InputNeeded:
-                // Questions queue rather than overwrite: parallel tasks can ask concurrently,
-                // and the first version kept a single slot — the second question clobbered
-                // the first, which stayed unanswerable forever. A malformed question (no
-                // correlation id — no address to answer to) changes nothing at all: it used
-                // to CLEAR a legitimate question already on screen.
-                if (ReadQuestion(orkeonEvent) is { } question)
-                {
-                    _questions.RemoveAll(q => string.Equals(q.CorrelationId, question.CorrelationId, StringComparison.Ordinal));
-                    _questions.Add(question);
-                }
-                else
-                {
-                    return;
-                }
-
-                break;
-
-            case RunEventKinds.InputGiven:
-                // The answer is echoed by whoever sent it; that question is no longer pending.
-                // An echo naming a question removes it alone; one naming nobody removes the
-                // oldest — mirroring how the CLI pump spends an unnamed answer.
-                if (orkeonEvent.CorrelationId is { } answered)
-                    _questions.RemoveAll(q => string.Equals(q.CorrelationId, answered, StringComparison.Ordinal));
-                else if (_questions.Count > 0)
-                    _questions.RemoveAt(0);
-                break;
-
-            case RunEventKinds.HubMessage:
-                _hubMessages.Add(new RunHubMessage(
-                    orkeonEvent.GetString("from"),
-                    orkeonEvent.GetString("topic"),
-                    orkeonEvent.CorrelationId,
-                    orkeonEvent.GetRawJson("payload")));
-
-                // A send says so explicitly (`expectsReply`): the peer must not guess which
-                // correlated lines are questions — a topic relay can carry a correlationId
-                // too. Requests queue like human questions do, and a line with no
-                // correlation id offers no address to reply to, so it stays journal-only.
-                if (orkeonEvent.GetBool("expectsReply") == true
-                    && orkeonEvent.CorrelationId is { } requestId
-                    && !string.IsNullOrWhiteSpace(requestId))
-                {
-                    _agentRequests.RemoveAll(r => string.Equals(r.CorrelationId, requestId, StringComparison.Ordinal));
-                    _agentRequests.Add(new RunAgentRequest(
-                        requestId,
-                        orkeonEvent.GetString("from"),
-                        orkeonEvent.GetRawJson("payload")));
-                }
-
-                break;
-
-            case RunEventKinds.Error:
-                LastError = new RunErrorInfo(
-                    orkeonEvent.GetString("code") ?? "unknown",
-                    orkeonEvent.GetString("message") ?? string.Empty,
-                    orkeonEvent.GetBool("recoverable") ?? false);
-                break;
-
-            case RunEventKinds.RunFinished:
-                Finished = true;
-                Success = orkeonEvent.GetBool("success");
-                ExitCode = (int?)orkeonEvent.GetInt64("exitCode");
-                FinalTokens = orkeonEvent.GetInt64("tokens");
-                FinalDurationMs = orkeonEvent.GetInt64("durationMs");
-                FinalCacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens");
-                FinalCacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens");
-                FinalEstimatedTokens = orkeonEvent.GetInt64("estimatedTokens");
-                _finishedAt = ReadTimestamp(orkeonEvent);
-                _questions.Clear();       // nobody is left to answer them
-                _agentRequests.Clear();   // the asking agents are gone with the run
-                _running.Clear();         // nothing is in progress once the run has ended
-
-                // A call still open now never came back. It leaves what is at work, but is set
-                // aside as not finished rather than dropped, where it would read as a success.
-                _activeTools.AbandonInto(_unfinishedTools);
-                _activeDelegations.AbandonInto(_unfinishedDelegations);
-                break;
-
-            default:
-                return;   // nothing changed, so nothing to announce
+    private bool ApplyCostUpdated(OrkeonEvent orkeonEvent)
+    {
+        // Only what the CLI actually emits. The first version read `usd` and
+        // `budgetRemaining` — fields the writer never produced — so the screen was
+        // built against a fiction. The split and the vendor's charge arrive with every
+        // reading since STUDIO-29; a field a line leaves out stays null here.
+        // Every call of the run is on the meter since STUDIO-42 — a judge's, a RAG
+        // pipeline's, the manager's: their readings move the figures and leave the model
+        // named, which is the one the agents work on.
+        var agentWork = RunCostOperations.IsAgentWork(orkeonEvent.GetString("operation"));
+        var standing = orkeonEvent.GetInt64("tokens") ?? 0;
+        var spent = standing - (Cost?.Tokens ?? 0);
+        if (spent > 0)
+        {
+            var spentOn = orkeonEvent.GetString("provider") ?? string.Empty;
+            _tokensByProvider[spentOn] = _tokensByProvider.GetValueOrDefault(spentOn) + spent;
         }
 
-        Changed?.Invoke(this, new RunProgressChangedEventArgs(orkeonEvent.Kind));
+        Cost = new RunCost(
+            orkeonEvent.GetInt64("tokens") ?? 0,
+            agentWork ? orkeonEvent.GetString("model") : Cost?.Model,
+            agentWork ? orkeonEvent.GetString("provider") : Cost?.Provider,
+            orkeonEvent.GetInt64("promptTokens"),
+            orkeonEvent.GetInt64("completionTokens"),
+            orkeonEvent.GetInt64("cacheHitTokens"),
+            orkeonEvent.GetInt64("cacheMissTokens"),
+            orkeonEvent.GetInt64("estimatedTokens"),
+            orkeonEvent.GetDecimal("cost"),
+            orkeonEvent.GetString("currency"),
+            orkeonEvent.GetString("costSource"));
+        return true;
+    }
+
+    private bool ApplyLlmDelta(OrkeonEvent orkeonEvent)
+    {
+        _generated.Append(orkeonEvent.GetString("text"));
+        return true;
+    }
+
+    private bool ApplyInputNeeded(OrkeonEvent orkeonEvent)
+    {
+        // Questions queue rather than overwrite: parallel tasks can ask concurrently,
+        // and the first version kept a single slot — the second question clobbered
+        // the first, which stayed unanswerable forever. A malformed question (no
+        // correlation id — no address to answer to) changes nothing at all: it used
+        // to CLEAR a legitimate question already on screen.
+        if (ReadQuestion(orkeonEvent) is not { } question)
+            return false;
+
+        _questions.RemoveAll(q => string.Equals(q.CorrelationId, question.CorrelationId, StringComparison.Ordinal));
+        _questions.Add(question);
+        return true;
+    }
+
+    private bool ApplyInputGiven(OrkeonEvent orkeonEvent)
+    {
+        // The answer is echoed by whoever sent it; that question is no longer pending.
+        // An echo naming a question removes it alone; one naming nobody removes the
+        // oldest — mirroring how the CLI pump spends an unnamed answer.
+        if (orkeonEvent.CorrelationId is { } answered)
+            _questions.RemoveAll(q => string.Equals(q.CorrelationId, answered, StringComparison.Ordinal));
+        else if (_questions.Count > 0)
+            _questions.RemoveAt(0);
+        return true;
+    }
+
+    private bool ApplyHubMessage(OrkeonEvent orkeonEvent)
+    {
+        _hubMessages.Add(new RunHubMessage(
+            orkeonEvent.GetString("from"),
+            orkeonEvent.GetString("topic"),
+            orkeonEvent.CorrelationId,
+            orkeonEvent.GetRawJson("payload")));
+
+        // A send says so explicitly (`expectsReply`): the peer must not guess which
+        // correlated lines are questions — a topic relay can carry a correlationId
+        // too. Requests queue like human questions do, and a line with no
+        // correlation id offers no address to reply to, so it stays journal-only.
+        if (orkeonEvent.GetBool("expectsReply") == true
+            && orkeonEvent.CorrelationId is { } requestId
+            && !string.IsNullOrWhiteSpace(requestId))
+        {
+            _agentRequests.RemoveAll(r => string.Equals(r.CorrelationId, requestId, StringComparison.Ordinal));
+            _agentRequests.Add(new RunAgentRequest(
+                requestId,
+                orkeonEvent.GetString("from"),
+                orkeonEvent.GetRawJson("payload")));
+        }
+
+        return true;
+    }
+
+    private bool ApplyError(OrkeonEvent orkeonEvent)
+    {
+        LastError = new RunErrorInfo(
+            orkeonEvent.GetString("code") ?? "unknown",
+            orkeonEvent.GetString("message") ?? string.Empty,
+            orkeonEvent.GetBool("recoverable") ?? false);
+        return true;
+    }
+
+    private bool ApplyRunFinished(OrkeonEvent orkeonEvent)
+    {
+        Finished = true;
+        Success = orkeonEvent.GetBool("success");
+        ExitCode = (int?)orkeonEvent.GetInt64("exitCode");
+        FinalTokens = orkeonEvent.GetInt64("tokens");
+        FinalDurationMs = orkeonEvent.GetInt64("durationMs");
+        FinalCacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens");
+        FinalCacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens");
+        FinalEstimatedTokens = orkeonEvent.GetInt64("estimatedTokens");
+        _finishedAt = ReadTimestamp(orkeonEvent);
+        _questions.Clear();       // nobody is left to answer them
+        _agentRequests.Clear();   // the asking agents are gone with the run
+        _running.Clear();         // nothing is in progress once the run has ended
+
+        // A call still open now never came back. It leaves what is at work, but is set
+        // aside as not finished rather than dropped, where it would read as a success.
+        _activeTools.AbandonInto(_unfinishedTools);
+        _activeDelegations.AbandonInto(_unfinishedDelegations);
+        return true;
     }
 
     /// <summary>

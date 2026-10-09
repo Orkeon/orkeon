@@ -191,9 +191,10 @@ internal static class ForgeFolders
     public static string DefaultPurpose(string? language, string role)
     {
         var french = string.Equals(language, "fr", StringComparison.OrdinalIgnoreCase);
-        return string.Equals(role, InputRole, StringComparison.Ordinal)
-            ? (french ? "Ce que l'équipe lit." : "What the team reads.")
-            : (french ? "Où l'équipe écrit ses résultats." : "Where the team writes its results.");
+        if (string.Equals(role, InputRole, StringComparison.Ordinal))
+            return french ? "Ce que l'équipe lit." : "What the team reads.";
+
+        return french ? "Où l'équipe écrit ses résultats." : "Where the team writes its results.";
     }
 
     /// <summary>Whether a brief's proposal is the defaults: the request named no folder.</summary>

@@ -125,6 +125,8 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
         await cmd.ExecuteAsync(Ctx("/askbg-raw hello", "hello", console), CancellationToken.None);
 
         await WaitUntil(() => console.Output.Contains("done:HELLO@/askbg-raw hello", StringComparison.Ordinal));
+
+        Assert.Contains("done:HELLO@/askbg-raw hello", console.Output, StringComparison.Ordinal);
     }
 
     [Fact]

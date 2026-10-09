@@ -210,9 +210,14 @@ internal static class EmailCommand
         return GuardedAsync("check", options, async (administration, ct) =>
         {
             var result = await administration.CheckAsync(options.Account, ct).ConfigureAwait(false);
-            var inbox = result.InboxTotal is { } total
-                ? string.Create(CultureInfo.InvariantCulture, $", inbox {total} message(s){(result.InboxUnread is { } unread ? $", {unread} unread" : string.Empty)}")
-                : string.Empty;
+            var inbox = string.Empty;
+            if (result.InboxTotal is { } total)
+            {
+                var unreadPart = result.InboxUnread is { } unread
+                    ? string.Create(CultureInfo.InvariantCulture, $", {unread} unread")
+                    : string.Empty;
+                inbox = string.Create(CultureInfo.InvariantCulture, $", inbox {total} message(s){unreadPart}");
+            }
             await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
                     $"E-mail account '{result.Account}' is reachable: {result.Folders} folder(s){inbox}."))
                 .ConfigureAwait(false);

@@ -257,10 +257,10 @@ public sealed partial class CreateTeamViewModel
         get
         {
             var roots = new List<string>();
-            foreach (var row in FolderRows)
+            foreach (var virtualPath in FolderRows.Select(row => row.VirtualPath))
             {
-                if (!TryNormalizeRootName(row.VirtualPath, out var root))
-                    return _strings.Format(StudioStringKeys.WizardFolderInvalidName, row.VirtualPath);
+                if (!TryNormalizeRootName(virtualPath, out var root))
+                    return _strings.Format(StudioStringKeys.WizardFolderInvalidName, virtualPath);
                 if (roots.Contains(root, StringComparer.OrdinalIgnoreCase))
                     return _strings.Format(StudioStringKeys.WizardFolderTwice, root);
                 roots.Add(root);
@@ -348,10 +348,14 @@ public sealed partial class CreateTeamViewModel
     /// brief's, which is not always the one Studio speaks. A folder read from the request keeps
     /// the request's words.
     /// </summary>
-    private ForgeFolder InUsersWords(ForgeFolder proposed) =>
-        IsDefaultFolderProposal
-            ? proposed with { Purpose = _strings[proposed.IsInput ? StudioStringKeys.WizardDefaultInputPurpose : StudioStringKeys.WizardDefaultOutputPurpose] }
-            : proposed;
+    private ForgeFolder InUsersWords(ForgeFolder proposed)
+    {
+        if (!IsDefaultFolderProposal)
+            return proposed;
+
+        var purposeKey = proposed.IsInput ? StudioStringKeys.WizardDefaultInputPurpose : StudioStringKeys.WizardDefaultOutputPurpose;
+        return proposed with { Purpose = _strings[purposeKey] };
+    }
 
     private void RefreshFolderStep()
     {

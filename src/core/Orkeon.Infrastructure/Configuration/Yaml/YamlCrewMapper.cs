@@ -133,28 +133,41 @@ public sealed partial class YamlCrewMapper
                 MaxIterations = kvp.Value.MaxIter ?? Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations,
                 MaxRpm = kvp.Value.MaxRpm,
                 Verbose = kvp.Value.Verbose ?? false,
-                // No model named: the profile's own (GAP-17) — never the framework's default
-                // model, which a block setting only a temperature used to pin on any vendor.
-                // No temperature or top_p named: none set — the profile's, else the model's own
-                // (GAP-36); the loader used to fill in the engine's 0.7 and 1.0.
-                LlmConfig = effectiveLlm != null
-                    ? (string.IsNullOrWhiteSpace(effectiveLlm.Model) ? LlmConfig.OnProfile() : LlmConfig.Create(effectiveLlm.Model)) with
-                    {
-                        Profile = string.IsNullOrWhiteSpace(effectiveLlm.Profile) ? null : effectiveLlm.Profile.Trim(),
-                        Temperature = effectiveLlm.Temperature,
-                        MaxTokens = effectiveLlm.MaxTokens,   // null = the model's documented maximum (LLM-10)
-                        TopP = effectiveLlm.TopP,
-                        Thinking = MapThinking(effectiveLlm.Thinking),
-                        ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat, effectiveLlm.ResponseSchema),
-                        Cache = MapCache(effectiveLlm.Cache),
-                    }
-                    : null,
+                LlmConfig = MapAgentLlm(effectiveLlm),
                 Guardrails = MapGuardrails($"Agent '{kvp.Key}'", kvp.Value.Guardrails),
                 KnowledgeAttachments = MapKnowledge(kvp.Key, kvp.Value.Knowledge),
             });
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// The agent's effective <c>llm:</c> block, the crew's merged with its own; null when neither sets one.
+    /// No model named: the profile's own (GAP-17) — never the framework's default model, which a
+    /// block setting only a temperature used to pin on any vendor. No temperature or top_p named:
+    /// none set — the profile's, else the model's own (GAP-36); the loader used to fill in the
+    /// engine's 0.7 and 1.0.
+    /// </summary>
+    private LlmConfig? MapAgentLlm(LlmYamlConfig? effectiveLlm)
+    {
+        if (effectiveLlm is null)
+            return null;
+
+        var onModel = string.IsNullOrWhiteSpace(effectiveLlm.Model)
+            ? LlmConfig.OnProfile()
+            : LlmConfig.Create(effectiveLlm.Model);
+        var profile = string.IsNullOrWhiteSpace(effectiveLlm.Profile) ? null : effectiveLlm.Profile.Trim();
+        return onModel with
+        {
+            Profile = profile,
+            Temperature = effectiveLlm.Temperature,
+            MaxTokens = effectiveLlm.MaxTokens,   // null = the model's documented maximum (LLM-10)
+            TopP = effectiveLlm.TopP,
+            Thinking = MapThinking(effectiveLlm.Thinking),
+            ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat, effectiveLlm.ResponseSchema),
+            Cache = MapCache(effectiveLlm.Cache),
+        };
     }
 
     /// <summary>
@@ -178,23 +191,8 @@ public sealed partial class YamlCrewMapper
         var unknownDependencies = new List<string>();
         foreach (var kvp in tasks)
         {
-            var dependencies = new List<TaskId>();
-            foreach (var dep in kvp.Value.Dependencies ?? [])
-            {
-                if (taskNameToId.TryGetValue(dep, out var depId))
-                    dependencies.Add(depId);
-                else
-                    unknownDependencies.Add($"task '{kvp.Key}' depends on '{dep}', which is no task of the crew");
-            }
-
-            AgentId? assignedAgentId = null;
-            if (!string.IsNullOrWhiteSpace(kvp.Value.Agent))
-            {
-                if (agentNameMap.TryGetValue(kvp.Value.Agent, out var agentId))
-                    assignedAgentId = agentId;
-                else
-                    unknownAgents.Add($"task '{kvp.Key}' names agent: {kvp.Value.Agent}, which is no agent of the crew");
-            }
+            var dependencies = ResolveDependencies(kvp.Key, kvp.Value.Dependencies, taskNameToId, unknownDependencies);
+            var assignedAgentId = ResolveAgent(kvp.Key, kvp.Value.Agent, agentNameMap, unknownAgents);
 
             result.Add(new TaskConfiguration
             {
@@ -215,15 +213,49 @@ public sealed partial class YamlCrewMapper
         }
 
         if (unknownAgents.Count > 0 || unknownDependencies.Count > 0)
-        {
-            var faults = string.Join("; ", unknownAgents.Concat(unknownDependencies));
-            var known = (unknownAgents.Count > 0 ? $" Its agents: {Known(agentNameMap.Keys)}." : string.Empty)
-                + (unknownDependencies.Count > 0 ? $" Its tasks: {Known(taskNameToId.Keys)}." : string.Empty);
-            throw new InvalidOperationException(
-                $"A task reference names nothing: {faults}.{known} Name an agent or a task by its key.");
-        }
+            ThrowUnknownReferences(unknownAgents, unknownDependencies, agentNameMap.Keys, taskNameToId.Keys);
 
         return result;
+    }
+
+    /// <summary>The ids of the tasks <paramref name="taskKey"/> depends on; a key naming no task is collected.</summary>
+    private static List<TaskId> ResolveDependencies(
+        string taskKey, IEnumerable<string>? dependencies, Dictionary<string, TaskId> taskNameToId, List<string> unknownDependencies)
+    {
+        var resolved = new List<TaskId>();
+        foreach (var dep in dependencies ?? [])
+        {
+            if (taskNameToId.TryGetValue(dep, out var depId))
+                resolved.Add(depId);
+            else
+                unknownDependencies.Add($"task '{taskKey}' depends on '{dep}', which is no task of the crew");
+        }
+
+        return resolved;
+    }
+
+    /// <summary>The id of the agent <paramref name="taskKey"/> names; none when it names none, collected when it names no agent of the crew.</summary>
+    private static AgentId? ResolveAgent(
+        string taskKey, string? agentKey, Dictionary<string, AgentId> agentNameMap, List<string> unknownAgents)
+    {
+        if (string.IsNullOrWhiteSpace(agentKey))
+            return null;
+        if (agentNameMap.TryGetValue(agentKey, out var agentId))
+            return agentId;
+
+        unknownAgents.Add($"task '{taskKey}' names agent: {agentKey}, which is no agent of the crew");
+        return null;
+    }
+
+    private static void ThrowUnknownReferences(
+        List<string> unknownAgents, List<string> unknownDependencies,
+        IEnumerable<string> agentKeys, IEnumerable<string> taskKeys)
+    {
+        var faults = string.Join("; ", unknownAgents.Concat(unknownDependencies));
+        var known = (unknownAgents.Count > 0 ? $" Its agents: {Known(agentKeys)}." : string.Empty)
+            + (unknownDependencies.Count > 0 ? $" Its tasks: {Known(taskKeys)}." : string.Empty);
+        throw new InvalidOperationException(
+            $"A task reference names nothing: {faults}.{known} Name an agent or a task by its key.");
     }
 
     /// <summary>The keys a crew declares, in its order, for a message: <c>none</c> when it has none.</summary>

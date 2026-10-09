@@ -6,6 +6,7 @@ using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Tools.Email.Accounts;
 using Orkeon.Tools.Email.Configuration;
+using StudioEmailRights = Orkeon.Studio.Core.Configuration.EmailRights;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -27,7 +28,7 @@ public sealed class EmailValidationOracleTests
         Name = Name,
         Provider = "Gmail",
         Address = "me@gmail.com",
-        Rights = EmailRight.Read | EmailRight.Organize | EmailRight.Draft,
+        Rights = StudioEmailRights.Read | StudioEmailRights.Organize | StudioEmailRights.Draft,
         PasswordEnvVar = "GMAIL_APP_PASSWORD",
     };
 
@@ -37,7 +38,7 @@ public sealed class EmailValidationOracleTests
         Name = Name,
         Provider = "Outlook",
         Address = "me@hotmail.com",
-        Rights = EmailRight.Read | EmailRight.Organize | EmailRight.Draft,
+        Rights = StudioEmailRights.Read | StudioEmailRights.Organize | StudioEmailRights.Draft,
         ClientId = "00000000-0000-0000-0000-000000000000",
     };
 
@@ -46,7 +47,7 @@ public sealed class EmailValidationOracleTests
     {
         Name = Name,
         Address = "me@example.com",
-        Rights = EmailRight.Read | EmailRight.Organize | EmailRight.Draft,
+        Rights = StudioEmailRights.Read | StudioEmailRights.Organize | StudioEmailRights.Draft,
         IncomingHost = "imap.example.com",
         OutgoingHost = "smtp.example.com",
         PasswordEnvVar = "WORK_MAIL_PASSWORD",
@@ -79,12 +80,12 @@ public sealed class EmailValidationOracleTests
         ["custom imap and smtp"] = (Custom, []),
         ["custom without an incoming host"] = (Custom with { IncomingHost = null }, [ValidationCodes.EmailServer]),
         ["custom without an outgoing host"] = (Custom with { OutgoingHost = null }, []),
-        ["custom without an outgoing host granted send"] = (Custom with { OutgoingHost = null, Rights = EmailRight.Read | EmailRight.Send }, [ValidationCodes.EmailSend]),
+        ["custom without an outgoing host granted send"] = (Custom with { OutgoingHost = null, Rights = StudioEmailRights.Read | StudioEmailRights.Send }, [ValidationCodes.EmailSend]),
         ["custom read through pop3"] = (Custom with { IncomingProtocol = "Pop3", IncomingSecurity = "StartTls" }, []),
         ["custom with oauth2"] = (Custom with { AuthMethod = "OAuth2", ClientId = "client" }, [ValidationCodes.EmailAuth]),
         ["custom with a client id and no method"] = (Custom with { ClientId = "client" }, [ValidationCodes.EmailAuth]),
         ["custom read through graph"] = (Custom with { IncomingProtocol = "Graph" }, [ValidationCodes.EmailServer]),
-        ["custom sending through graph"] = (Custom with { OutgoingProtocol = "Graph", Rights = EmailRight.Read | EmailRight.Send }, [ValidationCodes.EmailServer, ValidationCodes.EmailSend]),
+        ["custom sending through graph"] = (Custom with { OutgoingProtocol = "Graph", Rights = StudioEmailRights.Read | StudioEmailRights.Send }, [ValidationCodes.EmailServer, ValidationCodes.EmailSend]),
         ["custom with a login name and a display name"] = (Custom with { Username = " me ", DisplayName = "Me" }, []),
         ["custom keeping no sent copy"] = (Custom with { SaveSentCopy = false }, []),
 
@@ -93,9 +94,9 @@ public sealed class EmailValidationOracleTests
         ["no encryption towards a distant host"] = (Custom with { IncomingSecurity = "None", OutgoingSecurity = "None" }, [ValidationCodes.EmailServer, ValidationCodes.EmailServer]),
         ["no encryption towards the preset host"] = (Gmail with { IncomingSecurity = "None" }, [ValidationCodes.EmailServer]),
 
-        ["no rights"] = (Gmail with { Rights = EmailRight.None }, [ValidationCodes.EmailRights]),
-        ["rights written none"] = (Gmail with { Rights = EmailRight.None, RightsRaw = "None" }, [ValidationCodes.EmailRights]),
-        ["rights the engine cannot read"] = (Gmail with { Rights = EmailRight.None, RightsRaw = "Read, Reed" }, [ValidationCodes.EmailValue]),
+        ["no rights"] = (Gmail with { Rights = StudioEmailRights.None }, [ValidationCodes.EmailRights]),
+        ["rights written none"] = (Gmail with { Rights = StudioEmailRights.None, RightsRaw = "None" }, [ValidationCodes.EmailRights]),
+        ["rights the engine cannot read"] = (Gmail with { Rights = StudioEmailRights.None, RightsRaw = "Read, Reed" }, [ValidationCodes.EmailValue]),
         ["no address"] = (Gmail with { Address = null }, [ValidationCodes.EmailAddress]),
         ["an address without an at sign"] = (Gmail with { Address = "me.gmail.com" }, [ValidationCodes.EmailAddress]),
         ["an address without a domain"] = (Gmail with { Address = "me@" }, [ValidationCodes.EmailAddress]),
@@ -110,7 +111,7 @@ public sealed class EmailValidationOracleTests
         ["a timeout"] = (Gmail with { TimeoutSeconds = 30 }, []),
         ["no recipient at most"] = (Gmail with { MaxRecipients = 0 }, [ValidationCodes.EmailSend]),
         ["no message per hour"] = (Gmail with { MaxPerHour = 0 }, [ValidationCodes.EmailSend]),
-        ["recipients the engine understands"] = (Gmail with { Rights = EmailRight.Read | EmailRight.Send, AllowedRecipients = ["a@b.c", "*@b.c", "*", " A@B.C "], MaxRecipients = 5, MaxPerHour = 20 }, []),
+        ["recipients the engine understands"] = (Gmail with { Rights = StudioEmailRights.Read | StudioEmailRights.Send, AllowedRecipients = ["a@b.c", "*@b.c", "*", " A@B.C "], MaxRecipients = 5, MaxPerHour = 20 }, []),
         ["a recipient domain without its at sign"] = (Gmail with { AllowedRecipients = ["*.b.c"] }, [ValidationCodes.EmailSend]),
         ["a recipient without a local part"] = (Gmail with { AllowedRecipients = ["@b.c"] }, [ValidationCodes.EmailSend]),
         ["two recipients the engine refuses"] = (Gmail with { AllowedRecipients = ["a@b.c", "Bob <a@b.c>", "*@"] }, [ValidationCodes.EmailSend, ValidationCodes.EmailSend]),

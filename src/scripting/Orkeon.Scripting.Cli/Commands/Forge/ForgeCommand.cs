@@ -359,9 +359,7 @@ internal sealed record ForgeCommandOptions
             "promote needs --to <directory>."),
         ((o, _) => o.RenameDirectory is not null && o.TeamName is null,
             "rename needs --name <the team's new name>."),
-        ((o, _) => o.PromoteSlug is null
-                   && (o.Destination is not null || (o.TeamName is not null && o.RenameDirectory is null)
-                       || o.Schedule is not null || o.WithSettings),
+        ((o, _) => PromoteOptionsWithoutPromote(o),
             "--to, --name, --schedule and --with-settings only apply to `forge promote` — and --name to `forge rename`."),
         ((o, _) => o.Edit && o.ResumeSlug is null,
             "--edit only applies to `forge resume`."),
@@ -369,28 +367,49 @@ internal sealed record ForgeCommandOptions
             "--adopt only applies to `forge resume`."),
         ((o, _) => o.Adopt && o.Edit,
             "--adopt and --edit are two different answers to the same pause."),
-        ((o, _) => o.ReadDirectory is not null
-                   && (o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o)),
+        ((o, _) => ReadOutsideACycle(o),
             "--read only applies to a new session or to `forge resume`."),
-        ((o, _) => o.Reference is not null
-                   && (o.ResumeSlug is not null || o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o)),
+        ((o, _) => ReferenceOutsideANewSession(o),
             "--reference only applies to a new session: a session keeps the reference it was created with."),
-        ((o, needWords) => o.ReopenDirectory is not null && (ShapesACycle(o) || needWords > 0),
+        ((o, needWords) => o.ReopenDirectory is not null && ShapesACycleOrNeed(o, needWords),
             "reopen takes no option but --events: it finds or rebuilds the team's session and starts nothing."),
         ((o, _) => o.Check && o.ScheduleDirectory is null,
             "--check only applies to `forge schedule`."),
         ((o, needWords) => o.Rephrase && needWords == 0,
             "rephrase needs the request to rewrite, typed after the verb."),
-        ((o, _) => o.Rephrase
-                   && (o.Format is not null || o.Auto || o.Dry || o.PackDirectory is not null
-                       || o.MaxIterations is not null || o.MaxTokens is not null || o.MaxSeconds is not null
-                       || o.ReadDirectory is not null || o.Reference is not null || o.Edit || o.Adopt),
+        ((o, _) => RephraseWithOptions(o),
             "rephrase takes the request, --events and --settings only: it rewrites the request and starts nothing."),
-        ((o, needWords) => ActsOnASchedule(o) && (ShapesACycle(o) || needWords > 0),
+        ((o, needWords) => ActsOnASchedule(o) && ShapesACycleOrNeed(o, needWords),
             "schedule and unschedule take no option but --events (and --check for schedule): they act on the team folder's schedule and start nothing."),
-        ((o, needWords) => o.RenameDirectory is not null && (ShapesACycle(o) || needWords > 0),
+        ((o, needWords) => o.RenameDirectory is not null && ShapesACycleOrNeed(o, needWords),
             "rename takes no option but --name and --events: it renames the team folder and starts nothing."),
     ];
+
+    /// <summary>Whether an option of <c>forge promote</c> was passed to another verb — <c>--name</c> also belongs to <c>rename</c>.</summary>
+    private static bool PromoteOptionsWithoutPromote(ForgeCommandOptions o) =>
+        o.PromoteSlug is null
+        && (o.Destination is not null || (o.TeamName is not null && o.RenameDirectory is null)
+            || o.Schedule is not null || o.WithSettings);
+
+    /// <summary>Whether <c>--read</c> was passed to a verb that starts no cycle.</summary>
+    private static bool ReadOutsideACycle(ForgeCommandOptions o) =>
+        o.ReadDirectory is not null && (o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o));
+
+    /// <summary>Whether <c>--reference</c> was passed to a verb other than a new session.</summary>
+    private static bool ReferenceOutsideANewSession(ForgeCommandOptions o) =>
+        o.Reference is not null
+        && (o.ResumeSlug is not null || o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o));
+
+    /// <summary>Whether <c>rephrase</c> was given an option other than <c>--events</c> and <c>--settings</c>.</summary>
+    private static bool RephraseWithOptions(ForgeCommandOptions o) =>
+        o.Rephrase
+        && (o.Format is not null || o.Auto || o.Dry || o.PackDirectory is not null
+            || o.MaxIterations is not null || o.MaxTokens is not null || o.MaxSeconds is not null
+            || o.ReadDirectory is not null || o.Reference is not null || o.Edit || o.Adopt);
+
+    /// <summary>Whether an option that shapes a cycle, or a need, was passed to a verb that starts none.</summary>
+    private static bool ShapesACycleOrNeed(ForgeCommandOptions o, int needWords) =>
+        ShapesACycle(o) || needWords > 0;
 
     /// <summary>Whether the verb acts on a promoted team folder: <c>reopen</c>, <c>schedule</c>, <c>unschedule</c>, <c>rename</c>.</summary>
     private static bool ActsOnATeamFolder(ForgeCommandOptions o) =>
@@ -484,17 +503,8 @@ internal static class ForgeCommand
         {
             // Under the same guard as a reopen: the verbs write forge.json and schedule/, and a
             // disk that refuses must come back as an exit code, never as an unhandled exception.
-            try
-            {
-                return Schedule(options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine());
-            }
-#pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
-            catch (Exception ex)
-            {
-                await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
-                return ExitRuntimeError;
-            }
-#pragma warning restore CA1031
+            return await GuardedAsync(() => Task.FromResult(Schedule(options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine())))
+                .ConfigureAwait(false);
         }
 
         if (options.RenameDirectory is not null)
@@ -502,17 +512,8 @@ internal static class ForgeCommand
             // Under the same guard as the schedule verbs: the rename undoes what it did itself
             // when a step fails, and anything it did not foresee must still come back as an exit
             // code, never as an unhandled exception.
-            try
-            {
-                return Rename(workspace, options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine());
-            }
-#pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
-            catch (Exception ex)
-            {
-                await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
-                return ExitRuntimeError;
-            }
-#pragma warning restore CA1031
+            return await GuardedAsync(() => Task.FromResult(Rename(workspace, options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine())))
+                .ConfigureAwait(false);
         }
 
         if (options.ReopenDirectory is not null)
@@ -520,22 +521,10 @@ internal static class ForgeCommand
             // Under the same guard as adoption, for the same reason: the rebuild writes a
             // session, and a disk that refuses must come back as an exit code with a
             // closed event stream.
-            try
-            {
-                return await ReopenAsync(workspace, options).ConfigureAwait(false);
-            }
-#pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
-            catch (Exception ex)
-            {
-                await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
-                return ExitRuntimeError;
-            }
-#pragma warning restore CA1031
+            return await GuardedAsync(() => ReopenAsync(workspace, options)).ConfigureAwait(false);
         }
 
-        if (options.Format is { } requestedFormat
-            && !string.Equals(requestedFormat, ForgeSession.FormatYaml, StringComparison.OrdinalIgnoreCase)
-            && !ForgeSession.IsScriptFormat(requestedFormat))
+        if (options.Format is { } requestedFormat && !IsKnownFormat(requestedFormat))
         {
             await Console.Error.WriteLineAsync(
                 $"orkeon forge: unknown format '{requestedFormat}' — use yaml or script.")
@@ -543,12 +532,41 @@ internal static class ForgeCommand
             return ExitError;
         }
 
+        return await RunOrAdoptAsync(workspace, options).ConfigureAwait(false);
+    }
+
+    private static bool IsKnownFormat(string format) =>
+        string.Equals(format, ForgeSession.FormatYaml, StringComparison.OrdinalIgnoreCase) || ForgeSession.IsScriptFormat(format);
+
+    /// <summary>
+    /// A verb at the CLI boundary: what it did not foresee becomes exit 2, like <c>orkeon run</c>,
+    /// never an unhandled exception.
+    /// </summary>
+    private static async Task<int> GuardedAsync(Func<Task<int>> verb)
+    {
         try
         {
-            // Inside the guard, like the cycle: adoption writes the history and the session
-            // file, and a disk that refuses either must come back as the CLI's own exit
-            // code with a closed event stream — not as an unhandled exception that leaves a
-            // client waiting forever for a session.finished that will never come.
+            return await verb().ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
+        catch (Exception ex)
+        {
+            await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
+            return ExitRuntimeError;
+        }
+#pragma warning restore CA1031
+    }
+
+    /// <summary>
+    /// An adoption or a cycle, inside the guard: adoption writes the history and the session file,
+    /// and a disk that refuses either must come back as the CLI's own exit code with a closed
+    /// event stream — not as an unhandled exception that leaves a client waiting forever for a
+    /// session.finished that will never come.
+    /// </summary>
+    private static async Task<int> RunOrAdoptAsync(string workspace, ForgeCommandOptions options)
+    {
+        try
+        {
             return options.Adopt
                 ? await AdoptAsync(workspace, options).ConfigureAwait(false)
                 : await RunCycleAsync(workspace, options).ConfigureAwait(false);
@@ -591,18 +609,9 @@ internal static class ForgeCommand
         // A reference that names no use case is refused the same way, and just as early
         // (STUDIO-40, D-05): before the session is opened and before any host boots, so a
         // mistyped id leaves no stray session behind and no model is ever asked.
-        ForgeReference? reference = null;
-        if (options.Reference is { } referenceId)
-        {
-            try
-            {
-                reference = ForgeReference.Load(referenceId);
-            }
-            catch (UseCases.UnknownUseCaseException ex)
-            {
-                return await RefuseReferenceAsync(options, ex).ConfigureAwait(false);
-            }
-        }
+        var reference = LoadReference(options.Reference, out var unknownReference);
+        if (unknownReference is not null)
+            return await RefuseReferenceAsync(options, unknownReference).ConfigureAwait(false);
 
         // Open or create the session first: it is cheap, offline, and `resume` must be
         // able to say "no such session" before any host boots.
@@ -628,54 +637,10 @@ internal static class ForgeCommand
         // run by the test stage. Everything else the crew sees is read-only.
         Directory.CreateDirectory(OutputDirectoryOf(session));
 
-        // Forge accepts no --mount: its three roots are its own CliMounts, and the host places
-        // a CliMount by virtual root against the settings (STUDIO-15 D-01) — a settings entry
-        // on /workspace, /forge or /output is replaced for the trial, and logged as such. So
-        // they are NOT reserved here, and must not be: /output is an ordinary mount for a run,
-        // and the name Studio gives a team's write folder, so a settings file naming it is the
-        // normal case on every Studio machine, not a mistake. Refusing it — as the guard that
-        // predated D-01 did — stopped the wizard's first trial on the very folder the user had
-        // just associated. The one root the forge does not mount itself is /sandbox: the file
-        // system registers it internally in every host, a settings entry there still reaches
-        // the registry's duplicate check, and only this guard turns that crash into one line.
-        if (!RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox))
-        {
+        if (!TryPlanMounts(workspace, readRoot, session, settingsPath, out var mountPlan))
             return 1;
-        }
 
-        // The forge's three CliMounts replace every settings entry of /workspace, /forge and
-        // /output — a machine with two /output entries (VFS-90) forges unchanged. Any other
-        // root declared twice with nothing to pick one is refused here, in one line.
-        var mountPlan = BuildMountPlan(workspace, readRoot, session);
-        if (!RunnerExecution.EnsureMountSelectionIsResolvable(mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, out _))
-        {
-            return 1;
-        }
-
-        using var host = RunnerHost.Build(
-            settingsPath,
-            mountPlan,
-            // stdout carries the --events jsonl protocol. The default preset writes
-            // warnings there, so one line like «Access denied by registry for virtual path
-            // '.'» lands in the middle of the event stream and every consumer has to guess
-            // which lines are events. Warnings still matter — they go to stderr.
-            configureLogging: (_, logging) =>
-            {
-                logging.AddSimpleConsole(o =>
-                {
-                    o.SingleLine = true;
-                    o.TimestampFormat = "HH:mm:ss.fff ";
-                });
-                logging.Services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(
-                    o => o.LogToStandardErrorThreshold = LogLevel.Trace);
-                logging.SetMinimumLevel(LogLevel.Warning);
-                // The host's own decisions stay visible above that floor: the LLM it resolved,
-                // and a settings entry one of the forge's mounts replaced (D-01) — the trial
-                // writes into the session's bench, not into the folder the settings name as
-                // /output, and the log is where that is said.
-                logging.AddFilter("Orkeon.Hosting.RunnerHost", LogLevel.Information);
-            },
-            configureServices: (_, services) => AddEngineServices(services, box, tally, observer));
+        using var host = BuildEngineHost(settingsPath, mountPlan, box, tally, observer);
 
         // No Llm section = no interview. Refuse with the remedy, before spending a turn —
         // the silent echo degrade that is acceptable for `orkeon run` would make the
@@ -710,34 +675,20 @@ internal static class ForgeCommand
         // blueprint over the channel, validated in full, then a deterministic re-render.
         // The arbitration keeps its own edit decision; this path only exists BEFORE the
         // first trial of the current iteration, so it charges none.
-        var announce = true;
-        if (options.Edit)
+        if (options.Edit
+            && await ApplyEditedBlueprintAsync(session, channel, events, knownTools).ConfigureAwait(false) is { } editExitCode)
         {
-            if (await ApplyEditedBlueprintAsync(session, channel, events, knownTools).ConfigureAwait(false)
-                is { } editExitCode)
-            {
-                return editExitCode;
-            }
-
-            // The amendment announced the session itself, before the exchange.
-            announce = false;
+            return editExitCode;
         }
 
-        // A run that does not stop before its trial holds that trial in this process: a folder it
-        // confirms must be one the host's path validator — fixed now, at the host's build — lets
-        // the trial read (GAP-27). A --dry run leaves the trial to a resume, which mounts and
-        // allows the confirmed folders when its own host is built (the way Studio forges).
-        var trialPathValidator = options.Dry
-            ? null
-            : host.Services.GetRequiredService<Orkeon.Domain.Tools.Security.IPathValidator>();
+        // The amendment announced the session itself, before the exchange.
+        var announce = !options.Edit;
 
         var engine = new ForgeEngine(
             session,
             events,
             [
-                new BriefStage(
-                    assistant, channel, resumed ? null : options.Need,
-                    autoConfirmFolders: options.Auto, trialPathValidator: trialPathValidator),
+                BriefStageOf(assistant, channel, options, resumed, host),
                 new BlueprintStage(assistant),
                 new RenderStage(),
                 new ValidateStage(knownTools),
@@ -755,6 +706,100 @@ internal static class ForgeCommand
 
         await AnnounceDryPauseAsync(session, options, result).ConfigureAwait(false);
         return result.ExitCode;
+    }
+
+    /// <summary>The use case <c>--reference</c> names, loaded; null without the option, or with <paramref name="unknown"/> set when it names none.</summary>
+    private static ForgeReference? LoadReference(string? referenceId, out UseCases.UnknownUseCaseException? unknown)
+    {
+        unknown = null;
+        if (referenceId is null)
+            return null;
+
+        try
+        {
+            return ForgeReference.Load(referenceId);
+        }
+        catch (UseCases.UnknownUseCaseException ex)
+        {
+            unknown = ex;
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The cycle's mount plan, once the settings are known to let it stand — false when they do
+    /// not, the refusal already written in one line.
+    /// <para>
+    /// Forge accepts no --mount: its three roots are its own CliMounts, and the host places
+    /// a CliMount by virtual root against the settings (STUDIO-15 D-01) — a settings entry
+    /// on /workspace, /forge or /output is replaced for the trial, and logged as such. So
+    /// they are NOT reserved here, and must not be: /output is an ordinary mount for a run,
+    /// and the name Studio gives a team's write folder, so a settings file naming it is the
+    /// normal case on every Studio machine, not a mistake. Refusing it — as the guard that
+    /// predated D-01 did — stopped the wizard's first trial on the very folder the user had
+    /// just associated. The one root the forge does not mount itself is /sandbox: the file
+    /// system registers it internally in every host, a settings entry there still reaches
+    /// the registry's duplicate check, and only this guard turns that crash into one line.
+    /// </para>
+    /// <para>
+    /// The forge's three CliMounts replace every settings entry of /workspace, /forge and
+    /// /output — a machine with two /output entries (VFS-90) forges unchanged. Any other
+    /// root declared twice with nothing to pick one is refused here, in one line.
+    /// </para>
+    /// </summary>
+    private static bool TryPlanMounts(
+        string workspace, string? readRoot, ForgeSession session, string? settingsPath, out RunnerMountPlan mountPlan)
+    {
+        mountPlan = BuildMountPlan(workspace, readRoot, session);
+        return RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox)
+            && RunnerExecution.EnsureMountSelectionIsResolvable(mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, out _);
+    }
+
+    /// <summary>
+    /// The engine host. stdout carries the --events jsonl protocol. The default preset writes
+    /// warnings there, so one line like «Access denied by registry for virtual path '.'» lands
+    /// in the middle of the event stream and every consumer has to guess which lines are
+    /// events. Warnings still matter — they go to stderr.
+    /// </summary>
+    private static Microsoft.Extensions.Hosting.IHost BuildEngineHost(
+        string? settingsPath, RunnerMountPlan mountPlan, ForgeSubmissionBox box, ForgeUsageTally tally, ForgeRunObserver observer) =>
+        RunnerHost.Build(
+            settingsPath,
+            mountPlan,
+            configureLogging: (_, logging) =>
+            {
+                logging.AddSimpleConsole(o =>
+                {
+                    o.SingleLine = true;
+                    o.TimestampFormat = "HH:mm:ss.fff ";
+                });
+                logging.Services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(
+                    o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+                logging.SetMinimumLevel(LogLevel.Warning);
+                // The host's own decisions stay visible above that floor: the LLM it resolved,
+                // and a settings entry one of the forge's mounts replaced (D-01) — the trial
+                // writes into the session's bench, not into the folder the settings name as
+                // /output, and the log is where that is said.
+                logging.AddFilter("Orkeon.Hosting.RunnerHost", LogLevel.Information);
+            },
+            configureServices: (_, services) => AddEngineServices(services, box, tally, observer));
+
+    /// <summary>
+    /// The interview stage. A run that does not stop before its trial holds that trial in this
+    /// process: a folder it confirms must be one the host's path validator — fixed now, at the
+    /// host's build — lets the trial read (GAP-27). A --dry run leaves the trial to a resume,
+    /// which mounts and allows the confirmed folders when its own host is built (the way Studio
+    /// forges).
+    /// </summary>
+    private static BriefStage BriefStageOf(
+        ForgeCrewAssistant assistant, IForgeUserChannel channel, ForgeCommandOptions options, bool resumed, Microsoft.Extensions.Hosting.IHost host)
+    {
+        var trialPathValidator = options.Dry
+            ? null
+            : host.Services.GetRequiredService<Orkeon.Domain.Tools.Security.IPathValidator>();
+        return new BriefStage(
+            assistant, channel, resumed ? null : options.Need,
+            autoConfirmFolders: options.Auto, trialPathValidator: trialPathValidator);
     }
 
     /// <summary>
@@ -1124,36 +1169,7 @@ internal static class ForgeCommand
 
         var link = ForgeTeamLink.Resolve(workspace, teamDirectory);
         if (link is { IsLinked: true, Session: { } existing })
-        {
-            if (link.Kind == TeamSessionLinkKind.Moved)
-            {
-                // Case 3: the original, moved or renamed. The session follows it, so its next
-                // promotion updates the folder where it now is — and a copy made from here on
-                // is told apart from it by this path.
-                existing.Document.PromotedTo = teamDirectory;
-                existing.Save(DateTimeOffset.UtcNow);
-            }
-
-            events.SessionStarted(existing, resumed: true);
-            events.Emit("team.reopened", new
-            {
-                slug = existing.Document.Slug,
-                dir = existing.Directory,
-                path = teamDirectory,
-                state = ForgeEventWriter.Spell(existing.State),
-                rebuilt = false,
-            });
-            events.SessionFinished(StatusWord(existing), 0);
-            if (!options.Events)
-            {
-                var moved = link.Kind == TeamSessionLinkKind.Moved ? ", since moved here — it now points here" : "";
-                await Console.Out.WriteLineAsync(
-                    $"Session '{existing.Document.Slug}' promoted this folder{moved}. Reopen it: orkeon forge resume {existing.Document.Slug}")
-                    .ConfigureAwait(false);
-            }
-
-            return 0;
-        }
+            return await ReopenLinkedAsync(existing, link.Kind, teamDirectory, events, options).ConfigureAwait(false);
 
         // A copy gets a session of its own (D-05): the rebuild rewrites the id the copy carried,
         // so it can never reopen, nor update, its original's.
@@ -1169,7 +1185,7 @@ internal static class ForgeCommand
         }
 
         var session = rebuilt.Session;
-        var briefWord = rebuilt.BriefSource == ForgeBriefSource.Recorded ? "recorded" : "derived";
+        var recorded = rebuilt.BriefSource == ForgeBriefSource.Recorded;
         events.SessionStarted(session, resumed: false);
         events.Emit("team.reopened", new
         {
@@ -1178,28 +1194,69 @@ internal static class ForgeCommand
             path = teamDirectory,
             state = ForgeEventWriter.Spell(session.State),
             rebuilt = true,
-            brief = briefWord,
+            brief = recorded ? "recorded" : "derived",
         });
         events.SessionFinished("paused", 0);
 
         if (!options.Events)
         {
-            var slug = session.Document.Slug;
-            var copyOf = isCopy
-                ? $"This folder is a copy of '{link.Session!.Document.PromotedTo}': it gets a session of its own. "
-                : "";
-            await Console.Out.WriteLineAsync(
-                copyOf
-                + $"Session '{slug}' rebuilt from {Path.Combine(teamDirectory, ForgeYamlRenderer.CrewDirectoryName)}"
-                + (rebuilt.BriefSource == ForgeBriefSource.Recorded
-                    ? $" with the brief {ForgeTeamRecord.FileName} recorded."
-                    : $" — no brief recorded here ({ForgeTeamRecord.FileName}), so the brief was derived from the plan.")
-                + $" Amend it: orkeon forge resume {slug} --edit --dry · try it: orkeon forge resume {slug}"
-                + $" · keep it as it is: orkeon forge resume {slug} --adopt")
+            var copyOf = isCopy ? link.Session!.Document.PromotedTo : null;
+            await Console.Out.WriteLineAsync(RebuiltSummary(session.Document.Slug, teamDirectory, recorded, copyOf))
                 .ConfigureAwait(false);
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// A reopen that found the session rule R links to the folder: reported as it stands —
+    /// pointed at the folder first when the folder was moved or renamed since (case 3: the
+    /// original. The session follows it, so its next promotion updates the folder where it now
+    /// is — and a copy made from here on is told apart from it by this path).
+    /// </summary>
+    private static async Task<int> ReopenLinkedAsync(
+        ForgeSession existing, TeamSessionLinkKind kind, string teamDirectory, ForgeEventWriter events, ForgeCommandOptions options)
+    {
+        var moved = kind == TeamSessionLinkKind.Moved;
+        if (moved)
+        {
+            existing.Document.PromotedTo = teamDirectory;
+            existing.Save(DateTimeOffset.UtcNow);
+        }
+
+        events.SessionStarted(existing, resumed: true);
+        events.Emit("team.reopened", new
+        {
+            slug = existing.Document.Slug,
+            dir = existing.Directory,
+            path = teamDirectory,
+            state = ForgeEventWriter.Spell(existing.State),
+            rebuilt = false,
+        });
+        events.SessionFinished(StatusWord(existing), 0);
+        if (!options.Events)
+        {
+            var since = moved ? ", since moved here — it now points here" : "";
+            await Console.Out.WriteLineAsync(
+                $"Session '{existing.Document.Slug}' promoted this folder{since}. Reopen it: orkeon forge resume {existing.Document.Slug}")
+                .ConfigureAwait(false);
+        }
+
+        return 0;
+    }
+
+    /// <summary>The terminal's line for a rebuilt session: where it came from, what the brief is, and what to do next.</summary>
+    private static string RebuiltSummary(string slug, string teamDirectory, bool briefRecorded, string? copyOf)
+    {
+        var copy = copyOf is null ? "" : $"This folder is a copy of '{copyOf}': it gets a session of its own. ";
+        var brief = briefRecorded
+            ? $" with the brief {ForgeTeamRecord.FileName} recorded."
+            : $" — no brief recorded here ({ForgeTeamRecord.FileName}), so the brief was derived from the plan.";
+        return copy
+            + $"Session '{slug}' rebuilt from {Path.Combine(teamDirectory, ForgeYamlRenderer.CrewDirectoryName)}"
+            + brief
+            + $" Amend it: orkeon forge resume {slug} --edit --dry · try it: orkeon forge resume {slug}"
+            + $" · keep it as it is: orkeon forge resume {slug} --adopt";
     }
 
     /// <summary>

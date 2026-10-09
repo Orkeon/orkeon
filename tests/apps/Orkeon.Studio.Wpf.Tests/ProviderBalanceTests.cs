@@ -579,7 +579,7 @@ public sealed class ProviderBalanceTests
             var llm = new LlmSectionViewModel(() => document, () => { });
             Profiles = new ModelProfilesViewModel(
                 new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe(), keyStore: Keys,
-                balances: Balances, shellOpener: Opener);
+                links: new ModelProfilesLinks { Balances = Balances, ShellOpener = Opener });
             Studio = new StudioSettingsViewModel(Balances, Persisted.Add);
         }
 

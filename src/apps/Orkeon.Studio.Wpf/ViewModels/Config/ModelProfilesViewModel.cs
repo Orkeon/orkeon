@@ -28,6 +28,47 @@ public sealed class HostProfilesChangedEventArgs(IReadOnlySet<string> names) : E
 }
 
 /// <summary>
+/// Where a setting stands among the others, as its card says it: the default, the assistant's,
+/// the teams naming it, and its host-profile verdict (null when it is not offered to crews).
+/// </summary>
+internal sealed record ModelProfileStanding(
+    bool IsDefault,
+    bool IsStudio,
+    IReadOnlyList<string>? UsedByTeams = null,
+    HostProfileCheck? Host = null);
+
+/// <summary>
+/// The seams the setting editor works over: the probe of the connection test, the key store, the
+/// strings, the balances read this session and the opener of a vendor's console.
+/// </summary>
+internal sealed record ModelProfileEditorSeams(
+    ILlmEndpointProbe Probe,
+    IApiKeyStore KeyStore,
+    IStudioStrings Strings,
+    BalanceReadings? Balances = null,
+    IShellOpener? Opener = null);
+
+/// <summary>
+/// What the model-settings tab is linked to beyond its store and its seams (STUDIO-35, STUDIO-52):
+/// the teams naming a setting, the balances read this session, the opener of a vendor's console
+/// and the hook a rename runs before it reaches the cards.
+/// </summary>
+public sealed record ModelProfilesLinks
+{
+    /// <summary>The teams of the catalogue, read for « Used by »; none when null.</summary>
+    public Func<IReadOnlyList<TeamSummary>>? LoadTeams { get; init; }
+
+    /// <summary>The provider balances read this session; left out, no row shows one.</summary>
+    public BalanceReadings? Balances { get; init; }
+
+    /// <summary>Opens a vendor's console from the editor.</summary>
+    public IShellOpener? ShellOpener { get; init; }
+
+    /// <summary>Called with a setting's former name and its new one when the editor renames it.</summary>
+    public Action<string, string>? FollowRename { get; init; }
+}
+
+/// <summary>
 /// One profile card on the model-settings tab. A thin projection over
 /// <see cref="ModelProfile"/>; the commands are handed in by the list so every mutation goes
 /// through one place.
@@ -40,21 +81,19 @@ public sealed class ModelProfileItemViewModel : ObservableObject
 
     internal ModelProfileItemViewModel(
         ModelProfile profile,
-        bool isDefault,
-        bool isStudio,
+        ModelProfileStanding standing,
         ModelProfilesViewModel owner,
-        IReadOnlyList<string>? usedByTeams = null,
         BalanceReadings? balances = null,
-        IStudioStrings? strings = null,
-        HostProfileCheck? host = null)
+        IStudioStrings? strings = null)
     {
+        ArgumentNullException.ThrowIfNull(standing);
         Profile = profile;
-        IsDefault = isDefault;
-        IsStudio = isStudio;
-        UsedByTeams = usedByTeams ?? [];
+        IsDefault = standing.IsDefault;
+        IsStudio = standing.IsStudio;
+        UsedByTeams = standing.UsedByTeams ?? [];
         _balances = balances;
         _strings = strings ?? EnglishStudioStrings.Instance;
-        _host = host;
+        _host = standing.Host;
         SetDefaultCommand = new RelayCommand(() => owner.SetDefault(profile.Name));
         EditCommand = new RelayCommand(() => owner.BeginEdit(profile));
         DuplicateCommand = new RelayCommand(() => owner.Duplicate(profile));
@@ -253,18 +292,16 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         IReadOnlyList<LlmPresetInfo> providers,
         ModelProfile profile,
         string? previousName,
-        ILlmEndpointProbe probe,
-        IApiKeyStore keyStore,
-        IStudioStrings strings,
-        BalanceReadings? balances = null,
-        IShellOpener? opener = null)
+        ModelProfileEditorSeams seams)
     {
+        ArgumentNullException.ThrowIfNull(seams);
+        var strings = seams.Strings;
         _owner = owner;
-        _probe = probe;
-        _keyStore = keyStore;
+        _probe = seams.Probe;
+        _keyStore = seams.KeyStore;
         _strings = strings;
-        _balances = balances;
-        _opener = opener;
+        _balances = seams.Balances;
+        _opener = seams.Opener;
         Providers = providers;
         PreviousName = previousName;
         _name = profile.Name;
@@ -302,8 +339,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             () => BalanceOffersConsole && _opener is not null);
 
         // The line opens on what this session already read for the profile's account, if anything.
-        if (balances is not null && ProviderBalanceAccount.HasAccount(profile.BaseUrl))
-            ShowBalance(balances.Of(ProviderBalanceAccount.For(profile)));
+        if (_balances is not null && ProviderBalanceAccount.HasAccount(profile.BaseUrl))
+            ShowBalance(_balances.Of(ProviderBalanceAccount.For(profile)));
     }
 
     /// <summary>
@@ -472,10 +509,17 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// What the last balance read said for this endpoint — never the key; null before any. Formed
     /// as it is read, from the reading or the missing key, so it follows the language (STUDIO-56).
     /// </summary>
-    public string? BalanceResult =>
-        _balanceKeyMissing ? _strings[StudioStringKeys.ProfileKeyMissingTest]
-        : _balanceReading is { } reading && _balances is not null ? BalanceText.Summary(reading, _balances, _strings)
-        : null;
+    public string? BalanceResult
+    {
+        get
+        {
+            if (_balanceKeyMissing)
+                return _strings[StudioStringKeys.ProfileKeyMissingTest];
+            if (_balanceReading is { } reading && _balances is not null)
+                return BalanceText.Summary(reading, _balances, _strings);
+            return null;
+        }
+    }
 
     /// <summary>The probe's own line on hover, in English: it is the raw evidence (STUDIO-33), like the cause quoted in the connection test's line.</summary>
     public string? BalanceDetail => _balanceReading?.Detail;
@@ -942,10 +986,17 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// (STUDIO-54) —, never a draft typed for another card. Never the runtime's own variable in place
     /// of a missing key: that is the default's key, which no run of another setting reads.
     /// </summary>
-    private string? SettingKey =>
-        !RequiresApiKey ? LlmPresets.PlaceholderKeyOf(_selectedProvider?.Name)
-        : _apiKeyInput.Trim() is { Length: > 0 } typed ? typed
-        : _keyStore.Peek(ApiKeyEnvName);
+    private string? SettingKey
+    {
+        get
+        {
+            if (!RequiresApiKey)
+                return LlmPresets.PlaceholderKeyOf(_selectedProvider?.Name);
+            if (_apiKeyInput.Trim() is { Length: > 0 } typed)
+                return typed;
+            return _keyStore.Peek(ApiKeyEnvName);
+        }
+    }
 
     /// <summary>
     /// Reads the balance of the endpoint being edited, with the setting's key and it alone — the
@@ -1045,13 +1096,14 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private string? _writeFailure;
 
     /// <summary>
-    /// Builds the tab over its seams. <paramref name="balances"/> are the provider balances read
-    /// this session (STUDIO-35): each row shows its account's, and the editor reads one; left
-    /// out, neither shows. <paramref name="shellOpener"/> opens a vendor's console from the editor.
-    /// <paramref name="followRename"/> is called with a setting's former name and its new one when
-    /// the editor renames it, before the change reaches the cards, the settings file and the
-    /// launchers (STUDIO-52): the teams naming it follow it first, so « Used by » and their launchers
-    /// read them under the new name. Left out, a rename moves the elections alone.
+    /// Builds the tab over its seams. <paramref name="links"/> ties it to the rest of the window:
+    /// its balances are the provider balances read this session (STUDIO-35) — each row shows its
+    /// account's, and the editor reads one; left out, neither shows —, its shell opener opens a
+    /// vendor's console from the editor, and its rename hook is called with a setting's former
+    /// name and its new one when the editor renames it, before the change reaches the cards, the
+    /// settings file and the launchers (STUDIO-52): the teams naming it follow it first, so
+    /// « Used by » and their launchers read them under the new name. Left out, a rename moves the
+    /// elections alone.
     /// </summary>
     public ModelProfilesViewModel(
         IModelProfileStore? store,
@@ -1059,15 +1111,13 @@ public sealed class ModelProfilesViewModel : ObservableObject
         IStudioStrings? strings = null,
         ILlmEndpointProbe? probe = null,
         IApiKeyStore? keyStore = null,
-        Func<IReadOnlyList<TeamSummary>>? loadTeams = null,
-        BalanceReadings? balances = null,
-        IShellOpener? shellOpener = null,
-        Action<string, string>? followRename = null)
+        ModelProfilesLinks? links = null)
     {
         ArgumentNullException.ThrowIfNull(llm);
 
-        _loadTeams = loadTeams;
-        _followRename = followRename;
+        var balances = links?.Balances;
+        _loadTeams = links?.LoadTeams;
+        _followRename = links?.FollowRename;
 
         _store = store ?? new InMemoryModelProfileStore();
         _llm = llm;
@@ -1076,7 +1126,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
         _probe = probe ?? HttpLlmEndpointProbe.ForCurrentMachine();
         _keyStore = keyStore ?? new EnvironmentApiKeyStore();
         _balances = balances;
-        _opener = shellOpener;
+        _opener = links?.ShellOpener;
         NewProfileCommand = new RelayCommand(BeginCreate);
 
         // A read landed, a threshold moved or the language switched: every row's chip says it again.
@@ -1307,8 +1357,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     }
 
     internal void BeginEdit(ModelProfile profile) =>
-        Editor = new ModelProfileEditorViewModel(
-            this, ProviderCatalog(), profile, profile.Name, _probe, _keyStore, _strings, _balances, _opener);
+        Editor = new ModelProfileEditorViewModel(this, ProviderCatalog(), profile, profile.Name, EditorSeams());
 
     internal void Duplicate(ModelProfile profile)
     {
@@ -1386,12 +1435,10 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 BaseUrl = seed?.DefaultBaseUrl,
             },
             previousName: null,
-            _probe,
-            _keyStore,
-            _strings,
-            _balances,
-            _opener);
+            EditorSeams());
     }
+
+    private ModelProfileEditorSeams EditorSeams() => new(_probe, _keyStore, _strings, _balances, _opener);
 
     private IReadOnlyList<LlmPresetInfo> ProviderCatalog() => LlmPresets.ProviderCatalogFor(_strings);
 
@@ -1461,15 +1508,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
         Profiles.Clear();
         foreach (var profile in _set.Profiles)
         {
-            Profiles.Add(new ModelProfileItemViewModel(
-                profile,
-                isDefault: string.Equals(profile.Name, _set.DefaultProfile, StringComparison.Ordinal),
-                isStudio: string.Equals(profile.Name, _set.StudioProfile, StringComparison.Ordinal),
-                this,
-                usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : [],
-                _balances,
-                _strings,
-                standing.GetValueOrDefault(profile.Name)));
+            var profileStanding = new ModelProfileStanding(
+                IsDefault: string.Equals(profile.Name, _set.DefaultProfile, StringComparison.Ordinal),
+                IsStudio: string.Equals(profile.Name, _set.StudioProfile, StringComparison.Ordinal),
+                UsedByTeams: usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : [],
+                Host: standing.GetValueOrDefault(profile.Name));
+            Profiles.Add(new ModelProfileItemViewModel(profile, profileStanding, this, _balances, _strings));
         }
 
         RebuildProfileNames();

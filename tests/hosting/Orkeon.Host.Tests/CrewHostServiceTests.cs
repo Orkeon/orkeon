@@ -103,12 +103,25 @@ public sealed class CrewHostServiceTests : IDisposable
             LlmProfiles = ["default", "LOCAL"],
             ShutdownGracePeriod = TimeSpan.FromMilliseconds(50),
         };
+        var log = new MockLogger<CrewHostService>();
         using var service = new CrewHostService(
-            new CrewHostRegistry(Options.Create(options)), Options.Create(options), NullLogger<CrewHostService>.Instance,
+            new CrewHostRegistry(Options.Create(options)), Options.Create(options), log,
             configuration: Profiles("claude", "local"));
 
         await service.StartAsync(CancellationToken.None);
+
+        // Accepted: the loop is up (its first act is to announce each hosted crew). Waited
+        // for, as in the clean start/stop test below: a stop landing before the loop's first
+        // instruction completes ExecuteTask as Canceled under a loaded parallel run.
+        Assert.NotNull(service.ExecuteTask);
+        await Polling.WaitUntilAsync(() => log.LogCallCount > 0);
+        Assert.Contains("Hosting crew 'support'", log.LastLogMessage, StringComparison.Ordinal);
+
         await service.StopAsync(CancellationToken.None);
+
+        // The loop ended on the stop signal, not on a refusal.
+        await service.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
+        Assert.True(service.ExecuteTask!.IsCompletedSuccessfully);
     }
 
     [Fact]

@@ -4,6 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Orkeon.Constants.Configuration;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Tools.Email.Configuration;
+using EngineEmailRights = Orkeon.Tools.Email.Configuration.EmailRights;
+using StudioEmailRights = Orkeon.Studio.Core.Configuration.EmailRights;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -81,20 +83,20 @@ public sealed class EmailSectionDriftTests
         Assert.Equal(NamesOf<TransportSecurity>(), EmailSection.Securities.Order(StringComparer.Ordinal));
         Assert.Equal(NamesOf<EmailAuthMethod>(), EmailSection.AuthMethods.Order(StringComparer.Ordinal));
         Assert.Equal(
-            NamesOf<EmailRights>().Where(name => name != nameof(EmailRights.None)),
-            EmailSection.Rights.Order(StringComparer.Ordinal));
+            NamesOf<EngineEmailRights>().Where(name => name != nameof(EngineEmailRights.None)),
+            EmailSection.RightNames.Order(StringComparer.Ordinal));
     }
 
     [Fact]
     public void The_engine_lists_its_rights_in_the_order_studio_writes_them_and_with_the_same_values()
     {
         Assert.Equal(
-            Enum.GetValues<EmailRights>().Where(right => right != EmailRights.None).Select(right => right.ToString()),
-            EmailSection.Rights);
+            Enum.GetValues<EngineEmailRights>().Where(right => right != EngineEmailRights.None).Select(right => right.ToString()),
+            EmailSection.RightNames);
 
-        foreach (var right in Enum.GetValues<EmailRights>())
-            Assert.Equal((int)right, (int)Enum.Parse<EmailRight>(right.ToString()));
-        Assert.Equal(Enum.GetNames<EmailRights>().Order(StringComparer.Ordinal), Enum.GetNames<EmailRight>().Order(StringComparer.Ordinal));
+        foreach (var right in Enum.GetValues<EngineEmailRights>())
+            Assert.Equal((int)right, (int)Enum.Parse<StudioEmailRights>(right.ToString()));
+        Assert.Equal(Enum.GetNames<EngineEmailRights>().Order(StringComparer.Ordinal), Enum.GetNames<StudioEmailRights>().Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -110,7 +112,7 @@ public sealed class EmailSectionDriftTests
             Provider = "Outlook",
             Address = "me@example.com",
             DisplayName = "Me",
-            Rights = EmailRight.Read | EmailRight.Organize | EmailRight.Draft | EmailRight.Send | EmailRight.Delete | EmailRight.Purge,
+            Rights = StudioEmailRights.Read | StudioEmailRights.Organize | StudioEmailRights.Draft | StudioEmailRights.Send | StudioEmailRights.Delete | StudioEmailRights.Purge,
             TimeoutSeconds = 30,
             SaveSentCopy = false,
             IncomingProtocol = "Pop3",
@@ -145,7 +147,7 @@ public sealed class EmailSectionDriftTests
         Assert.Equal("me@example.com", account.Address);
         Assert.Equal("Me", account.DisplayName);
         Assert.Equal(
-            EmailRights.Read | EmailRights.Organize | EmailRights.Draft | EmailRights.Send | EmailRights.Delete | EmailRights.Purge,
+            EngineEmailRights.Read | EngineEmailRights.Organize | EngineEmailRights.Draft | EngineEmailRights.Send | EngineEmailRights.Delete | EngineEmailRights.Purge,
             account.Rights);
         Assert.Equal(30, account.TimeoutSeconds);
         Assert.False(account.SaveSentCopy);
@@ -190,7 +192,7 @@ public sealed class EmailSectionDriftTests
     [Fact]
     public void Each_right_studio_writes_alone_and_all_together_are_bound_by_the_engine_as_those_rights()
     {
-        foreach (var right in Enum.GetValues<EmailRight>().Where(right => right != EmailRight.None))
+        foreach (var right in Enum.GetValues<StudioEmailRights>().Where(right => right != StudioEmailRights.None))
         {
             var bound = BindOne(new EmailAccountDefinition { Name = "a", Rights = right }).Rights;
             Assert.Equal(right.ToString(), bound.ToString());
@@ -206,7 +208,7 @@ public sealed class EmailSectionDriftTests
             Name = "work",
             Provider = "Custom",
             Address = "me@example.com",
-            Rights = EmailRight.Read | EmailRight.Organize | EmailRight.Draft | EmailRight.Send,
+            Rights = StudioEmailRights.Read | StudioEmailRights.Organize | StudioEmailRights.Draft | StudioEmailRights.Send,
             IncomingProtocol = "Imap",
             IncomingHost = "imap.example.com",
             OutgoingHost = "smtp.example.com",

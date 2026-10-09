@@ -137,7 +137,7 @@ public sealed class AppSettingsValidator
         ValidateTypes(document, messages);
         ValidateRagProfile(document, messages);
         ValidateRagLlmProfile(document, messages);
-        ValidateMounts(document, messages, scope);
+        ValidateMounts(document, messages);
         ValidateMcp(document, messages);
         ValidateEmail(document, messages);
 
@@ -220,18 +220,22 @@ public sealed class AppSettingsValidator
     private static ValidationMessage DuplicateAccount(string first, string name, string? shared)
     {
         var path = $"{EmailSection.AccountsPath}:{name}";
-        return shared is null
-            ? ValidationMessage.Warning(
+        if (shared is null)
+        {
+            return ValidationMessage.Warning(
                 ValidationCodes.EmailDuplicate,
                 $"E-mail accounts '{first}' and '{name}' differ only by case: the run reads them as one account, " +
                 "the keys of both together. Rename one, or merge them.",
-                path)
-            : ValidationMessage.Error(
-                ValidationCodes.EmailDuplicate,
-                $"E-mail accounts '{first}' and '{name}' differ only by case and both set " +
-                $"{(shared.Length == 0 ? "a value" : shared)}: the configuration refuses a key written twice, " +
-                "so no run can read this file. Rename one, or merge them.",
                 path);
+        }
+
+        var what = shared.Length == 0 ? "a value" : shared;
+        return ValidationMessage.Error(
+            ValidationCodes.EmailDuplicate,
+            $"E-mail accounts '{first}' and '{name}' differ only by case and both set " +
+            $"{what}: the configuration refuses a key written twice, " +
+            "so no run can read this file. Rename one, or merge them.",
+            path);
     }
 
     /// <summary>
@@ -565,10 +569,7 @@ public sealed class AppSettingsValidator
             RagSection.LlmProfilePath));
     }
 
-    private void ValidateMounts(
-        AppSettingsDocument document,
-        List<ValidationMessage> messages,
-        ValidationScope scope)
+    private void ValidateMounts(AppSettingsDocument document, List<ValidationMessage> messages)
     {
         var entries = document.Mounts.RawEntries;
 

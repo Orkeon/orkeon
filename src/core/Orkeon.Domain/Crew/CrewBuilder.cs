@@ -290,27 +290,9 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>
-    /// Builds and returns a new <see cref="Crew"/> instance.
-    /// </summary>
-    /// <exception cref="BuilderValidationException">
-    /// Thrown when <see cref="Goal(string)"/> has not been set, when a Hierarchical process
-    /// is configured without a manager agent or manager LLM, when a task asks for asynchronous
-    /// execution in a process that does not honour it (<see cref="ProcessType.AcceptsAsyncExecution"/>),
-    /// or when a manager agent or a manager LLM is set for a process that has none
-    /// (<see cref="ProcessType.AcceptsManagerAgent"/>, <see cref="ProcessType.AcceptsManagerLlm"/>).
-    /// </exception>
-    /// <exception cref="ArgumentException">
-    /// Thrown by <see cref="Crew.Create(CrewCreateOptions)"/> for a memory provider without
-    /// <see cref="EnableMemory"/>, or a planning provider without <see cref="Planning"/>.
-    /// </exception>
-    public Crew Build()
+    /// <summary>Builds the inline agents and tasks the configurators describe, in order.</summary>
+    private void BuildConfiguredMembers()
     {
-        // 1. Validate goal
-        if (string.IsNullOrWhiteSpace(_goal))
-            throw new BuilderValidationException("Crew", "Goal is required.");
-
-        // 2. Build inline agents from configurators
         foreach (var configurator in _agentConfigurators)
         {
             var agentBuilder = new AgentBuilder();
@@ -318,34 +300,39 @@ public sealed class CrewBuilder
             _agents.Add(agentBuilder.Build());
         }
 
-        // 3. Build inline tasks from configurators
         foreach (var configurator in _taskConfigurators)
         {
             var taskBuilder = new CrewTaskBuilder();
             configurator(taskBuilder);
             _tasks.Add(taskBuilder.Build());
         }
+    }
 
-        // 4. Validate Hierarchical has manager
-        if (_processType == ProcessType.Hierarchical && _managerAgentId is null && _managerLlm is null)
-            throw new BuilderValidationException("Crew", "Hierarchical process requires either a manager agent or a manager LLM.");
-
-        // 4b. A task asks for asynchronous execution only where the mode honours it (GAP-22): the
-        //     other modes order their tasks themselves and would drop the promise in silence.
+    /// <summary>
+    /// A task asks for asynchronous execution only where the mode honours it (GAP-22): the other
+    /// modes order their tasks themselves and would drop the promise in silence.
+    /// </summary>
+    private void EnsureAsyncExecutionAccepted()
+    {
         var asyncTasks = _tasks.Where(task => task.AsyncExecution).ToList();
-        if (asyncTasks.Count > 0 && !_processType.AcceptsAsyncExecution)
-        {
-            var named = string.Join(", ", asyncTasks.Select(task => $"'{task.Description.Value}'"));
-            throw new BuilderValidationException(
-                "Crew",
-                (asyncTasks.Count == 1 ? $"Task {named} asks" : $"Tasks {named} ask") +
-                $" for asynchronous execution (.Async()), which the {_processType.Value} process does not honour: " +
-                "it orders its tasks itself. Use .Sequential() — an async task runs alongside the tasks after it — " +
-                "or .Parallel(), or drop .Async().");
-        }
+        if (asyncTasks.Count == 0 || _processType.AcceptsAsyncExecution)
+            return;
 
-        // 4c. A manager where the mode uses one, never elsewhere (GAP-33): the four modes without a
-        //     manager agent ran it as one more worker, and only two modes ever call a manager LLM.
+        var named = string.Join(", ", asyncTasks.Select(task => $"'{task.Description.Value}'"));
+        throw new BuilderValidationException(
+            "Crew",
+            (asyncTasks.Count == 1 ? $"Task {named} asks" : $"Tasks {named} ask") +
+            $" for asynchronous execution (.Async()), which the {_processType.Value} process does not honour: " +
+            "it orders its tasks itself. Use .Sequential() — an async task runs alongside the tasks after it — " +
+            "or .Parallel(), or drop .Async().");
+    }
+
+    /// <summary>
+    /// A manager where the mode uses one, never elsewhere (GAP-33): the four modes without a manager
+    /// agent ran it as one more worker, and only two modes ever call a manager LLM.
+    /// </summary>
+    private void EnsureManagerAccepted()
+    {
         if (_managerAgentId is not null && !_processType.AcceptsManagerAgent)
         {
             throw new BuilderValidationException(
@@ -367,6 +354,38 @@ public sealed class CrewBuilder
                 "or use .Hierarchical() — the manager assigns and reviews on it — or the Autonomous process — the manager " +
                 "hands the tasks out on it.");
         }
+    }
+
+    /// <summary>
+    /// Builds and returns a new <see cref="Crew"/> instance.
+    /// </summary>
+    /// <exception cref="BuilderValidationException">
+    /// Thrown when <see cref="Goal(string)"/> has not been set, when a Hierarchical process
+    /// is configured without a manager agent or manager LLM, when a task asks for asynchronous
+    /// execution in a process that does not honour it (<see cref="ProcessType.AcceptsAsyncExecution"/>),
+    /// or when a manager agent or a manager LLM is set for a process that has none
+    /// (<see cref="ProcessType.AcceptsManagerAgent"/>, <see cref="ProcessType.AcceptsManagerLlm"/>).
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown by <see cref="Crew.Create(CrewCreateOptions)"/> for a memory provider without
+    /// <see cref="EnableMemory"/>, or a planning provider without <see cref="Planning"/>.
+    /// </exception>
+    public Crew Build()
+    {
+        // 1. Validate goal
+        if (string.IsNullOrWhiteSpace(_goal))
+            throw new BuilderValidationException("Crew", "Goal is required.");
+
+        // 2. and 3. Build inline agents and tasks from configurators
+        BuildConfiguredMembers();
+
+        // 4. Validate Hierarchical has manager
+        if (_processType == ProcessType.Hierarchical && _managerAgentId is null && _managerLlm is null)
+            throw new BuilderValidationException("Crew", "Hierarchical process requires either a manager agent or a manager LLM.");
+
+        // 4b. and 4c. The mode honours what the tasks ask and the manager the crew carries.
+        EnsureAsyncExecutionAccepted();
+        EnsureManagerAccepted();
 
         // 5. Create the crew
         var crew = Crew.Create(new CrewCreateOptions

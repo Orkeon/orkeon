@@ -174,10 +174,10 @@ internal sealed partial class SettingsReference
             stale.Add("the index of the categories");
         }
 
-        foreach (Match block in SectionBlock().Matches(normalized))
+        foreach (var groups in SectionBlock().Matches(normalized).Select(block => block.Groups))
         {
-            if (_catalog.Section(block.Groups["path"].Value) is { } section
-                && !string.Equals(block.Groups["body"].Value, Section(section.Path), StringComparison.Ordinal))
+            if (_catalog.Section(groups["path"].Value) is { } section
+                && !string.Equals(groups["body"].Value, Section(section.Path), StringComparison.Ordinal))
             {
                 stale.Add(section.Path);
             }
@@ -211,16 +211,16 @@ internal sealed partial class SettingsReference
             }
         }
 
-        foreach (var section in _catalog.Sections)
+        foreach (var sectionPath in _catalog.Sections.Select(section => section.Path))
         {
-            var count = blocks.Count(path => string.Equals(path, section.Path, StringComparison.Ordinal));
+            var count = blocks.Count(path => string.Equals(path, sectionPath, StringComparison.Ordinal));
             if (count == 0)
-                problems.Add($"The section '{section.Path}' has no table: {OpeningMarker(section.Path)} … {ClosingMarker}, under {SectionHeading(section.Path)}.");
+                problems.Add($"The section '{sectionPath}' has no table: {OpeningMarker(sectionPath)} … {ClosingMarker}, under {SectionHeading(sectionPath)}.");
             else if (count > 1)
-                problems.Add($"The section '{section.Path}' has {count} tables: one is enough.");
+                problems.Add($"The section '{sectionPath}' has {count} tables: one is enough.");
 
-            if (!lines.Contains(SectionHeading(section.Path)))
-                problems.Add($"The section '{section.Path}' has no heading: {SectionHeading(section.Path)}");
+            if (!lines.Contains(SectionHeading(sectionPath)))
+                problems.Add($"The section '{sectionPath}' has no heading: {SectionHeading(sectionPath)}");
         }
 
         foreach (var path in blocks.Distinct(StringComparer.Ordinal))
@@ -241,10 +241,10 @@ internal sealed partial class SettingsReference
         ArgumentNullException.ThrowIfNull(page);
         var normalized = page.Replace("\r\n", "\n", StringComparison.Ordinal);
         var keys = new List<string>();
-        foreach (Match block in SectionBlock().Matches(normalized))
+        foreach (var groups in SectionBlock().Matches(normalized).Select(block => block.Groups))
         {
-            var section = block.Groups["path"].Value;
-            foreach (Match row in KeyCell().Matches(block.Groups["body"].Value))
+            var section = groups["path"].Value;
+            foreach (Match row in KeyCell().Matches(groups["body"].Value))
                 keys.Add(FullKey(section, _language.CataloguePlaceholders(row.Groups["key"].Value)));
         }
 

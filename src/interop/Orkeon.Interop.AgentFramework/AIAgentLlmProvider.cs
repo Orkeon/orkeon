@@ -210,41 +210,32 @@ public sealed partial class AIAgentLlmProvider : ILlmProvider
     /// (<see cref="LlmConfig.OnProfile"/>) — a temperature or a <c>top_p</c> whatever its value: 0.7
     /// and 1.0 used to be taken for "not set", and said nothing (GAP-36).
     /// </summary>
-    private static List<string> DeclaredOptions(LlmConfig config)
-    {
-        var options = new List<string>();
-        if (!string.IsNullOrWhiteSpace(config.Model))
-            options.Add("model");
-        if (config.Temperature is not null)
-            options.Add("temperature");
-        if (config.MaxTokens is not null)
-            options.Add("max_tokens");
-        if (config.TopP is not null)
-            options.Add("top_p");
-        if (config.FrequencyPenalty != 0.0)
-            options.Add("frequency_penalty");
-        if (config.PresencePenalty != 0.0)
-            options.Add("presence_penalty");
-        if (config.Seed is not null)
-            options.Add("seed");
-        if (config.StopSequences.Count > 0)
-            options.Add("stop");
-        if (!string.IsNullOrWhiteSpace(config.SystemMessage))
-            options.Add("system_message");
-        if (config.ResponseFormat is { } format && !string.Equals(format.Type, "text", StringComparison.OrdinalIgnoreCase))
-            options.Add("response_format");
-        if (config.Thinking is not null)
-            options.Add("thinking");
-        if (!string.IsNullOrWhiteSpace(config.GrammarGbnf))
-            options.Add("grammar");
-        if (config.Tools is { Count: > 0 })
-            options.Add("tools");
-        if (config.Cache is not null)
-            options.Add("cache");
-        if (config.CustomParameters.Count > 0)
-            options.Add("custom_parameters");
-        return options;
-    }
+    private static List<string> DeclaredOptions(LlmConfig config) =>
+        OptionDeclarations
+            .Where(declaration => declaration.IsDeclared(config))
+            .Select(declaration => declaration.Option)
+            .ToList();
+
+    /// <summary>Each option a configuration can declare, with what declares it.</summary>
+    private static readonly (string Option, Func<LlmConfig, bool> IsDeclared)[] OptionDeclarations =
+    [
+        ("model", config => !string.IsNullOrWhiteSpace(config.Model)),
+        ("temperature", config => config.Temperature is not null),
+        ("max_tokens", config => config.MaxTokens is not null),
+        ("top_p", config => config.TopP is not null),
+        ("frequency_penalty", config => config.FrequencyPenalty != 0.0),
+        ("presence_penalty", config => config.PresencePenalty != 0.0),
+        ("seed", config => config.Seed is not null),
+        ("stop", config => config.StopSequences.Count > 0),
+        ("system_message", config => !string.IsNullOrWhiteSpace(config.SystemMessage)),
+        ("response_format", config => config.ResponseFormat is { } format
+            && !string.Equals(format.Type, "text", StringComparison.OrdinalIgnoreCase)),
+        ("thinking", config => config.Thinking is not null),
+        ("grammar", config => !string.IsNullOrWhiteSpace(config.GrammarGbnf)),
+        ("tools", config => config.Tools is { Count: > 0 }),
+        ("cache", config => config.Cache is not null),
+        ("custom_parameters", config => config.CustomParameters.Count > 0),
+    ];
 
     /// <summary>
     /// LLM-02's warning, in the HTTP providers' words: an option the caller declared that this provider

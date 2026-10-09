@@ -157,7 +157,9 @@ public sealed class UseCaseImporterTests : IDisposable
         var folder = Path.Combine(TeamsRoot, "daily-email-digest");
 
         var result = await UseCaseImporter.ImportAsync(
-            client, "01-daily-mail-digest", "Daily email digest", folder, TeamsRoot, "en", AddedOn, TestContext.Current.CancellationToken);
+            client,
+            new UseCaseImportRequest("01-daily-mail-digest", "Daily email digest", folder, TeamsRoot, "en", AddedOn),
+            TestContext.Current.CancellationToken);
 
         Assert.Null(result.Failure);
         Assert.Equal(folder, result.TeamPath);
@@ -193,7 +195,9 @@ public sealed class UseCaseImporterTests : IDisposable
         var name = TeamCatalog.FreeName("Daily email digest", taken, free);
 
         var result = await UseCaseImporter.ImportAsync(
-            client, "01-daily-mail-digest", name, free, TeamsRoot, "en", AddedOn, TestContext.Current.CancellationToken);
+            client,
+            new UseCaseImportRequest("01-daily-mail-digest", name, free, TeamsRoot, "en", AddedOn),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(Path.Combine(TeamsRoot, "daily-email-digest-2"), result.TeamPath);
         Assert.Equal("Daily email digest (2)", TeamCatalog.Describe(result.TeamPath!).Name);
@@ -209,7 +213,9 @@ public sealed class UseCaseImporterTests : IDisposable
         using var client = new UseCaseClient(processes, Locator());
 
         var result = await UseCaseImporter.ImportAsync(
-            client, "31-algo-trading", "Simulated trading room", Path.Combine(TeamsRoot, "simulated-trading-room"), TeamsRoot, "en", AddedOn,
+            client,
+            new UseCaseImportRequest(
+                "31-algo-trading", "Simulated trading room", Path.Combine(TeamsRoot, "simulated-trading-room"), TeamsRoot, "en", AddedOn),
             TestContext.Current.CancellationToken);
 
         Assert.Null(result.TeamPath);

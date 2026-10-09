@@ -4,6 +4,12 @@ using Orkeon.Studio.Core.Process;
 
 namespace Orkeon.Studio.Core.Forge;
 
+/// <summary>
+/// What a promotion asks: the Ready session <paramref name="Slug"/>, the team folder it goes to,
+/// the team's name (none keeps the session's), and the schedule (none for an on-demand team).
+/// </summary>
+public sealed record ForgePromoteRequest(string Slug, string Destination, string? TeamName, string? Schedule);
+
 /// <summary>What to launch: a new session from a need, or the resume of an existing one.</summary>
 public sealed record ForgeStartRequest
 {
@@ -424,22 +430,20 @@ public sealed class ForgeClient
     }
 
     /// <summary>
-    /// Promotes a Ready session to <paramref name="destination"/> under
-    /// <paramref name="teamName"/> — the "Adopter" card's gesture. Same child process, same
+    /// Promotes a Ready session as <paramref name="request"/> says — to its destination, under
+    /// its team name — the "Adopter" card's gesture. Same child process, same
     /// protocol; the <c>promoted</c> event carries the folder, the launcher and the
     /// displayed-never-executed install command, and a <c>session.renamed</c> follows when the
     /// session folder took the team folder's name (STUDIO-26).
     /// </summary>
     public async Task<ProcessRunResult> PromoteAsync(
-        string slug,
-        string destination,
-        string? teamName,
-        string? schedule,
+        ForgePromoteRequest request,
         string? workingDirectory,
         Action<OrkeonEvent> onEvent,
         Action<ProcessOutputLine>? onRaw = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(onEvent);
         if (IsRunning)
             throw new InvalidOperationException("A forge session is already running.");
@@ -454,7 +458,7 @@ public sealed class ForgeClient
             var launch = new ProcessLaunchRequest
             {
                 FileName = location.Path!,
-                Arguments = ForgeArgumentsBuilder.BuildPromote(slug, destination, teamName, schedule),
+                Arguments = ForgeArgumentsBuilder.BuildPromote(request.Slug, request.Destination, request.TeamName, request.Schedule),
                 WorkingDirectory = workingDirectory,
             };
 

@@ -33,28 +33,20 @@ internal static class TypingsCommand
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        string? outDirectory = null;
-        for (var i = 0; i < args.Length; i++)
+        var arguments = Parse(args);
+        if (arguments.Help)
         {
-            switch (args[i])
-            {
-                case "--help" or "-h":
-                    await Console.Out.WriteAsync(Usage).ConfigureAwait(false);
-                    return Program.ExitOk;
-                case "--out" or "-o" when i + 1 < args.Length:
-                    outDirectory = args[++i];
-                    break;
-                case "--out" or "-o":
-                    await Console.Error.WriteLineAsync("orkeon typings: --out needs a directory.").ConfigureAwait(false);
-                    return Program.ExitScriptError;
-                default:
-                    await Console.Error.WriteLineAsync(
-                        $"orkeon typings: unknown argument '{args[i]}'; run `orkeon typings --help`.").ConfigureAwait(false);
-                    return Program.ExitScriptError;
-            }
+            await Console.Out.WriteAsync(Usage).ConfigureAwait(false);
+            return Program.ExitOk;
         }
 
-        var target = Path.GetFullPath(outDirectory ?? ConventionalNames.StateDirectory, workingDirectory);
+        if (arguments.Error is { } error)
+        {
+            await Console.Error.WriteLineAsync("orkeon typings: " + error).ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        var target = Path.GetFullPath(arguments.OutDirectory ?? ConventionalNames.StateDirectory, workingDirectory);
         Directory.CreateDirectory(target);
 
         await WriteAsync(typeof(ScriptHost).Assembly, DslResource, Path.Combine(target, DslFileName)).ConfigureAwait(false);
@@ -66,6 +58,31 @@ internal static class TypingsCommand
         await Console.Out.WriteLineAsync($"  /// <reference path=\"./{relative}/{DslFileName}\" />       (a .ork.ts crew)").ConfigureAwait(false);
         await Console.Out.WriteLineAsync($"  /// <reference path=\"./{relative}/{CommandsFileName}\" />   (a .cmd.ts command)").ConfigureAwait(false);
         return Program.ExitOk;
+    }
+
+    /// <summary>The arguments of the verb: <c>--help</c>, else the output directory, else what was refused.</summary>
+    private sealed record TypingsArguments(bool Help = false, string? OutDirectory = null, string? Error = null);
+
+    private static TypingsArguments Parse(string[] args)
+    {
+        string? outDirectory = null;
+        for (var i = 0; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--help" or "-h":
+                    return new TypingsArguments(Help: true);
+                case "--out" or "-o" when i + 1 < args.Length:
+                    outDirectory = args[++i];
+                    break;
+                case "--out" or "-o":
+                    return new TypingsArguments(Error: "--out needs a directory.");
+                default:
+                    return new TypingsArguments(Error: $"unknown argument '{args[i]}'; run `orkeon typings --help`.");
+            }
+        }
+
+        return new TypingsArguments(OutDirectory: outDirectory);
     }
 
     private const string Usage =

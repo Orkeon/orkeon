@@ -229,51 +229,54 @@ internal sealed class SettingsCatalog
     {
         writer.WriteStartArray(SectionsField);
         foreach (var section in Sections)
-        {
-            writer.WriteStartObject();
-            writer.WriteString("path", section.Path);
-            writer.WriteString("category", section.Category);
-            writer.WriteStartArray("hosts");
-            foreach (var host in section.Hosts)
-                writer.WriteStringValue(host);
-            writer.WriteEndArray();
-            if (section.Registration is not null)
-                writer.WriteString("registration", section.Registration);
-            writer.WriteString("description", section.Description);
-            writer.WriteEndObject();
-        }
-
+            WriteSection(writer, section);
         writer.WriteEndArray();
 
         writer.WriteStartArray(SettingsField);
         foreach (var entry in Settings)
+            WriteEntry(writer, entry);
+        writer.WriteEndArray();
+    }
+
+    private static void WriteSection(Utf8JsonWriter writer, SettingsCatalogSection section)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("path", section.Path);
+        writer.WriteString("category", section.Category);
+        WriteStrings(writer, "hosts", section.Hosts);
+        if (section.Registration is not null)
+            writer.WriteString("registration", section.Registration);
+        writer.WriteString("description", section.Description);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteEntry(Utf8JsonWriter writer, SettingsCatalogEntry entry)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("path", entry.Path);
+        writer.WriteString("section", entry.Section);
+        writer.WriteString("type", entry.Type);
+        if (entry.Default is not null)
         {
-            writer.WriteStartObject();
-            writer.WriteString("path", entry.Path);
-            writer.WriteString("section", entry.Section);
-            writer.WriteString("type", entry.Type);
-            if (entry.Default is not null)
-            {
-                writer.WritePropertyName("default");
-                writer.WriteRawValue(entry.Default, skipInputValidation: false);
-            }
-
-            if (entry.DefaultNote is not null)
-                writer.WriteString("defaultNote", entry.DefaultNote);
-            if (entry.Values.Count > 0)
-            {
-                writer.WriteStartArray("values");
-                foreach (var value in entry.Values)
-                    writer.WriteStringValue(value);
-                writer.WriteEndArray();
-            }
-
-            if (entry.Secret)
-                writer.WriteBoolean("secret", true);
-            writer.WriteString("description", entry.Description);
-            writer.WriteEndObject();
+            writer.WritePropertyName("default");
+            writer.WriteRawValue(entry.Default, skipInputValidation: false);
         }
 
+        if (entry.DefaultNote is not null)
+            writer.WriteString("defaultNote", entry.DefaultNote);
+        if (entry.Values.Count > 0)
+            WriteStrings(writer, "values", entry.Values);
+        if (entry.Secret)
+            writer.WriteBoolean("secret", true);
+        writer.WriteString("description", entry.Description);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteStrings(Utf8JsonWriter writer, string name, IEnumerable<string> values)
+    {
+        writer.WriteStartArray(name);
+        foreach (var value in values)
+            writer.WriteStringValue(value);
         writer.WriteEndArray();
     }
 
@@ -360,11 +363,11 @@ internal sealed class SettingsCatalog
 
         var sections = library.Sections.ToDictionary(section => section.Path, StringComparer.OrdinalIgnoreCase);
         var settings = library.Settings.ToDictionary(entry => entry.Path, StringComparer.OrdinalIgnoreCase);
-        foreach (var host in hosts)
+        foreach (var own in hosts.Select(host => host.Own))
         {
-            foreach (var section in host.Own.Sections)
+            foreach (var section in own.Sections)
                 sections.TryAdd(section.Path, section);
-            foreach (var entry in host.Own.Settings)
+            foreach (var entry in own.Settings)
                 settings.TryAdd(entry.Path, entry);
         }
 

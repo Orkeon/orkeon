@@ -119,21 +119,17 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         LogStartingParallelExecutionForCrew(crew.Id);
 
         var startTime = DateTime.UtcNow;
-        // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
-        // The tally is thread-safe: tasks record their usage concurrently.
-        var tokenTally = new TokenUsageTally();
         var variables = inputVariables != null
             ? new Dictionary<string, string>(inputVariables)
             : [];
 
-        var taskSnapshots = new System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot>();
         var executionTasks = new List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)>>();
 
         // The barrier covers setup AND the fan-out loop, not only the WhenAll: a cancellation
         // firing mid-fan-out used to escape with tasks 1..n-1 already launched — no terminal
         // event, and orphans still emitting task.completed after the strategy had returned.
-        var results = new List<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>();
-        var outcome = new CrewRunOutcome(_lifecycle, cancellationToken);
+        var run = new ParallelRun(new CrewRunOutcome(_lifecycle, cancellationToken));
+        var outcome = run.Outcome;
         try
         {
         // Setup stays inside the barrier: an agent-less crew is the everyday failure, and it
@@ -150,15 +146,13 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         // nothing it had. Tasks with no unmet dependency go together; the next wave starts
         // when they are done, with their outputs in context. A crew declaring no dependency
         // is one wave — exactly the previous behaviour.
-        var completedOutputs = new List<ApplicationTaskOutput>();
-
         foreach (var wave in DependencyWaves(tasks))
         {
             executionTasks.Clear();
 
             // Snapshot what the previous waves produced: every task in this wave reads the
             // same context, and the list must not be mutated while they run.
-            var previousOutputs = completedOutputs.ToList();
+            var previousOutputs = run.CompletedOutputs.ToList();
 
             var launched = new List<(DomainTask Task, DomainAgent Agent)>();
             foreach (var task in wave)
@@ -176,14 +170,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 // (GAP-03): it used to run in the next wave with "Task failed: …" as its input.
                 if (outcome.BlockingDependency(task) is { } blockedBy)
                 {
-                    var skipReason = await outcome.RecordSkipAsync(task, agent.Role.Value, blockedBy).ConfigureAwait(false);
-                    LogTaskSkippedAfterDependency(task.Id, agent.Role.Value, blockedBy);
-                    var skipped = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
-                    results.Add((skipped.Domain, skipped.Application));
-                    completedOutputs.Add(skipped.Application);
-                    var skippedSnapshot = CrewRunOutcome.SkippedSnapshot(task.Id, agent.Role.Value, skipReason);
-                    taskSnapshots.Add(skippedSnapshot);
-                    await _hooks.TaskCompletedAsync(skippedSnapshot, cancellationToken).ConfigureAwait(false);
+                    await SkipBlockedTaskAsync(run, task, agent, blockedBy, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
 
@@ -194,32 +181,19 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 var capturedTask = task;
                 var capturedAgent = agent;
 
-                // Started as it is launched, so the start goes out before its agent runs (GAP-21);
-                // one agent given two tasks of the wave runs both at once.
+                // Started as it is launched, so the start goes out before its agent runs (GAP-21).
+                // One agent given two tasks of the wave runs both at once.
                 await outcome.RecordStartAsync(task, agent).ConfigureAwait(false);
                 launched.Add((task, agent));
                 executionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
-                    capturedAgent, capturedTask, context, tokenTally, taskSnapshots, cancellationToken)
+                    capturedAgent, capturedTask, context, run.TokenTally, run.TaskSnapshots, cancellationToken)
                     .ConfigureAwait(false)));
             }
 
             // Wait for this wave. One faulted task means WhenAll throws — the terminal event
             // must still go out, or a watcher sees a run frozen at its last completed sibling.
             var waveResults = await System.Threading.Tasks.Task.WhenAll(executionTasks).ConfigureAwait(false);
-
-            // The wave has joined: its failures are recorded in declaration order, so the
-            // crew's error reads the same whichever task finished first.
-            for (var i = 0; i < waveResults.Length; i++)
-            {
-                var (domainOutput, appOutput, error) = waveResults[i];
-                if (domainOutput.Success)
-                    await outcome.RecordSuccessAsync(launched[i].Task, domainOutput).ConfigureAwait(false);
-                else
-                    await outcome.RecordFailureAsync(launched[i].Task, launched[i].Agent.Role.Value, error).ConfigureAwait(false);
-                results.Add((domainOutput, appOutput));
-            }
-
-            completedOutputs.AddRange(waveResults.Select(r => r.appOutput));
+            await RecordWaveAsync(run, launched, waveResults).ConfigureAwait(false);
         }
         }
         catch (OperationCanceledException ex)
@@ -232,7 +206,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
-                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
+                    crew.Id.ToString(), startTime, run.TaskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
                 null, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
@@ -242,12 +216,12 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             await outcome.RecordInterruptionAsync(ex).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
-                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed, ex.Message),
+                    crew.Id.ToString(), startTime, run.TaskSnapshots, CrewHookStatus.Failed, ex.Message),
                 ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
 
-        var domainResults = results.Select(r => r.domainOutput).ToList();
+        var domainResults = run.Results.Select(r => r.domainOutput).ToList();
         var totalTime = DateTime.UtcNow - startTime;
 
         // Aggregate: combine all outputs
@@ -258,10 +232,69 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         else
             LogParallelExecutionCompletedForCrew(crew.Id, totalTime);
 
-        return await outcome.CompleteAsync(
-            _hooks, crew.Id.ToString(), startTime, taskSnapshots, domainResults, totalTime,
-            tokenTally.WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()).Build(),
-            allOutputs).ConfigureAwait(false);
+        return await outcome.CompleteAsync(_hooks, new CrewRunSummary(
+            crew.Id.ToString(), startTime, run.TaskSnapshots, domainResults, totalTime,
+            run.TokenTally.WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()).Build(),
+            allOutputs)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// What one parallel run accumulates across its waves: the outcome (failures, lifecycle), the
+    /// outputs in the order the waves recorded them, the outputs the next wave reads, the snapshots
+    /// the hooks heard — a launched task adds its own from its own flow — and the token tally,
+    /// thread-safe for the same reason (R10.8).
+    /// </summary>
+    private sealed class ParallelRun
+    {
+        public ParallelRun(CrewRunOutcome outcome)
+        {
+            Outcome = outcome;
+        }
+
+        public CrewRunOutcome Outcome { get; }
+        public List<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)> Results { get; } = [];
+        public List<ApplicationTaskOutput> CompletedOutputs { get; } = [];
+        public System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot> TaskSnapshots { get; } = [];
+        public TokenUsageTally TokenTally { get; } = new();
+    }
+
+    /// <summary>
+    /// A task blocked by a dependency that did not succeed: recorded as skipped and never run — a
+    /// failed output for the next waves' context and the crew's result, a skipped snapshot for the hooks.
+    /// </summary>
+    private async System.Threading.Tasks.Task SkipBlockedTaskAsync(
+        ParallelRun run, DomainTask task, DomainAgent agent, TaskId blockedBy, CancellationToken cancellationToken)
+    {
+        var skipReason = await run.Outcome.RecordSkipAsync(task, agent.Role.Value, blockedBy).ConfigureAwait(false);
+        LogTaskSkippedAfterDependency(task.Id, agent.Role.Value, blockedBy);
+        var skipped = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
+        run.Results.Add((skipped.Domain, skipped.Application));
+        run.CompletedOutputs.Add(skipped.Application);
+        var skippedSnapshot = CrewRunOutcome.SkippedSnapshot(task.Id, agent.Role.Value, skipReason);
+        run.TaskSnapshots.Add(skippedSnapshot);
+        await _hooks.TaskCompletedAsync(skippedSnapshot, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// A wave that has joined: its failures are recorded in declaration order, so the crew's error
+    /// reads the same whichever task finished first, and its outputs join the next wave's context.
+    /// </summary>
+    private static async System.Threading.Tasks.Task RecordWaveAsync(
+        ParallelRun run,
+        List<(DomainTask Task, DomainAgent Agent)> launched,
+        (DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)[] waveResults)
+    {
+        for (var i = 0; i < waveResults.Length; i++)
+        {
+            var (domainOutput, appOutput, error) = waveResults[i];
+            if (domainOutput.Success)
+                await run.Outcome.RecordSuccessAsync(launched[i].Task, domainOutput).ConfigureAwait(false);
+            else
+                await run.Outcome.RecordFailureAsync(launched[i].Task, launched[i].Agent.Role.Value, error).ConfigureAwait(false);
+            run.Results.Add((domainOutput, appOutput));
+        }
+
+        run.CompletedOutputs.AddRange(waveResults.Select(r => r.appOutput));
     }
 
     /// <summary>

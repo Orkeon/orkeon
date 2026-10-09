@@ -256,7 +256,7 @@ public static partial class RunnerHost
     /// The logs of the host: .NET's logging configuration. A shipped host logs warnings and above on
     /// one line; <c>--verbose</c> raises the level for a run without touching this section.
     /// </summary>
-    private sealed class LoggingSettingsShape
+    internal sealed class LoggingSettingsShape
     {
         /// <summary>
         /// The lowest level logged, by category: <c>Default</c> for every category without a line of
@@ -524,21 +524,44 @@ public static partial class RunnerHost
             : profilesSection.GetSection(electedProfile);
         if (electedProfile is not null)
             LogLlmProfileElected(logger, electedProfile);
-        if (logger.IsEnabled(LogLevel.Information))
+        LogOfferedProfileKeys(logger, profilesSection, offered, defined);
+        WarnUnresolvedApiKeyReferences(logger, configuration, profilesSection, hidden, electedProfile);
+
+        if (LlmSettings.HasDefault(configuration))
         {
-            // The file's profiles the host offers: one a C# host registers in code has no section
-            // to tell its key by.
-            foreach (var profile in offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)))
-            {
-                var source = LlmSettings.DescribeApiKey(profilesSection.GetSection(profile));
-                LogLlmProfileKey(logger, profile, source);
-            }
+            LogResolvedDefault(logger, llmSection, keySection);
+            return;
         }
 
-        // STUDIO-49: an ApiKeyEnvVar naming a variable set nowhere — once per host build and per
-        // section, by its configuration path, never the name it holds (a key pasted in the wrong
-        // field must not reach a log). The calls on that profile answer "API key is required".
-        // A hidden profile's is no reason to warn, unless the run elected it as its default.
+        Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
+        LogLlmNotConfigured(logger);
+    }
+
+    /// <summary>Where each offered profile of the file takes its key from, one line per profile.</summary>
+    private static void LogOfferedProfileKeys(
+        ILogger logger, IConfigurationSection profilesSection, IReadOnlyList<string> offered, IReadOnlyList<string> defined)
+    {
+        if (!logger.IsEnabled(LogLevel.Information))
+            return;
+
+        // The file's profiles the host offers: one a C# host registers in code has no section
+        // to tell its key by.
+        foreach (var profile in offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)))
+        {
+            var source = LlmSettings.DescribeApiKey(profilesSection.GetSection(profile));
+            LogLlmProfileKey(logger, profile, source);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-49: an ApiKeyEnvVar naming a variable set nowhere — once per host build and per
+    /// section, by its configuration path, never the name it holds (a key pasted in the wrong
+    /// field must not reach a log). The calls on that profile answer "API key is required".
+    /// A hidden profile's is no reason to warn, unless the run elected it as its default.
+    /// </summary>
+    private static void WarnUnresolvedApiKeyReferences(
+        ILogger logger, IConfiguration configuration, IConfigurationSection profilesSection, List<string> hidden, string? electedProfile)
+    {
         var defaultReference = $"{ConfigurationKeys.LlmSection}:{ConfigurationKeys.LlmApiKeyEnvVar}";
         var silenced = hidden
             .Where(name => !string.Equals(name, electedProfile, StringComparison.OrdinalIgnoreCase))
@@ -555,28 +578,25 @@ public static partial class RunnerHost
             Console.Error.WriteLine("WARNING: " + warning);
             LogApiKeyReferenceUnresolved(logger, warning);
         }
+    }
 
-        if (LlmSettings.HasDefault(configuration))
-        {
-            // One line of truth about what was actually resolved (file + ORKEON_ overlay):
-            // when a run behaves as if a setting never arrived — a timeout still at its
-            // default, a temperature the vendor rejects, a key that never came — this line
-            // settles where the chain broke. Where the key came from, never the key.
-            if (logger.IsEnabled(LogLevel.Information))
-            {
-                var model = Shown(llmSection["Model"], "(default)");
-                var baseUrl = Shown(llmSection["BaseUrl"], "(provider default)");
-                var temperature = Shown(llmSection["Temperature"], "(not set: the model's own)");
-                var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
-                var source = LlmSettings.DescribeApiKey(keySection);
-                LogLlmResolved(logger, model, baseUrl, temperature, timeout, source);
-            }
-
+    /// <summary>
+    /// One line of truth about what was actually resolved (file + ORKEON_ overlay): when a run
+    /// behaves as if a setting never arrived — a timeout still at its default, a temperature the
+    /// vendor rejects, a key that never came — this line settles where the chain broke. Where the
+    /// key came from, never the key.
+    /// </summary>
+    private static void LogResolvedDefault(ILogger logger, IConfigurationSection llmSection, IConfigurationSection keySection)
+    {
+        if (!logger.IsEnabled(LogLevel.Information))
             return;
-        }
 
-        Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
-        LogLlmNotConfigured(logger);
+        var model = Shown(llmSection["Model"], "(default)");
+        var baseUrl = Shown(llmSection["BaseUrl"], "(provider default)");
+        var temperature = Shown(llmSection["Temperature"], "(not set: the model's own)");
+        var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
+        var source = LlmSettings.DescribeApiKey(keySection);
+        LogLlmResolved(logger, model, baseUrl, temperature, timeout, source);
     }
 
     /// <summary>
@@ -743,7 +763,7 @@ public static partial class RunnerHost
         var credentialsDirectory = PlanEmailCredentials(declared, declaredMounts, declaredInternal, mounts.CliMounts, settingsPath, decisions);
         if (credentialsDirectory is not null)
         {
-            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex}"] =
                 $"{FileSystemMount.Quote(credentialsDirectory)}:{RunnerVirtualRoots.Credentials}:rw";
         }
 
@@ -1520,7 +1540,7 @@ public static partial class RunnerHost
     /// argument of each <c>index_codebase</c> call, never a setting.
     /// </summary>
     /// <remarks>Its properties are the keys, and their values on a new instance the defaults the host applies: nothing binds it.</remarks>
-    private sealed class RaggableTreeSettingsShape
+    internal sealed class RaggableTreeSettingsShape
     {
         /// <summary>Whether the index and its tools are registered. <c>false</c> leaves them out of the host.</summary>
         public bool Enabled { get; set; } = true;
@@ -1530,7 +1550,7 @@ public static partial class RunnerHost
     }
 
     /// <summary>The keys of <c>RaggableTree:Embedding</c>.</summary>
-    private sealed class RaggableTreeEmbeddingShape
+    internal sealed class RaggableTreeEmbeddingShape
     {
         /// <summary>Who computes the embeddings, any case. The default runs on the machine: no key, no network.</summary>
         public EmbeddingProviderKind Provider { get; set; } = EmbeddingProviderKind.LocalSmartComponents;

@@ -50,7 +50,7 @@ internal static class RagSettings
     {
         var section = configuration.GetSection(RagOptionsFactory.SectionKey);
 
-        if (Unknown(options.Rerank.Kind, provider.GetService<RerankerFactory>()) is { } rerankers)
+        if (IsUnknown(options.Rerank.Kind, provider.GetService<RerankerFactory>(), out var rerankers))
         {
             yield return NotOffered(section, "Rerank:Kind", options.Rerank.Kind, options.Profile, "reranker", rerankers)
                 + (string.Equals(options.Rerank.Kind.Trim(), "onnx", StringComparison.OrdinalIgnoreCase)
@@ -59,7 +59,7 @@ internal static class RagSettings
         }
 
         if (!string.Equals(options.QueryTransform.Mode?.Trim(), RagDefaults.QueryTransformNone, StringComparison.OrdinalIgnoreCase)
-            && Unknown(options.QueryTransform.Mode, provider.GetService<QueryTransformerFactory>()) is { } transformers)
+            && IsUnknown(options.QueryTransform.Mode, provider.GetService<QueryTransformerFactory>(), out var transformers))
         {
             yield return NotOffered(section, "QueryTransform:Mode", options.QueryTransform.Mode!, options.Profile, "query transformer", transformers);
         }
@@ -87,13 +87,22 @@ internal static class RagSettings
         }
     }
 
-    /// <summary>The names <paramref name="factory"/> offers when it does not offer <paramref name="name"/>; null when it does, or when the host registered no such factory.</summary>
-    private static IReadOnlyCollection<string>? Unknown<TComponent>(string? name, NamedRagComponentFactory<TComponent>? factory)
+    /// <summary>
+    /// Whether <paramref name="factory"/> does not offer <paramref name="name"/>, with the names it
+    /// offers; false when it does, or when the host registered no such factory.
+    /// </summary>
+    private static bool IsUnknown<TComponent>(
+        string? name, NamedRagComponentFactory<TComponent>? factory, out IReadOnlyCollection<string> known)
         where TComponent : class
     {
         if (factory is null || string.IsNullOrWhiteSpace(name) || factory.IsKnown(name))
-            return null;
-        return factory.KnownNames;
+        {
+            known = [];
+            return false;
+        }
+
+        known = factory.KnownNames;
+        return true;
     }
 
     private static string NotOffered(

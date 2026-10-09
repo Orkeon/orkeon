@@ -99,10 +99,18 @@ public static class RequestRates
         private RequestRateWindow? _crewWindow;
 
         /// <summary>The agent's limit, read now: the stricter of its <c>maxRpm</c> and the host's cap.</summary>
-        public int? AgentLimit() =>
-            agent is null ? null
-            : agent.MaxRpm is { } own && hostAgentLimit is { } host ? Math.Min(own, host)
-            : agent.MaxRpm ?? hostAgentLimit;
+        public int? AgentLimit()
+        {
+            if (agent is null)
+                return null;
+
+            return (agent.MaxRpm, hostAgentLimit) switch
+            {
+                ({ } own, { } host) => Math.Min(own, host),
+                ({ } own, null) => own,
+                (null, var host) => host,
+            };
+        }
 
         /// <summary>The crew's limit, read now.</summary>
         public int? CrewLimit() => run?.Crew.MaxRpm;

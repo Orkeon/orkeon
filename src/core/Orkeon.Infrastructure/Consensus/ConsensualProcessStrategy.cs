@@ -175,32 +175,10 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         // The terminal event goes out on EVERY exit — setup included: "consensus not
         // reached" was the only failure this mode reported, and a throwing round, a Ctrl+C
         // or an agent-less crew escaped silently.
+        var run = new ConsensualRun(outcome, tokenTally, domainResults, applicationOutputs, taskSnapshots);
         try
         {
-        // ManagerDecision needs an arbiter: without one the crew is refused before any agent
-        // runs, not after it paid for every round (GAP-04).
-        var arbiter = await ResolveArbiterAsync(crew, ct).ConfigureAwait(false);
-
-        // On any other fallback the crew's manager decides nothing — it neither answers nor votes —:
-        // the crew stays valid (another host may arbitrate), and the run says so once (GAP-33).
-        if (arbiter is null && crew.ManagerAgentId is { } idleManager)
-        {
-            var manager = await _agentRepository.GetByIdAsync(idleManager, ct).ConfigureAwait(false);
-            LogManagerDecidesNothing(crew.Name ?? crew.Id.ToString(), manager?.Role.Value ?? idleManager.ToString(), _options.FallbackStrategy);
-        }
-
-        // Load all agents. A declared manager arbitrates; it neither answers nor votes.
-        var agents = new List<DomainAgent>();
-        foreach (var agentId in crew.Agents)
-        {
-            if (agentId == crew.ManagerAgentId)
-                continue;
-            var agent = await _agentRepository.GetByIdAsync(agentId, ct).ConfigureAwait(false);
-            if (agent != null) agents.Add(agent);
-        }
-
-        if (agents.Count == 0)
-            throw new InvalidOperationException("No agents available for consensual execution");
+        var (arbiter, agents) = await ResolveVotersAsync(crew, ct).ConfigureAwait(false);
 
         // Execute each task with consensus, in the declared order sorted on the tasks' dependencies
         // (STUDIO-12 C2) — never a plan's (GAP-31).
@@ -222,99 +200,12 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             // (GAP-03): no agent runs it, no vote is held.
             if (outcome.BlockingDependency(task) is { } blockedBy)
             {
-                var skipReason = await outcome.RecordSkipAsync(task, ConsensusRole, blockedBy).ConfigureAwait(false);
-                LogTaskSkippedAfterDependency(task.Id, blockedBy);
-                var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, ConsensusRole, blockedBy);
-                domainResults.Add(skippedDomain);
-                applicationOutputs.Add(skippedApp);
-                var skipped = CrewRunOutcome.SkippedSnapshot(task.Id, ConsensusRole, skipReason);
-                taskSnapshots.Add(skipped);
-                await _hooks.TaskCompletedAsync(skipped, ct).ConfigureAwait(false);
+                await SkipBlockedTaskAsync(run, task, blockedBy, ct).ConfigureAwait(false);
                 continue;
             }
 
-            LogStartingConsensualExecutionForTask(taskId);
-
-            // Consensus has no single author: the vote is the agent, on the start as on the end.
-            await _hooks.TaskStartedAsync(
-                CrewHookDispatcher.Started(task.Id.Value.ToString(), ConsensusRole), ct)
-                .ConfigureAwait(false);
-            // The task starts once, not once per candidate; every agent answers it, so each starts
-            // it too (GAP-21).
-            await outcome.RecordStartWithoutAgentAsync(task, agents).ConfigureAwait(false);
-
-            // The loop is sequential, so the tally's delta around one task IS what the
-            // whole vote cost — every agent, every round — not just the winning
-            // execution the task result carries (review, RC2-FEAT-06 lot 7).
-            var tokensBefore = tokenTally.TotalTokens;
-            var cacheHitBefore = tokenTally.CacheHitTokens;
-            var cacheMissBefore = tokenTally.CacheMissTokens;
-
-            // Null when the Fail fallback was triggered: no consensus, so no result. That is a
-            // failed task like any other — its dependants are skipped and the crew fails — not
-            // an end of the crew on the spot (GAP-03).
             var vote = new VoteContext(crew, task, agents, arbiter, applicationOutputs, inputVariables, tokenTally);
-            var retained = await ExecuteTaskWithConsensusAsync(vote, ct).ConfigureAwait(false);
-            var taskResult = retained is null
-                ? new TaskResult(
-                    false, $"[NO CONSENSUS] {ConsensusNotReached(task.Id)}", null, [], TimeSpan.Zero,
-                    Error: ConsensusNotReached(task.Id))
-                : await RememberAsync(vote, retained, ct).ConfigureAwait(false);
-
-            // Build application output for context propagation
-            var appOutput = new ApplicationTaskOutput(
-                TaskId: task.Id.Value.ToString(),
-                AgentId: ConsensusRole,
-                Content: CrewRunOutcome.RawOutputOf(taskResult),
-                CompletedAt: DateTime.UtcNow,
-                Success: taskResult.Success,
-                ExecutionTime: taskResult.ExecutionTime,
-                ToolsUsed: taskResult.ToolsUsed);
-            applicationOutputs.Add(appOutput);
-
-            // Build domain output
-            var domainOutput = DomainTaskOutput.Create(
-                rawOutput: CrewRunOutcome.RawOutputOf(taskResult),
-                format: "text",
-                formattedOutput: null,
-                taskId: task.Id,
-                success: taskResult.Success,
-                executionTime: taskResult.ExecutionTime,
-                structuredOutput: taskResult.StructuredOutput);
-            domainResults.Add(domainOutput);
-
-            // Each agent ends the task with its own last answer — or its error —, then the task
-            // ends: completed under the author of the retained answer (GAP-21).
-            foreach (var agent in agents)
-            {
-                if (vote.LastAnswers.TryGetValue(agent.Id.ToString(), out var answer))
-                    await outcome.RecordAnswerAsync(task, agent, answer).ConfigureAwait(false);
-            }
-
-            // The retained result is the task's result: when it failed, the task failed,
-            // whatever the vote said (GAP-03).
-            if (taskResult.Success)
-                await outcome.RecordSuccessAsync(task, domainOutput, retained?.Author).ConfigureAwait(false);
-            else
-                await outcome.RecordFailureAsync(task, ConsensusRole, taskResult.Error ?? taskResult.LastError).ConfigureAwait(false);
-
-            LogTaskCompletedViaConsensusSuccess(taskId, taskResult.Success);
-
-            var snapshot = new TaskExecutionSnapshot
-            {
-                TaskId = task.Id.Value.ToString(),
-                // Consensus has no single author: the vote is the agent.
-                AgentRole = ConsensusRole,
-                Success = taskResult.Success,
-                Duration = taskResult.ExecutionTime,
-                CompletedAt = DateTimeOffset.UtcNow,
-                ToolCallCount = taskResult.ToolsUsed?.Count ?? 0,
-                TokensUsed = tokenTally.TotalTokens - tokensBefore,
-                CacheHitTokens = tokenTally.CacheHitTokens - cacheHitBefore,
-                CacheMissTokens = tokenTally.CacheMissTokens - cacheMissBefore,
-            };
-            taskSnapshots.Add(snapshot);
-            await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);
+            await RunTaskVoteAsync(run, vote, ct).ConfigureAwait(false);
         }
         }
         catch (OperationCanceledException ex)
@@ -344,10 +235,158 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         else
             LogConsensualExecutionCompletedForCrew(crew.Id, totalExecutionTime);
 
-        return await outcome.CompleteAsync(
-            _hooks, crew.Id.ToString(), startTime, taskSnapshots, domainResults, totalExecutionTime,
+        return await outcome.CompleteAsync(_hooks, new CrewRunSummary(
+            crew.Id.ToString(), startTime, taskSnapshots, domainResults, totalExecutionTime,
             tokenTally.WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()).Build(),
-            finalOutput).ConfigureAwait(false);
+            finalOutput)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// What one consensual run accumulates from task to task: the outcome (GAP-03, GAP-21), the
+    /// token tally (R10.8), the domain results, the outputs the next tasks read, and the snapshots
+    /// the hooks heard.
+    /// </summary>
+    private sealed record ConsensualRun(
+        CrewRunOutcome Outcome,
+        TokenUsageTally TokenTally,
+        List<DomainTaskOutput> DomainResults,
+        List<ApplicationTaskOutput> ApplicationOutputs,
+        List<TaskExecutionSnapshot> TaskSnapshots);
+
+    /// <summary>
+    /// The arbiter and the agents that answer and vote. ManagerDecision needs an arbiter: without
+    /// one the crew is refused before any agent runs, not after it paid for every round (GAP-04).
+    /// A declared manager arbitrates; it neither answers nor votes.
+    /// </summary>
+    private async Task<(DomainAgent? Arbiter, List<DomainAgent> Agents)> ResolveVotersAsync(DomainCrew crew, CancellationToken ct)
+    {
+        var arbiter = await ResolveArbiterAsync(crew, ct).ConfigureAwait(false);
+
+        // On any other fallback the crew's manager decides nothing — it neither answers nor votes —:
+        // the crew stays valid (another host may arbitrate), and the run says so once (GAP-33).
+        if (arbiter is null && crew.ManagerAgentId is { } idleManager)
+        {
+            var manager = await _agentRepository.GetByIdAsync(idleManager, ct).ConfigureAwait(false);
+            LogManagerDecidesNothing(crew.Name ?? crew.Id.ToString(), manager?.Role.Value ?? idleManager.ToString(), _options.FallbackStrategy);
+        }
+
+        var agents = new List<DomainAgent>();
+        foreach (var agentId in crew.Agents.Where(id => id != crew.ManagerAgentId))
+        {
+            var agent = await _agentRepository.GetByIdAsync(agentId, ct).ConfigureAwait(false);
+            if (agent != null) agents.Add(agent);
+        }
+
+        if (agents.Count == 0)
+            throw new InvalidOperationException("No agents available for consensual execution");
+
+        return (arbiter, agents);
+    }
+
+    /// <summary>
+    /// A task blocked by a dependency that did not succeed: recorded as skipped and never run — a
+    /// failed output for the crew's result and the next tasks' context, a skipped snapshot for the hooks.
+    /// </summary>
+    private async Task SkipBlockedTaskAsync(ConsensualRun run, CrewTask task, TaskId blockedBy, CancellationToken ct)
+    {
+        var skipReason = await run.Outcome.RecordSkipAsync(task, ConsensusRole, blockedBy).ConfigureAwait(false);
+        LogTaskSkippedAfterDependency(task.Id, blockedBy);
+        var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, ConsensusRole, blockedBy);
+        run.DomainResults.Add(skippedDomain);
+        run.ApplicationOutputs.Add(skippedApp);
+        var skipped = CrewRunOutcome.SkippedSnapshot(task.Id, ConsensusRole, skipReason);
+        run.TaskSnapshots.Add(skipped);
+        await _hooks.TaskCompletedAsync(skipped, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// One task put to the vote: started once under the consensus role — every agent answers it,
+    /// so each starts it too (GAP-21) —, decided over the rounds and the fallback, then recorded:
+    /// the retained result is the task's result, and when it failed, the task failed, whatever the
+    /// vote said (GAP-03).
+    /// </summary>
+    private async Task RunTaskVoteAsync(ConsensualRun run, VoteContext vote, CancellationToken ct)
+    {
+        var task = vote.Task;
+        var outcome = run.Outcome;
+        var tokenTally = run.TokenTally;
+        LogStartingConsensualExecutionForTask(task.Id);
+
+        // Consensus has no single author: the vote is the agent, on the start as on the end.
+        await _hooks.TaskStartedAsync(
+            CrewHookDispatcher.Started(task.Id.Value.ToString(), ConsensusRole), ct)
+            .ConfigureAwait(false);
+        await outcome.RecordStartWithoutAgentAsync(task, vote.Agents).ConfigureAwait(false);
+
+        // The loop is sequential, so the tally's delta around one task IS what the
+        // whole vote cost — every agent, every round — not just the winning
+        // execution the task result carries (review, RC2-FEAT-06 lot 7).
+        var tokensBefore = tokenTally.TotalTokens;
+        var cacheHitBefore = tokenTally.CacheHitTokens;
+        var cacheMissBefore = tokenTally.CacheMissTokens;
+
+        // Null when the Fail fallback was triggered: no consensus, so no result. That is a
+        // failed task like any other — its dependants are skipped and the crew fails — not
+        // an end of the crew on the spot (GAP-03).
+        var retained = await ExecuteTaskWithConsensusAsync(vote, ct).ConfigureAwait(false);
+        var taskResult = retained is null
+            ? new TaskResult(
+                false, $"[NO CONSENSUS] {ConsensusNotReached(task.Id)}", null, [], TimeSpan.Zero,
+                Error: ConsensusNotReached(task.Id))
+            : await RememberAsync(vote, retained, ct).ConfigureAwait(false);
+
+        // Build application output for context propagation
+        var appOutput = new ApplicationTaskOutput(
+            TaskId: task.Id.Value.ToString(),
+            AgentId: ConsensusRole,
+            Content: CrewRunOutcome.RawOutputOf(taskResult),
+            CompletedAt: DateTime.UtcNow,
+            Success: taskResult.Success,
+            ExecutionTime: taskResult.ExecutionTime,
+            ToolsUsed: taskResult.ToolsUsed);
+        run.ApplicationOutputs.Add(appOutput);
+
+        // Build domain output
+        var domainOutput = DomainTaskOutput.Create(
+            rawOutput: CrewRunOutcome.RawOutputOf(taskResult),
+            format: "text",
+            formattedOutput: null,
+            taskId: task.Id,
+            success: taskResult.Success,
+            executionTime: taskResult.ExecutionTime,
+            structuredOutput: taskResult.StructuredOutput);
+        run.DomainResults.Add(domainOutput);
+
+        // Each agent ends the task with its own last answer — or its error —, then the task
+        // ends: completed under the author of the retained answer (GAP-21).
+        foreach (var agent in vote.Agents)
+        {
+            if (vote.LastAnswers.TryGetValue(agent.Id.ToString(), out var answer))
+                await outcome.RecordAnswerAsync(task, agent, answer).ConfigureAwait(false);
+        }
+
+        if (taskResult.Success)
+            await outcome.RecordSuccessAsync(task, domainOutput, retained?.Author).ConfigureAwait(false);
+        else
+            await outcome.RecordFailureAsync(task, ConsensusRole, taskResult.Error ?? taskResult.LastError).ConfigureAwait(false);
+
+        LogTaskCompletedViaConsensusSuccess(task.Id, taskResult.Success);
+
+        var snapshot = new TaskExecutionSnapshot
+        {
+            TaskId = task.Id.Value.ToString(),
+            // Consensus has no single author: the vote is the agent.
+            AgentRole = ConsensusRole,
+            Success = taskResult.Success,
+            Duration = taskResult.ExecutionTime,
+            CompletedAt = DateTimeOffset.UtcNow,
+            ToolCallCount = taskResult.ToolsUsed?.Count ?? 0,
+            TokensUsed = tokenTally.TotalTokens - tokensBefore,
+            CacheHitTokens = tokenTally.CacheHitTokens - cacheHitBefore,
+            CacheMissTokens = tokenTally.CacheMissTokens - cacheMissBefore,
+        };
+        run.TaskSnapshots.Add(snapshot);
+        await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);
     }
 
     /// <summary>The cause a task reports when the <c>Fail</c> fallback found no consensus.</summary>
@@ -545,7 +584,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
                 VoterRole = voter.Role.ToString(),
                 // Majority, SuperMajority, Unanimity and WeightedConsensus count the first
                 // choice; Borda counts the whole ranking. An abstention is an empty choice.
-                Choice = ranking.Count == 0 ? string.Empty : ranked ? string.Join(",", ranking) : ranking[0],
+                Choice = ChoiceOf(ranking, ranked),
                 OwnChoice = labelByKey.ContainsKey(voterKey) ? voterKey : null,
                 Confidence = ballot.Confidence,
                 Weight = 1.0f,
@@ -559,6 +598,17 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 
         var tally = await _votingStrategy.TallyVotesAsync(votes, _options.VotingOptions, ct).ConfigureAwait(false);
         return new CountedRound(results, order, labelByKey, keyByLabel, tally);
+    }
+
+    /// <summary>
+    /// What a ballot casts: an empty ranking abstains; Borda counts the whole ranking, every other
+    /// consensus type the first choice alone.
+    /// </summary>
+    private static string ChoiceOf(List<string> ranking, bool ranked)
+    {
+        if (ranking.Count == 0)
+            return string.Empty;
+        return ranked ? string.Join(",", ranking) : ranking[0];
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Per-ballot fault barrier: a ballot that cannot be collected counts as an abstention instead of failing the task (GAP-04).")]

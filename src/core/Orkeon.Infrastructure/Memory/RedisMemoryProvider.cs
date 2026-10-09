@@ -58,7 +58,7 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     {
         ArgumentNullException.ThrowIfNull(options);
         var value = options.Value;
-        ArgumentException.ThrowIfNullOrWhiteSpace(value.ConnectionString, nameof(options));
+        ArgumentException.ThrowIfNullOrWhiteSpace(value.ConnectionString);
         _connectionString = value.ConnectionString;
         _keyPrefix = value.KeyPrefix ?? string.Empty;
         _redisPolicy = ResiliencePolicies.GetRedisRetryPolicy(Logger);

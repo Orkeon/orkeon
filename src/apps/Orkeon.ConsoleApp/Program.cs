@@ -305,7 +305,7 @@ static class Program
 
     /// <summary>The split-pane console's own settings.</summary>
     /// <remarks>Its property is the key; nothing binds it.</remarks>
-    sealed class TuiSettingsShape
+    internal sealed class TuiSettingsShape
     {
         /// <summary>
         /// The verbs the status line cycles through while the model works ("Thinking", "Reading"…).

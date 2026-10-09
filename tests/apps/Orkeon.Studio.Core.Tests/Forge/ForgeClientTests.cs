@@ -123,7 +123,7 @@ public class ForgeClientTests
 
         var (client, processes) = Build();
         await client.PromoteAsync(
-            "veille", "/teams/ma-veille", "Ma veille", schedule: null, "/ws", _ => { },
+            new ForgePromoteRequest("veille", "/teams/ma-veille", "Ma veille", Schedule: null), "/ws", _ => { },
             cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(
             ["forge", "promote", "veille", "--to", "/teams/ma-veille", "--name", "Ma veille", "--events", "jsonl"],

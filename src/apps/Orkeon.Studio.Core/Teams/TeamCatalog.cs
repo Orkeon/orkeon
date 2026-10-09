@@ -1083,69 +1083,77 @@ public static partial class TeamCatalog
             if (!isDirectory && !File.Exists(sourcePath))
                 return null;
 
-            var name = isDirectory
-                ? Path.GetFileName(Path.TrimEndingDirectorySeparator(sourcePath))
-                : Path.GetFileNameWithoutExtension(sourcePath);
-            var slug = FolderSlug.From(name) ?? FolderSlug.TeamFallback;
-            var candidate = Path.Combine(root, slug);
-            for (var i = 2; Directory.Exists(candidate); i++)
-                candidate = Path.Combine(root, $"{slug}-{i}");
+            var candidate = FreeFolder(root, sourcePath, isDirectory);
 
-            if (isDirectory)
-            {
-                // Importing an ancestor of the teams root would copy the destination into
-                // itself while it fills — a tree that only ends in an I/O error.
-                var fullSource = Path.GetFullPath(sourcePath);
-                var fullDestination = Path.GetFullPath(candidate);
-                if (Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(fullDestination, fullSource))
-                {
-                    return null;
-                }
+            // Importing an ancestor of the teams root would copy the destination into
+            // itself while it fills — a tree that only ends in an I/O error.
+            if (isDirectory && Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(Path.GetFullPath(candidate), Path.GetFullPath(sourcePath)))
+                return null;
 
-                destination = candidate;
-                // The other machine's schedule/ stays behind (STUDIO-52): what its scheduler registered
-                // names its paths, and « Install the schedule » writes it again here.
-                CopyTree(sourcePath, destination, leaveSchedule: true);
-
-                // An older sidecar carrying absolute paths under its source folder is rewritten
-                // relative on import — a copy is a safeguard, not a compatibility layer. An
-                // archived team's export lands active, and a copy whose sidecar could not say so
-                // is no import at all. Its arrival is its activity (STUDIO-32).
-                if (TryReadMetadata(destination) is { } imported)
-                {
-                    var arrived = WithNormalizedName(Relativized(imported, sourcePath)) with
-                    {
-                        Archived = false,
-                        ArchivedAt = null,
-                        LastRunAt = null,
-                        AddedAt = addedAt,
-                    };
-                    if (!TryWriteMetadata(destination, arrived))
-                    {
-                        RemovePartialCopy(destination);
-                        return null;
-                    }
-                }
-                else
-                {
-                    DateArrival(destination, addedAt);
-                }
-            }
-            else
-            {
-                destination = candidate;
-                Directory.CreateDirectory(destination);
-                File.Copy(sourcePath, Path.Combine(destination, Path.GetFileName(sourcePath)));
-                DateArrival(destination, addedAt);
-            }
-
-            return destination;
+            destination = candidate;
+            return isDirectory
+                ? ImportFolder(sourcePath, destination, addedAt)
+                : ImportFile(sourcePath, destination, addedAt);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             RemovePartialCopy(destination);
             return null;
         }
+    }
+
+    /// <summary>The first free folder under <paramref name="root"/> named after the source, numbered when its name is taken.</summary>
+    private static string FreeFolder(string root, string sourcePath, bool isDirectory)
+    {
+        var name = isDirectory
+            ? Path.GetFileName(Path.TrimEndingDirectorySeparator(sourcePath))
+            : Path.GetFileNameWithoutExtension(sourcePath);
+        var slug = FolderSlug.From(name) ?? FolderSlug.TeamFallback;
+        var candidate = Path.Combine(root, slug);
+        for (var i = 2; Directory.Exists(candidate); i++)
+            candidate = Path.Combine(root, $"{slug}-{i}");
+
+        return candidate;
+    }
+
+    /// <summary>Copies a team folder into <paramref name="destination"/>; null when its sidecar could not be written.</summary>
+    private static string? ImportFolder(string sourcePath, string destination, DateTimeOffset addedAt)
+    {
+        // The other machine's schedule/ stays behind (STUDIO-52): what its scheduler registered
+        // names its paths, and « Install the schedule » writes it again here.
+        CopyTree(sourcePath, destination, leaveSchedule: true);
+
+        // An older sidecar carrying absolute paths under its source folder is rewritten
+        // relative on import — a copy is a safeguard, not a compatibility layer. An
+        // archived team's export lands active, and a copy whose sidecar could not say so
+        // is no import at all. Its arrival is its activity (STUDIO-32).
+        if (TryReadMetadata(destination) is not { } imported)
+        {
+            DateArrival(destination, addedAt);
+            return destination;
+        }
+
+        var arrived = WithNormalizedName(Relativized(imported, sourcePath)) with
+        {
+            Archived = false,
+            ArchivedAt = null,
+            LastRunAt = null,
+            AddedAt = addedAt,
+        };
+        if (TryWriteMetadata(destination, arrived))
+            return destination;
+
+        RemovePartialCopy(destination);
+        return null;
+    }
+
+    /// <summary>Copies a single crew file into a new <paramref name="destination"/> folder.</summary>
+    private static string ImportFile(string sourcePath, string destination, DateTimeOffset addedAt)
+    {
+        Directory.CreateDirectory(destination);
+        File.Copy(sourcePath, Path.Combine(destination, Path.GetFileName(sourcePath)));
+        DateArrival(destination, addedAt);
+        return destination;
     }
 
     /// <summary>

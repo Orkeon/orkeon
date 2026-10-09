@@ -217,14 +217,14 @@ internal static class SettingsCatalogBuilder
 
         var walk = new Walk(SettingsDocumentation.Empty, secret: false);
         walk.Node(path, options.GetType(), options, string.Empty);
-        return walk.Entries;
+        return walk.Collected;
     }
 
     private static List<SettingsCatalogEntry> Walked(SettingsSource source, object? defaults, string description, SettingsDocumentation documentation)
     {
         var walk = new Walk(documentation, source.Secret);
         walk.Node(source.Path, source.Shape, defaults, description);
-        return walk.Entries;
+        return walk.Collected;
     }
 
     private static bool IsAtOrBelow(string path, string section) =>
@@ -260,11 +260,22 @@ internal static class SettingsCatalogBuilder
     }
 
     /// <summary>One section's walk: the keys below a path, as the binder would read them.</summary>
-    private sealed class Walk(SettingsDocumentation documentation, bool secret)
+    private sealed class Walk
     {
-        private readonly HashSet<Type> _visiting = [];
+        private readonly SettingsDocumentation _documentation;
+        private readonly bool _secret;
+        private readonly HashSet<Type> _visiting;
 
-        public List<SettingsCatalogEntry> Entries { get; } = [];
+        public Walk(SettingsDocumentation documentation, bool secret)
+        {
+            _documentation = documentation;
+            _secret = secret;
+            _visiting = [];
+            Collected = [];
+        }
+
+        /// <summary>The entries the walk has collected so far, in the order it met them.</summary>
+        public List<SettingsCatalogEntry> Collected { get; }
 
         public void Node(string path, Type type, object? value, string description)
         {
@@ -302,14 +313,14 @@ internal static class SettingsCatalogBuilder
             if (IsOpen(target) || IsValue(target))
             {
                 var type = IsOpen(target) ? Any : TypeName(target);
-                Entries.Add(new SettingsCatalogEntry
+                Collected.Add(new SettingsCatalogEntry
                 {
                     Path = path,
                     Section = string.Empty,
                     Type = type,
                     Values = Values(target),
-                    DefaultNote = secret ? null : NamedDefaults(dictionary),
-                    Secret = secret || IsSecret(path),
+                    DefaultNote = _secret ? null : NamedDefaults(dictionary),
+                    Secret = _secret || IsSecret(path),
                     Description = description,
                 });
                 return;
@@ -324,8 +335,8 @@ internal static class SettingsCatalogBuilder
             var target = Nullable.GetUnderlyingType(itemType) ?? itemType;
             if (IsOpen(target) || IsValue(target))
             {
-                var isSecret = secret || IsSecret(path);
-                Entries.Add(new SettingsCatalogEntry
+                var isSecret = _secret || IsSecret(path);
+                Collected.Add(new SettingsCatalogEntry
                 {
                     Path = path,
                     Section = string.Empty,
@@ -368,7 +379,7 @@ internal static class SettingsCatalogBuilder
                     $"{path}{ConfigurationPath.KeyDelimiter}{key}",
                     property.PropertyType,
                     value ?? (IsValue(propertyType) || IsOpen(propertyType) ? null : Instance(propertyType)),
-                    documentation.Of(property));
+                    _documentation.Of(property));
             }
 
             _visiting.Remove(type);
@@ -388,7 +399,7 @@ internal static class SettingsCatalogBuilder
 
         private void AddValue(string path, Type type, object? value, string description)
         {
-            var isSecret = secret || IsSecret(path);
+            var isSecret = _secret || IsSecret(path);
             string? literal = null;
             string? note = null;
             if (!isSecret)
@@ -398,7 +409,7 @@ internal static class SettingsCatalogBuilder
                     literal = Literal(value);
             }
 
-            Entries.Add(new SettingsCatalogEntry
+            Collected.Add(new SettingsCatalogEntry
             {
                 Path = path,
                 Section = string.Empty,
@@ -412,12 +423,12 @@ internal static class SettingsCatalogBuilder
         }
 
         private void Add(string path, string type, string description) =>
-            Entries.Add(new SettingsCatalogEntry
+            Collected.Add(new SettingsCatalogEntry
             {
                 Path = path,
                 Section = string.Empty,
                 Type = type,
-                Secret = secret || IsSecret(path),
+                Secret = _secret || IsSecret(path),
                 Description = description,
             });
     }

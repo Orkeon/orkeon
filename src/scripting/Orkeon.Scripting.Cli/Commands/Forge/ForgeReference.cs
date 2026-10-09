@@ -179,33 +179,37 @@ internal sealed partial class ForgeReference
         lines.Add($"Process: {Process}");
 
         lines.Add("Agents:");
-        foreach (var agent in Agents)
-        {
-            var tools = agent.Tools.Where(offered.Contains).Distinct(StringComparer.Ordinal).ToList();
-            lines.Add(
-                $"- {agent.Key}"
-                + (Text(agent.Role) is { } role ? $" ({role})" : "")
-                + (Text(agent.Goal) is { } agentGoal ? $": {agentGoal}" : "")
-                + (tools.Count > 0 ? $" [tools: {string.Join(", ", tools)}]" : " [no tools]"));
-        }
+        lines.AddRange(Agents.Select(agent => AgentLine(agent, offered)));
 
         lines.Add("Tasks, in order:");
-        foreach (var task in Tasks)
-        {
-            var who = new List<string>();
-            if (!string.IsNullOrWhiteSpace(task.Agent))
-                who.Add($"agent: {task.Agent}");
-            if (task.Dependencies.Count > 0)
-                who.Add($"after: {string.Join(", ", task.Dependencies)}");
-
-            lines.Add(
-                $"- {task.Key}"
-                + (who.Count > 0 ? $" ({string.Join("; ", who)})" : "")
-                + (Text(task.Description) is { } description ? $": {description}" : "")
-                + (Text(task.ExpectedOutput) is { } output ? $" Produces: {output}" : ""));
-        }
+        lines.AddRange(Tasks.Select(TaskLine));
 
         return Bound(lines);
+    }
+
+    /// <summary>One agent of the outline: its key, role, goal and the tools of the catalogue it uses.</summary>
+    private static string AgentLine(ForgeReferenceAgent agent, HashSet<string> offered)
+    {
+        var tools = agent.Tools.Where(offered.Contains).Distinct(StringComparer.Ordinal).ToList();
+        return $"- {agent.Key}"
+            + (Text(agent.Role) is { } role ? $" ({role})" : "")
+            + (Text(agent.Goal) is { } agentGoal ? $": {agentGoal}" : "")
+            + (tools.Count > 0 ? $" [tools: {string.Join(", ", tools)}]" : " [no tools]");
+    }
+
+    /// <summary>One task of the outline: its key, who runs it and after what, what it does and produces.</summary>
+    private static string TaskLine(ForgeReferenceTask task)
+    {
+        var who = new List<string>();
+        if (!string.IsNullOrWhiteSpace(task.Agent))
+            who.Add($"agent: {task.Agent}");
+        if (task.Dependencies.Count > 0)
+            who.Add($"after: {string.Join(", ", task.Dependencies)}");
+
+        return $"- {task.Key}"
+            + (who.Count > 0 ? $" ({string.Join("; ", who)})" : "")
+            + (Text(task.Description) is { } description ? $": {description}" : "")
+            + (Text(task.ExpectedOutput) is { } output ? $" Produces: {output}" : "");
     }
 
     private static string TitleOf(UseCase useCase, string? language) =>
@@ -326,8 +330,8 @@ internal sealed partial class ForgeReference
     private static Dictionary<string, string> StringCalls(string chain)
     {
         var calls = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (Match call in StringCall().Matches(chain))
-            calls.TryAdd(call.Groups["call"].Value, Unescape(call.Groups["value"].Value));
+        foreach (var groups in StringCall().Matches(chain).Select(call => call.Groups))
+            calls.TryAdd(groups["call"].Value, Unescape(groups["value"].Value));
 
         return calls;
     }

@@ -509,6 +509,9 @@ public partial class ScopedCrewExecutionStateManager : ICrewExecutionStateManage
 /// </summary>
 public static class StateManagementExtensions
 {
+    /// <summary>The section bound to <see cref="CrewExecutionStatePersistenceOptions"/>.</summary>
+    private const string PersistenceSection = "Orkeon:ExecutionState:Persistence";
+
     /// <summary>
     /// Add Crew Execution State Management.
     /// </summary>
@@ -542,9 +545,6 @@ public static class StateManagementExtensions
 
         return services;
     }
-
-    /// <summary>The section bound to <see cref="CrewExecutionStatePersistenceOptions"/>.</summary>
-    private const string PersistenceSection = "Orkeon:ExecutionState:Persistence";
 
     /// <summary>
     /// Enables durable persistence of crew execution states from configuration.

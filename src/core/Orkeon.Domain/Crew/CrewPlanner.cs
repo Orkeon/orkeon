@@ -300,16 +300,20 @@ public sealed class CrewPlanner
     }
 
     /// <summary><c>Writer (goal: Write the report; tools: file_write, web_search)</c>, bounded.</summary>
-    private static string Sheet(PlanningAgent agent)
-    {
-        var tools = agent.Tools.Count == 0
-            ? "none"
-            : string.Join(", ", agent.Tools.Take(PlanningDefaults.MaxToolNamesPerAgent))
-              + (agent.Tools.Count > PlanningDefaults.MaxToolNamesPerAgent
-                  ? string.Create(CultureInfo.InvariantCulture, $" (+{agent.Tools.Count - PlanningDefaults.MaxToolNamesPerAgent} more)")
-                  : string.Empty);
+    private static string Sheet(PlanningAgent agent) =>
+        $"{agent.Role} (goal: {Bound(agent.Goal, PlanningDefaults.MaxAgentGoalChars)}; tools: {ToolList(agent)})";
 
-        return $"{agent.Role} (goal: {Bound(agent.Goal, PlanningDefaults.MaxAgentGoalChars)}; tools: {tools})";
+    /// <summary>The agent's tool names, the first few, then how many more it has; <c>none</c> without any.</summary>
+    private static string ToolList(PlanningAgent agent)
+    {
+        if (agent.Tools.Count == 0)
+            return "none";
+
+        var listed = string.Join(", ", agent.Tools.Take(PlanningDefaults.MaxToolNamesPerAgent));
+        if (agent.Tools.Count <= PlanningDefaults.MaxToolNamesPerAgent)
+            return listed;
+
+        return listed + string.Create(CultureInfo.InvariantCulture, $" (+{agent.Tools.Count - PlanningDefaults.MaxToolNamesPerAgent} more)");
     }
 
     private static string Bound(string text, int max) =>

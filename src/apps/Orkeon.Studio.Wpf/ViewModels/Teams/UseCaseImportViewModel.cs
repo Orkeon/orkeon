@@ -261,7 +261,9 @@ public sealed class UseCaseImportViewModel : ObservableObject
         try
         {
             result = await UseCaseImporter
-                .ImportAsync(_client!, useCase.Id, name, folder, _seams!.TeamsRoot, _language(), _seams.Clock.GetUtcNow())
+                .ImportAsync(
+                    _client!,
+                    new UseCaseImportRequest(useCase.Id, name, folder, _seams!.TeamsRoot, _language(), _seams.Clock.GetUtcNow()))
                 .ConfigureAwait(false);
             // Read here, off the UI thread: the report names the folders the team really has.
             if (result.TeamPath is { } team)
