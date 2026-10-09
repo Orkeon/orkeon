@@ -281,7 +281,7 @@ public sealed class UseCaseClient : IDisposable
         }
 
         if (opened && !Open(session))
-            return new UseCaseSearchResult { Failure = session.EndFailure };
+            return new UseCaseSearchResult { Failure = session.EndReason };
 
         var correlationId = string.Create(CultureInfo.InvariantCulture, $"q{Interlocked.Increment(ref _queries)}");
         var pending = new Pending(session);
@@ -289,7 +289,7 @@ public sealed class UseCaseClient : IDisposable
         {
             // The child may have died between the open and here, with nobody left to answer.
             if (session.Ended)
-                return new UseCaseSearchResult { Failure = session.EndFailure };
+                return new UseCaseSearchResult { Failure = session.EndReason };
 
             _pending[correlationId] = pending;
         }
@@ -417,7 +417,7 @@ public sealed class UseCaseClient : IDisposable
                 return;
 
             session.Ended = true;
-            session.EndFailure = failure;
+            session.EndReason = failure;
             if (ReferenceEquals(_session, session))
                 _session = null;
 
@@ -498,15 +498,21 @@ public sealed class UseCaseClient : IDisposable
         public volatile UseCaseFailure? Fault;
         public bool Closing;
         public bool Ended;
-        public UseCaseFailure EndFailure = new(UseCaseFailureKind.Stopped, "the search session ended");
+        public UseCaseFailure EndReason = new(UseCaseFailureKind.Stopped, "the search session ended");
         public readonly List<string> Stderr = [];
     }
 
     /// <summary>One query waiting for its answer, and the session it went to.</summary>
-    private sealed class Pending(Session session)
+    private sealed class Pending
     {
-        public Session Session { get; } = session;
+        public Pending(Session session)
+        {
+            Session = session;
+            Answer = new TaskCompletionSource<UseCaseSearchResult>();
+        }
 
-        public TaskCompletionSource<UseCaseSearchResult> Answer { get; } = new();
+        public Session Session { get; }
+
+        public TaskCompletionSource<UseCaseSearchResult> Answer { get; }
     }
 }

@@ -74,6 +74,23 @@ public sealed partial class CreateTeamViewModel
         if (!IsStep1)
             return caret;
 
+        var inserted = CollectDroppedPaths(paths);
+        if (inserted.Count == 0)
+            return caret;
+
+        var before = caret > 0 && !char.IsWhiteSpace(need[caret - 1]) ? " " : "";
+        var after = caret == need.Length || !char.IsWhiteSpace(need[caret]) ? " " : "";
+        var text = before + string.Join(" ", inserted.Select(Quoted)) + after;
+        Need = need[..caret] + text + need[caret..];
+        return caret + text.Length;
+    }
+
+    /// <summary>
+    /// The distinct paths of <paramref name="paths"/> that exist on disk, in order; each one's
+    /// folder — itself, or the folder a file sits in — is kept as a candidate of the Folders step.
+    /// </summary>
+    private List<string> CollectDroppedPaths(IReadOnlyList<string> paths)
+    {
         var inserted = new List<string>();
         foreach (var raw in paths)
         {
@@ -93,14 +110,7 @@ public sealed partial class CreateTeamViewModel
                 _droppedFolders.Add((folder, Quoted(path)));
         }
 
-        if (inserted.Count == 0)
-            return caret;
-
-        var before = caret > 0 && !char.IsWhiteSpace(need[caret - 1]) ? " " : "";
-        var after = caret == need.Length || !char.IsWhiteSpace(need[caret]) ? " " : "";
-        var text = before + string.Join(" ", inserted.Select(Quoted)) + after;
-        Need = need[..caret] + text + need[caret..];
-        return caret + text.Length;
+        return inserted;
     }
 
     private static string Quoted(string path) => "\"" + path + "\"";

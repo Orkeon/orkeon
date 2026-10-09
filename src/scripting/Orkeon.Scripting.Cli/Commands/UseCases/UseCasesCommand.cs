@@ -188,7 +188,7 @@ internal static class UseCasesCommand
             if (!string.IsNullOrWhiteSpace(options.Category))
             {
                 var categories = catalog.UseCases.Select(u => u.Category).Distinct(StringComparer.Ordinal).ToList();
-                var category = categories.FirstOrDefault(c => NamesCategory(options.Category, c));
+                var category = categories.Find(c => NamesCategory(options.Category, c));
                 if (category is null)
                 {
                     return await output.FailAsync(UseCaseErrorCodes.OptionInvalid,
@@ -209,13 +209,7 @@ internal static class UseCasesCommand
                 selected = selected.Where(u => string.Equals(u.Process, process!.Value, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (!string.IsNullOrWhiteSpace(options.Tag))
-            {
-                var tag = options.Tag.Trim();
-                selected = selected.Where(u => u.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase));
-            }
-
-            var useCases = selected.ToList();
+            var useCases = FilteredByTag(selected, options.Tag).ToList();
             if (output.Events is { } events)
                 events.Catalog(catalog, useCases);
             else
@@ -223,6 +217,16 @@ internal static class UseCasesCommand
 
             return Program.ExitOk;
         });
+    }
+
+    /// <summary>The use cases carrying <paramref name="tag"/>; every one when no tag was asked.</summary>
+    private static IEnumerable<UseCase> FilteredByTag(IEnumerable<UseCase> selected, string? tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+            return selected;
+
+        var wanted = tag.Trim();
+        return selected.Where(u => u.Tags.Contains(wanted, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>Shows one sheet; returns the CLI exit code.</summary>
@@ -286,18 +290,8 @@ internal static class UseCasesCommand
                 return await output.FailAsync(UseCaseErrorCodes.OptionInvalid, "--to needs the folder to write the team into.").ConfigureAwait(false);
 
             var destination = Path.GetFullPath(options.To.Trim());
-            if (File.Exists(destination))
-            {
-                return await output.FailAsync(UseCaseErrorCodes.DestinationNotEmpty,
-                    $"'{destination}' is a file — export into a folder that does not exist yet, or an empty one.").ConfigureAwait(false);
-            }
-
-            if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
-            {
-                return await output.FailAsync(UseCaseErrorCodes.DestinationNotEmpty,
-                    $"'{destination}' is not empty — export into a folder that does not exist yet, or an empty one: an export never merges.")
-                    .ConfigureAwait(false);
-            }
+            if (DestinationRefusal(destination) is { } refusal)
+                return await output.FailAsync(UseCaseErrorCodes.DestinationNotEmpty, refusal).ConfigureAwait(false);
 
             var export = UseCaseExporter.Export(catalog, useCase, destination, language ?? UseCaseLanguages.Fallback);
             if (output.Events is { } events)
@@ -452,12 +446,28 @@ internal static class UseCasesCommand
         return dash > 0 && string.Equals(trimmed, category[(dash + 1)..], StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Why a destination cannot take an export: a file, or a folder that holds something. Null when it can.</summary>
+    private static string? DestinationRefusal(string destination)
+    {
+        if (File.Exists(destination))
+            return $"'{destination}' is a file — export into a folder that does not exist yet, or an empty one.";
+        if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
+            return $"'{destination}' is not empty — export into a folder that does not exist yet, or an empty one: an export never merges.";
+        return null;
+    }
+
+    /// <summary>How the answer was searched: by terms and meaning, by terms, or by terms only because the model was unavailable.</summary>
+    private static string HowSearched(UseCaseAnswer answer)
+    {
+        if (answer.Mode == UseCaseSearchMode.Hybrid)
+            return "searched by terms and meaning (BM25 + local embeddings, fused by RRF)";
+        return answer.Degraded is null ? "searched by terms (BM25)" : "searched by terms only (BM25)";
+    }
+
     private static string RenderAnswer(UseCaseAnswer answer)
     {
         var text = new System.Text.StringBuilder();
-        var how = answer.Mode == UseCaseSearchMode.Hybrid
-            ? "searched by terms and meaning (BM25 + local embeddings, fused by RRF)"
-            : answer.Degraded is null ? "searched by terms (BM25)" : "searched by terms only (BM25)";
+        var how = HowSearched(answer);
         var language = $"{answer.Language}, {Spell(answer.LanguageSource)}";
 
         if (answer.Matches.Count == 0)
@@ -551,21 +561,8 @@ internal static class UseCasesCommand
             : "reference only — searchable and readable, not importable (its crew depends on files the CLI does not carry)");
         Row(text, "files", string.Join(", ", files.Select(f => string.Create(CultureInfo.InvariantCulture, $"{f.Path} ({f.Length} B)"))));
 
-        foreach (var (label, texts) in (IEnumerable<(string, IReadOnlyDictionary<string, string>)>)[("title", useCase.Title), ("problem", useCase.Problem)])
-        {
-            var languages = language is null ? UseCaseLanguages.All : [language];
-            var written = languages
-                .Where(code => texts.TryGetValue(code, out var value) && !string.IsNullOrWhiteSpace(value))
-                .ToList();
-            if (written.Count == 0)
-            {
-                Row(text, label, "not written yet");
-                continue;
-            }
-
-            for (var i = 0; i < written.Count; i++)
-                Row(text, i == 0 ? label : string.Empty, $"{written[i]}: {texts[written[i]]}");
-        }
+        TextRows(text, "title", useCase.Title, language);
+        TextRows(text, "problem", useCase.Problem, language);
 
         if (crew is not null)
         {
@@ -577,6 +574,26 @@ internal static class UseCasesCommand
         }
 
         return text.ToString();
+    }
+
+    /// <summary>
+    /// One row per language a text is written in — the asked one, else every one —, the label on
+    /// the first; one row saying so when it is written in none.
+    /// </summary>
+    private static void TextRows(System.Text.StringBuilder text, string label, IReadOnlyDictionary<string, string> texts, string? language)
+    {
+        var languages = language is null ? UseCaseLanguages.All : [language];
+        var written = languages
+            .Where(code => texts.TryGetValue(code, out var value) && !string.IsNullOrWhiteSpace(value))
+            .ToList();
+        if (written.Count == 0)
+        {
+            Row(text, label, "not written yet");
+            return;
+        }
+
+        for (var i = 0; i < written.Count; i++)
+            Row(text, i == 0 ? label : string.Empty, $"{written[i]}: {texts[written[i]]}");
     }
 
     private static void Row(System.Text.StringBuilder text, string label, string value) =>

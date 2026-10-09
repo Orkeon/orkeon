@@ -165,39 +165,50 @@ public sealed class MarkdownText : ContentControl
         {
             var block = blocks[i];
             var last = i == blocks.Count - 1;
-            var gap = new Thickness(0, 0, 0, last ? 0 : ParagraphGap);
 
-            if (block.Kind is MarkdownBlockKind.Bullet or MarkdownBlockKind.Numbered)
+            if (!IsListBlock(block.Kind))
             {
-                if (list is null || listIndent != block.Indent || listKind != block.Kind)
-                {
-                    list = new List
-                    {
-                        MarkerStyle = block.Kind == MarkdownBlockKind.Bullet ? TextMarkerStyle.Disc : TextMarkerStyle.Decimal,
-                        StartIndex = block.Kind == MarkdownBlockKind.Numbered ? Math.Max(1, block.Number) : 1,
-                        Margin = new Thickness(block.Indent * ListIndent, 0, 0, 0),
-                        Padding = new Thickness(ListIndent, 0, 0, 0),
-                        MarkerOffset = 6,
-                    };
-                    listIndent = block.Indent;
-                    listKind = block.Kind;
-                    document.Blocks.Add(list);
-                }
-
-                var item = new ListItem { Margin = new Thickness(0, 0, 0, last ? 0 : 2) };
-                item.Blocks.Add(Paragraph(block, new Thickness(0)));
-                list.ListItems.Add(item);
-                if (!last && blocks[i + 1].Kind is not (MarkdownBlockKind.Bullet or MarkdownBlockKind.Numbered))
-                    list.Margin = new Thickness(list.Margin.Left, 0, 0, ParagraphGap);
+                list = null;
+                listIndent = -1;
+                document.Blocks.Add(Paragraph(block, new Thickness(0, 0, 0, last ? 0 : ParagraphGap)));
                 continue;
             }
 
-            list = null;
-            listIndent = -1;
-            document.Blocks.Add(Paragraph(block, gap));
+            if (list is null || listIndent != block.Indent || listKind != block.Kind)
+            {
+                list = NewList(block);
+                listIndent = block.Indent;
+                listKind = block.Kind;
+                document.Blocks.Add(list);
+            }
+
+            list.ListItems.Add(NewListItem(block, last));
+            var closesList = !last && !IsListBlock(blocks[i + 1].Kind);
+            if (closesList)
+                list.Margin = new Thickness(list.Margin.Left, 0, 0, ParagraphGap);
         }
 
         _text.Document = document;
+    }
+
+    private static bool IsListBlock(MarkdownBlockKind kind) =>
+        kind is MarkdownBlockKind.Bullet or MarkdownBlockKind.Numbered;
+
+    /// <summary>A list opened by its first item: bullets or numbers, indented by the item's level.</summary>
+    private static List NewList(MarkdownBlock first) => new()
+    {
+        MarkerStyle = first.Kind == MarkdownBlockKind.Bullet ? TextMarkerStyle.Disc : TextMarkerStyle.Decimal,
+        StartIndex = first.Kind == MarkdownBlockKind.Numbered ? Math.Max(1, first.Number) : 1,
+        Margin = new Thickness(first.Indent * ListIndent, 0, 0, 0),
+        Padding = new Thickness(ListIndent, 0, 0, 0),
+        MarkerOffset = 6,
+    };
+
+    private ListItem NewListItem(MarkdownBlock block, bool last)
+    {
+        var item = new ListItem { Margin = new Thickness(0, 0, 0, last ? 0 : 2) };
+        item.Blocks.Add(Paragraph(block, new Thickness(0)));
+        return item;
     }
 
     private Paragraph Paragraph(MarkdownBlock block, Thickness margin)
@@ -206,7 +217,7 @@ public sealed class MarkdownText : ContentControl
         if (block.Kind == MarkdownBlockKind.Heading)
         {
             paragraph.FontWeight = FontWeights.Bold;
-            paragraph.FontSize = FontSize * (block.Level == 1 ? 1.2 : block.Level == 2 ? 1.1 : 1.0);
+            paragraph.FontSize = FontSize * HeadingScale(block.Level);
         }
 
         foreach (var run in block.Runs)
@@ -214,6 +225,13 @@ public sealed class MarkdownText : ContentControl
 
         return paragraph;
     }
+
+    private static double HeadingScale(int level) => level switch
+    {
+        1 => 1.2,
+        2 => 1.1,
+        _ => 1.0,
+    };
 
     private Run Inline(MarkdownRun run, MarkdownBlock block)
     {

@@ -45,6 +45,18 @@ public sealed record EmailSignInServices
 }
 
 /// <summary>
+/// What the E-mail section hands every sign-in panel it opens: the CLI the verb runs on, the
+/// settings file declaring the account, the strings, the dispatcher an answer lands on, and the
+/// panel's own services.
+/// </summary>
+internal sealed record EmailSignInEnvironment(
+    EmailCliClient Cli,
+    string SettingsPath,
+    IStudioStrings Strings,
+    IUiDispatcher Dispatcher,
+    EmailSignInServices Services);
+
+/// <summary>
 /// One sign-in of an OAuth e-mail account, from the click to its end (STUDIO-70): the panel under
 /// the account's row. Studio runs no OAuth flow — <c>orkeon email login --events jsonl</c> does,
 /// and stores the tokens where every run looks for them; this shows what the person has to do
@@ -91,27 +103,25 @@ public sealed class EmailSignInViewModel : ObservableObject
     private bool _failedOnDeviceCode;
 
     /// <summary>
-    /// A panel for <paramref name="account"/> as <paramref name="settingsPath"/> declares it.
+    /// A panel for <paramref name="account"/> as the settings file of <paramref name="environment"/> declares it.
     /// <paramref name="moved"/> is called whenever the phase changes, <paramref name="closed"/>
     /// once the panel is to leave the row.
     /// </summary>
     internal EmailSignInViewModel(
         string account,
         EmailSectionViewModel owner,
-        EmailCliClient cli,
-        string settingsPath,
-        IStudioStrings strings,
-        IUiDispatcher dispatcher,
-        EmailSignInServices services,
+        EmailSignInEnvironment environment,
         Action moved,
         Action<EmailSignInViewModel> closed)
     {
+        ArgumentNullException.ThrowIfNull(environment);
+        var services = environment.Services;
         Account = account;
         _owner = owner;
-        _cli = cli;
-        _settingsPath = settingsPath;
-        _strings = strings;
-        _dispatcher = dispatcher;
+        _cli = environment.Cli;
+        _settingsPath = environment.SettingsPath;
+        _strings = environment.Strings;
+        _dispatcher = environment.Dispatcher;
         _browser = services.Browser;
         _clipboard = services.Clipboard ?? new InMemoryClipboardService();
         _clock = services.Clock ?? TimeProvider.System;

@@ -40,8 +40,8 @@ internal static class HostServiceRegistration
         services.AddSingleton(Options.Create(hostSection));
 
         // Their keys are judged with every section the runner host reads (GAP-40): a key the daemon
-        // does not know — Orkeon:Host:RunTimeoutt — refuses the start (exit 78), where it used to be
-        // read as absent. orkeon run leaves them to the daemon.
+        // does not know (a misspelt RunTimeout under Orkeon:Host, say) refuses the start (exit 78),
+        // where it used to be read as absent. orkeon run leaves them to the daemon.
         services.DeclareSettingsShape(OrkeonHostOptions.SectionName, typeof(OrkeonHostOptions));
         services.DeclareSettingsShape(Gateway.DiscordChannelOptions.SectionName, typeof(Gateway.DiscordChannelOptions));
 

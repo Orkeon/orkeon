@@ -558,8 +558,9 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
         if (role == FolderRoles.Inbox)
             return client.Inbox;
 
-        // MailKit throws rather than answer null when the server has neither SPECIAL-USE nor XLIST;
-        // such a server is exactly the one the conventional names below are for.
+        // On a server with neither SPECIAL-USE nor XLIST, MailKit throws instead of answering
+        // that there is no such folder, and such a server is exactly the one the conventional
+        // names below are for.
         var special = !FlagsRoles(client) ? null : role switch
         {
             FolderRoles.Sent => client.GetFolder(SpecialFolder.Sent),
@@ -601,9 +602,9 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
         // A server whose personal folders live under a prefix (Courier, Cyrus: "INBOX.") lists
         // them as INBOX/<name>, and creates a new one there: the path without it is the same
         // folder. MailKit keeps the namespace without its trailing separator.
-        var prefix = personal is { Path.Length: > 0 } ns
-            ? (ns.Path.EndsWith(separator) ? ns.Path : ns.Path + separator)
-            : string.Empty;
+        var prefix = string.Empty;
+        if (personal is { Path.Length: > 0 } ns)
+            prefix = ns.Path.EndsWith(separator) ? ns.Path : ns.Path + separator;
         return prefix.Length > 0 && !serverPath.StartsWith(prefix, StringComparison.Ordinal)
             ? await TryGetServerFolderAsync(client, prefix + serverPath, cancellationToken).ConfigureAwait(false)
             : null;

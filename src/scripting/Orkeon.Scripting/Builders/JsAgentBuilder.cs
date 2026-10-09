@@ -141,16 +141,24 @@ public sealed class JsAgentBuilder
     {
         if (config?.ToObject() is not Orkeon.Scripting.Runtime.JsLlmConfig resolved)
         {
-            var got = config is null || config.IsUndefined() ? "undefined"
-                : config.IsString() ? $"the string \"{config.AsString()}\""
-                : config.IsNull() ? "null"
-                : "a plain object";
             throw new InvalidScriptException(
-                $".llm(...) takes an LlmConfig, not {got}. The provider is the host's; set the model with " +
+                $".llm(...) takes an LlmConfig, not {DescribeLlmArgument(config)}. The provider is the host's; set the model with " +
                 "llm.default_.with({ model: \"...\" }) or llm.model(\"...\").");
         }
         LlmConfig = resolved;
         return this;
+    }
+
+    /// <summary>What <c>.llm(...)</c> was given instead of an LlmConfig, for the refusal.</summary>
+    private static string DescribeLlmArgument(JsValue? config)
+    {
+        if (config is null || config.IsUndefined())
+            return "undefined";
+        if (config.IsString())
+            return $"the string \"{config.AsString()}\"";
+        if (config.IsNull())
+            return "null";
+        return "a plain object";
     }
     public JsAgentBuilder withResponseFormat(string type)
     {

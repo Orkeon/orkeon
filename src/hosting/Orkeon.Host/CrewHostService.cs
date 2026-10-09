@@ -107,43 +107,9 @@ internal sealed partial class CrewHostService : BackgroundService
         }
 
         foreach (var crew in _registry.Crews)
-        {
-            if (string.IsNullOrWhiteSpace(crew.Name) || string.IsNullOrWhiteSpace(crew.Path))
-                throw new HostConfigurationException("Every hosted crew needs a Name and a Path.");
-
-            // OUT-OF-SCOPE: probing the operator-supplied crew path; host bootstrap runs
-            // before the VFS mounts exist. Discovered at startup on purpose — the first
-            // version only found a missing crew on the first user message, when the daemon
-            // was already "ready" and every run could only fail.
-            if (!File.Exists(crew.Path) && !Directory.Exists(crew.Path))
-                throw new HostConfigurationException(
-                    $"Hosted crew '{crew.Name}' points at '{crew.Path}', which does not exist.");
-
-            if (crew.Profile.MaxConcurrentRuns < 1)
-                throw new HostConfigurationException(
-                    $"Hosted crew '{crew.Name}' declares MaxConcurrentRuns {crew.Profile.MaxConcurrentRuns}; at least 1 is required.");
-        }
-
-        // A chat route names a crew (GAP-11), and the registry finds crews case-insensitively:
-        // two crews answering to one name would leave every message to the first of them.
-        var duplicate = _registry.Crews
-            .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault(g => g.Count() > 1);
-        if (duplicate is not null)
-            throw new HostConfigurationException(
-                $"Two hosted crews are named {string.Join(" and ", duplicate.Select(c => $"'{c.Name}'"))}; "
-                + "crew names must be unique (they compare case-insensitively).");
-
-        // Zero cancels every run at its first instant; past the CancelAfter ceiling the
-        // runner would throw on every start. Both are configuration mistakes, refused here
-        // with the words to fix them rather than discovered one failed run at a time.
-        if (_options.RunTimeout <= TimeSpan.Zero || _options.RunTimeout.TotalMilliseconds > int.MaxValue)
-            throw new HostConfigurationException(
-                $"RunTimeout must be positive and under ~24.8 days; got {_options.RunTimeout}.");
-
-        if (_options.ShutdownGracePeriod < TimeSpan.Zero)
-            throw new HostConfigurationException(
-                $"ShutdownGracePeriod cannot be negative; got {_options.ShutdownGracePeriod}.");
+            ValidateCrew(crew);
+        RefuseDuplicateCrewNames();
+        ValidateTimeouts();
 
         // The allow-list names profiles the configuration defines (GAP-17): a typo there would
         // otherwise refuse, one crew load at a time, a profile the operator meant to offer.
@@ -156,6 +122,51 @@ internal sealed partial class CrewHostService : BackgroundService
                 $"{OrkeonHostOptions.SectionName}:LlmProfiles names {string.Join(", ", undefined.Select(n => $"'{n}'"))}, "
                 + $"which Llm:Profiles does not define. Defined profiles: "
                 + $"{string.Join(", ", new[] { Orkeon.Application.Interfaces.Ports.LlmProfiles.Default }.Concat(_definedLlmProfiles))}.");
+    }
+
+    private static void ValidateCrew(HostedCrewOptions crew)
+    {
+        if (string.IsNullOrWhiteSpace(crew.Name) || string.IsNullOrWhiteSpace(crew.Path))
+            throw new HostConfigurationException("Every hosted crew needs a Name and a Path.");
+
+        // OUT-OF-SCOPE: probing the operator-supplied crew path; host bootstrap runs
+        // before the VFS mounts exist. Discovered at startup on purpose — the first
+        // version only found a missing crew on the first user message, when the daemon
+        // was already "ready" and every run could only fail.
+        if (!File.Exists(crew.Path) && !Directory.Exists(crew.Path))
+            throw new HostConfigurationException(
+                $"Hosted crew '{crew.Name}' points at '{crew.Path}', which does not exist.");
+
+        if (crew.Profile.MaxConcurrentRuns < 1)
+            throw new HostConfigurationException(
+                $"Hosted crew '{crew.Name}' declares MaxConcurrentRuns {crew.Profile.MaxConcurrentRuns}; at least 1 is required.");
+    }
+
+    private void RefuseDuplicateCrewNames()
+    {
+        // A chat route names a crew (GAP-11), and the registry finds crews case-insensitively:
+        // two crews answering to one name would leave every message to the first of them.
+        var duplicate = _registry.Crews
+            .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicate is not null)
+            throw new HostConfigurationException(
+                $"Two hosted crews are named {string.Join(" and ", duplicate.Select(c => $"'{c.Name}'"))}; "
+                + "crew names must be unique (they compare case-insensitively).");
+    }
+
+    private void ValidateTimeouts()
+    {
+        // Zero cancels every run at its first instant; past the CancelAfter ceiling the
+        // runner would throw on every start. Both are configuration mistakes, refused here
+        // with the words to fix them rather than discovered one failed run at a time.
+        if (_options.RunTimeout <= TimeSpan.Zero || _options.RunTimeout.TotalMilliseconds > int.MaxValue)
+            throw new HostConfigurationException(
+                $"RunTimeout must be positive and under ~24.8 days; got {_options.RunTimeout}.");
+
+        if (_options.ShutdownGracePeriod < TimeSpan.Zero)
+            throw new HostConfigurationException(
+                $"ShutdownGracePeriod cannot be negative; got {_options.ShutdownGracePeriod}.");
     }
 
     /// <summary>

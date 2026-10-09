@@ -77,9 +77,7 @@ public sealed record EmailAccountEffective
         var username = string.IsNullOrWhiteSpace(definition.Username)
             ? EmailAccountRules.MailboxOf(definition.Address)
             : definition.Username.Trim();
-        var tenant = !outlook ? null
-            : string.IsNullOrWhiteSpace(definition.Tenant) ? EmailAccountRules.DefaultTenant
-            : definition.Tenant.Trim();
+        var tenant = outlook ? TenantOf(definition) : null;
 
         if (incoming == EmailSection.Values.Graph)
         {
@@ -122,6 +120,10 @@ public sealed record EmailAccountEffective
             CanSend = canSend,
         };
     }
+
+    /// <summary>The tenant an Outlook account declares, trimmed, else the default one.</summary>
+    private static string TenantOf(EmailAccountDefinition definition) =>
+        string.IsNullOrWhiteSpace(definition.Tenant) ? EmailAccountRules.DefaultTenant : definition.Tenant.Trim();
 
     /// <summary>The host the account declares, trimmed, else the preset's; an empty one is a value and names no server.</summary>
     private static string? Host(string? declared, string? preset) =>

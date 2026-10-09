@@ -118,7 +118,7 @@ internal static class ForgeTeamRenamer
         var link = ForgeTeamLink.Resolve(workspace, team);
         var record = ForgeTeamRecord.TryRead(team);
         var warnings = new List<(string Code, string Message)>();
-        IReadOnlyList<string>? former = null;
+        IReadOnlyList<string> former = [];
         if (moves)
         {
             former = RegistrationToFollow(team, host, warnings, out var refusal);
@@ -140,28 +140,9 @@ internal static class ForgeTeamRenamer
             }
 
             // (3) The linked session follows, then (4) every title.
-            ForgeSession? session = null;
-            ForgeRenamedSession? sessionMove = null;
-            if (link is { IsLinked: true, Session: { } linked })
-                (session, sessionMove) = FollowTeam(linked, folderName, journal, now);
-            if (session is not null)
-            {
-                session.Document.Title = name;
-                session.Document.PromotedTo = directory;
-                session.Save(now);
-            }
-
-            var formerName = ForgePromoter.ArtifactName(team);
+            var (session, sessionMove) = FollowAndRetitleSession(link, folderName, name, directory, journal, now);
             var artifactName = ForgePromoter.ArtifactName(directory);
-            RetitleRecord(directory, name, session?.Document.Slug ?? folderName, journal);
-            RenameInSidecar(directory, name, journal, warnings);
-            RewriteFile(journal, Path.Combine(directory, ForgePromoter.CardFileName),
-                card => ForgePromoter.RetitleCard(card, name));
-            foreach (var launcher in new[] { ForgePromoter.PosixLauncherName, ForgePromoter.WindowsLauncherName })
-            {
-                RewriteFile(journal, Path.Combine(directory, launcher),
-                    text => ForgePromoter.RenameLauncher(text, formerName, artifactName));
-            }
+            RetitleArtifacts(team, directory, name, session?.Document.Slug ?? folderName, artifactName, journal, warnings);
 
             // (5) schedule/ describes the folder as it is now...
             RegenerateSchedule(directory, artifactName, record, journal, now);
@@ -169,7 +150,7 @@ internal static class ForgeTeamRenamer
             // (6) ...and the registration runs it, under its new name. Last: its undo needs every
             // other undo done first, the former schedule/ back where it was.
             ForgeScheduleReport? reinstalled = null;
-            if (former is not null)
+            if (former.Count > 0)
             {
                 journal.Last($"the registration '{former[0]}'", () => Reregister(host.Adapter, former, team, artifactName));
                 var outcome = new ForgeScheduler(host).Install(directory);
@@ -202,6 +183,45 @@ internal static class ForgeTeamRenamer
         }
     }
 
+    /// <summary>
+    /// Step (3): the session rule R links to the team follows it and is retitled, saved under its
+    /// new title and folder. No session: nothing, and no move to report.
+    /// </summary>
+    private static (ForgeSession? Session, ForgeRenamedSession? Move) FollowAndRetitleSession(
+        ForgeTeamLink link, string folderName, string name, string directory, RenameJournal journal, DateTimeOffset now)
+    {
+        if (link is not { IsLinked: true, Session: { } linked })
+            return (null, null);
+
+        var (session, sessionMove) = FollowTeam(linked, folderName, journal, now);
+        session.Document.Title = name;
+        session.Document.PromotedTo = directory;
+        session.Save(now);
+        return (session, sessionMove);
+    }
+
+    /// <summary>Step (4): every title the folder carries — the record, the sidecar, the card and both launchers.</summary>
+    private static void RetitleArtifacts(
+        string team,
+        string directory,
+        string name,
+        string slug,
+        string artifactName,
+        RenameJournal journal,
+        List<(string Code, string Message)> warnings)
+    {
+        var formerName = ForgePromoter.ArtifactName(team);
+        RetitleRecord(directory, name, slug, journal);
+        RenameInSidecar(directory, name, journal, warnings);
+        RewriteFile(journal, Path.Combine(directory, ForgePromoter.CardFileName),
+            card => ForgePromoter.RetitleCard(card, name));
+        foreach (var launcher in new[] { ForgePromoter.PosixLauncherName, ForgePromoter.WindowsLauncherName })
+        {
+            RewriteFile(journal, Path.Combine(directory, launcher),
+                text => ForgePromoter.RenameLauncher(text, formerName, artifactName));
+        }
+    }
+
     /// <summary>What sits where the team would move: null when nothing does.</summary>
     private static string? Occupant(string path)
     {
@@ -230,13 +250,13 @@ internal static class ForgeTeamRenamer
 
     /// <summary>
     /// The names of this folder's registration that the rename must carry over — one the operating
-    /// system still holds, running this team. Null when there is none: never installed, removed
+    /// system still holds, running this team. Empty when there is none: never installed, removed
     /// outside Orkeon since, a copy's inherited block, or installed on another system (said as a
     /// warning). A registration that runs the team although it declares no schedule any more cannot
     /// follow it, and neither can one the OS cannot be asked about: both refuse the rename, nothing
     /// touched. One disabled by hand follows it, and is enabled again — as <c>forge schedule</c> does.
     /// </summary>
-    private static IReadOnlyList<string>? RegistrationToFollow(
+    private static IReadOnlyList<string> RegistrationToFollow(
         string team,
         ForgeScheduleHost host,
         List<(string Code, string Message)> warnings,
@@ -244,14 +264,14 @@ internal static class ForgeTeamRenamer
     {
         refusal = null;
         if (ForgeScheduleInstallation.TryRead(team) is not { Names.Count: > 0 } installed)
-            return null;
+            return [];
 
         var check = new ForgeScheduler(host).Check(team);
         if (check.Failure is { } unanswered)
         {
             refusal = new ForgeRenameFailure(unanswered.Code,
                 $"The team was not renamed: whether its schedule is installed could not be checked — {unanswered.Message}");
-            return null;
+            return [];
         }
 
         var report = check.Report!;
@@ -263,7 +283,7 @@ internal static class ForgeTeamRenamer
                     $"This team's schedule was installed on {installed.Family}: there, '{string.Join("', '", installed.Names)}' still runs its former folder — reinstall it there with `orkeon forge schedule`."));
             }
 
-            return null;
+            return [];
         }
 
         if (report.Reason == ForgeScheduleReasons.Undeclared)
@@ -271,7 +291,7 @@ internal static class ForgeTeamRenamer
             refusal = new ForgeRenameFailure(ForgeErrorCodes.ScheduleStillInstalled,
                 $"The team was not renamed: '{string.Join("', '", installed.Names)}' still runs it although it declares no schedule any more,"
                 + $" and would be left running a folder that no longer exists. Remove it with `orkeon forge unschedule \"{team}\"`, then rename.");
-            return null;
+            return [];
         }
 
         return installed.Names;

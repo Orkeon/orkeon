@@ -88,17 +88,8 @@ internal sealed class BriefStage : IForgeStageRunner
             if (reply.BriefJson is { } json)
             {
                 var outcome = HandleSubmission(session, events, json, usage, ref submissionAttempts, ref errors);
-                if (outcome is { Trigger: ForgeTrigger.BriefSubmitted })
-                {
-                    // The folders step (STUDIO-46): between the brief and the plan, the user
-                    // confirms the folders the request named — or the defaults.
-                    var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)!;
-                    await ConfirmFoldersAsync(session, events, brief, cancellationToken).ConfigureAwait(false);
-                    return outcome;
-                }
-
                 if (outcome is not null)
-                    return outcome;
+                    return await SettleAsync(session, events, outcome, cancellationToken).ConfigureAwait(false);
 
                 // The errors go back into the next turn, verbatim; no user round-trip needed.
                 userMessage = null;
@@ -121,6 +112,22 @@ internal sealed class BriefStage : IForgeStageRunner
         }
 
         return Abandon(usage, $"The interview did not converge within {MaxTurns} turns.");
+    }
+
+    /// <summary>
+    /// The stage's outcome once a submission settled it: an accepted brief goes through the
+    /// folders step first (STUDIO-46) — between the brief and the plan, the user confirms the
+    /// folders the request named, or the defaults —; a failure is returned as it is.
+    /// </summary>
+    private async Task<ForgeStageOutcome> SettleAsync(
+        ForgeSession session, ForgeEventWriter events, ForgeStageOutcome outcome, CancellationToken cancellationToken)
+    {
+        if (outcome.Trigger != ForgeTrigger.BriefSubmitted)
+            return outcome;
+
+        var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)!;
+        await ConfirmFoldersAsync(session, events, brief, cancellationToken).ConfigureAwait(false);
+        return outcome;
     }
 
     /// <summary>

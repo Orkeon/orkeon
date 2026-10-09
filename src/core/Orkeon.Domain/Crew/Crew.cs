@@ -505,11 +505,11 @@ public sealed class Crew : AggregateRoot<CrewId>
         if (ManagerLlm is not null && !newProcessType.AcceptsManagerLlm)
             throw new InvalidOperationException(ManagerLlmTheModeNeverCalls(newProcessType));
 
-        if (newProcessType == ProcessType.Hierarchical)
+        // A crew with a manager LLM needs no manager agent (GAP-19).
+        if (newProcessType == ProcessType.Hierarchical
+            && ((managerAgentId == null && ManagerLlm == null) || !_memberManager.Any()))
         {
-            // A crew with a manager LLM needs no manager agent (GAP-19).
-            if ((managerAgentId == null && ManagerLlm == null) || !_memberManager.Any())
-                throw new InvalidOperationException("Hierarchical process requires a manager agent.");
+            throw new InvalidOperationException("Hierarchical process requires a manager agent.");
         }
 
         if (managerAgentId is not null && !_memberManager.Contains(managerAgentId))

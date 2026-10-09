@@ -145,11 +145,7 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
                 source = Anchor(source, crewDirectory);
             }
 
-            var pattern = SourceGlobExpander.HasWildcard(source)
-                ? source
-                : await IsDirectoryAsync(source, cancellationToken).ConfigureAwait(false)
-                    ? source.TrimEnd('/') + "/**"
-                    : null;
+            var pattern = await PatternOfAsync(source, cancellationToken).ConfigureAwait(false);
             if (pattern is null)
             {
                 // A file: the loaders' business, which report it when it is not there.
@@ -157,29 +153,48 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
                 continue;
             }
 
-            IReadOnlyList<SourceDescriptor> matches;
-            try
-            {
-                matches = await SourceGlobExpander.ExpandAsync(_fileSystem, [pattern], cancellationToken).ConfigureAwait(false);
-            }
-            catch (FileAccessDeniedException ex)
-            {
-                // Outside every mount: the denial names the mounts there are.
-                LogSourceUnreachable(collection, written, ex.Message);
-                continue;
-            }
-
-            if (matches.Count == 0)
-            {
-                LogSourceMatchedNothing(collection, written);
-                continue;
-            }
-
-            foreach (var match in matches)
+            foreach (var match in await ExpandAsync(collection, written, pattern, cancellationToken).ConfigureAwait(false))
                 Add(match.Location);
         }
 
         return descriptors.ToImmutable();
+    }
+
+    /// <summary>
+    /// The glob <paramref name="source"/> stands for: itself when it holds a wildcard, everything
+    /// below it when it is a directory; null for a file.
+    /// </summary>
+    private async Task<string?> PatternOfAsync(string source, CancellationToken cancellationToken)
+    {
+        if (SourceGlobExpander.HasWildcard(source))
+            return source;
+        if (await IsDirectoryAsync(source, cancellationToken).ConfigureAwait(false))
+            return source.TrimEnd('/') + "/**";
+        return null;
+    }
+
+    /// <summary>
+    /// The files <paramref name="pattern"/> matches through the VFS; none, said in the log, when it
+    /// matches nothing or reaches outside every mount.
+    /// </summary>
+    private async Task<IReadOnlyList<SourceDescriptor>> ExpandAsync(
+        string collection, string written, string pattern, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<SourceDescriptor> matches;
+        try
+        {
+            matches = await SourceGlobExpander.ExpandAsync(_fileSystem, [pattern], cancellationToken).ConfigureAwait(false);
+        }
+        catch (FileAccessDeniedException ex)
+        {
+            // Outside every mount: the denial names the mounts there are.
+            LogSourceUnreachable(collection, written, ex.Message);
+            return [];
+        }
+
+        if (matches.Count == 0)
+            LogSourceMatchedNothing(collection, written);
+        return matches;
     }
 
     private async Task<bool> IsDirectoryAsync(string location, CancellationToken cancellationToken)

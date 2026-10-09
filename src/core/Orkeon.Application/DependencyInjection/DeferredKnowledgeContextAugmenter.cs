@@ -12,10 +12,14 @@ namespace Orkeon.Application.DependencyInjection;
 /// resolves the RAG subsystem — and an unusable RAG configuration (an unknown
 /// <c>Orkeon:Rag:Provider</c> or profile) fails the agent that needs knowledge, not every crew.
 /// </summary>
-internal sealed class DeferredKnowledgeContextAugmenter(Func<IKnowledgeContextAugmenter> resolve)
-    : IKnowledgeContextAugmenter
+internal sealed class DeferredKnowledgeContextAugmenter : IKnowledgeContextAugmenter
 {
-    private readonly Lazy<IKnowledgeContextAugmenter> _inner = new(resolve);
+    private readonly Lazy<IKnowledgeContextAugmenter> _inner;
+
+    public DeferredKnowledgeContextAugmenter(Func<IKnowledgeContextAugmenter> resolve)
+    {
+        _inner = new Lazy<IKnowledgeContextAugmenter>(resolve);
+    }
 
     /// <summary>
     /// A deferred view of the provider's augmenter, or <c>null</c> when none is registered

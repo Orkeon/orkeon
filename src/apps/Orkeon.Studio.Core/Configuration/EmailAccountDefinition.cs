@@ -23,13 +23,13 @@ public sealed record EmailAccountDefinition
     /// <summary>The display name paired with <see cref="Address"/>.</summary>
     public string? DisplayName { get; init; }
 
-    /// <summary>What an agent may do. <see cref="EmailRight.None"/> writes no key.</summary>
-    public EmailRight Rights { get; init; }
+    /// <summary>What an agent may do. <see cref="EmailRights.None"/> writes no key.</summary>
+    public EmailRights Rights { get; init; }
 
     /// <summary>
     /// The <c>Rights</c> text the file holds when it is not a list of rights the engine reads
     /// (a misspelt name, an undefined number, <c>None</c>), set only while <see cref="Rights"/> is
-    /// <see cref="EmailRight.None"/>: it is written back as it was until a right is chosen.
+    /// <see cref="EmailRights.None"/>: it is written back as it was until a right is chosen.
     /// </summary>
     public string? RightsRaw { get; init; }
 

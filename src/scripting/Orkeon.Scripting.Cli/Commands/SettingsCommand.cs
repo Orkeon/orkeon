@@ -42,13 +42,11 @@ internal sealed record SettingsCommandOptions
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        const string HostOption = "--host";
         var words = new List<string>();
         var options = new SettingsCommandOptions();
         for (var i = 0; i < args.Length; i++)
         {
             var arg = args[i];
-            string? host = null;
             switch (arg)
             {
                 case "--help" or "-h":
@@ -60,33 +58,51 @@ internal sealed record SettingsCommandOptions
                     options = options with { Json = true };
                     continue;
                 case HostOption when i + 1 < args.Length && !args[i + 1].StartsWith('-'):
-                    host = args[++i];
+                    options = WithHost(options, args[++i]);
                     break;
                 case HostOption:
                     return Refused("--host needs a binary: run, host or repl.");
                 default:
-                    if (arg.StartsWith(HostOption + "=", StringComparison.Ordinal))
-                        host = arg[(HostOption.Length + 1)..];
-                    else if (arg.StartsWith('-'))
-                        return Refused($"unknown option '{arg}'; run `orkeon settings --help`.");
-                    else
-                        words.Add(arg);
+                    options = WithWord(options, arg, words);
                     break;
             }
 
-            if (host is null)
-                continue;
-            if (!Hosts.TryGetValue(host, out var binary))
-                return Refused($"--host takes run, host or repl, not '{host}'.");
-            options = options with { Host = binary };
+            if (options.Error is not null)
+                return options;
         }
 
+        return Named(options, words);
+    }
+
+    /// <summary>A word of the name, or <c>--host=&lt;binary&gt;</c>; any other option is refused.</summary>
+    private static SettingsCommandOptions WithWord(SettingsCommandOptions options, string arg, List<string> words)
+    {
+        if (arg.StartsWith(HostOption + "=", StringComparison.Ordinal))
+            return WithHost(options, arg[(HostOption.Length + 1)..]);
+        if (arg.StartsWith('-'))
+            return Refused($"unknown option '{arg}'; run `orkeon settings --help`.");
+
+        words.Add(arg);
+        return options;
+    }
+
+    /// <summary>The binary <c>--host</c> names, by its verb or its name; another word is refused.</summary>
+    private static SettingsCommandOptions WithHost(SettingsCommandOptions options, string host) =>
+        Hosts.TryGetValue(host, out var binary)
+            ? options with { Host = binary }
+            : Refused($"--host takes run, host or repl, not '{host}'.");
+
+    /// <summary>The name the words make, once <c>--all</c> is known not to contradict it.</summary>
+    private static SettingsCommandOptions Named(SettingsCommandOptions options, List<string> words)
+    {
         var name = string.Join(' ', words).Trim();
         if (options.All && name.Length > 0 && !options.Json)
             return Refused($"--all lists everything; drop it to look '{name}' up.");
 
         return options with { Name = name.Length == 0 ? null : name };
     }
+
+    private const string HostOption = "--host";
 
     private static SettingsCommandOptions Refused(string error) => new() { Error = error };
 }
@@ -143,36 +159,67 @@ internal static class SettingsCommand
             return await RefuseAsync(options.Error).ConfigureAwait(false);
 
         if (string.Equals(options.Name, EnvironmentForm, StringComparison.OrdinalIgnoreCase))
-        {
-            if (options.All || options.Host is not null)
-            {
-                return await RefuseAsync(
-                    "`orkeon settings env` takes --json and nothing else: each variable says who reads it.").ConfigureAwait(false);
-            }
-
-            await Console.Out.WriteAsync(options.Json ? EnvironmentJson() : EnvironmentVariables()).ConfigureAwait(false);
-            return Program.ExitOk;
-        }
+            return await DispatchEnvironmentAsync(options).ConfigureAwait(false);
 
         var catalog = options.Host is null ? SettingsCatalog.Complete : SettingsCatalog.Complete.ForHost(options.Host);
-        var selection = options.Name is null ? Selection.Everything(catalog) : Selection.Exact(catalog, options.Name);
+        var selection = Select(catalog, options, out var refusal);
         if (selection is null)
-        {
-            // A name another binary answers to is said so, before the word is looked for in what this one reads.
-            var name = options.Name!;
-            if (options.Host is not null && Selection.Exact(SettingsCatalog.Complete, name) is { } elsewhere)
-                return await RefuseAsync(NotReadBy(elsewhere, options.Host)).ConfigureAwait(false);
+            return await RefuseAsync(refusal!).ConfigureAwait(false);
 
-            selection = Selection.Word(catalog, name);
-            if (selection is null)
-                return await RefuseAsync(NotFound(name, options.Host)).ConfigureAwait(false);
+        await Console.Out.WriteAsync(TextOf(selection, catalog, options)).ConfigureAwait(false);
+        return Program.ExitOk;
+    }
+
+    /// <summary><c>orkeon settings env</c>: the environment variables, as text or as JSON.</summary>
+    private static async Task<int> DispatchEnvironmentAsync(SettingsCommandOptions options)
+    {
+        if (options.All || options.Host is not null)
+        {
+            return await RefuseAsync(
+                "`orkeon settings env` takes --json and nothing else: each variable says who reads it.").ConfigureAwait(false);
         }
 
-        var text = options.Json ? selection.Narrowed.ToJson()
-            : selection.Kind == SelectionKind.Everything && !options.All ? Categories(catalog, options.Host)
-            : Render(selection, catalog, options.Host);
-        await Console.Out.WriteAsync(text).ConfigureAwait(false);
+        await Console.Out.WriteAsync(options.Json ? EnvironmentJson() : EnvironmentVariables()).ConfigureAwait(false);
         return Program.ExitOk;
+    }
+
+    /// <summary>
+    /// What the name designates in <paramref name="catalog"/>: everything when there is none, the
+    /// exact category, section or key, else whatever the word names or describes. Null with
+    /// <paramref name="refusal"/> set when it designates nothing — said first when another binary
+    /// answers to the name.
+    /// </summary>
+    private static Selection? Select(SettingsCatalog catalog, SettingsCommandOptions options, out string? refusal)
+    {
+        refusal = null;
+        if (options.Name is null)
+            return Selection.Everything(catalog);
+
+        var name = options.Name;
+        if (Selection.Exact(catalog, name) is { } exact)
+            return exact;
+
+        // A name another binary answers to is said so, before the word is looked for in what this one reads.
+        if (options.Host is not null && Selection.Exact(SettingsCatalog.Complete, name) is { } elsewhere)
+        {
+            refusal = NotReadBy(elsewhere, options.Host);
+            return null;
+        }
+
+        var word = Selection.Word(catalog, name);
+        if (word is null)
+            refusal = NotFound(name, options.Host);
+        return word;
+    }
+
+    /// <summary>What the verb writes for a selection: the catalogue as JSON, the categories, or the listing.</summary>
+    private static string TextOf(Selection selection, SettingsCatalog catalog, SettingsCommandOptions options)
+    {
+        if (options.Json)
+            return selection.Narrowed.ToJson();
+        if (selection.Kind == SelectionKind.Everything && !options.All)
+            return Categories(catalog, options.Host);
+        return Render(selection, catalog, options.Host);
     }
 
     private static async Task<int> RefuseAsync(string reason)
@@ -641,7 +688,7 @@ internal static class SettingsCommand
         {
             page.Line();
             page.Line("Keys named with it");
-            Keys(page, found.Keys, withMeaning: false);
+            KeyLines(page, found.Keys, withMeaning: false);
         }
 
         if (found.DescribedSections.Count > 0)
@@ -656,7 +703,7 @@ internal static class SettingsCommand
         {
             page.Line();
             page.Line("Keys described with it");
-            Keys(page, found.DescribedKeys, withMeaning: false);
+            KeyLines(page, found.DescribedKeys, withMeaning: false);
         }
 
         page.Line();
@@ -677,7 +724,7 @@ internal static class SettingsCommand
         }
 
         page.Line();
-        Keys(page, keys, withMeaning: true);
+        KeyLines(page, keys, withMeaning: true);
         if (!withMeaning)
         {
             var others = catalog.SettingsOf(section.Path).Count() - keys.Count;
@@ -702,7 +749,7 @@ internal static class SettingsCommand
     /// The keys, aligned: path, type, default — the default on its own lines when the three do not
     /// fit —, then, with the meaning, the values a closed list accepts and the key's sentence.
     /// </summary>
-    private static void Keys(Page page, List<SettingsCatalogEntry> keys, bool withMeaning)
+    private static void KeyLines(Page page, List<SettingsCatalogEntry> keys, bool withMeaning)
     {
         if (keys.Count == 0)
             return;
@@ -746,10 +793,14 @@ internal static class SettingsCommand
         [.. catalog.Sections.Where(section => string.Equals(section.Category, category.Id, StringComparison.Ordinal))];
 
     /// <summary>Who reads a section: the shipped binaries, or the registration a host written in C# calls.</summary>
-    private static string ReadBy(SettingsCatalogSection section) =>
-        section.Hosts.Count > 0 ? string.Join(", ", section.Hosts)
-        : section.Registration is null ? "no shipped binary"
-        : $"a C# host only — {section.Registration}()";
+    private static string ReadBy(SettingsCatalogSection section)
+    {
+        if (section.Hosts.Count > 0)
+            return string.Join(", ", section.Hosts);
+        if (section.Registration is null)
+            return "no shipped binary";
+        return $"a C# host only — {section.Registration}()";
+    }
 
     /// <summary>What a key is worth when nothing sets it; a secret says only that it is one.</summary>
     private static string DefaultOf(SettingsCatalogEntry entry)

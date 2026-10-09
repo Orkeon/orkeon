@@ -316,9 +316,14 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
             foreach (var occurrence in RetiredCrewYamlKeys.Find(yaml, path))
             {
                 if (occurrence.Key.Refused)
-                    (refused ??= []).Add(occurrence);
+                {
+                    refused ??= [];
+                    refused.Add(occurrence);
+                }
                 else
+                {
                     LogRetiredKey(occurrence.Path, occurrence.Key.Guidance);
+                }
             }
         }
 

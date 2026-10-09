@@ -270,13 +270,20 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
     }
 
     /// <summary>One open session: the verb it plays, the channel it speaks on, and how it ended.</summary>
-    private sealed class Session(string verb, Action<ProcessOutputLine>? output)
+    private sealed class Session
     {
-        public string Verb { get; } = verb;
+        public Session(string verb, Action<ProcessOutputLine>? output)
+        {
+            Verb = verb;
+            Output = output;
+            Ended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
 
-        public Action<ProcessOutputLine>? Output { get; } = output;
+        public string Verb { get; }
 
-        public TaskCompletionSource Ended { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Action<ProcessOutputLine>? Output { get; }
+
+        public TaskCompletionSource Ended { get; }
 
         public bool Stopped { get; set; }
     }

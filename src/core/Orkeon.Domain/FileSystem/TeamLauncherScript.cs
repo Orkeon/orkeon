@@ -68,37 +68,57 @@ public abstract class TeamLauncherArgument
 
     private static string Bare(string text, string parameter)
     {
-        ArgumentException.ThrowIfNullOrEmpty(text, parameter);
+        if (text is null)
+            throw new ArgumentNullException(parameter);
+        if (text.Length == 0)
+            throw new ArgumentException("The value cannot be an empty string.", parameter);
         if (!text.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' or '/' or ':'))
             throw new ArgumentException($"'{text}' is not written bare: letters, digits, '-', '_', '.', '/' and ':' only.", parameter);
 
         return text;
     }
 
-    internal sealed class WordArgument(string text) : TeamLauncherArgument
+    internal sealed class WordArgument : TeamLauncherArgument
     {
-        public string Text { get; } = text;
+        public WordArgument(string text) => Text = text;
+
+        public string Text { get; }
     }
 
-    internal sealed class LiteralArgument(string text) : TeamLauncherArgument
+    internal sealed class LiteralArgument : TeamLauncherArgument
     {
-        public string Text { get; } = text;
+        public LiteralArgument(string text) => Text = text;
+
+        public string Text { get; }
     }
 
-    internal sealed class InTeamArgument(string before, string relative, string after) : TeamLauncherArgument
+    internal sealed class InTeamArgument : TeamLauncherArgument
     {
-        public string Before { get; } = before;
+        public InTeamArgument(string before, string relative, string after)
+        {
+            Before = before;
+            Relative = relative;
+            After = after;
+        }
 
-        public string Relative { get; } = relative;
+        public string Before { get; }
 
-        public string After { get; } = after;
+        public string Relative { get; }
+
+        public string After { get; }
     }
 
-    internal sealed class AssignArgument(string option, TeamLauncherArgument value) : TeamLauncherArgument
+    internal sealed class AssignArgument : TeamLauncherArgument
     {
-        public string Option { get; } = option;
+        public AssignArgument(string option, TeamLauncherArgument value)
+        {
+            Option = option;
+            Value = value;
+        }
 
-        public TeamLauncherArgument Value { get; } = value;
+        public string Option { get; }
+
+        public TeamLauncherArgument Value { get; }
     }
 }
 
@@ -228,15 +248,7 @@ public static class TeamLauncherScript
             var current = end < 0 ? text : text[..end];
             text = end < 0 ? ReadOnlySpan<char>.Empty : text[(end + 1)..];
 
-            current = current.TrimEnd('\r').TrimStart();
-            foreach (var marker in (ReadOnlySpan<string>)["rem ", "REM ", "# "])
-            {
-                if (current.StartsWith(marker, StringComparison.Ordinal))
-                {
-                    current = current[marker.Length..].TrimStart();
-                    break;
-                }
-            }
+            current = StripCommentMarker(current.TrimEnd('\r').TrimStart());
 
             if (current.StartsWith(HeaderMarker, StringComparison.Ordinal)
                 || current.StartsWith(LegacyHeaderMarker, StringComparison.Ordinal))
@@ -375,14 +387,10 @@ public static class TeamLauncherScript
             return value;
 
         var units = CrtUnits([new Piece(value)]);
-        var text = new StringBuilder();
         if (!value.Contains('"', StringComparison.Ordinal) && !value.Contains('%', StringComparison.Ordinal))
-        {
-            foreach (var unit in units)
-                text.Append(unit.Character);
-            return text.ToString();
-        }
+            return string.Concat(units.Select(unit => unit.Character));
 
+        var text = new StringBuilder();
         var afterPercent = false;
         foreach (var unit in units)
         {
@@ -501,18 +509,8 @@ public static class TeamLauncherScript
     private static string BatchQuoted(IReadOnlyList<Piece> pieces)
     {
         var units = CrtUnits(pieces);
+        var (opener, closer) = CmdQuotedStretch(units);
         var text = new StringBuilder();
-
-        // The stretch between cmd's quotes, its two quotes included: the whole token when the
-        // value holds no quote of its own; else the folder's, from the last quote before it to the
-        // first after it — the C runtime's delimiters at worst —; else none.
-        int opener = 0, closer = units.Count - 1;
-        if (units.Skip(1).SkipLast(1).Any(unit => !unit.IsFolder && unit.Character == '"'))
-        {
-            var folder = units.FindIndex(unit => unit.IsFolder);
-            opener = folder < 0 ? -1 : units.FindLastIndex(folder, unit => !unit.IsFolder && unit.Character == '"');
-            closer = folder < 0 ? -1 : units.FindIndex(folder, unit => !unit.IsFolder && unit.Character == '"');
-        }
 
         for (var i = 0; i < units.Count; i++)
         {
@@ -523,26 +521,43 @@ public static class TeamLauncherScript
                 continue;
             }
 
-            var c = unit.Character;
-            if (i >= opener && i <= closer)
-            {
-                // Between cmd's quotes: only the percents are read there.
-                text.Append(c);
-            }
-            else if (c == '"' || IsCmdSpecial(c))
-            {
-                text.Append('^').Append(c);
-            }
-            else
-            {
-                text.Append(c);
-            }
-
-            if (c == '%')
-                text.Append('%');
+            AppendCmdUnit(text, unit.Character, insideQuotes: i >= opener && i <= closer);
         }
 
         return text.ToString();
+    }
+
+    /// <summary>
+    /// The stretch between <c>cmd</c>'s quotes, its two quotes included, as the indices of its
+    /// ends: the whole token when the value holds no quote of its own; else the folder's, from the
+    /// last quote before it to the first after it — the C runtime's delimiters at worst —; else none.
+    /// </summary>
+    private static (int Opener, int Closer) CmdQuotedStretch(List<Unit> units)
+    {
+        if (!units.Skip(1).SkipLast(1).Any(IsQuote))
+            return (0, units.Count - 1);
+
+        var folder = units.FindIndex(unit => unit.IsFolder);
+        if (folder < 0)
+            return (-1, -1);
+
+        return (units.FindLastIndex(folder, IsQuote), units.FindIndex(folder, IsQuote));
+
+        static bool IsQuote(Unit unit) => !unit.IsFolder && unit.Character == '"';
+    }
+
+    /// <summary>
+    /// One character as <c>cmd</c> reads it: between its quotes only the percents are read, so
+    /// they alone are doubled; outside, a quote or a special is escaped by a caret first.
+    /// </summary>
+    private static void AppendCmdUnit(StringBuilder text, char c, bool insideQuotes)
+    {
+        if (!insideQuotes && (c == '"' || IsCmdSpecial(c)))
+            text.Append('^');
+        text.Append(c);
+
+        if (c == '%')
+            text.Append('%');
     }
 
     // ── run.sh ──
@@ -611,6 +626,20 @@ public static class TeamLauncherScript
         units.AddRange(Enumerable.Repeat(new Unit('\\'), backslashes * 2));
         units.Add(new Unit('"'));
         return units;
+    }
+
+    /// <summary>
+    /// <paramref name="line"/> without the comment marker that opens it — <c>rem</c>, <c>REM</c>
+    /// or <c>#</c> and the space after — nor the blanks after that; the line itself without one.
+    /// </summary>
+    private static ReadOnlySpan<char> StripCommentMarker(ReadOnlySpan<char> line)
+    {
+        if (line.StartsWith("rem ", StringComparison.Ordinal) || line.StartsWith("REM ", StringComparison.Ordinal))
+            return line[4..].TrimStart();
+        if (line.StartsWith("# ", StringComparison.Ordinal))
+            return line[2..].TrimStart();
+
+        return line;
     }
 
     /// <summary>What <c>cmd</c> reads outside quotes: a caret escapes it.</summary>

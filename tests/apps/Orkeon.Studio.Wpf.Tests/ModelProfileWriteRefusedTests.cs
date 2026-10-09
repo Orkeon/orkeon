@@ -29,16 +29,17 @@ public sealed class ModelProfileWriteRefusedTests
         return (tab, store, inner);
     }
 
-    public static TheoryData<Exception> Failures() => new()
+    public static TheoryData<Type, string> Failures() => new()
     {
-        new InvalidOperationException("the set cannot be written"),
-        new IOException("the file is read-only"),
+        { typeof(InvalidOperationException), "the set cannot be written" },
+        { typeof(IOException), "the file is read-only" },
     };
 
     [Theory]
     [MemberData(nameof(Failures))]
-    public async Task A_refused_write_is_said_and_the_next_change_is_written(Exception failure)
+    public async Task A_refused_write_is_said_and_the_next_change_is_written(Type failureType, string message)
     {
+        var failure = (Exception)Activator.CreateInstance(failureType, message)!;
         var (tab, store, inner) = Tab();
         await tab.InitializeAsync(TestContext.Current.CancellationToken);
         store.FailNext = failure;

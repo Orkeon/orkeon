@@ -851,11 +851,18 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     }
 
     /// <summary>One streamed <c>tool_use</c> block: its id and name, then its input as JSON fragments.</summary>
-    private sealed class StreamedToolUse(string id, string name)
+    private sealed class StreamedToolUse
     {
-        public string Id { get; } = id;
-        public string Name { get; } = name;
-        public StringBuilder InputJson { get; } = new();
+        public StreamedToolUse(string id, string name)
+        {
+            Id = id;
+            Name = name;
+            InputJson = new StringBuilder();
+        }
+
+        public string Id { get; }
+        public string Name { get; }
+        public StringBuilder InputJson { get; }
     }
 
     /// <summary>

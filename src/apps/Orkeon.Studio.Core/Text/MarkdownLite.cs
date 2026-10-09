@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Orkeon.Studio.Core.Text;
@@ -72,61 +73,77 @@ public static class MarkdownLite
             if (trimmed.StartsWith("```", StringComparison.Ordinal))
             {
                 FlushParagraph(blocks, paragraph);
-                var code = new StringBuilder();
-                i++;
-                while (i < lines.Length && !lines[i].TrimStart().StartsWith("```", StringComparison.Ordinal))
-                {
-                    if (code.Length > 0)
-                        code.Append('\n');
-                    code.Append(lines[i]);
-                    i++;
-                }
-
-                i++; // the closing fence, when there is one
-                blocks.Add(new MarkdownBlock(MarkdownBlockKind.Code, [new MarkdownRun(code.ToString(), Code: true)]));
+                blocks.Add(ReadFence(lines, ref i));
                 continue;
             }
 
             if (trimmed.Length == 0)
             {
                 FlushParagraph(blocks, paragraph);
-                i++;
-                continue;
             }
-
-            if (TryHeading(trimmed, out var level, out var headingText))
+            else if (TryBlock(line, trimmed, out var block))
             {
                 FlushParagraph(blocks, paragraph);
-                blocks.Add(new MarkdownBlock(MarkdownBlockKind.Heading, ParseInlines(headingText), Level: level));
-                i++;
-                continue;
+                blocks.Add(block);
             }
-
-            var indent = (line.Length - trimmed.Length) / 2;
-            if (TryBullet(trimmed, out var bulletText))
+            else
             {
-                FlushParagraph(blocks, paragraph);
-                blocks.Add(new MarkdownBlock(MarkdownBlockKind.Bullet, ParseInlines(bulletText), Indent: indent));
-                i++;
-                continue;
+                if (paragraph.Count > 0)
+                    paragraph.Add(new MarkdownRun("\n"));
+                paragraph.AddRange(ParseInlines(trimmed.TrimEnd()));
             }
 
-            if (TryNumbered(trimmed, out var number, out var numberedText))
-            {
-                FlushParagraph(blocks, paragraph);
-                blocks.Add(new MarkdownBlock(MarkdownBlockKind.Numbered, ParseInlines(numberedText), Number: number, Indent: indent));
-                i++;
-                continue;
-            }
-
-            if (paragraph.Count > 0)
-                paragraph.Add(new MarkdownRun("\n"));
-            paragraph.AddRange(ParseInlines(trimmed.TrimEnd()));
             i++;
         }
 
         FlushParagraph(blocks, paragraph);
         return blocks;
+    }
+
+    /// <summary>
+    /// The fenced code block opening at <paramref name="i"/>, read verbatim up to the closing
+    /// fence (or the end); <paramref name="i"/> is left on the line after it.
+    /// </summary>
+    private static MarkdownBlock ReadFence(string[] lines, ref int i)
+    {
+        var code = new StringBuilder();
+        i++;
+        while (i < lines.Length && !lines[i].TrimStart().StartsWith("```", StringComparison.Ordinal))
+        {
+            if (code.Length > 0)
+                code.Append('\n');
+            code.Append(lines[i]);
+            i++;
+        }
+
+        i++; // the closing fence, when there is one
+        return new MarkdownBlock(MarkdownBlockKind.Code, [new MarkdownRun(code.ToString(), Code: true)]);
+    }
+
+    /// <summary>A heading, bullet or numbered item read from one line; false for paragraph text.</summary>
+    private static bool TryBlock(string line, string trimmed, [NotNullWhen(true)] out MarkdownBlock? block)
+    {
+        if (TryHeading(trimmed, out var level, out var headingText))
+        {
+            block = new MarkdownBlock(MarkdownBlockKind.Heading, ParseInlines(headingText), Level: level);
+            return true;
+        }
+
+        var indent = (line.Length - trimmed.Length) / 2;
+        if (TryBullet(trimmed, out var bulletText))
+        {
+            block = new MarkdownBlock(MarkdownBlockKind.Bullet, ParseInlines(bulletText), Indent: indent);
+            return true;
+        }
+
+        if (TryNumbered(trimmed, out var number, out var numberedText))
+        {
+            block = new MarkdownBlock(MarkdownBlockKind.Numbered, ParseInlines(numberedText), Number: number, Indent: indent);
+            return true;
+        }
+
+        block = null;
+        return false;
     }
 
     /// <summary>Whether <paramref name="text"/> carries any Markdown worth rendering.</summary>
@@ -173,56 +190,89 @@ public static class MarkdownLite
         var i = 0;
         while (i < text.Length)
         {
-            var c = text[i];
-
-            if (c == '\\' && i + 1 < text.Length && "*_`[\\".Contains(text[i + 1], StringComparison.Ordinal))
+            if (TryEscape(text, i, buffer, out var next)
+                || TryCodeSpan(text, i, runs, buffer, bold, italic, out next)
+                || TryLinkText(text, i, buffer, out next)
+                || TryEmphasis(text, i, runs, buffer, ref bold, ref italic, out next))
             {
-                buffer.Append(text[i + 1]);
-                i += 2;
+                i = next;
                 continue;
             }
 
-            if (c == '`')
-            {
-                var close = text.IndexOf('`', i + 1);
-                if (close > i + 1)
-                {
-                    Flush(runs, buffer, bold, italic);
-                    runs.Add(new MarkdownRun(text[(i + 1)..close], Code: true));
-                    i = close + 1;
-                    continue;
-                }
-            }
-
-            if (c == '[' && TryLink(text, i, out var linkText, out var end))
-            {
-                buffer.Append(linkText);
-                i = end;
-                continue;
-            }
-
-            if ((c == '*' || c == '_') && i + 1 < text.Length && text[i + 1] == c && DelimiterCloses(text, i, 2, c, bold))
-            {
-                Flush(runs, buffer, bold, italic);
-                bold = !bold;
-                i += 2;
-                continue;
-            }
-
-            if ((c == '*' || c == '_') && DelimiterCloses(text, i, 1, c, italic))
-            {
-                Flush(runs, buffer, bold, italic);
-                italic = !italic;
-                i += 1;
-                continue;
-            }
-
-            buffer.Append(c);
+            buffer.Append(text[i]);
             i++;
         }
 
         Flush(runs, buffer, bold, italic);
         return runs;
+    }
+
+    /// <summary>A backslash before a marker keeps the marker as a character.</summary>
+    private static bool TryEscape(string text, int at, StringBuilder buffer, out int next)
+    {
+        next = at;
+        if (text[at] != '\\' || at + 1 >= text.Length || !"*_`[\\".Contains(text[at + 1], StringComparison.Ordinal))
+            return false;
+
+        buffer.Append(text[at + 1]);
+        next = at + 2;
+        return true;
+    }
+
+    /// <summary>A <c>`code`</c> span, verbatim inside; a lone backtick is a character.</summary>
+    private static bool TryCodeSpan(string text, int at, List<MarkdownRun> runs, StringBuilder buffer, bool bold, bool italic, out int next)
+    {
+        next = at;
+        if (text[at] != '`')
+            return false;
+
+        var close = text.IndexOf('`', at + 1);
+        if (close <= at + 1)
+            return false;
+
+        Flush(runs, buffer, bold, italic);
+        runs.Add(new MarkdownRun(text[(at + 1)..close], Code: true));
+        next = close + 1;
+        return true;
+    }
+
+    /// <summary>A <c>[text](url)</c> link, kept as its text.</summary>
+    private static bool TryLinkText(string text, int at, StringBuilder buffer, out int next)
+    {
+        next = at;
+        if (text[at] != '[' || !TryLink(text, at, out var linkText, out var end))
+            return false;
+
+        buffer.Append(linkText);
+        next = end;
+        return true;
+    }
+
+    /// <summary>A bold (<c>**</c>, <c>__</c>) or italic (<c>*</c>, <c>_</c>) delimiter that opens or closes a span.</summary>
+    private static bool TryEmphasis(string text, int at, List<MarkdownRun> runs, StringBuilder buffer, ref bool bold, ref bool italic, out int next)
+    {
+        next = at;
+        var c = text[at];
+        if (c != '*' && c != '_')
+            return false;
+
+        if (at + 1 < text.Length && text[at + 1] == c && DelimiterCloses(text, at, 2, c, bold))
+        {
+            Flush(runs, buffer, bold, italic);
+            bold = !bold;
+            next = at + 2;
+            return true;
+        }
+
+        if (DelimiterCloses(text, at, 1, c, italic))
+        {
+            Flush(runs, buffer, bold, italic);
+            italic = !italic;
+            next = at + 1;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

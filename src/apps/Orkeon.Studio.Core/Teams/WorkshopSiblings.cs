@@ -179,19 +179,7 @@ public static class WorkshopSiblings
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                var stuck = new List<string>();
-                for (var i = journal.Count - 1; i >= 0; i--)
-                {
-                    try
-                    {
-                        Directory.Move(journal[i].To, journal[i].From);
-                    }
-                    catch (Exception back) when (back is IOException or UnauthorizedAccessException)
-                    {
-                        stuck.Add(journal[i].Kind);
-                    }
-                }
-
+                var stuck = MoveBack(journal);
                 if (destinationFolder is not null && stuck.Count == 0)
                     TryDelete(destinationFolder);
 
@@ -201,6 +189,25 @@ public static class WorkshopSiblings
         }
 
         return new WorkshopMoveResult([.. journal.Select(move => move.Kind)], [], [], destinationFolder);
+    }
+
+    /// <summary>Puts the journaled trees back, last first; the kinds the disk kept at their destination.</summary>
+    private static List<string> MoveBack(List<(string Kind, string From, string To)> journal)
+    {
+        var stuck = new List<string>();
+        for (var i = journal.Count - 1; i >= 0; i--)
+        {
+            try
+            {
+                Directory.Move(journal[i].To, journal[i].From);
+            }
+            catch (Exception back) when (back is IOException or UnauthorizedAccessException)
+            {
+                stuck.Add(journal[i].Kind);
+            }
+        }
+
+        return stuck;
     }
 
     /// <summary>Whether a file or a folder sits at <paramref name="path"/>; an unreadable disk answers no.</summary>

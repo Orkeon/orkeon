@@ -188,9 +188,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             if (finalState.Outcome.HasFailures)
                 LogGraphExecutionFailed(crew.Id, finalState.Outcome.Failures.Count, finalState.Outcome.Reason);
 
-            return await finalState.Outcome.CompleteAsync(
-                _hooks, crew.Id.ToString(), startTime, snapshots, domainResults, totalTime,
-                BuildTokenMetadata(finalState), finalOutput).ConfigureAwait(false);
+            return await finalState.Outcome.CompleteAsync(_hooks, new CrewRunSummary(
+                crew.Id.ToString(), startTime, snapshots, domainResults, totalTime,
+                BuildTokenMetadata(finalState), finalOutput)).ConfigureAwait(false);
         }
         catch (GraphCircuitBrokenException ex)
         {

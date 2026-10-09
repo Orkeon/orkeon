@@ -11,27 +11,33 @@ namespace Orkeon.Tools.Rag.DependencyInjection;
 /// resolved the document store, its backing provider and the embedding provider for crews
 /// that never search — and an unknown <c>Orkeon:Rag:Provider</c> failed them all.
 /// </summary>
-internal sealed class DeferredRagPipeline(Func<IRagPipeline> resolve) : IRagPipeline
+internal sealed class DeferredRagPipeline : IRagPipeline
 {
-    private readonly Lazy<IRagPipeline> _inner = new(resolve);
+    private readonly Lazy<IRagPipeline> _inner;
+
+    public DeferredRagPipeline(Func<IRagPipeline> resolve) => _inner = new(resolve);
 
     public Task<RagAnswer> QueryAsync(RagQuery query, CancellationToken cancellationToken = default)
         => _inner.Value.QueryAsync(query, cancellationToken);
 }
 
 /// <inheritdoc cref="DeferredRagPipeline"/>
-internal sealed class DeferredIngestionPipeline(Func<IIngestionPipeline> resolve) : IIngestionPipeline
+internal sealed class DeferredIngestionPipeline : IIngestionPipeline
 {
-    private readonly Lazy<IIngestionPipeline> _inner = new(resolve);
+    private readonly Lazy<IIngestionPipeline> _inner;
+
+    public DeferredIngestionPipeline(Func<IIngestionPipeline> resolve) => _inner = new(resolve);
 
     public Task<IngestionReport> IngestAsync(IngestionRequest request, CancellationToken cancellationToken = default)
         => _inner.Value.IngestAsync(request, cancellationToken);
 }
 
 /// <inheritdoc cref="DeferredRagPipeline"/>
-internal sealed class DeferredRagEvalHarness(Func<IRagEvalHarness> resolve) : IRagEvalHarness
+internal sealed class DeferredRagEvalHarness : IRagEvalHarness
 {
-    private readonly Lazy<IRagEvalHarness> _inner = new(resolve);
+    private readonly Lazy<IRagEvalHarness> _inner;
+
+    public DeferredRagEvalHarness(Func<IRagEvalHarness> resolve) => _inner = new(resolve);
 
     public Task<RagEvalRunResult> RunAsync(RagEvalRunRequest request, CancellationToken cancellationToken = default)
         => _inner.Value.RunAsync(request, cancellationToken);

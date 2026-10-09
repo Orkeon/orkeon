@@ -12,6 +12,22 @@ using Orkeon.Tools.Email.Security;
 
 namespace Orkeon.Tools.Email;
 
+/// <summary>
+/// Where a read message comes from, as <see cref="EmailToolHelpers.BuildRead"/> reports it: the
+/// account and folder it was fetched from, its id and flags — all absent for a parsed file.
+/// </summary>
+internal sealed record EmailReadOrigin
+{
+    /// <summary>An origin that names nothing: a message parsed from a file.</summary>
+    public static EmailReadOrigin None { get; } = new();
+
+    public string? Account { get; init; }
+    public string? Id { get; init; }
+    public string? Folder { get; init; }
+    public bool? Seen { get; init; }
+    public bool? Flagged { get; init; }
+}
+
 /// <summary>Mapping shared by the e-mail tools.</summary>
 internal static class EmailToolHelpers
 {
@@ -52,11 +68,11 @@ internal static class EmailToolHelpers
     /// exactly where the slice ends.
     /// </summary>
     public static EmailReadResponse BuildRead(
-        MimeMessage message, EmailContentScreen screen, int? offset, int? maxChars, int budget,
-        string? account = null, string? id = null, string? folder = null, bool? seen = null, bool? flagged = null)
+        MimeMessage message, EmailContentScreen screen, int? offset, int? maxChars, int budget, EmailReadOrigin? origin = null)
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(screen);
+        origin ??= EmailReadOrigin.None;
 
         var body = MimeMessageReader.ReadBody(message);
         var screening = screen.Screen(message.Subject, body.Text, body.HadHiddenContent);
@@ -80,11 +96,11 @@ internal static class EmailToolHelpers
                 HiddenContent = screening.HiddenContent,
                 Withheld = screening.Withhold,
             },
-            Account = account,
-            Id = id,
-            Folder = folder,
-            Seen = seen,
-            Flagged = flagged,
+            Account = origin.Account,
+            Id = origin.Id,
+            Folder = origin.Folder,
+            Seen = origin.Seen,
+            Flagged = origin.Flagged,
             MessageId = message.MessageId,
             From = message.From.Mailboxes.Select(MimeMessageReader.Format).FirstOrDefault() ?? string.Empty,
             ReplyTo = replyTo,

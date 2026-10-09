@@ -46,22 +46,18 @@ public sealed partial class JsLlmFacade
     /// <param name="provider">The provider every call goes to.</param>
     /// <param name="ct">The context's token.</param>
     /// <param name="tools">The tools <c>act</c> offers.</param>
-    /// <param name="budget">The run's budget, when it has one.</param>
-    /// <param name="permissionGate">The host's permission gate, when it registered one.</param>
-    /// <param name="observability">The sinks and the attribution of the calls.</param>
-    /// <param name="unknownTools">
-    /// The names of the agent's <c>.tools([...])</c> the host does not offer: <c>act</c> then
-    /// rejects with an <see cref="UnknownToolException"/> before any model call (GAP-27).
+    /// <param name="guards">
+    /// What <c>act</c> checks before running a tool: the run's budget, the host's permission
+    /// gate, and the agent's tools the host does not offer (GAP-27).
     /// </param>
+    /// <param name="observability">The sinks and the attribution of the calls.</param>
     internal JsLlmFacade(
         Engine engine,
         ILlmProvider? provider,
         CancellationToken ct,
         IReadOnlyList<IBaseTool>? tools = null,
-        Orkeon.Domain.Autonomous.AgentExecutionBudget? budget = null,
-        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        JsLlmObservability? observability = null,
-        UnknownAgentTools? unknownTools = null)
+        JsLlmActGuards? guards = null,
+        JsLlmObservability? observability = null)
     {
         _engine = engine;
         _provider = provider;
@@ -72,14 +68,14 @@ public sealed partial class JsLlmFacade
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _ct = _cts.Token;
         _tools = tools ?? System.Array.Empty<IBaseTool>();
-        _budget = budget;
-        _permissionGate = permissionGate;
+        _budget = guards?.Budget;
+        _permissionGate = guards?.PermissionGate;
+        _unknownTools = guards?.UnknownTools;
         _deltaSink = observability?.DeltaSink;
         _logger = observability?.Logger;
         _crewName = observability?.CrewName ?? string.Empty;
         _agentName = observability?.AgentName ?? string.Empty;
         _toolInvocation = observability?.ToolInvocation;
-        _unknownTools = unknownTools;
         embed = EmbedAsync;
     }
 

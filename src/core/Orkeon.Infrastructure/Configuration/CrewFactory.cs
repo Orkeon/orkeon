@@ -10,6 +10,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Crew;
+using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.Task;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
@@ -254,49 +255,7 @@ public partial class CrewFactory : ICrewFactory
             ct.ThrowIfCancellationRequested();
             var resolvedTools = await ResolveToolsAsync(agentConfig.Tools).ConfigureAwait(false);
 
-            var builder = new AgentBuilder()
-                .Role(AgentRole.From(agentConfig.Role))
-                .Goal(AgentGoal.From(agentConfig.Goal))
-                .AllowDelegation(agentConfig.AllowDelegation)
-                .MaxIterations(agentConfig.MaxIterations)
-                .Verbose(agentConfig.Verbose);
-
-            // As declared: the validation refused zero and less (GAP-38); none is no limit of its own.
-            if (agentConfig.MaxRpm is { } maxRpm)
-                builder.MaxRpm(maxRpm);
-
-            if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
-                builder.Backstory(agentConfig.Backstory);
-            if (resolvedTools.Count > 0)
-                builder.WithTools(resolvedTools);
-            // The agent's llm block — profile, model, sampling, thinking, response format, cache.
-            // It stopped here until GAP-17: parsed from YAML and .ork.ts, mapped onto the
-            // configuration, and never set on the agent, so every agent of a loaded crew ran on
-            // the host's settings whatever its llm block said.
-            if (agentConfig.LlmConfig is not null)
-                builder.WithLlmConfig(agentConfig.LlmConfig);
-            foreach (var attachment in agentConfig.KnowledgeAttachments)
-            {
-                builder.WithKnowledge(attachment.Profile is null && defaultKnowledgeProfile is not null
-                    ? attachment with { Profile = defaultKnowledgeProfile }
-                    : attachment);
-            }
-            // The agent's guardrails, rendered before its task's in every prompt. They stopped here
-            // until GAP-42: mapped from YAML onto the configuration and never set on the agent, so
-            // the model read the task's guardrails alone.
-            if (agentConfig.Guardrails is not null)
-                builder.WithGuardrails(agentConfig.Guardrails);
-            // The templates no YAML key writes, which a host sets on a configuration built or
-            // adjusted in code (config with { … }): lost here without a word until GAP-42.
-            // PromptTemplate reaches an attribute nothing reads (GAP-43).
-            if (agentConfig.SystemTemplate is not null)
-                builder.SystemTemplate(agentConfig.SystemTemplate);
-            if (agentConfig.PromptTemplate is not null)
-                builder.PromptTemplate(agentConfig.PromptTemplate);
-            if (agentConfig.ResponseTemplate is not null)
-                builder.ResponseTemplate(agentConfig.ResponseTemplate);
-
-            var agent = builder.Build();
+            var agent = BuildAgent(agentConfig, resolvedTools, defaultKnowledgeProfile);
 
             agentMap[agentConfig.Id] = agent;
 
@@ -304,6 +263,66 @@ public partial class CrewFactory : ICrewFactory
         }
 
         return agentMap;
+    }
+
+    /// <summary>One agent as its configuration declares it, its tools already resolved.</summary>
+    private static DomainAgent BuildAgent(
+        AgentConfiguration agentConfig, List<IBaseTool> resolvedTools, string? defaultKnowledgeProfile)
+    {
+        var builder = new AgentBuilder()
+            .Role(AgentRole.From(agentConfig.Role))
+            .Goal(AgentGoal.From(agentConfig.Goal))
+            .AllowDelegation(agentConfig.AllowDelegation)
+            .MaxIterations(agentConfig.MaxIterations)
+            .Verbose(agentConfig.Verbose);
+
+        // As declared: the validation refused zero and less (GAP-38); none is no limit of its own.
+        if (agentConfig.MaxRpm is { } maxRpm)
+            builder.MaxRpm(maxRpm);
+
+        if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
+            builder.Backstory(agentConfig.Backstory);
+        if (resolvedTools.Count > 0)
+            builder.WithTools(resolvedTools);
+        // The agent's llm block — profile, model, sampling, thinking, response format, cache.
+        // It stopped here until GAP-17: parsed from YAML and .ork.ts, mapped onto the
+        // configuration, and never set on the agent, so every agent of a loaded crew ran on
+        // the host's settings whatever its llm block said.
+        if (agentConfig.LlmConfig is not null)
+            builder.WithLlmConfig(agentConfig.LlmConfig);
+        foreach (var attachment in agentConfig.KnowledgeAttachments)
+            builder.WithKnowledge(WithDefaultProfile(attachment, defaultKnowledgeProfile));
+        // The agent's guardrails, rendered before its task's in every prompt. They stopped here
+        // until GAP-42: mapped from YAML onto the configuration and never set on the agent, so
+        // the model read the task's guardrails alone.
+        if (agentConfig.Guardrails is not null)
+            builder.WithGuardrails(agentConfig.Guardrails);
+        ApplyTemplates(builder, agentConfig);
+
+        return builder.Build();
+    }
+
+    /// <summary>A knowledge attachment naming no profile takes the crew's default, when it has one (GAP-02).</summary>
+    private static KnowledgeAttachment WithDefaultProfile(KnowledgeAttachment attachment, string? defaultKnowledgeProfile)
+    {
+        if (attachment.Profile is null && defaultKnowledgeProfile is not null)
+            return attachment with { Profile = defaultKnowledgeProfile };
+        return attachment;
+    }
+
+    /// <summary>
+    /// The templates no YAML key writes, which a host sets on a configuration built or
+    /// adjusted in code (config with { … }): lost here without a word until GAP-42.
+    /// PromptTemplate reaches an attribute nothing reads (GAP-43).
+    /// </summary>
+    private static void ApplyTemplates(AgentBuilder builder, AgentConfiguration agentConfig)
+    {
+        if (agentConfig.SystemTemplate is not null)
+            builder.SystemTemplate(agentConfig.SystemTemplate);
+        if (agentConfig.PromptTemplate is not null)
+            builder.PromptTemplate(agentConfig.PromptTemplate);
+        if (agentConfig.ResponseTemplate is not null)
+            builder.ResponseTemplate(agentConfig.ResponseTemplate);
     }
 
     /// <summary>

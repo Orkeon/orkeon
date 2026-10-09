@@ -50,36 +50,7 @@ internal sealed partial class ChatChannelService : BackgroundService
         // no operator sees before it matters.
         if (_discord.Enabled)
         {
-            // Validated here rather than assumed: this service now STARTS before
-            // CrewHostService (registration order is stop order reversed, and the drain must
-            // precede the channel's stop), so it can no longer lean on the host service
-            // having refused an empty crew list first.
-            if (_registry.Crews.Count == 0)
-                throw new HostConfigurationException(
-                    $"The Discord channel is enabled but no crew is configured under '{OrkeonHostOptions.SectionName}:Crews'.");
-
-            if (_discord.AllowedUserIds.Count == 0)
-            {
-                LogEmptyAllowList();
-                throw new HostConfigurationException(
-                    "The Discord channel is enabled but Discord:AllowedUserIds is empty — it would answer nobody.");
-            }
-
-            if (_discord.ProgressInterval <= TimeSpan.Zero)
-                throw new HostConfigurationException(
-                    $"Discord:ProgressInterval must be positive; got {_discord.ProgressInterval}.");
-
-            if (_discord.ReadToken() is null)
-                throw new HostConfigurationException(
-                    $"The Discord channel is enabled but the environment variable "
-                    + $"'{_discord.TokenEnvironmentVariable}' is empty or unset.");
-
-            foreach (var guildId in _discord.GuildIds)
-            {
-                if (!ulong.TryParse(guildId, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out _))
-                    throw new HostConfigurationException(
-                        $"Discord:GuildIds contains '{guildId}', which is not a Discord guild id (a number).");
-            }
+            ValidateDiscordConfiguration();
 
             // Which crew each room reaches (GAP-11), refused here when a route cannot be
             // honoured. A crew no room reaches is named, so hosting it is a choice the
@@ -90,6 +61,41 @@ internal sealed partial class ChatChannelService : BackgroundService
         }
 
         return base.StartAsync(cancellationToken);
+    }
+
+    /// <summary>The refusals of an enabled Discord channel, each a sentence naming the key to fix.</summary>
+    private void ValidateDiscordConfiguration()
+    {
+        // Validated here rather than assumed: this service now STARTS before
+        // CrewHostService (registration order is stop order reversed, and the drain must
+        // precede the channel's stop), so it can no longer lean on the host service
+        // having refused an empty crew list first.
+        if (_registry.Crews.Count == 0)
+            throw new HostConfigurationException(
+                $"The Discord channel is enabled but no crew is configured under '{OrkeonHostOptions.SectionName}:Crews'.");
+
+        if (_discord.AllowedUserIds.Count == 0)
+        {
+            LogEmptyAllowList();
+            throw new HostConfigurationException(
+                "The Discord channel is enabled but Discord:AllowedUserIds is empty — it would answer nobody.");
+        }
+
+        if (_discord.ProgressInterval <= TimeSpan.Zero)
+            throw new HostConfigurationException(
+                $"Discord:ProgressInterval must be positive; got {_discord.ProgressInterval}.");
+
+        if (_discord.ReadToken() is null)
+            throw new HostConfigurationException(
+                $"The Discord channel is enabled but the environment variable "
+                + $"'{_discord.TokenEnvironmentVariable}' is empty or unset.");
+
+        foreach (var guildId in _discord.GuildIds)
+        {
+            if (!ulong.TryParse(guildId, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out _))
+                throw new HostConfigurationException(
+                    $"Discord:GuildIds contains '{guildId}', which is not a Discord guild id (a number).");
+        }
     }
 
     /// <inheritdoc />

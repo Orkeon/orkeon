@@ -30,17 +30,19 @@ internal sealed class EmailAccountRegistry : IEmailAccountRegistry
 
     private readonly EmailToolsOptions _options;
     private readonly ConcurrentDictionary<string, EmailAccountResolution> _resolved = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lazy<IReadOnlyList<string>> _names;
 
     /// <summary>Creates the registry over the bound options.</summary>
     public EmailAccountRegistry(IOptions<EmailToolsOptions> options)
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
+        // The bound options are a snapshot: the names are sorted once, like the resolutions are cached.
+        _names = new(() => _options.Accounts.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList());
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<string> Names =>
-        _options.Accounts.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
+    public IReadOnlyList<string> Names => _names.Value;
 
     /// <inheritdoc />
     public string? DefaultName

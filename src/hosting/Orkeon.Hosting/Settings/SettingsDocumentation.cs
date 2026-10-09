@@ -204,39 +204,45 @@ internal sealed partial class SettingsDocumentation
         if (string.Equals(Name(value), typeName, StringComparison.Ordinal))
             return value;
 
+        if (DeclaredIn(declaring.Assembly, typeName) is { } local)
+            return local;
+
+        // A constant kept in another Orkeon assembly the options reference (the defaults of a subsystem).
+        return declaring.Assembly.GetReferencedAssemblies()
+            .Where(reference => reference.Name?.StartsWith("Orkeon.", StringComparison.Ordinal) == true)
+            .Select(reference => DeclaredInReferenced(reference, typeName))
+            .FirstOrDefault(found => found is not null);
+    }
+
+    /// <summary>The type named <paramref name="typeName"/> among those <paramref name="assembly"/> declares, the ones it can load when it cannot load them all.</summary>
+    private static Type? DeclaredIn(Assembly assembly, string typeName)
+    {
         Type?[] declared;
         try
         {
-            declared = declaring.Assembly.GetTypes();
+            declared = assembly.GetTypes();
         }
         catch (ReflectionTypeLoadException ex)
         {
             declared = ex.Types;
         }
 
-        if (declared.FirstOrDefault(type => type is not null && string.Equals(Name(type), typeName, StringComparison.Ordinal)) is { } local)
-            return local;
+        return declared.FirstOrDefault(type => type is not null && string.Equals(Name(type), typeName, StringComparison.Ordinal));
+    }
 
-        // A constant kept in another Orkeon assembly the options reference (the defaults of a subsystem).
-        foreach (var reference in declaring.Assembly.GetReferencedAssemblies())
+    /// <summary>The type named <paramref name="typeName"/> in the referenced assembly; null when the assembly cannot be read or declares none.</summary>
+    private static Type? DeclaredInReferenced(AssemblyName reference, string typeName)
+    {
+        try
         {
-            if (reference.Name?.StartsWith("Orkeon.", StringComparison.Ordinal) != true)
-                continue;
-
-            try
-            {
-                var found = Assembly.Load(reference).GetTypes()
-                    .FirstOrDefault(type => string.Equals(Name(type), typeName, StringComparison.Ordinal));
-                if (found is not null)
-                    return found;
-            }
-            catch (Exception ex) when (ex is IOException or BadImageFormatException or ReflectionTypeLoadException)
-            {
-                // An assembly that cannot be read names nothing: the reference keeps its two names.
-            }
+            return Assembly.Load(reference).GetTypes()
+                .FirstOrDefault(type => string.Equals(Name(type), typeName, StringComparison.Ordinal));
         }
-
-        return null;
+        catch (Exception ex) when (ex is IOException or BadImageFormatException or ReflectionTypeLoadException)
+        {
+            // An assembly that cannot be read names nothing: the reference keeps its two names.
+            return null;
+        }
     }
 
     [GeneratedRegex(@"\s+")]

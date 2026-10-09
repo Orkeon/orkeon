@@ -315,7 +315,7 @@ internal sealed class SystemdUserScheduleAdapter(IForgeOsCommands commands, stri
     }
 
     /// <summary>Where this adapter writes the units.</summary>
-    public string UnitDirectory { get; } = unitDirectory;
+    public string UnitDirectory => unitDirectory;
 
     /// <inheritdoc />
     public ForgePromotePlatform Family => ForgePromotePlatform.Linux;

@@ -46,7 +46,13 @@ public class JsExecutionContext
         var (tools, unknownTools) = ResolveAgentTools(environment);
         llm = new JsLlmFacade(
             environment.Engine, environment.LlmProvider, environment.Ct,
-            tools, environment.Budget, environment.PermissionGate,
+            tools,
+            new JsLlmActGuards
+            {
+                Budget = environment.Budget,
+                PermissionGate = environment.PermissionGate,
+                UnknownTools = unknownTools,
+            },
             new JsLlmObservability
             {
                 DeltaSink = environment.DeltaSink,
@@ -54,8 +60,7 @@ public class JsExecutionContext
                 Logger = environment.Logger,
                 CrewName = environment.Crew.name,
                 AgentName = environment.Self.name,
-            },
-            unknownTools);
+            });
     }
 
     /// <summary>

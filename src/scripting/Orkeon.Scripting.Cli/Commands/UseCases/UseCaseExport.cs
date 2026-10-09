@@ -106,10 +106,10 @@ internal static class UseCaseExporter
         Copy(catalog, useCase.Id, useCase.CrewFileName, Path.Combine(destination, CrewDirectoryName, TeamCrewFileName(useCase)));
         files.Add(crewFile);
 
-        foreach (var data in catalog.FilesOf(useCase.Id).Where(file => IsData(file.Path)))
+        foreach (var dataPath in catalog.FilesOf(useCase.Id).Select(file => file.Path).Where(IsData))
         {
-            Copy(catalog, useCase.Id, data.Path, Path.Combine([destination, .. data.Path.Split('/')]));
-            files.Add(data.Path);
+            Copy(catalog, useCase.Id, dataPath, Path.Combine([destination, .. dataPath.Split('/')]));
+            files.Add(dataPath);
         }
 
         // A mount whose folder is missing is fatal when the runner builds its host: the folder

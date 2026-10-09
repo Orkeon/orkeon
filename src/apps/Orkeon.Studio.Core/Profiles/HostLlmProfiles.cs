@@ -71,35 +71,35 @@ public static class HostLlmProfiles
         foreach (var profile in set.Profiles)
         {
             // Two settings under one name: the first one is the one every lookup finds.
-            if (standing.ContainsKey(profile.Name))
-                continue;
-
-            var id = profile.HostProfileId;
-            HostProfileCheck check;
-            if (id is not null && LlmProfilesSection.IsDefault(id))
-            {
-                check = new HostProfileCheck(HostProfileStatus.DefaultName, id);
-            }
-            else if (id is not null && owners.TryGetValue(id, out var owner))
-            {
-                check = new HostProfileCheck(HostProfileStatus.TakenBySetting, id, owner);
-            }
-            else
-            {
-                if (id is not null)
-                    owners[id] = profile.Name;
-
-                check = !profile.DescribesProvider
-                    ? new HostProfileCheck(HostProfileStatus.NoProvider, id)
-                    : id is null
-                        ? new HostProfileCheck(HostProfileStatus.NoId, null)
-                        : new HostProfileCheck(HostProfileStatus.Offered, id);
-            }
-
-            standing[profile.Name] = check;
+            if (!standing.ContainsKey(profile.Name))
+                standing[profile.Name] = Check(profile, owners);
         }
 
         return standing;
+    }
+
+    /// <summary>
+    /// One setting's standing, given the ids the settings before it own; a setting that may
+    /// offer its id takes it, so the next one answering to it is told whose it is.
+    /// </summary>
+    private static HostProfileCheck Check(ModelProfile profile, Dictionary<string, string> owners)
+    {
+        var id = profile.HostProfileId;
+        if (id is not null && LlmProfilesSection.IsDefault(id))
+            return new HostProfileCheck(HostProfileStatus.DefaultName, id);
+
+        if (id is not null && owners.TryGetValue(id, out var owner))
+            return new HostProfileCheck(HostProfileStatus.TakenBySetting, id, owner);
+
+        if (id is not null)
+            owners[id] = profile.Name;
+
+        if (!profile.DescribesProvider)
+            return new HostProfileCheck(HostProfileStatus.NoProvider, id);
+
+        return id is null
+            ? new HostProfileCheck(HostProfileStatus.NoId, null)
+            : new HostProfileCheck(HostProfileStatus.Offered, id);
     }
 
     /// <summary>The host profile id each offered setting answers to, by setting name.</summary>

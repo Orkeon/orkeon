@@ -36,7 +36,7 @@ public sealed class JsLlmFacadeBudgetTests
         });
         var budget = new AgentExecutionBudget { MaxToolCalls = 1 };
 
-        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
 
         var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.ActAsync(engine, "loop forever", null));
 
@@ -57,7 +57,7 @@ public sealed class JsLlmFacadeBudgetTests
         });
         var budget = new AgentExecutionBudget { MaxTokensConsumed = 100 };
 
-        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, tools: null, budget);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, tools: null, new JsLlmActGuards { Budget = budget });
 
         var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.ActAsync(engine, "hello", null));
 
@@ -80,7 +80,7 @@ public sealed class JsLlmFacadeBudgetTests
         };
         clock.Advance(TimeSpan.FromMinutes(6));
 
-        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, tools: null, budget);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, tools: null, new JsLlmActGuards { Budget = budget });
 
         var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.ActAsync(engine, "hello", null));
 
@@ -100,7 +100,7 @@ public sealed class JsLlmFacadeBudgetTests
         });
         var budget = new AgentExecutionBudget { MaxToolCalls = 5, MaxTokensConsumed = 1_000 };
 
-        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
 
         var result = await facade.ActAsync(engine, "please echo hi", null);
 

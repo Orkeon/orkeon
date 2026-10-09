@@ -51,12 +51,17 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// own flow (<see cref="AsyncLocal{T}"/>) and its locals: a call started inside it — even on a
     /// stream that resumes in its consumer's context — reaches it through the reference it captured.
     /// </summary>
-    private sealed class MeteredCall(MeteredCall? outer)
+    private sealed class MeteredCall
     {
         private int _countedInside;
 
+        public MeteredCall(MeteredCall? outer)
+        {
+            Outer = outer;
+        }
+
         /// <summary>The metered call this one runs inside, if any.</summary>
-        public MeteredCall? Outer { get; } = outer;
+        public MeteredCall? Outer { get; }
 
         /// <summary>Whether a meter inside this call counted it already.</summary>
         public bool CountedInside => Volatile.Read(ref _countedInside) != 0;
