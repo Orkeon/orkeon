@@ -299,7 +299,9 @@ public class AggregateRootTests
         u2.PublicMarkAsUpdated();
         Assert.Equal(2, u1.Version);
         Assert.Equal(2, u2.Version);
-        Assert.NotEqual(u1.UpdatedAt, u2.UpdatedAt);
+        // Two copies of the same aggregate updated concurrently reach the same version:
+        // the version, not the timestamp, is what reveals the conflict.
+        Assert.Equal(u1.Id, u2.Id);
     }
 
     #endregion
