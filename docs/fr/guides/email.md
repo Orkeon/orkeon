@@ -61,7 +61,8 @@ Chaque paramètre est listé [plus bas](#paramètres) ; les exemples d'appel et 
 chaque outil pour la permission gate sont dans l'[inventaire des outils](../tools/inventory.md).
 `AddOrkeonEmailTools(configuration)` enregistre les treize. L'hôte partagé des runners l'appelle
 — `orkeon run`, les scripts `.ork.ts` et `orkeon-host` ont donc les outils — et `orkeon-repl`
-aussi ; `orkeon forge` écarte les douze outils de boîte aux lettres des crews qu'il forge. Tant
+aussi ; `orkeon forge` les propose aux crews qu'il forge et joue chaque essai sur une boîte
+d'essai (voir [Crews forgés](#crews-forgés)). Tant
 qu'aucun compte n'est déclaré, les outils de boîte aux lettres refusent tout appel avec un message
 qui dit quoi déclarer, `email_accounts` n'en liste aucun, et `email_parser`, qui ne demande aucun
 compte, fonctionne.
@@ -421,6 +422,27 @@ défaut : le détecteur a été calibré sur des pages web, et les newsletters l
 vraie frontière, ce sont les droits du compte, la liste d'autorisation et les brouillons — voir
 [Sécurité](../architecture/security.md#outils-e-mail).
 
+### Un run dont les outils mail manquent d'un droit est refusé au départ
+
+Avant tout appel au modèle, `orkeon run` — donc chaque lancement depuis Studio et chaque
+lancement planifié, qui passent par lui, et `orkeon-host`, qui charge les crews de la même
+façon — confronte les outils mail du crew aux comptes prêts (secret présent, sans contrôle
+réseau). Chaque outil demande son droit de base : `email_folders`, `email_search`, `email_read`
+et `email_save_attachment` demandent `Read` ; `email_create_folder`, `email_rename_folder`,
+`email_move` et `email_mark` demandent `Organize` ; `email_delete` demande `Delete` ;
+`email_draft` demande `Draft` ; `email_send` demande `Send` avec une liste
+`Send:AllowedRecipients` non vide sur le même compte ; `email_accounts` ne demande rien. Quand
+aucun compte prêt n'accorde l'un d'eux, le run s'arrête avant tout appel au modèle : `orkeon run`
+sort avec le code 2 et un message `ERROR:` qui tient une ligne par outil, nomme le droit et où
+l'ajouter — **Réglages › Mails** dans Studio, ou `Orkeon:Tools:Email:Accounts:<nom>:Rights` ;
+`--validate` échoue (code 1) avec les mêmes lignes ; `orkeon-host` fait échouer le run et garde
+les lignes dans son journal. Les
+variantes connues seulement à l'appel (`permanent: true` demande `Purge`, `mark_read` demande
+`Organize`) restent jugées à l'appel, avec la liste d'autorisation et les plafonds : le contrôle
+au départ écarte un run voué à échouer à son premier appel mail, il ne remplace pas les
+garde-fous. Un crew scripté (`.ork.ts`) est contrôlé une fois son script chargé : un appel au
+modèle que le script fait lui-même pendant le chargement peut déjà avoir eu lieu.
+
 ## Utiliser les outils
 
 ### Depuis un crew YAML
@@ -563,6 +585,34 @@ voit tous les comptes du fichier de réglages qu'il résout.
   et `<>:"/\|?*`, ni point en tête ni point ou espace en fin, un `_` devant un nom de périphérique
   Windows (`CON`, `NUL`, `COM1`…), 120 caractères au plus, `attachment-1.pdf` pour une première
   pièce jointe sans nom (`.bin` quand son type est inconnu), `nom (1).ext` pour une seconde du même nom.
+
+## Crews forgés
+
+`orkeon forge` (et **Créer une équipe** dans Studio) propose les douze outils de boîte aux lettres
+comme tout autre outil, compte configuré ou non. Un essai ne touche jamais une vraie boîte : le
+banc ouvre un **procès mail** autour du run, et chaque outil de boîte aux lettres travaille alors
+sur une boîte fictive.
+
+- **La boîte d'essai** part d'un exemple livré avec Orkeon — Inbox, Sent, Drafts, Archive et
+  Trash, une douzaine de messages variés, dont un avec pièce jointe — plus jusqu'à cinq mails que
+  l'Atelier écrit à partir du besoin, une fois par session (`trial-mailbox.json` dans le dossier
+  de la session). S'il n'y parvient pas, l'essai tourne sur l'exemple seul et le compte rendu du
+  run le dit (`mailSeedNote`). L'essai voit ses propres modifications : un message déplacé est
+  dans son nouveau dossier, un message supprimé a disparu ; l'essai suivant repart de zéro.
+- **Rien ne sort.** Un envoi, un brouillon, un déplacement, une marque, une suppression, un
+  dossier créé ou renommé, une pièce jointe enregistrée : chacun n'est appliqué qu'à la boîte
+  d'essai et noté comme action simulée — dans `runs/<n>/run.json` (`mailActions`), sur
+  l'événement `run.finished`, dans le terminal et sous le verdict dans Studio, avec destinataires,
+  objet et corps pour un envoi. Le juge les lit aussi, et recale une équipe qui confie un mail à
+  la messagerie interne (`post_message`, une adresse `client://`) : elle n'envoie jamais de mail.
+- **Les garde-fous du compte jugent déjà l'essai.** Quand des comptes sont déclarés, l'essai voit
+  leurs noms et leurs droits — jamais leur adresse ni rien de leur boîte — et une action que le
+  vrai compte refuserait (un droit absent, un destinataire hors de `Send:AllowedRecipients`, le
+  plafond de destinataires ou d'envois par heure) est refusée à l'essai. L'essai compte ses envois
+  à part de l'heure réelle. Sans compte déclaré, l'essai offre un compte d'essai `trial` qui
+  autorise tout ; le manque apparaît au lancement de l'équipe promue.
+- **L'équipe promue n'est pas simulée.** Le procès appartient au banc, pas à l'équipe : une fois
+  promue, elle agit sur le compte configuré, sous ses droits et ses garde-fous.
 
 ## Les commandes `orkeon email`
 

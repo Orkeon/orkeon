@@ -13,7 +13,8 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 internal interface IForgeJudge
 {
     /// <summary>Judges <paramref name="output"/> against the brief.</summary>
-    Task<ForgeJudgement> JudgeAsync(ForgeBrief brief, string output, CancellationToken cancellationToken);
+    Task<ForgeJudgement> JudgeAsync(
+        ForgeBrief brief, string output, IReadOnlyList<ForgeMailAction> mailActions, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -50,7 +51,7 @@ internal sealed class LlmForgeJudge : IForgeJudge
 
     /// <inheritdoc />
     public async Task<ForgeJudgement> JudgeAsync(
-        ForgeBrief brief, string output, CancellationToken cancellationToken)
+        ForgeBrief brief, string output, IReadOnlyList<ForgeMailAction> mailActions, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(output);
@@ -72,7 +73,7 @@ internal sealed class LlmForgeJudge : IForgeJudge
             LlmMessage[] prompt =
             [
                 LlmMessage.System(SystemPrompt),
-                new LlmMessage { Role = "user", Content = BuildBody(brief, output, parseError) },
+                new LlmMessage { Role = "user", Content = BuildBody(brief, output, mailActions, parseError) },
             ];
             var response = await _provider.ChatAsync(prompt, config, cancellationToken).ConfigureAwait(false);
             usage = usage.Plus(Measure(response, prompt));
@@ -122,9 +123,13 @@ internal sealed class LlmForgeJudge : IForgeJudge
         + "\"suggestions\": [{\"target\": \"agent:<key>|task:<key>|crew\", \"change\": \"...\", \"reason\": \"...\"}]}. "
         + "One finding per criterion that is missed or only partly met; a missed 'must' "
         + "criterion is severity blocking. Suggestions must be concrete changes to the team "
-        + "— which agent, which task, what to alter — phrased so a designer can apply them.";
+        + "— which agent, which task, what to alter — phrased so a designer can apply them. "
+        + "Weigh the simulated mail actions (nothing was sent: the try ran on a trial mailbox) "
+        + "against the need. A crew that confides a mail send to internal messaging (post_message) "
+        + "or to a client:// address has not sent any mail — that is a blocking finding.";
 
-    private static string BuildBody(ForgeBrief brief, string output, string? parseError)
+    private static string BuildBody(
+        ForgeBrief brief, string output, IReadOnlyList<ForgeMailAction> mailActions, string? parseError)
     {
         var body = new StringBuilder();
 
@@ -141,6 +146,18 @@ internal sealed class LlmForgeJudge : IForgeJudge
         body.AppendLine();
         body.AppendLine("## The output to judge");
         body.AppendLine(output);
+
+        if (mailActions.Count > 0)
+        {
+            body.AppendLine();
+            body.AppendLine("## Simulated mail actions (nothing was sent — the try ran on a trial mailbox)");
+            foreach (var action in mailActions)
+            {
+                body.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+                    $"- {action.Kind} to {string.Join(", ", action.Recipients)} | subject: {action.Subject} | folder: {action.Folder} | target: {action.Target}");
+                body.AppendLine(action.Body);
+            }
+        }
 
         if (parseError is not null)
         {

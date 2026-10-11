@@ -213,7 +213,7 @@ internal sealed partial class CrewRunner : ICrewRunner
                 ? _mountPlan!.Roots.Contains(mapped, StringComparer.Ordinal)
                 : (bool?)null;
             var crew = await RunnerExecution
-                .LoadCrewAsync(_host, factory, mapped ?? hosted.Path, _logger, run.Cancellation.Token, isDirectory)
+                .LoadCrewAsync(_host, factory, scope.ServiceProvider, mapped ?? hosted.Path, _logger, run.Cancellation.Token, isDirectory)
                 .ConfigureAwait(false);
             crewId = crew.Id;
 

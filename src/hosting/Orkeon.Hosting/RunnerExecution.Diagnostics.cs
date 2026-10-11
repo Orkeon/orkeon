@@ -76,7 +76,7 @@ public static partial class RunnerExecution
                 await using var _ = scope.ConfigureAwait(false);
                 var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
                 var crew = await LoadCrewAsync(
-                    host, factory, virtualConfigPath, logger, cts.Token, bootstrap.IsCrewDirectory)
+                    host, factory, scope.ServiceProvider, virtualConfigPath, logger, cts.Token, bootstrap.IsCrewDirectory)
                     .ConfigureAwait(false);
 
                 // Tools live on the agents, not the crew aggregate (which holds only ids).
@@ -317,7 +317,12 @@ public static partial class RunnerExecution
     /// by a link (<c>deploy/current → deploy/release-42</c>) reports as
     /// <see cref="VirtualEntryKind.SymLink"/> and would be read as a single file.
     /// </param>
-    public static async Task<Domain.Crew.Crew> LoadCrewAsync(
+    /// <remarks>
+    /// This overload only loads the crew. The e-mail rights check needs the scope the
+    /// <paramref name="factory"/> came from: it is run by the overload taking <c>scopeServices</c>,
+    /// which <c>orkeon run</c>, <c>--validate</c> and <c>orkeon-host</c> use.
+    /// </remarks>
+    public static Task<Domain.Crew.Crew> LoadCrewAsync(
         IHost host,
         ICrewFactory factory,
         string configPath,
@@ -329,6 +334,78 @@ public static partial class RunnerExecution
         ArgumentNullException.ThrowIfNull(factory);
         ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
 
+        return LoadCrewTargetAsync(host, factory, configPath, logger, targetIsDirectory, ct);
+    }
+
+    /// <summary>
+    /// Loads the crew like the overload without a scope, then refuses it when a mail tool it names
+    /// has no ready account granting its right.
+    /// </summary>
+    /// <param name="host">The built host.</param>
+    /// <param name="factory">The crew factory.</param>
+    /// <param name="scopeServices">
+    /// The scope the <paramref name="factory"/> came from, whose repositories hold the loaded
+    /// agents and tasks: the crew's tool names are read there for the e-mail rights check.
+    /// </param>
+    /// <param name="configPath">The crew target as a virtual path.</param>
+    /// <param name="logger">Logger for the loading trace.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <param name="targetIsDirectory">Whether the target is a crew directory, when known.</param>
+    public static async Task<Domain.Crew.Crew> LoadCrewAsync(
+        IHost host,
+        ICrewFactory factory,
+        IServiceProvider scopeServices,
+        string configPath,
+        ILogger logger,
+        CancellationToken ct,
+        bool? targetIsDirectory = null)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentNullException.ThrowIfNull(scopeServices);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
+
+        var crew = await LoadCrewTargetAsync(host, factory, configPath, logger, targetIsDirectory, ct).ConfigureAwait(false);
+        await RefuseUngrantedMailToolsAsync(host, scopeServices, crew, ct).ConfigureAwait(false);
+        return crew;
+    }
+
+    /// <summary>
+    /// Refuses a crew whose mail tools no ready account grants, before any model call: one read of
+    /// the account statuses, none when the crew names no mail tool.
+    /// </summary>
+    private static async Task RefuseUngrantedMailToolsAsync(
+        IHost host, IServiceProvider scopeServices, Domain.Crew.Crew crew, CancellationToken ct)
+    {
+        var check = host.Services.GetService<Orkeon.Tools.Email.Accounts.EmailRightsCheck>();
+        if (check is null)
+            return;
+
+        var agents = scopeServices.GetService<Domain.Agent.IAgentRepository>() is { } agentRepository
+            ? await agentRepository.GetByIdsAsync(crew.Agents, ct).ConfigureAwait(false)
+            : [];
+        var tasks = scopeServices.GetService<Domain.Task.ITaskRepository>() is { } taskRepository
+            ? await taskRepository.GetByIdsAsync(crew.Tasks, ct).ConfigureAwait(false)
+            : [];
+        var toolNames = agents.SelectMany(a => a.Tools)
+            .Concat(tasks.SelectMany(t => t.Tools))
+            .Select(t => t.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var lines = await check.CheckAsync(toolNames, ct).ConfigureAwait(false);
+        if (lines.Count > 0)
+            throw new InvalidOperationException(string.Join('\n', lines));
+    }
+
+    private static async Task<Domain.Crew.Crew> LoadCrewTargetAsync(
+        IHost host,
+        ICrewFactory factory,
+        string configPath,
+        ILogger logger,
+        bool? targetIsDirectory,
+        CancellationToken ct)
+    {
         if (IsScriptedCrewDefinition(configPath))
             return await LoadCrewFromScriptAsync(host, factory, configPath, logger, ct).ConfigureAwait(false);
 

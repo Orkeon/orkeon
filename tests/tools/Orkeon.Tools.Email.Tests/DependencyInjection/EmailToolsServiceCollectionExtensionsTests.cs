@@ -10,6 +10,8 @@ using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.Email.Mailboxes;
 using Orkeon.Tools.Email.Tests.Doubles;
 using Orkeon.Tools.Email.Tests.Fixtures;
+using Orkeon.Tools.Email.Trial;
+using Orkeon.Tools.Email.Accounts;
 
 namespace Orkeon.Tools.Email.Tests.DependencyInjection;
 
@@ -32,6 +34,16 @@ public sealed class EmailToolsServiceCollectionExtensionsTests
         var tools = provider.GetServices<IBaseTool>().ToList();
 
         Assert.Equal(ToolNames, tools.Select(tool => tool.Name).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "BR-02")]
+    public void ShouldRegisterTheScopedDecorators_WhenEmailToolsAreAdded()
+    {
+        using var provider = Build(services => services.AddOrkeonEmailTools(EmptyConfiguration()));
+
+        Assert.IsType<ScopedMailboxProvider>(provider.GetRequiredService<IMailboxProvider>());
+        Assert.IsType<ScopedEmailAccountRegistry>(provider.GetRequiredService<IEmailAccountRegistry>());
     }
 
     [Fact]

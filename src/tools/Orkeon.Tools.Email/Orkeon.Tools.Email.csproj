@@ -17,6 +17,8 @@
     <InternalsVisibleTo Include="Orkeon.Tools.Email.Tests" />
     <!-- STUDIO-65: the Studio drift tests hold Core's copy of the keys and the enumeration spellings to the binder. -->
     <InternalsVisibleTo Include="Orkeon.Studio.Core.Tests" />
+    <!-- FORGE-10: the forge tests put a recording mailbox provider behind the trial. -->
+    <InternalsVisibleTo Include="Orkeon.Scripting.Cli.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,6 +41,11 @@
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- FORGE-10: the fictitious mailbox a forge try starts from. -->
+    <EmbeddedResource Include="Trial/Sample/sample-mailbox.json" LogicalName="Orkeon.Tools.Email.Trial.Sample.sample-mailbox.json" />
   </ItemGroup>
 
 </Project>

@@ -158,6 +158,26 @@ public class ForgeSessionModelTests
     }
 
     [Fact]
+    [Trait("BR", "BR-03")]
+    public void ShouldExposeMailActions_WhenRunFinishedCarriesThem()
+    {
+        var model = FullCycle();
+        Assert.Empty(model.MailActions);
+
+        model.Feed(Event("""{"v":2,"seq":20,"ts":"t","kind":"run.started","run":2,"target":"crew"}"""));
+        model.Feed(Event("""{"v":2,"seq":21,"ts":"t","kind":"run.finished","run":2,"success":true,"outputPath":"runs/2/output.md","mailActions":[{"kind":"send","account":"trial","recipients":["client@example.com"],"subject":"Morning summary","body":"All quiet.","folder":"Sent","target":""}]}"""));
+
+        var action = Assert.Single(model.MailActions);
+        Assert.Equal("send", action.Kind);
+        Assert.Equal(["client@example.com"], action.Recipients);
+        Assert.Equal("Morning summary", action.Subject);
+        Assert.Equal("All quiet.", action.Body);
+
+        model.Feed(Event("""{"v":2,"seq":22,"ts":"t","kind":"run.started","run":3,"target":"crew"}"""));
+        Assert.Empty(model.MailActions);
+    }
+
+    [Fact]
     public void The_full_stream_projects_the_whole_screen()
     {
         var model = FullCycle();
@@ -429,5 +449,21 @@ public class ForgeSessionModelTests
         Assert.Equal("The session folder 'veille' keeps its name.", model.LastWarning.Message);
         Assert.Null(model.LastError);
         Assert.Equal("ready", model.FinishedStatus);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public void ShouldFormatAMailActionLine_WithRecipientsSubjectAndBody()
+    {
+        var send = new ForgeMailActionView(
+            "send", "trial", ["a@example.com", "b@example.com"], "Morning summary", "All   quiet.\nNothing else.", "Sent", "");
+        var move = new ForgeMailActionView("move", "trial", [], "", "", "Inbox", "Archive");
+        var long400 = new ForgeMailActionView("send", "trial", ["a@example.com"], "S", new string('x', 400), "Sent", "");
+
+        Assert.Equal("send \u2192 a@example.com, b@example.com \u2014 Morning summary \u2014 All quiet. Nothing else.", send.Line);
+        Assert.StartsWith("move \u2192 Archive", move.Line, StringComparison.Ordinal);
+        Assert.DoesNotContain(" \u2014 \u2014", move.Line, StringComparison.Ordinal);
+        Assert.EndsWith(new string('x', 300) + "\u2026", long400.Line, StringComparison.Ordinal);
+        Assert.DoesNotContain(new string('x', 301), long400.Line, StringComparison.Ordinal);
     }
 }

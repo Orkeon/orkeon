@@ -141,6 +141,7 @@ public sealed class ForgeUsageSplitTests
         var judgement = await new LlmForgeJudge(silent).JudgeAsync(
             Brief(),
             "le résumé",
+            [],
             TestContext.Current.CancellationToken);
 
         Assert.NotNull(judgement.Verdict);
@@ -159,6 +160,7 @@ public sealed class ForgeUsageSplitTests
         var judgement = await new LlmForgeJudge(counting).JudgeAsync(
             Brief(),
             "le résumé",
+            [],
             TestContext.Current.CancellationToken);
 
         Assert.Equal(100, judgement.Usage.PromptTokens);

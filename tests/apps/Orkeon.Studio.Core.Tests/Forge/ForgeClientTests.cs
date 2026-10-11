@@ -160,6 +160,37 @@ public class ForgeClientTests
     }
 
     [Fact]
+    [Trait("BR", "BR-03")]
+    public async Task RunFinished_WithMailActions_RoundTrips()
+    {
+        var (client, processes) = Build();
+        processes.WithStandardOutput(
+            """{"v":2,"seq":1,"ts":"t","kind":"run.started","run":1,"target":"crew"}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"run.finished","run":1,"success":true,"outputPath":"o.md","mailActions":[{"kind":"send","account":"trial","recipients":["a@example.com","b@example.com"],"subject":"Morning summary","body":"All quiet.","folder":"Sent","target":"t1"}]}""");
+
+        var events = new List<OrkeonEvent>();
+        await client.RunAsync(
+            new ForgeStartRequest { Need = "veille", WorkingDirectory = "/ws" },
+            events.Add,
+            _ => { },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("run.finished", events[^1].Kind);
+        var model = new ForgeSessionModel();
+        foreach (var e in events)
+            model.Feed(e);
+
+        var action = Assert.Single(model.MailActions);
+        Assert.Equal("send", action.Kind);
+        Assert.Equal("trial", action.Account);
+        Assert.Equal(["a@example.com", "b@example.com"], action.Recipients);
+        Assert.Equal("Morning summary", action.Subject);
+        Assert.Equal("All quiet.", action.Body);
+        Assert.Equal("Sent", action.Folder);
+        Assert.Equal("t1", action.Target);
+    }
+
+    [Fact]
     public async Task Messages_and_decisions_go_down_stdin_as_protocol_lines()
     {
         var (client, processes) = Build();

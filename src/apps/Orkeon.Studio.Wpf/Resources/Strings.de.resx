@@ -2663,6 +2663,9 @@
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>Es stand kein Prüfer zur Verfügung: Die Kriterien unten wurden nicht einzeln geprüft – urteilen Sie selbst.</value>
   </data>
+  <data name="Studio.Create.MailActionsLabel" xml:space="preserve">
+    <value>Simulierte E-Mails — nichts wurde gesendet</value>
+  </data>
   <data name="Studio.Create.StageBrief" xml:space="preserve">
     <value>Ich notiere, was Sie möchten…</value>
   </data>

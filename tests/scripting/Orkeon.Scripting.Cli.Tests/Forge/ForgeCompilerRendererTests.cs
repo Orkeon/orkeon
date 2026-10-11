@@ -1,6 +1,7 @@
 using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.Serialization;
 using Orkeon.Scripting.Cli.Commands.Forge;
+using Orkeon.Tests.Shared.Doubles;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -11,6 +12,8 @@ namespace Orkeon.Scripting.Cli.Tests.Forge;
 /// </summary>
 public class ForgeBlueprintCompilerTests
 {
+    private static readonly string[] MailCatalogue = ["email_send", "email_parser", "file_read", "shell_command"];
+
     private static ForgeBlueprint Parse(string json)
     {
         Assert.True(ForgeBlueprint.TryParse(json, out var blueprint, out var errors), string.Join("; ", errors));
@@ -28,6 +31,27 @@ public class ForgeBlueprintCompilerTests
         Assert.Equal(2, compilation.Configuration.Agents.Count);
         Assert.Equal(2, compilation.Configuration.Tasks.Count);
         Assert.Equal("/output/resume.md", compilation.Tasks["resume"].Deliverable!.Path);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-01")]
+    public void ShouldAcceptABlueprintNamingEmailSend_WhenValidating()
+    {
+        var json = """
+            {
+              "crew": { "name": "courrier", "goal": "g" },
+              "agents": [ { "key": "a", "role": "r", "goal": "g", "tools": [ "email_send" ] } ],
+              "tasks": [ { "key": "t", "description": "d", "expectedOutput": "o", "agent": "a" } ]
+            }
+            """;
+        var catalogue = ForgeSandbox
+            .SelectCrewTools(MailCatalogue.Select(n => new StubBaseTool(n)).ToList())
+            .Select(tool => tool.Name)
+            .ToList();
+
+        var verdict = ForgeBlueprintCompiler.Validate(ForgeBlueprintCompiler.Compile(Parse(json)), catalogue);
+
+        Assert.Empty(verdict.Errors);
     }
 
     [Fact]

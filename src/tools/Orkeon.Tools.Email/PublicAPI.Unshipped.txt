@@ -111,3 +111,99 @@ Orkeon.Tools.Email.Configuration.EmailCredentialsLocation
 const Orkeon.Tools.Email.Configuration.EmailCredentialsLocation.TokenSubdirectory = "email" -> string!
 static Orkeon.Tools.Email.Configuration.EmailCredentialsLocation.ConfiguredDirectory(Microsoft.Extensions.Configuration.IConfiguration! emailSection) -> string?
 static Orkeon.Tools.Email.Configuration.EmailCredentialsLocation.NeedsTokenStore(Microsoft.Extensions.Configuration.IConfiguration! emailSection) -> bool
+Orkeon.Tools.Email.Trial.SimulatedMailAction
+Orkeon.Tools.Email.Trial.SimulatedMailAction.<Clone>$() -> Orkeon.Tools.Email.Trial.SimulatedMailAction!
+Orkeon.Tools.Email.Trial.SimulatedMailAction.SimulatedMailAction() -> void
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Equals(Orkeon.Tools.Email.Trial.SimulatedMailAction? other) -> bool
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Account.get -> string!
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Account.init -> void
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Body.get -> string!
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Body.init -> void
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Folder.get -> string!
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Folder.init -> void
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Kind.get -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Kind.init -> void
+Orkeon.Tools.Email.Trial.SimulatedMailAction.MessageId.get -> string!
+Orkeon.Tools.Email.Trial.SimulatedMailAction.MessageId.init -> void
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Recipients.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Recipients.init -> void
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Subject.get -> string!
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Subject.init -> void
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Target.get -> string!
+Orkeon.Tools.Email.Trial.SimulatedMailAction.Target.init -> void
+Orkeon.Tools.Email.Trial.TrialAttachment
+Orkeon.Tools.Email.Trial.TrialAttachment.<Clone>$() -> Orkeon.Tools.Email.Trial.TrialAttachment!
+Orkeon.Tools.Email.Trial.TrialAttachment.TrialAttachment() -> void
+Orkeon.Tools.Email.Trial.TrialAttachment.Equals(Orkeon.Tools.Email.Trial.TrialAttachment? other) -> bool
+Orkeon.Tools.Email.Trial.TrialAttachment.Content.get -> byte[]!
+Orkeon.Tools.Email.Trial.TrialAttachment.Content.init -> void
+Orkeon.Tools.Email.Trial.TrialAttachment.MediaType.get -> string!
+Orkeon.Tools.Email.Trial.TrialAttachment.MediaType.init -> void
+Orkeon.Tools.Email.Trial.TrialAttachment.Name.get -> string!
+Orkeon.Tools.Email.Trial.TrialAttachment.Name.init -> void
+Orkeon.Tools.Email.Trial.TrialMailMessage
+Orkeon.Tools.Email.Trial.TrialMailMessage.<Clone>$() -> Orkeon.Tools.Email.Trial.TrialMailMessage!
+Orkeon.Tools.Email.Trial.TrialMailMessage.TrialMailMessage() -> void
+Orkeon.Tools.Email.Trial.TrialMailMessage.Equals(Orkeon.Tools.Email.Trial.TrialMailMessage? other) -> bool
+Orkeon.Tools.Email.Trial.TrialMailMessage.Attachments.get -> System.Collections.Immutable.ImmutableList<Orkeon.Tools.Email.Trial.TrialAttachment!>!
+Orkeon.Tools.Email.Trial.TrialMailMessage.Attachments.init -> void
+Orkeon.Tools.Email.Trial.TrialMailMessage.Body.get -> string!
+Orkeon.Tools.Email.Trial.TrialMailMessage.Body.init -> void
+Orkeon.Tools.Email.Trial.TrialMailMessage.Date.get -> System.DateTimeOffset
+Orkeon.Tools.Email.Trial.TrialMailMessage.Date.init -> void
+Orkeon.Tools.Email.Trial.TrialMailMessage.Folder.get -> string!
+Orkeon.Tools.Email.Trial.TrialMailMessage.Folder.init -> void
+Orkeon.Tools.Email.Trial.TrialMailMessage.From.get -> string!
+Orkeon.Tools.Email.Trial.TrialMailMessage.From.init -> void
+Orkeon.Tools.Email.Trial.TrialMailMessage.Subject.get -> string!
+Orkeon.Tools.Email.Trial.TrialMailMessage.Subject.init -> void
+Orkeon.Tools.Email.Trial.TrialMailMessage.To.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Tools.Email.Trial.TrialMailMessage.To.init -> void
+Orkeon.Tools.Email.Trial.TrialMailboxSeed
+Orkeon.Tools.Email.Trial.TrialMailboxSeed.<Clone>$() -> Orkeon.Tools.Email.Trial.TrialMailboxSeed!
+Orkeon.Tools.Email.Trial.TrialMailboxSeed.TrialMailboxSeed() -> void
+Orkeon.Tools.Email.Trial.TrialMailboxSeed.Equals(Orkeon.Tools.Email.Trial.TrialMailboxSeed? other) -> bool
+Orkeon.Tools.Email.Trial.TrialMailboxSeed.Messages.get -> System.Collections.Immutable.ImmutableList<Orkeon.Tools.Email.Trial.TrialMailMessage!>!
+Orkeon.Tools.Email.Trial.TrialMailboxSeed.Messages.init -> void
+static Orkeon.Tools.Email.Trial.TrialMailboxSeed.Sample() -> Orkeon.Tools.Email.Trial.TrialMailboxSeed!
+Orkeon.Tools.Email.Trial.TrialMailboxSeed.With(System.Collections.Generic.IEnumerable<Orkeon.Tools.Email.Trial.TrialMailMessage!>! messages) -> Orkeon.Tools.Email.Trial.TrialMailboxSeed!
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Send = 0 -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Draft = 1 -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Move = 2 -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Mark = 3 -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Delete = 4 -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind.CreateFolder = 5 -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind.RenameFolder = 6 -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.SimulatedMailActionKind.SaveAttachment = 7 -> Orkeon.Tools.Email.Trial.SimulatedMailActionKind
+Orkeon.Tools.Email.Trial.EmailTrial
+Orkeon.Tools.Email.Trial.EmailTrial.Actions.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Email.Trial.SimulatedMailAction!>!
+Orkeon.Tools.Email.Trial.EmailTrial.Dispose() -> void
+static Orkeon.Tools.Email.Trial.EmailTrial.Current.get -> Orkeon.Tools.Email.Trial.EmailTrial?
+static Orkeon.Tools.Email.Trial.EmailTrial.Enter(Orkeon.Tools.Email.Trial.TrialMailboxSeed! seed) -> Orkeon.Tools.Email.Trial.EmailTrial!
+override Orkeon.Tools.Email.Trial.SimulatedMailAction.Equals(object? obj) -> bool
+override Orkeon.Tools.Email.Trial.SimulatedMailAction.GetHashCode() -> int
+override Orkeon.Tools.Email.Trial.SimulatedMailAction.ToString() -> string!
+static Orkeon.Tools.Email.Trial.SimulatedMailAction.operator !=(Orkeon.Tools.Email.Trial.SimulatedMailAction? left, Orkeon.Tools.Email.Trial.SimulatedMailAction? right) -> bool
+static Orkeon.Tools.Email.Trial.SimulatedMailAction.operator ==(Orkeon.Tools.Email.Trial.SimulatedMailAction? left, Orkeon.Tools.Email.Trial.SimulatedMailAction? right) -> bool
+override Orkeon.Tools.Email.Trial.TrialAttachment.Equals(object? obj) -> bool
+override Orkeon.Tools.Email.Trial.TrialAttachment.GetHashCode() -> int
+override Orkeon.Tools.Email.Trial.TrialAttachment.ToString() -> string!
+static Orkeon.Tools.Email.Trial.TrialAttachment.operator !=(Orkeon.Tools.Email.Trial.TrialAttachment? left, Orkeon.Tools.Email.Trial.TrialAttachment? right) -> bool
+static Orkeon.Tools.Email.Trial.TrialAttachment.operator ==(Orkeon.Tools.Email.Trial.TrialAttachment? left, Orkeon.Tools.Email.Trial.TrialAttachment? right) -> bool
+override Orkeon.Tools.Email.Trial.TrialMailMessage.Equals(object? obj) -> bool
+override Orkeon.Tools.Email.Trial.TrialMailMessage.GetHashCode() -> int
+override Orkeon.Tools.Email.Trial.TrialMailMessage.ToString() -> string!
+static Orkeon.Tools.Email.Trial.TrialMailMessage.operator !=(Orkeon.Tools.Email.Trial.TrialMailMessage? left, Orkeon.Tools.Email.Trial.TrialMailMessage? right) -> bool
+static Orkeon.Tools.Email.Trial.TrialMailMessage.operator ==(Orkeon.Tools.Email.Trial.TrialMailMessage? left, Orkeon.Tools.Email.Trial.TrialMailMessage? right) -> bool
+override Orkeon.Tools.Email.Trial.TrialMailboxSeed.Equals(object? obj) -> bool
+override Orkeon.Tools.Email.Trial.TrialMailboxSeed.GetHashCode() -> int
+override Orkeon.Tools.Email.Trial.TrialMailboxSeed.ToString() -> string!
+static Orkeon.Tools.Email.Trial.TrialMailboxSeed.operator !=(Orkeon.Tools.Email.Trial.TrialMailboxSeed? left, Orkeon.Tools.Email.Trial.TrialMailboxSeed? right) -> bool
+static Orkeon.Tools.Email.Trial.TrialMailboxSeed.operator ==(Orkeon.Tools.Email.Trial.TrialMailboxSeed? left, Orkeon.Tools.Email.Trial.TrialMailboxSeed? right) -> bool
+Orkeon.Tools.Email.Accounts.EmailRightsCheck
+Orkeon.Tools.Email.Accounts.EmailRightsCheck.Check(System.Collections.Generic.IReadOnlyCollection<string!>! crewTools, System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Email.Administration.EmailAccountStatus!>! accounts) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Email.Accounts.EmailRightsCheck.EmailRightsCheck(Orkeon.Tools.Email.Administration.EmailAccountAdministration! administration) -> void
+Orkeon.Tools.Email.Accounts.EmailRightsCheck.CheckAsync(System.Collections.Generic.IReadOnlyCollection<string!>! crewTools, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Tools.Email.Administration.EmailAccountStatus.AllowedRecipients.get -> int
+Orkeon.Tools.Email.Administration.EmailAccountStatus.AllowedRecipients.init -> void

@@ -282,10 +282,10 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | `code_interpreter` | enregistrement en type concret seulement — non résoluble par nom | idem |
 | `progress_report` | ❌ | ✅ (commandes scriptées) |
 
-`orkeon forge` s'appuie sur l'hôte des runners mais retire `shell_command`,
-`code_interpreter` et les douze tools de boîte aux lettres du catalogue où puise un crew
-forgé : un crew essayé sur le banc de test ne doit pas atteindre la vraie boîte de
-l'opérateur (`email_parser`, qui lit un fichier, reste).
+`orkeon forge` s'appuie sur l'hôte des runners mais retire `shell_command` et
+`code_interpreter` du catalogue où puise un crew forgé. Les douze tools de boîte aux lettres y
+restent : un essai les joue sur une boîte d'essai fictive et n'atteint jamais la vraie boîte de
+l'opérateur (FORGE-10, voir [Crews forgés](../guides/email.md#crews-forgés)).
 
 ## Résolution des tools par nom (YAML → instance)
 

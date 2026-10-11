@@ -32,6 +32,21 @@ internal sealed class FakeTestBench : IForgeTestBench
     }
 
     /// <summary>Queues a failed run.</summary>
+    /// <summary>Queues a successful run that simulated the given mail actions.</summary>
+    public FakeTestBench SucceedsWithMail(params ForgeMailAction[] actions)
+    {
+        _runs.Enqueue(new ForgeTestRun
+        {
+            Success = true,
+            Output = "Le résumé, sources citées.",
+            TaskCount = 2,
+            DurationMs = 40,
+            Tokens = 500,
+            MailActions = [.. actions],
+        });
+        return this;
+    }
+
     public FakeTestBench Fails(string error = "Crew execution failed: boom")
     {
         _runs.Enqueue(new ForgeTestRun { Success = false, Output = error, Error = error });
@@ -75,13 +90,18 @@ internal sealed class FakeJudge : IForgeJudge
         return this;
     }
 
+    /// <summary>The simulated mail actions each call received.</summary>
+    public List<IReadOnlyList<ForgeMailAction>> MailActions { get; } = [];
+
     /// <summary>Tokens each call reports, charged to the session budget.</summary>
     public long TokensPerCall { get; set; }
 
     /// <inheritdoc />
-    public Task<ForgeJudgement> JudgeAsync(ForgeBrief brief, string output, CancellationToken cancellationToken)
+    public Task<ForgeJudgement> JudgeAsync(
+        ForgeBrief brief, string output, IReadOnlyList<ForgeMailAction> mailActions, CancellationToken cancellationToken)
     {
         Calls++;
+        MailActions.Add(mailActions);
         return Task.FromResult(new ForgeJudgement(
             _verdicts.Count > 0 ? _verdicts.Dequeue() : null,
             new ForgeUsageSnapshot(TokensPerCall, 0, 0)));
@@ -139,6 +159,101 @@ public sealed class ForgeRunStagesTests : IDisposable
     private static ScriptedAssistant HappyAssistant() => new ScriptedAssistant()
         .SubmitsBrief(ForgeDocuments.ValidBrief)
         .SubmitsBlueprint(ForgeDocuments.ValidBlueprint);
+
+    private static readonly ForgeMailAction MorningSummary = new()
+    {
+        Kind = "send",
+        Account = "trial",
+        Recipients = ["client@example.com"],
+        Subject = "Morning summary",
+        Body = "All quiet.",
+    };
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public async Task ShouldPassTheSimulatedActionsToTheJudge()
+    {
+        var bench = new FakeTestBench().SucceedsWithMail(MorningSummary);
+        var judge = new FakeJudge().Approves();
+        var channel = new ScriptedUserChannel().Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var received = Assert.Single(judge.MailActions);
+        var action = Assert.Single(received);
+        Assert.Equal("send", action.Kind);
+        Assert.Equal(["client@example.com"], action.Recipients);
+        Assert.Equal("Morning summary", action.Subject);
+        Assert.Equal("All quiet.", action.Body);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public async Task ShouldListTheSimulatedActionsInTheJudgePrompt()
+    {
+        var withMail = new ScriptedLlmProvider().Answers("not json").Answers("not json");
+        var without = new ScriptedLlmProvider().Answers("not json").Answers("not json");
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        var ct = TestContext.Current.CancellationToken;
+
+        await new LlmForgeJudge(withMail).JudgeAsync(brief!, "output", [MorningSummary], ct);
+        await new LlmForgeJudge(without).JudgeAsync(brief!, "output", [], ct);
+
+        var listed = withMail.Chats[0].First(m => m.Role == "user").Content;
+        Assert.Contains("client@example.com", listed, StringComparison.Ordinal);
+        Assert.Contains("Morning summary", listed, StringComparison.Ordinal);
+        Assert.Contains("All quiet.", listed, StringComparison.Ordinal);
+        var bare = without.Chats[0].First(m => m.Role == "user").Content;
+        Assert.DoesNotContain("client@example.com", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("Morning summary", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("All quiet.", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("Simulated mail", bare, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-09")]
+    public async Task ShouldTellTheJudgeToFailMailSentThroughInternalMessaging()
+    {
+        var provider = new ScriptedLlmProvider().Answers("not json").Answers("not json");
+        var ticket = ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _);
+        Assert.True(ticket);
+
+        await new LlmForgeJudge(provider)
+            .JudgeAsync(brief!, "output", [MorningSummary], TestContext.Current.CancellationToken);
+
+        var system = provider.Chats[0].First(m => m.Role == "system").Content;
+        Assert.Contains("client://", system, StringComparison.Ordinal);
+        Assert.Contains("internal messaging", system, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("simulated mail", system, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public async Task ShouldSaveTheSimulatedActionsInRunJson_AndEmitThemOnRunFinished()
+    {
+        var bench = new FakeTestBench().SucceedsWithMail(MorningSummary);
+        var judge = new FakeJudge().Approves();
+        var channel = new ScriptedUserChannel().Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var saved = JsonElement.Parse(await File.ReadAllTextAsync(Path.Combine(session.Directory, "runs", "1", "run.json"), TestContext.Current.CancellationToken));
+        var savedAction = saved.GetProperty("mailActions")[0];
+        Assert.Equal("send", savedAction.GetProperty("kind").GetString());
+        Assert.Equal("Morning summary", savedAction.GetProperty("subject").GetString());
+
+        var finished = Events().Single(e => e.GetProperty("kind").GetString() == "run.finished");
+        Assert.True(finished.TryGetProperty("mailActions", out var actions));
+        var first = actions[0];
+        Assert.Equal("send", first.GetProperty("kind").GetString());
+        Assert.Equal("client@example.com", first.GetProperty("recipients")[0].GetString());
+        Assert.Equal("Morning summary", first.GetProperty("subject").GetString());
+        Assert.Equal("All quiet.", first.GetProperty("body").GetString());
+    }
 
     [Fact]
     public async Task The_full_cycle_runs_to_ready_with_the_run_snapshotted()
@@ -592,7 +707,7 @@ public class LlmForgeJudgeTests
             .Answers("""{ "score": 0.8, "findings": [], "suggestions": [] }""");
 
         var judgement = await new LlmForgeJudge(provider)
-            .JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
+            .JudgeAsync(Brief(), "le résumé", [], TestContext.Current.CancellationToken);
 
         var verdict = judgement.Verdict;
         Assert.NotNull(verdict);
@@ -614,7 +729,7 @@ public class LlmForgeJudgeTests
             .Answers("""{ "score": 0.75 }""");
 
         var judgement = await new LlmForgeJudge(provider)
-            .JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
+            .JudgeAsync(Brief(), "le résumé", [], TestContext.Current.CancellationToken);
 
         Assert.NotNull(judgement.Verdict);
         Assert.Equal(240, judgement.Usage.TotalTokens);   // both attempts were paid for
@@ -628,7 +743,7 @@ public class LlmForgeJudgeTests
         var provider = new ScriptedLlmProvider().Answers("meh").Answers("still meh");
 
         var judgement = await new LlmForgeJudge(provider)
-            .JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
+            .JudgeAsync(Brief(), "le résumé", [], TestContext.Current.CancellationToken);
 
         Assert.Null(judgement.Verdict);
         Assert.Equal(240, judgement.Usage.TotalTokens);   // unavailable is not free — it was attempted
@@ -638,7 +753,7 @@ public class LlmForgeJudgeTests
     public async Task No_provider_means_no_judge()
     {
         var judgement = await new LlmForgeJudge(null)
-            .JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
+            .JudgeAsync(Brief(), "le résumé", [], TestContext.Current.CancellationToken);
 
         Assert.Null(judgement.Verdict);
         Assert.Equal(0, judgement.Usage.TotalTokens);
@@ -652,7 +767,7 @@ public class LlmForgeJudgeTests
         var provider = new ScriptedLlmProvider()
             .Answers("""{"score":0.9,"passing":true,"findings":[],"suggestions":[]}""");
 
-        await new LlmForgeJudge(provider).JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
+        await new LlmForgeJudge(provider).JudgeAsync(Brief(), "le résumé", [], TestContext.Current.CancellationToken);
 
         Assert.Equal(string.Empty, Assert.Single(provider.ChatConfigs)!.Model);
     }

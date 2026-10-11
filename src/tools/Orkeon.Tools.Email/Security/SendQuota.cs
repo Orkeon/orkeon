@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Orkeon.Tools.Email.Trial;
 
 namespace Orkeon.Tools.Email.Security;
 
@@ -23,11 +24,15 @@ internal sealed class SendQuota
 
     /// <summary>
     /// Records one send for <paramref name="account"/> when it fits under <paramref name="maxPerHour"/>;
-    /// returns false, recording nothing, when the hour is full. A null cap always fits.
+    /// returns false, recording nothing, when the hour is full. A null cap always fits. Inside a
+    /// mail trial the send is counted against the trial's own quota, never this one.
     /// </summary>
     public bool TryConsume(string account, int? maxPerHour)
     {
         ArgumentNullException.ThrowIfNull(account);
+        if (EmailTrial.Current is { } trial && !ReferenceEquals(trial.Quota, this))
+            return trial.Quota.TryConsume(account, maxPerHour);
+
         if (maxPerHour is not { } cap)
             return true;
 

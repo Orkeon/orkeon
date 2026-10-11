@@ -1939,6 +1939,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>Whether any metric chip exists to show.</summary>
     public bool HasVerdictMetrics => VerdictMetricChips.Count > 0;
 
+    /// <summary>One line per simulated mail action of the last run: «kind → who — subject — body» (body cut at 300).</summary>
+    public IReadOnlyList<string> MailActionLines => [.. _model.MailActions.Select(action => action.Line)];
+
+    /// <summary>Whether the last run simulated any mail action.</summary>
+    public bool HasMailActions => _model.MailActions.Count > 0;
+
     /// <summary>Cumulative tokens spent by the session.</summary>
     public long TokensSpent => _model.TokensSpent;
 
@@ -3065,6 +3071,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(RunInProgress), nameof(Attempt), nameof(Verdict), nameof(HasVerdict),
             nameof(VerdictScore), nameof(VerdictPassing), nameof(TokensSpent),
             nameof(VerdictMetricChips), nameof(HasVerdictMetrics),
+            nameof(MailActionLines), nameof(HasMailActions),
             nameof(Suggestions), nameof(HasSuggestions), nameof(VerdictIsMechanical),
             nameof(SessionSlug), nameof(SessionDirectory),
             nameof(EngineVersion), nameof(HasEngineVersion), nameof(EngineLabel),

@@ -108,9 +108,10 @@ jugement du modèle.
   `graph.microsoft.com` en HTTPS : le jeton porteur ne part jamais vers un autre hôte. Le
   transport est en TLS (`SslOnConnect` ou `StartTls`) — `None` n'est accepté que vers un serveur
   de test en bouclage, et aucune option n'accepte un certificat invalide.
-- **Les crews forgés n'ont pas de boîte aux lettres.** `orkeon forge` retire les douze outils de
-  boîte aux lettres du catalogue des crews qu'il essaie sur son banc (`email_parser`, qui lit un
-  fichier, reste).
+- **Les crews forgés sont essayés sur une boîte fictive.** `orkeon forge` propose les douze outils
+  de boîte aux lettres, et son banc joue chaque essai dans un procès mail : les outils lisent et
+  modifient une boîte d'essai, un envoi est noté et ne sort jamais, et les droits, la liste
+  d'autorisation et les plafonds du compte configuré jugent déjà chaque action simulée (FORGE-10).
 
 **Limites honnêtes.** Le filtre est le détecteur par motifs décrit plus haut : il signale, et une
 injection paraphrasée passe. La frontière, ce sont les droits du compte, la liste d'autorisation

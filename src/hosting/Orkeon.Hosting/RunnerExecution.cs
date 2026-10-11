@@ -845,7 +845,7 @@ public static partial class RunnerExecution
         try
         {
             crew = await LoadCrewAsync(
-                host, factory, bootstrap.VirtualConfigPath, logger, ct, bootstrap.IsCrewDirectory).ConfigureAwait(false);
+                host, factory, scope.ServiceProvider, bootstrap.VirtualConfigPath, logger, ct, bootstrap.IsCrewDirectory).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException && !IsConnectionRefused(ex))
         {

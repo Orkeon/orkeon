@@ -1138,6 +1138,17 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,8"
+                       Visibility="{Binding HasMailActions, Converter={StaticResource BooleanToVisibility}}"
+                       Text="{Binding [Studio.Create.MailActionsLabel], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding MailActionLines}" Margin="0,0,0,4"
+                          Visibility="{Binding HasMailActions, Converter={StaticResource BooleanToVisibility}}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,2" Text="{Binding}"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,8"
                        Text="{Binding [Studio.Create.ChecklistLabel], Source={x:Static services:I18n.Instance}}"/>
             <!-- Without an LLM judge there is no per-criterion verdict, so every line below
                  reads «?». Honest, and completely opaque unless the card says why. -->

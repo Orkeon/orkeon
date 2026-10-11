@@ -1,0 +1,114 @@
+{
+  "messages": [
+    {
+      "folder": "Inbox",
+      "from": "Laura Bennett <laura.bennett@example.org>",
+      "to": ["you@example.com"],
+      "subject": "Quote request: 40 office chairs",
+      "body": "Hello,\n\nWe are refurbishing our second floor and need 40 ergonomic office chairs, delivered before the end of November. Could you send us a quote, delivery included?\n\nBest regards,\nLaura Bennett\nPurchasing, Contoso Ltd",
+      "date": "2026-10-05T08:12:00+00:00"
+    },
+    {
+      "folder": "Inbox",
+      "from": "Northwind Supplies <billing@example.net>",
+      "to": ["you@example.com"],
+      "subject": "Invoice INV-2026-0912",
+      "body": "Dear customer,\n\nPlease find attached invoice INV-2026-0912 for your September order. The total of 1,240.00 EUR is due by 31 October 2026.\n\nNorthwind Supplies - Billing",
+      "date": "2026-10-06T07:30:00+00:00",
+      "attachments": [
+        {
+          "name": "INV-2026-0912.txt",
+          "mediaType": "text/plain",
+          "content": "SW52b2ljZSBJTlYtMjAyNi0wOTEyCk5vcnRod2luZCBTdXBwbGllcwpUb3RhbCBkdWU6IDEsMjQwLjAwIEVVUiBieSAyMDI2LTEwLTMxCg=="
+        }
+      ]
+    },
+    {
+      "folder": "Inbox",
+      "from": "Tech Weekly <newsletter@example.com>",
+      "to": ["you@example.com"],
+      "subject": "Tech Weekly #212: five tools to automate your inbox",
+      "body": "This week: five tools to automate your inbox, a guide to calendar hygiene, and the results of our reader survey. Unsubscribe at any time from your profile page.",
+      "date": "2026-10-06T06:00:00+00:00"
+    },
+    {
+      "folder": "Inbox",
+      "from": "Daniel Moreau <daniel.moreau@example.com>",
+      "to": ["you@example.com", "team@example.com"],
+      "subject": "Invitation: quarterly review, Thursday 10:00",
+      "body": "Hi all,\n\nThe quarterly review takes place on Thursday at 10:00 in room B2. The agenda is attached; please bring your figures for the quarter.\n\nDaniel",
+      "date": "2026-10-07T09:45:00+00:00",
+      "attachments": [
+        {
+          "name": "agenda.txt",
+          "mediaType": "text/plain",
+          "content": "QWdlbmRhIC0gcXVhcnRlcmx5IHJldmlldwoxLiBSZXN1bHRzCjIuIEhpcmluZwozLiBOZXh0IHF1YXJ0ZXIK"
+        }
+      ]
+    },
+    {
+      "folder": "Inbox",
+      "from": "Sofia Lind <sofia.lind@example.org>",
+      "to": ["you@example.com"],
+      "subject": "Re: Delivery delay on order 4471",
+      "body": "Thanks for the update. A delay of one week is fine for us, as long as the chairs arrive before the 20th. Could you confirm the new date in writing?\n\nSofia\n\n> On 7 Oct, you wrote:\n> Order 4471 will ship one week later than planned.",
+      "date": "2026-10-08T14:20:00+00:00"
+    },
+    {
+      "folder": "Inbox",
+      "from": "IT Helpdesk <helpdesk@example.com>",
+      "to": ["you@example.com"],
+      "subject": "Scheduled maintenance on Saturday",
+      "body": "The file server will be unavailable on Saturday between 06:00 and 09:00 for scheduled maintenance. No action is needed on your side.",
+      "date": "2026-10-09T16:05:00+00:00"
+    },
+    {
+      "folder": "Inbox",
+      "from": "Marc Dupont <marc.dupont@example.net>",
+      "to": ["you@example.com"],
+      "subject": "Complaint: damaged parcel",
+      "body": "Hello,\n\nThe parcel for order 4398 arrived with a broken corner and two of the lamps inside are cracked. I would like a replacement or a refund. Photos available on request.\n\nMarc Dupont",
+      "date": "2026-10-10T11:02:00+00:00"
+    },
+    {
+      "folder": "Sent",
+      "from": "you@example.com",
+      "to": ["sofia.lind@example.org"],
+      "subject": "Delivery delay on order 4471",
+      "body": "Hello Sofia,\n\nOrder 4471 will ship one week later than planned because of a supplier shortage. We apologise for the inconvenience.\n\nBest regards",
+      "date": "2026-10-07T10:00:00+00:00"
+    },
+    {
+      "folder": "Sent",
+      "from": "you@example.com",
+      "to": ["accounting@example.com"],
+      "subject": "September expenses",
+      "body": "Hi,\n\nMy September expense report is in the shared folder. Let me know if anything is missing.\n\nThanks",
+      "date": "2026-10-02T15:30:00+00:00"
+    },
+    {
+      "folder": "Drafts",
+      "from": "you@example.com",
+      "to": ["laura.bennett@example.org"],
+      "subject": "Re: Quote request: 40 office chairs",
+      "body": "Hello Laura,\n\nThank you for your request. Our quote for 40 chairs, delivery included, is",
+      "date": "2026-10-05T09:00:00+00:00"
+    },
+    {
+      "folder": "Archive",
+      "from": "Contoso HR <hr@example.org>",
+      "to": ["you@example.com"],
+      "subject": "Your annual leave balance",
+      "body": "Your remaining annual leave for 2026 is 12 days. Days not taken by 31 December are carried over up to a limit of 5.",
+      "date": "2026-09-15T08:00:00+00:00"
+    },
+    {
+      "folder": "Trash",
+      "from": "Deals Daily <offers@example.net>",
+      "to": ["you@example.com"],
+      "subject": "Last chance: 70% off everything",
+      "body": "Our biggest sale of the year ends tonight. Do not miss out!",
+      "date": "2026-10-01T20:00:00+00:00"
+    }
+  ]
+}

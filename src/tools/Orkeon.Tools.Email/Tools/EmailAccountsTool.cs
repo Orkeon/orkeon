@@ -4,10 +4,11 @@ using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Email.Administration;
 using Orkeon.Tools.Email.Dtos;
+using Orkeon.Tools.Email.Trial;
 
 namespace Orkeon.Tools.Email.Tools;
 
-/// <summary>Lists the configured e-mail accounts, their rights and whether each is ready.</summary>
+/// <summary>Lists the configured e-mail accounts, their rights and whether each is ready; inside a mail trial, never their address.</summary>
 [ToolContract("email_accounts",
     Name = "email_accounts",
     Description = "List the e-mail accounts configured for this run: the name to pass as `account`, what each may do (rights: Read, Organize, Draft, Send, Delete, Purge) and whether it is ready.",
@@ -35,7 +36,7 @@ internal sealed class EmailAccountsTool : ToolBase<EmailAccountsRequest, EmailAc
             Accounts = statuses.Select(status => new EmailAccountDto
             {
                 Name = status.Name,
-                Address = status.Address,
+                Address = EmailTrial.Current is null ? status.Address : null,
                 Provider = status.Provider,
                 Reads = status.Reads,
                 Sends = status.Sends,

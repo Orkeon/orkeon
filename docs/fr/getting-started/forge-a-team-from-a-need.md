@@ -118,4 +118,5 @@ Le même moteur anime l'assistant **Créer une équipe** d'Orkeon Studio (Window
 
 - La qualité de la proposition suit le modèle que vous avez configuré ; les critères du brief et la validation mécanique sont les garde-fous, pas un substitut.
 - Le bac à sable restreint en **retirant les outils du catalogue**, pas en espérant que le modèle s'abstienne ; les outils réseau n'atteignent le plan que si votre brief les a demandés.
+- Le mail est essayé, jamais envoyé : les douze outils de boîte aux lettres sont proposés, et chaque essai les joue sur une boîte d'essai fictive ; les envois, brouillons et modifications qu'il aurait faits sont montrés sous le verdict et rien n'atteint une vraie boîte ([Crews forgés](../guides/email.md#crews-forgés)).
 - Une session, un problème : l'Atelier génère et valide une équipe — ce n'est pas un éditeur visuel de crews.

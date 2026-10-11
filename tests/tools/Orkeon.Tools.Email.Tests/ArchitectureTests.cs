@@ -62,6 +62,8 @@ public class ArchitectureTests
     }
 
     [Fact]
+    [Trait("BR", "BR-03")]
+    [Trait("BR", "BR-06")]
     public void ToolsEmail_ShouldKeepItsInternalsInternal()
     {
         var exported = typeof(EmailToolsServiceCollectionExtensions).Assembly.GetExportedTypes()
@@ -71,6 +73,7 @@ public class ArchitectureTests
 
         Assert.Equal(
         [
+            "Orkeon.Tools.Email.Accounts.EmailRightsCheck",
             "Orkeon.Tools.Email.Administration.EmailAccountAdministration",
             "Orkeon.Tools.Email.Administration.EmailAccountStatus",
             "Orkeon.Tools.Email.Administration.EmailCheckResult",
@@ -82,6 +85,12 @@ public class ArchitectureTests
             "Orkeon.Tools.Email.DependencyInjection.EmailToolsServiceCollectionExtensions",
             "Orkeon.Tools.Email.EmailErrorCode",
             "Orkeon.Tools.Email.EmailToolException",
+            "Orkeon.Tools.Email.Trial.EmailTrial",
+            "Orkeon.Tools.Email.Trial.SimulatedMailAction",
+            "Orkeon.Tools.Email.Trial.SimulatedMailActionKind",
+            "Orkeon.Tools.Email.Trial.TrialAttachment",
+            "Orkeon.Tools.Email.Trial.TrialMailMessage",
+            "Orkeon.Tools.Email.Trial.TrialMailboxSeed",
         ], exported);
     }
 }

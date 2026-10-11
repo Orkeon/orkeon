@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the Atelier forges crews that send mail (FORGE-10)
+
+`orkeon forge` and Studio's **Create a team** now offer the twelve mailbox tools to the crews
+they design; only `shell_command` and `code_interpreter` stay out of the catalogue. A try never
+touches a real mailbox: the bench runs it inside a mail trial (`Orkeon.Tools.Email.Trial.EmailTrial`)
+over a fictitious mailbox — a shipped sample plus up to five mails drawn from the need — and every
+send, draft or change is recorded as a simulated action. The actions are saved in
+`runs/<n>/run.json` (`mailActions`), carried by `run.finished`, printed on the terminal, listed
+under Studio's verdict and read by the judge, which fails a crew that hands a mail to internal
+messaging. The configured account's rights, allow-list and caps already judge the try; with no
+account, a trial account `trial` allows everything. See `docs/guides/email.md`, "Forged crews".
+
+A run whose mail tools need a right no ready account grants is now refused at crew load, before
+any model call (`EmailRightsCheck`): `orkeon run` — so every Studio and scheduled launch —
+exits with code 2 and an `ERROR:` message holding one line per tool, naming the right and where
+to add it; `--validate` fails (exit code 1) with the same lines; `orkeon-host` fails the run and
+keeps the lines in its log. See
+`docs/guides/email.md`, "A run whose mail tools lack a right is refused at start".
+
+| Before | After |
+|---|---|
+| `IForgeJudge.JudgeAsync(brief, output, ct)` (internal) | `JudgeAsync(brief, output, mailActions, ct)` |
+| `ForgeSandbox.DeniedTools` holds the 12 mailbox tools | holds `shell_command` and `code_interpreter` only |
+
 ### Fixed — a tool with a free or dictionary parameter no longer sends an invalid schema (LLM-13)
 
 The EventHub tools `post_message`, `publish_event`, `send_request`, `reply_to` and

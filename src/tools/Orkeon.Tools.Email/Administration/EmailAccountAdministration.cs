@@ -3,6 +3,7 @@ using Orkeon.Tools.Email.Accounts;
 using Orkeon.Tools.Email.Auth;
 using Orkeon.Tools.Email.Configuration;
 using Orkeon.Tools.Email.Mailboxes;
+using Orkeon.Tools.Email.Trial;
 
 namespace Orkeon.Tools.Email.Administration;
 
@@ -81,6 +82,13 @@ public sealed record EmailAccountStatus
     /// <summary>What to fix, when it is not ready.</summary>
     [JsonPropertyName("problem")]
     public string? Problem { get; init; }
+
+    /// <summary>
+    /// How many recipients the account may send to (0: none, so no send). Read in-process
+    /// (EmailRightsCheck); not part of the <c>--json</c> contract.
+    /// </summary>
+    [JsonIgnore]
+    public int AllowedRecipients { get; init; }
 }
 
 /// <summary>What <c>orkeon email check</c> found by actually connecting.</summary>
@@ -141,7 +149,10 @@ public sealed class EmailAccountAdministration
                 continue;
             }
 
-            var problem = await _credentials.DiagnoseAsync(account, cancellationToken).ConfigureAwait(false);
+            // The trial account has no credential to look for: it is ready by construction.
+            var problem = ReferenceEquals(account, EmailTrial.Account)
+                ? null
+                : await _credentials.DiagnoseAsync(account, cancellationToken).ConfigureAwait(false);
             statuses.Add(new EmailAccountStatus
             {
                 Name = name,
@@ -150,6 +161,7 @@ public sealed class EmailAccountAdministration
                 Reads = account.Incoming.ToString(),
                 Sends = account.Outgoing?.ToString(),
                 Rights = account.Rights.ToString(),
+                AllowedRecipients = account.Send.AllowedRecipients.Count,
                 Auth = account.Auth.Method.ToString(),
                 IsDefault = isDefault,
                 Ready = problem is null,
