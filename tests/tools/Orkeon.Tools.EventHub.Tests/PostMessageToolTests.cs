@@ -85,7 +85,7 @@ public sealed class PostMessageToolTests : IClassFixture<EventHubToolsFixture>
         {
             ["target_mailbox"] = address.Raw,
             ["payload"] = JsonNode.Parse("""{ "msg": "hi" }"""),
-            ["metadata"] = JsonDocument.Parse("""{ "topic": "weather", "lang": "fr" }""").RootElement
+            ["metadata"] = JsonElement.Parse("""{ "topic": "weather", "lang": "fr" }""")
         };
 
         var response = await _fx.PostMessage.CallAsync(new ToolCallRequest("post_message", parameters), TestContext.Current.CancellationToken);
@@ -110,7 +110,7 @@ public sealed class PostMessageToolTests : IClassFixture<EventHubToolsFixture>
         {
             ["target_mailbox"] = address.Raw,
             ["payload"] = JsonNode.Parse("""{ "msg": "hi" }"""),
-            ["metadata"] = JsonDocument.Parse("""[ { "key": "topic", "value": "weather" }, { "key": "lang", "value": "fr" } ]""").RootElement
+            ["metadata"] = JsonElement.Parse("""[ { "key": "topic", "value": "weather" }, { "key": "lang", "value": "fr" } ]""")
         };
 
         var response = await _fx.PostMessage.CallAsync(new ToolCallRequest("post_message", parameters), TestContext.Current.CancellationToken);

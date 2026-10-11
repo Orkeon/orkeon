@@ -102,7 +102,7 @@ public sealed class WaitForEventToolTests : IClassFixture<EventHubToolsFixture>
         {
             ["topic"] = "orders.tools.kvmatch",
             ["timeout_ms"] = 2000,
-            ["metadata_match"] = JsonDocument.Parse("""[ { "key": "lang", "value": "fr" } ]""").RootElement
+            ["metadata_match"] = JsonElement.Parse("""[ { "key": "lang", "value": "fr" } ]""")
         };
 
         var waitTask = _fx.WaitForEvent.CallAsync(new ToolCallRequest("wait_for_event", parameters), TestContext.Current.CancellationToken);
@@ -110,7 +110,7 @@ public sealed class WaitForEventToolTests : IClassFixture<EventHubToolsFixture>
         await _fx.Hub.PublishAsync(
             "orders.tools.kvmatch",
             JsonNode.Parse("""{ "id": "o-43" }""")!,
-            new PublishOptions { Metadata = ImmutableDictionary<string, string>.Empty.Add("lang", "fr") },
+            new PublishOptions { Metadata = ImmutableDictionary.Create<string, string>().Add("lang", "fr") },
             CancellationToken.None);
 
         var response = await waitTask;

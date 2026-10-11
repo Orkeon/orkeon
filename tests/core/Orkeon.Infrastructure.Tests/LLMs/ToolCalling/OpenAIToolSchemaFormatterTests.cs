@@ -290,8 +290,7 @@ public class OpenAIToolSchemaFormatterTests
         var map = Assert.IsType<Dictionary<string, object>>(properties["metadata"]);
         Assert.Equal("object", map["type"]);
         Assert.False(map.ContainsKey("items"));
-        Assert.True(map.ContainsKey("additionalProperties"));
-        var additional = Assert.IsType<IDictionary<string, object>>(map["additionalProperties"], exactMatch: false);
+        var additional = Assert.IsType<IDictionary<string, object>>(Assert.Contains("additionalProperties", map), exactMatch: false);
         Assert.Equal("string", additional["type"]);
     }
 }
