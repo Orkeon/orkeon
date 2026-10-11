@@ -1,119 +1,26 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Orkeon is a C# framework (.NET 10) for teams of AI agents that collaborate on tasks through LLMs: crews of agents, tasks and tools, run in six orchestration modes over 16 LLM providers with 91 built-in tool classes. Version `1.0.0-rc.4` is in preparation. `git tag` is the authority on what is tagged: never assert tag state in prose.
+Start from `docs/INDEX.md` (`docs/fr/` is its full French mirror). Known gaps between what ships and what is wired are in `docs/reference/limitations.md`, tracked in `backstage/tasks/GAP-00-PLAN.md`: check there before assuming a registered surface is invoked.
+Decisions live in `docs/adr/`; breaking changes and migration tables in `CHANGELOG.md`.
 
-## Project Overview
+## Commands
 
-Orkeon is a C# framework for creating and managing AI agent teams that collaborate on complex tasks using LLMs.
-
-**Current Status**: V1 release candidate (`1.0.0-rc.4` in preparation; `git tag` is the authority on what is tagged — never assert tag state in prose, `scripts/check-doc-claims.py` rejects it). Domain and Application layers are ~90% complete. Infrastructure layer has been redesigned (Akka.NET removed; replaced with simple HTTP-based implementations on .NET 10).
-
-## Common Development Commands
-
-### Build and Test
-
-> **The test runner is Microsoft.Testing.Platform, not VSTest.** `global.json` opts the
-> repo in (`"test": { "runner": "Microsoft.Testing.Platform" }`); without it the .NET 10
-> SDK refuses to run these projects at all ("Testing with VSTest target is no longer
-> supported"). Two consequences when writing a command: a `--filter` that matches zero
-> tests in a module is an **error** (exit 8), not an empty success — so never exclude a
-> project by name from a solution-wide run; and VSTest-only flags (`--collect`,
-> `--logger`, `--blame`) are rejected as unknown arguments.
+The test runner is **Microsoft.Testing.Platform, not VSTest** (`global.json` `"test": { "runner": "Microsoft.Testing.Platform" }`). A `--filter` that matches zero tests in a module is an **error (exit 8)**, not an empty success: never exclude a project by name from a solution-wide run, and add `-- --ignore-exit-code 8` to a solution-wide filter most modules do not match. VSTest-only flags (`--collect`, `--logger`, `--blame`) are rejected.
 
 ```bash
-# Build Domain project (compiles successfully)
-dotnet build src/core/Orkeon.Domain/Orkeon.Domain.csproj
-
-# Build Application project (compiles successfully)
-dotnet build src/core/Orkeon.Application/Orkeon.Application.csproj
-
-# Build Infrastructure project (compiles successfully)
-dotnet build src/core/Orkeon.Infrastructure/Orkeon.Infrastructure.csproj
-
-# Build full solution
-dotnet build Orkeon.sln
-
-# Run Domain tests
-dotnet test tests/core/Orkeon.Domain.Tests/Orkeon.Domain.Tests.csproj
-
-# Run Application tests
-dotnet test tests/core/Orkeon.Application.Tests/Orkeon.Application.Tests.csproj
-
-# Run CLI tests (incl. Terminal.Gui split-pane console)
-dotnet test tests/cli/Orkeon.Cli.Abstractions.Tests/Orkeon.Cli.Abstractions.Tests.csproj
-dotnet test tests/cli/Orkeon.Cli.Tests/Orkeon.Cli.Tests.csproj
-dotnet test tests/cli/Orkeon.Cli.TerminalGui.Tests/Orkeon.Cli.TerminalGui.Tests.csproj
-
-# Run Tool tests (dedicated projects)
-dotnet test tests/tools/Orkeon.Tools.Abstractions.Tests/Orkeon.Tools.Abstractions.Tests.csproj
-dotnet test tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj
-dotnet test tests/tools/Orkeon.Tools.Data.Tests/Orkeon.Tools.Data.Tests.csproj
-dotnet test tests/tools/Orkeon.Tools.FileSystem.Tests/Orkeon.Tools.FileSystem.Tests.csproj
-dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj
-dotnet test tests/tools/Orkeon.Tools.Email.Tests/Orkeon.Tools.Email.Tests.csproj
-dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj   # local BGE ONNX (loads the ONNX Runtime native library — see docs/reference/limitations.md)
-
-# Run RAG subsystem tests
-dotnet test tests/rag/Orkeon.Rag.Abstractions.Tests/Orkeon.Rag.Abstractions.Tests.csproj
-dotnet test tests/rag/Orkeon.Rag.Tests/Orkeon.Rag.Tests.csproj
-dotnet test tests/rag/Orkeon.Rag.Onnx.Tests/Orkeon.Rag.Onnx.Tests.csproj   # ONNX cross-encoder (loads the ONNX Runtime native library, like Orkeon.Tools.Embeddings.Local.Tests above)
-dotnet test tests/tools/Orkeon.Tools.Rag.Tests/Orkeon.Tools.Rag.Tests.csproj
-
-# RAG offline evaluation (profiles fast/balanced/quality/corrective/adaptive, golden dataset)
-dotnet run --project src/scripting/Orkeon.Scripting.Cli -- rag eval --dataset examples/rag/eval/golden.yaml --compare fast,balanced,quality,corrective,adaptive --offline
-
-# Run Analysis (RaggableTree) tests
-dotnet test tests/analysis/Orkeon.Analysis.Tests/Orkeon.Analysis.Tests.csproj
-
-# Run specific test
-dotnet test --filter "FullyQualifiedName~TestName"
-
-# Test new tool calling protocol
-dotnet test --filter "FullyQualifiedName~ToolCall"
-
-# Test agent selection by embeddings
-dotnet test --filter "FullyQualifiedName~AgentSelection"
-```
-
-
-### Package and Restore
-```bash
-# Restore dependencies
-dotnet restore Orkeon.sln
-
-# After any package change: regenerate the inventory of THIRD-PARTY-NOTICES.md from the
-# restore (local NuGet cache only, never the network); CI runs it with --check
-python3 scripts/third-party-notices.py
-
-# Package for distribution
+dotnet build Orkeon.sln --no-restore            # CI builds -c Release -warnaserror: zero warnings
+dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow"   # what ci.yml runs
+dotnet test tests/core/Orkeon.Domain.Tests/Orkeon.Domain.Tests.csproj --no-build --filter "FullyQualifiedName~MyTest"
+dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8   # Docker required
+dotnet restore Orkeon.sln                       # only when a dependency changed (see below)
+python3 scripts/third-party-notices.py          # after any package change; CI runs it with --check
 dotnet pack Orkeon.sln --configuration Release --output ./artifacts
 ```
 
-### SonarQube Analysis
+Tests needing Docker, a network service or minutes of runtime carry `[Trait("Category", "Integration")]` or `[Trait("Category", "Slow")]`; `integration.yml` runs them nightly.
 
-The analysis scripts handle everything automatically: starting SonarQube, running the scanner with code coverage, waiting for results, and generating a detailed Markdown report.
-
-```bash
-# Full analysis (Linux/macOS) — starts SonarQube if needed, runs analysis, generates report
-export SONAR_TOKEN=<votre-token>
-bash scripts/sonar-analyze.sh
-# Report output: sonarqube/sonarqube-report-YYYY-MM-DD.md
-
-# Full analysis (Windows)
-$env:SONAR_TOKEN="<votre-token>"
-.\scripts\sonar-analyze.ps1
-
-# Manual SonarQube management (optional — scripts auto-start it)
-docker compose -f docker-compose.sonarqube.yml up -d   # Start
-docker compose -f docker-compose.sonarqube.yml down     # Stop
-```
-
-**Key details:**
-- Scripts use `sonar.login` (not `sonar.token`) for SonarQube 9.9 LTS compatibility
-- Coverage is collected by `dotnet-coverage` (Cobertura), converted to the SonarQube generic format by ReportGenerator. The VSTest collector `--collect:"XPlat Code Coverage"` no longer works: the test projects run on Microsoft.Testing.Platform, which does not implement data collectors. A run that measures nothing now **aborts** instead of importing an empty report
-- `sonar-project.properties` was removed — all parameters are passed via CLI to avoid conflicts
-- Report includes: coverage per project/directory, all issues, all code smells by project, security hotspots
-- Requires `jq` for report generation (analysis works without it)
+SonarQube: `SONAR_TOKEN=<your-token> bash scripts/sonar-analyze.sh` starts the server, scans with coverage and writes the report under `sonarqube/`. The 9.9 LTS server takes `sonar.login`, not `sonar.token`; coverage goes through `dotnet-coverage` (`--collect:"XPlat Code Coverage"` does not work under MTP); there is no `sonar-project.properties`, every parameter is passed on the command line.
 
 ## Network constraints (metered mobile connection)
 
@@ -128,565 +35,55 @@ Bandwidth on this machine is capped. Never re-download anything that is already 
 - Never run `dotnet nuget locals --clear`, `docker system prune -a`, or `docker build --no-cache`, and never delete a cache directory.
 - Clean up git worktrees and temporary directories at the end of every task.
 
-## Architecture Overview
+## Rules
 
-The project follows Clean Architecture with clear separation of concerns:
+### Branching: never start work on `main`
 
-- **Orkeon.Domain** (✅ 95% Complete): Core business entities and interfaces (Agents, Crews, Tasks, Tools, LLMs)
-- **Orkeon.Application** (✅ 90% Complete): Use cases, services, orchestration logic, abstractions
-- **Orkeon.Infrastructure** (🔄 Redesigned): External integrations, persistence, LLM providers, memory stores
+Before the first change of a new piece of work, read `git branch --show-current`. On `main`, create a branch before any file is touched: `feature/<slug>` (a new capability or behaviour), `fix/<slug>` (a bug, regression or CI repair) or `chore/<slug>` (no behaviour change: docs, refactoring, dependencies, tooling, submodule bumps). On any other branch, continue on it. The slug is short, lowercase and hyphenated. Nothing is ever committed directly to `main`.
 
-### Current Implementation Status
+### Virtual File System: mandatory for all I/O
 
-**Working Features**:
-- ✅ Complete Agent, Task, Crew domain models with the full attribute surface
-- ✅ 91 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XLSX (read/write), XML, DirectoryRead, the e-mail family (IMAP/POP3/SMTP/Graph, EmailParser included), DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
-- ✅ 16 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM), Gemini, Grok (x.AI), MiniMax, plus the two aggregators OpenRouter and Mammouth AI (LLM-09 — documentation-first, campaigned 2026-10-07)
-- ✅ YAML configuration support
-- ✅ Memory abstractions (IMemoryProvider interface)
-- ✅ Tool validation framework with security, rate limiting, telemetry
-- ✅ Batch tool execution for parallel operations
-- ✅ Typed inputs and dependencies
-- ✅ **NEW**: Structured tool calling protocol (JSON-based)
-- ✅ **NEW**: Configurable agent selection (`OrkeonApplicationOptions.AgentSelectionStrategy`: `FirstFit` default, `Embedding`, `Skill`). Semantic (`Embedding`) selection requires a real embedding provider — see `docs/reference/limitations.md`
-- ✅ **NEW**: Strongly typed configurations (AgentConfiguration, TaskContext, etc.)
-- ✅ **NEW**: SequentialCrewOrchestrator (Akka.NET replacement — the ICrewOrchestrationService implementation; per-mode strategies live in Crew/Strategies/ + Consensus/)
-- ✅ **NEW**: Typed Request/Response pipeline (ComponentBase<TReq,TRes>)
-- ✅ **NEW**: Autonomous orchestration mode (`ProcessType.Autonomous`) with multi-dimensional execution budget: the manager LLM assigns each task, a failed task is delegated to a peer over the A2A channel (request/response), and `SpawnAgentTool` is host-provided (no shipped host registers it)
-- ✅ **NEW**: Generic FSM engine (`StateMachine<TState, TEvent>`) with circuit breaker (4 mechanisms) — runs `orkeon forge`; its `CircuitBreakerPolicy` bounds the Graph mode and the CRAG graph. No task runs through a state machine (the agent loop bounds it); the YAML `circuitBreaker:` blocks are removed and refused at load — `graphConfig` is the only breaker setting (see `docs/orchestration/fsm.md`)
-- ✅ **NEW**: Graph orchestration — the LangGraph-style C# `StateGraph<TState>` API (conditional edges, controlled cycles, retry); the YAML `Graph` process mode runs a fixed two-node topology with a 3-mechanism circuit breaker
-- ✅ **NEW**: LLM exchange logging — full HTTP request/response capture (headers + payload) via `DelegatingHandler`
-- ✅ **NEW**: `LlmResponseFormat` value object + `LlmConfigOverride` cascade
-  (crew → agent → task → script → call-site): `json_object` and `json_schema`, translated by
-  `OpenAICompatibleProviderBase` for every provider that declares the capability (Anthropic:
-  `output_config.format`, Ollama: `format`).
-- ✅ **NEW**: RAG subsystem `src/rag/` (RAG-02, ADR-006) — contracts in
-  `Orkeon.Rag.Abstractions` (`IRagPipeline`, `IIngestionPipeline`, `IDocumentStore`,
-  `IChunkingStrategy`, `IDocumentLoader`, `RagAnswer` with citations + trace,
-  opt-in `IRagRetrievalCapable` — retrieval alone, no generation stage, no LLM
-  call; `rag.retrieve` in the scripting DSL),
-  implementations in `Orkeon.Rag` (loaders incl. `WebPageLoader`, 4 chunking
-  strategies, ingestion-path validation, `StagedRagPipeline`,
-  `MemoryProviderDocumentStore`), agent tools `rag_search`/`rag_ingest`/`rag_eval`
-  in `Orkeon.Tools.Rag`. Opt-in for a hand-built container: `AddOrkeonRag(configuration)`
-  (`Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` — called by every `RunnerHost` host
-  (`orkeon run` on YAML, crew directories and `.ork.ts`; `orkeon-host`; `orkeon rag`) and by the
-  REPL; the three binaries (CLI, `orkeon-host`, REPL) add `AddOrkeonOnnxReranker()`. Crew `rag:` collections are ingested at load,
-  `knowledge:` attachments retrieve through their profile (`profile` → `rag.defaults.profile` →
-  `Orkeon:Rag:Profile`, retrieval half only), `rag_search`/`rag_eval` fall back to
-  `Orkeon:Rag:Collection`; nothing is resolved until a crew uses it (deferred proxies). A crew
-  agent that lists a `rag_*` tool receives it. The legacy
-  `Orkeon.Infrastructure.Knowledge` / `Orkeon.Application.{Interfaces.Rag,Rag}`
-  namespaces are **removed** (breaking, no shims — migration table in `CHANGELOG.md`).
-- ✅ **NEW**: RAG quality phase (RAG-04) — offline evaluation harness
-  (`IRagEvalHarness`, golden dataset `examples/rag/eval/golden.yaml`, recall@k/MRR,
-  LLM-judge with labelled heuristic fallback, CLI `orkeon rag eval` + CI gate on
-  the `balanced` profile); hybrid retrieval (in-process BM25 + RRF decorator,
-  native LanceDB hybrid via `IHybridSearchCapable`); reranking (opt-in
-  `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` — ms-marco-MiniLM-L-6-v2
-  cross-encoder, int8 weights embedded, offline; `AddOrkeonOnnxReranker()`;
-  `LlmListwiseReranker` as the explicit alternative — never selected automatically); **staged pipeline** (transform hook → retrieve
-  → fuse → rerank → anti-Lost-in-the-Middle `edges` assembly → cited generation →
-  groundedness hook, every stage traced) and **profiles** `fast`/`balanced`/`quality`
-  (`RagProfilePresets` → `RagOptions` v2 bound on `Orkeon:Rag`, per-key overrides;
-  `IRagProfileResolver` memoizing one pipeline per profile; default `fast` —
-  `balanced` requires the ONNX package)
-- ✅ **NEW**: RAG corrective phase (RAG-05/06) — query transformers
-  (`multi-query`/`rag-fusion`/`hyde`), opt-in MMR, Adaptive-RAG routing
-  (`IQueryComplexityClassifier`); **CRAG corrective graph**
-  (`CorrectiveRagPipeline` on `StateGraph<RagGraphState>` — the Domain Graph
-  orchestration mode — verdicts `Correct|Incorrect|Ambiguous` via
-  `IRetrievalEvaluator`, `IGroundednessChecker` re-loop, double bound
-  `Corrective:MaxIterations` + graph circuit breaker); profiles
-  `fast`/`balanced`/`quality`/`adaptive`/`corrective` (Adaptive `Iterative`
-  route delegates to `corrective`); **opt-in web fallback** — two off-by-default
-  switches `Orkeon:Rag:Corrective:WebFallback` (policy) +
-  `Orkeon:Rag:WebFallback` (transport, `AddOrkeonRagWebFallback`), every page
-  validated by `PromptInjectionDocumentValidator`; offline eval compares all
-  five profiles (honest numbers + analysis in `examples/rag/eval/README.md`);
-  see `docs/architecture/rag-pipeline.md`
-- ✅ **NEW**: E-mail tools (MAIL-01..06, [ADR-012](docs/adr/ADR-012-email-tool-family.md) — the
-  second motivated exception to the scope freeze) — `Orkeon.Tools.Email`, 13 `email_*` tools
-  (`email_parser` moved in from FileSystem, rebuilt on MimeKit): IMAP/POP3/SMTP via MailKit,
-  Microsoft Graph for Outlook.com/Microsoft 365, Gmail/Outlook/Custom presets under
-  `Orkeon:Tools:Email`, mandatory per-account `Rights`, fail-closed
-  `Send:AllowedRecipients`, prompt-injection screening of what is read, hand-written OAuth2
-  (`orkeon email login`) with tokens in the internal `/credentials` VFS root; registered by
-  `AddOrkeonEmailTools(configuration)` in the runner host and the REPL, denied to forged
-  crews. Gmail campaigned live (app password 2026-10-04, OAuth2 2026-10-05); the Hotmail/Graph
-  campaign is pending (MAIL-07); see `docs/guides/email.md`
+Framework code never calls `System.IO.File.*`, `System.IO.Directory.*`, or `new FileStream/FileInfo/DirectoryInfo/FileSystemWatcher`; the `Orkeon.Compliance.Vfs` analyzer enforces it. Inject `IFileSystemService` and work in virtual paths (`/workspace/...`, `/output/...`, `/tmp/...`): it checks mounts and `FileAccessRights` and redacts physical paths from errors. Exceptions:
+- the VFS itself (`src/core/Orkeon.Domain/FileSystem/`, `src/core/Orkeon.Infrastructure/FileSystem/`);
+- bootstrap code that provisions mounts before DI (e.g. `SandboxSession`), marked `// EXCEPTION-BOOTSTRAP`;
+- system probing (the `docker` binary on PATH, the SDK path), marked `// OUT-OF-SCOPE`;
+- tests, through `DiskBackedFileSystemService` fixtures.
 
-**Infrastructure Layer Components**:
-- ✅ Redis memory provider with vector search (`RedisMemoryProvider`; at-rest encryption through `EncryptedMemoryProviderDecorator`)
-- ✅ OpenAI LLM provider implementation (`OpenAIProvider`)
-- ✅ Ollama LLM provider implementation (`OllamaLlmProvider`)
-- ✅ Anthropic LLM provider implementation (`AnthropicLlmProvider`)
-- ✅ Azure OpenAI LLM provider implementation (`AzureOpenAILlmProvider`)
-- ✅ Grok (x.AI) LLM provider implementation (`GrokLlmProvider`)
-- ✅ MiniMax LLM provider implementation (`MiniMaxLlmProvider`, intl + mainland endpoints — campaigned 2026-08-30, inline `<think>` reasoning split out by the dialect)
-- ✅ Mistral AI LLM provider implementation (`MistralLlmProvider`, OpenAI-compatible cloud API)
-- ✅ DeepSeek LLM provider implementation (`DeepSeekLlmProvider`)
-- ✅ Kimi (Moonshot) LLM provider implementation (`KimiLlmProvider`)
-- ✅ Qwen LLM provider implementation (`QwenLlmProvider`)
-- ✅ TogetherAI LLM provider implementation (`TogetherAiLlmProvider`)
-- ✅ HuggingFace LLM provider implementation (`HuggingFaceLlmProvider`)
-- ✅ Z.AI (Zhipu GLM) LLM provider implementation (`ZaiLlmProvider`, thinking; cached tokens read by the generic usage reader)
-- ✅ OpenRouter LLM provider implementation (`OpenRouterLlmProvider`, model marketplace — `vendor/model` ids, `reasoning` field + request object, `usage.cost`, attribution headers; documented 2026-09-18, campaigned 2026-10-07)
-- ✅ Mammouth AI LLM provider implementation (`MammouthLlmProvider`, French subscription proxy — bare vendor ids, reached by host or key only; documented 2026-09-18, campaigned 2026-10-07)
-- ✅ SQLite memory provider (`SqliteMemoryProvider`, Microsoft.Data.Sqlite — persistent storage, cosine vector search; wire with type `"sqlite"` in `MemoryProviderFactory`)
-- ✅ File system tools implementations
-- ✅ ChromaDB vector store (`ChromaDbMemoryProvider`)
-- ✅ Pinecone vector store (`PineconeMemoryProvider`)
-- ✅ LanceDB vector store (`LanceDbMemoryProvider`, remote LanceDB Cloud/Enterprise REST server — Arrow IPC payloads, server-side vector & full-text search)
+Spec: `docs/architecture/vfs-compliance.md`.
 
-### Key Architectural Components
+### Executable bit
 
-**LLM Integration**: 16 providers implemented (OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI, Gemini, Grok, MiniMax, and the two aggregators OpenRouter and Mammouth AI), all extending `HttpLlmProviderBase`. Simple HTTP-based providers. Full HTTP exchange logging via `LlmLoggingDelegatingHandler` (headers + payload, sanitized).
+Every `.sh` script, and every script with a shebang meant to be run directly (`.py`, `.mjs`), is tracked as mode `100755`. An NTFS mount hides the problem (`chmod +x` does not persist, everything looks `rwxrwxrwx`); a Linux or macOS clone restores `100644` and fails with `permission denied`. Set the bit in the index with `git update-index --chmod=+x <path>`, then check `git ls-files -s -- '*.sh'` (every line starts with `100755`). The same rule holds in the `backstage` and `experiments` submodules.
 
-Each provider declares an `LlmProviderCapabilities` (Domain value object, exposed on `ILlmProvider`) stating what its API really supports: `ResponseFormat` (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent` — plus `GbnfGrammar`, which no vendor declares and `Llm:Grammar` switches on for a llama.cpp-compatible endpoint, and `ReplaysPrompt`, declared by the echo provider alone (the crew's planner skips its call on it, with a warning). `OpenAICompatibleProviderBase` (14 providers) writes the OpenAI dialect once from that declaration; Qwen (`enable_thinking`, `thinking_budget`), OpenRouter and TogetherAI override its `ApplyProviderSpecificOptions` hook, while Anthropic (`output_config`, `thinking: adaptive`, `cache_control`) and Ollama (`format`, `think`, `images`) extend `HttpLlmProviderBase` directly and write their own dialect. **An option declared on a provider that cannot honour it produces a structured warning — never a silent drop.** Add a capability to the record and every provider that declares it inherits the translation.
+### Test doubles and assertions
 
-**One provider per agent (GAP-17)**: the `Llm` section is the host's default profile; each `Llm:Profiles:<name>` (same keys) is another provider, built once and metered (`ILlmProfileRegistry`, `AddOrkeonLlmProfiles(configuration)` / `AddOrkeonLlmProfile(name, …)`). A crew names a profile only — YAML `llm: { profile: … }` at crew/agent/task `llm_override` level, `.ork.ts` `llm.profile(name, overrides?)`; an unknown profile fails the load listing the known ones; `orkeon-host` restricts them with the `Orkeon:Host:LlmProfiles` allow-list. A C# agent may carry its own provider instead (GAP-34): `Agent.Llm` (`AgentBuilder.WithLlm`, a Microsoft Agent Framework agent through `WithAgentFrameworkAgent`) — its turns run on the client `ILlmProfileRegistry.ForProvider` builds once per instance and meters; a task's `llm_override` profile still wins; never with a profile too; a provider declaring `LlmProviderCapabilities.RunsOwnTools` (the MAF bridge) is refused Orkeon tools at build, `AddTool` and run. Beyond agent turns (GAP-19): the hierarchical manager runs on the LLM its crew gives it — `Crew.ManagerLlm` in C# (`WithManagerLlm`, CrewAI's `manager_llm`; then no manager agent is needed), else its manager agent's own provider (`Agent.Llm`), else its profile and model, resolved once per run by `ManagerLlmResolver`; the RAG subsystem on `Orkeon:Rag:LlmProfile` (`RagLlm`; an unknown name refuses the host start); a `.ork.ts` task on `taskBuilder().withProfile(name)`. The planner, the Guardian and the `Evaluation` judges stay on the default profile. Orkeon Studio writes `Llm:Profiles` from its model settings (STUDIO-48, `HostLlmProfiles`): one entry per setting, its id the name's `FolderSlug`, never the key — every Studio launch carries the settings as `ORKEON_Llm__Profiles__<id>__*`, keys included; entries written by hand stay read-only; the RAG's profile is chosen on the same screen. `orkeon run --llm-profile <id>` elects one profile as the run's default — the `Llm` section becomes that profile, whole (STUDIO-50) —, and Studio writes it, with the team's folders, into the `run.cmd`/`run.sh` of every team it adopts (`TeamLaunchers`), so a scheduled team runs as Studio launches it — written again at its import and before its schedule is installed, never at startup; a renamed setting carries its teams, a card says when the scheduled run cannot follow (`ScheduledRunCheck`), and an export carries nothing of the machine (STUDIO-52). Outside Studio (STUDIO-49) a section names the variable holding its key — `ApiKeyEnvVar`, in `Llm` and each profile, which Studio, `orkeon init --api-key-env` and `orkeon-studio-config` write —, and `LlmSettings` reads it when the configuration resolves no `ApiKey`: process environment, then the Windows user scope, never copied into the process; the elected setting is written whole into `Llm`, and a team launched on another setting blanks every default field (`ORKEON_Llm__*`).
+Use native xUnit assertions only: no mocking framework (Moq, NSubstitute, FakeItEasy) and no fluent assertion library (FluentAssertions, Shouldly, Verify). Doubles are hand-written classes named `Mock*`, `Fake*` or `Stub*` after the interface they implement. They live in the consuming test project's `Doubles/` (or `Fakes/`) folder and expose plain fields to configure or inspect. The reference is `tests/core/Orkeon.Infrastructure.Tests/Doubles/MockTaskRepository.cs`. Tests must hold when several passes run at once (`LoopbackPorts`, no unit test bounding a duration): `CONTRIBUTING.md`, "Testing".
 
-**Tool System**: Extensible architecture with IBaseTool interface, validation, batch execution, and 91 built-in tool classes.
+### DTO conventions (`Orkeon.Application`)
 
-**Memory System**: Provider-based architecture supporting Redis, In-Memory, ChromaDB, Pinecone, LanceDB, and SQLite.
+- `sealed record` with `{ get; init; }`, the `required` keyword (never `[Required]`), `ImmutableList<T>` / `ImmutableDictionary<K,V>` (never `List<T>` / `Dictionary<K,V>`).
+- Suffixes: `*Dto` for read/transfer, `*Request` for the input of a port, `*Command` for a CQRS command, `*Response` for API wrappers (`ApiResponse<T>`).
+- `[JsonPropertyName("snake_case")]` on every API-exposed DTO.
+- Business rules go in `ICommandValidator<T>`, never Data Annotations.
+- One DTO per concept, no duplicate definitions; enums in dedicated `*Enums.cs` files in the entity's DTOs folder.
 
-**Orchestration Strategies** (6 modes via `ProcessType` value object):
-- `Sequential` — Fixed linear pipeline; a task with `asyncExecution: true` runs alongside the next ones, a dependant waits for it (CrewAI semantics). Parallel accepts the flag without own effect; the four other modes refuse it at load (`ProcessType.AcceptsAsyncExecution`)
-- `Hierarchical` — Manager LLM assigns and reviews tasks (up to 2 re-executions)
-- `Parallel` — Dependency waves; tasks of one wave run concurrently
-- `Consensual` — Every agent answers, then ranks the other agents' anonymised answers by LLM ballot (`IBallotCollector`, no self-vote); tallied by Majority, SuperMajority, Unanimity, Weighted or Borda with quorum and abstention enforced; `ManagerDecision` is decided by the crew's manager agent
-- `Graph` — LangGraph-style state graph with conditional edges, cycles, circuit breaker (`StateGraph<TState>`, `GraphProcessStrategy`)
-- `Autonomous` — Manager-assigned tasks, delegation to a peer on failure, host-provided spawn, multi-dimensional budget (`AgentExecutionBudget`, `AutonomousProcessStrategy`)
+### Other rules
 
-In every mode a failed task fails the crew and its dependants are skipped (`CrewRunOutcome`, shared by the six strategies), so `orkeon run` exits 2; Graph sizes its circuit breaker from the crew (`tasks × (1 + maxRetryCycles)` visits) unless `graphConfig` sets explicit bounds.
+- **Namespace collision**: `Orkeon.Domain.Task` collides with `System.Threading.Tasks.Task`. In a file that imports both, write every `Task` as `System.Threading.Tasks.Task`.
+- **Two scripting projects** (ADR-007): `Orkeon.Cli.Commands.Scripting` (`src/cli/`) is a library of TypeScript-scripted interactive commands; `Orkeon.Scripting.Cli` (`src/scripting/`) is the `orkeon` dotnet tool (`AssemblyName=orkeon`). The project whose last segment is `Cli` is the executable.
+- **Version**: `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix`) is the single source of truth; the publish workflow refuses a `v*` tag that does not match it.
+- **LLM options**: an option declared on a provider that cannot honour it produces a structured warning, never a silent drop (`docs/architecture/llm-providers.md`).
+- **Tool names**: `IToolRegistry.RegisterToolAsync` refuses a name another tool already holds; new tools follow `docs/tools/new-tool-pattern.md`.
+- **Doc claims**: `scripts/check-doc-claims.py` checks the counts and the version stated here and in the READMEs against the code, and `scripts/check-docs-parity.sh` checks the `docs/fr/` mirror. Run both after changing either. A changed docs page is mirrored in `docs/fr/` in the same commit.
 
-A manager agent (`managerAgent:`, `.manager(agent)`, `WithManager`) exists in Hierarchical (assigns and reviews) and Consensual (the `ManagerDecision` arbiter; a warning at run start when the host's fallback is another) only, a manager LLM (C# `WithManagerLlm`) in Hierarchical and Autonomous only: elsewhere both are refused at load and build (`ProcessType.AcceptsManagerAgent` / `AcceptsManagerLlm`). A `managerAgent:`, task `agent:` or dependency that names nothing fails the load; `WithPlanningLlm` needs `.Planning()` and is metered by `SequentialCrewOrchestrator` (GAP-33).
+## Architecture map
 
-**Autonomous Orchestration** (key components):
-- `AgentExecutionBudget` (Domain) — 5-dimension budget: tool calls, delegation depth, wall time, tokens, spawned agents. Thread-safe, presets (Strict/Default/Permissive), child budget derivation.
-- `IAgentChannel` (Application) — Bidirectional A2A communication (request/response + broadcast)
-- `InMemoryAgentChannel` (Infrastructure) — Lock-free `ConcurrentDictionary` implementation
-- `SpawnAgentTool` (Infrastructure) — Runtime agent creation via `IAgentFactory`; constructed by the host per agent with its own budget, registered by no shipped composition root
-- `DelegateWorkTool` (Infrastructure) — Accepts an optional `AgentExecutionBudget`, which no shipped caller passes; the delegation depth the budget counts is crew-wide
-
-**RaggableTree** (semantic codebase graph, `src/analysis/`):
-- 5-level stratified graph (Monorepo → Package → Module → Symbol → Statement) plus the edge layer built from Tree-sitter ASTs
-- 5 language adapters: TypeScript, C#, Python, Go, Rust (via `ILanguageAdapter`)
-- 15 agent tools in `Orkeon.Tools.Analysis`: `index_codebase`, `codebase_map`, `symbol_detail`, `flow_trace`, `impact_analysis`, `complexity_report`, `codebase_search`, etc.
-- Pipeline: discovery → parse/extract → resolve edges → fingerprint → embed → persist
-- `IncrementalReindexEngine` for diff-based updates, `IndexFreshnessService` for the lazy freshness pass (`IRaggableTreeEventBus` carries refresh notifications; `ICodebaseWatcher` exists but no host registers it), `ICodebaseContextProvider` for summaries a caller asks for (nothing injects them automatically); search falls back to BM25 without embeddings
-- See `docs/architecture/raggable-tree.md` for the full guide and `docs/architecture/raggable-tree-adr.md` for the ADR
-
-## Core Components
-
-### Agents
-There is a single `Agent` aggregate root (no subclasses). Agent behavior is configured via properties such as `AllowDelegation`, `MaxIterations`, `Verbose`, and assigned tools. Manager behavior in hierarchical crews is handled via `IManagerAgent` interface and `LlmBasedManager`.
-
-### Memory System Architecture
-
-**Application Layer** (Abstractions & Orchestration):
-- `IMemoryProvider` interface
-- `IMemoryService` for memory management
-- `MemoryProviderFactory` for provider selection
-- Memory types (`Orkeon.Domain.Memory.MemoryType`, the only `MemoryType` enum): ShortTerm, LongTerm, Episodic, Entity, Procedural
-
-**Infrastructure Layer** (Implementations):
-- `RedisMemoryProvider`: Distributed memory with vector search (connection from the `Orkeon:Redis` section, opened on first use)
-- `InMemoryProvider`: Fast local memory for development
-- `SqliteMemoryProvider`: Persistent local storage with SQLite (embeddings as BLOB, cosine vector search)
-- `EncryptedMemoryProviderDecorator`: At-rest encryption decorator wrapping any provider (incl. SQLite)
-- `ChromaDbMemoryProvider`: ChromaDB vector database (REST API v2 — servers ≥ 0.6.x / 1.x; tenant/database configurable, defaults `default_tenant`/`default_database`)
-- `PineconeMemoryProvider`: Pinecone cloud vector database
-- `LanceDbMemoryProvider`: Remote LanceDB Cloud/Enterprise server (Lance REST Namespace protocol, server-side search)
-
-### Collaboration
-- Communication protocols (Direct, Broadcast, Consensus, Feedback)
-- Team formation strategies with skill-based matching
-- Consensus building with configurable voting strategies
-
-### Testing Framework
-Uses xUnit for unit and integration testing, with **native xUnit assertions only** — no
-mocking framework (no Moq, NSubstitute, FakeItEasy) and no fluent assertion library
-(no FluentAssertions, Shouldly, Verify).
-
-Test doubles are **hand-written by design** (a deliberate choice, not a gap): plain classes
-named `Mock*`, `Fake*`, or `Stub*` that implement the production interface directly. This keeps
-test dependencies minimal and the doubles' behavior explicit and debuggable.
-
-**Convention for adding a new double**:
-- Place it in the consuming test project under a `Doubles/` (or `Fakes/`) folder
-  (e.g. `tests/core/Orkeon.Infrastructure.Tests/Doubles/`).
-- Name it after the interface it replaces, prefixed by `Mock`/`Fake`/`Stub`
-  (e.g. `MockTaskRepository` implements `ITaskRepository`).
-- Expose plain fields/properties to inspect recorded calls or configure return values.
-- See `tests/core/Orkeon.Infrastructure.Tests/Doubles/MockTaskRepository.cs` as the reference.
-
-**Tests hold under load** (several passes run at once on one machine — GAP-41): a test server
-takes its port through `LoopbackPorts` (`tests/shared/Orkeon.Tests.Shared/Network/` — `StartAsync`
-and `StartListener` start again on another port when the probed one was taken, `Refusing()` holds
-one nobody listens on) and listens on `LoopbackPorts.Host`, `127.0.0.1` (`localhost` under
-Windows); an `HttpListener` is never `Close()`d after `Stop()` (under Linux and macOS that binds the
-port again); a span test reads an `ActivityRecorder` (`Telemetry/`), filtered on the trace of a root
-it starts or on a tag only it carries; a delay a test must not reach is a hang guard
-(`Polling.DefaultTimeout`), and no unit test bounds a duration — a timestamp is checked between two
-readings of the clock, and two concurrent ends come in the order a rendezvous forces.
-
-**Test categories**: tests needing Docker, a network service or minutes of runtime carry
-`[Trait("Category", "Integration")]` or `[Trait("Category", "Slow")]`. CI (`ci.yml`) runs the
-unit and fast suites; `integration.yml` runs the Integration/Slow categories nightly and
-`coverage.yml` measures line coverage on `main`. Locally:
-`dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`
-(most modules hold no test of either category, and a module with no match exits 8).
-
-**Known gaps between what ships and what is wired** are listed in
-`docs/reference/limitations.md` and tracked as tasks in `backstage/tasks/GAP-00-PLAN.md`;
-check there before assuming a registered surface is actually invoked.
-
-## Development Guidelines
-
-### Branching — never start work on `main`
-
-Before the first change of a new piece of work, read the current branch (`git branch --show-current`):
-
-- **On `main`**: creating a branch is mandatory, before any file is touched. Its prefix follows the nature of the work:
-  - `feature/<slug>` — a new capability or behaviour;
-  - `fix/<slug>` — a bug, regression or CI repair;
-  - `chore/<slug>` — everything else that changes no behaviour (docs, refactoring, dependencies, tooling, submodule bumps).
-- **On any other branch**: continue on it — no new branch.
-
-The slug is short, lowercase and hyphenated (e.g. `fix/apt-health-unpublished-channels`). Nothing is ever committed directly to `main`.
-
-### Virtual File System (VFS) — mandatory for all I/O
-
-Framework code MUST NOT call `System.IO.File.*`, `System.IO.Directory.*`, `new FileStream/FileInfo/DirectoryInfo/FileSystemWatcher` directly. Route all filesystem access through `IFileSystemService` (mount-aware, rights-audited, virtual paths). See `docs/architecture/vfs-compliance.md` for the full spec; the baseline audit and second-pass review live in the private `backstage` submodule.
-
-Allowed exceptions:
-- **VFS implementation** (`src/core/Orkeon.Domain/FileSystem/`, `src/core/Orkeon.Infrastructure/FileSystem/`) — where the abstraction itself lives.
-- **Bootstrap code** that provisions mounts before DI (e.g., `SandboxSession`). Must carry an inline `// EXCEPTION-BOOTSTRAP` comment.
-- **OUT-OF-SCOPE system probing** (e.g., discovering the `docker` binary on PATH or the .NET SDK install path). Must carry an inline `// OUT-OF-SCOPE` comment.
-- **Tests** — may use real disk via `DiskBackedFileSystemService` fixtures.
-
-Adding a new tool or service that needs filesystem access? Inject `IFileSystemService` and work in virtual paths (e.g., `/workspace/...`, `/output/...`, `/tmp/...`). The service validates paths against mounts + `FileAccessRights` (Read/Write/Create/Delete) and redacts physical paths from error messages.
-
-### Shell Scripts — executable bit is mandatory
-
-Every `.sh` script — and any script with a shebang line (`#!`), e.g. `.py` or `.mjs` meant to be run directly — MUST be tracked by git as executable (mode `100755`). This workspace often lives on a Windows/NTFS mount where `chmod +x` does not persist and everything appears as `rwxrwxrwx`, which masks the problem — but macOS/Linux clones faithfully restore the committed mode, and a script committed as `100644` fails there with `permission denied`.
-
-When creating or modifying such a script, always set the bit directly in the git index before committing:
-
-```bash
-git update-index --chmod=+x path/to/script.sh
-```
-
-Verify with `git ls-files -s -- '*.sh'` — every line must start with `100755` (same check for shebang `.py`/`.mjs` files). Scripts without a shebang that are only invoked via an interpreter (`python script.py`) may stay `100644`. This applies to this repository and to the `experiments` and `backstage` submodules alike.
-
-### Tool Development (Typed Pipeline)
-
-New tools should use the typed `ToolBase<TRequest, TResponse>` pattern:
-
-```csharp
-// 1. Define typed request/response records
-public sealed record MyToolRequest
-{
-    public string Input { get; init; } = "";
-    public int Count { get; init; } = 10;
-}
-
-public sealed record MyToolResponse
-{
-    public bool Success { get; init; }
-    public string Result { get; init; } = "";
-}
-
-// 2. Inherit ToolBase<TReq, TRes>
-public class MyTool : ToolBase<MyToolRequest, MyToolResponse>
-{
-    public override string Name => "my_tool";
-    public override string Description => "Does something useful";
-
-    protected override Task<MyToolResponse> ExecuteTypedAsync(
-        MyToolRequest request, CancellationToken ct)
-    {
-        // Typed access — no dictionary extraction needed
-        return Task.FromResult(new MyToolResponse
-        {
-            Success = true,
-            Result = $"Processed {request.Input} x{request.Count}"
-        });
-    }
-}
-```
-
-For file or HTTP tools, inherit `FileToolBase<TReq, TRes>` or `HttpToolBase<TReq, TRes>` (see `FileReadTool.cs`): the typed pipeline lives as a private `ComponentBase` inner class **inside those bases**, so a derived tool writes none. Name and describe a tool either with `[ToolContract]` (60 of the 91 shipped tools) or by overriding `Name`/`Description`. `IBaseTool` is the one tool contract: any registered tool (`ToolBase` family, script tools, `rag_*`, `McpToolAdapter`) reaches the crew agent that names it. A tool name belongs to one tool: `IToolRegistry.RegisterToolAsync` refuses (returns `false`) a name another instance already holds, so an MCP tool never shadows a built-in.
-
-**Key classes**:
-- `ComponentBase<TRequest, TResponse>` (Domain) — Core pipeline: normalize → deserialize → validate → execute → serialize
-- `ToolBase<TReq, TRes>` (Infrastructure) — Tool-specific wrapper with YAML defaults merging
-- `EvaluatorBase<TInput, TResult>` (Infrastructure) — Typed evaluator base
-
-### Tool Development (Legacy)
-Implement `IBaseTool` interface. Tools should:
-- Handle errors gracefully
-- Validate inputs
-- Support cancellation tokens
-- Return `ToolResult` with success/failure status
-
-### Fluent Builder API
-
-New code should prefer the Fluent Builder API for creating Agents, Tasks, and Crews:
-
-```csharp
-using Orkeon.Domain.Agent;   // AgentBuilder
-using Orkeon.Domain.Crew;    // CrewBuilder
-
-var agent = new AgentBuilder()
-    .Role("Analyst")
-    .Goal("Analyze data")
-    .WithTool(myTool)
-    .Verbose()
-    .Build();
-
-var crew = new CrewBuilder()
-    .Goal("Complete research")
-    .Sequential()
-    .WithAgent(a => a.Role("Researcher").Goal("Find data"))
-    .WithTask(t => t.Description("Search web").ExpectedOutput("Report"))
-    .Build();
-```
-
-The factory methods `Agent.Create()`, `CrewTask.Create()`, `Crew.Create()` remain available.
-Builders delegate to these internally.
-
-### DTO Conventions
-
-All DTOs in `Orkeon.Application` follow these conventions:
-
-- **Type**: `sealed record` with `{ get; init; }` properties
-- **Required fields**: Use the `required` keyword (not `[Required]` attribute)
-- **Collections**: `ImmutableList<T>`, `ImmutableDictionary<K,V>` (never `List<T>` or `Dictionary<K,V>`)
-- **Naming suffixes**:
-  - `*Dto` — Read/transfer DTOs (AgentDto, CrewDto, TaskDto)
-  - `*Request` — Input records a port takes (BallotRequest, A2ATaskRequest); a CQRS command is a `*Command` record (CreateCrewCommand)
-  - `*Response` — API response wrappers (via `ApiResponse<T>`)
-- **JSON serialization**: `[JsonPropertyName("snake_case")]` on all API-exposed DTOs
-- **Validation**: `ICommandValidator<T>` for business rules (no Data Annotations)
-- **One DTO per concept**: No legacy/modern duality, no duplicate definitions
-- **Enums**: In dedicated files (*Enums.cs) within the entity's DTOs folder
-
-### Memory Provider Development
-Implement `IMemoryProvider` interface with:
-- `StoreAsync` - Store embeddings with metadata (custom properties included — a filter reads them)
-- `SearchAsync` - Text search honouring the optional metadata `filter` (`source`, `tag`/`tags`, any other key an equality on a custom property) **before** the limit; `SearchSimilarAsync` - cosine similarity with the same filter
-- `GetAsync`, `DeleteAsync` - Read and delete operations
-
-### LLM Provider Development
-Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
-- Support retry logic
-- Handle rate limiting
-- Implement timeout handling
-
-## Clean Architecture Layers
-
-### Domain Layer (Inner Circle)
-- Pure business logic; the only reference is `Orkeon.Constants.Llm`, a zero-dependency satellite of shared constants (ADR-009)
-- Entities: Agent, Crew, Task, Tool interfaces
-- Value Objects: LlmConfig (sampling nullable: unset is not sent — GAP-36), TypedParameters, ProcessType (6 modes)
-- `Autonomous/` folder: `AgentExecutionBudget`, `BudgetSnapshot`, `BudgetExhaustedException`, `BudgetDimension`
-- Domain Events and Exceptions
-
-### Application Layer (Middle Circle)
-- Use cases and orchestration logic
-- Service interfaces (ports): `IAgentChannel`, `IAgentExecutionService`, `IAgentFactory`
-- DTOs and ViewModels
-- `NullMemoryScope` singleton (public, for contexts without memory)
-- Application-specific business rules
-- Does NOT contain:
-  - Database access code
-  - External API calls
-  - Framework-specific code
-
-### Infrastructure Layer (Outer Circle)
-- Implementations of Application interfaces (adapters)
-- External service integrations:
-  - LLM Providers (OpenAI, Ollama, Anthropic, AzureOpenAI, Gemini, Grok, MiniMax, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI, OpenRouter, Mammouth AI)
-  - Memory Stores (Redis, SQLite, InMemory, ChromaDB, Pinecone, LanceDB)
-  - File System access
-  - HTTP clients
-- Orchestration strategies: `Crew/Strategies/` (Sequential, Hierarchical, Parallel, Graph, Autonomous) + `Consensus/` (`ConsensualProcessStrategy`, the 6th mode)
-- Communication: `InMemoryAgentChannel` (A2A lock-free)
-- Autonomous tools: `SpawnAgentTool` (host-constructed), `DelegateWorkTool` (optional budget)
-- Framework-specific code
-- Database contexts and repositories
-
-## Working Directory Structure
-
-The repository contains **48 src projects** and **36 test projects**, plus two solutions:
-`Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
-
-```
-/workspace/
-├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 48 projects
-│   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
-│   ├── core/
-│   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
-│   │   ├── Orkeon.Application/   # ✅ Use cases (90% complete)
-│   │   └── Orkeon.Infrastructure/# 🔄 External integrations (LLMs, memory, strategies)
-│   ├── cli/
-│   │   ├── Orkeon.Cli.Abstractions/    # Pure contracts: IInteractiveCommand, runner base, console adapter
-│   │   ├── Orkeon.Cli/                 # Reusable common commands (help/exit/clear) + DefaultCommandRegistry
-│   │   ├── Orkeon.Cli.Commands.Scripting/ # TypeScript-scripted interactive commands (adapter Cli.Abstractions ↔ Scripting). NB: distinct from Orkeon.Scripting.Cli (the `orkeon` tool entrypoint) — renamed from Orkeon.Cli.Scripting (ADR-007)
-│   │   └── Orkeon.Cli.TerminalGui/     # Terminal.Gui v2 split-pane console (logs + REPL); IConsoleAdapter + ILoggerProvider
-│   ├── scripting/
-│   │   ├── Orkeon.Scripting/           # TypeScript-syntax scripting DSL (.ork.ts) — Jint runtime + esbuild transpile; references Orkeon.Rag.Abstractions (`rag.*`)
-│   │   └── Orkeon.Scripting.Cli/       # CLI entrypoint of the scripting DSL — packs as dotnet tool `orkeon` (`orkeon run script.ork.ts`)
-│   ├── constants/                # Satellites of SHARED constants, zero runtime dependency (ADR-009)
-│   │   ├── Orkeon.Constants.Llm/           # endpoints, default models, provider ids, wire fields
-│   │   ├── Orkeon.Constants.FileSystem/    # virtual mount roots, conventional folder/file names
-│   │   ├── Orkeon.Constants.Configuration/ # Orkeon:* keys, settings locations, shared messages
-│   │   ├── Orkeon.Constants.Protocol/    # Run event kinds (`RunEventKinds`), `UseCaseEventKinds` and `EmailEventKinds`: the wire vocabulary CLI <-> Studio
-│   │   └── Orkeon.Constants.Cli/         # Run option names the runners accept and Studio predicts
-│   ├── analyzers/
-│   │   └── Orkeon.Compliance.Vfs/      # Roslyn analyzer forbidding direct System.IO in framework code (routes via IFileSystemService)
-│   ├── tools/
-│   │   ├── Orkeon.Tools.Abstractions/  # Tool base classes & interfaces
-│   │   ├── Orkeon.Tools.Analysis/      # RaggableTree agent tools (15 tools)
-│   │   ├── Orkeon.Tools.Code/          # Code-related tools
-│   │   ├── Orkeon.Tools.Data/          # Data manipulation tools
-│   │   ├── Orkeon.Tools.Email/         # E-mail tools (13 email_*: IMAP/POP3/SMTP via MailKit, Microsoft Graph; AddOrkeonEmailTools)
-│   │   ├── Orkeon.Tools.Embeddings.Local/ # Local on-device embeddings (SmartComponents BGE-micro-v2 ONNX, 384 dims, CPU, no API key)
-│   │   ├── Orkeon.Tools.EventHub/      # EventHub agent tools (publish_event, post_message, send_request, reply_to, receive_message, wait_for_event, get_last_value); the shipped hosts wire the hub, these tools and only the ACL middleware stage
-│   │   ├── Orkeon.Tools.FileSystem/    # File system tools
-│   │   ├── Orkeon.Tools.Rag/           # RAG agent tools (rag_search, rag_ingest, rag_eval; AddOrkeonRagTools)
-│   │   └── Orkeon.Tools.Web/           # Web/HTTP tools
-│   ├── rag/
-│   │   ├── Orkeon.Rag.Abstractions/    # RAG contracts + DTOs + options incl. RagOptions v2 + RagProfilePresets (Domain-only dependency, ADR-006)
-│   │   ├── Orkeon.Rag/                 # Loaders, chunking, validation, StagedRagPipeline, corrective CRAG graph, web fallback, profiles resolver, hybrid BM25+RRF, eval harness, AddOrkeonRag DI
-│   │   ├── Orkeon.Rag.Onnx/            # Opt-in ONNX cross-encoder reranker (ms-marco-MiniLM-L-6-v2, AddOrkeonOnnxReranker)
-│   │   └── Orkeon.Rag.Onnx.Model/      # Companion package embedding the int8 model weights (guaranteed offline)
-│   ├── analysis/
-│   │   ├── Orkeon.Analysis.Abstractions/ # RaggableTree interfaces + DTOs + models
-│   │   └── Orkeon.Analysis/             # Tree-sitter pipeline, adapters, store, watcher
-│   ├── generators/
-│   │   └── Orkeon.Generators/    # Source generators (TypedDictionary…)
-│   ├── hosting/
-│   │   ├── Orkeon.Hosting/       # Shared runner host (RunnerHost/RunnerExecution, semantic_search opt-in; exports OpenTelemetry per OTEL_EXPORTER_OTLP_ENDPOINT)
-│   │   ├── Orkeon.Hosting.Aspire/ # .NET Aspire AppHost integration (AddOrkeonHost, AddOrkeonCrewRun — ADR-011)
-│   │   └── Orkeon.Host/          # Service host daemon `orkeon-host` (crew registry, chat gateway, Discord channel — GATE; A2A server, one skill per exposed crew — GAP-23)
-│   ├── plugins/
-│   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
-│   ├── interop/
-│   │   └── Orkeon.Interop.AgentFramework/ # Microsoft Agent Framework bridge, both directions (ADR-010): CrewAgent : AIAgent, AIAgentLlmProvider, AIAgentTool
-│   ├── packaging/                # NuGet packaging projects (PUB-25, 6 incl. the Interop and Aspire wrappers): the `Orkeon` umbrella (the 12-assembly core closure in one nupkg), `Orkeon.Tools` (the 8 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
-│   └── apps/
-│       ├── Orkeon.ConsoleApp/    # Interactive REPL (dotnet tool `orkeon-repl`, Terminal.Gui split-pane)
-│       ├── Orkeon.Studio.Config/ # Studio: config TUI (orkeon init flows)
-│       ├── Orkeon.Studio.Core/   # Studio: shared core (settings model, target detection, process runner, localization port); references the five Constants satellites
-│       ├── Orkeon.Studio.Run/    # Studio: run TUI
-│       └── Orkeon.Studio.Wpf/    # Studio: WPF desktop app (net10.0-windows, AssemblyName=Orkeon.Studio, IsPackable=false ×4)
-├── tests/                        # 36 projects
-│   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
-│   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Commands.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
-│   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
-│   ├── analyzers/                # Orkeon.Compliance.Vfs.Tests
-│   ├── tools/                    # Abstractions, Analysis, Code, Data, Email, Embeddings.Local, EventHub, FileSystem, Rag, Web (10 projects)
-│   ├── rag/                      # Orkeon.Rag.Abstractions.Tests (incl. ArchitectureTests), Orkeon.Rag.Tests, Orkeon.Rag.Onnx.Tests
-│   ├── analysis/                 # Orkeon.Analysis.Tests (RaggableTree)
-│   ├── hosting/                  # Orkeon.Hosting.Tests, Orkeon.Host.Tests, Orkeon.Hosting.Aspire.Tests
-│   ├── interop/                  # Orkeon.Interop.AgentFramework.Tests
-│   ├── plugins/                  # Orkeon.Plugins.Tests
-│   ├── apps/                     # Orkeon.ConsoleApp.Tests, Orkeon.Studio.{Config,Core,Run,Wpf}.Tests
-│   ├── e2e/                      # Orkeon.E2E.Tests
-│   └── shared/                   # Orkeon.Tests.Shared (common test fixtures)
-├── examples/                     # Orkeon.Examples.sln (separate solution)
-│   ├── 01-enterprise/ … 09-experimental/  # 9 thematic example categories
-│   ├── raggable-tree/            # RaggableTree: basic-indexing, crew-yaml, custom-adapter
-│   ├── rag/                      # RAG: basic-ingestion, hybrid-retrieval, custom-reranker, crew-yaml + eval/ (golden dataset)
-│   ├── scripting/                # .ork.ts scripting examples
-│   ├── cli-ts-commands/          # TypeScript CLI command examples
-│   ├── local-embeddings/         # Local embedding example
-│   ├── quickstart/               # The two-minute, keyless first crew
-│   ├── aspire/ · interop/        # .NET Aspire AppHost · Microsoft Agent Framework bridge
-│   ├── forge/ · crew-multifile/  # Atelier sessions · a crew split across files
-│   ├── run-events/ · service-host/ # `--events jsonl` clients · `orkeon-host` configurations
-│   ├── appsettings/              # LLM profile templates (one per provider)
-│   ├── others/
-│   ├── Orkeon.Examples.sln
-│   └── run-example.sh / run-example.ps1 / test-all-examples.*
-├── tools/
-│   └── scripting-esbuild/        # npm package.json + lockfile bootstrapping esbuild for the scripting DSL
-├── scripts/
-│   ├── sonar-analyze.sh / .ps1   # SonarQube analysis + report
-│   └── validate-all-examples.sh · check-doc-claims.py · check-docs-parity.sh · lint-example-*.py · third-party-notices.py
-├── sonarqube/                    # Generated SonarQube reports (*.md)
-├── docker-compose.sonarqube.yml
-├── docs/
-│   ├── INDEX.md                  # Documentation map (docs/fr/ is the full French mirror — CI parity gate)
-│   ├── getting-started/          # bootstrap.md, overview.md, yaml-and-builders.md, three-ways…, default-behaviors.md, give-your-agents-a-mailbox.md (the e-mail tutorial)
-│   ├── architecture/             # raggable-tree.md, scripting.md, vfs-compliance.md, security.md, llm-providers.md, mcp.md, studio.md, etc.
-│   ├── guides/, orchestration/, tools/, adr/, templates/
-│   └── reference/                # cli.md, configuration.md, limitations.md, publication-matrix.md, llm-providers-comparison.md, opt-in-subsystems.md, …
-├── backstage/                    # Private submodule: project management (audits, roadmap, tasks fiches, marketing)
-└── experiments/                  # Private submodule: experiments (e.g. 07-orkeon-coding-agent-ts)
-```
-
-## Important Notes
-
-- **Namespace collision**: `Orkeon.Domain.Task` collides with `System.Threading.Tasks.Task`. In Application-layer files that import both, all `Task` references must be fully qualified as `System.Threading.Tasks.Task`.
-- **Scripting projects — do not confuse** (the historical `Orkeon.Cli.Scripting` naming twin was renamed by [ADR-007](docs/adr/ADR-007-d3-renommage-cli-commands-scripting.md), superseding ADR-004):
-  - `Orkeon.Cli.Commands.Scripting` (`src/cli/`) — library of **TypeScript-scripted interactive commands** for CLI runners (adapter between `Orkeon.Cli.Abstractions` and `Orkeon.Scripting`).
-  - `Orkeon.Scripting.Cli` (`src/scripting/`) — the installable **`orkeon` tool** entrypoint (`orkeon run script.ork.ts`, `PackAsTool=true`, `AssemblyName=orkeon`).
-  - Mnemonic: the project whose **last** segment is `Cli` is the executable.
-- **Architecture Decision Records** live in `docs/adr/`. Notably ADR-002 documents the `Infrastructure → Tools.Abstractions` shared-kernel exception; ADR-003 covers the `Application → Analysis.Abstractions` and `Infrastructure → Analysis` couplings; ADR-005 covers `Tools.Web`/`Tools.EventHub → Application` (several tool families also reach Application transitively through `Orkeon.Rag` — see its dated note); ADR-006 covers the RAG subsystem (`Orkeon.Rag.Abstractions` shared kernel, `Orkeon.Rag → Application`/`Analysis.Abstractions` couplings, legacy RAG namespaces removed without shims); ADR-012 covers the e-mail family (the second scope-freeze exception, `Orkeon.Tools.Email → Orkeon.Rag` for the prompt-injection detector, the reserved internal `/credentials` root).
-- `InMemoryUnitOfWork` intentionally has no durable persist step (aggregates live in the in-memory repositories; `SaveChangesAsync` dispatches domain events). The former EF-migration TODO has been removed (R3.8). Durable crew **execution-state** persistence is a separate opt-in: `AddCrewExecutionStatePersistence(...)` + a checkpointing `IStateStore` (see `docs/reference/opt-in-subsystems.md`)
-- ChromaDB, Pinecone, and LanceDB are implemented (REST API-based), not placeholders
-- Infrastructure layer has been redesigned without Akka.NET; all projects target `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf` only)
-- Version is defined in `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix` — currently `1.0.0-rc.4`); that file is the single source of truth, and the publish workflow refuses a `v*` tag that does not match it
-- Focus on the V1 feature surface, not speculative additions
-- `sonar-project.properties` has been removed (caused scanner conflicts — all params passed via CLI)
-- SonarQube 9.9 LTS: use `sonar.login` (not `sonar.token`) for authentication
-- Coverage collection goes through `dotnet-coverage collect -- dotnet test ...` (Cobertura → SonarQube generic); `--collect:"XPlat Code Coverage"` is rejected by the Microsoft.Testing.Platform runner
-
-## Typed Request/Response Architecture
-
-The project uses a typed pipeline to eliminate `Dictionary<string, object>` from component signatures:
-
-```
-Dict<string,object> → NormalizeParameters (snake_case) → JsonDeserialize<TRequest> → Validate → ExecuteTyped → JsonSerialize<TResponse> → Dict<string,object>
-```
-
-**Core infrastructure** (Domain layer):
-- `ComponentBase<TRequest, TResponse>` — Abstract base with full pipeline
-- 6 YAML attributes (ComponentContract, ToolContract, FieldSchema, ReturnSchema, TypeDefinition, TypeProperty)
-
-**Serialization converters** (Infrastructure layer):
-- 6 tolerant/invariant JSON converters (BoolTolerant, IntTolerant, LongTolerant, DecimalInvariant, DoubleInvariant, RawObject) for YAML string coercion
-
-**Component bridges** (Infrastructure layer):
-- `ToolBase<TReq, TRes>` — Wraps ComponentBase with tool-specific concerns (YAML defaults, output filtering)
-- `EvaluatorBase<TInput, TResult>` — Bridges IEvaluator interface with typed pipeline
-
-**Remaining Dict<string,object>**: Only in extensibility bags (Extensions, Metadata, CustomSettings, Context, Parameters).
-
-## Infrastructure Layer Design Principles
-
-1. **Simple HTTP-based implementations** instead of Actor model
-2. **Direct service calls** instead of message passing
-3. **Standard async/await** patterns instead of Akka streams
-4. **Dependency injection** for all external services
-5. **Testable adapters** for all external integrations
-
-## Migration from Application to Infrastructure
-
-When moving code from Application to Infrastructure:
-1. **Interfaces stay in Application** (ports)
-2. **Implementations move to Infrastructure** (adapters)
-3. **DTOs and contracts stay in Application**
-4. **External dependencies only in Infrastructure**
-
-Example:
-- `ILlmProvider` interface → Domain/Shared/
-- `OpenAIProvider` class → Infrastructure/LLMs/
-- `RedisMemoryProvider` class → Infrastructure/Memory/
-- `FileReadTool` implementation → Tools/Orkeon.Tools.FileSystem/
+The repository holds **48 src projects** and **36 test projects** (`Orkeon.sln`; examples in `examples/Orkeon.Examples.sln`), all `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf`).
+- `src/core/`: Clean Architecture. `Orkeon.Domain` holds entities, value objects and most interfaces (`ILlmProvider`, `IMemoryProvider`, `IAgentFactory`) and references only `Orkeon.Constants.Llm` (ADR-009). `Orkeon.Application` holds use cases, ports and DTOs. `Orkeon.Infrastructure` holds the adapters: 16 LLM providers in `LLMs/`, memory stores, and orchestration strategies in `Crew/Strategies/` + `Consensus/`. Allowed cross-layer exceptions are in ADR-002, 003, 005, 006 and 012.
+- `src/tools/`: the tool families (`ToolBase<TReq,TRes>`). `src/rag/`: the RAG subsystem (ADR-006). `src/analysis/`: RaggableTree, the semantic code graph.
+- `src/scripting/`: the `.ork.ts` DSL (Jint + esbuild) and the `orkeon` CLI. `src/cli/`: REPL command contracts and the Terminal.Gui console.
+- `src/hosting/`: `RunnerHost`, the `orkeon-host` daemon, Aspire. `src/apps/`: the REPL and Orkeon Studio (TUI + WPF). `src/plugins/`, `src/interop/` (Microsoft Agent Framework, ADR-010), `src/packaging/` (NuGet).
+- `src/constants/`: zero-dependency shared-constant satellites. `src/analyzers/`: the VFS analyzer. `src/generators/`: source generators.
+- `tests/` mirrors `src/`; shared fixtures are in `tests/shared/Orkeon.Tests.Shared`.
+- `tools/`: npm bootstraps (esbuild, type checker), the vision-probe image generator. `scripts/`: Sonar, doc gates, example linters, third-party notices.
+- `backstage/` (private submodule): project management. Tasks are `backstage/tasks/<PREFIX>-<NN>-<slug>.md`, never a root `todo/`. `experiments/` (private submodule): experiments.
