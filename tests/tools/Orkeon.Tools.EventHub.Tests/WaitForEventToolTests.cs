@@ -1,4 +1,7 @@
+using System.Collections.Immutable;
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using Orkeon.Application.EventHub;
 using Orkeon.Domain.Tools.Protocol;
 
 namespace Orkeon.Tools.EventHub.Tests;
@@ -89,5 +92,29 @@ public sealed class WaitForEventToolTests : IClassFixture<EventHubToolsFixture>
         Assert.True(response.Success);
         var result = response.ResultDict();
         Assert.False((bool)result["timed_out"]!);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public async System.Threading.Tasks.Task Wait_for_event_matches_a_key_value_array_metadata_match()
+    {
+        var parameters = new Dictionary<string, object?>
+        {
+            ["topic"] = "orders.tools.kvmatch",
+            ["timeout_ms"] = 2000,
+            ["metadata_match"] = JsonDocument.Parse("""[ { "key": "lang", "value": "fr" } ]""").RootElement
+        };
+
+        var waitTask = _fx.WaitForEvent.CallAsync(new ToolCallRequest("wait_for_event", parameters), TestContext.Current.CancellationToken);
+        await System.Threading.Tasks.Task.Yield();
+        await _fx.Hub.PublishAsync(
+            "orders.tools.kvmatch",
+            JsonNode.Parse("""{ "id": "o-43" }""")!,
+            new PublishOptions { Metadata = ImmutableDictionary<string, string>.Empty.Add("lang", "fr") },
+            CancellationToken.None);
+
+        var response = await waitTask;
+        Assert.True(response.Success, response.Error);
+        Assert.False((bool)response.ResultDict()["timed_out"]!);
     }
 }

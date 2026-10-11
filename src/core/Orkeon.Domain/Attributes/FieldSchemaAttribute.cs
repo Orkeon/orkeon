@@ -9,8 +9,9 @@ namespace Orkeon.Domain.Attributes;
 public sealed class FieldSchemaAttribute : Attribute
 {
     /// <summary>
-    /// JSON Schema type (string, integer, number, boolean, array, object).
-    /// If null, inferred from the C# property type.
+    /// JSON Schema type: string, number, integer, boolean, object, array or null; "any" means
+    /// no type (any JSON value). Any other name is refused when the schema is generated.
+    /// If omitted, inferred from the C# property type.
     /// </summary>
     public string? Type { get; set; }
 

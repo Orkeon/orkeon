@@ -12,6 +12,34 @@ public class ToolSchemaTests
 {
     private static readonly string[] RequiredFields = ["rowCount", "columnCount"];
     private static readonly int[] Int123 = [1, 2, 3];
+    #region Map reading (CH-05)
+
+    private static readonly ParameterSchema MapOfStrings =
+        new("object", "labels", false, Values: new ParameterSchema("string", "value", false));
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldReadKeyValueArrayAsMap_WhenParameterIsADictionary()
+    {
+        using var document = System.Text.Json.JsonDocument.Parse(
+            """[ { "key": "topic", "value": "weather" }, { "key": "lang", "value": "fr" } ]""");
+
+        var read = MapOfStrings.ReadAsMap(document.RootElement.Clone());
+
+        Assert.Equal("""{"topic":"weather","lang":"fr"}""", System.Text.Json.JsonSerializer.Serialize(read));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldReturnObjectUnchanged_WhenValueIsAlreadyAnObject()
+    {
+        var value = new Dictionary<string, object> { ["topic"] = "weather" };
+
+        Assert.Same(value, MapOfStrings.ReadAsMap(value));
+    }
+
+    #endregion
+
     #region ParameterSchema Tests
 
     [Fact]
@@ -413,7 +441,7 @@ public class ToolSchemaTests
         var paramSchema = new ParameterSchema(type, description, required, defaultValue, enumValues);
 
         // Act
-        var (extractedType, extractedDescription, extractedRequired, extractedDefault, extractedEnum, extractedFormat, extractedItemsType, extractedItemsFormat, _, _) = paramSchema;
+        var (extractedType, extractedDescription, extractedRequired, extractedDefault, extractedEnum, extractedFormat, extractedItemsType, extractedItemsFormat, _, _, _) = paramSchema;
 
         // Assert
         Assert.Equal(type, extractedType);
@@ -785,4 +813,31 @@ public class ToolSchemaTests
     }
 
     #endregion
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldOmitType_WhenParameterTypeIsAbsent()
+    {
+        var parameter = new ParameterSchema(null!, "Free payload", false);
+
+        var doc = parameter.ToDocument();
+
+        Assert.False(doc.ContainsKey("type"));
+        Assert.Equal("Free payload", doc["description"]);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldEmitAdditionalProperties_WhenParameterHasValues()
+    {
+        var parameter = new ParameterSchema(
+            "object", "Key/value pairs", false, Values: new ParameterSchema("string", "value", false));
+
+        var doc = parameter.ToDocument();
+
+        Assert.Equal("object", doc["type"]);
+        Assert.False(doc.ContainsKey("items"));
+        var additional = Assert.IsType<Dictionary<string, object>>(doc["additionalProperties"]);
+        Assert.Equal("string", additional["type"]);
+    }
 }

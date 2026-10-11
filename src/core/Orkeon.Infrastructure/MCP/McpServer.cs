@@ -343,17 +343,21 @@ public partial class McpServer
 
         foreach (var kvp in schema.Parameters)
         {
-            var paramSchema = new Dictionary<string, object>
-            {
-                ["type"] = kvp.Value.Type,
-                ["description"] = kvp.Value.Description
-            };
+            var paramSchema = new Dictionary<string, object>();
+
+            if (kvp.Value.Type != null)
+                paramSchema["type"] = kvp.Value.Type;
+
+            paramSchema["description"] = kvp.Value.Description;
 
             if (kvp.Value.Default != null)
                 paramSchema["default"] = kvp.Value.Default;
 
             if (kvp.Value.Enum != null && kvp.Value.Enum.Count > 0)
                 paramSchema["enum"] = kvp.Value.Enum;
+
+            if (kvp.Value.Values != null)
+                paramSchema["additionalProperties"] = kvp.Value.Values.ToValueDocument();
 
             properties[kvp.Key] = paramSchema;
 

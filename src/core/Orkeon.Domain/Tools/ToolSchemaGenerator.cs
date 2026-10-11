@@ -73,14 +73,16 @@ public static class ToolSchemaGenerator
     }
 
     /// <summary>
-    /// Maps a C# type to its JSON Schema type string.
+    /// Maps a C# type to its JSON Schema type string; null for a free value
+    /// (<see cref="object"/>, JsonNode, JsonElement), which accepts any JSON value.
     /// </summary>
-    public static string InferSchemaType(Type type)
+    public static string? InferSchemaType(Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
         var underlying = Nullable.GetUnderlyingType(type) ?? type;
 
         if (underlying == typeof(string)) return "string";
+        if (underlying == typeof(object) || IsFreeJsonType(underlying)) return null;
         if (underlying == typeof(bool)) return "boolean";
         if (underlying == typeof(int) || underlying == typeof(long) ||
             underlying == typeof(short) || underlying == typeof(byte) ||
@@ -103,13 +105,29 @@ public static class ToolSchemaGenerator
         if (underlying == typeof(Uri)) return "string";
         // Enum → string
         if (underlying.IsEnum) return "string";
-        // Dictionary<,> is semantically an object (key-value map), not an array
-        if (underlying.IsGenericType && underlying.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+        // A dictionary is semantically an object (key-value map), not an array
+        if (GetDictionaryValueType(underlying) != null)
             return "object";
         // Collections → array
         if (IsCollectionType(underlying)) return "array";
 
         return "object";
+    }
+
+    private static bool IsFreeJsonType(Type type) =>
+        type.FullName is "System.Text.Json.JsonElement" or "System.Text.Json.Nodes.JsonNode";
+
+    private static readonly HashSet<string> s_jsonSchemaTypes =
+        ["string", "number", "integer", "boolean", "object", "array", "null"];
+
+    private static string? ResolveFieldType(FieldSchemaAttribute attr, PropertyInfo prop)
+    {
+        if (attr.Type == null) return InferSchemaType(prop.PropertyType);
+        if (attr.Type == "any") return null;
+        if (!s_jsonSchemaTypes.Contains(attr.Type))
+            throw new InvalidOperationException(
+                $"{prop.DeclaringType?.Name}.{prop.Name}: FieldSchema Type '{attr.Type}' is not a JSON Schema type (string, number, integer, boolean, object, array, null) nor 'any'.");
+        return attr.Type;
     }
 
     /// <summary>
@@ -211,7 +229,7 @@ public static class ToolSchemaGenerator
             var propType = prop.PropertyType;
             var underlying = Nullable.GetUnderlyingType(propType) ?? propType;
 
-            var schemaType = attr.Type ?? InferSchemaType(propType);
+            var schemaType = ResolveFieldType(attr, prop);
             var format = attr.Format ?? InferSchemaFormat(propType);
             var required = attr.Required ?? InferRequired(prop);
 
@@ -230,6 +248,12 @@ public static class ToolSchemaGenerator
             // Array items
             string? itemsType = attr.ItemsType;
             string? itemsFormat = attr.ItemsFormat;
+            var valueType = GetDictionaryValueType(underlying);
+            ParameterSchema? values = valueType == null ? null : new ParameterSchema(
+                Type: InferSchemaType(valueType),
+                Description: "value",
+                Required: false,
+                Format: InferSchemaFormat(valueType));
             if (itemsType == null && IsCollectionType(underlying))
             {
                 var elementType = GetCollectionElementType(underlying);
@@ -250,7 +274,8 @@ public static class ToolSchemaGenerator
                 ItemsType: itemsType,
                 ItemsFormat: itemsFormat,
                 EnumMap: enumMap,
-                Example: attr.Example
+                Example: attr.Example,
+                Values: values
             );
         }
 
@@ -336,7 +361,7 @@ public static class ToolSchemaGenerator
         }
 
         // Primitive types
-        var result = new Dictionary<string, object> { ["type"] = schemaType };
+        var result = new Dictionary<string, object> { ["type"] = schemaType ?? "object" };
         if (format != null)
             result["format"] = format;
         return result;
@@ -369,7 +394,7 @@ public static class ToolSchemaGenerator
         }
 
         // Primitive element
-        var items = new Dictionary<string, object> { ["type"] = itemSchemaType };
+        var items = new Dictionary<string, object> { ["type"] = itemSchemaType ?? "object" };
         var itemFormat = InferSchemaFormat(underlying);
         if (itemFormat != null) items["format"] = itemFormat;
         return items;
@@ -433,13 +458,25 @@ public static class ToolSchemaGenerator
     {
         if (type.IsArray) return true;
         if (!type.IsGenericType) return false;
-        // Dictionary<,> implements IEnumerable<KeyValuePair<,>> but is semantically an object, not an array
-        if (type.GetGenericTypeDefinition() == typeof(Dictionary<,>)) return false;
+        // A dictionary implements IEnumerable<KeyValuePair<,>> but is semantically an object, not an array
+        if (GetDictionaryValueType(type) != null) return false;
 
         // Check if it implements IEnumerable<T>
         return type.GetInterfaces()
             .Concat([type])
             .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+    }
+
+    /// <summary>The value type of a dictionary (IDictionary, IReadOnlyDictionary and their implementations), or null.</summary>
+    private static Type? GetDictionaryValueType(Type type)
+    {
+        if (!type.IsGenericType) return null;
+        return type.GetInterfaces()
+            .Concat([type])
+            .Where(i => i.IsGenericType)
+            .FirstOrDefault(i => i.GetGenericTypeDefinition() == typeof(IDictionary<,>)
+                              || i.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>))
+            ?.GetGenericArguments()[1];
     }
 
     private static Type? GetCollectionElementType(Type type)

@@ -148,7 +148,7 @@ public abstract partial class FileToolBase<TRequest, TResponse> : FileToolBase
         {
             if (!paramDef.Required && paramDef.Default is not null && !merged.ContainsKey(key))
             {
-                merged[key] = CoerceYamlDefault(paramDef.Default, paramDef.Type);
+                merged[key] = CoerceYamlDefault(paramDef.Default, paramDef.Type ?? "");
             }
         }
         return merged;

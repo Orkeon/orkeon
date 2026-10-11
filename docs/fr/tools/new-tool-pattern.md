@@ -63,6 +63,24 @@ Propriétés disponibles :
 )]
 ```
 
+### Types de paramètres portés par le schéma d'un outil
+
+`[FieldSchema(Type = …)]` n'accepte que les sept noms JSON Schema (`string`, `number`,
+`integer`, `boolean`, `object`, `array`, `null`) ou `"any"`. Toute autre valeur échoue à
+l'enregistrement de l'outil, en nommant le DTO et la propriété.
+
+- **Un paramètre libre** — une propriété de type `object`, `JsonNode` ou `JsonElement`, ou portant
+  `Type = "any"` — est émis sans `type` : le modèle peut envoyer n'importe quelle valeur JSON.
+- **Un dictionnaire** (`ImmutableDictionary<string, T>`, `IReadOnlyDictionary`, `IDictionary`) est
+  émis en `{"type":"object","additionalProperties":{…}}`, le schéma des valeurs inféré de `T`.
+- **Un modèle peut envoyer un dictionnaire de deux façons** : un objet JSON, ou un tableau de
+  `[{"key":…,"value":…}]`. Les deux sont acceptés et lus comme le même dictionnaire ; un `[]`
+  vide vaut `{}`, et une clé répétée ou une valeur du mauvais type est refusée.
+
+N'écrivez jamais `Type = "any"` pour un dictionnaire ou une valeur libre : omettez `Type` et
+laissez le type de la propriété décider. Les fournisseurs stricts (Z.AI GLM-5.3) refusent un
+schéma contenant `"type":"any"`.
+
 ### Attribut `[ReturnSchema]` (sur TResponse)
 
 ```csharp

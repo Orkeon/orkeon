@@ -51,4 +51,77 @@ public sealed class PostMessageToolTests : IClassFixture<EventHubToolsFixture>
             nameof(MailboxNotFoundException),
             response.Metadata?["exception_type"]?.ToString());
     }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async System.Threading.Tasks.Task Posts_without_metadata_and_the_envelope_has_none()
+    {
+        var address = MailboxAddress.Parse(new Uri($"agent://{CrewId.Create()}/{AgentId.Create()}"));
+        using var registration = _fx.Hub.RegisterMailbox(address);
+        var parameters = new Dictionary<string, object?>
+        {
+            ["target_mailbox"] = address.Raw,
+            ["payload"] = JsonNode.Parse("""{ "msg": "hi" }""")
+        };
+
+        var response = await _fx.PostMessage.CallAsync(new ToolCallRequest("post_message", parameters), TestContext.Current.CancellationToken);
+        Assert.True(response.Success);
+
+        var message = await _fx.Hub.WaitForAsync(
+            new WaitOnMailbox(address),
+            FiniteWaitTimeout.Of(TimeSpan.FromSeconds(5)),
+            TestContext.Current.CancellationToken);
+
+        Assert.Empty(message.Metadata);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async System.Threading.Tasks.Task Posts_with_object_metadata_and_the_envelope_carries_it()
+    {
+        var address = MailboxAddress.Parse(new Uri($"agent://{CrewId.Create()}/{AgentId.Create()}"));
+        using var registration = _fx.Hub.RegisterMailbox(address);
+        var parameters = new Dictionary<string, object?>
+        {
+            ["target_mailbox"] = address.Raw,
+            ["payload"] = JsonNode.Parse("""{ "msg": "hi" }"""),
+            ["metadata"] = JsonDocument.Parse("""{ "topic": "weather", "lang": "fr" }""").RootElement
+        };
+
+        var response = await _fx.PostMessage.CallAsync(new ToolCallRequest("post_message", parameters), TestContext.Current.CancellationToken);
+        Assert.True(response.Success, response.Error);
+
+        var message = await _fx.Hub.WaitForAsync(
+            new WaitOnMailbox(address),
+            FiniteWaitTimeout.Of(TimeSpan.FromSeconds(5)),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("weather", message.Metadata["topic"]);
+        Assert.Equal("fr", message.Metadata["lang"]);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public async System.Threading.Tasks.Task Posts_with_key_value_array_metadata_and_the_envelope_carries_the_dictionary()
+    {
+        var address = MailboxAddress.Parse(new Uri($"agent://{CrewId.Create()}/{AgentId.Create()}"));
+        using var registration = _fx.Hub.RegisterMailbox(address);
+        var parameters = new Dictionary<string, object?>
+        {
+            ["target_mailbox"] = address.Raw,
+            ["payload"] = JsonNode.Parse("""{ "msg": "hi" }"""),
+            ["metadata"] = JsonDocument.Parse("""[ { "key": "topic", "value": "weather" }, { "key": "lang", "value": "fr" } ]""").RootElement
+        };
+
+        var response = await _fx.PostMessage.CallAsync(new ToolCallRequest("post_message", parameters), TestContext.Current.CancellationToken);
+        Assert.True(response.Success, response.Error);
+
+        var message = await _fx.Hub.WaitForAsync(
+            new WaitOnMailbox(address),
+            FiniteWaitTimeout.Of(TimeSpan.FromSeconds(5)),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("weather", message.Metadata["topic"]);
+        Assert.Equal("fr", message.Metadata["lang"]);
+    }
 }

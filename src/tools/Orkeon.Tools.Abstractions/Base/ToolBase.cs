@@ -141,7 +141,7 @@ public abstract partial class ToolBase : IBaseTool
                 }
 
                 // Execute the tool with the new protocol
-                var result = await ExecuteCoreAsync(request, cancellationToken).ConfigureAwait(false);
+                var result = await ExecuteCoreAsync(ReadMapParameters(request), cancellationToken).ConfigureAwait(false);
 
                 LogToolCallCompleted(Name, result.Success);
 
@@ -208,6 +208,26 @@ public abstract partial class ToolBase : IBaseTool
         var response = await ExecuteCoreAsync(request, cancellationToken).ConfigureAwait(false);
 
         return ToolProtocolAdapter.ConvertToToolResult(response);
+    }
+
+    private ProtocolToolCallRequest ReadMapParameters(ProtocolToolCallRequest request)
+    {
+        var schema = Schema.Parameters;
+        if (schema is null || !schema.Values.Any(p => p.IsMap))
+        {
+            return request;
+        }
+
+        var parameters = new Dictionary<string, object?>(request.Parameters);
+        foreach (var (name, parameter) in schema)
+        {
+            if (parameter.IsMap && parameters.TryGetValue(name, out var value))
+            {
+                parameters[name] = parameter.ReadAsMap(value);
+            }
+        }
+
+        return request with { Parameters = parameters };
     }
 
     /// <summary>

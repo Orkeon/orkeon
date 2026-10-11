@@ -15,7 +15,7 @@ public sealed record PublishEventRequest
 
     /// <summary>JSON payload carried by the event.</summary>
     [JsonPropertyName("payload")]
-    [FieldSchema(Description = "JSON payload to publish", Type = "any", IsRequired = false)]
+    [FieldSchema(Description = "JSON payload to publish", IsRequired = false)]
     public JsonNode? Payload { get; init; }
 
     /// <summary>Restricts delivery to subscribers of this crew. Omit for a global broadcast.</summary>

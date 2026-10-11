@@ -15,7 +15,7 @@ public sealed record PostMessageRequest
 
     /// <summary>JSON payload carried by the message.</summary>
     [JsonPropertyName("payload")]
-    [FieldSchema(Description = "JSON payload", Type = "any", IsRequired = false)]
+    [FieldSchema(Description = "JSON payload", IsRequired = false)]
     public JsonNode? Payload { get; init; }
 
     /// <summary>Optional metadata copied verbatim into the envelope the recipient reads.</summary>

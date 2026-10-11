@@ -143,7 +143,7 @@ public abstract partial class ToolBase<TRequest, TResponse> : ToolBase
         {
             if (!paramDef.Required && paramDef.Default is not null && !merged.ContainsKey(key))
             {
-                merged[key] = CoerceYamlDefault(paramDef.Default, paramDef.Type);
+                merged[key] = CoerceYamlDefault(paramDef.Default, paramDef.Type ?? "");
             }
         }
 

@@ -162,12 +162,6 @@ public class ToolSchemaGeneratorTests
     }
 
     [Fact]
-    public void ShouldReturnObject_WhenUsingInferSchemaTypeUsingObject()
-    {
-        Assert.Equal("object", ToolSchemaGenerator.InferSchemaType(typeof(object)));
-    }
-
-    [Fact]
     public void ShouldReturnObject_WhenUsingInferSchemaTypeWithCustomClass()
     {
         Assert.Equal("object", ToolSchemaGenerator.InferSchemaType(typeof(CustomClass)));
@@ -576,5 +570,146 @@ public class ToolSchemaGeneratorTests
         var schema2 = ToolSchemaGenerator.GenerateSchema<TestRequest>("tool_b", "desc");
 
         Assert.NotSame(schema1, schema2);
+    }
+
+    // -- Free parameters (CH-01, CH-02) --------------------------------
+
+    private sealed record PostMessageLikeRequest
+    {
+        [FieldSchema(Description = "Mailbox URI")]
+        public string TargetMailbox { get; init; } = "";
+
+        [FieldSchema(Description = "JSON payload", Type = "any", IsRequired = false)]
+        public System.Text.Json.Nodes.JsonNode? Payload { get; init; }
+
+        [FieldSchema(Description = "Metadata", IsRequired = false)]
+        public Dictionary<string, string>? Metadata { get; init; }
+    }
+
+    private sealed record FreeTypesRequest
+    {
+        [FieldSchema(Description = "node")]
+        public System.Text.Json.Nodes.JsonNode? Node { get; init; }
+
+        [FieldSchema(Description = "element")]
+        public System.Text.Json.JsonElement Element { get; init; }
+
+        [FieldSchema(Description = "any object")]
+        public object? Anything { get; init; }
+    }
+
+    private sealed record AnyStringRequest
+    {
+        [FieldSchema(Description = "free", Type = "any")]
+        public string Value { get; init; } = "";
+    }
+
+    private sealed record BadTypeRequest
+    {
+        [FieldSchema(Description = "bad", Type = "map")]
+        public string Bag { get; init; } = "";
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldEmitPayloadWithoutType_WhenPostMessageSchemaIsGenerated()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<PostMessageLikeRequest>("post_message", "desc");
+
+        var payload = schema.Parameters["payload"];
+        Assert.Null(payload.Type);
+        Assert.False(payload.ToDocument().ContainsKey("type"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldInferNoType_WhenPropertyIsJsonNodeJsonElementOrObject()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<FreeTypesRequest>("free", "desc");
+
+        Assert.Null(schema.Parameters["node"].Type);
+        Assert.Null(schema.Parameters["element"].Type);
+        Assert.Null(schema.Parameters["anything"].Type);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public void ShouldTreatAnyAsNoType_WhenFieldSchemaTypeIsAny()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<AnyStringRequest>("any", "desc");
+
+        Assert.Null(schema.Parameters["value"].Type);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public void ShouldThrowNamingTheProperty_WhenFieldSchemaTypeIsNotAJsonSchemaType()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => ToolSchemaGenerator.GenerateSchema<BadTypeRequest>("bad", "desc"));
+
+        Assert.Contains(nameof(BadTypeRequest), ex.Message);
+        Assert.Contains(nameof(BadTypeRequest.Bag), ex.Message);
+    }
+
+    private sealed record DictionariesRequest
+    {
+        [FieldSchema(Description = "strings")]
+        public System.Collections.Immutable.ImmutableDictionary<string, string>? Strings { get; init; }
+
+        [FieldSchema(Description = "ints")]
+        public IReadOnlyDictionary<string, int>? Ints { get; init; }
+
+        [FieldSchema(Description = "objects")]
+        public IDictionary<string, object>? Objects { get; init; }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldInferObjectWithStringValues_WhenPropertyIsImmutableDictionaryOfString()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<DictionariesRequest>("dict", "desc");
+
+        var parameter = schema.Parameters["strings"];
+        Assert.Equal("object", parameter.Type);
+        Assert.NotNull(parameter.Values);
+        Assert.Equal("string", parameter.Values!.Type);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldInferObjectWithIntegerValues_WhenPropertyIsIReadOnlyDictionaryOfInt()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<DictionariesRequest>("dict", "desc");
+
+        var parameter = schema.Parameters["ints"];
+        Assert.Equal("object", parameter.Type);
+        Assert.NotNull(parameter.Values);
+        Assert.Equal("integer", parameter.Values!.Type);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldInferObjectWithUntypedValues_WhenPropertyIsIDictionaryOfObject()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<DictionariesRequest>("dict", "desc");
+
+        var parameter = schema.Parameters["objects"];
+        Assert.Equal("object", parameter.Type);
+        Assert.NotNull(parameter.Values);
+        Assert.Null(parameter.Values!.Type);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldNotSetItems_WhenPropertyIsADictionary()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<DictionariesRequest>("dict", "desc");
+
+        foreach (var name in new[] { "strings", "ints", "objects" })
+        {
+            Assert.Null(schema.Parameters[name].ItemsType);
+            Assert.False(schema.Parameters[name].ToDocument().ContainsKey("items"));
+        }
     }
 }
