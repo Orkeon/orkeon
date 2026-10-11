@@ -77,11 +77,12 @@ public sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
 
     private static Dictionary<string, object> FormatParameter(ParameterSchema param)
     {
-        var prop = new Dictionary<string, object>
-        {
-            ["type"] = param.Type,
-            ["description"] = param.Description
-        };
+        var prop = new Dictionary<string, object>();
+
+        if (param.Type is not null)
+            prop["type"] = param.Type;
+
+        prop["description"] = param.Description;
 
         if (param.Default is not null)
             prop["default"] = param.Default;
@@ -106,6 +107,9 @@ public sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
                 items["format"] = param.ItemsFormat;
             prop["items"] = items;
         }
+
+        if (param.Values is not null)
+            prop["additionalProperties"] = param.Values.ToValueDocument();
 
         return prop;
     }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Orkeon.Domain.Tools.Protocol;
 
 namespace Orkeon.Tools.Abstractions.Base;
@@ -45,6 +46,11 @@ internal static class ToolParameterValidator
             return ValidationResult.Success();
         }
 
+        if (paramSchema.IsMap)
+        {
+            return ValidateMap(paramName, paramSchema, value);
+        }
+
         // Basic type validation
         if (!IsValidType(value, paramSchema.Type))
         {
@@ -53,6 +59,58 @@ internal static class ToolParameterValidator
 
         // Enum validation: check EnumMap (C# enums) or Enum (explicit list)
         return ValidateEnum(paramName, paramSchema, value);
+    }
+
+    private static ValidationResult ValidateMap(string paramName, ParameterSchema paramSchema, object value)
+    {
+        JsonNode? node;
+        try
+        {
+            node = JsonSerializer.SerializeToNode(value);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or JsonException or InvalidOperationException)
+        {
+            node = null;
+        }
+
+        var entries = new List<(string Key, JsonNode? Value)>();
+        if (node is JsonObject map)
+        {
+            entries.AddRange(map.Select(p => (p.Key, p.Value)));
+        }
+        else if (node is JsonArray array)
+        {
+            var keys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var item in array)
+            {
+                if (!ParameterSchema.IsKeyValueArray(new JsonArray(item?.DeepClone())))
+                {
+                    return ValidationResult.Failed($"Parameter '{paramName}' must be an object or an array of {{key, value}} items");
+                }
+
+                var key = item!["key"]!.GetValue<string>();
+                if (!keys.Add(key))
+                {
+                    return ValidationResult.Failed($"Parameter '{paramName}' repeats the key '{key}'");
+                }
+
+                entries.Add((key, item["value"]));
+            }
+        }
+        else
+        {
+            return ValidationResult.Failed($"Parameter '{paramName}' has invalid type. Expected: object");
+        }
+
+        foreach (var (key, entry) in entries)
+        {
+            if (entry is not null && !IsValidType(JsonSerializer.SerializeToElement(entry), paramSchema.Values!.Type))
+            {
+                return ValidationResult.Failed($"Parameter '{paramName}': the value of '{key}' has invalid type. Expected: {paramSchema.Values.Type}");
+            }
+        }
+
+        return ValidationResult.Success();
     }
 
     private static ValidationResult ValidateEnum(string paramName, ParameterSchema paramSchema, object value)
@@ -108,8 +166,10 @@ internal static class ToolParameterValidator
     /// <summary>
     /// Checks if a value matches the expected type.
     /// </summary>
-    public static bool IsValidType(object value, string expectedType)
+    public static bool IsValidType(object value, string? expectedType)
     {
+        if (expectedType == null) return true;
+
         // Defense-in-depth: unwrap JsonElement to .NET primitive before checking type.
         // This handles cases where upstream deserialization did not fully unwrap values.
 #pragma warning disable CA1308 // expectedType is normalized to the lowercase switch keys ("string", "number", ...), a required match form, not a comparison normalization
@@ -147,7 +207,7 @@ internal static class ToolParameterValidator
         "boolean" => value is bool
                      || (value is string bs && (bs is "true" or "false" or "True" or "False" or "0" or "1")),
         "array" => value is System.Collections.IEnumerable and not string,
-        "object" => value is IDictionary<string, object> or JsonElement { ValueKind: JsonValueKind.Object },
+        "object" => value is System.Collections.IDictionary or IDictionary<string, object?> or JsonObject or JsonElement { ValueKind: JsonValueKind.Object },
         _ => true // Unknown types pass validation
     };
 

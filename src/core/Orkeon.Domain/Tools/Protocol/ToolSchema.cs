@@ -1,3 +1,7 @@
+using System.Collections;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
 namespace Orkeon.Domain.Tools.Protocol;
 
 /// <summary>
@@ -72,7 +76,7 @@ public record ToolSchema(
 /// <summary>
 /// Schema definition for a single tool parameter.
 /// </summary>
-/// <param name="Type">The parameter type (e.g. "string", "integer").</param>
+/// <param name="Type">The parameter type (e.g. "string", "integer"); null means any JSON value.</param>
 /// <param name="Description">The parameter description.</param>
 /// <param name="Required">Whether the parameter is required.</param>
 /// <param name="Default">The optional default value.</param>
@@ -82,8 +86,9 @@ public record ToolSchema(
 /// <param name="ItemsFormat">For array types, the element format.</param>
 /// <param name="EnumMap">Optional enum name-to-value mapping for C# enums.</param>
 /// <param name="Example">Optional example value.</param>
+/// <param name="Values">For a dictionary, the schema of its values.</param>
 public record ParameterSchema(
-    string Type,
+    string? Type,
     string Description,
     bool Required,
     object? Default = null,
@@ -92,9 +97,105 @@ public record ParameterSchema(
     string? ItemsType = null,
     string? ItemsFormat = null,
     Dictionary<string, int>? EnumMap = null,
-    object? Example = null
+    object? Example = null,
+    ParameterSchema? Values = null
 )
 {
+    /// <summary>True when this parameter is a dictionary (its values are typed by <see cref="Values"/>).</summary>
+    public bool IsMap => Values is not null;
+
+    /// <summary>Reads a key/value array sent for a dictionary parameter as the equivalent object.</summary>
+    /// <param name="value">The value received for this parameter.</param>
+    /// <returns>The equivalent object for a key/value array; any other value unchanged.</returns>
+    public object? ReadAsMap(object? value)
+    {
+        if (!IsMap || value is null or string || !TryAsArray(value, out var array))
+        {
+            return value;
+        }
+
+        var map = new JsonObject();
+        foreach (var item in array)
+        {
+            if (!TryAsPair(item, out var key, out var itemValue))
+            {
+                return value;
+            }
+
+            map[key] = itemValue?.DeepClone();
+        }
+
+        return map;
+    }
+
+    /// <summary>True for a non-empty array whose items are exactly <c>{key: string, value: any}</c>.</summary>
+    /// <param name="value">The value to inspect.</param>
+    /// <returns>Whether the value is a key/value array.</returns>
+    public static bool IsKeyValueArray(object? value) =>
+        value is not (null or string)
+        && TryAsArray(value, out var array)
+        && array.Count > 0
+        && array.All(item => TryAsPair(item, out _, out _));
+
+    private static bool TryAsArray(object value, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out JsonArray? array)
+    {
+        array = null;
+        if (value is JsonElement { ValueKind: not JsonValueKind.Array } or JsonNode and not JsonArray or IDictionary)
+        {
+            return false;
+        }
+
+        if (value is not (JsonElement or JsonArray or IEnumerable))
+        {
+            return false;
+        }
+
+        try
+        {
+            array = JsonSerializer.SerializeToNode(value) as JsonArray;
+        }
+        catch (Exception ex) when (ex is NotSupportedException or JsonException or InvalidOperationException)
+        {
+            return false;
+        }
+
+        return array is not null;
+    }
+
+    private static bool TryAsPair(
+        JsonNode? item,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? key,
+        out JsonNode? itemValue)
+    {
+        key = null;
+        itemValue = null;
+        if (item is not JsonObject { Count: 2 } pair
+            || !pair.TryGetPropertyValue("key", out var keyNode)
+            || !pair.TryGetPropertyValue("value", out itemValue)
+            || keyNode is not JsonValue keyValue
+            || !keyValue.TryGetValue(out key))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The bare JSON Schema of a dictionary value (<c>type</c> and <c>format</c> only);
+    /// empty when the value is untyped, which accepts any JSON value.
+    /// </summary>
+    /// <returns>The JSON Schema fragment of this value schema.</returns>
+    public Dictionary<string, object> ToValueDocument()
+    {
+        var doc = new Dictionary<string, object>();
+        if (Type != null)
+            doc["type"] = Type;
+        if (Format != null)
+            doc["format"] = Format;
+        return doc;
+    }
+
     /// <summary>
     /// Converts to a serialization-friendly dictionary (null-free).
     /// </summary>
@@ -103,10 +204,12 @@ public record ParameterSchema(
     {
         var doc = new Dictionary<string, object>
         {
-            ["type"] = Type,
             ["description"] = Description,
             ["required"] = Required
         };
+
+        if (Type != null)
+            doc["type"] = Type;
 
         if (Format != null)
             doc["format"] = Format;
@@ -123,6 +226,8 @@ public record ParameterSchema(
             if (ItemsFormat != null) items["format"] = ItemsFormat;
             doc["items"] = items;
         }
+        if (Values != null)
+            doc["additionalProperties"] = Values.ToValueDocument();
         if (Example != null)
             doc["example"] = Example;
 

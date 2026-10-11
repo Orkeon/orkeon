@@ -1962,3 +1962,17 @@ static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRo
 *REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationVersion.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationVersion.Equals(Orkeon.Domain.Configuration.ConfigurationVersion? other) -> bool
 *REMOVED*virtual Orkeon.Domain.Configuration.ConfigurationVersion.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*Orkeon.Domain.Tools.Protocol.ParameterSchema.Deconstruct(out string! Type, out string! Description, out bool Required, out object? Default, out System.Collections.Generic.IReadOnlyList<object!>? Enum, out string? Format, out string? ItemsType, out string? ItemsFormat, out System.Collections.Generic.Dictionary<string!, int>? EnumMap, out object? Example) -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Deconstruct(out string? Type, out string! Description, out bool Required, out object? Default, out System.Collections.Generic.IReadOnlyList<object!>? Enum, out string? Format, out string? ItemsType, out string? ItemsFormat, out System.Collections.Generic.Dictionary<string!, int>? EnumMap, out object? Example, out Orkeon.Domain.Tools.Protocol.ParameterSchema? Values) -> void
+*REMOVED*Orkeon.Domain.Tools.Protocol.ParameterSchema.ParameterSchema(string! Type, string! Description, bool Required, object? Default = null, System.Collections.Generic.IReadOnlyList<object!>? Enum = null, string? Format = null, string? ItemsType = null, string? ItemsFormat = null, System.Collections.Generic.Dictionary<string!, int>? EnumMap = null, object? Example = null) -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ParameterSchema(string? Type, string! Description, bool Required, object? Default = null, System.Collections.Generic.IReadOnlyList<object!>? Enum = null, string? Format = null, string? ItemsType = null, string? ItemsFormat = null, System.Collections.Generic.Dictionary<string!, int>? EnumMap = null, object? Example = null, Orkeon.Domain.Tools.Protocol.ParameterSchema? Values = null) -> void
+*REMOVED*Orkeon.Domain.Tools.Protocol.ParameterSchema.Type.get -> string!
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Type.get -> string?
+*REMOVED*static Orkeon.Domain.Tools.ToolSchemaGenerator.InferSchemaType(System.Type! type) -> string!
+static Orkeon.Domain.Tools.ToolSchemaGenerator.InferSchemaType(System.Type! type) -> string?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.IsMap.get -> bool
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Values.get -> Orkeon.Domain.Tools.Protocol.ParameterSchema?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Values.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ToValueDocument() -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ReadAsMap(object? value) -> object?
+static Orkeon.Domain.Tools.Protocol.ParameterSchema.IsKeyValueArray(object? value) -> bool

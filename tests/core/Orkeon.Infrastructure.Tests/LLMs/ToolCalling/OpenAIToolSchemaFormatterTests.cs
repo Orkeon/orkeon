@@ -244,4 +244,53 @@ public class OpenAIToolSchemaFormatterTests
         Assert.Empty(properties);
         Assert.Empty(required);
     }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    [Trait("BR", "CH-02")]
+    public void ShouldOmitType_WhenParameterTypeIsAbsent()
+    {
+        var schema = new ToolSchema(
+            "free",
+            "A free tool",
+            new Dictionary<string, ParameterSchema>
+            {
+                ["payload"] = new(null, "Any JSON value", Required: false)
+            });
+
+        var result = _formatter.FormatToolsForPayload([schema]);
+
+        var tools = (List<Dictionary<string, object>>)result["tools"];
+        var function = (Dictionary<string, object>)tools[0]["function"];
+        var parameters = (Dictionary<string, object>)function["parameters"];
+        var properties = (Dictionary<string, object>)parameters["properties"];
+        var free = Assert.IsType<Dictionary<string, object>>(properties["payload"]);
+        Assert.False(free.ContainsKey("type"));
+        Assert.Equal("Any JSON value", free["description"]);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldEmitAdditionalProperties_WhenParameterHasValues()
+    {
+        var schema = new ToolSchema(
+            "map",
+            "A map tool",
+            new Dictionary<string, ParameterSchema>
+            {
+                ["metadata"] = new("object", "Pairs", Required: false, Values: new ParameterSchema("string", "value", false))
+            });
+
+        var result = _formatter.FormatToolsForPayload([schema]);
+
+        var tools = (List<Dictionary<string, object>>)result["tools"];
+        var function = (Dictionary<string, object>)tools[0]["function"];
+        var parameters = (Dictionary<string, object>)function["parameters"];
+        var properties = (Dictionary<string, object>)parameters["properties"];
+        var map = Assert.IsType<Dictionary<string, object>>(properties["metadata"]);
+        Assert.Equal("object", map["type"]);
+        Assert.False(map.ContainsKey("items"));
+        var additional = Assert.IsType<IDictionary<string, object>>(Assert.Contains("additionalProperties", map), exactMatch: false);
+        Assert.Equal("string", additional["type"]);
+    }
 }

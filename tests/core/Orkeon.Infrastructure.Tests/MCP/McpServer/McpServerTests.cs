@@ -331,4 +331,63 @@ public class McpServerTests
         Assert.Equal(1, required.GetArrayLength());
         Assert.Equal("name", required[0].GetString());
     }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public void ShouldServeTheSameSchema_WhenAToolHasNoFreeOrDictionaryParameter()
+    {
+        var schema = new ToolSchema("plain", "A plain tool", new Dictionary<string, ParameterSchema>
+        {
+            ["name"] = new("string", "The name", true),
+            ["count"] = new("integer", "The count", false, 5),
+            ["verbose"] = new("boolean", "Chatty", false)
+        });
+
+        var jsonSchema = McpServerSut.ConvertToolSchemaToJsonSchema(schema);
+
+        Assert.NotNull(jsonSchema);
+        Assert.Equal(
+            "{\"type\":\"object\",\"properties\":{"
+            + "\"name\":{\"type\":\"string\",\"description\":\"The name\"},"
+            + "\"count\":{\"type\":\"integer\",\"description\":\"The count\",\"default\":5},"
+            + "\"verbose\":{\"type\":\"boolean\",\"description\":\"Chatty\"}},"
+            + "\"required\":[\"name\"]}",
+            jsonSchema!.Value.GetRawText());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    [Trait("BR", "CH-02")]
+    public void ConvertToolSchema_OmitsType_WhenParameterTypeIsAbsent()
+    {
+        var schema = new ToolSchema("free", "A free tool", new Dictionary<string, ParameterSchema>
+        {
+            ["payload"] = new(null, "Any JSON value", false)
+        });
+
+        var jsonSchema = McpServerSut.ConvertToolSchemaToJsonSchema(schema);
+
+        Assert.NotNull(jsonSchema);
+        var free = jsonSchema!.Value.GetProperty("properties").GetProperty("payload");
+        Assert.False(free.TryGetProperty("type", out _));
+        Assert.Equal("Any JSON value", free.GetProperty("description").GetString());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldEmitAdditionalProperties_WhenParameterHasValues()
+    {
+        var schema = new ToolSchema("map", "A map tool", new Dictionary<string, ParameterSchema>
+        {
+            ["metadata"] = new("object", "Pairs", false, Values: new ParameterSchema("string", "value", false))
+        });
+
+        var jsonSchema = McpServerSut.ConvertToolSchemaToJsonSchema(schema);
+
+        Assert.NotNull(jsonSchema);
+        var map = jsonSchema!.Value.GetProperty("properties").GetProperty("metadata");
+        Assert.Equal("object", map.GetProperty("type").GetString());
+        Assert.False(map.TryGetProperty("items", out _));
+        Assert.Equal("string", map.GetProperty("additionalProperties").GetProperty("type").GetString());
+    }
 }

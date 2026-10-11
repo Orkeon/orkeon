@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a tool with a free or dictionary parameter no longer sends an invalid schema (LLM-13)
+
+The EventHub tools `post_message`, `publish_event`, `send_request`, `reply_to` and
+`wait_for_event` declared their free or dictionary parameters with `"type":"any"`, or emitted a
+dictionary as an `array`; strict providers such as Z.AI GLM-5.3 refused the request. A free
+parameter now carries no `type`, a dictionary is `{"type":"object","additionalProperties":{…}}`,
+and a `[{"key":…,"value":…}]` array sent by the model is read as the dictionary. See
+`docs/tools/new-tool-pattern.md`.
+
+Migration:
+
+| Before | After |
+|---|---|
+| `ParameterSchema.Type` is `string` | `string?` (absent for a free parameter) |
+| `ParameterSchema(…, Example)` | one more positional member, `Values` (`ParameterSchema?`, default `null`): `Deconstruct` takes one more element |
+| `ToolSchemaGenerator.InferSchemaType` returns `string` | returns `string?` |
+| `FieldSchema.Type` with any value | outside the seven JSON Schema names and `"any"`, it throws at registration |
+| nothing | new public `ParameterSchema.IsMap`, `ReadAsMap`, `IsKeyValueArray`, `ToValueDocument` |
+
 ### Fixed — a streamed LLM call that does not end is a failed call, never an empty answer
 
 A Studio run streams every agent turn, and a streamed request is sent with

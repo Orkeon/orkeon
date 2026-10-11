@@ -168,7 +168,7 @@ public abstract partial class HttpToolBase<TRequest, TResponse> : HttpToolBase
         {
             if (!paramDef.Required && paramDef.Default is not null && !merged.ContainsKey(key))
             {
-                merged[key] = CoerceYamlDefault(paramDef.Default, paramDef.Type);
+                merged[key] = CoerceYamlDefault(paramDef.Default, paramDef.Type ?? "");
             }
         }
         return merged;

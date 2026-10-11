@@ -15,7 +15,7 @@ public sealed record SendRequestRequest
 
     /// <summary>JSON payload carried by the request.</summary>
     [JsonPropertyName("payload")]
-    [FieldSchema(Description = "JSON payload for the request", Type = "any", IsRequired = false)]
+    [FieldSchema(Description = "JSON payload for the request", IsRequired = false)]
     public JsonNode? Payload { get; init; }
 
     /// <summary>Mandatory timeout in milliseconds. <c>Forever</c> is not allowed on Send (spec §9.3).</summary>

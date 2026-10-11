@@ -14,7 +14,7 @@ public sealed record ReplyToRequest
 
     /// <summary>JSON payload returned to the requester.</summary>
     [JsonPropertyName("payload")]
-    [FieldSchema(Description = "JSON payload to return", Type = "any", IsRequired = false)]
+    [FieldSchema(Description = "JSON payload to return", IsRequired = false)]
     public JsonNode? Payload { get; init; }
 }
 

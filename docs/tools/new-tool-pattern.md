@@ -62,6 +62,23 @@ Available properties:
 )]
 ```
 
+### Parameter types a tool's schema carries
+
+`[FieldSchema(Type = …)]` accepts only the seven JSON Schema names (`string`, `number`,
+`integer`, `boolean`, `object`, `array`, `null`) or `"any"`. Any other value fails at tool
+registration, naming the DTO and the property.
+
+- **A free parameter** — a property of type `object`, `JsonNode` or `JsonElement`, or one with
+  `Type = "any"` — is emitted with no `type`: the model may send any JSON value.
+- **A dictionary** (`ImmutableDictionary<string, T>`, `IReadOnlyDictionary`, `IDictionary`) is
+  emitted as `{"type":"object","additionalProperties":{…}}`, the value schema inferred from `T`.
+- **A model may send a dictionary two ways**: a JSON object, or an array of
+  `[{"key":…,"value":…}]`. Both are accepted and read as the same dictionary; an empty `[]`
+  means `{}`, and a repeated key or a value of the wrong type is refused.
+
+Never write `Type = "any"` for a dictionary or a free value: leave `Type` out and let the
+property type decide. Strict providers (Z.AI GLM-5.3) refuse a schema holding `"type":"any"`.
+
 ### `[ReturnSchema]` attribute (on TResponse)
 
 ```csharp

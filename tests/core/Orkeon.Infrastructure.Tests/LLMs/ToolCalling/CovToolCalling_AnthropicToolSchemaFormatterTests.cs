@@ -207,4 +207,43 @@ public class CovToolCalling_AnthropicToolSchemaFormatterTests
         var tools = Assert.IsType<List<Dictionary<string, object>>>(payload["tools"]);
         Assert.Equal(2, tools.Count);
     }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    [Trait("BR", "CH-02")]
+    public void ShouldOmitType_WhenParameterTypeIsAbsent()
+    {
+        var schema = new ToolSchema("free", "A free tool", new Dictionary<string, ParameterSchema>
+        {
+            ["payload"] = new(null, "Any JSON value", Required: false)
+        });
+
+        var payload = _formatter.FormatToolsForPayload([schema], ToolCallMode.Auto);
+
+        var tool = ((List<Dictionary<string, object>>)payload["tools"])[0];
+        var props = (Dictionary<string, object>)((Dictionary<string, object>)tool["input_schema"])["properties"];
+        var free = Assert.IsType<Dictionary<string, object>>(props["payload"]);
+        Assert.False(free.ContainsKey("type"));
+        Assert.Equal("Any JSON value", free["description"]);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldEmitAdditionalProperties_WhenParameterHasValues()
+    {
+        var schema = new ToolSchema("map", "A map tool", new Dictionary<string, ParameterSchema>
+        {
+            ["metadata"] = new("object", "Pairs", Required: false, Values: new ParameterSchema("string", "value", false))
+        });
+
+        var payload = _formatter.FormatToolsForPayload([schema], ToolCallMode.Auto);
+
+        var tool = ((List<Dictionary<string, object>>)payload["tools"])[0];
+        var props = (Dictionary<string, object>)((Dictionary<string, object>)tool["input_schema"])["properties"];
+        var map = Assert.IsType<Dictionary<string, object>>(props["metadata"]);
+        Assert.Equal("object", map["type"]);
+        Assert.False(map.ContainsKey("items"));
+        var additional = Assert.IsType<IDictionary<string, object>>(Assert.Contains("additionalProperties", map), exactMatch: false);
+        Assert.Equal("string", additional["type"]);
+    }
 }
