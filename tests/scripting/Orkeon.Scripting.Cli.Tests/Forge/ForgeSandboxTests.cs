@@ -10,55 +10,41 @@ using Orkeon.Tools.Email.DependencyInjection;
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
 /// <summary>
-/// The forge's tool policy: what escapes the VFS never enters a forged crew. A forged crew runs
-/// on the test bench with real tools, so the mailbox tools (MAIL) are denied with the shell and
-/// the interpreter; <c>email_parser</c> only reads an .eml file through the VFS and stays.
+/// The forge's tool policy: what escapes the VFS never enters a forged crew. The mailbox tools
+/// are offered (FORGE-10: a try runs them on a trial mailbox); only the shell and the
+/// interpreter are denied.
 /// </summary>
 public sealed class ForgeSandboxTests
 {
-    private static readonly string[] MailboxTools =
-    [
-        "email_accounts", "email_folders", "email_search", "email_read", "email_save_attachment",
-        "email_create_folder", "email_rename_folder", "email_move", "email_mark", "email_delete",
-        "email_draft", "email_send",
-    ];
+    private static readonly string[] Others = ["file_read", "shell_command", "code_interpreter"];
+    private static readonly string[] Denied = ["code_interpreter", "shell_command"];
 
     [Fact]
-    public void The_catalogue_of_a_forged_crew_leaves_out_every_mailbox_tool()
+    [Trait("BR", "BR-01")]
+    public void ShouldOfferTheTwelveMailTools_WhenTheHostRegistersThem()
     {
-        var registered = MailboxTools
-            .Concat(["email_parser", "file_read", "shell_command", "code_interpreter"])
-            .Select(name => new StubBaseTool(name))
-            .ToList();
-
-        var catalogue = ForgeSandbox.SelectCrewTools(registered).Select(tool => tool.Name).ToList();
-
-        Assert.Equal(["email_parser", "file_read"], catalogue);
-    }
-
-    [Fact]
-    public void Every_tool_the_e_mail_family_registers_is_denied_but_the_eml_parser()
-    {
-        // From the registration itself, not from a copy of the list: a mailbox tool added to the
-        // family later fails here until the forge denies it too.
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
         services.AddOrkeonEmailTools(new ConfigurationBuilder().Build());
         using var provider = services.BuildServiceProvider();
-
-        var family = provider.GetServices<IBaseTool>().Select(tool => tool.Name).ToList();
-
+        var family = provider.GetServices<IBaseTool>().ToList();
         Assert.Equal(13, family.Count);
-        Assert.All(family.Where(name => name != "email_parser"), name => Assert.Contains(name, ForgeSandbox.DeniedTools));
-        Assert.DoesNotContain("email_parser", ForgeSandbox.DeniedTools);
+        var registered = family
+            .Concat(Others.Select(name => new StubBaseTool(name)))
+            .ToList();
+
+        var catalogue = ForgeSandbox.SelectCrewTools(registered).Select(tool => tool.Name).ToList();
+
+        Assert.Equal(family.Select(tool => tool.Name).Append("file_read").Order(StringComparer.Ordinal), catalogue);
+        Assert.DoesNotContain("shell_command", catalogue);
+        Assert.DoesNotContain("code_interpreter", catalogue);
     }
 
     [Fact]
-    public void Every_mailbox_tool_is_denied()
+    [Trait("BR", "BR-10")]
+    public void ShouldDenyShellAndCodeInterpreter_Only()
     {
-        foreach (var name in MailboxTools)
-            Assert.Contains(name, ForgeSandbox.DeniedTools);
-        Assert.DoesNotContain("email_parser", ForgeSandbox.DeniedTools);
+        Assert.Equal(Denied, ForgeSandbox.DeniedTools.Order(StringComparer.Ordinal));
     }
 }

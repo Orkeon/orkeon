@@ -7,6 +7,7 @@ using Orkeon.Tools.Email.Accounts;
 using Orkeon.Tools.Email.Configuration;
 using Orkeon.Tools.Email.Dtos;
 using Orkeon.Tools.Email.Mime;
+using Orkeon.Tools.Email.Trial;
 
 namespace Orkeon.Tools.Email.Tools;
 
@@ -74,6 +75,7 @@ internal sealed class EmailSaveAttachmentTool : ToolBase<EmailSaveAttachmentRequ
                 await MimeMessageReader.WriteAttachmentAsync(entry, stream, cancellationToken).ConfigureAwait(false);
             }
 
+            EmailTrial.Current?.RecordAttachmentSaved(account.Name, fetched.Id, path);
             saved.Add(new SavedAttachmentDto { Index = entry.Index, FileName = path[(path.LastIndexOf('/') + 1)..], Path = path });
         }
 

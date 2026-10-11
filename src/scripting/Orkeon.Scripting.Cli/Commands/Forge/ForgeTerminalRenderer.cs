@@ -116,6 +116,11 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                     _console.WriteLine($"  by hand: {command}");
                 break;
 
+            case "run.finished":
+                _console.WriteLine(e.GetRawText());
+                RenderSimulatedActions(e);
+                break;
+
             case "session.finished":
                 _console.WriteLine($"■ {Text(e, "status")} (exit {e.GetProperty("exitCode").GetInt32()})");
                 break;
@@ -128,6 +133,26 @@ internal sealed class ForgeTerminalRenderer : TextWriter
         }
 
         _console.Flush();
+    }
+
+    /// <summary>One line per mail action the trial simulated; nothing when it simulated none.</summary>
+    private void RenderSimulatedActions(JsonElement e)
+    {
+        if (!e.TryGetProperty("mailActions", out var actions) || actions.ValueKind != JsonValueKind.Array)
+            return;
+
+        foreach (var action in actions.EnumerateArray())
+        {
+            var recipients = action.TryGetProperty("recipients", out var list) && list.ValueKind == JsonValueKind.Array
+                ? string.Join(", ", list.EnumerateArray().Select(r => r.GetString()))
+                : "";
+            var target = recipients.Length > 0 ? recipients : Text(action, "target");
+            var body = string.Join(' ', Text(action, "body").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            if (body.Length > MaxBodyChars)
+                body = body[..MaxBodyChars] + "…";
+            var tail = body.Length > 0 ? $" — {body}" : "";
+            _console.WriteLine($"  ✉ simulated {Text(action, "kind")} to {target} — \"{Text(action, "subject")}\"{tail}");
+        }
     }
 
     /// <summary>The brief is captured; the folders the session keeps inside the team, when it holds any.</summary>
@@ -215,6 +240,8 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                 break;
         }
     }
+
+    private const int MaxBodyChars = 300;
 
     private static string Text(JsonElement e, string property) =>
         e.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String

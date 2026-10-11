@@ -103,8 +103,10 @@ strangers and acts on a real mailbox, so its defense does not rest on the model'
   HTTPS, so the bearer token never leaves for another host. Transport is TLS
   (`SslOnConnect` or `StartTls`) — `None` is accepted towards a loopback test server only, and
   no option accepts an invalid certificate.
-- **Forged crews get no mailbox.** `orkeon forge` removes the twelve mailbox tools from the
-  catalogue of the crews it tries on its bench (`email_parser`, which reads a file, stays).
+- **Forged crews are tried on a fictitious mailbox.** `orkeon forge` offers the twelve mailbox
+  tools, and its bench runs every try inside a mail trial: the tools read and change a trial
+  mailbox, a send is recorded and never leaves, and the configured account's rights, allow-list
+  and caps already judge each simulated action (FORGE-10).
 
 **Honest limits.** The screen is the pattern-based detector described above: it flags, and a
 paraphrased injection passes it. The boundary is the account's rights, the fail-closed

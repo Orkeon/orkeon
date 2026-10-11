@@ -28,6 +28,34 @@ internal sealed class FakeOrkeonClock : IOrkeonClock
 public class ForgeEventWriterTests
 {
     [Fact]
+    [Trait("BR", "BR-03")]
+    [Trait("BR", "BR-08")]
+    public void ShouldPrintTheSimulatedActions_WhenTheTerminalRendersRunFinished()
+    {
+        var console = new StringWriter();
+        using var renderer = new ForgeTerminalRenderer(console);
+        renderer.WriteLine(
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"run.finished","run":1,"success":true,"durationMs":40,"tokens":500,"mailActions":[{"kind":"send","account":"trial","recipients":["client@example.com"],"subject":"Morning summary","body":"All quiet.","folder":"Sent","target":""}]}""");
+        var printed = console.ToString();
+        Assert.Contains("client@example.com", printed);
+        Assert.Contains("Morning summary", printed);
+        Assert.Contains("simulated", printed, StringComparison.OrdinalIgnoreCase);
+        var simulatedLines = printed.Split('\n')
+            .Where(l => l.Contains("simulated", StringComparison.OrdinalIgnoreCase)
+                && !l.TrimStart().StartsWith('{'))
+            .ToList();
+        Assert.Contains(simulatedLines, l => l.Contains("All quiet."));
+
+        var plain = new StringWriter();
+        using var plainRenderer = new ForgeTerminalRenderer(plain);
+        plainRenderer.WriteLine(
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"run.finished","run":1,"success":true,"durationMs":40,"tokens":500}""");
+        var none = plain.ToString();
+        Assert.DoesNotContain("client@example.com", none);
+        Assert.DoesNotContain("simulated", none, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void The_envelope_is_the_pinned_golden_form()
     {
         var output = new StringWriter();

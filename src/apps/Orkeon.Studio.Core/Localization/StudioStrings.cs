@@ -1541,6 +1541,9 @@ public static class StudioStringKeys
     /// <summary>Said when no LLM judge ran and the criteria carry no per-line verdict.</summary>
     public const string WizardJudgeMechanical = "Studio.Create.JudgeMechanical";
 
+    /// <summary>Heading of the simulated mail actions listed under the verdict.</summary>
+    public const string WizardMailActionsLabel = "Studio.Create.MailActionsLabel";
+
 
     // ---- The progress card of steps 2 and 3 ---------------------------------
     // What the engine is doing while the column would otherwise be blank. One key per
@@ -2838,6 +2841,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintComposing] = "The assistant is composing — answer it in the conversation.",
         [StudioStringKeys.WizardSuggestions] = "What the engine suggests changing",
         [StudioStringKeys.WizardJudgeMechanical] = "No judge was available, so the criteria below were not checked one by one — read them yourself.",
+        [StudioStringKeys.WizardMailActionsLabel] = "Simulated mail — nothing was sent",
 
         [StudioStringKeys.WizardDecisionAccept] = "Looks good to me",
         [StudioStringKeys.WizardDecisionRetry] = "Run the trial again",

@@ -15,17 +15,13 @@ internal static class ForgeSandbox
 {
     /// <summary>
     /// Tools that escape the VFS confinement and never enter a forged crew (V1): the shell and
-    /// the interpreter, and the mailbox tools (MAIL) — a forged crew runs on the test bench with
-    /// real tools, and must not read, move, delete or send the operator's actual mail.
-    /// <c>email_parser</c> stays: it reads an <c>.eml</c> file through the VFS, no mailbox.
+    /// the interpreter. FORGE-10: the mailbox tools are offered — a try runs them on a trial
+    /// mailbox, never on the operator's actual mail.
     /// </summary>
     public static readonly IReadOnlySet<string> DeniedTools =
         new HashSet<string>(StringComparer.Ordinal)
         {
             "shell_command", "code_interpreter",
-            "email_accounts", "email_folders", "email_search", "email_read", "email_save_attachment",
-            "email_create_folder", "email_rename_folder", "email_move", "email_mark", "email_delete",
-            "email_draft", "email_send",
         };
 
     /// <summary>

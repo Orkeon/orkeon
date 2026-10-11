@@ -13,6 +13,7 @@ using Orkeon.Tools.Email.Constants;
 using Orkeon.Tools.Email.Mailboxes;
 using Orkeon.Tools.Email.Security;
 using Orkeon.Tools.Email.Tools;
+using Orkeon.Tools.Email.Trial;
 
 namespace Orkeon.Tools.Email.DependencyInjection;
 
@@ -49,7 +50,7 @@ public static class EmailToolsServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
 
         services.TryAddSingleton<IEmailTokenStore>(_ => new UnavailableEmailTokenStore());
-        services.TryAddSingleton<IEmailAccountRegistry>(sp => new EmailAccountRegistry(sp.GetRequiredService<IOptions<EmailToolsOptions>>()));
+        services.TryAddSingleton<IEmailAccountRegistry>(sp => new ScopedEmailAccountRegistry(new EmailAccountRegistry(sp.GetRequiredService<IOptions<EmailToolsOptions>>())));
         services.TryAddSingleton(sp => new OAuth2Client(
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(EmailDefaults.HttpClientName),
             sp.GetRequiredService<TimeProvider>()));
@@ -58,11 +59,13 @@ public static class EmailToolsServiceCollectionExtensions
             sp.GetRequiredService<OAuth2Client>(),
             EmailEnvironment.Machine));
         services.TryAddSingleton<IMailServiceConnector>(_ => new NetworkMailServiceConnector());
-        services.TryAddSingleton<IMailboxProvider>(sp => new MailboxProvider(
+        // The real provider is registered as itself so the container, not the decorator, disposes its connections.
+        services.TryAddSingleton(sp => new MailboxProvider(
             sp.GetRequiredService<IMailServiceConnector>(),
             sp.GetRequiredService<EmailCredentialProvider>(),
             () => sp.GetRequiredService<IHttpClientFactory>().CreateClient(EmailDefaults.HttpClientName),
             sp.GetRequiredService<TimeProvider>()));
+        services.TryAddSingleton<IMailboxProvider>(sp => new ScopedMailboxProvider(sp.GetRequiredService<MailboxProvider>()));
         services.TryAddSingleton(sp => new EmailAccess(sp.GetRequiredService<IEmailAccountRegistry>(), sp.GetRequiredService<IMailboxProvider>()));
         services.TryAddSingleton(sp => new EmailContentScreen(sp.GetRequiredService<IOptions<EmailToolsOptions>>()));
         services.TryAddSingleton(sp => new SendQuota(sp.GetRequiredService<TimeProvider>()));
@@ -71,6 +74,7 @@ public static class EmailToolsServiceCollectionExtensions
             sp.GetRequiredService<EmailCredentialProvider>(),
             sp.GetRequiredService<OAuth2Client>(),
             sp.GetRequiredService<IMailboxProvider>()));
+        services.TryAddSingleton(sp => new EmailRightsCheck(sp.GetRequiredService<EmailAccountAdministration>()));
 
         AddTool(services, sp => new EmailAccountsTool(sp.GetRequiredService<EmailAccountAdministration>(), Logger<EmailAccountsTool>(sp)));
         AddTool(services, sp => new EmailFoldersTool(sp.GetRequiredService<EmailAccess>(), Logger<EmailFoldersTool>(sp)));

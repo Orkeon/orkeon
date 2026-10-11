@@ -231,6 +231,29 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.DoesNotContain("03-email-pipeline", provider.Chats[1][^1].Content, StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "BR-09")]
+    public async Task ShouldStateThatInternalMessagingSendsNoMail_InTheDesignPrompt()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider, crewTools: ["json_tool"]);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var header = provider.Chats[0][0].Content;
+        var start = header.IndexOf("## Tools the team may use", StringComparison.Ordinal);
+        Assert.True(start >= 0, header);
+        var next = header.IndexOf("\n## ", start + 3, StringComparison.Ordinal);
+        var section = next < 0 ? header[start..] : header[start..next];
+        Assert.Contains("client://", section, StringComparison.Ordinal);
+        Assert.Contains("never sends an e-mail", section, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("email_send", section, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// D-03, measured: the same composition with and without the same use case. The reference
     /// adds its section to the stable header and nothing else, within the bound of its outline

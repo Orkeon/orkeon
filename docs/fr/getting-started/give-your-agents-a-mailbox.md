@@ -155,7 +155,7 @@ que vous modifiez et envoyez — ou non.
   "Send": { "AllowedRecipients": [ "your.name@gmail.com" ], "MaxPerHour": 10 }
   ```
 
-- **Depuis un crew YAML plutôt.** L'hôte d'exécution derrière `orkeon run` enregistre les treize outils `email_*` : un agent YAML les liste par leur nom — `tools: [email_accounts, email_search, email_read, email_move, email_draft]` — et c'est le modèle qui décide des appels. Déclarez les comptes dans le fichier de réglages **propre à ce crew** (il contient aussi la section `Llm` du crew), pas dans un `appsettings.json` du dossier d'où vous lancez, ni dans des variables d'environnement : ceux-là atteignent toutes les exécutions. Voir [Depuis un crew YAML](../guides/email.md#depuis-un-crew-yaml). `orkeon forge` ne met jamais les outils de boîte aux lettres dans les crews qu'il forge.
+- **Depuis un crew YAML plutôt.** L'hôte d'exécution derrière `orkeon run` enregistre les treize outils `email_*` : un agent YAML les liste par leur nom — `tools: [email_accounts, email_search, email_read, email_move, email_draft]` — et c'est le modèle qui décide des appels. Déclarez les comptes dans le fichier de réglages **propre à ce crew** (il contient aussi la section `Llm` du crew), pas dans un `appsettings.json` du dossier d'où vous lancez, ni dans des variables d'environnement : ceux-là atteignent toutes les exécutions. Voir [Depuis un crew YAML](../guides/email.md#depuis-un-crew-yaml). `orkeon forge` propose les outils de boîte aux lettres aux crews qu'il forge et les essaie sur une boîte fictive : voir [Crews forgés](../guides/email.md#crews-forgés).
 
 ## Autres boîtes aux lettres
 

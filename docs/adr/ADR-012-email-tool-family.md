@@ -79,7 +79,8 @@ The provider constraints, checked on 2026-09-26:
    Received content is marked untrusted and screened by `PromptInjectionDocumentValidator` on
    the rendered text — flag by default, `Screening:WithholdRejected` to withhold. Every tool
    declares its `ToolAccess` for the permission gate, and `orkeon forge` denies the twelve
-   mailbox tools to the crews it forges. Results fit the agent loop's 4000-character cap on a
+   mailbox tools to the crews it forges (amended by FORGE-10: the tools are offered, and a try
+   runs them on a fictitious trial mailbox). Results fit the agent loop's 4000-character cap on a
    tool result, without a new override — mail content is not a trusted deliverable: a search
    page is cut after a whole message and a body slice where its rendering ends, and the
    cursor or the offset resumes exactly there.

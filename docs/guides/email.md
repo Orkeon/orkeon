@@ -58,7 +58,8 @@ Every parameter is listed [below](#parameters); call examples and the permission
 of each tool are in the [tool inventory](../tools/inventory.md).
 `AddOrkeonEmailTools(configuration)` registers all thirteen. The shared runner host calls it —
 so `orkeon run`, `.ork.ts` scripts and `orkeon-host` have the tools — and so does
-`orkeon-repl`; `orkeon forge` keeps the twelve mailbox tools out of the crews it forges.
+`orkeon-repl`; `orkeon forge` offers them to the crews it forges, and runs every try on a
+trial mailbox (see [Forged crews](#forged-crews)).
 Until an account is declared, the mailbox tools refuse every call with a message saying what
 to declare, `email_accounts` lists none, and `email_parser`, which needs no account, works.
 
@@ -401,6 +402,26 @@ message with a line saying it was withheld. That switch is off by default: the d
 tuned on web pages, and newsletters trip it. The real boundary is the account's rights, the
 allow-list and drafts — see [Security](../architecture/security.md#e-mail-tools).
 
+### A run whose mail tools lack a right is refused at start
+
+Before any model call, `orkeon run` — and so every Studio launch and every scheduled launch,
+which go through it, and `orkeon-host`, which loads crews the same way — checks the crew's mail
+tools against the accounts that are ready (secret present, no network check). Each tool needs
+its base right: `email_folders`, `email_search`, `email_read` and `email_save_attachment` need
+`Read`; `email_create_folder`, `email_rename_folder`, `email_move` and `email_mark` need
+`Organize`; `email_delete` needs `Delete`; `email_draft` needs `Draft`; `email_send` needs `Send`
+with a non-empty `Send:AllowedRecipients` on the same account; `email_accounts` needs nothing.
+When no ready account grants one of them, the run stops before any model call: `orkeon run`
+exits with code 2 and an `ERROR:` message holding one line per tool, naming the right and
+where to add it — Studio's **Settings › E-mail**, or `Orkeon:Tools:Email:Accounts:<name>:Rights`;
+`--validate` fails (exit code 1) with the same lines; `orkeon-host` fails the run and keeps
+the lines in its log. The
+variants known only at the call (`permanent: true` needs `Purge`, `mark_read` needs `Organize`)
+are still judged at the call, with the allow-list and the caps: the check at start removes a
+run doomed at its first mail call, it does not replace the guards. A scripted (`.ork.ts`) crew
+is checked once its script is loaded, so a model call the script itself makes while loading
+may already have happened.
+
 ## Using the tools
 
 ### From a YAML crew
@@ -533,6 +554,33 @@ account of the settings file it resolves.
   trailing dot or space, a leading `_` before a Windows device name
   (`CON`, `NUL`, `COM1`…), 120 characters at most, `attachment-1.pdf` for a nameless first
   attachment (`.bin` when its type is unknown), `name (1).ext` for a second one of the same name.
+
+## Forged crews
+
+`orkeon forge` (and Studio's **Create a team**) offers the twelve mailbox tools like any other
+tool, configured account or not. A try never touches a real mailbox: the bench enters a
+**mail trial** around the run, and every mailbox tool then works on a fictitious mailbox.
+
+- **The trial mailbox** starts from a sample shipped with Orkeon — Inbox, Sent, Drafts, Archive
+  and Trash, a dozen varied messages, one with an attachment — plus up to five mails the Atelier
+  writes from the need, once per session (`trial-mailbox.json` in the session folder). When it
+  cannot write them, the try runs on the sample alone and the run record says so
+  (`mailSeedNote`). The try's own changes stay visible to it: a moved message is in its new
+  folder, a deleted one is gone; the next try starts from the seed again.
+- **Nothing leaves.** A send, a draft, a move, a mark, a delete, a folder created or renamed,
+  an attachment saved: each is applied to the trial mailbox only and recorded as a simulated
+  action — in `runs/<n>/run.json` (`mailActions`), on the `run.finished` event, on the terminal
+  and under the verdict in Studio, with recipients, subject and body for a send. The judge
+  reads them too, and fails a crew that hands a mail to internal messaging (`post_message`, a
+  `client://` address): that never sends an e-mail.
+- **The account's guards already judge the try.** With accounts declared, the try sees their
+  names and rights — never their address nor anything of their mailbox — and an action the real
+  account would refuse (a right it lacks, a recipient outside `Send:AllowedRecipients`, the
+  recipient or hourly cap) is refused in the try. The try counts its sends apart from the real
+  hour. With no account declared, the try offers a trial account `trial` that allows
+  everything; the missing account shows up when the promoted crew is launched.
+- **The promoted crew is not simulated.** The trial belongs to the bench, not to the crew:
+  once promoted, the crew acts on the configured account under its rights and guards.
 
 ## The `orkeon email` commands
 

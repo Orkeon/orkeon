@@ -123,6 +123,7 @@ internal sealed class TestStage : IForgeStageRunner
             completionTokens = run.CompletionTokens,
             cacheHitTokens = run.CacheHitTokens,
             cacheMissTokens = run.CacheMissTokens,
+            mailActions = run.MailActions,
         });
 
         return new ForgeStageOutcome
@@ -207,7 +208,7 @@ internal sealed class DiagnoseStage : IForgeStageRunner
 
         // A failed run never consults the judge — nothing to judge, nothing to pay.
         var judgement = run.Success && !string.IsNullOrWhiteSpace(run.Output)
-            ? await _judge.JudgeAsync(brief, run.Output, cancellationToken).ConfigureAwait(false)
+            ? await _judge.JudgeAsync(brief, run.Output, run.MailActions, cancellationToken).ConfigureAwait(false)
             : ForgeJudgement.Unavailable;
 
         ForgeVerdict verdict;

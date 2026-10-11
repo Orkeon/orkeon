@@ -1005,6 +1005,9 @@
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>No judge was available, so the criteria below were not checked one by one — read them yourself.</value>
   </data>
+  <data name="Studio.Create.MailActionsLabel" xml:space="preserve">
+    <value>Simulated mail — nothing was sent</value>
+  </data>
   <data name="Studio.Create.StageBrief" xml:space="preserve">
     <value>I am noting what you want…</value>
   </data>

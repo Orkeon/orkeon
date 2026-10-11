@@ -118,4 +118,5 @@ The same engine drives the **Create a team** wizard of Orkeon Studio (Windows): 
 
 - The quality of the proposal tracks the model you configured; the brief's criteria and the mechanical validation are the guardrails, not a substitute.
 - The sandbox restricts by **removing tools from the catalogue**, not by hoping the model abstains; network tools reach the plan only if your brief asked for them.
+- Mail is tried, never sent: the twelve mailbox tools are offered, and every try runs them on a fictitious trial mailbox; the sends, drafts and changes it would have made are shown under the verdict and nothing reaches a real mailbox ([Forged crews](../guides/email.md#forged-crews)).
 - One session, one problem: the Atelier generates and validates a team — it is not a visual crew editor.

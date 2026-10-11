@@ -278,9 +278,10 @@ and serves its tools to an MCP client, `human_input` aside — see
 | `code_interpreter` | concrete-type registration only — not resolvable by name | idem |
 | `progress_report` | ❌ | ✅ (scripted commands) |
 
-`orkeon forge` builds on the runner host but removes `shell_command`, `code_interpreter` and
-the twelve mailbox tools from the catalogue a forged crew draws from: a crew tried on the test
-bench must not reach the operator's real mailbox (`email_parser`, which reads a file, stays).
+`orkeon forge` builds on the runner host but removes `shell_command` and `code_interpreter`
+from the catalogue a forged crew draws from. The twelve mailbox tools stay in it: a try runs
+them on a fictitious trial mailbox and never reaches the operator's real one (FORGE-10, see
+[Forged crews](../guides/email.md#forged-crews)).
 
 ## Tool resolution by name (YAML → instance)
 

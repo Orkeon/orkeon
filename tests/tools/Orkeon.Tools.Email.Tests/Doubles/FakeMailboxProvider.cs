@@ -15,6 +15,9 @@ internal sealed class FakeMailboxProvider : IMailboxProvider
     /// <summary>The account names a mailbox was requested for, in order.</summary>
     public List<string> MailboxRequests { get; } = [];
 
+    /// <summary>The account names a sender was requested for, in order.</summary>
+    public List<string> SenderRequests { get; } = [];
+
     /// <summary>The mailbox of <paramref name="account"/>.</summary>
     public FakeMailbox MailboxOf(string account)
     {
@@ -39,5 +42,9 @@ internal sealed class FakeMailboxProvider : IMailboxProvider
     }
 
     /// <inheritdoc />
-    public IMailSender GetSender(ResolvedEmailAccount account) => SenderOf(account.Name);
+    public IMailSender GetSender(ResolvedEmailAccount account)
+    {
+        SenderRequests.Add(account.Name);
+        return SenderOf(account.Name);
+    }
 }

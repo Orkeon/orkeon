@@ -85,7 +85,8 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
    fiable et filtré par `PromptInjectionDocumentValidator` sur le texte rendu — signalement par
    défaut, `Screening:WithholdRejected` pour retenir. Chaque outil déclare son `ToolAccess` pour
    la permission gate, et `orkeon forge` refuse les douze outils de boîte aux lettres aux crews
-   qu'il forge. Les résultats tiennent sous le plafond de 4000 caractères de la boucle d'agent
+   qu'il forge (modifié par FORGE-10 : les outils sont proposés, et un essai les joue sur une
+   boîte d'essai fictive). Les résultats tiennent sous le plafond de 4000 caractères de la boucle d'agent
    sur un résultat d'outil, sans nouvelle dérogation — le contenu d'un courrier n'est pas un
    livrable de confiance : une page de recherche est coupée après un message entier et une
    tranche de corps là où s'arrête son rendu, et le curseur ou l'offset reprend exactement là.

@@ -104,6 +104,30 @@ public sealed class ForgePromoteTests : IDisposable
     /// </para>
     /// </summary>
     [Fact]
+    [Trait("BR", "BR-05")]
+    public void ShouldPromoteNoTrialArtefact_WhenTheTryUsedAMailTrial()
+    {
+        var session = ReadySession();
+        File.WriteAllText(Path.Combine(session.Directory, "trial-mailbox.json"), "{\"messages\":[]}");
+        var runDirectory = Path.Combine(session.Directory, "runs", "1");
+        Directory.CreateDirectory(runDirectory);
+        File.WriteAllText(Path.Combine(runDirectory, "run.json"), "{\"mailActions\":[{\"kind\":\"send\"}]}");
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var files = Directory.GetFiles(Destination, "*", SearchOption.AllDirectories);
+        Assert.DoesNotContain(files, f => Path.GetFileName(f) == "trial-mailbox.json");
+        foreach (var file in files)
+        {
+            var text = File.ReadAllText(file);
+            Assert.DoesNotContain("mailActions", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("EmailTrial", text, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void A_reading_tool_and_a_deliverable_on_one_root_yield_one_writable_mount()
     {
         var session = ReadySession();

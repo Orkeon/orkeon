@@ -151,7 +151,7 @@ The numbers above are illustrative. Open Gmail: the inbox has lost those message
   "Send": { "AllowedRecipients": [ "your.name@gmail.com" ], "MaxPerHour": 10 }
   ```
 
-- **From a YAML crew instead.** The runner host behind `orkeon run` registers the thirteen `email_*` tools, so a YAML agent lists them by name — `tools: [email_accounts, email_search, email_read, email_move, email_draft]` — and the model decides the calls. Declare the accounts in **that crew's own** settings file (it holds the crew's `Llm` section too), not in an `appsettings.json` of the directory you run from, nor in environment variables: those reach every run. See [From a YAML crew](../guides/email.md#from-a-yaml-crew). `orkeon forge` never puts the mailbox tools in the crews it forges.
+- **From a YAML crew instead.** The runner host behind `orkeon run` registers the thirteen `email_*` tools, so a YAML agent lists them by name — `tools: [email_accounts, email_search, email_read, email_move, email_draft]` — and the model decides the calls. Declare the accounts in **that crew's own** settings file (it holds the crew's `Llm` section too), not in an `appsettings.json` of the directory you run from, nor in environment variables: those reach every run. See [From a YAML crew](../guides/email.md#from-a-yaml-crew). `orkeon forge` offers the mailbox tools to the crews it forges and tries them on a fictitious mailbox: see [Forged crews](../guides/email.md#forged-crews).
 
 ## Other mailboxes
 

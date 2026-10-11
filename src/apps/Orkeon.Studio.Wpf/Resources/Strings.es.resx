@@ -2663,6 +2663,9 @@
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>No había ningún juez disponible: los criterios siguientes no se verificaron uno a uno; júzguelos usted mismo.</value>
   </data>
+  <data name="Studio.Create.MailActionsLabel" xml:space="preserve">
+    <value>Correos simulados — no se envió nada</value>
+  </data>
   <data name="Studio.Create.StageBrief" xml:space="preserve">
     <value>Estoy anotando lo que quiere…</value>
   </data>

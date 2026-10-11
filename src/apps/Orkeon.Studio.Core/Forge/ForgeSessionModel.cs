@@ -139,6 +139,33 @@ public sealed record ForgeChecklistItem(string Statement, bool? Passed, string? 
 /// <summary>What a promotion produced.</summary>
 public sealed record ForgePromotion(string Path, string Launcher, string? Install);
 
+/// <summary>One simulated mail action a run reported in <c>run.finished</c>.</summary>
+public sealed record ForgeMailActionView(
+    string Kind,
+    string Account,
+    IReadOnlyList<string> Recipients,
+    string Subject,
+    string Body,
+    string Folder,
+    string Target)
+{
+    /// <summary>The one-line reading of the action.</summary>
+    public string Line
+    {
+        get
+        {
+            var who = Recipients.Count > 0 ? string.Join(", ", Recipients) : Target;
+            var parts = new List<string> { $"{Kind} → {who}" };
+            if (!string.IsNullOrEmpty(Subject))
+                parts.Add(Subject);
+            var flat = string.Join(' ', (Body ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            if (flat.Length > 0)
+                parts.Add(flat.Length > 300 ? $"{flat[..300]}…" : flat);
+            return string.Join(" — ", parts);
+        }
+    }
+}
+
 /// <summary>An <c>error</c> event.</summary>
 public sealed record ForgeErrorInfo(string Code, string Message, bool Recoverable);
 
@@ -206,6 +233,11 @@ public sealed class ForgeSessionModel
 
     /// <summary>The user-facing milestone; failure states keep the last one.</summary>
     public ForgeMilestone Milestone { get; private set; } = ForgeMilestone.Describe;
+
+    /// <summary>The simulated mail actions of the last finished run.</summary>
+    public IReadOnlyList<ForgeMailActionView> MailActions => _mailActions;
+
+    private readonly List<ForgeMailActionView> _mailActions = [];
 
     /// <summary>The conversation, oldest first.</summary>
     public IReadOnlyList<ForgeChatMessage> Messages => _messages;
@@ -480,6 +512,7 @@ public sealed class ForgeSessionModel
                 RunNumber = (int)(orkeonEvent.GetInt64("run") ?? 0);
                 RunInProgress = true;
                 _activity.Clear();
+                _mailActions.Clear();
                 break;
 
             case ForgeEventKinds.TaskCompleted:
@@ -502,6 +535,8 @@ public sealed class ForgeSessionModel
 
             case ForgeEventKinds.RunFinished:
                 RunInProgress = false;
+                _mailActions.Clear();
+                _mailActions.AddRange(ReadMailActions(orkeonEvent.Root));
                 break;
 
             case ForgeEventKinds.VerdictReady:
@@ -1050,6 +1085,27 @@ public sealed class ForgeSessionModel
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
+
+    private static IEnumerable<ForgeMailActionView> ReadMailActions(JsonElement root)
+    {
+        if (!root.TryGetProperty("mailActions", out var array) || array.ValueKind != JsonValueKind.Array)
+            yield break;
+
+        foreach (var entry in array.EnumerateArray())
+        {
+            if (entry.ValueKind != JsonValueKind.Object)
+                continue;
+
+            yield return new ForgeMailActionView(
+                ReadString(entry, "kind") ?? "",
+                ReadString(entry, "account") ?? "",
+                [.. ReadStrings(entry, "recipients")],
+                ReadString(entry, "subject") ?? "",
+                ReadString(entry, "body") ?? "",
+                ReadString(entry, "folder") ?? "",
+                ReadString(entry, "target") ?? "");
+        }
+    }
 
     private static IEnumerable<string> ReadStrings(JsonElement root, string name)
     {

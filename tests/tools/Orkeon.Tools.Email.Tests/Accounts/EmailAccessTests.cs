@@ -84,6 +84,22 @@ public sealed class EmailAccessTests
         Assert.Equal(["acct"], access.Accounts.Names);
     }
 
+    [Fact]
+    [Trait("BR", "BR-07")]
+    public async Task ShouldStillRefuseAnOutsideRecipientAtTheCall_WhenTheLaunchPassed()
+    {
+        using var fixture = new ToolFixture();
+        var statuses = await fixture.Administration.ListAsync(TestContext.Current.CancellationToken);
+        var full = statuses.Where(a => a.Name == "full").ToList();
+        Assert.Empty(new EmailRightsCheck(fixture.Administration).Check(["email_send"], full));
+
+        var response = await fixture.CallAsync(
+            "email_send", ("to", new List<object> { "stranger@evil.test" }), ("subject", "hi"), ("text", "hello"));
+
+        Assert.True((response.ToString() + response.Error).Contains("outside Send:AllowedRecipients", StringComparison.Ordinal), response.ToString());
+        Assert.Empty(fixture.Sender().Sent);
+    }
+
     private static EmailAccess Access(out FakeMailboxProvider mailboxes, EmailAccountOptions account)
     {
         var options = new EmailToolsOptions();

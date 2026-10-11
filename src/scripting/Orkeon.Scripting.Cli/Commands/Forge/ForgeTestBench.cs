@@ -57,6 +57,14 @@ internal sealed record ForgeTestRun
     /// <summary>Why the run failed, when it did.</summary>
     [JsonPropertyName("error")]
     public string? Error { get; init; }
+
+    /// <summary>The mail actions the try simulated.</summary>
+    [JsonPropertyName("mailActions")]
+    public System.Collections.Immutable.ImmutableList<ForgeMailAction> MailActions { get; init; } = [];
+
+    /// <summary>Why the trial mailbox holds the sample alone, when drawing failed.</summary>
+    [JsonPropertyName("mailSeedNote")]
+    public string MailSeedNote { get; init; } = "";
 }
 
 /// <summary>
@@ -86,6 +94,7 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
     private readonly Func<Orkeon.Scripting.Toolchain.IScriptTranspiler> _transpilerFactory;
     private readonly string? _workspace;
     private readonly string? _readRoot;
+    private readonly ForgeTrialMailAuthor? _mailAuthor;
 
     /// <summary>
     /// Builds the bench over the engine host's services. <paramref name="transpilerFactory"/>
@@ -103,8 +112,10 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
         string crewVirtualPath = "/forge/crew",
         Func<Orkeon.Scripting.Toolchain.IScriptTranspiler>? transpilerFactory = null,
         string? workspace = null,
-        string? readRoot = null)
+        string? readRoot = null,
+        ForgeTrialMailAuthor? mailAuthor = null)
     {
+        _mailAuthor = mailAuthor;
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _crewVirtualPath = crewVirtualPath;
         _workspace = workspace;
@@ -151,7 +162,19 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
             brief?.Sample?.InitialContext,
             brief?.Sample?.Variables ?? new Dictionary<string, string>());
 
-        var output = await orchestration.KickoffAsync(crew.Id, input, cancellationToken).ConfigureAwait(false);
+        var crewTools = configuration.Agents.SelectMany(a => a.Tools)
+            .Concat(configuration.Tasks.SelectMany(t => t.Tools)).ToList();
+        var mailbox = _mailAuthor is null
+            ? new ForgeTrialMailbox(Orkeon.Tools.Email.Trial.TrialMailboxSeed.Sample(), "")
+            : await _mailAuthor.SeedAsync(session, brief, crewTools, cancellationToken).ConfigureAwait(false);
+
+        Orkeon.Application.Interfaces.Services.CrewOutput output;
+        System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Email.Trial.SimulatedMailAction> actions;
+        using (var trial = Orkeon.Tools.Email.Trial.EmailTrial.Enter(mailbox.Seed))
+        {
+            output = await orchestration.KickoffAsync(crew.Id, input, cancellationToken).ConfigureAwait(false);
+            actions = trial.Actions;
+        }
 
         var failed = output.TaskOutputs.Count == 0
             || output.FinalOutput.StartsWith(FailurePrefix, StringComparison.Ordinal);
@@ -171,8 +194,32 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
             CacheHitTokens = output.TokensUsed?.CacheHitTokens,
             CacheMissTokens = output.TokensUsed?.CacheMissTokens,
             Error = failed ? output.FinalOutput : null,
+            MailActions = [.. actions.Select(ToMailAction)],
+            MailSeedNote = mailbox.Note,
         };
     }
+
+    private static ForgeMailAction ToMailAction(Orkeon.Tools.Email.Trial.SimulatedMailAction action) => new()
+    {
+        Kind = action.Kind switch
+        {
+            Orkeon.Tools.Email.Trial.SimulatedMailActionKind.CreateFolder => "create_folder",
+            Orkeon.Tools.Email.Trial.SimulatedMailActionKind.RenameFolder => "rename_folder",
+            Orkeon.Tools.Email.Trial.SimulatedMailActionKind.SaveAttachment => "save_attachment",
+            Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Send => "send",
+            Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Draft => "draft",
+            Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Move => "move",
+            Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Mark => "mark",
+            Orkeon.Tools.Email.Trial.SimulatedMailActionKind.Delete => "delete",
+            var other => throw new ArgumentOutOfRangeException(nameof(action), other, null),
+        },
+        Account = action.Account,
+        Recipients = action.Recipients,
+        Subject = action.Subject,
+        Body = action.Body,
+        Folder = action.Folder,
+        Target = action.Target,
+    };
 
     /// <summary>
     /// Loads the rendered <c>crew.ork.ts</c> the way <c>orkeon run</c> does: ScriptHost →

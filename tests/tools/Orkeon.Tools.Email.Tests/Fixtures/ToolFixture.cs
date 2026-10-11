@@ -4,9 +4,11 @@ using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Email.Accounts;
 using Orkeon.Tools.Email.Administration;
 using Orkeon.Tools.Email.Configuration;
+using Orkeon.Tools.Email.Mailboxes;
 using Orkeon.Tools.Email.Security;
 using Orkeon.Tools.Email.Tests.Doubles;
 using Orkeon.Tools.Email.Tools;
+using Orkeon.Tools.Email.Trial;
 
 namespace Orkeon.Tools.Email.Tests.Fixtures;
 
@@ -28,10 +30,38 @@ internal sealed class ToolFixture : IDisposable
     private readonly Dictionary<string, ToolBase> _tools = new(StringComparer.Ordinal);
 
     /// <summary>Creates the fixture.</summary>
-    public ToolFixture(bool withholdRejected = false)
+    public ToolFixture(bool withholdRejected = false, bool scoped = false, bool withAccounts = true)
+    {
+        Options.Screening.WithholdRejected = withholdRejected;
+        if (withAccounts)
+            Declare();
+
+        var options = Microsoft.Extensions.Options.Options.Create(Options);
+        var registry = new EmailAccountRegistry(options);
+        IMailboxProvider mailboxes = scoped ? new ScopedMailboxProvider(Mailboxes) : Mailboxes;
+        IEmailAccountRegistry accounts = scoped ? new ScopedEmailAccountRegistry(registry) : registry;
+        var access = new EmailAccess(accounts, mailboxes);
+        var screen = new EmailContentScreen(options);
+        Administration = new EmailAccountAdministration(accounts, Credentials.Provider, Credentials.OAuth, mailboxes);
+
+        Add(new EmailAccountsTool(Administration));
+        Add(new EmailFoldersTool(access));
+        Add(new EmailSearchTool(access, screen));
+        Add(new EmailReadTool(access, screen));
+        Add(new EmailSaveAttachmentTool(access, Files));
+        Add(new EmailCreateFolderTool(access));
+        Add(new EmailRenameFolderTool(access));
+        Add(new EmailMoveTool(access));
+        Add(new EmailMarkTool(access));
+        Add(new EmailDeleteTool(access));
+        Add(new EmailDraftTool(access, Files));
+        Add(new EmailSendTool(access, Files, new SendQuota(Credentials.Time), Credentials.Time));
+        Add(new EmailParserTool(Files, screen));
+    }
+
+    private void Declare()
     {
         Options.DefaultAccount = "full";
-        Options.Screening.WithholdRejected = withholdRejected;
         var full = TestAccounts.Custom(TestAccounts.AllRights);
         full.Send.AllowedRecipients.AddRange(["*@example.com", "boss@corp.test"]);
         full.Send.MaxRecipients = 3;
@@ -49,26 +79,6 @@ internal sealed class ToolFixture : IDisposable
         var pop = TestAccounts.Custom(TestAccounts.AllRights);
         pop.Incoming.Protocol = IncomingProtocol.Pop3;
         Options.Accounts["pop"] = pop;
-
-        var options = Microsoft.Extensions.Options.Options.Create(Options);
-        var registry = new EmailAccountRegistry(options);
-        var access = new EmailAccess(registry, Mailboxes);
-        var screen = new EmailContentScreen(options);
-        Administration = new EmailAccountAdministration(registry, Credentials.Provider, Credentials.OAuth, Mailboxes);
-
-        Add(new EmailAccountsTool(Administration));
-        Add(new EmailFoldersTool(access));
-        Add(new EmailSearchTool(access, screen));
-        Add(new EmailReadTool(access, screen));
-        Add(new EmailSaveAttachmentTool(access, Files));
-        Add(new EmailCreateFolderTool(access));
-        Add(new EmailRenameFolderTool(access));
-        Add(new EmailMoveTool(access));
-        Add(new EmailMarkTool(access));
-        Add(new EmailDeleteTool(access));
-        Add(new EmailDraftTool(access, Files));
-        Add(new EmailSendTool(access, Files, new SendQuota(Credentials.Time), Credentials.Time));
-        Add(new EmailParserTool(Files, screen));
     }
 
     /// <summary>The bound options, before any account resolves.</summary>

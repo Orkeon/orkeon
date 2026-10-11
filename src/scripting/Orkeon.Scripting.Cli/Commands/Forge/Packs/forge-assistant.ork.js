@@ -134,6 +134,7 @@ function stableHeader() {
     lines.push("## Tools the team may use (closed list — exact names)");
     for (var t = 0; t < input.crewTools.length; t++)
       lines.push("- " + input.crewTools[t].name + ": " + (input.crewTools[t].description || ""));
+    lines.push("Internal messaging (post_message, any client:// address) never sends an e-mail: to send or prepare a mail, use email_send or email_draft.");
   }
 
   // The use case the user started from (STUDIO-40): its team, as a model of structure. Right
