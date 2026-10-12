@@ -285,6 +285,9 @@ public sealed class ForgeClient
         _locator = locator ?? throw new ArgumentNullException(nameof(locator));
     }
 
+    /// <summary>The session meter that counts the model calls of a rephrase; null counts nothing.</summary>
+    public Orkeon.Studio.Core.Run.StudioTokenMeter? Meter { get; set; }
+
     /// <summary>Creates a client over the real machine and real processes.</summary>
     public static ForgeClient ForCurrentMachine() =>
         new(SystemProcessLauncher.Instance, OrkeonBinaryLocator.ForCurrentMachine());
@@ -395,6 +398,7 @@ public sealed class ForgeClient
         string? text = null;
         string? error = null;
         var stderr = new List<string>();
+        var execution = Meter?.Begin(Orkeon.Studio.Core.Run.ExecutionKind.Rephrase);
         var result = await _launcher.RunAsync(
             new ProcessLaunchRequest
             {
@@ -407,6 +411,7 @@ public sealed class ForgeClient
             {
                 if (line.Channel == ProcessOutputChannel.StandardOutput && OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
                 {
+                    execution?.Apply(orkeonEvent!);
                     if (orkeonEvent!.Kind == ForgeEventKinds.NeedRephrased)
                         text = orkeonEvent.GetString("text");
                     else if (orkeonEvent.Kind == ForgeEventKinds.Error)
@@ -418,6 +423,7 @@ public sealed class ForgeClient
                 }
             },
             cancellationToken).ConfigureAwait(false);
+        execution?.End();
 
         if (text is { Length: > 0 })
             return new ForgeRephraseResult(text, null);

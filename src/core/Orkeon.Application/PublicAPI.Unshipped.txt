@@ -2422,3 +2422,19 @@ static Orkeon.Application.Memory.MemoryProviderTypes.Canonical(string? type) -> 
 static Orkeon.Application.Memory.MemoryProviderTypes.Problem(string! key, string? type, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> string?
 static Orkeon.Application.Memory.MemoryProviderTypes.Supported.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Application.Memory.MemoryProviderTypes.UnknownMessage(string! key, string! type) -> string!
+Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider.StreamsNatively.get -> bool
+Orkeon.Application.Crew.Execution.LlmCallModeScope
+static Orkeon.Application.Crew.Execution.LlmCallModeScope.HasFallenBack(string! settingKey) -> bool
+static Orkeon.Application.Crew.Execution.LlmCallModeScope.IsOpen.get -> bool
+static Orkeon.Application.Crew.Execution.LlmCallModeScope.Open() -> System.IDisposable!
+static Orkeon.Application.Crew.Execution.LlmCallModeScope.RecordFallback(string! settingKey) -> void
+Orkeon.Application.Interfaces.Ports.ILlmCallObserver
+Orkeon.Application.Interfaces.Ports.ILlmCallObserver.Finished(string! callId, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode! mode, bool fellBack, int? promptTokens, int? completionTokens) -> void
+Orkeon.Application.Interfaces.Ports.ILlmCallObserver.Progress(string! callId, int estimatedCompletionTokens) -> void
+Orkeon.Application.Interfaces.Ports.ILlmCallObserver.Started(string! callId, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode! mode, int estimatedPromptTokens) -> void
+Orkeon.Application.Interfaces.Ports.NullLlmCallObserver
+Orkeon.Application.Interfaces.Ports.NullLlmCallObserver.Finished(string! callId, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode! mode, bool fellBack, int? promptTokens, int? completionTokens) -> void
+Orkeon.Application.Interfaces.Ports.NullLlmCallObserver.NullLlmCallObserver() -> void
+Orkeon.Application.Interfaces.Ports.NullLlmCallObserver.Progress(string! callId, int estimatedCompletionTokens) -> void
+Orkeon.Application.Interfaces.Ports.NullLlmCallObserver.Started(string! callId, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode! mode, int estimatedPromptTokens) -> void
+static readonly Orkeon.Application.Interfaces.Ports.NullLlmCallObserver.Instance -> Orkeon.Application.Interfaces.Ports.NullLlmCallObserver!

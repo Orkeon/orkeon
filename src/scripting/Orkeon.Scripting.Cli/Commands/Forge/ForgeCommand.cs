@@ -665,7 +665,7 @@ internal static class ForgeCommand
         // Disposing the renderer never touches Console.Out — it only wraps it.
         using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
         var events = new ForgeEventWriter(renderer ?? Console.Out);
-        observer.Attach(events);
+        observer.Attach(events, withCalls: options.Events);
         IForgeUserChannel channel = options.Events
             ? new JsonLinesUserChannel(Console.In)
             : new TerminalUserChannel(Console.In, Console.Out);
@@ -884,6 +884,7 @@ internal static class ForgeCommand
         services.AddSingleton(box);
         services.AddSingleton(tally);
         services.AddSingleton<ILlmUsageSink>(tally);
+        services.AddSingleton<ILlmCallObserver>(observer);
         // Registering a delta sink is what puts the assistant on the provider's
         // streaming path, and that is the point: the meter then moves with each
         // chunk instead of once a whole response has been written. The

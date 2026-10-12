@@ -38,4 +38,10 @@ public sealed record StudioUiPreferences
     /// so the theme, the language and the mode written by the other gestures stay.
     /// </summary>
     public Action<StudioSettings>? PersistStudio { get; init; }
+
+    /// <summary>The token scope the status bar showed last time ("session" or "execution"); the default when null.</summary>
+    public string? InitialTokenScope { get; init; }
+
+    /// <summary>Writes the token scope the user picked; null keeps the choice for this session only.</summary>
+    public Action<string>? PersistTokenScope { get; init; }
 }

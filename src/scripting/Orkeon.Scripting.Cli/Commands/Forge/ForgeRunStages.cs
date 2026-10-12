@@ -1,5 +1,8 @@
 using System.Globalization;
 using Orkeon.Application.Crew;
+using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Scripting.Cli.Commands.Run;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
@@ -10,12 +13,29 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 /// <c>RunnerExecution</c>, not to <c>RunnerHost.Build</c> — so no composition is needed
 /// here (verified; the spec's caution §9.2 targeted the runner hosts).
 /// </summary>
-internal sealed class ForgeRunObserver : ICrewExecutionHook
+internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
 {
     private ForgeEventWriter? _events;
+    private RunEventsLlmCallObserver? _calls;
 
-    /// <summary>Attaches the stream; before this, the observer stays silent.</summary>
-    public void Attach(ForgeEventWriter events) => _events = events;
+    /// <summary>Attaches the stream; before this, the observer stays silent. <paramref name="withCalls"/> also writes the model calls (llm.call.*).</summary>
+    public void Attach(ForgeEventWriter events, bool withCalls = false)
+    {
+        _events = events;
+        _calls = withCalls ? new RunEventsLlmCallObserver(events, TimeProvider.System) : null;
+    }
+
+    /// <inheritdoc />
+    public void Started(string callId, LlmCallMode mode, int estimatedPromptTokens) =>
+        _calls?.Started(callId, mode, estimatedPromptTokens);
+
+    /// <inheritdoc />
+    public void Progress(string callId, int estimatedCompletionTokens) =>
+        _calls?.Progress(callId, estimatedCompletionTokens);
+
+    /// <inheritdoc />
+    public void Finished(string callId, LlmCallMode mode, bool fellBack, int? promptTokens, int? completionTokens) =>
+        _calls?.Finished(callId, mode, fellBack, promptTokens, completionTokens);
 
     /// <inheritdoc />
     public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct) =>

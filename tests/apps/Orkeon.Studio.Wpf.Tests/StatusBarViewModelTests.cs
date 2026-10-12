@@ -1,11 +1,14 @@
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
+using Orkeon.Studio.Core.Run;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 
@@ -624,6 +627,161 @@ public sealed class StatusBarViewModelTests
 
         Assert.Contains(nameof(StatusBarRunGroupViewModel.StateText), raised);
         Assert.Equal("en cours", french);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    public async Task ShouldShowTheModeOfTheCurrentCall_AndBufferFallbackAfterARefusal()
+    {
+        var (launch, process) = Launcher();
+        var meter = new StudioTokenMeter();
+        var bar = new StatusBarViewModel(new StatusBarSources { Launch = launch, TokenMeter = meter });
+        var seen = new List<string?>();
+        process.WhileRunning = () =>
+        {
+            process.Emit(Event(RunStarted));
+            process.Emit(Event(
+                """{"v":2,"seq":5,"ts":"t","kind":"llm.call.started","callId":"c1","mode":"Stream","estimatedPromptTokens":100}"""));
+            seen.Add(bar.Launch.CallModeText);
+            process.Emit(Event(
+                """{"v":2,"seq":6,"ts":"t","kind":"llm.call.finished","callId":"c1","mode":"Buffer","fellBack":true,"promptTokens":90,"completionTokens":35}"""));
+            seen.Add(bar.Launch.CallModeText);
+            process.Emit(Event(
+                """{"v":2,"seq":7,"ts":"t","kind":"llm.call.started","callId":"c2","mode":"Buffer","estimatedPromptTokens":10}"""));
+            seen.Add(bar.Launch.CallModeText);
+        };
+
+        await launch.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["Stream", "Buffer (fallback)", "Buffer"], seen);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-14")]
+    [Trait("BR", "BR-08")]
+    public async Task ShouldShowTheExecutionShown_WhenTheScopeIsExecution()
+    {
+        var (launch, process) = Launcher();
+        var meter = new StudioTokenMeter();
+        var other = meter.Begin(ExecutionKind.Forge);
+        other.Apply(OrkeonEventParser.TryParse(
+            """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":5500,"promptTokens":5000,"completionTokens":500,"operation":"agent"}""",
+            out var cost) ? cost! : throw new InvalidOperationException());
+        var bar = new StatusBarViewModel(new StatusBarSources { Launch = launch, TokenMeter = meter });
+        (string? Up, string? Down, bool Estimated)? shown = null;
+        process.WhileRunning = () =>
+        {
+            process.Emit(Event(RunStarted));
+            process.Emit(Event(
+                """{"v":2,"seq":5,"ts":"t","kind":"llm.call.started","callId":"c1","mode":"Stream","estimatedPromptTokens":100}"""));
+            process.Emit(Event(
+                """{"v":2,"seq":6,"ts":"t","kind":"llm.call.progress","callId":"c1","estimatedCompletionTokens":40}"""));
+            shown = (bar.Launch.TokensUp, bar.Launch.TokensDown, bar.Launch.TokensEstimated);
+        };
+
+        await launch.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("execution", bar.TokenScope);
+        Assert.Equal((N(100), N(40), true), shown);
+    }
+
+    private static void Feed(ExecutionMeter execution, string json) =>
+        execution.Apply(OrkeonEventParser.TryParse(json, out var parsed) ? parsed! : throw new InvalidOperationException());
+
+    [Fact]
+    [Trait("BR", "BR-09")]
+    [Trait("BR", "BR-07")]
+    public void ShouldShowTheForgeExecutionsTokensAndMode_WhenNoRunIsActive()
+    {
+        var meter = new StudioTokenMeter();
+        var forge = meter.Begin(ExecutionKind.Forge);
+        var card = new ComposeProgressViewModel();
+        var bar = new StatusBarViewModel(new StatusBarSources { Atelier = card, TokenMeter = meter, Mode = Expert() });
+        card.Update(Composing());
+
+        Feed(forge, """{"v":2,"seq":1,"ts":"t","kind":"llm.call.started","callId":"f1","mode":"Stream","estimatedPromptTokens":100}""");
+        Feed(forge, """{"v":2,"seq":2,"ts":"t","kind":"llm.call.progress","callId":"f1","estimatedCompletionTokens":40}""");
+
+        Assert.Equal(N(100), bar.Atelier.TokensUp);
+        Assert.Equal(N(40), bar.Atelier.TokensDown);
+        Assert.True(bar.Atelier.TokensEstimated);
+        Assert.Equal("Stream", bar.Atelier.CallModeText);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-09")]
+    public void ShouldShowTheRephrase_WhenNothingElseRuns()
+    {
+        var meter = new StudioTokenMeter();
+        var bar = new StatusBarViewModel(new StatusBarSources
+        {
+            Atelier = new ComposeProgressViewModel(),
+            TokenMeter = meter,
+            Mode = Expert(),
+        });
+        Assert.False(bar.Atelier.IsActive);
+
+        var rephrase = meter.Begin(ExecutionKind.Rephrase);
+        Feed(rephrase, """{"v":2,"seq":1,"ts":"t","kind":"llm.call.started","callId":"r1","mode":"Buffer","estimatedPromptTokens":70}""");
+
+        Assert.True(bar.Atelier.IsActive);
+        Assert.False(bar.IsAtRest);
+        Assert.Equal(N(70), bar.Atelier.TokensUp);
+        Assert.True(bar.Atelier.TokensEstimated);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-14")]
+    public void ShouldShowTheSession_InTheAtelierGroup_WhenTheScopeIsSession()
+    {
+        var meter = new StudioTokenMeter();
+        var run = meter.Begin(ExecutionKind.Run);
+        Feed(run, """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":5500,"promptTokens":5000,"completionTokens":500,"operation":"agent"}""");
+        var forge = meter.Begin(ExecutionKind.Forge);
+        Feed(forge, """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":1200,"promptTokens":1000,"completionTokens":200,"operation":"agent"}""");
+        var card = new ComposeProgressViewModel();
+        var bar = new StatusBarViewModel(new StatusBarSources { Atelier = card, TokenMeter = meter, Mode = Expert() });
+        card.Update(Composing());
+
+        bar.TokenScope = "session";
+
+        Assert.Equal(N(6000), bar.Atelier.TokensUp);
+        Assert.Equal(N(700), bar.Atelier.TokensDown);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-14")]
+    public void ShouldRememberTheScope_AcrossRestarts()
+    {
+        const string path = "/home/.orkeon/ui-preferences.json";
+        var store = new FakeAppSettingsStore();
+        store.Files[path] = """{"Theme":"dark","Mode":"expert"}""";
+
+        StatusBarViewModel Build()
+        {
+            var document = UiPreferencesDocument.Parse(store.Files[path]);
+            return new StatusBarViewModel(new StatusBarSources
+            {
+                InitialTokenScope = document.TokenScope,
+                PersistTokenScope = scope =>
+                {
+                    var current = UiPreferencesDocument.Parse(store.Files[path]);
+                    current.SetTokenScope(scope);
+                    store.Files[path] = current.ToJson();
+                },
+            });
+        }
+
+        var first = Build();
+        first.TokenScope = "session";
+        Assert.Equal("session", first.TokenScope);
+
+        var second = Build();
+
+        Assert.Equal("session", second.TokenScope);
+        Assert.Contains("\"Theme\": \"dark\"", store.Files[path]);
+        Assert.Contains("\"Mode\": \"expert\"", store.Files[path]);
+        Assert.Contains("\"tokenScope\": \"session\"", store.Files[path]);
     }
 
     /// <summary>A port that flips from the English defaults to a one-line French table.</summary>

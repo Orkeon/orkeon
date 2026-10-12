@@ -439,10 +439,15 @@ public sealed class ForgeSessionModel
     /// </summary>
     public void AcknowledgeDecision() => _decisionOptions.Clear();
 
+    /// <summary>The count of this session's model calls; every event fed is forwarded to it. Null counts nothing.</summary>
+    public Orkeon.Studio.Core.Run.ExecutionMeter? Meter { get; set; }
+
     /// <summary>Applies one event to the projection. Unknown kinds are ignored here — the client shows them raw at level 3.</summary>
     public void Feed(OrkeonEvent orkeonEvent)
     {
         ArgumentNullException.ThrowIfNull(orkeonEvent);
+
+        Meter?.Apply(orkeonEvent);
 
         switch (orkeonEvent.Kind)
         {

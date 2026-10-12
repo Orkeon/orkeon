@@ -535,8 +535,8 @@
                         ToolTip="{Binding [Studio.Create.TokensUp], Source={x:Static services:I18n.Instance}}"
                         ToolTipService.ShowOnDisabled="True"
                         Visibility="{Binding ShowsTokensUp, Converter={StaticResource BooleanToVisibility}}">
-              <!-- «≈» when the runtime had to count for a provider that reported nothing, as in the assistant's group. -->
-              <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="≈"
+              <!-- «~» when Studio or the runtime had to estimate for a provider that reported nothing, as in the assistant's group. -->
+              <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="~"
                          Foreground="{DynamicResource InkFaintBrush}"
                          Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
               <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
@@ -551,6 +551,10 @@
                                    Foreground="{DynamicResource InkMutedBrush}"/>
               <TextBlock Style="{StaticResource StatusFigure}" Margin="3,0,0,0" Text="{Binding TokensDown}"/>
             </StackPanel>
+            <!-- BR-07: the mode of the call in flight (Stream, Buffer, Buffer (fallback)); nothing before a call. -->
+            <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusFigure}" Margin="8,0,0,0"
+                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding CallModeText}"
+                       Visibility="{Binding CallModeText, Converter={StaticResource StringPresentToVisibility}}"/>
             <!-- The expert's segments in one line the bar trims when the window is narrow; the
                  whole of it, the tool and delegation lists written out, on hover. -->
             <TextBlock Style="{StaticResource StatusFigure}" Margin="12,0,0,0" TextTrimming="CharacterEllipsis"
@@ -562,6 +566,12 @@
       </Border.Resources>
 
       <DockPanel Margin="10,0">
+        <!-- The token scope (BR-14): the figures of the execution shown, or of the whole session. -->
+        <ComboBox DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center" MinWidth="90"
+                  SelectedValuePath="Tag" SelectedValue="{Binding TokenScope, Mode=TwoWay}">
+          <ComboBoxItem Tag="execution" Content="{Binding [Studio.Shell.StatusScopeExecution], Source={x:Static services:I18n.Instance}}"/>
+          <ComboBoxItem Tag="session" Content="{Binding [Studio.Shell.StatusScopeSession], Source={x:Static services:I18n.Instance}}"/>
+        </ComboBox>
         <!-- The Balance segment (STUDIO-35): what the covered provider accounts have left, one
              entry per account, in both modes. A click on an entry reads the balances again — or,
              for a provider whose balance only its console shows, opens that console (D-01). An
@@ -642,6 +652,10 @@
               <TextBlock DockPanel.Dock="Right" Style="{StaticResource StatusFigure}" Margin="12,0,0,0"
                          Foreground="{DynamicResource InkFaintBrush}" Text="{Binding BudgetLeft}"
                          Visibility="{Binding ShowsBudgetLeft, Converter={StaticResource BooleanToVisibility}}"/>
+              <!-- BR-07: the mode of the forge's or rephrase's call in flight or last, as in RunGroupBody. -->
+              <TextBlock DockPanel.Dock="Right" Style="{StaticResource StatusFigure}" Margin="8,0,0,0"
+                         Foreground="{DynamicResource InkFaintBrush}" Text="{Binding CallModeText}"
+                         Visibility="{Binding CallModeText, Converter={StaticResource StringPresentToVisibility}}"/>
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0"
                           ToolTip="{Binding [Studio.Create.TokensDown], Source={x:Static services:I18n.Instance}}"
                           Visibility="{Binding ShowsTokensDown, Converter={StaticResource BooleanToVisibility}}">
@@ -652,8 +666,8 @@
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="10,0,0,0"
                           ToolTip="{Binding [Studio.Create.TokensUp], Source={x:Static services:I18n.Instance}}"
                           Visibility="{Binding ShowsTokensUp, Converter={StaticResource BooleanToVisibility}}">
-                <!-- «≈» when the runtime had to count for a provider that reported nothing, as on the card. -->
-                <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="≈"
+                <!-- «~» when Studio or the runtime had to estimate for a provider that reported nothing, as on the card. -->
+                <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="~"
                            Foreground="{DynamicResource InkFaintBrush}"
                            Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
                 <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
@@ -860,6 +874,16 @@
                          Text="{Binding [Studio.Settings.StreamIdleHint], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
 
+            <!-- call mode (BR-05): Auto streams and falls back on a buffered call; Buffer or Stream pins it. -->
+            <StackPanel Margin="0,14,0,0"
+                        Visibility="{Binding ShowFields, Converter={StaticResource BooleanToVisibility}}">
+              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.CallMode], Source={x:Static services:I18n.Instance}}"/>
+              <ComboBox Width="220" HorizontalAlignment="Left"
+                        ItemsSource="{Binding CallModeChoices}"
+                        SelectedItem="{Binding SelectedCallMode}"
+                        DisplayMemberPath="Label"/>
+            </StackPanel>
+
             <!-- thinking (LLM-11): the switch the run of 2026-09-20 had nowhere to live. Provider
                  default lets the model decide (on for Kimi K2.6, DeepSeek V4, GLM); off is the
                  way out of a timeout when the task does not need the reasoning pass; the effort
@@ -994,6 +1018,27 @@
                          Text="{Binding ConnectionTestResult}"
                          Visibility="{Binding ConnectionTestResult, Converter={StaticResource StringPresentToVisibility}}"/>
             </StackPanel>
+
+            <!-- UC-01: the model names a successful test found; a click fills the Model field only. -->
+            <StackPanel Margin="0,8,0,0"
+                        Visibility="{Binding HasAvailableModels, Converter={StaticResource BooleanToVisibility}}">
+              <TextBox Text="{Binding ModelFilter, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="{Binding [Studio.Settings.ModelsFilter], Source={x:Static services:I18n.Instance}}"
+                       AutomationProperties.Name="{Binding [Studio.Settings.ModelsFilter], Source={x:Static services:I18n.Instance}}"/>
+              <ListBox ItemsSource="{Binding FilteredModels}" MaxHeight="180" Margin="0,6,0,0"
+                       ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <Button Style="{StaticResource BtnGhost}" HorizontalContentAlignment="Left"
+                            Content="{Binding}" CommandParameter="{Binding}"
+                            Command="{Binding DataContext.PickModelCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"/>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </StackPanel>
+            <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap"
+                       Text="{Binding ModelListNote}"
+                       Visibility="{Binding ModelListNote, Converter={StaticResource StringPresentToVisibility}}"/>
 
             <!-- STUDIO-35 (D-04): the balance line beside « Test » — what the account behind the
                  endpoint and the key has left, read on the click, never the key; where only the

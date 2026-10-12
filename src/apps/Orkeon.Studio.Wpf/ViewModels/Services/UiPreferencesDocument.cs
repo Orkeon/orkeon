@@ -28,6 +28,8 @@ public sealed class UiPreferencesDocument
     private const string ArchiveSuggestionKey = "ArchiveSuggestion";
     private const string ArchiveSuggestionDaysKey = "ArchiveSuggestionDays";
     private const string TeamsRootKey = "TeamsRoot";
+    private const string StatusBarKey = "statusBar";
+    private const string TokenScopeKey = "tokenScope";
 
     /// <summary>
     /// What the first writer also put in the file: it serialized the whole preferences record,
@@ -148,6 +150,22 @@ public sealed class UiPreferencesDocument
         section[ArchiveSuggestionKey] = settings.ArchiveSuggestion;
         section[ArchiveSuggestionDaysKey] = settings.ArchiveSuggestionDays;
         section[TeamsRootKey] = settings.TeamsRoot;
+    }
+
+    /// <summary>"session" or "execution" (<c>statusBar.tokenScope</c>); "execution" when absent or unknown.</summary>
+    public string TokenScope =>
+        _root[StatusBarKey] is JsonObject bar && Text(bar[TokenScopeKey]) == "session" ? "session" : "execution";
+
+    /// <summary>Writes <c>statusBar.tokenScope</c>; every other key stays.</summary>
+    public void SetTokenScope(string scope)
+    {
+        if (_root[StatusBarKey] is not JsonObject bar)
+        {
+            bar = new JsonObject(Reading);
+            _root[StatusBarKey] = bar;
+        }
+
+        bar[TokenScopeKey] = scope;
     }
 
     /// <summary>The document as the file stores it, indented for whoever opens it.</summary>

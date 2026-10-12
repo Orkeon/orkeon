@@ -21,3 +21,6 @@ const Orkeon.Constants.Protocol.EmailEventKinds.LoginRedirectRejected = "email.l
 static Orkeon.Constants.Protocol.EmailEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Constants.Protocol.EmailEventKinds.Check.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Constants.Protocol.EmailEventKinds.Login.get -> System.Collections.Generic.IReadOnlyList<string!>!
+const Orkeon.Constants.Protocol.RunEventKinds.LlmCallFinished = "llm.call.finished" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.LlmCallProgress = "llm.call.progress" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.LlmCallStarted = "llm.call.started" -> string!

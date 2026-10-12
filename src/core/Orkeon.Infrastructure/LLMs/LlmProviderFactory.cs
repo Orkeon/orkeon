@@ -1,6 +1,8 @@
 using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Infrastructure.LLMs.CallMode;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
@@ -26,6 +28,8 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILlmUsageSink? _usageSink;
     private readonly ILlmRateLimiter? _rateLimiter;
+    private readonly ILlmCallObserver _callObserver;
+    private readonly ITokenCounter _tokenCounter;
     private readonly OpenAIToolCallingStrategy _openAiStrategy;
     private readonly AnthropicToolCallingStrategy _anthropicStrategy;
 
@@ -40,11 +44,15 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// The host's limiter (<c>RateLimiting</c>): every call of a provider built takes one of its
     /// leases. Null builds the providers unlimited.
     /// </param>
+    /// <param name="callObserver">The host's call observer: every call of a provider built is announced to it. Null observes nothing.</param>
+    /// <param name="tokenCounter">Estimates the tokens the observer is told; null uses <see cref="SimpleTokenCounter"/>.</param>
     public LlmProviderFactory(
         IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory,
         ILlmUsageSink? usageSink = null,
-        ILlmRateLimiter? rateLimiter = null)
+        ILlmRateLimiter? rateLimiter = null,
+        ILlmCallObserver? callObserver = null,
+        ITokenCounter? tokenCounter = null)
     {
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         _httpClientFactory = httpClientFactory;
@@ -52,11 +60,26 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         _loggerFactory = loggerFactory;
         _usageSink = usageSink;
         _rateLimiter = rateLimiter;
+        _callObserver = callObserver ?? NullLlmCallObserver.Instance;
+        _tokenCounter = tokenCounter ?? new SimpleTokenCounter();
 
         // Create tool calling strategies
         _openAiStrategy = new OpenAIToolCallingStrategy(
             loggerFactory.CreateLogger<OpenAIToolCallParser>());
         _anthropicStrategy = new AnthropicToolCallingStrategy();
+    }
+
+    /// <summary>
+    /// <paramref name="provider"/> announced on <paramref name="observer"/>; a provider already under
+    /// a call-mode decorator (so already notifying its host's observer) is returned unchanged.
+    /// </summary>
+    public static ILlmProvider Observe(ILlmProvider provider, ILlmCallObserver observer, ITokenCounter? counter = null)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(observer);
+        return CallModeLlmProvider.Of(provider) is not null
+            ? provider
+            : new CallModeLlmProvider(provider, LlmCallMode.Auto, NullLogger.Instance, observer, counter ?? new SimpleTokenCounter());
     }
 
     /// <inheritdoc />
@@ -342,9 +365,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// </remarks>
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
         Justification = "Ownership of the provider transfers to the returned LlmProviderAdapter; the provider's Dispose is a no-op (its HttpClient is IHttpClientFactory-managed).")]
-    private LlmProviderAdapter Adapt<TProvider>(Func<ILogger<TProvider>, ILlmProvider> build)
+    private LlmProviderAdapter Adapt<TProvider>(LlmConfig config, Func<ILogger<TProvider>, ILlmProvider> build)
     {
-        var provider = build(_loggerFactory.CreateLogger<TProvider>());
+        var logger = _loggerFactory.CreateLogger<TProvider>();
+        var provider = new CallModeLlmProvider(build(logger), config.CallMode, logger, _callObserver, _tokenCounter);
         return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, _rateLimiter));
     }
 
@@ -358,15 +382,15 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// plain conversations and for models without tool support.
     /// </remarks>
     private LlmProviderAdapter CreateOllamaProvider(LlmConfig config)
-        => Adapt<OllamaLlmProvider>(logger => new OllamaLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<OllamaLlmProvider>(config, logger => new OllamaLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates OpenAI provider instance.</summary>
     private LlmProviderAdapter CreateOpenAIProvider(LlmConfig config)
-        => Adapt<OpenAIProvider>(logger => new OpenAIProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<OpenAIProvider>(config, logger => new OpenAIProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Anthropic provider instance.</summary>
     private LlmProviderAdapter CreateAnthropicProvider(LlmConfig config)
-        => Adapt<AnthropicLlmProvider>(logger => new AnthropicLlmProvider(config, _httpClientFactory, _anthropicStrategy, logger));
+        => Adapt<AnthropicLlmProvider>(config, logger => new AnthropicLlmProvider(config, _httpClientFactory, _anthropicStrategy, logger));
 
     /// <summary>
     /// Creates Azure OpenAI provider instance.
@@ -374,53 +398,53 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// like the other OpenAI-compatible providers.
     /// </summary>
     private LlmProviderAdapter CreateAzureOpenAIProvider(LlmConfig config)
-        => Adapt<AzureOpenAILlmProvider>(logger => new AzureOpenAILlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<AzureOpenAILlmProvider>(config, logger => new AzureOpenAILlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Together AI provider instance.</summary>
     private LlmProviderAdapter CreateTogetherAiProvider(LlmConfig config)
-        => Adapt<TogetherAiLlmProvider>(logger => new TogetherAiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<TogetherAiLlmProvider>(config, logger => new TogetherAiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Qwen (Alibaba DashScope) provider instance.</summary>
     private LlmProviderAdapter CreateQwenProvider(LlmConfig config)
-        => Adapt<QwenLlmProvider>(logger => new QwenLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<QwenLlmProvider>(config, logger => new QwenLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates DeepSeek provider instance.</summary>
     private LlmProviderAdapter CreateDeepSeekProvider(LlmConfig config)
-        => Adapt<DeepSeekLlmProvider>(logger => new DeepSeekLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<DeepSeekLlmProvider>(config, logger => new DeepSeekLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Kimi (Moonshot AI) provider instance.</summary>
     private LlmProviderAdapter CreateKimiProvider(LlmConfig config)
-        => Adapt<KimiLlmProvider>(logger => new KimiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<KimiLlmProvider>(config, logger => new KimiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates MiniMax provider instance.</summary>
     private LlmProviderAdapter CreateMiniMaxProvider(LlmConfig config)
-        => Adapt<MiniMaxLlmProvider>(logger => new MiniMaxLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<MiniMaxLlmProvider>(config, logger => new MiniMaxLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates x.AI (Grok) provider instance.</summary>
     private LlmProviderAdapter CreateGrokProvider(LlmConfig config)
-        => Adapt<GrokLlmProvider>(logger => new GrokLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<GrokLlmProvider>(config, logger => new GrokLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Google Gemini provider instance.</summary>
     private LlmProviderAdapter CreateGeminiProvider(LlmConfig config)
-        => Adapt<GeminiLlmProvider>(logger => new GeminiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<GeminiLlmProvider>(config, logger => new GeminiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Mistral AI provider instance.</summary>
     private LlmProviderAdapter CreateMistralProvider(LlmConfig config)
-        => Adapt<MistralLlmProvider>(logger => new MistralLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<MistralLlmProvider>(config, logger => new MistralLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates HuggingFace provider instance.</summary>
     private LlmProviderAdapter CreateHuggingFaceProvider(LlmConfig config)
-        => Adapt<HuggingFaceLlmProvider>(logger => new HuggingFaceLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<HuggingFaceLlmProvider>(config, logger => new HuggingFaceLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Z.AI (Zhipu GLM) provider instance.</summary>
     private LlmProviderAdapter CreateZaiProvider(LlmConfig config)
-        => Adapt<ZaiLlmProvider>(logger => new ZaiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<ZaiLlmProvider>(config, logger => new ZaiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates OpenRouter provider instance.</summary>
     private LlmProviderAdapter CreateOpenRouterProvider(LlmConfig config)
-        => Adapt<OpenRouterLlmProvider>(logger => new OpenRouterLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<OpenRouterLlmProvider>(config, logger => new OpenRouterLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Mammouth AI provider instance.</summary>
     private LlmProviderAdapter CreateMammouthProvider(LlmConfig config)
-        => Adapt<MammouthLlmProvider>(logger => new MammouthLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<MammouthLlmProvider>(config, logger => new MammouthLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 }

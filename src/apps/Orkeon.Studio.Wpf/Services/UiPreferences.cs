@@ -37,6 +37,9 @@ public sealed record UiPreferences
     /// </summary>
     public StudioSettings Studio { get; init; } = StudioSettings.Default;
 
+    /// <summary>"session" or "execution": the meter the status bar's token figures read.</summary>
+    public string TokenScope { get; init; } = "execution";
+
     /// <summary>Convenience view of <see cref="Theme"/>.</summary>
     public bool IsDark => string.Equals(Theme, "dark", StringComparison.OrdinalIgnoreCase);
 
@@ -64,6 +67,7 @@ public sealed record UiPreferences
             Language = document.Language,
             Mode = document.Mode,
             Studio = document.Studio,
+            TokenScope = document.TokenScope,
         };
     }
 
@@ -80,6 +84,10 @@ public sealed record UiPreferences
     /// <summary>Persists Settings › Studio; the theme, the language and the mode stay as they were.</summary>
     public static void SaveStudio(StudioSettings settings) =>
         Merge(document => document.SetStudio(settings));
+
+    /// <summary>Persists the status bar's token scope; every other key stays as it was.</summary>
+    public static void SaveTokenScope(string scope) =>
+        Merge(document => document.SetTokenScope(scope));
 
     /// <summary>
     /// Reads the file, applies one change, writes it back. A file that exists and cannot be read

@@ -2786,7 +2786,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The generation bump orphans every event the dying child still has in flight:
         // a straggler posted before the swap must not repopulate the fresh model.
         _runGeneration++;
-        _model = new ForgeSessionModel();
+        _model.Meter?.End();
+        _model = new ForgeSessionModel { Meter = _client.Meter?.Begin(Orkeon.Studio.Core.Run.ExecutionKind.Forge) };
         _saveError = null;
         Failure = null;
         RawLog.Clear();

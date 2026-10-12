@@ -44,6 +44,15 @@ public static class RunEventKinds
     /// <summary>Token-by-token generation; only under <c>--stream</c>.</summary>
     public const string LlmDelta = "llm.delta";
 
+    /// <summary>A model call was sent: its id, the mode on the wire and its estimated prompt tokens (STUDIO-71).</summary>
+    public const string LlmCallStarted = "llm.call.started";
+
+    /// <summary>A streamed model call received more: its cumulative estimated completion tokens, at most every 250 ms.</summary>
+    public const string LlmCallProgress = "llm.call.progress";
+
+    /// <summary>A model call ended: the mode actually used, whether it fell back, and the provider's count when it gave one.</summary>
+    public const string LlmCallFinished = "llm.call.finished";
+
     /// <summary>Closing event; mirrors the process exit code.</summary>
     public const string RunFinished = "run.finished";
 
@@ -82,6 +91,6 @@ public static class RunEventKinds
     [
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
-        AgentSpawned, HubMessage,
+        AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished,
     ];
 }

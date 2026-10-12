@@ -168,6 +168,8 @@ public partial class App : System.Windows.Application
                 // or mode write keeps it, and its own writes keep them.
                 InitialStudio = preferences.Studio,
                 PersistStudio = UiPreferences.SaveStudio,
+                InitialTokenScope = preferences.TokenScope,
+                PersistTokenScope = UiPreferences.SaveTokenScope,
             },
             // STUDIO-61: the teams folder of this start — the variable, this option, the preference
             // above, or the default — resolved once by the window, for every screen.
