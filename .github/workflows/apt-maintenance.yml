@@ -2,14 +2,10 @@
 # withdraw a version, or index Releases published before the repository existed.
 #
 # workflow_dispatch only, and run FROM A TAG (the "Use workflow from" selector): the
-# scripts come from that tag; the certificate comes from main, because a key extension is
-# committed to main before any tag carries it.
-# TEMPORARY: main is admitted too (the apt-signing environment already admits it, for
-# apt-dev.yml), so that `seed v1.0.0-rc.5` runs the verify-apt-repo.sh fixed on main
-# (#82) - the one at v1.0.0-rc.5 rejects the docs a minimised Ubuntu image drops. The
-# guard returns to tags only once rc.5 is indexed.
-# Same scripts, environment and concurrency group as the apt-publish job of release.yml
-# (scripts/apt/publish-index.sh), so the two never interleave.
+# apt-signing environment admits v* tags only. The scripts come from that tag; the
+# certificate comes from main, because a key extension is committed to main before any
+# tag carries it. Same scripts, environment and concurrency group as the apt-publish job
+# of release.yml (scripts/apt/publish-index.sh), so the two never interleave.
 #
 # Modes (targets separated by spaces):
 #   resign  no target. Both channels signed again with a newer Date: after a key
@@ -39,7 +35,7 @@ permissions:
   contents: read
 jobs:
   maintain:
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: apt-signing
