@@ -181,6 +181,9 @@
   <data name="Studio.Run.JournalShow" xml:space="preserve"><value>Show</value></data>
   <data name="Studio.Run.JournalHide" xml:space="preserve"><value>Hide</value></data>
   <data name="Studio.Run.OpenResult" xml:space="preserve"><value>Open the result</value></data>
+  <data name="Studio.Run.OpenLogs" xml:space="preserve"><value>Open logs folder</value></data>
+  <data name="Studio.Run.OpenLogsNotYet" xml:space="preserve"><value>The logs folder does not exist yet: it is created at the first logged call.</value></data>
+  <data name="Studio.Run.OpenLogsLoggingOff" xml:space="preserve"><value>LLM exchange logging is off for this launch.</value></data>
   <data name="Studio.Run.OpenResults" xml:space="preserve"><value>Open the {0} result folders</value></data>
   <data name="Studio.Run.Advanced" xml:space="preserve"><value>Advanced options</value></data>
   <data name="Studio.Run.VerbNormal" xml:space="preserve"><value>normal</value></data>
@@ -1479,6 +1482,12 @@
   <data name="Studio.Settings.ArchiveSuggestionDays" xml:space="preserve">
     <value>{0} days</value>
   </data>
+  <data name="Studio.Settings.ModelsFilter" xml:space="preserve">
+    <value>Filter models</value>
+  </data>
+  <data name="Studio.Settings.NoModelList" xml:space="preserve">
+    <value>This provider publishes no model list: type the model's name.</value>
+  </data>
   <data name="Studio.Settings.TeamsRootTitle" xml:space="preserve">
     <value>Teams folder</value>
   </data>
@@ -1655,6 +1664,10 @@
   <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Provider default</value></data>
   <data name="Studio.Settings.ProfileThinkingOn" xml:space="preserve"><value>On</value></data>
   <data name="Studio.Settings.ProfileThinkingOff" xml:space="preserve"><value>Off</value></data>
+  <data name="Studio.Settings.CallMode" xml:space="preserve"><value>Call mode</value></data>
+  <data name="Studio.Settings.CallModeAuto" xml:space="preserve"><value>Auto</value></data>
+  <data name="Studio.Settings.CallModeBuffer" xml:space="preserve"><value>Buffer</value></data>
+  <data name="Studio.Settings.CallModeStream" xml:space="preserve"><value>Stream</value></data>
   <data name="Studio.Settings.ProfileThinkingHint" xml:space="preserve"><value>Provider default: the model decides — Kimi K2.6, DeepSeek V4 and GLM think unless told not to. Off answers faster and cheaper; On forces the reasoning pass where the model has the switch.</value></data>
   <data name="Studio.Settings.ProfileLblThinkingEffort" xml:space="preserve"><value>Reasoning effort</value></data>
   <data name="Studio.Settings.ProfileThinkingEffortHint" xml:space="preserve"><value>Empty: the provider's default. low / medium / high (max on some models), for the models that take the hint.</value></data>
@@ -1837,4 +1850,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
     <value>The document search names a model profile this file does not define.</value>
   </data>
+  <data name="Studio.Shell.StatusModeStream" xml:space="preserve"><value>Stream</value></data>
+  <data name="Studio.Shell.StatusScopeSession" xml:space="preserve"><value>Session</value></data>
+  <data name="Studio.Shell.StatusScopeExecution" xml:space="preserve"><value>Execution</value></data>
+  <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>Buffer</value></data>
+  <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>Buffer (fallback)</value></data>
 </root>

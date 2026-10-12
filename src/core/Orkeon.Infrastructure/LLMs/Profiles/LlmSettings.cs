@@ -193,6 +193,8 @@ public static partial class LlmSettings
             TimeoutSeconds = ReadInt(section, "TimeoutSeconds", strict),
             // Absent = not bounded: only TimeoutSeconds bounds a streamed call (LLM-12).
             StreamIdleSeconds = ReadInt(section, "StreamIdleSeconds", strict),
+            // Absent = Auto: stream, falling back on a buffered call when the provider refuses it.
+            CallMode = ReadCallMode(section),
             Thinking = ReadThinking(section),
             // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
             GrammarEnabled = ReadBool(section, ConfigurationKeys.LlmGrammar) ?? LlmProfileShape.DefaultGrammar,
@@ -348,6 +350,19 @@ public static partial class LlmSettings
         if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
             return value;
         return strict ? throw NotANumber(section, key, raw) : null;
+    }
+
+    private static LlmCallMode ReadCallMode(IConfigurationSection section)
+    {
+        try
+        {
+            return LlmCallMode.Parse(section["CallMode"]);
+        }
+        catch (ArgumentException)
+        {
+            throw new InvalidOperationException(
+                $"{section.Path}:CallMode is not a call mode: '{section["CallMode"]}'. Use Auto, Buffer or Stream.");
+        }
     }
 
     private static InvalidOperationException NotANumber(IConfigurationSection section, string key, string raw) =>

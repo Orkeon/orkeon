@@ -61,6 +61,42 @@ public class ChatClientAgentLoopStreamingTests
         }
     }
 
+    /// <summary>A chat client whose buffered answer is the fold of the stream it reads underneath.</summary>
+    private sealed class FoldingChatClient : IChatClient
+    {
+        private readonly Queue<ChatResponseUpdate[]> _turns = new();
+
+        public int BufferedCalls { get; private set; }
+
+        public void Enqueue(params ChatResponseUpdate[] updates) => _turns.Enqueue(updates);
+
+        public async System.Threading.Tasks.Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            BufferedCalls++;
+            return await Underneath().ToChatResponseAsync(cancellationToken);
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("The loop reads nobody: its call stays buffered.");
+
+        private async IAsyncEnumerable<ChatResponseUpdate> Underneath()
+        {
+            foreach (var update in _turns.Count > 0 ? _turns.Dequeue() : [new ChatResponseUpdate(ChatRole.Assistant, "default")])
+            {
+                await System.Threading.Tasks.Task.Yield();
+                yield return update;
+            }
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose()
+        {
+        }
+    }
+
     private sealed class RecordingSink : ILlmDeltaSink
     {
         public List<string> Calls { get; } = [];
@@ -160,5 +196,21 @@ public class ChatClientAgentLoopStreamingTests
         Assert.Equal(string.Empty, result.Output);
         Assert.Equal(1, client.StreamedCalls);   // no tool-free retry
         Assert.Equal(["Hel"], sink.Calls);       // what was streamed, no turn end
+    }
+
+    // Pinned (green by construction): the turn does not change when the provider streams underneath.
+    [Fact]
+    [Trait("BR", "BR-11")]
+    public async System.Threading.Tasks.Task ShouldRunTheAgentTurnUnchanged_WhenTheProviderStreamsUnderneath()
+    {
+        using var client = new FoldingChatClient();
+        client.Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new FunctionCallContent("c1", "missing_tool")]));
+        client.Enqueue(new ChatResponseUpdate(ChatRole.Assistant, "Do"), new ChatResponseUpdate(ChatRole.Assistant, "ne."));
+
+        var result = await RunAsync(BuildLoop(client, sink: null));
+
+        Assert.Equal(AgentExitReason.Completed, result.ExitReason);
+        Assert.Equal("Done.", result.Output);
+        Assert.Equal(2, client.BufferedCalls);
     }
 }

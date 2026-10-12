@@ -496,6 +496,14 @@
                 <TextBlock Text="{Binding [Studio.Run.Cancel], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
+            <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding OpenLogsCommand}"
+                    Visibility="{Binding ShowsOpenLogs, Converter={StaticResource BooleanToVisibility}}"
+                    ToolTip="{Binding OpenLogsUnavailableReason}" ToolTipService.ShowOnDisabled="True">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [Studio.Run.OpenLogs], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
             <Button Style="{StaticResource BtnGhost}" Command="{Binding ClearLogCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="eraser" Size="13" Margin="0,0,7,0"/>

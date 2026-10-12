@@ -1,6 +1,7 @@
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using System.Net;
 using System.Runtime.CompilerServices;
 
 namespace Orkeon.Infrastructure.Tests.Doubles;
@@ -76,6 +77,9 @@ public sealed class MockStreamingLlmProvider : ILlmProvider, IStreamingLlmProvid
         }
     }
 
+    /// <summary>Whether the double streams on the wire (the port's default is false).</summary>
+    public bool StreamsNatively { get; set; }
+
     public bool SupportsStreaming
     {
         get => _supportsStreaming;
@@ -122,6 +126,18 @@ public sealed class MockStreamingLlmProvider : ILlmProvider, IStreamingLlmProvid
         await Task.CompletedTask;
     }
 
+    private Exception? _streamingFailure;
+
+    /// <summary>Makes every chat stream throw an HTTP refusal (status, body in the message) before any event.</summary>
+    public void RefuseStreamingWith(HttpStatusCode status, string body = "") =>
+        _streamingFailure = new HttpRequestException($"Streaming refused ({(int)status}): {body}", null, status);
+
+    /// <summary>Makes every chat stream throw <paramref name="failure"/> before any event.</summary>
+    public void FailStreamingWith(Exception failure) => _streamingFailure = failure;
+
+    /// <summary>Lifts a refusal: chat streams answer again.</summary>
+    public void LiftRefusal() => _streamingFailure = null;
+
     private int _chatStreamingCallCount;
 
     public int ChatStreamingCallCount => Volatile.Read(ref _chatStreamingCallCount);
@@ -138,6 +154,9 @@ public sealed class MockStreamingLlmProvider : ILlmProvider, IStreamingLlmProvid
             LastChatMessages = messages;
             LastChatConfig = config;
         }
+
+        if (_streamingFailure is not null)
+            throw _streamingFailure;
 
         if (_chatStreamingHandler is not null)
         {

@@ -6,6 +6,7 @@ using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Run;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Teams;
@@ -74,6 +75,9 @@ public sealed class MainWindowViewModel : ObservableObject
         // One forge client for the wizard and the team cards' schedule gestures (STUDIO-27), over
         // the same binary as the doctor and the launcher when none is handed in.
         var forgeClient = seams.ForgeClient ?? ForgeClient.Over(runner);
+        // One token meter for the window: the runs, the assistant and the rephrase all count into it.
+        var tokenMeter = new StudioTokenMeter();
+        forgeClient.Meter = tokenMeter;
 
         Mode = new UiModeViewModel(ui.InitialMode, ui.PersistMode);
 
@@ -291,6 +295,7 @@ public sealed class MainWindowViewModel : ObservableObject
         // at once — each with its own engine — and gives each a group while it runs (DD-2).
         StatusBar = new StatusBarViewModel(new StatusBarSources
         {
+            TokenMeter = tokenMeter,
             Launch = Launch,
             Test = Test.Launcher,
             Atelier = CreateTeam.Progress,
@@ -304,6 +309,8 @@ public sealed class MainWindowViewModel : ObservableObject
             TeamProfiles = () => TeamCatalog.List(teamsHome, TeamListFilter.Active).Select(team => team.Profile),
             BalanceTicker = seams.BalanceTicker,
             ShellOpener = shellOpener,
+            InitialTokenScope = ui.InitialTokenScope,
+            PersistTokenScope = ui.PersistTokenScope,
         });
 
         Import = new ImportTeamViewModel(new ImportTeamDependencies

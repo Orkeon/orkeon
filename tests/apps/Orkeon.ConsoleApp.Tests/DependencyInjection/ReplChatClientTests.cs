@@ -54,7 +54,8 @@ public sealed class ReplChatClientTests : IDisposable
             ("Llm:BaseUrl", "https://api.deepseek.com/v1"),
             ("Llm:ApiKey", "sk-repl-key"),
             ("Llm:Model", "deepseek-chat"),
-            ("Llm:TimeoutSeconds", "600"));
+            ("Llm:TimeoutSeconds", "600"),
+            ("Llm:CallMode", "Buffer"));
 
         var response = await host.Services.GetRequiredService<IChatClient>()
             .GetResponseAsync("hello", new ChatOptions { Temperature = 0f }, TestContext.Current.CancellationToken);

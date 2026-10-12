@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Constants.Configuration;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
+using Orkeon.Infrastructure.LLMs;
+using Orkeon.Scripting.Cli.Commands.Run;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
@@ -37,6 +40,7 @@ internal static class ForgeRephrase
         ArgumentNullException.ThrowIfNull(options);
 
         var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace);
+        var events = options.Events ? new ForgeEventWriter(Console.Out) : null;
         using var host = RunnerHost.Build(
             settingsPath,
             new RunnerMountPlan(),
@@ -51,9 +55,12 @@ internal static class ForgeRephrase
                 logging.Services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(
                     o => o.LogToStandardErrorThreshold = LogLevel.Trace);
                 logging.SetMinimumLevel(LogLevel.Warning);
+            },
+            configureServices: (_, services) =>
+            {
+                if (events is not null)
+                    services.AddSingleton<ILlmCallObserver>(new RunEventsLlmCallObserver(events, TimeProvider.System));
             });
-
-        var events = options.Events ? new ForgeEventWriter(Console.Out) : null;
 
         if (!host.Services.GetRequiredService<IConfiguration>().GetSection(ConfigurationKeys.LlmSection).Exists()
             || host.Services.GetService<ILlmProvider>() is not { } provider)
@@ -66,7 +73,7 @@ internal static class ForgeRephrase
             return ExitError;
         }
 
-        var rewritten = await RewriteAsync(provider, options.Need!, CancellationToken.None).ConfigureAwait(false);
+        var rewritten = await RewriteAsync(provider, options.Need!, events, CancellationToken.None).ConfigureAwait(false);
         if (rewritten is null)
         {
             const string Message = "the model gave no rewritten request.";
@@ -89,7 +96,29 @@ internal static class ForgeRephrase
     /// trimmed of the quotes and fences a model wraps it in, or null when nothing usable came
     /// back.
     /// </summary>
-    public static async Task<string?> RewriteAsync(ILlmProvider provider, string request, CancellationToken cancellationToken)
+    public static async Task<string?> RewriteAsync(ILlmProvider provider, string request, CancellationToken cancellationToken) =>
+        Clean((await AskAsync(provider, request, cancellationToken).ConfigureAwait(false)).Content);
+
+    /// <summary>
+    /// <see cref="RewriteAsync(ILlmProvider, string, CancellationToken)"/> that, given <paramref name="events"/>,
+    /// writes the call's <c>llm.call.*</c> lines and, after it, a <c>cost.updated</c> line.
+    /// </summary>
+    public static async Task<string?> RewriteAsync(
+        ILlmProvider provider, string request, ForgeEventWriter? events, CancellationToken cancellationToken)
+    {
+        if (events is null)
+            return await RewriteAsync(provider, request, cancellationToken).ConfigureAwait(false);
+
+        var observed = LlmProviderFactory.Observe(provider, new RunEventsLlmCallObserver(events, TimeProvider.System));
+        var response = await AskAsync(observed, request, cancellationToken).ConfigureAwait(false);
+        ForgeCost.Emit(
+            events,
+            new ForgeBudget(),
+            new ForgeUsageSnapshot(response.PromptTokens ?? 0, response.CompletionTokens ?? 0, 0));
+        return Clean(response.Content);
+    }
+
+    private static async Task<LlmResponse> AskAsync(ILlmProvider provider, string request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentException.ThrowIfNullOrWhiteSpace(request);
@@ -99,8 +128,7 @@ internal static class ForgeRephrase
             new LlmMessage { Role = "system", Content = SystemPrompt },
             new LlmMessage { Role = "user", Content = request.Trim() },
         ];
-        var response = await provider.ChatAsync(prompt, config: null, cancellationToken).ConfigureAwait(false);
-        return Clean(response.Content);
+        return await provider.ChatAsync(prompt, config: null, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>What the model is asked — the one job, its limits, and the shape of the answer.</summary>

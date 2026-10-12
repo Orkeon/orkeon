@@ -34,6 +34,88 @@ public sealed class HttpLlmEndpointProbeTests
     }
 
     [Fact]
+    [Trait("BR", "BR-03")]
+    public async Task ShouldReturnTheModelNamesSorted_WhenTheCatalogueAnswers()
+    {
+        // OpenAI-shaped, with a duplicate and mixed case.
+        using var openAi = new StubHttpMessageHandler
+        {
+            Body = """{"data":[{"id":"b-model"},{"id":"A-model"},{"id":"b-model"}]}""",
+        };
+        var openAiResult = await ProbeAsync(openAi, LlmProviderEndpoints.OpenAI);
+        Assert.Equal(["A-model", "b-model"], openAiResult.ModelNames);
+
+        using var ollama = new StubHttpMessageHandler
+        {
+            Body = """{"models":[{"name":"qwen2.5:14b"},{"name":"llama3.2"}]}""",
+        };
+        var ollamaResult = await ProbeAsync(ollama, "http://localhost:11434");
+        Assert.Equal(["llama3.2", "qwen2.5:14b"], ollamaResult.ModelNames);
+
+        // Gemini is probed through its OpenAI-compatible catalogue ({"data":[{"id":"models/..."}]}).
+        using var gemini = new StubHttpMessageHandler
+        {
+            Body = """{"data":[{"id":"models/gemini-2.5-pro"},{"id":"models/gemini-2.5-flash"}]}""",
+        };
+        var geminiResult = await ProbeAsync(gemini, LlmProviderEndpoints.Gemini);
+        Assert.Equal(["gemini-2.5-flash", "gemini-2.5-pro"], geminiResult.ModelNames);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public void ShouldSortAndDeduplicateTheNames_WhenAResultIsBuilt()
+    {
+        var result = LlmProbeResult.Reachable(["b-model", "A-model", "b-model"]);
+
+        Assert.Equal(["A-model", "b-model"], result.ModelNames);
+        Assert.Equal(2, result.ModelCount);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public async Task ShouldDeriveTheCountFromTheNames_WhenTheCatalogueAnswers()
+    {
+        using var handler = new StubHttpMessageHandler
+        {
+            Body = """{"data":[{"id":"b-model"},{"id":"A-model"},{"id":"b-model"}]}""",
+        };
+
+        var result = await ProbeAsync(handler, LlmProviderEndpoints.OpenAI);
+
+        Assert.Equal(2, result.ModelNames.Length);
+        Assert.Equal(result.ModelNames.Length, result.ModelCount);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public async Task ShouldReturnNoNames_WhenTheCatalogueBodyIsUnparsable()
+    {
+        using var handler = new StubHttpMessageHandler { Body = "not json at all" };
+
+        var result = await ProbeAsync(handler, LlmProviderEndpoints.OpenAI);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.ModelNames);
+        Assert.Null(result.ModelCount);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public async Task ShouldReturnNoNames_WhenTheTestFails()
+    {
+        using var handler = new StubHttpMessageHandler
+        {
+            StatusCode = HttpStatusCode.Unauthorized,
+            Body = """{"data":[{"id":"a-model"}]}""",
+        };
+
+        var result = await ProbeAsync(handler, LlmProviderEndpoints.OpenAI, apiKey: "sk-wrong");
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(result.ModelNames);
+    }
+
+    [Fact]
     public async Task An_openai_compatible_endpoint_is_asked_for_its_models_with_a_bearer_token()
     {
         using var handler = new StubHttpMessageHandler

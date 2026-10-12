@@ -74,6 +74,9 @@ public sealed record ModelProfile
     /// </summary>
     public int? StreamIdleSeconds { get; init; }
 
+    /// <summary>The call mode this profile pins (<c>Auto</c>, <c>Buffer</c>, <c>Stream</c>), or null for Auto.</summary>
+    public string? CallMode { get; init; }
+
     /// <summary>
     /// Maximum response length in tokens this profile pins, or null to leave the cap to the
     /// engine: the model's documented maximum, or 4096 for a model the catalogue does not
@@ -221,7 +224,7 @@ public sealed record ModelProfile
     /// </summary>
     private static readonly string[] OverriddenFields =
     [
-        "Model", "BaseUrl", "Temperature", "TimeoutSeconds", "StreamIdleSeconds", "MaxTokens", "Thinking__Enabled", "Thinking__Effort", "ApiKey",
+        "Model", "BaseUrl", "Temperature", "TimeoutSeconds", "StreamIdleSeconds", "CallMode", "MaxTokens", "Thinking__Enabled", "Thinking__Effort", "ApiKey",
     ];
 
     private static string HostProfilePrefix(string id) => $"{DefaultSectionPrefix}Profiles__{id.Trim()}__";
@@ -241,6 +244,13 @@ public sealed record ModelProfile
             overrides[prefix + "TimeoutSeconds"] = timeout.ToString(CultureInfo.InvariantCulture);
         if (StreamIdleSeconds is { } idle and > 0)
             overrides[prefix + "StreamIdleSeconds"] = idle.ToString(CultureInfo.InvariantCulture);
+        if (CallMode is { } callMode
+            && (string.Equals(callMode, "Buffer", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(callMode, "Stream", StringComparison.OrdinalIgnoreCase)))
+        {
+            overrides[prefix + "CallMode"] = callMode;
+        }
+
         if (MaxTokens is { } maxTokens and > 0)
             overrides[prefix + "MaxTokens"] = maxTokens.ToString(CultureInfo.InvariantCulture);
         if (ThinkingEnabled is { } thinking)

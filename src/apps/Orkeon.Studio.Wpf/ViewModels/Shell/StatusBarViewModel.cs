@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
+using Orkeon.Studio.Core.Run;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -40,6 +41,9 @@ public sealed class StatusBarOpenEventArgs : EventArgs
 /// </summary>
 public sealed record StatusBarSources
 {
+    /// <summary>The session meter whose current call mode the Run and Test groups show.</summary>
+    public StudioTokenMeter? TokenMeter { get; init; }
+
     /// <summary>The Run screen's launcher.</summary>
     public LaunchTabViewModel? Launch { get; init; }
 
@@ -76,6 +80,12 @@ public sealed record StatusBarSources
 
     /// <summary>Opens a provider's console from the Balance segment; the console entries do nothing when absent.</summary>
     public IShellOpener? ShellOpener { get; init; }
+
+    /// <summary>The token scope stored last time ("session" or "execution"); the default when null.</summary>
+    public string? InitialTokenScope { get; init; }
+
+    /// <summary>Writes the scope the user picked; null keeps the choice for this session only.</summary>
+    public Action<string>? PersistTokenScope { get; init; }
 }
 
 /// <summary>
@@ -104,6 +114,9 @@ public sealed record StatusBarSources
 public sealed class StatusBarViewModel : ObservableObject
 {
     /// <summary>How often the clocks on the bar move while a run goes.</summary>
+    private const string SessionScope = "session";
+    private const string ExecutionScope = "execution";
+
     private static readonly TimeSpan Beat = TimeSpan.FromSeconds(1);
 
     private readonly IStudioStrings _strings;
@@ -111,6 +124,8 @@ public sealed class StatusBarViewModel : ObservableObject
     private readonly IUiTicker _ticker;
     private readonly ModelProfilesViewModel? _profiles;
     private readonly Func<IEnumerable<string?>>? _teamProfiles;
+    private readonly Action<string>? _persistTokenScope;
+    private string _tokenScope;
     private bool _beating;
 
     /// <summary>Builds the bar over the activities it watches.</summary>
@@ -122,10 +137,14 @@ public sealed class StatusBarViewModel : ObservableObject
         _ticker = wired.Ticker ?? NullUiTicker.Instance;
         _profiles = wired.Profiles;
         _teamProfiles = wired.TeamProfiles;
+        _persistTokenScope = wired.PersistTokenScope;
+        _tokenScope = wired.InitialTokenScope == SessionScope ? SessionScope : ExecutionScope;
 
-        Launch = new StatusBarRunGroupViewModel(StatusBarActivity.Launch, wired.Launch, _strings, IsExpert, Open);
-        Test = new StatusBarRunGroupViewModel(StatusBarActivity.Test, wired.Test, _strings, IsExpert, Open);
-        Atelier = new StatusBarAtelierGroupViewModel(wired.Atelier, _strings, IsExpert, Open);
+        Launch = new StatusBarRunGroupViewModel(StatusBarActivity.Launch, wired.Launch, _strings, IsExpert, Open, wired.TokenMeter);
+        Test = new StatusBarRunGroupViewModel(StatusBarActivity.Test, wired.Test, _strings, IsExpert, Open, wired.TokenMeter);
+        Launch.SessionScope = Test.SessionScope = _tokenScope == SessionScope;
+        Atelier = new StatusBarAtelierGroupViewModel(wired.Atelier, _strings, IsExpert, Open, wired.TokenMeter);
+        Atelier.SessionScope = _tokenScope == SessionScope;
         Balance = new StatusBarBalanceViewModel(
             wired.Balances, Coverage, _strings, wired.ShellOpener, wired.BalanceTicker ?? NullUiTicker.Instance);
 
@@ -149,6 +168,29 @@ public sealed class StatusBarViewModel : ObservableObject
 
     /// <summary>The Balance segment (STUDIO-35): what the covered provider accounts have left.</summary>
     public StatusBarBalanceViewModel Balance { get; }
+
+    /// <summary>Which meter the token counter reads: "session" or "execution"; anything else reads as "execution".</summary>
+    public string TokenScope
+    {
+        get => _tokenScope;
+        set
+        {
+            var scope = value == SessionScope ? SessionScope : ExecutionScope;
+            if (scope == _tokenScope)
+                return;
+
+            _tokenScope = scope;
+            Launch.SessionScope = Test.SessionScope = Atelier.SessionScope = scope == SessionScope;
+            _persistTokenScope?.Invoke(scope);
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>The selector's label for the session scope.</summary>
+    public string ScopeSessionText => _strings[StudioStringKeys.StatusBarScopeSession];
+
+    /// <summary>The selector's label for the execution scope.</summary>
+    public string ScopeExecutionText => _strings[StudioStringKeys.StatusBarScopeExecution];
 
     /// <summary>Whether nothing runs — no group on the bar.</summary>
     public bool IsAtRest => !Launch.IsActive && !Test.IsActive && !Atelier.IsActive;

@@ -132,6 +132,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         CreateTeamCommand = new RelayCommand(() => CreateTeamRequested?.Invoke(this, EventArgs.Empty));
         ClearLogCommand = new RelayCommand(() => Log.Clear());
         OpenResultCommand = new RelayCommand(OpenResult, () => CanOpenResult);
+        OpenLogsCommand = new RelayCommand(OpenLogs, CanOpenLogs);
         CheckOptionsCommand = new RelayCommand(() => CheckOptions());
 
         // Locate the CLI now rather than only in InitializeAsync. The lookup is a synchronous
@@ -812,6 +813,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     {
         // The target first, so whoever reacts to IsRunning already reads what is running.
         RunningTarget = request.TargetPath;
+        ForgetLogFolderProbe();
         IsRunning = true;
 
         Log.AppendCommand(CommandLineDisplay.Format(request.Arguments));
@@ -870,9 +872,30 @@ public sealed class LaunchTabViewModel : ObservableObject
     private void Receive(ProcessOutputLine line)
     {
         if (line.Channel == ProcessOutputChannel.StandardOutput && Progress.TryApply(line.Text))
+        {
+            // A token delta arrives per token and cannot make the folder appear: skip it.
+            if (!(OrkeonEventParser.TryParse(line.Text, out var applied) && applied!.Kind == RunEventKinds.LlmDelta))
+                RefreshOpenLogs();
             return;
+        }
 
         Log.Append(line);
+        RefreshOpenLogs();
+    }
+
+    // One Exists per refresh: the probe's answer is kept until the next refresh, and once the
+    // folder was found it is kept until a new run starts or the target/options change.
+    private (string Folder, bool Exists)? _probedLogFolder;
+
+    private void ForgetLogFolderProbe() => _probedLogFolder = null;
+
+    /// <summary>The log folder may appear while the run goes on: the reason and the command follow each line.</summary>
+    private void RefreshOpenLogs()
+    {
+        if (_probedLogFolder is not { Exists: true })
+            _probedLogFolder = null;
+        OnPropertiesChanged(nameof(OpenLogsUnavailableReason));
+        OpenLogsCommand.RaiseCanExecuteChanged();
     }
 
     /// <summary>
@@ -1201,6 +1224,41 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>Opens the result — one Explorer window per folder the run could write to.</summary>
     public RelayCommand OpenResultCommand { get; }
 
+    /// <summary>Opens the folder the team writes its LLM exchange logs to.</summary>
+    public RelayCommand OpenLogsCommand { get; }
+
+    /// <summary>Whether the logs button is shown: while a run is in progress, once it ended, and with a target.</summary>
+    public bool ShowsOpenLogs => Target.Target is not null;
+
+    /// <summary>Why <see cref="OpenLogsCommand"/> is disabled; null when it is available.</summary>
+    public string? OpenLogsUnavailableReason => LogFolderState().Reason;
+
+    private (string? Folder, string? Reason) LogFolderState()
+    {
+        if (Target.Target is not { } target)
+            return (null, null);
+
+        var launchDirectory = target.WorkingDirectory ?? Environment.CurrentDirectory;
+        var folder = MountOverrideSemantics.LlmLogFolderOf(BuildOptions(), launchDirectory);
+        if (folder is null)
+            return (null, _strings[StudioStringKeys.RunOpenLogsLoggingOff]);
+
+        if (_probedLogFolder is not { } probed || probed.Folder != folder)
+            _probedLogFolder = probed = (folder, _directories.Exists(folder));
+
+        return probed.Exists
+            ? (folder, null)
+            : (null, _strings[StudioStringKeys.RunOpenLogsNotYet]);
+    }
+
+    private bool CanOpenLogs() => _shellOpener is not null && LogFolderState().Folder is not null;
+
+    private void OpenLogs()
+    {
+        if (LogFolderState().Folder is { } folder)
+            _shellOpener?.Open(folder);
+    }
+
     /// <summary>A result folder exists once the run finished and a writable mount is known.</summary>
     public bool CanOpenResult => HasResult && _shellOpener is not null && ResultFolders().Count > 0;
 
@@ -1286,9 +1344,12 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     private void RaiseRunStateChanged()
     {
+        ForgetLogFolderProbe();
         OnPropertiesChanged(nameof(RunStateTitle), nameof(RunBadgeText), nameof(RunBadgeTone),
             nameof(RunButtonLabel), nameof(CanOpenResult), nameof(OpenResultLabel));
         OpenResultCommand.RaiseCanExecuteChanged();
+        OnPropertiesChanged(nameof(ShowsOpenLogs));
+        RefreshOpenLogs();
     }
 
     private void OnTargetChanged(object? sender, EventArgs e)
@@ -1369,6 +1430,9 @@ public sealed class LaunchTabViewModel : ObservableObject
         CommandLinePreview = arguments.Count == 0 ? null : CommandLineDisplay.Format(arguments);
 
         CheckOptions();
+        OnPropertiesChanged(nameof(ShowsOpenLogs));
+        ForgetLogFolderProbe();
+        RefreshOpenLogs();
     }
 }
 

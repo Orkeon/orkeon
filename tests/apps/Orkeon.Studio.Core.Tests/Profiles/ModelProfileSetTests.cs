@@ -116,7 +116,7 @@ public sealed class ModelProfileSetTests
         var empty = new ModelProfile { Name = "empty" }.EnvironmentOverrides();
         Assert.Equal(
             [
-                "ORKEON_Llm__ApiKey", "ORKEON_Llm__ApiKeyEnvVar", "ORKEON_Llm__BaseUrl", "ORKEON_Llm__MaxTokens",
+                "ORKEON_Llm__ApiKey", "ORKEON_Llm__ApiKeyEnvVar", "ORKEON_Llm__BaseUrl", "ORKEON_Llm__CallMode", "ORKEON_Llm__MaxTokens",
                 "ORKEON_Llm__Model", "ORKEON_Llm__StreamIdleSeconds", "ORKEON_Llm__Temperature", "ORKEON_Llm__Thinking__Effort",
                 "ORKEON_Llm__Thinking__Enabled", "ORKEON_Llm__TimeoutSeconds",
             ],

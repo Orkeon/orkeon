@@ -478,4 +478,25 @@ public sealed class HostLlmProfilesScreenTests
             "The document search names a model profile this file does not define.",
             EnglishStudioStrings.Instance["Studio.Diagnostics.Code." + Orkeon.Studio.Core.Validation.ValidationCodes.UnknownRagLlmProfile]);
     }
+
+    [Fact]
+    [Trait("BR", "BR-05")]
+    public void ShouldOfferAuto_WhenASettingIsCreated()
+    {
+        var (profiles, _, _, _) = Build();
+
+        profiles.NewProfileCommand.Execute(null);
+        var editor = profiles.Editor!;
+
+        Assert.Equal(["Auto", "Buffer", "Stream"], editor.CallModeChoices.Select(c => c.Value));
+        Assert.Equal("Auto", editor.SelectedCallMode?.Value);
+
+        editor.SelectedProvider = editor.Providers.First(p => p.Name == LlmPresets.DeepSeek);
+        editor.Name = "DeepSeek";
+        editor.SelectedCallMode = editor.CallModeChoices.First(c => c.Value == "Buffer");
+        Assert.True(editor.SaveCommand.CanExecute(null), editor.HostIdText);
+        editor.SaveCommand.Execute(null);
+
+        Assert.Equal("Buffer", profiles.Profiles.Single(p => p.Name == "DeepSeek").Profile.CallMode);
+    }
 }

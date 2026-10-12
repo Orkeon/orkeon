@@ -29,6 +29,7 @@ public sealed class LlmProviderMeteringPathTests
     {
         ApiKey = "sk-test",
         BaseUrl = new Uri("https://api.openai.com/v1"),
+        CallMode = LlmCallMode.Buffer,
     };
 #pragma warning restore CS0618
 
@@ -76,7 +77,7 @@ public sealed class LlmProviderMeteringPathTests
 
         var basic = Assert.IsType<LlmProviderAdapter>(factory.Create(OpenAiConfig()));
 
-        Assert.IsType<OpenAIProvider>(basic.UnderlyingProvider);
+        Assert.IsType<OpenAIProvider>(MeteredLlmProvider.Unwrap(basic.UnderlyingProvider));
     }
 
     [Fact]

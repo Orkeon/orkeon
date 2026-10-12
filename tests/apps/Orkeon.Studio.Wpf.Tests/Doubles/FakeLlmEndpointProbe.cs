@@ -10,7 +10,7 @@ public sealed class FakeLlmEndpointProbe : ILlmEndpointProbe
 {
     public List<LlmProbeRequest> Requests { get; } = [];
 
-    public LlmProbeResult Result { get; set; } = LlmProbeResult.Reachable(2);
+    public LlmProbeResult Result { get; set; } = LlmProbeResult.Reachable(System.Collections.Immutable.ImmutableArray.Create("m1", "m2"));
 
     public Exception? FailWith { get; set; }
 

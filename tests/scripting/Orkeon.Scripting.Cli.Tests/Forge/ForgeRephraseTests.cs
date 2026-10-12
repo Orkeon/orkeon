@@ -76,6 +76,43 @@ public sealed class ForgeRephraseTests
     }
 
     [Fact]
+    [Trait("BR", "BR-09")]
+    public async Task ShouldWriteCallAndCostLines_WhenRephrasingWithEvents()
+    {
+        var llm = new CountingLlm("Un brief clair.");
+        var output = new StringWriter();
+        var events = new ForgeEventWriter(output, new FakeOrkeonClock());
+
+        var rewritten = await ForgeRephrase.RewriteAsync(llm, "un besoin flou", events, TestContext.Current.CancellationToken);
+
+        Assert.Equal("Un brief clair.", rewritten);
+        var lines = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => JsonDocument.Parse(l).RootElement.Clone()).ToList();
+        var kinds = lines.Select(l => l.GetProperty("kind").GetString()).ToList();
+        var started = kinds.IndexOf("llm.call.started");
+        var finished = kinds.IndexOf("llm.call.finished");
+        var cost = kinds.IndexOf("cost.updated");
+        Assert.True(started >= 0 && finished > started && cost > finished, string.Join(",", kinds));
+        Assert.Equal(
+            lines[started].GetProperty("callId").GetString(),
+            lines[finished].GetProperty("callId").GetString());
+        Assert.Equal(12, lines[finished].GetProperty("promptTokens").GetInt32());
+        Assert.Equal(5, lines[finished].GetProperty("completionTokens").GetInt32());
+        Assert.Equal(17, lines[cost].GetProperty("tokens").GetInt64());
+    }
+
+    private sealed class CountingLlm(string answer) : ILlmProvider
+    {
+        public string Name => "counting";
+
+        public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
+            ChatAsync([], config, cancellationToken);
+
+        public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new LlmResponse { Content = answer, PromptTokens = 12, CompletionTokens = 5, TokensUsed = 17 });
+    }
+
+    [Fact]
     public void The_event_line_carries_the_text_and_the_original()
     {
         var output = new StringWriter();

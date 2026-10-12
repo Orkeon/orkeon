@@ -100,7 +100,7 @@ public class FactoryNativeToolCallingTests
 
         var config = CreateAzureConfig(tools: new List<ToolSchema> { SampleToolSchema });
         var adapter = Assert.IsType<LlmProviderAdapter>(CreateFactory(httpClientFactory).Create("azure-openai", config));
-        using var provider = Assert.IsType<AzureOpenAILlmProvider>(adapter.UnderlyingProvider);
+        using var provider = Assert.IsType<AzureOpenAILlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
 
         // Multi-turn conversation with tool metadata (OpenAI dialect replay)
         var messages = new[]
@@ -160,7 +160,7 @@ public class FactoryNativeToolCallingTests
 
         var config = CreateAzureConfig(tools: new List<ToolSchema> { SampleToolSchema });
         var adapter = Assert.IsType<LlmProviderAdapter>(CreateFactory(httpClientFactory).Create("azure", config));
-        using var provider = Assert.IsType<AzureOpenAILlmProvider>(adapter.UnderlyingProvider);
+        using var provider = Assert.IsType<AzureOpenAILlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
 
         // Act
         var response = await provider.ChatAsync(
@@ -192,7 +192,7 @@ public class FactoryNativeToolCallingTests
 
         var config = CreateAzureConfig(tools: null);
         var adapter = Assert.IsType<LlmProviderAdapter>(CreateFactory(httpClientFactory).Create("azure-openai", config));
-        using var provider = Assert.IsType<AzureOpenAILlmProvider>(adapter.UnderlyingProvider);
+        using var provider = Assert.IsType<AzureOpenAILlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
 
         // Act
         var response = await provider.ChatAsync(
@@ -230,7 +230,7 @@ public class FactoryNativeToolCallingTests
 
         var config = CreateOllamaConfig(tools: new List<ToolSchema> { SampleToolSchema });
         var adapter = Assert.IsType<LlmProviderAdapter>(CreateFactory(httpClientFactory).Create("ollama", config));
-        using var provider = Assert.IsType<OllamaLlmProvider>(adapter.UnderlyingProvider);
+        using var provider = Assert.IsType<OllamaLlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
 
         // Act
         var response = await provider.ChatAsync(
@@ -263,7 +263,7 @@ public class FactoryNativeToolCallingTests
 
         var config = CreateOllamaConfig(tools: null);
         var adapter = Assert.IsType<LlmProviderAdapter>(CreateFactory(httpClientFactory).Create("ollama", config));
-        using var provider = Assert.IsType<OllamaLlmProvider>(adapter.UnderlyingProvider);
+        using var provider = Assert.IsType<OllamaLlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
 
         // Act
         var response = await provider.ChatAsync(

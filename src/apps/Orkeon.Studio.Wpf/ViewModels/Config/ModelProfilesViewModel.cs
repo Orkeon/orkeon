@@ -260,6 +260,11 @@ public sealed record RagProfileChoice(string? Id, string Label);
 /// <param name="Label">The localized label shown in the combo box.</param>
 public sealed record ThinkingChoice(bool? Value, string Label);
 
+/// <summary>One position of the profile editor's call mode.</summary>
+/// <param name="Value">Auto, Buffer or Stream.</param>
+/// <param name="Label">The localized label.</param>
+public sealed record CallModeChoice(string Value, string Label);
+
 public sealed class ModelProfileEditorViewModel : ObservableObject
 {
     private readonly ModelProfilesViewModel _owner;
@@ -277,6 +282,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string? _apiKeyEnv;
     private string _apiKeyInput = "";
     private ProbeVerdict? _verdict;
+    private string _modelFilter = "";
     private string? _keyStoreFailure;
     private bool _isTestingConnection;
     private int _settingsGeneration;
@@ -285,8 +291,38 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string _streamIdleText = "";
     private string _maxTokensText = "";
     private bool? _thinkingEnabled;
+    private string _callMode;
     private string _thinkingEffortText = "";
     private readonly string? _originalHostId;
+
+    /// <summary>The model names the last successful connection test found (UC-01).</summary>
+    public ObservableCollection<string> AvailableModels { get; } = [];
+
+    /// <summary>Text narrowing <see cref="FilteredModels"/>: substring, case ignored.</summary>
+    public string ModelFilter
+    {
+        get => _modelFilter;
+        set
+        {
+            if (SetProperty(ref _modelFilter, value ?? ""))
+                OnPropertyChanged(nameof(FilteredModels));
+        }
+    }
+
+    /// <summary>The found names that contain <see cref="ModelFilter"/>, in the order the probe gave them.</summary>
+    public IEnumerable<string> FilteredModels =>
+        AvailableModels.Where(name => name.Contains(_modelFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    /// <summary>True when the last test found names to list.</summary>
+    public bool HasAvailableModels => AvailableModels.Count > 0;
+
+    /// <summary>The "no list published" note: set when the last test succeeded without any name.</summary>
+    public string? ModelListNote => _verdict is { Result: { Succeeded: true, ModelNames.IsDefaultOrEmpty: true } }
+        ? _strings[StudioStringKeys.SettingsNoModelList]
+        : null;
+
+    /// <summary>Fills the Model field with the name carried as the parameter; saves nothing.</summary>
+    public RelayCommand PickModelCommand { get; }
 
     internal ModelProfileEditorViewModel(
         ModelProfilesViewModel owner,
@@ -324,6 +360,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         _thinkingEnabled = profile.ThinkingEnabled;
         _thinkingEffortText = profile.ThinkingEffort ?? "";
         ThinkingChoices = BuildThinkingChoices(strings);
+        CallModeChoices = BuildCallModeChoices(strings);
+        _callMode = CallModeChoices.FirstOrDefault(c => string.Equals(c.Value, profile.CallMode, StringComparison.OrdinalIgnoreCase))?.Value ?? "Auto";
         // STUDIO-54: the card by its name — a title changes with the language —, recognised from
         // whatever an older setting holds; a setting always has one.
         var card = LlmPresets.CardOf(profile);
@@ -334,6 +372,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         SaveCommand = new RelayCommand(Save, () => CanSave);
         CancelCommand = new RelayCommand(() => _owner.CancelEdit());
         SelectProviderCommand = new RelayCommand(p => SelectedProvider = p as LlmPresetInfo);
+        PickModelCommand = new RelayCommand(name => { if (name is string picked) Model = picked; });
         TestConnectionCommand = new AsyncRelayCommand(
             () => TestConnectionAsync(CancellationToken.None), () => !_isTestingConnection);
         StoreKeyCommand = new AsyncRelayCommand(StoreKeyAsync, () => _apiKeyInput.Trim().Length > 0);
@@ -391,6 +430,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             SeedTimeoutFor(value, previous);
             OnPropertyChanged(nameof(TimeoutHint));
             ShowVerdict(null);
+            ReplaceAvailableModels([]);   // the catalogue was about the previous provider
             ShowBalance(null);
             OnPropertyChanged(nameof(RequiresApiKey));
             OnPropertyChanged(nameof(ApiKeyEnvName));
@@ -430,6 +470,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             OnHostProfileChanged();
             SaveCommand.RaiseCanExecuteChanged();
             ClearConnectionTestResult();   // the verdict was about the previous endpoint
+            ReplaceAvailableModels([]);
         }
     }
 
@@ -655,7 +696,21 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private void ShowVerdict(ProbeVerdict? verdict)
     {
         _verdict = verdict;
+        // A null verdict (the model changed, e.g. by a pick) keeps the list; any new result replaces it.
+        if (verdict is not null)
+            ReplaceAvailableModels(verdict.Result is { Succeeded: true } found ? found.ModelNames : []);
         OnPropertyChanged(nameof(ConnectionTestResult));
+        OnPropertyChanged(nameof(ModelListNote));
+    }
+
+    private void ReplaceAvailableModels(IEnumerable<string> names)
+    {
+        AvailableModels.Clear();
+        foreach (var name in names)
+            AvailableModels.Add(name);
+
+        OnPropertyChanged(nameof(FilteredModels));
+        OnPropertyChanged(nameof(HasAvailableModels));
     }
 
     /// <summary>True while a connection test runs: the button is disabled and the line says so.</summary>
@@ -797,6 +852,30 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
     /// <summary>The three positions of the thinking switch: provider default, on, off — in the interface's language.</summary>
     public IReadOnlyList<ThinkingChoice> ThinkingChoices { get; private set; }
+
+    /// <summary>The three call modes.</summary>
+    public IReadOnlyList<CallModeChoice> CallModeChoices { get; private set; }
+
+    /// <summary>The call mode chosen. Auto leaves the key out of the profile; Buffer or Stream pins it.</summary>
+    public CallModeChoice SelectedCallMode
+    {
+        get => CallModeChoices.First(c => c.Value == _callMode);
+        set
+        {
+            if (value is null || value.Value == _callMode)
+                return;
+
+            _callMode = value.Value;
+            OnPropertyChanged();
+        }
+    }
+
+    private static CallModeChoice[] BuildCallModeChoices(IStudioStrings strings) =>
+    [
+        new CallModeChoice("Auto", strings[StudioStringKeys.SettingsCallModeAuto]),
+        new CallModeChoice("Buffer", strings[StudioStringKeys.SettingsCallModeBuffer]),
+        new CallModeChoice("Stream", strings[StudioStringKeys.SettingsCallModeStream]),
+    ];
 
     private static ThinkingChoice[] BuildThinkingChoices(IStudioStrings strings) =>
     [
@@ -942,6 +1021,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             Temperature = ParsedTemperature,
             TimeoutSeconds = ParsedTimeoutSeconds,
             StreamIdleSeconds = ParsedStreamIdleSeconds,
+            CallMode = _callMode == "Auto" ? null : _callMode,
             MaxTokens = ParsedMaxTokens,
             ThinkingEnabled = _thinkingEnabled,
             ThinkingEffort = string.IsNullOrWhiteSpace(_thinkingEffortText) ? null : _thinkingEffortText.Trim(),
@@ -1072,14 +1152,15 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         if (_selectedProvider is { } selected)
             _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Name, selected.Name, StringComparison.Ordinal)) ?? selected;
         ThinkingChoices = BuildThinkingChoices(_strings);
+        CallModeChoices = BuildCallModeChoices(_strings);
 
         OnPropertiesChanged(
             nameof(Providers), nameof(LocalProviders), nameof(CloudProviders), nameof(OtherProviders),
-            nameof(SelectedProvider), nameof(ThinkingChoices), nameof(SelectedThinking),
+            nameof(SelectedProvider), nameof(ThinkingChoices), nameof(SelectedThinking), nameof(CallModeChoices), nameof(SelectedCallMode),
             nameof(KeyStatusText), nameof(KeyBlockTitle), nameof(KeyConsoleUrl), nameof(KeyStoreError),
             nameof(HostIdText), nameof(HostIdRenamedText), nameof(HostKeyHint),
             nameof(TimeoutHint), nameof(ThinkingHint), nameof(MaxTokensHint),
-            nameof(ConnectionTestResult), nameof(BalanceResult));
+            nameof(ConnectionTestResult), nameof(ModelListNote), nameof(BalanceResult));
     }
 
     /// <summary>The state of the last connection test: in progress, refused for a missing key, or the probe's result.</summary>

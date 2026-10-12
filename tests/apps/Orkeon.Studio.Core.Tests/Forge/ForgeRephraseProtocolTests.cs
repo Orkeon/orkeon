@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Run;
 using Orkeon.Studio.Core.Tests.Doubles;
 
 namespace Orkeon.Studio.Core.Tests.Forge;
@@ -65,5 +66,24 @@ public sealed class ForgeRephraseProtocolTests
         Assert.False(result.Success);
         Assert.NotNull(result.Error);
         Assert.Empty(processes.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-09")]
+    public async Task ShouldCountTheRephrase_WhenTheNeedIsRephrased()
+    {
+        var processes = new FakeProcessLauncher().WithStandardOutput(
+            """{"v":2,"seq":1,"ts":"t","kind":"llm.call.started","callId":"c1","mode":"Buffer","estimatedPromptTokens":100}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"llm.call.finished","callId":"c1","mode":"Buffer","fellBack":false,"promptTokens":90,"completionTokens":35}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"cost.updated","tokens":125,"promptTokens":90,"completionTokens":35,"operation":"agent"}""",
+            """{"v":2,"seq":4,"ts":"t","kind":"need.rephrased","text":"Rewritten.","original":"x"}""");
+        var meter = new StudioTokenMeter();
+        var client = Client(processes);
+        client.Meter = meter;
+
+        var result = await client.RephraseAsync(new ForgeRephraseRequest { Need = "x" }, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(new TokenFigure(90, 35, false), meter.Session);
     }
 }

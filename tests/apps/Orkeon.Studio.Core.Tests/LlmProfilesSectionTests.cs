@@ -254,4 +254,25 @@ public sealed class LlmProfilesSectionTests
         document.Rag.LlmProfile = null;
         Assert.False(document.ContainsPath("Orkeon:Rag:LlmProfile"));
     }
+
+    [Fact]
+    [Trait("BR", "BR-05")]
+    public void ShouldReadWriteAndBlankCallMode_LikeStreamIdleSeconds()
+    {
+        var document = AppSettingsDocument.Parse(HandWritten);
+
+        document.Llm.Profiles.Set(new LlmProfileEntry { Id = "claude", Model = "m", CallMode = "Stream" });
+
+        Assert.Equal("Stream", document.GetString("Llm:Profiles:claude:CallMode"));
+        Assert.Equal("Stream", document.Llm.Profiles.Get("claude")?.CallMode);
+        document.Llm.Profiles.Set(new LlmProfileEntry { Id = "claude", Model = "m", CallMode = null });
+        Assert.False(document.ContainsPath("Llm:Profiles:claude:CallMode"));
+
+        document.Llm.CallMode = "Buffer";
+        Assert.Equal("Buffer", document.GetString("Llm:CallMode"));
+        Assert.Equal("Buffer", document.Llm.CallMode);
+        document.Llm.CallMode = null;
+        Assert.False(document.ContainsPath("Llm:CallMode"));
+        Assert.Null(document.Llm.CallMode);
+    }
 }

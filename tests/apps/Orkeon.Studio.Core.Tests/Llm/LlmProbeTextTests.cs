@@ -47,7 +47,7 @@ public sealed class LlmProbeTextTests
     [Fact]
     public void The_english_message_is_the_default_description()
     {
-        var result = LlmProbeResult.Reachable(3);
+        var result = LlmProbeResult.Reachable(System.Collections.Immutable.ImmutableArray.Create("m1", "m2", "m3"));
 
         Assert.Equal("Endpoint reachable — 3 model(s).", result.Message);
         Assert.Equal(result.Message, LlmProbeText.Describe(result, EnglishStudioStrings.Instance, CultureInfo.InvariantCulture));

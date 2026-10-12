@@ -372,6 +372,9 @@ public sealed class RunProgressModel
     /// </summary>
     public event EventHandler<RunProgressChangedEventArgs>? Changed;
 
+    /// <summary>The count of this run's model calls; every line applied is forwarded to it. Null counts nothing.</summary>
+    public ExecutionMeter? Meter { get; set; }
+
     /// <summary>
     /// Folds one event in. Unknown kinds are ignored on purpose: a newer CLI may emit more
     /// than this build understands, and a screen that crashes on an unread event is worse than
@@ -381,6 +384,7 @@ public sealed class RunProgressModel
     {
         ArgumentNullException.ThrowIfNull(orkeonEvent);
 
+        Meter?.Apply(orkeonEvent);
         var changed = orkeonEvent.Kind switch
         {
             RunEventKinds.RunStarted => ApplyRunStarted(orkeonEvent),

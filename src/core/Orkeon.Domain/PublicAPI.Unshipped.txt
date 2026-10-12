@@ -1976,3 +1976,19 @@ Orkeon.Domain.Tools.Protocol.ParameterSchema.Values.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ToValueDocument() -> System.Collections.Generic.Dictionary<string!, object!>!
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ReadAsMap(object? value) -> object?
 static Orkeon.Domain.Tools.Protocol.ParameterSchema.IsKeyValueArray(object? value) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode
+Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Name.get -> string!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.StreamsOnTheWire.get -> bool
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.ToString() -> string!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Auto.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Buffer.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Parse(string? value) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Stream.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CallMode.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CallMode.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Equals(Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? other) -> bool
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Equals(object? obj) -> bool
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.GetHashCode() -> int
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? right) -> bool
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? right) -> bool

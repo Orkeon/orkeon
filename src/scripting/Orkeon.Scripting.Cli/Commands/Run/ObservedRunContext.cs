@@ -157,6 +157,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         });
         services.AddSingleton<ICrewExecutionHook>(sp => sp.GetRequiredService<RunEventObserver>());
         services.AddSingleton<ILlmUsageSink>(sp => sp.GetRequiredService<RunEventObserver>());
+        services.AddSingleton<ILlmCallObserver>(_ => new RunEventsLlmCallObserver(_events, TimeProvider.System));
 
         // The delta sink only under --stream (GAP-32): a registered sink makes the agent loop and
         // ctx.llm.* stream every turn to it, and without --stream every delta would be dropped —

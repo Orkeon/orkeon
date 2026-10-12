@@ -16,7 +16,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 internal sealed class OfflineLlmProbe : ILlmEndpointProbe
 {
     /// <summary>What the next probe answers; a stop sets it before opening the editor.</summary>
-    public LlmProbeResult Result { get; set; } = LlmProbeResult.Reachable(14);
+    public LlmProbeResult Result { get; set; } = LlmProbeResult.Reachable(System.Collections.Immutable.ImmutableArray.CreateRange(Enumerable.Range(1, 14).Select(i => $"model-{i}")));
 
     /// <inheritdoc />
     public Task<LlmProbeResult> ProbeAsync(LlmProbeRequest request, CancellationToken cancellationToken = default) =>

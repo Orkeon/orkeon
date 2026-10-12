@@ -314,7 +314,7 @@ public static class LlmPresets
                 "HF_TOKEN", LlmPresetKind.Cloud, "huggingface.co/settings/tokens"),
             new(Zai, strings[StudioStringKeys.ProviderZaiTitle], strings[StudioStringKeys.ProviderZaiDescription],
                 LlmProviderEndpoints.Zai, LlmProviderDefaultModels.Zai, RequiresApiKey: true,
-                "ZAI_API_KEY", LlmPresetKind.Cloud, "z.ai/manage-apikey",
+                "ZAI_API_KEY", LlmPresetKind.Cloud, "z.ai/manage-apikey/apikey-list",
                 RecommendedTimeoutSeconds: ReasoningTimeoutSeconds),
             // LLM-09: the two aggregators. Mammouth's exact API-settings page is to be
             // confirmed with the first key; the vendor documents "from the API settings".

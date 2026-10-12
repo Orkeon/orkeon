@@ -340,7 +340,9 @@ public sealed class LlmLoggingDelegatingHandlerTests : IDisposable
                 """{"model":"gpt-4","stream":true,"messages":[]}""", Encoding.UTF8, "application/json"),
         };
 
-        await invoker.SendAsync(request, TestContext.Current.CancellationToken);
+        // A stream is logged once its caller is done with it (BR-15): the caller disposes it.
+        var response = await invoker.SendAsync(request, TestContext.Current.CancellationToken);
+        response.Dispose();
 
         if (expectCaptured)
         {

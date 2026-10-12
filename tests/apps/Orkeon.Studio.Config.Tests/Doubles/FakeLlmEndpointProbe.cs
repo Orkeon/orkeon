@@ -13,7 +13,7 @@ public sealed class FakeLlmEndpointProbe : ILlmEndpointProbe
     public List<LlmProbeRequest> Requests { get; } = [];
 
     /// <summary>The scripted answer.</summary>
-    public LlmProbeResult Result { get; set; } = LlmProbeResult.Reachable(2);
+    public LlmProbeResult Result { get; set; } = LlmProbeResult.Reachable(System.Collections.Immutable.ImmutableArray.Create("m1", "m2"));
 
     /// <summary>When set, thrown instead of answering.</summary>
     public Exception? FailWith { get; set; }

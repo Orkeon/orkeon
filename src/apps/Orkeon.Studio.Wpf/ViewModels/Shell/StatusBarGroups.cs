@@ -25,6 +25,8 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     private readonly LaunchTabViewModel? _launcher;
     private readonly IStudioStrings _strings;
     private readonly Func<bool> _isExpert;
+    private readonly StudioTokenMeter _meter;
+    private bool _sessionScope;
     private RunProgressModel _model = new();
     private bool _isActive;
     private string? _team;
@@ -34,9 +36,11 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
         LaunchTabViewModel? launcher,
         IStudioStrings strings,
         Func<bool> isExpert,
-        Action<StatusBarActivity> open)
+        Action<StatusBarActivity> open,
+        StudioTokenMeter? meter = null)
     {
         Activity = activity;
+        _meter = meter ?? new StudioTokenMeter();
         _launcher = launcher;
         _strings = strings;
         _isExpert = isExpert;
@@ -44,6 +48,10 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
 
         if (launcher is null)
             return;
+
+        _meter.Changed += (_, _) => OnPropertiesChanged(
+            nameof(CallModeText), nameof(TokensUp), nameof(TokensDown),
+            nameof(ShowsTokensUp), nameof(ShowsTokensDown), nameof(TokensEstimated));
 
         Watch(launcher.Progress.Model);
         launcher.PropertyChanged += OnLauncherChanged;
@@ -92,11 +100,14 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     /// <summary>Whether the run waits on this window — a question, or an agent's request for a reply.</summary>
     public bool IsWaiting => State == RunState.Waiting;
 
+    /// <summary>The mode of the call in flight (Stream, Buffer, Buffer (fallback)); null when no call was made.</summary>
+    public string? CallModeText => StatusBarText.CallMode(_strings, _model.Meter);
+
     /// <summary>What went up to the models (↑), grouped for reading; null until the meter carries it.</summary>
-    public string? TokensUp => StatusBarText.Count(_model.Cost?.PromptTokens);
+    public string? TokensUp => StatusBarText.Count(Figure?.Up);
 
     /// <summary>What came back (↓); null until the meter carries it.</summary>
-    public string? TokensDown => StatusBarText.Count(_model.Cost?.CompletionTokens);
+    public string? TokensDown => StatusBarText.Count(Figure?.Down);
 
     /// <summary>Whether ↑ is on the bar — in both modes, once measured.</summary>
     public bool ShowsTokensUp => TokensUp is not null;
@@ -108,7 +119,7 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     /// Whether the runtime estimated part of ↑ and ↓ because a provider counted nothing — the bar
     /// marks them «≈», as the assistant's group does, rather than pass an estimate off as a count.
     /// </summary>
-    public bool TokensEstimated => _model.Cost?.EstimatedTokens is > 0;
+    public bool TokensEstimated => Figure is { Estimated: true };
 
     /// <summary>
     /// The team the run is for, read when the run started and kept: the launcher can be aimed at
@@ -223,6 +234,30 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     /// <summary>Asks the shell for this activity's screen (D-04).</summary>
     public RelayCommand OpenCommand { get; }
 
+    /// <summary>Whether the token figures are the whole session's rather than the execution shown.</summary>
+    internal bool SessionScope
+    {
+        get => _sessionScope;
+        set
+        {
+            if (_sessionScope == value)
+                return;
+
+            _sessionScope = value;
+            OnPropertiesChanged(
+                nameof(TokensUp), nameof(TokensDown), nameof(ShowsTokensUp), nameof(ShowsTokensDown), nameof(TokensEstimated));
+        }
+    }
+
+    /// <summary>What the chosen meter carries; null until a call was counted.</summary>
+    private TokenFigure? Figure
+    {
+        get
+        {
+            return StatusBarText.Measured(_sessionScope ? _meter.Session : _model.Meter?.Figure);
+        }
+    }
+
     private RunState State
     {
         get
@@ -246,7 +281,7 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
 
     /// <summary>Everything the group says, said again — a new run, a new event, a new language.</summary>
     internal void RefreshAll() => OnPropertiesChanged(
-        nameof(Tone), nameof(StateText), nameof(IsWaiting),
+        nameof(Tone), nameof(StateText), nameof(IsWaiting), nameof(CallModeText),
         nameof(TokensUp), nameof(TokensDown), nameof(ShowsTokensUp), nameof(ShowsTokensDown), nameof(TokensEstimated),
         nameof(Team), nameof(CurrentTask), nameof(Duration), nameof(Cache), nameof(BilledCost),
         nameof(Tools), nameof(ToolsDetail), nameof(Delegations), nameof(DelegationsDetail),
@@ -295,7 +330,9 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     private void Watch(RunProgressModel model)
     {
         _model.Changed -= OnModelChanged;
+        _model.Meter?.End();
         _model = model;
+        _model.Meter ??= _meter.Begin(ExecutionKind.Run);
         _model.Changed += OnModelChanged;
     }
 
@@ -322,19 +359,24 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     private readonly ComposeProgressViewModel? _progress;
     private readonly IStudioStrings _strings;
     private readonly Func<bool> _isExpert;
+    private readonly StudioTokenMeter _meter;
+    private bool _sessionScope;
     private bool _isActive;
 
     internal StatusBarAtelierGroupViewModel(
         ComposeProgressViewModel? progress,
         IStudioStrings strings,
         Func<bool> isExpert,
-        Action<StatusBarActivity> open)
+        Action<StatusBarActivity> open,
+        StudioTokenMeter? meter = null)
     {
+        _meter = meter ?? new StudioTokenMeter();
         _progress = progress;
         _strings = strings;
         _isExpert = isExpert;
         OpenCommand = new RelayCommand(() => open(StatusBarActivity.Atelier));
 
+        _meter.Changed += (_, _) => OnMeterChanged();
         if (progress is null)
             return;
 
@@ -359,10 +401,14 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     public string Tone => IsWaiting ? "waiting" : "running";
 
     /// <summary>What went up to the models (↑); null while nothing was spent.</summary>
-    public string? TokensUp => _progress?.TokensUp is { Length: > 0 } up ? up : null;
+    public string? TokensUp => Figure is { } figure
+        ? StatusBarText.Count(figure.Up)
+        : _progress?.TokensUp is { Length: > 0 } up ? up : null;
 
     /// <summary>What came back (↓); null while nothing was spent.</summary>
-    public string? TokensDown => _progress?.TokensDown is { Length: > 0 } down ? down : null;
+    public string? TokensDown => Figure is { } figure
+        ? StatusBarText.Count(figure.Down)
+        : _progress?.TokensDown is { Length: > 0 } down ? down : null;
 
     /// <summary>Whether ↑ is on the bar — in both modes, once measured.</summary>
     public bool ShowsTokensUp => TokensUp is not null;
@@ -371,7 +417,7 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     public bool ShowsTokensDown => TokensDown is not null;
 
     /// <summary>Whether the figures are the runtime's approximation — the bar marks them «≈», like the card.</summary>
-    public bool TokensEstimated => _progress?.TokensEstimated == true;
+    public bool TokensEstimated => Figure?.Estimated ?? _progress?.TokensEstimated == true;
 
     /// <summary>What the session's allowance has left; null for a session with no cap.</summary>
     public string? BudgetLeft => _progress?.TokensRemaining is { } left
@@ -383,6 +429,36 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     /// <summary>The remaining budget is the expert's (D-03), when the session has one.</summary>
     public bool ShowsBudgetLeft => _isExpert() && BudgetLeft is not null;
 
+    /// <summary>The mode of the call in flight of the forge's or rephrase's execution; null when no call was made.</summary>
+    public string? CallModeText => StatusBarText.CallMode(_strings, Execution);
+
+    /// <summary>Whether the token figures are the whole session's rather than the execution shown.</summary>
+    internal bool SessionScope
+    {
+        get => _sessionScope;
+        set
+        {
+            if (_sessionScope == value)
+                return;
+
+            _sessionScope = value;
+            OnPropertiesChanged(
+                nameof(TokensUp), nameof(TokensDown), nameof(ShowsTokensUp), nameof(ShowsTokensDown), nameof(TokensEstimated));
+        }
+    }
+
+    private ExecutionMeter? Execution => _meter.Latest(ExecutionKind.Forge, ExecutionKind.Rephrase);
+
+    private TokenFigure? Figure => StatusBarText.Measured(_sessionScope ? _meter.Session : Execution?.Figure);
+
+    private void OnMeterChanged()
+    {
+        IsActive = _progress?.IsEngineRunning == true || _meter.Latest(ExecutionKind.Rephrase) is { Ended: false };
+        OnPropertiesChanged(
+            nameof(CallModeText), nameof(TokensUp), nameof(TokensDown),
+            nameof(ShowsTokensUp), nameof(ShowsTokensDown), nameof(TokensEstimated));
+    }
+
     /// <summary>Asks the shell for the assistant's screen (D-04).</summary>
     public RelayCommand OpenCommand { get; }
 
@@ -391,14 +467,14 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
 
     /// <summary>Everything the group formats itself, said again in a new language.</summary>
     internal void RefreshAll() => OnPropertiesChanged(
-        nameof(Stage), nameof(TokensUp), nameof(TokensDown), nameof(BudgetLeft), nameof(ShowsBudgetLeft));
+        nameof(Stage), nameof(CallModeText), nameof(TokensUp), nameof(TokensDown), nameof(BudgetLeft), nameof(ShowsBudgetLeft));
 
     private void OnProgressChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
             case nameof(ComposeProgressViewModel.IsEngineRunning):
-                IsActive = _progress?.IsEngineRunning == true;
+                IsActive = _progress?.IsEngineRunning == true || _meter.Latest(ExecutionKind.Rephrase) is { Ended: false };
                 break;
             case nameof(ComposeProgressViewModel.Title):
                 OnPropertyChanged(nameof(Stage));
@@ -432,6 +508,21 @@ internal static class StatusBarText
         var present = parts.Where(part => !string.IsNullOrWhiteSpace(part)).ToList();
         return present.Count > 0 ? string.Join(separator, present) : null;
     }
+
+    /// <summary>The mode of the execution's current call (Stream, Buffer, Buffer (fallback)); null before any call.</summary>
+    public static string? CallMode(IStudioStrings strings, ExecutionMeter? execution) =>
+        execution is { CurrentMode: { } mode }
+            ? strings[(mode, execution.CurrentFellBack) switch
+            {
+                (_, true) => StudioStringKeys.StatusBarModeFallback,
+                ("Stream", _) => StudioStringKeys.StatusBarModeStream,
+                _ => StudioStringKeys.StatusBarModeBuffer,
+            }]
+            : null;
+
+    /// <summary>The figure, or null while it carries nothing.</summary>
+    public static TokenFigure? Measured(TokenFigure? figure) =>
+        figure is { Up: 0, Down: 0, Estimated: false } ? null : figure;
 
     /// <summary>A token count grouped for reading; null when unmeasured.</summary>
     public static string? Count(long? tokens) =>

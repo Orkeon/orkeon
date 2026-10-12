@@ -31,6 +31,32 @@ keeps the lines in its log. See
 | `IForgeJudge.JudgeAsync(brief, output, ct)` (internal) | `JudgeAsync(brief, output, mailActions, ct)` |
 | `ForgeSandbox.DeniedTools` holds the 12 mailbox tools | holds `shell_command` and `code_interpreter` only |
 
+### Added — Studio's status bar counts every model call live, estimated then exact, with its call mode (STUDIO-71)
+
+Every model call of a run, a forge or a rephrase now writes `llm.call.started`, `llm.call.progress`
+(at most every 250 ms) and `llm.call.finished` on the `--events` stream, with its call mode and its
+estimated then counted tokens (`docs/architecture/run-event-bus.md`). Studio's status bar shows the
+tokens with « ~ » while an estimate is part of them, the mode of the current or last call
+(« Buffer (repli) » after a fallback), and switches between the Studio session and the execution shown.
+
+### Added — every LLM setting has a call mode, Auto by default, and a stream is logged as it arrives (STUDIO-71)
+
+A setting's `CallMode` (`Llm:CallMode`, `Llm:Profiles:<name>:CallMode`: `Auto`, `Buffer`,
+`Stream`) decides how each of its calls reaches the model, whoever makes it. `Auto` streams on
+the wire when the provider streams natively and returns the same answer, tool calls and usage as
+a buffered call; a clear refusal of streaming before any event falls back to `Buffer` for the
+rest of the run, with one warning. Studio's settings screen offers the mode. A streamed exchange
+now reaches the caller as it arrives through `LlmLoggingDelegatingHandler`, and is logged as its
+rebuilt answer once it ends. See `docs/architecture/llm-providers.md`, "Call mode".
+
+Migration:
+
+| Before | After |
+|---|---|
+| `LlmProviderFactory` returns the vendor provider under the limiter and the meter | one more decorator, `CallModeLlmProvider`, sits under them: inspect the vendor type through `MeteredLlmProvider.Unwrap` |
+| a buffered caller of a factory-built provider sends a buffered request | under `Auto` (the default) it streams on the wire when the provider streams natively; set `CallMode` to `Buffer` to keep the former request |
+| nothing | `LlmCallMode` (Domain), `LlmConfig.CallMode`, `IStreamingLlmProvider.StreamsNatively` (default `false`), `LlmCallModeScope` (Application) |
+
 ### Fixed — a tool with a free or dictionary parameter no longer sends an invalid schema (LLM-13)
 
 The EventHub tools `post_message`, `publish_event`, `send_request`, `reply_to` and
