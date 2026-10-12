@@ -24,7 +24,14 @@ Orkeon.Tools.Code.ShellCommandResponse.Stdout.get -> string!
 Orkeon.Tools.Code.ShellCommandResponse.Stdout.init -> void
 Orkeon.Tools.Code.ShellCommandTool
 Orkeon.Tools.Code.ShellCommandTool.ShellCommandTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>? allowedCommands = null, System.Collections.Generic.IEnumerable<string!>? blockedPatterns = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Code.ShellCommandTool!>? logger = null, bool allowInterpreters = false, System.Collections.Generic.IEnumerable<string!>? extraAllowedCommands = null) -> void
+Orkeon.Tools.Code.ShellToolOptions
+Orkeon.Tools.Code.ShellToolOptions.AllowInterpreters.get -> bool
+Orkeon.Tools.Code.ShellToolOptions.AllowInterpreters.set -> void
+Orkeon.Tools.Code.ShellToolOptions.AllowedCommands.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellToolOptions.ExtraAllowedCommands.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellToolOptions.ShellToolOptions() -> void
 const Orkeon.Tools.Code.ShellCommandTool.MaxOutputLength = 10000 -> int
+const Orkeon.Tools.Code.ShellToolOptions.SectionName = "Orkeon:Tools:Shell" -> string!
 override Orkeon.Tools.Code.ShellCommandRequest.Equals(object? obj) -> bool
 override Orkeon.Tools.Code.ShellCommandRequest.GetHashCode() -> int
 override Orkeon.Tools.Code.ShellCommandRequest.ToString() -> string!

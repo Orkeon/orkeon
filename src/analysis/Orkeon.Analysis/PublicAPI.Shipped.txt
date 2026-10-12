@@ -307,14 +307,6 @@ Orkeon.Analysis.Core.Watcher.InMemoryRaggableTreeEventBus
 Orkeon.Analysis.Core.Watcher.InMemoryRaggableTreeEventBus.InMemoryRaggableTreeEventBus() -> void
 Orkeon.Analysis.Core.Watcher.InMemoryRaggableTreeEventBus.Publish(Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated! evt) -> void
 Orkeon.Analysis.Core.Watcher.InMemoryRaggableTreeEventBus.Subscribe(System.Func<Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! handler) -> System.IDisposable!
-Orkeon.Analysis.DependencyInjection.CacheOptions
-Orkeon.Analysis.DependencyInjection.CacheOptions.<Clone>$() -> Orkeon.Analysis.DependencyInjection.CacheOptions!
-Orkeon.Analysis.DependencyInjection.CacheOptions.CacheOptions() -> void
-Orkeon.Analysis.DependencyInjection.CacheOptions.Enabled.get -> bool
-Orkeon.Analysis.DependencyInjection.CacheOptions.Enabled.init -> void
-Orkeon.Analysis.DependencyInjection.CacheOptions.Equals(Orkeon.Analysis.DependencyInjection.CacheOptions? other) -> bool
-Orkeon.Analysis.DependencyInjection.CacheOptions.Path.get -> string!
-Orkeon.Analysis.DependencyInjection.CacheOptions.Path.init -> void
 Orkeon.Analysis.DependencyInjection.EmbeddingOptions
 Orkeon.Analysis.DependencyInjection.EmbeddingOptions.<Clone>$() -> Orkeon.Analysis.DependencyInjection.EmbeddingOptions!
 Orkeon.Analysis.DependencyInjection.EmbeddingOptions.ApiKey.get -> string?
@@ -339,38 +331,18 @@ Orkeon.Analysis.DependencyInjection.EmbeddingProviderKind.None = 0 -> Orkeon.Ana
 Orkeon.Analysis.DependencyInjection.EmbeddingProviderKind.Ollama = 2 -> Orkeon.Analysis.DependencyInjection.EmbeddingProviderKind
 Orkeon.Analysis.DependencyInjection.EmbeddingProviderKind.Onnx = 3 -> Orkeon.Analysis.DependencyInjection.EmbeddingProviderKind
 Orkeon.Analysis.DependencyInjection.EmbeddingProviderKind.OpenAI = 1 -> Orkeon.Analysis.DependencyInjection.EmbeddingProviderKind
-Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
-Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode.BreakOnChange = 2 -> Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
-Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode.Frozen = 0 -> Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
-Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode.Live = 1 -> Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.<Clone>$() -> Orkeon.Analysis.DependencyInjection.RaggableTreeOptions!
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Cache.get -> Orkeon.Analysis.DependencyInjection.CacheOptions!
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Cache.init -> void
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Embedding.get -> Orkeon.Analysis.DependencyInjection.EmbeddingOptions!
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Embedding.init -> void
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Enabled.get -> bool
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Enabled.init -> void
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.EnrichWithLlm.get -> bool
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.EnrichWithLlm.init -> void
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Equals(Orkeon.Analysis.DependencyInjection.RaggableTreeOptions? other) -> bool
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Exclude.get -> System.Collections.Immutable.ImmutableArray<string!>
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Exclude.init -> void
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.IncludeStatements.get -> bool
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.IncludeStatements.init -> void
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.IndexMode.get -> Orkeon.Analysis.DependencyInjection.RaggableTreeIndexMode
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.IndexMode.init -> void
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Languages.get -> System.Collections.Immutable.ImmutableArray<string!>
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Languages.init -> void
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.RaggableTreeOptions() -> void
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.RootAlias.get -> string!
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.RootAlias.init -> void
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Summarizer.get -> Orkeon.Analysis.DependencyInjection.SummarizerOptions!
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.Summarizer.init -> void
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.ValidateCitations.get -> bool
 Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.ValidateCitations.init -> void
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.VectorStore.get -> Orkeon.Analysis.DependencyInjection.VectorStoreOptions!
-Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.VectorStore.init -> void
 Orkeon.Analysis.DependencyInjection.RaggableTreeServiceCollectionExtensions
 Orkeon.Analysis.DependencyInjection.SummarizerOptions
 Orkeon.Analysis.DependencyInjection.SummarizerOptions.<Clone>$() -> Orkeon.Analysis.DependencyInjection.SummarizerOptions!
@@ -385,19 +357,6 @@ Orkeon.Analysis.DependencyInjection.SummarizerOptions.SummarizerOptions() -> voi
 Orkeon.Analysis.DependencyInjection.SummarizerProviderKind
 Orkeon.Analysis.DependencyInjection.SummarizerProviderKind.Anthropic = 1 -> Orkeon.Analysis.DependencyInjection.SummarizerProviderKind
 Orkeon.Analysis.DependencyInjection.SummarizerProviderKind.None = 0 -> Orkeon.Analysis.DependencyInjection.SummarizerProviderKind
-Orkeon.Analysis.DependencyInjection.VectorStoreKind
-Orkeon.Analysis.DependencyInjection.VectorStoreKind.ChromaDb = 2 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
-Orkeon.Analysis.DependencyInjection.VectorStoreKind.InMemory = 0 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
-Orkeon.Analysis.DependencyInjection.VectorStoreKind.LanceDb = 4 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
-Orkeon.Analysis.DependencyInjection.VectorStoreKind.Pinecone = 3 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
-Orkeon.Analysis.DependencyInjection.VectorStoreKind.Redis = 1 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
-Orkeon.Analysis.DependencyInjection.VectorStoreKind.Sqlite = 5 -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
-Orkeon.Analysis.DependencyInjection.VectorStoreOptions
-Orkeon.Analysis.DependencyInjection.VectorStoreOptions.<Clone>$() -> Orkeon.Analysis.DependencyInjection.VectorStoreOptions!
-Orkeon.Analysis.DependencyInjection.VectorStoreOptions.Equals(Orkeon.Analysis.DependencyInjection.VectorStoreOptions? other) -> bool
-Orkeon.Analysis.DependencyInjection.VectorStoreOptions.Provider.get -> Orkeon.Analysis.DependencyInjection.VectorStoreKind
-Orkeon.Analysis.DependencyInjection.VectorStoreOptions.Provider.init -> void
-Orkeon.Analysis.DependencyInjection.VectorStoreOptions.VectorStoreOptions() -> void
 Orkeon.Analysis.Fingerprinters.AngularRules
 Orkeon.Analysis.Fingerprinters.AspNetRules
 Orkeon.Analysis.Fingerprinters.FastApiRules
@@ -531,9 +490,6 @@ override Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.ToString() -> s
 override Orkeon.Analysis.Core.StatementExtractionResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.StatementExtractionResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.StatementExtractionResult.ToString() -> string!
-override Orkeon.Analysis.DependencyInjection.CacheOptions.Equals(object? obj) -> bool
-override Orkeon.Analysis.DependencyInjection.CacheOptions.GetHashCode() -> int
-override Orkeon.Analysis.DependencyInjection.CacheOptions.ToString() -> string!
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.Equals(object? obj) -> bool
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.GetHashCode() -> int
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.ToString() -> string!
@@ -543,9 +499,6 @@ override Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.ToString() -> s
 override Orkeon.Analysis.DependencyInjection.SummarizerOptions.Equals(object? obj) -> bool
 override Orkeon.Analysis.DependencyInjection.SummarizerOptions.GetHashCode() -> int
 override Orkeon.Analysis.DependencyInjection.SummarizerOptions.ToString() -> string!
-override Orkeon.Analysis.DependencyInjection.VectorStoreOptions.Equals(object? obj) -> bool
-override Orkeon.Analysis.DependencyInjection.VectorStoreOptions.GetHashCode() -> int
-override Orkeon.Analysis.DependencyInjection.VectorStoreOptions.ToString() -> string!
 override Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.Equals(object? obj) -> bool
 override Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.GetHashCode() -> int
 override Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.ToString() -> string!
@@ -579,8 +532,6 @@ static Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.operator !=(Orkeo
 static Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.operator ==(Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? left, Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? right) -> bool
 static Orkeon.Analysis.Core.StatementExtractionResult.operator !=(Orkeon.Analysis.Core.StatementExtractionResult? left, Orkeon.Analysis.Core.StatementExtractionResult? right) -> bool
 static Orkeon.Analysis.Core.StatementExtractionResult.operator ==(Orkeon.Analysis.Core.StatementExtractionResult? left, Orkeon.Analysis.Core.StatementExtractionResult? right) -> bool
-static Orkeon.Analysis.DependencyInjection.CacheOptions.operator !=(Orkeon.Analysis.DependencyInjection.CacheOptions? left, Orkeon.Analysis.DependencyInjection.CacheOptions? right) -> bool
-static Orkeon.Analysis.DependencyInjection.CacheOptions.operator ==(Orkeon.Analysis.DependencyInjection.CacheOptions? left, Orkeon.Analysis.DependencyInjection.CacheOptions? right) -> bool
 static Orkeon.Analysis.DependencyInjection.EmbeddingOptions.operator !=(Orkeon.Analysis.DependencyInjection.EmbeddingOptions? left, Orkeon.Analysis.DependencyInjection.EmbeddingOptions? right) -> bool
 static Orkeon.Analysis.DependencyInjection.EmbeddingOptions.operator ==(Orkeon.Analysis.DependencyInjection.EmbeddingOptions? left, Orkeon.Analysis.DependencyInjection.EmbeddingOptions? right) -> bool
 static Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.operator !=(Orkeon.Analysis.DependencyInjection.RaggableTreeOptions? left, Orkeon.Analysis.DependencyInjection.RaggableTreeOptions? right) -> bool
@@ -588,8 +539,6 @@ static Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.operator ==(Orkeo
 static Orkeon.Analysis.DependencyInjection.RaggableTreeServiceCollectionExtensions.AddRaggableTree(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Analysis.DependencyInjection.RaggableTreeOptions? options = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Analysis.DependencyInjection.SummarizerOptions.operator !=(Orkeon.Analysis.DependencyInjection.SummarizerOptions? left, Orkeon.Analysis.DependencyInjection.SummarizerOptions? right) -> bool
 static Orkeon.Analysis.DependencyInjection.SummarizerOptions.operator ==(Orkeon.Analysis.DependencyInjection.SummarizerOptions? left, Orkeon.Analysis.DependencyInjection.SummarizerOptions? right) -> bool
-static Orkeon.Analysis.DependencyInjection.VectorStoreOptions.operator !=(Orkeon.Analysis.DependencyInjection.VectorStoreOptions? left, Orkeon.Analysis.DependencyInjection.VectorStoreOptions? right) -> bool
-static Orkeon.Analysis.DependencyInjection.VectorStoreOptions.operator ==(Orkeon.Analysis.DependencyInjection.VectorStoreOptions? left, Orkeon.Analysis.DependencyInjection.VectorStoreOptions? right) -> bool
 static Orkeon.Analysis.Fingerprinters.AngularRules.Create() -> Orkeon.Analysis.Fingerprinters.FrameworkFingerprinter!
 static Orkeon.Analysis.Fingerprinters.AngularRules.Rules.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.FingerprintRule!>!
 static Orkeon.Analysis.Fingerprinters.AspNetRules.Create() -> Orkeon.Analysis.Fingerprinters.FrameworkFingerprinter!

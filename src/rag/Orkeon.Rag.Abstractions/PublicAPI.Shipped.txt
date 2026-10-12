@@ -70,6 +70,8 @@ Orkeon.Rag.Abstractions.Models.Citation.<Clone>$() -> Orkeon.Rag.Abstractions.Mo
 Orkeon.Rag.Abstractions.Models.Citation.ChunkId.get -> string!
 Orkeon.Rag.Abstractions.Models.Citation.ChunkId.init -> void
 Orkeon.Rag.Abstractions.Models.Citation.Citation() -> void
+Orkeon.Rag.Abstractions.Models.Citation.Content.get -> string?
+Orkeon.Rag.Abstractions.Models.Citation.Content.init -> void
 Orkeon.Rag.Abstractions.Models.Citation.DocumentId.get -> string?
 Orkeon.Rag.Abstractions.Models.Citation.DocumentId.init -> void
 Orkeon.Rag.Abstractions.Models.Citation.EndOffset.get -> int
@@ -473,6 +475,8 @@ Orkeon.Rag.Abstractions.Options.RagOptions.Generation.get -> Orkeon.Rag.Abstract
 Orkeon.Rag.Abstractions.Options.RagOptions.Generation.set -> void
 Orkeon.Rag.Abstractions.Options.RagOptions.Groundedness.get -> Orkeon.Rag.Abstractions.Options.RagGroundednessOptions!
 Orkeon.Rag.Abstractions.Options.RagOptions.Groundedness.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.LlmProfile.get -> string?
+Orkeon.Rag.Abstractions.Options.RagOptions.LlmProfile.set -> void
 Orkeon.Rag.Abstractions.Options.RagOptions.Profile.get -> string!
 Orkeon.Rag.Abstractions.Options.RagOptions.Profile.set -> void
 Orkeon.Rag.Abstractions.Options.RagOptions.QueryTransform.get -> Orkeon.Rag.Abstractions.Options.RagQueryTransformOptions!
@@ -709,3 +713,4 @@ static Orkeon.Rag.Abstractions.Options.RerankingOptions.operator !=(Orkeon.Rag.A
 static Orkeon.Rag.Abstractions.Options.RerankingOptions.operator ==(Orkeon.Rag.Abstractions.Options.RerankingOptions? left, Orkeon.Rag.Abstractions.Options.RerankingOptions? right) -> bool
 static Orkeon.Rag.Abstractions.SourceGlobExpander.ExpandAsync(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>! locations, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.SourceDescriptor!>!>!
 static Orkeon.Rag.Abstractions.SourceGlobExpander.HasWildcard(string! location) -> bool
+static Orkeon.Rag.Abstractions.SourceGlobExpander.IsWebAddress(string! location) -> bool

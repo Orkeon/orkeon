@@ -1,10 +1,27 @@
 #nullable enable
 Orkeon.Constants.FileSystem.ConventionalNames
+Orkeon.Constants.FileSystem.InstallChannels
 Orkeon.Constants.FileSystem.RunnerVirtualRoots
 const Orkeon.Constants.FileSystem.ConventionalNames.CrewSettingsFallbackFile = "crew.yaml" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.CrewSettingsFile = "config.yaml" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.PosixTeamLauncher = "run.sh" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.ScheduleDirectory = "schedule" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.ScheduleInstallationFile = "installed.json" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.SettingsFile = "appsettings.json" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.StateDirectory = ".orkeon" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.TeamSidecarFile = "studio-team.json" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.WindowsTeamLauncher = "run.cmd" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Deb = "deb" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.DotnetTool = "dotnet-tool" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Homebrew = "homebrew" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.MarkerFile = "INSTALL-CHANNEL" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Msi = "msi" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.MsiHost = "msi-host" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Source = "source" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Tarball = "tarball" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Unknown = "unknown" -> string!
+const Orkeon.Constants.FileSystem.InstallChannels.Zip = "zip" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Credentials = "/credentials" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Crew = "/crew" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Forge = "/forge" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmLogs = "/llm-logs" -> string!

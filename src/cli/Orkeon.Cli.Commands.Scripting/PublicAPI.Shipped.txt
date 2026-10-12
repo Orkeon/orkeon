@@ -504,7 +504,6 @@ const Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.Se
 const Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.MaxDescriptionLength = 200 -> int
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions.SectionName = "Orkeon:Cli:ScriptHost" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Commands = "commands" -> string!
-const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Configuration = "configuration" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.FileSystem = "fs" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Llm = "llm" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Logger = "logger" -> string!

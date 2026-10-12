@@ -1,6 +1,7 @@
 #nullable enable
 Orkeon.Constants.Llm.GenAiAttributes
 Orkeon.Constants.Llm.LlmModelOutputLimits
+Orkeon.Constants.Llm.LlmProfileNames
 Orkeon.Constants.Llm.LlmProviderDefaultModels
 Orkeon.Constants.Llm.LlmProviderEndpoints
 Orkeon.Constants.Llm.LlmProviderKeys
@@ -27,6 +28,7 @@ const Orkeon.Constants.Llm.GenAiAttributes.ToolName = "gen_ai.tool.name" -> stri
 const Orkeon.Constants.Llm.GenAiAttributes.UsageInputTokens = "gen_ai.usage.input_tokens" -> string!
 const Orkeon.Constants.Llm.GenAiAttributes.UsageOutputTokens = "gen_ai.usage.output_tokens" -> string!
 const Orkeon.Constants.Llm.LlmModelOutputLimits.Unbounded = 0 -> int
+const Orkeon.Constants.Llm.LlmProfileNames.Default = "default" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Anthropic = "claude-sonnet-5" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.DeepSeek = "deepseek-flash" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.DockerModelRunner = "ai/granite-4.0-h-tiny" -> string!

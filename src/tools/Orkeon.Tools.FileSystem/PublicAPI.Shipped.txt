@@ -118,49 +118,6 @@ Orkeon.Tools.FileSystem.DirectorySearchResult.SourceFile.get -> string!
 Orkeon.Tools.FileSystem.DirectorySearchResult.SourceFile.init -> void
 Orkeon.Tools.FileSystem.DirectorySearchTool
 Orkeon.Tools.FileSystem.DirectorySearchTool.DirectorySearchTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch! searchService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.DirectorySearchTool!>? logger = null) -> void
-Orkeon.Tools.FileSystem.EmailAttachmentInfo
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.ContentType.get -> string?
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.ContentType.init -> void
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.EmailAttachmentInfo() -> void
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.EmailAttachmentInfo(Orkeon.Tools.FileSystem.EmailAttachmentInfo! original) -> void
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.EncodedSize.get -> int?
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.EncodedSize.init -> void
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.EstimatedSize.get -> int?
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.EstimatedSize.init -> void
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.Filename.get -> string?
-Orkeon.Tools.FileSystem.EmailAttachmentInfo.Filename.init -> void
-Orkeon.Tools.FileSystem.EmailParserRequest
-Orkeon.Tools.FileSystem.EmailParserRequest.EmailParserRequest() -> void
-Orkeon.Tools.FileSystem.EmailParserRequest.EmailParserRequest(Orkeon.Tools.FileSystem.EmailParserRequest! original) -> void
-Orkeon.Tools.FileSystem.EmailParserRequest.ExtractAttachments.get -> bool
-Orkeon.Tools.FileSystem.EmailParserRequest.ExtractAttachments.init -> void
-Orkeon.Tools.FileSystem.EmailParserRequest.ParseHtml.get -> bool
-Orkeon.Tools.FileSystem.EmailParserRequest.ParseHtml.init -> void
-Orkeon.Tools.FileSystem.EmailParserRequest.Path.get -> string!
-Orkeon.Tools.FileSystem.EmailParserRequest.Path.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse
-Orkeon.Tools.FileSystem.EmailParserResponse.Attachments.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.FileSystem.EmailAttachmentInfo!>!
-Orkeon.Tools.FileSystem.EmailParserResponse.Attachments.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.Body.get -> string!
-Orkeon.Tools.FileSystem.EmailParserResponse.Body.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.Cc.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Orkeon.Tools.FileSystem.EmailParserResponse.Cc.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.Date.get -> string!
-Orkeon.Tools.FileSystem.EmailParserResponse.Date.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.EmailParserResponse() -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.EmailParserResponse(Orkeon.Tools.FileSystem.EmailParserResponse! original) -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.From.get -> string!
-Orkeon.Tools.FileSystem.EmailParserResponse.From.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
-Orkeon.Tools.FileSystem.EmailParserResponse.Headers.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.Priority.get -> string!
-Orkeon.Tools.FileSystem.EmailParserResponse.Priority.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.Subject.get -> string!
-Orkeon.Tools.FileSystem.EmailParserResponse.Subject.init -> void
-Orkeon.Tools.FileSystem.EmailParserResponse.To.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Orkeon.Tools.FileSystem.EmailParserResponse.To.init -> void
-Orkeon.Tools.FileSystem.EmailParserTool
-Orkeon.Tools.FileSystem.EmailParserTool.EmailParserTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.EmailParserTool!>? logger = null) -> void
 Orkeon.Tools.FileSystem.FileReadRequest
 Orkeon.Tools.FileSystem.FileReadRequest.Encoding.get -> string!
 Orkeon.Tools.FileSystem.FileReadRequest.Encoding.set -> void
@@ -248,17 +205,6 @@ override Orkeon.Tools.FileSystem.DirectorySearchResult.ToString() -> string!
 override Orkeon.Tools.FileSystem.DirectorySearchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.FileSystem.DirectorySearchTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.DirectorySearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.DirectorySearchResponse!>!
 override Orkeon.Tools.FileSystem.DirectorySearchTool.ValidateTypedRequest(Orkeon.Tools.FileSystem.DirectorySearchRequest! request) -> string?
-override Orkeon.Tools.FileSystem.EmailAttachmentInfo.Equals(object? obj) -> bool
-override Orkeon.Tools.FileSystem.EmailAttachmentInfo.GetHashCode() -> int
-override Orkeon.Tools.FileSystem.EmailAttachmentInfo.ToString() -> string!
-override Orkeon.Tools.FileSystem.EmailParserRequest.Equals(object? obj) -> bool
-override Orkeon.Tools.FileSystem.EmailParserRequest.GetHashCode() -> int
-override Orkeon.Tools.FileSystem.EmailParserRequest.ToString() -> string!
-override Orkeon.Tools.FileSystem.EmailParserResponse.Equals(object? obj) -> bool
-override Orkeon.Tools.FileSystem.EmailParserResponse.GetHashCode() -> int
-override Orkeon.Tools.FileSystem.EmailParserResponse.ToString() -> string!
-override Orkeon.Tools.FileSystem.EmailParserTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.EmailParserRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.EmailParserResponse!>!
-override Orkeon.Tools.FileSystem.EmailParserTool.ValidateTypedRequest(Orkeon.Tools.FileSystem.EmailParserRequest! request) -> string?
 override Orkeon.Tools.FileSystem.FileReadTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.FileSystem.FileReadTool.Description.get -> string!
 override Orkeon.Tools.FileSystem.FileReadTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.FileReadRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.FileReadResponse!>!
@@ -282,12 +228,6 @@ static Orkeon.Tools.FileSystem.DirectorySearchResponse.operator !=(Orkeon.Tools.
 static Orkeon.Tools.FileSystem.DirectorySearchResponse.operator ==(Orkeon.Tools.FileSystem.DirectorySearchResponse? left, Orkeon.Tools.FileSystem.DirectorySearchResponse? right) -> bool
 static Orkeon.Tools.FileSystem.DirectorySearchResult.operator !=(Orkeon.Tools.FileSystem.DirectorySearchResult? left, Orkeon.Tools.FileSystem.DirectorySearchResult? right) -> bool
 static Orkeon.Tools.FileSystem.DirectorySearchResult.operator ==(Orkeon.Tools.FileSystem.DirectorySearchResult? left, Orkeon.Tools.FileSystem.DirectorySearchResult? right) -> bool
-static Orkeon.Tools.FileSystem.EmailAttachmentInfo.operator !=(Orkeon.Tools.FileSystem.EmailAttachmentInfo? left, Orkeon.Tools.FileSystem.EmailAttachmentInfo? right) -> bool
-static Orkeon.Tools.FileSystem.EmailAttachmentInfo.operator ==(Orkeon.Tools.FileSystem.EmailAttachmentInfo? left, Orkeon.Tools.FileSystem.EmailAttachmentInfo? right) -> bool
-static Orkeon.Tools.FileSystem.EmailParserRequest.operator !=(Orkeon.Tools.FileSystem.EmailParserRequest? left, Orkeon.Tools.FileSystem.EmailParserRequest? right) -> bool
-static Orkeon.Tools.FileSystem.EmailParserRequest.operator ==(Orkeon.Tools.FileSystem.EmailParserRequest? left, Orkeon.Tools.FileSystem.EmailParserRequest? right) -> bool
-static Orkeon.Tools.FileSystem.EmailParserResponse.operator !=(Orkeon.Tools.FileSystem.EmailParserResponse? left, Orkeon.Tools.FileSystem.EmailParserResponse? right) -> bool
-static Orkeon.Tools.FileSystem.EmailParserResponse.operator ==(Orkeon.Tools.FileSystem.EmailParserResponse? left, Orkeon.Tools.FileSystem.EmailParserResponse? right) -> bool
 virtual Orkeon.Tools.FileSystem.DirectoryEntry.<Clone>$() -> Orkeon.Tools.FileSystem.DirectoryEntry!
 virtual Orkeon.Tools.FileSystem.DirectoryEntry.EqualityContract.get -> System.Type!
 virtual Orkeon.Tools.FileSystem.DirectoryEntry.Equals(Orkeon.Tools.FileSystem.DirectoryEntry? other) -> bool
@@ -312,15 +252,3 @@ virtual Orkeon.Tools.FileSystem.DirectorySearchResult.<Clone>$() -> Orkeon.Tools
 virtual Orkeon.Tools.FileSystem.DirectorySearchResult.EqualityContract.get -> System.Type!
 virtual Orkeon.Tools.FileSystem.DirectorySearchResult.Equals(Orkeon.Tools.FileSystem.DirectorySearchResult? other) -> bool
 virtual Orkeon.Tools.FileSystem.DirectorySearchResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Tools.FileSystem.EmailAttachmentInfo.<Clone>$() -> Orkeon.Tools.FileSystem.EmailAttachmentInfo!
-virtual Orkeon.Tools.FileSystem.EmailAttachmentInfo.EqualityContract.get -> System.Type!
-virtual Orkeon.Tools.FileSystem.EmailAttachmentInfo.Equals(Orkeon.Tools.FileSystem.EmailAttachmentInfo? other) -> bool
-virtual Orkeon.Tools.FileSystem.EmailAttachmentInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Tools.FileSystem.EmailParserRequest.<Clone>$() -> Orkeon.Tools.FileSystem.EmailParserRequest!
-virtual Orkeon.Tools.FileSystem.EmailParserRequest.EqualityContract.get -> System.Type!
-virtual Orkeon.Tools.FileSystem.EmailParserRequest.Equals(Orkeon.Tools.FileSystem.EmailParserRequest? other) -> bool
-virtual Orkeon.Tools.FileSystem.EmailParserRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Tools.FileSystem.EmailParserResponse.<Clone>$() -> Orkeon.Tools.FileSystem.EmailParserResponse!
-virtual Orkeon.Tools.FileSystem.EmailParserResponse.EqualityContract.get -> System.Type!
-virtual Orkeon.Tools.FileSystem.EmailParserResponse.Equals(Orkeon.Tools.FileSystem.EmailParserResponse? other) -> bool
-virtual Orkeon.Tools.FileSystem.EmailParserResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool

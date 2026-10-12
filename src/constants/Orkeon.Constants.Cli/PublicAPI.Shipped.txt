@@ -9,6 +9,7 @@ const Orkeon.Constants.Cli.RunOptionNames.InputsFile = "inputs-file" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.ListTools = "list-tools" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.LlmLog = "llm-log" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.LlmLogPath = "llm-log-path" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.LlmProfile = "llm-profile" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.MemoryLimitMb = "memory-limit-mb" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.Mount = "mount" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.MountId = "mount-id" -> string!

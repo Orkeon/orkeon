@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.5] - 2026-10-12
+
+The release candidate of e-mail and settings. Since `1.0.0-rc.4`: agents read and send
+mail natively — IMAP, POP3, SMTP and Microsoft Graph, Gmail and Outlook presets, OAuth2
+sign-in, `orkeon email login`, Studio's E-mail tab and the Atelier forging crews that send
+mail (MAIL-01..07, FORGE-10); every setting is catalogued with its type, default and
+reader, `orkeon settings` lists them offline and a section no binary reads is reported at
+start; Orkeon installs with `apt` on Debian and Ubuntu, from a double-clicked Windows zip
+or from a clone in one command, and `orkeon doctor` names the channel; `orkeon-host`
+serves its crews over A2A and its tools over MCP; a run keeps what its crew declares —
+manager, planning, async tasks, memory, rate limits, LLM profiles per agent — and the
+Flows subsystem is removed; streamed, tool-calling and reasoning LLM calls fail loudly
+instead of silently (LLM-08, LLM-13, LLM-14); Studio counts every model call live and
+manages a team's whole life — rename, archive, schedule, import a use case (STUDIO-24..71);
+and a SonarQube campaign closes 196 of the 200 issues of October.
+
+The public API surface is frozen at this tag: the 1 408 additions and 4 481 removals
+accumulated since rc.4 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`
+across the twenty-three projects that carried them.
+
 ### Fixed — the coverage figure measures Orkeon's own assemblies only
 
 `coverage.yml` and `scripts/sonar-analyze.{sh,ps1}` now pass `dotnet-coverage.settings.xml` to
@@ -8762,7 +8782,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.4...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...HEAD
+[1.0.0-rc.5]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.3...v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.2...v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...v1.0.0-rc.2

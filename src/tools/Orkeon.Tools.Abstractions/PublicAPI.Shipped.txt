@@ -1,5 +1,4 @@
 #nullable enable
-Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter
 Orkeon.Tools.Abstractions.Base.FileToolBase
 Orkeon.Tools.Abstractions.Base.FileToolBase.EnsureDirectoryExistsAsync(string! virtualFilePath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Tools.Abstractions.Base.FileToolBase.FileToolBase(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
@@ -145,8 +144,6 @@ readonly Orkeon.Tools.Abstractions.Base.FileToolBase._fileSystemService -> Orkeo
 readonly Orkeon.Tools.Abstractions.Base.HttpToolBase._httpClient -> System.Net.Http.HttpClient!
 readonly Orkeon.Tools.Abstractions.Base.ToolBase._jsonOptions -> System.Text.Json.JsonSerializerOptions!
 readonly Orkeon.Tools.Abstractions.Base.ToolBase._logger -> Microsoft.Extensions.Logging.ILogger!
-static Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter.ToAIFunction(Orkeon.Domain.Tools.IBaseTool! tool) -> Microsoft.Extensions.AI.AIFunction!
-static Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter.ToAITools(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> System.Collections.Generic.IList<Microsoft.Extensions.AI.AITool!>!
 static Orkeon.Tools.Abstractions.Base.ToolBase.ExtractErrorMessage(System.Collections.Generic.Dictionary<string!, object?>! responseDict) -> string?
 static Orkeon.Tools.Abstractions.Base.ToolBase.IsValidType(object! value, string! expectedType) -> bool
 static Orkeon.Tools.Abstractions.Base.ToolSchemaYamlExtensions.FromYaml(string! yaml) -> Orkeon.Domain.Tools.Protocol.ToolSchema!
