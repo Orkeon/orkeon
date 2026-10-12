@@ -126,8 +126,6 @@ Orkeon.Tools.EventHub.Dtos.SendRequestRequest.TimeoutMs.get -> int?
 Orkeon.Tools.EventHub.Dtos.SendRequestRequest.TimeoutMs.init -> void
 Orkeon.Tools.EventHub.Dtos.SendRequestResponse
 Orkeon.Tools.EventHub.Dtos.SendRequestResponse.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.SendRequestResponse!
-Orkeon.Tools.EventHub.Dtos.SendRequestResponse.CorrelationId.get -> string!
-Orkeon.Tools.EventHub.Dtos.SendRequestResponse.CorrelationId.init -> void
 Orkeon.Tools.EventHub.Dtos.SendRequestResponse.Equals(Orkeon.Tools.EventHub.Dtos.SendRequestResponse? other) -> bool
 Orkeon.Tools.EventHub.Dtos.SendRequestResponse.ResponsePayload.get -> System.Text.Json.Nodes.JsonNode?
 Orkeon.Tools.EventHub.Dtos.SendRequestResponse.ResponsePayload.init -> void

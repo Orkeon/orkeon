@@ -130,8 +130,6 @@ Orkeon.Tools.Web.HttpApiTool.HttpApiTool(Orkeon.Domain.Tools.Security.IUrlValida
 Orkeon.Tools.Web.HttpApiTool.HttpApiTool(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.HttpApiTool!>? logger = null) -> void
 Orkeon.Tools.Web.HttpApiTool.HttpApiTool(System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.HttpApiTool!>? logger = null) -> void
 Orkeon.Tools.Web.ImageGenerationRequest
-Orkeon.Tools.Web.ImageGenerationRequest.ApiKey.get -> string!
-Orkeon.Tools.Web.ImageGenerationRequest.ApiKey.set -> void
 Orkeon.Tools.Web.ImageGenerationRequest.ImageGenerationRequest() -> void
 Orkeon.Tools.Web.ImageGenerationRequest.Model.get -> string!
 Orkeon.Tools.Web.ImageGenerationRequest.Model.set -> void
@@ -156,8 +154,8 @@ Orkeon.Tools.Web.ImageGenerationResponse.Images.init -> void
 Orkeon.Tools.Web.ImageGenerationResponse.Model.get -> string!
 Orkeon.Tools.Web.ImageGenerationResponse.Model.set -> void
 Orkeon.Tools.Web.ImageGenerationTool
-Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
-Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
+Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
+Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
 Orkeon.Tools.Web.ScrapeElementRequest
 Orkeon.Tools.Web.ScrapeElementRequest.CssSelector.get -> string!
 Orkeon.Tools.Web.ScrapeElementRequest.CssSelector.init -> void
@@ -324,6 +322,7 @@ Orkeon.Tools.Web.WebSearchResult.WebSearchResult() -> void
 Orkeon.Tools.Web.WebSearchTool
 Orkeon.Tools.Web.WebSearchTool.WebSearchTool(Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.WebSearchTool!>? logger = null) -> void
 const Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.HttpClientName = "orkeon.web-tools" -> string!
+const Orkeon.Tools.Web.ImageGenerationTool.OpenAiApiKeySecretName = "OPENAI_API_KEY" -> string!
 const Orkeon.Tools.Web.WebScrapeTool.CacheSourceTag = "web_scrape" -> string!
 const Orkeon.Tools.Web.WebSearchTool.TavilyApiKeySecretName = "TAVILY_API_KEY" -> string!
 override Orkeon.Tools.Web.BraveSearchTool.ExecuteTypedAsync(Orkeon.Tools.Web.WebSearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.WebSearchResponse!>!

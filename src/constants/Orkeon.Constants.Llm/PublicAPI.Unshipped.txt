@@ -1,3 +1,1 @@
 #nullable enable
-Orkeon.Constants.Llm.LlmProfileNames
-const Orkeon.Constants.Llm.LlmProfileNames.Default = "default" -> string!

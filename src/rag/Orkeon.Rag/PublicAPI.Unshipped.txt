@@ -1,13 +1,1 @@
 #nullable enable
-*REMOVED*Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.KnowledgeContextAugmenter(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Augmentation.KnowledgeContextAugmenter!>? logger = null) -> void
-Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.KnowledgeContextAugmenter(Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver! profileResolver, string! defaultProfile, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Augmentation.KnowledgeContextAugmenter!>? logger = null) -> void
-Orkeon.Rag.Evaluation.RagEvalRunRequest.DefaultCollection.get -> string?
-Orkeon.Rag.Evaluation.RagEvalRunRequest.DefaultCollection.init -> void
-*REMOVED*Orkeon.Rag.DependencyInjection.RagStoreOptions.ConnectionString.get -> string?
-*REMOVED*Orkeon.Rag.DependencyInjection.RagStoreOptions.ConnectionString.set -> void
-*REMOVED*Orkeon.Rag.DependencyInjection.RagStoreOptions.ProviderOptions.get -> System.Collections.Generic.Dictionary<string!, string!>!
-*REMOVED*Orkeon.Rag.Ingestion.RagCollectionsBootstrapper.RagCollectionsBootstrapper(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Ingestion.RagCollectionsBootstrapper!>? logger = null) -> void
-Orkeon.Rag.Ingestion.RagCollectionsBootstrapper.RagCollectionsBootstrapper(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Ingestion.RagCollectionsBootstrapper!>? logger = null) -> void
-Orkeon.Rag.DependencyInjection.RagLlm
-const Orkeon.Rag.DependencyInjection.RagLlm.ProfileKey = "Orkeon:Rag:LlmProfile" -> string!
-static Orkeon.Rag.DependencyInjection.RagLlm.EnsureProfileIsKnown(Microsoft.Extensions.Configuration.IConfiguration! configuration, Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles) -> void

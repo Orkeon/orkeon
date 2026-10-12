@@ -487,8 +487,6 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.EnrichWithLlm.init 
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest? other) -> bool
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.Exclude.get -> System.Collections.Immutable.ImmutableArray<string!>
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.Exclude.init -> void
-Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.IncludeStatements.get -> bool
-Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.IncludeStatements.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.IndexCodebaseRequest() -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.Languages.get -> System.Collections.Immutable.ImmutableArray<string!>
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.Languages.init -> void
@@ -498,12 +496,6 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.RootAlias.get -> st
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.RootAlias.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.RootPath.get -> string!
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.RootPath.init -> void
-Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerConcurrency.get -> int
-Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerConcurrency.init -> void
-Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerMaxTokens.get -> int
-Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerMaxTokens.init -> void
-Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerModel.get -> string?
-Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.SummarizerModel.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse!
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.EdgeCount.get -> int
