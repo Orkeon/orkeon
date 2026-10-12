@@ -1,0 +1,9 @@
+Acquire-By-Hash: yes
+Architectures: amd64 arm64
+Date: Mon, 12 Oct 2026 19:13:19 +0000
+Label: Orkeon
+Origin: Orkeon
+Suite: raw/apt/stable
+SHA256:
+ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855                0 Packages
+ f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec               20 Packages.gz
