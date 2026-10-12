@@ -59,12 +59,12 @@
     "globalMetadata": {
       "_appName": "Orkeon",
       "_appTitle": "Orkeon",
-      "_appLogoPath": "docs/assets/logo.svg",
+      "_appLogoPath": "docs/assets/orkeon-mascot.png",
       "_appFaviconPath": "docs/assets/favicon.svg",
       "_enableSearch": true
     },
     "globalMetadataFiles": [],
-    "template": ["default", "modern"],
+    "template": ["default", "modern", "scripts/docs-site/template"],
     "postProcessors": [],
     "noLangKeyword": false
   }
