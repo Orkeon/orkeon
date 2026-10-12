@@ -29,7 +29,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | File | Description |
 |------|-------------|
 | [Give your agents a mailbox](./getting-started/give-your-agents-a-mailbox.md) | Tutorial: a Gmail account, an app password, and an agent that sorts the unread mail into folders and leaves each reply as a draft — nothing is sent |
-| [E-mail tools](./guides/email.md) | Give agents a mailbox: Gmail (app password or OAuth2), Hotmail/Outlook.com through Microsoft Graph, your own IMAP/POP3/SMTP server; per-account rights, the fail-closed send allow-list, prompt-injection screening, `orkeon email login`, where the tokens live, troubleshooting — campaign-pending |
+| [E-mail tools](./guides/email.md) | Give agents a mailbox: Gmail (app password or OAuth2), Hotmail/Outlook.com through Microsoft Graph, your own IMAP/POP3/SMTP server; per-account rights, the fail-closed send allow-list, prompt-injection screening, `orkeon email login`, where the tokens live, troubleshooting |
 | [`orkeon email` commands](./reference/cli.md#orkeon-email) | `accounts` (what is declared, what is ready), `check` (connect and list the folders), `login` / `logout` for OAuth2 accounts — options and exit codes |
 | [ADR-012 — the e-mail tool family](./adr/ADR-012-email-tool-family.md) | Why e-mail lives in Orkeon itself, and the alternatives rejected |
 

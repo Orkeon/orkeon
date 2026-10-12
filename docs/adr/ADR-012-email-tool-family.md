@@ -121,5 +121,7 @@ The provider constraints, checked on 2026-09-26:
   *Dated note, 2026-10-06*: Gmail was campaigned on 2026-10-04 (app password) and 2026-10-05
   (OAuth2), and is documented as such; Hotmail and Outlook.com stay campaign-pending. The
   results are in the [guide](../guides/email.md#what-the-gmail-campaign-established).
+  *Dated note, 2026-10-12*: Hotmail through Microsoft Graph was campaigned on 2026-10-12, and
+  MAIL-07 is closed; Outlook over IMAP and SMTP was not run and stays documented as such.
 - Out of this version: deleting folders, copying a message or giving it several Gmail labels,
   Graph uploads above about 3 MB (an upload session), interactive human approval of a send.

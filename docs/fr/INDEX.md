@@ -29,7 +29,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | Fichier | Description |
 |---------|-------------|
 | [Donner une boîte aux lettres à vos agents](./getting-started/give-your-agents-a-mailbox.md) | Tutoriel : un compte Gmail, un mot de passe d'application, et un agent qui range le courrier non lu dans des dossiers et laisse chaque réponse en brouillon — rien n'est envoyé |
-| [Outils e-mail](./guides/email.md) | Donner une boîte aux lettres aux agents : Gmail (mot de passe d'application ou OAuth2), Hotmail/Outlook.com via Microsoft Graph, votre propre serveur IMAP/POP3/SMTP ; droits par compte, liste d'autorisation d'envoi fermée par défaut, filtrage anti-injection, `orkeon email login`, emplacement des jetons, dépannage — campagne en attente |
+| [Outils e-mail](./guides/email.md) | Donner une boîte aux lettres aux agents : Gmail (mot de passe d'application ou OAuth2), Hotmail/Outlook.com via Microsoft Graph, votre propre serveur IMAP/POP3/SMTP ; droits par compte, liste d'autorisation d'envoi fermée par défaut, filtrage anti-injection, `orkeon email login`, emplacement des jetons, dépannage |
 | [Commandes `orkeon email`](./reference/cli.md#orkeon-email) | `accounts` (ce qui est déclaré, ce qui est prêt), `check` (se connecter et lister les dossiers), `login` / `logout` pour les comptes OAuth2 — options et codes de sortie |
 | [ADR-012 — la famille d'outils e-mail](./adr/ADR-012-email-tool-family.md) | Pourquoi l'e-mail vit dans Orkeon même, et les alternatives écartées |
 

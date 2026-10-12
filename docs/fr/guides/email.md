@@ -29,15 +29,13 @@ La famille est la deuxième exception motivée au gel du périmètre, décidée 
 lui-même. La décision et les alternatives écartées sont dans
 [ADR-012](../adr/ADR-012-email-tool-family.md).
 
-> **Gmail est campagné ; Hotmail est en attente de campagne.** La campagne réelle du
-> propriétaire (MAIL-07) a joué le cycle complet — relève, brouillon, envoi à soi-même,
-> déplacement vers `archive`, corbeille — sur un vrai compte Gmail, avec un mot de passe
-> d'application le 2026-10-04 et en OAuth2 le 2026-10-05 : voir
-> [Ce que la campagne Gmail a établi](#ce-que-la-campagne-gmail-a-établi). Hotmail et
-> Outlook.com via Microsoft Graph, et Outlook en IMAP et SMTP, n'ont pas encore été exécutés
-> contre un vrai compte : leurs parcours suivent la documentation de Microsoft, vérifiée le
-> 2026-09-26. Tenez-les pour en attente de campagne — comme l'étaient les fournisseurs
-> OpenRouter et Mammouth jusqu'à leur première campagne.
+> **Gmail et Hotmail sont campagnés.** La campagne réelle du propriétaire (MAIL-07) a joué le
+> cycle complet — relève, brouillon, envoi à soi-même, déplacement vers `archive`, corbeille —
+> sur un vrai compte Gmail, avec un mot de passe d'application le 2026-10-04 et en OAuth2 le
+> 2026-10-05 (voir [Ce que la campagne Gmail a établi](#ce-que-la-campagne-gmail-a-établi)),
+> puis sur un vrai compte Hotmail via Microsoft Graph le 2026-10-12. Outlook en IMAP et SMTP
+> n'a pas été exécuté contre un vrai compte : il hérite de la régression OAuth grand public de
+> Microsoft du 2026-09-24, d'où Graph par défaut.
 
 ## Les treize outils
 
@@ -851,9 +849,8 @@ brancher, les codes que le CLI traduit en codes de sortie.
   quarantaine avec des noms longs) : au-delà, la boucle d'agent tronque la liste et le dit.
 - **Chaque compte est visible de chaque crew et de chaque script qui résout le même fichier de
   réglages** — voir le modèle de menace dans [SECURITY.fr.md](../../../SECURITY.fr.md).
-- **La validation réelle sur un vrai compte Hotmail ou Outlook.com reste à faire** (MAIL-07) :
-  Microsoft Graph, et Outlook en IMAP et SMTP, sont en attente de campagne. Gmail est
-  campagné — voir ci-dessous.
+- **Outlook en IMAP et SMTP n'a pas été exécuté contre un vrai compte** (MAIL-07) : Gmail et
+  Hotmail via Microsoft Graph sont campagnés — voir ci-dessous.
 
 ## Ce que la campagne Gmail a établi
 

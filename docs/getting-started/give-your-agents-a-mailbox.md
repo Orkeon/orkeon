@@ -161,8 +161,8 @@ The numbers above are illustrative. Open Gmail: the inbox has lost those message
 - **Where OAuth tokens are stored**, and what that protects: [Where the tokens live](../guides/email.md#where-the-tokens-live).
 - **Something refuses?** Every error names its fix; the usual ones are in [Troubleshooting](../guides/email.md#troubleshooting).
 
-> **Gmail is campaigned; Hotmail is campaign-pending.** The path of this tutorial — a Gmail
+> **Gmail and Hotmail are campaigned.** The path of this tutorial — a Gmail
 > app password — was run against a real account on 2026-10-04, and Gmail with OAuth2 on
 > 2026-10-05 (MAIL-07): see
 > [What the Gmail campaign established](../guides/email.md#what-the-gmail-campaign-established).
-> Hotmail and Outlook.com have not been run against a real account yet.
+> Hotmail through Microsoft Graph was run against a real account on 2026-10-12.

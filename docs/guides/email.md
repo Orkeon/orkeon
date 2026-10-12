@@ -27,14 +27,13 @@ The family is the second motivated exception to the scope freeze, decided by the
 script cannot open a socket, and a plugin would not put e-mail in Orkeon itself. The
 decision and the alternatives it rejected are in [ADR-012](../adr/ADR-012-email-tool-family.md).
 
-> **Gmail is campaigned; Hotmail is campaign-pending.** The owner's live campaign (MAIL-07)
-> ran the whole cycle — check, draft, send to oneself, move to `archive`, trash — against a
-> real Gmail account, with an app password on 2026-10-04 and with OAuth2 on 2026-10-05: see
-> [What the Gmail campaign established](#what-the-gmail-campaign-established). Hotmail and
-> Outlook.com through Microsoft Graph, and Outlook over IMAP and SMTP, have not been run
-> against a real account yet: their walkthroughs follow Microsoft's documentation, checked on
-> 2026-09-26. Treat them as campaign-pending — the way the OpenRouter and Mammouth providers
-> were documented until their first campaign.
+> **Gmail and Hotmail are campaigned.** The owner's live campaign (MAIL-07) ran the whole
+> cycle — check, draft, send to oneself, move to `archive`, trash — against a real Gmail
+> account, with an app password on 2026-10-04 and with OAuth2 on 2026-10-05 (see
+> [What the Gmail campaign established](#what-the-gmail-campaign-established)), then against a
+> real Hotmail account through Microsoft Graph on 2026-10-12. Outlook over IMAP and SMTP has
+> not been run against a real account: it inherits Microsoft's consumer OAuth regression of
+> 2026-09-24, which is why Graph is the default.
 
 ## The thirteen tools
 
@@ -803,9 +802,8 @@ maps to its exit codes.
   names): past that, the agent loop truncates the list and says so.
 - **Every account is visible to every crew and script that resolves the same settings
   file** — see the threat model in [SECURITY.md](../../SECURITY.md).
-- **Live validation against a real Hotmail or Outlook.com account is pending** (MAIL-07):
-  Microsoft Graph, and Outlook over IMAP and SMTP, are campaign-pending. Gmail is campaigned —
-  see below.
+- **Outlook over IMAP and SMTP has not been run against a real account** (MAIL-07): Gmail
+  and Hotmail through Microsoft Graph are campaigned — see below.
 
 ## What the Gmail campaign established
 
