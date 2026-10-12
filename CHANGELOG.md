@@ -23,6 +23,10 @@ read the image's choice as a defect.
 - `apt-index.yml` runs the publication bench a second time with the release's pinned
   `ubuntu:24.04` as client: its bench packages ship a file under `/usr/share/doc`.
 - The guide *Verify what you install* says which `missing` lines a minimised image prints.
+- `scripts/apt/check-apt-branch.sh` empties the fake GitHub's request log once its readiness
+  probe has answered. Run on the runner, as `apt-publish` and `apt-maintenance` run it, the
+  probe's own `404 127.0.0.1 /` stayed in the log and failed "no request answered 404" on
+  every run; the bench serves from a container, where the probe does not exist.
 
 rc.5 reaches the apt `rc` channel through `apt-maintenance.yml` `seed v1.0.0-rc.5` once this
 is on `main`.

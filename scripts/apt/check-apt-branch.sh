@@ -132,7 +132,9 @@ else
   sleep 2
 fi
 
-touch "$WORK/requests.log"
+# Emptied, not touched: the readiness probe above asked the fake GitHub for "/", which it
+# answers 404 and logs - that request is ours, not the client's.
+: > "$WORK/requests.log"
 
 # --- 3. The client: the documented block ------------------------------------------------
 args=(--image "$IMAGE" --previous "$PREVIOUS" --attempts 1 --wait 0 --github-url "http://github.test:$PORT/")
