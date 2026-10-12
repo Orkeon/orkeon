@@ -999,7 +999,9 @@ main() {
     # header). An exclusion filter never matches zero tests in a module the way an
     # inclusion filter would (exit 8), so it is safe on a solution-wide run.
     log_info "Running the unit and fast suites with code coverage (Debug — optimized code does not map to lines; Integration and Slow categories excluded)..."
+    # dotnet-coverage.settings.xml keeps Orkeon's own assemblies only (see its header).
     dotnet-coverage collect \
+        --settings dotnet-coverage.settings.xml \
         --output "$COVERAGE_DIR/coverage.cobertura.xml" \
         --output-format cobertura \
         -- dotnet test "$SOLUTION_PATH" --filter "Category!=Integration&Category!=Slow" \

@@ -144,7 +144,9 @@ Ne pas modifier les seuils directement dans l'UI SonarQube : ils seraient
   filtre de `coverage.yml` (`--filter "Category!=Integration&Category!=Slow"`, §8). Les
   catégories Integration (Testcontainers : Docker et des Go d'images) et Slow ne tournent pas :
   les tests ne demandent jamais Docker, et le chiffre local couvre le même périmètre que le
-  chiffre public. Ces catégories se lancent à part :
+  chiffre public. Seules les assemblies d'Orkeon sont mesurées (`dotnet-coverage.settings.xml`, partagé
+  avec `coverage.yml`) : `Orkeon.*`, `orkeon` et `orkeon-host`, sans les assemblies de tests.
+  Ces catégories se lancent à part :
   `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`.
 
 ## 8. D'où vient le chiffre public de couverture
@@ -155,7 +157,9 @@ Le chiffre de couverture qui *peut* l'être vient du
 [workflow Coverage](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml)
 (`.github/workflows/coverage.yml`) : à chaque push sur `main` et chaque semaine, il exécute
 les suites unitaires et rapides — le même filtre `Category!=Integration&Category!=Slow` que
-`ci.yml` — sous `dotnet-coverage` (épinglé), refuse une mesure vide, écrit le résumé
+`ci.yml` — sous `dotnet-coverage` (épinglé) sur les seules assemblies d'Orkeon
+(`dotnet-coverage.settings.xml` : les paquets livrés avec leur PDB, comme Aspire.Hosting ou
+StackExchange.Redis, ne sont pas mesurés), refuse une mesure vide, écrit le résumé
 ReportGenerator sur la page du run et conserve `coverage.cobertura.xml` plus un rapport HTML
 comme artefact `coverage` (90 jours). C'est la *couverture de lignes par les suites
 unitaires et rapides* ; les catégories Integration et Slow tournent dans `integration.yml`
@@ -173,3 +177,4 @@ mesure, un nombre tapé est une affirmation.
 | 2026-09-05 | Mesure consignée au §1 : le gate est OK sur chaque condition (0 bug, 17/17 hotspots statués, nouveau code à 78,1 %) ; seuils inchangés |
 | 2026-09-11 | Le chiffre public de couverture passe au workflow `coverage.yml` (§8) ; le rapport SonarQube reste local |
 | 2026-10-01 | Les scripts d'analyse ne lancent plus que les suites unitaires et rapides, avec le filtre de `coverage.yml` (GAP-16) : plus d'images Docker tirées pour les tests Integration, plus d'échecs avalés |
+| 2026-10-12 | La couverture ne mesure plus que les assemblies d'Orkeon (`dotnet-coverage.settings.xml`) : Aspire.Hosting, StackExchange.Redis et RESPite, instrumentés parce qu'ils sont livrés avec leur PDB, faisaient tomber le chiffre de `coverage.yml` d'environ 84 % à environ 61 % |

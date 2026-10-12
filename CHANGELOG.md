@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the coverage figure measures Orkeon's own assemblies only
+
+`coverage.yml` and `scripts/sonar-analyze.{sh,ps1}` now pass `dotnet-coverage.settings.xml` to
+`dotnet-coverage`, which keeps `Orkeon.*`, `orkeon` and `orkeon-host` and leaves out the test
+assemblies. Packages that ship their PDB — Aspire.Hosting, StackExchange.Redis, RESPite — were
+instrumented too: some 126,000 lines that only Orkeon's code exercises pulled the published
+figure from about 84 % down to about 61 %.
+
 ### Fixed — an agent that spends its iterations on tool calls still gets its final answer, and the Atelier plans mail tasks that run
 
 An agent whose every iteration went to tool calls now always gets the tool-free turn that asks
