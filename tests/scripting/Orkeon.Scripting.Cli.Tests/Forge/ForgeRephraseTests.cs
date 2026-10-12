@@ -87,7 +87,7 @@ public sealed class ForgeRephraseTests
 
         Assert.Equal("Un brief clair.", rewritten);
         var lines = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(l => JsonDocument.Parse(l).RootElement.Clone()).ToList();
+            .Select(l => JsonElement.Parse(l)).ToList();
         var kinds = lines.Select(l => l.GetProperty("kind").GetString()).ToList();
         var started = kinds.IndexOf("llm.call.started");
         var finished = kinds.IndexOf("llm.call.finished");

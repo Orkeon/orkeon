@@ -21,7 +21,7 @@ public sealed class RunEventsLlmCallObserverTests : IDisposable
     private List<JsonElement> Lines() =>
     [
         .. _output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(l => JsonDocument.Parse(l).RootElement.Clone()),
+            .Select(l => JsonElement.Parse(l)),
     ];
 
     [Fact]
