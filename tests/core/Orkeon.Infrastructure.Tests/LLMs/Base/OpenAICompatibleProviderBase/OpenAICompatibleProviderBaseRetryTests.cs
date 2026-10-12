@@ -107,6 +107,7 @@ public class OpenAICompatibleProviderBaseRetryTests
     }
 
     [Fact]
+    [Trait("BR", "CH-04")]
     public async Task ShouldRetryAndSucceed_WhenChatAsyncWith500ThenSuccess()
     {
         // Arrange

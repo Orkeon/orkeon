@@ -46,6 +46,7 @@ public sealed class ReasoningFieldRenamingProvider : OpenAICompatibleProviderBas
 /// completion (D-07) — and <c>usage.cost</c> becomes the <c>cost</c> metadata (D-08).
 /// DeepSeek stands in for every provider that keeps the default field name.
 /// </summary>
+[Trait("BR", "CH-04")]
 public sealed class OpenAICompatibleProviderBaseStreamDialectTests : IDisposable
 {
     private readonly MockHttpClientFactory _httpClientFactory = new();

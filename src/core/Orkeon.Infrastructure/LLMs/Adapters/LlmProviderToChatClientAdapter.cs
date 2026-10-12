@@ -99,10 +99,82 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     /// The provider's answer as a <see cref="ChatResponse"/> — native tool calls, else tool calls of
     /// the text protocol, else plain text —, the one mapping the buffered and the streamed paths share.
     /// </summary>
-    private ChatResponse MapResponse(LlmResponse response) =>
-        TryBuildNativeToolCallResponse(response)
-            ?? TryBuildTextFallbackToolCallResponse(response)
+    private ChatResponse MapResponse(LlmResponse response)
+    {
+        var native = TryBuildNativeToolCallResponse(response);
+        if (native is not null)
+        {
+            AttachProviderToolCalls(native, response);
+            return native;
+        }
+
+        return TryBuildTextFallbackToolCallResponse(response)
             ?? BuildPlainTextResponse(response);
+    }
+
+    /// <summary>
+    /// The <c>AdditionalProperties</c> of a <see cref="FunctionCallContent"/> key under which a call carries the
+    /// provider's own <c>tool_calls[i]</c> element (raw JSON text), replayed whole on the next turn.
+    /// </summary>
+    internal const string ProviderToolCallKey = "provider_tool_call";
+
+    /// <summary>Gives each native call the provider's element of the same id, parsing the body once.</summary>
+    private static void AttachProviderToolCalls(ChatResponse chatResponse, LlmResponse response)
+    {
+        var elements = ProviderToolCallsById(response);
+        if (elements.Count == 0)
+            return;
+
+        foreach (var call in chatResponse.Messages.SelectMany(m => m.Contents).OfType<FunctionCallContent>())
+        {
+            if (elements.TryGetValue(call.CallId, out var element))
+            {
+                call.AdditionalProperties ??= new AdditionalPropertiesDictionary();
+                call.AdditionalProperties[ProviderToolCallKey] = element;
+            }
+        }
+    }
+
+    /// <summary>The elements of <c>choices[0].message.tool_calls</c> keyed by id, as raw JSON text; an id held by several elements is left out.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tolerant parsing: an unparsable body means no provider elements, the call is rebuilt.")]
+    private static Dictionary<string, string> ProviderToolCallsById(LlmResponse response)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var duplicated = new HashSet<string>(StringComparer.Ordinal);
+        if (string.IsNullOrEmpty(response.RawResponseBody))
+            return result;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(response.RawResponseBody);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object
+                || !doc.RootElement.TryGetProperty("choices", out var choices)
+                || choices.ValueKind != JsonValueKind.Array || choices.GetArrayLength() == 0
+                || !choices[0].TryGetProperty("message", out var message)
+                || message.ValueKind != JsonValueKind.Object
+                || !message.TryGetProperty("tool_calls", out var toolCalls)
+                || toolCalls.ValueKind != JsonValueKind.Array)
+                return result;
+
+            foreach (var element in toolCalls.EnumerateArray())
+            {
+                if (element.ValueKind == JsonValueKind.Object
+                    && element.TryGetProperty("id", out var id)
+                    && id.ValueKind == JsonValueKind.String
+                    && !result.TryAdd(id.GetString()!, element.GetRawText()))
+                    duplicated.Add(id.GetString()!);
+            }
+
+            foreach (var duplicate in duplicated)
+                result.Remove(duplicate);
+        }
+        catch (Exception)
+        {
+            result.Clear();
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Attempts to build a <see cref="ChatResponse"/> from native tool calls
@@ -472,6 +544,27 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         return result.ToArray();
     }
 
+    private static string RebuildOrCarriedToolCall(FunctionCallContent fc)
+    {
+        if (fc.AdditionalProperties is not null
+            && fc.AdditionalProperties.TryGetValue(ProviderToolCallKey, out var carried)
+            && carried is string element)
+            return element;
+
+        return JsonSerializer.Serialize(new
+        {
+            id = fc.CallId,
+            type = "function",
+            function = new
+            {
+                name = fc.Name,
+                arguments = fc.Arguments != null
+                    ? JsonSerializer.Serialize(fc.Arguments)
+                    : "{}"
+            }
+        });
+    }
+
     private static LlmMessage MapSingleMessage(ChatMessage m)
     {
         // Pull the reasoning trace (if any) out of the M.E.AI AdditionalProperties bag so
@@ -484,19 +577,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         {
             // Serialize tool calls back to OpenAI-compatible JSON so the provider can
             // include them in the conversation history on subsequent turns.
-            var toolCallsJson = JsonSerializer.Serialize(
-                functionCalls.Select(fc => new
-                {
-                    id = fc.CallId,
-                    type = "function",
-                    function = new
-                    {
-                        name = fc.Name,
-                        arguments = fc.Arguments != null
-                            ? JsonSerializer.Serialize(fc.Arguments)
-                            : "{}"
-                    }
-                }));
+            var toolCallsJson = "[" + string.Join(",", functionCalls.Select(RebuildOrCarriedToolCall)) + "]";
 
             var textContent = string.Join("", m.Contents.OfType<TextContent>().Select(t => t.Text));
 

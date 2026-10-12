@@ -57,6 +57,15 @@ Migration:
 | a buffered caller of a factory-built provider sends a buffered request | under `Auto` (the default) it streams on the wire when the provider streams natively; set `CallMode` to `Buffer` to keep the former request |
 | nothing | `LlmCallMode` (Domain), `LlmConfig.CallMode`, `IStreamingLlmProvider.StreamsNatively` (default `false`), `LlmCallModeScope` (Application) |
 
+### Fixed — a Gemini tool call is replayed with its thought signature (LLM-14)
+
+A crew on Gemini 3 through the chat-client loop failed on its second turn: the tool call fed
+back to the model was rebuilt from `id`, `type` and `function`, and Gemini refused it without
+the `extra_content.google.thought_signature` it had sent. A tool call is now replayed with
+every property the provider sent, buffered or streamed, each call with its own; a provider
+whose calls carry nothing else receives the same body as before. See
+`docs/architecture/llm-providers.md`.
+
 ### Fixed — a tool with a free or dictionary parameter no longer sends an invalid schema (LLM-13)
 
 The EventHub tools `post_message`, `publish_event`, `send_request`, `reply_to` and

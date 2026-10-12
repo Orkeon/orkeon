@@ -473,6 +473,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         public string Id { get; set; } = "";
         public StringBuilder Name { get; } = new();
         public StringBuilder Arguments { get; } = new();
+
+        /// <summary>Every fragment property other than <c>index</c>, <c>id</c>, <c>type</c>, <c>function</c>; last value per name.</summary>
+        public System.Text.Json.Nodes.JsonObject Extras { get; } = new();
     }
 
     /// <summary>
@@ -814,6 +817,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
     private static void MergeToolCallFragment(JsonElement fragment, StreamedToolCall call)
     {
+        foreach (var property in fragment.EnumerateObject())
+        {
+            if (property.Name is "index" or "id" or "type" or "function")
+                continue;
+            call.Extras[property.Name] = System.Text.Json.Nodes.JsonNode.Parse(property.Value.GetRawText());
+        }
+
         if (fragment.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
             call.Id = id.GetString() ?? call.Id;
 
@@ -894,15 +904,19 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// </summary>
     private static string SynthesizeChatBody(ChatStreamState state)
     {
-        var toolCalls = state.ToolCalls.Values.Select(c => new Dictionary<string, object?>
+        var toolCalls = state.ToolCalls.Values.Select(c =>
         {
-            ["id"] = c.Id,
-            ["type"] = "function",
-            ["function"] = new Dictionary<string, object?>
+            var element = new Dictionary<string, object?>();
+            foreach (var (name, value) in c.Extras)
+                element[name] = value;
+            element["id"] = c.Id;
+            element["type"] = "function";
+            element["function"] = new Dictionary<string, object?>
             {
                 ["name"] = c.Name.ToString(),
                 ["arguments"] = c.Arguments.ToString(),
-            },
+            };
+            return element;
         }).ToList();
 
         var body = new Dictionary<string, object?>

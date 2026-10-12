@@ -145,6 +145,7 @@ public class LlmProviderToChatClientAdapterStreamingTests
     }
 
     [Fact]
+    [Trait("BR", "CH-04")]
     public async Task A_streamed_answer_calling_native_tools_folds_to_the_same_calls_and_replays_them()
     {
         const string body = """{"choices":[{"message":{"role":"assistant","content":"Searching.","tool_calls":[{"id":"call_7","type":"function","function":{"name":"web_search","arguments":"{\"query\":\"orkeon\"}"}}]}}]}""";
