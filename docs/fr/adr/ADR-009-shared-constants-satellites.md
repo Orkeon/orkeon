@@ -149,3 +149,13 @@ Un assemblage satellite s'expédie seul.
   `RagDefaults.RrfK`, deux déclarations du même défaut produit derrière deux classes d'options
   liées à la *même* section de configuration — et elle n'a demandé aucun satellite : `Orkeon.Rag`
   référence déjà le Domain qui la porte, la copie est simplement devenue une référence.
+
+## Amendement (2026-10-12)
+
+Les « quatre nouveaux projets packagés » des Conséquences sont historiques. Il y a maintenant
+**cinq** satellites de constantes sous `src/constants/` (`Orkeon.Constants.Llm`, `.FileSystem`,
+`.Configuration`, `.Protocol`, `.Cli`), et **aucun n'est packagé** : tous portent
+`IsPackable=false` et sont embarqués dans le paquet parapluie `Orkeon` (PUB-25 ; voir
+[la matrice de publication](../reference/publication-matrix.md)), et non publiés comme paquets
+NuGet distincts. La décision elle-même ne change pas ; une constante qui y est posée reste une
+surface publique figée du parapluie, et les `PublicAPI.*.txt` la gardent toujours.

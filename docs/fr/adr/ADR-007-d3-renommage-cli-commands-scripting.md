@@ -48,3 +48,10 @@ consommateur hors de ce dépôt.
 - Les mentions historiques (`CHANGELOG.md`, ADR-004) gardent l'ancien nom à dessein ; tout ce
   qui est actif (code, solution, docs et miroirs FR, exemples) utilise le nouveau.
 - ORG-007 est clos par cet ADR.
+
+## Amendement (2026-10-12)
+
+Le « l'expansion NuGet n'attend plus que la confirmation produit du mainteneur » des
+Conséquences est historique. Depuis PUB-25, `Orkeon.Cli.Commands.Scripting` n'est plus publié
+séparément : il est `IsPackable=false` et embarqué dans le paquet parapluie `Orkeon`. Le
+renommage tient.

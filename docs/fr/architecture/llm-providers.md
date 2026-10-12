@@ -242,7 +242,7 @@ pas par des copies du constructeur de payload :
   seul avertissement ; un 401, 403, 429, un délai expiré ou un flux coupé après son premier
   événement reste un échec. En `Stream`, un refus fait échouer l'appel en nommant `Auto` et
   `Buffer`. Il se place sous le compteur et le limiteur, appliqué par `LlmProviderFactory`
-  (STUDIO-71).
+  (STUDIO-71). Voir aussi : Studio propose le mode dans ses réglages et montre le mode de l'appel en cours dans la barre d'état — [Le compteur de jetons en direct](studio.md#le-compteur-de-jetons-en-direct-studio-71).
 - **Journalisation des échanges LLM** — `LlmLoggingDelegatingHandler`
   (`Orkeon.Infrastructure.Logging`) capture chaque échange HTTP (en-têtes et payload, assainis
   par `LogSanitizer` : en-têtes d'authentification masqués par nom, secrets des corps par

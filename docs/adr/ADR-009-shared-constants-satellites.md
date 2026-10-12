@@ -142,3 +142,13 @@ assembly ships alone.
   `RagDefaults.RrfK`, two declarations of the same product default backing two option classes
   bound to the *same* configuration section — and it needed no satellite: `Orkeon.Rag` already
   references the Domain that holds it, so the copy simply became a reference.
+
+## Amendment (2026-10-12)
+
+The Consequences' "Four new packable projects" is historical. There are now **five** constants
+satellites under `src/constants/` (`Orkeon.Constants.Llm`, `.FileSystem`, `.Configuration`,
+`.Protocol`, `.Cli`), and **none is packable**: all five carry `IsPackable=false` and ship
+inside the `Orkeon` umbrella package (PUB-25; see
+[the publication matrix](../reference/publication-matrix.md)), not as NuGet packages of their
+own. The decision itself is unchanged; a constant put there is still a frozen public surface of
+the umbrella, and `PublicAPI.*.txt` still guards it.

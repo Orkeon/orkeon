@@ -133,6 +133,8 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
   le 2026-10-05 (OAuth2), et est documenté comme tel ; Hotmail et Outlook.com restent en attente
   de campagne. Les résultats sont dans le
   [guide](../guides/email.md#ce-que-la-campagne-gmail-a-établi).
+  *Note datée, 2026-10-12* : Hotmail via Microsoft Graph a été campagné le 2026-10-12, et MAIL-07
+  est close ; Outlook en IMAP et SMTP n'a pas été exécuté et reste documenté comme tel.
 - Hors de cette version : supprimer des dossiers, copier un message ou lui donner plusieurs
   libellés Gmail, les envois Graph au-delà d'environ 3 Mo (une session de chargement),
   l'approbation humaine interactive d'un envoi.

@@ -8,7 +8,7 @@ La documentation est organisée en 7 sections thématiques.
 
 > **Politique de langue** — chaque page sous `docs/` est maintenue en anglais et en français en parallèle (`docs/fr/` reflète l'arborescence chemin pour chemin) ; un miroir manquant fait échouer la CI (`scripts/check-docs-parity.sh`). Voir [CONTRIBUTING.fr.md](../../CONTRIBUTING.fr.md) pour le contrat.
 
-> **En ligne** — cette arborescence et la référence d'API générée sont publiées à l'adresse <https://orkeon.github.io/orkeon/>, déployées par `docs.yml` à chaque tag `v*`. Le site paraît donc avec la première release taguée et documente toujours une version taguée.
+> **En ligne** — cette arborescence et la référence d'API générée sont publiées à l'adresse <https://orkeon.github.io/orkeon/>, déployées par `docs.yml` à chaque tag `v*`. Le site documente donc toujours une version taguée.
 
 ### Démarrage
 
@@ -29,7 +29,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | Fichier | Description |
 |---------|-------------|
 | [Donner une boîte aux lettres à vos agents](./getting-started/give-your-agents-a-mailbox.md) | Tutoriel : un compte Gmail, un mot de passe d'application, et un agent qui range le courrier non lu dans des dossiers et laisse chaque réponse en brouillon — rien n'est envoyé |
-| [Outils e-mail](./guides/email.md) | Donner une boîte aux lettres aux agents : Gmail (mot de passe d'application ou OAuth2), Hotmail/Outlook.com via Microsoft Graph, votre propre serveur IMAP/POP3/SMTP ; droits par compte, liste d'autorisation d'envoi fermée par défaut, filtrage anti-injection, `orkeon email login`, emplacement des jetons, dépannage — campagne en attente |
+| [Outils e-mail](./guides/email.md) | Donner une boîte aux lettres aux agents : Gmail (mot de passe d'application ou OAuth2), Hotmail/Outlook.com via Microsoft Graph, votre propre serveur IMAP/POP3/SMTP ; droits par compte, liste d'autorisation d'envoi fermée par défaut, filtrage anti-injection, `orkeon email login`, emplacement des jetons, dépannage |
 | [Commandes `orkeon email`](./reference/cli.md#orkeon-email) | `accounts` (ce qui est déclaré, ce qui est prêt), `check` (se connecter et lister les dossiers), `login` / `logout` pour les comptes OAuth2 — options et codes de sortie |
 | [ADR-012 — la famille d'outils e-mail](./adr/ADR-012-email-tool-family.md) | Pourquoi l'e-mail vit dans Orkeon même, et les alternatives écartées |
 
@@ -94,7 +94,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 |---------|-------------|
 | [Référence du DSL de scripting](./reference/scripting-dsl.md) | Chaque builder et chaque méthode `.ork.ts`, avec la colonne qui n'existe nulle part ailleurs : laquelle des deux formes l'honore. Plus les écarts connus entre les typings et le runtime |
 | [Catalogue des exemples](./reference/examples-catalog.md) | Carte éditoriale d'`examples/` (9 catégories métier + vitrines RAG/RaggableTree/scripting) ; l'`examples/INDEX.md` généré est l'inventaire faisant foi |
-| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `doctor`) avec options et exemples, plus `orkeon-repl` |
+| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `doctor`, `settings`, `typings`, `mcp`) avec options et exemples, plus `orkeon-repl` |
 | [Référence de configuration](./reference/configuration.md) | La carte unique des réglages (`Llm`, `Orkeon:*`, `MCP`…) : sources et précédence, puis chaque clé par catégorie — une ligne par clé, avec son type, son défaut et les hôtes qui la lisent |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante, dont ce qui est livré mais pas encore câblé |
 | [Matrice de conformité A2A](./reference/a2a-conformance.md) | Position honnête face à la spec A2A v1.0 : opérations, modèle de données, bindings, sécurité — ce qui interopère et ce qui n'interopère pas |

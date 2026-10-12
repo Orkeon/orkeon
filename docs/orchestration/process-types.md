@@ -693,17 +693,20 @@ Do your tasks have dependencies between them?
 │       └── NO → Parallel
 │
 └── YES
-    └── Should a flaky task be retried automatically?
-        │
-        ├── NO
-        │   └── Do you need a manager to assign and review?
-        │       ├── YES → Hierarchical
-        │       └── NO → Sequential
-        │
-        └── YES
-            └── Retry the same task, or hand it to a peer?
-                ├── Same task, bounded → Graph
-                └── A peer, LLM-assigned → Autonomous
+    └── Is concurrency all you need — independent tasks together, each wave after its dependencies?
+        ├── YES → Parallel (it runs by dependency waves)
+        └── NO
+            └── Should a flaky task be retried automatically?
+                │
+                ├── NO
+                │   └── Do you need a manager to assign and review?
+                │       ├── YES → Hierarchical
+                │       └── NO → Sequential
+                │
+                └── YES
+                    └── Retry the same task, or hand it to a peer?
+                        ├── Same task, bounded → Graph
+                        └── A peer, LLM-assigned → Autonomous
 ```
 
 ---

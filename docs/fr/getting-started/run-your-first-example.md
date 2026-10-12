@@ -125,6 +125,7 @@ Les options de la CLI `orkeon` que vous utiliserez vraiment :
 | `--initial-context <texte>` | | Une chaîne de contexte libre passée à l'entrée du crew. **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`. |
 | `--inputs <json>` | | Entrées JSON inline transmises à un script comme variable globale `inputs` (voie `.ork.ts`). |
 | `--inputs-file <chemin>` | | Comme `--inputs`, lu depuis un fichier JSON. |
+| `--llm-profile <id>` | | Lance le run sur le profil LLM d'hôte `<id>` (`Llm:Profiles:<id>` dans les réglages ou l'environnement `ORKEON_`) comme défaut du run : la section `Llm` devient ce profil, en entier. Un id que la configuration ne définit pas est refusé avec exit 1 avant toute construction d'hôte — voir [la référence CLI](../reference/cli.md). |
 | `--llm-log` | | Capture chaque échange HTTP LLM (requête + réponse, en-têtes + payload) en `.jsonl` sous `./llm-logs`. |
 | `--llm-log-path <dir>` | | Comme `--llm-log`, mais écrit dans `<dir>` (et implique `--llm-log`). |
 | `--validate` | | Dry-run : résout les settings, construit l'hôte et charge la crew (résolution stricte des outils) **sans** sonder le LLM ni rien exécuter. Imprime `VALIDATION OK/FAILED` et sort 0 / non-zéro. |

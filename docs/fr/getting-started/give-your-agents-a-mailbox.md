@@ -165,8 +165,8 @@ que vous modifiez et envoyez — ou non.
 - **Où sont stockés les jetons OAuth**, et ce que cela protège : [Où vivent les jetons](../guides/email.md#où-vivent-les-jetons).
 - **Quelque chose refuse ?** Chaque erreur nomme sa correction ; les cas courants sont dans [Dépannage](../guides/email.md#dépannage).
 
-> **Gmail est campagné ; Hotmail est en attente de campagne.** Le parcours de ce tutoriel — un
+> **Gmail et Hotmail sont campagnés.** Le parcours de ce tutoriel — un
 > mot de passe d'application Gmail — a été joué sur un vrai compte le 2026-10-04, et Gmail en
 > OAuth2 le 2026-10-05 (MAIL-07) : voir
 > [Ce que la campagne Gmail a établi](../guides/email.md#ce-que-la-campagne-gmail-a-établi).
-> Hotmail et Outlook.com n'ont pas encore été exécutés contre un vrai compte.
+> Hotmail via Microsoft Graph a été joué sur un vrai compte le 2026-10-12.

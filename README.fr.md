@@ -1,6 +1,6 @@
 > 🇬🇧 [English version](README.md)
 
-# <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="96" align="absmiddle"> Orkeon
+# Orkeon
 
 **Des équipes d'agents IA qui restent dans les clous — chaque fichier, endpoint et budget qu'un agent peut toucher est déclaré, puis appliqué. Décrites en YAML, TypeScript (`.ork.ts`) ou C# ; un seul runtime .NET exécute les trois.**
 
@@ -9,6 +9,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/)
 [![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
+
+<p align="center">
+  <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="320">
+</p>
 
 ---
 
@@ -198,7 +202,7 @@ grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # attendu :
 sudo apt install ./orkeon_<version>_amd64.deb
 ```
 
-**macOS** — Homebrew deviendra la voie recommandée dès que le dépôt `Orkeon/homebrew-tap` sera publié, à la première release taguée :
+**macOS** — Homebrew deviendra la voie recommandée dès que le dépôt `Orkeon/homebrew-tap` sera publié (pas encore publié ; utilisez l'archive tarball en attendant) :
 
 ```bash
 brew tap orkeon/tap && brew install orkeon    # une fois le tap publié
@@ -235,7 +239,7 @@ Chaque nombre ci-dessous est recompté depuis l'arborescence à chaque run CI �
 | Capacité | Détails |
 |---|---|
 | **91 outils intégrés** | Système de fichiers, web scraping (AngleSharp), APIs HTTP, JSON/CSV/XML/PDF/Office (DOCX & XLSX lecture/écriture), bases de données, e-mail, exécution de code sécurisée, RAG et recherche sémantique, messagerie EventHub, analyse de code RaggableTree, délégation/collaboration — voir l'[inventaire des outils](docs/fr/tools/inventory.md) |
-| **E-mail** | Treize outils `email_*` donnent une boîte aux lettres aux agents : IMAP, POP3 et SMTP via MailKit, Outlook.com / Hotmail / Microsoft 365 via Microsoft Graph, préréglages Gmail et Outlook, connexion OAuth2 faite une fois avec `orkeon email login`. Droits par compte, une liste d'autorisation d'envoi fermée tant qu'un opérateur ne l'ouvre pas, et chaque message lu passé au filtre anti-injection de prompt. Campagne réelle sur de vrais comptes en attente — commencez par [Donner une boîte aux lettres à vos agents](docs/fr/getting-started/give-your-agents-a-mailbox.md), puis le [guide e-mail](docs/fr/guides/email.md) |
+| **E-mail** | Treize outils `email_*` donnent une boîte aux lettres aux agents : IMAP, POP3 et SMTP via MailKit, Outlook.com / Hotmail / Microsoft 365 via Microsoft Graph, préréglages Gmail et Outlook, connexion OAuth2 faite une fois avec `orkeon email login`. Droits par compte, une liste d'autorisation d'envoi fermée tant qu'un opérateur ne l'ouvre pas, et chaque message lu passé au filtre anti-injection de prompt. Gmail a été campagné sur un vrai compte (2026-10-04 mot de passe d'application, 2026-10-05 OAuth2) et Hotmail via Microsoft Graph (2026-10-12) ; Outlook en IMAP et SMTP n'a pas été joué — commencez par [Donner une boîte aux lettres à vos agents](docs/fr/getting-started/give-your-agents-a-mailbox.md), puis le [guide e-mail](docs/fr/guides/email.md) |
 | **16 fournisseurs LLM** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI) et MiniMax, plus deux agrégateurs — OpenRouter (une clé, une place de marché de 445 modèles) et Mammouth AI (les crédits inclus d'un abonnement) — tous basés sur HTTP, étendant `HttpLlmProviderBase` ; modèles locaux via Docker Model Runner, Ollama ou llama.cpp embarqué — voir le [guide des modèles locaux](docs/fr/guides/local-models.md) |
 | **Vision / multimodal** | Le contenu image circule de bout en bout (`MultiModalContent` → blocs image Anthropic / parts `image_url` OpenAI sur les 14 providers compatibles OpenAI / `images` Ollama, pour les modèles qui voient) avec un chargeur adossé au VFS ; opt-in via `AddOrkeonMultiModal(...)` — voir le [guide multimodal](docs/fr/guides/multimodal.md) |
 | **6 fournisseurs de mémoire** | Redis (recherche vectorielle), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (serveur REST distant) — un seul port `IMemoryProvider`, décorateurs composables |
@@ -304,7 +308,7 @@ Autour du cœur, des projets dédiés couvrent l'hébergement (`Orkeon.Hosting`,
 
 Ces pages, avec la référence d'API générée, sont publiées sous forme de site consultable à
 l'adresse **<https://orkeon.github.io/orkeon/>**. `docs.yml` le déploie à chaque tag `v*` : le site
-paraît donc avec la première release taguée et documente toujours une version taguée.
+documente donc toujours une version taguée.
 
 ---
 
@@ -321,7 +325,7 @@ paraît donc avec la première release taguée et documente toujours une version
 
 ## État du projet
 
-La version courante est la **1.0.0-rc.4** sur .NET 10 — la release candidate de la V1 (`src/Directory.Build.props` est la seule source de vérité ; le badge Release ci-dessus et `git tag` disent ce qui est tagué). Jalons récents : la distribution NuGet consolidée en un seul paquet `Orkeon` (plus `Orkeon.Tools` et quelques opt-ins — voir la [matrice de publication](docs/fr/reference/publication-matrix.md)) ; la CLI `orkeon` et l'image conteneur `orkeon-runners` avec 104 exemples embarqués et les workflows de modèles locaux ; l'orchestration FSM et Graph ; le process Autonomous avec budgets d'exécution ; le DSL de scripting TypeScript ; l'analyse sémantique de code RaggableTree (15 outils agents) ; le système de plugins ; checkpoint/reprise ; le client et serveur MCP bi-ère ; la persistance des tâches A2A ; une surface d'API publique mécaniquement gelée ; et la flotte LLM portée à 16 fournisseurs — quatorze vendeurs, chacun sous preuve de campagne en exécution réelle (dernières arrivées : Google Gemini, Grok/x.AI, MiniMax), plus les deux agrégateurs OpenRouter et Mammouth AI, intégrés documentation d'abord et en attente de leur première campagne.
+La version courante est la **1.0.0-rc.4** sur .NET 10 — la release candidate de la V1 (`src/Directory.Build.props` est la seule source de vérité ; le badge Release ci-dessus et `git tag` disent ce qui est tagué). Jalons récents : la distribution NuGet consolidée en un seul paquet `Orkeon` (plus `Orkeon.Tools` et quelques opt-ins — voir la [matrice de publication](docs/fr/reference/publication-matrix.md)) ; la CLI `orkeon` et l'image conteneur `orkeon-runners` avec 104 exemples embarqués et les workflows de modèles locaux ; l'orchestration FSM et Graph ; le process Autonomous avec budgets d'exécution ; le DSL de scripting TypeScript ; l'analyse sémantique de code RaggableTree (15 outils agents) ; le système de plugins ; checkpoint/reprise ; le client et serveur MCP bi-ère ; la persistance des tâches A2A ; une surface d'API publique mécaniquement gelée ; et la flotte LLM portée à 16 fournisseurs — quatorze vendeurs, chacun sous preuve de campagne en exécution réelle (dernières arrivées : Google Gemini, Grok/x.AI, MiniMax), plus les deux agrégateurs OpenRouter et Mammouth AI, intégrés documentation d'abord et campagnés le 2026-10-07 (LLM-08).
 
 Chaque pull request est gardée en CI :
 

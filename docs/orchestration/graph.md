@@ -181,7 +181,7 @@ With a graphConfig block:
 2. graphConfig.circuitBreakerPreset  (base values; "strict" when absent or unknown)
 
 Without graphConfig:
-3. CircuitBreakerPolicy.Strict       (fallback)
+3. CircuitBreakerPolicy.Strict       (fallback: supplies the duration only)
 ```
 
 `graphConfig` is the crew's only circuit-breaker setting: a `circuitBreaker:` block, at the crew root or on a task, is refused at load. Whatever the level, `maxStateVisits` and `maxTransitions` left unset are **computed from the crew** rather than taken from the preset (see [Circuit breaker](#circuit-breaker)); the preset supplies the duration. `maxRetryCycles` comes from `graphConfig` only (2 otherwise).

@@ -37,7 +37,7 @@ nouvelle version du framework.
 
 La fusion est faite **une seule fois** dans `LlmConfigResolver.Resolve(baseConfig, taskOverride, callOverride)`.
 Priorité du plus fort au plus faible : override d'appel → override de task → config de base.
-Chaque champ est résolu indépendamment (`ResponseFormat`, `Temperature`, `MaxTokens`, `TopP`,
+Chaque champ est résolu indépendamment (`Profile`, `ResponseFormat`, `Temperature`, `MaxTokens`, `TopP`,
 `Thinking`, `Cache`), et un champ `null` sur un override n'efface jamais une valeur héritée.
 
 | Surface | Atterrit dans | Où elle s'écrit |
@@ -81,7 +81,8 @@ tasks:
       temperature: 0.0
 ```
 
-Le bloc `llm_override:` accepte `response_format`, `response_schema`, `temperature`,
+Le bloc `llm_override:` accepte `profile` (la task s'exécute sur ce profil LLM de l'hôte
+au lieu de celui de son agent), `response_format`, `response_schema`, `temperature`,
 `max_tokens`, `top_p` et `thinking` — les champs du `llm:` de niveau agent, moins `model` et
 `cache:`.
 

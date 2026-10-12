@@ -59,8 +59,11 @@ IHost host = RunnerHost.Build(
     },
     configureLogging: null,              // optional ILoggingBuilder customization
     configureServices: null,             // optional hook to register runner-specific services
-    configureBuilder: null);             // optional IHostBuilder hook — orkeon-host uses it for UseSystemd()/UseWindowsService()
+    configureBuilder: null,              // optional IHostBuilder hook — orkeon-host uses it for UseSystemd()/UseWindowsService()
+    llmProfile: null);                   // optional host LLM profile id (--llm-profile): Llm:Profiles:<id> becomes the run's Llm section
 ```
+
+An `llmProfile` the configuration does not define is refused with a `RunnerSettingsException` whose message lists the profiles it does define; null or `default` keeps the `Llm` section as it is.
 
 A virtual path is always a name starting with `/` — never a disk path
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)).

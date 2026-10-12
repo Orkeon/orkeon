@@ -230,7 +230,7 @@ members, not through copies of the payload builder:
   streaming) falls back to a buffered call for the rest of the run (`LlmCallModeScope`, opened
   per crew run), with one warning; a 401, 403, 429, a timeout or a stream cut after its first
   event stays a failure. In `Stream`, a refusal fails the call naming `Auto` and `Buffer`. It sits
-  inside the meter and the limiter, applied by `LlmProviderFactory` (STUDIO-71).
+  inside the meter and the limiter, applied by `LlmProviderFactory` (STUDIO-71). See also: Studio offers the mode in its settings and shows the mode of the current call in the status bar — [The live token counter](studio.md#the-live-token-counter-studio-71).
 - **LLM exchange logging** — `LlmLoggingDelegatingHandler` (`Orkeon.Infrastructure.Logging`)
   captures every HTTP exchange (headers and payload, sanitized by `LogSanitizer`: credential
   headers redacted by name, secrets in bodies by pattern) as JSON Lines plus a structured

@@ -132,7 +132,7 @@ src/
 │                #   wrappers depending on the Orkeon umbrella
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
-examples/        # 105 bundled examples (9 categories + showcases) — own solution
+examples/        # 104 bundled examples (9 categories + showcases) — own solution
 docs/            # Documentation, EN + docs/fr mirror (CI parity gate)
 ```
 

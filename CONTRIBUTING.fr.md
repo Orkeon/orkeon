@@ -136,7 +136,7 @@ src/
 │                #   Hosting.Aspire dépendant de l'ombrelle Orkeon
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
-examples/        # 105 exemples embarqués (9 catégories + vitrines) — solution dédiée
+examples/        # 104 exemples embarqués (9 catégories + vitrines) — solution dédiée
 docs/            # Documentation, EN + miroir docs/fr (gate de parité CI)
 ```
 

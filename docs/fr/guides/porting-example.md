@@ -614,7 +614,9 @@ public class OrderProcessingMessageConsumer : IMessageHandler
     "Temperature": 0.3
     // La clé d'API n'est JAMAIS stockée ici — elle vient de l'environnement sous
     // ORKEON_Llm__ApiKey — ou de la variable que nomme une entrée "ApiKeyEnvVar",
-    // p. ex. "ApiKeyEnvVar": "OPENAI_API_KEY" (OPENAI_API_KEY seule n'est pas lue)
+    // p. ex. "ApiKeyEnvVar": "OPENAI_API_KEY" (OPENAI_API_KEY seule n'est pas lue).
+    // Seules la commande `run` et le REPL lisent ApiKeyEnvVar : un hôte que vous écrivez
+    // résout la clé à sa façon
   },
   "Orkeon": {
     "FileSystem": {

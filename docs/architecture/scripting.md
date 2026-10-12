@@ -47,7 +47,7 @@ src/
     │   ├── Testing/              ← mock LLM / mock tool doubles (not exposed to scripts)
     │   ├── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
     │   └── Typings/              ← the *.d.ts declarations
-    └── Orkeon.Scripting.Cli/     ← the `orkeon` tool: `run`, `forge`, `init`, `doctor`, `llm`, `rag`, `usecases`, `email`
+    └── Orkeon.Scripting.Cli/     ← the `orkeon` tool: `run`, `forge`, `init`, `doctor`, `llm`, `rag`, `usecases`, `email`, `settings`, `typings`, `mcp`
 ```
 
 ## Quick start

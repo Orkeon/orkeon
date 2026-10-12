@@ -1,0 +1,7 @@
+/* The logo of the navigation bar is the mascot, a 400 px picture: the template sizes nothing. */
+#logo {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-right: .5rem;
+  border-radius: 50%;
+}
