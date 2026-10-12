@@ -1,6 +1,6 @@
 > 🇬🇧 [English version](README.md)
 
-# <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="96" align="absmiddle"> Orkeon
+# Orkeon
 
 **Des équipes d'agents IA qui restent dans les clous — chaque fichier, endpoint et budget qu'un agent peut toucher est déclaré, puis appliqué. Décrites en YAML, TypeScript (`.ork.ts`) ou C# ; un seul runtime .NET exécute les trois.**
 
@@ -9,6 +9,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/)
 [![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
+
+<p align="center">
+  <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="320">
+</p>
 
 ---
 
