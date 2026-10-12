@@ -183,6 +183,7 @@ public class OpenAICompatibleProviderBaseSystemMessageTests
     /// rather than through the tool schemas on the config, so it is worth pinning separately.
     /// </summary>
     [Fact]
+    [Trait("BR", "CH-04")]
     public async Task ShouldPrependTheConfiguredSystemMessage_WhenReplayingAToolResult()
     {
         var config = LlmConfig.Create(TestModelName, TestApiKey) with { SystemMessage = ConfiguredSystem };

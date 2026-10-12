@@ -25,6 +25,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// 4. <see cref="Infrastructure.LLMs.DeepSeekLlmProvider"/> serialises the field back into the
 ///    OpenAI-style assistant message dictionary.
 /// </summary>
+[Trait("BR", "CH-04")]
 public class DeepSeekReasoningRoundTripTests
 {
     private const string ReasoningKey = "reasoning_content";

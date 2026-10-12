@@ -170,7 +170,14 @@ le flux chat du provider (`ChatStreamingAsync`) : le texte au fil, puis une dern
 qui porte les appels d'outils (natifs ou du protocole texte), l'usage du provider, la raison de
 fin, le modèle, le coût du vendeur et le raisonnement à rejouer. Repliées, les mises à jour
 donnent la réponse de l'appel bufferisé : un tour d'agent diffusé appelle ses outils et est
-compté exactement, jamais estimé ; un provider qui ne diffuse pas y répond en bufferisé. Les
+compté exactement, jamais estimé ; un provider qui ne diffuse pas y répond en bufferisé. Un appel d'outil est
+rejoué au provider avec toutes les propriétés qu'il portait, bufferisé ou diffusé, chaque appel
+avec les siennes : l'adaptateur garde l'élément `tool_calls[i]` du provider sur son
+`FunctionCallContent` et le rejoue entier, et la fusion des fragments diffusés garde ce qu'un
+fragment ajoute au-delà de `index`, `id`, `type` et `function` — la signature de pensée de
+Gemini (`extra_content.google.thought_signature`), que Gemini exige en retour, voyage ainsi
+(LLM-14) ; un appel qui ne portait rien d'autre est rejoué en `id`, `type` et `function`, comme
+avant. Les
 flux eux-mêmes ont dû dire ce que disent les réponses bufferisées : Anthropic assemble désormais
 les blocs `tool_use` qu'il diffuse ; MiniMax sépare son bloc `<think>` de tête des deltas de
 contenu (`LeadingReasoningTag`), si bien que le texte d'un flux est la réponse que garde sa

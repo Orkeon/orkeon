@@ -7,6 +7,7 @@ using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 
 namespace Orkeon.Infrastructure.Tests.LLMs.Adapters;
 
+[Trait("BR", "CH-04")]
 public class LlmProviderToChatClientAdapterTests
 {
     private static readonly string[] s_streamingChunks = ["chunk1", "chunk2"];

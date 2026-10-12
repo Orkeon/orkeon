@@ -164,7 +164,13 @@ text as it arrives, then one last update carrying the tool calls (native or of t
 protocol), the provider's usage, the finish reason, the model, the vendor's cost and the
 reasoning to replay. Folded, the updates are the response the buffered call returns, so a
 streamed agent turn calls its tools and is metered exactly, never estimated; a provider that
-does not stream answers it buffered. The streams themselves had to say what the buffered
+does not stream answers it buffered. A tool call is replayed to the provider with every
+property it carried, buffered or streamed, each call with its own: the adapter keeps the
+provider's `tool_calls[i]` element on its `FunctionCallContent` and replays it whole, and the
+merge of streamed fragments keeps what a fragment adds beyond `index`, `id`, `type` and
+`function` — Gemini's thought signature (`extra_content.google.thought_signature`), which
+Gemini requires back, travels that way (LLM-14); a call that carried nothing else is replayed
+as `id`, `type` and `function`, as before. The streams themselves had to say what the buffered
 answers say: Anthropic now assembles the `tool_use` blocks it streams; MiniMax splits its
 leading `<think>` block out of the content deltas (`LeadingReasoningTag`), so the text a stream
 carries is the answer its final response keeps; and on the native protocol, the OpenAI dialect
