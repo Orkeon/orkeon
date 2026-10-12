@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — an agent that spends its iterations on tool calls still gets its final answer, and the Atelier plans mail tasks that run
+
+An agent whose every iteration went to tool calls now always gets the tool-free turn that asks
+for its final answer. The text a model writes next to its last tool call ("Mail sent. Now the
+log:") was taken for that answer: the task failed with `MaxIterationsReached` and the crew
+output was the preamble, although the work was done. The loop logs
+`spent its N iterations on tool calls; asking once more, without tools, for the final answer`.
+
+The Atelier's plan check refuses a task whose agent holds a mail tool and whose text names a
+`client://` address — internal messaging, which an agent passed as its e-mail account — and its
+design prompt asks for recipients by e-mail address with no account named. A plan's
+`maxIterations` below 6 is raised to 6 in the written crew (`ForgeBlueprintAgent.MinIterations`);
+a plan that sets none keeps the engine's default (20).
+
 ### Changed — the Atelier forges crews that send mail (FORGE-10)
 
 `orkeon forge` and Studio's **Create a team** now offer the twelve mailbox tools to the crews

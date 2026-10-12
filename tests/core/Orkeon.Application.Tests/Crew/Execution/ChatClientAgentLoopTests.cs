@@ -330,6 +330,35 @@ public class ChatClientAgentLoopTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task SynthesizesAFinalAnswer_WhenTheLastToolCallCarriedAPreamble()
+    {
+        // The words a model writes next to a tool call ("Mail sent. Now the log:") announce
+        // the call: they are not the deliverable, and the budget spent on tools still earns
+        // the tool-free synthesis turn (the mail test of 2026-10-12 failed on that preamble).
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(2, tool);
+        var (loop, client) = BuildLoop(tool);
+
+        for (var i = 0; i < 2; i++)
+        {
+            client.Enqueue(new ChatResponse([new ChatMessage(ChatRole.Assistant,
+            [
+                new TextContent($"Step {i + 1}: calling the tool."),
+                new FunctionCallContent($"call-{i}", "busy", arguments: null),
+            ])]));
+        }
+        client.EnqueueText("final deliverable");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.Completed, result.ExitReason);
+        Assert.Equal("final deliverable", result.Output);
+        Assert.Equal(3, client.Requests.Count); // 2 iterations + 1 tool-free synthesis
+        Assert.Equal(2, tool.Calls.Count);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ReportsMaxIterations_WhenEvenTheSynthesisRetryStaysEmpty()
     {
         var tool = new SpyTool("busy", result: "more work");

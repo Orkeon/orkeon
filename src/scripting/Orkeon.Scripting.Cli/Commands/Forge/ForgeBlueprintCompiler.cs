@@ -67,7 +67,7 @@ internal static class ForgeBlueprintCompiler
                 Backstory = agent.Backstory,
                 Tools = agent.Tools is { Count: > 0 } tools ? new Collection<string>([.. tools]) : null,
                 AllowDelegation = agent.AllowDelegation,
-                MaxIter = agent.MaxIterations,
+                MaxIter = agent.EffectiveMaxIterations,
             };
         }
 

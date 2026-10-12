@@ -88,6 +88,25 @@ public sealed class ForgeScriptRendererTests : IDisposable
     }
 
     [Fact]
+    public async Task An_iteration_cap_below_the_floor_is_rendered_raised()
+    {
+        var blueprint = Parse("""
+            {
+              "crew": { "name": "x", "goal": "g" },
+              "agents": [ { "key": "a", "role": "r", "goal": "g", "maxIterations": 3 } ],
+              "tasks": [ { "key": "t", "description": "d", "expectedOutput": "o", "agent": "a" } ]
+            }
+            """);
+
+        var written = ForgeScriptRenderer.Render(blueprint, _sessionDirectory);
+        var source = await File.ReadAllTextAsync(
+            Path.Combine(_sessionDirectory, written[0]), TestContext.Current.CancellationToken);
+
+        Assert.Contains($".maxIterations({ForgeBlueprintAgent.MinIterations})", source, StringComparison.Ordinal);
+        Assert.DoesNotContain(".maxIterations(3)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Kebab_keys_become_prefixed_identifiers_and_the_french_stays_readable()
     {
         var blueprint = Parse(ForgeDocuments.ValidBlueprint
