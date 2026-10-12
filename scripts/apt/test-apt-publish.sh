@@ -15,7 +15,8 @@
 # (rc and an empty stable), the second one adds to rc and re-attaches the published keyring
 # package (stage-keyring-deb.sh), then a yank and a resign. Then check-apt-branch.sh
 # replays the documented installation block (verify-apt-repo.sh, a copy of the page whose
-# key SHA-256 is the throwaway key's) in a debian:13 container against the fake GitHub:
+# key SHA-256 is the throwaway key's) in a debian:13 container (APT_TEST_CLIENT_IMAGE names another: apt-index.yml runs
+# ubuntu:24.04 too, a minimised image whose dpkg drops /usr/share/doc) against the fake GitHub:
 # install, upgrade rc.4 -> rc.5, removal; and check-apt-health.sh passes on that state and
 # fails on the three faults it exists for: a stanza without its asset, an InRelease that
 # does not verify, a signing subkey that expires within 180 days.

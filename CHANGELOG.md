@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the apt pre-push check no longer counts the docs a minimised Ubuntu image drops
+
+The `apt-publish` job of `v1.0.0-rc.5` pushed nothing: its pre-push client, `ubuntu:24.04`,
+reported `dpkg -V orkeon` differences — the three files under `/usr/share/doc/orkeon/`
+(`THIRD-PARTY-NOTICES.md` and the .NET runtime pack's licences) that the image's
+`/etc/dpkg/dpkg.cfg.d/excludes` tells dpkg never to unpack. The package was right; the check
+read the image's choice as a defect.
+
+- `scripts/apt/verify-apt-repo.sh` reads the image's `path-exclude` / `path-include` rules as
+  dpkg applies them (the last matching pattern decides) and leaves out the `missing` lines they
+  explain, counting them in the PASS line. A changed file, or a missing one the rules do not
+  explain, still fails. The same script serves `verify-apt` after publication, which would
+  have failed the same way on Ubuntu 22.04, 24.04 and 26.04.
+- `apt-index.yml` runs the publication bench a second time with the release's pinned
+  `ubuntu:24.04` as client: its bench packages ship a file under `/usr/share/doc`.
+- The guide *Verify what you install* says which `missing` lines a minimised image prints.
+
+rc.5 reaches the apt `rc` channel through `apt-maintenance.yml` `seed v1.0.0-rc.5` once this
+is on `main`.
+
 ## [1.0.0-rc.5] - 2026-10-12
 
 The release candidate of e-mail and settings. Since `1.0.0-rc.4`: agents read and send

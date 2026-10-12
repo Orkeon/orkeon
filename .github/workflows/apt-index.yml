@@ -52,3 +52,10 @@ jobs:
       # client of check-apt-branch.sh on the result.
       - name: Publication chain against a local repository
         run: bash scripts/apt/test-apt-publish.sh
+      # The same chain with the pre-push client of release.yml, ubuntu:24.04 pinned at the
+      # same digest: a minimised image whose dpkg drops /usr/share/doc, which `dpkg -V`
+      # reports as missing (the v1.0.0-rc.5 apt-publish failure).
+      - name: Publication chain, Ubuntu client as release.yml checks it
+        env:
+          APT_TEST_CLIENT_IMAGE: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+        run: bash scripts/apt/test-apt-publish.sh

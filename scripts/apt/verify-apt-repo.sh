@@ -56,6 +56,23 @@ inside() {
   apt_update() { # <log>: apt-get update, clean or not
     apt-get update >"$1" 2>&1 && clean "$1"
   }
+  # A minimised image (Ubuntu's docker images) tells dpkg not to unpack /usr/share/doc and
+  # the man pages: `path-exclude=` / `path-include=` in /etc/dpkg/dpkg.cfg.d, the last
+  # matching pattern deciding, as fnmatch without FNM_PATHNAME (bash's [[ == ]] glob).
+  # `dpkg -V` then reports those files `missing`: the image's choice, not the package's.
+  dpkg_excluded() { # <path>: true when this image's dpkg configuration drops it
+    local f line pat verdict=false
+    for f in /etc/dpkg/dpkg.cfg.d/* /etc/dpkg/dpkg.cfg; do
+      [[ -f "$f" ]] || continue
+      while IFS= read -r line; do
+        case "$line" in
+          path-exclude[=\ ]*) pat="${line#path-exclude?}"; [[ "$1" == $pat ]] && verdict=true ;;
+          path-include[=\ ]*) pat="${line#path-include?}"; [[ "$1" == $pat ]] && verdict=false ;;
+        esac
+      done <"$f"
+    done
+    $verdict
+  }
 
   smoke_log "Container: sudo and an unprivileged user"
   ok=false
@@ -129,11 +146,27 @@ inside() {
   smoke_log "Integrity"
   if [[ ! -f /var/lib/dpkg/info/orkeon.md5sums ]]; then
     smoke_fail "dpkg-verify" "the package ships no md5sums: dpkg -V orkeon checks nothing"
-  elif out="$(dpkg -V orkeon 2>&1)" && [[ -z "$out" ]]; then
-    smoke_pass "dpkg-verify" "dpkg -V orkeon is silent"
   else
-    printf '%s\n' "$out" | sed 's/^/    | /'
-    smoke_fail "dpkg-verify" "dpkg -V orkeon reported differences"
+    local excluded=0 kept=() rc=0 line
+    out="$(dpkg -V orkeon 2>&1)" || rc=$?
+    while IFS= read -r line; do
+      [[ -n "$line" ]] || continue
+      if [[ "$line" =~ ^missing\ +(c\ +)?(/.*)$ ]] && dpkg_excluded "${BASH_REMATCH[2]}"; then
+        excluded=$((excluded + 1))
+      else
+        kept+=("$line")
+      fi
+    done <<<"$out"
+    if (( ${#kept[@]} == 0 )) && { (( rc == 0 )) || (( excluded > 0 )); }; then
+      if (( excluded > 0 )); then
+        smoke_pass "dpkg-verify" "dpkg -V orkeon is silent but for $excluded file(s) this image's dpkg path-exclude drops"
+      else
+        smoke_pass "dpkg-verify" "dpkg -V orkeon is silent"
+      fi
+    else
+      printf '%s\n' "${kept[@]}" | sed 's/^/    | /'
+      smoke_fail "dpkg-verify" "dpkg -V orkeon reported differences"
+    fi
   fi
   if [[ "$(dpkg-query -W -f '${Status}' orkeon-archive-keyring 2>/dev/null)" == "install ok installed" ]]; then
     smoke_pass "keyring" "orkeon-archive-keyring $(dpkg-query -W -f '${Version}' orkeon-archive-keyring) installed"
