@@ -803,7 +803,7 @@ maps to its exit codes.
 - **Every account is visible to every crew and script that resolves the same settings
   file** — see the threat model in [SECURITY.md](../../SECURITY.md).
 - **Outlook over IMAP and SMTP has not been run against a real account** (MAIL-07): Gmail
-  and Hotmail through Microsoft Graph are campaigned — see below.
+  and Hotmail through Microsoft Graph are campaigned — see the two campaign sections below.
 
 ## What the Gmail campaign established
 
@@ -833,3 +833,10 @@ address — say what to do. What it left open:
 - **The trash is not emptied**: `permanent: true` needs the `Purge` right, which the campaign
   account did not grant. What a crew deletes stays in the trash until Gmail's own thirty-day
   purge, or an account that grants `Purge`.
+
+## What the Hotmail campaign established
+
+The owner ran Hotmail through Microsoft Graph against a real account on 2026-10-12 and
+reported the campaign complete, with no deviation. The detail of that pass was not recorded,
+so no per-check table exists here, unlike Gmail. Outlook over IMAP and SMTP stays outside the
+campaign.

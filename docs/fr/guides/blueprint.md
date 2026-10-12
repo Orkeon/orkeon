@@ -15,7 +15,7 @@ Un enregistrement oublié échoue bruyamment plutôt qu'en silence : `ProcessTyp
 Avant de commencer, décidez :
 
 - **Nom du mode** : la valeur de `ProcessType` (PascalCase, par ex. `Swarm`) et son écriture YAML/scripting (`swarm`, comparée sans tenir compte de la casse)
-- **Point d'entrée** : réutiliser `IProcessStrategy.ExecuteSequentialAsync(crew, plan, …)` (Graph, Consensual) ou ajouter une méthode dédiée (Autonomous, qui a besoin d'un `AgentExecutionBudget`)
+- **Point d'entrée** : réutiliser `IProcessStrategy.ExecuteSequentialAsync(crew, inputVariables, ct)` (Graph, Consensual) ou ajouter une méthode dédiée (Autonomous, qui a besoin d'un `AgentExecutionBudget`)
 - **Configuration** : aucune, une section d'options .NET (Consensual : `Orkeon:Consensus`), ou un bloc YAML de niveau crew (Graph : `graphConfig`)
 - **Moteur** : si le mode a besoin d'un moteur Domain réutilisable (`StateGraph<TState>`, `StateMachine<TState, TEvent>`) ou vit entièrement dans sa stratégie
 - **Stabilité** : si la surface publique est livrée sous un diagnostic `[Experimental]` (Autonomous : `ORKEXP002`, voir les [API expérimentales](../reference/experimental-apis.md))
@@ -40,7 +40,7 @@ private static readonly Dictionary<string, ProcessType> s_all = new(StringCompar
 
 **API publique.** Les projets core suivent leur surface publique : ajoutez chaque nouveau membre public au `PublicAPI.Unshipped.txt` du projet (`src/core/Orkeon.Domain/`, `src/core/Orkeon.Infrastructure/`, `src/core/Orkeon.Application/`), sinon le build échoue (RS0016/RS0017 sont des erreurs).
 
-**DTO Application.** La couche Application porte son propre enum, `Orkeon.Application.Crew.DTOs.ProcessType` (`Crew/DTOs/CrewEnums.cs`), mappé par `CrewMapper.ToProcessTypeDomain` (`Common/Mapping/CrewMapper.cs`), qui lève sur une valeur qu'il ne connaît pas : ajoutez le membre et sa branche de mapping.
+**DTO Application.** Rien à ajouter : `CrewDto.ProcessType` est une chaîne, et `CrewMapper` (`Common/Mapping/CrewMapper.cs`) y copie le `ProcessType.Value` du value object Domain ; le nouveau nom atteint donc le DTO dès l'étape 1 faite.
 
 **Fluent Builder (optionnel).** `CrewBuilder.Process(ProcessType.Swarm)` fonctionne tel quel ; un raccourci comme `.Swarm()` n'existe que pour les modes historiques (`Sequential()`, `Hierarchical(...)`, `Parallel()`, `Consensual()`).
 
@@ -83,14 +83,14 @@ Un moteur réutilisable va dans la couche Domain, sans aucune dépendance extern
 public sealed partial class SwarmProcessStrategy : IProcessStrategy
 {
     public SwarmProcessStrategy(
-        CrewStrategyDependencies dependencies,   // tâches, agents, service d'exécution, scope mémoire
+        CrewStrategyDependencies dependencies,   // tâches, agents, service d'exécution, scope mémoire (+ événements de domaine facultatifs)
         ILogger<SwarmProcessStrategy> logger,
         ICrewExecutionHook? hook = null,          // optionnel : l'observateur du run
         TaskAgentSelector? agentSelector = null)  // optionnel : qui exécute une tâche sans agent:
     { /* … */ }
 
-    public Task<CrewOutput> ExecuteSequentialAsync(Crew crew, ExecutionPlan plan,
-        IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken ct = default)
+    public Task<CrewOutput> ExecuteSequentialAsync(Crew crew,
+        IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
     { /* le mode */ }
 
     // Les points d'entrée que le mode ne sert pas :
@@ -104,7 +104,7 @@ Réutilisez les briques partagées de `Crew/Strategies/` et `Crew/` — plusieur
 
 | Brique | Usage |
 |----------------|-----|
-| `CrewStrategyDependencies` | Les quatre collaborateurs que prend chaque stratégie (repositories de tâches/agents, `IAgentExecutionService`, `IMemoryScope`) |
+| `CrewStrategyDependencies` | Les quatre collaborateurs que prend chaque stratégie (repositories de tâches/agents, `IAgentExecutionService`, `IMemoryScope`), plus un cinquième facultatif, `DomainEvents` (`IDomainEventDispatcher?`) |
 | `CrewTaskSequencer.ResolveAsync` | Ordre des tâches : celui du plan, sinon le tri topologique stable sur `dependencies` |
 | `TaskAgentSelector` | Choix de l'agent : `agent:` déclaré, sinon `OrkeonApplicationOptions.AgentSelectionStrategy` |
 | `CrewHookDispatcher` | Appels à `ICrewExecutionHook` — envoyez l'événement terminal (`CrewCompletedAsync` / `CrewFailedAsync`) sur **chaque** sortie, initialisation et annulation comprises |
@@ -124,7 +124,7 @@ Trois endroits, tous dans `Orkeon.Infrastructure` :
 |------|--------|
 | `DependencyInjection/InfrastructureExtensions.cs` | `services.AddScoped<SwarmProcessStrategy>();` dans `AddOrkeonRepositoriesAndStrategies` — ou une extension publique `AddOrkeon<Mode>()` (binding d'options, stratégies de vote…) appelée depuis `AddOrkeonFeatureModules`, comme `AddOrkeonConsensus()` |
 | `Crew/Strategies/ProcessStrategyFactory.cs` | `"Swarm" => _serviceProvider.GetRequiredService<SwarmProcessStrategy>(),` |
-| `Orchestration/SequentialCrewOrchestrator.cs` | Un cas dans `ExecuteDomainStrategyAsync` qui appelle le point d'entrée choisi (`"Swarm" => await processStrategy.ExecuteSequentialAsync(crew, defaultPlan, stringVariables, cancellationToken)…`) |
+| `Orchestration/SequentialCrewOrchestrator.cs` | Un cas dans `ExecuteDomainStrategyAsync` qui appelle le point d'entrée choisi (`"Swarm" => await processStrategy.ExecuteSequentialAsync(crew, stringVariables, cancellationToken)…`) |
 
 Une section d'options suit la convention `Orkeon:*` (`services.AddOptions<SwarmOptions>().BindConfiguration("Orkeon:Swarm")`) et est listée dans la [configuration](../reference/configuration.md).
 
@@ -184,7 +184,6 @@ xUnit avec les assertions natives et des **doubles écrits à la main** (`Mock*`
 | L'aiguillage de la factory | `Strategies/ProcessStrategyFactory/ProcessStrategyFactoryTests.cs` | — |
 | L'aiguillage de l'orchestrateur vers le bon point d'entrée | `Orchestration/CovAutonomous_SequentialCrewOrchestratorTests.cs` | `KickoffAsync_Graph_DispatchesViaSequential` |
 | YAML : parsing de `process:` et le bloc de config dans les deux dispositions | `Configuration/YamlCrewDefinition/YamlCrewDefinitionTests.cs` (itère sur `ProcessType.All`), `Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` | — |
-| Mapping Application | `tests/core/Orkeon.Application.Tests/DTOs/Mapping/CrewMapperTests.cs` (itère sur `ProcessType.All`) | — |
 | Scripting | `tests/scripting/Orkeon.Scripting.Tests/` (le builder accepte le nom, l'adaptateur le mappe) | — |
 
 ```bash
@@ -245,7 +244,7 @@ python3 scripts/check-doc-claims.py
 
 | Critère | Attendu | Vérifié |
 |---------|-------------------|---------|
-| Déclaré | Entrée `ProcessType`, nombre d'éléments de `All`, DTO Application + branche `CrewMapper` | [ ] |
+| Déclaré | Entrée `ProcessType`, nombre d'éléments de `All` | [ ] |
 | Aiguillé | Stratégie enregistrée, cas `ProcessStrategyFactory`, cas `SequentialCrewOrchestrator` | [ ] |
 | Se termine | Circuit breaker, budget ou boucle bornée — et annulation respectée | [ ] |
 | Observable | Événement terminal du hook sur chaque sortie, métadonnées de tokens, logs structurés | [ ] |

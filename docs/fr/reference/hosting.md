@@ -61,8 +61,11 @@ IHost host = RunnerHost.Build(
     },
     configureLogging: null,              // personnalisation optionnelle de ILoggingBuilder
     configureServices: null,             // hook optionnel pour enregistrer les services du runner
-    configureBuilder: null);             // hook IHostBuilder optionnel — orkeon-host s'en sert pour UseSystemd()/UseWindowsService()
+    configureBuilder: null,              // hook IHostBuilder optionnel — orkeon-host s'en sert pour UseSystemd()/UseWindowsService()
+    llmProfile: null);                   // id de profil LLM d'hôte optionnel (--llm-profile) : Llm:Profiles:<id> devient la section Llm du run
 ```
+
+Un `llmProfile` que la configuration ne définit pas est refusé par une `RunnerSettingsException` dont le message liste les profils qu'elle définit ; null ou `default` laisse la section `Llm` telle quelle.
 
 Un chemin virtuel est toujours un nom commençant par `/` — jamais un chemin disque
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)).

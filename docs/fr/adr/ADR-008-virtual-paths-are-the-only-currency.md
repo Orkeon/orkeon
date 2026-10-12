@@ -141,3 +141,18 @@ désormais un agent qui adresse le montage par son nom au lieu de simplement l'o
 listages. Ce qui reste hors périmètre, c'est une granularité plus fine qu'un bit — des droits
 par appelant, une capacité remise à un outil précis — qui toucherait le contrat du Domain bien
 plus profondément qu'un booléen sur le registre.
+
+## Amendement (2026-10-12)
+
+Trois faits ont bougé depuis la rédaction de cet ADR ; la décision tient.
+
+- **Studio ne duplique plus les trois racines virtuelles.** `Orkeon.Studio.Core` référence
+  directement `Orkeon.Constants.FileSystem` (ADR-009) et lit `RunnerVirtualRoots` ; la copie que
+  décrivent les Conséquences n'existe plus.
+- **Une quatrième racine, interne : `/credentials`.** `RunnerVirtualRoots.Credentials` est
+  l'endroit où le runner garde les identifiants obtenus pour le run (les jetons OAuth des
+  comptes e-mail). `FileSystemEmailTokenStore` y lit et y écrit via `PrivilegedFileSystemAccess`
+  (ADR-012), jamais par le système de fichiers qu'un outil exposé aux agents résout.
+- **Les montages sont composés par portée.** Les montages d'un run ne sont plus un registre
+  unique pour tout le processus : `IFileSystemScope` porte le registre du run ou de la requête
+  en cours. Voir [Conformité VFS](../architecture/vfs-compliance.md).

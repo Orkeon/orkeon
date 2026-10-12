@@ -8,7 +8,7 @@ The documentation is organized into 7 thematic sections.
 
 > **Language policy** — every page under `docs/` is maintained in English and French in parallel (`docs/fr/` mirrors the tree path-for-path); a missing mirror fails CI (`scripts/check-docs-parity.sh`). See [CONTRIBUTING.md](../CONTRIBUTING.md) for the contract.
 
-> **Online** — this tree and the generated API reference are published at <https://orkeon.github.io/orkeon/>, deployed by `docs.yml` on every `v*` tag. The site therefore goes live with the first tagged release and always documents a tagged version.
+> **Online** — this tree and the generated API reference are published at <https://orkeon.github.io/orkeon/>, deployed by `docs.yml` on every `v*` tag. The site therefore always documents a tagged version.
 
 ### Getting started
 
@@ -94,7 +94,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 |------|-------------|
 | [Scripting DSL reference](./reference/scripting-dsl.md) | Every `.ork.ts` builder and method, with the column that exists nowhere else: which of the two shapes honours it. Plus the known gaps between the typings and the runtime |
 | [Examples catalog](./reference/examples-catalog.md) | Editorial map of `examples/` (9 business categories + RAG/RaggableTree/scripting showcases); the generated `examples/INDEX.md` is the authoritative inventory |
-| [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `doctor`) with options and examples, plus `orkeon-repl` |
+| [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `doctor`, `settings`, `typings`, `mcp`) with options and examples, plus `orkeon-repl` |
 | [Configuration reference](./reference/configuration.md) | The single map of the settings (`Llm`, `Orkeon:*`, `MCP`…): sources and precedence, then every key by category — one line per key, with its type, its default and the hosts that read it |
 | [Limits and constraints](./reference/limitations.md) | Known constraints of the current version, including what ships but is not wired yet |
 | [A2A conformance matrix](./reference/a2a-conformance.md) | Honest position vs the A2A v1.0 spec: operations, data model, bindings, security — what interoperates and what does not |

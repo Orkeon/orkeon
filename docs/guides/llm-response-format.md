@@ -36,7 +36,7 @@ event id `101`), so a new vendor value works without a framework release.
 
 The fusion is done **once** in `LlmConfigResolver.Resolve(baseConfig, taskOverride, callOverride)`.
 Priority highest-first: call override → task override → base config. Each field is resolved
-independently (`ResponseFormat`, `Temperature`, `MaxTokens`, `TopP`, `Thinking`, `Cache`), and a
+independently (`Profile`, `ResponseFormat`, `Temperature`, `MaxTokens`, `TopP`, `Thinking`, `Cache`), and a
 `null` field on an override never erases an inherited value.
 
 | Surface | Lands in | Where it is written |
@@ -80,7 +80,8 @@ tasks:
       temperature: 0.0
 ```
 
-The `llm_override:` block accepts `response_format`, `response_schema`, `temperature`,
+The `llm_override:` block accepts `profile` (the task runs on that host LLM profile
+instead of its agent's), `response_format`, `response_schema`, `temperature`,
 `max_tokens`, `top_p` and `thinking` — the agent-level `llm:` fields minus `model` and
 `cache:`.
 

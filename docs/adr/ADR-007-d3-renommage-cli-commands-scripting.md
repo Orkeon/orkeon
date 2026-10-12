@@ -48,3 +48,9 @@ repository.
 - Historical mentions (`CHANGELOG.md`, ADR-004) keep the old name on purpose; everything
   active (code, solution, docs and FR mirrors, examples) uses the new one.
 - ORG-007 is closed by this ADR.
+
+## Amendment (2026-10-12)
+
+The Consequences' "NuGet expansion now only awaits the maintainer's product confirmation" is
+historical. Since PUB-25 `Orkeon.Cli.Commands.Scripting` is not published separately: it is
+`IsPackable=false` and ships inside the `Orkeon` umbrella package. The rename stands.

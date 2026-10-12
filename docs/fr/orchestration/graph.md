@@ -181,7 +181,7 @@ Avec un bloc graphConfig :
 2. graphConfig.circuitBreakerPreset       (valeurs de base ; "strict" si absent ou inconnu)
 
 Sans graphConfig :
-3. CircuitBreakerPolicy.Strict            (repli)
+3. CircuitBreakerPolicy.Strict            (repli : ne fournit que la durée)
 ```
 
 `graphConfig` est le seul réglage de circuit breaker d'une crew : un bloc `circuitBreaker:`, à la racine de la crew ou sur une tâche, est refusé au chargement. Quel que soit le niveau, `maxStateVisits` et `maxTransitions` non fixés sont **calculés depuis la crew** plutôt que pris dans le preset (voir [Circuit breaker](#circuit-breaker)) ; le preset fournit la durée. `maxRetryCycles` ne vient que de `graphConfig` (2 sinon).

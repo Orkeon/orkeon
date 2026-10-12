@@ -163,6 +163,8 @@ public sealed record ForeverWaitTimeout : WaitTimeout
 
 ### 3.3 Associated components (other ports)
 
+> **Design only — not built.** Of the ports below, only `IEventSchemaRegistry` exists in `src/`; `ICrewLifecycleManager`, `ICrewStateStore`, `ICrewActivator`, `IIdleDetector` and `IWaitScheduler` are not defined anywhere (see the status note at the top, and §7, §8, §11).
+
 ```csharp
 // Facade orchestrating the lifecycle transitions.
 // Called by the IIdleDetector (sleep) and the IEventHub (wake on message / timeout).
@@ -719,6 +721,8 @@ A message carrying `Message.NoDeclaredSchemaId` (`"_none"` — deliberately not 
 ## 13. C# / YAML / TypeScript parity
 
 ### 13.1 Canonical JSON schema
+
+> **Design only — not built.** `schemas/orkeon-crew-schema.json` does not exist in the repository, and nothing yet validates, generates TypeScript types or documents from it.
 
 Single source: `schemas/orkeon-crew-schema.json`, versioned in the repo. Used to:
 

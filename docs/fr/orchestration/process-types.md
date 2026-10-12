@@ -695,17 +695,20 @@ Vos tâches ont-elles des dépendances entre elles ?
 │       └── NON → Parallel
 │
 └── OUI
-    └── Une tâche instable doit-elle être relancée automatiquement ?
-        │
-        ├── NON
-        │   └── Avez-vous besoin d'un manager qui assigne et revoit ?
-        │       ├── OUI → Hierarchical
-        │       └── NON → Sequential
-        │
-        └── OUI
-            └── Relancer la même tâche, ou la confier à un pair ?
-                ├── Même tâche, bornée → Graph
-                └── Un pair, assigné par LLM → Autonomous
+    └── La concurrence suffit-elle — les tâches indépendantes ensemble, chaque vague après ses dépendances ?
+        ├── OUI → Parallel (il s'exécute par vagues de dépendances)
+        └── NON
+            └── Une tâche instable doit-elle être relancée automatiquement ?
+                │
+                ├── NON
+                │   └── Avez-vous besoin d'un manager qui assigne et revoit ?
+                │       ├── OUI → Hierarchical
+                │       └── NON → Sequential
+                │
+                └── OUI
+                    └── Relancer la même tâche, ou la confier à un pair ?
+                        ├── Même tâche, bornée → Graph
+                        └── Un pair, assigné par LLM → Autonomous
 ```
 
 ---

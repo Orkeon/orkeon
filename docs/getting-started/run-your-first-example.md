@@ -123,6 +123,7 @@ The `orkeon` CLI options you will actually reach for:
 | `--initial-context <text>` | | A free-form context string passed to the crew input. **YAML crews only** — ignored for `.ork.ts` scripts. |
 | `--inputs <json>` | | Inline JSON inputs forwarded to a script as the global `inputs` variable (`.ork.ts` path). |
 | `--inputs-file <path>` | | Same as `--inputs`, read from a JSON file. |
+| `--llm-profile <id>` | | Run on the host LLM profile `<id>` (`Llm:Profiles:<id>` in the settings or the `ORKEON_` environment) as this run's default: the `Llm` section becomes that profile, whole. An id the configuration does not define is refused with exit 1 before any host is built — see [the CLI reference](../reference/cli.md). |
 | `--llm-log` | | Capture every LLM HTTP exchange (request + response, headers + payload) as `.jsonl` under `./llm-logs`. |
 | `--llm-log-path <dir>` | | Same as `--llm-log`, but writes to `<dir>` (and implies `--llm-log`). |
 | `--validate` | | Dry-run: resolve settings, build the host and load the crew (strict tool resolution) **without** probing the LLM or running anything. Prints `VALIDATION OK/FAILED` and exits 0 / non-zero. |

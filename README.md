@@ -198,7 +198,7 @@ grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # expect: O
 sudo apt install ./orkeon_<version>_amd64.deb
 ```
 
-**macOS** — Homebrew becomes the recommended route once the `Orkeon/homebrew-tap` repository ships with the first tagged release:
+**macOS** — Homebrew becomes the recommended route once the `Orkeon/homebrew-tap` repository is published (not published yet; use the tarball meanwhile):
 
 ```bash
 brew tap orkeon/tap && brew install orkeon    # once the tap is published
@@ -235,7 +235,7 @@ Every number below is recomputed from the tree on each CI run — `bash scripts/
 | Capability | Details |
 |---|---|
 | **91 built-in tools** | File system, web scraping (AngleSharp), HTTP APIs, JSON/CSV/XML/PDF/Office (DOCX & XLSX read/write), databases, e-mail, secure code execution, RAG and semantic search, EventHub messaging, RaggableTree code analysis, delegation/collaboration — see the [tool inventory](docs/tools/inventory.md) |
-| **E-mail** | Thirteen `email_*` tools give agents a mailbox: IMAP, POP3 and SMTP through MailKit, Outlook.com / Hotmail / Microsoft 365 through Microsoft Graph, Gmail and Outlook presets, OAuth2 signed in once with `orkeon email login`. Per-account rights, a send allow-list that is closed until an operator opens it, and every message read screened for prompt injection. Live campaign against real accounts pending — start with [Give your agents a mailbox](docs/getting-started/give-your-agents-a-mailbox.md), then the [e-mail guide](docs/guides/email.md) |
+| **E-mail** | Thirteen `email_*` tools give agents a mailbox: IMAP, POP3 and SMTP through MailKit, Outlook.com / Hotmail / Microsoft 365 through Microsoft Graph, Gmail and Outlook presets, OAuth2 signed in once with `orkeon email login`. Per-account rights, a send allow-list that is closed until an operator opens it, and every message read screened for prompt injection. Gmail was campaigned against a real account (2026-10-04 app password, 2026-10-05 OAuth2) and Hotmail through Microsoft Graph (2026-10-12); Outlook over IMAP and SMTP has not been run — start with [Give your agents a mailbox](docs/getting-started/give-your-agents-a-mailbox.md), then the [e-mail guide](docs/guides/email.md) |
 | **16 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI) and MiniMax, plus two aggregators — OpenRouter (one key, a 445-model marketplace) and Mammouth AI (a subscription's included credits) — all HTTP-based, extending `HttpLlmProviderBase`; local models via Docker Model Runner, Ollama, or embedded llama.cpp — see the [local models guide](docs/guides/local-models.md) |
 | **Vision / multimodal** | Image content flows end-to-end (`MultiModalContent` → Anthropic image blocks / OpenAI `image_url` parts on the 14 OpenAI-compatible providers / Ollama `images`, for the models that see) with a VFS-backed loader; opt-in via `AddOrkeonMultiModal(...)` — see the [multimodal guide](docs/guides/multimodal.md) |
 | **6 memory providers** | Redis (vector search), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (remote REST server) — one `IMemoryProvider` port, composable decorators |
@@ -303,8 +303,8 @@ Around the core, dedicated projects cover hosting (`Orkeon.Hosting`, plus the `o
 | **Everything else** | [Documentation index](docs/INDEX.md) *(also available [in French](docs/fr/INDEX.md))* |
 
 These pages, together with the generated API reference, are published as a browsable site
-at **<https://orkeon.github.io/orkeon/>**. `docs.yml` deploys it on every `v*` tag, so the site goes
-live with the first tagged release and always documents a tagged version.
+at **<https://orkeon.github.io/orkeon/>**. `docs.yml` deploys it on every `v*` tag, so the site
+always documents a tagged version.
 
 ---
 
@@ -321,7 +321,7 @@ live with the first tagged release and always documents a tagged version.
 
 ## Project Status
 
-The current version is **1.0.0-rc.4** on .NET 10 — the V1 release candidate (`src/Directory.Build.props` is the single source of truth; the Release badge above and `git tag` say what is tagged). Recent milestones: the NuGet distribution consolidated into a single `Orkeon` package (plus `Orkeon.Tools` and a few opt-ins — see the [publication matrix](docs/reference/publication-matrix.md)); the `orkeon` CLI and the `orkeon-runners` container image with 104 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 16 — fourteen vendors, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax), plus the two aggregators OpenRouter and Mammouth AI, integrated documentation-first and awaiting their first campaign.
+The current version is **1.0.0-rc.4** on .NET 10 — the V1 release candidate (`src/Directory.Build.props` is the single source of truth; the Release badge above and `git tag` say what is tagged). Recent milestones: the NuGet distribution consolidated into a single `Orkeon` package (plus `Orkeon.Tools` and a few opt-ins — see the [publication matrix](docs/reference/publication-matrix.md)); the `orkeon` CLI and the `orkeon-runners` container image with 104 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 16 — fourteen vendors, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax), plus the two aggregators OpenRouter and Mammouth AI, integrated documentation-first and campaigned on 2026-10-07 (LLM-08).
 
 Every pull request is gated in CI:
 

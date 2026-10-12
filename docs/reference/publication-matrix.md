@@ -11,8 +11,8 @@ never drift again (OSS-011 / R8.3).
 > `Orkeon` package plus a handful of opt-ins, wired in `publish.yml` and guarded by the
 > `scripts/check-package-closure.py` gate. Its first six packages went out with
 > `1.0.0-rc.3` (2026-09-09); `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework` and
-> `Orkeon.Hosting.Aspire` joined the lineup on 2026-09-11, so their first NuGet.org push is
-> the first tag cut after that date — nine packages in all. Trusted Publishing to NuGet.org
+> `Orkeon.Hosting.Aspire` joined the lineup on 2026-09-11 and went out to NuGet.org with
+> `1.0.0-rc.4` (seen on api.nuget.org on 2026-10-12) — nine packages in all from rc.4. Trusted Publishing to NuGet.org
 > is **operational** — the discontinued per-layer packages `Orkeon.Domain` /
 > `Orkeon.Application` / `Orkeon.Infrastructure` shipped `1.0.0-rc.1` (2026-08-18) and
 > `1.0.0-rc.2` (2026-08-25) through it, and were unlisted on 2026-09-07 (see the owner
@@ -35,7 +35,7 @@ runtimes, a pre-release upstream).
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Opt-in ONNX cross-encoder reranker pair (runtime + embedded int8 weights) — pushed together; native onnxruntime payload. `Orkeon.Rag.Onnx` depends on `Orkeon`; `Orkeon.Rag.Onnx.Model` is dependency-free (embedded resources only) and is referenced alongside it. |
 | `Orkeon.Tools.Embeddings.Local` | Local on-device embeddings (BGE-micro-v2 ONNX). Stays **outside the umbrella** because it carries a pre-release SmartComponents dependency from an archived upstream — putting it in `Orkeon` would force that pre-release on every consumer. Depends on `Orkeon`. |
 | `Orkeon.Scripting.Cli` | The `orkeon` dotnet tool (`PackAsTool`; the PackageId is the install command — ADR-007). Publishable on NuGet.org since the iOS/Android onnxruntime natives a CLI tool can never load were excluded: 262.5 MB → 137.6 MB, under the nuget.org size limit. |
-| `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. In the NuGet.org lineup since 2026-09-11, so its first push there is the first tag cut after that date: `1.0.0-rc.3` reached GitHub Packages only (the NuGet.org push loop was a fixed list of six ids) and was inert anyway, compiled against a Roslyn newer than the SDK's compiler. |
+| `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. In the NuGet.org lineup since 2026-09-11 and pushed there with `1.0.0-rc.4`: `1.0.0-rc.3` reached GitHub Packages only (the NuGet.org push loop was a fixed list of six ids) and was inert anyway, compiled against a Roslyn newer than the SDK's compiler. |
 | `Orkeon.Interop.AgentFramework` | The bridge to Microsoft Agent Framework, both ways: an Orkeon crew as a MAF `AIAgent` (`CrewAgent`), a MAF `AIAgent` as the brain (`WithAgentFrameworkAgent`) or as a tool (`WithAgentFrameworkTool`) of an Orkeon agent. Separate from `Orkeon` because the `Microsoft.Agents.AI.Abstractions` dependency is a consumer's choice. Depends on `Orkeon`. |
 | `Orkeon.Hosting.Aspire` | The .NET Aspire hosting integration: `AddOrkeonHost` (the `orkeon-host` daemon) and `AddOrkeonCrewRun` (one `orkeon run`) as AppHost resources, `WithOrkeonModel` / `WithOrkeonSetting` for the `ORKEON_` environment, OTLP export wired so the dashboard reads the run. Separate from `Orkeon` because `Aspire.Hosting` is an AppHost's choice. Depends on `Orkeon`. |
 

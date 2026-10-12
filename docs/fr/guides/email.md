@@ -850,7 +850,7 @@ brancher, les codes que le CLI traduit en codes de sortie.
 - **Chaque compte est visible de chaque crew et de chaque script qui résout le même fichier de
   réglages** — voir le modèle de menace dans [SECURITY.fr.md](../../../SECURITY.fr.md).
 - **Outlook en IMAP et SMTP n'a pas été exécuté contre un vrai compte** (MAIL-07) : Gmail et
-  Hotmail via Microsoft Graph sont campagnés — voir ci-dessous.
+  Hotmail via Microsoft Graph sont campagnés — voir les deux sections de campagne ci-dessous.
 
 ## Ce que la campagne Gmail a établi
 
@@ -883,3 +883,10 @@ n'est pas une adresse — disent quoi faire. Ce qu'elle a laissé ouvert :
 - **La corbeille n'est pas vidée** : `permanent: true` demande le droit `Purge`, que le compte
   de campagne n'accordait pas. Ce qu'une crew supprime reste dans la corbeille jusqu'à la purge
   à trente jours de Gmail, ou jusqu'à un compte qui accorde `Purge`.
+
+## Ce que la campagne Hotmail a établi
+
+Le propriétaire a joué Hotmail via Microsoft Graph sur un vrai compte le 2026-10-12 et a
+déclaré la campagne complète, sans écart. Le détail de cette passe n'a pas été consigné : il
+n'existe donc pas ici de tableau par contrôle, contrairement à Gmail. Outlook en IMAP et SMTP
+reste hors campagne.
