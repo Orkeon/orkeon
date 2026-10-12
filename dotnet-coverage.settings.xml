@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  dotnet-coverage settings shared by .github/workflows/coverage.yml and scripts/sonar-analyze.{sh,ps1}.
+  dotnet-coverage instruments every module that ships symbols, so packages published with their
+  PDB (Aspire.Hosting, StackExchange.Redis, RESPite) were measured too: some 126,000 lines run only
+  through Orkeon's code, which pulled the figure from about 84 % down to about 61 %. Only Orkeon's
+  own assemblies are measured: Orkeon.*, plus the two executables named otherwise (orkeon, the dotnet
+  tool; orkeon-host, the daemon). Test assemblies and their shared fixtures are left out.
+-->
+<Configuration>
+  <CodeCoverage>
+    <ModulePaths>
+      <Include>
+        <ModulePath>.*[\\/]Orkeon\.[^\\/]*\.(dll|exe)$</ModulePath>
+        <ModulePath>.*[\\/]orkeon(-host)?\.(dll|exe)$</ModulePath>
+      </Include>
+      <Exclude>
+        <ModulePath>.*\.Tests\.dll$</ModulePath>
+        <ModulePath>.*[\\/]Orkeon\.Tests\.Shared\.dll$</ModulePath>
+      </Exclude>
+    </ModulePaths>
+    <IncludeTestAssembly>false</IncludeTestAssembly>
+  </CodeCoverage>
+</Configuration>

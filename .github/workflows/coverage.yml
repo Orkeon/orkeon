@@ -8,7 +8,8 @@
 # dotnet-coverage, not --collect: the test projects run on Microsoft.Testing.Platform
 # (global.json), which does not implement VSTest data collectors -- the collector flag
 # is rejected, not ignored. dotnet-coverage profiles the test processes from outside.
-# Same invocation as scripts/sonar-analyze.sh, minus SonarQube.
+# Same invocation as scripts/sonar-analyze.sh, minus SonarQube; both read the modules to
+# measure from dotnet-coverage.settings.xml.
 name: Coverage
 on:
   push:
@@ -49,12 +50,16 @@ jobs:
         run: |
           dotnet tool install --tool-path .tools dotnet-coverage --version 18.11.0
           dotnet tool install --tool-path .tools dotnet-reportgenerator-globaltool --version 5.5.11
+      # dotnet-coverage.settings.xml measures Orkeon's own assemblies only: dotnet-coverage would
+      # otherwise instrument every package that ships its PDB (Aspire.Hosting,
+      # StackExchange.Redis...) and count their lines in the figure.
       # The same filter as ci.yml's test step: the Integration and Slow categories need
       # Testcontainers and the ONNX runtime and run in integration.yml. The figure this
       # produces is therefore "coverage by the unit and fast suites" -- the README says so.
       - name: Run the unit and fast suites under dotnet-coverage
         run: |
           .tools/dotnet-coverage collect \
+            --settings dotnet-coverage.settings.xml \
             --output coverage/coverage.cobertura.xml \
             --output-format cobertura \
             -- dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"

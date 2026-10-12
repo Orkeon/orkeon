@@ -787,7 +787,9 @@ try {
     # .NOTES). An exclusion filter never matches zero tests in a module (exit 8).
     Log-Info "Running the unit and fast suites with code coverage (Debug - optimized code does not map to lines; Integration and Slow categories excluded)..."
     $CoverageFile = Join-Path $CoverageDir "coverage.cobertura.xml"
+    # dotnet-coverage.settings.xml keeps Orkeon's own assemblies only (see its header).
     dotnet-coverage collect `
+        --settings dotnet-coverage.settings.xml `
         --output $CoverageFile `
         --output-format cobertura `
         -- dotnet test $SolutionPath --filter "Category!=Integration&Category!=Slow"

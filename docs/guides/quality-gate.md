@@ -142,6 +142,8 @@ overwritten on the next script run.
   `coverage.yml` (`--filter "Category!=Integration&Category!=Slow"`, §8). The Integration
   (Testcontainers: Docker and gigabytes of images) and Slow categories are not run, so the
   tests never need Docker and the local figure covers the same scope as the public one.
+  Only Orkeon's own assemblies are measured (`dotnet-coverage.settings.xml`, shared with
+  `coverage.yml`): `Orkeon.*`, `orkeon` and `orkeon-host`, without the test assemblies.
   Run those categories on their own:
   `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`.
 
@@ -153,7 +155,9 @@ coverage figure that *can* be checked comes from the
 [Coverage workflow](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml)
 (`.github/workflows/coverage.yml`): on every push to `main` and weekly, it runs the unit and
 fast suites — the same `Category!=Integration&Category!=Slow` filter as `ci.yml` — under
-`dotnet-coverage` (pinned), refuses an empty measurement, writes the ReportGenerator
+`dotnet-coverage` (pinned) on Orkeon's own assemblies only (`dotnet-coverage.settings.xml`: packages
+that ship their PDB, such as Aspire.Hosting or StackExchange.Redis, are not measured), refuses an
+empty measurement, writes the ReportGenerator
 summary to the run page and keeps `coverage.cobertura.xml` plus an HTML report as the
 `coverage` artefact (90 days). It is *line coverage by the unit and fast suites*; the
 Integration and Slow categories run in `integration.yml` without coverage. The README
@@ -171,3 +175,4 @@ claim.
 | 2026-09-05 | Measurement recorded in §1: the gate is OK on every condition (0 bugs, 17/17 hotspots reviewed, new code at 78.1 %); thresholds unchanged |
 | 2026-09-11 | Public coverage figure moved to the `coverage.yml` workflow (§8); the SonarQube report stays local |
 | 2026-10-01 | The analysis scripts run the unit and fast suites only, with the `coverage.yml` filter (GAP-16): they no longer pull Docker images for the Integration tests nor swallow their failures |
+| 2026-10-12 | Coverage measures Orkeon's own assemblies only (`dotnet-coverage.settings.xml`): Aspire.Hosting, StackExchange.Redis and RESPite, instrumented because they ship their PDB, had pulled the `coverage.yml` figure from about 84 % down to about 61 % |
