@@ -15,7 +15,14 @@ public sealed class FakeDirectoryProbe : IDirectoryProbe
     /// <summary>When set, <see cref="Create"/> throws what it returns instead of creating — the shape of a disk that refuses.</summary>
     public Func<string, Exception>? CreateFault { get; init; }
 
-    public bool Exists(string path) => Directories.Contains(path);
+    /// <summary>How many times <see cref="Exists"/> was asked about each path.</summary>
+    public Dictionary<string, int> ExistsCalls { get; } = new(StringComparer.Ordinal);
+
+    public bool Exists(string path)
+    {
+        ExistsCalls[path] = ExistsCalls.GetValueOrDefault(path) + 1;
+        return Directories.Contains(path);
+    }
 
     public void Create(string path)
     {

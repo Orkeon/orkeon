@@ -169,12 +169,13 @@ public sealed record MountAutoInjection
     /// logging is off. Mirrors <c>RunCommandOptions.ResolvedLlmLogPath</c>, including its
     /// default directory name.
     /// </summary>
-    private static string? ResolveLlmLogDirectory(RunLaunchOptions options)
+    internal static string? ResolveLlmLogDirectory(RunLaunchOptions options, string? baseDirectory = null)
     {
         if (!options.LlmLogEnabled && string.IsNullOrWhiteSpace(options.LlmLogPath))
             return null;
 
-        return FullPath(string.IsNullOrWhiteSpace(options.LlmLogPath) ? "llm-logs" : options.LlmLogPath);
+        var path = string.IsNullOrWhiteSpace(options.LlmLogPath) ? "llm-logs" : options.LlmLogPath;
+        return FullPath(baseDirectory is null ? path : Path.Combine(baseDirectory, path));
     }
 
     private static string DirectoryOf(string path) => Path.GetDirectoryName(FullPath(path)) ?? FullPath(path);
@@ -209,6 +210,13 @@ public sealed record MountAutoInjection
 /// </summary>
 public static class MountOverrideSemantics
 {
+    /// <summary>The folder the run writes its LLM exchange logs to, or null when logging is off.</summary>
+    public static string? LlmLogFolderOf(RunLaunchOptions options, string launchDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return MountAutoInjection.ResolveLlmLogDirectory(options, launchDirectory);
+    }
+
     /// <summary>Configuration path of the mount array.</summary>
     public const string ConfigurationSection = ConfigurationKeys.FileSystemMounts;
 

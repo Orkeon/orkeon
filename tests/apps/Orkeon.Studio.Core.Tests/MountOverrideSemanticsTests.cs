@@ -299,4 +299,32 @@ public sealed class MountOverrideSemanticsTests
         // entries the runner will find, which the arguments alone do not know.
         Assert.Equal("--mount", message.Path);
     }
+
+    [Fact]
+    [Trait("BR", "BR-10")]
+    public void ShouldResolveTheDefaultLogFolderAgainstTheLaunchDirectory_WhenNoLogPathIsSet()
+    {
+        var launchDirectory = Path.GetFullPath("/srv/team");
+
+        var folder = MountOverrideSemantics.LlmLogFolderOf(
+            new RunLaunchOptions { LlmLogEnabled = true }, launchDirectory);
+
+        Assert.Equal(Path.Combine(launchDirectory, "llm-logs"), folder);
+        Assert.Null(MountOverrideSemantics.LlmLogFolderOf(new RunLaunchOptions(), launchDirectory));
+    }
+
+    [Fact]
+    [Trait("BR", "BR-10")]
+    public void ShouldResolveTheConfiguredLogFolder_WhenALogPathIsSet()
+    {
+        var launchDirectory = Path.GetFullPath("/srv/team");
+
+        var relative = MountOverrideSemantics.LlmLogFolderOf(
+            new RunLaunchOptions { LlmLogPath = "journals" }, launchDirectory);
+        var absolute = MountOverrideSemantics.LlmLogFolderOf(
+            new RunLaunchOptions { LlmLogEnabled = true, LlmLogPath = Path.GetFullPath("/var/log/orkeon") }, launchDirectory);
+
+        Assert.Equal(Path.Combine(launchDirectory, "journals"), relative);
+        Assert.Equal(Path.GetFullPath("/var/log/orkeon"), absolute);
+    }
 }

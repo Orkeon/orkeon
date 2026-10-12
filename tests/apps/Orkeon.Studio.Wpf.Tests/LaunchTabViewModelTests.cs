@@ -1594,6 +1594,206 @@ public sealed class LaunchScreenFacetsTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    [Trait("BR", "UC-04")]
+    public async Task ShouldShowTheLogsButton_WhileARunHangsWithoutAResult()
+    {
+        var launcher = new FakeProcessLauncher();
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = new FakeTargetProbe().WithFile("/crews/team.yaml"),
+            Directories = new FakeDirectoryProbe(),
+            SettingsStore = new FakeAppSettingsStore(),
+            ShellOpener = new RecordingShellOpener(),
+        });
+        tab.Target.Select("/crews/team.yaml");
+        bool? running = null, shows = null, hasResult = null;
+        launcher.WhileRunning = () =>
+        {
+            running = tab.IsRunning;
+            shows = tab.ShowsOpenLogs;
+            hasResult = tab.HasResult;
+        };
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(running);
+        Assert.False(hasResult);
+        Assert.True(shows);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-10")]
+    public async Task ShouldRefreshTheLogsReason_WhenTheFolderAppearsDuringTheRun()
+    {
+        var launcher = new FakeProcessLauncher();
+        var directories = new FakeDirectoryProbe();
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = new FakeTargetProbe().WithFile("/crews/team.yaml"),
+            Directories = directories,
+            SettingsStore = new FakeAppSettingsStore(),
+            ShellOpener = new RecordingShellOpener(),
+        });
+        tab.Target.Select("/crews/team.yaml");
+        tab.Options.LlmLogEnabled = true;
+        var raised = new List<string?>();
+        tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        bool? running = null, before = null, canOpen = null;
+        string? reasonBefore = null, reasonAfter = "unset";
+        var raisedDuring = false;
+        launcher.WhileRunning = () =>
+        {
+            running = tab.IsRunning;
+            before = tab.OpenLogsCommand.CanExecute(null);
+            reasonBefore = tab.OpenLogsUnavailableReason;
+            directories.Directories.Add(DefaultLogFolder);
+            raised.Clear();
+            launcher.Emit(new ProcessOutputLine(ProcessOutputChannel.StandardOutput, "next line", DateTimeOffset.UnixEpoch));
+            reasonAfter = tab.OpenLogsUnavailableReason;
+            canOpen = tab.OpenLogsCommand.CanExecute(null);
+            raisedDuring = raised.Contains(nameof(LaunchTabViewModel.OpenLogsUnavailableReason));
+        };
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(running);
+        Assert.False(before);
+        Assert.NotNull(reasonBefore);
+        Assert.True(canOpen);
+        Assert.Null(reasonAfter);
+        Assert.True(raisedDuring);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-10")]
+    public async Task ShouldNotProbeTheLogsFolderPerStreamedDelta_NorAfterItIsFound()
+    {
+        var launcher = new FakeProcessLauncher();
+        var directories = new FakeDirectoryProbe();
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = new FakeTargetProbe().WithFile("/crews/team.yaml"),
+            Directories = directories,
+            SettingsStore = new FakeAppSettingsStore(),
+            ShellOpener = new RecordingShellOpener(),
+        });
+        tab.Target.Select("/crews/team.yaml");
+        tab.Options.LlmLogEnabled = true;
+        // What the view does: re-read the reason and the command each time either announces a change.
+        tab.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LaunchTabViewModel.OpenLogsUnavailableReason))
+                _ = tab.OpenLogsUnavailableReason;
+        };
+        tab.OpenLogsCommand.CanExecuteChanged += (_, _) => _ = tab.OpenLogsCommand.CanExecute(null);
+        int Calls() => directories.ExistsCalls.GetValueOrDefault(DefaultLogFolder);
+        void Delta(int n) => launcher.Emit(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput,
+            "{\"v\":2,\"seq\":" + n + ",\"ts\":\"2026-09-24T10:29:02Z\",\"kind\":\"llm.delta\",\"text\":\"x\"}"));
+        int deltaCalls = -1, afterFound = -1, finalCalls = -1;
+        bool? canOpen = null;
+        launcher.WhileRunning = () =>
+        {
+            launcher.Emit(new ProcessOutputLine(ProcessOutputChannel.StandardOutput, "first line", DateTimeOffset.UnixEpoch));
+            var baseline = Calls();
+            for (var i = 0; i < 50; i++)
+                Delta(i);
+            deltaCalls = Calls() - baseline;
+
+            directories.Directories.Add(DefaultLogFolder);
+            launcher.Emit(new ProcessOutputLine(ProcessOutputChannel.StandardOutput, "folder appeared", DateTimeOffset.UnixEpoch));
+            canOpen = tab.OpenLogsCommand.CanExecute(null);
+            afterFound = Calls();
+            for (var i = 0; i < 20; i++)
+                Delta(100 + i);
+            launcher.Emit(new ProcessOutputLine(ProcessOutputChannel.StandardOutput, "later line", DateTimeOffset.UnixEpoch));
+            finalCalls = Calls() - afterFound;
+        };
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, deltaCalls);
+        Assert.True(canOpen);
+        Assert.Equal(0, finalCalls);
+    }
+
+    private static string DefaultLogFolder => Path.GetFullPath(Path.Combine("/crews", "llm-logs"));
+
+    [Fact]
+    [Trait("BR", "UC-04")]
+    public void ShouldOpenTheTeamsLogFolder_WhenTheButtonIsClicked()
+    {
+        var opener = new RecordingShellOpener();
+        var tab = Build(
+            new FakeTargetProbe().WithFile("/crews/team.yaml"),
+            shellOpener: opener,
+            directories: new FakeDirectoryProbe(DefaultLogFolder));
+        tab.Target.Select("/crews/team.yaml");
+        tab.Options.LlmLogEnabled = true;
+
+        Assert.True(tab.OpenLogsCommand.CanExecute(null));
+        Assert.Null(tab.OpenLogsUnavailableReason);
+        tab.OpenLogsCommand.Execute(null);
+
+        Assert.Equal([DefaultLogFolder], opener.Opened);
+    }
+
+    [Fact]
+    [Trait("BR", "UC-04")]
+    public void ShouldDisableTheButtonWithItsReason_WhenTheLogFolderDoesNotExist()
+    {
+        var opener = new RecordingShellOpener();
+        var tab = Build(new FakeTargetProbe().WithFile("/crews/team.yaml"), shellOpener: opener);
+        tab.Target.Select("/crews/team.yaml");
+        tab.Options.LlmLogEnabled = true;
+
+        Assert.False(tab.OpenLogsCommand.CanExecute(null));
+        Assert.Equal(
+            "The logs folder does not exist yet: it is created at the first logged call.",
+            tab.OpenLogsUnavailableReason);
+        Assert.Empty(opener.Opened);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-10")]
+    public void ShouldResolveTheLogFolderAgainstTheInheritedDirectory_WhenTheTargetHasNone()
+    {
+        var inherited = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "llm-logs"));
+        var opener = new RecordingShellOpener();
+        var tab = Build(
+            new FakeTargetProbe().WithFile("team.yaml"),
+            shellOpener: opener,
+            directories: new FakeDirectoryProbe(inherited));
+        tab.Target.Select("team.yaml");
+        tab.Options.LlmLogEnabled = true;
+
+        Assert.Null(tab.Target.Target?.WorkingDirectory);
+        Assert.True(tab.OpenLogsCommand.CanExecute(null));
+        Assert.Null(tab.OpenLogsUnavailableReason);
+        tab.OpenLogsCommand.Execute(null);
+
+        Assert.Equal([inherited], opener.Opened);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-10")]
+    public void ShouldDisableTheButton_WhenLoggingIsOff_EvenIfAnOldFolderExists()
+    {
+        var tab = Build(
+            new FakeTargetProbe().WithFile("/crews/team.yaml"),
+            shellOpener: new RecordingShellOpener(),
+            directories: new FakeDirectoryProbe(DefaultLogFolder));
+        tab.Target.Select("/crews/team.yaml");
+        tab.Options.LlmLogEnabled = false;
+        tab.Options.LlmLogPath = null;
+
+        Assert.False(tab.OpenLogsCommand.CanExecute(null));
+        Assert.Equal("LLM exchange logging is off for this launch.", tab.OpenLogsUnavailableReason);
+    }
 }
 
 /// <summary>The history cards (audit 06/15): plain-language facets on each stored launch.</summary>

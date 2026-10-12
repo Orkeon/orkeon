@@ -475,6 +475,15 @@ public static class StudioStringKeys
     /// <summary>"Open the result" — the Launch screen's button once a run finished, one writable folder.</summary>
     public const string RunOpenResult = "Studio.Run.OpenResult";
 
+    /// <summary>"Open logs folder" — the Launch screen's button opening the folder the team writes its LLM exchange logs to.</summary>
+    public const string RunOpenLogs = "Studio.Run.OpenLogs";
+
+    /// <summary>Why the logs button is disabled: the folder is created at the first logged call.</summary>
+    public const string RunOpenLogsNotYet = "Studio.Run.OpenLogsNotYet";
+
+    /// <summary>Why the logs button is disabled: logging is off for this launch.</summary>
+    public const string RunOpenLogsLoggingOff = "Studio.Run.OpenLogsLoggingOff";
+
     /// <summary>"Open the {0} result folders" — the same button when the run could write to several folders.</summary>
     public const string RunOpenResults = "Studio.Run.OpenResults";
 
@@ -1847,6 +1856,12 @@ public static class StudioStringKeys
     /// <summary>"{0} days" — a threshold of the archive suggestion in Settings › Studio (STUDIO-32, DB-1).</summary>
     public const string SettingsArchiveSuggestionDays = "Studio.Settings.ArchiveSuggestionDays";
 
+    /// <summary>"Filter models" — the filter box over the model names a successful connection test found (UC-01).</summary>
+    public const string SettingsModelsFilter = "Studio.Settings.ModelsFilter";
+
+    /// <summary>"This provider publishes no model list: type the model's name." — the note after a successful test that found no names (UC-01).</summary>
+    public const string SettingsNoModelList = "Studio.Settings.NoModelList";
+
     /// <summary>"Teams folder" — the card of Settings › Studio naming the teams root in force (STUDIO-61).</summary>
     public const string SettingsTeamsRootTitle = "Studio.Settings.TeamsRootTitle";
 
@@ -2057,6 +2072,33 @@ public static class StudioStringKeys
     /// <summary>"On"</summary>
     public const string ProfileThinkingOn = "Studio.Settings.ProfileThinkingOn";
 
+    /// <summary>"Call mode"</summary>
+    public const string SettingsCallMode = "Studio.Settings.CallMode";
+
+    /// <summary>"Auto"</summary>
+    public const string SettingsCallModeAuto = "Studio.Settings.CallModeAuto";
+
+    /// <summary>"Buffer"</summary>
+    public const string SettingsCallModeBuffer = "Studio.Settings.CallModeBuffer";
+
+    /// <summary>"Stream"</summary>
+    public const string SettingsCallModeStream = "Studio.Settings.CallModeStream";
+
+    /// <summary>"Stream"</summary>
+    public const string StatusBarModeStream = "Studio.Shell.StatusModeStream";
+
+    /// <summary>Status bar token scope: the whole Studio session.</summary>
+    public const string StatusBarScopeSession = "Studio.Shell.StatusScopeSession";
+
+    /// <summary>Status bar token scope: the execution shown.</summary>
+    public const string StatusBarScopeExecution = "Studio.Shell.StatusScopeExecution";
+
+    /// <summary>"Buffer"</summary>
+    public const string StatusBarModeBuffer = "Studio.Shell.StatusModeBuffer";
+
+    /// <summary>"Buffer (fallback)"</summary>
+    public const string StatusBarModeFallback = "Studio.Shell.StatusModeFallback";
+
     /// <summary>"Off"</summary>
     public const string ProfileThinkingOff = "Studio.Settings.ProfileThinkingOff";
 
@@ -2252,6 +2294,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunBlockedUnknownMountId] =
             "This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders.",
         [StudioStringKeys.RunOpenResult] = "Open the result",
+        [StudioStringKeys.RunOpenLogs] = "Open logs folder",
+        [StudioStringKeys.RunOpenLogsNotYet] = "The logs folder does not exist yet: it is created at the first logged call.",
+        [StudioStringKeys.RunOpenLogsLoggingOff] = "LLM exchange logging is off for this launch.",
         [StudioStringKeys.RunOpenResults] = "Open the {0} result folders",
         [StudioStringKeys.RunCopyCommand] = "Copy the command",
         [StudioStringKeys.RunCommandCopied] = "Command copied",
@@ -2921,6 +2966,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsArchivedOn] = "Archived on {0}",
         [StudioStringKeys.TeamsLastRunDate] = "Last run: {0}",
         [StudioStringKeys.SettingsArchiveSuggestionDays] = "{0} days",
+        [StudioStringKeys.SettingsModelsFilter] = "Filter models",
+        [StudioStringKeys.SettingsNoModelList] = "This provider publishes no model list: type the model's name.",
         [StudioStringKeys.SettingsTeamsRootTitle] = "Teams folder",
         [StudioStringKeys.SettingsTeamsRootHint] = "Where Studio lists and creates its teams. A change applies at the next start. The run TUI reads the variable only.",
         [StudioStringKeys.SettingsTeamsRootSourceEnvironment] = "set by {0}",
@@ -2992,6 +3039,13 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileThinkingProviderDefault] = "Provider default",
         [StudioStringKeys.ProfileThinkingOn] = "On",
         [StudioStringKeys.ProfileThinkingOff] = "Off",
+        [StudioStringKeys.SettingsCallMode] = "Call mode",
+        [StudioStringKeys.SettingsCallModeAuto] = "Auto",
+        [StudioStringKeys.SettingsCallModeBuffer] = "Buffer",
+        [StudioStringKeys.SettingsCallModeStream] = "Stream",
+        [StudioStringKeys.StatusBarModeStream] = "Stream",
+        [StudioStringKeys.StatusBarModeBuffer] = "Buffer",
+        [StudioStringKeys.StatusBarModeFallback] = "Buffer (fallback)",
         [StudioStringKeys.ProfileThinkingHint] = "Provider default: the model decides — Kimi K2.6, DeepSeek V4 and GLM think unless told not to. Off answers faster and cheaper; On forces the reasoning pass where the model has the switch.",
         [StudioStringKeys.ProfileThinkingEffortLabel] = "Reasoning effort",
         [StudioStringKeys.ProfileThinkingEffortHint] = "Empty: the provider's default. low / medium / high (max on some models), for the models that take the hint.",
