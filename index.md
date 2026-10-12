@@ -4,9 +4,13 @@ title: Orkeon
 
 > 🇫🇷 [Version française](index.fr.md)
 
-# <img src="docs/assets/orkeon-mascot.png" alt="Orkeon mascot — a curious chameleon" width="96" align="absmiddle"> Orkeon
+# Orkeon
 
 **AI agent teams that stay inside the lines — every file, endpoint and budget an agent may touch is declared, then enforced. Described in YAML, TypeScript (`.ork.ts`) or C#; one .NET runtime executes all three.**
+
+<p align="center">
+  <img src="docs/assets/orkeon-mascot.png" alt="Orkeon mascot — a curious chameleon" width="320">
+</p>
 
 An agent let loose on a repository writes where it should not, because nothing is there to
 stop it. Orkeon puts the boundary in front of the model: a virtual file system where every

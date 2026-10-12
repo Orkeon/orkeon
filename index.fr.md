@@ -4,9 +4,13 @@ title: Orkeon
 
 > 🇬🇧 [English version](index.md)
 
-# <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="96" align="absmiddle"> Orkeon
+# Orkeon
 
 **Des équipes d'agents IA qui restent dans les clous — chaque fichier, endpoint et budget qu'un agent peut toucher est déclaré, puis appliqué. Décrites en YAML, TypeScript (`.ork.ts`) ou C# ; un seul runtime .NET exécute les trois.**
+
+<p align="center">
+  <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="320">
+</p>
 
 Un agent lâché sur un dépôt écrit là où il ne devrait pas, parce que rien n'est là pour
 l'arrêter. Orkeon place la frontière devant le modèle : un système de fichiers virtuel où
