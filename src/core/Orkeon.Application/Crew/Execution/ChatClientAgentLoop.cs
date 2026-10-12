@@ -556,19 +556,10 @@ internal sealed class ChatClientAgentLoop
     {
         // MaxIter path: the loop exhausted its budget entirely on tool calls and never produced
         // a final text turn. Give the model one last chance with tool_choice=none so it can
-        // synthesize the deliverable from the context it has already gathered.
-        var lastAssistantText = messages
-            .LastOrDefault(m => m.Role == ChatRole.Assistant)?.Text ?? string.Empty;
-
-        if (!string.IsNullOrWhiteSpace(lastAssistantText))
-        {
-            ExecutionLog.LogMaxIterationsReached(_logger, maxIter, taskId);
-            return new AgentLoopResult(lastAssistantText, totalTokensUsed,
-                AgentExitReason.MaxIterationsReached, IterationsUsed: maxIter,
-                LastError: "Agent did not produce a final answer within the allowed iterations");
-        }
-
-        ExecutionLog.LogEmptyFinalMessageRetrying(_logger, agent.Role, maxIter, DescribeMaxTokens(options));
+        // synthesize the deliverable from the context it has already gathered. The text of the
+        // last assistant turn is never taken as the answer: it is the preamble of a tool call
+        // ("Mail sent. Now the log:") or a tool-call-shaped answer, not a deliverable.
+        ExecutionLog.LogMaxIterationsSynthesizing(_logger, agent.Role, maxIter);
 
         (string Text, int Tokens) retry;
         try

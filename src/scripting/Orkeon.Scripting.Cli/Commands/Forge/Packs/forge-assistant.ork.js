@@ -94,6 +94,9 @@ function stableHeader() {
     lines.push("  never the goal sentence. It becomes the team's folder name.");
     lines.push("- Small is right: two or three agents solve most problems. One clear role");
     lines.push("  and goal per agent; tasks phrased as work, not as prompts.");
+    lines.push("- maxIterations: leave it out (the engine's default fits most agents). When you");
+    lines.push("  set it, count one iteration per tool call, one per retry and one for the");
+    lines.push("  final answer — never below 6.");
     lines.push("- If errors are listed below, fix exactly those — change nothing else —");
     lines.push("  and submit again. Do not converse in this phase.");
   }
@@ -135,6 +138,7 @@ function stableHeader() {
     for (var t = 0; t < input.crewTools.length; t++)
       lines.push("- " + input.crewTools[t].name + ": " + (input.crewTools[t].description || ""));
     lines.push("Internal messaging (post_message, any client:// address) never sends an e-mail: to send or prepare a mail, use email_send or email_draft.");
+    lines.push("A task that sends mail names each recipient by e-mail address only, and names no account and no client:// address: the mail tools use the account the operator configured.");
   }
 
   // The use case the user started from (STUDIO-40): its team, as a model of structure. Right

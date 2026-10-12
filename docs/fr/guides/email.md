@@ -613,6 +613,10 @@ sur une boîte fictive.
   autorise tout ; le manque apparaît au lancement de l'équipe promue.
 - **L'équipe promue n'est pas simulée.** Le procès appartient au banc, pas à l'équipe : une fois
   promue, elle agit sur le compte configuré, sous ses droits et ses garde-fous.
+- **Une tâche de mail nomme ses destinataires par adresse.** La conception refuse un plan qui
+  demande à l'agent d'envoyer vers une adresse `client://`, et attend l'adresse e-mail de chaque
+  destinataire, sans nom de compte : les outils de mail prennent alors le compte que l'opérateur
+  a configuré.
 
 ## Les commandes `orkeon email`
 

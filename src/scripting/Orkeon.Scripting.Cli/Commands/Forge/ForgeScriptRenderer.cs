@@ -81,7 +81,7 @@ internal static class ForgeScriptRenderer
 
         if (agent.AllowDelegation is { } delegation)
             script.Append("    .allowDelegation(").Append(delegation ? "true" : "false").Append(")\n");
-        if (agent.MaxIterations is { } iterations)
+        if (agent.EffectiveMaxIterations is { } iterations)
             script.Append("    .maxIterations(").Append(iterations).Append(")\n");
         script.Append("    .build();\n");
     }

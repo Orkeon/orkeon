@@ -581,6 +581,9 @@ tool, configured account or not. A try never touches a real mailbox: the bench e
   everything; the missing account shows up when the promoted crew is launched.
 - **The promoted crew is not simulated.** The trial belongs to the bench, not to the crew:
   once promoted, the crew acts on the configured account under its rights and guards.
+- **A mail task names its recipients by address.** The design refuses a plan whose mailing
+  agent is told to write to a `client://` address, and asks for each recipient's e-mail address
+  with no account named: the mail tools then use the account the operator configured.
 
 ## The `orkeon email` commands
 

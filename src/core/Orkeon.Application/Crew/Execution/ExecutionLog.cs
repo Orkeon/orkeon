@@ -84,6 +84,11 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}] produced empty final message after {Iterations} iterations (max_tokens {MaxTokens}); retrying once without tools — a reasoning model needs Llm:MaxTokens 16384 or more, and the retry cannot call tools")]
     internal static partial void LogEmptyFinalMessageRetrying(ILogger logger, object agentRole, int iterations, string maxTokens);
 
+    // The iteration budget went to tool calls: the tool-free turn that follows asks for the
+    // deliverable, whatever text came along with the last tool call.
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}] spent its {Iterations} iterations on tool calls; asking once more, without tools, for the final answer")]
+    internal static partial void LogMaxIterationsSynthesizing(ILogger logger, object agentRole, int iterations);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}] produced no final answer for task {TaskId}, even after the tool-free retry: the task fails. Raise Llm:MaxTokens for a reasoning model (16384 or more)")]
     internal static partial void LogEmptyFinalAnswer(ILogger logger, object agentRole, object taskId);
 

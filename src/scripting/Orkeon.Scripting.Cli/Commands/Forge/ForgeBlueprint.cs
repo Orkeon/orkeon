@@ -55,9 +55,23 @@ internal sealed record ForgeBlueprintAgent
     [JsonPropertyName("allowDelegation")]
     public bool? AllowDelegation { get; init; }
 
+    /// <summary>
+    /// The least iteration cap a forged agent runs with: a tool call, a retry after a refusal,
+    /// the record of what was done and the final answer still fit. A plan capping its agent at
+    /// 3 iterations used them all on a mail send, its retry and a log write (2026-10-12).
+    /// </summary>
+    public const int MinIterations = 6;
+
     /// <summary>Iteration cap of the agent's own loop.</summary>
     [JsonPropertyName("maxIterations")]
     public int? MaxIterations { get; init; }
+
+    /// <summary>
+    /// The cap the team runs with: the plan's, raised to <see cref="MinIterations"/>; null when
+    /// the plan sets none, which keeps the engine's default.
+    /// </summary>
+    [JsonIgnore]
+    public int? EffectiveMaxIterations => MaxIterations is { } iterations ? Math.Max(iterations, MinIterations) : null;
 }
 
 /// <summary>One task of the plan.</summary>
@@ -198,7 +212,33 @@ internal sealed record ForgeBlueprint
             ValidateManager(errors, agentKeys);
 
         for (var i = 0; i < (Tasks?.Count ?? 0); i++)
+        {
             ValidateTaskReferences(errors, i, Tasks![i], agentKeys, taskKeys);
+            ValidateMailRecipients(errors, i, Tasks[i]);
+        }
+    }
+
+    /// <summary>
+    /// A task given to an agent with mail tools never names a <c>client://</c> address: that is
+    /// internal messaging, and an agent told to mail "via client://someone@example.org" passed it
+    /// as the e-mail account (2026-10-12). The recipient is named by e-mail address; the account
+    /// is left to the one the operator configured.
+    /// </summary>
+    private void ValidateMailRecipients(List<string> errors, int index, ForgeBlueprintTask task)
+    {
+        const string ClientScheme = "client://";
+        var agent = Agents?.FirstOrDefault(a => string.Equals(a.Key, task.Agent, StringComparison.Ordinal));
+        if (agent?.Tools is not { } tools || !tools.Any(ForgeTrialMailAuthor.MailTools.Contains))
+            return;
+
+        if ((task.Description?.Contains(ClientScheme, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (task.ExpectedOutput?.Contains(ClientScheme, StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            errors.Add(
+                $"tasks[{index}] ('{task.Key}'): names a '{ClientScheme}' address, which is internal messaging and never "
+                + "a mailbox. Name each recipient by e-mail address only (someone@example.org), and name no account: "
+                + "email_send uses the one the operator configured.");
+        }
     }
 
     /// <summary>The manager names an agent of the plan, in a process that has a manager.</summary>

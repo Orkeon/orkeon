@@ -194,6 +194,30 @@ public class ForgeBlueprintCompilerTests
         Assert.Contains("requires a manager agent", error, StringComparison.Ordinal);
         Assert.Empty(verdict.Warnings);
     }
+    [Fact]
+    public void An_iteration_cap_below_the_floor_is_raised_and_an_absent_one_stays_absent()
+    {
+        // The mail test of 2026-10-12: a plan capped its agent at 3 iterations, which a mail
+        // send, a retry and a log write used up before any answer. A forged agent runs with
+        // at least ForgeBlueprintAgent.MinIterations; a plan that sets none keeps the default.
+        var json = """
+            {
+              "crew": { "name": "x", "goal": "g" },
+              "agents": [
+                { "key": "tight", "role": "r", "goal": "g", "maxIterations": 3 },
+                { "key": "roomy", "role": "r2", "goal": "g", "maxIterations": 12 },
+                { "key": "unset", "role": "r3", "goal": "g" }
+              ],
+              "tasks": [ { "key": "t", "description": "d", "expectedOutput": "o", "agent": "tight" } ]
+            }
+            """;
+
+        var compilation = ForgeBlueprintCompiler.Compile(Parse(json));
+
+        Assert.Equal(ForgeBlueprintAgent.MinIterations, compilation.Agents["tight"].MaxIter);
+        Assert.Equal(12, compilation.Agents["roomy"].MaxIter);
+        Assert.Null(compilation.Agents["unset"].MaxIter);
+    }
 }
 
 /// <summary>

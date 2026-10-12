@@ -151,4 +151,40 @@ public class ForgeBlueprintTests
         Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
         Assert.Contains(errors, e => e.Contains("used twice", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void A_mail_task_naming_a_client_address_is_refused()
+    {
+        // The mail test of 2026-10-12: the plan told the mailing agent to send "via the
+        // recipient's mailbox, e.g. client://cyril@egnx.com", and the agent passed that as the
+        // e-mail account. client:// is internal messaging, never a mailbox.
+        var json = """
+            {
+              "crew": { "name": "x", "goal": "g" },
+              "agents": [ { "key": "a", "role": "r", "goal": "g", "tools": [ "email_send" ] } ],
+              "tasks": [ { "key": "t", "description": "Send a test mail to client://someone@example.org", "expectedOutput": "o", "agent": "a" } ]
+            }
+            """;
+
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        var error = Assert.Single(errors);
+        Assert.Contains("tasks[0] ('t')", error, StringComparison.Ordinal);
+        Assert.Contains("client://", error, StringComparison.Ordinal);
+        Assert.Contains("e-mail address", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_client_address_stays_allowed_to_an_agent_without_mail_tools()
+    {
+        // Posting to the observing client is internal messaging, and legitimate as such.
+        var json = """
+            {
+              "crew": { "name": "x", "goal": "g" },
+              "agents": [ { "key": "a", "role": "r", "goal": "g", "tools": [ "post_message" ] } ],
+              "tasks": [ { "key": "t", "description": "Post the progress to client://studio", "expectedOutput": "o", "agent": "a" } ]
+            }
+            """;
+
+        Assert.True(ForgeBlueprint.TryParse(json, out _, out var errors), string.Join("; ", errors));
+    }
 }
