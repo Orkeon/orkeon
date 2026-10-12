@@ -87,7 +87,10 @@ expirée. La source armurée de la même clé est
 chaque mise à jour ; les paquets qu'il installe sont les assets des Releases, et les commandes
 d'attestation ci-dessus s'y appliquent telles quelles. Une fois installé, le paquet Debian se vérifie fichier par
 fichier : `dpkg -V orkeon` n'affiche rien quand chaque fichier installé correspond à
-l'empreinte enregistrée par le paquet.
+l'empreinte enregistrée par le paquet. Une image allégée — les images Docker d'Ubuntu — demande
+à dpkg de ne pas déballer `/usr/share/doc` (`path-exclude` dans `/etc/dpkg/dpkg.cfg.d/excludes`) :
+les notices et licences de `/usr/share/doc/orkeon/` y apparaissent `missing`, et seules ces
+lignes sont attendues.
 
 ## Vérifier un paquet NuGet
 

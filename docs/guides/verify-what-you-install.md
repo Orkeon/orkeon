@@ -87,7 +87,9 @@ expired. The armoured source of the same key is
 update by itself; the packages it installs are the Release assets, so the attestation commands
 above apply to them unchanged. Once installed, the Debian package can be checked file by
 file: `dpkg -V orkeon` prints nothing when every installed file matches the checksum the
-package recorded.
+package recorded. A minimised image — Ubuntu's Docker images — tells dpkg not to unpack
+`/usr/share/doc` (`path-exclude` in `/etc/dpkg/dpkg.cfg.d/excludes`): there, the notices and
+licences under `/usr/share/doc/orkeon/` print as `missing`, and only those lines are expected.
 
 ## Verify a NuGet package
 
