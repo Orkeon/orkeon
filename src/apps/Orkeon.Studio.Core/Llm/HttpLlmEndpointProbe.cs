@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net.Http.Headers;
@@ -101,10 +102,10 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
         if (!catalogue.Succeeded)
             return catalogue.Result!;
 
-        var modelCount = TryCountModels(provider, catalogue.Body!);
+        var modelNames = TryReadModelNames(provider, catalogue.Body!);
         if (!request.CheckCompletion || string.IsNullOrWhiteSpace(request.Model))
         {
-            return LlmProbeResult.Reachable(modelCount) with
+            return LlmProbeResult.Reachable(modelNames) with
             {
                 Url = catalogue.Url,
                 Elapsed = _time.GetElapsedTime(started),
@@ -120,14 +121,12 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
         if (!completion.Succeeded)
             return completion.Result!;
 
-        return new LlmProbeResult
+        return LlmProbeResult.Reachable(modelNames) with
         {
-            Succeeded = true,
             Stage = LlmProbeStage.Completion,
             Url = completion.Url,
             Elapsed = _time.GetElapsedTime(started),
             Timeout = request.Timeout,
-            ModelCount = modelCount,
             Model = model,
         };
     }
@@ -260,25 +259,42 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
     }
 
     /// <summary>
-    /// Counts the models in a successful answer, or returns null when the payload is not in a
-    /// shape we know. An unparsable body is not a failure: the endpoint answered.
+    /// Reads the model names of a successful answer, sorted ordinally ignoring case and distinct, or
+    /// returns null when the payload is not in a shape we know. An unparsable body is not a failure:
+    /// the endpoint answered.
     /// </summary>
     [SuppressMessage("Design", "CA1031",
-        Justification = "Counting models is a nicety on top of a successful probe; any parsing " +
-                        "failure degrades to 'reachable, count unknown'.")]
-    private static int? TryCountModels(string provider, string body)
+        Justification = "Reading model names is a nicety on top of a successful probe; any parsing " +
+                        "failure degrades to 'reachable, names unknown'.")]
+    private static ImmutableArray<string>? TryReadModelNames(string provider, string body)
     {
         try
         {
             using var document = JsonDocument.Parse(body);
-            var arrayName = string.Equals(provider, LlmProviderDetector.Ollama, StringComparison.Ordinal)
-                ? "models"   // Ollama: { "models": [ { "name": … } ] }
-                : "data";    // OpenAI-compatible: { "data": [ { "id": … } ] }
+            var ollama = string.Equals(provider, LlmProviderDetector.Ollama, StringComparison.Ordinal);
+            var arrayName = ollama ? "models" : "data";   // Ollama: models[].name; OpenAI-compatible: data[].id
+            var keyName = ollama ? "name" : "id";
 
-            return document.RootElement.TryGetProperty(arrayName, out var models)
-                && models.ValueKind == JsonValueKind.Array
-                ? models.GetArrayLength()
-                : null;
+            if (!document.RootElement.TryGetProperty(arrayName, out var models)
+                || models.ValueKind != JsonValueKind.Array)
+                return null;
+
+            var names = new List<string>();
+            foreach (var entry in models.EnumerateArray())
+            {
+                if (entry.ValueKind != JsonValueKind.Object
+                    || !entry.TryGetProperty(keyName, out var value)
+                    || value.ValueKind != JsonValueKind.String)
+                    continue;
+
+                var name = value.GetString()!.Trim();
+                if (name.StartsWith("models/", StringComparison.Ordinal))
+                    name = name["models/".Length..];
+                if (name.Length > 0)
+                    names.Add(name);
+            }
+
+            return [.. names];
         }
         catch (Exception)
         {

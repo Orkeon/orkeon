@@ -145,10 +145,14 @@ public sealed record LlmProbeResult
     public string? Detail { get; init; }
 
     /// <summary>
-    /// How many models the catalogue listed, when its answer could be parsed. A reachable endpoint
-    /// whose payload is in an unknown shape reports <see langword="null"/> and still succeeds.
+    /// How many models the catalogue listed, when its answer could be parsed; derived from the names
+    /// by <see cref="Reachable"/>. A reachable endpoint whose payload is in an unknown shape reports
+    /// <see langword="null"/> and still succeeds.
     /// </summary>
     public int? ModelCount { get; init; }
+
+    /// <summary>The model names the catalogue published, sorted ordinally ignoring case, distinct.</summary>
+    public System.Collections.Immutable.ImmutableArray<string> ModelNames { get; init; } = [];
 
     /// <summary>The model the test completion ran on; null when no completion ran.</summary>
     public string? Model { get; init; }
@@ -156,8 +160,24 @@ public sealed record LlmProbeResult
     /// <summary>One English line, ready to show next to the button that ran the probe.</summary>
     public string Message => LlmProbeText.Describe(this, EnglishStudioStrings.Instance, CultureInfo.InvariantCulture);
 
-    /// <summary>The endpoint answered; <paramref name="modelCount"/> is null when unparsable.</summary>
-    public static LlmProbeResult Reachable(int? modelCount) => new() { Succeeded = true, ModelCount = modelCount };
+    /// <summary>
+    /// The endpoint answered; <paramref name="modelNames"/> is null when the body was unparsable,
+    /// otherwise the count is derived from the names.
+    /// </summary>
+    public static LlmProbeResult Reachable(System.Collections.Immutable.ImmutableArray<string>? modelNames) => new()
+    {
+        Succeeded = true,
+        ModelNames = Normalise(modelNames),
+        ModelCount = modelNames is null ? null : Normalise(modelNames).Length,
+    };
+
+    private static System.Collections.Immutable.ImmutableArray<string> Normalise(
+        System.Collections.Immutable.ImmutableArray<string>? names) =>
+        names is null
+            ? []
+            : [.. names.Value.Distinct(StringComparer.Ordinal)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(n => n, StringComparer.Ordinal)];
 
     /// <summary>The endpoint could not be reached, for a reason the caller words itself.</summary>
     public static LlmProbeResult Unreachable(string reason) => new()

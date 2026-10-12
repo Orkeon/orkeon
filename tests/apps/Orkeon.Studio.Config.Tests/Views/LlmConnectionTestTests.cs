@@ -30,7 +30,7 @@ public sealed class LlmConnectionTestTests
     public async Task The_button_probes_the_endpoint_currently_on_screen()
     {
         var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OllamaDefault };
-        var probe = new FakeLlmEndpointProbe { Result = LlmProbeResult.Reachable(3) };
+        var probe = new FakeLlmEndpointProbe { Result = LlmProbeResult.Reachable(System.Collections.Immutable.ImmutableArray.Create("m1", "m2", "m3")) };
         using var view = View(form, probe);
         view.Load();
 

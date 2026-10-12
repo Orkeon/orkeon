@@ -313,6 +313,81 @@ public sealed class SettingsScreenTests
         Assert.Null(editor.ConnectionTestResult);
     }
 
+    // ── UC-01 / BR-04: the connection test lists the model names it found ──
+
+    private static async Task<(ModelProfilesViewModel Profiles, ModelProfileEditorViewModel Editor, InMemoryModelProfileStore Store)> TestedEditor(
+        LlmProbeResult result)
+    {
+        var probe = new FakeLlmEndpointProbe { Result = result };
+        var (profiles, _, store, _) = Build(new FakeApiKeyStore(), probe);
+        profiles.BeginEdit(Ollama("Local"));
+        var editor = profiles.Editor!;
+        await editor.TestConnectionAsync(TestContext.Current.CancellationToken);
+        return (profiles, editor, store);
+    }
+
+    [Fact]
+    [Trait("BR", "UC-01")]
+    public async Task ShouldListTheModelNames_WhenTheTestSucceeds()
+    {
+        var (_, editor, _) = await TestedEditor(
+            LlmProbeResult.Reachable(System.Collections.Immutable.ImmutableArray.Create("llama3.2", "qwen2.5:14b")));
+
+        Assert.Equal(["llama3.2", "qwen2.5:14b"], editor.AvailableModels);
+        Assert.Equal(["llama3.2", "qwen2.5:14b"], editor.FilteredModels);
+    }
+
+    [Fact]
+    [Trait("BR", "UC-01")]
+    public async Task ShouldFilterTheList_WhenTextIsTyped()
+    {
+        var (_, editor, _) = await TestedEditor(
+            LlmProbeResult.Reachable(System.Collections.Immutable.ImmutableArray.Create("llama3.2", "Qwen2.5:14b", "qwen3:8b")));
+        var raised = new List<string?>();
+        editor.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        editor.ModelFilter = "QWEN";
+
+        Assert.Equal(["Qwen2.5:14b", "qwen3:8b"], editor.FilteredModels);
+        Assert.Contains(nameof(editor.FilteredModels), raised);
+
+        editor.ModelFilter = "";
+
+        Assert.Equal(["llama3.2", "Qwen2.5:14b", "qwen3:8b"], editor.FilteredModels);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-04")]
+    public async Task ShouldFillTheModelFieldWithoutSaving_WhenANameIsPicked()
+    {
+        var (profiles, editor, store) = await TestedEditor(
+            LlmProbeResult.Reachable(System.Collections.Immutable.ImmutableArray.Create("llama3.2", "qwen2.5:14b")));
+        var before = (await store.LoadAsync(TestContext.Current.CancellationToken)).Set;
+        editor.Model = "llama3.2";
+
+        editor.PickModelCommand.Execute("qwen2.5:14b");
+
+        Assert.Equal("qwen2.5:14b", editor.Model);
+        Assert.Same(before, (await store.LoadAsync(TestContext.Current.CancellationToken)).Set);
+        Assert.NotNull(profiles.Editor);
+        Assert.Equal(["llama3.2", "qwen2.5:14b"], editor.AvailableModels);
+    }
+
+    [Fact]
+    [Trait("BR", "UC-01")]
+    public async Task ShouldSayTheProviderPublishesNoList_WhenTheTestSucceedsWithoutNames()
+    {
+        var (_, editor, _) = await TestedEditor(LlmProbeResult.Reachable(null));
+
+        Assert.Empty(editor.AvailableModels);
+        Assert.Equal(English(StudioStringKeys.SettingsNoModelList), editor.ModelListNote);
+
+        var (_, failed, _) = await TestedEditor(LlmProbeResult.Unreachable("boom"));
+
+        Assert.Null(failed.ModelListNote);
+        Assert.Empty(failed.AvailableModels);
+    }
+
     [Fact]
     public async Task Going_back_from_disabled_to_the_providers_default_shows_without_reopening_the_editor()
     {

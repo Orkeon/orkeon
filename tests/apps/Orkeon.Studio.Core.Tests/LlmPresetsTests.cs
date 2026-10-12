@@ -185,6 +185,19 @@ public sealed class LlmPresetsTests
     }
 
     [Fact]
+    [Trait("BR", "BR-01")]
+    public void ShouldOpenTheZaiKeyList_WhenAskedForTheZaiConsole()
+    {
+        var expected = new Uri("https://z.ai/manage-apikey/apikey-list");
+
+        var card = LlmPresets.ProviderCatalogFor(EnglishStudioStrings.Instance)
+            .Single(c => c.Name == LlmPresets.Zai);
+
+        Assert.Equal(expected, LlmPresets.KeyConsoleFor(LlmProviderEndpoints.Zai));
+        Assert.Equal(expected, card.KeyConsoleUri);
+    }
+
+    [Fact]
     public void The_catalog_covers_every_preset_name()
     {
         Assert.Equal(LlmPresets.Names, LlmPresets.Catalog.Select(p => p.Name).ToList());
