@@ -786,6 +786,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             throw new HttpRequestException(failure);
     }
 
+    /// <inheritdoc />
+    public override bool StreamsNatively => true;
+
     /// <summary>
     /// Streams a multi-message chat completion over the Messages API's native SSE feed
     /// (G-20): visible text as <see cref="LlmStreamEventKind.ContentDelta"/>, the extended
@@ -832,6 +835,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         // lines (LLM-12); the Completed event then carries the failure, never an empty answer.
         using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
         HttpResponseMessage? response = null;
+        LlmResponse final;
         try
         {
             response = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
@@ -861,13 +865,17 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 if (state.Error is not null)
                     break;
             }
+
+            // Folded while the response is still open: disposing it is what logs the exchange.
+            final = BuildStreamedResponse(state, effectiveConfig, budget);
+            RecordRebuiltExchange(response, final);
         }
         finally
         {
             response?.Dispose();
         }
 
-        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
+        yield return LlmStreamEvent.Complete(final);
     }
 
     /// <summary>Accumulation state of one streamed Messages API response.</summary>
@@ -1069,10 +1077,32 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             // parsers read: the tool calls the model streamed, and the text in which the
             // text-protocol fallback reads a call written as text —, so a streamed turn calls its
             // tools (GAP-32). Like the buffered body, only when tools travel natively.
-            RawResponseBody = !failed && _toolCallingStrategy?.SupportsNativeToolCalling == true
+            RawResponseBody = !failed && (state.ToolUses.Count > 0 || _toolCallingStrategy?.SupportsNativeToolCalling == true)
                 ? SynthesizeMessageBody(state)
                 : null,
         };
+    }
+
+    /// <summary>The <c>tool_use</c> blocks (id, name, input) of a synthesized Messages body, or null when it carries none.</summary>
+    protected override JsonElement? ToolCallsOf(string? rawResponseBody)
+    {
+        if (string.IsNullOrEmpty(rawResponseBody))
+            return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(rawResponseBody);
+            if (!doc.RootElement.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
+                return null;
+            var calls = content.EnumerateArray()
+                .Where(b => b.TryGetProperty("type", out var t) && t.GetString() == "tool_use")
+                .Select(b => b.Clone())
+                .ToList();
+            return calls.Count > 0 ? JsonSerializer.SerializeToElement(calls) : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

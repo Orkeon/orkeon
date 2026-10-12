@@ -140,6 +140,8 @@ public sealed record LlmConfig
     /// a provider that streams nothing for a while is not wrong.
     /// </summary>
     public int? StreamIdleSeconds { get; init; }
+    /// <summary>How the call reaches the model (<c>Llm:CallMode</c>); Auto by default.</summary>
+    public LlmCallMode CallMode { get; init; } = LlmCallMode.Auto;
     /// <summary>
     /// Gets the maximum number of retries on transient failures (bound from <c>Llm:MaxRetries</c>).
     /// Drives the HTTP resilience policy of the buffered path and the connect-phase retry

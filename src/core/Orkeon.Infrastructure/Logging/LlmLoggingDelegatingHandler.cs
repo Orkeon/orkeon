@@ -81,6 +81,7 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
         string responseBody = string.Empty;
         int statusCode = 0;
         string? errorMessage = null;
+        var deferred = false;
 
         try
         {
@@ -88,6 +89,28 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
             stopwatch.Stop();
 
             statusCode = (int)response.StatusCode;
+
+            if (IsStreamedResponse(response) || request.Options.TryGetValue(LlmExchangeOptions.Rebuilt, out _))
+            {
+                // Handed over as the bytes arrive: the exchange is logged when the caller
+                // disposes the content, from what went through or what the provider rebuilt.
+                var streamed = response;
+                // The provider finds the capture holder through the response's request; a pipeline
+                // that does not set it would leave the holder unreachable.
+                streamed.RequestMessage ??= request;
+                var status = statusCode;
+                response.Content = new LoggedStreamContent(
+                    response.Content,
+                    _options.MaxBodyLengthChars > 0 ? checked(_options.MaxBodyLengthChars * 4) : 0,
+                    text => TryLogExchange(new RawExchangeCapture(
+                        exchangeId, timestamp, provider, request,
+                        requestBody, status, streamed, RebuiltOrCaptured(request, text),
+                        DateTimeOffset.UtcNow - timestamp,
+                        streamed.IsSuccessStatusCode ? null : $"HTTP {status}: {TruncateForError(text)}"),
+                        CancellationToken.None));
+                deferred = true;
+                return response;
+            }
 
             // Read the response body — buffer it so downstream consumers can still read it
             responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -108,34 +131,51 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
         }
         finally
         {
-            try
+            if (!deferred)
             {
-                var exchange = BuildExchangeRecord(new RawExchangeCapture(
+                TryLogExchange(new RawExchangeCapture(
                     exchangeId, timestamp, provider, request,
                     requestBody, statusCode, response, responseBody,
-                    stopwatch.Elapsed, errorMessage));
-
-                // The option, honoured. LogStreamingExchanges was bound from configuration,
-                // offered as a checkbox in both Studio surfaces and read by nothing: turning
-                // it off still captured every streaming exchange. Streaming records are the
-                // ones that carry a request and no usable response body, so an operator
-                // silencing them is asking for something the writer can actually deliver.
-                if (exchange.IsStreaming && !_options.LogStreamingExchanges)
-                {
-                    LogStreamingExchangeSkipped(exchangeId);
-                }
-                else
-                {
-                    // Fire-and-forget logging — never block the HTTP pipeline
-                    _ = LogExchangeSafeAsync(exchange, cancellationToken);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Never let logging failures propagate to the caller
-                LogBuildRecordFailed(exchangeId, ex);
+                    stopwatch.Elapsed, errorMessage), cancellationToken);
             }
         }
+        }
+    }
+
+    private static bool IsStreamedResponse(HttpResponseMessage response) =>
+        response.Content.Headers.ContentType?.MediaType is "text/event-stream" or "application/x-ndjson";
+
+    private static string RebuiltOrCaptured(HttpRequestMessage request, string captured) =>
+        request.Options.TryGetValue(LlmExchangeOptions.Rebuilt, out var holder) && holder.Body is { } rebuilt
+            ? rebuilt
+            : captured;
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Logging fault barrier: a failure building or dispatching the exchange record is logged and swallowed so diagnostics logging never breaks the HTTP pipeline or the caller disposing the response.")]
+    private void TryLogExchange(RawExchangeCapture capture, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var exchange = BuildExchangeRecord(capture);
+
+            // The option, honoured. LogStreamingExchanges was bound from configuration,
+            // offered as a checkbox in both Studio surfaces and read by nothing: turning
+            // it off still captured every streaming exchange. Streaming records are the
+            // ones that carry a request and no usable response body, so an operator
+            // silencing them is asking for something the writer can actually deliver.
+            if (exchange.IsStreaming && !_options.LogStreamingExchanges)
+            {
+                LogStreamingExchangeSkipped(capture.ExchangeId);
+            }
+            else
+            {
+                // Fire-and-forget logging — never block the HTTP pipeline
+                _ = LogExchangeSafeAsync(exchange, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Never let logging failures propagate to the caller
+            LogBuildRecordFailed(capture.ExchangeId, ex);
         }
     }
 

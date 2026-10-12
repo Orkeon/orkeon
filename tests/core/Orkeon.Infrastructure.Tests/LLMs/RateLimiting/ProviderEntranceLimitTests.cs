@@ -102,7 +102,7 @@ public sealed class ProviderEntranceLimitTests
         });
         var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, usageSink: null, rateLimiter: limiter);
 #pragma warning disable CS0618 // ApiKey is the direct-from-config credential path the providers still read.
-        var config = LlmConfig.Create("gpt-4o-mini") with { ApiKey = "sk-test", BaseUrl = new Uri("https://api.openai.com/v1") };
+        var config = LlmConfig.Create("gpt-4o-mini") with { ApiKey = "sk-test", BaseUrl = new Uri("https://api.openai.com/v1"), CallMode = LlmCallMode.Buffer };
 #pragma warning restore CS0618
 
         var basic = Assert.IsType<LlmProviderAdapter>(factory.Create(config));

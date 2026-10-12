@@ -49,4 +49,7 @@ public interface IStreamingLlmProvider
     /// Checks if streaming is supported and enabled for this provider.
     /// </summary>
     bool SupportsStreaming { get; }
+
+    /// <summary>Whether the provider streams on the wire, rather than folding a buffered answer.</summary>
+    bool StreamsNatively => false;
 }

@@ -646,4 +646,23 @@ public sealed class HostLlmProfilesTests
         Assert.DoesNotContain("HostProfileId", json, StringComparison.Ordinal);
         Assert.DoesNotContain("DescribesProvider", json, StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "BR-05")]
+    [Trait("BR", "BR-13")]
+    public void ShouldWriteTheCallModeIntoTheProfileVariables()
+    {
+        var buffered = DeepSeek() with { CallMode = "Buffer" };
+        var auto = DeepSeek() with { CallMode = "Auto" };
+        var unset = DeepSeek();
+
+        Assert.Equal("Buffer", buffered.HostEnvironment("deepseek", static _ => null)["ORKEON_Llm__Profiles__deepseek__CallMode"]);
+        Assert.Equal("Buffer", buffered.EnvironmentOverrides()["ORKEON_Llm__CallMode"]);
+        foreach (var profile in new[] { auto, unset })
+        {
+            Assert.False(profile.HostEnvironment("deepseek", static _ => null).ContainsKey("ORKEON_Llm__Profiles__deepseek__CallMode"));
+            // The default section blanks it, like the other overridden fields.
+            Assert.Equal("", profile.EnvironmentOverrides()["ORKEON_Llm__CallMode"]);
+        }
+    }
 }

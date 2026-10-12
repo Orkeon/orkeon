@@ -534,6 +534,9 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// </remarks>
     public virtual bool SupportsStreaming => IsConfigured;
 
+    /// <inheritdoc />
+    public virtual bool StreamsNatively => false;
+
     /// <summary>
     /// Builds the exception a streaming call must fail with when this provider has no
     /// credentials, so an unconfigured provider is never the cause of an empty stream.
@@ -576,26 +579,9 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             yield break;
         }
 
-        if (BufferedFallbackRefusal(response) is { } refusal)
+        if (BufferedFallback.Refusal(response) is { } refusal)
             throw refusal;
     }
-
-    /// <summary>Metadata key every provider writes its refusal under (see <c>LlmResponseMetadata</c>).</summary>
-    private const string ProviderErrorMetadataKey = "error";
-
-    /// <summary>
-    /// The exception a buffered-fallback stream must fail with when the buffered answer is a
-    /// refusal rather than an answer. Returns <see langword="null"/> when the answer is merely
-    /// empty: a model with nothing to say still ends its stream normally, and only that reading
-    /// of an empty sequence stays true.
-    /// </summary>
-    /// <param name="response">The buffered answer the fallback was going to yield.</param>
-    private static HttpRequestException? BufferedFallbackRefusal(LlmResponse response)
-        => response.Metadata.TryGetValue(ProviderErrorMetadataKey, out var value)
-           && value?.ToString() is { Length: > 0 } error
-            ? new HttpRequestException(
-                $"{error}: the buffered fallback answered with no content, so the stream carries nothing.")
-            : null;
 
     /// <summary>
     /// Streams a multi-message chat completion. Default implementation is the
@@ -656,6 +642,57 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             $"{providerDisplayName} API error: {response.StatusCode} - {Security.LogSanitizer.SanitizeString(body)}",
             inner: null,
             statusCode: response.StatusCode);
+    }
+
+    /// <summary>
+    /// Hands the answer a streamed call was folded into to the exchange log: the logging handler
+    /// writes it, once, when the response is disposed, instead of the raw event text.
+    /// </summary>
+    /// <param name="response">The streamed response, still undisposed.</param>
+    /// <param name="rebuilt">The folded final answer.</param>
+    internal void RecordRebuiltExchange(HttpResponseMessage? response, LlmResponse rebuilt)
+    {
+        if (response?.RequestMessage?.Options.TryGetValue(Logging.LlmExchangeOptions.Rebuilt, out var holder) != true)
+            return;
+
+        holder!.Body = JsonSerializer.Serialize(new
+        {
+            content = rebuilt.Content,
+            tool_calls = ToolCallsOf(rebuilt.RawResponseBody),
+            error = rebuilt.Error,
+            model = rebuilt.Model,
+            usage = new
+            {
+                total_tokens = rebuilt.TokensUsed,
+                prompt_tokens = rebuilt.PromptTokens,
+                completion_tokens = rebuilt.CompletionTokens,
+            },
+        });
+    }
+
+    /// <summary>
+    /// The tool calls of the body a streamed call rebuilt, or null when it carries none. The provider
+    /// that folded the answer knows its shape; the default reads the OpenAI one (<c>tool_calls</c>).
+    /// </summary>
+    protected virtual JsonElement? ToolCallsOf(string? rawResponseBody)
+    {
+        if (string.IsNullOrEmpty(rawResponseBody))
+            return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(rawResponseBody);
+            return doc.RootElement.TryGetProperty("choices", out var choices)
+                   && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0
+                   && choices[0].TryGetProperty("message", out var message)
+                   && message.TryGetProperty("tool_calls", out var calls)
+                   && calls.ValueKind == JsonValueKind.Array
+                ? calls.Clone()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -767,6 +804,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                         // HttpRequestMessage cannot be resent.
                         using var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType);
                         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
+                        request.Options.Set(Logging.LlmExchangeOptions.Rebuilt, new Logging.LlmExchangeCapture());
 
                         var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                         if (attempt >= maxAttempts || !IsRetriableStreamingStatus(response.StatusCode))

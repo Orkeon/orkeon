@@ -27,7 +27,7 @@ public class ZaiFactoryInferenceTests
     public void ShouldCreateZaiProvider_WhenExplicitTypeRequested(string providerType)
     {
         var adapter = CreateVia(f => (LlmProviderAdapter)f.Create(providerType, LlmConfig.Create("glm-5.2")));
-        Assert.IsType<ZaiLlmProvider>(adapter.UnderlyingProvider);
+        Assert.IsType<ZaiLlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
         Assert.Equal("zai", adapter.Name);
     }
 
@@ -38,7 +38,7 @@ public class ZaiFactoryInferenceTests
     {
         var config = LlmConfig.Create("custom-model") with { BaseUrl = new Uri(baseUrl) };
         var adapter = CreateVia(f => (LlmProviderAdapter)f.Create(config));
-        Assert.IsType<ZaiLlmProvider>(adapter.UnderlyingProvider);
+        Assert.IsType<ZaiLlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
     }
 
     [Theory]
@@ -48,7 +48,7 @@ public class ZaiFactoryInferenceTests
     public void ShouldInferZaiProvider_WhenModelIsGlm(string model)
     {
         var adapter = CreateVia(f => (LlmProviderAdapter)f.Create(LlmConfig.Create(model)));
-        Assert.IsType<ZaiLlmProvider>(adapter.UnderlyingProvider);
+        Assert.IsType<ZaiLlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
     }
 
     [Fact]
@@ -58,6 +58,6 @@ public class ZaiFactoryInferenceTests
         // it must fall through to the OpenAI default.
         var config = LlmConfig.Create("custom-model") with { BaseUrl = new Uri("https://api.xyz.ai/v1") };
         var adapter = CreateVia(f => (LlmProviderAdapter)f.Create(config));
-        Assert.IsType<OpenAIProvider>(adapter.UnderlyingProvider);
+        Assert.IsType<OpenAIProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
     }
 }

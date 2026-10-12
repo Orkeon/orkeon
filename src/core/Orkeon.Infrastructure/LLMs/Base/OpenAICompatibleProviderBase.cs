@@ -320,6 +320,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     private static bool HasFinishReason(JsonElement choice) =>
         choice.TryGetProperty("finish_reason", out var finishReason) && finishReason.ValueKind == JsonValueKind.String;
 
+    /// <inheritdoc />
+    public override bool StreamsNatively => true;
+
     /// <summary>
     /// Streams a multi-message chat completion over SSE: emits
     /// <c>delta.content</c> as content deltas, the <see cref="ReasoningFieldName"/> delta
@@ -378,6 +381,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         // and the Completed event carries the failure, never an empty answer (LLM-12).
         using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
         HttpResponseMessage? response = null;
+        LlmResponse final;
         try
         {
             var sent = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
@@ -407,20 +411,24 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 if (state.Error is not null)
                     break;
             }
+
+            // What the inline-reasoning split still held — an unterminated block is all reasoning.
+            if (state.Splitter is { } splitter)
+            {
+                foreach (var ev in Emit(splitter.Flush(), state))
+                    yield return ev;
+            }
+
+            // Folded while the response is still open: disposing it is what logs the exchange.
+            final = BuildStreamedResponse(state, effectiveConfig, budget);
+            RecordRebuiltExchange(response, final);
         }
         finally
         {
             response?.Dispose();
         }
 
-        // What the inline-reasoning split still held — an unterminated block is all reasoning.
-        if (state.Splitter is { } splitter)
-        {
-            foreach (var ev in Emit(splitter.Flush(), state))
-                yield return ev;
-        }
-
-        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
+        yield return LlmStreamEvent.Complete(final);
     }
 
     /// <summary>Mutable accumulation state of one streamed chat completion.</summary>

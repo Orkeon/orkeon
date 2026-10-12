@@ -113,6 +113,13 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     public static ILlmProvider Unwrap(ILlmProvider provider)
     {
         ArgumentNullException.ThrowIfNull(provider);
+        var underMeter = UnderMeter(provider);
+        return underMeter is CallMode.CallModeLlmProvider callMode ? callMode.Inner : underMeter;
+    }
+
+    /// <summary>The provider under the limiter and the meter, the call-mode decorator included.</summary>
+    internal static ILlmProvider UnderMeter(ILlmProvider provider)
+    {
         var underLimiter = RateLimitedLlmProvider.Unwrap(provider);
         return underLimiter is MeteredLlmProvider metered ? metered._inner : underLimiter;
     }
@@ -128,6 +135,9 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
 
     /// <inheritdoc />
     public bool SupportsStreaming => (_inner as IStreamingLlmProvider)?.SupportsStreaming ?? false;
+
+    /// <inheritdoc />
+    public bool StreamsNatively => (_inner as IStreamingLlmProvider)?.StreamsNatively ?? false;
 
     /// <inheritdoc />
     public async Task<LlmResponse> GenerateAsync(

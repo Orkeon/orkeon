@@ -187,7 +187,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:TokenCounter`](#orkeontokencounter) | 44 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:TokenCounter`](#orkeontokencounter) | 46 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -199,7 +199,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-67 sections, 353 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (11) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Plugins`](#plugins), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+67 sections, 355 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (11) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Plugins`](#plugins), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -284,6 +284,7 @@ avec ses propres clés.
 | `ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
 | `AvailableModels` | liste de chaînes | `[]` | Les modèles qu'un `/model` scripté peut proposer : une liste, ou une seule valeur séparée par des virgules. |
 | `BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
+| `CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
 | `Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
 | `MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
 | `MaxTokens` | entier | — | Le plus grand nombre de tokens qu'une réponse peut contenir : un épinglage. Omise, une requête porte le maximum documenté de son modèle, et 4096 pour un modèle que le catalogue ne connaît pas. |
@@ -291,6 +292,7 @@ avec ses propres clés.
 | `Profiles:<nom>:ApiKey` | chaîne, secret | — | La clé d'API, en clair. Préférez `ApiKeyEnvVar` : une clé écrite ici est dans le fichier de réglages. |
 | `Profiles:<nom>:ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
 | `Profiles:<nom>:BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
+| `Profiles:<nom>:CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
 | `Profiles:<nom>:Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
 | `Profiles:<nom>:MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
 | `Profiles:<nom>:MaxTokens` | entier | — | Le plus grand nombre de tokens qu'une réponse peut contenir : un épinglage. Omise, une requête porte le maximum documenté de son modèle, et 4096 pour un modèle que le catalogue ne connaît pas. |

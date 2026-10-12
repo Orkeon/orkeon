@@ -213,13 +213,26 @@ members, not through copies of the payload builder:
   itself); a provider that runs its own tools (`RunsOwnTools`, the Microsoft Agent Framework
   bridge) is not limited itself — what it calls of Orkeon's model is. A refusal is retried five
   times on its `RetryAfter`, then the call fails with the limiter's reason (GAP-38).
+- **Call mode** — `CallModeLlmProvider` decides how each call of a provider built from a setting
+  reaches the model, for every caller (agent loop, manager, planner, judges, RAG). The setting's
+  `CallMode` key (`Llm:CallMode`, `Llm:Profiles:<name>:CallMode`) is `Auto` (absent or empty),
+  `Buffer` or `Stream`, case ignored; another value fails the load. `Buffer` answers whole;
+  `Stream` and `Auto` stream on the wire when the provider streams natively and fold the events
+  into the same `LlmResponse` (text, tool calls, finish reason, usage), so the meter and the
+  limiter still see one call. In `Auto`, a clear refusal of streaming before any event (status
+  404, 405, 415 or 501, or 400/422 whose body names the stream, or a provider that declares no
+  streaming) falls back to a buffered call for the rest of the run (`LlmCallModeScope`, opened
+  per crew run), with one warning; a 401, 403, 429, a timeout or a stream cut after its first
+  event stays a failure. In `Stream`, a refusal fails the call naming `Auto` and `Buffer`. It sits
+  inside the meter and the limiter, applied by `LlmProviderFactory` (STUDIO-71).
 - **LLM exchange logging** — `LlmLoggingDelegatingHandler` (`Orkeon.Infrastructure.Logging`)
   captures every HTTP exchange (headers and payload, sanitized by `LogSanitizer`: credential
   headers redacted by name, secrets in bodies by pattern) as JSON Lines plus a structured
   log summary. `services.AddLlmExchangeLogging(logDirectory, options)` injects it into every
   `IHttpClientFactory` client; the `IHttpClientBuilder` overload targets one named client.
   `LlmLoggingOptions`: `MaxBodyLengthChars` (0 = no truncation),
-  `LogStreamingExchanges` (true; a stream is captured as its request only),
+  `LogStreamingExchanges` (true; a stream passes through to the caller as it arrives and is
+  logged once it ends, as its rebuilt answer, or the raw text received when it was cut),
   `FullEmbeddingLog` (true; false shortens embedding arrays to a preview). The runners switch
   it on with `--llm-log` / `--llm-log-path` and read the options from the `LlmLogging`
   settings section; the files go to the internal `/llm-logs` mount, never visible to agents.

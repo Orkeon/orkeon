@@ -114,6 +114,13 @@ public sealed partial class LlmSection
         set => _document.SetInt32($"{SectionPath}:StreamIdleSeconds", value);
     }
 
+    /// <summary>The call mode (<c>Llm:CallMode</c>).</summary>
+    public string? CallMode
+    {
+        get => _document.GetString($"{SectionPath}:CallMode");
+        set => _document.SetString($"{SectionPath}:CallMode", value);
+    }
+
     /// <summary>
     /// Thinking switch (<c>Llm:Thinking:Enabled</c>): null leaves the provider's default —
     /// on for Kimi K2.6, DeepSeek V4 and GLM. The runner reads the same key (LLM-11).

@@ -93,7 +93,7 @@ public sealed class LlmMeteringHostGuardTests : IDisposable
         var settings = Path.Combine(_root, "appsettings.json");
         await File.WriteAllTextAsync(
             settings,
-            """{ "Llm": { "Model": "gpt-4o-mini", "BaseUrl": "https://api.openai.com/v1", "ApiKey": "sk-test" } }""",
+            """{ "Llm": { "Model": "gpt-4o-mini", "BaseUrl": "https://api.openai.com/v1", "ApiKey": "sk-test", "CallMode": "Buffer" } }""",
             TestContext.Current.CancellationToken);
         var sink = new RecordingUsageSink();
         using var vendor = new StubHttpMessageHandler(OpenAiAnswer);

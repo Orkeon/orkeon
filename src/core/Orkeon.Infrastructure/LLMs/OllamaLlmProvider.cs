@@ -601,6 +601,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             ? value
             : null;
 
+    /// <inheritdoc />
+    public override bool StreamsNatively => true;
+
     /// <summary>
     /// Streams a chat completion over Ollama's NDJSON, on whichever endpoint
     /// <see cref="ChatAsync"/> would have used for the same conversation.
@@ -647,6 +650,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         // lines (LLM-12); the Completed event then carries the failure, never an empty answer.
         using var budget = StreamReadBudget.Start(effectiveConfig, cancellationToken);
         HttpResponseMessage? response = null;
+        LlmResponse final;
         try
         {
             response = await TrySendStreamingRequestAsync(client, endpoint, json, budget).ConfigureAwait(false);
@@ -671,13 +675,17 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 foreach (var ev in ReadStreamLine(line, state, useChatEndpoint))
                     yield return ev;
             }
+
+            // Folded while the response is still open: disposing it is what logs the exchange.
+            final = BuildStreamedResponse(state, effectiveConfig, budget);
+            RecordRebuiltExchange(response, final);
         }
         finally
         {
             response?.Dispose();
         }
 
-        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig, budget));
+        yield return LlmStreamEvent.Complete(final);
     }
 
     /// <summary>Mutable accumulation state of one streamed Ollama completion.</summary>

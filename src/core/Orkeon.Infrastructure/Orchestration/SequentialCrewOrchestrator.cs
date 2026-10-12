@@ -145,6 +145,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         CancellationToken cancellationToken)
     {
         using var streamScope = CrewStreamScope.Begin(events);
+        using var callModeScope = LlmCallModeScope.Open();
         using var ending = CrewRunEnding.Begin(out var end);
         var stopwatch = Stopwatch.StartNew();
         var startedAt = DateTimeOffset.UtcNow;

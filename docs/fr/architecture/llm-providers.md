@@ -222,6 +222,20 @@ pas par des copies du constructeur de payload :
   (`RunsOwnTools`, le pont Microsoft Agent Framework) n'est pas limité lui-même — ce qu'il appelle du
   modèle d'Orkeon l'est. Un refus est retenté cinq fois sur son `RetryAfter`, puis l'appel échoue
   avec la raison du limiteur (GAP-38).
+- **Mode d'appel** — `CallModeLlmProvider` décide comment chaque appel d'un provider construit
+  depuis un réglage atteint le modèle, pour tout appelant (boucle d'agent, manager, planificateur,
+  juges, RAG). La clé `CallMode` du réglage (`Llm:CallMode`, `Llm:Profiles:<nom>:CallMode`) vaut
+  `Auto` (absente ou vide), `Buffer` ou `Stream`, casse ignorée ; une autre valeur fait échouer le
+  chargement. `Buffer` répond d'un bloc ; `Stream` et `Auto` streament sur le fil quand le provider
+  streame nativement et replient les événements dans la même `LlmResponse` (texte, appels d'outils,
+  raison de fin, usage), si bien que le compteur et le limiteur voient un seul appel. En `Auto`, un
+  refus net du streaming avant tout événement (statut 404, 405, 415 ou 501, ou 400/422 dont le
+  corps nomme le stream, ou un provider qui ne déclare pas de streaming) se replie sur un appel en
+  buffer pour le reste de l'exécution (`LlmCallModeScope`, ouvert par exécution d'équipe), avec un
+  seul avertissement ; un 401, 403, 429, un délai expiré ou un flux coupé après son premier
+  événement reste un échec. En `Stream`, un refus fait échouer l'appel en nommant `Auto` et
+  `Buffer`. Il se place sous le compteur et le limiteur, appliqué par `LlmProviderFactory`
+  (STUDIO-71).
 - **Journalisation des échanges LLM** — `LlmLoggingDelegatingHandler`
   (`Orkeon.Infrastructure.Logging`) capture chaque échange HTTP (en-têtes et payload, assainis
   par `LogSanitizer` : en-têtes d'authentification masqués par nom, secrets des corps par
@@ -229,7 +243,8 @@ pas par des copies du constructeur de payload :
   `services.AddLlmExchangeLogging(logDirectory, options)` l'injecte dans tous les clients
   `IHttpClientFactory` ; la surcharge `IHttpClientBuilder` cible un seul client nommé.
   `LlmLoggingOptions` : `MaxBodyLengthChars` (0 = pas de troncature), `LogStreamingExchanges`
-  (true ; un flux est capturé par sa seule requête), `FullEmbeddingLog` (true ; false réduit
+  (true ; un flux passe à l'appelant au fil de son arrivée et est journalisé une fois terminé,
+  sous sa réponse reconstruite, ou le texte brut reçu s'il a été coupé), `FullEmbeddingLog` (true ; false réduit
   les tableaux d'embeddings à un aperçu). Les runners l'activent avec `--llm-log` /
   `--llm-log-path` et lisent les options dans la section de settings `LlmLogging` ; les
   fichiers vont dans le montage interne `/llm-logs`, jamais visible des agents. C'est un

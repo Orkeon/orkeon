@@ -75,6 +75,13 @@ internal class LlmProfileShape
     /// </summary>
     public int? StreamIdleSeconds { get; set; }
 
+    /// <summary>
+    /// How a call reaches the model: <c>Auto</c>, <c>Buffer</c> or <c>Stream</c>, case ignored. Left
+    /// out, <c>Auto</c>: the call streams, and falls back on a buffered call when the provider
+    /// refuses streaming.
+    /// </summary>
+    public string? CallMode { get; set; } = "Auto";
+
     /// <summary>How many times a call that fails on a passing error is tried again; <c>0</c> never retries.</summary>
     public int? MaxRetries { get; set; } = LlmDefaults.DefaultMaxRetries;
 

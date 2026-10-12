@@ -300,7 +300,7 @@ public sealed class InitCommandTests
         var created = factory.Create(config);
 
         var adapter = Assert.IsType<LlmProviderAdapter>(created);
-        Assert.IsType(expectedProvider, adapter.UnderlyingProvider);
+        Assert.IsType(expectedProvider, MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
     }
 
     // --- interactive wizard ---

@@ -93,6 +93,9 @@ public sealed class RateLimitedLlmProvider : ILlmProvider, IStreamingLlmProvider
     public bool SupportsStreaming => (_inner as IStreamingLlmProvider)?.SupportsStreaming ?? false;
 
     /// <inheritdoc />
+    public bool StreamsNatively => (_inner as IStreamingLlmProvider)?.StreamsNatively ?? false;
+
+    /// <inheritdoc />
     public async Task<LlmResponse> GenerateAsync(
         string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
@@ -148,25 +151,9 @@ public sealed class RateLimitedLlmProvider : ILlmProvider, IStreamingLlmProvider
             yield break;
         }
 
-        if (BufferedFallbackRefusal(response) is { } refusal)
+        if (BufferedFallback.Refusal(response) is { } refusal)
             throw refusal;
     }
-
-    /// <summary>Metadata key every provider writes its refusal under (see <c>LlmResponseMetadata</c>).</summary>
-    private const string ProviderErrorMetadataKey = "error";
-
-    /// <summary>
-    /// The exception the buffered fallback must fail with when the wrapped provider refused
-    /// instead of answering. Returns <see langword="null"/> for a merely empty answer: a model
-    /// with nothing to say still ends its stream normally.
-    /// </summary>
-    /// <param name="response">The buffered answer the fallback was going to yield.</param>
-    private static HttpRequestException? BufferedFallbackRefusal(LlmResponse response)
-        => response.Metadata.TryGetValue(ProviderErrorMetadataKey, out var value)
-           && value?.ToString() is { Length: > 0 } error
-            ? new HttpRequestException(
-                $"{error}: the buffered fallback answered with no content, so the stream carries nothing.")
-            : null;
 
     /// <inheritdoc cref="GenerateStreamingAsync" />
     public async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
