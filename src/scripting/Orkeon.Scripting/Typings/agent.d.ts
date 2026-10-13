@@ -40,6 +40,8 @@ declare global {
          * no agent turns: it applies none, and says so.
          */
         maxRpm(value: number): this;
+        /** The agent's execution time limit, in whole seconds. */
+        maxExecutionTime(seconds: number): this;
         verbose(value?: boolean): this;
         concurrency(n: number): this;
         withState<S>(factory: (() => S) | S): AgentBuilder<TIn, TOut, S>;

@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using Orkeon.Application.Agent.DTOs;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Orkeon.Domain.Common;
-using Orkeon.Application.Constants.Execution;
 
 namespace Orkeon.Application.Common.Mapping;
 
@@ -35,7 +34,7 @@ public static class AgentMapper
             Status = agent.Status.ToString(),
             Verbose = agent.Verbose,
             AllowDelegation = agent.AllowDelegation,
-            MaxExecutionTime = ExecutionDefaults.DefaultMaxExecutionSeconds,
+            MaxExecutionTime = agent.MaxExecutionTime is { } limit ? (int)limit.TotalSeconds : null,
             Tools = agent.Tools.Select(t => t.Name).ToImmutableList(),
             Llm = null, // LlmConfig not stored on domain entity
             Capabilities = null, // Not implemented in current Domain

@@ -238,6 +238,10 @@ public partial class YamlCrewExporter
             : null,
     };
 
+    // Whole seconds rounded up, so a limit under a second is never written as 0, and capped at the last whole second the loader reloads.
+    private static int WholeSeconds(TimeSpan limit) =>
+        (int)Math.Min(Math.Ceiling(limit.TotalSeconds), Math.Floor(Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling.TotalSeconds));
+
     private static AgentYamlConfig MapSingleAgent(AgentConfiguration agent)
     {
         return new AgentYamlConfig
@@ -250,6 +254,7 @@ public partial class YamlCrewExporter
             // Written when it differs from the one default, as the loader reads it back (GAP-38).
             MaxIter = agent.MaxIterations != Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations ? agent.MaxIterations : null,
             MaxRpm = agent.MaxRpm,
+            MaxExecutionTime = agent.MaxExecutionTime is { } limit ? WholeSeconds(limit) : null,
             Verbose = agent.Verbose ? true : null,
             Llm = MapLlmConfig(agent.LlmConfig),
             Guardrails = MapGuardrails(agent.Guardrails),

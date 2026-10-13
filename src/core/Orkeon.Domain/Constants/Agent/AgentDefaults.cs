@@ -24,6 +24,9 @@ public static class AgentDefaults
     /// </summary>
     public const int MaxRetryLimit = 3;
 
+    /// <summary>Largest execution time an agent may be given (the timer's limit).</summary>
+    public static readonly TimeSpan MaxExecutionTimeCeiling = TimeSpan.FromMilliseconds(uint.MaxValue - 1);
+
     /// <summary>
     /// Maximum number of consecutive identical tool call errors before the circuit breaker trips.
     /// Prevents the agent from burning tokens re-trying the exact same failing action indefinitely.

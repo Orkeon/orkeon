@@ -64,6 +64,7 @@ agents:
     allowDelegation: bool # default: true — allows delegation to other agents
     maxIter: int          # default: 20 — the turns the agent may take on a task (C# and .ork.ts too). 0 or less fails the load
     maxRpm: int           # default: none — at most N model requests per minute for this agent; one more waits its turn. The host's RateLimiting:AgentRequestsPerMinute bounds it too, the stricter winning. 0 or less fails the load
+    maxExecutionTime: int # default: none — the seconds a task may take on this agent (alias max_execution_time); 0 or less, or above 4294967 (about 49.7 days), fails the load, and so does a limit on the hierarchical manager
     verbose: bool         # default: false — detailed logs for this agent
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
@@ -143,6 +144,10 @@ naming the crew or the agent: leave `maxRpm:` out for no limit, `maxIter:` out f
 used to be replaced, by 10 and 15, without a word. The host's own caps on model calls — which bound an
 agent's `maxRpm`, the stricter winning — are the settings of
 [`RateLimiting`](../reference/configuration.md#ratelimiting).
+An agent's `maxExecutionTime` (or `max_execution_time`) is whole seconds: 0 or less, a decimal, a value above the
+ceiling (4294967 s, about 49.7 days) and a limit on the `managerAgent` of a hierarchical crew fail the load, naming
+the agent. A task past its limit ends `ExecutionTimeExceeded` at the latest at the end of the call in progress;
+time spent waiting for a human does not count.
 
 A message names an agent or a task by its key — `Agent 'researcher' must have a goal.` —, a
 configuration built in code by its identifier.

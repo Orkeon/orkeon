@@ -15,6 +15,7 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 using AppTaskResult = Orkeon.Application.Interfaces.Services.TaskResult;
 using AppTaskResultGeneric = Orkeon.Application.Interfaces.Services;
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Infrastructure.Tests.Tools;
 
@@ -804,6 +805,41 @@ public sealed class DelegateWorkToolTests : IDisposable
         // Assert
         Assert.False(response.Success);
         Assert.Contains("cancelled", response.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldMarkDelegateCancelledAndDelegatorExceeded_WhenDelegatorLimitFallsDuringDelegation()
+    {
+        var limit = TimeSpan.FromSeconds(30);
+        using var fixture = new DelegateWorkToolTestsFixture(limit, coworkerLimit: null, delegatorAnswersAfterDelegation: false);
+
+        var run = fixture.RunDelegatorAsync(TestContext.Current.CancellationToken);
+        await fixture.Client.CoworkerEntered.Task.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+        fixture.Clock.Advance(limit + TimeSpan.FromTicks(1));
+        var delegatorResult = await run.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(fixture.CoworkerResult);
+        Assert.Equal(AgentExitReason.Cancelled, fixture.CoworkerResult.ExitReason);
+        Assert.Equal(AgentExitReason.ExecutionTimeExceeded, delegatorResult.ExitReason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldBoundDelegateByItsOwnLimit_WhenDelegateHasAShorterLimit()
+    {
+        var delegateLimit = TimeSpan.FromSeconds(30);
+        using var fixture = new DelegateWorkToolTestsFixture(
+            TimeSpan.FromMinutes(10), delegateLimit, delegatorAnswersAfterDelegation: true);
+
+        var run = fixture.RunDelegatorAsync(TestContext.Current.CancellationToken);
+        await fixture.Client.CoworkerEntered.Task.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+        fixture.Clock.Advance(delegateLimit + TimeSpan.FromTicks(1));
+        var delegatorResult = await run.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(fixture.CoworkerResult);
+        Assert.Equal(AgentExitReason.ExecutionTimeExceeded, fixture.CoworkerResult.ExitReason);
+        Assert.Equal(AgentExitReason.Completed, delegatorResult.ExitReason);
     }
 
     public void Dispose()

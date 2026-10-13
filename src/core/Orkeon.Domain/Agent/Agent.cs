@@ -186,7 +186,9 @@ public sealed class Agent : AggregateRoot<AgentId>
             MaxRpm = options.MaxRpm is null or > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
             Verbose = options.Verbose,
             Status = AgentStatus.Idle,
-            MaxExecutionTime = options.MaxExecutionTime,
+            MaxExecutionTime = options.MaxExecutionTime is not { } limit || (limit > TimeSpan.Zero && limit <= AgentDefaults.MaxExecutionTimeCeiling)
+                ? options.MaxExecutionTime
+                : throw new ArgumentException($"Agent '{options.Role.Value}': MaxExecutionTime must be greater than zero and at most {AgentDefaults.MaxExecutionTimeCeiling}.", nameof(options)),
             SystemTemplate = options.SystemTemplate,
             PromptTemplate = options.PromptTemplate,
             ResponseTemplate = options.ResponseTemplate,

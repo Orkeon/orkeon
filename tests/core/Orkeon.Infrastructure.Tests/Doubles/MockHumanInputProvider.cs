@@ -25,6 +25,12 @@ public class MockHumanInputProvider : IHumanInputProvider
 
     public int IsAvailableCallCount { get; private set; }
 
+    /// <summary>When set, GetInputAsync answers with this pending result: the test releases it.</summary>
+    public TaskCompletionSource<string>? PendingInput { get; set; }
+
+    /// <summary>Completed when GetInputAsync was entered.</summary>
+    public TaskCompletionSource InputEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     // --- Configuration ---
     public void SetInputResult(string result) => _inputResult = result;
     public void SetConfirmationResult(bool result) => _confirmationResult = result;
@@ -36,6 +42,9 @@ public class MockHumanInputProvider : IHumanInputProvider
     {
         GetInputCallCount++;
         LastGetInputContext = context;
+        InputEntered.TrySetResult();
+        if (PendingInput is { } pending)
+            return pending.Task;
         return Task.FromResult(_inputResult);
     }
 

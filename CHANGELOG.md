@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — an agent's `MaxExecutionTime` is now enforced **[breaking]**
+
+`maxExecutionTime` (`max_execution_time`, whole seconds) in YAML and `maxExecutionTime(seconds)` in `.ork.ts`
+reach the agent as a `TimeSpan`; a refused value fails the load or the script's `build()`.
+
+- **Breaking**: a task longer than its agent's `MaxExecutionTime` now fails (`ExecutionTimeExceeded`).
+- **Breaking**: `AgentDto.MaxExecutionTime` is now `int?` (null without a limit, was 300).
+
 ### Changed — the attributes nothing read are gone **[breaking]**
 
 `CacheEnabled`, `MaxRetryLimit`, `ShareCrew`, `OutputLogFile`, `Language` and `FullOutput` were

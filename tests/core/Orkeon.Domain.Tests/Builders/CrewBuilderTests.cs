@@ -116,6 +116,33 @@ public class CrewBuilderTests
     }
 
     [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldRefuseBuild_WhenHierarchicalManagerAgentHasLimit()
+    {
+        var manager = new AgentBuilder().Role(RoleManager).Goal("Manage team")
+            .MaxExecutionTime(TimeSpan.FromSeconds(30)).Build();
+        var builder = new CrewBuilder().Goal("Hierarchical crew").Hierarchical(manager);
+
+        Assert.Throws<BuilderValidationException>(() => builder.Build());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-02")]
+    public void ShouldRefuseBuild_WhenHierarchicalManagerDesignatedByIdHasLimit(bool withManagerId)
+    {
+        var manager = new AgentBuilder().Role(RoleManager).Goal("Manage team")
+            .MaxExecutionTime(TimeSpan.FromSeconds(30)).Build();
+        var builder = new CrewBuilder().Goal("Hierarchical crew").WithAgent(manager);
+        _ = withManagerId
+            ? builder.Hierarchical().WithManagerId(manager.Id)
+            : builder.Hierarchical(manager.Id);
+
+        Assert.Throws<BuilderValidationException>(() => builder.Build());
+    }
+
+    [Fact]
     public void Hierarchical_WithoutManager_ThrowsValidation()
     {
         // Arrange — hierarchical without manager agent or manager LLM

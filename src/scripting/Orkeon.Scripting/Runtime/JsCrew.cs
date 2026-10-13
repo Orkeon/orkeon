@@ -395,6 +395,15 @@ public sealed partial class JsCrew
                 + "still caps them.");
         }
 
+        // CH-02: maxExecutionTime bounds a task of the declarative shape; the procedural engine runs no task.
+        var timedAgents = _agents.Where(agent => agent.Builder.MaxExecutionTimeValue is not null).Select(agent => $"'{agent.name}'").ToList();
+        if (timedAgents.Count > 0)
+        {
+            LogProceduralShapeIgnores(_logger,
+                $"crew '{name}': agent(s) {string.Join(", ", timedAgents)} declare maxExecutionTime, which this run will not apply: "
+                + "it bounds the tasks of the declarative shape, and the procedural engine runs no task.");
+        }
+
         if (!string.Equals(Process, "sequential", StringComparison.Ordinal))
         {
             LogProceduralShapeIgnores(_logger,

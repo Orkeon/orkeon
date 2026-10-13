@@ -1,1 +1,10 @@
 #nullable enable
+Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider
+Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider.DeadlinePausingHumanInputProvider(Orkeon.Application.Interfaces.Ports.IHumanInputProvider! inner) -> void
+Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider.GetChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider.GetConfirmationAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider.GetInputAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider.IsAvailableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.MaxExecutionTime.get -> int?
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.MaxExecutionTime.set -> void
+static Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.DecorateHumanInputWithDeadline(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

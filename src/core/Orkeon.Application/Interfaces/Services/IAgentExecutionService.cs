@@ -79,7 +79,10 @@ public enum AgentExitReason
     /// High or Critical injection pattern in the task, a previous output or retrieved
     /// knowledge (GAP-09). The task fails with the guardian's reason as its error.
     /// </summary>
-    GuardianBlocked
+    GuardianBlocked,
+
+    /// <summary>The agent's <c>MaxExecutionTime</c> elapsed before the task ended.</summary>
+    ExecutionTimeExceeded
 }
 
 /// <summary>

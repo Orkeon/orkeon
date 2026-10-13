@@ -23,6 +23,7 @@ public sealed class CrewBuilder
     private int? _maxRpm;
     private ILlmProvider? _managerLlm;
     private AgentId? _managerAgentId;
+    private DomainAgent? _managerAgent;
     private ILlmProvider? _planningLlm;
     private bool _memoryEnabled;
     private string? _memoryProvider;
@@ -67,6 +68,7 @@ public sealed class CrewBuilder
         if (managerAgent is not null)
         {
             _managerAgentId = managerAgent.Id;
+            _managerAgent = managerAgent;
         }
         return this;
     }
@@ -76,6 +78,7 @@ public sealed class CrewBuilder
     {
         _processType = ProcessType.Hierarchical;
         _managerAgentId = managerAgentId;
+        _managerAgent = null;
         return this;
     }
 
@@ -215,6 +218,7 @@ public sealed class CrewBuilder
     {
         ArgumentNullException.ThrowIfNull(managerAgent);
         _managerAgentId = managerAgent.Id;
+        _managerAgent = managerAgent;
         return this;
     }
 
@@ -225,6 +229,7 @@ public sealed class CrewBuilder
     public CrewBuilder WithManagerId(AgentId managerAgentId)
     {
         _managerAgentId = managerAgentId;
+        _managerAgent = null;
         return this;
     }
 
@@ -350,6 +355,12 @@ public sealed class CrewBuilder
         // 4. Validate Hierarchical has manager
         if (_processType == ProcessType.Hierarchical && _managerAgentId is null && _managerLlm is null)
             throw new BuilderValidationException("Crew", "Hierarchical process requires either a manager agent or a manager LLM.");
+
+        var limitedManager = _processType == ProcessType.Hierarchical
+            ? _managerAgent ?? (_managerAgentId is { } managerId ? _agents.FirstOrDefault(a => a.Id == managerId) : null)
+            : null;
+        if (limitedManager?.MaxExecutionTime is not null)
+            throw new BuilderValidationException("Crew", $"The manager agent '{limitedManager.Role}' carries a MaxExecutionTime: a hierarchical manager runs no task of its own, so the limit would never apply. Remove it.");
 
         // 4b. and 4c. The mode honours what the tasks ask and the manager the crew carries.
         EnsureAsyncExecutionAccepted();

@@ -260,6 +260,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _deliverableResolverFactory = deliverableResolverFactory;
     }
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}]: the task ran past its maximum execution time of {LimitSeconds}s and is cancelled")]
+    private static partial void LogExecutionTimeExceeded(ILogger logger, object agentRole, double limitSeconds);
+
     /// <summary>
     /// Execute Task Core Async.
     /// </summary>
@@ -288,6 +291,13 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 crewId: context.CrewId.ToString(),
                 agentId: agent.Role.Value,
                 taskId: task.Id.ToString());
+
+            // The agent's time limit (CH-01): opened before anything waits — the maxRpm turn
+            // included — so every wait counts inside it; the one place a task runs in the six modes.
+            using var deadline = agent.MaxExecutionTime is { } limit
+                ? TaskDeadline.Begin(limit, TimeProvider, cancellationToken)
+                : null;
+            var taskToken = deadline?.Token ?? cancellationToken;
 
             try
             {
@@ -320,7 +330,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     agent, task, toolbelt,
                     _toolCallingStrategy?.SupportsNativeToolCalling == true);
                 var knowledgeContext = await ResolveKnowledgeContextAsync(
-                    agent, task, context, cancellationToken).ConfigureAwait(false);
+                    agent, task, context, taskToken).ConfigureAwait(false);
                 // The task's plan, when the crew plans (GAP-31): the run's scope holds it, so it
                 // reaches the task the same way in every mode — a takeover and a revision of the
                 // same task included, a ballot or a delegated sub-task (other tasks) not.
@@ -330,7 +340,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // Input phase: the prompt the provider is about to read — previous outputs and
                 // retrieved knowledge included — is screened first. A block is a readable task
                 // failure; a warning is logged and audited, and the prompt is never rewritten.
-                var inputVerdict = await CheckInputAsync(agent, context, userPrompt, cancellationToken).ConfigureAwait(false);
+                var inputVerdict = await CheckInputAsync(agent, context, userPrompt, taskToken).ConfigureAwait(false);
                 if (inputVerdict is { IsAllowed: false })
                 {
                     var reason = $"Blocked by Guardian (input): {inputVerdict.Reason}";
@@ -361,7 +371,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                         ToolsUsed: toolsUsed,
                         Stopwatch: new System.Diagnostics.Stopwatch()),
                     llm.Loop,
-                    cancellationToken).ConfigureAwait(false);
+                    taskToken).ConfigureAwait(false);
 
                 // A call the provider never answered leaves nothing to validate, and a correction
                 // round would only ask the same model again — the retries belong to the provider
@@ -375,7 +385,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                             // agent's own provider's, when there is one.
                             ChatLoop = llm.Loop,
                         },
-                        MaxOutputRetries, cancellationToken).ConfigureAwait(false);
+                        MaxOutputRetries, taskToken).ConfigureAwait(false);
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
                 var finalOutput = ToolCallTextParser.UnescapeLlmText(validatedOutput);
@@ -383,7 +393,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // Framework-managed deliverable persistence (Solution A / B).
                 // Legacy tasks with Deliverable == null or Source == ToolCall keep the existing
                 // file_write tool-call flow; no resolver is invoked for them.
-                var fqnOutcome = await ResolveDeliverableIfDeclaredAsync(task, finalOutput, cancellationToken).ConfigureAwait(false);
+                var fqnOutcome = await ResolveDeliverableIfDeclaredAsync(task, finalOutput, taskToken).ConfigureAwait(false);
 
                 // Success is the exit reason, and a failed exit names its reason in Error —
                 // the strategies, AUTO_SUMMARY and the runner read Error, and it used to stay
@@ -423,6 +433,22 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     Error: "Operation was cancelled")
                 {
                     ExitReason = AgentExitReason.Cancelled,
+                    IterationsUsed = 0
+                };
+            }
+            catch (OperationCanceledException) when (deadline is { HasExpired: true } && !cancellationToken.IsCancellationRequested)
+            {
+                var max = agent.MaxExecutionTime!.Value;
+                LogExecutionTimeExceeded(_logger, agent.Role, max.TotalSeconds);
+                return new TaskResult(
+                    Success: false,
+                    Output: string.Empty,
+                    StructuredOutput: null,
+                    ToolsUsed: toolsUsed,
+                    ExecutionTime: DateTime.UtcNow - startTime,
+                    Error: $"Agent exceeded its maximum execution time of {max.TotalSeconds}s")
+                {
+                    ExitReason = AgentExitReason.ExecutionTimeExceeded,
                     IterationsUsed = 0
                 };
             }

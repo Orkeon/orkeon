@@ -228,6 +228,39 @@ public class AgentBuilderTests
         Assert.Equal(2000, config.MaxTokens);
     }
 
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldSetLimit_WhenBuilderReceivesPositiveTimeSpan()
+    {
+        var agent = MinimalAgent().MaxExecutionTime(TimeSpan.FromSeconds(90)).Build();
+
+        Assert.Equal(TimeSpan.FromSeconds(90), agent.MaxExecutionTime);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-02")]
+    [InlineData(0)]
+    [InlineData(-1000)]
+    public void ShouldRefuseBuild_WhenLimitIsZeroOrNegative(int milliseconds)
+    {
+        var builder = MinimalAgent().MaxExecutionTime(TimeSpan.FromMilliseconds(milliseconds));
+
+        var ex = Assert.Throws<ArgumentException>(() => builder.Build());
+        Assert.Contains("Test Role", ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldRefuseBuild_WhenLimitExceedsCeiling()
+    {
+        var ceiling = Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling;
+
+        var ex = Assert.Throws<ArgumentException>(
+            () => MinimalAgent().MaxExecutionTime(ceiling + TimeSpan.FromMilliseconds(1)).Build());
+        Assert.Contains("Test Role", ex.Message);
+        Assert.Equal(ceiling, MinimalAgent().MaxExecutionTime(ceiling).Build().MaxExecutionTime);
+    }
+
     #region Test Doubles
 
     private sealed class StubTool : IBaseTool

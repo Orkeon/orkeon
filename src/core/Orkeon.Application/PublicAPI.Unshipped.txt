@@ -1,1 +1,12 @@
 #nullable enable
+Orkeon.Application.Interfaces.Services.AgentExitReason.ExecutionTimeExceeded = 8 -> Orkeon.Application.Interfaces.Services.AgentExitReason
+Orkeon.Application.Crew.Execution.TaskDeadline
+Orkeon.Application.Crew.Execution.TaskDeadline.Dispose() -> void
+Orkeon.Application.Crew.Execution.TaskDeadline.HasExpired.get -> bool
+Orkeon.Application.Crew.Execution.TaskDeadline.Pause() -> System.IDisposable!
+Orkeon.Application.Crew.Execution.TaskDeadline.Token.get -> System.Threading.CancellationToken
+static Orkeon.Application.Crew.Execution.TaskDeadline.Begin(System.TimeSpan limit, System.TimeProvider! time, System.Threading.CancellationToken caller) -> Orkeon.Application.Crew.Execution.TaskDeadline!
+static Orkeon.Application.Crew.Execution.TaskDeadline.Current.get -> Orkeon.Application.Crew.Execution.TaskDeadline?
+static Orkeon.Application.Crew.Execution.TaskDeadline.PauseCurrent() -> System.IDisposable!
+*REMOVED*Orkeon.Application.Agent.DTOs.AgentDto.MaxExecutionTime.get -> int
+Orkeon.Application.Agent.DTOs.AgentDto.MaxExecutionTime.get -> int?

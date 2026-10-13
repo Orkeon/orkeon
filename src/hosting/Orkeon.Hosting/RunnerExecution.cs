@@ -150,6 +150,8 @@ public static partial class RunnerExecution
                     // configureServices below.
                     services.AddOrkeonHumanInput();
                     configureServices?.Invoke(ctx, services);
+                    // After the caller's own provider is in, so the deadline decorator wraps it.
+                    services.DecorateHumanInputWithDeadline();
                 },
                 llmProfile: opts.LlmProfile);
         }

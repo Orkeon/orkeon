@@ -52,6 +52,7 @@ agents:
     allowDelegation: bool # default: true — permet la délégation à d'autres agents
     maxIter: int          # default: 20 — les tours que l'agent peut prendre sur une tâche
     maxRpm: int           # default: aucun — au plus N requêtes au modèle par minute pour cet agent ; une de plus attend son tour
+    maxExecutionTime: int # default: aucun — les secondes qu'une tâche peut prendre chez cet agent (alias max_execution_time ; 0 < valeur <= 4294967, environ 49,7 jours)
     verbose: bool         # default: false — logs détaillés pour cet agent
     llm:
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) — absent = le fournisseur par défaut de l'hôte
