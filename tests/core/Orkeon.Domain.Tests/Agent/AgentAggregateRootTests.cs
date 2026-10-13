@@ -296,7 +296,7 @@ public class AgentAggregateRootTests
             Role = AgentRole.From("Bot"),
             Goal = AgentGoal.From("Automate"),
             SystemTemplate = "You are a bot",
-            PromptTemplate = "Process: {task}",
+            PromptTemplate = "Process: {task} {{ .Prompt }}",
             ResponseTemplate = "Output: {result}"
         };
 
@@ -305,7 +305,7 @@ public class AgentAggregateRootTests
 
         // Assert
         Assert.Equal("You are a bot", agent.SystemTemplate);
-        Assert.Equal("Process: {task}", agent.PromptTemplate);
+        Assert.Equal("Process: {task} {{ .Prompt }}", agent.PromptTemplate);
         Assert.Equal("Output: {result}", agent.ResponseTemplate);
     }
 

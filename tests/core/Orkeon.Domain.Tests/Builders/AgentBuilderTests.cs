@@ -70,7 +70,7 @@ public class AgentBuilderTests
             .Verbose()
             .MaxExecutionTime(TimeoutStandard)
             .SystemTemplate("You are a developer")
-            .PromptTemplate("Task: {task}")
+            .PromptTemplate("Task: {task} {{ .Prompt }}")
             .ResponseTemplate("Result: {result}")
             .WithLlm(llm)
             .Build();
@@ -85,7 +85,7 @@ public class AgentBuilderTests
         Assert.True(agent.Verbose);
         Assert.Equal(TimeoutStandard, agent.MaxExecutionTime);
         Assert.Equal("You are a developer", agent.SystemTemplate);
-        Assert.Equal("Task: {task}", agent.PromptTemplate);
+        Assert.Equal("Task: {task} {{ .Prompt }}", agent.PromptTemplate);
         Assert.Equal("Result: {result}", agent.ResponseTemplate);
         Assert.Same(llm, agent.Llm);
     }
@@ -259,6 +259,26 @@ public class AgentBuilderTests
             () => MinimalAgent().MaxExecutionTime(ceiling + TimeSpan.FromMilliseconds(1)).Build());
         Assert.Contains("Test Role", ex.Message);
         Assert.Equal(ceiling, MinimalAgent().MaxExecutionTime(ceiling).Build().MaxExecutionTime);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldRefuseBuild_WhenPromptTemplateHasNoMark()
+    {
+        var builder = MinimalAgent().PromptTemplate("Answer in French.");
+
+        var ex = Assert.Throws<ArgumentException>(() => builder.Build());
+        Assert.Contains("Test Role", ex.Message);
+        Assert.Contains("{{ .Prompt }}", ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldTreatEmptyTemplateAsNone_WhenPromptTemplateIsEmpty()
+    {
+        var agent = MinimalAgent().PromptTemplate("").Build();
+
+        Assert.Null(agent.PromptTemplate);
     }
 
     #region Test Doubles

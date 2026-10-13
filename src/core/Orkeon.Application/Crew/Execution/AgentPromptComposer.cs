@@ -4,6 +4,7 @@ using System.Text;
 using Orkeon.Application.Context;
 using Orkeon.Application.Constants.Orchestration;
 using Orkeon.Application.Memory;
+using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Constants.Crew;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
@@ -144,8 +145,13 @@ internal static class AgentPromptComposer
     /// The task's plan, when the crew plans (GAP-31): what <see cref="CrewPlanScope"/> holds for the task.
     /// Null or blank leaves the prompt byte-identical to the prompt of a crew that does not plan.
     /// </param>
+    /// <param name="promptTemplate">
+    /// The agent's prompt template, when it has one: wraps the composed prompt, every
+    /// <see cref="AgentDefaults.PromptTemplateMark"/> replaced by it. Null or empty leaves the prompt unchanged.
+    /// </param>
     internal static string BuildUserPrompt(
-        CrewTask task, SimpleExecutionContext context, string? knowledgeContext = null, string? plan = null)
+        CrewTask task, SimpleExecutionContext context, string? knowledgeContext = null, string? plan = null,
+        string? promptTemplate = null)
     {
         var (description, expectedOutput) = InterpolateTaskFields(task, context);
 
@@ -162,7 +168,10 @@ internal static class AgentPromptComposer
         AppendRecalledMemories(prompt, context);
         AppendKnowledgeContext(prompt, knowledgeContext);
 
-        return prompt.ToString();
+        var composed = prompt.ToString();
+        return string.IsNullOrEmpty(promptTemplate)
+            ? composed
+            : promptTemplate.Replace(AgentDefaults.PromptTemplateMark, composed, StringComparison.Ordinal);
     }
 
     /// <summary>

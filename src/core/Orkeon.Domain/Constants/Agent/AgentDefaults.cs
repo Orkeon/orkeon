@@ -24,6 +24,11 @@ public static class AgentDefaults
     /// </summary>
     public const int MaxRetryLimit = 3;
 
+    /// <summary>
+    /// The mark a <c>PromptTemplate</c> carries: replaced by the task's prompt when the template wraps it.
+    /// </summary>
+    public const string PromptTemplateMark = "{{ .Prompt }}";
+
     /// <summary>Largest execution time an agent may be given (the timer's limit).</summary>
     public static readonly TimeSpan MaxExecutionTimeCeiling = TimeSpan.FromMilliseconds(uint.MaxValue - 1);
 

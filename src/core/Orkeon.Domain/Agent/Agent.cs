@@ -82,7 +82,9 @@ public sealed class Agent : AggregateRoot<AgentId>
     public string? SystemTemplate { get; private set; }
 
     /// <summary>
-    /// Gets the prompt template.
+    /// Gets the prompt template: it wraps the task's first prompt, every <c>{{ .Prompt }}</c> replaced by
+    /// it (see <see cref="AgentDefaults.PromptTemplateMark"/>). A non-empty template without the mark is
+    /// refused at creation, an empty one counts as none (null).
     /// </summary>
     public string? PromptTemplate { get; private set; }
 
@@ -190,7 +192,11 @@ public sealed class Agent : AggregateRoot<AgentId>
                 ? options.MaxExecutionTime
                 : throw new ArgumentException($"Agent '{options.Role.Value}': MaxExecutionTime must be greater than zero and at most {AgentDefaults.MaxExecutionTimeCeiling}.", nameof(options)),
             SystemTemplate = options.SystemTemplate,
-            PromptTemplate = options.PromptTemplate,
+            PromptTemplate = string.IsNullOrEmpty(options.PromptTemplate)
+                ? null
+                : options.PromptTemplate.Contains(AgentDefaults.PromptTemplateMark, StringComparison.Ordinal)
+                    ? options.PromptTemplate
+                    : throw new ArgumentException($"Agent '{options.Role.Value}': PromptTemplate must contain {AgentDefaults.PromptTemplateMark}.", nameof(options)),
             ResponseTemplate = options.ResponseTemplate,
             Llm = options.Llm,
             ToolAccessPolicy = options.ToolAccessPolicy ?? ToolAccessPolicy.CreateUnrestricted(),

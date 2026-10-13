@@ -335,7 +335,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // reaches the task the same way in every mode — a takeover and a revision of the
                 // same task included, a ballot or a delegated sub-task (other tasks) not.
                 var userPrompt = AgentPromptComposer.BuildUserPrompt(
-                    task, context, knowledgeContext, CrewPlanScope.InstructionsFor(task.Id));
+                    task, context, knowledgeContext, CrewPlanScope.InstructionsFor(task.Id), agent.PromptTemplate);
 
                 // Input phase: the prompt the provider is about to read — previous outputs and
                 // retrieved knowledge included — is screened first. A block is a readable task

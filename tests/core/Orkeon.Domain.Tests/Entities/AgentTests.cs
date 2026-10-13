@@ -126,7 +126,7 @@ public class AgentTests
         var verbose = true;
         var maxExecutionTime = TimeSpan.FromMinutes(30);
         var systemTemplate = "You are a senior architect";
-        var promptTemplate = "Design: {input}";
+        var promptTemplate = "Design: {input} {{ .Prompt }}";
         var responseTemplate = "Solution: {output}";
 
         // Act
@@ -999,7 +999,7 @@ public class AgentTests
             verbose: true,
             maxExecutionTime: TimeoutStandard,
             systemTemplate: "system",
-            promptTemplate: "prompt",
+            promptTemplate: "prompt {{ .Prompt }}",
             responseTemplate: "response",
             tools: [tool]);
 
@@ -1013,7 +1013,7 @@ public class AgentTests
         Assert.True(agent.Verbose);
         Assert.Equal(TimeoutStandard, agent.MaxExecutionTime);
         Assert.Equal("system", agent.SystemTemplate);
-        Assert.Equal("prompt", agent.PromptTemplate);
+        Assert.Equal("prompt {{ .Prompt }}", agent.PromptTemplate);
         Assert.Equal("response", agent.ResponseTemplate);
         Assert.Single(agent.Tools);
         Assert.True(agent.HasTool("CodeTool"));

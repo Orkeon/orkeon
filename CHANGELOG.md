@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — an agent's `PromptTemplate` now wraps the task's prompt **[breaking]**
+
+`PromptTemplate` was copied onto the agent and nothing read it: it now wraps the first prompt of
+each task the agent runs, every `{{ .Prompt }}` replaced by the prompt composed as before
+(`AgentDefaults.PromptTemplateMark`). Retries, corrections, tool messages and the manager's prompts
+are not wrapped; an agent without a template sends the same prompt, byte for byte.
+
+- **Breaking**: a non-empty `PromptTemplate` without `{{ .Prompt }}` refuses the construction of the
+  agent (`Agent.Create`, `AgentBuilder.Build()`, the YAML load); an empty one counts as none.
+- **Migration**: put `{{ .Prompt }}` where the task's prompt goes in each `PromptTemplate`, or remove
+  the template: it had no effect.
+
 ### Changed — an agent's `MaxExecutionTime` is now enforced **[breaking]**
 
 `maxExecutionTime` (`max_execution_time`, whole seconds) in YAML and `maxExecutionTime(seconds)` in `.ork.ts`

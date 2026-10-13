@@ -179,7 +179,7 @@ public sealed class AgentGuardrailsTests
     // ── the templates of a configuration built in code ───────────────────────────────────
 
     private const string SystemTemplate = "You are the house writer: short sentences, no jargon.";
-    private const string PromptTemplate = "Prompt template that nothing reads.";
+    private const string PromptTemplate = "Prompt template {{ .Prompt }}";
     private const string ResponseTemplate = "End every answer with one line that sums it up.";
 
     [Fact]
@@ -227,6 +227,47 @@ public sealed class AgentGuardrailsTests
         var system = SystemMessage(provider);
         Assert.StartsWith(SystemTemplate, system, StringComparison.Ordinal);
         Assert.EndsWith(ResponseTemplate, system.TrimEnd(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldReachTaskPrompt_WhenConfigurationAgentCarriesPromptTemplate()
+    {
+        var provider = new MockLlmProvider();
+        provider.SetChatResult("The note.");
+        await using var container = Container(provider);
+        await using var scope = container.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var writerId = AgentId.Create();
+        var config = new CrewConfiguration
+        {
+            Name = "wrapped",
+            Goal = "Write in the house style",
+            Process = ProcessType.Sequential,
+            Agents =
+            [
+                new AgentConfiguration
+                {
+                    Id = writerId,
+                    Role = "Writer",
+                    Goal = "Write the note",
+                    AllowDelegation = false,
+                    PromptTemplate = "Avant\n{{ .Prompt }}\nApres",
+                },
+            ],
+            Tasks = [new TaskConfiguration { Description = "Write the note", ExpectedOutput = "A note", AssignedAgentId = writerId }],
+        };
+        var crew = await services.GetRequiredService<ICrewFactory>().CreateFromConfigAsync(config, Ct);
+
+        var output = await services.GetRequiredService<ICrewOrchestrationService>().KickoffAsync(
+            crew.Id, new CrewInput("wrapped", new Dictionary<string, object>()), Ct);
+
+        Assert.True(output.Succeeded, output.Error);
+        var user = provider.LastChatMessages!.First(message => message.Role == LlmRoles.User).Content;
+        Assert.StartsWith("Avant\n", user, StringComparison.Ordinal);
+        Assert.EndsWith("\nApres", user.TrimEnd(), StringComparison.Ordinal);
+        Assert.Contains("Write the note", user, StringComparison.Ordinal);
+        Assert.DoesNotContain("{{ .Prompt }}", user, StringComparison.Ordinal);
     }
 
     // ── what the load refuses ────────────────────────────────────────────────────────────
