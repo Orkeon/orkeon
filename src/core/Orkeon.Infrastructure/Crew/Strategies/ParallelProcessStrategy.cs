@@ -123,7 +123,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             ? new Dictionary<string, string>(inputVariables)
             : [];
 
-        var executionTasks = new List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)>>();
+        var executionTasks = new List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)>>();
 
         // The barrier covers setup AND the fan-out loop, not only the WhenAll: a cancellation
         // firing mid-fan-out used to escape with tasks 1..n-1 already launched — no terminal
@@ -282,15 +282,15 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     private static async System.Threading.Tasks.Task RecordWaveAsync(
         ParallelRun run,
         List<(DomainTask Task, DomainAgent Agent)> launched,
-        (DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)[] waveResults)
+        (DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)[] waveResults)
     {
         for (var i = 0; i < waveResults.Length; i++)
         {
-            var (domainOutput, appOutput, error) = waveResults[i];
+            var (domainOutput, appOutput, error, endedAt) = waveResults[i];
             if (domainOutput.Success)
-                await run.Outcome.RecordSuccessAsync(launched[i].Task, domainOutput).ConfigureAwait(false);
+                await run.Outcome.RecordSuccessAsync(launched[i].Task, domainOutput, endedAt: endedAt).ConfigureAwait(false);
             else
-                await run.Outcome.RecordFailureAsync(launched[i].Task, launched[i].Agent.Role.Value, error).ConfigureAwait(false);
+                await run.Outcome.RecordFailureAsync(launched[i].Task, launched[i].Agent.Role.Value, error, endedAt).ConfigureAwait(false);
             run.Results.Add((domainOutput, appOutput));
         }
 
@@ -348,7 +348,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// One task of a wave, from the pool thread the fan-out launched it on: execute, record the
     /// usage, normalise the output and publish the completion snapshot.
     /// </summary>
-    private async System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)> ExecuteWaveTaskAsync(
+    private async System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)> ExecuteWaveTaskAsync(
         DomainAgent agent,
         DomainTask task,
         SimpleExecutionContext context,
@@ -404,7 +404,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         taskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
-        return (domainOutput, appOutput, result.Error ?? result.LastError);
+        return (domainOutput, appOutput, result.Error ?? result.LastError, result.EndedAt);
     }
 
     /// <summary>
@@ -457,7 +457,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Quiescing already-launched tasks before the terminal dispatch; their individual outcomes are already in the snapshots.")]
     private static async System.Threading.Tasks.Task SettleAsync(
-        List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)>> tasks)
+        List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)>> tasks)
     {
         try
         {

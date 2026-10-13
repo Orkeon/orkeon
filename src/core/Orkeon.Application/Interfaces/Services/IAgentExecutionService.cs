@@ -109,6 +109,12 @@ public record TaskResult(
     public int IterationsUsed { get; init; }
 
     /// <summary>
+    /// When the execution ended, on the clock the executions use: the instant a run's task span
+    /// ends at when the task is recorded later. Null when the execution did not stamp it.
+    /// </summary>
+    public DateTimeOffset? EndedAt { get; init; }
+
+    /// <summary>
     /// Last error message observed during execution (useful when <see cref="ExitReason"/>
     /// is <see cref="AgentExitReason.CircuitBreakerTripped"/> or
     /// <see cref="AgentExitReason.MaxIterationsReached"/>).

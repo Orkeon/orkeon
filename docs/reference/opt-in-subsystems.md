@@ -216,7 +216,12 @@ mapping. The names are the constants of `Orkeon.Constants.Llm.GenAiAttributes`.
 | Agent turn (`Orkeon.Agent`) | `invoke_agent {agent}` | `gen_ai.operation.name=invoke_agent`, `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.provider.name`, `gen_ai.request.model`, `orkeon.task.id` |
 | Model call (`Orkeon.Llm`, kind Client) | `chat {model}` | `gen_ai.operation.name=chat`, `gen_ai.provider.name` (lower-case), `gen_ai.request.model`, `gen_ai.request.temperature`, `gen_ai.request.max_tokens`, `gen_ai.response.model`, `gen_ai.response.id`, `gen_ai.response.finish_reasons`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `error.type` on failure |
 | Tool execution (`Orkeon.Tool`) | `execute_tool {tool}` | `gen_ai.operation.name=execute_tool`, `gen_ai.tool.name`, `gen_ai.tool.call.id` (the model's own id), `gen_ai.agent.name`, `error.type` on failure |
-| Scripting runtime (`Orkeon.Scripting`) | the same three, plus `crew.run` | same attributes; `orkeon.llm.method` (`complete`/`act`), `orkeon.crew.name`, `orkeon.crew.process` |
+| Crew run (`Orkeon.Crew`) | `crew.run` | `orkeon.crew.id`, `orkeon.crew.name`, `orkeon.crew.process`, `orkeon.crew.task_count`; in error when the run fails or is cancelled |
+| Task (`Orkeon.Task`) | `task.run` | one per task, `orkeon.task.id`; in error when the task fails or is cancelled |
+| Memory (`Orkeon.Memory`) | `memory.recall`, `memory.store` | under the task that recalls or stores |
+| Scripting runtime (`Orkeon.Scripting`) | the same three, plus `crew.run` | same attributes; `orkeon.llm.method` (`complete`/`act`), `orkeon.crew.name`, `orkeon.crew.process`; the source is listed in `OrkeonActivitySources.AllNames`, so the script's spans are exported |
+
+A run is a trace: `crew.run` > `task.run` > `invoke_agent` and `memory.*`.
 
 Metrics (`OrkeonMetrics`, meter `Orkeon`): `gen_ai.client.token.usage` (histogram, tokens,
 `gen_ai.token.type` = `input` | `output`) and `gen_ai.client.operation.duration` (histogram,

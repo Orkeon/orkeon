@@ -18,3 +18,36 @@ const Orkeon.Application.Crew.Execution.ExecutionLogCategories.Verbose = "Orkeon
 Orkeon.Application.Crew.ExecutionOrchestrator.ExecutionOrchestrator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.ExecutionOrchestrator!>! logger, Orkeon.Application.Interfaces.Ports.IBasicLlmProvider! llmProvider, Microsoft.Extensions.Logging.ILogger! verboseLogger) -> void
 Orkeon.Application.Crew.ExecutionOrchestrator.ExecutionOrchestrator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.ExecutionOrchestrator!>! logger, Orkeon.Application.Interfaces.Ports.IBasicLlmProvider! llmProvider, Microsoft.Extensions.AI.IChatClient! chatClient, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! registeredTools, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Logging.ILogger! verboseLogger) -> void
 Orkeon.Application.Crew.ExecutionOrchestrator.ExecutionOrchestrator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.ExecutionOrchestrator!>! logger, Orkeon.Application.Interfaces.Ports.IBasicLlmProvider! llmProvider, Microsoft.Extensions.AI.IChatClient! chatClient, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! registeredTools, Orkeon.Application.Interfaces.Ports.IOutputValidationPipeline! validationPipeline, Orkeon.Application.Interfaces.Ports.IOutputParserFactory! parserFactory, Orkeon.Domain.SharedKernel.ILlmProvider? fullProvider, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Orkeon.Application.Crew.DeliverableResolvers.IDeliverableResolverFactory? deliverableResolverFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Logging.ILogger! verboseLogger) -> void
+Orkeon.Application.Telemetry.CrewRunTracing
+Orkeon.Application.Telemetry.OrkeonRunSpans
+const Orkeon.Application.Telemetry.OrkeonRunSpans.CrewId = "orkeon.crew.id" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.CrewName = "orkeon.crew.name" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.CrewProcess = "orkeon.crew.process" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.CrewRun = "crew.run" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.CrewTaskCount = "orkeon.crew.task_count" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.MemoryItemCount = "orkeon.memory.item_count" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.MemoryOperation = "orkeon.memory.operation" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.MemoryProvider = "orkeon.memory.provider" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.MemoryRecall = "memory.recall" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.MemoryStore = "memory.store" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.TaskId = "orkeon.task.id" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.TaskRun = "task.run" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.TaskStatus = "orkeon.task.status" -> string!
+Orkeon.Application.Telemetry.TaskSpanStatus
+Orkeon.Application.Telemetry.TaskSpanStatus.Cancelled = 2 -> Orkeon.Application.Telemetry.TaskSpanStatus
+Orkeon.Application.Telemetry.TaskSpanStatus.Completed = 0 -> Orkeon.Application.Telemetry.TaskSpanStatus
+Orkeon.Application.Telemetry.TaskSpanStatus.Failed = 1 -> Orkeon.Application.Telemetry.TaskSpanStatus
+static Orkeon.Application.Telemetry.CrewRunTracing.Begin(Orkeon.Domain.Crew.Crew! crew) -> System.IDisposable!
+static Orkeon.Application.Telemetry.CrewRunTracing.EndTask(Orkeon.Domain.Common.TaskId! id, Orkeon.Application.Telemetry.TaskSpanStatus status, string? reason, System.DateTimeOffset? endedAt) -> void
+static Orkeon.Application.Telemetry.CrewRunTracing.EnterTask(Orkeon.Domain.Common.TaskId! id) -> System.IDisposable!
+static Orkeon.Application.Telemetry.CrewRunTracing.Fail(string! reason, string! errorType) -> void
+static Orkeon.Application.Telemetry.CrewRunTracing.HandOver(Orkeon.Domain.Common.TaskId! id, string! toAgent) -> void
+static Orkeon.Application.Telemetry.CrewRunTracing.StartTask(Orkeon.Domain.Common.TaskId! id, string? agentName) -> void
+Orkeon.Application.Interfaces.Services.TaskResult.EndedAt.get -> System.DateTimeOffset?
+Orkeon.Application.Interfaces.Services.TaskResult.EndedAt.init -> void
+const Orkeon.Application.Telemetry.OrkeonRunSpans.HandOverEvent = "hand_over" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.HandOverTo = "orkeon.handover.to" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorTaskFailed = "task_failed" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorTaskCancelled = "task_cancelled" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorRunFailure = "run_failure" -> string!
+const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorCrewFailed = "crew_failed" -> string!

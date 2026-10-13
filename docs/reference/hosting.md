@@ -262,7 +262,7 @@ settings file ([where settings are read from](./configuration.md#where-settings-
 Without either, nothing is exported.
 
 **What is exported.** Traces from the `Orkeon.Crew`, `Orkeon.Agent`, `Orkeon.Task`, `Orkeon.Llm`,
-`Orkeon.Tool`, `Orkeon.Memory` and `Orkeon.EventHub` activity sources plus the HttpClient
+`Orkeon.Tool`, `Orkeon.Memory`, `Orkeon.EventHub` and `Orkeon.Scripting` activity sources plus the HttpClient
 instrumentation; metrics from the `Orkeon` meter plus the runtime and HttpClient instrumentation; and,
 whenever OTLP export is on, the structured logs (formatted message and scopes included) to the same
 endpoint. The resource names the service `Orkeon`. The span and metric names follow the OpenTelemetry

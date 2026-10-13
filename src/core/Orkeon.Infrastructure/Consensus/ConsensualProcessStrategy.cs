@@ -621,6 +621,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 
         try
         {
+            using var taskSpan = Orkeon.Application.Telemetry.CrewRunTracing.EnterTask(vote.Task.Id);
             return await _ballots.CollectAsync(new BallotRequest
             {
                 Voter = voter,

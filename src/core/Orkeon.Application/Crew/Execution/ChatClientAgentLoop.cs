@@ -114,7 +114,11 @@ internal sealed class ChatClientAgentLoop
         agentActivity?.SetTag(GenAiAttributes.AgentId, agent.Id.ToString());
         agentActivity?.SetTag(GenAiAttributes.ProviderName, Telemetry.OrkeonActivitySources.ProviderName(_llmGate.ProviderName));
         agentActivity?.SetTag(GenAiAttributes.RequestModel, options.ModelId);
-        agentActivity?.SetTag("orkeon.task.id", task.Id.ToString());
+        agentActivity?.SetTag(
+            Telemetry.OrkeonRunSpans.TaskId,
+            agentActivity.Parent is { OperationName: Telemetry.OrkeonRunSpans.TaskRun } owner
+                ? owner.GetTagItem(Telemetry.OrkeonRunSpans.TaskId)
+                : task.Id.ToString());
         var totalTokensUsed = 0;
         var toolCallShapedAnswers = 0;
         // Prompt/completion split accumulated from UsageDetails when the provider reports

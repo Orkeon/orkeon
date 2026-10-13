@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a run is a trace **[breaking]**
+
+A run now emits one trace: `crew.run` for the crew, `task.run` per task, `memory.recall` and
+`memory.store` under their task, the agent turns (`invoke_agent`) under their task. A failure or a
+cancellation ends the span in error. The `Orkeon.Scripting` source is listed in
+`OrkeonActivitySources.AllNames`, so the spans of a procedural script are exported. `TaskResult`
+gains `EndedAt` (Application).
+
+- **Breaking**: `TracingInstrumentation` and `OrkeonTelemetryChatClient` (`Orkeon.Infrastructure.Telemetry`)
+  are removed: nothing in production called them.
+- **Migration**: wrap the chat client with Microsoft.Extensions.AI's `UseOpenTelemetry()` on the
+  chat client builder; the run's own spans need no call.
+
 ### Changed — the turn lines of a verbose agent move to category `Orkeon.Verbose`
 
 The tool calls, tool results and model responses of a `verbose` agent (every agent of a verbose

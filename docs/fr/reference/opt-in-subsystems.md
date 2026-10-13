@@ -222,7 +222,12 @@ sans mapping. Les noms sont les constantes de `Orkeon.Constants.Llm.GenAiAttribu
 | Tour d'agent (`Orkeon.Agent`) | `invoke_agent {agent}` | `gen_ai.operation.name=invoke_agent`, `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.provider.name`, `gen_ai.request.model`, `orkeon.task.id` |
 | Appel au modèle (`Orkeon.Llm`, kind Client) | `chat {model}` | `gen_ai.operation.name=chat`, `gen_ai.provider.name` (minuscules), `gen_ai.request.model`, `gen_ai.request.temperature`, `gen_ai.request.max_tokens`, `gen_ai.response.model`, `gen_ai.response.id`, `gen_ai.response.finish_reasons`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `error.type` en cas d'échec |
 | Exécution d'outil (`Orkeon.Tool`) | `execute_tool {tool}` | `gen_ai.operation.name=execute_tool`, `gen_ai.tool.name`, `gen_ai.tool.call.id` (l'identifiant donné par le modèle), `gen_ai.agent.name`, `error.type` en cas d'échec |
-| Runtime de scripting (`Orkeon.Scripting`) | les trois mêmes, plus `crew.run` | mêmes attributs ; `orkeon.llm.method` (`complete`/`act`), `orkeon.crew.name`, `orkeon.crew.process` |
+| Exécution d'un crew (`Orkeon.Crew`) | `crew.run` | `orkeon.crew.id`, `orkeon.crew.name`, `orkeon.crew.process`, `orkeon.crew.task_count` ; en erreur quand l'exécution échoue ou est annulée |
+| Tâche (`Orkeon.Task`) | `task.run` | une par tâche, `orkeon.task.id` ; en erreur quand la tâche échoue ou est annulée |
+| Mémoire (`Orkeon.Memory`) | `memory.recall`, `memory.store` | sous la tâche qui rappelle ou stocke |
+| Runtime de scripting (`Orkeon.Scripting`) | les trois mêmes, plus `crew.run` | mêmes attributs ; `orkeon.llm.method` (`complete`/`act`), `orkeon.crew.name`, `orkeon.crew.process` ; la source figure dans `OrkeonActivitySources.AllNames`, donc les spans du script sont exportés |
+
+Une exécution est une trace : `crew.run` > `task.run` > `invoke_agent` et `memory.*`.
 
 Métriques (`OrkeonMetrics`, meter `Orkeon`) : `gen_ai.client.token.usage` (histogramme,
 tokens, `gen_ai.token.type` = `input` | `output`) et `gen_ai.client.operation.duration`

@@ -1,4 +1,5 @@
 using Orkeon.Application.Crew;
+using Orkeon.Application.Telemetry;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Crew.ValueObjects;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
@@ -101,6 +102,7 @@ internal sealed class CrewRunOutcome
 
         var reopen = FirstRecord(task);
         _running[task.Id] = new RunningTask(task, [agent]);
+        CrewRunTracing.StartTask(task.Id, agent.Role.Value);
         return _lifecycle.ApplyAsync(task, [agent], () =>
         {
             if (reopen)
@@ -119,6 +121,7 @@ internal sealed class CrewRunOutcome
     {
         var reopen = FirstRecord(task);
         _running[task.Id] = new RunningTask(task, [.. agents]);
+        CrewRunTracing.StartTask(task.Id, agentName: null);
         return _lifecycle.ApplyAsync(task, agents, () =>
         {
             if (reopen)
@@ -139,6 +142,7 @@ internal sealed class CrewRunOutcome
         if (!_running.TryGetValue(task.Id, out var running))
             return RecordStartAsync(task, to);
 
+        CrewRunTracing.HandOver(task.Id, to.Role.Value);
         var from = running.Agents.Where(a => a.Id != to.Id).ToList();
         running.Agents.Clear();
         running.Agents.Add(to);
@@ -171,9 +175,10 @@ internal sealed class CrewRunOutcome
     /// — the agent running it when null: the task is completed under that agent, and every agent
     /// still running it completes it.
     /// </summary>
-    internal System.Threading.Tasks.Task RecordSuccessAsync(DomainTask task, DomainTaskOutput output, DomainAgent? author = null)
+    internal System.Threading.Tasks.Task RecordSuccessAsync(DomainTask task, DomainTaskOutput output, DomainAgent? author = null, DateTimeOffset? endedAt = null)
     {
         _running.Remove(task.Id, out var running);
+        EndSpan(task.Id, running is not null, TaskSpanStatus.Completed, reason: null, endedAt);
         var agents = running?.Agents ?? [];
         var completer = author ?? agents.FirstOrDefault();
         var reopen = running is null && FirstRecord(task);
@@ -198,10 +203,10 @@ internal sealed class CrewRunOutcome
     /// Records a task that failed, with the cause its agent reported: the task fails — before it
     /// started, when the run never got to run it — and every agent running it fails it.
     /// </summary>
-    internal async System.Threading.Tasks.Task<string> RecordFailureAsync(DomainTask task, string agentRole, string? error)
+    internal async System.Threading.Tasks.Task<string> RecordFailureAsync(DomainTask task, string agentRole, string? error, DateTimeOffset? endedAt = null)
     {
         if (_runToken.IsCancellationRequested)
-            return await RecordCancellationAsync(task, agentRole).ConfigureAwait(false);
+            return await RecordCancellationAsync(task, agentRole, endedAt).ConfigureAwait(false);
 
         var cause = string.IsNullOrWhiteSpace(error) ? "unknown error" : error;
         var reason = $"Task {task.Id} ({agentRole}) failed: {cause}";
@@ -209,6 +214,7 @@ internal sealed class CrewRunOutcome
         _failures.Add(reason);
 
         _running.Remove(task.Id, out var running);
+        EndSpan(task.Id, running is not null, TaskSpanStatus.Failed, reason, endedAt);
         var agents = running?.Agents ?? [];
         var reopen = running is null && FirstRecord(task);
         await _lifecycle.ApplyAsync(task, agents, () =>
@@ -226,12 +232,12 @@ internal sealed class CrewRunOutcome
     /// Records a task the run's cancellation caught: it did not succeed, and it is cancelled — the
     /// agents running it failing it — with <see cref="CancelledReason"/>, as an interruption does.
     /// </summary>
-    private async System.Threading.Tasks.Task<string> RecordCancellationAsync(DomainTask task, string agentRole)
+    private async System.Threading.Tasks.Task<string> RecordCancellationAsync(DomainTask task, string agentRole, DateTimeOffset? endedAt)
     {
         var reason = $"Task {task.Id} ({agentRole}) cancelled: {CancelledReason}";
         _notSucceeded.Add(task.Id);
         _failures.Add(reason);
-        await CancelAsync(task, CancelledReason).ConfigureAwait(false);
+        await CancelAsync(task, CancelledReason, endedAt).ConfigureAwait(false);
         return reason;
     }
 
@@ -252,7 +258,11 @@ internal sealed class CrewRunOutcome
     /// Records a cause that belongs to the run rather than to one task (an exhausted execution
     /// budget). It heads the crew's error.
     /// </summary>
-    internal void RecordRunFailure(string headline) => _headline ??= headline;
+    internal void RecordRunFailure(string headline)
+    {
+        _headline ??= headline;
+        CrewRunTracing.Fail(headline, OrkeonRunSpans.ErrorRunFailure);
+    }
 
     /// <summary>
     /// Records tasks the run never reached (the budget ran out before them): each is named, counted
@@ -288,6 +298,7 @@ internal sealed class CrewRunOutcome
         foreach (var running in _running.Values.ToList())
         {
             _running.Remove(running.Task.Id);
+            EndSpan(running.Task.Id, started: true, cancelled ? TaskSpanStatus.Cancelled : TaskSpanStatus.Failed, reason);
             await _lifecycle.ApplyAsync(running.Task, running.Agents, () =>
             {
                 if (cancelled)
@@ -300,10 +311,21 @@ internal sealed class CrewRunOutcome
         }
     }
 
+    /// <summary>
+    /// Ends the task's span; a task the run never started gets a span that starts and ends here.
+    /// </summary>
+    private static void EndSpan(TaskId taskId, bool started, TaskSpanStatus status, string? reason, DateTimeOffset? endedAt = null)
+    {
+        if (!started)
+            CrewRunTracing.StartTask(taskId, agentName: null);
+        CrewRunTracing.EndTask(taskId, status, reason, endedAt);
+    }
+
     /// <summary>Cancels <paramref name="task"/>, the agents running it failing it with the reason.</summary>
-    private System.Threading.Tasks.Task CancelAsync(DomainTask task, string reason)
+    private System.Threading.Tasks.Task CancelAsync(DomainTask task, string reason, DateTimeOffset? endedAt = null)
     {
         _running.Remove(task.Id, out var running);
+        EndSpan(task.Id, running is not null, TaskSpanStatus.Cancelled, reason, endedAt);
         var agents = running?.Agents ?? [];
         var reopen = running is null && FirstRecord(task);
         return _lifecycle.ApplyAsync(task, agents, () =>

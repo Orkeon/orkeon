@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Constants.Orchestration;
@@ -9,7 +10,9 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.Tests.Doubles;
+using Orkeon.Application.Telemetry;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tests.Shared.Telemetry;
 using CrewOutput = Orkeon.Application.Interfaces.Services.CrewOutput;
 
 namespace Orkeon.Infrastructure.Tests.Orchestration;
@@ -40,7 +43,7 @@ public sealed class CrewMemoryKickoffTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private static ServiceProvider Host(MockLlmProvider vendor, IEmbeddingProvider? embedder, Dictionary<string, string?>? settings = null)
+    private static ServiceProvider Host(MockLlmProvider vendor, IEmbeddingProvider? embedder, Dictionary<string, string?>? settings = null, Orkeon.Domain.Memory.IMemoryProvider? memory = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(settings ?? []).Build());
@@ -52,6 +55,8 @@ public sealed class CrewMemoryKickoffTests
         services.AddOrkeonLlmProvider(_ => vendor, LlmConfig.Create("host-model"));
         services.AddOrkeonApplication();
         services.AddOrkeonInfrastructure();
+        if (memory is not null)
+            services.AddSingleton(memory);
         return services.BuildServiceProvider();
     }
 
@@ -158,6 +163,87 @@ public sealed class CrewMemoryKickoffTests
         var error = await Assert.ThrowsAnyAsync<Exception>(() => RunAsync(container, providerWithoutMemory));
 
         Assert.Contains("memory: true", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldNestRecallAndStoreUnderTask_WhenCrewHasMemory()
+    {
+        var embedder = new MockEmbeddingProvider();
+        embedder.SetEmbeddingFunc(BagOfWords);
+        await using var container = Host(Vendor([], "Week 39 AI news."), embedder);
+        using var recorder = new ActivityRecorder(OrkeonActivitySources.AllNames);
+        using var root = new Activity("ch07-root");
+        root.Start();
+
+        var output = await RunAsync(container, RememberingCrew);
+        root.Stop();
+
+        Assert.True(output.Succeeded, output.Error);
+        var spans = recorder.Snapshot(root.TraceId);
+        var task = Assert.Single(spans, a => a.OperationName == "task.run");
+        var taskId = task.GetTagItem("orkeon.task.id");
+        Assert.NotNull(taskId);
+        foreach (var name in new[] { "memory.recall", "memory.store" })
+        {
+            var span = Assert.Single(spans, a => a.OperationName == name);
+            Assert.Equal(task.SpanId, span.ParentSpanId);
+            Assert.NotNull(span.GetTagItem("orkeon.memory.provider"));
+            Assert.NotNull(span.GetTagItem("orkeon.memory.item_count"));
+            Assert.NotNull(span.GetTagItem("orkeon.memory.operation"));
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldMarkStoreInErrorUnderCompletedTask_WhenStoreFails()
+    {
+        var embedder = new MockEmbeddingProvider();
+        embedder.SetEmbeddingFunc(BagOfWords);
+        var memory = new MockMemoryProvider();
+        memory.SetStoreException(new InvalidOperationException("store is down"));
+        await using var container = Host(Vendor([], "Week 39 AI news."), embedder, memory: memory);
+        using var recorder = new ActivityRecorder(OrkeonActivitySources.AllNames);
+        using var root = new Activity("ch07-root-fail");
+        root.Start();
+
+        var output = await RunAsync(container, RememberingCrew);
+        root.Stop();
+
+        Assert.True(output.Succeeded, output.Error);
+        var spans = recorder.Snapshot(root.TraceId);
+        var task = Assert.Single(spans, a => a.OperationName == "task.run");
+        var store = Assert.Single(spans, a => a.OperationName == "memory.store");
+        Assert.Equal(task.SpanId, store.ParentSpanId);
+        Assert.Equal(ActivityStatusCode.Error, store.Status);
+        Assert.NotEqual(ActivityStatusCode.Error, task.Status);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldMarkRecallInErrorUnderTask_WhenRecallFails()
+    {
+        var embedder = new MockEmbeddingProvider();
+        var calls = 0;
+        // The load-time probe embeds once and passes; the embedder then goes down, so the task's recall fails.
+        embedder.SetEmbeddingFunc(text => Interlocked.Increment(ref calls) == 1
+            ? BagOfWords(text)
+            : throw new InvalidOperationException("embedder is down"));
+        await using var container = Host(Vendor([], "Week 39 AI news."), embedder);
+        using var recorder = new ActivityRecorder(OrkeonActivitySources.AllNames);
+        using var root = new Activity("ch07-root-recall-fail");
+        root.Start();
+
+        var output = await RunAsync(container, RememberingCrew);
+        root.Stop();
+
+        Assert.True(output.Succeeded, output.Error);
+        var spans = recorder.Snapshot(root.TraceId);
+        var task = Assert.Single(spans, a => a.OperationName == "task.run");
+        var recall = Assert.Single(spans, a => a.OperationName == "memory.recall");
+        Assert.Equal(task.SpanId, recall.ParentSpanId);
+        Assert.Equal(ActivityStatusCode.Error, recall.Status);
+        Assert.False(string.IsNullOrEmpty(recall.GetTagItem("error.type") as string));
     }
 
     private static float[] BagOfWords(string text)

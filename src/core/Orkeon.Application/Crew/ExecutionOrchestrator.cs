@@ -325,7 +325,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         ArgumentNullException.ThrowIfNull(agent);
         ArgumentNullException.ThrowIfNull(task);
         ArgumentNullException.ThrowIfNull(context);
-        return ExecuteTaskCoreInnerAsync();
+        return ExecuteTaskStampedAsync();
+
+        // The execution's own end, on the clock the executions use, read before anything after it.
+        async System.Threading.Tasks.Task<TaskResult> ExecuteTaskStampedAsync() =>
+            (await ExecuteTaskCoreInnerAsync().ConfigureAwait(false)) with { EndedAt = TimeProvider.GetUtcNow() };
 
         async System.Threading.Tasks.Task<TaskResult> ExecuteTaskCoreInnerAsync()
         {

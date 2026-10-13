@@ -8,3 +8,15 @@ Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider.IsAvailableAs
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.MaxExecutionTime.get -> int?
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.MaxExecutionTime.set -> void
 static Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.DecorateHumanInputWithDeadline(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonTelemetryChatClient
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonTelemetryChatClient.OrkeonTelemetryChatClient(Microsoft.Extensions.AI.IChatClient! innerClient, Orkeon.Infrastructure.Telemetry.OrkeonMetrics? metrics = null, string! providerName = "unknown") -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.TracingInstrumentation
+*REMOVED*override Orkeon.Infrastructure.Telemetry.OrkeonTelemetryChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
+*REMOVED*override Orkeon.Infrastructure.Telemetry.OrkeonTelemetryChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
+*REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.CompleteLlmCall(System.Diagnostics.Activity? activity, int promptTokens = 0, int completionTokens = 0, double estimatedCost = 0, bool success = true) -> void
+*REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.RecordException(System.Diagnostics.Activity? activity, System.Exception! exception) -> void
+*REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartCrewExecution(string! crewId, string? crewName = null, string? process = null) -> System.Diagnostics.Activity?
+*REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartLlmCall(string! provider, string? model = null, string? agentRole = null) -> System.Diagnostics.Activity?
+*REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartMemoryOperation(string! operation, string? provider = null) -> System.Diagnostics.Activity?
+*REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartTaskExecution(string! taskId, string? taskName = null, string? agentRole = null) -> System.Diagnostics.Activity?
+*REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartToolExecution(string! toolName, string? agentRole = null) -> System.Diagnostics.Activity?
