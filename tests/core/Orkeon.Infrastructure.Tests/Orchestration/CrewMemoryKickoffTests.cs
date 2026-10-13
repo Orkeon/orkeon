@@ -246,6 +246,32 @@ public sealed class CrewMemoryKickoffTests
         Assert.False(string.IsNullOrEmpty(recall.GetTagItem("error.type") as string));
     }
 
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldNestEmbeddingsUnderMemorySpans_WhenCrewHasMemory()
+    {
+        var embedder = new MockEmbeddingProvider();
+        embedder.SetEmbeddingFunc(BagOfWords);
+        await using var container = Host(Vendor([], "Week 39 AI news."), embedder);
+        using var recorder = new ActivityRecorder(OrkeonActivitySources.AllNames);
+        using var root = new Activity("ch08-root");
+        root.Start();
+
+        var output = await RunAsync(container, RememberingCrew);
+        root.Stop();
+
+        Assert.True(output.Succeeded, output.Error);
+        var spans = recorder.Snapshot(root.TraceId);
+        var memorySpanIds = spans.Where(a => a.OperationName.StartsWith("memory.", StringComparison.Ordinal)).Select(a => a.SpanId).ToHashSet();
+        var embeddings = spans.Where(a => a.OperationName.StartsWith("embeddings ", StringComparison.Ordinal)).ToList();
+        Assert.NotEmpty(embeddings);
+        // The readiness probe embeds under crew.run, outside any memory span; it is still never a root.
+        Assert.All(embeddings, a => Assert.Contains(spans, p => p.SpanId == a.ParentSpanId));
+        Assert.Contains(embeddings, a => memorySpanIds.Contains(a.ParentSpanId));
+        foreach (var memorySpan in spans.Where(a => a.OperationName is "memory.recall" or "memory.store"))
+            Assert.Contains(embeddings, a => a.ParentSpanId == memorySpan.SpanId);
+    }
+
     private static float[] BagOfWords(string text)
     {
         var vector = new float[256];

@@ -276,6 +276,45 @@ public static class InfrastructureExtensions
         return services;
     }
 
+    private static void DecorateEmbeddingProvider(IServiceCollection services)
+    {
+        var index = -1;
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            if (services[i].ServiceType == typeof(Application.Interfaces.Ports.IEmbeddingProvider)
+                && !services[i].IsKeyedService)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (index < 0)
+            return;
+
+        var original = services[index];
+        if (original.ImplementationInstance is Application.Interfaces.Ports.IEmbeddingProvider instance)
+        {
+            services[index] = ServiceDescriptor.Singleton<Application.Interfaces.Ports.IEmbeddingProvider>(
+                LLMs.Embeddings.TracedEmbeddingProvider.Wrap(instance));
+        }
+        else if (original.ImplementationFactory is { } factory)
+        {
+            services[index] = new ServiceDescriptor(
+                original.ServiceType,
+                sp => LLMs.Embeddings.TracedEmbeddingProvider.Wrap((Application.Interfaces.Ports.IEmbeddingProvider)factory(sp)),
+                original.Lifetime);
+        }
+        else if (original.ImplementationType is { } type)
+        {
+            services[index] = new ServiceDescriptor(
+                original.ServiceType,
+                sp => LLMs.Embeddings.TracedEmbeddingProvider.Wrap(
+                    (Application.Interfaces.Ports.IEmbeddingProvider)ActivatorUtilities.CreateInstance(sp, type)),
+                original.Lifetime);
+        }
+    }
+
     private static IServiceCollection AddOrkeonInterfaceStubs(this IServiceCollection services)
     {
         // === AUDIT-P2-07: Register previously missing critical interfaces ===
@@ -301,8 +340,11 @@ public static class InfrastructureExtensions
         //      InvalidOperationException, never at container build time).
         // The hash stub (Stubs.HashBasedEmbeddingProvider) is no longer resolved implicitly
         // anywhere — it is an explicit, opt-in test double only.
+        // The port is traced (CH-08): a provider registered before this point is decorated in place,
+        // the resolver's own is wrapped; a cache registered by AddOrkeonVectorSearch stays outside.
         services.TryAddSingleton<Application.Interfaces.Ports.IEmbeddingProvider>(
-            DefaultEmbeddingProviderResolver.Resolve);
+            sp => LLMs.Embeddings.TracedEmbeddingProvider.Wrap(DefaultEmbeddingProviderResolver.Resolve(sp)));
+        DecorateEmbeddingProvider(services);
         DefaultEmbeddingProviderResolver.AddEmbeddingSettings(services);
 
         // ILlmCache — no-op cache that always misses

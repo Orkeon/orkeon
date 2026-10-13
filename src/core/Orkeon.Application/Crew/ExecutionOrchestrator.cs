@@ -57,7 +57,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private OutputValidationCoordinator? _outputValidation;
 
     private LlmCallGate LlmGate =>
-        _llmGate ??= new LlmCallGate(_logger, _llmProvider, TimeProvider, AgentRequestsPerMinute);
+        _llmGate ??= new LlmCallGate(_logger, _llmProvider, TimeProvider, AgentRequestsPerMinute, _verboseLogger);
 
     // Wrapped even without callbacks: a streamed run hears each tool call (GAP-32).
     private IToolInvocationPipeline Tools => Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.Wrap(
@@ -683,7 +683,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         new(
             _logger,
             profile.ChatClient,
-            new LlmCallGate(_logger, profile.BasicProvider, TimeProvider, AgentRequestsPerMinute),
+            new LlmCallGate(_logger, profile.BasicProvider, TimeProvider, AgentRequestsPerMinute, _verboseLogger),
             OptionsComposer,
             ToolDispatcher,
             DeltaSink,

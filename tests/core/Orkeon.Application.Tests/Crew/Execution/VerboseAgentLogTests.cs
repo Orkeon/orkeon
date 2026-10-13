@@ -139,6 +139,51 @@ public sealed class VerboseAgentLogTests
         Assert.False(CrewVerbosity.IsVerbose(plain));
     }
 
+    private static async System.Threading.Tasks.Task<List<CategoryLogLine>> WaitSecondTurnAsync(bool verbose)
+    {
+        var lines = new ConcurrentQueue<CategoryLogLine>();
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+        var gate = new LlmCallGate(
+            new RecordingCategoryLogger(OrchestratorCategory, lines), new ScriptedBasicLlmProvider(), clock, null,
+            new RecordingCategoryLogger(ExecutionLogCategories.Verbose, lines));
+        var agent = new AgentBuilder().Role("Talker").Goal("Talk").MaxRpm(1).Verbose(verbose).Build();
+        var ct = TestContext.Current.CancellationToken;
+
+        await gate.WaitTurnAsync(agent, ct);
+        var second = gate.WaitTurnAsync(agent, ct);
+        while (!second.IsCompleted)
+        {
+            if (clock.PendingTimers > 0)
+                clock.Advance(TimeSpan.FromMinutes(1));
+            await System.Threading.Tasks.Task.Delay(1, ct);
+        }
+
+        await second;
+        return [.. lines];
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public async System.Threading.Tasks.Task ShouldWriteWaitedForTurnUnderVerboseCategory_WhenVerboseAgentWaitsForItsMaxRpmTurn()
+    {
+        var lines = await WaitSecondTurnAsync(verbose: true);
+
+        Assert.Contains(lines, l => l.Category == ExecutionLogCategories.Verbose && l.Level == LogLevel.Information
+            && l.Message.Contains("waited", StringComparison.Ordinal));
+        Assert.DoesNotContain(lines, l => l.Category == OrchestratorCategory && l.Message.Contains("waited", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public async System.Threading.Tasks.Task ShouldWriteWaitedForTurnUnderOrchestrator_WhenAgentIsNotVerbose()
+    {
+        var lines = await WaitSecondTurnAsync(verbose: false);
+
+        Assert.Contains(lines, l => l.Category == OrchestratorCategory && l.Level == LogLevel.Information
+            && l.Message.Contains("waited", StringComparison.Ordinal));
+        Assert.DoesNotContain(lines, l => l.Category == ExecutionLogCategories.Verbose);
+    }
+
     [Fact]
     [Trait("BR", "CH-03")]
     public async System.Threading.Tasks.Task ShouldWriteTurnLinesUnderVerboseCategory_WhenHostHasNoChatClient()

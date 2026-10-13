@@ -214,14 +214,15 @@ mapping. The names are the constants of `Orkeon.Constants.Llm.GenAiAttributes`.
 | Span (`ActivitySource`) | Name | Attributes |
 |---|---|---|
 | Agent turn (`Orkeon.Agent`) | `invoke_agent {agent}` | `gen_ai.operation.name=invoke_agent`, `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.provider.name`, `gen_ai.request.model`, `orkeon.task.id` |
-| Model call (`Orkeon.Llm`, kind Client) | `chat {model}` | `gen_ai.operation.name=chat`, `gen_ai.provider.name` (lower-case), `gen_ai.request.model`, `gen_ai.request.temperature`, `gen_ai.request.max_tokens`, `gen_ai.response.model`, `gen_ai.response.id`, `gen_ai.response.finish_reasons`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `error.type` on failure |
+| Model call (`Orkeon.Llm`, kind Client) | `chat {model}` | `gen_ai.operation.name=chat`, `gen_ai.provider.name` (lower-case), `gen_ai.request.model`, `gen_ai.request.temperature`, `gen_ai.request.max_tokens`, `gen_ai.response.model`, `gen_ai.response.id`, `gen_ai.response.finish_reasons`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `error.type` on failure; outside an agent turn (the manager, the planner, a host's own call) the providers' entrance opens it, with `orkeon.llm.operation`, `gen_ai.agent.name` and `orkeon.task.id` when known — one per call, never a second one inside a current `chat` |
+| Embedding (`Orkeon.Llm`) | `embeddings {model}` | `gen_ai.operation.name=embeddings`, `gen_ai.provider.name`, `gen_ai.request.model`, `orkeon.embeddings.text_count`, `error.type` on failure; one per call to the embedding model — an embedding served by the cache has none |
 | Tool execution (`Orkeon.Tool`) | `execute_tool {tool}` | `gen_ai.operation.name=execute_tool`, `gen_ai.tool.name`, `gen_ai.tool.call.id` (the model's own id), `gen_ai.agent.name`, `error.type` on failure |
 | Crew run (`Orkeon.Crew`) | `crew.run` | `orkeon.crew.id`, `orkeon.crew.name`, `orkeon.crew.process`, `orkeon.crew.task_count`; in error when the run fails or is cancelled |
 | Task (`Orkeon.Task`) | `task.run` | one per task, `orkeon.task.id`; in error when the task fails or is cancelled |
 | Memory (`Orkeon.Memory`) | `memory.recall`, `memory.store` | under the task that recalls or stores |
 | Scripting runtime (`Orkeon.Scripting`) | the same three, plus `crew.run` | same attributes; `orkeon.llm.method` (`complete`/`act`), `orkeon.crew.name`, `orkeon.crew.process`; the source is listed in `OrkeonActivitySources.AllNames`, so the script's spans are exported |
 
-A run is a trace: `crew.run` > `task.run` > `invoke_agent` and `memory.*`.
+A run is a trace: `crew.run` > `task.run` > `invoke_agent` and `memory.*`; the manager's and the planner's `chat` sit under `crew.run`, a memory's `embeddings` under its `memory.*` span.
 
 Metrics (`OrkeonMetrics`, meter `Orkeon`): `gen_ai.client.token.usage` (histogram, tokens,
 `gen_ai.token.type` = `input` | `output`) and `gen_ai.client.operation.duration` (histogram,

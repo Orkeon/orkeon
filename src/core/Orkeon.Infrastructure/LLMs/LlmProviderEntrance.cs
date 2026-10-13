@@ -29,6 +29,6 @@ internal static class LlmProviderEntrance
         if (provider is RateLimitedLlmProvider)
             return provider;
 
-        return RateLimitedLlmProvider.Wrap(MeteredLlmProvider.Wrap(provider, usageSink), rateLimiter);
+        return RateLimitedLlmProvider.Wrap(TracedLlmProvider.Wrap(MeteredLlmProvider.Wrap(provider, usageSink)), rateLimiter);
     }
 }

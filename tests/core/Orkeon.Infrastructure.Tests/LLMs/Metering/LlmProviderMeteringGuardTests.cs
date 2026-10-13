@@ -75,6 +75,7 @@ public sealed partial class LlmProviderMeteringGuardTests
     private static readonly IReadOnlyDictionary<string, string> Decorators = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         [nameof(MeteredLlmProvider)] = "The meter itself.",
+        [nameof(TracedLlmProvider)] = "The chat span of a call, applied with the meter by LlmProviderEntrance to a provider already obtained on the path (CH-08).",
         [nameof(RateLimitedLlmProvider)] = "The host's limiter, applied with the meter by LlmProviderEntrance to a provider already obtained on the path (GAP-38).",
     };
 
@@ -130,6 +131,21 @@ public sealed partial class LlmProviderMeteringGuardTests
                 + "calls twice (STUDIO-42 D-03), a second limiter takes two leases (GAP-38). Apply "
                 + "LlmProviderEntrance.Enter at an entrance:\n - " + string.Join("\n - ", violations));
         }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void ShouldTraceAtTheEntranceOnly_WhenProvidersAreBuilt()
+    {
+        var sources = ReadSources();
+        var tracing = TracedWrapCallRegex();
+
+        Assert.Matches(tracing, StripComments(sources[EntranceFile]));
+        var violations = sources
+            .Where(entry => entry.Key != EntranceFile && tracing.IsMatch(StripComments(entry.Value)))
+            .Select(entry => entry.Key)
+            .ToList();
+        Assert.True(violations.Count == 0, "The tracing decorator is applied off the entrance:\n - " + string.Join("\n - ", violations));
     }
 
     [Fact]
@@ -362,6 +378,9 @@ public sealed partial class LlmProviderMeteringGuardTests
 
     [GeneratedRegex(@"\b(?:MeteredLlmProvider|RateLimitedLlmProvider)\s*\.\s*Wrap\s*\(")]
     private static partial Regex WrapCallRegex();
+
+    [GeneratedRegex(@"\bTracedLlmProvider\s*\.\s*Wrap\s*\(")]
+    private static partial Regex TracedWrapCallRegex();
 
     [GeneratedRegex(@"\bLlmProviderEntrance\s*\.\s*Enter\s*\(")]
     private static partial Regex EnterCallRegex();

@@ -300,6 +300,82 @@ public sealed class RunTraceKickoffTests
         }
     }
 
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldTraceManagerCallsAsChatUnderCrewRun_WhenProcessIsHierarchical()
+    {
+        using var recorder = new ActivityRecorder(OrkeonActivitySources.AllNames);
+        using var root = StartRoot();
+        var vendor = new MockLlmProvider { Name = "vendor" };
+        vendor.SetChatFunc((_, _) => Answer("The notes."));
+        await using var container = Host(vendor);
+        await using var scope = container.CreateAsyncScope();
+        var yaml = TwoTasks.Replace("process: sequential", "process: hierarchical\nmanagerAgent: lead", StringComparison.Ordinal)
+            .Replace("agents:\n", "agents:\n  lead:\n    role: Lead\n    goal: Lead the team\n", StringComparison.Ordinal);
+
+        var crew = await CreateCrewAsync(scope.ServiceProvider, yaml);
+        await scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>().KickoffAsync(
+            crew.Id, new CrewInput("trace", new Dictionary<string, object>()), Ct);
+
+        var spans = recorder.Snapshot(root.TraceId);
+        var run = Assert.Single(spans, s => s.OperationName == "crew.run");
+        var managerChats = spans.Where(s => s.OperationName.StartsWith("chat", StringComparison.Ordinal)
+            && s.ParentSpanId == run.SpanId
+            && s.GetTagItem("orkeon.llm.operation")?.ToString() == "manager").ToList();
+        Assert.NotEmpty(managerChats);
+        Assert.All(managerChats, chat => Assert.Equal(ActivityKind.Client, chat.Kind));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldTracePlanningCallBeforeFirstTask_WhenPlanningIsOn()
+    {
+        using var recorder = new ActivityRecorder(OrkeonActivitySources.AllNames);
+        using var root = StartRoot();
+        var vendor = new MockLlmProvider { Name = "vendor" };
+        vendor.SetGenerateResult(new LlmResponse
+        {
+            Content = """{"plans":[{"task":1,"plan":"Write it"},{"task":2,"plan":"Check it"}]}""",
+            PromptTokens = 3,
+            CompletionTokens = 1,
+            TokensUsed = 4,
+        });
+        vendor.SetChatFunc((_, _) => Answer("The notes."));
+        await using var container = Host(vendor);
+        await using var scope = container.CreateAsyncScope();
+        var yaml = TwoTasks.Replace("process: sequential", "process: sequential\nplanning: true", StringComparison.Ordinal);
+
+        await RunAsync(scope.ServiceProvider, yaml);
+
+        var spans = recorder.Snapshot(root.TraceId);
+        var run = Assert.Single(spans, s => s.OperationName == "crew.run");
+        var planning = Assert.Single(spans, s => s.OperationName.StartsWith("chat", StringComparison.Ordinal)
+            && s.ParentSpanId == run.SpanId
+            && s.GetTagItem("orkeon.llm.operation")?.ToString() == "planning");
+        var firstTaskStart = spans.Where(s => s.OperationName == "task.run").Min(s => s.StartTimeUtc);
+        Assert.True(planning.StartTimeUtc <= firstTaskStart);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldKeepOneChatPerAgentTurn_WhenAgentCallsTheModel()
+    {
+        using var recorder = new ActivityRecorder(OrkeonActivitySources.AllNames);
+        using var root = StartRoot();
+        var vendor = new MockLlmProvider { Name = "vendor" };
+        vendor.SetChatFunc((_, _) => Answer("The notes."));
+        await using var container = Host(vendor);
+        await using var scope = container.CreateAsyncScope();
+
+        var (_, output) = await RunAsync(scope.ServiceProvider, TwoTasks);
+
+        Assert.True(output.Succeeded);
+        var chats = recorder.Snapshot(root.TraceId)
+            .Where(s => s.OperationName.StartsWith("chat", StringComparison.Ordinal)).ToList();
+        Assert.Equal(vendor.ChatCallCount, chats.Count);
+        Assert.All(chats, chat => Assert.DoesNotContain(chats, other => other.SpanId == chat.ParentSpanId));
+    }
+
 #pragma warning disable CA2000 // the test disposes the root it takes
     private static Activity StartRoot()
     {

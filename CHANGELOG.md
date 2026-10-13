@@ -15,6 +15,12 @@ cancellation ends the span in error. The `Orkeon.Scripting` source is listed in
 `OrkeonActivitySources.AllNames`, so the spans of a procedural script are exported. `TaskResult`
 gains `EndedAt` (Application).
 
+Every call to the host's model and every embedding now has a span: the providers' entrance opens
+`chat {model}` for a call made outside an agent turn (the manager, the planner, a host's own call),
+with `orkeon.llm.operation`, never a second one inside a current `chat`; the registered
+`IEmbeddingProvider` opens `embeddings {model}` (`GenAiAttributes.OperationEmbeddings`, Constants.Llm)
+for each call to the embedding model, none for a cache hit.
+
 - **Breaking**: `TracingInstrumentation` and `OrkeonTelemetryChatClient` (`Orkeon.Infrastructure.Telemetry`)
   are removed: nothing in production called them.
 - **Migration**: wrap the chat client with Microsoft.Extensions.AI's `UseOpenTelemetry()` on the
@@ -22,7 +28,7 @@ gains `EndedAt` (Application).
 
 ### Changed — the turn lines of a verbose agent move to category `Orkeon.Verbose`
 
-The tool calls, tool results and model responses of a `verbose` agent (every agent of a verbose
+The tool calls, tool results, model responses and the wait for its `MaxRpm` turn of a `verbose` agent (every agent of a verbose
 crew) are logged at Information under `Orkeon.Verbose`. The runner shows that category without `-v`
 and at `-v 1`, unless `Logging:LogLevel` names `Orkeon.Verbose` or `Default`. A host that filters
 by category must let `Orkeon.Verbose` through; a host passing `configureLogging` sets its logging
