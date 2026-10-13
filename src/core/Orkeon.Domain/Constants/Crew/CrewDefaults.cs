@@ -17,11 +17,6 @@ public static class CrewDefaults
     public const int DefaultMaxAgents = 10;
 
     /// <summary>
-    /// Default language code for crew output and operations.
-    /// </summary>
-    public const string DefaultLanguage = "en";
-
-    /// <summary>
     /// Default process type for crew execution.
     /// </summary>
     public const string DefaultProcessType = "Sequential";

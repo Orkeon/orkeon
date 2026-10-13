@@ -42,7 +42,6 @@ public class AgentTests
         // CrewAI's max_iter, the one default of every surface; no maxRpm of its own (GAP-38).
         Assert.Equal(20, agent.MaxIterations);
         Assert.Null(agent.MaxRpm);
-        Assert.True(agent.CacheEnabled);
     }
 
     [Fact]
@@ -104,21 +103,6 @@ public class AgentTests
     }
 
     [Fact]
-    public void ShouldThrowArgumentException_WhenCreatingWithInvalidMaxRetryLimit()
-    {
-        // Arrange
-        var role = AgentRole.From(RoleDeveloper);
-        var goal = AgentGoal.From(GoalCodeEfficiently);
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(
-            () => DomainAgent.Create(role, goal, maxRetryLimit: 0)
-        );
-        Assert.Equal("options", exception.ParamName);
-        Assert.Contains("must be positive", exception.Message);
-    }
-
-    [Fact]
     public void ShouldSetAllowDelegationTrue_WhenCreatingWithDelegationEnabled()
     {
         // Arrange & Act
@@ -141,11 +125,9 @@ public class AgentTests
         var maxRpm = 20;
         var verbose = true;
         var maxExecutionTime = TimeSpan.FromMinutes(30);
-        var cacheEnabled = false;
         var systemTemplate = "You are a senior architect";
         var promptTemplate = "Design: {input}";
         var responseTemplate = "Solution: {output}";
-        var maxRetryLimit = 3;
 
         // Act
         var agent = new AgentBuilder()
@@ -157,11 +139,9 @@ public class AgentTests
             .MaxRpm(maxRpm)
             .Verbose(verbose)
             .MaxExecutionTime(maxExecutionTime)
-            .CacheEnabled(cacheEnabled)
             .SystemTemplate(systemTemplate)
             .PromptTemplate(promptTemplate)
             .ResponseTemplate(responseTemplate)
-            .MaxRetryLimit(maxRetryLimit)
             .Build();
 
         // Assert
@@ -171,11 +151,9 @@ public class AgentTests
         Assert.Equal(maxRpm, agent.MaxRpm);
         Assert.Equal(verbose, agent.Verbose);
         Assert.Equal(maxExecutionTime, agent.MaxExecutionTime);
-        Assert.Equal(cacheEnabled, agent.CacheEnabled);
         Assert.Equal(systemTemplate, agent.SystemTemplate);
         Assert.Equal(promptTemplate, agent.PromptTemplate);
         Assert.Equal(responseTemplate, agent.ResponseTemplate);
-        Assert.Equal(maxRetryLimit, agent.MaxRetryLimit);
     }
 
     [Fact]
@@ -976,9 +954,7 @@ public class AgentTests
             AllowDelegation = true,
             MaxIterations = 8,
             MaxRpm = 15,
-            Verbose = true,
-            CacheEnabled = false,
-            MaxRetryLimit = 5
+            Verbose = true
         };
 
         // Act
@@ -992,8 +968,6 @@ public class AgentTests
         Assert.Equal(8, agent.MaxIterations);
         Assert.Equal(15, agent.MaxRpm);
         Assert.True(agent.Verbose);
-        Assert.False(agent.CacheEnabled);
-        Assert.Equal(5, agent.MaxRetryLimit);
         Assert.Equal(AgentStatus.Idle, agent.Status);
     }
 
@@ -1024,11 +998,9 @@ public class AgentTests
             maxRpm: 12,
             verbose: true,
             maxExecutionTime: TimeoutStandard,
-            cacheEnabled: false,
             systemTemplate: "system",
             promptTemplate: "prompt",
             responseTemplate: "response",
-            maxRetryLimit: 4,
             tools: [tool]);
 
         // Assert
@@ -1040,11 +1012,9 @@ public class AgentTests
         Assert.Equal(12, agent.MaxRpm);
         Assert.True(agent.Verbose);
         Assert.Equal(TimeoutStandard, agent.MaxExecutionTime);
-        Assert.False(agent.CacheEnabled);
         Assert.Equal("system", agent.SystemTemplate);
         Assert.Equal("prompt", agent.PromptTemplate);
         Assert.Equal("response", agent.ResponseTemplate);
-        Assert.Equal(4, agent.MaxRetryLimit);
         Assert.Single(agent.Tools);
         Assert.True(agent.HasTool("CodeTool"));
     }

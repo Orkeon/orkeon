@@ -95,16 +95,6 @@ public sealed class Crew : AggregateRoot<CrewId>
     public int? MaxRpm { get; private set; }
 
     /// <summary>
-    /// Gets whether to share crew information.
-    /// </summary>
-    public bool ShareCrew { get; private set; } = true;
-
-    /// <summary>
-    /// Gets the output log file path.
-    /// </summary>
-    public string? OutputLogFile { get; private set; }
-
-    /// <summary>
     /// Gets the provider the crew's manager runs on (C# <c>WithManagerLlm</c>, CrewAI's
     /// <c>manager_llm</c>): the hierarchical manager assigns and reviews on it, and the autonomous
     /// one hands the tasks out on it, in place of the manager agent's <c>llm:</c> profile or the
@@ -112,16 +102,6 @@ public sealed class Crew : AggregateRoot<CrewId>
     /// Set only in those two modes (<see cref="ProcessType.AcceptsManagerLlm"/>, GAP-33).
     /// </summary>
     public ILlmProvider? ManagerLlm { get; private set; }
-
-    /// <summary>
-    /// Gets the language for crew operations.
-    /// </summary>
-    public LanguageCode Language { get; private set; } = LanguageCode.Default;
-
-    /// <summary>
-    /// Gets whether to output full details.
-    /// </summary>
-    public bool FullOutput { get; private set; }
 
     /// <summary>
     /// Gets the provider the crew plans on (C# <c>WithPlanningLlm</c>), metered like a provider the
@@ -220,12 +200,8 @@ public sealed class Crew : AggregateRoot<CrewId>
             Planning = options.Planning,
             Status = CrewStatus.Idle,
             MaxRpm = options.MaxRpm is null or > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
-            ShareCrew = options.ShareCrew,
-            OutputLogFile = options.OutputLogFile,
             ManagerLlm = options.ManagerLlm,
             ManagerAgentId = options.ManagerAgentId,
-            Language = !string.IsNullOrWhiteSpace(options.Language) ? LanguageCode.From(options.Language) : LanguageCode.Default,
-            FullOutput = options.FullOutput,
             PlanningLlm = options.PlanningLlm,
             MemoryEnabled = options.MemoryEnabled,
             MemoryProvider = options.MemoryProvider,
@@ -261,12 +237,8 @@ public sealed class Crew : AggregateRoot<CrewId>
         bool verbose = false,
         bool planning = false,
         int? maxRpm = null,
-        bool shareCrew = true,
-        string? outputLogFile = null,
         ILlmProvider? managerLlm = null,
         AgentId? managerAgentId = null,
-        string language = "en",
-        bool fullOutput = false,
         ILlmProvider? planningLlm = null,
         bool memoryEnabled = false)
     {
@@ -277,12 +249,8 @@ public sealed class Crew : AggregateRoot<CrewId>
             Verbose = verbose,
             Planning = planning,
             MaxRpm = maxRpm,
-            ShareCrew = shareCrew,
-            OutputLogFile = outputLogFile,
             ManagerLlm = managerLlm,
             ManagerAgentId = managerAgentId,
-            Language = language,
-            FullOutput = fullOutput,
             PlanningLlm = planningLlm,
             MemoryEnabled = memoryEnabled
         });

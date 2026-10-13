@@ -17,8 +17,7 @@ public class SkillMatchingSelectionStrategyTests
             allowDelegation: false,
             maxIterations: 5,
             maxRpm: 10,
-            verbose: false,
-            maxRetryLimit: 3);
+            verbose: false);
     }
 
     private static DomainTask CreateTask(string description)

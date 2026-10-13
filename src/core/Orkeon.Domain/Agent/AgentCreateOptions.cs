@@ -55,11 +55,6 @@ public sealed class AgentCreateOptions
     public TimeSpan? MaxExecutionTime { get; init; }
 
     /// <summary>
-    /// Whether caching is enabled.
-    /// </summary>
-    public bool CacheEnabled { get; init; } = true;
-
-    /// <summary>
     /// Optional system prompt template.
     /// </summary>
     public string? SystemTemplate { get; init; }
@@ -73,11 +68,6 @@ public sealed class AgentCreateOptions
     /// Optional response template.
     /// </summary>
     public string? ResponseTemplate { get; init; }
-
-    /// <summary>
-    /// Maximum number of retry attempts on task execution failure.
-    /// </summary>
-    public int MaxRetryLimit { get; init; } = AgentDefaults.MaxRetryLimit;
 
     /// <summary>
     /// The provider the agent's turns run on when it carries its own (<see cref="Agent.Llm"/>, GAP-34);

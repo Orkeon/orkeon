@@ -69,11 +69,9 @@ public class AgentBuilderTests
             .MaxRpm(50)
             .Verbose()
             .MaxExecutionTime(TimeoutStandard)
-            .CacheEnabled(false)
             .SystemTemplate("You are a developer")
             .PromptTemplate("Task: {task}")
             .ResponseTemplate("Result: {result}")
-            .MaxRetryLimit(3)
             .WithLlm(llm)
             .Build();
 
@@ -86,11 +84,9 @@ public class AgentBuilderTests
         Assert.Equal(50, agent.MaxRpm);
         Assert.True(agent.Verbose);
         Assert.Equal(TimeoutStandard, agent.MaxExecutionTime);
-        Assert.False(agent.CacheEnabled);
         Assert.Equal("You are a developer", agent.SystemTemplate);
         Assert.Equal("Task: {task}", agent.PromptTemplate);
         Assert.Equal("Result: {result}", agent.ResponseTemplate);
-        Assert.Equal(3, agent.MaxRetryLimit);
         Assert.Same(llm, agent.Llm);
     }
 

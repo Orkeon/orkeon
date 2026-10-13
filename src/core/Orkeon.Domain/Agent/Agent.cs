@@ -77,11 +77,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     public TimeSpan? MaxExecutionTime { get; private set; }
 
     /// <summary>
-    /// Gets whether caching is enabled.
-    /// </summary>
-    public bool CacheEnabled { get; private set; } = true;
-
-    /// <summary>
     /// Gets the system template for prompts.
     /// </summary>
     public string? SystemTemplate { get; private set; }
@@ -95,11 +90,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// Gets the response template.
     /// </summary>
     public string? ResponseTemplate { get; private set; }
-
-    /// <summary>
-    /// Gets the maximum retry limit.
-    /// </summary>
-    public int MaxRetryLimit { get; private set; } = AgentDefaults.MaxRetryLimit;
 
     /// <summary>
     /// The provider this agent's turns run on when it carries its own — CrewAI's <c>llm</c> given as
@@ -197,11 +187,9 @@ public sealed class Agent : AggregateRoot<AgentId>
             Verbose = options.Verbose,
             Status = AgentStatus.Idle,
             MaxExecutionTime = options.MaxExecutionTime,
-            CacheEnabled = options.CacheEnabled,
             SystemTemplate = options.SystemTemplate,
             PromptTemplate = options.PromptTemplate,
             ResponseTemplate = options.ResponseTemplate,
-            MaxRetryLimit = options.MaxRetryLimit > 0 ? options.MaxRetryLimit : throw new ArgumentException("options.MaxRetryLimit must be positive.", nameof(options)),
             Llm = options.Llm,
             ToolAccessPolicy = options.ToolAccessPolicy ?? ToolAccessPolicy.CreateUnrestricted(),
             Guardrails = options.Guardrails,
@@ -250,11 +238,9 @@ public sealed class Agent : AggregateRoot<AgentId>
         int? maxRpm = null,
         bool verbose = false,
         TimeSpan? maxExecutionTime = null,
-        bool cacheEnabled = true,
         string? systemTemplate = null,
         string? promptTemplate = null,
         string? responseTemplate = null,
-        int maxRetryLimit = AgentDefaults.MaxRetryLimit,
         ILlmProvider? llm = null,
         IEnumerable<IBaseTool>? tools = null,
         GuardrailsConfig? guardrails = null)
@@ -269,11 +255,9 @@ public sealed class Agent : AggregateRoot<AgentId>
             MaxRpm = maxRpm,
             Verbose = verbose,
             MaxExecutionTime = maxExecutionTime,
-            CacheEnabled = cacheEnabled,
             SystemTemplate = systemTemplate,
             PromptTemplate = promptTemplate,
             ResponseTemplate = responseTemplate,
-            MaxRetryLimit = maxRetryLimit,
             Llm = llm,
             Tools = tools,
             Guardrails = guardrails

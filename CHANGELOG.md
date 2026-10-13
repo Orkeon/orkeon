@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the attributes nothing read are gone **[breaking]**
+
+`CacheEnabled`, `MaxRetryLimit`, `ShareCrew`, `OutputLogFile`, `Language` and `FullOutput` were
+set by the builders and stored on `Agent` and `Crew`, and nothing read them: they are removed,
+with `LanguageCode` and `CrewDefaults.DefaultLanguage`. `AgentDefaults.MaxRetryLimit` stays, for
+the retries of a communication or a training run.
+
+- **Breaking**: the six properties of `Agent` and `Crew`, their builder methods (`AgentBuilder`,
+  `CrewBuilder`, `AgentSpawnRequestBuilder`), their `AgentCreateOptions` / `CrewCreateOptions`
+  members and their arguments of `Agent.Create`, `Crew.Create` and `AgentSpawnRequest` are removed.
+- **Migration**: remove the calls to `CacheEnabled`, `MaxRetryLimit`, `ShareCrew`, `OutputLogFile`,
+  `Language` and `FullOutput`, and their `Agent.Create`, `Crew.Create` and `AgentSpawnRequest`
+  arguments: none had an effect. Ask for a language in the task or the backstory; keep a run's log
+  with `orkeon run --events jsonl` or `KickoffStreamingAsync`.
+
 ### Fixed — the apt pre-push check no longer counts the docs a minimised Ubuntu image drops
 
 The `apt-publish` job of `v1.0.0-rc.5` pushed nothing: its pre-push client, `ubuntu:24.04`,

@@ -40,7 +40,6 @@ public sealed partial class AgentFactory : IAgentFactory
                 MaxRpm = request.MaxRpm,
                 Verbose = request.Verbose,
                 MaxExecutionTime = request.MaxExecutionTime,
-                CacheEnabled = request.CacheEnabled,
                 Tools = request.Tools.Count > 0 ? request.Tools : null
             };
 

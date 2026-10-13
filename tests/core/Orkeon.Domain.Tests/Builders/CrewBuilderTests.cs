@@ -193,11 +193,7 @@ public class CrewBuilderTests
             .Verbose()
             .Planning()
             .MaxRpm(200)
-            .Language("fr")
-            .FullOutput()
             .EnableMemory()
-            .ShareCrew(false)
-            .OutputLogFile("/tmp/crew.log")
             .WithManagerLlm(managerLlm)
             .WithPlanningLlm(planningLlm)
             .Build();
@@ -208,11 +204,7 @@ public class CrewBuilderTests
         Assert.True(crew.Verbose);
         Assert.True(crew.Planning);
         Assert.Equal(200, crew.MaxRpm);
-        Assert.Equal("fr", crew.Language.Value);
-        Assert.True(crew.FullOutput);
         Assert.True(crew.MemoryEnabled);
-        Assert.False(crew.ShareCrew);
-        Assert.Equal("/tmp/crew.log", crew.OutputLogFile);
         Assert.Same(managerLlm, crew.ManagerLlm);
         Assert.Equal(manager.Id, crew.ManagerAgentId);
         Assert.Same(planningLlm, crew.PlanningLlm);

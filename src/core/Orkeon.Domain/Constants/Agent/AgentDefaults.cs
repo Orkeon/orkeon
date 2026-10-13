@@ -19,7 +19,7 @@ public static class AgentDefaults
     public const int MaxIterations = 20;
 
     /// <summary>
-    /// Default maximum number of retry attempts on task execution failure.
+    /// Default maximum number of retry attempts of a communication or a training run.
     /// Aligned with the majority usage across the codebase (was 2, harmonised to 3).
     /// </summary>
     public const int MaxRetryLimit = 3;

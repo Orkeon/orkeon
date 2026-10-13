@@ -22,11 +22,9 @@ public sealed class AgentBuilder
     private int? _maxRpm;
     private bool _verbose;
     private TimeSpan? _maxExecutionTime;
-    private bool _cacheEnabled = true;
     private string? _systemTemplate;
     private string? _promptTemplate;
     private string? _responseTemplate;
-    private int _maxRetryLimit = AgentDefaults.MaxRetryLimit;
     private ILlmProvider? _llm;
     private readonly List<IBaseTool> _tools = [];
     private ToolAccessPolicy? _toolAccessPolicy;
@@ -135,13 +133,6 @@ public sealed class AgentBuilder
         return this;
     }
 
-    /// <summary>Enables or disables caching.</summary>
-    public AgentBuilder CacheEnabled(bool cacheEnabled = true)
-    {
-        _cacheEnabled = cacheEnabled;
-        return this;
-    }
-
     /// <summary>Sets the system prompt template.</summary>
     public AgentBuilder SystemTemplate(string systemTemplate)
     {
@@ -160,13 +151,6 @@ public sealed class AgentBuilder
     public AgentBuilder ResponseTemplate(string responseTemplate)
     {
         _responseTemplate = responseTemplate;
-        return this;
-    }
-
-    /// <summary>Sets the maximum retry limit on task execution failure.</summary>
-    public AgentBuilder MaxRetryLimit(int maxRetryLimit)
-    {
-        _maxRetryLimit = maxRetryLimit;
         return this;
     }
 
@@ -394,11 +378,9 @@ public sealed class AgentBuilder
             MaxRpm = _maxRpm,
             Verbose = _verbose,
             MaxExecutionTime = _maxExecutionTime,
-            CacheEnabled = _cacheEnabled,
             SystemTemplate = _systemTemplate,
             PromptTemplate = _promptTemplate,
             ResponseTemplate = _responseTemplate,
-            MaxRetryLimit = _maxRetryLimit,
             Llm = _llm,
             Tools = _tools,
             ToolAccessPolicy = _toolAccessPolicy,

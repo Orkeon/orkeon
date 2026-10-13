@@ -21,12 +21,8 @@ public sealed class CrewBuilder
     private bool _verbose;
     private bool _planning;
     private int? _maxRpm;
-    private bool _shareCrew = true;
-    private string? _outputLogFile;
     private ILlmProvider? _managerLlm;
     private AgentId? _managerAgentId;
-    private string _language = CrewDefaults.DefaultLanguage;
-    private bool _fullOutput;
     private ILlmProvider? _planningLlm;
     private bool _memoryEnabled;
     private string? _memoryProvider;
@@ -188,20 +184,6 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Sets the language for crew output.</summary>
-    public CrewBuilder Language(string language)
-    {
-        _language = language;
-        return this;
-    }
-
-    /// <summary>Enables or disables full output from all tasks.</summary>
-    public CrewBuilder FullOutput(bool fullOutput = true)
-    {
-        _fullOutput = fullOutput;
-        return this;
-    }
-
     /// <summary>
     /// Enables or disables the crew's memory: with it on, a run stores the result of each task and
     /// recalls the crew's memories before each task (GAP-30). Off by default.
@@ -221,13 +203,6 @@ public sealed class CrewBuilder
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(memoryProvider);
         _memoryProvider = memoryProvider;
-        return this;
-    }
-
-    /// <summary>Enables or disables sharing crew information among agents.</summary>
-    public CrewBuilder ShareCrew(bool shareCrew = true)
-    {
-        _shareCrew = shareCrew;
         return this;
     }
 
@@ -264,13 +239,6 @@ public sealed class CrewBuilder
     public CrewBuilder WithManagerLlm(ILlmProvider managerLlm)
     {
         _managerLlm = managerLlm;
-        return this;
-    }
-
-    /// <summary>Sets the output log file path.</summary>
-    public CrewBuilder OutputLogFile(string outputLogFile)
-    {
-        _outputLogFile = outputLogFile;
         return this;
     }
 
@@ -396,12 +364,8 @@ public sealed class CrewBuilder
             Verbose = _verbose,
             Planning = _planning,
             MaxRpm = _maxRpm,
-            ShareCrew = _shareCrew,
-            OutputLogFile = _outputLogFile,
             ManagerLlm = _managerLlm,
             ManagerAgentId = _managerAgentId,
-            Language = _language,
-            FullOutput = _fullOutput,
             PlanningLlm = _planningLlm,
             MemoryEnabled = _memoryEnabled,
             MemoryProvider = _memoryProvider,
