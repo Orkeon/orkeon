@@ -34,7 +34,7 @@ public static class AgentMapper
             Status = agent.Status.ToString(),
             Verbose = agent.Verbose,
             AllowDelegation = agent.AllowDelegation,
-            MaxExecutionTime = agent.MaxExecutionTime is { } limit ? (int)limit.TotalSeconds : null,
+            MaxExecutionTime = agent.MaxExecutionTime is { } limit ? Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeToWholeSeconds(limit) : null,
             Tools = agent.Tools.Select(t => t.Name).ToImmutableList(),
             Llm = null, // LlmConfig not stored on domain entity
             Capabilities = null, // Not implemented in current Domain

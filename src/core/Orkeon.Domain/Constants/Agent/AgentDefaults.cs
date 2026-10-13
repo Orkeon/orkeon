@@ -33,6 +33,13 @@ public static class AgentDefaults
     public static readonly TimeSpan MaxExecutionTimeCeiling = TimeSpan.FromMilliseconds(uint.MaxValue - 1);
 
     /// <summary>
+    /// A posed execution limit as whole seconds rounded up, so a limit under a second is never shown as 0,
+    /// and capped at the last whole second the ceiling holds.
+    /// </summary>
+    public static int MaxExecutionTimeToWholeSeconds(TimeSpan limit) =>
+        (int)Math.Min(Math.Ceiling(limit.TotalSeconds), Math.Floor(MaxExecutionTimeCeiling.TotalSeconds));
+
+    /// <summary>
     /// Maximum number of consecutive identical tool call errors before the circuit breaker trips.
     /// Prevents the agent from burning tokens re-trying the exact same failing action indefinitely.
     /// </summary>
