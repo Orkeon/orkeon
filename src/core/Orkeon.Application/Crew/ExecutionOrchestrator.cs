@@ -31,6 +31,7 @@ namespace Orkeon.Application.Crew;
 public partial class ExecutionOrchestrator : IExecutionOrchestrator
 {
     private readonly ILogger<ExecutionOrchestrator> _logger;
+    private readonly ILogger _verboseLogger;
     private readonly IBasicLlmProvider _llmProvider;
     private readonly IChatClient? _chatClient;
     private readonly IEnumerable<Domain.Tools.IBaseTool>? _registeredTools;
@@ -63,19 +64,19 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         ToolInvocation ?? ToolInvocationPipeline.Unguarded, Callbacks);
 
     private ChatToolDispatcher ToolDispatcher =>
-        _toolDispatcher ??= new ChatToolDispatcher(_logger, Tools);
+        _toolDispatcher ??= new ChatToolDispatcher(_logger, Tools, _verboseLogger);
 
     private ChatOptionsComposer OptionsComposer =>
         _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem, Tools);
 
     private ChatClientAgentLoop ChatLoop =>
-        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, DeltaSink);
+        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, DeltaSink, _verboseLogger);
 
     private LegacyTextAgentLoop LegacyLoop =>
-        _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools);
+        _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools, _verboseLogger);
 
     private NativeToolCallingAgentLoop NativeLoop =>
-        _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools);
+        _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools, _verboseLogger);
 
     /// <summary>
     /// One agent loop per host profile an agent or a task of this scope named (GAP-17): the
@@ -185,8 +186,20 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _verboseLogger = logger;
         ArgumentNullException.ThrowIfNull(llmProvider);
         _llmProvider = llmProvider;
+    }
+
+    /// <summary>Constructor of a host without <see cref="IChatClient"/>, taking the logger of category <c>Orkeon.Verbose</c>, which carries the Information turn lines of verbose agents.</summary>
+    public ExecutionOrchestrator(
+        ILogger<ExecutionOrchestrator> logger,
+        IBasicLlmProvider llmProvider,
+        ILogger verboseLogger)
+        : this(logger, llmProvider)
+    {
+        ArgumentNullException.ThrowIfNull(verboseLogger);
+        _verboseLogger = verboseLogger;
     }
 
     /// <summary>
@@ -218,6 +231,20 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         : this(logger, llmProvider, chatClient, fileSystem)
     {
         _registeredTools = registeredTools;
+    }
+
+    /// <summary>Constructor taking the logger of category <c>Orkeon.Verbose</c>, which carries the Information turn lines of verbose agents.</summary>
+    public ExecutionOrchestrator(
+        ILogger<ExecutionOrchestrator> logger,
+        IBasicLlmProvider llmProvider,
+        IChatClient chatClient,
+        IEnumerable<Domain.Tools.IBaseTool> registeredTools,
+        Domain.FileSystem.IFileSystemService fileSystem,
+        ILogger verboseLogger)
+        : this(logger, llmProvider, chatClient, registeredTools, fileSystem)
+    {
+        ArgumentNullException.ThrowIfNull(verboseLogger);
+        _verboseLogger = verboseLogger;
     }
 
     /// <summary>
@@ -258,6 +285,28 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _fullProvider = fullProvider;
         _toolCallingStrategy = toolCallingStrategy;
         _deliverableResolverFactory = deliverableResolverFactory;
+    }
+
+    /// <summary>
+    /// Constructor with full dependencies and the logger of category <c>Orkeon.Verbose</c>, which carries
+    /// the Information turn lines of a verbose agent or of a verbose crew's run (CH-03).
+    /// </summary>
+    public ExecutionOrchestrator(
+        ILogger<ExecutionOrchestrator> logger,
+        IBasicLlmProvider llmProvider,
+        IChatClient chatClient,
+        IEnumerable<Domain.Tools.IBaseTool> registeredTools,
+        IOutputValidationPipeline validationPipeline,
+        IOutputParserFactory parserFactory,
+        Domain.SharedKernel.ILlmProvider? fullProvider,
+        Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy,
+        IDeliverableResolverFactory? deliverableResolverFactory,
+        Domain.FileSystem.IFileSystemService fileSystem,
+        ILogger verboseLogger)
+        : this(logger, llmProvider, chatClient, registeredTools, validationPipeline, parserFactory, fullProvider, toolCallingStrategy, deliverableResolverFactory, fileSystem)
+    {
+        ArgumentNullException.ThrowIfNull(verboseLogger);
+        _verboseLogger = verboseLogger;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}]: the task ran past its maximum execution time of {LimitSeconds}s and is cancelled")]
@@ -527,7 +576,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         CancellationToken cancellationToken)
     {
         var (agent, task, systemPrompt, userPrompt, _, toolsUsed, sw) = invocation;
-        ExecutionLog.LogLlmRequestStart(_logger, agent.Role, task.Id, _chatClient != null ? "IChatClient" : "IBasicLlmProvider");
+        var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+        ExecutionLog.LogLlmRequestStart(turnLogger, agent.Role, task.Id, _chatClient != null ? "IChatClient" : "IBasicLlmProvider");
         ExecutionLog.LogLlmSystemPrompt(_logger, agent.Role, systemPrompt);
         ExecutionLog.LogLlmUserPrompt(_logger, agent.Role, userPrompt);
 
@@ -539,7 +589,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 agent, task, systemPrompt, userPrompt, toolsUsed, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
-            ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, profileResult.Output.Length, profileResult.Output);
+            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, profileResult.Output.Length, profileResult.Output);
             return profileResult;
         }
 
@@ -549,7 +599,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 agent, task, systemPrompt, userPrompt, toolsUsed, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
-            ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, loopResult.Output.Length, loopResult.Output);
+            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, loopResult.Output.Length, loopResult.Output);
             return loopResult;
         }
 
@@ -632,7 +682,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             new LlmCallGate(_logger, profile.BasicProvider, TimeProvider, AgentRequestsPerMinute),
             OptionsComposer,
             ToolDispatcher,
-            DeltaSink);
+            DeltaSink,
+            _verboseLogger);
 
     /// <summary>
     /// Why <paramref name="task"/> cannot run on <paramref name="provider"/>, or null (GAP-34): the

@@ -75,7 +75,8 @@ déduit.
 | Méthode | Procédurale | Déclarative |
 |---|---|---|
 | `name` | ✅ | ✅ |
-| `goal` `verbose` | ❌ conservés, jamais lus | ✅ |
+| `goal` | ❌ conservé, jamais lu | ✅ |
+| `verbose` | ✅ | ✅ |
 | `withAgent(s)` — un agent construit ; tout le reste est refusé | ✅ | ✅ |
 | `withTask(s)` — une tâche construite ; tout le reste est refusé | ❌ ignoré | ✅ **tout l'intérêt** |
 | `process` | ❌ tag de télémétrie seulement | ✅ (`"graph"` choisit la stratégie de reprise-et-routage du domaine, pas une topologie dessinée par le script — voir plus bas) |

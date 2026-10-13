@@ -1,1 +1,2 @@
 #nullable enable
+static Orkeon.Hosting.RunnerExecution.ConfigureVerboseLogging(Microsoft.Extensions.Logging.ILoggingBuilder! b, int verbosity, Microsoft.Extensions.Configuration.IConfiguration? configuration) -> void

@@ -62,7 +62,8 @@ public sealed class Agent : AggregateRoot<AgentId>
     public int? MaxRpm { get; private set; }
 
     /// <summary>
-    /// Gets whether verbose logging is enabled.
+    /// Gets whether verbose logging is enabled: the agent's turn lines (tool calls, tool results,
+    /// model responses) are logged at Information under the category <c>Orkeon.Verbose</c>.
     /// </summary>
     public bool Verbose { get; private set; }
 

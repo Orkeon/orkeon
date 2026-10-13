@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the turn lines of a verbose agent move to category `Orkeon.Verbose`
+
+The tool calls, tool results and model responses of a `verbose` agent (every agent of a verbose
+crew) are logged at Information under `Orkeon.Verbose`. The runner shows that category without `-v`
+and at `-v 1`, unless `Logging:LogLevel` names `Orkeon.Verbose` or `Default`. A host that filters
+by category must let `Orkeon.Verbose` through; a host passing `configureLogging` sets its logging
+alone, the runner adds nothing.
+
 ### Changed — an agent's `PromptTemplate` now wraps the task's prompt **[breaking]**
 
 `PromptTemplate` was copied onto the agent and nothing read it: it now wraps the first prompt of

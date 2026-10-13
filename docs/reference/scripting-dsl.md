@@ -71,7 +71,8 @@ inferred.
 | Method | Procedural | Declarative |
 |---|---|---|
 | `name` | ✅ | ✅ |
-| `goal` `verbose` | ❌ stored, never read | ✅ |
+| `goal` | ❌ stored, never read | ✅ |
+| `verbose` | ✅ | ✅ |
 | `withAgent(s)` — a built agent; anything else is refused | ✅ | ✅ |
 | `withTask(s)` — a built task; anything else is refused | ❌ ignored | ✅ **the whole point** |
 | `process` | ❌ telemetry tag only | ✅ (`"graph"` selects the domain's retry-and-route strategy, not a script-drawn topology — see below) |

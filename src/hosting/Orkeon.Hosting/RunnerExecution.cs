@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Application.Interfaces.Services;
@@ -132,7 +133,7 @@ public static partial class RunnerExecution
                     LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
                 },
                 configureLogging: verbosity > 0
-                    ? (_, b) => ConfigureVerboseLogging(b, verbosity)
+                    ? (ctx, b) => ConfigureVerboseLogging(b, verbosity, ctx.Configuration)
                     : null,
                 configureServices: (ctx, services) =>
                 {
@@ -1319,6 +1320,13 @@ public static partial class RunnerExecution
     /// 2 = Debug everywhere, Infrastructure capped at Information.
     /// </summary>
     public static void ConfigureVerboseLogging(ILoggingBuilder b, int verbosity)
+        => ConfigureVerboseLogging(b, verbosity, null);
+
+    /// <summary>
+    /// As <see cref="ConfigureVerboseLogging(ILoggingBuilder, int)"/>, leaving a <c>Logging:LogLevel</c>
+    /// rule of <paramref name="configuration"/> that names <c>Orkeon.Verbose</c> or <c>Default</c> to win.
+    /// </summary>
+    public static void ConfigureVerboseLogging(ILoggingBuilder b, int verbosity, IConfiguration? configuration)
     {
         // If an outer host (typically a TUI) advertised an AmbientLoggerProvider, route
         // logs there INSTEAD of the standard Console provider — otherwise SimpleConsole
@@ -1355,12 +1363,30 @@ public static partial class RunnerExecution
                 b.AddFilter("Orkeon.Infrastructure.Crew", LogLevel.Information);
                 b.AddFilter("Orkeon.Infrastructure.Orchestration", LogLevel.Information);
                 b.AddFilter("Orkeon.Infrastructure.Logging", LogLevel.Information);
+                AddVerboseCategoryRule(b, configuration);
                 break;
             default:
                 b.SetMinimumLevel(LogLevel.Debug);
                 b.AddFilter("Orkeon.Infrastructure", LogLevel.Information);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Shows the agents' turn lines (category <c>Orkeon.Verbose</c>) at Information. The rule is added
+    /// only when the configuration's <c>Logging:LogLevel</c> names neither that category nor
+    /// <c>Default</c>: the most specific rule wins, so the user's is kept by the runner's absence.
+    /// </summary>
+    internal static void AddVerboseCategoryRule(ILoggingBuilder b, IConfiguration? configuration)
+    {
+        var levels = configuration?.GetSection("Logging:LogLevel");
+        if (levels is not null
+            && (levels[ExecutionLogCategories.Verbose] is not null || levels["Default"] is not null))
+        {
+            return;
+        }
+
+        b.AddFilter(ExecutionLogCategories.Verbose, LogLevel.Information);
     }
 
     /// <summary>

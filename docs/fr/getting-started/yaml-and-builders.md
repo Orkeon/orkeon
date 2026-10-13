@@ -35,7 +35,7 @@ La structure YAML suit ce schéma :
 name: string              # Identifiant de la crew ; portée de sa mémoire long terme (les crews d'un même nom la partagent)
 goal: string              # Objectif (requis)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
-verbose: bool             # default: false
+verbose: bool             # default: false — chaque agent du run journalise ses tours (appels d'outils, résultats, réponses du modèle) en Information, catégorie Orkeon.Verbose
 memory: bool              # default: false. true : range le résultat de chaque tâche et rappelle les plus proches avant chaque tâche (demande un embedder)
 memoryProvider: string    # exige memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — le type ; la section hôte (Orkeon:Redis, …) donne la connexion ; absent : le magasin par défaut de l'hôte
 planning: bool            # default: false. true : un plan pas à pas par tâche, écrit avant la première et lu par chaque tâche dans son prompt ; ne réordonne jamais les tâches
@@ -53,7 +53,7 @@ agents:
     maxIter: int          # default: 20 — les tours que l'agent peut prendre sur une tâche
     maxRpm: int           # default: aucun — au plus N requêtes au modèle par minute pour cet agent ; une de plus attend son tour
     maxExecutionTime: int # default: aucun — les secondes qu'une tâche peut prendre chez cet agent (alias max_execution_time ; 0 < valeur <= 4294967, environ 49,7 jours)
-    verbose: bool         # default: false — logs détaillés pour cet agent
+    verbose: bool         # default: false — logs détaillés pour cet agent (appels d'outils, résultats, réponses du modèle, en Information, catégorie Orkeon.Verbose)
     llm:
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) — absent = le fournisseur par défaut de l'hôte
       model: string       # Modèle LLM ("gpt-4", "claude-3-opus", etc.) — absent = le modèle propre du profil

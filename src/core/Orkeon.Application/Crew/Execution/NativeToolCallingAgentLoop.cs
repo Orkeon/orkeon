@@ -17,6 +17,7 @@ namespace Orkeon.Application.Crew.Execution;
 internal sealed class NativeToolCallingAgentLoop
 {
     private readonly ILogger _logger;
+    private readonly ILogger? _verboseLogger;
     private readonly Domain.SharedKernel.ILlmProvider _fullProvider;
     private readonly Interfaces.LLM.IToolCallingStrategy _toolCallingStrategy;
     private readonly IEnumerable<Domain.Tools.IBaseTool>? _registeredTools;
@@ -29,9 +30,11 @@ internal sealed class NativeToolCallingAgentLoop
         Interfaces.LLM.IToolCallingStrategy toolCallingStrategy,
         IEnumerable<Domain.Tools.IBaseTool>? registeredTools,
         LlmCallGate llmGate,
-        IToolInvocationPipeline toolInvocation)
+        IToolInvocationPipeline toolInvocation,
+        ILogger? verboseLogger = null)
     {
         _logger = logger;
+        _verboseLogger = verboseLogger;
         _fullProvider = fullProvider;
         _toolCallingStrategy = toolCallingStrategy;
         _registeredTools = registeredTools;
@@ -83,7 +86,8 @@ internal sealed class NativeToolCallingAgentLoop
                 messages.ToArray(), config, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
-            ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, response.Content.Length, response.Content);
+            var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, response.Content.Length, response.Content);
 
             // A failed call — the provider's refusal, an elapsed timeout — is not an answer to
             // judge: the task fails with the provider's own reason, and nothing is retried (LLM-11).
@@ -113,7 +117,7 @@ internal sealed class NativeToolCallingAgentLoop
             AppendAssistantToolCallMessage(messages, response, doc.RootElement);
 
             // Execute each tool call
-            ExecutionLog.LogLegacyToolCallsDetected(_logger, agent.Role, iteration + 1, parsedCalls.Count);
+            ExecutionLog.LogLegacyToolCallsDetected(turnLogger, agent.Role, iteration + 1, parsedCalls.Count);
             foreach (var call in parsedCalls)
             {
                 await ExecuteNativeToolCallAsync(
@@ -294,10 +298,11 @@ internal sealed class NativeToolCallingAgentLoop
             var resultText = outcome.RawText;
             var contextResultText = outcome.ConversationText;
 
-            if (_logger.IsEnabled(LogLevel.Information))
+            var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+            if (turnLogger.IsEnabled(LogLevel.Information))
             {
                 var truncatedResult = ToolCallFormatting.Truncate(resultText, LoggingDefaults.MaxToolResultLogLength);
-                ExecutionLog.LogLegacyToolResult(_logger, call.ToolName, toolDuration.TotalMilliseconds,
+                ExecutionLog.LogLegacyToolResult(turnLogger, call.ToolName, toolDuration.TotalMilliseconds,
                     toolResponse.Success ? "OK" : "FAIL",
                     truncatedResult);
             }

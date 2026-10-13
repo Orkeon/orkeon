@@ -361,6 +361,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // its agents or its manager during the run counts in it, a crew run from a task in its own.
             DomainCrewOutput domainOutput;
             using (CrewPlanScope.Begin(plan))
+            using (CrewVerbosity.Begin(crew.Verbose))
             using (RequestRates.BeginRun(crew, _time))
             {
                 domainOutput = await ExecuteDomainStrategyAsync(

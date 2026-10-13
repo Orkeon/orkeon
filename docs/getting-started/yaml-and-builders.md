@@ -34,7 +34,7 @@ The YAML structure follows this schema:
 name: string              # Crew identifier; scopes the crew's long-term memory (the crews of one name share it)
 goal: string              # Goal (required)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
-verbose: bool             # default: false
+verbose: bool             # default: false — every agent of the run logs its turns (tool calls, tool results, model responses) at Information, category Orkeon.Verbose
 memory: bool              # default: false. true: stores each task's result and recalls the closest ones before each task (needs an embedder)
 memoryProvider: string    # needs memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — the type; the host section (Orkeon:Redis, …) gives the connection; unset: the host's default store
 planning: bool            # default: false. true: a step-by-step plan per task, written before the first one and read by each task in its prompt; never reorders the tasks
@@ -52,7 +52,7 @@ agents:
     maxIter: int          # default: 20 — the turns the agent may take on a task
     maxRpm: int           # default: none — at most N model requests per minute for this agent; one more waits its turn
     maxExecutionTime: int # default: none — the seconds a task may take on this agent (alias max_execution_time; 0 < value <= 4294967, about 49.7 days)
-    verbose: bool         # default: false — detailed logs for this agent
+    verbose: bool         # default: false — detailed logs for this agent (tool calls, tool results, model responses, at Information, category Orkeon.Verbose)
     llm:
       profile: string     # Host LLM profile (Llm:Profiles:<name>) — unset = the host's default provider
       model: string       # LLM model ("gpt-4", "claude-3-opus", etc.) — unset = the profile's own model
