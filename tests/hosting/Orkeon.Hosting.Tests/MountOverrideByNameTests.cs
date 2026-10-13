@@ -701,4 +701,38 @@ public sealed class VirtualRootUniquenessGuardTests : IDisposable
         Assert.Contains("   at ", stderr + stdout, StringComparison.Ordinal);
         Assert.Contains("System.InvalidOperationException", stderr + stdout, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// CH-01. The provider a callback registers (the observed --events run does) must still be
+    /// wrapped by the deadline decorator: RunnerExecution decorates after the callback. The
+    /// provider is read inside a factory the run resolves once the host is built, so it is the
+    /// registration left after every callback has run.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldResolveDeadlinePausingProvider_WhenConfigureServicesRegistersItsOwnProvider()
+    {
+        var configPath = WriteCrew();
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+        var own = new StubHumanInputProvider();
+        Orkeon.Application.Interfaces.Ports.IHumanInputProvider? resolved = null;
+
+        await CaptureAsync(
+            () => RunnerExecution.RunOneShotAsync(
+                opts, "Orkeon.Hosting.Tests",
+                configureServices: (_, services) =>
+                {
+                    services.AddSingleton<Orkeon.Application.Interfaces.Ports.IHumanInputProvider>(own);
+                    services.AddSingleton<Orkeon.Application.Interfaces.ICrewFactory>(sp =>
+                    {
+                        resolved = sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IHumanInputProvider>();
+                        throw new InvalidOperationException("captured");
+                    });
+                },
+                externalCt: TestContext.Current.CancellationToken));
+
+        Assert.IsType<Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider>(resolved);
+        Assert.True(await resolved!.IsAvailableAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(1, own.AvailabilityProbes);
+    }
 }
