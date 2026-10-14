@@ -48,16 +48,6 @@ public sealed class CrewCreateOptions
     public int? MaxRpm { get; init; }
 
     /// <summary>
-    /// Whether to share the crew among agents.
-    /// </summary>
-    public bool ShareCrew { get; init; } = true;
-
-    /// <summary>
-    /// Optional output log file path.
-    /// </summary>
-    public string? OutputLogFile { get; init; }
-
-    /// <summary>
     /// Optional provider the crew's manager runs on (C# <c>WithManagerLlm</c>): read by the
     /// Hierarchical and Autonomous processes only — <see cref="Crew.Create(CrewCreateOptions)"/>
     /// refuses it in the four others (GAP-33).
@@ -70,16 +60,6 @@ public sealed class CrewCreateOptions
     /// the four other processes, which have none (GAP-33).
     /// </summary>
     public Common.AgentId? ManagerAgentId { get; init; }
-
-    /// <summary>
-    /// Language for the crew output.
-    /// </summary>
-    public string Language { get; init; } = CrewDefaults.DefaultLanguage;
-
-    /// <summary>
-    /// Whether to return full output from all tasks.
-    /// </summary>
-    public bool FullOutput { get; init; }
 
     /// <summary>
     /// Optional LLM provider the crew plans on, metered like a provider the host registers; null

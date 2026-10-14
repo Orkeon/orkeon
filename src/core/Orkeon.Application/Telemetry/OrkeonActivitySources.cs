@@ -45,10 +45,13 @@ public static class OrkeonActivitySources
     /// <summary>EventHub messaging (publish, post, send, receive).</summary>
     public static readonly ActivitySource EventHub = new("Orkeon.EventHub", Version);
 
+    /// <summary>The source of a procedural script's spans, owned by <c>Orkeon.Scripting</c>.</summary>
+    private const string ScriptingName = "Orkeon.Scripting";
+
     /// <summary>Every source name, for <c>TracerProviderBuilder.AddSource</c>.</summary>
     public static readonly string[] AllNames =
     [
-        Crew.Name, Agent.Name, Task.Name, Llm.Name, Tool.Name, Memory.Name, EventHub.Name,
+        Crew.Name, Agent.Name, Task.Name, Llm.Name, Tool.Name, Memory.Name, EventHub.Name, ScriptingName,
     ];
 
     /// <summary>

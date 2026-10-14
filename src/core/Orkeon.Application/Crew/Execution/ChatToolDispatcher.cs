@@ -21,11 +21,13 @@ namespace Orkeon.Application.Crew.Execution;
 internal sealed class ChatToolDispatcher
 {
     private readonly ILogger _logger;
+    private readonly ILogger? _verboseLogger;
     private readonly IToolInvocationPipeline _toolInvocation;
 
-    internal ChatToolDispatcher(ILogger logger, IToolInvocationPipeline toolInvocation)
+    internal ChatToolDispatcher(ILogger logger, IToolInvocationPipeline toolInvocation, ILogger? verboseLogger = null)
     {
         _logger = logger;
+        _verboseLogger = verboseLogger;
         _toolInvocation = toolInvocation;
     }
 
@@ -39,10 +41,11 @@ internal sealed class ChatToolDispatcher
         long elapsedMs,
         CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
+        var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, ctx.Agent);
+        if (turnLogger.IsEnabled(LogLevel.Information))
         {
             var toolNames = string.Join(", ", functionCalls.Select(fc => fc.Name));
-            ExecutionLog.LogChatClientToolCalls(_logger, ctx.Agent.Role, ctx.Iteration + 1, elapsedMs,
+            ExecutionLog.LogChatClientToolCalls(turnLogger, ctx.Agent.Role, ctx.Iteration + 1, elapsedMs,
                 toolNames);
         }
         ctx.Messages.AddRange(ctx.ChatResponse.Messages);
@@ -99,10 +102,11 @@ internal sealed class ChatToolDispatcher
         CrewTask task,
         CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
+        var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+        if (turnLogger.IsEnabled(LogLevel.Information))
         {
             var toolArgs = ToolCallFormatting.FormatToolArgs(call.Parameters);
-            ExecutionLog.LogExecutingLegacyTool(_logger, call.ToolName, toolArgs);
+            ExecutionLog.LogExecutingLegacyTool(turnLogger, call.ToolName, toolArgs);
         }
         var toolStartTime = DateTime.UtcNow;
 
@@ -124,10 +128,10 @@ internal sealed class ChatToolDispatcher
             var contextResultText = outcome.ConversationText;
             var result = outcome.Response!;
 
-            if (_logger.IsEnabled(LogLevel.Information))
+            if (turnLogger.IsEnabled(LogLevel.Information))
             {
                 var truncatedResult = ToolCallFormatting.Truncate(resultText, LoggingDefaults.MaxToolResultLogLength);
-                ExecutionLog.LogLegacyToolResult(_logger, call.ToolName, toolDuration.TotalMilliseconds, result.Success ? "OK" : "FAIL", truncatedResult);
+                ExecutionLog.LogLegacyToolResult(turnLogger, call.ToolName, toolDuration.TotalMilliseconds, result.Success ? "OK" : "FAIL", truncatedResult);
             }
             toolResultsBuilder.AppendLine(FormattableString.Invariant($"[Tool {call.ToolName} result]: {contextResultText}"));
 
@@ -270,10 +274,11 @@ internal sealed class ChatToolDispatcher
         CancellationToken cancellationToken)
     {
         var parameters = ExtractArguments(fc);
-        if (_logger.IsEnabled(LogLevel.Information))
+        var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+        if (turnLogger.IsEnabled(LogLevel.Information))
         {
             var toolArgs = ToolCallFormatting.FormatToolArgs(parameters);
-            ExecutionLog.LogToolCallStart(_logger, tool.Name, toolArgs);
+            ExecutionLog.LogToolCallStart(turnLogger, tool.Name, toolArgs);
         }
 
         // One execute_tool span per call the model made, paired with the model's own
@@ -314,10 +319,10 @@ internal sealed class ChatToolDispatcher
             var resultText = outcome.RawText;
             var contextResultText = outcome.ConversationText;
 
-            if (_logger.IsEnabled(LogLevel.Information))
+            if (turnLogger.IsEnabled(LogLevel.Information))
             {
                 var truncatedResult = ToolCallFormatting.Truncate(resultText, LoggingDefaults.MaxToolResultLogLength);
-                ExecutionLog.LogToolCallResult(_logger, tool.Name, toolDuration.TotalMilliseconds,
+                ExecutionLog.LogToolCallResult(turnLogger, tool.Name, toolDuration.TotalMilliseconds,
                     result.Success ? "OK" : "FAIL",
                     truncatedResult);
             }
@@ -338,7 +343,7 @@ internal sealed class ChatToolDispatcher
             var toolDuration = DateTime.UtcNow - toolStartTime;
             toolActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
             toolActivity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            ExecutionLog.LogToolCallResult(_logger, tool.Name, toolDuration.TotalMilliseconds, "ERROR", ex.Message);
+            ExecutionLog.LogToolCallResult(turnLogger, tool.Name, toolDuration.TotalMilliseconds, "ERROR", ex.Message);
 
             messages.Add(new ChatMessage(ChatRole.Tool,
                 [new FunctionResultContent(fc.CallId, $"Error: {ex.Message}")]));

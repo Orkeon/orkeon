@@ -8,7 +8,7 @@
 
 The three main entities are built via fluent builders defined in the Domain layer:
 
-- `AgentBuilder` (`Orkeon.Domain.Agent`): configures role, goal, backstory, tools, execution constraints, prompt templates, tool access policy, and the provider the agent's turns run on when it carries its own (`.WithLlm(provider)` — `Agent.Llm`, metered as the agent's work; a Microsoft Agent Framework agent through [`.WithAgentFrameworkAgent(agent)`](../reference/agent-framework-interop.md)). `Build()` refuses it with a host profile (`.WithLlmConfig(LlmConfig.OnProfile(name))`), and, on a provider that runs its own tools — a MAF agent —, with `.WithTool` or `.AllowDelegation()`
+- `AgentBuilder` (`Orkeon.Domain.Agent`): configures role, goal, backstory, tools, execution constraints, prompt templates (`SystemTemplate` replaces the default role section of the agent's system prompt, `ResponseTemplate` is appended to it as the expected response format, and `PromptTemplate` wraps the task's prompt at each `{{ .Prompt }}` and is refused by `Build()` without that mark), tool access policy, and the provider the agent's turns run on when it carries its own (`.WithLlm(provider)` — `Agent.Llm`, metered as the agent's work; a Microsoft Agent Framework agent through [`.WithAgentFrameworkAgent(agent)`](../reference/agent-framework-interop.md)). `Build()` refuses it with a host profile (`.WithLlmConfig(LlmConfig.OnProfile(name))`), and, on a provider that runs its own tools — a MAF agent —, with `.WithTool` or `.AllowDelegation()`
 - `CrewTaskBuilder` (`Orkeon.Domain.Task`): configures description, expected output, priority, dependencies, output JSON schema, async mode (`.Async()` — honoured by a sequential crew, refused by `CrewBuilder.Build()` outside Sequential and Parallel), human intervention
 - `CrewBuilder` (`Orkeon.Domain.Crew`): configures name, goal, process type, agents, tasks, planning (`.Planning()`, on the provider `.WithPlanningLlm(provider)` sets — refused without `.Planning()`), memory, callbacks, dynamic agents, and the manager of a hierarchical crew — an agent (`.Hierarchical(manager)`, `.WithManager(agent)`), or a provider of its own (`.WithManagerLlm(provider)`, CrewAI's `manager_llm`: the manager assigns and reviews on it, the crew then needs no manager agent and every agent works). A manager agent is also a consensual crew's arbiter; a manager LLM also hands an autonomous crew's tasks out. `Build()` refuses either in a process that has none
 
@@ -34,7 +34,7 @@ The YAML structure follows this schema:
 name: string              # Crew identifier; scopes the crew's long-term memory (the crews of one name share it)
 goal: string              # Goal (required)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
-verbose: bool             # default: false
+verbose: bool             # default: false — every agent of the run logs its turns (tool calls, tool results, model responses) at Information, category Orkeon.Verbose
 memory: bool              # default: false. true: stores each task's result and recalls the closest ones before each task (needs an embedder)
 memoryProvider: string    # needs memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — the type; the host section (Orkeon:Redis, …) gives the connection; unset: the host's default store
 planning: bool            # default: false. true: a step-by-step plan per task, written before the first one and read by each task in its prompt; never reorders the tasks
@@ -51,7 +51,8 @@ agents:
     allowDelegation: bool # default: true — allows delegation to other agents
     maxIter: int          # default: 20 — the turns the agent may take on a task
     maxRpm: int           # default: none — at most N model requests per minute for this agent; one more waits its turn
-    verbose: bool         # default: false — detailed logs for this agent
+    maxExecutionTime: int # default: none — the seconds a task may take on this agent (alias max_execution_time; 0 < value <= 4294967, about 49.7 days)
+    verbose: bool         # default: false — detailed logs for this agent (tool calls, tool results, model responses, at Information, category Orkeon.Verbose)
     llm:
       profile: string     # Host LLM profile (Llm:Profiles:<name>) — unset = the host's default provider
       model: string       # LLM model ("gpt-4", "claude-3-opus", etc.) — unset = the profile's own model

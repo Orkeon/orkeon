@@ -22,7 +22,7 @@ parsing (`YamlAnchorPreprocessor`).
 name: string              # Identifiant de la crew (requis) ; portée de sa mémoire long terme
 goal: string              # Objectif (requis)
 process: string           # "sequential" (défaut) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — insensible à la casse ; une valeur inconnue fait échouer le chargement
-verbose: bool             # default: false
+verbose: bool             # default: false — chaque agent du run journalise ses tours (appels d'outils, résultats, réponses du modèle) en Information, catégorie Orkeon.Verbose
 memory: bool              # default: false. true : la crew range le résultat de chaque tâche et rappelle les plus proches avant chaque tâche (embedder requis au kickoff) ; false : rien n'est rangé ni rappelé
 memoryProvider: string    # Exige memory: true (refusé sinon). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning. Le TYPE seul : la connexion vient de la section hôte (Orkeon:Redis, Orkeon:Sqlite, …). Absent : le magasin par défaut de l'hôte (Memory:Provider)
 planning: bool            # default: false. true : avant la première tâche, un planificateur (le profil par défaut de l'hôte) écrit un plan pas à pas par tâche, que la tâche lit dans son prompt, dans chaque mode ; il ne change ni l'ordre ni les agents
@@ -65,7 +65,8 @@ agents:
     allowDelegation: bool # default: true — permet la délégation à d'autres agents
     maxIter: int          # default: 20 — les tours que l'agent peut prendre sur une tâche (en C# et en .ork.ts aussi). 0 ou moins fait échouer le chargement
     maxRpm: int           # default: aucun — au plus N requêtes au modèle par minute pour cet agent ; une de plus attend son tour. Le RateLimiting:AgentRequestsPerMinute de l'hôte le borne aussi, le plus strict l'emporte. 0 ou moins fait échouer le chargement
-    verbose: bool         # default: false — logs détaillés pour cet agent
+    maxExecutionTime: int # default: aucun — les secondes qu'une tâche peut prendre chez cet agent (alias max_execution_time) ; 0 ou moins, ou plus de 4294967 (environ 49,7 jours), fait échouer le chargement, tout comme une limite sur le manager hiérarchique
+    verbose: bool         # default: false — logs détaillés pour cet agent (appels d'outils, résultats, réponses du modèle, en Information, catégorie Orkeon.Verbose)
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
       model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil
@@ -147,6 +148,10 @@ chargement aussi, en nommant la crew ou l'agent : omettre `maxRpm:`, c'est n'avo
 `maxIter:`, c'est le défaut (20). Ils étaient remplacés, par 10 et 15, sans un mot. Les plafonds propres
 de l'hôte sur les appels au modèle — qui bornent le `maxRpm` d'un agent, le plus strict l'emportant — sont
 les réglages de [`RateLimiting`](../reference/configuration.md#ratelimiting).
+Le `maxExecutionTime` (ou `max_execution_time`) d'un agent est un nombre entier de secondes : 0 ou moins, un décimal,
+une valeur au-dessus du plafond (4294967 s, environ 49,7 jours) et une limite sur le `managerAgent` d'une crew
+hiérarchique font échouer le chargement, en nommant l'agent. Une tâche qui dépasse sa limite se termine en
+`ExecutionTimeExceeded` au plus tard à la fin de l'appel en cours ; le temps passé à attendre un humain ne compte pas.
 
 Un message nomme un agent ou une tâche par sa clé — `Agent 'researcher' must have a goal.` —, une
 configuration bâtie en code par son identifiant.

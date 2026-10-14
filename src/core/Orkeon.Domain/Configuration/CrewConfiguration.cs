@@ -89,6 +89,8 @@ public sealed record AgentConfiguration
     /// default — sets no limit of its own.
     /// </summary>
     public int? MaxRpm { get; init; }
+    /// <summary>Gets the agent's execution time limit (CH-02); null sets none of its own.</summary>
+    public TimeSpan? MaxExecutionTime { get; init; }
     /// <summary>Gets a value indicating whether verbose logging is enabled for this agent.</summary>
     public bool Verbose { get; init; }
     /// <summary>Gets the LLM configuration for this agent, or null to use defaults.</summary>

@@ -69,6 +69,9 @@ public static class GenAiAttributes
     /// <summary>The value of <see cref="OperationName"/> for a chat completion, and the prefix of its span name (<c>chat {model}</c>).</summary>
     public const string OperationChat = "chat";
 
+    /// <summary>The value of <see cref="OperationName"/> for an embedding call, and the prefix of its span name (<c>embeddings {model}</c>).</summary>
+    public const string OperationEmbeddings = "embeddings";
+
     /// <summary>The value of <see cref="OperationName"/> for an agent turn, and the prefix of its span name (<c>invoke_agent {agent}</c>).</summary>
     public const string OperationInvokeAgent = "invoke_agent";
 

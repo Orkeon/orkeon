@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a run is a trace **[breaking]**
+
+A run now emits one trace: `crew.run` for the crew, `task.run` per task, `memory.recall` and
+`memory.store` under their task, the agent turns (`invoke_agent`) under their task. A failure or a
+cancellation ends the span in error. The `Orkeon.Scripting` source is listed in
+`OrkeonActivitySources.AllNames`, so the spans of a procedural script are exported. `TaskResult`
+gains `EndedAt` (Application).
+
+Every call to the host's model and every embedding now has a span: the providers' entrance opens
+`chat {model}` for a call made outside an agent turn (the manager, the planner, a host's own call),
+with `orkeon.llm.operation`, never a second one inside a current `chat`; the registered
+`IEmbeddingProvider` opens `embeddings {model}` (`GenAiAttributes.OperationEmbeddings`, Constants.Llm)
+for each call to the embedding model, none for a cache hit.
+
+- **Breaking**: `TracingInstrumentation` and `OrkeonTelemetryChatClient` (`Orkeon.Infrastructure.Telemetry`)
+  are removed: nothing in production called them.
+- **Migration**: wrap the chat client with Microsoft.Extensions.AI's `UseOpenTelemetry()` on the
+  chat client builder; the run's own spans need no call.
+
+### Changed — the turn lines of a verbose agent move to category `Orkeon.Verbose`
+
+The tool calls, tool results, model responses and the wait for its `MaxRpm` turn of a `verbose` agent (every agent of a verbose
+crew) are logged at Information under `Orkeon.Verbose`. The runner shows that category without `-v`
+and at `-v 1`, unless `Logging:LogLevel` names `Orkeon.Verbose` or `Default`. A host that filters
+by category must let `Orkeon.Verbose` through; a host passing `configureLogging` sets its logging
+alone, the runner adds nothing.
+
+### Changed — an agent's `PromptTemplate` now wraps the task's prompt **[breaking]**
+
+`PromptTemplate` was copied onto the agent and nothing read it: it now wraps the first prompt of
+each task the agent runs, every `{{ .Prompt }}` replaced by the prompt composed as before
+(`AgentDefaults.PromptTemplateMark`). Retries, corrections, tool messages and the manager's prompts
+are not wrapped; an agent without a template sends the same prompt, byte for byte.
+
+- **Breaking**: a non-empty `PromptTemplate` without `{{ .Prompt }}` refuses the construction of the
+  agent (`Agent.Create`, `AgentBuilder.Build()`, the YAML load); an empty one counts as none.
+- **Migration**: put `{{ .Prompt }}` where the task's prompt goes in each `PromptTemplate`, or remove
+  the template: it had no effect.
+
+### Changed — an agent's `MaxExecutionTime` is now enforced **[breaking]**
+
+`maxExecutionTime` (`max_execution_time`, whole seconds) in YAML and `maxExecutionTime(seconds)` in `.ork.ts`
+reach the agent as a `TimeSpan`; a refused value fails the load or the script's `build()`.
+
+- **Breaking**: a task longer than its agent's `MaxExecutionTime` now fails (`ExecutionTimeExceeded`).
+- **Breaking**: `AgentDto.MaxExecutionTime` is now `int?` (null without a limit, was 300).
+
+### Changed — the attributes nothing read are gone **[breaking]**
+
+`CacheEnabled`, `MaxRetryLimit`, `ShareCrew`, `OutputLogFile`, `Language` and `FullOutput` were
+set by the builders and stored on `Agent` and `Crew`, and nothing read them: they are removed,
+with `LanguageCode` and `CrewDefaults.DefaultLanguage`. `AgentDefaults.MaxRetryLimit` stays, for
+the retries of a communication or a training run.
+
+- **Breaking**: the six properties of `Agent` and `Crew`, their builder methods (`AgentBuilder`,
+  `CrewBuilder`, `AgentSpawnRequestBuilder`), their `AgentCreateOptions` / `CrewCreateOptions`
+  members and their arguments of `Agent.Create`, `Crew.Create` and `AgentSpawnRequest` are removed.
+- **Migration**: remove the calls to `CacheEnabled`, `MaxRetryLimit`, `ShareCrew`, `OutputLogFile`,
+  `Language` and `FullOutput`, and their `Agent.Create`, `Crew.Create` and `AgentSpawnRequest`
+  arguments: none had an effect. Ask for a language in the task or the backstory; keep a run's log
+  with `orkeon run --events jsonl` or `KickoffStreamingAsync`.
+
 ### Fixed — the apt pre-push check no longer counts the docs a minimised Ubuntu image drops
 
 The `apt-publish` job of `v1.0.0-rc.5` pushed nothing: its pre-push client, `ubuntu:24.04`,

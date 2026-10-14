@@ -57,6 +57,7 @@ inferred.
 | `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`) and offered to `ctx.llm.act`, which runs the tool's `execute` in the script | ✅ registered and resolved by name |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ — `maxIterations` defaults to 20, as in YAML and C# |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for this agent, one more waiting its turn (none by default; 0 or less refused at `build()`) | ❌ (warned: `ctx.llm` calls are no agent turns — the host's `RateLimiting` still caps them) | ✅ |
+| `maxExecutionTime(seconds)` — YAML `maxExecutionTime:`: the seconds a task may take on this agent (none by default; 0, negative, decimal or above 4294967 refused at `build()`) | ❌ (warned: the procedural engine runs no task) | ✅ |
 | `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (per call: `{ responseFormat }`) | ✅ |
 | `body` | ✅ **the whole point** | ❌ never invoked |
 | `withState` → `ctx.state` | ✅ | ❌ |
@@ -70,7 +71,8 @@ inferred.
 | Method | Procedural | Declarative |
 |---|---|---|
 | `name` | ✅ | ✅ |
-| `goal` `verbose` | ❌ stored, never read | ✅ |
+| `goal` | ❌ stored, never read | ✅ |
+| `verbose` | ✅ | ✅ |
 | `withAgent(s)` — a built agent; anything else is refused | ✅ | ✅ |
 | `withTask(s)` — a built task; anything else is refused | ❌ ignored | ✅ **the whole point** |
 | `process` | ❌ telemetry tag only | ✅ (`"graph"` selects the domain's retry-and-route strategy, not a script-drawn topology — see below) |

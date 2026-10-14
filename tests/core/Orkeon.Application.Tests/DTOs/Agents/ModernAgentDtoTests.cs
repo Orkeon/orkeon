@@ -59,7 +59,7 @@ public class AgentDtoTests
         // Assert
         Assert.False(dto.Verbose);
         Assert.False(dto.AllowDelegation);
-        Assert.Equal(300, dto.MaxExecutionTime);
+        Assert.Null(dto.MaxExecutionTime);
         Assert.True(dto.Tools.IsEmpty);
         Assert.Null(dto.Llm);
         Assert.Null(dto.Capabilities);

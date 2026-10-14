@@ -21,12 +21,9 @@ public sealed class CrewBuilder
     private bool _verbose;
     private bool _planning;
     private int? _maxRpm;
-    private bool _shareCrew = true;
-    private string? _outputLogFile;
     private ILlmProvider? _managerLlm;
     private AgentId? _managerAgentId;
-    private string _language = CrewDefaults.DefaultLanguage;
-    private bool _fullOutput;
+    private DomainAgent? _managerAgent;
     private ILlmProvider? _planningLlm;
     private bool _memoryEnabled;
     private string? _memoryProvider;
@@ -71,6 +68,7 @@ public sealed class CrewBuilder
         if (managerAgent is not null)
         {
             _managerAgentId = managerAgent.Id;
+            _managerAgent = managerAgent;
         }
         return this;
     }
@@ -80,6 +78,7 @@ public sealed class CrewBuilder
     {
         _processType = ProcessType.Hierarchical;
         _managerAgentId = managerAgentId;
+        _managerAgent = null;
         return this;
     }
 
@@ -188,20 +187,6 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Sets the language for crew output.</summary>
-    public CrewBuilder Language(string language)
-    {
-        _language = language;
-        return this;
-    }
-
-    /// <summary>Enables or disables full output from all tasks.</summary>
-    public CrewBuilder FullOutput(bool fullOutput = true)
-    {
-        _fullOutput = fullOutput;
-        return this;
-    }
-
     /// <summary>
     /// Enables or disables the crew's memory: with it on, a run stores the result of each task and
     /// recalls the crew's memories before each task (GAP-30). Off by default.
@@ -224,13 +209,6 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Enables or disables sharing crew information among agents.</summary>
-    public CrewBuilder ShareCrew(bool shareCrew = true)
-    {
-        _shareCrew = shareCrew;
-        return this;
-    }
-
     /// <summary>
     /// Sets the crew's manager agent: the hierarchical manager — it assigns each task and reviews its
     /// output — or the consensual crew's arbiter of the <c>ManagerDecision</c> fallback. It runs no
@@ -240,6 +218,7 @@ public sealed class CrewBuilder
     {
         ArgumentNullException.ThrowIfNull(managerAgent);
         _managerAgentId = managerAgent.Id;
+        _managerAgent = managerAgent;
         return this;
     }
 
@@ -250,6 +229,7 @@ public sealed class CrewBuilder
     public CrewBuilder WithManagerId(AgentId managerAgentId)
     {
         _managerAgentId = managerAgentId;
+        _managerAgent = null;
         return this;
     }
 
@@ -264,13 +244,6 @@ public sealed class CrewBuilder
     public CrewBuilder WithManagerLlm(ILlmProvider managerLlm)
     {
         _managerLlm = managerLlm;
-        return this;
-    }
-
-    /// <summary>Sets the output log file path.</summary>
-    public CrewBuilder OutputLogFile(string outputLogFile)
-    {
-        _outputLogFile = outputLogFile;
         return this;
     }
 
@@ -383,6 +356,12 @@ public sealed class CrewBuilder
         if (_processType == ProcessType.Hierarchical && _managerAgentId is null && _managerLlm is null)
             throw new BuilderValidationException("Crew", "Hierarchical process requires either a manager agent or a manager LLM.");
 
+        var limitedManager = _processType == ProcessType.Hierarchical
+            ? _managerAgent ?? (_managerAgentId is { } managerId ? _agents.FirstOrDefault(a => a.Id == managerId) : null)
+            : null;
+        if (limitedManager?.MaxExecutionTime is not null)
+            throw new BuilderValidationException("Crew", $"The manager agent '{limitedManager.Role}' carries a MaxExecutionTime: a hierarchical manager runs no task of its own, so the limit would never apply. Remove it.");
+
         // 4b. and 4c. The mode honours what the tasks ask and the manager the crew carries.
         EnsureAsyncExecutionAccepted();
         EnsureManagerAccepted();
@@ -396,12 +375,8 @@ public sealed class CrewBuilder
             Verbose = _verbose,
             Planning = _planning,
             MaxRpm = _maxRpm,
-            ShareCrew = _shareCrew,
-            OutputLogFile = _outputLogFile,
             ManagerLlm = _managerLlm,
             ManagerAgentId = _managerAgentId,
-            Language = _language,
-            FullOutput = _fullOutput,
             PlanningLlm = _planningLlm,
             MemoryEnabled = _memoryEnabled,
             MemoryProvider = _memoryProvider,

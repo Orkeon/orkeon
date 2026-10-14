@@ -121,6 +121,8 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     internal static ILlmProvider UnderMeter(ILlmProvider provider)
     {
         var underLimiter = RateLimitedLlmProvider.Unwrap(provider);
+        if (underLimiter is TracedLlmProvider traced)
+            underLimiter = traced.Inner;
         return underLimiter is MeteredLlmProvider metered ? metered._inner : underLimiter;
     }
 

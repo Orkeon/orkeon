@@ -51,9 +51,6 @@ public class CrewTests
         Assert.False(crew.Planning);
         // No limit of its own unless it declares one, as CrewAI's max_rpm (GAP-38).
         Assert.Null(crew.MaxRpm);
-        Assert.True(crew.ShareCrew);
-        Assert.Equal("en", crew.Language.Value);
-        Assert.False(crew.FullOutput);
         Assert.False(crew.MemoryEnabled);
     }
 
@@ -111,10 +108,6 @@ public class CrewTests
         var verbose = true;
         var planning = true;
         var maxRpm = 50;
-        var shareCrew = false;
-        var outputLogFile = "/logs/crew.log";
-        var language = "fr";
-        var fullOutput = true;
         var memoryEnabled = true;
 
         // Act
@@ -124,10 +117,6 @@ public class CrewTests
             verbose: verbose,
             planning: planning,
             maxRpm: maxRpm,
-            shareCrew: shareCrew,
-            outputLogFile: outputLogFile,
-            language: language,
-            fullOutput: fullOutput,
             memoryEnabled: memoryEnabled
         );
 
@@ -137,37 +126,7 @@ public class CrewTests
         Assert.Equal(verbose, crew.Verbose);
         Assert.Equal(planning, crew.Planning);
         Assert.Equal(maxRpm, crew.MaxRpm);
-        Assert.Equal(shareCrew, crew.ShareCrew);
-        Assert.Equal(outputLogFile, crew.OutputLogFile);
-        Assert.Equal(language, crew.Language.Value);
-        Assert.Equal(fullOutput, crew.FullOutput);
         Assert.Equal(memoryEnabled, crew.MemoryEnabled);
-    }
-
-    [Fact]
-    public void ShouldDefaultToEnglish_WhenCreatingWithEmptyLanguage()
-    {
-        // Arrange
-        var goal = "Test language default";
-
-        // Act
-        var crew = DomainCrew.Create(goal, language: "");
-
-        // Assert
-        Assert.Equal("en", crew.Language.Value);
-    }
-
-    [Fact]
-    public void ShouldDefaultToEnglish_WhenCreatingWithWhitespaceLanguage()
-    {
-        // Arrange
-        var goal = "Test language default";
-
-        // Act
-        var crew = DomainCrew.Create(goal, language: "   ");
-
-        // Assert
-        Assert.Equal("en", crew.Language.Value);
     }
 
     [Fact]
@@ -292,23 +251,6 @@ public class CrewTests
             () => DomainCrew.Create(goal, processType)
         );
         Assert.Contains("Hierarchical process requires either a manager agent or manager LLM", exception.Message);
-    }
-
-    [Theory]
-    [InlineData("en")]
-    [InlineData("fr")]
-    [InlineData("es")]
-    [InlineData("de")]
-    public void ShouldSetLanguage_WhenCreatingWithDifferentLanguages(string language)
-    {
-        // Arrange
-        var goal = "Multi-language support test";
-
-        // Act
-        var crew = DomainCrew.Create(goal, language: language);
-
-        // Assert
-        Assert.Equal(language, crew.Language.Value);
     }
 
     [Fact]
@@ -1284,10 +1226,6 @@ public class CrewTests
             Verbose = true,
             Planning = true,
             MaxRpm = 75,
-            ShareCrew = false,
-            OutputLogFile = "/var/log/crew.log",
-            Language = "es",
-            FullOutput = true,
             MemoryEnabled = true
         };
 
@@ -1300,10 +1238,6 @@ public class CrewTests
         Assert.True(crew.Verbose);
         Assert.True(crew.Planning);
         Assert.Equal(75, crew.MaxRpm);
-        Assert.False(crew.ShareCrew);
-        Assert.Equal("/var/log/crew.log", crew.OutputLogFile);
-        Assert.Equal("es", crew.Language.Value);
-        Assert.True(crew.FullOutput);
         Assert.True(crew.MemoryEnabled);
     }
 

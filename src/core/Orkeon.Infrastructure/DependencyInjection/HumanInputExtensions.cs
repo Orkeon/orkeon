@@ -24,6 +24,7 @@ public static class HumanInputExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<IHumanInputProvider, AutoApproveHumanInputProvider>();
+        services.DecorateHumanInputWithDeadline();
         // TryAddEnumerable de-duplicates by ImplementationType — multiple calls
         // to AddOrkeonHumanInput() in the same container won't add the tool
         // twice (e.g. when both RunnerExecution defaults and a per-runner
@@ -44,7 +45,49 @@ public static class HumanInputExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddSingleton<IHumanInputProvider, TProvider>();
+        services.DecorateHumanInputWithDeadline();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, HumanInputTool>());
         return services;
+    }
+
+    /// <summary>
+    /// Wraps the last <see cref="IHumanInputProvider"/> registration with the deadline-pausing decorator;
+    /// idempotent. Runs once the host's own registrations are in.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection.</returns>
+    public static IServiceCollection DecorateHumanInputWithDeadline(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        // Wraps the registered provider, whichever it is, so the wait for a human never counts against a deadline (CH-01).
+        // The registered descriptor moves under InnerKey with its lifetime; the decorator takes its place.
+        var index = services.ToList().FindLastIndex(static d => d.ServiceType == typeof(IHumanInputProvider) && !d.IsKeyedService);
+        if (index < 0)
+        {
+            return services;
+        }
+
+        var registered = services[index];
+        if (registered.ImplementationFactory?.Target is Decorating)
+        {
+            return services;
+        }
+
+        var inner = registered.ImplementationInstance is { } instance
+            ? new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, instance)
+            : registered.ImplementationFactory is { } factory
+                ? new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, (sp, _) => factory(sp), registered.Lifetime)
+                : new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, registered.ImplementationType!, registered.Lifetime);
+        services[index] = inner;
+        services.Add(new ServiceDescriptor(typeof(IHumanInputProvider), new Decorating(InnerKey).Create, registered.Lifetime));
+        return services;
+    }
+
+    private const string InnerKey = "orkeon.human-input.inner";
+
+    private sealed class Decorating(string innerKey)
+    {
+        public DeadlinePausingHumanInputProvider Create(IServiceProvider sp) =>
+            new(sp.GetRequiredKeyedService<IHumanInputProvider>(innerKey));
     }
 }

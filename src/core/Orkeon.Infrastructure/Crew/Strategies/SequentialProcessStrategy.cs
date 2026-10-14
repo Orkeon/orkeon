@@ -406,9 +406,9 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     {
         run.Fold(position, ran.Domain, ran.Application);
         if (ran.Result.Success)
-            await run.Outcome.RecordSuccessAsync(task, ran.Domain).ConfigureAwait(false);
+            await run.Outcome.RecordSuccessAsync(task, ran.Domain, endedAt: ran.Result.EndedAt).ConfigureAwait(false);
         else
-            await run.Outcome.RecordFailureAsync(task, agent.Role.Value, ran.Result.Error ?? ran.Result.LastError).ConfigureAwait(false);
+            await run.Outcome.RecordFailureAsync(task, agent.Role.Value, ran.Result.Error ?? ran.Result.LastError, ran.Result.EndedAt).ConfigureAwait(false);
     }
 
     /// <summary>Hands a task's end to the hooks, when anything listens.</summary>

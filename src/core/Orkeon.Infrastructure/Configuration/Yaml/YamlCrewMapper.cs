@@ -132,6 +132,7 @@ public sealed partial class YamlCrewMapper
                 AllowDelegation = kvp.Value.AllowDelegation ?? true,
                 MaxIterations = kvp.Value.MaxIter ?? Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations,
                 MaxRpm = kvp.Value.MaxRpm,
+                MaxExecutionTime = kvp.Value.MaxExecutionTime is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
                 Verbose = kvp.Value.Verbose ?? false,
                 LlmConfig = MapAgentLlm(effectiveLlm),
                 Guardrails = MapGuardrails($"Agent '{kvp.Key}'", kvp.Value.Guardrails),

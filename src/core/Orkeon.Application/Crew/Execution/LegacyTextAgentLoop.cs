@@ -21,6 +21,7 @@ namespace Orkeon.Application.Crew.Execution;
 internal sealed class LegacyTextAgentLoop
 {
     private readonly ILogger _logger;
+    private readonly ILogger? _verboseLogger;
     private readonly IBasicLlmProvider _llmProvider;
     private readonly LlmCallGate _llmGate;
     private readonly IToolInvocationPipeline _toolInvocation;
@@ -31,9 +32,11 @@ internal sealed class LegacyTextAgentLoop
         IBasicLlmProvider llmProvider,
         LlmCallGate llmGate,
         IToolInvocationPipeline toolInvocation,
-        IEnumerable<IBaseTool>? registeredTools = null)
+        IEnumerable<IBaseTool>? registeredTools = null,
+        ILogger? verboseLogger = null)
     {
         _logger = logger;
+        _verboseLogger = verboseLogger;
         _registeredTools = registeredTools;
         _llmProvider = llmProvider;
         _llmGate = llmGate;
@@ -75,7 +78,8 @@ internal sealed class LegacyTextAgentLoop
             var response = await _llmProvider.ChatAsync(conversationBuilder.ToString(), legacyEffectiveConfig, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
-            ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, response.Length, response);
+            var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, response.Length, response);
 
             // Check for structured [TOOL_CALL] blocks
             var parsedCalls = ToolCallTextParser.ParseToolCallBlocks(response);
@@ -101,7 +105,7 @@ internal sealed class LegacyTextAgentLoop
             }
 
             // Execute structured tool calls and build tool results section
-            ExecutionLog.LogLegacyToolCallsDetected(_logger, agent.Role, iteration + 1, parsedCalls.Count);
+            ExecutionLog.LogLegacyToolCallsDetected(turnLogger, agent.Role, iteration + 1, parsedCalls.Count);
             var (toolResultText, extractedToolUsage) = await ProcessResponseLegacy(response, agent, task, cancellationToken).ConfigureAwait(false);
             toolsUsed.AddRange(extractedToolUsage);
 
@@ -279,10 +283,11 @@ internal sealed class LegacyTextAgentLoop
         Domain.Task.CrewTask task,
         CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
+        var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+        if (turnLogger.IsEnabled(LogLevel.Information))
         {
             var toolArgs = ToolCallFormatting.FormatToolArgs(call.Parameters);
-            ExecutionLog.LogExecutingLegacyTool(_logger, call.ToolName, toolArgs);
+            ExecutionLog.LogExecutingLegacyTool(turnLogger, call.ToolName, toolArgs);
         }
 
         var toolStartTime = DateTime.UtcNow;
@@ -304,10 +309,10 @@ internal sealed class LegacyTextAgentLoop
             var result = outcome.Response!;
             var resultText = outcome.RawText;
 
-            if (_logger.IsEnabled(LogLevel.Information))
+            if (turnLogger.IsEnabled(LogLevel.Information))
             {
                 var truncatedResult = ToolCallFormatting.Truncate(resultText, LoggingDefaults.MaxToolResultLogLength);
-                ExecutionLog.LogLegacyToolResult(_logger, call.ToolName, toolDuration.TotalMilliseconds, result.Success ? "OK" : "FAIL", truncatedResult);
+                ExecutionLog.LogLegacyToolResult(turnLogger, call.ToolName, toolDuration.TotalMilliseconds, result.Success ? "OK" : "FAIL", truncatedResult);
             }
 
             resultBuilder.AppendLine(FormattableString.Invariant($"\n[Tool {call.ToolName} result]: {outcome.ConversationText}"));

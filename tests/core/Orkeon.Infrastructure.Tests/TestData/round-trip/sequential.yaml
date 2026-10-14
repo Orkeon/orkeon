@@ -73,6 +73,7 @@ agents:
     allowDelegation: false
     maxIter: 12
     maxRpm: 30
+    maxExecutionTime: 120
     verbose: true
     llm:
       model: research-model

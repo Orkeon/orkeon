@@ -52,7 +52,7 @@ public sealed record AgentDto
 
     /// <summary>Gets or sets the max execution time.</summary>
     [JsonPropertyName("max_execution_time")]
-    public int MaxExecutionTime { get; init; } = ExecutionDefaults.DefaultMaxExecutionSeconds;
+    public int? MaxExecutionTime { get; init; }
 
     /// <summary>Gets or sets the tools.</summary>
     [JsonPropertyName("tools")]

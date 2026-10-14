@@ -31,6 +31,13 @@ public sealed class OtelTests
     }
 
     [Fact]
+    [Trait("BR", "CH-09")]
+    public void ShouldListScriptingSource_WhenAllNamesIsRead()
+    {
+        Assert.Contains(ScriptingActivitySource.Name, Orkeon.Application.Telemetry.OrkeonActivitySources.AllNames);
+    }
+
+    [Fact]
     public async Task crew_run_emits_a_crew_run_span_with_name_and_process_tags()
     {
         var (spans, listener) = Capture();

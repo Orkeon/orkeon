@@ -60,8 +60,6 @@ public class BuilderIntegrationTests
             .MaxRpm(5)
             .Verbose()
             .AllowDelegation()
-            .CacheEnabled(false)
-            .MaxRetryLimit(1)
             .Build();
 
         // Arrange — build via Agent.Create factory method with same options
@@ -73,9 +71,7 @@ public class BuilderIntegrationTests
             MaxIterations = 10,
             MaxRpm = 5,
             Verbose = true,
-            AllowDelegation = true,
-            CacheEnabled = false,
-            MaxRetryLimit = 1
+            AllowDelegation = true
         });
 
         // Assert — key properties match (IDs will differ since they're auto-generated)
@@ -86,8 +82,6 @@ public class BuilderIntegrationTests
         Assert.Equal(builderAgent.MaxRpm, factoryAgent.MaxRpm);
         Assert.Equal(builderAgent.Verbose, factoryAgent.Verbose);
         Assert.Equal(builderAgent.AllowDelegation, factoryAgent.AllowDelegation);
-        Assert.Equal(builderAgent.CacheEnabled, factoryAgent.CacheEnabled);
-        Assert.Equal(builderAgent.MaxRetryLimit, factoryAgent.MaxRetryLimit);
     }
 
     [Fact]
@@ -149,11 +143,9 @@ public class BuilderIntegrationTests
             ["MaxRpm"] = "MaxRpm",
             ["Verbose"] = "Verbose",
             ["MaxExecutionTime"] = "MaxExecutionTime",
-            ["CacheEnabled"] = "CacheEnabled",
             ["SystemTemplate"] = "SystemTemplate",
             ["PromptTemplate"] = "PromptTemplate",
             ["ResponseTemplate"] = "ResponseTemplate",
-            ["MaxRetryLimit"] = "MaxRetryLimit",
             ["WithLlm"] = "Llm",
             ["WithTool"] = "Tools",
             ["WithTools"] = "Tools",

@@ -168,6 +168,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         Orkeon.Domain.Crew.Crew? crew = null;
         CrewOutput output;
         Exception? cause = null;
+        IDisposable? runSpan = null;
 
         try
         {
@@ -176,6 +177,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 // Load crew from repository
                 crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
                     ?? throw new InvalidOperationException($"Crew {crewId} not found");
+
+                // The run's span, from here to the output: it covers the plan, and every task span of
+                // the run hangs under it.
+                runSpan = Orkeon.Application.Telemetry.CrewRunTracing.Begin(crew);
 
                 // Record whether the crew remembers (memory:, GAP-30), the memory provider it declared,
                 // which the memory subsystem resolves to a concrete IMemoryProvider for this run
@@ -249,12 +254,22 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             }
 
             if (!output.Succeeded)
+            {
+                if (runSpan is not null)
+                {
+                    Orkeon.Application.Telemetry.CrewRunTracing.Fail(
+                        output.Error ?? "the run failed", cause?.GetType().FullName ?? Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorCrewFailed);
+                }
+
                 await ReportUnreportedFailureAsync(crewId, startedAt, output, cause, end).ConfigureAwait(false);
+            }
 
             return output;
         }
         finally
         {
+            runSpan?.Dispose();
+
             // Success, failure and cancellation all end here: the crew's queued events
             // (construction events, then Started and Completed/Failed) go to the
             // IDomainEventHandler<T> registrations once, and the aggregate is emptied.
@@ -361,6 +376,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // its agents or its manager during the run counts in it, a crew run from a task in its own.
             DomainCrewOutput domainOutput;
             using (CrewPlanScope.Begin(plan))
+            using (CrewVerbosity.Begin(crew.Verbose))
             using (RequestRates.BeginRun(crew, _time))
             {
                 domainOutput = await ExecuteDomainStrategyAsync(
