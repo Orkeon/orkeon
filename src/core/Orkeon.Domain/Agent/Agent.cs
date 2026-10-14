@@ -62,7 +62,8 @@ public sealed class Agent : AggregateRoot<AgentId>
     public int? MaxRpm { get; private set; }
 
     /// <summary>
-    /// Gets whether verbose logging is enabled.
+    /// Gets whether verbose logging is enabled: the agent's turn lines (tool calls, tool results,
+    /// model responses) are logged at Information under the category <c>Orkeon.Verbose</c>.
     /// </summary>
     public bool Verbose { get; private set; }
 
@@ -77,17 +78,14 @@ public sealed class Agent : AggregateRoot<AgentId>
     public TimeSpan? MaxExecutionTime { get; private set; }
 
     /// <summary>
-    /// Gets whether caching is enabled.
-    /// </summary>
-    public bool CacheEnabled { get; private set; } = true;
-
-    /// <summary>
     /// Gets the system template for prompts.
     /// </summary>
     public string? SystemTemplate { get; private set; }
 
     /// <summary>
-    /// Gets the prompt template.
+    /// Gets the prompt template: it wraps the task's first prompt, every <c>{{ .Prompt }}</c> replaced by
+    /// it (see <see cref="AgentDefaults.PromptTemplateMark"/>). A non-empty template without the mark is
+    /// refused at creation, an empty one counts as none (null).
     /// </summary>
     public string? PromptTemplate { get; private set; }
 
@@ -95,11 +93,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// Gets the response template.
     /// </summary>
     public string? ResponseTemplate { get; private set; }
-
-    /// <summary>
-    /// Gets the maximum retry limit.
-    /// </summary>
-    public int MaxRetryLimit { get; private set; } = AgentDefaults.MaxRetryLimit;
 
     /// <summary>
     /// The provider this agent's turns run on when it carries its own — CrewAI's <c>llm</c> given as
@@ -196,12 +189,16 @@ public sealed class Agent : AggregateRoot<AgentId>
             MaxRpm = options.MaxRpm is null or > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
             Verbose = options.Verbose,
             Status = AgentStatus.Idle,
-            MaxExecutionTime = options.MaxExecutionTime,
-            CacheEnabled = options.CacheEnabled,
+            MaxExecutionTime = options.MaxExecutionTime is not { } limit || (limit > TimeSpan.Zero && limit <= AgentDefaults.MaxExecutionTimeCeiling)
+                ? options.MaxExecutionTime
+                : throw new ArgumentException($"Agent '{options.Role.Value}': MaxExecutionTime must be greater than zero and at most {AgentDefaults.MaxExecutionTimeCeiling}.", nameof(options)),
             SystemTemplate = options.SystemTemplate,
-            PromptTemplate = options.PromptTemplate,
+            PromptTemplate = string.IsNullOrEmpty(options.PromptTemplate)
+                ? null
+                : options.PromptTemplate.Contains(AgentDefaults.PromptTemplateMark, StringComparison.Ordinal)
+                    ? options.PromptTemplate
+                    : throw new ArgumentException($"Agent '{options.Role.Value}': PromptTemplate must contain {AgentDefaults.PromptTemplateMark}.", nameof(options)),
             ResponseTemplate = options.ResponseTemplate,
-            MaxRetryLimit = options.MaxRetryLimit > 0 ? options.MaxRetryLimit : throw new ArgumentException("options.MaxRetryLimit must be positive.", nameof(options)),
             Llm = options.Llm,
             ToolAccessPolicy = options.ToolAccessPolicy ?? ToolAccessPolicy.CreateUnrestricted(),
             Guardrails = options.Guardrails,
@@ -250,11 +247,9 @@ public sealed class Agent : AggregateRoot<AgentId>
         int? maxRpm = null,
         bool verbose = false,
         TimeSpan? maxExecutionTime = null,
-        bool cacheEnabled = true,
         string? systemTemplate = null,
         string? promptTemplate = null,
         string? responseTemplate = null,
-        int maxRetryLimit = AgentDefaults.MaxRetryLimit,
         ILlmProvider? llm = null,
         IEnumerable<IBaseTool>? tools = null,
         GuardrailsConfig? guardrails = null)
@@ -269,11 +264,9 @@ public sealed class Agent : AggregateRoot<AgentId>
             MaxRpm = maxRpm,
             Verbose = verbose,
             MaxExecutionTime = maxExecutionTime,
-            CacheEnabled = cacheEnabled,
             SystemTemplate = systemTemplate,
             PromptTemplate = promptTemplate,
             ResponseTemplate = responseTemplate,
-            MaxRetryLimit = maxRetryLimit,
             Llm = llm,
             Tools = tools,
             Guardrails = guardrails

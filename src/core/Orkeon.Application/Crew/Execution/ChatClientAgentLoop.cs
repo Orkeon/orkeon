@@ -37,6 +37,7 @@ namespace Orkeon.Application.Crew.Execution;
 internal sealed class ChatClientAgentLoop
 {
     private readonly ILogger _logger;
+    private readonly ILogger? _verboseLogger;
     private readonly IChatClient _chatClient;
     private readonly LlmCallGate _llmGate;
     private readonly ChatOptionsComposer _optionsComposer;
@@ -49,9 +50,11 @@ internal sealed class ChatClientAgentLoop
         LlmCallGate llmGate,
         ChatOptionsComposer optionsComposer,
         ChatToolDispatcher toolDispatcher,
-        ILlmDeltaSink? deltaSink = null)
+        ILlmDeltaSink? deltaSink = null,
+        ILogger? verboseLogger = null)
     {
         _logger = logger;
+        _verboseLogger = verboseLogger;
         _chatClient = chatClient;
         _llmGate = llmGate;
         _optionsComposer = optionsComposer;
@@ -111,7 +114,11 @@ internal sealed class ChatClientAgentLoop
         agentActivity?.SetTag(GenAiAttributes.AgentId, agent.Id.ToString());
         agentActivity?.SetTag(GenAiAttributes.ProviderName, Telemetry.OrkeonActivitySources.ProviderName(_llmGate.ProviderName));
         agentActivity?.SetTag(GenAiAttributes.RequestModel, options.ModelId);
-        agentActivity?.SetTag("orkeon.task.id", task.Id.ToString());
+        agentActivity?.SetTag(
+            Telemetry.OrkeonRunSpans.TaskId,
+            agentActivity.Parent is { OperationName: Telemetry.OrkeonRunSpans.TaskRun } owner
+                ? owner.GetTagItem(Telemetry.OrkeonRunSpans.TaskId)
+                : task.Id.ToString());
         var totalTokensUsed = 0;
         var toolCallShapedAnswers = 0;
         // Prompt/completion split accumulated from UsageDetails when the provider reports
@@ -272,10 +279,11 @@ internal sealed class ChatClientAgentLoop
             return false;
 
         messages.Add(new ChatMessage(ChatRole.System, AgentDefaults.SoftTokenBudgetSteeringMessage));
-        if (_logger.IsEnabled(LogLevel.Information))
+        var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+        if (turnLogger.IsEnabled(LogLevel.Information))
         {
             var taskId = task.Id.ToString();
-            ExecutionLog.LogSoftBudgetSteering(_logger, agent.Role, taskId, totalTokensUsed, AgentDefaults.SoftTokenBudget);
+            ExecutionLog.LogSoftBudgetSteering(turnLogger, agent.Role, taskId, totalTokensUsed, AgentDefaults.SoftTokenBudget);
         }
         return true;
     }

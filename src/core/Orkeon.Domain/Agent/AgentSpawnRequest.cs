@@ -53,11 +53,6 @@ public sealed record AgentSpawnRequest
     public TimeSpan? MaxExecutionTime { get; }
 
     /// <summary>
-    /// Gets whether caching is enabled for the spawned agent.
-    /// </summary>
-    public bool CacheEnabled { get; }
-
-    /// <summary>
     /// Gets the tools to assign to the spawned agent.
     /// </summary>
     public IReadOnlyList<IBaseTool> Tools { get; }
@@ -94,7 +89,6 @@ public sealed record AgentSpawnRequest
         int? maxRpm = null,
         bool verbose = false,
         TimeSpan? maxExecutionTime = null,
-        bool cacheEnabled = true,
         IEnumerable<IBaseTool>? tools = null,
         AgentId? requestingAgentId = null,
         IReadOnlyDictionary<string, object>? metadata = null)
@@ -118,7 +112,6 @@ public sealed record AgentSpawnRequest
         MaxRpm = maxRpm;
         Verbose = verbose;
         MaxExecutionTime = maxExecutionTime;
-        CacheEnabled = cacheEnabled;
         Tools = (tools as IReadOnlyList<IBaseTool>) ?? (tools?.ToList().AsReadOnly() ?? new List<IBaseTool>().AsReadOnly());
         ParentCrewId = parentCrewId;
         RequestingAgentId = requestingAgentId;
@@ -148,7 +141,6 @@ public sealed class AgentSpawnRequestBuilder
     private int? _maxRpm;
     private bool _verbose;
     private TimeSpan? _maxExecutionTime;
-    private bool _cacheEnabled = true;
     private readonly List<IBaseTool> _tools = [];
     private AgentId? _requestingAgentId;
     private readonly Dictionary<string, object> _metadata = [];
@@ -202,13 +194,6 @@ public sealed class AgentSpawnRequestBuilder
         return this;
     }
 
-    /// <summary>Sets whether caching is enabled.</summary>
-    public AgentSpawnRequestBuilder CacheEnabled(bool enabled = true)
-    {
-        _cacheEnabled = enabled;
-        return this;
-    }
-
     /// <summary>Adds a tool to the agent.</summary>
     public AgentSpawnRequestBuilder WithTool(IBaseTool tool)
     {
@@ -257,7 +242,6 @@ public sealed class AgentSpawnRequestBuilder
             _maxRpm,
             _verbose,
             _maxExecutionTime,
-            _cacheEnabled,
             _tools,
             _requestingAgentId,
             _metadata.AsReadOnly());

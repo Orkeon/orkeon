@@ -20,9 +20,20 @@ public class AgentExitReasonTests
         Assert.Equal(6, (int)AgentExitReason.LlmCallFailed);    // LLM-11
         Assert.Equal(7, (int)AgentExitReason.GuardianBlocked);  // GAP-09
 
-        // There should be exactly 8 values
+        // There should be exactly 9 values
         var values = Enum.GetValues<AgentExitReason>();
-        Assert.Equal(8, values.Length);
+        Assert.Equal(9, values.Length);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public void ShouldKeepExistingValues_WhenExecutionTimeExceededIsAppended()
+    {
+        Assert.Equal(0, (int)AgentExitReason.Completed);
+        Assert.Equal(3, (int)AgentExitReason.Cancelled);
+        Assert.Equal(7, (int)AgentExitReason.GuardianBlocked);
+        Assert.Equal(8, (int)AgentExitReason.ExecutionTimeExceeded);
+        Assert.Equal(AgentExitReason.ExecutionTimeExceeded, Enum.GetValues<AgentExitReason>().Max());
     }
 
     [Theory]

@@ -12,6 +12,10 @@ namespace Orkeon.Application.Crew.Execution;
 /// </summary>
 internal static partial class ExecutionLog
 {
+    /// <summary>The logger of the Information turn lines of <paramref name="agent"/>: the verbose one when it or the run's crew is verbose.</summary>
+    internal static ILogger TurnLogger(ILogger logger, ILogger? verboseLogger, Orkeon.Domain.Agent.Agent agent) =>
+        verboseLogger is not null && CrewVerbosity.IsVerbose(agent) ? verboseLogger : logger;
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent {Role}: tool-free retry returned tool-call mimicry; re-issuing with escalated nudge.")]
     internal static partial void LogToolCallMimicryDetected(ILogger logger, object role);
 

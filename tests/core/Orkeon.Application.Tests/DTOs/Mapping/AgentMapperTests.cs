@@ -49,6 +49,36 @@ public class AgentMapperTests
     }
 
     [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldReturnAgentSecondsOrNull_WhenAgentIsMapped()
+    {
+        var limited = new Orkeon.Domain.Agent.AgentBuilder().Role(RoleWorker).Goal(GoalCompleteTasks)
+            .MaxExecutionTime(TimeSpan.FromSeconds(90)).Build();
+        var unlimited = DomainAgent.Create(AgentRole.From(RoleWorker), AgentGoal.From(GoalCompleteTasks));
+
+        Assert.Equal(90, AgentMapper.ToDto(limited).MaxExecutionTime);
+        Assert.Null(AgentMapper.ToDto(unlimited).MaxExecutionTime);
+    }
+
+    public static TheoryData<double, int> RoundedLimits => new()
+    {
+        { 500, 1 },
+        { 90500, 91 },
+        { Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling.TotalMilliseconds, 4294967 },
+    };
+
+    [Theory]
+    [Trait("BR", "CH-02")]
+    [MemberData(nameof(RoundedLimits))]
+    public void ShouldRoundLimitUpToWholeSeconds_WhenAgentIsMapped(double milliseconds, int expectedSeconds)
+    {
+        var agent = new Orkeon.Domain.Agent.AgentBuilder().Role(RoleWorker).Goal(GoalCompleteTasks)
+            .MaxExecutionTime(TimeSpan.FromMilliseconds(milliseconds)).Build();
+
+        Assert.Equal(expectedSeconds, AgentMapper.ToDto(agent).MaxExecutionTime);
+    }
+
+    [Fact]
     public void ShouldMapWithDefaults_WhenUsingToDtoWithMinimalAgent()
     {
         // Arrange

@@ -19,10 +19,25 @@ public static class AgentDefaults
     public const int MaxIterations = 20;
 
     /// <summary>
-    /// Default maximum number of retry attempts on task execution failure.
+    /// Default maximum number of retry attempts of a communication or a training run.
     /// Aligned with the majority usage across the codebase (was 2, harmonised to 3).
     /// </summary>
     public const int MaxRetryLimit = 3;
+
+    /// <summary>
+    /// The mark a <c>PromptTemplate</c> carries: replaced by the task's prompt when the template wraps it.
+    /// </summary>
+    public const string PromptTemplateMark = "{{ .Prompt }}";
+
+    /// <summary>Largest execution time an agent may be given (the timer's limit).</summary>
+    public static readonly TimeSpan MaxExecutionTimeCeiling = TimeSpan.FromMilliseconds(uint.MaxValue - 1);
+
+    /// <summary>
+    /// A posed execution limit as whole seconds rounded up, so a limit under a second is never shown as 0,
+    /// and capped at the last whole second the ceiling holds.
+    /// </summary>
+    public static int MaxExecutionTimeToWholeSeconds(TimeSpan limit) =>
+        (int)Math.Min(Math.Ceiling(limit.TotalSeconds), Math.Floor(MaxExecutionTimeCeiling.TotalSeconds));
 
     /// <summary>
     /// Maximum number of consecutive identical tool call errors before the circuit breaker trips.

@@ -250,6 +250,7 @@ public partial class YamlCrewExporter
             // Written when it differs from the one default, as the loader reads it back (GAP-38).
             MaxIter = agent.MaxIterations != Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations ? agent.MaxIterations : null,
             MaxRpm = agent.MaxRpm,
+            MaxExecutionTime = agent.MaxExecutionTime is { } limit ? Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeToWholeSeconds(limit) : null,
             Verbose = agent.Verbose ? true : null,
             Llm = MapLlmConfig(agent.LlmConfig),
             Guardrails = MapGuardrails(agent.Guardrails),

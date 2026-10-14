@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Application.Telemetry;
 using Orkeon.Domain.Task;
 
 namespace Orkeon.Application.Agent
@@ -137,36 +138,42 @@ namespace Orkeon.Application.Agent
                 // this execution's own copy of the context — unless the run does not answer the
                 // task (a ballot). A crew without memory recalls nothing; a recall that fails is a
                 // warning of the coordinator and leaves the task without memories.
-                var runContext = context;
-                if (context.RecallFromMemory)
+                // The task's span (when the run traces it) is current from the recall to the store, so
+                // the agent's turns and the memory spans nest under it.
+                TaskResult result;
+                using (CrewRunTracing.EnterTask(domainTask.Id))
                 {
-                    var recalled = await _memoryCoordinator.RecallAsync(
-                        agent, domainTask, context, cancellationToken).ConfigureAwait(false);
-                    if (recalled.Count > 0)
-                        runContext = context with { RecalledMemories = recalled };
-                }
+                    var runContext = context;
+                    if (context.RecallFromMemory)
+                    {
+                        var recalled = await _memoryCoordinator.RecallAsync(
+                            agent, domainTask, context, cancellationToken).ConfigureAwait(false);
+                        if (recalled.Count > 0)
+                            runContext = context with { RecalledMemories = recalled };
+                    }
 
-                // Execute the task
-                var result = await _executionOrchestrator.ExecuteTaskCoreAsync(
-                    agent,
-                    domainTask,
-                    runContext,
-                    cancellationToken).ConfigureAwait(false);
+                    // Execute the task
+                    result = await _executionOrchestrator.ExecuteTaskCoreAsync(
+                        agent,
+                        domainTask,
+                        runContext,
+                        cancellationToken).ConfigureAwait(false);
 
-                // Record metrics
-                _performanceMetrics?.RecordTaskExecution(
-                    agent.Role,
-                    task.TaskId.Value.ToString(),
-                    result.ExecutionTime,
-                    result.Success);
+                    // Record metrics
+                    _performanceMetrics?.RecordTaskExecution(
+                        agent.Role,
+                        task.TaskId.Value.ToString(),
+                        result.ExecutionTime,
+                        result.Success);
 
-                // Store result in memory if successful — unless the run is not the task's result (a
-                // consensual candidate, a hierarchical attempt, a ballot: the context says so, GAP-20,
-                // GAP-30). A store that fails is a warning of the coordinator: the task keeps its output.
-                if (context.StoreResultInMemory && result.Success && !string.IsNullOrEmpty(result.Output))
-                {
-                    await _memoryCoordinator.StoreTaskResultAsync(
-                        agent, domainTask, result.Output, context, cancellationToken).ConfigureAwait(false);
+                    // Store result in memory if successful — unless the run is not the task's result (a
+                    // consensual candidate, a hierarchical attempt, a ballot: the context says so, GAP-20,
+                    // GAP-30). A store that fails is a warning of the coordinator: the task keeps its output.
+                    if (context.StoreResultInMemory && result.Success && !string.IsNullOrEmpty(result.Output))
+                    {
+                        await _memoryCoordinator.StoreTaskResultAsync(
+                            agent, domainTask, result.Output, context, cancellationToken).ConfigureAwait(false);
+                    }
                 }
 
                 // Notify task completed. Its steps are the turns its agent loop ran (GAP-21) — the loop

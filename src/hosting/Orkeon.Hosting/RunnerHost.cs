@@ -1345,6 +1345,7 @@ public static partial class RunnerHost
                 opts.TimestampFormat = "HH:mm:ss.fff ";
             });
             b.SetMinimumLevel(LogLevel.Warning);
+            RunnerExecution.AddVerboseCategoryRule(b, context.Configuration);
         });
     }
 

@@ -17,8 +17,7 @@ public class AgentDelegationIntegrationTests
             allowDelegation: true,
             maxIterations: 5,
             maxRpm: 10,
-            verbose: false,
-            maxRetryLimit: 3);
+            verbose: false);
     }
 
     private static DomainAgent CreateWorkerAgent(string role, string goal = "Execute tasks")
@@ -29,8 +28,7 @@ public class AgentDelegationIntegrationTests
             allowDelegation: false,
             maxIterations: 5,
             maxRpm: 10,
-            verbose: false,
-            maxRetryLimit: 3);
+            verbose: false);
     }
 
     private static DomainTask CreateTask(string description)

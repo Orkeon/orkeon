@@ -16,6 +16,7 @@ public sealed class CachedEmbeddingProvider : IEmbeddingProvider
     private readonly IEmbeddingProvider _inner;
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
     private readonly TimeSpan _slidingExpiration;
+    private readonly IOptions<EmbeddingCacheOptions> _options;
 
     /// <inheritdoc />
     public string Name => _inner.Name;
@@ -34,9 +35,16 @@ public sealed class CachedEmbeddingProvider : IEmbeddingProvider
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
         ArgumentNullException.ThrowIfNull(options);
+        _options = options;
         var effectiveOptions = options.Value;
         _slidingExpiration = TimeSpan.FromMinutes(effectiveOptions.SlidingExpirationMinutes);
     }
+
+    /// <summary>The provider under the cache.</summary>
+    internal IEmbeddingProvider Inner => _inner;
+
+    /// <summary>A new, empty cache with the same options over <paramref name="inner"/>.</summary>
+    internal CachedEmbeddingProvider WithInner(IEmbeddingProvider inner) => new(inner, _options);
 
     /// <inheritdoc />
     public async Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)

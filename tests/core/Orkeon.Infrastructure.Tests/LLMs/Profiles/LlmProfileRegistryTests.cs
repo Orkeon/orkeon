@@ -40,7 +40,8 @@ public sealed class LlmProfileRegistryTests
 
         var profile = registry.Resolve("a");
         Assert.Same(profile, registry.Resolve(" A "));
-        Assert.IsType<MeteredLlmProvider>(profile.Provider);
+        var traced = Assert.IsType<TracedLlmProvider>(RateLimitedLlmProvider.Unwrap(profile.Provider));
+        Assert.IsType<MeteredLlmProvider>(traced.Inner);
 
         await profile.BasicProvider.ChatAsync("hi", cancellationToken: ct);
         await profile.ChatClient.GetResponseAsync("hi", new ChatOptions(), ct);

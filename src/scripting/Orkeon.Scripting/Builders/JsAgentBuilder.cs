@@ -50,6 +50,10 @@ public sealed class JsAgentBuilder
     internal int MaxIterationsValue { get; private set; } = Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations;
     /// <summary>The <c>.maxRpm(n)</c> received — YAML parity <c>maxRpm:</c> (GAP-38); null sets no limit of its own.</summary>
     internal int? MaxRpmValue { get; private set; }
+    /// <summary>The <c>.maxExecutionTime(seconds)</c> received; null sets no limit of its own.</summary>
+    internal double? MaxExecutionTimeSeconds { get; private set; }
+    /// <summary>The validated limit, once <see cref="build"/> accepted it.</summary>
+    internal TimeSpan? MaxExecutionTimeValue { get; private set; }
     internal bool VerboseFlag { get; private set; }
     internal int ConcurrencyValue { get; private set; } = 1;
     internal JsValue? StateFactory { get; private set; }
@@ -197,6 +201,13 @@ public sealed class JsAgentBuilder
     /// limit of its own. Zero or less is refused at <see cref="build"/>.
     /// </summary>
     public JsAgentBuilder maxRpm(int value) { MaxRpmValue = value; return this; }
+
+    /// <summary>
+    /// YAML parity <c>maxExecutionTime:</c> (CH-02): the seconds this agent may spend on a task of the
+    /// declarative shape. Left out, no limit of its own. Zero, negative, decimal or above the ceiling
+    /// is refused at <see cref="build"/>.
+    /// </summary>
+    public JsAgentBuilder maxExecutionTime(double seconds) { MaxExecutionTimeSeconds = seconds; return this; }
     public JsAgentBuilder verbose() { VerboseFlag = true; return this; }
     public JsAgentBuilder verbose(bool value) { VerboseFlag = value; return this; }
     public JsAgentBuilder withState(JsValue factoryOrSeed) { StateFactory = factoryOrSeed; return this; }
@@ -249,6 +260,18 @@ public sealed class JsAgentBuilder
             throw new InvalidScriptException(
                 $"agentBuilder() '{AgentName}': .maxRpm({MaxRpmValue}) — the model requests the agent may make per minute " +
                 "must be 1 or more. Leave .maxRpm(...) out for no limit of its own.");
+        }
+        if (MaxExecutionTimeSeconds is { } seconds)
+        {
+            var ceiling = Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling.TotalSeconds;
+            if (seconds <= 0 || seconds != Math.Floor(seconds) || seconds > ceiling)
+            {
+                throw new InvalidScriptException(
+                    $"agentBuilder() '{AgentName}': .maxExecutionTime({seconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}) — " +
+                    $"the seconds the agent may spend on a task must be a whole number from 1 to {(long)ceiling}. " +
+                    "Leave .maxExecutionTime(...) out for no limit.");
+            }
+            MaxExecutionTimeValue = TimeSpan.FromSeconds(seconds);
         }
         if (ConcurrencyValue <= 0)
             throw new InvalidScriptException(".concurrency must be positive.");

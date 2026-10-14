@@ -136,6 +136,8 @@ public static class ServiceCollectionExtensions
             var deliverableFactory = sp.GetService<Crew.DeliverableResolvers.IDeliverableResolverFactory>();
             var fileSystem = sp.GetRequiredService<Domain.FileSystem.IFileSystemService>();
 
+            var verboseLogger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger(Crew.Execution.ExecutionLogCategories.Verbose);
+
             ExecutionOrchestrator orchestrator;
             if (chatClient != null)
             {
@@ -146,12 +148,12 @@ public static class ServiceCollectionExtensions
                 // is registered. It used to also require a rate limiter, which the orchestrator no
                 // longer takes (GAP-38): the limiter is applied at the providers' entrance.
                 orchestrator = validationPipeline != null && parserFactory != null
-                    ? new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, validationPipeline, parserFactory, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem)
-                    : new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, fileSystem);
+                    ? new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, validationPipeline, parserFactory, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem, verboseLogger)
+                    : new ExecutionOrchestrator(logger, llmProvider, chatClient, tools, fileSystem, verboseLogger);
             }
             else
             {
-                orchestrator = new ExecutionOrchestrator(logger, llmProvider);
+                orchestrator = new ExecutionOrchestrator(logger, llmProvider, verboseLogger);
             }
 
             // RAG-03/C4 — optional knowledge augmentation: hosts without the RAG

@@ -132,6 +132,7 @@ public static class JsCrewConfigurationAdapter
             AllowDelegation = builder.AllowDelegationFlag,
             MaxIterations = builder.MaxIterationsValue,
             MaxRpm = builder.MaxRpmValue,
+            MaxExecutionTime = builder.MaxExecutionTimeValue,
             Verbose = builder.VerboseFlag,
             LlmConfig = llmConfig,
         };

@@ -69,11 +69,9 @@ public class AgentBuilderTests
             .MaxRpm(50)
             .Verbose()
             .MaxExecutionTime(TimeoutStandard)
-            .CacheEnabled(false)
             .SystemTemplate("You are a developer")
-            .PromptTemplate("Task: {task}")
+            .PromptTemplate("Task: {task} {{ .Prompt }}")
             .ResponseTemplate("Result: {result}")
-            .MaxRetryLimit(3)
             .WithLlm(llm)
             .Build();
 
@@ -86,11 +84,9 @@ public class AgentBuilderTests
         Assert.Equal(50, agent.MaxRpm);
         Assert.True(agent.Verbose);
         Assert.Equal(TimeoutStandard, agent.MaxExecutionTime);
-        Assert.False(agent.CacheEnabled);
         Assert.Equal("You are a developer", agent.SystemTemplate);
-        Assert.Equal("Task: {task}", agent.PromptTemplate);
+        Assert.Equal("Task: {task} {{ .Prompt }}", agent.PromptTemplate);
         Assert.Equal("Result: {result}", agent.ResponseTemplate);
-        Assert.Equal(3, agent.MaxRetryLimit);
         Assert.Same(llm, agent.Llm);
     }
 
@@ -230,6 +226,59 @@ public class AgentBuilderTests
 
         Assert.Equal(string.Empty, config.Model);
         Assert.Equal(2000, config.MaxTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldSetLimit_WhenBuilderReceivesPositiveTimeSpan()
+    {
+        var agent = MinimalAgent().MaxExecutionTime(TimeSpan.FromSeconds(90)).Build();
+
+        Assert.Equal(TimeSpan.FromSeconds(90), agent.MaxExecutionTime);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-02")]
+    [InlineData(0)]
+    [InlineData(-1000)]
+    public void ShouldRefuseBuild_WhenLimitIsZeroOrNegative(int milliseconds)
+    {
+        var builder = MinimalAgent().MaxExecutionTime(TimeSpan.FromMilliseconds(milliseconds));
+
+        var ex = Assert.Throws<ArgumentException>(() => builder.Build());
+        Assert.Contains("Test Role", ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldRefuseBuild_WhenLimitExceedsCeiling()
+    {
+        var ceiling = Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling;
+
+        var ex = Assert.Throws<ArgumentException>(
+            () => MinimalAgent().MaxExecutionTime(ceiling + TimeSpan.FromMilliseconds(1)).Build());
+        Assert.Contains("Test Role", ex.Message);
+        Assert.Equal(ceiling, MinimalAgent().MaxExecutionTime(ceiling).Build().MaxExecutionTime);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldRefuseBuild_WhenPromptTemplateHasNoMark()
+    {
+        var builder = MinimalAgent().PromptTemplate("Answer in French.");
+
+        var ex = Assert.Throws<ArgumentException>(() => builder.Build());
+        Assert.Contains("Test Role", ex.Message);
+        Assert.Contains("{{ .Prompt }}", ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldTreatEmptyTemplateAsNone_WhenPromptTemplateIsEmpty()
+    {
+        var agent = MinimalAgent().PromptTemplate("").Build();
+
+        Assert.Null(agent.PromptTemplate);
     }
 
     #region Test Doubles

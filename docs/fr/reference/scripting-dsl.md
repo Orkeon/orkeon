@@ -61,6 +61,7 @@ déduit.
 | `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) et proposées à `ctx.llm.act`, qui exécute le `execute` de l'outil dans le script | ✅ enregistrées et résolues par nom |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ — `maxIterations` vaut 20 par défaut, comme en YAML et en C# |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour cet agent, une de plus attendant son tour (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit : les appels `ctx.llm` ne sont pas des tours d'agent — le `RateLimiting` de l'hôte les plafonne toujours) | ✅ |
+| `maxExecutionTime(seconds)` — le `maxExecutionTime:` du YAML : les secondes qu'une tâche peut prendre chez cet agent (aucun par défaut ; 0, négatif, décimal ou au-dessus de 4294967 refusé à `build()`) | ❌ (avertit : le moteur procédural n'exécute aucune tâche) | ✅ |
 | `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (par appel : `{ responseFormat }`) | ✅ |
 | `body` | ✅ **tout l'intérêt** | ❌ jamais invoqué |
 | `withState` → `ctx.state` | ✅ | ❌ |
@@ -74,7 +75,8 @@ déduit.
 | Méthode | Procédurale | Déclarative |
 |---|---|---|
 | `name` | ✅ | ✅ |
-| `goal` `verbose` | ❌ conservés, jamais lus | ✅ |
+| `goal` | ❌ conservé, jamais lu | ✅ |
+| `verbose` | ✅ | ✅ |
 | `withAgent(s)` — un agent construit ; tout le reste est refusé | ✅ | ✅ |
 | `withTask(s)` — une tâche construite ; tout le reste est refusé | ❌ ignoré | ✅ **tout l'intérêt** |
 | `process` | ❌ tag de télémétrie seulement | ✅ (`"graph"` choisit la stratégie de reprise-et-routage du domaine, pas une topologie dessinée par le script — voir plus bas) |

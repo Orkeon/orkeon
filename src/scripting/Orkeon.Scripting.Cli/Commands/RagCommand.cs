@@ -511,7 +511,7 @@ internal static class RagCommand
                 AllowExternalMounts = implicitlyAllow,
             },
             configureLogging: verbosity > 0
-                ? (_, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity)
+                ? (ctx, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity, ctx.Configuration)
                 : null,
             configureServices: (ctx, services) =>
             {

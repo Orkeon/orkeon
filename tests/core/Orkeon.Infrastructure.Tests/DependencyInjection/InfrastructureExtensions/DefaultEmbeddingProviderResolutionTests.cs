@@ -47,7 +47,7 @@ public class DefaultEmbeddingProviderResolutionTests
         var vector = await port.GetEmbeddingAsync("hello", TestContext.Current.CancellationToken);
 
         // Assert — adapter chosen, calls routed to the Analysis-side inner provider
-        Assert.IsType<AnalysisEmbeddingProviderAdapter>(port);
+        Assert.IsType<AnalysisEmbeddingProviderAdapter>(Assert.IsType<TracedEmbeddingProvider>(port).Inner);
         Assert.Equal(1, fake.CallCount);
         Assert.Equal(fake.Dimensions, vector.Length);
     }
@@ -68,7 +68,7 @@ public class DefaultEmbeddingProviderResolutionTests
         var port = provider.GetRequiredService<IEmbeddingProvider>();
 
         // Assert — resolution order: local BGE first
-        Assert.IsType<AnalysisEmbeddingProviderAdapter>(port);
+        Assert.IsType<AnalysisEmbeddingProviderAdapter>(Assert.IsType<TracedEmbeddingProvider>(port).Inner);
     }
 
     // ── 2. Remote provider configured under Orkeon:Embeddings ────────────
@@ -89,7 +89,7 @@ public class DefaultEmbeddingProviderResolutionTests
         var port = provider.GetRequiredService<IEmbeddingProvider>();
 
         // Assert
-        var ollama = Assert.IsType<OllamaEmbeddingProvider>(port);
+        var ollama = Assert.IsType<OllamaEmbeddingProvider>(Assert.IsType<TracedEmbeddingProvider>(port).Inner);
         Assert.Equal("nomic-embed-text", ollama.Model);
     }
 
@@ -127,7 +127,7 @@ public class DefaultEmbeddingProviderResolutionTests
         var port = provider.GetRequiredService<IEmbeddingProvider>();
 
         // Assert
-        Assert.IsType<OpenAIEmbeddingProvider>(port);
+        Assert.IsType<OpenAIEmbeddingProvider>(Assert.IsType<TracedEmbeddingProvider>(port).Inner);
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public class DefaultEmbeddingProviderResolutionTests
         var port = provider.GetRequiredService<IEmbeddingProvider>();
 
         // Assert
-        Assert.IsType<UnconfiguredEmbeddingProvider>(port);
+        Assert.IsType<UnconfiguredEmbeddingProvider>(Assert.IsType<TracedEmbeddingProvider>(port).Inner);
     }
 
     [Fact]
@@ -223,7 +223,7 @@ public class DefaultEmbeddingProviderResolutionTests
         var port = provider.GetRequiredService<IEmbeddingProvider>();
 
         // Assert
-        Assert.Same(mock, port);
+        Assert.Same(mock, Assert.IsType<TracedEmbeddingProvider>(port).Inner);
     }
 
     [Fact]

@@ -22,6 +22,7 @@ internal sealed class LlmCallGate
     private readonly IBasicLlmProvider _llmProvider;
     private readonly TimeProvider _time;
     private readonly int? _hostAgentLimit;
+    private readonly ILogger? _verboseLogger;
 
     /// <summary>The provider's own name, for the <c>gen_ai.provider.name</c> attribute of the spans.</summary>
     internal string ProviderName => _llmProvider.Name;
@@ -30,12 +31,14 @@ internal sealed class LlmCallGate
     /// <param name="llmProvider">The provider the calls go to.</param>
     /// <param name="time">The clock the windows count on; <see cref="TimeProvider.System"/> when null.</param>
     /// <param name="hostAgentLimit">The host's per-agent cap (<c>RateLimiting:AgentRequestsPerMinute</c>); null sets none.</param>
-    internal LlmCallGate(ILogger logger, IBasicLlmProvider llmProvider, TimeProvider? time = null, int? hostAgentLimit = null)
+    /// <param name="verboseLogger">Where the line goes for a verbose agent or crew; null keeps it on <paramref name="logger"/>.</param>
+    internal LlmCallGate(ILogger logger, IBasicLlmProvider llmProvider, TimeProvider? time = null, int? hostAgentLimit = null, ILogger? verboseLogger = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
         _time = time ?? TimeProvider.System;
         _hostAgentLimit = hostAgentLimit;
+        _verboseLogger = verboseLogger;
     }
 
     /// <summary>
@@ -46,7 +49,10 @@ internal sealed class LlmCallGate
     internal async System.Threading.Tasks.Task WaitTurnAsync(DomainAgent agent, CancellationToken cancellationToken)
     {
         var turn = await RequestRates.WaitTurnAsync(agent, _hostAgentLimit, _time, cancellationToken).ConfigureAwait(false);
-        if (turn.HasWaited)
-            ExecutionLog.LogWaitedForTurn(_logger, agent.Role, turn.Waited.TotalSeconds, turn.Limit ?? string.Empty);
+        if (!turn.HasWaited)
+            return;
+
+        var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+        ExecutionLog.LogWaitedForTurn(turnLogger, agent.Role, turn.Waited.TotalSeconds, turn.Limit ?? string.Empty);
     }
 }

@@ -53,32 +53,4 @@ public class OpenTelemetryIntegrationTestsFixture
 
         return services;
     }
-
-    public static OrkeonTelemetryChatClient CreateTelemetryChatClient(
-        MockChatClient innerClient, OrkeonMetrics metrics, string providerName)
-        => new(innerClient, metrics, providerName);
-
-    public static MockChatClient CreateMockChatClientWithResponse(string responseText, int? inputTokens = null, int? outputTokens = null, int? totalTokens = null)
-    {
-        var mockClient = new MockChatClient();
-        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText));
-        if (inputTokens.HasValue || outputTokens.HasValue || totalTokens.HasValue)
-        {
-            response.Usage = new UsageDetails
-            {
-                InputTokenCount = inputTokens ?? 0,
-                OutputTokenCount = outputTokens ?? 0,
-                TotalTokenCount = totalTokens ?? 0
-            };
-        }
-        mockClient.SetGetResponseResult(response);
-        return mockClient;
-    }
-
-    public static MockChatClient CreateMockChatClientWithException(Exception exception)
-    {
-        var mockClient = new MockChatClient();
-        mockClient.SetGetResponseException(exception);
-        return mockClient;
-    }
 }

@@ -116,6 +116,33 @@ public class CrewBuilderTests
     }
 
     [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldRefuseBuild_WhenHierarchicalManagerAgentHasLimit()
+    {
+        var manager = new AgentBuilder().Role(RoleManager).Goal("Manage team")
+            .MaxExecutionTime(TimeSpan.FromSeconds(30)).Build();
+        var builder = new CrewBuilder().Goal("Hierarchical crew").Hierarchical(manager);
+
+        Assert.Throws<BuilderValidationException>(() => builder.Build());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-02")]
+    public void ShouldRefuseBuild_WhenHierarchicalManagerDesignatedByIdHasLimit(bool withManagerId)
+    {
+        var manager = new AgentBuilder().Role(RoleManager).Goal("Manage team")
+            .MaxExecutionTime(TimeSpan.FromSeconds(30)).Build();
+        var builder = new CrewBuilder().Goal("Hierarchical crew").WithAgent(manager);
+        _ = withManagerId
+            ? builder.Hierarchical().WithManagerId(manager.Id)
+            : builder.Hierarchical(manager.Id);
+
+        Assert.Throws<BuilderValidationException>(() => builder.Build());
+    }
+
+    [Fact]
     public void Hierarchical_WithoutManager_ThrowsValidation()
     {
         // Arrange — hierarchical without manager agent or manager LLM
@@ -193,11 +220,7 @@ public class CrewBuilderTests
             .Verbose()
             .Planning()
             .MaxRpm(200)
-            .Language("fr")
-            .FullOutput()
             .EnableMemory()
-            .ShareCrew(false)
-            .OutputLogFile("/tmp/crew.log")
             .WithManagerLlm(managerLlm)
             .WithPlanningLlm(planningLlm)
             .Build();
@@ -208,11 +231,7 @@ public class CrewBuilderTests
         Assert.True(crew.Verbose);
         Assert.True(crew.Planning);
         Assert.Equal(200, crew.MaxRpm);
-        Assert.Equal("fr", crew.Language.Value);
-        Assert.True(crew.FullOutput);
         Assert.True(crew.MemoryEnabled);
-        Assert.False(crew.ShareCrew);
-        Assert.Equal("/tmp/crew.log", crew.OutputLogFile);
         Assert.Same(managerLlm, crew.ManagerLlm);
         Assert.Equal(manager.Id, crew.ManagerAgentId);
         Assert.Same(planningLlm, crew.PlanningLlm);

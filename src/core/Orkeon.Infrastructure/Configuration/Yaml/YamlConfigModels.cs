@@ -35,6 +35,8 @@ public class AgentYamlConfig
     /// limit of its own. Zero or less is refused at load.
     /// </summary>
     public int? MaxRpm { get; set; }
+    /// <summary>Gets or sets the agent's execution time limit in whole seconds (<c>maxExecutionTime:</c>, CH-02).</summary>
+    public int? MaxExecutionTime { get; set; }
     /// <summary>Gets or sets whether verbose mode is enabled.</summary>
     public bool? Verbose { get; set; }
     /// <summary>Gets or sets the LLM configuration.</summary>

@@ -70,6 +70,8 @@ public static class VectorSearchServiceExtensions
                      ?? (IEmbeddingProvider)new UnconfiguredEmbeddingProvider(),
             };
 
+            provider = TracedEmbeddingProvider.Wrap(provider);
+
             if (options.EnableCache)
             {
                 provider = new CachedEmbeddingProvider(

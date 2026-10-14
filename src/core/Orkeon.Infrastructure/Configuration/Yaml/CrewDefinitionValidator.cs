@@ -130,6 +130,15 @@ public static class CrewDefinitionValidator
                 "more. Leave maxRpm: out for no limit of its own.");
         }
 
+        if (agent.MaxExecutionTime is { } limit
+            && (limit <= TimeSpan.Zero || limit > Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling))
+        {
+            errors.Add(
+                $"Agent '{CrewEntryNames.Of(agent)}' maxExecutionTime: {limit.TotalSeconds} — the seconds the agent may spend on a task " +
+                $"must be more than 0 and at most {(long)Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling.TotalSeconds}. " +
+                "Leave maxExecutionTime: out for no limit.");
+        }
+
         if (agent.MaxIterations <= 0)
         {
             errors.Add(
@@ -202,6 +211,12 @@ public static class CrewDefinitionValidator
         var agentIds = config.Agents?.Select(a => a.Id).ToHashSet() ?? [];
         if (!agentIds.Contains(config.ManagerAgentId))
             errors.Add($"Manager agent '{config.ManagerAgentId}' is not defined in agents.");
+        else if (config.Agents!.First(a => a.Id == config.ManagerAgentId) is { MaxExecutionTime: not null } manager)
+        {
+            errors.Add(
+                $"Manager agent '{CrewEntryNames.Of(manager)}' declares maxExecutionTime: a hierarchical manager runs no task of its own, " +
+                "so the limit would never apply. Remove it.");
+        }
     }
 
     /// <summary>

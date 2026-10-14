@@ -277,7 +277,7 @@ hôte Orkeon garde cette couche, sous son fichier de réglages
 rien n'est exporté.
 
 **Ce qui est exporté.** Les traces des sources d'activité `Orkeon.Crew`, `Orkeon.Agent`,
-`Orkeon.Task`, `Orkeon.Llm`, `Orkeon.Tool`, `Orkeon.Memory` et `Orkeon.EventHub` plus
+`Orkeon.Task`, `Orkeon.Llm`, `Orkeon.Tool`, `Orkeon.Memory`, `Orkeon.EventHub` et `Orkeon.Scripting` plus
 l'instrumentation HttpClient ; les métriques du meter `Orkeon` plus l'instrumentation runtime et
 HttpClient ; et, dès que l'export OTLP est actif, les journaux structurés (message formaté et scopes
 compris) vers le même point de terminaison. La ressource nomme le service `Orkeon`. Les noms de spans

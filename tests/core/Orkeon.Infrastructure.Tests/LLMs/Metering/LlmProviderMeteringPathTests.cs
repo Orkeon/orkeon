@@ -93,7 +93,8 @@ public sealed class LlmProviderMeteringPathTests
         var basic = Assert.IsType<LlmProviderAdapter>(
             container.GetRequiredService<ILlmProviderFactory>().Create(OpenAiConfig()));
 
-        Assert.IsType<MeteredLlmProvider>(basic.UnderlyingProvider);
+        var traced = Assert.IsType<TracedLlmProvider>(RateLimitedLlmProvider.Unwrap(basic.UnderlyingProvider));
+        Assert.IsType<MeteredLlmProvider>(traced.Inner);
     }
 
     [Fact]

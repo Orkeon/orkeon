@@ -1,1 +1,2 @@
 #nullable enable
+Orkeon.Scripting.Builders.JsAgentBuilder.maxExecutionTime(double seconds) -> Orkeon.Scripting.Builders.JsAgentBuilder!

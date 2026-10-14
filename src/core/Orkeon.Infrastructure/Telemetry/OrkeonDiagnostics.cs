@@ -73,13 +73,13 @@ public static class OrkeonDiagnosticTags
 {
         // Crew tags
         /// <summary>Gets the tag name for crew ID.</summary>
-        public const string CrewId = "orkeon.crew.id";
+        public const string CrewId = OrkeonRunSpans.CrewId;
         /// <summary>Gets the tag name for crew name.</summary>
-        public const string CrewName = "orkeon.crew.name";
+        public const string CrewName = OrkeonRunSpans.CrewName;
         /// <summary>Gets the tag name for crew process type.</summary>
-        public const string CrewProcess = "orkeon.crew.process";
+        public const string CrewProcess = OrkeonRunSpans.CrewProcess;
         /// <summary>Gets the tag name for crew task count.</summary>
-        public const string CrewTaskCount = "orkeon.crew.task_count";
+        public const string CrewTaskCount = OrkeonRunSpans.CrewTaskCount;
         /// <summary>Gets the tag name for crew agent count.</summary>
         public const string CrewAgentCount = "orkeon.crew.agent_count";
 
@@ -95,11 +95,11 @@ public static class OrkeonDiagnosticTags
 
         // Task tags
         /// <summary>Gets the tag name for task ID.</summary>
-        public const string TaskId = "orkeon.task.id";
+        public const string TaskId = OrkeonRunSpans.TaskId;
         /// <summary>Gets the tag name for task name.</summary>
         public const string TaskName = "orkeon.task.name";
         /// <summary>Gets the tag name for task status.</summary>
-        public const string TaskStatus = "orkeon.task.status";
+        public const string TaskStatus = OrkeonRunSpans.TaskStatus;
         /// <summary>Gets the tag name for task success flag.</summary>
         public const string TaskSuccess = "orkeon.task.success";
 

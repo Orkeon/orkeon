@@ -229,9 +229,10 @@ var orderProcessingCrew = new CrewBuilder()
     .Verbose(true)
     .EnableMemory(true)
     .Planning(true)
-    .Language("fr")
     .Build();
 ```
+
+Pour obtenir la sortie en français, demandez-le dans les descriptions des tasks : une crew n'a pas de réglage de langue.
 
 Une crew construite au builder s'exécute une fois qu'elle, ses agents et ses tasks sont ajoutés aux repositories (`IAgentRepository`, `ITaskRepository`, `ICrewRepository`) — voir [Bootstrap et exécution](../getting-started/bootstrap.md). La version YAML ci-dessous saute cette étape : `ICrewFactory` stocke ce qu'il construit.
 

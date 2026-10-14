@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,8 @@ using Orkeon.Application.Context;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Application.Telemetry;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.Task;
@@ -157,6 +160,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
         DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
     {
         var scope = _registry.GetScope(context.CrewId);
+        using var span = StartSpan(OrkeonRunSpans.MemoryRecall, "recall", context.CrewId);
         try
         {
             var embedder = _embeddingProvider
@@ -185,11 +189,14 @@ public partial class MemoryCoordinator : IMemoryCoordinator
             }
 
             var recalled = Budgeted(fresh);
+            span?.SetTag(OrkeonRunSpans.MemoryItemCount, recalled.Count);
             LogMemoriesRecalled(recalled.Count, scope, task.Id);
             return recalled;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            span?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
             LogRecallFailed(ex, scope, task.Id, agent.Role.Value, StoreOf(context.CrewId), ex.Message);
             return [];
         }
@@ -255,6 +262,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
         DomainAgent agent, CrewTask task, string output, SimpleExecutionContext context, CancellationToken cancellationToken)
     {
         var scope = _registry.GetScope(context.CrewId);
+        using var span = StartSpan(OrkeonRunSpans.MemoryStore, "store", context.CrewId);
         try
         {
             var embedder = _embeddingProvider
@@ -280,10 +288,13 @@ public partial class MemoryCoordinator : IMemoryCoordinator
                 });
 
             await _memoryService.GetMemorySystem(context.CrewId).LongTerm.AddAsync(memory).ConfigureAwait(false);
+            span?.SetTag(OrkeonRunSpans.MemoryItemCount, 1);
             LogTaskResultStored(scope, task.Id, agent.Role.Value);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            span?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
             LogStoreFailed(ex, scope, task.Id, agent.Role.Value, StoreOf(context.CrewId), ex.Message);
         }
     }
@@ -294,6 +305,16 @@ public partial class MemoryCoordinator : IMemoryCoordinator
     /// </summary>
     private static string EmbeddedText(string description, string output) =>
         $"{description}\n{(output.Length > MaxEmbeddedOutputChars ? output[..MaxEmbeddedOutputChars] : output)}";
+
+    /// <summary>A memory span under the current task's, tagged with the operation and the provider; no memory text.</summary>
+    private Activity? StartSpan(string name, string operation, CrewId crewId)
+    {
+        var span = OrkeonActivitySources.Memory.StartActivity(name);
+        span?.SetTag(OrkeonRunSpans.MemoryOperation, operation);
+        span?.SetTag(OrkeonRunSpans.MemoryProvider, _registry.GetProvider(crewId)?.ToString() ?? "default");
+        span?.SetTag(OrkeonRunSpans.MemoryItemCount, 0);
+        return span;
+    }
 
     /// <summary>Where the crew's memory lives, as a warning or a refusal names it.</summary>
     private string StoreOf(CrewId crewId)

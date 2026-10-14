@@ -279,6 +279,8 @@ public partial class CrewFactory : ICrewFactory
         // As declared: the validation refused zero and less (GAP-38); none is no limit of its own.
         if (agentConfig.MaxRpm is { } maxRpm)
             builder.MaxRpm(maxRpm);
+        if (agentConfig.MaxExecutionTime is { } maxExecutionTime)
+            builder.MaxExecutionTime(maxExecutionTime);
 
         if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
             builder.Backstory(agentConfig.Backstory);
