@@ -532,7 +532,8 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   `--skip-duplicate` a sauté chaque push en silence — une « release » qui n'a rien publié.
   Le garde maintient `--skip-duplicate` honnête.
 - **Provenance et SBOM.** Les deux workflows attestent ce qu'ils publient avec
-  `actions/attest-build-provenance` (SLSA v1, signé par l'instance Sigstore de GitHub) :
+  `actions/attest-build-provenance` (SLSA v1, signé via l'instance publique de Sigstore et
+  inscrit dans son journal de transparence) :
   `publish.yml` chaque `*.nupkg` d'un tag (les builds du canal dev ne sont pas attestés),
   `release.yml` chaque archive, `.deb` et MSI. L'image `orkeon-runners` que `release.yml`
   pousse sur GHCR n'est pas attestée. Tous deux

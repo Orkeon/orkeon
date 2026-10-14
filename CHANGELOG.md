@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — *Verify what you install* is measured on `v1.0.0-rc.5` and says who signs what
+
+The guide printed `v1.0.0-rc.3` outputs and said GitHub's Sigstore instance signs the build
+provenance: it is signed with a certificate Sigstore's public instance issues to the workflow,
+and entered in its transparency log (Rekor). The publication matrix said the same and is fixed.
+
+- Every command was run again on the published `v1.0.0-rc.5` artefacts.
+- Immutable Releases join the mechanisms: GitHub's own `release/v0.2` statement covers the tag
+  and every asset, both `SHA256SUMS` manifests included.
+- The token-free API query decodes the statements with `jq` and prints the builder and the
+  commit; the Release's SBOM and `publish.yml`'s are told apart; a table opens the page with
+  the check for each kind of file.
 ### Fixed — a run is a trace **[breaking]**
 
 A run now emits one trace: `crew.run` for the crew, `task.run` per task, `memory.recall` and

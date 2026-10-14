@@ -505,7 +505,8 @@ print the runtime install commands rather than failing at first launch.
   re-packed the unchanged props version and `--skip-duplicate` silently skipped every push —
   a "release" that published nothing. The guard keeps `--skip-duplicate` honest.
 - **Provenance and SBOM.** Both workflows attest what they publish with
-  `actions/attest-build-provenance` (SLSA v1, signed by GitHub's Sigstore instance):
+  `actions/attest-build-provenance` (SLSA v1, signed through Sigstore's public instance and
+  entered in its transparency log):
   `publish.yml` every `*.nupkg` of a tag (dev-channel builds are not attested), `release.yml`
   every archive, `.deb` and MSI. The `orkeon-runners` image `release.yml` pushes to GHCR is
   not attested. Both generate a
