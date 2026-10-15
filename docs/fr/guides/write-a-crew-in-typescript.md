@@ -280,7 +280,10 @@ exception, attempt, agent }` ; aiguillez sur `err.code` (`rate_limit`, `network`
 
 Lancez `orkeon typings` dans votre projet : il écrit `orkeon.d.ts` dans `./.orkeon/`, et votre
 script commence par `/// <reference path="./.orkeon/orkeon.d.ts" />`. Le fichier vient de
-l'outil, il correspond donc au runtime — relancez la commande après une mise à jour. Dans un
+l'outil, il correspond donc au runtime — relancez la commande après une mise à jour. Pour figer
+ou comparer les typings d'une release, chaque Release GitHub les joint sous le nom
+`orkeon-typings-<version>.tar.gz`
+([Réglage de l'éditeur](../reference/scripting-dsl.md#réglage-de-léditeur)). Dans un
 clone, le build d'`Orkeon.Scripting` l'écrit aussi sous le `bin/<configuration>/net10.0/dist/`
 de ce projet, depuis `src/scripting/Orkeon.Scripting/Typings/*.d.ts`. Copiez ensuite
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json).

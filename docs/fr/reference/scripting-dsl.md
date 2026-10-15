@@ -344,7 +344,24 @@ script commence alors par `/// <reference path="./.orkeon/orkeon.d.ts" />` (chem
 script). Les fichiers viennent de l'outil lui-même : ils décrivent le runtime qui exécutera vos
 scripts. Dans un clone, les sources sont `src/scripting/Orkeon.Scripting/Typings/*.d.ts`,
 concaténées par le build dans `bin/<configuration>/net10.0/dist/orkeon.d.ts` sous ce projet.
-Copiez ensuite
+
+Pour **figer** les typings d'une release, ou en **comparer** deux, prenez-les sur la Release
+plutôt que sur l'outil installé : chaque Release GitHub joint
+`orkeon-typings-<version>.tar.gz`, les deux mêmes fichiers que `orkeon typings` écrit, pris sur
+le build de cette release. Il figure dans le `SHA256SUMS` de la release et il est attesté comme
+les autres archives (`gh attestation verify`, voir
+[Vérifier ce que vous installez](../guides/verify-what-you-install.md)) :
+
+```bash
+VER=<version>    # le tag sans son v
+curl -fsSL -O "https://github.com/Orkeon/orkeon/releases/download/v$VER/orkeon-typings-$VER.tar.gz"
+gh attestation verify "orkeon-typings-$VER.tar.gz" --repo Orkeon/orkeon
+mkdir -p .orkeon && tar -xzf "orkeon-typings-$VER.tar.gz" --strip-components=1 -C .orkeon
+# entre deux versions, extrayez chacune dans son dossier puis :  diff -r typings-A typings-B
+```
+
+Une Release faite avant l'existence de cet asset ne le porte pas ; pour celles-là, la source est
+`orkeon typings`. Copiez ensuite
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json),
 qui est la configuration qu'utilise le garde-fou du dépôt lui-même.
 

@@ -329,7 +329,24 @@ overwrites them, so run it again after updating the tool. Each script then opens
 `/// <reference path="./.orkeon/orkeon.d.ts" />` (the path relative to the script). The files
 come from the tool itself, so they describe the runtime that will execute your scripts. In a
 clone, the sources are `src/scripting/Orkeon.Scripting/Typings/*.d.ts`, concatenated by the
-build into `bin/<configuration>/net10.0/dist/orkeon.d.ts` under that project. Then copy
+build into `bin/<configuration>/net10.0/dist/orkeon.d.ts` under that project.
+
+To **pin** the typings of a release, or to **diff** two of them, take them from the Release
+instead of from whichever tool is installed: each GitHub Release attaches
+`orkeon-typings-<version>.tar.gz`, the same two files `orkeon typings` writes, taken from that
+release's own build. It is listed in the release's `SHA256SUMS` and attested like the other
+archives (`gh attestation verify`, see [Verify what you install](../guides/verify-what-you-install.md)):
+
+```bash
+VER=<version>    # the tag without its v
+curl -fsSL -O "https://github.com/Orkeon/orkeon/releases/download/v$VER/orkeon-typings-$VER.tar.gz"
+gh attestation verify "orkeon-typings-$VER.tar.gz" --repo Orkeon/orkeon
+mkdir -p .orkeon && tar -xzf "orkeon-typings-$VER.tar.gz" --strip-components=1 -C .orkeon
+# between two versions, extract each into its own folder and:  diff -r typings-A typings-B
+```
+
+A Release cut before this asset existed does not carry it; for those, `orkeon typings` is the
+source. Then copy
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json),
 which is the configuration the repository's own gate uses.
 
