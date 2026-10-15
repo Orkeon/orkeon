@@ -206,7 +206,7 @@
     "Orkeon:Guardian:DefaultPolicy:ToolGuardEnabled": "Si la phase outil (traversée de chemin, SSRF et injection SQL dans les arguments d'outil) s'exécute.",
     "Orkeon:Guardian:Enabled": "Si le guardian s'exécute. À false, aucun guardian n'est enregistré dans le pipeline : les tours d'agent ne sont filtrés ni en entrée ni sur les appels d'outils.",
     "Orkeon:Security:PermissionGate:Enabled": "Si la barrière est enregistrée. Laissée à `false`, aucun appel d'outil n'y est soumis.",
-    "Orkeon:Security:PermissionGate:Interactive": "S'il existe un canal d'approbation pour interroger un opérateur. Aucun hôte livré n'en a : laissée à `false`, un appel qui demande une approbation est refusé, et le modèle lit la raison comme résultat de l'outil.",
+    "Orkeon:Security:PermissionGate:Interactive": "Si l'hôte tranche lui-même une approbation, sans canal d'approbation. Un hôte qui enregistre un canal (orkeon-repl le fait) interroge l'opérateur quoi que dise ce réglage. Laissée à `false` sans canal, un appel qui demande une approbation est refusé, et le modèle lit la raison comme résultat de l'outil.",
     "Secrets:<name>": "Un secret par son nom — `Secrets:TAVILY_API_KEY` —, là où la chaîne de secrets cherche après la variable d'environnement `ORKEON_<NAME>` et avant un coffre. Une valeur écrite ici est en clair dans le fichier de réglages.",
     "Security:Audit:AuditDirectory": "Répertoire où sont stockés les fichiers du journal d'audit.",
     "Security:Audit:Enabled": "Si la journalisation d'audit est activée.",

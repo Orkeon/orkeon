@@ -1295,7 +1295,7 @@ appelé par `RunnerHost` — est sans effet tant que `Enabled = true` n'est pas 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Enabled` | booléen | `false` | Si la barrière est enregistrée. Laissée à `false`, aucun appel d'outil n'y est soumis. |
-| `Interactive` | booléen | `false` | S'il existe un canal d'approbation pour interroger un opérateur. Aucun hôte livré n'en a : laissée à `false`, un appel qui demande une approbation est refusé, et le modèle lit la raison comme résultat de l'outil. |
+| `Interactive` | booléen | `false` | Si l'hôte tranche lui-même une approbation, sans canal d'approbation. Un hôte qui enregistre un canal (orkeon-repl le fait) interroge l'opérateur quoi que dise ce réglage. Laissée à `false` sans canal, un appel qui demande une approbation est refusé, et le modèle lit la raison comme résultat de l'outil. |
 <!-- /settings -->
 
 ### `Orkeon:Dlp`

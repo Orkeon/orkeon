@@ -530,14 +530,18 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 
 - **Activation** : appelée par `RunnerHost` et le bootstrap de la ConsoleApp, mais
   n'enregistre rien tant que `Orkeon:Security:PermissionGate:Enabled = true` n'est pas
-  posé. `Interactive` (défaut `false`) déclare un canal d'approbation ; le laisser à
-  `false` tant que le flux Ask du REPL n'a pas atterri (v2).
+  posé. Quand l'hôte enregistre un `IToolApprovalChannel` (`orkeon-repl` le fait), la
+  barrière lui soumet chaque demande et rend une autorisation ou un refus. Sans canal,
+  `Interactive` (défaut `false`) déclare un appelant qui tranche lui-même les demandes ;
+  laissé à `false`, une demande vaut refus.
 - **Effet** : `ModePermissionGate` est consulté par la boucle scriptée `ctx.llm.act`
   avant CHAQUE exécution d'outil. Modes : `bypassPermissions` → tout autoriser ;
   `plan` → refuser tout ce qui n'est pas une lecture ; `dontAsk` → autoriser les
   lectures, refuser le reste sans jamais demander ; `acceptEdits` → accepter
   automatiquement les lectures + `file_write`, demander pour le shell ; `default` →
-  accepter les lectures, demander pour tout le reste. En headless, chaque demande dégrade en un `DENIED:` motivé renvoyé
+  accepter les lectures, demander pour tout le reste. Avec un canal d'approbation, une demande
+  attend l'opérateur, et l'`ExecutionTimeout` du script s'arrête pendant ce temps ; un refus se lit
+  `DENIED: … The operator denied the call.` En headless, chaque demande dégrade en un `DENIED:` motivé renvoyé
   au modèle comme résultat d'outil (pas d'exception). Les outils inconnus sont
   classés comme écritures (fail-closed).
 - **Classification déclarative** : les outils peuvent auto-déclarer leur classe via

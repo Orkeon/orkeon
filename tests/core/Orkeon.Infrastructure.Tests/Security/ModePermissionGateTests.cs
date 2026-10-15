@@ -1,6 +1,7 @@
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Security;
+using Orkeon.Infrastructure.Tests.Doubles;
 
 namespace Orkeon.Infrastructure.Tests.Security;
 
@@ -130,6 +131,69 @@ public class ModePermissionGateTests
 
         Assert.Equal(PermissionAction.Deny, verdict.Action);
         Assert.Contains("no interactive approval channel", verdict.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData(ToolApprovalDecision.AllowOnce)]
+    [InlineData(ToolApprovalDecision.AllowForSession)]
+    public async Task An_ask_the_operator_allows_through_the_channel_is_allowed(ToolApprovalDecision decision)
+    {
+        var channel = new StubToolApprovalChannel { Decision = decision };
+        var gate = new ModePermissionGate(channel);
+        var arguments = new Dictionary<string, object?> { ["command"] = "npm test" };
+
+        var verdict = await gate.CheckAsync(
+            "shell_command", arguments, "acceptEdits", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(PermissionAction.Allow, verdict.Action);
+        var request = Assert.Single(channel.Requests);
+        Assert.Equal("shell_command", request.ToolName);
+        Assert.Equal("acceptEdits", request.Mode);
+        Assert.Equal("npm test", request.Arguments["command"]);
+        Assert.Contains("requires approval", request.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_ask_the_operator_denies_is_denied_with_the_reason_and_the_refusal()
+    {
+        var channel = new StubToolApprovalChannel { Decision = ToolApprovalDecision.Deny };
+        var gate = new ModePermissionGate(channel);
+
+        var verdict = await gate.CheckAsync(
+            "file_write", NoArgs, "default", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(PermissionAction.Deny, verdict.Action);
+        Assert.Equal(
+            "tool 'file_write' requires approval (mode 'default'). The operator denied the call.",
+            verdict.Message);
+    }
+
+    [Fact]
+    public async Task An_unknown_mode_is_put_to_the_operator_as_the_default_mode()
+    {
+        var channel = new StubToolApprovalChannel();
+        var gate = new ModePermissionGate(channel);
+
+        await gate.CheckAsync("file_write", NoArgs, "yolo", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("default", Assert.Single(channel.Requests).Mode);
+    }
+
+    [Theory]
+    [InlineData("default", "file_read", PermissionAction.Allow)]
+    [InlineData("acceptEdits", "file_write", PermissionAction.Allow)]
+    [InlineData("bypassPermissions", "shell_command", PermissionAction.Allow)]
+    [InlineData("plan", "file_write", PermissionAction.Deny)]
+    [InlineData("dontAsk", "shell_command", PermissionAction.Deny)]
+    public async Task The_channel_is_asked_only_when_the_mode_asks(string mode, string tool, PermissionAction expected)
+    {
+        var channel = new StubToolApprovalChannel();
+        var gate = new ModePermissionGate(channel);
+
+        var verdict = await gate.CheckAsync(tool, NoArgs, mode, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected, verdict.Action);
+        Assert.Empty(channel.Requests);
     }
 
     [Fact]

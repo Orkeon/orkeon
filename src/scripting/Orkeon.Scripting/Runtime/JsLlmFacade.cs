@@ -1012,9 +1012,10 @@ public sealed partial class JsLlmFacade
         }
         if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
         {
-            // Deny (and Ask without an interactive channel, already downgraded by the
-            // gate) becomes a motivated refusal fed back as the tool result — no
-            // exception, the model can adapt. Denied calls consume no tool-call budget.
+            // Deny (an operator's refusal included, when an approval channel answered) and an
+            // Ask the gate let through undecided become a motivated refusal fed back as the
+            // tool result — no exception, the model can adapt. Denied calls consume no
+            // tool-call budget.
             activity?.SetTag("orkeon.llm.act.permission", "denied");
             return $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}";
         }

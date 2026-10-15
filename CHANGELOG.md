@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — an approval channel decides the permission gate's asks
+
+`ModePermissionGate` answered an ask with a refusal, and nothing in the framework could put the
+call to an operator. `IToolApprovalChannel` (Application) is that port: it takes a
+`ToolApprovalRequest` (tool, arguments, mode, reason) and returns `AllowOnce`, `AllowForSession` or
+`Deny`. A gate built with a channel puts every ask to it and returns allow or deny, with
+`… The operator denied the call.` on a refusal. `AddOrkeonPermissionGate` builds the gate with
+the channel the host registered, if any; without one, nothing changes. `Interactive` now only
+concerns a host that resolves asks itself.
+
 ### Changed — the script's time limit stops while the permission gate decides
 
 `ExecutionTimeout`, the engine's wall-clock limit, counted the time a tool call spent in the
