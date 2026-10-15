@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Interfaces.Security;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Tests.Shared.Produced;
 
@@ -105,5 +108,30 @@ public sealed class ReplStartupTests : IDisposable
         var line = Assert.Single(_reported);
         Assert.StartsWith("orkeon-repl: warning: ToolRateLimiting is read by no component of this host", line, StringComparison.Ordinal);
         Assert.Contains("AddOrkeonToolRateLimiting()", line, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// With the permission gate on, a call it asks about waits for the operator, and the next line the read loop
+    /// hands over answers it: the gate, the REPL's approval channel and the loop's line hook are one chain.
+    /// </summary>
+    [Fact]
+    public async Task With_the_gate_on_an_ask_waits_for_the_operator_and_the_next_line_answers_it()
+    {
+        var launch = Start("""{ "Orkeon": { "Security": { "PermissionGate": { "Enabled": true } } } }""");
+
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        var interceptor = host.Services.GetRequiredService<IReplLineInterceptor>();
+        Assert.Same(host.Services.GetRequiredService<IToolApprovalChannel>(), interceptor);
+        var gate = host.Services.GetRequiredService<IPermissionGate>();
+
+        var verdict = gate.CheckAsync(
+            "shell_command", new Dictionary<string, object?> { ["command"] = "npm test" }, "default",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(verdict.IsCompleted);
+        Assert.NotNull(interceptor.PromptOverride);
+        Assert.True(interceptor.TryConsume("y"));
+        Assert.Equal(PermissionAction.Allow, (await verdict).Action);
     }
 }

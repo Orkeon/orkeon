@@ -1,1 +1,2 @@
 #nullable enable
+static Orkeon.Cli.Commands.Scripting.DependencyInjection.ScriptingCliServiceCollectionExtensions.AddConsoleToolApproval(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

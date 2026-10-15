@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Cli.Abstractions.Commands;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Abstractions.Tests.Console;
+using Orkeon.Cli.Abstractions.Tests.Doubles;
 using Orkeon.Cli.Abstractions.Tests.Fixtures;
 
 namespace Orkeon.Cli.Abstractions.Tests.Runners;
@@ -10,10 +12,14 @@ public sealed class InteractiveRunnerBaseTests
     private static (TestRunner runner, TestConsoleAdapter console, RecordingCommand[] specific, RecordingCommand[] defaults) Build(
         IInteractiveCommand[] specific,
         IInteractiveCommand[] defaults,
-        IInteractiveCommand? fallback = null)
+        IInteractiveCommand? fallback = null,
+        IReplLineInterceptor? interceptor = null)
     {
         var console = new TestConsoleAdapter();
-        var sp = new ServiceCollection().BuildServiceProvider();
+        var services = new ServiceCollection();
+        if (interceptor is not null)
+            services.AddSingleton(interceptor);
+        var sp = services.BuildServiceProvider();
         var specificReg = fallback is null
             ? new TestCommandRegistry(specific)
             : TestCommandRegistry.WithFallback(fallback, specific);
@@ -279,6 +285,48 @@ public sealed class InteractiveRunnerBaseTests
 
         Assert.Single(fallback.Invocations);
         Assert.Empty(exit.Invocations);
+    }
+
+    [Fact]
+    public async Task RunAsync_hands_a_line_to_the_interceptor_before_any_command()
+    {
+        var fallback = new RecordingCommand("assistant");
+        var interceptor = new StubReplLineInterceptor();
+        var (runner, console, _, _) = Build(
+            Array.Empty<IInteractiveCommand>(), Array.Empty<IInteractiveCommand>(), fallback, interceptor);
+
+        await RunWithInputs(runner, console, "y", null);
+
+        Assert.Equal("y", Assert.Single(interceptor.Offered));
+        Assert.Empty(fallback.Invocations);
+    }
+
+    [Fact]
+    public async Task RunAsync_shows_the_interceptor_prompt_while_a_question_waits()
+    {
+        var interceptor = new StubReplLineInterceptor { PromptOverride = "approve shell_command? > " };
+        var (runner, console, _, _) = Build(
+            Array.Empty<IInteractiveCommand>(), Array.Empty<IInteractiveCommand>(), interceptor: interceptor);
+
+        await RunWithInputs(runner, console, (string?)null);
+
+        var output = console.GetOutput();
+        Assert.Contains("approve shell_command? > ", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("test> ", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunAsync_runs_the_command_when_the_interceptor_leaves_the_line()
+    {
+        var fallback = new RecordingCommand("assistant");
+        var interceptor = new StubReplLineInterceptor { Consume = _ => false };
+        var (runner, console, _, _) = Build(
+            Array.Empty<IInteractiveCommand>(), Array.Empty<IInteractiveCommand>(), fallback, interceptor);
+
+        await RunWithInputs(runner, console, "hello there", null);
+
+        Assert.Equal("hello there", Assert.Single(interceptor.Offered));
+        Assert.Single(fallback.Invocations);
     }
 
     [Fact]

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon-repl` asks the operator about a tool call
+
+With the permission gate on, a tool call the session's mode asked about was refused in the REPL:
+the `default` mode of a coding agent was read-only in practice. The REPL now registers an
+approval channel (`AddConsoleToolApproval`). A crew running in the background writes its question
+in the console, the prompt becomes `approve <tool>? [y] once / [s] session / [n] no > `, and the
+operator's next line answers it. `y` runs the call, `s` also allows the tool for the rest of the
+session, `n` refuses it. A `/` line still runs its command; any other line asks again. Questions
+are shown one at a time; cancelling the crew withdraws its question, and leaving the REPL
+refuses those still waiting. The read loop stays the console's only reader: `InteractiveRunnerBase`
+offers each line to an `IReplLineInterceptor` (Cli.Abstractions) before resolving a command, and
+shows its prompt while a question waits. A crew launched with `runCrew` (synchronous) cannot be
+asked; see `limitations.md`.
+
 ### Added — an approval channel decides the permission gate's asks
 
 `ModePermissionGate` answered an ask with a refusal, and nothing in the framework could put the

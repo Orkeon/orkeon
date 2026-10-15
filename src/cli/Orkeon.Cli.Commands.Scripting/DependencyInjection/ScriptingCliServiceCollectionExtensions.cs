@@ -4,7 +4,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Cli.Abstractions.Console;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Configuration;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Loading;
@@ -32,6 +35,22 @@ namespace Orkeon.Cli.Commands.Scripting.DependencyInjection;
 /// </remarks>
 public static class ScriptingCliServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers the REPL's tool-call approval channel: one instance, both the <see cref="IToolApprovalChannel"/> the
+    /// permission gate asks (<c>AddOrkeonPermissionGate</c> builds the gate with it) and the
+    /// <see cref="IReplLineInterceptor"/> through which the read loop hands it the operator's answers. Effective only
+    /// once the gate is enabled (<c>Orkeon:Security:PermissionGate:Enabled</c>); the console is resolved at the first
+    /// question. Idempotent.
+    /// </summary>
+    public static IServiceCollection AddConsoleToolApproval(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddSingleton(sp => new ConsoleToolApprovalChannel(() => sp.GetRequiredService<IConsoleAdapter>()));
+        services.TryAddSingleton<IToolApprovalChannel>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
+        services.TryAddSingleton<IReplLineInterceptor>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
+        return services;
+    }
+
     /// <summary>
     /// Adds scripted-command discovery to the container with appsettings binding
     /// (section <c>Orkeon:Cli:ScriptCommands</c>) and an optional override callback.
