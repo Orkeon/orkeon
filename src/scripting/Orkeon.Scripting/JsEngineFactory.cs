@@ -115,14 +115,23 @@ public sealed class JsEngineFactory
     }
 
     /// <summary>
+    /// The wall-clock limit, under the rule Jint's <c>TimeoutInterval</c> applies — no limit when it is zero,
+    /// negative or infinite — but pausable: <c>ctx.llm.act</c> stops it while the permission gate decides
+    /// (<see cref="Runtime.PausableTimeConstraint"/>).
+    /// </summary>
+    private static Jint.Options ApplyTimeLimit(Jint.Options options, TimeSpan limit)
+        => limit > TimeSpan.Zero && limit < TimeSpan.MaxValue
+            ? options.Constraint(new Runtime.PausableTimeConstraint(limit))
+            : options;
+
+    /// <summary>
     /// Creates a fresh, isolated <see cref="Engine"/> with the configured sandbox limits.
     /// </summary>
     public Engine Create()
     {
-        var engine = new Engine(opt => ApplyInteropPolicy(opt)
+        var engine = new Engine(opt => ApplyTimeLimit(ApplyInteropPolicy(opt)
             .LimitMemory(_limits.MemoryLimitBytes)
-            .LimitRecursion(_limits.RecursionLimit)
-            .TimeoutInterval(_limits.ExecutionTimeout));
+            .LimitRecursion(_limits.RecursionLimit), _limits.ExecutionTimeout));
 
         // Every JS trampoline factory is evaluated now, with the engine at rest and its job queue
         // empty: an Evaluate drains queued jobs on its way out, which a lazy evaluation from a

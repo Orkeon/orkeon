@@ -2555,7 +2555,7 @@
       "section": "Orkeon:Scripting:Limits",
       "type": "duration",
       "default": "00:00:30",
-      "description": "Maximum wall-clock time the engine is allowed to run, in total — the time spent waiting for a tool or a model counts. Default: 30 seconds, a ceiling for scripts of unknown provenance; a trusted long run raises it."
+      "description": "Maximum wall-clock time the engine is allowed to run, in total — the time spent waiting for a tool or a model counts; the time the permission gate takes to decide, an operator answering a tool-call approval, does not. Default: 30 seconds, a ceiling for scripts of unknown provenance; a trusted long run raises it."
     },
     {
       "path": "Orkeon:Scripting:Limits:MemoryLimitBytes",

@@ -205,7 +205,8 @@ procedural twin of the load failure the declarative shape gets for the same name
 handler reads it as `validation`. `ActOptions.system` seeds a real `role:"system"` message that
 persists across every iteration; without it `act()` sends a single user message.
 `permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) is checked against the
-host's permission gate on each tool call, when the host registered one — declare a script
+host's permission gate on each tool call, when the host registered one, and the time the gate
+takes to decide is not counted in `ExecutionTimeout` — declare a script
 tool's `.access("read")` for it to pass `plan`; `onDelta` receives the streamed text of each
 assistant turn.
 

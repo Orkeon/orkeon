@@ -1589,7 +1589,7 @@ profondeur de récursion de 64 et 30 s par défaut.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `ExecutionTimeout` | durée | `"00:00:30"` | Durée maximale, en temps réel, pendant laquelle le moteur peut tourner, au total — le temps passé à attendre un outil ou un modèle compte. Défaut : 30 secondes, un plafond pour des scripts de provenance inconnue ; un run long de confiance le relève. |
+| `ExecutionTimeout` | durée | `"00:00:30"` | Durée maximale, en temps réel, pendant laquelle le moteur peut tourner, au total — le temps passé à attendre un outil ou un modèle compte ; le temps que le contrôle des permissions met à décider, un opérateur qui répond à une demande d'approbation, ne compte pas. Défaut : 30 secondes, un plafond pour des scripts de provenance inconnue ; un run long de confiance le relève. |
 | `MemoryLimitBytes` | entier | `104857600` | Mémoire cumulée maximale que le moteur peut allouer, en octets — comptée depuis la création du moteur, pas à son pic. Défaut : 100 Mo, un plafond pour des scripts de provenance inconnue ; un run de confiance qui en demande plus le relève. |
 | `RecursionLimit` | entier | `64` | Profondeur de récursion maximale avant que le moteur ne lève une erreur. Défaut : 64 : elle arrête une récursion emballée bien avant le débordement de la pile .NET et laisse de la place à une logique de script légitimement imbriquée. Un script de confiance peut la relever. |
 <!-- /settings -->
