@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a task's `llm_override: cache:` is read, sent and exported
+
+A task's `llm_override: cache:` block was silently dropped at loading and export. It is now read
+and sent (`cache_control` at Anthropic); a block holding no breakpoint turns the agent's cache off
+for that task; the task's cache is exported and read back. A cache-only override reaches a provider
+without base configuration, and the MAF bridge warns about the cache only when it requests a
+breakpoint (GAP-48).
+
 ### Fixed — *Verify what you install* is measured on `v1.0.0-rc.5` and says who signs what
 
 The guide printed `v1.0.0-rc.3` outputs and said GitHub's Sigstore instance signs the build

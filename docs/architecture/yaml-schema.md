@@ -124,6 +124,7 @@ tasks:
       max_tokens: int
       top_p: float
       thinking: {enabled, effort, budget_tokens}
+      cache: {system, tools, ttl}  # Same shape as the agent's cache: — replaces the agent's block whole; a block with no breakpoint turns the agent's cache off for this task
     guardrails:           # Task-level guardrails, same shape as the agent block (optional)
       preset: string      # "analysis" | "strict" | "creative" — any other name fails the load
       header: string

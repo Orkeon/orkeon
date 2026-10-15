@@ -717,6 +717,7 @@ public class YamlRoundTripTests
     }
 
     [Fact]
+    [Trait("BR", "CH-04")]
     public async Task RoundTrip_ATasksLlmOverride_Survives()
     {
         var original = OneAgentCrew(
@@ -729,12 +730,33 @@ public class YamlRoundTripTests
                 MaxTokens = 128,
                 TopP = 1.0,
                 Thinking = new LlmThinkingConfig { Enabled = false },
+                Cache = new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" },
             });
+        var cacheOff = new TaskConfiguration
+        {
+            Id = TaskId.Create(),
+            Description = "Answer without any cache",
+            ExpectedOutput = "An answer",
+            LlmOverride = new LlmConfigOverride
+            {
+                Cache = new LlmCacheConfig { CacheSystemPrompt = false, CacheTools = false },
+            },
+        };
+        original = original with { Tasks = [.. original.Tasks, cacheOff] };
 
         var yaml = _exporter.ExportToString(original);
         var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
-        Assert.NotNull(Assert.Single(reloaded.Tasks).LlmOverride);
+        Assert.NotNull(reloaded.Tasks[0].LlmOverride);
+        var cache = reloaded.Tasks[0].LlmOverride!.Cache;
+        Assert.NotNull(cache);
+        Assert.True(cache!.CacheSystemPrompt);
+        Assert.Equal("1h", cache.Ttl);
+        var off = reloaded.Tasks[1].LlmOverride?.Cache;
+        Assert.NotNull(off);
+        Assert.False(off!.RequestsAnyBreakpoint);
+        Assert.Contains("system: false", yaml, StringComparison.Ordinal);
+        Assert.Contains("tools: false", yaml, StringComparison.Ordinal);
         CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 

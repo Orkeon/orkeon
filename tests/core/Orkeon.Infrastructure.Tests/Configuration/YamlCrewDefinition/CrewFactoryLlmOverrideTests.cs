@@ -1,4 +1,8 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.DependencyInjection;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Application.Interfaces;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
@@ -113,6 +117,67 @@ public class CrewFactoryLlmOverrideTests
         Assert.Equal(0.0, task.LlmOverride.Temperature);
         Assert.Equal(256, task.LlmOverride.MaxTokens);
         Assert.Equal(0.5, task.LlmOverride.TopP);
+    }
+
+    private static async Task<LlmConfigOverride?> LoadTaskOverrideAsync(string overrideYaml)
+    {
+        var yaml = $"""
+            name: cache
+            goal: Answer
+            process: sequential
+            agents:
+              writer:
+                role: Writer
+                goal: Write the answer
+            tasks:
+              write:
+                description: Write the answer
+                expected_output: An answer
+                agent: writer
+                llm_override:
+            {overrideYaml}
+            """;
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(
+            new ConfigurationBuilder().Build());
+        services.AddLogging();
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(
+            new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var container = services.BuildServiceProvider();
+        var config = await container.GetRequiredService<ICrewDefinitionLoader>()
+            .LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+        return Assert.Single(config.Tasks).LlmOverride;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldMapTheTaskCache_WhenLlmOverrideWritesACacheBlock()
+    {
+        var mapped = await LoadTaskOverrideAsync("""
+                    cache:
+                      system: true
+                      ttl: 1h
+            """);
+
+        Assert.NotNull(mapped);
+        Assert.NotNull(mapped!.Cache);
+        Assert.True(mapped.Cache!.CacheSystemPrompt);
+        Assert.Equal("1h", mapped.Cache.Ttl);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldReadAnOverrideHoldingOnlyACache_WhenNoOtherKeyIsWritten()
+    {
+        var mapped = await LoadTaskOverrideAsync("""
+                    cache:
+                      system: true
+            """);
+
+        Assert.NotNull(mapped);
+        Assert.NotNull(mapped!.Cache);
     }
 
     [Fact]

@@ -58,7 +58,7 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   `prompt_cache_hit/miss_tokens` et le champ standard OpenAI
   `prompt_tokens_details.cached_tokens`. **✓ explicite** (Anthropic) signifie que le cache ne fait
   rien tant qu'un point d'arrêt `cache_control` n'est pas posé — opt-in via `LlmCacheConfig` / le
-  bloc YAML `cache:`. **✓ métriques** (DeepSeek) ajoute les `prompt_cache_hit_tokens` /
+  bloc YAML `cache:` d'un agent ou d'une task (`llm_override:`). **✓ métriques** (DeepSeek) ajoute les `prompt_cache_hit_tokens` /
   `prompt_cache_miss_tokens` du vendeur aux métadonnées de la réponse.
 - **SSE Anthropic** : `ChatStreamingAsync` parse nativement le flux d'événements de la Messages
   API depuis LLM-05 ; auparavant il retombait sur une émulation bufferisée, donc aucun token

@@ -125,6 +125,7 @@ tasks:
       max_tokens: int
       top_p: float
       thinking: {enabled, effort, budget_tokens}
+      cache: {system, tools, ttl}  # Même forme que le cache: de l'agent — remplace le bloc de l'agent en entier ; un bloc sans point d'arrêt coupe le cache de l'agent pour cette tâche
     guardrails:           # Guardrails au niveau tâche, même forme que le bloc agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement
       header: string

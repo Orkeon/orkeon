@@ -119,6 +119,8 @@ public class LlmOverrideYamlConfig
     public double? TopP { get; set; }
     /// <summary>Thinking-mode toggle and reasoning-effort hint override.</summary>
     public ThinkingYamlConfig? Thinking { get; set; }
+    /// <summary>Prompt-cache breakpoints override, same shape as an agent's <c>cache:</c> block.</summary>
+    public CacheYamlConfig? Cache { get; set; }
 }
 
 /// <summary>

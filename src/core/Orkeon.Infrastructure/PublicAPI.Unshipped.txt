@@ -20,3 +20,5 @@ static Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.DecorateHu
 *REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartMemoryOperation(string! operation, string? provider = null) -> System.Diagnostics.Activity?
 *REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartTaskExecution(string! taskId, string? taskName = null, string? agentRole = null) -> System.Diagnostics.Activity?
 *REMOVED*static Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartToolExecution(string! toolName, string? agentRole = null) -> System.Diagnostics.Activity?
+Orkeon.Infrastructure.Configuration.LlmOverrideYamlConfig.Cache.get -> Orkeon.Infrastructure.Configuration.CacheYamlConfig?
+Orkeon.Infrastructure.Configuration.LlmOverrideYamlConfig.Cache.set -> void

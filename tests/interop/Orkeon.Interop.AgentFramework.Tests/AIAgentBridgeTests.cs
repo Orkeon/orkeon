@@ -212,6 +212,23 @@ public sealed class AIAgentBridgeTests
     }
 
     [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldDeclareTheCache_OnlyWhenItRequestsABreakpoint()
+    {
+        var quietLogger = new StructuredLogger<AIAgentLlmProvider>();
+        var quiet = new AIAgentLlmProvider(new ScriptedAIAgent(), quietLogger);
+        var loudLogger = new StructuredLogger<AIAgentLlmProvider>();
+        var loud = new AIAgentLlmProvider(new ScriptedAIAgent(), loudLogger);
+
+        await quiet.ChatAsync([User("one turn")], LlmConfig.OnProfile() with { Cache = new LlmCacheConfig() }, Ct);
+        await loud.ChatAsync([User("one turn")], LlmConfig.OnProfile() with { Cache = new LlmCacheConfig { CacheSystemPrompt = true } }, Ct);
+
+        Assert.DoesNotContain(quietLogger.Entries, entry => entry.Level == LogLevel.Warning);
+        var warning = Assert.Single(loudLogger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Equal("cache", warning.Fields["Option"]);
+    }
+
+    [Fact]
     public async Task A_configuration_that_sets_nothing_is_not_announced()
     {
         var logger = new StructuredLogger<AIAgentLlmProvider>();

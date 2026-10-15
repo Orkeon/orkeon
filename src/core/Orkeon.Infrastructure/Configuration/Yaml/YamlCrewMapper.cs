@@ -448,7 +448,8 @@ public sealed partial class YamlCrewMapper
             && yaml.Temperature is null
             && yaml.MaxTokens is null
             && yaml.TopP is null
-            && yaml.Thinking is null)
+            && yaml.Thinking is null
+            && yaml.Cache is null)
         {
             return null;
         }
@@ -461,6 +462,8 @@ public sealed partial class YamlCrewMapper
             MaxTokens = yaml.MaxTokens,
             TopP = yaml.TopP,
             Thinking = MapThinking(yaml.Thinking),
+            // A present block with no breakpoint stays an empty config: it replaces the agent's cache and turns it off.
+            Cache = yaml.Cache is null ? null : MapCache(yaml.Cache) ?? new LlmCacheConfig(),
         };
     }
 

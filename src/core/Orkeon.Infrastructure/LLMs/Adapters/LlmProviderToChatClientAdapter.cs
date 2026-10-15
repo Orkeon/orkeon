@@ -740,7 +740,8 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             || (tools != null && tools.Count > 0)
             || ExtractGrammarFromOptions(options) != null
             || ExtractThinkingFromOptions(options) != null
-            || ExtractResponseFormatFromOptions(options) != null;
+            || ExtractResponseFormatFromOptions(options) != null
+            || ExtractCacheFromOptions(options) != null;
     }
 
     /// <summary>

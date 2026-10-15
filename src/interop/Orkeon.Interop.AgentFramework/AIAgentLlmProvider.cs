@@ -233,7 +233,7 @@ public sealed partial class AIAgentLlmProvider : ILlmProvider
         ("thinking", config => config.Thinking is not null),
         ("grammar", config => !string.IsNullOrWhiteSpace(config.GrammarGbnf)),
         ("tools", config => config.Tools is { Count: > 0 }),
-        ("cache", config => config.Cache is not null),
+        ("cache", config => config.Cache is { RequestsAnyBreakpoint: true }),
         ("custom_parameters", config => config.CustomParameters.Count > 0),
     ];
 

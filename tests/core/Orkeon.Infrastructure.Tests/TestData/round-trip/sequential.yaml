@@ -146,6 +146,10 @@ tasks:
         name: finding_list
         schema: '{"type":"array"}'
         strict: true
+      cache:
+        system: true
+        tools: false
+        ttl: 5m
     guardrails:
       preset: strict
 

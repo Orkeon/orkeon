@@ -82,8 +82,9 @@ tasks:
 
 The `llm_override:` block accepts `profile` (the task runs on that host LLM profile
 instead of its agent's), `response_format`, `response_schema`, `temperature`,
-`max_tokens`, `top_p` and `thinking` — the agent-level `llm:` fields minus `model` and
-`cache:`.
+`max_tokens`, `top_p`, `thinking` and `cache` — the agent-level `llm:` fields minus `model`.
+A task's `cache:` block (same shape as an agent's) replaces the agent's whole; a block with no
+breakpoint turns the agent's cache off for that task.
 
 ### JSON Schema
 

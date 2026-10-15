@@ -206,6 +206,25 @@ public class LlmProviderToChatClientAdapterTests
         Assert.Null(_llmProvider.LastChatConfig!.ResponseFormat);
     }
 
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldPassTheCache_WhenTheProviderHasNoBaseConfigAndOnlyTheCacheIsSet()
+    {
+        _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
+
+        using var adapter = CreateAdapter();
+        var cache = new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" };
+        var options = new ChatOptions
+        {
+            AdditionalProperties = new AdditionalPropertiesDictionary { [LlmChatOptionsKeys.Cache] = cache }
+        };
+
+        await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "test")], options, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(_llmProvider.LastChatConfig);
+        Assert.Equal(cache, _llmProvider.LastChatConfig!.Cache);
+    }
+
     private static async IAsyncEnumerable<string> AsyncEnumerable(string[] items)
     {
         foreach (var item in items)
