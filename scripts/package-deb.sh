@@ -19,10 +19,12 @@
 # package gets that mtime, and the changelog and the archive headers that date.
 # Two builds from the same staging tree are then byte-identical.
 #
-# Layout: payload in /usr/lib/orkeon, launcher /usr/bin/orkeon; the Orkeon
-# Studio TUIs land in /usr/lib/orkeon-studio-{config,run} with launchers
-# /usr/bin/orkeon-studio-{config,run}. Everything is self-contained, so the
-# package depends on system libraries only — never on dotnet-runtime-*.
+# Layout: payload in /usr/lib/orkeon, launcher /usr/bin/orkeon; the REPL lands
+# in /usr/lib/orkeon-repl with launcher /usr/bin/orkeon-repl (it uses the esbuild
+# of /usr/lib/orkeon/esbuild-bin); the Orkeon Studio TUIs land in
+# /usr/lib/orkeon-studio-{config,run} with launchers /usr/bin/orkeon-studio-{config,run}.
+# Everything is self-contained, so the package depends on system libraries only —
+# never on dotnet-runtime-*.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -60,7 +62,7 @@ while [[ $# -gt 0 ]]; do
     --arch)    DEB_ARCH="$2"; shift 2 ;;
     --keep-work) KEEP_WORK=true; shift ;;
     -c|--configuration) CONFIG="$2"; shift 2 ;;
-    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -177,6 +179,21 @@ for app in $STUDIO_APPS; do
   cp -R "$SRC_STAGE/libexec/$app/." "$PKG_DIR/usr/lib/$app/"
 done
 
+# --- 1c. The REPL (orkeon-repl) ------------------------------------------------
+# The `*.cmd.ts` commands run only in the REPL, never in the `orkeon` CLI, so whoever
+# installs the package for them needs it. Its APPS row in package-installers.sh is
+# self-contained and the linux cli set admits it. A staging tree that predates that
+# carries a framework-dependent one, which would install without a runtime and fail
+# at its first run: libhostfxr is what a self-contained publish bundles and a
+# framework-dependent one does not, so its absence stops the packaging here.
+REPL_APP="orkeon-repl"
+REPL_APPHOST="Orkeon.ConsoleApp"
+[[ -x "$SRC_STAGE/libexec/$REPL_APP/$REPL_APPHOST" ]] || { echo "Missing apphost $SRC_STAGE/libexec/$REPL_APP/$REPL_APPHOST (staging tree predates the REPL in the linux cli set?)" >&2; exit 1; }
+[[ -f "$SRC_STAGE/libexec/$REPL_APP/libhostfxr.so" ]] || { echo "$SRC_STAGE/libexec/$REPL_APP is framework-dependent (no libhostfxr.so): the package ships self-contained apps only, never a dotnet-runtime-* dependency." >&2; exit 1; }
+check_arch "$SRC_STAGE/libexec/$REPL_APP/$REPL_APPHOST"
+mkdir -p "$PKG_DIR/usr/lib/$REPL_APP"
+cp -R "$SRC_STAGE/libexec/$REPL_APP/." "$PKG_DIR/usr/lib/$REPL_APP/"
+
 # --- 2. Launcher --------------------------------------------------------------
 # Same contract as scripts/installer-assets/wrapper.sh.tmpl (bundled esbuild,
 # then exec the apphost) minus the symlink walk: an installed package always
@@ -191,6 +208,20 @@ if [ -z "${ORKEON_ESBUILD_PATH:-}" ] && [ -x "$ORKEON_HOME/esbuild-bin/esbuild" 
   export ORKEON_ESBUILD_PATH
 fi
 exec "$ORKEON_HOME/orkeon" "$@"
+EOF
+
+# The REPL transpiles .cmd.ts and .ork.ts with the same esbuild as the CLI: it uses the
+# one under /usr/lib/orkeon, so the package holds a single copy of the binary.
+cat > "$PKG_DIR/usr/bin/$REPL_APP" <<EOF
+#!/bin/sh
+# $REPL_APP launcher — installed by the orkeon Debian package.
+# Points the scripting toolchain at the esbuild bundled for the orkeon CLI, then execs the apphost.
+ORKEON_HOME=/usr/lib/orkeon
+if [ -z "\${ORKEON_ESBUILD_PATH:-}" ] && [ -x "\$ORKEON_HOME/esbuild-bin/esbuild" ]; then
+  ORKEON_ESBUILD_PATH="\$ORKEON_HOME/esbuild-bin/esbuild"
+  export ORKEON_ESBUILD_PATH
+fi
+exec /usr/lib/$REPL_APP/$REPL_APPHOST "\$@"
 EOF
 
 # Studio TUI launchers — no esbuild indirection needed (the TUIs never invoke
@@ -278,6 +309,11 @@ find "$PKG_DIR/usr/lib/orkeon" -type f -name '*.so' -exec chmod 755 {} +
 if [[ -f "$PKG_DIR/usr/lib/orkeon/createdump" ]]; then
   chmod 755 "$PKG_DIR/usr/lib/orkeon/createdump"
 fi
+chmod 755 "$PKG_DIR/usr/bin/$REPL_APP" "$PKG_DIR/usr/lib/$REPL_APP/$REPL_APPHOST"
+find "$PKG_DIR/usr/lib/$REPL_APP" -type f -name '*.so' -exec chmod 755 {} +
+if [[ -f "$PKG_DIR/usr/lib/$REPL_APP/createdump" ]]; then
+  chmod 755 "$PKG_DIR/usr/lib/$REPL_APP/createdump"
+fi
 for app in $STUDIO_APPS; do
   apphost="$(studio_apphost "$app")"
   chmod 755 "$PKG_DIR/usr/bin/$app" "$PKG_DIR/usr/lib/$app/$apphost"
@@ -288,7 +324,7 @@ for app in $STUDIO_APPS; do
 done
 
 # --- 4b. Payload dedup --------------------------------------------------------
-# dpkg preserves hard links, so the byte-identical files the three
+# dpkg preserves hard links, so the byte-identical files the four
 # self-contained payloads share (.NET runtime, common Orkeon assemblies) are
 # stored and unpacked once. Runs after the permission reset so the shared
 # inodes keep the settled modes, and before Installed-Size so the estimate
@@ -333,7 +369,11 @@ Description: multi-agent AI orchestration framework and CLI
  rag eval), scaffold a new workspace (orkeon init) and diagnose an install
  (orkeon doctor).
  .
- The package also ships the Orkeon Studio console apps: orkeon-studio-config
+ The package also ships orkeon-repl, the interactive console: it drives agents,
+ crews and tools from a terminal and runs the TypeScript-scripted commands
+ (*.cmd.ts) that the orkeon command line tool does not run.
+ .
+ It ships the Orkeon Studio console apps too: orkeon-studio-config
  (guided appsettings editor) and orkeon-studio-run (crew launcher with live
  logs), both built on Terminal.Gui.
  .

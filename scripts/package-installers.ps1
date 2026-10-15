@@ -2,8 +2,8 @@
 <#
 .SYNOPSIS
   Builds per-OS installer archives containing all Orkeon CLI executables,
-  published per RID (some self-contained, some framework-dependent — see the
-  $Apps table). PowerShell mirror of scripts/package-installers.sh, intended
+  published per RID (all self-contained except orkeon-slim, which is
+  framework-dependent — see the $Apps table). PowerShell mirror of scripts/package-installers.sh, intended
   for local Windows use.
 .PARAMETER Version
   Package version. Default: what scripts/resolve-version.ps1 answers — the tag's version
@@ -17,9 +17,9 @@
   Output directory. Default: artifacts\installers.
 .PARAMETER AppSet
   Which apps go in the archive. 'full' (default) keeps the historical every-app
-  archive; 'cli' ships the `orkeon` onboarding binary plus the Orkeon Studio
-  apps for the platform (win-x64: orkeon-studio; linux-*: orkeon-studio-config +
-  orkeon-studio-run; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
+  archive; 'cli' ships the `orkeon` onboarding binary plus the apps for the
+  platform (win-x64: orkeon-studio; linux-*: orkeon-repl, orkeon-studio-config
+  and orkeon-studio-run; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
 .PARAMETER NoArchive
   Prepares the staging tree (artifacts\installers\_stage\<name>) and stops there: no
   zip, no SHA256SUMS. It is what scripts\install-from-source.ps1 passes -- it installs
@@ -89,10 +89,13 @@ if (Test-Path $lock) {
 # time). The `orkeon` CLI ships in two flavours from the *same* csproj: `orkeon`
 # (self-contained, onboarding channel) and `orkeon-slim` (framework-dependent, for
 # devs with .NET 10). Both share the one bundled esbuild (fetched once per RID).
+# orkeon-repl is self-contained too: the Debian package lifts it out of the trees
+# package-installers.sh builds, and that package never depends on a dotnet-runtime
+# package.
 $Apps = @(
     @{ Name = 'orkeon';              Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon';                                       SelfContained = $true }
     @{ Name = 'orkeon-slim';         Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon';                                       SelfContained = $false }
-    @{ Name = 'orkeon-repl';         Csproj = 'src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj';                                               Apphost = 'Orkeon.ConsoleApp';                            SelfContained = $false }
+    @{ Name = 'orkeon-repl';         Csproj = 'src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj';                                               Apphost = 'Orkeon.ConsoleApp';                            SelfContained = $true }
     # Rids (optional) is a RID filter: absent/empty = publish for every RID; the
     # WPF orkeon-studio can only target Windows RIDs, hence the filter.
     @{ Name = 'orkeon-studio';        Csproj = 'src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj';       Apphost = 'Orkeon.Studio';        SelfContained = $true; Rids = @('win-x64') }
@@ -103,12 +106,13 @@ $Apps = @(
     @{ Name = 'orkeon-host';          Csproj = 'src/hosting/Orkeon.Host/Orkeon.Host.csproj';                Apphost = 'orkeon-host';          SelfContained = $true }
 )
 
-# -AppSet cli ships the onboarding binary plus the Orkeon Studio apps for the
-# platform: win-* adds the WPF orkeon-studio, linux-* adds the two TUIs,
+# -AppSet cli ships the onboarding binary plus the apps for the platform: win-*
+# adds the WPF orkeon-studio, linux-* adds the REPL (orkeon-repl) and the two TUIs,
 # osx-* stays CLI-only (V1). Mirrors cli_set_includes in package-installers.sh.
 function Test-CliSetIncludes([string]$AppName, [string]$Rid) {
     switch ($AppName) {
         'orkeon'              { return $true }
+        'orkeon-repl'         { return $Rid -like 'linux-*' }
         'orkeon-studio'       { return $Rid -like 'win-*' }
         'orkeon-studio-config' { return $Rid -like 'linux-*' }
         'orkeon-studio-run'   { return $Rid -like 'linux-*' }

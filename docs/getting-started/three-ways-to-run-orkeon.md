@@ -83,7 +83,7 @@ installs it with the archive's own installer: `%LOCALAPPDATA%\Programs\Orkeon` o
 
 | Windows | Linux, macOS | |
 |---|---|---|
-| `-AppSet full` | `--app-set full` | every launcher — the REPL and the service host too — instead of the CLI set |
+| `-AppSet full` | `--app-set full` | every launcher — the service host too, and the REPL on Windows and macOS (the Linux CLI set has it) — instead of the CLI set |
 | `-InstallDir <folder>` | `--prefix <dir>` | where to install; `--modify-path` also goes through to `install.sh` |
 | `-WhatIf` | `--dry-run` | stop after the checks, and print the version and the commands it would run |
 | `-Uninstall` | `--uninstall` | remove the installation. Builds nothing; your configuration stays |
@@ -111,7 +111,7 @@ Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) attaches a
 |---|---|---|---|
 | **`orkeon-cli-<version>-win-x64.zip`** | the `orkeon` CLI + **Orkeon Studio** (`orkeon-studio`, the desktop app) + `install.cmd` and `install.ps1` | no .NET — self-contained. Double-click `install.cmd`: it runs on the PowerShell Windows ships. See [Before you start](#before-you-start) | **Windows: the recommended download** |
 | **`orkeon-<version>-win-x64.msi`** | the same two, per-user MSI, with an "Orkeon Studio" Start-menu shortcut | no .NET — self-contained. Not code-signed: Windows asks before it runs it, see [Before you start](#before-you-start) | Windows, if you'd rather double-click and get an "Installed apps" entry |
-| **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | the `orkeon` CLI at `/usr/bin/orkeon` + the two **Orkeon Studio** terminal apps | none — self-contained | **Debian / Ubuntu** — best installed from the [apt repository](../guides/install-with-apt.md), which serves these same packages and their updates |
+| **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | the `orkeon` CLI at `/usr/bin/orkeon` + the REPL at `/usr/bin/orkeon-repl` + the two **Orkeon Studio** terminal apps | none — self-contained | **Debian / Ubuntu** — best installed from the [apt repository](../guides/install-with-apt.md), which serves these same packages and their updates |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS onboarding channel stays CLI-only) | none — self-contained | **macOS**, Apple Silicon and Intel respectively |
 | **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **every** launcher (`orkeon`, `orkeon-repl`, `orkeon-host`…) + the Studio apps their platform supports + `install.sh` / `install.cmd` and `install.ps1` | mixed — see the command table below | The REPL and the service host |
 | **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | the `orkeon` CLI — **without esbuild**: a `.ork.ts` script needs `npm install -g esbuild` (or `ORKEON_ESBUILD_PATH`); YAML crews do not. `orkeon typings` writes the editor typings | .NET 10 **SDK** | Getting just the CLI on a dev box that already builds .NET |
@@ -129,15 +129,15 @@ The multi-app archive is the only one that carries more than the CLI:
 |---|---|---|
 | `orkeon` | **The main CLI and default entry point** — `orkeon run <config.yaml>` for any YAML crew, or `orkeon run script.ork.ts` for the scripting DSL | self-contained |
 | `orkeon-slim` | The same CLI, framework-dependent and much smaller | needs .NET 10 |
-| `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) | needs .NET 10 |
+| `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) | self-contained |
 | `orkeon-host` | The service host daemon — registers crews and serves them long-running (systemd unit, Windows service via the bundled script or its own per-machine MSI, chat gateway, Discord channel; see [the service host](../architecture/service-host.md)) | self-contained |
 | `orkeon-studio` | **Orkeon Studio**, the desktop app — Windows archives only (see [below](#orkeon-studio-the-graphical-way-in)) | self-contained |
 | `orkeon-studio-config` / `orkeon-studio-run` | **Orkeon Studio** in the terminal: settings editor and crew launcher | self-contained |
 
 > **Runtime prerequisite, in one line.** The CLI packages (zip, MSI, `.deb`), the
-> `orkeon` launcher and the Orkeon Studio apps bundle their
+> `orkeon` launcher, the REPL and the Orkeon Studio apps bundle their
 > own runtime and need no .NET install at all. Everything else in the multi-app
-> archive — and the dotnet tool — needs the
+> archive (`orkeon-slim`) — and the dotnet tool — needs the
 > [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (verify
 > with `dotnet --list-runtimes`). `install.sh` and `install.ps1` detect the case
 > and print the install commands for your platform; they never install a runtime
@@ -219,6 +219,9 @@ sudo apt install orkeon orkeon-archive-keyring   # installs /usr/bin/orkeon
 sudo apt update && sudo apt upgrade              # every later version
 ```
 
+The package also installs `/usr/bin/orkeon-repl`, the interactive console that runs the
+`*.cmd.ts` scripted commands; it is self-contained too.
+
 Without the repository — a machine that cannot reach GitHub's raw content — install one
 release's `.deb` directly; it receives no updates:
 
@@ -231,7 +234,7 @@ sudo apt remove orkeon
 line reads `orkeon_1.0.0~rc.N_amd64.deb`: check those two by hand.)
 
 The multi-app `tar.gz` + `install.sh` is the per-user alternative (and the only
-option when you want the REPL and the service host):
+option when you want the service host, or the REPL on a system without apt):
 
 ```bash
 tar -xzf orkeon-<version>-linux-x64.tar.gz
@@ -248,7 +251,7 @@ and, if it finds none, prints the exact commands for your distribution —
 `packages.microsoft.com` repository registration on Debian and Ubuntu LTS, or
 `dotnet-install.sh --runtime dotnet --channel 10.0` under `$HOME` when you have
 no sudo. The warning never blocks the install: the files land either way, and
-`orkeon` itself still runs, being self-contained.
+`orkeon` and `orkeon-repl` still run, being self-contained.
 
 ### macOS
 
@@ -602,8 +605,9 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
   install [Orkeon Studio](#orkeon-studio-the-graphical-way-in) — a window (or a
   full-screen terminal app) over the same configuration file and the same
   `orkeon run`.
-- **Want the REPL or the service host?** The multi-app
-  archive (way 2) — and install the .NET 10 runtime, which those launchers need.
+- **Want the REPL or the service host?** The REPL is in the Debian and Ubuntu package
+  (`/usr/bin/orkeon-repl`) and in the multi-app archive (way 2); the service host is in
+  the archive. Both are self-contained: no .NET runtime to install.
 - **Modifying Orkeon or running arbitrary examples?** Run from source (way 1).
 - **CI / reproducible / no local toolchain?** Container (way 3).
 

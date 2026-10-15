@@ -8,8 +8,8 @@
 # A debian:13 "builder" container (apt-utils, gpg, sqv) makes a throwaway key shaped like the
 # real one (v4, ed25519 certification-only primary, ed25519 signing subkey valid 2 years,
 # user ID "Orkeon Archive Signing Key <arion@orkeon.org>") and packages laid out like the
-# real orkeon .deb (CLI and the two Studio launchers answering --version, md5sums,
-# Recommends: orkeon-archive-keyring) for v1.0.0-rc.4 and v1.0.0-rc.5, amd64 and arm64.
+# real orkeon .deb (CLI and the two Studio launchers answering --version, the REPL launcher
+# starting, md5sums, Recommends: orkeon-archive-keyring) for v1.0.0-rc.4 and v1.0.0-rc.5, amd64 and arm64.
 # It then publishes, exactly as the workflows do, through publish-apt-channel.sh and
 # update-apt-channels.sh into a bare repository: the first tag bootstraps the orphan branch
 # (rc and an empty stable), the second one adds to rc and re-attaches the published keyring
@@ -66,6 +66,10 @@ make_orkeon_deb() { # <out dir> <upstream version> <arch>
     printf '#!/bin/sh\n[ "$1" = --version ] && { echo "%s %s"; exit 0; }\nexit 1\n' "$app" "$up" > "$root/usr/lib/$app/$app"
     ln -s "../lib/$app/$app" "$root/usr/bin/$app"
   done
+  # The REPL: at a closed stdin it prints its banner and exits 0, as smoke_step_repl_present expects.
+  mkdir -p "$root/usr/lib/orkeon-repl"
+  printf '#!/bin/sh\necho "Orkeon Console Application"\n' > "$root/usr/lib/orkeon-repl/orkeon-repl"
+  ln -s ../lib/orkeon-repl/orkeon-repl "$root/usr/bin/orkeon-repl"
   echo "bench package" > "$root/usr/share/doc/orkeon/README"
   chmod 0755 "$root"/usr/lib/*/orkeon*
   cat > "$root/DEBIAN/control" <<EOF

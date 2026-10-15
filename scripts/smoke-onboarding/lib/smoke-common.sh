@@ -259,6 +259,44 @@ smoke_step_studio_present() {
   done
 }
 
+# --------------------------------------------------------------------------- #
+# The REPL (orkeon-repl) — carried by the .deb
+# --------------------------------------------------------------------------- #
+
+# smoke_step_repl_present <bin-dir> — the launcher is there and the application
+# starts. orkeon-repl has no --help or --version of its own: it ignores them and
+# opens its console. With stdin closed and --ui plain it prints its banner and leaves
+# at the end of input, exit code 0 -- which is a start of the whole composition root
+# (host, settings, registrations), so a payload that lost an assembly, a native
+# library or its bundled runtime fails here and nowhere else in the smoke. No
+# terminal, no settings file and no network are needed. The `timeout` only turns a
+# console that waits for input after all into a named failure instead of a
+# workflow timeout.
+smoke_step_repl_present() {
+  local bin_dir="$1" path="$1/orkeon-repl" ec
+  smoke_log "orkeon-repl launcher ($bin_dir)"
+
+  if [[ ! -x "$path" ]]; then
+    smoke_fail "repl-launcher" "missing: $path"
+    smoke_fail "repl-start" "no launcher to run"
+    return
+  fi
+  smoke_pass "repl-launcher" "$path present and executable"
+
+  ( cd "$RUN_DIR" && timeout 120 "$path" --ui plain ) </dev/null \
+    >"$LOG_DIR/orkeon-repl.start.out" 2>"$LOG_DIR/orkeon-repl.start.err"
+  ec=$?
+  if [[ $ec -ne 0 ]]; then
+    tail -n 10 "$LOG_DIR/orkeon-repl.start.err" | sed 's/^/    | /'
+    smoke_fail "repl-start" "orkeon-repl --ui plain exited $ec on a closed stdin (expected 0)"
+  elif grep -q "Orkeon Console Application" "$LOG_DIR/orkeon-repl.start.out"; then
+    smoke_pass "repl-start" "orkeon-repl opened its console and left at the end of input (no TTY)"
+  else
+    head -n 5 "$LOG_DIR/orkeon-repl.start.out" | sed 's/^/    | /'
+    smoke_fail "repl-start" "orkeon-repl exited 0 but printed no 'Orkeon Console Application' banner"
+  fi
+}
+
 # smoke_step_studio_absent <root...> — the mirror guard, for a channel the RID
 # filter says carries no Studio at all (the osx CLI archives in V1). It exists to
 # fail *loudly* the day that filter regresses: a Studio binary silently riding

@@ -421,6 +421,8 @@ Exit codes: `0` listed; `1` a name that designates nothing or that the `--host` 
 
 `orkeon-repl` is a **different tool** built from `src/apps/Orkeon.ConsoleApp` (dotnet tool command `orkeon-repl`): a full interactive REPL that drives agents, crews and tools from a Terminal.Gui split-pane console (logs + REPL), with the full framework stack wired in — built-in tools, RAG, code analysis, local embeddings — and TypeScript-scripted commands. It deliberately does not share the `orkeon` assembly name.
 
+It reaches you as a dotnet tool, in the multi-app release archives, in the `orkeon-runners` image, and in the Debian and Ubuntu package (`/usr/bin/orkeon-repl`, self-contained, so `apt install orkeon` needs no .NET). It has no `--help` or `--version`: it opens its console, and with stdin closed and `--ui plain` it prints its banner and leaves at the end of input.
+
 | Option | Description |
 |---|---|
 | `--ui tui\|plain\|auto` | The console: the split-pane TUI, or a plain line console. `auto` (the default) picks the TUI on an interactive terminal, and the plain console when `CI=true`, when stdin or stdout is redirected, or when `TERM` is unset on Linux. An unknown value exits 2. |

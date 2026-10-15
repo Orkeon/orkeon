@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds per-OS installer archives (tar.gz / zip) containing all Orkeon CLI
-# executables, published per RID. Some ship self-contained (the `orkeon`
-# onboarding binary), the rest framework-dependent — see APPS.
+# executables, published per RID. All ship self-contained except `orkeon-slim`,
+# which is framework-dependent — see APPS.
 #
 # Usage:
 #   scripts/package-installers.sh [--version X.Y.Z[-suffix]] [--rids "linux-x64 ..."]
@@ -9,8 +9,8 @@
 #                                 [--app-set full|cli] [--keep-stage all|none|"RIDS"]
 #                                 [--no-archive]
 #
-# --app-set cli ships the `orkeon` CLI plus the Orkeon Studio apps for the
-# platform (win-x64: `orkeon-studio`; linux-*: `orkeon-studio-config` +
+# --app-set cli ships the `orkeon` CLI plus the apps for the platform (win-x64:
+# `orkeon-studio`; linux-*: `orkeon-repl`, `orkeon-studio-config` and
 # `orkeon-studio-run`; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.{zip,tar.gz};
 # full (the default) keeps the historical every-app archive.
 #
@@ -122,8 +122,10 @@ esbuild_lock_integrity() { # $1=npm-rid
 # install. The `orkeon` CLI ships in two flavours from the *same* csproj:
 #   - `orkeon`      self-contained — the onboarding channel, no .NET runtime needed;
 #   - `orkeon-slim` framework-dependent — smaller, for devs who already have .NET 10.
-# framework-dependent. Both `orkeon` flavours share the one bundled esbuild
-# (see fetch_esbuild below — fetched once per RID into libexec/esbuild-bin).
+# Both `orkeon` flavours share the one bundled esbuild (see fetch_esbuild below —
+# fetched once per RID into libexec/esbuild-bin). `orkeon-repl` is self-contained
+# too: package-deb.sh lifts it out of these trees, and the Debian package never
+# depends on a dotnet-runtime package.
 # The optional 5th column is a space-separated RID filter: empty = publish for
 # every RID (the historical behaviour); non-empty = publish only for the listed
 # RIDs. The WPF `orkeon-studio` is the motivating case — WPF cannot target
@@ -131,7 +133,7 @@ esbuild_lock_integrity() { # $1=npm-rid
 APPS=(
   "orkeon|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|true"
   "orkeon-slim|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|false"
-  "orkeon-repl|src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj|Orkeon.ConsoleApp|false"
+  "orkeon-repl|src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj|Orkeon.ConsoleApp|true"
   "orkeon-studio|src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj|Orkeon.Studio|true|win-x64"
   "orkeon-studio-config|src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj|Orkeon.Studio.Config|true|"
   "orkeon-studio-run|src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj|Orkeon.Studio.Run|true|"
@@ -145,15 +147,17 @@ rid_allowed() { # $1=rids-filter $2=rid
   [[ -z "$1" || " $1 " == *" $2 "* ]]
 }
 
-# --app-set cli ships the onboarding binary plus the Orkeon Studio apps for the
-# platform: win-* adds the WPF `orkeon-studio`, linux-* adds the two TUIs
-# (`orkeon-studio-config` / `orkeon-studio-run`), osx-* stays CLI-only (V1 —
-# the Homebrew channel does not ship Studio yet). Same staging layout, same
+# --app-set cli ships the onboarding binary plus the apps for the platform:
+# win-* adds the WPF `orkeon-studio`, linux-* adds the REPL (`orkeon-repl`) and the
+# two TUIs (`orkeon-studio-config` / `orkeon-studio-run`), osx-* stays CLI-only
+# (V1 — the Homebrew channel does not ship Studio yet). Same staging layout, same
 # wrappers, same installer — the sets stay structurally interchangeable for
-# install.sh/ps1, which iterate over whatever bin/ contains.
+# install.sh/ps1, which iterate over whatever bin/ contains. The MSI harvests the
+# win cli tree and the Homebrew formula the osx ones: neither grows the REPL.
 cli_set_includes() { # $1=app-name $2=rid
   case "$1" in
     orkeon) return 0 ;;
+    orkeon-repl) [[ "$2" == linux-* ]] ;;
     orkeon-studio) [[ "$2" == win-* ]] ;;
     orkeon-studio-config|orkeon-studio-run) [[ "$2" == linux-* ]] ;;
     *) return 1 ;;

@@ -12,7 +12,7 @@ Le dépôt sert deux paquets :
 
 | Paquet | Contenu |
 |---|---|
-| `orkeon` | le CLI `orkeon` en `/usr/bin/orkeon` et les deux applications terminal **Orkeon Studio** (`orkeon-studio-config`, `orkeon-studio-run`) — self-contained, il ne tire jamais de paquet `dotnet-runtime` ni de dépôt Microsoft |
+| `orkeon` | le CLI `orkeon` en `/usr/bin/orkeon`, la console interactive `orkeon-repl` en `/usr/bin/orkeon-repl` (celle qui exécute les commandes scriptées `*.cmd.ts`) et les deux applications terminal **Orkeon Studio** (`orkeon-studio-config`, `orkeon-studio-run`) — self-contained, il ne tire jamais de paquet `dotnet-runtime` ni de dépôt Microsoft |
 | `orkeon-archive-keyring` | la clé publique avec laquelle apt vérifie le dépôt, en `/usr/share/keyrings/orkeon-archive-keyring.gpg` — une nouvelle clé de signature vous arrive ainsi par `apt upgrade` |
 
 Il est construit pour **Debian 12 et 13** et **Ubuntu 22.04, 24.04 et 26.04**, en **amd64** et
