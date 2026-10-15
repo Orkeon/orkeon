@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using Orkeon.Application.Interfaces.Monitoring;
-using Orkeon.Infrastructure.Telemetry;
+using Orkeon.Application.Telemetry;
 using Microsoft.Extensions.Logging;
 
 namespace Orkeon.Infrastructure.Monitoring;
@@ -35,7 +35,7 @@ public sealed partial class MetricsAggregationService : IMetricsAggregation, IDi
 
         _meterListener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == OrkeonMetrics.MeterName)
+            if (instrument.Meter.Name == OrkeonMeter.Name)
             {
                 listener.EnableMeasurementEvents(instrument);
             }
@@ -46,7 +46,7 @@ public sealed partial class MetricsAggregationService : IMetricsAggregation, IDi
 
         _meterListener.Start();
 
-        LogMetricsaggregationserviceStartedListeningToMeter(OrkeonMetrics.MeterName);
+        LogMetricsaggregationserviceStartedListeningToMeter(OrkeonMeter.Name);
     }
 
     /// <inheritdoc />

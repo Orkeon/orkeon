@@ -194,7 +194,7 @@ partiel (signalé au cas par cas ci-dessous).
 - **Binaires livrés** : aucun ne l'active. `orkeon run`, `orkeon-host` et `orkeon-repl` ne lisent
   pas `Orkeon:Monitoring`, et le disent à leur démarrage quand les réglages l'écrivent.
 - **Rôle** : agrégation in-process des métriques Orkeon (`MeterListener` sur
-  `OrkeonMetrics`) et exploration des traces récentes (buffer circulaire) pour
+  le meter `Orkeon`) et exploration des traces récentes (buffer circulaire) pour
   exposition par un endpoint hôte (dashboard, API de diagnostic).
 - **Activation** :
   ```csharp
@@ -230,12 +230,24 @@ sans mapping. Les noms sont les constantes de `Orkeon.Constants.Llm.GenAiAttribu
 
 Une exécution est une trace : `crew.run` > `task.run` > `invoke_agent` et `memory.*` ; les `chat` du manager et du planificateur se placent sous `crew.run`, les `embeddings` d'une mémoire sous son span `memory.*`.
 
-Métriques (`OrkeonMetrics`, meter `Orkeon`) : `gen_ai.client.token.usage` (histogramme,
+Métriques (meter `Orkeon`, `OrkeonMeter` ; le `MeterListener` l'écoute) : `gen_ai.client.token.usage` (histogramme,
 tokens, `gen_ai.token.type` = `input` | `output`) et `gen_ai.client.operation.duration`
 (histogramme, secondes), toutes deux étiquetées `gen_ai.provider.name` et
 `gen_ai.request.model` ; les compteurs `orkeon.*` (appels, exécutions d'outils, coût)
 gardent leurs noms. Ce qui n'a pas de convention garde le préfixe `orkeon.` — le crew, la
 tâche, le coût estimé.
+
+| Instrument | Type, unité | Attributs | Mesuré |
+|---|---|---|---|
+| `orkeon.llm.calls` | compteur, `{call}` | opération, fournisseur, modèle | chaque appel au modèle, une fois |
+| `gen_ai.client.operation.duration` | histogramme, `s` | opération, fournisseur, modèle, `error.type` en cas d'échec | chaque appel au modèle |
+| `gen_ai.client.token.usage` | histogramme, `{token}` | opération, fournisseur, modèle, `gen_ai.token.type` | l'usage rapporté par le fournisseur ; un usage non rapporté n'est pas enregistré |
+| `orkeon.cost.total_usd` | jauge observable, `USD` | aucun | total, à l'échelle du processus, des coûts en USD rapportés depuis son démarrage ; un coût dans une autre devise n'y entre pas |
+| `orkeon.crew.executions`, `orkeon.task.executions`, `orkeon.tool.executions`, `orkeon.security.events` | compteur, `{execution}` / `{event}` | aucun | déclaré, pas encore alimenté |
+| `orkeon.crew.duration`, `orkeon.task.duration`, `orkeon.tool.duration` | histogramme, `ms` | aucun | déclaré, pas encore alimenté |
+| `orkeon.crew.active`, `orkeon.task.active`, `orkeon.llm.active` | compteur haut-bas, `{crew}` / `{task}` / `{call}` | aucun | déclaré, pas encore alimenté |
+
+Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 
 ## Conformité NIST — `AddOrkeonNistCompliance()`
 

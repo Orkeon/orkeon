@@ -1,4 +1,8 @@
 using System.Diagnostics;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using Orkeon.Application.Telemetry;
 using Orkeon.Infrastructure.Telemetry;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -89,19 +93,67 @@ public class OpenTelemetryIntegrationTests
         return provider.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(Options.DefaultName).Endpoint;
     }
 
+    private static bool NamesOrkeonMetrics(ServiceDescriptor d) =>
+        d.ServiceType.Name == "OrkeonMetrics"
+        || d.ImplementationType?.Name == "OrkeonMetrics"
+        || d.ImplementationInstance?.GetType().Name == "OrkeonMetrics";
+
+    private sealed class CollectingExporter : BaseExporter<Metric>
+    {
+        public System.Collections.Concurrent.ConcurrentBag<string> Names { get; } = new();
+
+        public override ExportResult Export(in Batch<Metric> batch)
+        {
+            foreach (var metric in batch)
+            {
+                if (metric.MeterName == OrkeonMeter.Name)
+                    Names.Add(metric.Name);
+            }
+
+            return ExportResult.Success;
+        }
+    }
+
     [Fact]
-    public void ShouldRegisterOrkeonMetrics_WhenAddingTelemetry()
+    [Trait("BR", "CH-03")]
+    public void ShouldExportTheOrkeonMeter_WhenAddingTelemetry()
     {
         var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithTelemetry(new Dictionary<string, string?>
         {
             ["Telemetry:Enabled"] = "true"
         });
         _fixture.WithMockProviders(services);
+        using var exporter = new CollectingExporter();
+        services.ConfigureOpenTelemetryMeterProvider(b => b.AddReader(new BaseExportingMetricReader(exporter)));
 
-        var sp = services.BuildServiceProvider();
+        var infrastructure = OpenTelemetryIntegrationTestsFixture.CreateServicesWithInfrastructure();
 
-        var metrics = sp.GetService<OrkeonMetrics>();
-        Assert.NotNull(metrics);
+        Assert.DoesNotContain(services, NamesOrkeonMetrics);
+        Assert.DoesNotContain(infrastructure, NamesOrkeonMetrics);
+
+        using var sp = services.BuildServiceProvider();
+        using var meterProvider = sp.GetRequiredService<MeterProvider>();
+
+        OrkeonMeter.RecordLlmCall("provider-ch03", "model-ch03", 0.5, null, 3, 4);
+        meterProvider.ForceFlush();
+
+        Assert.Contains("orkeon.llm.calls", exporter.Names);
+        Assert.Contains("gen_ai.client.operation.duration", exporter.Names);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldRegisterNoProviderNorExporter_WhenTelemetryIsDisabled()
+    {
+        var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithTelemetry(new Dictionary<string, string?>
+        {
+            ["Telemetry:Enabled"] = "false"
+        });
+
+        Assert.DoesNotContain(services, NamesOrkeonMetrics);
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(MeterProvider) || d.ServiceType == typeof(TracerProvider));
+        Assert.DoesNotContain(services, d => d.ServiceType.Name.Contains("Exporter", StringComparison.Ordinal)
+            || (d.ImplementationType?.Name.Contains("Exporter", StringComparison.Ordinal) ?? false));
     }
 
     [Fact]
@@ -144,45 +196,6 @@ public class OpenTelemetryIntegrationTests
     }
 
     [Fact]
-    public void ShouldStillRegisterMetrics_WhenTelemetryIsDisabled()
-    {
-        var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithTelemetry(new Dictionary<string, string?>
-        {
-            ["Telemetry:Enabled"] = "false"
-        });
-
-        var sp = services.BuildServiceProvider();
-
-        var metrics = sp.GetService<OrkeonMetrics>();
-        Assert.NotNull(metrics);
-    }
-
-    [Fact]
-    public void ShouldRegisterTelemetry_WhenAddingInfrastructureWithConfiguration()
-    {
-        var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithInfrastructure(new Dictionary<string, string?>
-        {
-            ["Telemetry:Enabled"] = "true"
-        });
-
-        var sp = services.BuildServiceProvider();
-
-        var metrics = sp.GetService<OrkeonMetrics>();
-        Assert.NotNull(metrics);
-    }
-
-    [Fact]
-    public void ShouldStillRegisterMetrics_WhenAddingInfrastructureWithoutConfiguration()
-    {
-        var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithInfrastructure();
-
-        var sp = services.BuildServiceProvider();
-
-        var metrics = sp.GetService<OrkeonMetrics>();
-        Assert.NotNull(metrics);
-    }
-
-    [Fact]
     [Trait("BR", "CH-09")]
     public void ShouldListenToScriptingSource_WhenTelemetryTracerIsBuilt()
     {
@@ -200,16 +213,4 @@ public class OpenTelemetryIntegrationTests
         Assert.True(activity!.Recorded);
     }
 
-
-    [Fact]
-    public void ShouldReturnSameInstance_WhenResolvingMetricsSingleton()
-    {
-        var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithInfrastructure();
-
-        var sp = services.BuildServiceProvider();
-
-        var metrics1 = sp.GetService<OrkeonMetrics>();
-        var metrics2 = sp.GetService<OrkeonMetrics>();
-        Assert.Same(metrics1, metrics2);
-    }
 }

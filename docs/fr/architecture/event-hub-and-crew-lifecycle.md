@@ -842,7 +842,7 @@ Conçus mais **non construits** : `event.correlation_id`, `event.message_id`,
 
 ### 14.2 Métriques — **non construites**
 
-Aucun instrument EventHub n'existe encore (`OrkeonMetrics` ne couvre que
+Aucun instrument EventHub n'existe encore (le meter `Orkeon` ne couvre que
 `orkeon.llm.*`, `orkeon.tool.*`, `orkeon.task.*`, `orkeon.crew.*`, `orkeon.security.*` et
 `orkeon.cost.*`). Le jeu
 conçu, gardé ici comme cible :

@@ -24,3 +24,18 @@ Orkeon.Infrastructure.Configuration.LlmOverrideYamlConfig.Cache.get -> Orkeon.In
 Orkeon.Infrastructure.Configuration.LlmOverrideYamlConfig.Cache.set -> void
 *REMOVED*Orkeon.Infrastructure.Memory.Cognitive.CognitiveMemoryOptions.AnalysisTemperature.get -> float
 Orkeon.Infrastructure.Memory.Cognitive.CognitiveMemoryOptions.AnalysisTemperature.get -> double
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.CrewCompleted(string! crewId) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.CrewStarted(string! crewId) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.Dispose() -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.LlmCallCompleted(string! provider) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.LlmCallStarted(string! provider) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.OrkeonMetrics() -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.RecordCrewExecution(string! crewId, double durationMs, bool success = true, string? processType = null) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.RecordLlmCall(string! provider, string! model, double durationMs, int promptTokens = 0, int completionTokens = 0, double costUsd = 0, bool success = true) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.RecordSecurityEvent(string! eventType) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.RecordTaskExecution(string! taskId, double durationMs, bool success = true, string? agentRole = null) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.RecordToolExecution(string! toolName, double durationMs, bool success = true, string? agentRole = null) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.TaskCompleted(string! taskId) -> void
+*REMOVED*Orkeon.Infrastructure.Telemetry.OrkeonMetrics.TaskStarted(string! taskId) -> void
+*REMOVED*const Orkeon.Infrastructure.Telemetry.OrkeonMetrics.MeterName = "Orkeon" -> string!

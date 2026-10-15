@@ -53,3 +53,13 @@ const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorRunFailure = "run_failure
 const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorCrewFailed = "crew_failed" -> string!
 Orkeon.Application.Common.DTOs.LlmChatOptionsValues
 static Orkeon.Application.Common.DTOs.LlmChatOptionsValues.AsWritten(float? value) -> double?
+Orkeon.Application.Telemetry.OrkeonMeter
+const Orkeon.Application.Telemetry.OrkeonMeter.Name = "Orkeon" -> string!
+const Orkeon.Application.Telemetry.OrkeonMeter.OperationAttribute = "gen_ai.operation.name" -> string!
+const Orkeon.Application.Telemetry.OrkeonMeter.ProviderAttribute = "gen_ai.provider.name" -> string!
+const Orkeon.Application.Telemetry.OrkeonMeter.ModelAttribute = "gen_ai.request.model" -> string!
+const Orkeon.Application.Telemetry.OrkeonMeter.ErrorTypeAttribute = "error.type" -> string!
+const Orkeon.Application.Telemetry.OrkeonMeter.TokenTypeAttribute = "gen_ai.token.type" -> string!
+static Orkeon.Application.Telemetry.OrkeonMeter.RecordLlmCall(string! provider, string! model, double seconds, string? errorType, long? inputTokens, long? outputTokens) -> void
+static Orkeon.Application.Telemetry.OrkeonMeter.Meter.get -> System.Diagnostics.Metrics.Meter!
+static Orkeon.Application.Telemetry.OrkeonMeter.AddCostUsd(double usd) -> void

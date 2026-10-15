@@ -842,7 +842,7 @@ Designed but **not built**: `event.correlation_id`, `event.message_id`,
 
 ### 14.2 Metrics — **not built**
 
-No EventHub instrument exists yet (`OrkeonMetrics` covers `orkeon.llm.*`,
+No EventHub instrument exists yet (the meter `Orkeon` covers `orkeon.llm.*`,
 `orkeon.tool.*`, `orkeon.task.*`, `orkeon.crew.*`, `orkeon.security.*` and
 `orkeon.cost.*` only). The designed set, kept
 here as the target:

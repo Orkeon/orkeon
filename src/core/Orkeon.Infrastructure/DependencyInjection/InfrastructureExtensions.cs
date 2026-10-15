@@ -594,10 +594,6 @@ public static class InfrastructureExtensions
             return new OutputValidationPipeline(validators);
         });
 
-        // === Phase 3: Telemetry (P0-8) ===
-        // Register OrkeonMetrics singleton (always available, even without full OTel pipeline)
-        services.TryAddSingleton<OrkeonMetrics>();
-
         return services;
     }
 

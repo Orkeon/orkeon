@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — every model call is measured once on the meter `Orkeon` **[breaking]**
+
+Every model call is now measured once on the meter `Orkeon` (`OrkeonMeter`, Application), succeeded,
+failed or streamed, with or without a usage sink (GAP-46). Telemetry exports that meter and the
+dashboard listens to it by name. The crew, task, tool and security instruments are declared there
+with their names, units and kinds, but not yet fed. `orkeon.cost.total_usd` is the process-wide total
+of the USD costs reported since the process started.
+
+- **Breaking**: `OrkeonMetrics` (`Orkeon.Infrastructure.Telemetry`) is removed, with its three DI
+  registrations: nothing fed it.
+- **Migration**: the meter keeps its name `Orkeon`: subscribe by name, or use `OrkeonMeter.Name` and
+  `OrkeonMeter.Meter`.
+
 ### Fixed — a `max_tokens` of 0 or less is refused **[breaking]**
 
 A token cap is a positive integer (GAP-48). A `max_tokens` of 0 or less is now refused: at YAML crew

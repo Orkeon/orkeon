@@ -15,6 +15,7 @@ public sealed class MetricsAggregationServiceTests : IClassFixture<MetricsAggreg
     }
 
     [Fact]
+    [Trait("BR", "CH-03")]
     public async Task GetCurrentMetricsAsync_ReturnsDefaultMetrics()
     {
         // Act — between two readings of the clock, never within a window of it (GAP-41)
@@ -31,10 +32,28 @@ public sealed class MetricsAggregationServiceTests : IClassFixture<MetricsAggreg
         Assert.Equal(0, metrics.TotalCrewExecutions);
         Assert.Equal(0, metrics.ActiveCrews);
         Assert.Equal(0, metrics.ActiveTasks);
-        Assert.Equal(0.0, metrics.TotalCostUsd);
+        // The cost is a process-wide total on the Orkeon meter: compare with the gauge as it stands.
+        Assert.Equal(ReadCostGauge(), metrics.TotalCostUsd, 1e-9);
+    }
+
+    private static double ReadCostGauge()
+    {
+        var value = 0.0;
+        using var listener = new System.Diagnostics.Metrics.MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == Orkeon.Application.Telemetry.OrkeonMeter.Name
+                && instrument.Name == "orkeon.cost.total_usd")
+                l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<double>((_, m, _, _) => value = m);
+        listener.Start();
+        listener.RecordObservableInstruments();
+        return value;
     }
 
     [Fact]
+    [Trait("BR", "CH-03")]
     public async Task GetMetricsSnapshotAsync_ReturnsSnapshotWithTimestamp()
     {
         // Act
@@ -52,6 +71,7 @@ public sealed class MetricsAggregationServiceTests : IClassFixture<MetricsAggreg
     }
 
     [Fact]
+    [Trait("BR", "CH-03")]
     public void Service_ImplementsIDisposable()
     {
         // Arrange

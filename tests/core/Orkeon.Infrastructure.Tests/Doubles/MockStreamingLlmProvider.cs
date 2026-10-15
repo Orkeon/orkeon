@@ -109,19 +109,75 @@ public sealed class MockStreamingLlmProvider : ILlmProvider, IStreamingLlmProvid
         return Task.FromResult(result);
     }
 
-    public async IAsyncEnumerable<string> GenerateStreamingAsync(
+    private Exception? _callFailure;
+    private Exception? _failureAfterChunks;
+    private int _failAfterChunkCount;
+
+    /// <summary>Makes every streaming method throw <paramref name="failure"/> when it is called, before any enumerator exists.</summary>
+    public void FailStreamingCallWith(Exception failure) => _callFailure = failure;
+
+    /// <summary>Makes the text stream throw <paramref name="failure"/> once <paramref name="chunkCount"/> chunks were yielded.</summary>
+    public void FailGenerateStreamingAfter(int chunkCount, Exception failure)
+    {
+        _failAfterChunkCount = chunkCount;
+        _failureAfterChunks = failure;
+    }
+
+    private Exception? _moveNextFailure;
+    private Exception? _disposeFailure;
+
+    /// <summary>
+    /// Makes every stream (text and chat) hand out an enumerator whose <c>MoveNextAsync</c> throws
+    /// <paramref name="moveNext"/> and whose <c>DisposeAsync</c> then throws <paramref name="dispose"/>.
+    /// </summary>
+    public void BreakStreamsAndDisposalWith(Exception moveNext, Exception dispose)
+    {
+        _moveNextFailure = moveNext;
+        _disposeFailure = dispose;
+    }
+
+    private sealed class BrokenStream<T>(Exception moveNext, Exception dispose) : IAsyncEnumerable<T>, IAsyncEnumerator<T>
+    {
+        public T Current => default!;
+
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => this;
+
+        public ValueTask<bool> MoveNextAsync() => throw moveNext;
+
+        public ValueTask DisposeAsync() => throw dispose;
+    }
+
+    public IAsyncEnumerable<string> GenerateStreamingAsync(
         string prompt,
         LlmConfig? config = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_callFailure is not null)
+            throw _callFailure;
+        if (_moveNextFailure is not null)
+            return new BrokenStream<string>(_moveNextFailure, _disposeFailure!);
+        return GenerateStreamingCore(prompt, cancellationToken);
+    }
+
+    private async IAsyncEnumerable<string> GenerateStreamingCore(
+        string prompt,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         GenerateStreamingCallCount++;
         LastStreamingPrompt = prompt;
 
+        var yielded = 0;
         foreach (var chunk in _streamingChunks)
         {
+            if (_failureAfterChunks is not null && yielded == _failAfterChunkCount)
+                throw _failureAfterChunks;
             cancellationToken.ThrowIfCancellationRequested();
             yield return chunk;
+            yielded++;
         }
+
+        if (_failureAfterChunks is not null && yielded == _failAfterChunkCount)
+            throw _failureAfterChunks;
 
         await Task.CompletedTask;
     }
@@ -142,9 +198,21 @@ public sealed class MockStreamingLlmProvider : ILlmProvider, IStreamingLlmProvid
 
     public int ChatStreamingCallCount => Volatile.Read(ref _chatStreamingCallCount);
 
-    public async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
+    public IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
         LlmMessage[] messages,
         LlmConfig? config = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_callFailure is not null)
+            throw _callFailure;
+        if (_moveNextFailure is not null)
+            return new BrokenStream<LlmStreamEvent>(_moveNextFailure, _disposeFailure!);
+        return ChatStreamingCore(messages, config, cancellationToken);
+    }
+
+    private async IAsyncEnumerable<LlmStreamEvent> ChatStreamingCore(
+        LlmMessage[] messages,
+        LlmConfig? config,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         Interlocked.Increment(ref _chatStreamingCallCount);

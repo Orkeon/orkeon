@@ -188,7 +188,7 @@ partial (flagged case by case below).
 - **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` do not
   read `Orkeon:Monitoring`, and say so at their start when the settings write it.
 - **Role**: in-process aggregation of Orkeon metrics (`MeterListener` on
-  `OrkeonMetrics`) and exploration of recent traces (circular buffer) for
+  the meter `Orkeon`) and exploration of recent traces (circular buffer) for
   exposure through a host endpoint (dashboard, diagnostic API).
 - **Activation**:
   ```csharp
@@ -224,11 +224,23 @@ mapping. The names are the constants of `Orkeon.Constants.Llm.GenAiAttributes`.
 
 A run is a trace: `crew.run` > `task.run` > `invoke_agent` and `memory.*`; the manager's and the planner's `chat` sit under `crew.run`, a memory's `embeddings` under its `memory.*` span.
 
-Metrics (`OrkeonMetrics`, meter `Orkeon`): `gen_ai.client.token.usage` (histogram, tokens,
+Metrics (meter `Orkeon`, `OrkeonMeter`; the `MeterListener` listens to it): `gen_ai.client.token.usage` (histogram, tokens,
 `gen_ai.token.type` = `input` | `output`) and `gen_ai.client.operation.duration` (histogram,
 seconds), both tagged with `gen_ai.provider.name` and `gen_ai.request.model`; the
 `orkeon.*` counters (calls, tool executions, cost) keep their names. What has no
 convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost.
+
+| Instrument | Kind, unit | Attributes | Measured |
+|---|---|---|---|
+| `orkeon.llm.calls` | counter, `{call}` | operation, provider, model | every model call, once |
+| `gen_ai.client.operation.duration` | histogram, `s` | operation, provider, model, `error.type` on a failure | every model call |
+| `gen_ai.client.token.usage` | histogram, `{token}` | operation, provider, model, `gen_ai.token.type` | usage the vendor reported; unreported usage is not recorded |
+| `orkeon.cost.total_usd` | observable gauge, `USD` | none | process-wide total of the USD costs reported since the process started; a cost in another currency does not enter it |
+| `orkeon.crew.executions`, `orkeon.task.executions`, `orkeon.tool.executions`, `orkeon.security.events` | counter, `{execution}` / `{event}` | none | declared, not yet fed |
+| `orkeon.crew.duration`, `orkeon.task.duration`, `orkeon.tool.duration` | histogram, `ms` | none | declared, not yet fed |
+| `orkeon.crew.active`, `orkeon.task.active`, `orkeon.llm.active` | up-down counter, `{crew}` / `{task}` / `{call}` | none | declared, not yet fed |
+
+No attribute carries an id of a crew, task or agent.
 
 ## NIST compliance — `AddOrkeonNistCompliance()`
 

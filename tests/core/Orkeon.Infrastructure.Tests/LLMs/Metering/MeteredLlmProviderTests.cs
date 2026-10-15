@@ -36,6 +36,7 @@ public sealed class MeteredLlmProviderTests
 
     private static LlmMessage[] Conversation(string text = "hello") => [LlmMessage.User(text)];
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_chat_call_reaches_the_sink_once_with_what_the_provider_counted()
     {
@@ -56,6 +57,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Null(usage.Cost);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task Every_call_is_counted_once_and_only_once()
     {
@@ -75,6 +77,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal((3 * 11) + (2 * 22), sink.TotalTokens);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_call_carries_the_attribution_in_effect_when_it_started()
     {
@@ -92,6 +95,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal("task-1", usage.TaskId);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_call_nothing_claimed_is_still_counted_as_unattributed()
     {
@@ -104,6 +108,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal(LlmUsageOperations.Unattributed, Assert.Single(sink.Recorded).OperationType);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_response_with_no_usage_at_all_is_estimated_and_says_so()
     {
@@ -123,6 +128,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Null(usage.Cost);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_silent_chat_is_estimated_from_the_whole_conversation()
     {
@@ -140,6 +146,7 @@ public sealed class MeteredLlmProviderTests
         Assert.True(usage.PromptTokens >= 200, $"prompt estimate was {usage.PromptTokens}");
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task The_zero_a_provider_declares_is_taken_at_its_word()
     {
@@ -155,6 +162,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal(0, usage.PromptTokens + usage.CompletionTokens);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_total_only_response_lands_entirely_on_completion()
     {
@@ -169,6 +177,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal(42, usage.CompletionTokens);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_call_that_failed_before_any_answer_is_not_counted()
     {
@@ -185,6 +194,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Empty(sink.Recorded);
     }
 
+    [Trait("BR", "CH-01")]
     [Theory]
     [InlineData(0.0021)]
     [InlineData(0.0)]
@@ -202,6 +212,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal("USD", usage.CostCurrency);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_call_the_vendor_did_not_bill_carries_an_unknown_cost()
     {
@@ -216,6 +227,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Null(usage.CostCurrency);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_throwing_sink_never_fails_the_call()
     {
@@ -228,6 +240,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal("still answered", response.Content);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_chat_stream_is_counted_once_with_the_usage_of_its_final_response()
     {
@@ -253,6 +266,7 @@ public sealed class MeteredLlmProviderTests
         Assert.False(usage.Estimated);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_chat_stream_without_usage_is_estimated_from_the_conversation_and_the_answer()
     {
@@ -273,6 +287,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Null(usage.Cost);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_text_stream_is_counted_once_at_its_end_as_an_estimate_never_a_cost()
     {
@@ -300,6 +315,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Null(usage.Cost);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_stream_naming_no_model_is_attributed_to_the_providers_own_model()
     {
@@ -317,6 +333,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal("model-of-the-profile", Assert.Single(sink.Recorded).Model);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_stream_abandoned_early_counts_what_it_had_streamed()
     {
@@ -333,6 +350,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal(LlmUsageEstimator.FromCharacterCount("first chunk".Length), usage.CompletionTokens);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_text_stream_that_ends_with_nothing_still_counts_what_was_sent()
     {
@@ -352,6 +370,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal(0, usage.CompletionTokens);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_refused_stream_that_delivered_nothing_is_not_counted()
     {
@@ -368,6 +387,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Empty(sink.Recorded);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task Streaming_through_a_provider_that_cannot_stream_is_counted_once()
     {
@@ -392,6 +412,7 @@ public sealed class MeteredLlmProviderTests
         Assert.All(sink.Recorded, u => Assert.False(u.Estimated));
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_stream_keeps_the_attribution_it_started_with()
     {
@@ -418,14 +439,32 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal("Scripted", usage.AgentId);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
-    public void Without_a_sink_the_provider_is_left_as_it_is()
+    public void ShouldStillWrap_WhenNoSinkIsGiven()
     {
         var provider = new MockLlmProvider();
 
-        Assert.Same(provider, MeteredLlmProvider.Wrap(provider, sink: null));
+        Assert.NotSame(provider, MeteredLlmProvider.Wrap(provider, sink: null));
     }
 
+    [Trait("BR", "CH-01")]
+    [Fact]
+    public async Task ShouldPublishNoUsageEvent_WhenNoSinkIsRegistered()
+    {
+        var provider = new MockLlmProvider();
+        provider.SetChatResult(Answer(10, 5, "unchanged"));
+        var unusedSink = new MockLlmUsageSink();
+
+        var response = await MeteredLlmProvider.Wrap(provider, sink: null)
+            .ChatAsync(Conversation(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("unchanged", response.Content);
+        Assert.Equal(15, response.TokensUsed);
+        Assert.Empty(unusedSink.Recorded);
+    }
+
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_metered_provider_is_never_metered_twice()
     {
@@ -441,6 +480,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Single(sink.Recorded);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public void The_metered_provider_speaks_for_the_one_it_wraps()
     {
@@ -467,6 +507,7 @@ public sealed class MeteredLlmProviderTests
 
     // ── Counted once: the meter nearest the model counts (GAP-34) ─────────────────────────
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_metered_call_whose_provider_calls_a_metered_provider_is_counted_once_by_the_inner_meter()
     {
@@ -489,6 +530,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal("task-1", usage.TaskId);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task Every_inner_call_counts_and_the_outer_call_none_on_every_surface()
     {
@@ -515,6 +557,7 @@ public sealed class MeteredLlmProviderTests
         Assert.All(sink.Recorded, usage => Assert.Equal("vendor", usage.Provider));
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task A_provider_whose_answer_no_inner_meter_counted_is_counted_by_its_own_meter()
     {
@@ -528,6 +571,7 @@ public sealed class MeteredLlmProviderTests
         Assert.Equal("agent-framework:Reviewer", Assert.Single(sink.Recorded).Provider);
     }
 
+    [Trait("BR", "CH-01")]
     [Fact]
     public async Task Two_outer_calls_in_flight_at_once_each_keep_their_own_count()
     {
