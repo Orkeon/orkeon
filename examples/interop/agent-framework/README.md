@@ -25,6 +25,13 @@ dotnet run --project examples/interop/agent-framework/AgentFrameworkInterop.cspr
 dotnet run --project examples/interop/agent-framework/AgentFrameworkInterop.csproj -- --settings examples/quickstart/appsettings.json
 ```
 
+The settings come from the runners' chain, anchored at the example's binary folder: `--settings`
+when given; else an `appsettings.json` next to the binary, then `examples/appsettings/appsettings.json`,
+found by walking up from `bin/<configuration>/net10.0/`, wherever the command is started; else the file
+`orkeon init` writes; else the environment alone, with the chain's warning. The file used is named on
+stderr, `Using settings: <file>`, as `orkeon run` names it. The default file points at Docker Model
+Runner: when it is not started, the first call fails, as `orkeon run` does on the same file.
+
 Without a configured model (a settings file with no `Llm` section) the echo provider answers and
 the exchange still shows the three call shapes. `AgentFrameworkInterop.csproj` references
 `Microsoft.Agents.AI` (not only the abstractions) for `AsAIAgent()`; the interop library itself

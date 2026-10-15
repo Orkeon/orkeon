@@ -62,6 +62,16 @@ what the command offers (GAP-49, decision 3): a script and `--list-tools`, `--mo
 `orkeon rag` and `orkeon-repl`, `--mount`; `orkeon forge` and `orkeon mcp serve`, nothing —
 `Keep one of them in <settings>.` A crew YAML's line is unchanged, word for word.
 
+### Fixed — the Microsoft Agent Framework example reads the settings chain it describes
+
+`examples/interop/agent-framework` said it read `examples/appsettings/appsettings.json` by default,
+and passed `--settings`, or nothing, to `RunnerHost.Build`: without `--settings` it ran on the
+environment alone, so on the echo provider. It now resolves the runners' chain anchored at its
+binary's folder (`RunnerSettings.ResolveSettingsPath(<--settings>, AppContext.BaseDirectory)`) and
+writes `Using settings: <file>` on stderr, as the CLI does: started from the repository root, it
+finds `examples/appsettings/appsettings.json` (Docker Model Runner). The text it has summarised
+counts sixteen LLM providers, not fourteen (GAP-49, decision 1).
+
 ### Added — `orkeon-repl` asks the operator about a tool call
 
 With the permission gate on, a tool call the session's mode asked about was refused in the REPL:
