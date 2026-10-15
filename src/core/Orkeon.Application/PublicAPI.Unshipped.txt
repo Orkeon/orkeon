@@ -63,3 +63,8 @@ const Orkeon.Application.Telemetry.OrkeonMeter.TokenTypeAttribute = "gen_ai.toke
 static Orkeon.Application.Telemetry.OrkeonMeter.RecordLlmCall(string! provider, string! model, double seconds, string? errorType, long? inputTokens, long? outputTokens) -> void
 static Orkeon.Application.Telemetry.OrkeonMeter.Meter.get -> System.Diagnostics.Metrics.Meter!
 static Orkeon.Application.Telemetry.OrkeonMeter.AddCostUsd(double usd) -> void
+const Orkeon.Application.Telemetry.OrkeonMeter.ToolNameAttribute = "orkeon.tool.name" -> string!
+const Orkeon.Application.Telemetry.OrkeonMeter.OutcomeAttribute = "orkeon.outcome" -> string!
+const Orkeon.Application.Telemetry.OrkeonMeter.SecurityKindAttribute = "orkeon.security.kind" -> string!
+static Orkeon.Application.Telemetry.OrkeonMeter.RecordToolExecution(string! toolName, string! outcome, double? seconds) -> void
+static Orkeon.Application.Telemetry.OrkeonMeter.RecordSecurityEvent(string! kind, string? toolName) -> void

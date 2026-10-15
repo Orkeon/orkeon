@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Services.Security;
+using Orkeon.Application.Tests.Telemetry;
 using Orkeon.Domain.Security;
 
 namespace Orkeon.Application.Tests.Services.Security;
@@ -11,6 +12,7 @@ namespace Orkeon.Application.Tests.Services.Security;
 /// (including a failing audit sink). The AutoKill escalation is gone (GAP-09): it had no
 /// option and no caller.
 /// </summary>
+[Collection("OrkeonMeter")]
 public class GuardianPipelineTests
 {
     private sealed class ScriptedGuardian : IGuardian
@@ -219,5 +221,55 @@ public class GuardianPipelineTests
         var recorded = Assert.Single(audit.Events);
         Assert.Equal(AuditOutcome.Warning, recorded.Outcome);
         Assert.Equal("Guardian:Input", recorded.Details["threatType"]);
+    }
+
+    // -- CH-02: a block or a warning counts a security event, with no audit logger --
+
+    private static async System.Threading.Tasks.Task<(OrkeonMeterRecorder.Measurement Event, GuardResult Result)> RunUnaudited(
+        Func<GuardContext, GuardResult> check, string tool)
+    {
+        using var recorder = new OrkeonMeterRecorder();
+        var pipeline = BuildPipeline();
+        pipeline.AddGuard(GuardPhase.ToolExecution, new ScriptedGuardian(check));
+
+        var result = await pipeline.ExecuteAsync(
+            new GuardContext { Phase = GuardPhase.ToolExecution, CrewId = "crew-1", ToolName = tool },
+            TestContext.Current.CancellationToken);
+
+        return (Assert.Single(recorder.For("orkeon.security.events", tool)), result);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async System.Threading.Tasks.Task ShouldCountASecurityEvent_WhenTheGuardianBlocks()
+    {
+        var (securityEvent, _) = await RunUnaudited(
+            _ => GuardResult.Block("forbidden", [Violation(GuardThreatSeverity.Medium)]), $"blk_{Guid.NewGuid():N}");
+
+        Assert.Equal(1, securityEvent.Value);
+        Assert.Equal("block", securityEvent.Tags["orkeon.security.kind"]);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async System.Threading.Tasks.Task ShouldCountASecurityEvent_WhenTheGuardianWarns()
+    {
+        var (securityEvent, result) = await RunUnaudited(
+            _ => GuardResult.Warn("noted", [Violation(GuardThreatSeverity.Low)]), $"wrn_{Guid.NewGuid():N}");
+
+        Assert.Equal(GuardAction.Warn, result.Action);
+        Assert.Equal(1, securityEvent.Value);
+        Assert.Equal("warn", securityEvent.Tags["orkeon.security.kind"]);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async System.Threading.Tasks.Task ShouldCountABlockSecurityEvent_WhenAGuardThrows()
+    {
+        var (securityEvent, result) = await RunUnaudited(
+            _ => throw new InvalidOperationException("guard bug"), $"thr_{Guid.NewGuid():N}");
+
+        Assert.Equal(GuardAction.Block, result.Action);
+        Assert.Equal("block", securityEvent.Tags["orkeon.security.kind"]);
     }
 }

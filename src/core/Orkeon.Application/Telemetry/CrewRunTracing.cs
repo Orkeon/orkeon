@@ -23,26 +23,31 @@ public static class CrewRunTracing
         ArgumentNullException.ThrowIfNull(crew);
         var enclosing = Activity.Current;
         var span = OrkeonActivitySources.Crew.StartActivity(OrkeonRunSpans.CrewRun, ActivityKind.Internal);
-        if (span is null)
-            return Nothing;
-
-        span.SetTag(OrkeonRunSpans.CrewId, crew.Id.ToString());
-        span.SetTag(OrkeonRunSpans.CrewName, crew.Name);
-        span.SetTag(OrkeonRunSpans.CrewProcess, crew.ProcessType.ToString());
-        span.SetTag(OrkeonRunSpans.CrewTaskCount, crew.Tasks.Count);
-        var scope = new RunScope(span, enclosing, Ambient.Value);
+        var process = crew.ProcessType.ToString();
+        span?.SetTag(OrkeonRunSpans.CrewId, crew.Id.ToString());
+        span?.SetTag(OrkeonRunSpans.CrewName, crew.Name);
+        span?.SetTag(OrkeonRunSpans.CrewProcess, process);
+        span?.SetTag(OrkeonRunSpans.CrewTaskCount, crew.Tasks.Count);
+        var scope = new RunScope(span, enclosing, Ambient.Value, crew.Name ?? string.Empty, process);
+        OrkeonMeter.CrewStarted(scope.CrewName, process);
         Ambient.Value = scope;
         return scope;
     }
 
-    /// <summary>Marks the run in error, with its reason. The first reason stays.</summary>
+    /// <summary>
+    /// Marks the run in error, with its reason. The first reason stays. A reason that is a
+    /// cancellation (<paramref name="errorType"/> names an <see cref="OperationCanceledException"/>)
+    /// counts the run cancelled, not failed.
+    /// </summary>
     public static void Fail(string reason, string errorType)
     {
-        if (Ambient.Value is not { } scope || scope.Span.Status == ActivityStatusCode.Error)
+        if (Ambient.Value is not { } scope || scope.Failed)
             return;
 
-        scope.Span.SetStatus(ActivityStatusCode.Error, reason);
-        scope.Span.SetTag(GenAiAttributes.ErrorType, errorType);
+        scope.Failed = true;
+        scope.Cancelled = errorType is "System.OperationCanceledException" or "System.Threading.Tasks.TaskCanceledException";
+        scope.Span?.SetStatus(ActivityStatusCode.Error, reason);
+        scope.Span?.SetTag(GenAiAttributes.ErrorType, errorType);
     }
 
     /// <summary>Starts a task span under the run's, without making it current.</summary>
@@ -53,15 +58,15 @@ public static class CrewRunTracing
             return;
 
         var current = Activity.Current;
-        var span = OrkeonActivitySources.Task.StartActivity(OrkeonRunSpans.TaskRun, ActivityKind.Internal, scope.Span.Context);
+        var span = scope.Span is null
+            ? null
+            : OrkeonActivitySources.Task.StartActivity(OrkeonRunSpans.TaskRun, ActivityKind.Internal, scope.Span.Context);
         Activity.Current = current;
-        if (span is null)
-            return;
-
-        span.SetTag(OrkeonRunSpans.TaskId, id.ToString());
+        span?.SetTag(OrkeonRunSpans.TaskId, id.ToString());
         if (agentName is not null)
-            span.SetTag(GenAiAttributes.AgentName, agentName);
-        scope.Tasks[id] = new TaskSpan(span);
+            span?.SetTag(GenAiAttributes.AgentName, agentName);
+        if (scope.Tasks.TryAdd(id, new TaskSpan(span, scope.CrewName, agentName)))
+            OrkeonMeter.TaskStarted(scope.CrewName, agentName);
     }
 
     /// <summary>
@@ -78,7 +83,7 @@ public static class CrewRunTracing
     public static void HandOver(TaskId id, string toAgent)
     {
         if (Ambient.Value is { } scope && scope.Tasks.TryGetValue(id, out var task))
-            task.Span.AddEvent(new ActivityEvent(OrkeonRunSpans.HandOverEvent, tags: new ActivityTagsCollection { [OrkeonRunSpans.HandOverTo] = toAgent }));
+            task.Span?.AddEvent(new ActivityEvent(OrkeonRunSpans.HandOverEvent, tags: new ActivityTagsCollection { [OrkeonRunSpans.HandOverTo] = toAgent }));
     }
 
     /// <summary>Makes the task span current until the result is disposed, then gives the previous activity back.</summary>
@@ -94,12 +99,24 @@ public static class CrewRunTracing
         }
     }
 
-    private sealed class TaskSpan(Activity span)
+    private sealed class TaskSpan(Activity? span, string crewName, string? role)
     {
-        public Activity Span { get; } = span;
+        private readonly long _startedAt = Stopwatch.GetTimestamp();
+
+        public Activity? Span { get; } = span;
 
         public void End(TaskSpanStatus status, string? reason, DateTimeOffset? endedAt)
         {
+            var outcome = status switch
+            {
+                TaskSpanStatus.Completed => "completed",
+                TaskSpanStatus.Failed => "failed",
+                _ => "cancelled",
+            };
+            OrkeonMeter.TaskEnded(crewName, role, outcome, Stopwatch.GetElapsedTime(_startedAt).TotalSeconds);
+            if (Span is null)
+                return;
+
             Span.SetTag(OrkeonRunSpans.TaskStatus, status switch
             {
                 TaskSpanStatus.Completed => "completed",
@@ -130,11 +147,18 @@ public static class CrewRunTracing
         public void Dispose() => Activity.Current = _previous;
     }
 
-    private sealed class RunScope(Activity span, Activity? enclosing, RunScope? parent) : IDisposable
+    private sealed class RunScope(Activity? span, Activity? enclosing, RunScope? parent, string crewName, string process) : IDisposable
     {
+        private readonly long _startedAt = Stopwatch.GetTimestamp();
         private bool _disposed;
 
-        public Activity Span { get; } = span;
+        public Activity? Span { get; } = span;
+
+        public string CrewName { get; } = crewName;
+
+        public bool Failed { get; set; }
+
+        public bool Cancelled { get; set; }
 
         public ConcurrentDictionary<TaskId, TaskSpan> Tasks { get; } = new();
 
@@ -147,10 +171,12 @@ public static class CrewRunTracing
             foreach (var id in Tasks.Keys)
             {
                 if (Tasks.TryRemove(id, out var open))
-                    open.End(TaskSpanStatus.Failed, "the run ended before the task did", endedAt: null);
+                    open.End(TaskSpanStatus.Cancelled, "the run ended before the task did", endedAt: null);
             }
 
-            Span.Stop();
+            var outcome = Cancelled ? "cancelled" : Failed ? "failed" : "completed";
+            OrkeonMeter.CrewEnded(CrewName, process, outcome, Stopwatch.GetElapsedTime(_startedAt).TotalSeconds);
+            Span?.Stop();
             Activity.Current = enclosing;
             Ambient.Value = parent;
         }

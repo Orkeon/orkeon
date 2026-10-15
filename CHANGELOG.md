@@ -7,12 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — crews, tasks, tool calls and security events are measured where they happen
+
+The crew, task, tool and security instruments of the meter `Orkeon` are now fed (GAP-46). The run
+registry counts every crew and every task once, at its end, with its outcome (`completed`, `failed`,
+`cancelled`) and its duration in seconds, and keeps `orkeon.crew.active` and `orkeon.task.active`
+balanced, with or without a span listener. The tool pipeline counts every call with its outcome
+(`success`, `failure`, `blocked`, `cancelled`) and its duration, with or without an audit logger. The
+Guardian counts one `orkeon.security.events` per blocked call and per warning, and the tool pipeline
+one per tool result where an injection pattern is detected. No attribute carries an id. The metrics
+dashboard now reads non-zero crew, task and tool figures after a run.
+
 ### Fixed — every model call is measured once on the meter `Orkeon` **[breaking]**
 
 Every model call is now measured once on the meter `Orkeon` (`OrkeonMeter`, Application), succeeded,
 failed or streamed, with or without a usage sink (GAP-46). Telemetry exports that meter and the
 dashboard listens to it by name. The crew, task, tool and security instruments are declared there
-with their names, units and kinds, but not yet fed. `orkeon.cost.total_usd` is the process-wide total
+with their names, units and kinds; their durations are in seconds (`s`). `orkeon.cost.total_usd` is the process-wide total
 of the USD costs reported since the process started.
 
 - **Breaking**: `OrkeonMetrics` (`Orkeon.Infrastructure.Telemetry`) is removed, with its three DI

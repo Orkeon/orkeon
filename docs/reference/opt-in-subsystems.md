@@ -236,9 +236,16 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
 | `gen_ai.client.operation.duration` | histogram, `s` | operation, provider, model, `error.type` on a failure | every model call |
 | `gen_ai.client.token.usage` | histogram, `{token}` | operation, provider, model, `gen_ai.token.type` | usage the vendor reported; unreported usage is not recorded |
 | `orkeon.cost.total_usd` | observable gauge, `USD` | none | process-wide total of the USD costs reported since the process started; a cost in another currency does not enter it |
-| `orkeon.crew.executions`, `orkeon.task.executions`, `orkeon.tool.executions`, `orkeon.security.events` | counter, `{execution}` / `{event}` | none | declared, not yet fed |
-| `orkeon.crew.duration`, `orkeon.task.duration`, `orkeon.tool.duration` | histogram, `ms` | none | declared, not yet fed |
-| `orkeon.crew.active`, `orkeon.task.active`, `orkeon.llm.active` | up-down counter, `{crew}` / `{task}` / `{call}` | none | declared, not yet fed |
+| `orkeon.crew.executions` | counter, `{execution}` | `orkeon.crew.name`, `orkeon.crew.process`, `orkeon.outcome` (`completed`, `failed`, `cancelled`) | every crew run, once, at its end — with or without a span listener |
+| `orkeon.crew.duration` | histogram, `s` | same as `orkeon.crew.executions` | every crew run, at its end |
+| `orkeon.crew.active` | up-down counter, `{crew}` | `orkeon.crew.name`, `orkeon.crew.process` | +1 when a run starts, -1 when it ends |
+| `orkeon.task.executions` | counter, `{execution}` | `orkeon.crew.name`, `orkeon.agent.role` when the task has one agent, `orkeon.outcome` (`completed`, `failed`, `cancelled`) | every task, once, at its end; a task skipped because a dependency failed, or still open when the run ends, counts `cancelled` |
+| `orkeon.task.duration` | histogram, `s` | same as `orkeon.task.executions` | every task, at its end |
+| `orkeon.task.active` | up-down counter, `{task}` | `orkeon.crew.name`, `orkeon.agent.role` when the task has one agent | +1 when a task starts, -1 when it ends |
+| `orkeon.tool.executions` | counter, `{execution}` | `orkeon.tool.name`, `orkeon.outcome` (`success`, `failure`, `blocked`, `cancelled`) | every call through the tool pipeline, once, with or without an audit logger; a response with `Success=false` counts `failure` |
+| `orkeon.tool.duration` | histogram, `s` | `orkeon.tool.name`, `orkeon.outcome` | every call that ran; a `blocked` call has no duration |
+| `orkeon.security.events` | counter, `{event}` | `orkeon.security.kind` (`block`, `warn`, `injection`), `orkeon.tool.name` when known | one per call the Guardian blocks (a guard that throws counts `block`), one per `Warn` result, one per tool result where an injection pattern is detected (not one per pattern) |
+| `orkeon.llm.active` | up-down counter, `{call}` | none | declared, not yet fed |
 
 No attribute carries an id of a crew, task or agent.
 

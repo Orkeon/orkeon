@@ -1,4 +1,15 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Orkeon.Application.DependencyInjection;
+using Orkeon.Application.Interfaces;
+using Orkeon.Application.Interfaces.Services;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.Monitoring;
+using Orkeon.Infrastructure.Tests.Doubles;
+using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Infrastructure.Tests.Monitoring;
 
@@ -34,6 +45,49 @@ public sealed class MetricsAggregationServiceTests : IClassFixture<MetricsAggreg
         Assert.Equal(0, metrics.ActiveTasks);
         // The cost is a process-wide total on the Orkeon meter: compare with the gauge as it stands.
         Assert.Equal(ReadCostGauge(), metrics.TotalCostUsd, 1e-9);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async Task ShouldReadCallsTasksAndCrews_AfterARun()
+    {
+        var vendor = new MockLlmProvider { Name = "vendor" };
+        vendor.SetChatFunc((_, _) => new LlmResponse { Content = "The notes.", PromptTokens = 3, CompletionTokens = 1, TokensUsed = 4 });
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Warning));
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService()
+            .AddMount("/output", FileAccessRights.Read | FileAccessRights.Write | FileAccessRights.Create));
+        services.AddOrkeonLlmProvider(_ => vendor, LlmConfig.Create("host-model"));
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var container = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await using var scope = container.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var config = await sp.GetRequiredService<ICrewDefinitionLoader>().LoadFromStringAsync($"""
+            name: dashboard-{Guid.NewGuid():N}
+            goal: Publish the notes
+            process: sequential
+            agents:
+              writer:
+                role: Writer
+                goal: Write the notes
+            tasks:
+              draft:
+                description: Draft the notes
+                expected_output: The draft
+                agent: writer
+            """, TestContext.Current.CancellationToken);
+        var crew = await sp.GetRequiredService<ICrewFactory>().CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
+
+        var output = await sp.GetRequiredService<ICrewOrchestrationService>().KickoffAsync(
+            crew.Id, new CrewInput("dashboard", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+        var metrics = await _service.GetCurrentMetricsAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(output.Succeeded);
+        Assert.True(metrics.TotalLlmCalls > 0);
+        Assert.True(metrics.TotalTaskExecutions > 0);
+        Assert.True(metrics.TotalCrewExecutions > 0);
     }
 
     private static double ReadCostGauge()

@@ -1,6 +1,7 @@
 
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Application.Telemetry;
 using Orkeon.Domain.Security;
 
 namespace Orkeon.Application.Services.Security;
@@ -89,6 +90,7 @@ public partial class GuardianPipeline : IGuardianPipeline
             var warnResult = GuardResult.Warn(
                 $"{allViolations.Count} warning(s) detected during {context.Phase} phase",
                 allViolations);
+            OrkeonMeter.RecordSecurityEvent("warn", context.ToolName);
             LogGuardianWarned(context.Phase, context.AgentRole, allViolations.Count);
             await LogAuditEventAsync(context, warnResult, ct).ConfigureAwait(false);
             return warnResult;
@@ -109,6 +111,7 @@ public partial class GuardianPipeline : IGuardianPipeline
             var result = await guard.CheckAsync(context, ct).ConfigureAwait(false);
             if (result.Action == GuardAction.Block)
             {
+                OrkeonMeter.RecordSecurityEvent("block", context.ToolName);
                 LogGuardianBlocked(context.Phase, result.Reason, result.Violations.Count);
                 await LogAuditEventAsync(context, result, ct).ConfigureAwait(false);
                 return (true, result);
@@ -129,6 +132,7 @@ public partial class GuardianPipeline : IGuardianPipeline
                 $"Guard threw exception: {ex.Message}",
                 GuardThreatSeverity.High,
                 DateTime.UtcNow);
+            OrkeonMeter.RecordSecurityEvent("block", context.ToolName);
             var blockResult = GuardResult.Block($"Guard error: {ex.Message}", [violation]);
             await LogAuditEventAsync(context, blockResult, ct).ConfigureAwait(false);
             return (true, blockResult);

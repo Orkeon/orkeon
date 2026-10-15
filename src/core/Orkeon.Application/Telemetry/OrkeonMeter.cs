@@ -28,6 +28,15 @@ public static class OrkeonMeter
     /// <summary>The token direction attribute, <c>input</c> or <c>output</c>.</summary>
     public const string TokenTypeAttribute = "gen_ai.token.type";
 
+    /// <summary>The tool name attribute.</summary>
+    public const string ToolNameAttribute = "orkeon.tool.name";
+
+    /// <summary>The tool call outcome attribute: success, failure, blocked or cancelled.</summary>
+    public const string OutcomeAttribute = "orkeon.outcome";
+
+    /// <summary>The security event kind attribute: block, warn or injection.</summary>
+    public const string SecurityKindAttribute = "orkeon.security.kind";
+
     private static readonly Meter s_meter = new(Name, OrkeonActivitySources.Version);
 
     private static readonly Histogram<double> s_duration = s_meter.CreateHistogram<double>(
@@ -39,22 +48,40 @@ public static class OrkeonMeter
     private static readonly Counter<long> s_calls = s_meter.CreateCounter<long>(
         "orkeon.llm.calls", "{call}", "Model calls");
 
+    private static readonly Counter<long> s_toolExecutions = s_meter.CreateCounter<long>(
+        "orkeon.tool.executions", "{execution}", "Total number of tool executions");
+
+    private static readonly Histogram<double> s_toolDuration = s_meter.CreateHistogram<double>(
+        "orkeon.tool.duration", "s", "Duration of tool executions in seconds");
+
+    private static readonly Counter<long> s_securityEvents = s_meter.CreateCounter<long>(
+        "orkeon.security.events", "{event}", "Total number of security events");
+
+    private static readonly Counter<long> s_taskExecutions = s_meter.CreateCounter<long>(
+        "orkeon.task.executions", "{execution}", "Total number of task executions");
+
+    private static readonly Counter<long> s_crewExecutions = s_meter.CreateCounter<long>(
+        "orkeon.crew.executions", "{execution}", "Total number of crew executions");
+
+    private static readonly Histogram<double> s_taskDuration = s_meter.CreateHistogram<double>(
+        "orkeon.task.duration", "s", "Duration of task executions in seconds");
+
+    private static readonly Histogram<double> s_crewDuration = s_meter.CreateHistogram<double>(
+        "orkeon.crew.duration", "s", "Duration of crew executions in seconds");
+
+    private static readonly UpDownCounter<long> s_crewActive = s_meter.CreateUpDownCounter<long>(
+        "orkeon.crew.active", "{crew}", "Number of currently active crew executions");
+
+    private static readonly UpDownCounter<long> s_taskActive = s_meter.CreateUpDownCounter<long>(
+        "orkeon.task.active", "{task}", "Number of currently active task executions");
+
     private static readonly Lock s_costGate = new();
     private static double s_costTotalUsd;
 
     static OrkeonMeter()
     {
-        // Declared, not yet fed: a listener reads zero for them until the crew, task, tool and
-        // security paths record. The meter owns them: no reference to hold.
-        s_meter.CreateCounter<long>("orkeon.tool.executions", "{execution}", "Total number of tool executions");
-        s_meter.CreateCounter<long>("orkeon.task.executions", "{execution}", "Total number of task executions");
-        s_meter.CreateCounter<long>("orkeon.crew.executions", "{execution}", "Total number of crew executions");
-        s_meter.CreateCounter<long>("orkeon.security.events", "{event}", "Total number of security events");
-        s_meter.CreateHistogram<double>("orkeon.tool.duration", "ms", "Duration of tool executions in milliseconds");
-        s_meter.CreateHistogram<double>("orkeon.task.duration", "ms", "Duration of task executions in milliseconds");
-        s_meter.CreateHistogram<double>("orkeon.crew.duration", "ms", "Duration of crew executions in milliseconds");
-        s_meter.CreateUpDownCounter<long>("orkeon.crew.active", "{crew}", "Number of currently active crew executions");
-        s_meter.CreateUpDownCounter<long>("orkeon.task.active", "{task}", "Number of currently active task executions");
+        // Declared, not yet fed: a listener reads zero for them until the call path records. The meter
+        // owns them: no reference to hold.
         s_meter.CreateUpDownCounter<long>("orkeon.llm.active", "{call}", "Number of currently active LLM calls");
         // The meter owns the gauge: no reference to hold.
         s_meter.CreateObservableGauge(
@@ -109,6 +136,64 @@ public static class OrkeonMeter
             outputTags.Add(TokenTypeAttribute, "output");
             s_tokens.Record(output, outputTags);
         }
+    }
+
+    /// <summary>Measures the end of one tool call.</summary>
+    /// <param name="toolName">The tool name.</param>
+    /// <param name="outcome">success, failure, blocked or cancelled.</param>
+    /// <param name="seconds">The call duration in seconds; null when the call never ran (blocked).</param>
+    public static void RecordToolExecution(string toolName, string outcome, double? seconds)
+    {
+        var tags = new TagList { { ToolNameAttribute, toolName }, { OutcomeAttribute, outcome } };
+        s_toolExecutions.Add(1, tags);
+        if (seconds is { } value)
+            s_toolDuration.Record(value, tags);
+    }
+
+    internal static void CrewStarted(string crew, string process) =>
+        s_crewActive.Add(1, CrewTags(crew, process));
+
+    internal static void CrewEnded(string crew, string process, string outcome, double seconds)
+    {
+        s_crewActive.Add(-1, CrewTags(crew, process));
+        var tags = CrewTags(crew, process);
+        tags.Add(OutcomeAttribute, outcome);
+        s_crewExecutions.Add(1, tags);
+        s_crewDuration.Record(seconds, tags);
+    }
+
+    internal static void TaskStarted(string crew, string? role) =>
+        s_taskActive.Add(1, TaskTags(crew, role));
+
+    internal static void TaskEnded(string crew, string? role, string outcome, double seconds)
+    {
+        s_taskActive.Add(-1, TaskTags(crew, role));
+        var tags = TaskTags(crew, role);
+        tags.Add(OutcomeAttribute, outcome);
+        s_taskExecutions.Add(1, tags);
+        s_taskDuration.Record(seconds, tags);
+    }
+
+    private static TagList CrewTags(string crew, string process) =>
+        new() { { "orkeon.crew.name", crew }, { "orkeon.crew.process", process } };
+
+    private static TagList TaskTags(string crew, string? role)
+    {
+        var tags = new TagList { { "orkeon.crew.name", crew } };
+        if (!string.IsNullOrEmpty(role))
+            tags.Add("orkeon.agent.role", role);
+        return tags;
+    }
+
+    /// <summary>Counts one security event.</summary>
+    /// <param name="kind">block, warn or injection.</param>
+    /// <param name="toolName">The tool involved; null or empty when none is known.</param>
+    public static void RecordSecurityEvent(string kind, string? toolName)
+    {
+        var tags = new TagList { { SecurityKindAttribute, kind } };
+        if (!string.IsNullOrEmpty(toolName))
+            tags.Add(ToolNameAttribute, toolName);
+        s_securityEvents.Add(1, tags);
     }
 
     /// <summary>Adds a cost the vendor billed in USD to the process-wide total.</summary>

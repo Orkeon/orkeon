@@ -243,9 +243,16 @@ tâche, le coût estimé.
 | `gen_ai.client.operation.duration` | histogramme, `s` | opération, fournisseur, modèle, `error.type` en cas d'échec | chaque appel au modèle |
 | `gen_ai.client.token.usage` | histogramme, `{token}` | opération, fournisseur, modèle, `gen_ai.token.type` | l'usage rapporté par le fournisseur ; un usage non rapporté n'est pas enregistré |
 | `orkeon.cost.total_usd` | jauge observable, `USD` | aucun | total, à l'échelle du processus, des coûts en USD rapportés depuis son démarrage ; un coût dans une autre devise n'y entre pas |
-| `orkeon.crew.executions`, `orkeon.task.executions`, `orkeon.tool.executions`, `orkeon.security.events` | compteur, `{execution}` / `{event}` | aucun | déclaré, pas encore alimenté |
-| `orkeon.crew.duration`, `orkeon.task.duration`, `orkeon.tool.duration` | histogramme, `ms` | aucun | déclaré, pas encore alimenté |
-| `orkeon.crew.active`, `orkeon.task.active`, `orkeon.llm.active` | compteur haut-bas, `{crew}` / `{task}` / `{call}` | aucun | déclaré, pas encore alimenté |
+| `orkeon.crew.executions` | compteur, `{execution}` | `orkeon.crew.name`, `orkeon.crew.process`, `orkeon.outcome` (`completed`, `failed`, `cancelled`) | chaque exécution de crew, une fois, à sa fin — avec ou sans écouteur de spans |
+| `orkeon.crew.duration` | histogramme, `s` | ceux de `orkeon.crew.executions` | chaque exécution de crew, à sa fin |
+| `orkeon.crew.active` | compteur haut-bas, `{crew}` | `orkeon.crew.name`, `orkeon.crew.process` | +1 au début d'une exécution, -1 à sa fin |
+| `orkeon.task.executions` | compteur, `{execution}` | `orkeon.crew.name`, `orkeon.agent.role` quand la tâche a un seul agent, `orkeon.outcome` (`completed`, `failed`, `cancelled`) | chaque tâche, une fois, à sa fin ; une tâche écartée parce qu'une dépendance a échoué, ou encore ouverte à la fin de l'exécution, compte `cancelled` |
+| `orkeon.task.duration` | histogramme, `s` | ceux de `orkeon.task.executions` | chaque tâche, à sa fin |
+| `orkeon.task.active` | compteur haut-bas, `{task}` | `orkeon.crew.name`, `orkeon.agent.role` quand la tâche a un seul agent | +1 au début d'une tâche, -1 à sa fin |
+| `orkeon.tool.executions` | compteur, `{execution}` | `orkeon.tool.name`, `orkeon.outcome` (`success`, `failure`, `blocked`, `cancelled`) | chaque appel passé par le pipeline d'outils, une fois, avec ou sans journal d'audit ; une réponse `Success=false` compte `failure` |
+| `orkeon.tool.duration` | histogramme, `s` | `orkeon.tool.name`, `orkeon.outcome` | chaque appel exécuté ; un appel `blocked` n'a pas de durée |
+| `orkeon.security.events` | compteur, `{event}` | `orkeon.security.kind` (`block`, `warn`, `injection`), `orkeon.tool.name` quand il est connu | un par appel que le Guardian bloque (une garde qui lève une exception compte `block`), un par résultat `Warn`, un par résultat d'outil où un motif d'injection est repéré (pas un par motif) |
+| `orkeon.llm.active` | compteur haut-bas, `{call}` | aucun | déclaré, pas encore alimenté |
 
 Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 
