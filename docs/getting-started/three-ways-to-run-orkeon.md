@@ -405,6 +405,11 @@ published to GHCR) has the **`orkeon` CLI as its default entry point**, ships th
 .NET required. The service host is not in it: it has its own image, built from
 `deploy/Dockerfile.host` (see [the service host](../architecture/service-host.md)).
 
+The published image is multi-platform: one tag, `linux/amd64` and `linux/arm64`, and Docker
+pulls the one that matches your machine. On Apple Silicon, or any arm64 host, it runs
+natively, not under emulation. `docker manifest inspect ghcr.io/orkeon/orkeon-runners:<version>`
+lists both.
+
 Every image keeps the license and the notices of what it redistributes under
 `/usr/share/doc/orkeon/` (`LICENSE.md`, `THIRD-PARTY-NOTICES.md`), the path the Debian
 package uses; the .NET runtime is the one of Microsoft's base image, which carries its own.
@@ -515,7 +520,9 @@ orkeon run /app/examples/scripting/01-hello-world.ork.ts
 
 Build a variant that needs **no host-side model server and no API key** —
 llama.cpp's `llama-server` plus one GGUF are embedded and served inside the
-container on the same URL shape the default settings already use:
+container on the same URL shape the default settings already use. This variant is
+`linux/amd64` only — the embedded llama.cpp build is x64 — so on an arm64 machine add
+`--platform linux/amd64` to the `docker build` (it then runs under emulation, slowly):
 
 ```bash
 # Granite 4.0 h-tiny (Apache 2.0, ~4.2 GB of weights → ~6 GB image)

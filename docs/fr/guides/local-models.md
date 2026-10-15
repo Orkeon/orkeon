@@ -224,7 +224,9 @@ pas — ajoutez `--add-host=host.docker.internal:host-gateway` au `docker run`.
 Construisez une variante qui ne demande aucun serveur côté hôte : le
 `llama-server` de llama.cpp et un GGUF sont embarqués et servis dans le
 conteneur avec la même forme d'URL que DMR — zéro changement de settings. Les
-recettes vivent au stage `local-llm` de `Dockerfile.runners` :
+recettes vivent au stage `local-llm` de `Dockerfile.runners`. Il est `linux/amd64`
+seulement (le llama.cpp embarqué est un build x64) : sur une machine arm64, ajoutez
+`--platform linux/amd64` au `docker build`, et il tourne sous émulation.
 
 ```bash
 # Granite 4.0 h-tiny (Apache 2.0, ~4,2 Go de poids → image ~6 Go)

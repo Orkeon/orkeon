@@ -9,6 +9,13 @@
 #
 # Build:
 #   docker build -f Dockerfile.runners -t orkeon-runners .
+# builds for the machine's own architecture (linux/amd64 or linux/arm64). The published
+# image is a manifest list of both, which release.yml pushes with buildx:
+#   docker buildx build -f Dockerfile.runners --platform linux/amd64,linux/arm64 \
+#     -t ghcr.io/orkeon/orkeon-runners:<version> --push .
+# The publish and the esbuild fetch run on the build machine for either target; only
+# the RUN steps of the runtime stage execute in the target architecture, so a machine
+# of the other one needs QEMU (docker/setup-qemu-action in CI).
 #
 # --- The /workspace convention (start here) -----------------------------------
 # Mount your project at /workspace and reference everything from there — no
@@ -106,7 +113,14 @@
 # ships 10.0.3xx. This matters: Orkeon.Domain runs a source generator
 # (Orkeon.Generators) whose partial-method output only matches under that SDK
 # band — an older preview SDK leaves them unimplemented (CS8795).
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d AS build
+#
+# The stage runs on the BUILD platform and publishes for the TARGET one
+# (--platform=$BUILDPLATFORM), so a multi-platform build compiles natively, with no
+# emulation, whatever architectures the image is built for. That holds because a
+# framework-dependent publish only compiles IL and picks the native assets of the RID
+# out of the packages: ReadyToRun and AOT are off (Directory.Build.props), and the
+# only target-arch file fetched is the esbuild Go binary, which is copied, never run.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d AS build
 WORKDIR /src
 
 # Central build/version/package config inherited by both src/ and examples/,
@@ -121,26 +135,40 @@ COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
 COPY examples/ examples/
 
+# TARGETARCH (amd64 | arm64, set by buildx to the platform being built for) names the
+# RID the apps are published for and the @esbuild package fetched below: x64 or arm64
+# is the suffix of both. Mapped once, here, and read by the three steps that follow;
+# an architecture the image does not build stops the build at this line. The classic
+# builder leaves TARGETARCH empty, which keeps the historical linux-x64 build.
+ARG TARGETARCH
+RUN case "${TARGETARCH:-amd64}" in \
+      amd64) echo x64 ;; \
+      arm64) echo arm64 ;; \
+      *) echo "Unsupported TARGETARCH '${TARGETARCH}': this image is built for linux/amd64 and linux/arm64." >&2; exit 1 ;; \
+    esac > /tmp/rid-arch
+
 # Framework-dependent publish (--self-contained false: the runtime ships in the
-# final base image). Pinned to linux-x64: a portable/RID-agnostic publish drags
-# in every platform's native assets (onnxruntime, tree-sitter grammars, SQLite,
-# ...) for all of win/linux/osx, ballooning the image. RID-scoping prunes those
-# to just this image's arch. (For a multi-arch image, drive the RID from
-# $TARGETARCH.) SkipScriptingNpmInstall skips the esbuild npm bootstrap (we fetch
-# the binary directly below); ErrorOnDuplicatePublishOutputFiles tolerates the
-# shared transitive assets several runners pull in.
+# final base image). Pinned to the image's own RID (linux-x64 or linux-arm64, from
+# TARGETARCH above): a portable/RID-agnostic publish drags in every platform's native
+# assets (onnxruntime, tree-sitter grammars, SQLite, ...) for all of win/linux/osx,
+# ballooning the image. RID-scoping prunes those to just this image's arch. For
+# linux-arm64 on an x64 build platform the SDK fetches the arm64 apphost pack from
+# NuGet; for the build's own RID it is already in the SDK image. SkipScriptingNpmInstall
+# skips the esbuild npm bootstrap (we fetch the binary directly below);
+# ErrorOnDuplicatePublishOutputFiles tolerates the shared transitive assets several
+# runners pull in.
 #
 # Default runner: the `orkeon` CLI (src/scripting/Orkeon.Scripting.Cli,
 # AssemblyName `orkeon`) — runs both `orkeon run crew.yaml` and
 # `orkeon run script.ork.ts`.
 RUN dotnet publish src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj \
-      -c Release -r linux-x64 --self-contained false \
+      -c Release -r "linux-$(cat /tmp/rid-arch)" --self-contained false \
       -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o /app/runners/orkeon --nologo
 # REPL console app (src/apps/Orkeon.ConsoleApp).
 RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj \
-      -c Release -r linux-x64 --self-contained false \
+      -c Release -r "linux-$(cat /tmp/rid-arch)" --self-contained false \
       -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o /app/runners/repl --nologo
@@ -150,7 +178,8 @@ RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj \
 # binary via, in order: the EsbuildPath option, the ORKEON_ESBUILD_PATH env var,
 # a bundled `esbuild-bin/esbuild` next to the app, a PATH lookup, then repo-local
 # candidates (EsbuildTranspiler.cs). We fetch the Go-built binary straight from
-# the npm registry (@esbuild/linux-x64) — the SDK image has curl+tar but no npm —
+# the npm registry (@esbuild/linux-x64 or linux-arm64, the image's own — the same
+# suffix as the RID) — the SDK image has curl+tar but no npm —
 # mirroring scripts/package-installers.sh, and expose it below via
 # ORKEON_ESBUILD_PATH so every app finds it regardless of its base directory.
 # The version is read from the lockfile (single source of truth), with the same
@@ -158,19 +187,20 @@ RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj \
 # against the sha512 integrity pinned in the lockfile (coreutils only — the SDK
 # image has no npm) before anything inside it is trusted.
 COPY tools/scripting-esbuild/package-lock.json ./esbuild-lock.json
-RUN ESBUILD_VERSION="$(grep -A1 '"node_modules/esbuild"' esbuild-lock.json \
+RUN ARCH="$(cat /tmp/rid-arch)" \
+    && ESBUILD_VERSION="$(grep -A1 '"node_modules/esbuild"' esbuild-lock.json \
       | sed -n 's/.*"version": "\([^"]*\)".*/\1/p' | head -1)" \
     && ESBUILD_VERSION="${ESBUILD_VERSION:-0.25.12}" \
-    && echo "Fetching @esbuild/linux-x64@${ESBUILD_VERSION}" \
-    && curl -fsSL "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-${ESBUILD_VERSION}.tgz" \
+    && echo "Fetching @esbuild/linux-${ARCH}@${ESBUILD_VERSION}" \
+    && curl -fsSL "https://registry.npmjs.org/@esbuild/linux-${ARCH}/-/linux-${ARCH}-${ESBUILD_VERSION}.tgz" \
          -o /tmp/esbuild.tgz \
-    && EXPECTED_B64="$(grep -A5 '"node_modules/@esbuild/linux-x64"' esbuild-lock.json \
+    && EXPECTED_B64="$(grep -A5 "\"node_modules/@esbuild/linux-${ARCH}\"" esbuild-lock.json \
          | sed -n 's/.*"integrity": "sha512-\([^"]*\)".*/\1/p' | head -1)" \
     && test -n "$EXPECTED_B64" \
     && EXPECTED_HEX="$(printf '%s' "$EXPECTED_B64" | base64 -d | od -An -v -tx1 | tr -d ' \n')" \
     && ACTUAL_HEX="$(sha512sum /tmp/esbuild.tgz | cut -d' ' -f1)" \
     && { [ "$ACTUAL_HEX" = "$EXPECTED_HEX" ] \
-         || { echo "Integrity mismatch for @esbuild/linux-x64@${ESBUILD_VERSION}" >&2; exit 1; }; } \
+         || { echo "Integrity mismatch for @esbuild/linux-${ARCH}@${ESBUILD_VERSION}" >&2; exit 1; }; } \
     && mkdir -p /app/esbuild-bin \
     && tar -xzf /tmp/esbuild.tgz -C /tmp \
     && cp /tmp/package/bin/esbuild /app/esbuild-bin/esbuild \
@@ -411,7 +441,17 @@ ENTRYPOINT ["orkeon-entrypoint"]
 # GHCR server-b* image tags stopped at b5350, which predates --api-prefix).
 # The ubuntu-x64 build matches this image's Ubuntu 24.04 base — verified by
 # running --version and probing --api-prefix during the build.
+#
+# This variant stays linux/amd64. The published image is multi-platform (the default
+# target, below, is built for linux/amd64 and linux/arm64) but a build of the default
+# target never reaches this stage; asking for this one on another platform stops at
+# the first step with a message, instead of baking an x64 server an arm64 base cannot run.
 FROM runtime AS local-llm
+ARG TARGETARCH
+RUN case "${TARGETARCH:-amd64}" in \
+      amd64) ;; \
+      *) echo "local-llm embeds the x64 build of llama.cpp: build it with --platform linux/amd64 (TARGETARCH is '${TARGETARCH}')." >&2; exit 1 ;; \
+    esac
 ARG LLAMA_CPP_BUILD=b9972
 ARG LOCAL_MODEL_URL
 ARG LOCAL_MODEL_NAME=ai/granite-4.0-h-tiny

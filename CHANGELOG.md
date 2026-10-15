@@ -106,6 +106,24 @@ multi-app archives too, the REPL no longer needs the .NET 10 runtime. `orkeon-sl
 framework-dependent launcher left. The `.zip` carries one more copy of the runtime, the tarballs
 share it by hard links. A Linux `install-from-source.sh` installs the REPL with the CLI.
 
+### Changed — the `orkeon-runners` image is built for `linux/amd64` and `linux/arm64`
+
+`ghcr.io/orkeon/orkeon-runners` was a single-architecture manifest: `linux/amd64`, so Apple Silicon
+and every arm64 host ran it under emulation. `release.yml` now pushes one multi-platform tag, and
+reads it back with `docker manifest inspect` to fail the job when either platform is missing.
+`Dockerfile.runners` runs its build stage on the build platform (`FROM --platform=$BUILDPLATFORM`)
+and maps `TARGETARCH` to the RID suffix once: both `dotnet publish -r linux-<x64|arm64>` and the
+`@esbuild/linux-<x64|arm64>` fetch (URL and lockfile integrity) use it, so the apps are compiled
+natively whatever the target. The publish is framework-dependent with ReadyToRun off, so nothing in
+it needs the target architecture; for `linux-arm64` the SDK fetches the arm64 apphost pack from
+NuGet. The runtime stage's `RUN` steps do execute in the target architecture, so the job registers
+QEMU for arm64 (`docker/setup-qemu-action`) next to `docker/setup-buildx-action`, which a
+multi-platform push needs. `provenance: false` keeps the image unattested, as it was.
+
+The `local-llm` target stays `linux/amd64`: the llama.cpp build it embeds is x64, a build of the default
+target never reaches it, and asking for it on another platform now stops with a message at its first
+step. On an arm64 machine, `docker build --platform linux/amd64 --target local-llm …`.
+
 ### Added — `orkeon-repl` asks the operator about a tool call
 
 With the permission gate on, a tool call the session's mode asked about was refused in the REPL:

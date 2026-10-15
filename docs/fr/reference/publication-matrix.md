@@ -210,7 +210,8 @@ tarball macOS), et seulement ensuite les attache à la GitHub Release. Le pipeli
 `installers → {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} →
 release → {verify-published, apt-publish → verify-apt}` (les deux derniers sont décrits dans
 [Le dépôt apt](#le-dépôt-apt)) ; derrière ces mêmes cinq jobs, `runners-image` pousse l'image conteneur
-`orkeon-runners` sur GHCR en parallèle de `release`, de sorte qu'un smoke rouge ne déplace
+`orkeon-runners` sur GHCR (un seul tag multi-plateforme, `linux/amd64` et `linux/arm64`, vérifié
+une fois poussé) en parallèle de `release`, de sorte qu'un smoke rouge ne déplace
 ni la Release ni le tag `:latest`. `workflow_dispatch` exécute la même chose sans la
 publication (pas de tag, donc pas de Release à alimenter). Un tag portant un segment de
 pré-version (`v1.0.0-rc.4`) est publié **comme prerelease**, et ne devient donc jamais la
