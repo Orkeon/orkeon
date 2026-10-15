@@ -517,14 +517,17 @@ No attribute carries an id of a crew, task or agent.
 ## Permission gate — `AddOrkeonPermissionGate(configuration)`
 
 - **Activation**: called by `RunnerHost` and the ConsoleApp bootstrap, but registers
-  nothing unless `Orkeon:Security:PermissionGate:Enabled = true`. `Interactive`
-  (default `false`) declares an approval channel; leave it `false` until the REPL
-  Ask flow lands (v2).
+  nothing unless `Orkeon:Security:PermissionGate:Enabled = true`. When the host registers
+  an `IToolApprovalChannel` (`orkeon-repl` does), the gate puts every ask to it and
+  returns allow or deny. Without a channel, `Interactive` (default `false`) declares a
+  caller that resolves asks itself; left `false`, an ask is a refusal.
 - **Effect**: `ModePermissionGate` is consulted by the scripted `ctx.llm.act` loop
   before EACH tool execution. Modes: `bypassPermissions` → allow all; `plan` → deny
   non-reads; `dontAsk` → allow reads, deny the rest without ever asking;
   `acceptEdits` → auto-accept reads + `file_write`, ask for shell;
-  `default` → auto-accept reads, ask for everything else. Headless, every ask degrades to a motivated
+  `default` → auto-accept reads, ask for everything else. With an approval channel, an ask
+  waits for the operator, and the script's `ExecutionTimeout` stops meanwhile; a refusal reads
+  `DENIED: … The operator denied the call.` Headless, every ask degrades to a motivated
   `DENIED:` fed back to the model as the tool result (no exception). Unknown tools
   are classified as writes (fail-closed).
 - **Declarative classification**: tools can self-declare their class via

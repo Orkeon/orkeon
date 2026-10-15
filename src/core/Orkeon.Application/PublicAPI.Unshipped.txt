@@ -2319,3 +2319,26 @@ static Orkeon.Application.Telemetry.OrkeonMeter.RecordSecurityEvent(string! kind
 Orkeon.Application.Crew.Execution.NativeToolCallTranscript
 static Orkeon.Application.Crew.Execution.NativeToolCallTranscript.AssistantTurn(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, System.Text.Json.JsonElement responseBody) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage!
 static Orkeon.Application.Crew.Execution.NativeToolCallTranscript.TruncateResult(string! result, string! toolName) -> string!
+Orkeon.Application.Interfaces.Security.IToolApprovalChannel
+Orkeon.Application.Interfaces.Security.IToolApprovalChannel.RequestAsync(Orkeon.Application.Interfaces.Security.ToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolApprovalDecision>!
+Orkeon.Application.Interfaces.Security.ToolApprovalDecision
+Orkeon.Application.Interfaces.Security.ToolApprovalDecision.AllowForSession = 2 -> Orkeon.Application.Interfaces.Security.ToolApprovalDecision
+Orkeon.Application.Interfaces.Security.ToolApprovalDecision.AllowOnce = 1 -> Orkeon.Application.Interfaces.Security.ToolApprovalDecision
+Orkeon.Application.Interfaces.Security.ToolApprovalDecision.Deny = 0 -> Orkeon.Application.Interfaces.Security.ToolApprovalDecision
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.Arguments.get -> System.Collections.Immutable.ImmutableDictionary<string!, object?>!
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.Arguments.init -> void
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.Mode.get -> string!
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.Mode.init -> void
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.Reason.get -> string!
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.Reason.init -> void
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.ToolName.get -> string!
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.ToolName.init -> void
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.ToolApprovalRequest() -> void
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.<Clone>$() -> Orkeon.Application.Interfaces.Security.ToolApprovalRequest!
+Orkeon.Application.Interfaces.Security.ToolApprovalRequest.Equals(Orkeon.Application.Interfaces.Security.ToolApprovalRequest? other) -> bool
+override Orkeon.Application.Interfaces.Security.ToolApprovalRequest.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Security.ToolApprovalRequest.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Security.ToolApprovalRequest.ToString() -> string!
+static Orkeon.Application.Interfaces.Security.ToolApprovalRequest.operator !=(Orkeon.Application.Interfaces.Security.ToolApprovalRequest? left, Orkeon.Application.Interfaces.Security.ToolApprovalRequest? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolApprovalRequest.operator ==(Orkeon.Application.Interfaces.Security.ToolApprovalRequest? left, Orkeon.Application.Interfaces.Security.ToolApprovalRequest? right) -> bool

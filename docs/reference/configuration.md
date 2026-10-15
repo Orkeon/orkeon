@@ -1247,7 +1247,7 @@ by `RunnerHost` — is a no-op unless `Enabled = true`.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Enabled` | boolean | `false` | Whether the gate is registered. Left `false`, no tool call is gated. |
-| `Interactive` | boolean | `false` | Whether an approval channel exists to ask an operator. No shipped host has one: left `false`, a call that needs an approval is refused, and the model reads the reason as the tool's result. |
+| `Interactive` | boolean | `false` | Whether the host resolves an approval itself, without an approval channel. A host that registers a channel (orkeon-repl does) asks the operator whatever this says. Left `false` without a channel, a call that needs an approval is refused, and the model reads the reason as the tool's result. |
 <!-- /settings -->
 
 ### `Orkeon:Dlp`
