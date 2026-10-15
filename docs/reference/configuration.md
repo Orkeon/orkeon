@@ -1280,7 +1280,10 @@ What the tools of an agent may do, and which servers and indexes they reach.
 What `ShellCommandTool` may run, configuration only (`AddOrkeonCodeTools()`):
 `AllowInterpreters` allows the interpreters and mutating git (**RCE-equivalent**, a warning is
 emitted); `ExtraAllowedCommands` adds to the allowlist and `AllowedCommands` replaces it whole —
-the replacement cancels `AllowInterpreters`. `Confinement:Mode = Bubblewrap` runs the process
+the replacement cancels `AllowInterpreters`. A command outside the read-only default list (an
+interpreter, an added command, git once its restriction is lifted) can write: a virtual path on
+its command line and its working directory need every right, so a read-only mount is refused to
+it and stays readable through the file tools. `Confinement:Mode = Bubblewrap` runs the process
 under `bwrap` (Linux) in a view built from the VFS; a call fails, with the reason, when `bwrap`
 cannot confine it ([limits](./limitations.md)).
 

@@ -1328,7 +1328,11 @@ Ce que les outils d'un agent ont le droit de faire, et les serveurs et index qu'
 Ce que `ShellCommandTool` peut lancer, par la configuration seule (`AddOrkeonCodeTools()`) :
 `AllowInterpreters` autorise les interpréteurs et le git mutant (**équivalent RCE**, un
 avertissement est émis) ; `ExtraAllowedCommands` ajoute à l'allowlist et `AllowedCommands` la
-remplace en entier — le remplacement annule `AllowInterpreters`. `Confinement:Mode = Bubblewrap`
+remplace en entier — le remplacement annule `AllowInterpreters`. Une commande hors de la liste
+par défaut en lecture seule (un interpréteur, une commande ajoutée, git une fois sa restriction
+levée) peut écrire : un chemin virtuel de sa ligne de commande et son répertoire de travail
+demandent tous les droits, si bien qu'un montage en lecture seule lui est refusé et reste lisible
+par les outils de fichiers. `Confinement:Mode = Bubblewrap`
 lance le processus sous `bwrap` (Linux) dans une vue construite depuis le VFS ; un appel échoue,
 avec la raison, quand `bwrap` ne peut le confiner ([limites](./limitations.md)).
 

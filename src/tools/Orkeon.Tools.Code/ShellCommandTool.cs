@@ -19,8 +19,9 @@ public sealed record ShellCommandRequest
     public string Command { get; init; } = "";
 
     /// <summary>
-    /// Gets the virtual working directory for command execution. Left empty, the command runs
-    /// in the first mounted directory the agent can read.
+    /// Gets the virtual working directory for command execution. Left empty, a read-only command
+    /// runs in the first mounted directory the agent can read, any other command in the first
+    /// one that grants every right.
     /// <para>
     /// This used to default to <c>"."</c>, which no VFS registry can resolve: since ADR-008 a
     /// virtual path starts with '/', so the lookup found no mount and every call that omitted
@@ -29,7 +30,7 @@ public sealed record ShellCommandRequest
     /// </para>
     /// </summary>
     [FieldSchema(
-        Description = "Virtual working directory for command execution, e.g. /workspace. Defaults to the first mounted directory.",
+        Description = "Virtual working directory for command execution, e.g. /workspace. Defaults to the first mounted directory the command may use: readable for a read-only command, writable for any other.",
         IsRequired = false,
         Example = "/workspace")]
     public string WorkingDirectory { get; init; } = "";
@@ -87,6 +88,15 @@ public sealed record ShellCommandResponse
 /// paths. Both directions cover <see cref="Orkeon.Domain.FileSystem.MountVisibility.AgentFacing"/>
 /// mounts only (the contract of <c>IFileSystemService.GetAvailableMounts</c>) and match
 /// ordinally — a Windows tool that re-cases paths defeats the outbound rewrite.
+/// </para>
+/// <para>
+/// <b>Rights a path needs.</b> A command of the read-only default allowlist needs Read on the
+/// paths it names and on its working directory. Any other command (an interpreter, an extra or
+/// custom command, <c>git</c> once interpreters lift its restriction) needs every right
+/// (<see cref="Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite"/>): the process may write,
+/// create or delete there, and the tool cannot tell which. The check covers the paths the command
+/// line names; what the process reaches by itself (a path in a script, a relative path climbing
+/// out of the working directory) is outside the VFS.
 /// </para>
 /// <para>
 /// <b>Interpreters are RCE-equivalent.</b> The default allowlist contains
@@ -233,6 +243,13 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     [
         "dotnet", "npm", "node", "find"
     ];
+
+    /// <summary>
+    /// The commands of <see cref="s_defaultAllowedCommands"/>, which only read the paths they
+    /// are given (see <see cref="RequiredPathRights"/>).
+    /// </summary>
+    private static readonly HashSet<string> s_readOnlyCommands =
+        new(s_defaultAllowedCommands, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Read-only <c>git</c> subcommands permitted by default. Other subcommands
@@ -408,9 +425,10 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
         // VFS inbound check: an argument naming a mount-prefixed virtual path the file
         // system refuses must fail the call (redacted reason) — never reach the process.
-        var (_, argumentDenial) = RewriteInboundArguments(ParseCommand(request.Command).Arguments);
+        var rights = RequiredPathRights(executable);
+        var (_, argumentDenial) = RewriteInboundArguments(ParseCommand(request.Command).Arguments, rights);
         if (argumentDenial is not null)
-            return $"Command argument denied by file system: {argumentDenial}";
+            return $"Command argument denied by file system: {argumentDenial}{WritingCommandNote(executable, rights)}";
 
         if (request.TimeoutSeconds <= 0)
             return "Timeout must be greater than 0";
@@ -431,30 +449,31 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         ShellCommandRequest request, CancellationToken cancellationToken)
     {
         var (executable, arguments) = ParseCommand(request.Command);
+        var rights = RequiredPathRights(executable);
         var confined = Confinement.Mode == ShellConfinementMode.Bubblewrap;
 
         // Virtual→physical: the child process only understands physical paths, unless it is
         // confined and sees the virtual ones. Validation already vetoed denials; this re-run is
         // belt-and-braces against a scope swap, and the check a confined call keeps.
-        var (rewrittenArguments, argumentDenial) = RewriteInboundArguments(arguments);
+        var (rewrittenArguments, argumentDenial) = RewriteInboundArguments(arguments, rights);
         if (argumentDenial is not null)
             return new ShellCommandResponse
             {
                 ExitCode = -1,
                 Stdout = "",
-                Stderr = $"Argument denied: {argumentDenial}",
+                Stderr = $"Argument denied: {argumentDenial}{WritingCommandNote(executable, rights)}",
                 Completed = false
             };
         if (!confined)
             arguments = rewrittenArguments;
 
-        var (workingDirectory, workingDirectoryDenial) = ResolveWorkingDirectory(request.WorkingDirectory);
+        var (workingDirectory, workingDirectoryDenial) = ResolveWorkingDirectory(request.WorkingDirectory, rights);
         if (workingDirectoryDenial is not null)
             return new ShellCommandResponse
             {
                 ExitCode = -1,
                 Stdout = "",
-                Stderr = $"WorkingDirectory denied: {workingDirectoryDenial}",
+                Stderr = $"WorkingDirectory denied: {workingDirectoryDenial}{WritingCommandNote(executable, rights)}",
                 Completed = false
             };
 
@@ -785,11 +804,12 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// omitted the field — the shape a model writes for an optional field — was refused.
     /// </para>
     /// </summary>
-    private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(string requested)
+    private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(
+        string requested, FileAccessRights rights)
     {
         if (!string.IsNullOrWhiteSpace(requested))
         {
-            var named = _fileSystem.ResolveAndValidate(requested, FileAccessRights.Read);
+            var named = _fileSystem.ResolveAndValidate(requested, rights);
             return named.IsAllowed ? (named.ResolvedPath!, null) : ("", named.DenialReason);
         }
 
@@ -797,15 +817,18 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (mounts.Count == 0)
             return ("", null);
 
-        var readable = mounts.FirstOrDefault(m => m.DefaultRights.HasFlag(FileAccessRights.Read));
-        if (readable is null)
-            return ("", "no readable mount is available to serve as the working directory.");
+        var usable = mounts.FirstOrDefault(m => (m.DefaultRights & rights) == rights);
+        if (usable is null)
+            return ("", rights == FileAccessRights.Read
+                ? "no readable mount is available to serve as the working directory."
+                : "no mount grants every right, so none can serve as the working directory.");
 
-        var resolved = _fileSystem.ResolveAndValidate(readable.VirtualPath, FileAccessRights.Read);
+        var resolved = _fileSystem.ResolveAndValidate(usable.VirtualPath, rights);
         return resolved.IsAllowed ? (resolved.ResolvedPath!, null) : ("", resolved.DenialReason);
     }
 
-    private (string[] Arguments, string? DenialReason) RewriteInboundArguments(string[] arguments)
+    private (string[] Arguments, string? DenialReason) RewriteInboundArguments(
+        string[] arguments, FileAccessRights rights)
     {
         var mounts = _fileSystem.GetAvailableMounts();
         if (mounts.Count == 0 || arguments.Length == 0)
@@ -814,7 +837,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         var rewritten = new string[arguments.Length];
         for (var i = 0; i < arguments.Length; i++)
         {
-            var (token, denial) = TryRewriteToken(arguments[i], mounts);
+            var (token, denial) = TryRewriteToken(arguments[i], mounts, rights);
             if (denial is not null)
                 return (arguments, denial);
             rewritten[i] = token;
@@ -824,15 +847,44 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     }
 
     /// <summary>
+    /// The rights a path named by this command must grant, its working directory included.
+    /// <para>
+    /// The file system can only check what the tool asks of it, and the process works on the
+    /// physical path afterwards. A command of the read-only default allowlist (<c>git</c> while
+    /// its read-only restriction holds) reads what it is given, so Read is what it uses. Any
+    /// other command (an interpreter, an extra or custom command, <c>git</c> once interpreters
+    /// lift its restriction) may write, create or delete there, and nothing tells which, so its
+    /// paths need every right. Asking it for Read alone looked like a guarantee the tool did not
+    /// give: <c>find /docs -delete</c> passed on a read-only <c>/docs</c>.
+    /// </para>
+    /// </summary>
+    private FileAccessRights RequiredPathRights(string executable)
+        => s_readOnlyCommands.Contains(executable)
+           && !(_interpretersAllowed && executable.Equals("git", StringComparison.OrdinalIgnoreCase))
+            ? FileAccessRights.Read
+            : FileAccessRights.ReadWrite;
+
+    /// <summary>
+    /// What a denial adds for a command that can write: why it needed more than Read, and where
+    /// the content of a read-only mount stays reachable.
+    /// </summary>
+    private static string WritingCommandNote(string executable, FileAccessRights rights)
+        => rights == FileAccessRights.Read
+            ? ""
+            : $" '{executable}' can write, so a path it is given and its working directory need every right "
+              + "(read, write, create, delete); a read-only mount stays readable through the file tools.";
+
+    /// <summary>
     /// Rewrites one token: a whole-token mount match wins; otherwise the embedded
     /// <c>key=/mount/…</c> form splits at the FIRST <c>=</c> and resolves the entire
     /// right side (even if it contains further <c>=</c>). Anything else stays verbatim.
     /// </summary>
-    private (string Token, string? DenialReason) TryRewriteToken(string token, IReadOnlyList<MountInfo> mounts)
+    private (string Token, string? DenialReason) TryRewriteToken(
+        string token, IReadOnlyList<MountInfo> mounts, FileAccessRights rights)
     {
         if (mounts.Any(m => MatchesMountPrefix(token, m.VirtualPath)))
         {
-            var result = _fileSystem.ResolveAndValidate(token, FileAccessRights.Read);
+            var result = _fileSystem.ResolveAndValidate(token, rights);
             return result.IsAllowed
                 ? (result.ResolvedPath!, null)
                 : (token, result.DenialReason ?? "access denied");
@@ -844,7 +896,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             var right = token[(eq + 1)..];
             if (mounts.Any(m => MatchesMountPrefix(right, m.VirtualPath)))
             {
-                var result = _fileSystem.ResolveAndValidate(right, FileAccessRights.Read);
+                var result = _fileSystem.ResolveAndValidate(right, rights);
                 return result.IsAllowed
                     ? (string.Concat(token.AsSpan(0, eq + 1), result.ResolvedPath), null)
                     : (token, result.DenialReason ?? "access denied");
