@@ -64,6 +64,12 @@ public sealed class DeclaredSamplingReachesTheVendorTests
             return document.RootElement.Clone();
         }
 
+        public async Task<string> RawBodyAsync()
+        {
+            var request = Assert.Single(_handler.CapturedRequests);
+            return await request.Content!.ReadAsStringAsync(Ct);
+        }
+
         public void Dispose()
         {
             Provider.Dispose();
@@ -113,6 +119,26 @@ public sealed class DeclaredSamplingReachesTheVendorTests
     }
 
     [Fact]
+    [Trait("BR", "CH-05")]
+    public async Task ShouldSendTheTemperatureAsWritten_OnTheWire()
+    {
+        using var @default = new Vendor(Configured("host-model"));
+        using var b = new Vendor(Configured("model-of-b"));
+
+        await RunAsync("""
+                llm:
+                  profile: b
+                  temperature: 0.7
+                  top_p: 0.95
+            """, @default, b);
+
+        var body = await b.RawBodyAsync();
+        Assert.Matches("\"temperature\":0\\.7[,}]", body);
+        Assert.Matches("\"top_p\":0\\.95[,}]", body);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
     public async Task A_temperature_equal_to_the_old_engine_default_reaches_the_vendor()
     {
         using var @default = new Vendor(Configured("host-model"));
@@ -125,10 +151,11 @@ public sealed class DeclaredSamplingReachesTheVendorTests
             """, @default, b);
 
         Assert.Equal(0, @default.Requests);
-        Assert.Equal(0.7, (await b.SentPayloadAsync()).GetProperty("temperature").GetDouble(), precision: 3);
+        Assert.Matches("\"temperature\":0\\.7[,}]", await b.RawBodyAsync());
     }
 
     [Fact]
+    [Trait("BR", "CH-05")]
     public async Task An_agent_that_sets_no_temperature_runs_on_its_profiles()
     {
         using var @default = new Vendor(Configured("host-model"));
@@ -139,10 +166,11 @@ public sealed class DeclaredSamplingReachesTheVendorTests
                   profile: b
             """, @default, b);
 
-        Assert.Equal(0.2, (await b.SentPayloadAsync()).GetProperty("temperature").GetDouble(), precision: 3);
+        Assert.Matches("\"temperature\":0\\.2[,}]", await b.RawBodyAsync());
     }
 
     [Fact]
+    [Trait("BR", "CH-05")]
     public async Task A_top_p_of_one_reaches_the_vendor()
     {
         using var @default = new Vendor(Configured("host-model"));
@@ -154,7 +182,7 @@ public sealed class DeclaredSamplingReachesTheVendorTests
                   top_p: 1.0
             """, @default, b);
 
-        Assert.Equal(1.0, (await b.SentPayloadAsync()).GetProperty("top_p").GetDouble(), precision: 3);
+        Assert.Matches("\"top_p\":1(\\.0)?[,}]", await b.RawBodyAsync());
     }
 
     [Fact]

@@ -106,7 +106,9 @@ mesurée : le dialecte de Mistral écrit `top_p: 1` quand rien n'en fixe (`Alway
 pénalités, la graine et les séquences d'arrêt de la configuration d'un agent passent elles aussi
 par le client de chat ; sur le fil, Ollama écrit `top_p`, `seed` et `stop` dans ses `options`, et
 un dialecte qui n'a pas de champ pour une pénalité ou une graine le dit par l'avertissement
-structuré décrit plus bas, jamais en silence.
+structuré décrit plus bas, jamais en silence. Une température, un `top_p` ou une pénalité part telle
+qu'écrite, à six chiffres significatifs au plus (le `float` de `ChatOptions` n'en tient pas plus) :
+`0.7`, jamais `0.699999988079071`, sous toute culture courante.
 
 Chaque provider construit par la fabrique est enveloppé dans `MeteredLlmProvider` (voir
 [Décorateurs et enregistrement](#décorateurs-et-enregistrement)) et rendu derrière un

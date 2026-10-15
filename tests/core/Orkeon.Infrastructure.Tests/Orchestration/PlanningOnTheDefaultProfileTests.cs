@@ -178,6 +178,7 @@ public sealed partial class PlanningOnTheDefaultProfileTests
     // ── the planner runs on the default profile (GAP-29) ─────────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-05")]
     public async Task A_yaml_crew_with_planning_true_plans_on_the_default_profile_then_runs_its_tasks()
     {
         var vendor = new Vendor("default");
@@ -187,8 +188,46 @@ public sealed partial class PlanningOnTheDefaultProfileTests
         Assert.True(output.Succeeded, output.Error);
         Assert.Equal(["plan@default", "task:outline", "task:draft"], vendor.Calls);
         // The planner's own sampling, on the profile's model.
-        Assert.Equal(0.3, Assert.NotNull(vendor.Provider.LastGenerateConfig!.Temperature), precision: 3);
+        Assert.Equal(0.3, Assert.NotNull(vendor.Provider.LastGenerateConfig!.Temperature));
         Assert.Equal(string.Empty, vendor.Provider.LastGenerateConfig.Model);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public async Task ShouldSendThePlanningTemperatureAsWritten()
+    {
+        var plan = JsonSerializer.Serialize(new { plans = new[] { new { task = 1, plan = "1. Plan the work." } } });
+        using var handler = Orkeon.Infrastructure.Tests.TestDoubles.TestHttpMessageHandler.CreateWithResponse(
+            System.Net.HttpStatusCode.OK,
+            JsonSerializer.Serialize(new
+            {
+                choices = new[] { new { message = new { role = "assistant", content = plan } } },
+                usage = new { total_tokens = 2, prompt_tokens = 1, completion_tokens = 1 },
+            }));
+        using var client = new HttpClient(handler);
+        var factory = new Orkeon.Infrastructure.Tests.TestDoubles.TestHttpClientFactory();
+        factory.RegisterClient(nameof(Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider), client);
+        var configured = LlmConfig.Create("deepseek-chat", "sk-test") with { BaseUrl = new Uri("https://llm.example.test/v1") };
+        using var provider = new Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider(
+            configured, factory, Polly.Policy.NoOpAsync<HttpResponseMessage>());
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddLogging();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService()
+            .AddMount("/output", FileAccessRights.Read | FileAccessRights.Write | FileAccessRights.Create));
+        services.AddOrkeonLlmProvider(_ => provider, configured);
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var container = services.BuildServiceProvider();
+        await using var scope = container.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var config = await sp.GetRequiredService<ICrewDefinitionLoader>().LoadFromStringAsync(PlannedYaml, Ct);
+        var crew = await sp.GetRequiredService<ICrewFactory>().CreateFromConfigAsync(config, Ct);
+        await sp.GetRequiredService<ICrewOrchestrationService>().KickoffAsync(crew.Id, Input(), Ct);
+
+        var planning = handler.CapturedRequests[0];
+        Assert.Matches("\"temperature\":0\\.3[,}]", await planning.Content!.ReadAsStringAsync(Ct));
     }
 
     [Fact]

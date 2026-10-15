@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — sampling values reach the vendor as written **[breaking]**
+
+A temperature, a `top_p` and penalties written by an agent, a task, the planner (0.3) or the
+cognitive memory analysis (0.1) now reach the vendor's JSON as written (`0.7`, never
+`0.699999988079071`), under any current culture (GAP-48).
+
+- **Breaking**: `PlanningDefaults.Temperature` (Domain) and `CognitiveMemoryOptions.AnalysisTemperature`
+  (Infrastructure) are now `double`.
+- **Migration**: read them as `double`.
+
 ### Fixed — a task's `llm_override: cache:` is read, sent and exported
 
 A task's `llm_override: cache:` block was silently dropped at loading and export. It is now read

@@ -121,13 +121,14 @@ public class CrewPlannerTests
     // ── the call ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-05")]
     public async System.Threading.Tasks.Task ShouldUseLowTemperatureForConsistency_WhenCreatingPlanAsync()
     {
         var llm = new TestLlmProvider(PlanBoth);
 
         await CrewPlanner.Create(llm, s_parser).CreatePlanAsync(TwoTasks().Context, Ct);
 
-        Assert.Equal(0.3f, Assert.Single(llm.Configs)!.Temperature);
+        Assert.Equal(0.3,Assert.Single(llm.Configs)!.Temperature);
     }
 
     [Fact]

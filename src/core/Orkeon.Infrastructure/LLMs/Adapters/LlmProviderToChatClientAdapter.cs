@@ -764,11 +764,11 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             // because this method ignored options.ModelId. Apply it now so the YAML override
             // reaches the provider.
             Model = !string.IsNullOrWhiteSpace(options.ModelId) ? options.ModelId : baseConfig.Model,
-            Temperature = options.Temperature ?? baseConfig.Temperature,
+            Temperature = LlmChatOptionsValues.AsWritten(options.Temperature) ?? baseConfig.Temperature,
             MaxTokens = options.MaxOutputTokens ?? baseConfig.MaxTokens,
-            TopP = options.TopP ?? baseConfig.TopP,
-            FrequencyPenalty = options.FrequencyPenalty ?? baseConfig.FrequencyPenalty,
-            PresencePenalty = options.PresencePenalty ?? baseConfig.PresencePenalty,
+            TopP = LlmChatOptionsValues.AsWritten(options.TopP) ?? baseConfig.TopP,
+            FrequencyPenalty = LlmChatOptionsValues.AsWritten(options.FrequencyPenalty) ?? baseConfig.FrequencyPenalty,
+            PresencePenalty = LlmChatOptionsValues.AsWritten(options.PresencePenalty) ?? baseConfig.PresencePenalty,
             Seed = options.Seed.HasValue ? (int)options.Seed.Value : baseConfig.Seed,
             // GAP-36, decision 8: the stop sequences of the call reach the provider; they were dropped here.
             StopSequences = options.StopSequences is { Count: > 0 } stopSequences ? [.. stopSequences] : baseConfig.StopSequences,

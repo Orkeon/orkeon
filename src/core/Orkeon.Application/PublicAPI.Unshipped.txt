@@ -51,3 +51,5 @@ const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorTaskFailed = "task_failed
 const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorTaskCancelled = "task_cancelled" -> string!
 const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorRunFailure = "run_failure" -> string!
 const Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorCrewFailed = "crew_failed" -> string!
+Orkeon.Application.Common.DTOs.LlmChatOptionsValues
+static Orkeon.Application.Common.DTOs.LlmChatOptionsValues.AsWritten(float? value) -> double?

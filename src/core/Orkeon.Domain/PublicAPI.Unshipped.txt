@@ -50,3 +50,5 @@ static Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeToWholeSecond
 const Orkeon.Domain.Constants.Agent.AgentDefaults.PromptTemplateMark = "{{ .Prompt }}" -> string!
 Orkeon.Domain.Configuration.AgentConfiguration.MaxExecutionTime.get -> System.TimeSpan?
 Orkeon.Domain.Configuration.AgentConfiguration.MaxExecutionTime.init -> void
+*REMOVED*const Orkeon.Domain.Constants.Crew.PlanningDefaults.Temperature = 0.3 -> float
+const Orkeon.Domain.Constants.Crew.PlanningDefaults.Temperature = 0.3 -> double
