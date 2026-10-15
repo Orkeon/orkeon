@@ -6,9 +6,17 @@ namespace Orkeon.Domain.Tests.ValueObjects;
 public class TaskStatusTests
 {
     [Fact]
-    public void ShouldHaveExpectedCount_WhenGettingAll()
+    [Trait("BR", "CH-08")]
+    public void ShouldHaveFiveValues_WhenListingAll()
     {
-        Assert.Equal(6, TaskStatus.All.Count);
+        Assert.Equal(5, TaskStatus.All.Count);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void ShouldRefuseBlocked_WhenParsingIt()
+    {
+        Assert.False(TaskStatus.TryFrom("Blocked", out _));
     }
 
     [Fact]
@@ -19,7 +27,6 @@ public class TaskStatusTests
         Assert.Equal(Completed, TaskStatus.Completed.ToString());
         Assert.Equal(Failed, TaskStatus.Failed.ToString());
         Assert.Equal("Cancelled", TaskStatus.Cancelled.ToString());
-        Assert.Equal("Blocked", TaskStatus.Blocked.ToString());
     }
 
     [Theory]
@@ -28,7 +35,6 @@ public class TaskStatusTests
     [InlineData(Completed)]
     [InlineData(Failed)]
     [InlineData("Cancelled")]
-    [InlineData("Blocked")]
     public void ShouldParse_WhenUsingFromWithValidString(string value)
     {
         var status = TaskStatus.From(value);

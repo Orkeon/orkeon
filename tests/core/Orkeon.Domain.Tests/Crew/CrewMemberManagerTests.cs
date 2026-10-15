@@ -131,91 +131,6 @@ public class CrewMemberManagerTests
 
     #endregion
 
-    #region RemoveAgent
-
-    [Fact]
-    public void ShouldRemoveAgent_WhenAgentExistsAndNotExecuting()
-    {
-        // Arrange
-        var agents = new List<AgentId>();
-        var manager = new CrewMemberManager(agents);
-        var agentId = AgentId.Create();
-        manager.AddAgent(agentId, CrewStatus.Idle);
-
-        // Act
-        manager.RemoveAgent(agentId, "No longer needed", CrewStatus.Idle);
-
-        // Assert
-        Assert.Empty(manager.Agents);
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenRemovingNullAgentId()
-    {
-        // Arrange
-        var manager = new CrewMemberManager([]);
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(
-            () => manager.RemoveAgent(null!, "reason", CrewStatus.Idle));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("  ")]
-    public void ShouldThrowArgumentException_WhenRemovingWithEmptyReason(string reason)
-    {
-        // Arrange
-        var manager = new CrewMemberManager([]);
-        var agentId = AgentId.Create();
-        manager.AddAgent(agentId, CrewStatus.Idle);
-
-        // Act & Assert
-        Assert.Throws<ArgumentException>(
-            () => manager.RemoveAgent(agentId, reason, CrewStatus.Idle));
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenRemovingWithNullReason()
-    {
-        // Arrange
-        var manager = new CrewMemberManager([]);
-        var agentId = AgentId.Create();
-        manager.AddAgent(agentId, CrewStatus.Idle);
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(
-            () => manager.RemoveAgent(agentId, null!, CrewStatus.Idle));
-    }
-
-    [Fact]
-    public void ShouldThrowInvalidOperationException_WhenRemovingAgentNotInCrew()
-    {
-        // Arrange
-        var manager = new CrewMemberManager([]);
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => manager.RemoveAgent(AgentId.Create(), "reason", CrewStatus.Idle));
-        Assert.Contains("is not in this crew", ex.Message);
-    }
-
-    [Fact]
-    public void ShouldThrowInvalidOperationException_WhenRemovingAgentDuringExecution()
-    {
-        // Arrange
-        var manager = new CrewMemberManager([]);
-        var agentId = AgentId.Create();
-        manager.AddAgent(agentId, CrewStatus.Idle);
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => manager.RemoveAgent(agentId, "reason", CrewStatus.Executing));
-        Assert.Contains("Cannot remove agents while crew is executing", ex.Message);
-    }
-
-    #endregion
-
     #region FirstOrDefault
 
     [Fact]
@@ -294,19 +209,6 @@ public class CrewMemberManagerTests
     {
         // Arrange
         var manager = new CrewMemberManager([]);
-
-        // Act & Assert
-        Assert.False(manager.Any());
-    }
-
-    [Fact]
-    public void ShouldReturnFalse_WhenAllAgentsAreRemoved()
-    {
-        // Arrange
-        var manager = new CrewMemberManager([]);
-        var agentId = AgentId.Create();
-        manager.AddAgent(agentId, CrewStatus.Idle);
-        manager.RemoveAgent(agentId, "Cleanup", CrewStatus.Idle);
 
         // Act & Assert
         Assert.False(manager.Any());

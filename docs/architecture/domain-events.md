@@ -49,16 +49,16 @@ Bookkeeping never changes a run: a transition the aggregate refuses is logged as
 
 `AddOrkeonApplication()` scans the `Orkeon.Application` assembly and registers every `IDomainEventHandler<T>` it finds (scoped). Four ship, all of them structured-logging handlers: `AgentCompletedTaskHandler` and `AgentFailedTaskHandler` (Information and Warning, as a run goes), `CrewExecutionCompletedHandler`, `CrewExecutionFailedHandler`. A handler in another assembly is registered explicitly: `services.AddScoped<IDomainEventHandler<TaskCompletedEvent>, MyHandler>()`.
 
-### The 30 domain events
+### The 23 domain events
 
 | Family | Events | Raised by |
 |--------|--------|-----------|
 | Agent (6) | `AgentCreatedEvent`, `AgentAssignedToTaskEvent`, `AgentStartedTaskEvent`, `AgentCompletedTaskEvent`, `AgentFailedTaskEvent`, `AgentCapabilitiesUpdatedEvent` | `Agent` aggregate |
-| Crew (10) | `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `AgentLeftCrewEvent`, `TaskAddedToCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent`, `CrewProcessTypeChangedEvent`, `CrewGoalUpdatedEvent` | `Crew` aggregate |
+| Crew (6) | `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `TaskAddedToCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent` | `Crew` aggregate |
 | Task (8) | `TaskCreatedEvent`, `TaskAssignedEvent`, `TaskStatusChangedEvent`, `TaskStartedEvent`, `TaskCompletedEvent`, `TaskFailedEvent`, `TaskCancelledEvent`, `TaskDependenciesUpdatedEvent` | `CrewTaskBase<TContext>` aggregate (`CrewTask`) |
-| Memory (6) | `MemoryStoreCreatedEvent`, `MemoryAddedEvent`, `MemoryPromotedEvent`, `EntityMemoryUpdatedEvent`, `EpisodicMemoryAddedEvent`, `MemoryClearedEvent` | `AgentMemoryStore` aggregate |
+| Memory (3) | `MemoryStoreCreatedEvent`, `MemoryAddedEvent`, `MemoryPromotedEvent` | `AgentMemoryStore` aggregate |
 
-Total: 30 domain events, each raised by a method of its aggregate. The event records live next to their aggregate (`Agent/Events/`, `Crew/Events/`, `Task/Events/`, `Memory/Events/`).
+Total: 23 domain events, each raised by a method of its aggregate. The event records live next to their aggregate (`Agent/Events/`, `Crew/Events/`, `Task/Events/`, `Memory/Events/`).
 
 ## CQRS and pipeline
 

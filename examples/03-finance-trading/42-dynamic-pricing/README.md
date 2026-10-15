@@ -1,6 +1,6 @@
 # 42. Pricing Dynamique Arbitrage Hiérarchique
 
-> Un Manager Agent arbitre entre trois perspectives conflictuelles sur le prix optimal. Les contraintes min/max empêchent les prix aberrants. Le DelegationParameters encadre chaque délégation.
+> Un Manager Agent arbitre entre trois perspectives conflictuelles sur le prix optimal. Les contraintes min/max empêchent les prix aberrants.
 
 ## Quality
 
@@ -12,7 +12,7 @@
 - **Agents**: 4 -- Pricing Arbitrator (manager), Demand Analyst, Competition Monitor, Margin Optimizer
 - **Tools**: `web_scrape`, `http_api`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `Redis` (real-time pricing)
-- **Key features**: Delegation with constraints, DelegationParameters, output validation (min/max price), LlmRateLimiter
+- **Key features**: Delegation with constraints, output validation (min/max price), LlmRateLimiter
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites

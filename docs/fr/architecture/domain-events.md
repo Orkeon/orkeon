@@ -49,16 +49,16 @@ La tenue des comptes ne change jamais un run : une transition que l'agrégat ref
 
 `AddOrkeonApplication()` parcourt l'assembly `Orkeon.Application` et enregistre chaque `IDomainEventHandler<T>` qu'il y trouve (scoped). Quatre sont livrés, tous des handlers de journalisation structurée : `AgentCompletedTaskHandler` et `AgentFailedTaskHandler` (Information et Warning, au fil du run), `CrewExecutionCompletedHandler`, `CrewExecutionFailedHandler`. Un handler situé dans une autre assembly s'enregistre explicitement : `services.AddScoped<IDomainEventHandler<TaskCompletedEvent>, MyHandler>()`.
 
-### Les 30 événements de domaine
+### Les 23 événements de domaine
 
 | Famille | Événements | Levés par |
 |--------|--------|-----------|
 | Agent (6) | `AgentCreatedEvent`, `AgentAssignedToTaskEvent`, `AgentStartedTaskEvent`, `AgentCompletedTaskEvent`, `AgentFailedTaskEvent`, `AgentCapabilitiesUpdatedEvent` | agrégat `Agent` |
-| Crew (10) | `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `AgentLeftCrewEvent`, `TaskAddedToCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent`, `CrewProcessTypeChangedEvent`, `CrewGoalUpdatedEvent` | agrégat `Crew` |
+| Crew (6) | `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `TaskAddedToCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent` | agrégat `Crew` |
 | Task (8) | `TaskCreatedEvent`, `TaskAssignedEvent`, `TaskStatusChangedEvent`, `TaskStartedEvent`, `TaskCompletedEvent`, `TaskFailedEvent`, `TaskCancelledEvent`, `TaskDependenciesUpdatedEvent` | agrégat `CrewTaskBase<TContext>` (`CrewTask`) |
-| Memory (6) | `MemoryStoreCreatedEvent`, `MemoryAddedEvent`, `MemoryPromotedEvent`, `EntityMemoryUpdatedEvent`, `EpisodicMemoryAddedEvent`, `MemoryClearedEvent` | agrégat `AgentMemoryStore` |
+| Memory (3) | `MemoryStoreCreatedEvent`, `MemoryAddedEvent`, `MemoryPromotedEvent` | agrégat `AgentMemoryStore` |
 
-Total : 30 événements de domaine, chacun levé par une méthode de son agrégat. Les records d'événements vivent à côté de leur agrégat (`Agent/Events/`, `Crew/Events/`, `Task/Events/`, `Memory/Events/`).
+Total : 23 événements de domaine, chacun levé par une méthode de son agrégat. Les records d'événements vivent à côté de leur agrégat (`Agent/Events/`, `Crew/Events/`, `Task/Events/`, `Memory/Events/`).
 
 ## CQRS et pipeline
 

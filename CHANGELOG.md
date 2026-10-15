@@ -24,7 +24,8 @@ Types and members with no caller left in the framework, the REPL or the examples
   the Application `BatchOutput` (not the one of `ICrewOrchestrationService`), `MessageDefaults`,
   `PaginationDefaults`, and Domain `AgentCapabilities`, `CollaborationContext`, `CommunicationProtocol`,
   `PerformanceMetrics`, `SecurityContext`, `TaskComplexity`. Migration: define the DTOs of your own API in your
-  host; `AgentMapper.ToDto(agent)` and `MemoryItemDto` remain.
+  host; `AgentMapper.ToDto(agent)` remains. The unused `Orkeon.Application.Common.DTOs.MemoryItemDto` goes too
+  (the `MemoryItemDto` of `SearchMemoryQuery` stays).
 - **Read DTO fields no handler fills** (decision 3): `CrewDto` keeps `Id`, `Name`, `Description`, `ProcessType`,
   `Status`, `Verbosity`, `CreatedAt`; `AgentDto` loses `Llm`, `Capabilities`, `PerformanceMetrics`, `Metadata`,
   `WithStatus`, `WithPerformanceMetrics`; `TaskDto` keeps `Id`, `Name`, `Description`, `ExpectedOutput`,
@@ -34,6 +35,28 @@ Types and members with no caller left in the framework, the REPL or the examples
   the crew, its agents and its tasks through their own queries.
 - **Interface types nothing used** (decision 8): `IMemoryScopeFactory`, `EncryptionResult`,
   `DataClassification`. Migration: none.
+- **Template engine** (decision 4): `ITemplateEngine`, `TemplateValidation`, `Infrastructure/Templating/`,
+  `TemplateParameters` and the Domain `Agent/Composition` types `CompositionResult`, `CompositionTypes`,
+  `TemplateParameter`. Migration: remove any registration of `ITemplateEngine`; nothing in a run resolved it.
+- **Task delegator** (decision 5): `ITaskDelegator`, the Domain `Delegation/` types, `DelegationStrategy`,
+  `DelegationParameters`, `DelegationDecision` and `NullTaskDelegator`. Migration: remove any registration of
+  `ITaskDelegator`; delegation goes through the `IAgentChannel` (Autonomous mode) and the
+  `delegate_work_to_coworker` / `ask_question_to_coworker` tools.
+- **Mutators of the aggregates** (decisions 6 and 7): `Agent.SetAgentSelectionStrategy`, `UpdateGoal`,
+  `UpdateBackstory`, `UpdateToolAccessPolicy`, `ExecuteTaskAsync`, `ShouldDelegateAsync`; `Crew.RemoveAgent`,
+  `RemoveTask`, `UpdateGoal`, `ChangeProcessType`, `SetManagerAgent`; `AgentMemoryStore.Restore`,
+  `RetrieveRelevantMemoriesAsync`, `BuildContext`, `UpdateEntityMemory`, `AddEpisodicMemory`,
+  `ClearShortTermMemory`, `UpdateCapacities`, `EntityMemory`, `EpisodicMemory`, with the types `EntityMemory`,
+  `EpisodicMemory`, `MemoryContext`, `EpisodicMemoryMetadata`, `EpisodeEventData` and the seven events
+  `AgentLeftCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewGoalUpdatedEvent`, `CrewProcessTypeChangedEvent`,
+  `EntityMemoryUpdatedEvent`, `EpisodicMemoryAddedEvent`, `MemoryClearedEvent` (30 domain events become 23).
+  Migration: set the process type, the goal and the manager at construction (`CrewBuilder`, YAML); build the agent
+  with its backstory instead of `UpdateBackstory`; a crew no longer loses an agent or a task once built.
+- **Training subsystem** (decision 9): `AddOrkeonTraining`, `TrainingExtensions` and the Application,
+  Infrastructure and Domain `Training/` folders. Migration: remove any call to `AddOrkeonTraining`; Evaluation
+  (`IEvaluationSuite`, the evaluators, the `Evaluation` section, `IBenchmarkRunner`) stays.
+- **`TaskStatus.Blocked`**: the value no transition reached. Migration: use `Pending` for a task that waits on its
+  dependencies.
 
 ### Fixed — crews, tasks, tool calls and security events are measured where they happen
 

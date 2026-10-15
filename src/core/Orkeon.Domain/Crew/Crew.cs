@@ -280,31 +280,6 @@ public sealed class Crew : AggregateRoot<CrewId>
     }
 
     /// <summary>
-    /// Removes an agent from the crew.
-    /// </summary>
-    public void RemoveAgent(AgentId agentId, string reason)
-    {
-        _memberManager.RemoveAgent(agentId, reason, Status);
-
-        RaiseDomainEvent(new AgentLeftCrewEvent
-        {
-            CrewId = Id,
-            AgentId = agentId,
-            Reason = reason
-        });
-
-        // A hierarchical manager agent that leaves is replaced by the first agent left — unless the
-        // crew has a manager LLM, which then manages on its own (GAP-19). A consensual crew's
-        // arbiter that leaves leaves the crew without one: the manager is a member (GAP-33).
-        if (ManagerAgentId == agentId)
-        {
-            ManagerAgentId = ProcessType == ProcessType.Hierarchical && ManagerLlm == null
-                ? _memberManager.FirstOrDefault()
-                : null;
-        }
-    }
-
-    /// <summary>
     /// Adds a task to the crew.
     /// </summary>
     public void AddTask(TaskId taskId)
@@ -315,21 +290,6 @@ public sealed class Crew : AggregateRoot<CrewId>
         {
             CrewId = Id,
             TaskId = taskId
-        });
-    }
-
-    /// <summary>
-    /// Removes a task from the crew.
-    /// </summary>
-    public void RemoveTask(TaskId taskId, string reason)
-    {
-        _taskManager.RemoveTask(taskId, reason, Status);
-
-        RaiseDomainEvent(new TaskRemovedFromCrewEvent
-        {
-            CrewId = Id,
-            TaskId = taskId,
-            Reason = reason
         });
     }
 
@@ -427,77 +387,6 @@ public sealed class Crew : AggregateRoot<CrewId>
     }
 
     /// <summary>
-    /// Updates the crew's goal.
-    /// </summary>
-    public void UpdateGoal(string newGoal)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(newGoal);
-
-        if (Status == CrewStatus.Executing)
-            throw new InvalidOperationException("Cannot update goal while crew is executing.");
-
-        var oldGoal = Goal;
-        Goal = CrewGoal.From(newGoal);
-
-        RaiseDomainEvent(new CrewGoalUpdatedEvent
-        {
-            CrewId = Id,
-            OldGoal = oldGoal.Value,
-            NewGoal = Goal.Value
-        });
-    }
-
-    /// <summary>
-    /// Changes the process type, and with it the crew's manager (GAP-33): in a mode with a manager
-    /// agent (<see cref="ProcessType.AcceptsManagerAgent"/>) the manager is
-    /// <paramref name="managerAgentId"/>, one of the crew's agents; in a mode without one the crew
-    /// keeps no manager agent — the agent that was one stays a member, hence a worker — and refuses
-    /// one passed with the change. A crew with a manager LLM turns only to a mode that reads it
-    /// (<see cref="ProcessType.AcceptsManagerLlm"/>).
-    /// </summary>
-    /// <param name="newProcessType">The mode the crew turns to.</param>
-    /// <param name="managerAgentId">
-    /// The manager agent in the new mode — required by <see cref="ProcessType.Hierarchical"/> unless
-    /// the crew has a manager LLM, optional in <see cref="ProcessType.Consensual"/> (its arbiter),
-    /// refused elsewhere.
-    /// </param>
-    public void ChangeProcessType(ProcessType newProcessType, AgentId? managerAgentId = null)
-    {
-        ArgumentNullException.ThrowIfNull(newProcessType);
-
-        if (Status == CrewStatus.Executing)
-            throw new InvalidOperationException("Cannot change process type while crew is executing.");
-
-        if (managerAgentId is not null && !newProcessType.AcceptsManagerAgent)
-            throw new InvalidOperationException(ManagerAgentTheModeHasNoneOf(newProcessType));
-
-        if (ManagerLlm is not null && !newProcessType.AcceptsManagerLlm)
-            throw new InvalidOperationException(ManagerLlmTheModeNeverCalls(newProcessType));
-
-        // A crew with a manager LLM needs no manager agent (GAP-19).
-        if (newProcessType == ProcessType.Hierarchical
-            && ((managerAgentId == null && ManagerLlm == null) || !_memberManager.Any()))
-        {
-            throw new InvalidOperationException("Hierarchical process requires a manager agent.");
-        }
-
-        if (managerAgentId is not null && !_memberManager.Contains(managerAgentId))
-            throw new InvalidOperationException($"Agent {managerAgentId} is not in this crew.");
-
-        ManagerAgentId = newProcessType.AcceptsManagerAgent ? managerAgentId : null;
-
-        var oldProcessType = ProcessType;
-        ProcessType = newProcessType;
-
-        RaiseDomainEvent(new CrewProcessTypeChangedEvent
-        {
-            CrewId = Id,
-            OldProcessType = oldProcessType,
-            NewProcessType = newProcessType
-        });
-    }
-
-    /// <summary>
     /// The refusal of a memory provider named for a crew whose memory is off (GAP-30), with the
     /// remedy in both spellings.
     /// </summary>
@@ -537,23 +426,6 @@ public sealed class Crew : AggregateRoot<CrewId>
         $"The {processType.Value} process reads no manager LLM, yet the crew is given one (CrewBuilder.WithManagerLlm): " +
         "its provider would never be called. Remove it, or use the Hierarchical process — the manager assigns and " +
         "reviews on it — or the Autonomous one — the manager hands the tasks out on it.";
-
-    /// <summary>
-    /// Sets the manager agent, one of the crew's agents: the hierarchical manager, or the consensual
-    /// crew's arbiter. A mode without a manager agent refuses it (GAP-33).
-    /// </summary>
-    public void SetManagerAgent(AgentId agentId)
-    {
-        ArgumentNullException.ThrowIfNull(agentId);
-
-        if (!ProcessType.AcceptsManagerAgent)
-            throw new InvalidOperationException(ManagerAgentTheModeHasNoneOf(ProcessType));
-
-        if (!_memberManager.Contains(agentId))
-            throw new InvalidOperationException($"Agent {agentId} is not in this crew.");
-
-        ManagerAgentId = agentId;
-    }
 
     /// <summary>
     /// Validates the crew configuration.

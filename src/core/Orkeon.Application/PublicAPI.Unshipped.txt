@@ -1809,3 +1809,510 @@ static Orkeon.Application.Telemetry.OrkeonMeter.RecordSecurityEvent(string! kind
 *REMOVED*virtual Orkeon.Application.Services.TaskRouting.TaskExecutionResult.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Application.Services.TaskRouting.TaskExecutionResult.Equals(Orkeon.Application.Services.TaskRouting.TaskExecutionResult? other) -> bool
 *REMOVED*virtual Orkeon.Application.Services.TaskRouting.TaskExecutionResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.<Clone>$() -> Orkeon.Application.Common.DTOs.MemoryItemDto!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.AgentId.get -> string?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.AgentId.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Content.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Content.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.CreatedAt.get -> System.DateTime
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.CreatedAt.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Equals(Orkeon.Application.Common.DTOs.MemoryItemDto? other) -> bool
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Id.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Id.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.MemoryItemDto() -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Metadata.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Relevance.get -> double
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Relevance.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.TaskId.get -> string?
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.TaskId.init -> void
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Type.get -> string!
+*REMOVED*Orkeon.Application.Common.DTOs.MemoryItemDto.Type.init -> void
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.Add(string! key, object! value) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddBackstory(string! backstory) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddDescription(string! description) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddExpectedOutput(string! output) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddGoal(string! goal) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddMaxIterations(int iterations) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddName(string! name) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddRole(string! role) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddTimeout(System.TimeSpan timeout) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.AddTools(System.Collections.Generic.IReadOnlyList<string!>! tools) -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.Build() -> Orkeon.Application.Common.TemplateInstantiationParameters!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Contains(string! key) -> bool
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Count.get -> int
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.GetRequired<T>(string! key) -> T
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Application.Common.TemplateInstantiationParameters.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Common.TemplateParameterValue
+*REMOVED*Orkeon.Application.Common.TemplateParameterValue.GetValue<T>() -> T
+*REMOVED*Orkeon.Application.Common.TemplateParameterValue.RawValue.get -> object!
+*REMOVED*Orkeon.Application.Common.TemplateParameterValue.ValueType.get -> System.Type!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateEngine
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateEngine.ExtractParametersAsync(string! templateContent, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<string!>!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateEngine.RegisterFilter(string! name, System.Func<object!, object![]!, object!>! filter) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateEngine.RegisterFunction(string! name, System.Func<object![]!, object!>! func) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateEngine.RenderAsync(string! templateContent, Orkeon.Application.Common.TemplateInstantiationParameters! parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateEngine.RenderWithInheritanceAsync(string! templateContent, string? baseTemplate, Orkeon.Application.Common.TemplateInstantiationParameters! parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ITemplateEngine.ValidateTemplateAsync(string! templateContent, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ports.TemplateValidation!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.Errors.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.Errors.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.IsValid.get -> bool
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.IsValid.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.Parameters.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.Parameters.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.TemplateValidation() -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.TemplateValidation.Warnings.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.IAgentPerformanceTracker
+*REMOVED*Orkeon.Application.Interfaces.Training.IAgentPerformanceTracker.GetPerformanceTrendAsync(string! agentId, int lastN = 10, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Training.PerformanceTrend!>!
+*REMOVED*Orkeon.Application.Interfaces.Training.IAgentPerformanceTracker.RecordPerformanceAsync(string! agentId, string! taskId, double score, System.Collections.Generic.IDictionary<string!, object!>? metadata = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.Interfaces.Training.IFeedbackCollector
+*REMOVED*Orkeon.Application.Interfaces.Training.IFeedbackCollector.CollectFeedbackAsync(string! agentId, string! taskOutput, System.Collections.Generic.IReadOnlyList<Orkeon.Application.Evaluation.EvaluationScore!>! scores, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Training.TrainingFeedback!>!
+*REMOVED*Orkeon.Application.Interfaces.Training.ITrainingOrchestrator
+*REMOVED*Orkeon.Application.Interfaces.Training.ITrainingOrchestrator.GetTrainingHistoryAsync(string! agentId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Training.TrainingResult!>!>!
+*REMOVED*Orkeon.Application.Interfaces.Training.ITrainingOrchestrator.TrainAgentAsync(string! agentId, Orkeon.Application.Interfaces.Training.TrainingPlan! plan, Orkeon.Application.Interfaces.Training.TrainingOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Training.TrainingResult!>!
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.Deconstruct(out string! TaskId, out double Score, out System.DateTime RecordedAt, out System.Collections.Generic.IReadOnlyDictionary<string!, object!>? Metadata) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.Metadata.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.PerformanceDataPoint(Orkeon.Application.Interfaces.Training.PerformanceDataPoint! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.PerformanceDataPoint(string! TaskId, double Score, System.DateTime RecordedAt, System.Collections.Generic.IReadOnlyDictionary<string!, object!>? Metadata = null) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.RecordedAt.get -> System.DateTime
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.RecordedAt.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.Score.get -> double
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.Score.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.TaskId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceDataPoint.TaskId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.AgentId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.AgentId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.AverageScore.get -> double
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.AverageScore.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.DataPoints.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Training.PerformanceDataPoint!>!
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.DataPoints.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.Deconstruct(out string! AgentId, out System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Training.PerformanceDataPoint!>! DataPoints, out double AverageScore, out double Improvement) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.Improvement.get -> double
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.Improvement.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.PerformanceTrend(Orkeon.Application.Interfaces.Training.PerformanceTrend! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.PerformanceTrend.PerformanceTrend(string! AgentId, System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Training.PerformanceDataPoint!>! DataPoints, double AverageScore, double Improvement) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.AgentId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.AgentId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.Deconstruct(out string! AgentId, out string! Summary, out System.Collections.Generic.IReadOnlyList<string!>! Suggestions, out System.DateTime GeneratedAt) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.GeneratedAt.get -> System.DateTime
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.GeneratedAt.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.Suggestions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.Suggestions.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.Summary.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.Summary.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.TrainingFeedback(Orkeon.Application.Interfaces.Training.TrainingFeedback! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingFeedback.TrainingFeedback(string! AgentId, string! Summary, System.Collections.Generic.IReadOnlyList<string!>! Suggestions, System.DateTime GeneratedAt) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions.CollectFeedback.get -> bool
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions.CollectFeedback.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions.MaxRetries.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions.MaxRetries.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions.PassingThreshold.get -> double
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions.PassingThreshold.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions.TrainingOptions() -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingOptions.TrainingOptions(Orkeon.Application.Interfaces.Training.TrainingOptions! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.Deconstruct(out string! Name, out System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Training.TrainingTask!>! Tasks, out int Iterations) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.Iterations.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.Iterations.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.Name.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.Name.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.Tasks.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Training.TrainingTask!>!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.Tasks.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.TrainingPlan(Orkeon.Application.Interfaces.Training.TrainingPlan! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingPlan.TrainingPlan(string! Name, System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Training.TrainingTask!>! Tasks, int Iterations = 1) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.AgentId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.AgentId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.AverageScore.get -> double
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.AverageScore.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.CompletedAt.get -> System.DateTime
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.CompletedAt.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.Feedback.get -> Orkeon.Application.Interfaces.Training.TrainingFeedback?
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.Feedback.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.Iteration.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.Iteration.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.Passed.get -> bool
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.Passed.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.PlanName.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.PlanName.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.Scores.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Evaluation.EvaluationScore!>!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.Scores.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.TrainingResult() -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingResult.TrainingResult(Orkeon.Application.Interfaces.Training.TrainingResult! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.Deconstruct(out string! TaskId, out string! Description, out string? ExpectedOutput) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.Description.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.Description.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.ExpectedOutput.get -> string?
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.ExpectedOutput.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.TaskId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.TaskId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.TrainingTask(Orkeon.Application.Interfaces.Training.TrainingTask! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Training.TrainingTask.TrainingTask(string! TaskId, string! Description, string? ExpectedOutput = null) -> void
+*REMOVED*Orkeon.Application.Training.AchievementCriteriaData
+*REMOVED*Orkeon.Application.Training.AchievementCriteriaData.Builder
+*REMOVED*Orkeon.Application.Training.AchievementCriteriaData.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.AchievementCriteriaData.Builder!
+*REMOVED*Orkeon.Application.Training.AchievementCriteriaData.Builder.AddCompletionCount(int value) -> Orkeon.Application.Training.AchievementCriteriaData.Builder!
+*REMOVED*Orkeon.Application.Training.AchievementCriteriaData.Builder.AddRequiredScore(double value) -> Orkeon.Application.Training.AchievementCriteriaData.Builder!
+*REMOVED*Orkeon.Application.Training.AchievementCriteriaData.Builder.AddTimeLimit(System.TimeSpan value) -> Orkeon.Application.Training.AchievementCriteriaData.Builder!
+*REMOVED*Orkeon.Application.Training.AchievementCriteriaData.Builder.Build() -> Orkeon.Application.Training.AchievementCriteriaData!
+*REMOVED*Orkeon.Application.Training.AchievementCriteriaData.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters.Builder
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.AnalyticsCustomFilters.Builder!
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters.Builder.AddDifficultyLevel(string! level) -> Orkeon.Application.Training.AnalyticsCustomFilters.Builder!
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters.Builder.AddMaxDuration(System.TimeSpan value) -> Orkeon.Application.Training.AnalyticsCustomFilters.Builder!
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters.Builder.AddMinScore(double value) -> Orkeon.Application.Training.AnalyticsCustomFilters.Builder!
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters.Builder.AddTeamSize(int size) -> Orkeon.Application.Training.AnalyticsCustomFilters.Builder!
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters.Builder.Build() -> Orkeon.Application.Training.AnalyticsCustomFilters!
+*REMOVED*Orkeon.Application.Training.AnalyticsCustomFilters.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.DataPointMetadata
+*REMOVED*Orkeon.Application.Training.DataPointMetadata.Builder
+*REMOVED*Orkeon.Application.Training.DataPointMetadata.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.DataPointMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.DataPointMetadata.Builder.AddConfidence(double confidence) -> Orkeon.Application.Training.DataPointMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.DataPointMetadata.Builder.AddContext(string! context) -> Orkeon.Application.Training.DataPointMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.DataPointMetadata.Builder.AddSource(string! source) -> Orkeon.Application.Training.DataPointMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.DataPointMetadata.Builder.Build() -> Orkeon.Application.Training.DataPointMetadata!
+*REMOVED*Orkeon.Application.Training.DataPointMetadata.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.InsightSupportingData
+*REMOVED*Orkeon.Application.Training.InsightSupportingData.Builder
+*REMOVED*Orkeon.Application.Training.InsightSupportingData.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.InsightSupportingData.Builder!
+*REMOVED*Orkeon.Application.Training.InsightSupportingData.Builder.AddCorrelationFactor(double value) -> Orkeon.Application.Training.InsightSupportingData.Builder!
+*REMOVED*Orkeon.Application.Training.InsightSupportingData.Builder.AddDataPoints(System.Collections.Generic.IReadOnlyList<double>! points) -> Orkeon.Application.Training.InsightSupportingData.Builder!
+*REMOVED*Orkeon.Application.Training.InsightSupportingData.Builder.AddTrendAnalysis(string! analysis) -> Orkeon.Application.Training.InsightSupportingData.Builder!
+*REMOVED*Orkeon.Application.Training.InsightSupportingData.Builder.Build() -> Orkeon.Application.Training.InsightSupportingData!
+*REMOVED*Orkeon.Application.Training.InsightSupportingData.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics.Builder
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.ReadinessDetailedMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics.Builder.AddConsistencyScore(double value) -> Orkeon.Application.Training.ReadinessDetailedMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics.Builder.AddExperienceLevel(int value) -> Orkeon.Application.Training.ReadinessDetailedMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics.Builder.AddReliabilityScore(double value) -> Orkeon.Application.Training.ReadinessDetailedMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics.Builder.AddSkillReadinessScore(double value) -> Orkeon.Application.Training.ReadinessDetailedMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics.Builder.Build() -> Orkeon.Application.Training.ReadinessDetailedMetrics!
+*REMOVED*Orkeon.Application.Training.ReadinessDetailedMetrics.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext.Builder
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.ScenarioInitialContext.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext.Builder.AddAvailableResources(System.Collections.Generic.IReadOnlyList<string!>! resources) -> Orkeon.Application.Training.ScenarioInitialContext.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext.Builder.AddConstraints(System.Collections.Generic.IReadOnlyList<string!>! constraints) -> Orkeon.Application.Training.ScenarioInitialContext.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext.Builder.AddEnvironment(string! environment) -> Orkeon.Application.Training.ScenarioInitialContext.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext.Builder.AddStartingState(string! state) -> Orkeon.Application.Training.ScenarioInitialContext.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext.Builder.Build() -> Orkeon.Application.Training.ScenarioInitialContext!
+*REMOVED*Orkeon.Application.Training.ScenarioInitialContext.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata.Builder
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.ScenarioMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata.Builder.AddAuthor(string! author) -> Orkeon.Application.Training.ScenarioMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata.Builder.AddCreatedAt(System.DateTime date) -> Orkeon.Application.Training.ScenarioMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata.Builder.AddLastModified(System.DateTime date) -> Orkeon.Application.Training.ScenarioMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata.Builder.AddVersion(string! version) -> Orkeon.Application.Training.ScenarioMetadata.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata.Builder.Build() -> Orkeon.Application.Training.ScenarioMetadata!
+*REMOVED*Orkeon.Application.Training.ScenarioMetadata.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.ScenarioPerformanceData
+*REMOVED*Orkeon.Application.Training.ScenarioPerformanceData.Builder
+*REMOVED*Orkeon.Application.Training.ScenarioPerformanceData.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.ScenarioPerformanceData.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioPerformanceData.Builder.AddErrorCount(int value) -> Orkeon.Application.Training.ScenarioPerformanceData.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioPerformanceData.Builder.AddTasksCompleted(int value) -> Orkeon.Application.Training.ScenarioPerformanceData.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioPerformanceData.Builder.AddToolEfficiency(double value) -> Orkeon.Application.Training.ScenarioPerformanceData.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioPerformanceData.Builder.Build() -> Orkeon.Application.Training.ScenarioPerformanceData!
+*REMOVED*Orkeon.Application.Training.ScenarioPerformanceData.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions.Builder
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.ScenarioSuccessConditions.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions.Builder.AddGoalState(string! goalState) -> Orkeon.Application.Training.ScenarioSuccessConditions.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions.Builder.AddMinimumScore(double score) -> Orkeon.Application.Training.ScenarioSuccessConditions.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions.Builder.AddRequiredOutcomes(System.Collections.Generic.IReadOnlyList<string!>! outcomes) -> Orkeon.Application.Training.ScenarioSuccessConditions.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions.Builder.AddTimeLimit(System.TimeSpan limit) -> Orkeon.Application.Training.ScenarioSuccessConditions.Builder!
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions.Builder.Build() -> Orkeon.Application.Training.ScenarioSuccessConditions!
+*REMOVED*Orkeon.Application.Training.ScenarioSuccessConditions.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables.Builder
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.SimulationEnvironmentVariables.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables.Builder.AddApiEndpoint(string! endpoint) -> Orkeon.Application.Training.SimulationEnvironmentVariables.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables.Builder.AddDataSource(string! source) -> Orkeon.Application.Training.SimulationEnvironmentVariables.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables.Builder.AddDebugMode(bool debug) -> Orkeon.Application.Training.SimulationEnvironmentVariables.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables.Builder.AddSimulationSeed(int seed) -> Orkeon.Application.Training.SimulationEnvironmentVariables.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables.Builder.Build() -> Orkeon.Application.Training.SimulationEnvironmentVariables!
+*REMOVED*Orkeon.Application.Training.SimulationEnvironmentVariables.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.SimulationEventData
+*REMOVED*Orkeon.Application.Training.SimulationEventData.Builder
+*REMOVED*Orkeon.Application.Training.SimulationEventData.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.SimulationEventData.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEventData.Builder.AddEventId(string! id) -> Orkeon.Application.Training.SimulationEventData.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEventData.Builder.AddImpact(string! impact) -> Orkeon.Application.Training.SimulationEventData.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEventData.Builder.AddPayload(string! payload) -> Orkeon.Application.Training.SimulationEventData.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEventData.Builder.AddSourceAgent(string! agentId) -> Orkeon.Application.Training.SimulationEventData.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationEventData.Builder.Build() -> Orkeon.Application.Training.SimulationEventData!
+*REMOVED*Orkeon.Application.Training.SimulationEventData.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.SimulationMetrics
+*REMOVED*Orkeon.Application.Training.SimulationMetrics.Builder
+*REMOVED*Orkeon.Application.Training.SimulationMetrics.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.SimulationMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationMetrics.Builder.AddDecisionCount(int value) -> Orkeon.Application.Training.SimulationMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationMetrics.Builder.AddExecutionTime(System.TimeSpan value) -> Orkeon.Application.Training.SimulationMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationMetrics.Builder.AddMemoryUsage(long bytes) -> Orkeon.Application.Training.SimulationMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationMetrics.Builder.AddToolCallCount(int value) -> Orkeon.Application.Training.SimulationMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.SimulationMetrics.Builder.Build() -> Orkeon.Application.Training.SimulationMetrics!
+*REMOVED*Orkeon.Application.Training.SimulationMetrics.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.CompletedExercises.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.CompletedExercises.init -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.CurrentLevel.get -> double
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.CurrentLevel.init -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.Deconstruct(out string! SkillName, out double CurrentLevel, out double TargetLevel, out double ImprovementRate, out int PracticeHours, out System.Collections.Generic.IReadOnlyList<string!>! CompletedExercises) -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.ImprovementRate.get -> double
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.ImprovementRate.init -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.IsTargetAchieved.get -> bool
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.PracticeHours.get -> int
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.PracticeHours.init -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.ProgressPercentage.get -> double
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.SkillDevelopment(Orkeon.Application.Training.SkillDevelopment! original) -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.SkillDevelopment(string! SkillName, double CurrentLevel, double TargetLevel, double ImprovementRate, int PracticeHours, System.Collections.Generic.IReadOnlyList<string!>! CompletedExercises) -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.SkillName.get -> string!
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.SkillName.init -> void
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.TargetLevel.get -> double
+*REMOVED*Orkeon.Application.Training.SkillDevelopment.TargetLevel.init -> void
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters.Builder
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.TaskDefinitionParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters.Builder.AddExpectedOutput(string! output) -> Orkeon.Application.Training.TaskDefinitionParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters.Builder.AddInput(string! input) -> Orkeon.Application.Training.TaskDefinitionParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters.Builder.AddToolsRequired(System.Collections.Generic.IReadOnlyList<string!>! tools) -> Orkeon.Application.Training.TaskDefinitionParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters.Builder.AddValidationRules(System.Collections.Generic.IReadOnlyList<string!>! rules) -> Orkeon.Application.Training.TaskDefinitionParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters.Builder.Build() -> Orkeon.Application.Training.TaskDefinitionParameters!
+*REMOVED*Orkeon.Application.Training.TaskDefinitionParameters.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder!
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder.AddCollaborationScore(double value) -> Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder!
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder.AddCompletionRate(double value) -> Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder!
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder.AddQualityScore(double value) -> Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder!
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder.AddTimeEfficiency(double value) -> Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder!
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder.Build() -> Orkeon.Application.Training.TeamObjectiveSuccessCriteria!
+*REMOVED*Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.TrainingCustomMetrics
+*REMOVED*Orkeon.Application.Training.TrainingCustomMetrics.Builder
+*REMOVED*Orkeon.Application.Training.TrainingCustomMetrics.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.TrainingCustomMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingCustomMetrics.Builder.AddCollaborationIndex(double value) -> Orkeon.Application.Training.TrainingCustomMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingCustomMetrics.Builder.AddEngagementScore(double value) -> Orkeon.Application.Training.TrainingCustomMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingCustomMetrics.Builder.AddInnovationScore(double value) -> Orkeon.Application.Training.TrainingCustomMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingCustomMetrics.Builder.Build() -> Orkeon.Application.Training.TrainingCustomMetrics!
+*REMOVED*Orkeon.Application.Training.TrainingCustomMetrics.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.TrainingParameterValue
+*REMOVED*Orkeon.Application.Training.TrainingParameterValue.GetValue<T>() -> T
+*REMOVED*Orkeon.Application.Training.TrainingParameterValue.RawValue.get -> object!
+*REMOVED*Orkeon.Application.Training.TrainingParameterValue.ValueType.get -> System.Type!
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase.Contains(string! key) -> bool
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase.Count.get -> int
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase.GetRequired<T>(string! key) -> T
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase.Parameters.get -> System.Collections.Immutable.ImmutableDictionary<string!, Orkeon.Application.Training.TrainingParameterValue!>!
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Training.TrainingParametersBase.TrainingParametersBase(System.Collections.Immutable.ImmutableDictionary<string!, Orkeon.Application.Training.TrainingParameterValue!>! parameters) -> void
+*REMOVED*Orkeon.Application.Training.TrainingPlanParameters
+*REMOVED*Orkeon.Application.Training.TrainingPlanParameters.Builder
+*REMOVED*Orkeon.Application.Training.TrainingPlanParameters.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.TrainingPlanParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingPlanParameters.Builder.AddAdaptiveDifficulty(bool value) -> Orkeon.Application.Training.TrainingPlanParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingPlanParameters.Builder.AddFeedbackMode(string! mode) -> Orkeon.Application.Training.TrainingPlanParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingPlanParameters.Builder.AddMaxRetries(int value) -> Orkeon.Application.Training.TrainingPlanParameters.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingPlanParameters.Builder.Build() -> Orkeon.Application.Training.TrainingPlanParameters!
+*REMOVED*Orkeon.Application.Training.TrainingPlanParameters.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.TrainingRecommendationContext
+*REMOVED*Orkeon.Application.Training.TrainingRecommendationContext.Builder
+*REMOVED*Orkeon.Application.Training.TrainingRecommendationContext.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.TrainingRecommendationContext.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingRecommendationContext.Builder.AddPreferredDifficulty(string! difficulty) -> Orkeon.Application.Training.TrainingRecommendationContext.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingRecommendationContext.Builder.AddPreviousAttempts(int value) -> Orkeon.Application.Training.TrainingRecommendationContext.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingRecommendationContext.Builder.AddTimeConstraint(System.TimeSpan value) -> Orkeon.Application.Training.TrainingRecommendationContext.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingRecommendationContext.Builder.Build() -> Orkeon.Application.Training.TrainingRecommendationContext!
+*REMOVED*Orkeon.Application.Training.TrainingRecommendationContext.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.TrainingResources
+*REMOVED*Orkeon.Application.Training.TrainingResources.Builder
+*REMOVED*Orkeon.Application.Training.TrainingResources.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.TrainingResources.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingResources.Builder.AddDatasetPath(string! path) -> Orkeon.Application.Training.TrainingResources.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingResources.Builder.AddDocumentationUrl(System.Uri! url) -> Orkeon.Application.Training.TrainingResources.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingResources.Builder.AddExampleCode(string! code) -> Orkeon.Application.Training.TrainingResources.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingResources.Builder.AddVideoUrls(System.Collections.Generic.IReadOnlyList<string!>! urls) -> Orkeon.Application.Training.TrainingResources.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingResources.Builder.Build() -> Orkeon.Application.Training.TrainingResources!
+*REMOVED*Orkeon.Application.Training.TrainingResources.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.TrainingStatistics
+*REMOVED*Orkeon.Application.Training.TrainingStatistics.Builder
+*REMOVED*Orkeon.Application.Training.TrainingStatistics.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.TrainingStatistics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingStatistics.Builder.AddAverageScore(double value) -> Orkeon.Application.Training.TrainingStatistics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingStatistics.Builder.AddImprovementRate(double value) -> Orkeon.Application.Training.TrainingStatistics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingStatistics.Builder.AddSuccessRate(double value) -> Orkeon.Application.Training.TrainingStatistics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingStatistics.Builder.AddTotalAttempts(int value) -> Orkeon.Application.Training.TrainingStatistics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingStatistics.Builder.Build() -> Orkeon.Application.Training.TrainingStatistics!
+*REMOVED*Orkeon.Application.Training.TrainingStatistics.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics.Builder
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.TrainingSuccessMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics.Builder.AddAccuracyThreshold(double value) -> Orkeon.Application.Training.TrainingSuccessMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics.Builder.AddCompletionTimeLimit(System.TimeSpan value) -> Orkeon.Application.Training.TrainingSuccessMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics.Builder.AddMinimumScore(double value) -> Orkeon.Application.Training.TrainingSuccessMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics.Builder.AddRequiredToolUsage(System.Collections.Generic.IReadOnlyList<string!>! tools) -> Orkeon.Application.Training.TrainingSuccessMetrics.Builder!
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics.Builder.Build() -> Orkeon.Application.Training.TrainingSuccessMetrics!
+*REMOVED*Orkeon.Application.Training.TrainingSuccessMetrics.Builder.Builder() -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask
+*REMOVED*Orkeon.Application.Training.TrainingTask.Context.get -> System.Collections.Generic.Dictionary<string!, object!>?
+*REMOVED*Orkeon.Application.Training.TrainingTask.Context.init -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask.Deconstruct(out string! Id, out string! Description, out string! ExpectedOutput, out System.Collections.Generic.IReadOnlyList<string!>! RequiredSkills, out System.Collections.Generic.Dictionary<string!, object!>? Context, out System.TimeSpan? TimeLimit) -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask.Description.get -> string!
+*REMOVED*Orkeon.Application.Training.TrainingTask.Description.init -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask.ExpectedOutput.get -> string!
+*REMOVED*Orkeon.Application.Training.TrainingTask.ExpectedOutput.init -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask.Id.get -> string!
+*REMOVED*Orkeon.Application.Training.TrainingTask.Id.init -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask.RequiredSkills.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Training.TrainingTask.RequiredSkills.init -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask.TimeLimit.get -> System.TimeSpan?
+*REMOVED*Orkeon.Application.Training.TrainingTask.TimeLimit.init -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask.TrainingTask(Orkeon.Application.Training.TrainingTask! original) -> void
+*REMOVED*Orkeon.Application.Training.TrainingTask.TrainingTask(string! Id, string! Description, string! ExpectedOutput, System.Collections.Generic.IReadOnlyList<string!>! RequiredSkills, System.Collections.Generic.Dictionary<string!, object!>? Context = null, System.TimeSpan? TimeLimit = null) -> void
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryItemDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryItemDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Common.DTOs.MemoryItemDto.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Training.PerformanceDataPoint.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Training.PerformanceDataPoint.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Training.PerformanceDataPoint.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Training.PerformanceTrend.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Training.PerformanceTrend.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Training.PerformanceTrend.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingFeedback.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingFeedback.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingFeedback.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingOptions.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingOptions.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingOptions.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingPlan.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingPlan.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingPlan.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingResult.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingResult.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingResult.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingTask.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingTask.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Training.TrainingTask.ToString() -> string!
+*REMOVED*override Orkeon.Application.Training.SkillDevelopment.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Training.SkillDevelopment.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Training.SkillDevelopment.ToString() -> string!
+*REMOVED*override Orkeon.Application.Training.TrainingTask.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Training.TrainingTask.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Training.TrainingTask.ToString() -> string!
+*REMOVED*static Orkeon.Application.Common.DTOs.MemoryItemDto.operator !=(Orkeon.Application.Common.DTOs.MemoryItemDto? left, Orkeon.Application.Common.DTOs.MemoryItemDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.DTOs.MemoryItemDto.operator ==(Orkeon.Application.Common.DTOs.MemoryItemDto? left, Orkeon.Application.Common.DTOs.MemoryItemDto? right) -> bool
+*REMOVED*static Orkeon.Application.Common.TemplateInstantiationParameters.CreateBuilder() -> Orkeon.Application.Common.TemplateInstantiationParameters.Builder!
+*REMOVED*static Orkeon.Application.Common.TemplateInstantiationParameters.Empty.get -> Orkeon.Application.Common.TemplateInstantiationParameters!
+*REMOVED*static Orkeon.Application.Common.TemplateInstantiationParameters.FromDictionary(System.Collections.Generic.IDictionary<string!, object!>! dictionary) -> Orkeon.Application.Common.TemplateInstantiationParameters!
+*REMOVED*static Orkeon.Application.Common.TemplateParameterValue.From(object! value) -> Orkeon.Application.Common.TemplateParameterValue!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.TemplateValidation.Invalid(params string![]! errors) -> Orkeon.Application.Interfaces.Ports.TemplateValidation!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.TemplateValidation.Valid(params string![]! parameters) -> Orkeon.Application.Interfaces.Ports.TemplateValidation!
+*REMOVED*static Orkeon.Application.Interfaces.Training.PerformanceDataPoint.operator !=(Orkeon.Application.Interfaces.Training.PerformanceDataPoint? left, Orkeon.Application.Interfaces.Training.PerformanceDataPoint? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.PerformanceDataPoint.operator ==(Orkeon.Application.Interfaces.Training.PerformanceDataPoint? left, Orkeon.Application.Interfaces.Training.PerformanceDataPoint? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.PerformanceTrend.operator !=(Orkeon.Application.Interfaces.Training.PerformanceTrend? left, Orkeon.Application.Interfaces.Training.PerformanceTrend? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.PerformanceTrend.operator ==(Orkeon.Application.Interfaces.Training.PerformanceTrend? left, Orkeon.Application.Interfaces.Training.PerformanceTrend? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingFeedback.operator !=(Orkeon.Application.Interfaces.Training.TrainingFeedback? left, Orkeon.Application.Interfaces.Training.TrainingFeedback? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingFeedback.operator ==(Orkeon.Application.Interfaces.Training.TrainingFeedback? left, Orkeon.Application.Interfaces.Training.TrainingFeedback? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingOptions.operator !=(Orkeon.Application.Interfaces.Training.TrainingOptions? left, Orkeon.Application.Interfaces.Training.TrainingOptions? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingOptions.operator ==(Orkeon.Application.Interfaces.Training.TrainingOptions? left, Orkeon.Application.Interfaces.Training.TrainingOptions? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingPlan.operator !=(Orkeon.Application.Interfaces.Training.TrainingPlan? left, Orkeon.Application.Interfaces.Training.TrainingPlan? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingPlan.operator ==(Orkeon.Application.Interfaces.Training.TrainingPlan? left, Orkeon.Application.Interfaces.Training.TrainingPlan? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingResult.operator !=(Orkeon.Application.Interfaces.Training.TrainingResult? left, Orkeon.Application.Interfaces.Training.TrainingResult? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingResult.operator ==(Orkeon.Application.Interfaces.Training.TrainingResult? left, Orkeon.Application.Interfaces.Training.TrainingResult? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingTask.operator !=(Orkeon.Application.Interfaces.Training.TrainingTask? left, Orkeon.Application.Interfaces.Training.TrainingTask? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Training.TrainingTask.operator ==(Orkeon.Application.Interfaces.Training.TrainingTask? left, Orkeon.Application.Interfaces.Training.TrainingTask? right) -> bool
+*REMOVED*static Orkeon.Application.Training.AchievementCriteriaData.CreateBuilder() -> Orkeon.Application.Training.AchievementCriteriaData.Builder!
+*REMOVED*static Orkeon.Application.Training.AchievementCriteriaData.Empty.get -> Orkeon.Application.Training.AchievementCriteriaData!
+*REMOVED*static Orkeon.Application.Training.AnalyticsCustomFilters.CreateBuilder() -> Orkeon.Application.Training.AnalyticsCustomFilters.Builder!
+*REMOVED*static Orkeon.Application.Training.AnalyticsCustomFilters.Empty.get -> Orkeon.Application.Training.AnalyticsCustomFilters!
+*REMOVED*static Orkeon.Application.Training.DataPointMetadata.CreateBuilder() -> Orkeon.Application.Training.DataPointMetadata.Builder!
+*REMOVED*static Orkeon.Application.Training.DataPointMetadata.Empty.get -> Orkeon.Application.Training.DataPointMetadata!
+*REMOVED*static Orkeon.Application.Training.InsightSupportingData.CreateBuilder() -> Orkeon.Application.Training.InsightSupportingData.Builder!
+*REMOVED*static Orkeon.Application.Training.InsightSupportingData.Empty.get -> Orkeon.Application.Training.InsightSupportingData!
+*REMOVED*static Orkeon.Application.Training.ReadinessDetailedMetrics.CreateBuilder() -> Orkeon.Application.Training.ReadinessDetailedMetrics.Builder!
+*REMOVED*static Orkeon.Application.Training.ReadinessDetailedMetrics.Empty.get -> Orkeon.Application.Training.ReadinessDetailedMetrics!
+*REMOVED*static Orkeon.Application.Training.ScenarioInitialContext.CreateBuilder() -> Orkeon.Application.Training.ScenarioInitialContext.Builder!
+*REMOVED*static Orkeon.Application.Training.ScenarioInitialContext.Empty.get -> Orkeon.Application.Training.ScenarioInitialContext!
+*REMOVED*static Orkeon.Application.Training.ScenarioMetadata.CreateBuilder() -> Orkeon.Application.Training.ScenarioMetadata.Builder!
+*REMOVED*static Orkeon.Application.Training.ScenarioMetadata.Empty.get -> Orkeon.Application.Training.ScenarioMetadata!
+*REMOVED*static Orkeon.Application.Training.ScenarioPerformanceData.CreateBuilder() -> Orkeon.Application.Training.ScenarioPerformanceData.Builder!
+*REMOVED*static Orkeon.Application.Training.ScenarioPerformanceData.Empty.get -> Orkeon.Application.Training.ScenarioPerformanceData!
+*REMOVED*static Orkeon.Application.Training.ScenarioSuccessConditions.CreateBuilder() -> Orkeon.Application.Training.ScenarioSuccessConditions.Builder!
+*REMOVED*static Orkeon.Application.Training.ScenarioSuccessConditions.Empty.get -> Orkeon.Application.Training.ScenarioSuccessConditions!
+*REMOVED*static Orkeon.Application.Training.SimulationEnvironmentVariables.CreateBuilder() -> Orkeon.Application.Training.SimulationEnvironmentVariables.Builder!
+*REMOVED*static Orkeon.Application.Training.SimulationEnvironmentVariables.Empty.get -> Orkeon.Application.Training.SimulationEnvironmentVariables!
+*REMOVED*static Orkeon.Application.Training.SimulationEventData.CreateBuilder() -> Orkeon.Application.Training.SimulationEventData.Builder!
+*REMOVED*static Orkeon.Application.Training.SimulationEventData.Empty.get -> Orkeon.Application.Training.SimulationEventData!
+*REMOVED*static Orkeon.Application.Training.SimulationMetrics.CreateBuilder() -> Orkeon.Application.Training.SimulationMetrics.Builder!
+*REMOVED*static Orkeon.Application.Training.SimulationMetrics.Empty.get -> Orkeon.Application.Training.SimulationMetrics!
+*REMOVED*static Orkeon.Application.Training.SkillDevelopment.operator !=(Orkeon.Application.Training.SkillDevelopment? left, Orkeon.Application.Training.SkillDevelopment? right) -> bool
+*REMOVED*static Orkeon.Application.Training.SkillDevelopment.operator ==(Orkeon.Application.Training.SkillDevelopment? left, Orkeon.Application.Training.SkillDevelopment? right) -> bool
+*REMOVED*static Orkeon.Application.Training.TaskDefinitionParameters.CreateBuilder() -> Orkeon.Application.Training.TaskDefinitionParameters.Builder!
+*REMOVED*static Orkeon.Application.Training.TaskDefinitionParameters.Empty.get -> Orkeon.Application.Training.TaskDefinitionParameters!
+*REMOVED*static Orkeon.Application.Training.TeamObjectiveSuccessCriteria.CreateBuilder() -> Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Builder!
+*REMOVED*static Orkeon.Application.Training.TeamObjectiveSuccessCriteria.Empty.get -> Orkeon.Application.Training.TeamObjectiveSuccessCriteria!
+*REMOVED*static Orkeon.Application.Training.TrainingCustomMetrics.CreateBuilder() -> Orkeon.Application.Training.TrainingCustomMetrics.Builder!
+*REMOVED*static Orkeon.Application.Training.TrainingCustomMetrics.Empty.get -> Orkeon.Application.Training.TrainingCustomMetrics!
+*REMOVED*static Orkeon.Application.Training.TrainingParameterValue.From(object! value) -> Orkeon.Application.Training.TrainingParameterValue!
+*REMOVED*static Orkeon.Application.Training.TrainingPlanParameters.CreateBuilder() -> Orkeon.Application.Training.TrainingPlanParameters.Builder!
+*REMOVED*static Orkeon.Application.Training.TrainingPlanParameters.Empty.get -> Orkeon.Application.Training.TrainingPlanParameters!
+*REMOVED*static Orkeon.Application.Training.TrainingRecommendationContext.CreateBuilder() -> Orkeon.Application.Training.TrainingRecommendationContext.Builder!
+*REMOVED*static Orkeon.Application.Training.TrainingRecommendationContext.Empty.get -> Orkeon.Application.Training.TrainingRecommendationContext!
+*REMOVED*static Orkeon.Application.Training.TrainingResources.CreateBuilder() -> Orkeon.Application.Training.TrainingResources.Builder!
+*REMOVED*static Orkeon.Application.Training.TrainingResources.Empty.get -> Orkeon.Application.Training.TrainingResources!
+*REMOVED*static Orkeon.Application.Training.TrainingStatistics.CreateBuilder() -> Orkeon.Application.Training.TrainingStatistics.Builder!
+*REMOVED*static Orkeon.Application.Training.TrainingStatistics.Empty.get -> Orkeon.Application.Training.TrainingStatistics!
+*REMOVED*static Orkeon.Application.Training.TrainingSuccessMetrics.CreateBuilder() -> Orkeon.Application.Training.TrainingSuccessMetrics.Builder!
+*REMOVED*static Orkeon.Application.Training.TrainingSuccessMetrics.Empty.get -> Orkeon.Application.Training.TrainingSuccessMetrics!
+*REMOVED*static Orkeon.Application.Training.TrainingTask.Create(string! description, string! expectedOutput, System.Collections.Generic.IReadOnlyList<string!>! requiredSkills) -> Orkeon.Application.Training.TrainingTask!
+*REMOVED*static Orkeon.Application.Training.TrainingTask.operator !=(Orkeon.Application.Training.TrainingTask? left, Orkeon.Application.Training.TrainingTask? right) -> bool
+*REMOVED*static Orkeon.Application.Training.TrainingTask.operator ==(Orkeon.Application.Training.TrainingTask? left, Orkeon.Application.Training.TrainingTask? right) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.PerformanceDataPoint.<Clone>$() -> Orkeon.Application.Interfaces.Training.PerformanceDataPoint!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.PerformanceDataPoint.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.PerformanceDataPoint.Equals(Orkeon.Application.Interfaces.Training.PerformanceDataPoint? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.PerformanceDataPoint.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.PerformanceTrend.<Clone>$() -> Orkeon.Application.Interfaces.Training.PerformanceTrend!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.PerformanceTrend.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.PerformanceTrend.Equals(Orkeon.Application.Interfaces.Training.PerformanceTrend? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.PerformanceTrend.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingFeedback.<Clone>$() -> Orkeon.Application.Interfaces.Training.TrainingFeedback!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingFeedback.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingFeedback.Equals(Orkeon.Application.Interfaces.Training.TrainingFeedback? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingFeedback.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingOptions.<Clone>$() -> Orkeon.Application.Interfaces.Training.TrainingOptions!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingOptions.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingOptions.Equals(Orkeon.Application.Interfaces.Training.TrainingOptions? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingOptions.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingPlan.<Clone>$() -> Orkeon.Application.Interfaces.Training.TrainingPlan!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingPlan.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingPlan.Equals(Orkeon.Application.Interfaces.Training.TrainingPlan? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingPlan.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingResult.<Clone>$() -> Orkeon.Application.Interfaces.Training.TrainingResult!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingResult.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingResult.Equals(Orkeon.Application.Interfaces.Training.TrainingResult? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingTask.<Clone>$() -> Orkeon.Application.Interfaces.Training.TrainingTask!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingTask.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingTask.Equals(Orkeon.Application.Interfaces.Training.TrainingTask? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Training.TrainingTask.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Training.SkillDevelopment.<Clone>$() -> Orkeon.Application.Training.SkillDevelopment!
+*REMOVED*virtual Orkeon.Application.Training.SkillDevelopment.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Training.SkillDevelopment.Equals(Orkeon.Application.Training.SkillDevelopment? other) -> bool
+*REMOVED*virtual Orkeon.Application.Training.SkillDevelopment.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Training.TrainingTask.<Clone>$() -> Orkeon.Application.Training.TrainingTask!
+*REMOVED*virtual Orkeon.Application.Training.TrainingTask.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Training.TrainingTask.Equals(Orkeon.Application.Training.TrainingTask? other) -> bool
+*REMOVED*virtual Orkeon.Application.Training.TrainingTask.PrintMembers(System.Text.StringBuilder! builder) -> bool

@@ -71,7 +71,6 @@ public partial class GetTaskHandler : IQueryHandler<GetTaskQuery, TaskDto?>
             "Completed" => "Completed",
             "Failed" => "Failed",
             "Cancelled" => "Cancelled",
-            "Blocked" => "Blocked",
             _ => "Pending"
         };
 

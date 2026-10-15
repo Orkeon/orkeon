@@ -64,33 +64,6 @@ public class CrewEventsTests
     }
 
     [Fact]
-    public void ShouldInitializeProperties_WhenUsingAgentLeftCrewEventUsingConstructor()
-    {
-        // Arrange
-        var reason = "Task completed";
-
-        // Act
-        var @event = new AgentLeftCrewEvent { CrewId = _crewId, AgentId = _agentId, Reason = reason, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal(_crewId, @event.CrewId);
-        Assert.Equal(_agentId, @event.AgentId);
-        Assert.Equal(reason, @event.Reason);
-        Assert.Equal(_occurredAt, @event.OccurredAt);
-        Assert.NotEqual(Guid.Empty, @event.Id);
-    }
-
-    [Fact]
-    public void ShouldReturnCorrectName_WhenUsingAgentLeftCrewEventUsingEventName()
-    {
-        // Act
-        var @event = new AgentLeftCrewEvent { CrewId = _crewId, AgentId = _agentId, Reason = "Reason", OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal("AgentLeftCrewEvent", @event.EventName);
-    }
-
-    [Fact]
     public void ShouldInitializeProperties_WhenUsingTaskAddedToCrewEventUsingConstructor()
     {
         // Act
@@ -111,33 +84,6 @@ public class CrewEventsTests
 
         // Assert
         Assert.Equal("TaskAddedToCrewEvent", @event.EventName);
-    }
-
-    [Fact]
-    public void ShouldInitializeProperties_WhenUsingTaskRemovedFromCrewEventUsingConstructor()
-    {
-        // Arrange
-        var reason = "No longer needed";
-
-        // Act
-        var @event = new TaskRemovedFromCrewEvent { CrewId = _crewId, TaskId = _taskId, Reason = reason, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal(_crewId, @event.CrewId);
-        Assert.Equal(_taskId, @event.TaskId);
-        Assert.Equal(reason, @event.Reason);
-        Assert.Equal(_occurredAt, @event.OccurredAt);
-        Assert.NotEqual(Guid.Empty, @event.Id);
-    }
-
-    [Fact]
-    public void ShouldReturnCorrectName_WhenUsingTaskRemovedFromCrewEventUsingEventName()
-    {
-        // Act
-        var @event = new TaskRemovedFromCrewEvent { CrewId = _crewId, TaskId = _taskId, Reason = "Reason", OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal("TaskRemovedFromCrewEvent", @event.EventName);
     }
 
     [Fact]
@@ -239,62 +185,6 @@ public class CrewEventsTests
     }
 
     [Fact]
-    public void ShouldInitializeProperties_WhenUsingCrewProcessTypeChangedEventUsingConstructor()
-    {
-        // Arrange
-        var oldProcessType = ProcessType.Sequential;
-        var newProcessType = ProcessType.Parallel;
-
-        // Act
-        var @event = new CrewProcessTypeChangedEvent { CrewId = _crewId, OldProcessType = oldProcessType, NewProcessType = newProcessType, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal(_crewId, @event.CrewId);
-        Assert.Equal(oldProcessType, @event.OldProcessType);
-        Assert.Equal(newProcessType, @event.NewProcessType);
-        Assert.Equal(_occurredAt, @event.OccurredAt);
-        Assert.NotEqual(Guid.Empty, @event.Id);
-    }
-
-    [Fact]
-    public void ShouldReturnCorrectName_WhenUsingCrewProcessTypeChangedEventUsingEventName()
-    {
-        // Act
-        var @event = new CrewProcessTypeChangedEvent { CrewId = _crewId, OldProcessType = ProcessType.Sequential, NewProcessType = ProcessType.Parallel, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal("CrewProcessTypeChangedEvent", @event.EventName);
-    }
-
-    [Fact]
-    public void ShouldInitializeProperties_WhenUsingCrewGoalUpdatedEventUsingConstructor()
-    {
-        // Arrange
-        var oldGoal = "Process customer data";
-        var newGoal = "Analyze customer behavior";
-
-        // Act
-        var @event = new CrewGoalUpdatedEvent { CrewId = _crewId, OldGoal = oldGoal, NewGoal = newGoal, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal(_crewId, @event.CrewId);
-        Assert.Equal(oldGoal, @event.OldGoal);
-        Assert.Equal(newGoal, @event.NewGoal);
-        Assert.Equal(_occurredAt, @event.OccurredAt);
-        Assert.NotEqual(Guid.Empty, @event.Id);
-    }
-
-    [Fact]
-    public void ShouldReturnCorrectName_WhenUsingCrewGoalUpdatedEventUsingEventName()
-    {
-        // Act
-        var @event = new CrewGoalUpdatedEvent { CrewId = _crewId, OldGoal = "Old", NewGoal = "New", OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Equal("CrewGoalUpdatedEvent", @event.EventName);
-    }
-
-    [Fact]
     public void ShouldSupportEquality_WhenUsingCrewEventsAsRecords()
     {
         // Arrange
@@ -354,30 +244,6 @@ public class CrewEventsTests
     }
 
     [Fact]
-    public void ShouldHandleGracefully_WhenUsingAgentLeftCrewEventWithNullReason()
-    {
-        // Act
-        var @event = new AgentLeftCrewEvent { CrewId = _crewId, AgentId = _agentId, Reason = null!, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Null(@event.Reason);
-        Assert.Equal(_crewId, @event.CrewId);
-        Assert.Equal(_agentId, @event.AgentId);
-    }
-
-    [Fact]
-    public void ShouldHandleGracefully_WhenUsingTaskRemovedFromCrewEventWithNullReason()
-    {
-        // Act
-        var @event = new TaskRemovedFromCrewEvent { CrewId = _crewId, TaskId = _taskId, Reason = null!, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Null(@event.Reason);
-        Assert.Equal(_crewId, @event.CrewId);
-        Assert.Equal(_taskId, @event.TaskId);
-    }
-
-    [Fact]
     public void ShouldHandleGracefully_WhenUsingCrewExecutionFailedEventWithNullReason()
     {
         // Act
@@ -390,15 +256,4 @@ public class CrewEventsTests
         Assert.Equal(_processId, @event.ProcessId);
     }
 
-    [Fact]
-    public void ShouldHandleGracefully_WhenUsingCrewGoalUpdatedEventWithNullGoals()
-    {
-        // Act
-        var @event = new CrewGoalUpdatedEvent { CrewId = _crewId, OldGoal = null!, NewGoal = null!, OccurredAt = _occurredAt };
-
-        // Assert
-        Assert.Null(@event.OldGoal);
-        Assert.Null(@event.NewGoal);
-        Assert.Equal(_crewId, @event.CrewId);
-    }
 }

@@ -7,6 +7,8 @@ public class BenchmarkRunnerTests
     private readonly BenchmarkRunnerTestsFixture _fixture = new();
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldRunMultipleTimes_WhenRunsPerCaseIsSet()
     {
         var evaluator = BenchmarkRunnerTestsFixture.CreateMockEvaluator("Eval", 0.8);
@@ -23,6 +25,8 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldCalculateMeanAndStdDev_WhenScoresVary()
     {
         var callCount = 0;
@@ -51,6 +55,8 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldProducePerCaseResults_WhenMultipleCasesExist()
     {
         var evaluator = BenchmarkRunnerTestsFixture.CreateMockEvaluator("Eval", 0.9);
@@ -70,6 +76,8 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldContainOverallStats_WhenAccessingSummary()
     {
         var evaluator = BenchmarkRunnerTestsFixture.CreateMockEvaluator("Eval", 0.75);
@@ -84,6 +92,8 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldIncludeLlmEvaluators_WhenNoClientIsAvailable()
     {
         var deterministicEval = BenchmarkRunnerTestsFixture.CreateMockEvaluator("Deterministic", 0.9);
@@ -99,6 +109,8 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldProduceEmptyReport_WhenDatasetIsEmpty()
     {
         var evaluator = BenchmarkRunnerTestsFixture.CreateMockEvaluator("Eval", 0.8);

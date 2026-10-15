@@ -46,16 +46,6 @@ public sealed class QuestionRequestId : EntityId<QuestionRequestId> { }
 /// <summary>Strongly-typed identifier for HumanInputRequest entities.</summary>
 public sealed class HumanInputRequestId : EntityId<HumanInputRequestId> { }
 
-// -- Composition ------------------------------------------------------------
-/// <summary>Strongly-typed identifier for TrainingScenario entities.</summary>
-public sealed class TrainingScenarioId : EntityId<TrainingScenarioId> { }
-/// <summary>Strongly-typed identifier for TrainingObjective entities.</summary>
-public sealed class TrainingObjectiveId : EntityId<TrainingObjectiveId> { }
-/// <summary>Strongly-typed identifier for TrainingStep entities.</summary>
-public sealed class TrainingStepId : EntityId<TrainingStepId> { }
-/// <summary>Strongly-typed identifier for TrainingTask entities.</summary>
-public sealed class TrainingTaskId : EntityId<TrainingTaskId> { }
-
 // -- Tools ------------------------------------------------------------------
 /// <summary>Strongly-typed identifier for ToolCallRequest entities.</summary>
 public sealed class ToolCallRequestId : EntityId<ToolCallRequestId> { }

@@ -85,7 +85,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 > (section `MCP`, via la surcharge `IConfiguration`, ou l'hôte des runners dès que
 > `MCP:Servers` déclare un serveur), la télémétrie et la recherche vectorielle (même
 > surcharge), le store de checkpointing sans paramètre (`AddOrkeonCheckpointing()` ;
-> les variantes SQLite/Postgres restent explicites), Evaluation, Training, Consensus,
+> les variantes SQLite/Postgres restent explicites), Evaluation, Consensus,
 > CostTracking, YAML, Encryption et CodeSandbox. Le
 > pipeline Guardian, les sanitizers de prompt et de résultats d'outils et le point
 > d'invocation des outils sont eux aussi enregistrés, et **chaque tour d'agent les traverse**
@@ -112,7 +112,6 @@ hôte construit un conteneur minimal sans l'infrastructure complète.
 |---|---|---|---|
 | `AddOrkeonYaml()` | `CrewFactoryOptions` (options simples, résolution d'outils tolérante), `ICrewDefinitionLoader` → `YamlCrewDefinitionLoader`, `ICrewFactory` → `CrewFactory` (scoped), `YamlCrewExporter` | le chargement de crews des runners ; `orkeon forge` | vous chargez ou exportez des crews YAML sans `AddOrkeonInfrastructure()`. La résolution stricte des outils est `Orkeon:CrewFactory:StrictTools`, que lit `RunnerHost` (défaut `true` chez lui) |
 | `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` (aussi comme `IGuardianPipeline`) avec les trois gardes branchés sur leurs phases — aucun quand `Enabled = false` | l'orchestrateur d'exécution (phase d'entrée), le service de streaming, et `IToolInvocationPipeline` (phases outil et délégation) — enregistré par `AddOrkeonApplication()` | vous composez un conteneur sans `AddOrkeonInfrastructure()` et voulez quand même les gardes — voir [Sécurité](../architecture/security.md) |
-| `AddOrkeonTraining()` | `IFeedbackCollector` → `AutomaticFeedbackCollector`, `IAgentPerformanceTracker`, `ITrainingOrchestrator` | rien de livré | vous faites tourner une boucle d'entraînement/feedback depuis votre code (résolvez `ITrainingOrchestrator`) |
 
 Le service de migration de mémoire est la seule extension de déplacement de données qui n'est
 *pas* enregistrée par défaut : `AddOrkeonMemoryMigration()` — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration).

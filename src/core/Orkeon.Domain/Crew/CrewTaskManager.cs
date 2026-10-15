@@ -41,25 +41,6 @@ internal sealed class CrewTaskManager
     }
 
     /// <summary>
-    /// Removes a task from the crew. Validates that the task exists
-    /// and that the crew is not currently executing.
-    /// </summary>
-    public void RemoveTask(TaskId taskId, string reason, CrewStatus status)
-    {
-        ArgumentNullException.ThrowIfNull(taskId);
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
-
-        if (!_tasks.Contains(taskId))
-            throw new InvalidOperationException($"Task {taskId} is not in this crew.");
-
-        if (status == CrewStatus.Executing)
-            throw new InvalidOperationException("Cannot remove tasks while crew is executing.");
-
-        _tasks.Remove(taskId);
-    }
-
-    /// <summary>
     /// Checks if the crew has any tasks.
     /// </summary>
     public bool Any() => _tasks.Count > 0;

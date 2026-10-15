@@ -19,7 +19,6 @@ exceptions are called out in their row — a service registered unconditionally
 
 | Service | Default | What it actually does | Replace it with |
 |---|---|---|---|
-| `ITaskDelegator` | `NullTaskDelegator` | **Denies every delegation request**; `FindBestAgentForTaskAsync` returns the first available agent. Registered, but **consulted by no orchestration strategy today**: replacing it changes nothing in a run. Delegation that does happen goes elsewhere — the Autonomous mode hands a failed task to a peer over `IAgentChannel`, and agents delegate through the `delegate_work_to_coworker` / `ask_question_to_coworker` tools; see [Autonomous orchestration](../orchestration/autonomous.md). | Nothing to replace for a run; `services.AddSingleton<ITaskDelegator, YourDelegator>();` only serves your own code that resolves it. |
 | `IKnowledgeStore` | `InMemoryKnowledgeStore` | Working in-memory store (store/retrieve/delete are real, nothing persists) — but `SearchAsync` **ignores the query** and returns the first stored entries. | Enable the RAG subsystem (`AddOrkeonRag(configuration)`) and use its ingestion/retrieval, or register your own store. |
 | `ILlmCache` | `NullLlmCache` | A cache that always misses — changes cost, not correctness. | `services.AddSingleton<ILlmCache, YourCache>();` |
 | `IMemorySystem` | `InMemoryMemorySystem` | Real in-memory implementation — correct, just not persistent. | Configure a persistent provider (`Memory:Provider`). |

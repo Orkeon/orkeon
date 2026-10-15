@@ -557,9 +557,12 @@ public class ExecutionOrchestratorTests
         var llmProvider = new TestLlmProvider();
         var orchestrator = new ExecutionOrchestrator(logger, llmProvider);
 
-        var agent = CreateTestAgent();
-        // Add a very long backstory
-        agent.UpdateBackstory(AgentBackstory.From("Agent background: " + new string('X', 5000)));
+        // A very long backstory, set at construction
+        var agent = DomainAgent.Create(
+            AgentRole.From("Test Agent"),
+            AgentGoal.From("Complete test tasks"),
+            backstory: AgentBackstory.From("Agent background: " + new string('X', 5000)),
+            allowDelegation: true);
 
         var task = CreateTestTask(description: "Analyze very complex data with detailed requirements");
         var context = CreateTestContext();

@@ -1,6 +1,6 @@
 # 80. Direction Artistique Délégation Report
 
-> Processus hiérarchique créatif avec un DA Manager. Les DelegationPerformanceReport mesurent l'efficacité de chaque créatif.
+> Processus hiérarchique créatif avec un DA Manager.
 
 ## Quality
 
@@ -12,7 +12,7 @@
 - **Agents**: 5 — Art Director (manager), Brief Strategist, Visual Designer, Copywriter, Media Planner
 - **Tools**: `web_scrape`, `http_api`, `json_tool`, `file_write`
 - **Memory**: `InMemory`
-- **Key features**: DelegationParameters, DelegationPerformanceReport, ManagerAgent delegation capabilities
+- **Key features**: ManagerAgent delegation capabilities
 - **Runner**: `standard`
 
 ## Prerequisites

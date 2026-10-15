@@ -269,31 +269,4 @@ public class InterfaceRecordsTests
         Assert.Null(criteria.Status);
         Assert.Equal(50, criteria.Limit);
     }
-
-    // ══════════════ ITemplateEngine — TemplateValidation ══════════════
-
-    [Fact]
-    public void ShouldCreateValidTemplate_WhenCallingValidFactory()
-    {
-        // Act
-        var v = TemplateValidation.Valid("param1", "param2");
-
-        // Assert
-        Assert.True(v.IsValid);
-        Assert.Empty(v.Errors);
-        Assert.Equal(2, v.Parameters.Count);
-        Assert.Empty(v.Warnings);
-    }
-
-    [Fact]
-    public void ShouldCreateInvalidTemplate_WhenCallingInvalidFactory()
-    {
-        // Act
-        var v = TemplateValidation.Invalid("Unclosed tag", "Unknown filter");
-
-        // Assert
-        Assert.False(v.IsValid);
-        Assert.Equal(2, v.Errors.Count);
-        Assert.Empty(v.Parameters);
-    }
 }

@@ -181,6 +181,5 @@ public class SimpleApplicationTests
         Assert.Equal(Completed, Orkeon.Domain.Task.ValueObjects.TaskStatus.Completed.Value);
         Assert.Equal(Failed, Orkeon.Domain.Task.ValueObjects.TaskStatus.Failed.Value);
         Assert.Equal("Cancelled", Orkeon.Domain.Task.ValueObjects.TaskStatus.Cancelled.Value);
-        Assert.Equal("Blocked", Orkeon.Domain.Task.ValueObjects.TaskStatus.Blocked.Value);
     }
 }

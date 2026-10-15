@@ -129,90 +129,6 @@ public class CrewTaskManagerTests
 
     #endregion
 
-    #region RemoveTask
-
-    [Fact]
-    public void ShouldRemoveTask_WhenTaskExistsAndNotExecuting()
-    {
-        // Arrange
-        var manager = new CrewTaskManager([]);
-        var taskId = TaskId.Create();
-        manager.AddTask(taskId, CrewStatus.Idle);
-
-        // Act
-        manager.RemoveTask(taskId, "No longer needed", CrewStatus.Idle);
-
-        // Assert
-        Assert.Empty(manager.Tasks);
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenRemovingNullTaskId()
-    {
-        // Arrange
-        var manager = new CrewTaskManager([]);
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(
-            () => manager.RemoveTask(null!, "reason", CrewStatus.Idle));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("  ")]
-    public void ShouldThrowArgumentException_WhenRemovingWithEmptyReason(string reason)
-    {
-        // Arrange
-        var manager = new CrewTaskManager([]);
-        var taskId = TaskId.Create();
-        manager.AddTask(taskId, CrewStatus.Idle);
-
-        // Act & Assert
-        Assert.Throws<ArgumentException>(
-            () => manager.RemoveTask(taskId, reason, CrewStatus.Idle));
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenRemovingWithNullReason()
-    {
-        // Arrange
-        var manager = new CrewTaskManager([]);
-        var taskId = TaskId.Create();
-        manager.AddTask(taskId, CrewStatus.Idle);
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(
-            () => manager.RemoveTask(taskId, null!, CrewStatus.Idle));
-    }
-
-    [Fact]
-    public void ShouldThrowInvalidOperationException_WhenRemovingTaskNotInCrew()
-    {
-        // Arrange
-        var manager = new CrewTaskManager([]);
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => manager.RemoveTask(TaskId.Create(), "reason", CrewStatus.Idle));
-        Assert.Contains("is not in this crew", ex.Message);
-    }
-
-    [Fact]
-    public void ShouldThrowInvalidOperationException_WhenRemovingTaskDuringExecution()
-    {
-        // Arrange
-        var manager = new CrewTaskManager([]);
-        var taskId = TaskId.Create();
-        manager.AddTask(taskId, CrewStatus.Idle);
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => manager.RemoveTask(taskId, "reason", CrewStatus.Executing));
-        Assert.Contains("Cannot remove tasks while crew is executing", ex.Message);
-    }
-
-    #endregion
-
     #region Any
 
     [Fact]
@@ -231,19 +147,6 @@ public class CrewTaskManagerTests
     {
         // Arrange
         var manager = new CrewTaskManager([]);
-
-        // Act & Assert
-        Assert.False(manager.Any());
-    }
-
-    [Fact]
-    public void ShouldReturnFalse_WhenAllTasksAreRemoved()
-    {
-        // Arrange
-        var manager = new CrewTaskManager([]);
-        var taskId = TaskId.Create();
-        manager.AddTask(taskId, CrewStatus.Idle);
-        manager.RemoveTask(taskId, "Cleanup", CrewStatus.Idle);
 
         // Act & Assert
         Assert.False(manager.Any());

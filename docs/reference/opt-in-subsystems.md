@@ -84,7 +84,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 > `IConfiguration` overload, or the runner host once `MCP:Servers` declares a server),
 > telemetry and vector search (same overload), the parameterless checkpointing store
 > (`AddOrkeonCheckpointing()`; the SQLite/Postgres variants stay explicit), Evaluation,
-> Training, Consensus, CostTracking, YAML, Encryption and CodeSandbox. The Guardian pipeline, the prompt/tool-result sanitizers and
+> Consensus, CostTracking, YAML, Encryption and CodeSandbox. The Guardian pipeline, the prompt/tool-result sanitizers and
 > the tool-invocation point are registered too, and **every agent turn runs through them**
 > (`Orkeon:Guardian:Enabled` is the switch — see [Security](../architecture/security.md)).
 > Their configuration sections are mapped in the [Configuration reference](./configuration.md).
@@ -108,7 +108,6 @@ the full infrastructure.
 |---|---|---|---|
 | `AddOrkeonYaml()` | `CrewFactoryOptions` (plain options, lenient tool resolution), `ICrewDefinitionLoader` → `YamlCrewDefinitionLoader`, `ICrewFactory` → `CrewFactory` (scoped), `YamlCrewExporter` | the runners' crew loading; `orkeon forge` | you load or export YAML crews without `AddOrkeonInfrastructure()`. Strict tool resolution is `Orkeon:CrewFactory:StrictTools`, which `RunnerHost` reads (default `true` there) |
 | `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` (also as `IGuardianPipeline`) with the three guards wired to their phases — none when `Enabled = false` | the execution orchestrator (input phase), the streaming service, and `IToolInvocationPipeline` (tool and delegation phases) — registered by `AddOrkeonApplication()` | you compose a container without `AddOrkeonInfrastructure()` and still want the guards — see [Security](../architecture/security.md) |
-| `AddOrkeonTraining()` | `IFeedbackCollector` → `AutomaticFeedbackCollector`, `IAgentPerformanceTracker`, `ITrainingOrchestrator` | nothing shipped | you run a training/feedback loop from your own code (resolve `ITrainingOrchestrator`) |
 
 The memory migration service is the one data-moving extension that is *not* registered by
 default: `AddOrkeonMemoryMigration()` — see [Memory system](../architecture/memory-system.md#selection-by-configuration).
