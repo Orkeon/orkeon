@@ -431,6 +431,13 @@ drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl
 pane, `Ctrl+C` cancel the running command (twice within two seconds to force-quit), `Ctrl+Q`
 quit. `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
 
+**Session state shared with the commands.** The console reads and writes one key of the session
+state (`ISessionBufferService`, which a command reaches with `session_store`'s `get_state` and
+`set_state`): `default_permission_mode` (`SessionStateKeys.DefaultPermissionMode`,
+`Orkeon.Constants.Cli`), the permission mode it shows and cycles on `Shift+Tab` (`default` →
+`acceptEdits` → `plan` → `bypassPermissions`). A product's `/mode` command writes that key, so the
+console shows its choice: the key is a contract and keeps its name.
+
 ## TypeScript support matrix (esbuild → Jint)
 
 | Feature                                         | Support |

@@ -134,6 +134,14 @@ for that task; the task's cache is exported and read back. A cache-only override
 without base configuration, and the MAF bridge warns about the cache only when it requests a
 breakpoint (GAP-48).
 
+### Added — `SessionStateKeys.DefaultPermissionMode`, the session key the console shares with scripted commands
+
+The console read and cycled the permission mode under a private constant, and a product's `/mode`
+command wrote it under its own copy of the string: renaming either side broke `Shift+Tab` with no
+error. `SessionStateKeys` (`Orkeon.Constants.Cli`) names the key, the console uses it, a test pins
+it with the cycle, and the scripted-commands page documents it as a contract. The `--crews-dir`
+bootstrapper, which a product relies on to resolve `runCrew("<name>")`, gets its tests.
+
 ### Fixed — the `dontAsk` permission mode denies what it does not allow, never asks
 
 `ModePermissionGate` did not know `dontAsk` and read it as `default`: a write or a command became
