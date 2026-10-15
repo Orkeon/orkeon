@@ -431,6 +431,8 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     {
         if (Status != TaskStatus.Pending)
             throw new InvalidOperationException("Cannot update LlmOverride after task has started.");
+        if (llmOverride?.MaxTokens is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(llmOverride), llmOverride.MaxTokens, "MaxTokens must be positive when pinned; leave it null to inherit the cap.");
 
         LlmOverride = llmOverride;
     }

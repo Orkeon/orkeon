@@ -178,6 +178,8 @@ public sealed class Agent : AggregateRoot<AgentId>
         if (options.Goal is null) throw new ArgumentNullException(nameof(options), "options.Goal cannot be null.");
         if (OwnProviderRefusal(options) is { } refusal)
             throw new ArgumentException(refusal, nameof(options));
+        if (options.LlmConfig?.MaxTokens is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), options.LlmConfig.MaxTokens, "LlmConfig.MaxTokens must be positive when pinned; leave it null for the model's documented maximum.");
 
         var agent = new Agent(AgentId.Create())
         {

@@ -42,6 +42,13 @@ public sealed partial class YamlCrewMapper
         RefuseAsyncExecutionTheModeIgnores(process, settings.Process, tasks);
         RefuseManagerTheModeHasNoneOf(process, settings.Process, settings.ManagerAgent);
 
+        if (settings.CrewDefaultLlm?.MaxTokens is <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Crew '{settings.Name}' llm.max_tokens: {settings.CrewDefaultLlm.MaxTokens} - the tokens the model may answer with " +
+                "must be 1 or more; omit the key to keep the inherited cap.");
+        }
+
         var mappedAgents = agents != null
             ? MapAgents(agents, settings.CrewDefaultLlm, out var agentNameMap)
             : MapAgentsEmpty(out agentNameMap);

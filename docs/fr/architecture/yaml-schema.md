@@ -33,6 +33,7 @@ graphConfig: {…}          # Réglages du mode Graph, seul réglage de circuit 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
   profile: string         # Profil LLM de l'hôte (Llm:Profiles:<nom>) pour tous les agents — inconnu → le chargement échoue en listant les profils de l'hôte
   model: string
+  max_tokens: int         # Positif ; omis = le plafond hérité, 0 ou moins fait échouer le chargement en nommant la crew
   temperature: float
 
 links:                    # ACL EventHub (optionnel) — à qui cette crew peut parler sur le hub
@@ -71,7 +72,7 @@ agents:
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
       model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil
       temperature: float  # Envoyée quelle que soit sa valeur — omise = celle du profil, sinon rien n'est envoyé et le modèle applique la sienne (GAP-36)
-      maxTokens: int      # Plafond de tokens en sortie — omis = le maximum documenté du modèle (LLM-10)
+      maxTokens: int      # Plafond de tokens en sortie, positif — omis = le maximum documenté du modèle (LLM-10) ; 0 ou moins fait échouer le chargement
       topP: float         # Nucleus sampling, envoyé quelle que soit sa valeur — omis = celui du profil, sinon rien n'est envoyé (Mistral écrit 1)
       thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
         enabled: bool
@@ -122,7 +123,7 @@ tasks:
       response_format: string  # Mêmes valeurs que llm.responseFormat
       response_schema: {name, schema, strict} # schema est une chaîne JSON
       temperature: float
-      max_tokens: int
+      max_tokens: int     # Positif ; omis = le plafond hérité, 0 ou moins fait échouer le chargement en nommant la tâche
       top_p: float
       thinking: {enabled, effort, budget_tokens}
       cache: {system, tools, ttl}  # Même forme que le cache: de l'agent — remplace le bloc de l'agent en entier ; un bloc sans point d'arrêt coupe le cache de l'agent pour cette tâche
@@ -146,7 +147,9 @@ autres modes ordonnent leurs tâches eux-mêmes, et le chargement nomme chaque t
 d'ignorer le drapeau (voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
 Un `maxRpm` de 0 ou moins — sur la crew ou sur un agent — et un `maxIter` de 0 ou moins font échouer le
 chargement aussi, en nommant la crew ou l'agent : omettre `maxRpm:`, c'est n'avoir aucune limite, omettre
-`maxIter:`, c'est le défaut (20). Ils étaient remplacés, par 10 et 15, sans un mot. Les plafonds propres
+`maxIter:`, c'est le défaut (20). Ils étaient remplacés, par 10 et 15, sans un mot. Un `max_tokens` de 0 ou moins — sur le `llm` de la crew, le `llm` d'un agent ou le
+`llm_override` d'une tâche — fait échouer le chargement aussi, en nommant la crew, l'agent ou la tâche : omettre
+la clé, c'est garder le plafond hérité. Les plafonds propres
 de l'hôte sur les appels au modèle — qui bornent le `maxRpm` d'un agent, le plus strict l'emportant — sont
 les réglages de [`RateLimiting`](../reference/configuration.md#ratelimiting).
 Le `maxExecutionTime` (ou `max_execution_time`) d'un agent est un nombre entier de secondes : 0 ou moins, un décimal,

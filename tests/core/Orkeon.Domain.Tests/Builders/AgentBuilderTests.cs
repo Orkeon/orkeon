@@ -281,6 +281,16 @@ public class AgentBuilderTests
         Assert.Null(agent.PromptTemplate);
     }
 
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public void ShouldThrowOutOfRange_WhenTheAgentsLlmConfigHasZeroMaxTokens()
+    {
+        var builder = MinimalAgent().WithLlmConfig(LlmConfig.Create("m") with { MaxTokens = 0 });
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => builder.Build());
+        Assert.Contains("MaxTokens", ex.Message);
+    }
+
     #region Test Doubles
 
     private sealed class StubTool : IBaseTool

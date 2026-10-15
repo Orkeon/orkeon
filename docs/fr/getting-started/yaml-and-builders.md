@@ -20,6 +20,7 @@ partent d'une configuration qui ne nomme aucun modèle (`LlmConfig.OnProfile()`)
 alors sur le modèle de l'hôte, quel que soit son vendeur. Pour épingler un modèle, partez de
 `LlmConfig.Create(modèle)` ; pour tourner sur l'un des [profils nommés](#un-fournisseur-par-agent-profils)
 de l'hôte, de `LlmConfig.OnProfile("claude")`.
+Un plafond de tokens (`max_tokens`, `MaxTokens`) est un entier positif ; omettez-le pour garder le plafond hérité. Le chargement YAML, `LlmConfig.with` dans les scripts, `Agent.Create` et `SetLlmOverride` refusent une valeur de 0 ou moins.
 
 ## Configuration YAML
 

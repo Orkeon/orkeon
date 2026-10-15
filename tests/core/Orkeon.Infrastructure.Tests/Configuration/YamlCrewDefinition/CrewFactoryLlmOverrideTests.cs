@@ -181,6 +181,59 @@ public class CrewFactoryLlmOverrideTests
     }
 
     [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldRefuseTheLoadNamingTheTaskAndKey_WhenLlmOverrideMaxTokensIsZero()
+    {
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateCrewFromYamlAsync(
+            agentLlm: "",
+            taskOverride: "max_tokens: 0"));
+
+        Assert.Contains("write", ex.Message);
+        Assert.Contains("max_tokens", ex.Message);
+        Assert.Contains("omit the key to keep the inherited cap", ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldRefuseTheLoadNamingTheAgentAndKey_WhenAgentMaxTokensIsNegative()
+    {
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateCrewFromYamlAsync(
+            agentLlm: "llm:\n      max_tokens: -1",
+            taskOverride: null));
+
+        Assert.Contains("writer", ex.Message);
+        Assert.Contains("max_tokens", ex.Message);
+        Assert.Contains("omit the key to keep the inherited cap", ex.Message);
+    }
+
+    private static async System.Threading.Tasks.Task CreateCrewFromYamlAsync(string agentLlm, string? taskOverride)
+    {
+        var yaml = "name: mt\ngoal: Answer\nprocess: sequential\nagents:\n  writer:\n    role: Writer\n    goal: Write\n"
+            + (agentLlm.Length > 0 ? "    " + agentLlm + "\n" : "")
+            + "tasks:\n  write:\n    description: Write\n    expected_output: An answer\n    agent: writer\n"
+            + (taskOverride is null ? "" : "    llm_override:\n      " + taskOverride + "\n");
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddLogging();
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(
+            new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var container = services.BuildServiceProvider();
+        var loader = container.GetRequiredService<ICrewDefinitionLoader>();
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+        var unitOfWork = new NullUnitOfWork();
+        var factory = new CrewFactory(
+            loader,
+            new MockToolRegistry(),
+            NullLogger<CrewFactory>.Instance,
+            new InMemoryCrewRepository(unitOfWork),
+            new InMemoryAgentRepository(unitOfWork),
+            new InMemoryTaskRepository(unitOfWork));
+        await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task TaskWithoutLlmOverride_StaysNullOnCrewTask()
     {
         var (factory, taskRepo) = BuildFactory();

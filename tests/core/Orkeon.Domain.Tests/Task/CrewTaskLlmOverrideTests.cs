@@ -87,4 +87,15 @@ public class CrewTaskLlmOverrideTests
         Assert.Equal(0.0, task.LlmOverride!.Temperature);
         Assert.Equal("json_object", task.LlmOverride.ResponseFormat!.Type);
     }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public void ShouldThrowOutOfRange_WhenTheTaskOverrideHasNegativeMaxTokens()
+    {
+        var task = MinimalTask().Build();
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(
+            () => task.SetLlmOverride(new LlmConfigOverride { MaxTokens = -1, Temperature = 0.0 }));
+        Assert.Contains("MaxTokens", ex.Message);
+    }
 }

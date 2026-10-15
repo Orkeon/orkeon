@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a `max_tokens` of 0 or less is refused **[breaking]**
+
+A token cap is a positive integer (GAP-48). A `max_tokens` of 0 or less is now refused: at YAML crew
+load (an agent's `llm`, the crew's `llm`, naming the crew, and a task's `llm_override`; it was
+accepted, and 0 meant the documented maximum or was ignored); by `.ork.ts` `LlmConfig.with`,
+`llm.model` and `llm.profile` (`maxTokens` must be an integer from 1 to 2147483647, no more
+truncation); and in C# by `Agent.Create` and `CrewTaskBase.SetLlmOverride`, which throw
+`ArgumentOutOfRangeException`.
+
+- **Breaking**: a cap of 0 or less no longer loads or builds.
+- **Migration**: remove the key to keep the inherited cap, or write a positive integer.
+
 ### Fixed — a task's `llm_override` is merged once
 
 `ChatOptionsComposer` no longer merges a task's `llm_override` field by field a second time: the

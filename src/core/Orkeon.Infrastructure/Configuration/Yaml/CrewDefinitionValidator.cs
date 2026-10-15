@@ -130,6 +130,13 @@ public static class CrewDefinitionValidator
                 "more. Leave maxRpm: out for no limit of its own.");
         }
 
+        if (agent.LlmConfig?.MaxTokens is <= 0)
+        {
+            errors.Add(
+                $"Agent '{CrewEntryNames.Of(agent)}' llm.max_tokens: {agent.LlmConfig.MaxTokens} - the tokens the model may answer with " +
+                "must be 1 or more; omit the key to keep the inherited cap.");
+        }
+
         if (agent.MaxExecutionTime is { } limit
             && (limit <= TimeSpan.Zero || limit > Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling))
         {
@@ -187,6 +194,13 @@ public static class CrewDefinitionValidator
         {
             if (!taskIds.Contains(dep))
                 errors.Add($"Task '{name}' references unknown dependency '{dep}'.");
+        }
+
+        if (task.LlmOverride?.MaxTokens is <= 0)
+        {
+            errors.Add(
+                $"Task '{name}' llm_override.max_tokens: {task.LlmOverride.MaxTokens} - the tokens the model may answer with " +
+                "must be 1 or more; omit the key to keep the inherited cap.");
         }
     }
 
