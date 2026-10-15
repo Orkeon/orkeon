@@ -189,63 +189,15 @@ internal sealed class NativeToolCallingAgentLoop
     }
 
     /// <summary>
-    /// Appends the assistant message carrying the raw <c>tool_calls</c> JSON from the LLM response
-    /// so the conversation history can be replayed to the provider.
+    /// Appends the assistant message carrying the response's raw tool calls
+    /// (<see cref="NativeToolCallTranscript.AssistantTurn"/>) so the conversation history can be
+    /// replayed to the provider.
     /// </summary>
     private static void AppendAssistantToolCallMessage(
         List<Domain.SharedKernel.ValueObjects.LlmMessage> messages,
         Domain.SharedKernel.ValueObjects.LlmResponse response,
         System.Text.Json.JsonElement root)
-    {
-        var toolCallsJson = "";
-
-        // Try Anthropic format first: content[].type == "tool_use"
-        if (root.TryGetProperty("content", out var contentArray) &&
-            contentArray.ValueKind == System.Text.Json.JsonValueKind.Array)
-        {
-            var toolUseBlocks = new System.Collections.Generic.List<string>();
-            foreach (var block in contentArray.EnumerateArray())
-            {
-                if (block.TryGetProperty("type", out var t) && t.GetString() == "tool_use")
-                    toolUseBlocks.Add(block.GetRawText());
-            }
-            if (toolUseBlocks.Count > 0)
-                toolCallsJson = "[" + string.Join(",", toolUseBlocks) + "]";
-        }
-
-        // Fallback: OpenAI format choices[0].message.tool_calls
-        if (string.IsNullOrEmpty(toolCallsJson) &&
-            root.TryGetProperty("choices", out var choices) &&
-            choices.GetArrayLength() > 0)
-        {
-            var firstChoice = choices[0];
-            if (firstChoice.TryGetProperty("message", out var msg) &&
-                msg.TryGetProperty("tool_calls", out var tc))
-            {
-                toolCallsJson = tc.GetRawText();
-            }
-        }
-
-        messages.Add(new Domain.SharedKernel.ValueObjects.LlmMessage
-        {
-            Role = "assistant",
-            Content = response.Content ?? "",
-            RawToolCalls = toolCallsJson,
-            ReasoningContent = ExtractReasoningContentFromMetadata(response)
-        });
-    }
-
-    /// <summary>
-    /// Extracts the optional <c>reasoning_content</c> trace from the LLM response metadata.
-    /// Thinking-mode providers (DeepSeek) require this to be replayed on the next turn —
-    /// dropping it triggers an HTTP 400 on the very next request.
-    /// </summary>
-    private static string? ExtractReasoningContentFromMetadata(Domain.SharedKernel.ValueObjects.LlmResponse response)
-    {
-        if (response.Metadata is null) return null;
-        if (!response.Metadata.TryGetValue("reasoning_content", out var raw)) return null;
-        return raw as string;
-    }
+        => messages.Add(NativeToolCallTranscript.AssistantTurn(response, root));
 
     /// <summary>
     /// Executes a single native tool call (parsed by <see cref="Interfaces.LLM.IToolCallParser"/>)

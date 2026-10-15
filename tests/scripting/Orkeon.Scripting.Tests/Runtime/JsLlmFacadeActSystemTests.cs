@@ -109,8 +109,9 @@ public sealed class JsLlmFacadeActSystemTests
         var turn2 = provider.MessagesPerCall[1];
         Assert.Equal("system", turn2[0].Role);
         Assert.Equal("stay on task", turn2[0].Content);
-        // The tool result still comes back as a user turn after the seed pair.
-        Assert.Contains(turn2, m => m.Role == "user" && m.Content.Contains("[tool:probe_tool]", StringComparison.Ordinal));
+        // The tool call and its result come back after the seed pair, in the tool protocol.
+        Assert.Equal("system,user,assistant,tool", string.Join(",", turn2.Select(m => m.Role)));
+        Assert.Equal("c1", turn2[3].ToolCallId);
     }
 
     // ── fakes ────────────────────────────────────────────────────────────────

@@ -78,6 +78,36 @@ public class ModePermissionGateTests
         Assert.Equal(expected, verdict.Action);
     }
 
+    [Theory]
+    [InlineData("file_write", ToolAccess.Unspecified)]
+    [InlineData("shell_command", ToolAccess.Execute)]
+    [InlineData("my_tool", ToolAccess.Edit)]
+    public async Task DontAsk_denies_what_it_does_not_allow_even_with_an_approval_channel(string tool, ToolAccess declared)
+    {
+        // dontAsk never asks: with an interactive channel, normalising it to default would turn
+        // these calls into a prompt, the opposite of the mode.
+        var gate = new ModePermissionGate(isInteractive: true);
+
+        var verdict = await gate.CheckAsync(
+            tool, NoArgs, "dontAsk", declared, TestContext.Current.CancellationToken);
+
+        Assert.Equal(PermissionAction.Deny, verdict.Action);
+        Assert.Contains("dontAsk", verdict.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DontAsk_allows_a_read(bool interactive)
+    {
+        var gate = new ModePermissionGate(interactive);
+
+        var verdict = await gate.CheckAsync(
+            "file_read", NoArgs, "dontAsk", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(PermissionAction.Allow, verdict.Action);
+    }
+
     [Fact]
     public async Task Ask_survives_when_interactive()
     {

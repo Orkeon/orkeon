@@ -308,7 +308,7 @@
     "Orkeon:Cli:ScriptCommands:Limits:ExecutionTimeout": "Délai strict d'une invocation de commande. Défaut : 5 minutes.",
     "Orkeon:Cli:ScriptCommands:Limits:MemoryLimitBytes": "Plafond de mémoire en octets. Défaut : 64 Mo (profil CLI, spec §8.1).",
     "Orkeon:Cli:ScriptCommands:Limits:RecursionLimit": "Plafond de profondeur de récursion. Défaut : 100 (hérité de la spec §8.1 — le même que le plafond global).",
-    "Orkeon:Cli:ScriptCommands:MaxScripts": "Plafond strict du nombre de moteurs gardés en cache.",
+    "Orkeon:Cli:ScriptCommands:MaxScripts": "Plafond strict du nombre de fichiers `*.cmd.ts` que le chargeur garde ; au-delà, les fichiers suivants, dans l'ordre des chemins, sont ignorés avec un avertissement. 200 par défaut : au-dessus d'un vrai jeu de commandes.",
     "Orkeon:Cli:ScriptHost:CrewDirectories": "Répertoires virtuels sous lesquels vivent les crews, en `<dir>/<name>/crew.ork.ts`. La résolution essaie chaque répertoire dans l'ordre ; le premier qui correspond l'emporte.",
     "Orkeon:Cli:ScriptHost:CrewFileName": "Le nom du fichier d'entrée de la crew, résolu sous chaque `<dir>/<name>/`.",
     "Orkeon:Cli:ScriptHost:RunCrewTimeout": "Borne supérieure d'un appel synchrone `script-host.runCrew`. Quand elle expire, le script appelant reçoit une `TimeoutException` claire, le run abandonné est annulé de façon coopérative, et le fil du moteur ou du REPL est toujours libéré. Défaut : 10 minutes — généreux à dessein, puisque `runCrew` est fait pour des crews courtes (les workflows longs passent par le cycle de tickets de `runCrewAsync`). Zéro ou une valeur négative désactive la borne.",

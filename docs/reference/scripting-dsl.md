@@ -191,13 +191,20 @@ already observes the context's.
 `.tools([...])` and its `withAutonomousTool` instances — whose `execute` runs in the script,
 on the engine's own thread — until the model stops asking or `maxIterations` (default 10,
 `0` = unlimited) is reached. It resolves to `{ output, iterations }` (plus `interrupted` or
-`exhausted` when the loop stopped early). A name in `.tools([...])` that no tool of the host
+`exhausted` when the loop stopped early). Every tool call of a turn runs, in order, and the
+turn is replayed in the provider's own tool protocol — the assistant turn with its calls, then
+one `tool` result per call, a permission refusal or a tool error included — whether the
+provider answers in the OpenAI shape (most providers, Ollama included) or with the Anthropic
+Messages body. A result is cut once, at the framework's bound
+(`AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters, 32 000 for `file_read`): by the
+host's tool invocation pipeline when it has one, by `act` otherwise. A turn the provider failed
+resolves `output` to `<undefined-llm:<the provider's error>>`, as `complete` does. A name in `.tools([...])` that no tool of the host
 answers to (compared case-insensitively) is not skipped: `act` rejects with an
 `UnknownToolError` (`agentName`, `toolNames`, `availableTools`) before any model call — the
 procedural twin of the load failure the declarative shape gets for the same name; an `onError`
 handler reads it as `validation`. `ActOptions.system` seeds a real `role:"system"` message that
 persists across every iteration; without it `act()` sends a single user message.
-`permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`) is checked against the
+`permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) is checked against the
 host's permission gate on each tool call, when the host registered one — declare a script
 tool's `.access("read")` for it to pass `plan`; `onDelta` receives the streamed text of each
 assistant turn.

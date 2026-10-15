@@ -97,8 +97,8 @@ message wins over `LlmConfig.SystemMessage` on every provider.
 
 The permission gate is a first-class DI service, `IPermissionGate`
 (`Orkeon.Application.Interfaces.Security`) implemented by `ModePermissionGate`
-(`Orkeon.Infrastructure.Security`), consulted per tool call inside `ctx.llm.act`. Four modes
-(`bypassPermissions`, `plan`, `acceptEdits`, `default`), read/write classification from the
+(`Orkeon.Infrastructure.Security`), consulted per tool call inside `ctx.llm.act`. Five modes
+(`bypassPermissions`, `plan`, `acceptEdits`, `default`, `dontAsk`), read/write classification from the
 tool's own `IBaseTool.Access` declaration (with a curated read-tool table and
 `codebase_`/`symbol_`/`index_` prefixes as fallback), fail-closed on unknown tools and unknown
 modes. There is no interactive approval yet: a call the mode does not allow is denied, and the

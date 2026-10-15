@@ -100,8 +100,8 @@ l'emporte sur `LlmConfig.SystemMessage` chez tous les fournisseurs.
 
 Le garde de permissions est un service DI de premier rang, `IPermissionGate`
 (`Orkeon.Application.Interfaces.Security`) implémenté par `ModePermissionGate`
-(`Orkeon.Infrastructure.Security`), consulté à chaque appel d'outil dans `ctx.llm.act`. Quatre
-modes (`bypassPermissions`, `plan`, `acceptEdits`, `default`), classification
+(`Orkeon.Infrastructure.Security`), consulté à chaque appel d'outil dans `ctx.llm.act`. Cinq
+modes (`bypassPermissions`, `plan`, `acceptEdits`, `default`, `dontAsk`), classification
 lecture/écriture depuis la déclaration `IBaseTool.Access` de l'outil lui-même (avec une table
 d'outils de lecture curée et les préfixes `codebase_`/`symbol_`/`index_` en repli), fermeture
 par défaut sur un outil inconnu et sur un mode inconnu. Il n'y a pas encore d'approbation

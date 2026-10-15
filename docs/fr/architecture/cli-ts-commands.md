@@ -68,6 +68,7 @@ a pas. Le message qu'une commande rend via `ctx.continue(...)` est ce que le REP
 | `--strict-commands`               | Équivalent à `FailFastOnInvalidScript=true + ContinueOnConflict=false` (CI).        |
 | `--settings <chemin>`             | Chemin d'appsettings explicite (répétable — les fichiers suivants surchargent les précédents). |
 | `--mount <phys:virt:droits>`      | Ajoute un montage VFS (répétable) — p. ex. pour rendre un dossier de commandes accessible. |
+| `--allow-external-mounts`         | Un `--mount` hors du répertoire de travail est lisible (ou `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), comme pour `orkeon run` ; sans elle, un tel montage est refusé à l'accès. Les dossiers de `--commands-dir` et `--crews-dir` sont lisibles où qu'ils soient. |
 | `--crews-dir <chemin>`            | Ajoute un répertoire de résolution de crews (répétable ; monté en lecture seule comme `/crews`, `/crews-1`, …) — ce qui rend `script-host` / `runCrewAsync("nom")` résoluble. |
 
 Chaque option à valeur accepte `--option valeur` et `--option=valeur`. `orkeon-repl` prend aussi
@@ -86,7 +87,7 @@ Les mêmes options sous `Orkeon:Cli:ScriptCommands` :
         "Directories": ["/cli-commands"],
         "FailFastOnInvalidScript": false,
         "EsbuildTranspile": true,
-        "MaxScripts": 50,
+        "MaxScripts": 200,
         "ContinueOnConflict": true,
         "FallbackCommandName": "assistant",
         "Limits": {
@@ -437,6 +438,13 @@ recherche dans les logs, `Ctrl+↑` / `Ctrl+↓` redimensionnent, `F2` / `Maj+F2
 détail dans les logs, `F3` retour à la ligne, `F4` volet des agents, `Ctrl+C` annule la commande
 en cours (deux fois en deux secondes pour forcer la sortie), `Ctrl+Q` quitte. `orkeon-repl`
 choisit cette console avec `--ui` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
+
+**État de session partagé avec les commandes.** La console lit et écrit une clé de l'état de
+session (`ISessionBufferService`, qu'une commande atteint par `get_state` et `set_state` de
+`session_store`) : `default_permission_mode` (`SessionStateKeys.DefaultPermissionMode`,
+`Orkeon.Constants.Cli`), le mode de permission qu'elle affiche et fait tourner sur `Maj+Tab`
+(`default` → `acceptEdits` → `plan` → `bypassPermissions`). La commande `/mode` d'un produit écrit
+cette clé, et la console affiche son choix : la clé est un contrat et garde son nom.
 
 ## Matrice de support TypeScript (esbuild → Jint)
 

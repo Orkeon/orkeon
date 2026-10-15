@@ -427,8 +427,9 @@ Exit codes: `0` listed; `1` a name that designates nothing or that the `--host` 
 | `--commands-dir <path>` / `--no-script-commands` / `--strict-commands` | Where the `*.cmd.ts` commands are found, or none at all, or fail fast on a broken one. |
 | `--crews-dir <path>` | Where `script-host` resolves a crew by name. |
 | `--settings <path>` / `--mount <spec>` | The settings files, in place of the global one (later ones win), and VFS mounts. |
+| `--allow-external-mounts` | A `--mount` outside the working directory is readable, as for `orkeon run` (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`). |
 
-The last four are detailed in [CLI TypeScript commands](../architecture/cli-ts-commands.md#cli-flags); every value option accepts `--x value` and `--x=value`, and can be repeated. The standard .NET host switches (`--Key=Value` configuration overrides) apply as well.
+The last five are detailed in [CLI TypeScript commands](../architecture/cli-ts-commands.md#cli-flags); every value option accepts `--x value` and `--x=value`, and can be repeated. The standard .NET host switches (`--Key=Value` configuration overrides) apply as well.
 
 **Settings.** The REPL reads the settings the runners read, in their order (STUDIO-49, GAP-36): the environment variables without a prefix, the `--settings` files — else the global file `orkeon init` writes; a file named on the command line replaces it, as for `orkeon run` —, then the `ORKEON_` environment variables, prefix removed (`ORKEON_Llm__ApiKey` is `Llm:ApiKey` here as in every runner); the command line stays last. Nothing else: neither the `appsettings.json` of the current directory nor user secrets ([where settings are read from](./configuration.md#where-settings-are-read-from)). Its `Llm` section and profiles are read by the runners' reader, `ApiKeyEnvVar` included, and the log pane says once where each key comes from, with one warning per reference to a variable set nowhere.
 

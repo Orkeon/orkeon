@@ -1575,7 +1575,7 @@ profile tighter than the scripts' own.
 | `Limits:ExecutionTimeout` | duration | `"00:05:00"` | Hard timeout for a single command invocation. Default: 5 minutes. |
 | `Limits:MemoryLimitBytes` | integer | `67108864` | Memory cap in bytes. Default: 64 MB (spec §8.1 CLI profile). |
 | `Limits:RecursionLimit` | integer | `100` | Recursion depth cap. Default: 100 (inherited from spec §8.1 — same as global). |
-| `MaxScripts` | integer | `50` | Hard cap on the number of engines kept in cache. |
+| `MaxScripts` | integer | `200` | Hard cap on the number of `*.cmd.ts` files the loader keeps; past it, the remaining files, in path order, are dropped with a warning. Default 200: above a real command set. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:ScriptHost`
@@ -1853,7 +1853,7 @@ variable itself. The list is the one the code carries — a test holds this tabl
 
 | Variable | Read by | Value | Effect |
 |---|---|---|---|
-| `ORKEON_ALLOW_EXTERNAL_MOUNTS` | `orkeon` | `1`, `true` or `yes` | Stands for `--allow-external-mounts` on every `orkeon run` and `orkeon rag`: a `--mount` may point outside the working directory. A sandboxed deployment sets it once, its own boundary being the isolation. |
+| `ORKEON_ALLOW_EXTERNAL_MOUNTS` | `orkeon`, `orkeon-repl` | `1`, `true` or `yes` | Stands for `--allow-external-mounts` on every `orkeon run`, `orkeon rag` and `orkeon-repl`: a `--mount` may point outside the working directory. A sandboxed deployment sets it once, its own boundary being the isolation. |
 | `ORKEON_DEBUG` | `orkeon` | `1`, `true` or `yes` | An unexpected error prints its exception — the chain of types and the stack — instead of one line. |
 | `ORKEON_MCP_SERVE` | `orkeon` | set by `orkeon mcp serve`, never by hand | Marks every process `orkeon mcp serve` starts. Under it `orkeon mcp serve` refuses to start, so settings that list it among their own MCP servers cannot start it in a loop. |
 | `ORKEON_ESBUILD_PATH` | `orkeon`, `orkeon-host`, `orkeon-repl` | the path of an esbuild executable | Where a `.ork.ts` script finds esbuild, after `Orkeon:Scripting:Toolchain:EsbuildPath` and before the copy shipped beside the binary. The launchers of an installation set it to the esbuild they ship when it is unset. |

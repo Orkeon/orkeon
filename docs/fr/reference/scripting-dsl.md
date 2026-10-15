@@ -199,13 +199,21 @@ l'agent a choisis avec `.tools([...])` et ses instances `withAutonomousTool` —
 `execute` s'exécute dans le script, sur le fil du moteur — jusqu'à ce que le modèle cesse de
 demander ou que `maxIterations` (défaut 10, `0` = illimité) soit atteint. Elle se résout en
 `{ output, iterations }` (plus `interrupted` ou `exhausted` quand la boucle s'est arrêtée
-avant). Un nom de `.tools([...])` auquel aucun outil de l'hôte ne répond (comparaison
+avant). Chaque appel d'outil d'un tour s'exécute, dans l'ordre, et le tour est rejoué dans le
+protocole d'outils du fournisseur — le tour de l'assistant avec ses appels, puis un résultat
+`tool` par appel, refus de permission ou erreur d'outil compris —, que le fournisseur réponde
+au format OpenAI (la plupart des fournisseurs, Ollama compris) ou avec le corps Messages
+d'Anthropic. Un résultat est coupé une fois, à la borne du framework
+(`AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères, 32 000 pour `file_read`) : par
+le pipeline d'invocation d'outils de l'hôte quand il en a un, par `act` sinon. Un tour en échec
+chez le fournisseur résout `output` en `<undefined-llm:<l'erreur du fournisseur>>`, comme
+`complete`. Un nom de `.tools([...])` auquel aucun outil de l'hôte ne répond (comparaison
 insensible à la casse) n'est pas sauté : `act` rejette par une `UnknownToolError`
 (`agentName`, `toolNames`, `availableTools`) avant tout appel au modèle — le pendant procédural
 de l'échec de chargement que la forme déclarative obtient pour le même nom ; un handler
 `onError` la lit comme `validation`. `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
 itération ; sans lui, `act()` envoie un seul message utilisateur. `permissionMode`
-(`default`, `acceptEdits`, `bypassPermissions`, `plan`) est vérifié auprès de la porte de
+(`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) est vérifié auprès de la porte de
 permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une — déclarez
 `.access("read")` sur un outil de script pour qu'il passe `plan` ; `onDelta` reçoit le texte
 streamé de chaque tour de l'assistant.

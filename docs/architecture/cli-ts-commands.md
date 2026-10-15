@@ -66,6 +66,7 @@ TUI hides at startup.
 | `--strict-commands`               | Equivalent to `FailFastOnInvalidScript=true + ContinueOnConflict=false` (CI).       |
 | `--settings <path>`               | Explicit appsettings path (repeatable — later files override earlier ones).         |
 | `--mount <phys:virt:rights>`      | Add a VFS mount (repeatable) — e.g. to make a commands directory reachable.         |
+| `--allow-external-mounts`         | A `--mount` outside the working directory is readable (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), as for `orkeon run`; without it, such a mount is refused at access. The `--commands-dir` and `--crews-dir` folders are readable wherever they are. |
 | `--crews-dir <path>`              | Add a crew-resolution directory (repeatable; mounted read-only as `/crews`, `/crews-1`, …) — what makes `script-host` / `runCrewAsync("name")` resolvable. |
 
 Every value flag accepts `--flag value` and `--flag=value`. `orkeon-repl` also takes `--ui` and
@@ -84,7 +85,7 @@ Same options under `Orkeon:Cli:ScriptCommands`:
         "Directories": ["/cli-commands"],
         "FailFastOnInvalidScript": false,
         "EsbuildTranspile": true,
-        "MaxScripts": 50,
+        "MaxScripts": 200,
         "ContinueOnConflict": true,
         "FallbackCommandName": "assistant",
         "Limits": {
@@ -429,6 +430,13 @@ drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl
 `Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `F4` agents
 pane, `Ctrl+C` cancel the running command (twice within two seconds to force-quit), `Ctrl+Q`
 quit. `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
+
+**Session state shared with the commands.** The console reads and writes one key of the session
+state (`ISessionBufferService`, which a command reaches with `session_store`'s `get_state` and
+`set_state`): `default_permission_mode` (`SessionStateKeys.DefaultPermissionMode`,
+`Orkeon.Constants.Cli`), the permission mode it shows and cycles on `Shift+Tab` (`default` →
+`acceptEdits` → `plan` → `bypassPermissions`). A product's `/mode` command writes that key, so the
+console shows its choice: the key is a contract and keeps its name.
 
 ## TypeScript support matrix (esbuild → Jint)
 

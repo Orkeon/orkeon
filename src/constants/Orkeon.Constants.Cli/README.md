@@ -21,6 +21,7 @@ This project is no longer distributed as a NuGet package — reference it from s
 | Type | What it declares |
 |---|---|
 | `RunOptionNames` | The option names, bare (`settings`, not `--settings`), as `[Option(...)]` needs them — plus `Flag(name)` to compose the command-line spelling. |
+| `SessionStateKeys` | The keys of the REPL's session state the console reads or writes, shared with a product's scripted commands (`default_permission_mode`). |
 
 ## License
 

@@ -2520,8 +2520,8 @@
       "path": "Orkeon:Cli:ScriptCommands:MaxScripts",
       "section": "Orkeon:Cli:ScriptCommands",
       "type": "integer",
-      "default": 50,
-      "description": "Hard cap on the number of engines kept in cache."
+      "default": 200,
+      "description": "Hard cap on the number of `*.cmd.ts` files the loader keeps; past it, the remaining files, in path order, are dropped with a warning. Default 200: above a real command set."
     },
     {
       "path": "Orkeon:Cli:ScriptHost:CrewDirectories",

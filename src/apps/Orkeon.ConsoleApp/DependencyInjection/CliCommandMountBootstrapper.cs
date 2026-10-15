@@ -77,6 +77,17 @@ internal static class CliCommandMountBootstrapper
             opts.Directories = System.Collections.Immutable.ImmutableArray.CreateRange(existing);
         });
 
+        // 3. The folders are entries of the REPL, like the script of `orkeon run` (GAP-49,
+        //    decision 3): readable wherever they are, outside the working directory included.
+        services.PostConfigure<PathSecurityOptions>(opts =>
+        {
+            foreach (var m in resolved)
+            {
+                if (!opts.AdditionalAllowedDirectories.Contains(m.PhysicalPath))
+                    opts.AdditionalAllowedDirectories.Add(m.PhysicalPath);
+            }
+        });
+
         return services;
     }
 

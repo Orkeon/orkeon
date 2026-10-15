@@ -121,6 +121,37 @@ public sealed class JsLlmFacadeStreamTests
     }
 
     [Fact]
+    public async Task Act_streamed_turn_runs_every_tool_use_block_of_an_Anthropic_body()
+    {
+        using var engine = new Engine();
+        var read = new RecordingTool("file_read");
+        var list = new RecordingTool("list_directory");
+        // The body AnthropicLlmProvider rebuilds at the end of a streamed turn: one block per call.
+        var anthropicBody =
+            "{\"type\":\"message\",\"role\":\"assistant\",\"content\":[" +
+            "{\"type\":\"tool_use\",\"id\":\"tu_1\",\"name\":\"file_read\",\"input\":{}}," +
+            "{\"type\":\"tool_use\",\"id\":\"tu_2\",\"name\":\"list_directory\",\"input\":{}}]," +
+            "\"stop_reason\":\"tool_use\"}";
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            turns:
+            [
+                new StreamedTurn(Deltas: [], Final: new LlmResponse { Content = "", RawResponseBody = anthropicBody }),
+                new StreamedTurn(Deltas: ["done"], Final: new LlmResponse { Content = "done" }),
+            ]);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { read, list });
+
+        engine.SetValue("__deltas", new List<object>());
+        var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d) })");
+        var result = await facade.ActAsync(engine, "look around", options);
+
+        Assert.Equal("done", result.Get("output").AsString());
+        Assert.Equal(1, read.CallCount);
+        Assert.Equal(1, list.CallCount);
+        Assert.Equal(2, provider.ChatStreamingCalls);
+    }
+
+    [Fact]
     public async Task Act_onDelta_that_throws_rejects_act_with_its_error_and_abandons_the_run()
     {
         // A stream that never ends: act settles only if the run is abandoned once the callback

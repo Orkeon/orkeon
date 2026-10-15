@@ -134,6 +134,71 @@ for that task; the task's cache is exported and read back. A cache-only override
 without base configuration, and the MAF bridge warns about the cache only when it requests a
 breakpoint (GAP-48).
 
+### Added — a version directive `tsc` accepts: `// @orkeon-script 1.0`
+
+The only directive form, `/// <reference orkeon-script="1.0" />`, is a TS1084 error for `tsc`,
+which then skips its semantic pass: every project that type-checks its `.ork.ts` scripts had to
+strip the line first. The runtime also reads `// @orkeon-script 1.0`, a plain line comment, with
+the same validation; when a script carries both, the reference form wins. `orkeon forge` generates
+the new form. Existing scripts keep working unchanged.
+
+### Added — `SessionStateKeys.DefaultPermissionMode`, the session key the console shares with scripted commands
+
+The console read and cycled the permission mode under a private constant, and a product's `/mode`
+command wrote it under its own copy of the string: renaming either side broke `Shift+Tab` with no
+error. `SessionStateKeys` (`Orkeon.Constants.Cli`) names the key, the console uses it, a test pins
+it with the cycle, and the scripted-commands page documents it as a contract. The `--crews-dir`
+bootstrapper, which a product relies on to resolve `runCrew("<name>")`, gets its tests.
+
+### Fixed — the `dontAsk` permission mode denies what it does not allow, never asks
+
+`ModePermissionGate` did not know `dontAsk` and read it as `default`: a write or a command became
+an `Ask`, which a gate with `Orkeon:Security:PermissionGate:Interactive = true` would have turned
+into a prompt, the opposite of the mode. `dontAsk` now allows reads and denies everything else
+with a message naming the mode, whether or not an approval channel exists. `ActOptions.permissionMode`
+lists it.
+
+### Added — `orkeon-repl` reads mounts outside its working directory (GAP-49, decision 3, in part)
+
+`orkeon-repl` mounted a `--mount`, `--commands-dir` or `--crews-dir` folder outside its working
+directory, then refused every access to it ("Path is outside the allowed workspace directory"):
+a product whose commands live in their own checkout had to start the REPL from a common parent.
+The REPL now follows the runners:
+
+- `--allow-external-mounts` (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`) makes a `--mount` outside the
+  working directory readable; without it, such a mount stays mounted and refused at access, as for
+  `orkeon run`.
+- The `--commands-dir` and `--crews-dir` folders are entries of the REPL, like the script of
+  `orkeon run`: readable wherever they are.
+
+The rest of GAP-49's decision 3 (one placement and the runners' guards for the REPL's mounts,
+declared entries in force included) is not part of this change.
+
+### Changed — scripted commands load up to 200 files by default
+
+`Orkeon:Cli:ScriptCommands:MaxScripts` defaulted to 50: a commands folder past it lost its last
+files, in path order, with one warning in the start-up log, and the user found out when a command
+was unknown. The default is now 200, above a real command set; the description says what the cap
+does (the files the loader keeps), not engines kept in cache.
+
+### Fixed — `ctx.llm.act` calls tools on every provider, all the calls of a turn
+
+`act` read tool calls in the OpenAI shape only, ran the first call of a turn and sent its result
+back as a user turn cut at 4 000 characters. With the Anthropic provider no call was ever found,
+so the model's first answer was the final one; the other calls of a turn were dropped without a
+word; and a `file_read` result lost all but 4 000 of its 32 000 characters.
+
+- The calls are read with the framework's parsers, from the Anthropic Messages body or the
+  OpenAI body, buffered or rebuilt after a stream; a call the parser cannot read is the final
+  answer, where a call without its `function` used to throw.
+- Every call runs, in order, each through the permission gate and the tool-call budget, and the
+  turn is replayed in the provider's tool protocol: the assistant turn with its calls, then one
+  `tool` message per call.
+- A result is cut once, at `AgentDefaults.ResolveMaxToolResultLength`, with the framework's
+  notice; a failed provider turn resolves `output` to `<undefined-llm:<error>>`, as `complete`.
+- `NativeToolCallTranscript` (Application) holds the assistant turn and the bound, shared by the
+  C# agent loop and `act`.
+
 ### Fixed — *Verify what you install* is measured on `v1.0.0-rc.5` and says who signs what
 
 The guide printed `v1.0.0-rc.3` outputs and said GitHub's Sigstore instance signs the build

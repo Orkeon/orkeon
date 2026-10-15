@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Cli.Commands.Scripting.Configuration;
 using Orkeon.ConsoleApp.DependencyInjection;
 using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.Security;
 
 namespace Orkeon.ConsoleApp.Tests.DependencyInjection;
 
@@ -43,6 +45,26 @@ public sealed class CliCommandMountBootstrapperTests : IDisposable
         using var sp = sc.BuildServiceProvider();
         Assert.Empty(sp.GetRequiredService<IOptions<FileSystemOptions>>().Value.Mounts);
         Assert.True(sp.GetRequiredService<IOptions<ScriptCommandsConfiguration>>().Value.Directories.IsDefaultOrEmpty);
+    }
+
+    [Fact]
+    public void A_commands_folder_outside_the_working_directory_is_readable()
+    {
+        // GAP-49, decision 3: the --commands-dir folders are entries of the REPL, always readable.
+        File.WriteAllText(Path.Combine(_tempB, "hello.cmd.ts"), "// command");
+        var sc = new ServiceCollection();
+        sc.AddOptions<FileSystemOptions>();
+        sc.AddOptions<ScriptCommandsConfiguration>();
+        sc.AddOptions<PathSecurityOptions>();
+        sc.AddScriptCommandMounts(new[] { _tempA, _tempB });
+        using var sp = sc.BuildServiceProvider();
+        var security = sp.GetRequiredService<IOptions<PathSecurityOptions>>();
+
+        Assert.Contains(Path.GetFullPath(_tempA), security.Value.AdditionalAllowedDirectories);
+        Assert.Contains(Path.GetFullPath(_tempB), security.Value.AdditionalAllowedDirectories);
+        var validation = new PathValidator(security, NullLogger<PathValidator>.Instance)
+            .ValidatePath(Path.Combine(_tempB, "hello.cmd.ts"));
+        Assert.True(validation.IsAllowed, validation.DenialReason);
     }
 
     [Fact]

@@ -432,8 +432,9 @@ Codes de sortie : `0` listé ; `1` un nom qui ne désigne rien ou que le binaire
 | `--commands-dir <chemin>` / `--no-script-commands` / `--strict-commands` | Où trouver les commandes `*.cmd.ts`, ou aucune, ou l'échec immédiat sur une commande cassée. |
 | `--crews-dir <chemin>` | Où `script-host` résout une crew par son nom. |
 | `--settings <chemin>` / `--mount <spec>` | Les fichiers de settings, à la place du fichier global (les derniers l'emportent), et des montages VFS. |
+| `--allow-external-mounts` | Un `--mount` hors du répertoire de travail est lisible, comme pour `orkeon run` (ou `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`). |
 
-Les quatre dernières lignes sont détaillées dans [Commandes CLI en TypeScript](../architecture/cli-ts-commands.md#options-cli) ; chaque option à valeur accepte `--x valeur` et `--x=valeur`, et peut être répétée. Les options standard de l'hôte .NET (surcharges de configuration `--Cle=Valeur`) s'appliquent aussi.
+Les cinq dernières lignes sont détaillées dans [Commandes CLI en TypeScript](../architecture/cli-ts-commands.md#options-cli) ; chaque option à valeur accepte `--x valeur` et `--x=valeur`, et peut être répétée. Les options standard de l'hôte .NET (surcharges de configuration `--Cle=Valeur`) s'appliquent aussi.
 
 **Réglages.** Le REPL lit les réglages que lisent les runners, dans leur ordre (STUDIO-49, GAP-36) : les variables d'environnement sans préfixe, les fichiers `--settings` — sinon le fichier global qu'écrit `orkeon init` ; un fichier nommé sur la ligne de commande le remplace, comme pour `orkeon run` —, puis les variables d'environnement `ORKEON_`, préfixe retiré (`ORKEON_Llm__ApiKey` est `Llm:ApiKey` ici comme dans chaque runner) ; la ligne de commande reste en dernier. Rien d'autre : ni l'`appsettings.json` du répertoire courant, ni les secrets utilisateur ([d'où viennent les réglages](./configuration.md#doù-viennent-les-réglages)). Sa section `Llm` et ses profils sont lus par le lecteur des runners, `ApiKeyEnvVar` compris, et le volet des journaux dit une fois d'où vient chaque clé, avec un avertissement par référence vers une variable posée nulle part.
 

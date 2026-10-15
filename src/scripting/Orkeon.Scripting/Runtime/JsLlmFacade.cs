@@ -886,11 +886,12 @@ public sealed partial class JsLlmFacade
     }
 
     /// <summary>
-    /// The LLM ⇄ tool loop behind <see cref="act"/>: pre-flight budget gate, one chat turn, the
-    /// tool call it returns (through the permission gate), the result fed back — until the model
-    /// answers without a tool call, the iteration cap, or an interrupt. Runs no JS: its results
-    /// are CLR objects, and the deltas it observes go to the native sink and the session's
-    /// channel, never to the script directly.
+    /// The LLM ⇄ tool loop behind <see cref="act"/>: pre-flight budget gate, one chat turn, every
+    /// tool call it returns run in order (each through the permission gate), the calls and their
+    /// results fed back in the provider's own tool protocol — until the model answers without a
+    /// tool call, the iteration cap, or an interrupt. Runs no JS: its results are CLR objects, and
+    /// the deltas it observes go to the native sink and the session's channel, never to the
+    /// script directly.
     /// </summary>
     private async Task<object> RunActAsync(ActSession session)
     {
@@ -920,21 +921,25 @@ public sealed partial class JsLlmFacade
                 var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
                 _budget?.RecordTokens(resp.TokensUsed);
 
-                var call = TryParseToolCall(resp.RawResponseBody);
-                if (call is null)
-                    return new { output = resp.Content, iterations = i + 1 };
+                var (calls, assistantTurn) = ReadToolCalls(resp);
+                if (assistantTurn is null)
+                    return new { output = RenderAnswer(resp), iterations = i + 1 };
 
-                var (toolName, toolArgs) = call.Value;
-                activity?.SetTag("orkeon.llm.act.tool", toolName);
+                activity?.SetTag("orkeon.llm.act.tool", string.Join(",", calls.Select(c => c.ToolName)));
 
-                var resultText = await ResolveToolResultAsync(session, toolName, toolArgs, activity).ConfigureAwait(false);
-
-                // Omit the assistant tool-call turn (empty content) to avoid the strict tool-role
-                // protocol; feed the result back as a plain user turn. The tool schemas stay in
-                // `cfg` every iteration, so the model can chain further calls or answer.
-                if (!string.IsNullOrWhiteSpace(resp.Content))
-                    messages.Add(new LlmMessage { Role = "assistant", Content = resp.Content });
-                messages.Add(new LlmMessage { Role = "user", Content = $"[tool:{toolName}] result:\n{Truncate(resultText, 4000)}" });
+                // The assistant turn that asked, then one tool turn per call, in order: the
+                // provider replays them in its own protocol (OpenAI tool_calls and tool messages,
+                // Anthropic tool_use and tool_result blocks). Every call gets its answer, a refusal
+                // or an error included, since a provider rejects a call left unanswered. The tool
+                // schemas stay in `cfg` every iteration, so the model can chain further calls or answer.
+                messages.Add(assistantTurn);
+                foreach (var call in calls)
+                {
+                    _ct.ThrowIfCancellationRequested();
+                    session.ThrowIfAborted();
+                    var resultText = await ResolveToolResultAsync(session, call.ToolName, call.Arguments, activity).ConfigureAwait(false);
+                    messages.Add(new LlmMessage { Role = "tool", Content = resultText, ToolCallId = call.Id });
+                }
             }
         }
         catch (OperationCanceledException) when (IsLocalInterrupt)
@@ -1028,7 +1033,10 @@ public sealed partial class JsLlmFacade
             var resp = await tool.CallAsync(new ProtocolToolCallRequest(name, arguments), _ct).ConfigureAwait(false);
             if (!resp.Success)
                 return $"ERROR: {resp.Error ?? "tool failed"}";
-            return resp.Result is null ? "(no output)" : JsonSerializer.Serialize(resp.Result);
+            // Without the host's pipeline, the bound it would have applied: one rule for both paths.
+            return resp.Result is null
+                ? "(no output)"
+                : Orkeon.Application.Crew.Execution.NativeToolCallTranscript.TruncateResult(JsonSerializer.Serialize(resp.Result), tool.Name);
         }
         catch (Exception ex)
         {
@@ -1055,41 +1063,48 @@ public sealed partial class JsLlmFacade
         return outcome.ConversationText;
     }
 
+    private static readonly Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallParser AnthropicToolCalls = new();
+
+    private static readonly Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser OpenAIToolCalls =
+        new(Microsoft.Extensions.Logging.Abstractions.NullLogger<Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser>.Instance);
+
     /// <summary>
-    /// Extracts the first tool call from an OpenAI-compatible chat response body
-    /// (<c>choices[0].message.tool_calls[0].function.{name,arguments}</c>). Returns null when
-    /// the model produced no tool call. Targets OpenAI/DeepSeek/Grok/Azure-shaped responses.
+    /// Reads every tool call of a response with the framework's parsers, chosen from the body's
+    /// shape — the Anthropic Messages body (<c>content[]</c> with <c>tool_use</c> blocks) or the
+    /// OpenAI chat body (<c>choices[0].message.tool_calls</c>), which every other provider returns
+    /// or synthesizes (Ollama), buffered or rebuilt after a stream. The provider reaches the facade
+    /// wrapped (metering, limits), so its shape is read rather than its type. Returns no call and
+    /// no assistant turn when the model answered, or when the body cannot be read: an unreadable
+    /// call is the final answer, never an exception.
     /// </summary>
-    private static (string name, Dictionary<string, object?> args)? TryParseToolCall(string? rawBody)
+    private static (IReadOnlyList<Orkeon.Application.Interfaces.LLM.ParsedToolCall> Calls, LlmMessage? AssistantTurn) ReadToolCalls(LlmResponse response)
     {
-        if (string.IsNullOrEmpty(rawBody)) return null;
+        if (string.IsNullOrEmpty(response.RawResponseBody))
+            return ([], null);
         try
         {
-            using var doc = JsonDocument.Parse(rawBody);
+            using var doc = JsonDocument.Parse(response.RawResponseBody);
             var root = doc.RootElement;
-            if (!root.TryGetProperty("choices", out var choices) ||
-                choices.ValueKind != JsonValueKind.Array || choices.GetArrayLength() == 0)
-                return null;
-            var message = choices[0].GetProperty("message");
-            if (!message.TryGetProperty("tool_calls", out var toolCalls) ||
-                toolCalls.ValueKind != JsonValueKind.Array || toolCalls.GetArrayLength() == 0)
-                return null;
-            var fn = toolCalls[0].GetProperty("function");
-            var name = fn.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-            if (string.IsNullOrEmpty(name)) return null;
-            var argsRaw = fn.TryGetProperty("arguments", out var a) && a.ValueKind == JsonValueKind.String
-                ? a.GetString() ?? "{}"
-                : "{}";
-            var args = new Dictionary<string, object?>();
-            using var argDoc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argsRaw) ? "{}" : argsRaw);
-            if (argDoc.RootElement.ValueKind == JsonValueKind.Object)
-                foreach (var p in argDoc.RootElement.EnumerateObject())
-                    args[p.Name] = JsonElementToObject(p.Value);
-            return (name, args);
+            if (root.ValueKind != JsonValueKind.Object)
+                return ([], null);
+
+            Orkeon.Application.Interfaces.LLM.IToolCallParser? parser =
+                root.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array
+                    ? AnthropicToolCalls
+                    : root.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0
+                        ? OpenAIToolCalls
+                        : null;
+            if (parser is null)
+                return ([], null);
+
+            var calls = parser.ParseToolCalls(root).Where(c => !string.IsNullOrEmpty(c.ToolName)).ToList();
+            return calls.Count == 0
+                ? ([], null)
+                : (calls, Orkeon.Application.Crew.Execution.NativeToolCallTranscript.AssistantTurn(response, root));
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
         {
-            return null;
+            return ([], null);
         }
     }
 

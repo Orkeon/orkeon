@@ -62,7 +62,8 @@ public sealed class ForgeScriptRendererTests : IDisposable
         Assert.Equal([Path.Combine("crew", ForgeScriptRenderer.ScriptFileName)], written);
         var source = await File.ReadAllTextAsync(
             Path.Combine(_sessionDirectory, written[0]), TestContext.Current.CancellationToken);
-        Assert.StartsWith("/// <reference orkeon-script=\"1.0\" />", source, StringComparison.Ordinal);
+        // The version directive in the form tsc accepts, so the generated crew type-checks.
+        Assert.StartsWith("// @orkeon-script 1.0\n", source, StringComparison.Ordinal);
 
         // The real reload: ScriptHost → adapter — §8.3's script column, executed for real.
         var configuration = await ReloadAsync();

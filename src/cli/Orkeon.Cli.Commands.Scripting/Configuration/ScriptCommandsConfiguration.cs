@@ -29,8 +29,11 @@ public sealed record ScriptCommandsConfiguration
     /// <summary>When false, <c>*.cmd.js</c> only (no TS transpile). Test/debug; production keeps this true.</summary>
     public bool EsbuildTranspile { get; set; } = true;
 
-    /// <summary>Hard cap on the number of engines kept in cache.</summary>
-    public int MaxScripts { get; set; } = 50;
+    /// <summary>
+    /// Hard cap on the number of <c>*.cmd.ts</c> files the loader keeps; past it, the remaining
+    /// files, in path order, are dropped with a warning. Default 200: above a real command set.
+    /// </summary>
+    public int MaxScripts { get; set; } = 200;
 
     /// <summary>When false, two scripts declaring the same command name is a fatal startup error.</summary>
     public bool ContinueOnConflict { get; set; } = true;

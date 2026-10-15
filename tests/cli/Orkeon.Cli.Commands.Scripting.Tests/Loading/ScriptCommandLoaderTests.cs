@@ -165,6 +165,37 @@ public sealed class ScriptCommandLoaderTests : IDisposable
     }
 
     [Fact]
+    public async Task Default_options_load_a_real_command_set_whole()
+    {
+        // A product's command set (Orkeon Code ships 57) must not lose its last files to the
+        // default cap: 60 commands load with the loader's options and the configuration's
+        // defaults alike.
+        for (var i = 0; i < 60; i++)
+        {
+            await File.WriteAllTextAsync(Path.Combine(_tempDir, $"cmd-{i:D2}.cmd.ts"), $$"""
+                defineCommand({
+                  name: "cmd{{i}}",
+                  description: "Number {{i}}.",
+                  handler: function () { }
+                });
+            """, TestContext.Current.CancellationToken);
+        }
+
+        using var logFactory = new TestLogFactory();
+        var loader = BuildLoader(new ScriptCommandLoaderOptions
+        {
+            Directories = CmdDirectories,
+            MaxScripts = new Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration().MaxScripts,
+        }, logFactory);
+
+        var (registry, _) = await loader.LoadAndRegisterAsync(CancellationToken.None);
+
+        Assert.Equal(60, registry.Count);
+        Assert.Equal(200, new ScriptCommandLoaderOptions().MaxScripts);
+        Assert.DoesNotContain(logFactory.Records, r => r.Message.Contains("MaxScripts", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Returns_empty_when_directories_have_no_matches()
     {
         // Create a non-matching file.

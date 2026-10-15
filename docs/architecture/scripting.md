@@ -42,7 +42,7 @@ src/
     │   ├── Exceptions/           ← the typed runtime exceptions (StateMutationOutsideWithException, …)
     │   ├── Internal/             ← JsHostError, JS trampoline factories
     │   ├── Configuration/        ← ScriptingLimitsOptions, ScriptingToolchainOptions
-    │   ├── Versioning/           ← the `/// <reference orkeon-script="1.0" />` directive
+    │   ├── Versioning/           ← the version directive (`/// <reference orkeon-script="1.0" />` or `// @orkeon-script 1.0`)
     │   ├── Telemetry/            ← ScriptingActivitySource
     │   ├── Testing/              ← mock LLM / mock tool doubles (not exposed to scripts)
     │   ├── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
@@ -105,7 +105,7 @@ two script shapes actually honours each method**.
 | `stateMachine` / `stateGraph` literal forms | `fsm.d.ts`, `graph.d.ts` |
 | `onError`, `ErrorAction`, error codes | `agent.d.ts`, `errors.d.ts` |
 | The globals the runner exchanges with the script (`crew`, `inputs`, `result`) | `globals.d.ts` |
-| The version directive `/// <reference orkeon-script="1.0" />` | `orkeon-script.d.ts` |
+| The version directive `/// <reference orkeon-script="1.0" />` or `// @orkeon-script 1.0` | `orkeon-script.d.ts` |
 | Lifecycle hooks (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — answer dispatched CLI commands by name | [cli-ts-commands.md](./cli-ts-commands.md#the-agent-side--oncommand) |
 | Built-in `tools.X(...)` namespace | `tools.d.ts` |
@@ -231,9 +231,12 @@ on the machine: `npm install -g esbuild` (it lands on `PATH`), or a binary you p
 `ORKEON_ESBUILD_PATH` or `EsbuildPath` at. Nothing is downloaded on first run. YAML crews never
 need it.
 
-A script may open with `/// <reference orkeon-script="1.0" />`. The directive is optional;
-when present, a version the runtime does not support (only `1.0` today) fails the run with
-`ScriptVersionMismatchError` before anything executes.
+A script may open with `/// <reference orkeon-script="1.0" />`, or with `// @orkeon-script 1.0`,
+the form `tsc` accepts: it rejects the reference form (TS1084) and then skips its semantic pass, so a
+project that type-checks its scripts uses the line comment, which `orkeon forge` generates. The
+directive is optional; when present, a version the runtime does not support (only `1.0` today)
+fails the run with `ScriptVersionMismatchError` before anything executes. A script carrying both
+forms is read by its reference form.
 
 ## V1 limits
 

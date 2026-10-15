@@ -19,8 +19,8 @@ namespace Orkeon.ConsoleApp.Services;
 /// </summary>
 internal static class TuiFidelityWiring
 {
-    /// <summary>Session-state key of the /mode default — the scripted-commands vocabulary.</summary>
-    private const string DefaultModeStateKey = "default_permission_mode";
+    /// <summary>Session-state key of the /mode default — a contract with the scripted commands.</summary>
+    private const string DefaultModeStateKey = Orkeon.Constants.Cli.SessionStateKeys.DefaultPermissionMode;
 
     /// <summary>Session-state key of the scripted /config override map.</summary>
     private const string ConfigMapStateKey = "config_map";

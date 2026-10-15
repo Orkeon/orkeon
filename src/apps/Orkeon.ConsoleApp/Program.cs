@@ -189,8 +189,9 @@ static class Program
         services.AddConfiguredLlmProvider(context.Configuration);
         services.AddOrkeonInfrastructure();
         services.AddOrkeonFileSystem(context.Configuration);
-        // Append any --mount specs (e.g. the agent's /workspace) on top of the configured mounts.
-        services.AddCliWorkspaceMounts(scriptedOpts.Mounts);
+        // Append any --mount specs (e.g. the agent's /workspace) on top of the configured mounts;
+        // outside the working directory they are readable under --allow-external-mounts only.
+        services.AddCliWorkspaceMounts(scriptedOpts.Mounts, scriptedOpts.EffectiveAllowExternalMounts);
 
         services.AddOrkeonFileSystemTools();
         services.AddOrkeonDataTools();
