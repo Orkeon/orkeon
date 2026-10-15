@@ -66,6 +66,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
 | Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
+| Shell confinement | config only: `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap` (Linux, `bwrap` on the host) | Tools.Code | (`ShellCommandTool` runs its process under `bwrap` in a view built from the VFS; unavailable ⇒ the call fails, never unconfined) | Beta |
 | Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
 | Plugin system | `AddOrkeonPlugins(...)` (never registered implicitly; no shipped binary calls it, so none reads `Plugins`) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — directory discovery, isolated collectible `AssemblyLoadContext`s; ⚠️ loaded assemblies run with full trust — see [Plugins](../architecture/plugins.md) | Beta |
 | Local on-device embeddings | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, no API key) — first link of the embedding resolution chain | Beta |
@@ -567,6 +568,17 @@ No attribute carries an id of a crew, task or agent.
   stdout/stderr are rewritten physical→virtual, so the model only ever sees virtual
   paths. `AgentFacing` mounts, ordinal matching; without mounts both passes are
   no-ops.
+- **Confinement** (`Orkeon:Tools:Shell:Confinement`, off by default): `Mode =
+  Bubblewrap` runs the process under `bwrap` (Linux) with every namespace unshared, in
+  a view built from the VFS — each agent-facing mount bound at its virtual path,
+  read-only when it lacks Write, a sub path without rights covered, the system
+  directories (`/usr`, `/bin`, `/sbin`, `/lib*`, `/etc`) and `ReadOnlyPaths` read-only,
+  a fresh `/proc`, `/dev` and `/tmp`, nothing else of the host — and the network off
+  unless `AllowNetwork`. The process then sees the virtual paths: arguments are
+  checked, not rewritten, and the kernel refuses a write to a read-only mount whatever
+  path the process reaches by itself. When `bwrap` is absent or cannot create its
+  namespaces (probed once per process), the call fails with the reason; it never runs
+  unconfined. Limits: [Known limitations](./limitations.md).
 
 ## Native LLM console streaming — `AddLlmConsoleStreaming(configuration)`
 

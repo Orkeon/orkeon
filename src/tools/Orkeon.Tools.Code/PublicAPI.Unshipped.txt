@@ -1,1 +1,14 @@
 #nullable enable
+Orkeon.Tools.Code.ShellCommandTool.Confinement.get -> Orkeon.Tools.Code.ShellConfinementOptions!
+Orkeon.Tools.Code.ShellCommandTool.Confinement.init -> void
+Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.Bubblewrap = 1 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.None = 0 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementOptions
+Orkeon.Tools.Code.ShellConfinementOptions.AllowNetwork.get -> bool
+Orkeon.Tools.Code.ShellConfinementOptions.AllowNetwork.set -> void
+Orkeon.Tools.Code.ShellConfinementOptions.Mode.get -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementOptions.Mode.set -> void
+Orkeon.Tools.Code.ShellConfinementOptions.ReadOnlyPaths.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellConfinementOptions.ShellConfinementOptions() -> void
+Orkeon.Tools.Code.ShellToolOptions.Confinement.get -> Orkeon.Tools.Code.ShellConfinementOptions!

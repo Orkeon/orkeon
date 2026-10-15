@@ -74,6 +74,18 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
+      # The confinement suite of shell_command (ShellCommandToolConfinementTests) skips when
+      # bwrap cannot create its namespaces, which would make a green night that never ran it.
+      # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor: the sysctl lifts
+      # it on this throwaway runner, and the probe below fails the job instead of a skip.
+      - name: Install bubblewrap and check that it confines
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --unshare-all --die-with-parent --new-session --ro-bind / / \
+            --proc /proc --dev /dev --tmpfs /tmp -- true
+          echo "bubblewrap confines a process on this runner."
       - name: Run Integration + Slow suites (Testcontainers)
         env:
           # Floor on the number of tests the run must report. The nightly executes ~99
