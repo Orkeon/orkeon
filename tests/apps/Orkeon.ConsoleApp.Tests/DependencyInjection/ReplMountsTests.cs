@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Orkeon.Cli.Commands.Scripting.Registry;
+using Orkeon.ConsoleApp.Tests.Fakes;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
@@ -99,8 +101,12 @@ public sealed class ReplMountsTests : IDisposable
         var b = Folder("b");
         var c = Folder("c");
         var settings = Settings("repl.json", $"{a}:/workspace:ro", $"{b}:/data:ro");
+        using var logs = new CapturingLoggerProvider();
 
-        var launch = Start("--settings", settings, "--mount", $"{c}:/workspace:rw");
+        var launch = ReplStartup.Prepare(
+            ["--settings", settings, "--mount", $"{c}:/workspace:rw"],
+            UiMode.Plain, replWordWrap: false, _reported.Add,
+            logging => logging.AddProvider(logs));
 
         using var host = launch.Host;
         Assert.NotNull(host);
@@ -109,6 +115,12 @@ public sealed class ReplMountsTests : IDisposable
         Assert.Equal(c, mounts["/workspace"].BasePath);
         Assert.Equal(FileAccessRights.ReadWrite, mounts["/workspace"].DefaultRights);
         Assert.Equal(b, mounts["/data"].BasePath);
+
+        // The log says which declared entry this session overrode, in the runners' words, and
+        // nothing of the root the --mount left alone.
+        Assert.Contains(logs.Logger.Entries, e =>
+            e.Level == LogLevel.Information && e.Message == "mount /workspace: --mount replaces the settings entry");
+        Assert.DoesNotContain(logs.Logger.Entries, e => e.Message.StartsWith("mount /data", StringComparison.Ordinal));
     }
 
     /// <summary>Each case is refused before any host, exit 1, on the first line <c>orkeon run</c> writes for it.</summary>

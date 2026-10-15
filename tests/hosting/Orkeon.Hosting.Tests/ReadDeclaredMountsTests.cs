@@ -249,6 +249,41 @@ public sealed class ReadDeclaredMountsTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// GAP-49, the order of the layers: an <c>ORKEON_</c> variable set empty withdraws the file's
+    /// entry at its index, as the host reads it — the reader returns nothing there, the entries after
+    /// it keep their index, and the host declares the same list.
+    /// </summary>
+    [Fact]
+    public void AnEmptyOrkeonVariableWithdrawsTheFileEntryAtItsIndex()
+    {
+        var file0 = $"{Folder("a")}:/work:ro";
+        var file1 = $"{Folder("b")}:/data:rw";
+        var path = Write(
+            """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "FileSystem": { "Mounts": [ """
+            + JsonSerializer.Serialize(file0) + ", " + JsonSerializer.Serialize(file1) + " ] } } }");
+        const string emptied = "ORKEON_Orkeon__FileSystem__Mounts__0";
+        Environment.SetEnvironmentVariable(emptied, "");
+        try
+        {
+            Assert.Equal(string.Empty, Environment.GetEnvironmentVariable(emptied));
+            Assert.Equal([new DeclaredMountEntry(1, file1)], RunnerSettings.ReadDeclaredAgentFacingMounts(path));
+            Assert.Equal([file1], RunnerSettings.ReadDeclaredMounts(path));
+
+            using var host = RunnerHost.Build(path, new RunnerMountPlan());
+            var hostEntries = host.Services.GetRequiredService<IConfiguration>()
+                .GetSection("Orkeon:FileSystem:Mounts").GetChildren()
+                .Where(child => !string.IsNullOrEmpty(child.Value))
+                .Select(child => new DeclaredMountEntry(int.Parse(child.Key, CultureInfo.InvariantCulture), child.Value!))
+                .ToList();
+            Assert.Equal(hostEntries, RunnerSettings.ReadDeclaredAgentFacingMounts(path));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(emptied, null);
+        }
+    }
+
     private string Folder(string name) => Directory.CreateDirectory(Path.Combine(_dir, name)).FullName;
 
     [Fact]

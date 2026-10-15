@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Orkeon.Cli.Commands.Scripting.Configuration;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.ConsoleApp.DependencyInjection;
@@ -42,7 +43,16 @@ internal static class ReplStartup
     /// <param name="effectiveUi">The UI mode the flags resolved.</param>
     /// <param name="replWordWrap">The <c>--repl-wrap</c> choice.</param>
     /// <param name="report">Where a refusal or a notice is written: stderr, or a test's sink.</param>
-    public static ReplLaunch Prepare(string[] args, UiMode effectiveUi, bool replWordWrap, Action<string> report)
+    /// <param name="configureLogging">
+    /// Added to the REPL's own logging, as <c>RunnerHost.Build</c> takes one for a runner: a test's
+    /// recording provider. Null in the REPL.
+    /// </param>
+    public static ReplLaunch Prepare(
+        string[] args,
+        UiMode effectiveUi,
+        bool replWordWrap,
+        Action<string> report,
+        Action<ILoggingBuilder>? configureLogging = null)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(report);
@@ -63,7 +73,11 @@ internal static class ReplStartup
                 .ConfigureAppConfiguration((_, builder) =>
                     Program.ConfigureAppConfiguration(builder, scriptedOpts, globalSettingsPath, decisions))
                 .ConfigureServices((context, services) =>
-                    ConfigureServicesUnderBarrier(context, services, effectiveUi, scriptedOpts, replWordWrap))
+                {
+                    ConfigureServicesUnderBarrier(context, services, effectiveUi, scriptedOpts, replWordWrap);
+                    if (configureLogging is not null)
+                        services.AddLogging(configureLogging);
+                })
                 .Build();
         }
         catch (RunnerSettingsException ex)
