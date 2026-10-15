@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a task's `llm_override` is merged once
+
+`ChatOptionsComposer` no longer merges a task's `llm_override` field by field a second time: the
+configuration `LlmConfigResolver` merges once is translated onto the chat options, and each field
+reaches the provider as written on both loops (GAP-48).
+
 ### Fixed — sampling values reach the vendor as written **[breaking]**
 
 A temperature, a `top_p` and penalties written by an agent, a task, the planner (0.3) or the

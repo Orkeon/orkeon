@@ -656,7 +656,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Extracts the Orkeon tool schemas and tool mode from <see cref="ChatOptions.AdditionalProperties"/>,
-    /// which are populated by <c>ExecutionOrchestrator.BuildChatOptions</c>.
+    /// which are populated by <c>ChatOptionsComposer.BuildChatOptionsAsync</c>.
     /// </summary>
     private static (IReadOnlyList<ToolSchema>? Tools, ToolCallMode Mode) ExtractToolsFromOptions(ChatOptions options)
     {
@@ -794,7 +794,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Reads the optional <see cref="LlmThinkingConfig"/> stashed by
-    /// <c>ExecutionOrchestrator.ApplyAgentLlmOverrides</c> under
+    /// <c>ChatOptionsComposer</c> under
     /// <see cref="LlmChatOptionsKeys.Thinking"/>.
     /// </summary>
     private static LlmThinkingConfig? ExtractThinkingFromOptions(ChatOptions options)
@@ -806,7 +806,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Reads the optional <see cref="LlmResponseFormat"/> stashed by
-    /// <c>ExecutionOrchestrator.ApplyAgentLlmOverrides</c> / <c>ApplyTaskLlmOverrides</c>
+    /// <c>ChatOptionsComposer</c>
     /// under <see cref="LlmChatOptionsKeys.ResponseFormat"/>. When the key is absent, falls
     /// back to the standard <see cref="ChatOptions.ResponseFormat"/> property so callers
     /// using plain Microsoft.Extensions.AI options (e.g. the RAG retrieval evaluator,

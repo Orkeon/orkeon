@@ -238,7 +238,7 @@ au parsing JSON avant d'écrire le fichier.
 
 ## Comment ça circule dans l'orchestrateur
 
-La cascade est fusionnée exactement une fois par tour (`LlmConfigResolver.Resolve`), sur 3 sites d'appel — dans les boucles d'agent et le coordinateur de validation (`LegacyTextAgentLoop`, `NativeToolCallingAgentLoop`, `OutputValidationCoordinator`), que pilote `ExecutionOrchestrator` :
+La cascade est fusionnée exactement une fois par tour par `LlmConfigResolver.Resolve`. Sur le chemin du client de chat, `ChatOptionsComposer` l'appelle sur la configuration de l'agent et l'override de la tâche, puis traduit la configuration fusionnée sur les `ChatOptions` champ par champ : il ne fusionne rien lui-même, et chaque champ atteint le fournisseur tel qu'écrit. Les autres sites d'appel n'ont pas de client de chat et l'appellent tels quels : `LegacyTextAgentLoop` et `OutputValidationCoordinator` (base : la configuration de l'agent), `NativeToolCallingAgentLoop` (base : `BuildNativeLlmConfig`, la configuration de l'agent plus le prompt système et les outils) et les extensions d'appel de `LlmProviderExtensions` (pas d'override de tâche, un override d'appel). `ExecutionOrchestrator` les pilote :
 
 1. Boucle legacy `[TOOL_CALL]` basée texte — `_llmProvider.ChatAsync(prompt, effectiveConfig, …)`
 2. Boucle de tool-calling natif — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. `BuildNativeLlmConfig` s'amorce depuis `agent.LlmConfig`, si bien que le nom du modèle et la config Thinking survivent à l'entrée du chemin natif ; un agent sans config reçoit une configuration qui ne nomme aucun modèle (`LlmConfig.OnProfile()`), et le fournisseur exécute l'appel sur le sien.

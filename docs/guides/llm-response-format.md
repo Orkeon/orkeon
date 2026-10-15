@@ -235,7 +235,7 @@ before writing the file.
 
 ## How it travels through the orchestrator
 
-The cascade is fused exactly once per turn (`LlmConfigResolver.Resolve`), in 3 call sites — in the agent loops and the validation coordinator (`LegacyTextAgentLoop`, `NativeToolCallingAgentLoop`, `OutputValidationCoordinator`), which `ExecutionOrchestrator` drives:
+The cascade is fused exactly once per turn by `LlmConfigResolver.Resolve`. On the chat-client path, `ChatOptionsComposer` calls it on the agent's configuration and the task's override, then translates the merged configuration onto the `ChatOptions` field by field: it merges nothing itself, and each field reaches the provider as written. The other call sites have no chat client and call it as they are: `LegacyTextAgentLoop` and `OutputValidationCoordinator` (base: the agent's configuration), `NativeToolCallingAgentLoop` (base: `BuildNativeLlmConfig`, the agent's configuration plus the system prompt and the tools) and the call-time extensions of `LlmProviderExtensions` (no task override, a call override). `ExecutionOrchestrator` drives them:
 
 1. Legacy text-based `[TOOL_CALL]` loop — `_llmProvider.ChatAsync(prompt, effectiveConfig, …)`
 2. Native tool-calling loop — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. `BuildNativeLlmConfig` seeds from `agent.LlmConfig`, so the model name and Thinking config survive the entry to the native path; an agent without one gets a configuration that names no model (`LlmConfig.OnProfile()`), and the provider runs the call on its own.

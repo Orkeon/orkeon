@@ -4,7 +4,7 @@ namespace Orkeon.Domain.SharedKernel.ValueObjects;
 /// Partial LLM-config patch applied on top of an inherited <see cref="LlmConfig"/>. Each
 /// field is nullable; <c>null</c> means "leave the inherited value untouched". The cascade
 /// is materialised by <see cref="LlmConfigResolver.Resolve"/>; no component fuses overrides
-/// elsewhere.
+/// elsewhere; <c>ChatOptionsComposer</c> is where the merged configuration reaches a chat client.
 /// </summary>
 public sealed record LlmConfigOverride
 {

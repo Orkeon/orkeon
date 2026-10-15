@@ -186,6 +186,24 @@ public sealed class DeclaredSamplingReachesTheVendorTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
+    public async Task ShouldSendAnIntegerTemperatureExactly_WhenTheAgentWritesOne()
+    {
+        using var @default = new Vendor(Configured("host-model"));
+        using var b = new Vendor(Configured("model-of-b") with { Temperature = 0.2 });
+
+        await RunAsync("""
+                llm:
+                  profile: b
+                  temperature: 2
+            """, @default, b);
+
+        var body = await b.RawBodyAsync();
+        Assert.Matches("\"temperature\":2(\\.0)?[,}]", body);
+        Assert.Equal(2.0, (await b.SentPayloadAsync()).GetProperty("temperature").GetDouble());
+    }
+
+    [Fact]
     public async Task A_temperature_and_a_top_p_that_nothing_sets_are_not_sent()
     {
         using var @default = new Vendor(Configured("host-model"));

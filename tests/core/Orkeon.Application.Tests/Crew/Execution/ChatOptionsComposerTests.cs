@@ -49,6 +49,7 @@ public class ChatOptionsComposerTests
     // ── Toolbelt resolution ───────────────────────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task ResolvesRegistryTools_AndPublishesTheirSchemas()
     {
         var tool = new SpyTool("registry_tool");
@@ -69,6 +70,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task IncludesAgentOwnedTools_MissingFromTheRegistry()
     {
         var delegation = new SpyTool("delegate_work");
@@ -81,6 +83,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TheAgentsOwnInstance_WinsOverARegisteredToolOfTheSameName()
     {
         // GAP-11 (GAP-02 finding): an agent built in C# with its own rag_search must call that
@@ -97,6 +100,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task LeavesToolsNull_ForAToollessAgent()
     {
         var composer = BuildComposer();
@@ -108,6 +112,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TheComposedAIFunction_InvokesTheUnderlyingTool()
     {
         var tool = new SpyTool("callable_tool", result: "invoked!");
@@ -128,6 +133,7 @@ public class ChatOptionsComposerTests
     // ── Task-level tools (GAP-07) ─────────────────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TaskTools_AreAdded_ForThatTaskOnly()
     {
         var fileRead = new SpyTool("file_read");
@@ -147,6 +153,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TaskTools_NeverDuplicateAnAgentTool()
     {
         var fileRead = new SpyTool("file_read");
@@ -163,6 +170,7 @@ public class ChatOptionsComposerTests
     // ── human_input auto-injection ────────────────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task InjectsHumanInput_WhenTheTaskAsksForIt_AndTheToolIsRegistered()
     {
         var humanInput = new SpyTool("human_input");
@@ -177,6 +185,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task HumanInputFlagIsANoOp_WhenNoProviderIsRegistered()
     {
         var composer = BuildComposer(registeredTools: []);
@@ -189,6 +198,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task DoesNotDuplicateHumanInput_WhenTheAgentAlreadyCarriesIt()
     {
         var humanInput = new SpyTool("human_input");
@@ -205,6 +215,7 @@ public class ChatOptionsComposerTests
     // ── Agent-level LLM overrides ─────────────────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task AppliesExplicitAgentOverrides_AndLeavesDefaultsAlone()
     {
         var config = LlmConfig.Create("planner-model") with
@@ -225,6 +236,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task LeavesTheCapToTheProvider_WhenTheAgentConfigPinsNone()
     {
         // LLM-10: an unpinned cap is null and stays null — the provider then sends the model's
@@ -238,6 +250,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task ForwardsAPinnedCap_EvenWhenItEqualsTheOldEngineDefault()
     {
         var agent = BuildAgent(LlmConfig.Create("planner-model") with { MaxTokens = 4096 });
@@ -249,6 +262,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task ForwardsATemperatureAndATopP_WhateverTheirValue()
     {
         // GAP-36: 0.7 and 1.0 were the engine's defaults, so the composer took them for "not set"
@@ -263,6 +277,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task LeavesTheSamplingToTheProvider_WhenTheAgentConfigSetsNone()
     {
         var composer = BuildComposer();
@@ -279,6 +294,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task ForwardsTheAgentsPenaltiesSeedAndStopSequences()
     {
         // GAP-36, decision 8: an agent built in C# could set them; nothing carried them to the call.
@@ -300,6 +316,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task DoesNotForwardAnything_WhenTheAgentHasNoLlmConfig()
     {
         var composer = BuildComposer();
@@ -313,6 +330,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task ForwardsThinkingAndResponseFormat_FromTheAgentConfig()
     {
         var config = LlmConfig.Create("m") with
@@ -333,6 +351,7 @@ public class ChatOptionsComposerTests
     // ── Task-level overrides win ──────────────────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TaskOverridesWin_OverAgentOverrides()
     {
         var agent = BuildAgent(LlmConfig.Create("m") with { Temperature = 0.2 });
@@ -359,6 +378,7 @@ public class ChatOptionsComposerTests
     // ── Structured-output grammar attachment ──────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task AttachesAGbnfGrammar_ForAnInlineSchema()
     {
         var composer = BuildComposer();
@@ -383,6 +403,7 @@ public class ChatOptionsComposerTests
     /// object and require every property, and a deliverable schema need not.
     /// </summary>
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task AttachesTheSchemaAsAJsonSchemaFormat_ForAnInlineSchema()
     {
         const string schema = """{"type":"object","properties":{"name":{"type":"string"}}}""";
@@ -406,6 +427,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task ReadsTheSchemaFromTheVfs_WhenOnlyAPathIsDeclared()
     {
         var fileSystem = new FakeFileSystemService()
@@ -425,6 +447,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task SwallowsAnInvalidSchema_AndStillReturnsOptions()
     {
         var composer = BuildComposer();
@@ -445,6 +468,7 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task IgnoresDeliverables_WhoseSourceIsNotStructuredOutput()
     {
         var composer = BuildComposer();
