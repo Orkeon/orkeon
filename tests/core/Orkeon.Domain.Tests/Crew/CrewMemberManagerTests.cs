@@ -131,40 +131,6 @@ public class CrewMemberManagerTests
 
     #endregion
 
-    #region FirstOrDefault
-
-    [Fact]
-    public void ShouldReturnFirstAgent_WhenAgentsExist()
-    {
-        // Arrange
-        var manager = new CrewMemberManager([]);
-        var agent1 = AgentId.Create();
-        var agent2 = AgentId.Create();
-        manager.AddAgent(agent1, CrewStatus.Idle);
-        manager.AddAgent(agent2, CrewStatus.Idle);
-
-        // Act
-        var result = manager.FirstOrDefault();
-
-        // Assert
-        Assert.Equal(agent1, result);
-    }
-
-    [Fact]
-    public void ShouldReturnNull_WhenNoAgentsExist()
-    {
-        // Arrange
-        var manager = new CrewMemberManager([]);
-
-        // Act
-        var result = manager.FirstOrDefault();
-
-        // Assert
-        Assert.Null(result);
-    }
-
-    #endregion
-
     #region Contains
 
     [Fact]

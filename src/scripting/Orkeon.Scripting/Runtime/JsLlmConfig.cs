@@ -98,7 +98,7 @@ public sealed class JsLlmConfig
         if (value.IsNumber())
         {
             var n = value.AsNumber();
-            if (n >= 1 && n <= int.MaxValue && n == Math.Floor(n)) return (int)n;
+            if (n >= 1 && n <= int.MaxValue && double.IsInteger(n)) return (int)n;
         }
         throw new InvalidScriptException(
             "LlmConfig.with(...) maxTokens must be an integer between 1 and 2147483647; omit it to keep the inherited cap.");

@@ -49,7 +49,6 @@ public class ChatOptionsComposerTests
     // ── Toolbelt resolution ───────────────────────────────────────────────
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task ResolvesRegistryTools_AndPublishesTheirSchemas()
     {
         var tool = new SpyTool("registry_tool");
@@ -70,7 +69,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task IncludesAgentOwnedTools_MissingFromTheRegistry()
     {
         var delegation = new SpyTool("delegate_work");
@@ -83,7 +81,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TheAgentsOwnInstance_WinsOverARegisteredToolOfTheSameName()
     {
         // GAP-11 (GAP-02 finding): an agent built in C# with its own rag_search must call that
@@ -100,7 +97,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task LeavesToolsNull_ForAToollessAgent()
     {
         var composer = BuildComposer();
@@ -112,7 +108,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TheComposedAIFunction_InvokesTheUnderlyingTool()
     {
         var tool = new SpyTool("callable_tool", result: "invoked!");
@@ -133,7 +128,6 @@ public class ChatOptionsComposerTests
     // ── Task-level tools (GAP-07) ─────────────────────────────────────────
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TaskTools_AreAdded_ForThatTaskOnly()
     {
         var fileRead = new SpyTool("file_read");
@@ -153,7 +147,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task TaskTools_NeverDuplicateAnAgentTool()
     {
         var fileRead = new SpyTool("file_read");
@@ -170,7 +163,6 @@ public class ChatOptionsComposerTests
     // ── human_input auto-injection ────────────────────────────────────────
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task InjectsHumanInput_WhenTheTaskAsksForIt_AndTheToolIsRegistered()
     {
         var humanInput = new SpyTool("human_input");
@@ -185,7 +177,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task HumanInputFlagIsANoOp_WhenNoProviderIsRegistered()
     {
         var composer = BuildComposer(registeredTools: []);
@@ -198,7 +189,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task DoesNotDuplicateHumanInput_WhenTheAgentAlreadyCarriesIt()
     {
         var humanInput = new SpyTool("human_input");
@@ -378,7 +368,6 @@ public class ChatOptionsComposerTests
     // ── Structured-output grammar attachment ──────────────────────────────
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task AttachesAGbnfGrammar_ForAnInlineSchema()
     {
         var composer = BuildComposer();
@@ -403,7 +392,6 @@ public class ChatOptionsComposerTests
     /// object and require every property, and a deliverable schema need not.
     /// </summary>
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task AttachesTheSchemaAsAJsonSchemaFormat_ForAnInlineSchema()
     {
         const string schema = """{"type":"object","properties":{"name":{"type":"string"}}}""";
@@ -427,7 +415,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task ReadsTheSchemaFromTheVfs_WhenOnlyAPathIsDeclared()
     {
         var fileSystem = new FakeFileSystemService()
@@ -447,7 +434,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task SwallowsAnInvalidSchema_AndStillReturnsOptions()
     {
         var composer = BuildComposer();
@@ -468,7 +454,6 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
-    [Trait("BR", "CH-06")]
     public async System.Threading.Tasks.Task IgnoresDeliverables_WhoseSourceIsNotStructuredOutput()
     {
         var composer = BuildComposer();

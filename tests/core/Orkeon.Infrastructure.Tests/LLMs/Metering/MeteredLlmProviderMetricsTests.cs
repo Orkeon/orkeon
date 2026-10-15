@@ -140,6 +140,7 @@ public sealed class MeteredLlmProviderMetricsTests
 
         await foreach (var _ in metered.GenerateStreamingAsync("p", LlmConfig.Create(model), TestContext.Current.CancellationToken))
         {
+            // Drained: the call is measured when the stream ends.
         }
 
         var seen = capture.For(model);
@@ -200,12 +201,14 @@ public sealed class MeteredLlmProviderMetricsTests
         {
             await foreach (var _ in metered.ChatStreamingAsync(Conversation(), LlmConfig.Create(model), TestContext.Current.CancellationToken))
             {
+                // Drained: the call is measured when the stream ends.
             }
         });
         var thrownText = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
             await foreach (var _ in metered.GenerateStreamingAsync("p", LlmConfig.Create(model), TestContext.Current.CancellationToken))
             {
+                // Drained: the call is measured when the stream ends.
             }
         });
 
@@ -233,6 +236,7 @@ public sealed class MeteredLlmProviderMetricsTests
         {
             await foreach (var _ in metered.ChatStreamingAsync(Conversation(), LlmConfig.Create(model), TestContext.Current.CancellationToken))
             {
+                // Drained: the call is measured when the stream ends.
             }
         });
 
@@ -261,11 +265,11 @@ public sealed class MeteredLlmProviderMetricsTests
         await metered.ChatAsync(Conversation(), cancellationToken: ct);
         var afterEur = capture.Gauge(gauge);
 
-        Assert.NotNull(start);
-        Assert.NotNull(afterUsd);
-        Assert.NotNull(afterEur);
-        Assert.Equal(0.5, afterUsd.Value - start.Value, 6);
-        Assert.Equal(afterUsd.Value, afterEur.Value, 6);
+        var startValue = Assert.NotNull(start);
+        var usdValue = Assert.NotNull(afterUsd);
+        var eurValue = Assert.NotNull(afterEur);
+        Assert.Equal(0.5, usdValue - startValue, 6);
+        Assert.Equal(usdValue, eurValue, 6);
     }
 
     [Trait("BR", "CH-03")]
@@ -306,6 +310,7 @@ public sealed class MeteredLlmProviderMetricsTests
         {
             await foreach (var _ in metered.GenerateStreamingAsync("p", LlmConfig.Create(model), TestContext.Current.CancellationToken))
             {
+                // Drained: the call is measured when the stream ends.
             }
         });
 
@@ -346,6 +351,7 @@ public sealed class MeteredLlmProviderMetricsTests
         {
             await foreach (var _ in metered.GenerateStreamingAsync("p", LlmConfig.Create("f5-dispose-stream-model"), TestContext.Current.CancellationToken))
             {
+                // Drained: the call is measured when the stream ends.
             }
         });
 
@@ -364,6 +370,7 @@ public sealed class MeteredLlmProviderMetricsTests
         {
             await foreach (var _ in metered.ChatStreamingAsync(Conversation(), LlmConfig.Create("f5-dispose-chat-model"), TestContext.Current.CancellationToken))
             {
+                // Drained: the call is measured when the stream ends.
             }
         });
 

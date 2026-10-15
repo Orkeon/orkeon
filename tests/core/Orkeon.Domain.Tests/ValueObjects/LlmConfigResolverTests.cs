@@ -29,7 +29,7 @@ public class LlmConfigResolverTests
 
     [Fact]
     [Trait("BR", "CH-08")]
-    public void ShouldApplyTaskOverride_WhenCallOverrideIsNull()
+    public void ShouldApplyTaskOverride_OverBase()
     {
         var baseCfg = MakeBase();
         var task = new LlmConfigOverride { ResponseFormat = LlmResponseFormat.JsonObject(), Temperature = 0.1 };

@@ -313,6 +313,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         catch (Exception) when (failed)
 #pragma warning restore CA1031
         {
+            // Dropped: the stream already failed, and its exception is the one the caller gets.
         }
     }
 

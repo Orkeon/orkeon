@@ -41,11 +41,6 @@ internal sealed class CrewMemberManager
     }
 
     /// <summary>
-    /// Gets the first agent in the list, or null if empty.
-    /// </summary>
-    public AgentId? FirstOrDefault() => _agents.FirstOrDefault();
-
-    /// <summary>
     /// Checks if an agent is in the crew.
     /// </summary>
     public bool Contains(AgentId agentId) => _agents.Contains(agentId);

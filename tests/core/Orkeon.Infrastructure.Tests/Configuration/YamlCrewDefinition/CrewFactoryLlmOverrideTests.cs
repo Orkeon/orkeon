@@ -189,7 +189,7 @@ public class CrewFactoryLlmOverrideTests
             agentLlm: "",
             taskOverride: "max_tokens: 0"));
 
-        Assert.Contains("write", ex.Message);
+        Assert.Contains("Task 'write'", ex.Message);
         Assert.Contains("max_tokens", ex.Message);
         Assert.Contains("omit the key to keep the inherited cap", ex.Message);
     }

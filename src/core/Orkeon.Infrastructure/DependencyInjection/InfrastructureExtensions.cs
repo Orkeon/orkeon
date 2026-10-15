@@ -162,8 +162,6 @@ public static class InfrastructureExtensions
         services.AddScoped<ICrewOrchestrationService>(sp => sp.GetRequiredService<SequentialCrewOrchestrator>());
         services.AddSingleton<ICrewExecutionStateManager, ScopedCrewExecutionStateManager>();
 
-        // Template engine (moved from Application — R16)
-
         // Add HTTP client factory
         services.AddHttpClient();
 

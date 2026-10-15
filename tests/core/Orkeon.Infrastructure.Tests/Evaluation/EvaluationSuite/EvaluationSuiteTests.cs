@@ -7,7 +7,6 @@ public class EvaluationSuiteTests
     private readonly EvaluationSuiteTestsFixture _fixture = new();
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldReturnAllScores_WhenRunningWithMultipleEvaluators()
     {
@@ -30,7 +29,6 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldCalculateAveragesCorrectly_WhenRunning()
     {
@@ -47,7 +45,6 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldHandleEmptyInputList_WhenRunning()
     {
@@ -62,7 +59,6 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldComputeSummary_WhenRunningMultipleCases()
     {
@@ -84,7 +80,6 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public void ShouldReturnNewSuiteWithEvaluator_WhenAddingEvaluator()
     {
@@ -99,7 +94,6 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldContainScoresByEvaluator_WhenAccessingSummary()
     {
@@ -117,7 +111,6 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldContainVariance_WhenAccessingSummary()
     {
@@ -131,7 +124,6 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldRespectCancellation_WhenTokenIsCancelled()
     {
