@@ -8,6 +8,7 @@ using DomainProcessType = Orkeon.Domain.SharedKernel.ValueObjects.ProcessType;
 
 namespace Orkeon.Application.Tests.Services.Handlers;
 
+[Trait("BR", "CH-08")]
 public class GetCrewHandlerTests
 {
     private readonly StubCrewRepository _repository;

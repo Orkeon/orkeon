@@ -24,9 +24,6 @@ public static class CrewDefaults
     /// <summary>Maximum wall-clock time for a full crew execution (30 min).</summary>
     public static readonly TimeSpan DefaultExecutionTimeout = TimeSpan.FromMinutes(30);
 
-    /// <summary>Default estimated duration for a single task (15 min).</summary>
-    public static readonly TimeSpan DefaultEstimatedTaskDuration = TimeSpan.FromMinutes(15);
-
     // ── Validation limits ───────────────────────────────────
 
     /// <summary>Maximum length of <see cref="Orkeon.Domain.Crew.ValueObjects.CrewGoal"/> (2¹¹).</summary>

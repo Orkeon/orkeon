@@ -8,6 +8,7 @@ using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 
 namespace Orkeon.Application.Tests.Services.Handlers;
 
+[Trait("BR", "CH-08")]
 public class GetAgentHandlerTests
 {
     private readonly StubAgentRepository _repository;

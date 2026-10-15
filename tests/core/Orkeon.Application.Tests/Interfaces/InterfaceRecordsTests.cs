@@ -157,25 +157,6 @@ public class InterfaceRecordsTests
         Assert.Equal(50_000, stats.EstimatedTokensSaved);
     }
 
-    // ══════════════ IEncryptionProvider — EncryptionResult ══════════════
-
-    [Fact]
-    public void ShouldStoreEncryptionResultFields_WhenCreating()
-    {
-        // Arrange
-        var cipher = new byte[] { 1, 2, 3 };
-        var nonce = new byte[] { 4, 5, 6 };
-        var tag = new byte[] { 7, 8, 9 };
-
-        // Act
-        var result = new EncryptionResult(cipher, nonce, tag);
-
-        // Assert
-        Assert.Equal(cipher, result.CipherText);
-        Assert.Equal(nonce, result.Nonce);
-        Assert.Equal(tag, result.Tag);
-    }
-
     // ══════════════ MonitoringTypes ══════════════
 
     [Fact]

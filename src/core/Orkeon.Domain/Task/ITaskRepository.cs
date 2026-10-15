@@ -11,15 +11,6 @@ namespace Orkeon.Domain.Task;
 /// Task aggregate root that flows through the CQRS/Repository persistence pipeline.
 /// </para>
 /// <para>
-/// The specialized task types (<see cref="CodeGenerationTask"/>, <see cref="AnalysisTask"/>,
-/// <see cref="ResearchTask"/>) inherit from <see cref="CrewTaskBase{TContext}"/> and provide
-/// type-safe context for domain-specific operations (code generation, analysis, research).
-/// They are <strong>not</strong> separate aggregate roots requiring their own repositories;
-/// they are domain models used within the execution layer for typed context and behaviour.
-/// Task routing is handled via <c>TaskClassificationService</c> using heuristic matching
-/// on type name, description, and expected output — not through the repository layer.
-/// </para>
-/// <para>
 /// Design decision (R36): one repository per aggregate root. <see cref="CrewTask"/> is the
 /// sole persistable task AR. If a specialized task type ever needs its own persistence
 /// lifecycle, a dedicated repository interface should be introduced at that time.

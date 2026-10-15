@@ -260,18 +260,7 @@ var crew = new CrewBuilder()
 
 ## Communication inter-agents
 
-La communication entre agents est gérée par le système de protocoles défini dans `CommunicationProtocol` (`Orkeon.Domain.SharedKernel.ValueObjects`).
-
-Quatre types de protocoles sont disponibles via `ProtocolType` :
-
-| Protocole | Factory | Mode | Usage |
-|-----------|---------|------|-------|
-| **Direct** | `CommunicationProtocol.Direct` | Synchrone | Communication point-à-point entre deux agents |
-| **Broadcast** | `CommunicationProtocol.Broadcast` | Synchrone | Diffusion d'un message à tous les agents d'une crew |
-| **MessageQueue** | `CommunicationProtocol.MessageQueue` | Asynchrone | File de messages pour communication découplée |
-| **EventStream** | `ProtocolType.EventStream` | Asynchrone | Flux d'événements en streaming |
-
-L'implémentation concrète est assurée par `AsyncAgentCommunicationService` (`Orkeon.Infrastructure.Communication`) qui expose `SendMessageAsync`, `ReceiveMessagesAsync` et `IsAgentAvailableAsync`.
+La communication entre agents est assurée par `AsyncAgentCommunicationService` (`Orkeon.Infrastructure.Communication`), qui expose `SendMessageAsync`, `ReceiveMessagesAsync` et `IsAgentAvailableAsync`.
 
 Les agents collaborent par la délégation : les outils `AskQuestionTool` et `DelegateWorkTool`, qu'un agent doté d'`AllowDelegation` reçoit dans les modes Sequential et Graph, et la remise d'une tâche échouée à un pair dans le mode Autonomous.
 

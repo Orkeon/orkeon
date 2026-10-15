@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — public surfaces nothing called, third pass **[breaking]**
+
+Types and members with no caller left in the framework, the REPL or the examples (GAP-47).
+
+- **Phase 3 services** (decision 1): `Orkeon.Application.Services.ErrorHandling`, `Services.Generic` and
+  `Services.TaskRouting` (`PatternMatchingErrorHandler`, `ErrorClassifier`, `TaskExecutionRouter`,
+  `TaskExecutorFactory`, `ResearchTaskExecutor`, `ResearchFindings`...), `RetryDefaults`, and in Domain
+  `TaskClassificationService`, `TaskCategory`, `ResearchTask`, `AnalysisTask`, `CodeGenerationTask` with their
+  contexts. Migration: none was registered; retries and error handling live in the strategies and the
+  resilience policies, and a task is a `CrewTask`.
+- **Mappers, DTOs and value objects of an absent HTTP API** (decision 2): `CrewMapper`, `TaskMapper`,
+  `ExecutionMapper`, `ToolMapper`, the list overloads and `ToSummaryDto` of `AgentMapper`, `ApiResponse<T>` and the
+  other `ApiDTOs`, `ApiMetadata`, `ToolMetadata`, `ToolDto`, `ExecutionResultDto`, `CollaborationDtos`,
+  `LlmConfigOverrideDto`, `LlmThinkingConfigDto`, `TokenUsageDto`, `TokenModelUsageDto`, `MemorySearchFilter`,
+  the Application `BatchOutput` (not the one of `ICrewOrchestrationService`), `MessageDefaults`,
+  `PaginationDefaults`, and Domain `AgentCapabilities`, `CollaborationContext`, `CommunicationProtocol`,
+  `PerformanceMetrics`, `SecurityContext`, `TaskComplexity`. Migration: define the DTOs of your own API in your
+  host; `AgentMapper.ToDto(agent)` and `MemoryItemDto` remain.
+- **Read DTO fields no handler fills** (decision 3): `CrewDto` keeps `Id`, `Name`, `Description`, `ProcessType`,
+  `Status`, `Verbosity`, `CreatedAt`; `AgentDto` loses `Llm`, `Capabilities`, `PerformanceMetrics`, `Metadata`,
+  `WithStatus`, `WithPerformanceMetrics`; `TaskDto` keeps `Id`, `Name`, `Description`, `ExpectedOutput`,
+  `AssignedAgent`, `Status`, `Priority`, `CreatedAt`. `LlmDto`, `AgentCapabilitiesDto`, `PerformanceMetricsDto`,
+  `TaskComplexityDto`, `TaskOutputDto`, `MemoryConfigurationDto`, `CrewDefaults.DefaultEstimatedTaskDuration` and
+  Domain `OrchestrationDefaults` go with them; the REPL no longer prompts for a task context. Migration: read
+  the crew, its agents and its tasks through their own queries.
+- **Interface types nothing used** (decision 8): `IMemoryScopeFactory`, `EncryptionResult`,
+  `DataClassification`. Migration: none.
+
 ### Fixed — crews, tasks, tool calls and security events are measured where they happen
 
 The crew, task, tool and security instruments of the meter `Orkeon` are now fed (GAP-46). The run

@@ -62,7 +62,7 @@ Use native xUnit assertions only: no mocking framework (Moq, NSubstitute, FakeIt
 ### DTO conventions (`Orkeon.Application`)
 
 - `sealed record` with `{ get; init; }`, the `required` keyword (never `[Required]`), `ImmutableList<T>` / `ImmutableDictionary<K,V>` (never `List<T>` / `Dictionary<K,V>`).
-- Suffixes: `*Dto` for read/transfer, `*Request` for the input of a port, `*Command` for a CQRS command, `*Response` for API wrappers (`ApiResponse<T>`).
+- Suffixes: `*Dto` for read/transfer, `*Request` for the input of a port, `*Command` for a CQRS command, `*Response` — a port's answer record (`AgentChannelResponse`).
 - `[JsonPropertyName("snake_case")]` on every API-exposed DTO.
 - Business rules go in `ICommandValidator<T>`, never Data Annotations.
 - One DTO per concept, no duplicate definitions; enums in dedicated `*Enums.cs` files in the entity's DTOs folder.

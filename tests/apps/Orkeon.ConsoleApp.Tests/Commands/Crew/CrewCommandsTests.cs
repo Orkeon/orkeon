@@ -2,6 +2,7 @@ using Orkeon.ConsoleApp.Commands.Crew;
 
 namespace Orkeon.ConsoleApp.Tests.Commands.Crew;
 
+[Trait("BR", "CH-08")]
 public sealed class CrewCommandsTests
 {
     [Fact]

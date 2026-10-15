@@ -8,6 +8,7 @@ using DomainTaskPriority = Orkeon.Domain.Task.ValueObjects.TaskPriority;
 
 namespace Orkeon.Application.Tests.Services.Handlers;
 
+[Trait("BR", "CH-08")]
 public class GetTaskHandlerTests
 {
     private readonly StubTaskRepository _repository;

@@ -52,3 +52,470 @@ Orkeon.Domain.Configuration.AgentConfiguration.MaxExecutionTime.get -> System.Ti
 Orkeon.Domain.Configuration.AgentConfiguration.MaxExecutionTime.init -> void
 *REMOVED*const Orkeon.Domain.Constants.Crew.PlanningDefaults.Temperature = 0.3 -> float
 const Orkeon.Domain.Constants.Crew.PlanningDefaults.Temperature = 0.3 -> double
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.AddLanguage(string! language) -> Orkeon.Domain.Agent.ValueObjects.AgentCapabilities!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.AddSkill(string! skill) -> Orkeon.Domain.Agent.ValueObjects.AgentCapabilities!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.AddTool(string! tool) -> Orkeon.Domain.Agent.ValueObjects.AgentCapabilities!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Equals(Orkeon.Domain.Agent.ValueObjects.AgentCapabilities? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.HasLanguage(string! language) -> bool
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.HasSkill(string! skill) -> bool
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.HasTool(string! tool) -> bool
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Languages.get -> System.Collections.Immutable.ImmutableHashSet<string!>!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Languages.init -> void
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.OverallConfidence.get -> Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.OverallConfidence.init -> void
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.RemoveSkill(string! skill) -> Orkeon.Domain.Agent.ValueObjects.AgentCapabilities!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.RemoveTool(string! tool) -> Orkeon.Domain.Agent.ValueObjects.AgentCapabilities!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Skills.get -> System.Collections.Immutable.ImmutableHashSet<string!>!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Skills.init -> void
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Tools.get -> System.Collections.Immutable.ImmutableHashSet<string!>!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Tools.init -> void
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.Equals(Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.Value.get -> string!
+*REMOVED*Orkeon.Domain.Constants.Orchestration.OrchestrationDefaults
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.AddParticipant(Orkeon.Domain.Common.AgentId! agentId) -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.CreatedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.CreatedAt.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Equals(Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.HasParticipant(Orkeon.Domain.Common.AgentId! agentId) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.IsExpired.get -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Leader.get -> Orkeon.Domain.Common.AgentId?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Leader.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.MaxDuration.get -> System.TimeSpan?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.MaxDuration.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.ParticipantCount.get -> int
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Participants.get -> System.Collections.Immutable.ImmutableHashSet<Orkeon.Domain.Common.AgentId!>!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Participants.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.RemoveParticipant(Orkeon.Domain.Common.AgentId! agentId) -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.SharedState.get -> System.Text.Json.JsonDocument?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.SharedState.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Type.get -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Type.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.Equals(Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.Value.get -> string!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Equals(Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Format.get -> string!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Format.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.IsAsync.get -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.IsSync.get -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.MaxRetries.get -> int
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.MaxRetries.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Parameters.get -> Orkeon.Domain.SharedKernel.ValueObjects.CommunicationParameters!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Parameters.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Timeout.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Timeout.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Type.get -> Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Type.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.WithParameter(string! key, object! value) -> Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.AverageResponseTime.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.AverageResponseTime.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.ConcurrentTasks.get -> int
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.ConcurrentTasks.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.Equals(Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.ErrorRate.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.ErrorRate.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.IsHealthy.get -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.MeasuredAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.MeasuredAt.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.NeedsAttention.get -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.ResourceUtilization.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.ResourceUtilization.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.Throughput.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.Throughput.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.Equals(Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.Value.get -> string!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.AddPermission(string! permission) -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.AddRole(string! role) -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.CreatedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.CreatedAt.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Equals(Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.ExpiresAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.ExpiresAt.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.HasPermission(string! permission) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.HasRole(string! role) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.IsExpired.get -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.IsValid.get -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Level.get -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Level.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Permissions.get -> System.Collections.Immutable.ImmutableHashSet<string!>!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Permissions.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Roles.get -> System.Collections.Immutable.ImmutableHashSet<string!>!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Roles.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.UserId.get -> string!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.UserId.init -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.Equals(Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel? other) -> bool
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.Value.get -> string!
+*REMOVED*Orkeon.Domain.Task.AnalysisTask
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.AddDataSource(Orkeon.Domain.Task.Contexts.DataSource! dataSource) -> void
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.AddInsight(string! insight, float confidence = 1) -> void
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.AddMetric(string! name, object! value) -> void
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.AddMetrics(System.Collections.Generic.Dictionary<string!, object!>! metrics) -> void
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.AddRecommendation(Orkeon.Domain.Task.Contexts.Recommendation! recommendation) -> void
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.CompleteStage(string! result, string? nextStageName = null) -> void
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.ConfidenceScore.get -> float
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.GetCompletedStages() -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.Contexts.AnalysisStage!>!
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.GetCriticalRecommendations() -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.Contexts.Recommendation!>!
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.GetHighConfidenceInsights(float threshold = 0.8) -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.SetMethodology(string! methodology) -> void
+*REMOVED*Orkeon.Domain.Task.AnalysisTask.StartStage(string! stageName) -> void
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.AddCodeDependency(string! dependency) -> void
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.AddGeneratedFile(string! fileName, string! content) -> void
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.AddRequirement(string! requirement) -> void
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.AddRequirements(System.Collections.Generic.IEnumerable<string!>! requirements) -> void
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.GetGeneratedFiles() -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.SetDesignPatterns(System.Collections.Generic.IEnumerable<string!>! patterns) -> void
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.SetTestCoverageRequirement(float coverage) -> void
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.UpdateQualityMetrics(System.Action<Orkeon.Domain.Task.Contexts.CodeQualityMetrics!>! updateAction) -> void
+*REMOVED*Orkeon.Domain.Task.CodeGenerationTask.ValidateRequirements() -> bool
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisStage
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisStage.AnalysisStage(string! name) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisStage.CompletedAt.get -> System.DateTime?
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisStage.Name.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisStage.Result.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisStage.StartedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisStage.Status.get -> Orkeon.Domain.Task.Contexts.StageStatus
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisStage.WithCompletion(string! result) -> Orkeon.Domain.Task.Contexts.AnalysisStage!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.AddDataSource(Orkeon.Domain.Task.Contexts.DataSource! dataSource) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.AddInsight(string! insight, float confidence = 1) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.AddMetric(string! name, object! value) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.AddRecommendation(Orkeon.Domain.Task.Contexts.Recommendation! recommendation) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.AddStage(Orkeon.Domain.Task.Contexts.AnalysisStage! stage) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.AnalysisTaskContext() -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.CompleteStage(string! stageName, string! result) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.ConfidenceScore.get -> float
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.DataSources.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.Contexts.DataSource!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.DataSources.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.GetHighConfidenceInsights(float threshold = 0.8) -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Insights.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Insights.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Methodology.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Metrics.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Metrics.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Recommendations.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.Contexts.Recommendation!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Recommendations.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Stages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.Contexts.AnalysisStage!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Stages.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Subject.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.AnalysisTaskContext.Subject.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.AddDependency(string! dependency) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.AddDesignPattern(string! pattern) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.AddGeneratedFile(string! fileName, string! content) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.AddRequirement(string! requirement) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.CodeGenerationContext() -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.Dependencies.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.Dependencies.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.DesignPatterns.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.DesignPatterns.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.Framework.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.Framework.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.GeneratedFiles.get -> System.Collections.Generic.Dictionary<string!, string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.GeneratedFiles.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.Language.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.Language.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.QualityMetrics.get -> Orkeon.Domain.Task.Contexts.CodeQualityMetrics!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.QualityMetrics.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.Requirements.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.Requirements.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.SetDesignPatterns(System.Collections.Generic.IEnumerable<string!>! patterns) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.TestCoverageRequirement.get -> float
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeGenerationContext.ValidateRequirements() -> bool
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.<Clone>$() -> Orkeon.Domain.Task.Contexts.CodeQualityMetrics!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.CodeQualityMetrics() -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.CodeSmells.get -> int
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.CodeSmells.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.CyclomaticComplexity.get -> int
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.CyclomaticComplexity.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.Equals(Orkeon.Domain.Task.Contexts.CodeQualityMetrics? other) -> bool
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.IssuesByCategory.get -> System.Collections.Generic.Dictionary<string!, int>!
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.IssuesByCategory.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.LinesOfCode.get -> int
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.LinesOfCode.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.MaintainabilityIndex.get -> float
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.MaintainabilityIndex.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.TechnicalDebt.get -> int
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.TechnicalDebt.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.TestCoverage.get -> float
+*REMOVED*Orkeon.Domain.Task.Contexts.CodeQualityMetrics.TestCoverage.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.<Clone>$() -> Orkeon.Domain.Task.Contexts.DataSource!
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.AccessedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.AccessedAt.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.DataSource() -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Equals(Orkeon.Domain.Task.Contexts.DataSource? other) -> bool
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Location.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Location.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Metadata.get -> System.Collections.Generic.Dictionary<string!, string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Metadata.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Name.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Name.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.RecordCount.get -> long
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.RecordCount.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Type.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.DataSource.Type.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.<Clone>$() -> Orkeon.Domain.Task.Contexts.Recommendation!
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Actions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Actions.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Description.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Description.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.EffortScore.get -> float
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.EffortScore.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Equals(Orkeon.Domain.Task.Contexts.Recommendation? other) -> bool
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.ImpactScore.get -> float
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.ImpactScore.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Priority.get -> Orkeon.Domain.Task.Contexts.RecommendationPriority
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Priority.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Recommendation() -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Title.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.Recommendation.Title.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.RecommendationPriority
+*REMOVED*Orkeon.Domain.Task.Contexts.RecommendationPriority.Critical = 3 -> Orkeon.Domain.Task.Contexts.RecommendationPriority
+*REMOVED*Orkeon.Domain.Task.Contexts.RecommendationPriority.High = 2 -> Orkeon.Domain.Task.Contexts.RecommendationPriority
+*REMOVED*Orkeon.Domain.Task.Contexts.RecommendationPriority.Low = 0 -> Orkeon.Domain.Task.Contexts.RecommendationPriority
+*REMOVED*Orkeon.Domain.Task.Contexts.RecommendationPriority.Medium = 1 -> Orkeon.Domain.Task.Contexts.RecommendationPriority
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.<Clone>$() -> Orkeon.Domain.Task.Contexts.ResearchReference!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Author.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Author.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Equals(Orkeon.Domain.Task.Contexts.ResearchReference? other) -> bool
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.PublishedDate.get -> System.DateTime?
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.PublishedDate.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Relevance.get -> float
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Relevance.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.ResearchReference() -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Summary.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Summary.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Title.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Title.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Url.get -> System.Uri?
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchReference.Url.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.AddKeyFinding(string! finding) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.AddReference(Orkeon.Domain.Task.Contexts.ResearchReference! reference) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.AddSearchQuery(string! query) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.AddSource(string! source, float relevance = 1) -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.GetTopSources(int count = 5) -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.KeyFindings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.KeyFindings.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.References.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.Contexts.ResearchReference!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.References.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.RelevanceScores.get -> System.Collections.Generic.Dictionary<string!, float>!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.RelevanceScores.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.ResearchStarted.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.ResearchStarted.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.ResearchTaskContext() -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.SearchQueries.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.SearchQueries.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.Sources.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.Sources.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.Topic.get -> string!
+*REMOVED*Orkeon.Domain.Task.Contexts.ResearchTaskContext.Topic.init -> void
+*REMOVED*Orkeon.Domain.Task.Contexts.StageStatus
+*REMOVED*Orkeon.Domain.Task.Contexts.StageStatus.Completed = 2 -> Orkeon.Domain.Task.Contexts.StageStatus
+*REMOVED*Orkeon.Domain.Task.Contexts.StageStatus.Failed = 3 -> Orkeon.Domain.Task.Contexts.StageStatus
+*REMOVED*Orkeon.Domain.Task.Contexts.StageStatus.InProgress = 1 -> Orkeon.Domain.Task.Contexts.StageStatus
+*REMOVED*Orkeon.Domain.Task.Contexts.StageStatus.NotStarted = 0 -> Orkeon.Domain.Task.Contexts.StageStatus
+*REMOVED*Orkeon.Domain.Task.ResearchTask
+*REMOVED*Orkeon.Domain.Task.ResearchTask.AddKeyFinding(string! finding) -> void
+*REMOVED*Orkeon.Domain.Task.ResearchTask.AddReference(Orkeon.Domain.Task.Contexts.ResearchReference! reference) -> void
+*REMOVED*Orkeon.Domain.Task.ResearchTask.AddSearchQuery(string! query) -> void
+*REMOVED*Orkeon.Domain.Task.ResearchTask.AddSource(string! source, float relevance = 1) -> void
+*REMOVED*Orkeon.Domain.Task.ResearchTask.GetTopSources(int count = 5) -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Task.TaskCategory
+*REMOVED*Orkeon.Domain.Task.TaskCategory.Analysis = 1 -> Orkeon.Domain.Task.TaskCategory
+*REMOVED*Orkeon.Domain.Task.TaskCategory.Coding = 3 -> Orkeon.Domain.Task.TaskCategory
+*REMOVED*Orkeon.Domain.Task.TaskCategory.Generic = 5 -> Orkeon.Domain.Task.TaskCategory
+*REMOVED*Orkeon.Domain.Task.TaskCategory.Research = 0 -> Orkeon.Domain.Task.TaskCategory
+*REMOVED*Orkeon.Domain.Task.TaskCategory.Review = 4 -> Orkeon.Domain.Task.TaskCategory
+*REMOVED*Orkeon.Domain.Task.TaskCategory.Writing = 2 -> Orkeon.Domain.Task.TaskCategory
+*REMOVED*Orkeon.Domain.Task.ValueObjects.ComplexityLevel
+*REMOVED*Orkeon.Domain.Task.ValueObjects.ComplexityLevel.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.ComplexityLevel!
+*REMOVED*Orkeon.Domain.Task.ValueObjects.ComplexityLevel.Equals(Orkeon.Domain.Task.ValueObjects.ComplexityLevel? other) -> bool
+*REMOVED*Orkeon.Domain.Task.ValueObjects.ComplexityLevel.Value.get -> string!
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.Dependencies.get -> System.Collections.Immutable.ImmutableList<string!>!
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.Dependencies.init -> void
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.Equals(Orkeon.Domain.Task.ValueObjects.TaskComplexity? other) -> bool
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.EstimatedDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.EstimatedDuration.init -> void
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.EstimatedEffort.get -> int
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.EstimatedEffort.init -> void
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.HasDependencies.get -> bool
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.Level.get -> Orkeon.Domain.Task.ValueObjects.ComplexityLevel!
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.Level.init -> void
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.RequiredSkills.get -> System.Collections.Immutable.ImmutableList<string!>!
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.RequiredSkills.init -> void
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TaskComplexity.RequiresSkill(string! skill) -> bool
+*REMOVED*const Orkeon.Domain.Task.ValueObjects.TaskComplexity.ComplexEffort = 8 -> int
+*REMOVED*const Orkeon.Domain.Task.ValueObjects.TaskComplexity.MediumEffort = 3 -> int
+*REMOVED*const Orkeon.Domain.Task.ValueObjects.TaskComplexity.SimpleEffort = 1 -> int
+*REMOVED*override Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.AgentCapabilities!
+*REMOVED*override Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.ToString() -> string!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.ToString() -> string!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.ToString() -> string!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.ToString() -> string!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.ToString() -> string!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.ToString() -> string!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.ToString() -> string!
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.AnalysisTask.GetContextSummary() -> string!
+*REMOVED*override Orkeon.Domain.Task.CodeGenerationTask.GetContextSummary() -> string!
+*REMOVED*override Orkeon.Domain.Task.Contexts.CodeQualityMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.Contexts.CodeQualityMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.Contexts.CodeQualityMetrics.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.Contexts.DataSource.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.Contexts.DataSource.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.Contexts.DataSource.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.Contexts.Recommendation.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.Contexts.Recommendation.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.Contexts.Recommendation.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.Contexts.ResearchReference.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.Contexts.ResearchReference.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.Contexts.ResearchReference.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.ResearchTask.GetContextSummary() -> string!
+*REMOVED*override Orkeon.Domain.Task.ValueObjects.ComplexityLevel.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.ValueObjects.ComplexityLevel.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.ValueObjects.ComplexityLevel.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.ValueObjects.TaskComplexity.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.TaskComplexity!
+*REMOVED*override Orkeon.Domain.Task.ValueObjects.TaskComplexity.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.ValueObjects.TaskComplexity.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.ValueObjects.TaskComplexity.ToString() -> string!
+*REMOVED*override sealed Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
+*REMOVED*override sealed Orkeon.Domain.Task.ValueObjects.TaskComplexity.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Create(System.Collections.Generic.IEnumerable<string!>? skills = null, System.Collections.Generic.IEnumerable<string!>? tools = null, System.Collections.Generic.IEnumerable<string!>? languages = null, Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel? overallConfidence = null) -> Orkeon.Domain.Agent.ValueObjects.AgentCapabilities!
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.Empty.get -> Orkeon.Domain.Agent.ValueObjects.AgentCapabilities!
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.operator !=(Orkeon.Domain.Agent.ValueObjects.AgentCapabilities? left, Orkeon.Domain.Agent.ValueObjects.AgentCapabilities? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.AgentCapabilities.operator ==(Orkeon.Domain.Agent.ValueObjects.AgentCapabilities? left, Orkeon.Domain.Agent.ValueObjects.AgentCapabilities? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.All.get -> System.Collections.Generic.IReadOnlyCollection<Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel!>!
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.From(string! value) -> Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel!
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.TryFrom(string? value, out Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel? result) -> bool
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.implicit operator string!(Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel! s) -> string!
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.operator !=(Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel? left, Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel? right) -> bool
+*REMOVED*static Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.operator ==(Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel? left, Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.Create(Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType! type, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.AgentId!>! participants, Orkeon.Domain.Common.AgentId? leader = null, System.Text.Json.JsonDocument? sharedState = null, System.TimeSpan? maxDuration = null) -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext? left, Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext? left, Orkeon.Domain.SharedKernel.ValueObjects.CollaborationContext? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.All.get -> System.Collections.Generic.IReadOnlyCollection<Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType!>!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.From(string! value) -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.TryFrom(string? value, out Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType? result) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.implicit operator string!(Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType! s) -> string!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType? left, Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType? left, Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Broadcast.get -> Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Create(Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType! type, string! format = "json", Orkeon.Domain.SharedKernel.ValueObjects.CommunicationParameters? parameters = null, System.TimeSpan? timeout = null, int maxRetries = 3) -> Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.Direct.get -> Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.MessageQueue.get -> Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol? left, Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol? left, Orkeon.Domain.SharedKernel.ValueObjects.CommunicationProtocol? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.Create(double throughput, double averageResponseTime, double errorRate, double resourceUtilization, int concurrentTasks) -> Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.Excellent.get -> Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.Poor.get -> Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics? left, Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics? left, Orkeon.Domain.SharedKernel.ValueObjects.PerformanceMetrics? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.All.get -> System.Collections.Generic.IReadOnlyCollection<Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType!>!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.From(string! value) -> Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.TryFrom(string? value, out Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType? result) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.implicit operator string!(Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType! s) -> string!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType? left, Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType? left, Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Admin(string! userId) -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.Create(string! userId, System.Collections.Generic.IEnumerable<string!>! roles, System.Collections.Generic.IEnumerable<string!>! permissions, Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel? level = null, System.TimeSpan? validity = null) -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.ReadOnly(string! userId) -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext? left, Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext? left, Orkeon.Domain.SharedKernel.ValueObjects.SecurityContext? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.All.get -> System.Collections.Generic.IReadOnlyCollection<Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel!>!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.From(string! value) -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.TryFrom(string? value, out Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel? result) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.implicit operator string!(Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel! s) -> string!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel? left, Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel? right) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel? left, Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.AnalysisTask.Create(Orkeon.Domain.Common.TaskId! taskId, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, string! subject, string! methodology = "", Orkeon.Domain.Task.ValueObjects.TaskPriority? priority = null, Orkeon.Domain.Task.TaskOutputOptions? outputOptions = null) -> Orkeon.Domain.Task.AnalysisTask!
+*REMOVED*static Orkeon.Domain.Task.CodeGenerationTask.Create(Orkeon.Domain.Common.TaskId! id, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, string! language = "C#", string! framework = ".NET 10", Orkeon.Domain.Task.ValueObjects.TaskPriority? priority = null, Orkeon.Domain.Task.TaskOutputOptions? outputOptions = null) -> Orkeon.Domain.Task.CodeGenerationTask!
+*REMOVED*static Orkeon.Domain.Task.Contexts.CodeQualityMetrics.operator !=(Orkeon.Domain.Task.Contexts.CodeQualityMetrics? left, Orkeon.Domain.Task.Contexts.CodeQualityMetrics? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Contexts.CodeQualityMetrics.operator ==(Orkeon.Domain.Task.Contexts.CodeQualityMetrics? left, Orkeon.Domain.Task.Contexts.CodeQualityMetrics? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Contexts.DataSource.operator !=(Orkeon.Domain.Task.Contexts.DataSource? left, Orkeon.Domain.Task.Contexts.DataSource? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Contexts.DataSource.operator ==(Orkeon.Domain.Task.Contexts.DataSource? left, Orkeon.Domain.Task.Contexts.DataSource? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Contexts.Recommendation.operator !=(Orkeon.Domain.Task.Contexts.Recommendation? left, Orkeon.Domain.Task.Contexts.Recommendation? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Contexts.Recommendation.operator ==(Orkeon.Domain.Task.Contexts.Recommendation? left, Orkeon.Domain.Task.Contexts.Recommendation? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Contexts.ResearchReference.operator !=(Orkeon.Domain.Task.Contexts.ResearchReference? left, Orkeon.Domain.Task.Contexts.ResearchReference? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.Contexts.ResearchReference.operator ==(Orkeon.Domain.Task.Contexts.ResearchReference? left, Orkeon.Domain.Task.Contexts.ResearchReference? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.ResearchTask.Create(Orkeon.Domain.Common.TaskId! id, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, string! researchTopic, Orkeon.Domain.Task.ValueObjects.TaskPriority? priority = null, Orkeon.Domain.Task.TaskOutputOptions? outputOptions = null) -> Orkeon.Domain.Task.ResearchTask!
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.ComplexityLevel.All.get -> System.Collections.Generic.IReadOnlyCollection<Orkeon.Domain.Task.ValueObjects.ComplexityLevel!>!
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.ComplexityLevel.From(string! value) -> Orkeon.Domain.Task.ValueObjects.ComplexityLevel!
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.ComplexityLevel.TryFrom(string? value, out Orkeon.Domain.Task.ValueObjects.ComplexityLevel? result) -> bool
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.ComplexityLevel.implicit operator string!(Orkeon.Domain.Task.ValueObjects.ComplexityLevel! s) -> string!
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.ComplexityLevel.operator !=(Orkeon.Domain.Task.ValueObjects.ComplexityLevel? left, Orkeon.Domain.Task.ValueObjects.ComplexityLevel? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.ComplexityLevel.operator ==(Orkeon.Domain.Task.ValueObjects.ComplexityLevel? left, Orkeon.Domain.Task.ValueObjects.ComplexityLevel? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.TaskComplexity.Complex(System.TimeSpan duration, System.Collections.Generic.IEnumerable<string!>! skills, System.Collections.Generic.IEnumerable<string!>! dependencies) -> Orkeon.Domain.Task.ValueObjects.TaskComplexity!
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.TaskComplexity.Create(Orkeon.Domain.Task.ValueObjects.ComplexityLevel! level, int estimatedEffort, System.TimeSpan estimatedDuration, System.Collections.Generic.IEnumerable<string!>? requiredSkills = null, System.Collections.Generic.IEnumerable<string!>? dependencies = null) -> Orkeon.Domain.Task.ValueObjects.TaskComplexity!
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.TaskComplexity.Medium(System.TimeSpan duration, params string![]! skills) -> Orkeon.Domain.Task.ValueObjects.TaskComplexity!
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.TaskComplexity.Simple(System.TimeSpan duration) -> Orkeon.Domain.Task.ValueObjects.TaskComplexity!
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.TaskComplexity.operator !=(Orkeon.Domain.Task.ValueObjects.TaskComplexity? left, Orkeon.Domain.Task.ValueObjects.TaskComplexity? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.ValueObjects.TaskComplexity.operator ==(Orkeon.Domain.Task.ValueObjects.TaskComplexity? left, Orkeon.Domain.Task.ValueObjects.TaskComplexity? right) -> bool
+*REMOVED*static readonly Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.Expert -> Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel!
+*REMOVED*static readonly Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.High -> Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel!
+*REMOVED*static readonly Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.Low -> Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel!
+*REMOVED*static readonly Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel.Medium -> Orkeon.Domain.Agent.ValueObjects.ConfidenceLevel!
+*REMOVED*static readonly Orkeon.Domain.Constants.Crew.CrewDefaults.DefaultEstimatedTaskDuration -> System.TimeSpan
+*REMOVED*static readonly Orkeon.Domain.Constants.Orchestration.OrchestrationDefaults.DefaultCleanupInterval -> System.TimeSpan
+*REMOVED*static readonly Orkeon.Domain.Constants.Orchestration.OrchestrationDefaults.DefaultMeasurementPeriod -> System.TimeSpan
+*REMOVED*static readonly Orkeon.Domain.Constants.Orchestration.OrchestrationDefaults.DefaultResearchMaxDuration -> System.TimeSpan
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.Broadcast -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.Consensus -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.Hierarchical -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType.PeerToPeer -> Orkeon.Domain.SharedKernel.ValueObjects.CollaborationType!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.Broadcast -> Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.Direct -> Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.EventStream -> Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType.MessageQueue -> Orkeon.Domain.SharedKernel.ValueObjects.ProtocolType!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.High -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.Low -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.Maximum -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel!
+*REMOVED*static readonly Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel.Standard -> Orkeon.Domain.SharedKernel.ValueObjects.SecurityLevel!
+*REMOVED*static readonly Orkeon.Domain.Task.ValueObjects.ComplexityLevel.Complex -> Orkeon.Domain.Task.ValueObjects.ComplexityLevel!
+*REMOVED*static readonly Orkeon.Domain.Task.ValueObjects.ComplexityLevel.Medium -> Orkeon.Domain.Task.ValueObjects.ComplexityLevel!
+*REMOVED*static readonly Orkeon.Domain.Task.ValueObjects.ComplexityLevel.Simple -> Orkeon.Domain.Task.ValueObjects.ComplexityLevel!
+*REMOVED*static readonly Orkeon.Domain.Task.ValueObjects.ComplexityLevel.VeryComplex -> Orkeon.Domain.Task.ValueObjects.ComplexityLevel!

@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
-using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Constants.Execution;
 
 namespace Orkeon.Application.Agent.DTOs;
@@ -58,18 +57,6 @@ public sealed record AgentDto
     [JsonPropertyName("tools")]
     public ImmutableList<string> Tools { get; init; } = [];
 
-    /// <summary>Gets or sets the llm.</summary>
-    [JsonPropertyName("llm")]
-    public LlmDto? Llm { get; init; }
-
-    /// <summary>Gets or sets the capabilities.</summary>
-    [JsonPropertyName("capabilities")]
-    public AgentCapabilitiesDto? Capabilities { get; init; }
-
-    /// <summary>Gets or sets the performance metrics.</summary>
-    [JsonPropertyName("performance_metrics")]
-    public PerformanceMetricsDto? PerformanceMetrics { get; init; }
-
     /// <summary>Gets or sets the created at.</summary>
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
@@ -77,19 +64,4 @@ public sealed record AgentDto
     /// <summary>Gets or sets the updated at.</summary>
     [JsonPropertyName("updated_at")]
     public DateTime? UpdatedAt { get; init; }
-
-    /// <summary>Metadata.</summary>
-    [JsonPropertyName("metadata")]
-    public ImmutableDictionary<string, object> Metadata { get; init; } = [];
-
-    /// <summary>
-    /// Creates a DTO with updated status.
-    /// </summary>
-    public AgentDto WithStatus(string status) => this with { Status = status, UpdatedAt = DateTime.UtcNow };
-
-    /// <summary>
-    /// Creates a DTO with updated performance metrics.
-    /// </summary>
-    public AgentDto WithPerformanceMetrics(PerformanceMetricsDto metrics) =>
-        this with { PerformanceMetrics = metrics, UpdatedAt = DateTime.UtcNow };
 }
