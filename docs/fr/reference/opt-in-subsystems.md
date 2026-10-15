@@ -534,9 +534,10 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `false` tant que le flux Ask du REPL n'a pas atterri (v2).
 - **Effet** : `ModePermissionGate` est consulté par la boucle scriptée `ctx.llm.act`
   avant CHAQUE exécution d'outil. Modes : `bypassPermissions` → tout autoriser ;
-  `plan` → refuser tout ce qui n'est pas une lecture ; `acceptEdits` → accepter
+  `plan` → refuser tout ce qui n'est pas une lecture ; `dontAsk` → autoriser les
+  lectures, refuser le reste sans jamais demander ; `acceptEdits` → accepter
   automatiquement les lectures + `file_write`, demander pour le shell ; `default` →
-  tout demander. En headless, chaque demande dégrade en un `DENIED:` motivé renvoyé
+  accepter les lectures, demander pour tout le reste. En headless, chaque demande dégrade en un `DENIED:` motivé renvoyé
   au modèle comme résultat d'outil (pas d'exception). Les outils inconnus sont
   classés comme écritures (fail-closed).
 - **Classification déclarative** : les outils peuvent auto-déclarer leur classe via

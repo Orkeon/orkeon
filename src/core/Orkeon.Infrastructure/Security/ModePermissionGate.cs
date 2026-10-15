@@ -11,7 +11,8 @@ namespace Orkeon.Infrastructure.Security;
 /// everything else — read-only tools observing state carry no risk, and denying them
 /// headless made every containerized/scripted session useless (aligned with the way
 /// coding-assistant CLIs conventionally treat their own default mode, which never
-/// prompts for reads). Unknown modes
+/// prompts for reads); <c>dontAsk</c> allows reads and denies everything else, never
+/// asking, whether or not an approval channel exists. Unknown modes
 /// fall back to <c>default</c>; unknown tools are classified as writes (fail-closed).
 /// In non-interactive sessions every <c>ask</c> degrades to a motivated deny — the model
 /// receives the refusal as the tool result and can adapt.
@@ -77,6 +78,9 @@ public sealed class ModePermissionGate : IPermissionGate
             "plan" => isRead
                 ? PermissionVerdict.Allow()
                 : PermissionVerdict.Deny($"tool '{toolName}' is not permitted in plan mode (read-only)."),
+            "dontAsk" => isRead
+                ? PermissionVerdict.Allow()
+                : PermissionVerdict.Deny($"tool '{toolName}' is not permitted in mode 'dontAsk' (reads only, never asks)."),
             "acceptEdits" => isRead || isEdit
                 ? PermissionVerdict.Allow()
                 : PermissionVerdict.Ask($"tool '{toolName}' executes commands and requires approval (mode 'acceptEdits')."),
@@ -100,7 +104,7 @@ public sealed class ModePermissionGate : IPermissionGate
 
     private static string Normalize(string mode) => mode switch
     {
-        "bypassPermissions" or "plan" or "acceptEdits" or "default" => mode,
+        "bypassPermissions" or "plan" or "acceptEdits" or "default" or "dontAsk" => mode,
         _ => "default", // fail-closed: unknown modes get the most restrictive interactive policy
     };
 }

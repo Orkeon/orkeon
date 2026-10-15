@@ -204,7 +204,7 @@ answers to (compared case-insensitively) is not skipped: `act` rejects with an
 procedural twin of the load failure the declarative shape gets for the same name; an `onError`
 handler reads it as `validation`. `ActOptions.system` seeds a real `role:"system"` message that
 persists across every iteration; without it `act()` sends a single user message.
-`permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`) is checked against the
+`permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) is checked against the
 host's permission gate on each tool call, when the host registered one — declare a script
 tool's `.access("read")` for it to pass `plan`; `onDelta` receives the streamed text of each
 assistant turn.

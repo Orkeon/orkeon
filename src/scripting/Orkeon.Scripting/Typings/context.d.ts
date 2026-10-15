@@ -136,7 +136,7 @@ declare global {
          * Permission mode gating each autonomous tool call (when the host registered a
          * permission gate). Default: "default" (ask; denied in non-interactive sessions).
          */
-        permissionMode?: "default" | "acceptEdits" | "bypassPermissions" | "plan";
+        permissionMode?: "default" | "acceptEdits" | "bypassPermissions" | "plan" | "dontAsk";
         /**
          * Called with each streamed content delta of the assistant turns (when the provider
          * supports SSE streaming). Keep it cheap — rendering/logging only.

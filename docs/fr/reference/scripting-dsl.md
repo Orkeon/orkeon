@@ -213,7 +213,7 @@ insensible à la casse) n'est pas sauté : `act` rejette par une `UnknownToolErr
 de l'échec de chargement que la forme déclarative obtient pour le même nom ; un handler
 `onError` la lit comme `validation`. `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
 itération ; sans lui, `act()` envoie un seul message utilisateur. `permissionMode`
-(`default`, `acceptEdits`, `bypassPermissions`, `plan`) est vérifié auprès de la porte de
+(`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) est vérifié auprès de la porte de
 permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une — déclarez
 `.access("read")` sur un outil de script pour qu'il passe `plan` ; `onDelta` reçoit le texte
 streamé de chaque tour de l'assistant.

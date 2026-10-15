@@ -522,8 +522,9 @@ No attribute carries an id of a crew, task or agent.
   Ask flow lands (v2).
 - **Effect**: `ModePermissionGate` is consulted by the scripted `ctx.llm.act` loop
   before EACH tool execution. Modes: `bypassPermissions` → allow all; `plan` → deny
-  non-reads; `acceptEdits` → auto-accept reads + `file_write`, ask for shell;
-  `default` → ask everything. Headless, every ask degrades to a motivated
+  non-reads; `dontAsk` → allow reads, deny the rest without ever asking;
+  `acceptEdits` → auto-accept reads + `file_write`, ask for shell;
+  `default` → auto-accept reads, ask for everything else. Headless, every ask degrades to a motivated
   `DENIED:` fed back to the model as the tool result (no exception). Unknown tools
   are classified as writes (fail-closed).
 - **Declarative classification**: tools can self-declare their class via

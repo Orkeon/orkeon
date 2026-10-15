@@ -134,6 +134,14 @@ for that task; the task's cache is exported and read back. A cache-only override
 without base configuration, and the MAF bridge warns about the cache only when it requests a
 breakpoint (GAP-48).
 
+### Fixed — the `dontAsk` permission mode denies what it does not allow, never asks
+
+`ModePermissionGate` did not know `dontAsk` and read it as `default`: a write or a command became
+an `Ask`, which a gate with `Orkeon:Security:PermissionGate:Interactive = true` would have turned
+into a prompt, the opposite of the mode. `dontAsk` now allows reads and denies everything else
+with a message naming the mode, whether or not an approval channel exists. `ActOptions.permissionMode`
+lists it.
+
 ### Added — `orkeon-repl` reads mounts outside its working directory (GAP-49, decision 3, in part)
 
 `orkeon-repl` mounted a `--mount`, `--commands-dir` or `--crews-dir` folder outside its working
