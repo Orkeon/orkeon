@@ -454,11 +454,9 @@ public class AgentMemoryStoreTests
         var store = AgentMemoryStore.Create(agentId, shortTermCapacity: 5, longTermCapacity: 10);
 
         // Act & Assert - Build up short-term memory
-        var memories = new List<MemoryItem>();
         for (int i = 0; i < 8; i++)
         {
             var memory = MemoryItem.Create($"Memory {i}", importance: 0.3f + (i * 0.1f));
-            memories.Add(memory);
             store.AddShortTermMemory(memory);
             ClockAdvance.Tick(); // Ensure different timestamps (R5.6)
         }
