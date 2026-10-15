@@ -178,8 +178,7 @@ internal sealed class OutputValidationCoordinator
         var correctionConfig = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(
             // An agent without a config names no model: the provider runs the call on its own (GAP-18).
             baseConfig: context.Agent.LlmConfig ?? Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(),
-            taskOverride: context.Task.LlmOverride,
-            callOverride: null);
+            taskOverride: context.Task.LlmOverride);
         return await _llmProvider.ChatAsync(prompt, correctionConfig, cancellationToken).ConfigureAwait(false);
     }
 

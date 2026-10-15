@@ -1,39 +1,33 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Infrastructure.Monitoring;
-using Orkeon.Infrastructure.Telemetry;
+using Orkeon.Application.Telemetry;
 
 namespace Orkeon.Infrastructure.Tests.CovMisc;
 
 /// <summary>
 /// Coverage for <see cref="MetricsAggregationService"/> measurement callbacks, exercised by
-/// emitting real measurements through an <see cref="OrkeonMetrics"/> instance on the
+/// emitting real measurements through an <see cref="OrkeonMeter"/> on the
 /// <c>Orkeon</c> meter that the service listens to.
 /// </summary>
 [Collection("OrkeonMeter")] // observes the global "Orkeon" meter; serialize with other meter tests
 public class CovMisc_MetricsAggregationServiceTests
 {
     [Fact]
+    [Trait("BR", "CH-03")]
     public void Constructor_NullLogger_Throws()
         => Assert.Throws<ArgumentNullException>(() => new MetricsAggregationService(null!));
 
     [Fact]
+    [Trait("BR", "CH-03")]
     public async Task Aggregates_Counters_UpDownCounters_AndHistogram()
     {
         // Service must be created BEFORE the meter instruments are published so that
         // MeterListener.InstrumentPublished enables them.
         using var service = new MetricsAggregationService(NullLogger<MetricsAggregationService>.Instance);
-        using var metrics = new OrkeonMetrics();
 
         // Counters
-        metrics.RecordLlmCall("openai", "gpt-4o", durationMs: 12.0, promptTokens: 3, completionTokens: 4, costUsd: 0.5);
-        metrics.RecordLlmCall("openai", "gpt-4o", durationMs: 8.0);
-        metrics.RecordToolExecution("calc", durationMs: 1.0);
-        metrics.RecordTaskExecution("t1", durationMs: 2.0);
-        metrics.RecordCrewExecution("c1", durationMs: 3.0);
-
-        // UpDownCounters (active gauges)
-        metrics.CrewStarted("c1");
-        metrics.TaskStarted("t1");
+        OrkeonMeter.RecordLlmCall("openai", "gpt-4o", 0.012, null, 3, 4);
+        OrkeonMeter.RecordLlmCall("openai", "gpt-4o", 0.008, null, null, null);
 
         var current = await service.GetCurrentMetricsAsync(TestContext.Current.CancellationToken);
 
@@ -41,9 +35,10 @@ public class CovMisc_MetricsAggregationServiceTests
         // shared "Orkeon" meter name, including instances created by parallel test classes.
         // Counters are monotonic (only ever increase), so >= is contamination-safe.
         Assert.True(current.TotalLlmCalls >= 2);
-        Assert.True(current.TotalToolExecutions >= 1);
-        Assert.True(current.TotalTaskExecutions >= 1);
-        Assert.True(current.TotalCrewExecutions >= 1);
+        // Pinned: the dashboard reads zero for tool, task and crew, which OrkeonMeter does not measure.
+        Assert.Equal(0, current.TotalToolExecutions);
+        Assert.Equal(0, current.TotalTaskExecutions);
+        Assert.Equal(0, current.TotalCrewExecutions);
         // UpDownCounters net globally across the shared "Orkeon" meter; a parallel test's
         // CrewCompleted/-1 could offset our +1, so only assert the value is well-defined.
         Assert.True(current.ActiveCrews >= 0);
@@ -54,15 +49,13 @@ public class CovMisc_MetricsAggregationServiceTests
     }
 
     [Fact]
+    [Trait("BR", "CH-03")]
     public async Task Snapshot_ExposesCountersByName_AndHistogramAverages()
     {
         using var service = new MetricsAggregationService(NullLogger<MetricsAggregationService>.Instance);
-        using var metrics = new OrkeonMetrics();
 
-        metrics.RecordLlmCall("anthropic", "claude", durationMs: 100.0);
-        metrics.RecordLlmCall("anthropic", "claude", durationMs: 200.0);
-        metrics.CrewStarted("crew-x");
-        metrics.CrewCompleted("crew-x");
+        OrkeonMeter.RecordLlmCall("anthropic", "claude", 0.1, null, null, null);
+        OrkeonMeter.RecordLlmCall("anthropic", "claude", 0.2, null, null, null);
 
         var snapshot = await service.GetMetricsSnapshotAsync(TestContext.Current.CancellationToken);
 
@@ -79,6 +72,7 @@ public class CovMisc_MetricsAggregationServiceTests
     }
 
     [Fact]
+    [Trait("BR", "CH-03")]
     public async Task EmptyMeter_ReturnsNonNullMetrics()
     {
         using var service = new MetricsAggregationService(NullLogger<MetricsAggregationService>.Instance);
@@ -86,7 +80,7 @@ public class CovMisc_MetricsAggregationServiceTests
         var current = await service.GetCurrentMetricsAsync(TestContext.Current.CancellationToken);
         var snapshot = await service.GetMetricsSnapshotAsync(TestContext.Current.CancellationToken);
 
-        // No OrkeonMetrics instance is created here. Counters are non-negative and the
+        // Nothing is recorded here. Counters are non-negative and the
         // snapshot is well-formed (parallel meters may still add entries, so avoid exact zero).
         Assert.True(current.TotalLlmCalls >= 0);
         Assert.True(current.TotalCostUsd >= 0.0);

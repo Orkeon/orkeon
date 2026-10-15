@@ -4,6 +4,7 @@ using Microsoft.Extensions.AI;
 using Orkeon.Constants.Llm;
 using Orkeon.Constants.Protocol;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Constants.Agent;
@@ -308,7 +309,7 @@ internal sealed class ChatClientAgentLoop
         activity.SetTag(GenAiAttributes.ProviderName, Telemetry.OrkeonActivitySources.ProviderName(_llmGate.ProviderName));
         activity.SetTag(GenAiAttributes.RequestModel, options.ModelId);
         activity.SetTag(GenAiAttributes.AgentName, agent.Role.ToString());
-        if (options.Temperature is { } temperature)
+        if (LlmChatOptionsValues.AsWritten(options.Temperature) is { } temperature)
             activity.SetTag(GenAiAttributes.RequestTemperature, temperature);
         if (options.MaxOutputTokens is { } maxTokens)
             activity.SetTag(GenAiAttributes.RequestMaxTokens, maxTokens);

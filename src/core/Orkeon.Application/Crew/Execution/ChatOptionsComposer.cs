@@ -3,6 +3,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew.Grammar;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
@@ -11,8 +12,9 @@ namespace Orkeon.Application.Crew.Execution;
 /// <summary>
 /// Builds the per-call <see cref="ChatOptions"/> for the IChatClient path: takes the task's
 /// toolbelt from <see cref="TaskToolbelt"/> (agent + task tools + auto-injected <c>human_input</c>), wires
-/// native function calling, attaches the structured-output grammar and JSON schema, and applies the
-/// agent-level then task-level LLM overrides. Extracted verbatim from
+/// native function calling, attaches the structured-output grammar and JSON schema, and translates onto
+/// the options the LLM configuration <see cref="LlmConfigResolver"/> merges once (agent, then the
+/// task's override). Extracted verbatim from
 /// <see cref="ExecutionOrchestrator"/> (R4.1).
 /// </summary>
 internal sealed class ChatOptionsComposer
@@ -81,25 +83,20 @@ internal sealed class ChatOptionsComposer
 
         await TryAttachStructuredOutputGrammarAsync(options, task, cancellationToken).ConfigureAwait(false);
 
-        ApplyAgentLlmOverrides(options, agent);
-        ApplyTaskLlmOverrides(options, task);
+        // The task's llm_override is merged once, by the resolver, over the agent's configuration.
+        ApplyLlmConfig(options, LlmConfigResolver.Resolve(
+            agent.LlmConfig ?? LlmConfig.OnProfile(), task.LlmOverride));
 
         return (options, availableTools);
     }
 
     /// <summary>
-    /// When the agent carries a per-agent <see cref="Domain.SharedKernel.ValueObjects.LlmConfig"/>,
-    /// apply what it sets (Model, Temperature, MaxTokens, TopP, the penalties, Seed, StopSequences,
-    /// Thinking…) onto the chat options so the adapter forwards them to the LLM provider on this
-    /// call only. Experiment 07 friction #7: prior behavior parsed the YAML but never propagated
-    /// the override, so a supervisor / planner / classifier mix on the same crew all ran on the
-    /// same crew-default model.
+    /// Translates the merged <see cref="LlmConfig"/> (Model, Temperature, MaxTokens, TopP, the
+    /// penalties, Seed, StopSequences, Thinking…) onto the chat options so the adapter forwards
+    /// each field to the LLM provider as written, on this call only.
     /// </summary>
-    private static void ApplyAgentLlmOverrides(ChatOptions options, DomainAgent agent)
+    private static void ApplyLlmConfig(ChatOptions options, LlmConfig llm)
     {
-        var llm = agent.LlmConfig;
-        if (llm is null) return;
-
         if (!string.IsNullOrWhiteSpace(llm.Model))
             options.ModelId = llm.Model;
 
@@ -141,44 +138,6 @@ internal sealed class ChatOptionsComposer
         {
             options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
             options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.Cache] = llm.Cache;
-        }
-    }
-
-    /// <summary>
-    /// Applies the per-task <see cref="Domain.SharedKernel.ValueObjects.LlmConfigOverride"/> onto the
-    /// chat options so the adapter forwards it to the provider. Task-level wins over agent-level
-    /// (latest writer to <see cref="ChatOptions"/> takes effect). Without this, the YAML
-    /// <c>llm_override:</c> block is parsed and stored on <c>CrewTask.LlmOverride</c> but
-    /// never reaches the wire — <c>response_format: json_object</c> silently drops.
-    /// </summary>
-    private static void ApplyTaskLlmOverrides(ChatOptions options, CrewTask task)
-    {
-        var ov = task.LlmOverride;
-        if (ov is null) return;
-
-        if (ov.Temperature.HasValue)
-            options.Temperature = (float)ov.Temperature.Value;
-        if (ov.MaxTokens.HasValue && ov.MaxTokens.Value > 0)
-            options.MaxOutputTokens = ov.MaxTokens.Value;
-        if (ov.TopP.HasValue)
-            options.TopP = (float)ov.TopP.Value;
-
-        if (ov.Thinking is not null)
-        {
-            options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
-            options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.Thinking] = ov.Thinking;
-        }
-
-        if (ov.ResponseFormat is not null)
-        {
-            options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
-            options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.ResponseFormat] = ov.ResponseFormat;
-        }
-
-        if (ov.Cache is not null)
-        {
-            options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
-            options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.Cache] = ov.Cache;
         }
     }
 

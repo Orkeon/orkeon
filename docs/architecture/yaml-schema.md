@@ -32,6 +32,7 @@ graphConfig: {…}          # Graph mode settings, the crew's only circuit-break
 llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
   profile: string         # Host LLM profile (Llm:Profiles:<name>) for every agent — unknown → the load fails, listing the host's profiles
   model: string
+  max_tokens: int         # Positive; omitted = the inherited cap, 0 or less fails the load naming the crew
   temperature: float
 
 links:                    # EventHub ACL (optional) — who this crew may talk to on the hub
@@ -70,7 +71,7 @@ agents:
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
       model: string       # LLM model id — omitted → the profile's own model
       temperature: float  # Sent whatever its value — omitted = the profile's, else none is sent and the model applies its own (GAP-36)
-      maxTokens: int      # Output token pin — omitted = the model's documented maximum (LLM-10)
+      maxTokens: int      # Output token pin, positive — omitted = the model's documented maximum (LLM-10); 0 or less fails the load
       topP: float         # Nucleus sampling, sent whatever its value — omitted = the profile's, else none is sent (Mistral writes 1)
       thinking:           # Reasoning control (capability-gated per provider)
         enabled: bool
@@ -121,9 +122,10 @@ tasks:
       response_format: string  # Same values as llm.responseFormat
       response_schema: {name, schema, strict} # schema is a JSON string
       temperature: float
-      max_tokens: int
+      max_tokens: int     # Positive; omitted = the inherited cap, 0 or less fails the load naming the task
       top_p: float
       thinking: {enabled, effort, budget_tokens}
+      cache: {system, tools, ttl}  # Same shape as the agent's cache: — replaces the agent's block whole; a block with no breakpoint turns the agent's cache off for this task
     guardrails:           # Task-level guardrails, same shape as the agent block (optional)
       preset: string      # "analysis" | "strict" | "creative" — any other name fails the load
       header: string
@@ -141,7 +143,9 @@ instead of ignoring it. And so does a task's `asyncExecution: true` outside `pro
 that asks for it rather than ignore the flag (see [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
 A `maxRpm` of 0 or less — on the crew or on an agent — and a `maxIter` of 0 or less fail the load too,
 naming the crew or the agent: leave `maxRpm:` out for no limit, `maxIter:` out for the default (20). They
-used to be replaced, by 10 and 15, without a word. The host's own caps on model calls — which bound an
+used to be replaced, by 10 and 15, without a word. A `max_tokens` of 0 or less — on the crew's `llm`, an agent's
+`llm` or a task's `llm_override` — fails the load too, naming the crew, the agent or the task: omit the key to keep
+the inherited cap. The host's own caps on model calls — which bound an
 agent's `maxRpm`, the stricter winning — are the settings of
 [`RateLimiting`](../reference/configuration.md#ratelimiting).
 An agent's `maxExecutionTime` (or `max_execution_time`) is whole seconds: 0 or less, a decimal, a value above the

@@ -9,6 +9,7 @@ using Orkeon.Application.Telemetry;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Tests.Shared.FileSystem;
@@ -148,6 +149,31 @@ public class ChatClientAgentLoopTests
         Assert.Equal("native_tool", toolSpan.GetTagItem("gen_ai.tool.name"));
         Assert.Equal("call-7", toolSpan.GetTagItem("gen_ai.tool.call.id"));
         Assert.Equal(agentSpan.SpanId, toolSpan.ParentSpanId);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public async System.Threading.Tasks.Task ShouldTagTheRequestTemperatureAsWritten_WhenTheAgentWritesSevenTenths()
+    {
+        // The float on the wire must not leak into the span: 0.7 written is 0.7 tagged.
+        var agent = new AgentBuilder().Role("Temperature Agent 5c1d").Goal("Tag the temperature").MaxIterations(3)
+            .WithLlmConfig(LlmConfig.OnProfile() with { Temperature = 0.7 }).Build();
+        var (loop, client) = BuildLoop();
+        client.EnqueueText("done");
+
+        using var recorder = new ActivityRecorder(OrkeonActivitySources.Llm.Name);
+
+        System.Diagnostics.ActivityTraceId trace;
+        using (var root = new System.Diagnostics.Activity(nameof(ShouldTagTheRequestTemperatureAsWritten_WhenTheAgentWritesSevenTenths)))
+        {
+            root.Start();
+            await loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+            trace = root.TraceId;
+        }
+
+        var chat = Assert.Single(recorder.Snapshot(trace));
+        var tag = chat.GetTagItem("gen_ai.request.temperature");
+        Assert.Equal(0.7, Assert.IsType<double>(tag));
     }
 
     [Fact]

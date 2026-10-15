@@ -84,7 +84,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 > `IConfiguration` overload, or the runner host once `MCP:Servers` declares a server),
 > telemetry and vector search (same overload), the parameterless checkpointing store
 > (`AddOrkeonCheckpointing()`; the SQLite/Postgres variants stay explicit), Evaluation,
-> Training, Consensus, CostTracking, YAML, Encryption and CodeSandbox. The Guardian pipeline, the prompt/tool-result sanitizers and
+> Consensus, CostTracking, YAML, Encryption and CodeSandbox. The Guardian pipeline, the prompt/tool-result sanitizers and
 > the tool-invocation point are registered too, and **every agent turn runs through them**
 > (`Orkeon:Guardian:Enabled` is the switch — see [Security](../architecture/security.md)).
 > Their configuration sections are mapped in the [Configuration reference](./configuration.md).
@@ -108,7 +108,6 @@ the full infrastructure.
 |---|---|---|---|
 | `AddOrkeonYaml()` | `CrewFactoryOptions` (plain options, lenient tool resolution), `ICrewDefinitionLoader` → `YamlCrewDefinitionLoader`, `ICrewFactory` → `CrewFactory` (scoped), `YamlCrewExporter` | the runners' crew loading; `orkeon forge` | you load or export YAML crews without `AddOrkeonInfrastructure()`. Strict tool resolution is `Orkeon:CrewFactory:StrictTools`, which `RunnerHost` reads (default `true` there) |
 | `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` (also as `IGuardianPipeline`) with the three guards wired to their phases — none when `Enabled = false` | the execution orchestrator (input phase), the streaming service, and `IToolInvocationPipeline` (tool and delegation phases) — registered by `AddOrkeonApplication()` | you compose a container without `AddOrkeonInfrastructure()` and still want the guards — see [Security](../architecture/security.md) |
-| `AddOrkeonTraining()` | `IFeedbackCollector` → `AutomaticFeedbackCollector`, `IAgentPerformanceTracker`, `ITrainingOrchestrator` | nothing shipped | you run a training/feedback loop from your own code (resolve `ITrainingOrchestrator`) |
 
 The memory migration service is the one data-moving extension that is *not* registered by
 default: `AddOrkeonMemoryMigration()` — see [Memory system](../architecture/memory-system.md#selection-by-configuration).
@@ -188,7 +187,7 @@ partial (flagged case by case below).
 - **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` do not
   read `Orkeon:Monitoring`, and say so at their start when the settings write it.
 - **Role**: in-process aggregation of Orkeon metrics (`MeterListener` on
-  `OrkeonMetrics`) and exploration of recent traces (circular buffer) for
+  the meter `Orkeon`) and exploration of recent traces (circular buffer) for
   exposure through a host endpoint (dashboard, diagnostic API).
 - **Activation**:
   ```csharp
@@ -224,11 +223,30 @@ mapping. The names are the constants of `Orkeon.Constants.Llm.GenAiAttributes`.
 
 A run is a trace: `crew.run` > `task.run` > `invoke_agent` and `memory.*`; the manager's and the planner's `chat` sit under `crew.run`, a memory's `embeddings` under its `memory.*` span.
 
-Metrics (`OrkeonMetrics`, meter `Orkeon`): `gen_ai.client.token.usage` (histogram, tokens,
+Metrics (meter `Orkeon`, `OrkeonMeter`; the `MeterListener` listens to it): `gen_ai.client.token.usage` (histogram, tokens,
 `gen_ai.token.type` = `input` | `output`) and `gen_ai.client.operation.duration` (histogram,
 seconds), both tagged with `gen_ai.provider.name` and `gen_ai.request.model`; the
 `orkeon.*` counters (calls, tool executions, cost) keep their names. What has no
 convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost.
+
+| Instrument | Kind, unit | Attributes | Measured |
+|---|---|---|---|
+| `orkeon.llm.calls` | counter, `{call}` | operation, provider, model | every model call, once |
+| `gen_ai.client.operation.duration` | histogram, `s` | operation, provider, model, `error.type` on a failure | every model call |
+| `gen_ai.client.token.usage` | histogram, `{token}` | operation, provider, model, `gen_ai.token.type` | usage the vendor reported; unreported usage is not recorded |
+| `orkeon.cost.total_usd` | observable gauge, `USD` | none | process-wide total of the USD costs reported since the process started; a cost in another currency does not enter it |
+| `orkeon.crew.executions` | counter, `{execution}` | `orkeon.crew.name`, `orkeon.crew.process`, `orkeon.outcome` (`completed`, `failed`, `cancelled`) | every crew run, once, at its end — with or without a span listener |
+| `orkeon.crew.duration` | histogram, `s` | same as `orkeon.crew.executions` | every crew run, at its end |
+| `orkeon.crew.active` | up-down counter, `{crew}` | `orkeon.crew.name`, `orkeon.crew.process` | +1 when a run starts, -1 when it ends |
+| `orkeon.task.executions` | counter, `{execution}` | `orkeon.crew.name`, `orkeon.agent.role` when the task has one agent, `orkeon.outcome` (`completed`, `failed`, `cancelled`) | every task, once, at its end; a task skipped because a dependency failed, or still open when the run ends, counts `cancelled` |
+| `orkeon.task.duration` | histogram, `s` | same as `orkeon.task.executions` | every task, at its end |
+| `orkeon.task.active` | up-down counter, `{task}` | `orkeon.crew.name`, `orkeon.agent.role` when the task has one agent | +1 when a task starts, -1 when it ends |
+| `orkeon.tool.executions` | counter, `{execution}` | `orkeon.tool.name`, `orkeon.outcome` (`success`, `failure`, `blocked`, `cancelled`) | every call through the tool pipeline, once, with or without an audit logger; a response with `Success=false` counts `failure` |
+| `orkeon.tool.duration` | histogram, `s` | `orkeon.tool.name`, `orkeon.outcome` | every call that ran; a `blocked` call has no duration |
+| `orkeon.security.events` | counter, `{event}` | `orkeon.security.kind` (`block`, `warn`, `injection`), `orkeon.tool.name` when known | one per call the Guardian blocks (a guard that throws counts `block`), one per `Warn` result, one per tool result where an injection pattern is detected (not one per pattern) |
+| `orkeon.llm.active` | up-down counter, `{call}` | none | declared, not yet fed |
+
+No attribute carries an id of a crew, task or agent.
 
 ## NIST compliance — `AddOrkeonNistCompliance()`
 

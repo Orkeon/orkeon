@@ -7,6 +7,8 @@ public class EvaluationSuiteTests
     private readonly EvaluationSuiteTestsFixture _fixture = new();
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldReturnAllScores_WhenRunningWithMultipleEvaluators()
     {
         var eval1 = EvaluationSuiteTestsFixture.CreateMockEvaluator("Eval1", 0.8);
@@ -28,6 +30,8 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldCalculateAveragesCorrectly_WhenRunning()
     {
         var eval1 = EvaluationSuiteTestsFixture.CreateMockEvaluator("A", 0.8);
@@ -43,6 +47,8 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldHandleEmptyInputList_WhenRunning()
     {
         var eval1 = EvaluationSuiteTestsFixture.CreateMockEvaluator("Eval1", 0.8);
@@ -56,6 +62,8 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldComputeSummary_WhenRunningMultipleCases()
     {
         var eval1 = EvaluationSuiteTestsFixture.CreateMockEvaluator("A", 0.9);
@@ -76,6 +84,8 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public void ShouldReturnNewSuiteWithEvaluator_WhenAddingEvaluator()
     {
         var eval1 = EvaluationSuiteTestsFixture.CreateMockEvaluator("A", 0.8);
@@ -89,6 +99,8 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldContainScoresByEvaluator_WhenAccessingSummary()
     {
         var eval1 = EvaluationSuiteTestsFixture.CreateMockEvaluator("Eval1", 0.9);
@@ -105,6 +117,8 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldContainVariance_WhenAccessingSummary()
     {
         var eval1 = EvaluationSuiteTestsFixture.CreateMockEvaluator("A", 0.8);
@@ -117,6 +131,8 @@ public class EvaluationSuiteTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public async Task ShouldRespectCancellation_WhenTokenIsCancelled()
     {
         using var cts = new CancellationTokenSource();

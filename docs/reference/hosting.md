@@ -239,7 +239,7 @@ while `CrewFactory` and the orchestrator resolve per scope.
 
 | Key | Default | Effect |
 |---|---|---|
-| `Enabled` | `true` | `false` registers only the `OrkeonMetrics` singleton — no provider, no exporter. |
+| `Enabled` | `true` | `false` registers no provider and no exporter: the meter `Orkeon` measures for no one. |
 | `OtlpEndpoint` | — | An explicit OTLP endpoint; it wins over the environment. An `http://` or `https://` address: anything else is refused, naming the key. |
 | `MaxMemoryMB` | `2048` | Threshold of the `system_resources` health check. |
 

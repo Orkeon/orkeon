@@ -126,6 +126,7 @@ public class AgentMemoryStoreTests
 
     #region Create Factory Method Tests
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldCreateMemoryStore_WhenCreatingWithValidParameters()
     {
@@ -142,10 +143,9 @@ public class AgentMemoryStoreTests
         Assert.Equal(1000, store.LongTermCapacity);
         Assert.Empty(store.ShortTermMemory);
         Assert.Empty(store.LongTermMemory);
-        Assert.Empty(store.EntityMemory);
-        Assert.Empty(store.EpisodicMemory);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldSetCapacities_WhenCreatingWithCustomCapacities()
     {
@@ -162,6 +162,7 @@ public class AgentMemoryStoreTests
         Assert.Equal(longTermCapacity, store.LongTermCapacity);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldThrow_WhenCreatingWithNullAgentId()
     {
@@ -171,6 +172,7 @@ public class AgentMemoryStoreTests
         Assert.Equal("ownerAgentId", exception.ParamName);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldThrow_WhenCreatingWithZeroShortTermCapacity()
     {
@@ -183,6 +185,7 @@ public class AgentMemoryStoreTests
         Assert.Contains("Short-term capacity must be positive", exception.Message);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldThrow_WhenCreatingWithNegativeLongTermCapacity()
     {
@@ -195,6 +198,7 @@ public class AgentMemoryStoreTests
         Assert.Contains("Long-term capacity must be positive", exception.Message);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldRaiseMemoryStoreCreatedEvent_WhenCreating()
     {
@@ -215,6 +219,7 @@ public class AgentMemoryStoreTests
 
     #region AddShortTermMemory Tests
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldAddToShortTerm_WhenUsingAddShortTermMemoryWithValidMemory()
     {
@@ -230,6 +235,7 @@ public class AgentMemoryStoreTests
         Assert.Contains(memory, store.ShortTermMemory);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldThrow_WhenUsingAddShortTermMemoryWithNullMemory()
     {
@@ -242,6 +248,7 @@ public class AgentMemoryStoreTests
         Assert.Equal("memory", exception.ParamName);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldRemoveOldest_WhenUsingAddShortTermMemoryUsingExceedingCapacity()
     {
@@ -271,6 +278,7 @@ public class AgentMemoryStoreTests
         Assert.Contains(memory4, store.ShortTermMemory);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldPromoteWhenEvicted_WhenUsingAddShortTermMemoryWithHighImportance()
     {
@@ -294,6 +302,7 @@ public class AgentMemoryStoreTests
         Assert.Contains(importantMemory, store.LongTermMemory);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldRaiseMemoryAddedEvent_WhenUsingAddShortTermMemory()
     {
@@ -319,6 +328,7 @@ public class AgentMemoryStoreTests
 
     #region PromoteToLongTermMemory Tests
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldAddToLongTerm_WhenUsingPromoteToLongTermMemoryWithValidMemory()
     {
@@ -334,6 +344,7 @@ public class AgentMemoryStoreTests
         Assert.Contains(memory, store.LongTermMemory);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldThrow_WhenUsingPromoteToLongTermMemoryWithNullMemory()
     {
@@ -346,6 +357,7 @@ public class AgentMemoryStoreTests
         Assert.Equal("memory", exception.ParamName);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldRemoveLeastImportant_WhenUsingPromoteToLongTermMemoryUsingExceedingCapacity()
     {
@@ -371,6 +383,7 @@ public class AgentMemoryStoreTests
         Assert.Contains(memory4, store.LongTermMemory);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldRaiseMemoryPromotedEvent_WhenUsingPromoteToLongTermMemory()
     {
@@ -394,425 +407,6 @@ public class AgentMemoryStoreTests
 
     #endregion
 
-    #region RetrieveRelevantMemoriesAsync Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnRelevantMemories_WhenRetrievingRelevantMemoriesAsyncWithValidQuery()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var embeddingService = new TestEmbeddingService();
-
-        var memory1 = MemoryItem.Create("Python programming", CreateEmbedding(0.1f));
-        var memory2 = MemoryItem.Create("Java programming", CreateEmbedding(0.2f));
-        var memory3 = MemoryItem.Create("Machine learning", CreateEmbedding(0.8f));
-
-        store.AddShortTermMemory(memory1);
-        store.AddShortTermMemory(memory2);
-        store.PromoteToLongTermMemory(memory3);
-
-        embeddingService.SetEmbedding("programming", CreateEmbedding(0.15f));
-
-        // Act
-        var results = await store.RetrieveRelevantMemoriesAsync("programming", embeddingService, limit: 2);
-
-        // Assert
-        var resultList = results.ToList();
-        Assert.Equal(2, resultList.Count);
-        Assert.Contains(memory1, resultList);
-        Assert.Contains(memory2, resultList);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldThrow_WhenRetrievingRelevantMemoriesAsyncWithEmptyQuery()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var embeddingService = new TestEmbeddingService();
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAnyAsync<ArgumentException>(async () =>
-            await store.RetrieveRelevantMemoriesAsync("", embeddingService));
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldThrow_WhenRetrievingRelevantMemoriesAsyncWithNullEmbeddingService()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
-            await store.RetrieveRelevantMemoriesAsync(ParamQuery, null!));
-        Assert.Equal("embeddingService", exception.ParamName);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldThrow_WhenRetrievingRelevantMemoriesAsyncWithZeroLimit()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var embeddingService = new TestEmbeddingService();
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
-            await store.RetrieveRelevantMemoriesAsync(ParamQuery, embeddingService, 0));
-        Assert.Contains("Limit must be positive", exception.Message);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldIncrementAccessCount_WhenRetrievingRelevantMemoriesAsync()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var embeddingService = new TestEmbeddingService();
-        var memory = MemoryItem.Create("Test memory", CreateEmbedding(0.5f));
-        store.AddShortTermMemory(memory);
-
-        var initialAccessCount = memory.AccessCount;
-
-        // Act
-        await store.RetrieveRelevantMemoriesAsync("test", embeddingService, 1);
-
-        // Assert
-        Assert.Equal(initialAccessCount + 1, memory.AccessCount);
-    }
-
-    #endregion
-
-    #region BuildContext Tests
-
-    [Fact]
-    public void ShouldReturnContext_WhenUsingBuildContextWithValidTask()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var task = new TestCrewTask("Process customer data");
-
-        // Add memories
-        for (int i = 0; i < 10; i++)
-        {
-            store.AddShortTermMemory(MemoryItem.Create($"Recent memory {i}"));
-        }
-
-        var taskRelatedMemory = MemoryItem.Create("Previous data processing result",
-            tags: TaskTypeCrewTag);
-        store.PromoteToLongTermMemory(taskRelatedMemory);
-
-        var entity = new EntityMemory("customer", "entity", "Customer entity");
-        store.UpdateEntityMemory("customer", entity);
-
-        // Act
-        var context = store.BuildContext(task);
-
-        // Assert
-        Assert.Equal(5, context.RecentMemories.Count); // Last 5 short-term
-        Assert.Single(context.TaskRelatedMemories);
-        Assert.Contains(taskRelatedMemory, context.TaskRelatedMemories);
-        Assert.Single(context.RelevantEntities);
-        Assert.Contains(entity, context.RelevantEntities);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenUsingBuildContextWithNullTask()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-            store.BuildContext(null!));
-        Assert.Equal("task", exception.ParamName);
-    }
-
-    [Fact]
-    public void ShouldReturnEmptyCollections_WhenUsingBuildContextWithNoRelevantMemories()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var task = new TestCrewTask("Unrelated task");
-
-        // Act
-        var context = store.BuildContext(task);
-
-        // Assert
-        Assert.Empty(context.RecentMemories);
-        Assert.Empty(context.TaskRelatedMemories);
-        Assert.Empty(context.RelevantEntities);
-    }
-
-    #endregion
-
-    #region UpdateEntityMemory Tests
-
-    [Fact]
-    public void ShouldAddOrUpdate_WhenUsingUpdateEntityMemoryWithValidEntity()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var entity = new EntityMemory("John Doe", "person", "Software engineer");
-
-        // Act
-        store.UpdateEntityMemory("john_doe", entity);
-
-        // Assert
-        Assert.Single(store.EntityMemory);
-        Assert.True(store.EntityMemory.ContainsKey("john_doe"));
-        Assert.Equal(entity, store.EntityMemory["john_doe"]);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenUsingUpdateEntityMemoryWithEmptyEntityName()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var entity = new EntityMemory("John Doe", "person");
-
-        // Act & Assert
-        var exception = Assert.ThrowsAny<ArgumentException>(() =>
-            store.UpdateEntityMemory("", entity));
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenUsingUpdateEntityMemoryWithNullEntity()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-            store.UpdateEntityMemory("entity_name", null!));
-        Assert.Equal("entityMemory", exception.ParamName);
-    }
-
-    [Fact]
-    public void ShouldRaiseEntityMemoryUpdatedEvent_WhenUsingUpdateEntityMemory()
-    {
-        // Arrange
-        var agentId = AgentId.From(Guid.NewGuid());
-        var store = AgentMemoryStore.Create(agentId);
-        var entity = new EntityMemory("Company", "organization");
-        store.ClearDomainEvents();
-
-        // Act
-        store.UpdateEntityMemory("company", entity);
-
-        // Assert
-        Assert.Single(store.DomainEvents);
-        var updatedEvent = Assert.IsType<EntityMemoryUpdatedEvent>(store.DomainEvents[0]);
-        Assert.Equal(agentId, updatedEvent.AgentId);
-        Assert.Equal("company", updatedEvent.EntityKey);
-        Assert.Equal(entity, updatedEvent.UpdatedValue);
-    }
-
-    #endregion
-
-    #region AddEpisodicMemory Tests
-
-    [Fact]
-    public void ShouldAdd_WhenUsingAddEpisodicMemoryWithValidEpisode()
-    {
-        // Arrange
-        var agentId = AgentId.From(Guid.NewGuid());
-        var store = AgentMemoryStore.Create(agentId);
-        var episode = EpisodicMemory.Create("Task completion", agentId);
-
-        // Act
-        store.AddEpisodicMemory(episode);
-
-        // Assert
-        Assert.Single(store.EpisodicMemory);
-        Assert.Contains(episode, store.EpisodicMemory);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenUsingAddEpisodicMemoryWithNullEpisode()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-            store.AddEpisodicMemory(null!));
-        Assert.Equal("episode", exception.ParamName);
-    }
-
-    [Fact]
-    public void ShouldKeepMostRecent_WhenUsingAddEpisodicMemoryUsingExceedingLimit()
-    {
-        // Arrange
-        var agentId = AgentId.From(Guid.NewGuid());
-        var store = AgentMemoryStore.Create(agentId);
-        var episodes = new List<EpisodicMemory>();
-
-        // Add 101 episodes (exceeding the 100 limit)
-        for (int i = 0; i < 101; i++)
-        {
-            var episode = EpisodicMemory.Create($"Episode {i}", agentId);
-            episodes.Add(episode);
-            store.AddEpisodicMemory(episode);
-        }
-
-        // Assert
-        Assert.Equal(100, store.EpisodicMemory.Count);
-        Assert.DoesNotContain(episodes[0], store.EpisodicMemory); // First (oldest) removed
-        Assert.Contains(episodes[100], store.EpisodicMemory); // Last (newest) kept
-    }
-
-    [Fact]
-    public void ShouldRaiseEpisodicMemoryAddedEvent_WhenUsingAddEpisodicMemory()
-    {
-        // Arrange
-        var agentId = AgentId.From(Guid.NewGuid());
-        var store = AgentMemoryStore.Create(agentId);
-        var episode = EpisodicMemory.Create("Test episode", agentId);
-        store.ClearDomainEvents();
-
-        // Act
-        store.AddEpisodicMemory(episode);
-
-        // Assert
-        Assert.Single(store.DomainEvents);
-        var addedEvent = Assert.IsType<EpisodicMemoryAddedEvent>(store.DomainEvents[0]);
-        Assert.Equal(agentId, addedEvent.AgentId);
-        Assert.Equal(episode.Id, addedEvent.EpisodeId);
-        Assert.Equal(episode.Title, addedEvent.EpisodeTitle);
-    }
-
-    #endregion
-
-    #region ClearShortTermMemory Tests
-
-    [Fact]
-    public void ShouldRemoveAllShortTermMemories_WhenUsingClearShortTermMemory()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        store.AddShortTermMemory(MemoryItem.Create("Memory 1"));
-        store.AddShortTermMemory(MemoryItem.Create("Memory 2"));
-        store.AddShortTermMemory(MemoryItem.Create("Memory 3"));
-
-        // Act
-        store.ClearShortTermMemory();
-
-        // Assert
-        Assert.Empty(store.ShortTermMemory);
-    }
-
-    [Fact]
-    public void ShouldNotAffectLongTermMemory_WhenUsingClearShortTermMemory()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var longTermMemory = MemoryItem.Create("Long term");
-        store.PromoteToLongTermMemory(longTermMemory);
-        store.AddShortTermMemory(MemoryItem.Create("Short term"));
-
-        // Act
-        store.ClearShortTermMemory();
-
-        // Assert
-        Assert.Empty(store.ShortTermMemory);
-        Assert.Single(store.LongTermMemory);
-        Assert.Contains(longTermMemory, store.LongTermMemory);
-    }
-
-    [Fact]
-    public void ShouldRaiseMemoryClearedEvent_WhenUsingClearShortTermMemory()
-    {
-        // Arrange
-        var agentId = AgentId.From(Guid.NewGuid());
-        var store = AgentMemoryStore.Create(agentId);
-        store.AddShortTermMemory(MemoryItem.Create("Memory"));
-        store.ClearDomainEvents();
-
-        // Act
-        store.ClearShortTermMemory();
-
-        // Assert
-        Assert.Single(store.DomainEvents);
-        var clearedEvent = Assert.IsType<MemoryClearedEvent>(store.DomainEvents[0]);
-        Assert.Equal(store.Id, clearedEvent.MemoryStoreId);
-        Assert.Equal(MemoryType.ShortTerm, clearedEvent.MemoryType);
-        Assert.Equal(agentId, clearedEvent.AgentId);
-    }
-
-    #endregion
-
-    #region UpdateCapacities Tests
-
-    [Fact]
-    public void ShouldUpdate_WhenUpdatingCapacitiesWithValidShortTermCapacity()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var newCapacity = 50;
-
-        // Act
-        store.UpdateCapacities(shortTermCapacity: newCapacity);
-
-        // Assert
-        Assert.Equal(newCapacity, store.ShortTermCapacity);
-        Assert.Equal(1000, store.LongTermCapacity); // Unchanged
-    }
-
-    [Fact]
-    public void ShouldUpdate_WhenUpdatingCapacitiesWithValidLongTermCapacity()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var newCapacity = 5000;
-
-        // Act
-        store.UpdateCapacities(longTermCapacity: newCapacity);
-
-        // Assert
-        Assert.Equal(20, store.ShortTermCapacity); // Unchanged
-        Assert.Equal(newCapacity, store.LongTermCapacity);
-    }
-
-    [Fact]
-    public void ShouldUpdateBoth_WhenUpdatingCapacitiesWithBothCapacities()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-        var newShortTerm = 30;
-        var newLongTerm = 2000;
-
-        // Act
-        store.UpdateCapacities(newShortTerm, newLongTerm);
-
-        // Assert
-        Assert.Equal(newShortTerm, store.ShortTermCapacity);
-        Assert.Equal(newLongTerm, store.LongTermCapacity);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenUpdatingCapacitiesWithZeroShortTermCapacity()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
-            store.UpdateCapacities(shortTermCapacity: 0));
-        Assert.Contains("Short-term capacity must be positive", exception.Message);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenUpdatingCapacitiesWithNegativeLongTermCapacity()
-    {
-        // Arrange
-        var store = AgentMemoryStore.Create(AgentId.From(Guid.NewGuid()));
-
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
-            store.UpdateCapacities(longTermCapacity: -100));
-        Assert.Contains("Long-term capacity must be positive", exception.Message);
-    }
-
-    #endregion
-
     #region AggregateRoot Behavior Tests
 
     [Fact]
@@ -828,6 +422,7 @@ public class AgentMemoryStoreTests
         Assert.Equal(store.Id.ToString(), id.ToString());
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldAccumulateEvents_WhenUsingDomainEvents()
     {
@@ -839,19 +434,18 @@ public class AgentMemoryStoreTests
         // Act
         store.AddShortTermMemory(MemoryItem.Create("Memory 1"));
         store.PromoteToLongTermMemory(MemoryItem.Create("Memory 2"));
-        store.UpdateEntityMemory("entity", new EntityMemory("Entity", "type"));
 
         // Assert
-        Assert.Equal(3, store.DomainEvents.Count);
+        Assert.Equal(2, store.DomainEvents.Count);
         Assert.IsType<MemoryAddedEvent>(store.DomainEvents[0]);
         Assert.IsType<MemoryPromotedEvent>(store.DomainEvents[1]);
-        Assert.IsType<EntityMemoryUpdatedEvent>(store.DomainEvents[2]);
     }
 
     #endregion
 
     #region Complex Scenarios Tests
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldMemoryLifecycle_WhenUsingComplexScenario()
     {
@@ -860,11 +454,9 @@ public class AgentMemoryStoreTests
         var store = AgentMemoryStore.Create(agentId, shortTermCapacity: 5, longTermCapacity: 10);
 
         // Act & Assert - Build up short-term memory
-        var memories = new List<MemoryItem>();
         for (int i = 0; i < 8; i++)
         {
             var memory = MemoryItem.Create($"Memory {i}", importance: 0.3f + (i * 0.1f));
-            memories.Add(memory);
             store.AddShortTermMemory(memory);
             ClockAdvance.Tick(); // Ensure different timestamps (R5.6)
         }
@@ -875,73 +467,6 @@ public class AgentMemoryStoreTests
         // Oldest 3 with importance > 0.7 should be promoted
         var longTermMemories = store.LongTermMemory.ToList();
         Assert.True(longTermMemories.All(m => m.Importance > 0.7f));
-
-        // Add entity memories
-        var customer = new EntityMemory("ABC Corp", "organization", "Major customer");
-        customer.SetAttribute("industry", "Technology");
-        customer.SetAttribute("size", "Enterprise");
-        store.UpdateEntityMemory("abc_corp", customer);
-
-        var contact = new EntityMemory("John Smith", "person", "CEO of ABC Corp");
-        contact.AddRelationship(new EntityRelationship("ABC Corp", "works_for", "CEO position"));
-        store.UpdateEntityMemory("john_smith", contact);
-
-        // Add episodic memory
-        var episode = EpisodicMemory.Create("Customer meeting", agentId);
-        episode.AddEvent(EpisodeEvent.Create("decision", "Decided to offer enterprise pricing"));
-        episode.AddEvent(EpisodeEvent.Create("action", "Sent proposal to John Smith"));
-        episode.Complete(EpisodeOutcome.Success, ["Always lead with value proposition"]);
-        store.AddEpisodicMemory(episode);
-
-        // Build context for a related task
-        var task = new TestCrewTask("Follow up with ABC Corp about the proposal");
-        var context = store.BuildContext(task);
-
-        // Verify context contains relevant information
-        Assert.NotEmpty(context.RecentMemories);
-        Assert.NotEmpty(context.RelevantEntities);
-        Assert.Contains(context.RelevantEntities, e => e.Name == "ABC Corp");
-        Assert.True(context.HasContent);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldSemanticMemoryRetrieval_WhenUsingComplexScenario()
-    {
-        // Arrange
-        var agentId = AgentId.From(Guid.NewGuid());
-        var store = AgentMemoryStore.Create(agentId);
-        var embeddingService = new TestEmbeddingService();
-
-        // Create memories with different semantic similarities
-        var programmingMemory1 = MemoryItem.Create("Python is great for data science", CreateEmbedding(0.8f));
-        var programmingMemory2 = MemoryItem.Create("JavaScript is used for web development", CreateEmbedding(0.75f));
-        var cookingMemory = MemoryItem.Create("Italian pasta requires al dente cooking", CreateEmbedding(0.2f));
-        var travelMemory = MemoryItem.Create("Paris is beautiful in spring", CreateEmbedding(0.1f));
-
-        store.AddShortTermMemory(programmingMemory1);
-        store.AddShortTermMemory(cookingMemory);
-        store.PromoteToLongTermMemory(programmingMemory2);
-        store.PromoteToLongTermMemory(travelMemory);
-
-        // Set up query embedding close to programming memories
-        embeddingService.SetEmbedding("programming languages", CreateEmbedding(0.77f));
-
-        // Act
-        var results = await store.RetrieveRelevantMemoriesAsync("programming languages", embeddingService, limit: 2);
-
-        // Assert
-        var resultList = results.ToList();
-        Assert.Equal(2, resultList.Count);
-        Assert.Contains(programmingMemory1, resultList);
-        Assert.Contains(programmingMemory2, resultList);
-        Assert.DoesNotContain(cookingMemory, resultList);
-        Assert.DoesNotContain(travelMemory, resultList);
-
-        // Verify access counts were incremented
-        Assert.Equal(1, programmingMemory1.AccessCount);
-        Assert.Equal(1, programmingMemory2.AccessCount);
-        Assert.Equal(0, cookingMemory.AccessCount);
-        Assert.Equal(0, travelMemory.AccessCount);
     }
 
     #endregion

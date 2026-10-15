@@ -1,6 +1,6 @@
 # 9. Gestion de Projet Agile — Scrum Master IA
 
-> A Manager Agent acts as Scrum Master, decomposing epics into tasks and assigning them to the most qualified agents via semantic embedding-based skill matching. DelegationPerformanceReport measures assignment effectiveness.
+> A Manager Agent acts as Scrum Master, decomposing epics into tasks and assigning them to the most qualified agents via semantic embedding-based skill matching.
 
 ## Quality
 
@@ -12,7 +12,7 @@
 - **Agents**: 4 — Scrum Master IA (Manager), Developpeur Backend (Worker), Developpeur Frontend (Worker), Ingenieur DevOps (Worker)
 - **Tools**: `http_api`, `json_tool`, `file_write`
 - **Memory**: `Redis`
-- **Key features**: Semantic selection by embeddings, `AgentSkill` (A2A) for skill descriptions, `DelegationParameters`, `DelegationPerformanceReport`
+- **Key features**: Semantic selection by embeddings, `AgentSkill` (A2A) for skill descriptions
 - **Runner**: `standard`
 
 ## Prerequisites

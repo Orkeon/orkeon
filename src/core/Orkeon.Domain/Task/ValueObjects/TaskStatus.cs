@@ -17,10 +17,8 @@ public sealed record TaskStatus
     public static readonly TaskStatus Failed = new("Failed");
     /// <summary>The task was cancelled before completion.</summary>
     public static readonly TaskStatus Cancelled = new("Cancelled");
-    /// <summary>The task is blocked by an unresolved dependency.</summary>
-    public static readonly TaskStatus Blocked = new("Blocked");
     private static readonly Dictionary<string, TaskStatus> s_all = new(StringComparer.OrdinalIgnoreCase)
-    { [nameof(Pending)] = Pending, [nameof(InProgress)] = InProgress, [nameof(Completed)] = Completed, [nameof(Failed)] = Failed, [nameof(Cancelled)] = Cancelled, [nameof(Blocked)] = Blocked };
+    { [nameof(Pending)] = Pending, [nameof(InProgress)] = InProgress, [nameof(Completed)] = Completed, [nameof(Failed)] = Failed, [nameof(Cancelled)] = Cancelled };
     /// <summary>Gets all known task statuses.</summary>
     public static IReadOnlyCollection<TaskStatus> All => s_all.Values;
     /// <summary>Returns the <see cref="TaskStatus"/> matching <paramref name="value"/>, or throws if unknown.</summary>

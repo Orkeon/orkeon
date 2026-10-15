@@ -35,6 +35,8 @@ public class EvaluationRegistrationTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public void ShouldIncludeLlmJudges_WhenInfrastructureConfigurationEnablesThem()
     {
         var configuration = ConfigurationWith(enableLlmJudge: true);
@@ -47,6 +49,8 @@ public class EvaluationRegistrationTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public void ShouldLeaveLlmJudgesOut_WhenConfigurationDoesNotEnableThem()
     {
         var configuration = ConfigurationWith(enableLlmJudge: false);
@@ -58,6 +62,8 @@ public class EvaluationRegistrationTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public void ShouldRegisterEachEvaluatorOnce_WhenAddOrkeonEvaluationIsCalledAfterInfrastructure()
     {
         var configuration = ConfigurationWith(enableLlmJudge: true);
@@ -74,6 +80,8 @@ public class EvaluationRegistrationTests
     }
 
     [Fact]
+
+    [Trait("BR", "CH-08")]
     public void ShouldRegisterEachEvaluatorOnce_WhenInfrastructureConfigurationOverloadIsUsed()
     {
         var configuration = ConfigurationWith(enableLlmJudge: true);

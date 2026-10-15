@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Application.Telemetry;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Security;
 using Orkeon.Domain.Tools.Protocol;
@@ -77,6 +78,7 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         if (verdict is { IsAllowed: false })
         {
             var text = $"Error: Blocked by Guardian ({(isDelegation ? GuardPhase.Delegation : GuardPhase.ToolExecution)}): {verdict.Reason}";
+            OrkeonMeter.RecordToolExecution(tool.Name, "blocked", null);
             await AuditCallAsync(tool.Name, caller, AuditOutcome.Blocked, 0, cancellationToken).ConfigureAwait(false);
             return new ToolInvocationResult { ConversationText = text, RawText = text, Blocked = true };
         }
@@ -93,8 +95,14 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
             response = await tool.CallAsync(new ToolCallRequest(tool.Name, invocation.Arguments), cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException)
         {
+            OrkeonMeter.RecordToolExecution(tool.Name, "cancelled", stopwatch.Elapsed.TotalSeconds);
+            throw;
+        }
+        catch (Exception)
+        {
+            OrkeonMeter.RecordToolExecution(tool.Name, "failure", stopwatch.Elapsed.TotalSeconds);
             await AuditCallAsync(tool.Name, caller, AuditOutcome.Failure, stopwatch.ElapsedMilliseconds, cancellationToken)
                 .ConfigureAwait(false);
             throw;
@@ -104,6 +112,9 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
             if (isDelegation)
                 s_delegationChain.Value = chain;
         }
+
+        OrkeonMeter.RecordToolExecution(
+            tool.Name, response.Success ? "success" : "failure", stopwatch.Elapsed.TotalSeconds);
 
         var rawText = response.Success
             ? ToolCallFormatting.FormatResult(response.Result)
@@ -221,6 +232,7 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     private async System.Threading.Tasks.Task AuditResultThreatsAsync(
         string toolName, ToolInvocationCaller caller, ToolResultSanitization sanitized, CancellationToken cancellationToken)
     {
+        OrkeonMeter.RecordSecurityEvent("injection", toolName);
         LogResultThreats(toolName, caller.AgentRole, sanitized.Threats.Count, sanitized.Blocked ? "withheld" : "tagged as data");
         if (_auditLogger is null)
             return;

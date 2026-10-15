@@ -54,7 +54,7 @@ details the `response_format` surfaces.
   `OpenAICompatibleProviderBase.ParseSuccessResponse` reads `prompt_cache_hit/miss_tokens` and the
   OpenAI-standard `prompt_tokens_details.cached_tokens` generically. **✓ explicit** (Anthropic)
   means the cache does nothing until a `cache_control` breakpoint is placed — opt in with
-  `LlmCacheConfig` / the YAML `cache:` block. **✓ metrics** (DeepSeek) adds the vendor's own
+  `LlmCacheConfig` / the YAML `cache:` block of an agent or of a task (`llm_override:`). **✓ metrics** (DeepSeek) adds the vendor's own
   `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` to the response metadata.
 - **Anthropic SSE**: `ChatStreamingAsync` parses the Messages API event stream natively since
   LLM-05; it used to fall back to a buffered emulation, so no token arrived early.

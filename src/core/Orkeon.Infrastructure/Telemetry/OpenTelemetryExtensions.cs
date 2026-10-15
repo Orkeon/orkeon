@@ -8,6 +8,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Orkeon.Infrastructure.Telemetry.HealthChecks;
 using Orkeon.Application.Configuration;
+using Orkeon.Application.Telemetry;
 using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Infrastructure.Telemetry;
@@ -57,16 +58,11 @@ public static class OpenTelemetryExtensions
         // is configured, so nothing is copied here.
         if (!options.Enabled)
         {
-            // Register OrkeonMetrics as singleton even when telemetry is disabled
-            // so that instrumented code can still call it without null checks
-            services.TryAddSingleton<OrkeonMetrics>();
+            // No provider and no exporter: the meter measures for no one.
             return services;
         }
 
         var otlp = OtlpRoute.Resolve(options);
-
-        // Register OrkeonMetrics as singleton
-        services.TryAddSingleton<OrkeonMetrics>();
 
         // Configure OpenTelemetry
         var otelBuilder = services.AddOpenTelemetry();
@@ -158,7 +154,7 @@ public static class OpenTelemetryExtensions
 
     private static void ConfigureMetrics(MeterProviderBuilder metrics, OtlpRoute otlp)
     {
-        metrics.AddMeter(OrkeonMetrics.MeterName);
+        metrics.AddMeter(OrkeonMeter.Name);
         metrics.AddRuntimeInstrumentation();
         metrics.AddHttpClientInstrumentation();
 

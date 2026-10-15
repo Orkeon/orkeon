@@ -2,11 +2,6 @@
 namespace Orkeon.Application.Interfaces.Security;
 
 /// <summary>
-/// Result of an encryption operation containing ciphertext, nonce, and authentication tag.
-/// </summary>
-public record EncryptionResult(IReadOnlyList<byte> CipherText, IReadOnlyList<byte> Nonce, IReadOnlyList<byte> Tag);
-
-/// <summary>
 /// Provides encryption and decryption capabilities for data at rest.
 /// </summary>
 public interface IEncryptionProvider

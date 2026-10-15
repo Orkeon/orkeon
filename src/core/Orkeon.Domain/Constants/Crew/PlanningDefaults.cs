@@ -30,7 +30,7 @@ public static class PlanningDefaults
     public const int MaxPlanSteps = 8;
 
     /// <summary>The planning call's temperature: a plan is wanted consistent, not creative.</summary>
-    public const float Temperature = 0.3f;
+    public const double Temperature = 0.3;
 
     /// <summary>What ends a text cut at its bound.</summary>
     public const string TruncationMarker = " […]";

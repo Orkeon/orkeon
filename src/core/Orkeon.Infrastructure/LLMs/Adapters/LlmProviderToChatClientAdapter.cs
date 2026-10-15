@@ -656,7 +656,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Extracts the Orkeon tool schemas and tool mode from <see cref="ChatOptions.AdditionalProperties"/>,
-    /// which are populated by <c>ExecutionOrchestrator.BuildChatOptions</c>.
+    /// which are populated by <c>ChatOptionsComposer.BuildChatOptionsAsync</c>.
     /// </summary>
     private static (IReadOnlyList<ToolSchema>? Tools, ToolCallMode Mode) ExtractToolsFromOptions(ChatOptions options)
     {
@@ -740,7 +740,8 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             || (tools != null && tools.Count > 0)
             || ExtractGrammarFromOptions(options) != null
             || ExtractThinkingFromOptions(options) != null
-            || ExtractResponseFormatFromOptions(options) != null;
+            || ExtractResponseFormatFromOptions(options) != null
+            || ExtractCacheFromOptions(options) != null;
     }
 
     /// <summary>
@@ -763,11 +764,11 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             // because this method ignored options.ModelId. Apply it now so the YAML override
             // reaches the provider.
             Model = !string.IsNullOrWhiteSpace(options.ModelId) ? options.ModelId : baseConfig.Model,
-            Temperature = options.Temperature ?? baseConfig.Temperature,
+            Temperature = LlmChatOptionsValues.AsWritten(options.Temperature) ?? baseConfig.Temperature,
             MaxTokens = options.MaxOutputTokens ?? baseConfig.MaxTokens,
-            TopP = options.TopP ?? baseConfig.TopP,
-            FrequencyPenalty = options.FrequencyPenalty ?? baseConfig.FrequencyPenalty,
-            PresencePenalty = options.PresencePenalty ?? baseConfig.PresencePenalty,
+            TopP = LlmChatOptionsValues.AsWritten(options.TopP) ?? baseConfig.TopP,
+            FrequencyPenalty = LlmChatOptionsValues.AsWritten(options.FrequencyPenalty) ?? baseConfig.FrequencyPenalty,
+            PresencePenalty = LlmChatOptionsValues.AsWritten(options.PresencePenalty) ?? baseConfig.PresencePenalty,
             Seed = options.Seed.HasValue ? (int)options.Seed.Value : baseConfig.Seed,
             // GAP-36, decision 8: the stop sequences of the call reach the provider; they were dropped here.
             StopSequences = options.StopSequences is { Count: > 0 } stopSequences ? [.. stopSequences] : baseConfig.StopSequences,
@@ -793,7 +794,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Reads the optional <see cref="LlmThinkingConfig"/> stashed by
-    /// <c>ExecutionOrchestrator.ApplyAgentLlmOverrides</c> under
+    /// <c>ChatOptionsComposer</c> under
     /// <see cref="LlmChatOptionsKeys.Thinking"/>.
     /// </summary>
     private static LlmThinkingConfig? ExtractThinkingFromOptions(ChatOptions options)
@@ -805,7 +806,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Reads the optional <see cref="LlmResponseFormat"/> stashed by
-    /// <c>ExecutionOrchestrator.ApplyAgentLlmOverrides</c> / <c>ApplyTaskLlmOverrides</c>
+    /// <c>ChatOptionsComposer</c>
     /// under <see cref="LlmChatOptionsKeys.ResponseFormat"/>. When the key is absent, falls
     /// back to the standard <see cref="ChatOptions.ResponseFormat"/> property so callers
     /// using plain Microsoft.Extensions.AI options (e.g. the RAG retrieval evaluator,

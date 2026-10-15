@@ -29,19 +29,6 @@ public sealed record AgentJoinedCrewEvent : DomainEvent
 }
 
 /// <summary>
-/// Event raised when an agent leaves a crew.
-/// </summary>
-public sealed record AgentLeftCrewEvent : DomainEvent
-{
-    /// <summary>Gets the crew identifier.</summary>
-    public required CrewId CrewId { get; init; }
-    /// <summary>Gets the agent identifier.</summary>
-    public required AgentId AgentId { get; init; }
-    /// <summary>Gets the reason for leaving.</summary>
-    public required string Reason { get; init; }
-}
-
-/// <summary>
 /// Event raised when a task is added to a crew.
 /// </summary>
 public sealed record TaskAddedToCrewEvent : DomainEvent
@@ -50,19 +37,6 @@ public sealed record TaskAddedToCrewEvent : DomainEvent
     public required CrewId CrewId { get; init; }
     /// <summary>Gets the task identifier.</summary>
     public required TaskId TaskId { get; init; }
-}
-
-/// <summary>
-/// Event raised when a task is removed from a crew.
-/// </summary>
-public sealed record TaskRemovedFromCrewEvent : DomainEvent
-{
-    /// <summary>Gets the crew identifier.</summary>
-    public required CrewId CrewId { get; init; }
-    /// <summary>Gets the task identifier.</summary>
-    public required TaskId TaskId { get; init; }
-    /// <summary>Gets the reason for removal.</summary>
-    public required string Reason { get; init; }
 }
 
 /// <summary>
@@ -107,30 +81,4 @@ public sealed record CrewExecutionFailedEvent : DomainEvent
     public required string Reason { get; init; }
     /// <summary>Gets the exception if available.</summary>
     public Exception? Exception { get; init; }
-}
-
-/// <summary>
-/// Event raised when crew process type is changed.
-/// </summary>
-public sealed record CrewProcessTypeChangedEvent : DomainEvent
-{
-    /// <summary>Gets the crew identifier.</summary>
-    public required CrewId CrewId { get; init; }
-    /// <summary>Gets the old process type.</summary>
-    public required ProcessType OldProcessType { get; init; }
-    /// <summary>Gets the new process type.</summary>
-    public required ProcessType NewProcessType { get; init; }
-}
-
-/// <summary>
-/// Event raised when crew goal is updated.
-/// </summary>
-public sealed record CrewGoalUpdatedEvent : DomainEvent
-{
-    /// <summary>Gets the crew identifier.</summary>
-    public required CrewId CrewId { get; init; }
-    /// <summary>Gets the old goal.</summary>
-    public required string OldGoal { get; init; }
-    /// <summary>Gets the new goal.</summary>
-    public required string NewGoal { get; init; }
 }

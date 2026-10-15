@@ -37,6 +37,23 @@ public class LlmProviderToChatClientAdapterTests
     }
 
     [Fact]
+    [Trait("BR", "CH-05")]
+    public async Task ShouldPassTheSamplingAsWritten_WhenChatOptionsCarryFloats()
+    {
+        _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
+
+        using var adapter = CreateAdapter();
+        var options = new ChatOptions { Temperature = 0.7f, TopP = 0.95f, FrequencyPenalty = 0.3f, PresencePenalty = 0.1f };
+        await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "test")], options, TestContext.Current.CancellationToken);
+
+        var config = Assert.IsType<LlmConfig>(_llmProvider.LastChatConfig);
+        Assert.Equal(0.7, config.Temperature);
+        Assert.Equal(0.95, config.TopP);
+        Assert.Equal(0.3, config.FrequencyPenalty);
+        Assert.Equal(0.1, config.PresencePenalty);
+    }
+
+    [Fact]
     public async Task ShouldMapOptionsToLlmConfig_WhenGetResponseAsync()
     {
         _llmProvider.SetChatFunc((msgs, config) =>
@@ -204,6 +221,25 @@ public class LlmProviderToChatClientAdapterTests
 
         Assert.NotNull(_llmProvider.LastChatConfig);
         Assert.Null(_llmProvider.LastChatConfig!.ResponseFormat);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldPassTheCache_WhenTheProviderHasNoBaseConfigAndOnlyTheCacheIsSet()
+    {
+        _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
+
+        using var adapter = CreateAdapter();
+        var cache = new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" };
+        var options = new ChatOptions
+        {
+            AdditionalProperties = new AdditionalPropertiesDictionary { [LlmChatOptionsKeys.Cache] = cache }
+        };
+
+        await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "test")], options, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(_llmProvider.LastChatConfig);
+        Assert.Equal(cache, _llmProvider.LastChatConfig!.Cache);
     }
 
     private static async IAsyncEnumerable<string> AsyncEnumerable(string[] items)

@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Task.Commands.CreateTask;
@@ -33,7 +32,6 @@ internal partial class TaskManagementService
         _console.WriteLine("\n--- Create New Task ---");
 
         var description = _input.GetRequiredString("Enter task description: ");
-        var context = _input.GetOptionalString("Enter task context (optional): ");
         var expectedOutput = _input.GetRequiredString("Enter expected output: ");
 
         var command = new CreateTaskCommand(
@@ -46,14 +44,6 @@ internal partial class TaskManagementService
             .GetRequiredService<ICommandHandler<CreateTaskCommand, TaskDto>>();
         var taskDto = await handler.HandleAsync(command);
 
-        if (!string.IsNullOrEmpty(context))
-        {
-            taskDto = taskDto with
-            {
-                Context = ImmutableDictionary<string, object>.Empty.Add("context", context)
-            };
-        }
-
         _tasks.Add(taskDto);
 
         _console.WriteLine($"\nTask created successfully!");
@@ -65,7 +55,7 @@ internal partial class TaskManagementService
         _input.WaitForKey();
     }
 
-    public async Task CreateTaskAsync(string description, string context, string expectedOutput)
+    public async Task CreateTaskAsync(string description, string expectedOutput)
     {
         var command = new CreateTaskCommand(
             Description: description,
@@ -76,14 +66,6 @@ internal partial class TaskManagementService
         var handler = scope.ServiceProvider
             .GetRequiredService<ICommandHandler<CreateTaskCommand, TaskDto>>();
         var taskDto = await handler.HandleAsync(command);
-
-        if (!string.IsNullOrEmpty(context))
-        {
-            taskDto = taskDto with
-            {
-                Context = ImmutableDictionary<string, object>.Empty.Add("context", context)
-            };
-        }
 
         _tasks.Add(taskDto);
         LogCreatedTask(description);
@@ -107,11 +89,6 @@ internal partial class TaskManagementService
                 _console.WriteLine($"{i + 1}. Task:");
                 _console.WriteLine($"   Description: {task.Description}");
                 _console.WriteLine($"   Expected Output: {task.ExpectedOutput}");
-
-                if (task.Context.Count > 0)
-                {
-                    _console.WriteLine($"   Context: {string.Join(", ", task.Context.Keys)}");
-                }
 
                 if (!string.IsNullOrEmpty(task.AssignedAgent))
                 {

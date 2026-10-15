@@ -2,6 +2,7 @@ using Orkeon.ConsoleApp.Commands.Task;
 
 namespace Orkeon.ConsoleApp.Tests.Commands.TaskCmds;
 
+[Trait("BR", "CH-08")]
 public sealed class TaskCommandsTests
 {
     [Fact]

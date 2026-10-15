@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Telemetry;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.CostTracking;
@@ -44,7 +46,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     private static readonly AsyncLocal<MeteredCall?> s_currentCall = new();
 
     private readonly ILlmProvider _inner;
-    private readonly ILlmUsageSink _sink;
+    private readonly ILlmUsageSink? _sink;
 
     /// <summary>
     /// One metered call, and whether a meter nearer the model counted during it. Held by the call's
@@ -54,11 +56,16 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     private sealed class MeteredCall
     {
         private int _countedInside;
+        private int _reportedInside;
 
         public MeteredCall(MeteredCall? outer)
         {
             Outer = outer;
+            Started = Stopwatch.GetTimestamp();
         }
+
+        /// <summary>The <see cref="Stopwatch"/> timestamp at which the call began.</summary>
+        public long Started { get; }
 
         /// <summary>The metered call this one runs inside, if any.</summary>
         public MeteredCall? Outer { get; }
@@ -66,11 +73,21 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         /// <summary>Whether a meter inside this call counted it already.</summary>
         public bool CountedInside => Volatile.Read(ref _countedInside) != 0;
 
+        /// <summary>Whether a meter inside this call reported its usage to a sink.</summary>
+        public bool ReportedInside => Volatile.Read(ref _reportedInside) != 0;
+
         /// <summary>Tells every call around this one that a meter inside them counted.</summary>
         public void MarkOuters()
         {
             for (var call = Outer; call is not null; call = call.Outer)
                 Interlocked.Exchange(ref call._countedInside, 1);
+        }
+
+        /// <summary>Tells every call around this one that a meter inside them reported to a sink.</summary>
+        public void MarkOutersReported()
+        {
+            for (var call = Outer; call is not null; call = call.Outer)
+                Interlocked.Exchange(ref call._reportedInside, 1);
         }
     }
 
@@ -80,26 +97,39 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// </summary>
     private static MeteredCall BeginCall() => s_currentCall.Value = new MeteredCall(s_currentCall.Value);
 
-    private MeteredLlmProvider(ILlmProvider inner, ILlmUsageSink sink)
+    private MeteredLlmProvider(ILlmProvider inner, ILlmUsageSink? sink)
     {
         _inner = inner;
         _sink = sink;
+
+        // Reading the meter creates its instruments: a listener sees them before the first call.
+        _ = OrkeonMeter.Meter;
     }
 
     /// <summary>
-    /// Meters <paramref name="provider"/> for <paramref name="sink"/>. Returns the provider
-    /// itself when there is no sink (nobody listens, nothing changes) or when it is already
-    /// metered — a call is counted once, however many registrations it went through.
+    /// Meters <paramref name="provider"/> on the Orkeon meter and, when there is a
+    /// <paramref name="sink"/>, for it too. Always wraps, except a provider that is already
+    /// metered, which is returned as it is — a call is counted once, however many registrations
+    /// it went through. Without a sink the wrapper measures for the meter only and publishes no
+    /// usage event.
     /// </summary>
     /// <param name="provider">The provider to meter.</param>
-    /// <param name="sink">The host's usage receiver; null leaves the provider as it is.</param>
+    /// <param name="sink">The host's usage receiver; null measures for the meter only.</param>
     /// <returns>The metered provider.</returns>
     public static ILlmProvider Wrap(ILlmProvider provider, ILlmUsageSink? sink)
     {
         ArgumentNullException.ThrowIfNull(provider);
-        return sink is null || provider is MeteredLlmProvider
+        // A meter without a sink never takes the report from a sink: that one is wrapped around it.
+        return UnderEntranceLayers(provider) is MeteredLlmProvider existing && (existing._sink is not null || sink is null)
             ? provider
             : new MeteredLlmProvider(provider, sink);
+    }
+
+    /// <summary>The provider under the entrance's limiter and traced layers, the meter still on it.</summary>
+    private static ILlmProvider UnderEntranceLayers(ILlmProvider provider)
+    {
+        var underLimiter = RateLimitedLlmProvider.Unwrap(provider);
+        return underLimiter is TracedLlmProvider traced ? traced.Inner : underLimiter;
     }
 
     /// <summary>
@@ -120,10 +150,8 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// <summary>The provider under the limiter and the meter, the call-mode decorator included.</summary>
     internal static ILlmProvider UnderMeter(ILlmProvider provider)
     {
-        var underLimiter = RateLimitedLlmProvider.Unwrap(provider);
-        if (underLimiter is TracedLlmProvider traced)
-            underLimiter = traced.Inner;
-        return underLimiter is MeteredLlmProvider metered ? metered._inner : underLimiter;
+        var underLayers = UnderEntranceLayers(provider);
+        return underLayers is MeteredLlmProvider metered ? metered._inner : underLayers;
     }
 
     /// <inheritdoc />
@@ -147,7 +175,17 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     {
         var attribution = LlmUsageScope.Current;
         var call = BeginCall();
-        var response = await _inner.GenerateAsync(prompt, config, cancellationToken).ConfigureAwait(false);
+        LlmResponse response;
+        try
+        {
+            response = await _inner.GenerateAsync(prompt, config, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            MeasureFailure(call, config, ex);
+            throw;
+        }
+
         Report(response, attribution, new Prompt(prompt, null), call);
         return response;
     }
@@ -158,7 +196,17 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     {
         var attribution = LlmUsageScope.Current;
         var call = BeginCall();
-        var response = await _inner.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);
+        LlmResponse response;
+        try
+        {
+            response = await _inner.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            MeasureFailure(call, config, ex);
+            throw;
+        }
+
         Report(response, attribution, new Prompt(null, messages), call);
         return response;
     }
@@ -179,7 +227,17 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
 
         if (_inner is not IStreamingLlmProvider streaming)
         {
-            var response = await _inner.GenerateAsync(prompt, config, cancellationToken).ConfigureAwait(false);
+            LlmResponse response;
+            try
+            {
+                response = await _inner.GenerateAsync(prompt, config, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                MeasureFailure(call, config, ex);
+                throw;
+            }
+
             Report(response, attribution, new Prompt(prompt, null), call);
             if (!string.IsNullOrEmpty(response.Content))
                 yield return response.Content;
@@ -190,10 +248,39 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
 
         long characters = 0;
         var ended = false;
+        var failed = false;
+        IAsyncEnumerator<string> chunks;
         try
         {
-            await foreach (var chunk in streaming.GenerateStreamingAsync(prompt, config, cancellationToken).ConfigureAwait(false))
+            chunks = streaming.GenerateStreamingAsync(prompt, config, cancellationToken)
+                .GetAsyncEnumerator(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            MeasureFailure(call, config, ex);
+            throw;
+        }
+
+        try
+        {
+            while (true)
             {
+                bool more;
+                try
+                {
+                    more = await chunks.MoveNextAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    failed = true;
+                    MeasureFailure(call, config, ex);
+                    throw;
+                }
+
+                if (!more)
+                    break;
+
+                var chunk = chunks.Current;
                 characters += chunk.Length;
                 yield return chunk;
             }
@@ -204,8 +291,28 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         {
             // A stream that ran to its end was answered, even with nothing; one that broke
             // off counts only if something came back — a refused request streamed nothing.
-            if (ended || characters > 0)
+            // A stream that threw is measured once, as a failure.
+            if (!failed && (ended || characters > 0))
                 ReportStreamEstimate(attribution, LlmUsageEstimator.Prompt(prompt), characters, config, call);
+
+            await DisposeKeepingFailureAsync(chunks, failed).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Disposes a stream's enumerator. When the stream already failed, a disposal that throws
+    /// too is dropped: the caller gets the original exception, not the one from the clean-up.
+    /// </summary>
+    private static async ValueTask DisposeKeepingFailureAsync(IAsyncDisposable enumerator, bool failed)
+    {
+        try
+        {
+            await enumerator.DisposeAsync().ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // the clean-up failure is dropped on purpose: the stream's own exception is the one that matters
+        catch (Exception) when (failed)
+#pragma warning restore CA1031
+        {
         }
     }
 
@@ -223,7 +330,17 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
 
         if (_inner is not IStreamingLlmProvider streaming)
         {
-            var response = await _inner.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);
+            LlmResponse response;
+            try
+            {
+                response = await _inner.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                MeasureFailure(call, config, ex);
+                throw;
+            }
+
             Report(response, attribution, new Prompt(null, messages), call);
             if (!string.IsNullOrEmpty(response.Content))
                 yield return LlmStreamEvent.Content(response.Content);
@@ -234,10 +351,41 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         long characters = 0;
         var reported = false;
         var ended = false;
+        var failed = false;
+        IAsyncEnumerator<LlmStreamEvent> events;
         try
         {
-            await foreach (var streamed in streaming.ChatStreamingAsync(messages, config, cancellationToken).ConfigureAwait(false))
+            events = streaming.ChatStreamingAsync(messages, config, cancellationToken)
+                .GetAsyncEnumerator(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            MeasureFailure(call, config, ex);
+            throw;
+        }
+
+        try
+        {
+            while (true)
             {
+                bool more;
+                try
+                {
+                    more = await events.MoveNextAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    failed = true;
+                    // A final response already measured the call: a later throw adds nothing.
+                    if (!reported)
+                        MeasureFailure(call, config, ex);
+                    throw;
+                }
+
+                if (!more)
+                    break;
+
+                var streamed = events.Current;
                 if (streamed is { Kind: LlmStreamEventKind.Completed, FinalResponse: { } final } && !reported)
                 {
                     // Before the consumer sees the end: the meter moves with the answer.
@@ -257,10 +405,15 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         finally
         {
             // No final response to read: the stream is counted on what it delivered.
-            if (!reported && (ended || characters > 0))
+            if (!failed && !reported && (ended || characters > 0))
                 ReportStreamEstimate(attribution, LlmUsageEstimator.Prompt(messages), characters, config, call);
+
+            await DisposeKeepingFailureAsync(events, failed).ConfigureAwait(false);
         }
     }
+
+    /// <summary>The bounded <c>error.type</c> of an answer that carries an error and no usage.</summary>
+    private const string ProviderErrorType = "provider_error";
 
     /// <summary>What was sent: a single prompt, or a conversation.</summary>
     private readonly record struct Prompt(string? Text, IReadOnlyList<LlmMessage>? Messages)
@@ -278,15 +431,19 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// </summary>
     private void Report(LlmResponse? response, LlmUsageAttribution attribution, Prompt prompt, MeteredCall call)
     {
-        if (response is null || call.CountedInside)
+        if (response is null || call.ReportedInside)
             return;
 
         var counted = LlmUsageEstimator.Reported(response);
+        var model = response.Model ?? NamedModel(_inner.BaseConfig) ?? string.Empty;
 
         // A call that failed before any answer: the provider counted nothing and returned
         // nothing, and an estimate of the prompt would count a request that never ran.
         if (!counted && response.Error is not null)
+        {
+            MeasureOnce(call, model, ProviderErrorType, null, null);
             return;
+        }
 
         var promptTokens = counted ? response.PromptTokens ?? 0 : prompt.EstimateTokens();
         var completionTokens = counted
@@ -294,7 +451,19 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             : LlmUsageEstimator.Completion(response);
         var billed = LlmVendorCost.TryRead(response, out var cost, out var currency);
 
-        Record(call, new CostUsageEvent
+        if (!call.CountedInside)
+        {
+            Measure(call, model, null, counted ? promptTokens : null, counted ? completionTokens : null);
+            if (billed && string.Equals(currency, "USD", StringComparison.OrdinalIgnoreCase))
+                OrkeonMeter.AddCostUsd((double)cost);
+        }
+
+        if (_sink is null)
+            return;
+
+        call.MarkOutersReported();
+
+        Record(new CostUsageEvent
         {
             CrewId = attribution.CrewId,
             AgentId = attribution.AgentId,
@@ -322,18 +491,25 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// </summary>
     private void ReportStreamEstimate(LlmUsageAttribution attribution, int promptTokens, long characters, LlmConfig? config, MeteredCall call)
     {
-        if (call.CountedInside)
+        if (call.ReportedInside)
             return;
 
-        Record(call, new CostUsageEvent
+        // No answer names the model on this path: the one asked for is the best reading —
+        // and a call that names none runs on the provider's own (GAP-18).
+        var model = RequestedModel(config);
+        MeasureOnce(call, model, null, null, null);
+        if (_sink is null)
+            return;
+
+        call.MarkOutersReported();
+
+        Record(new CostUsageEvent
         {
             CrewId = attribution.CrewId,
             AgentId = attribution.AgentId,
             TaskId = attribution.TaskId,
             OperationType = attribution.Operation,
-            // No answer names the model on this path: the one asked for is the best reading —
-            // and a call that names none runs on the provider's own (GAP-18).
-            Model = NamedModel(config) ?? NamedModel(_inner.BaseConfig) ?? string.Empty,
+            Model = model,
             Provider = _inner.Name,
             PromptTokens = promptTokens,
             CompletionTokens = (int)Math.Min(int.MaxValue, LlmUsageEstimator.FromCharacterCount(characters)),
@@ -344,18 +520,44 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     private static string? NamedModel(LlmConfig? config) =>
         string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model;
 
+    private string RequestedModel(LlmConfig? config) =>
+        NamedModel(config) ?? NamedModel(_inner.BaseConfig) ?? string.Empty;
+
     /// <summary>
-    /// Hands one event to the sink, and tells the calls around <paramref name="call"/> that it was
-    /// counted. A sink that throws degrades to unobserved usage, never to a failed call: the meter
-    /// must not break what it measures.
+    /// Measures one call on the Orkeon meter and tells the calls around <paramref name="call"/>
+    /// that it was counted, so a meter nearer the caller never measures it again.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-sink fault barrier: usage accounting must never fail the LLM call it observes.")]
-    private void Record(MeteredCall call, CostUsageEvent usage)
+    private void Measure(MeteredCall call, string model, string? errorType, long? inputTokens, long? outputTokens)
     {
         call.MarkOuters();
+        OrkeonMeter.RecordLlmCall(
+            _inner.Name, model, Stopwatch.GetElapsedTime(call.Started).TotalSeconds, errorType, inputTokens, outputTokens);
+    }
+
+    /// <summary>Measures the call unless a meter inside it measured it already.</summary>
+    private void MeasureOnce(MeteredCall call, string model, string? errorType, long? inputTokens, long? outputTokens)
+    {
+        if (!call.CountedInside)
+            Measure(call, model, errorType, inputTokens, outputTokens);
+    }
+
+    /// <summary>Measures a call that threw, unless a meter inside it measured it already.</summary>
+    private void MeasureFailure(MeteredCall call, LlmConfig? config, Exception failure)
+    {
+        if (!call.CountedInside)
+            Measure(call, RequestedModel(config), failure.GetType().FullName ?? failure.GetType().Name, null, null);
+    }
+
+    /// <summary>
+    /// Hands one event to the sink. A sink that throws degrades to unobserved usage, never to a
+    /// failed call: the meter must not break what it measures.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-sink fault barrier: usage accounting must never fail the LLM call it observes.")]
+    private void Record(CostUsageEvent usage)
+    {
         try
         {
-            _sink.Record(usage);
+            _sink!.Record(usage);
         }
         catch (Exception)
         {

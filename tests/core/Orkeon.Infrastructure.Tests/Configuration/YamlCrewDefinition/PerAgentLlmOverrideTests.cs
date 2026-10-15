@@ -119,6 +119,60 @@ agents:
     }
 
     [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldLoad_WhenEveryMaxTokensIsPositive()
+    {
+        var yaml = """
+name: c
+goal: g
+llm:
+  max_tokens: 2048
+agents:
+  a:
+    role: a
+    goal: g
+    llm:
+      max_tokens: 512
+tasks:
+  t:
+    description: d
+    expected_output: e
+    agent: a
+    llm_override:
+      max_tokens: 256
+""";
+
+        var config = await BuildLoader().LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        Assert.Equal(512, config.Agents.Single().LlmConfig!.MaxTokens);
+        Assert.Equal(256, config.Tasks.Single().LlmOverride!.MaxTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldRefuseTheLoadNamingTheCrew_WhenCrewMaxTokensIsZero()
+    {
+        var yaml = """
+name: crewname
+goal: g
+llm:
+  max_tokens: 0
+agents:
+  planner:
+    role: planner
+    goal: g
+""";
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => BuildLoader().LoadFromStringAsync(yaml, TestContext.Current.CancellationToken));
+
+        Assert.Contains("crewname", ex.Message);
+        Assert.Contains("max_tokens", ex.Message);
+        Assert.Contains("omit the key to keep the inherited cap", ex.Message);
+        Assert.DoesNotContain("planner", ex.Message);
+    }
+
+    [Fact]
     public async Task AgentLlmBlockAbsent_ShouldFallBackEntirelyToCrewDefault()
     {
         var loader = BuildLoader();

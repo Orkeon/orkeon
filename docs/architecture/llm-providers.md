@@ -102,7 +102,9 @@ call nobody configured is refused by the default models of OpenAI (`gpt-5.6-sol`
 one (`AlwaysEmitTopP`). The penalties, the seed and the stop sequences of an agent's configuration
 travel through the chat client too; on the wire, Ollama writes `top_p`, `seed` and `stop` in its
 `options`, and a dialect that has no field for a penalty or a seed says so with the structured
-warning below, never in silence.
+warning below, never in silence. A temperature, `top_p` or penalty is sent as written, up to six
+significant digits (the `float` of `ChatOptions` holds no more): `0.7`, never `0.699999988079071`,
+under any current culture.
 
 Every provider the factory builds is wrapped in `MeteredLlmProvider` (see
 [Decorators and registration](#decorators-and-registration)) and returned behind an

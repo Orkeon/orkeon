@@ -44,6 +44,7 @@ public class CrewAggregateRootTests
 
     #region Dynamic Agent Configuration Tests
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldSetDynamicAgentFlags_WhenCreatingWithOptions()
     {
@@ -63,6 +64,7 @@ public class CrewAggregateRootTests
         Assert.Equal(5, crew.MaxConcurrentDynamicAgents);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldDefaultDynamicAgentsToFalse_WhenNotSpecified()
     {
@@ -74,6 +76,7 @@ public class CrewAggregateRootTests
         Assert.Null(crew.MaxConcurrentDynamicAgents);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldAllowNullMaxConcurrentDynamicAgents_ForUnlimited()
     {
@@ -97,6 +100,7 @@ public class CrewAggregateRootTests
 
     #region ToolAccessPolicy on Crew Tests
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldSetToolAccessPolicy_WhenCreatingWithOptions()
     {
@@ -117,6 +121,7 @@ public class CrewAggregateRootTests
         Assert.False(crew.ToolAccessPolicy.IsToolAllowed("DeleteTool"));
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldHaveNullToolAccessPolicy_WhenNotSpecified()
     {
@@ -238,36 +243,15 @@ public class CrewAggregateRootTests
 
     #region Validation Tests with Hierarchical Constraints
 
-    [Fact]
-    public void ShouldBeValid_WhenAHierarchicalCrewTurnsSequentialAndItsManagerBecomesAWorker()
-    {
-        // Arrange — GAP-33: a sequential crew has no manager; turning sequential drops the manager
-        // agent, which stays a member of the crew, hence a worker.
-        var manager = AgentId.Create();
-        var crew = DomainCrew.Create("Hierarchical", ProcessType.Hierarchical, managerAgentId: manager);
-        crew.AddAgent(manager);
-        crew.AddTask(TaskId.Create());
-        crew.ChangeProcessType(ProcessType.Sequential);
-
-        // Act
-        var result = crew.Validate();
-
-        // Assert
-        Assert.True(result.IsValid);
-        Assert.Null(crew.ManagerAgentId);
-        Assert.Contains(manager, crew.Agents);
-    }
-
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldThrow_WhenValidateCanKickoffOnHierarchicalCrewWithNoManagerAndNoLlm()
     {
         // Arrange
-        var crew = DomainCrew.Create("Test");
-        crew.AddAgent(AgentId.Create());
+        var managerId = AgentId.Create();
+        var crew = DomainCrew.Create("Test", ProcessType.Hierarchical, managerAgentId: managerId);
+        crew.AddAgent(managerId);
         crew.AddTask(TaskId.Create());
-        // Force to hierarchical using ChangeProcessType with explicit manager
-        var managerId = crew.Agents[0];
-        crew.ChangeProcessType(ProcessType.Hierarchical, managerId);
         // This should pass since manager is set
 
         // Act & Assert - should not throw since manager IS set
@@ -278,6 +262,7 @@ public class CrewAggregateRootTests
 
     #region Agent Management Edge Cases
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldNotMakeAnAgentManager_WhenAddingToAHierarchicalCrewItsManagerLlmManages()
     {
@@ -290,45 +275,11 @@ public class CrewAggregateRootTests
         Assert.Null(crew.ManagerAgentId);
     }
 
-    [Fact]
-    public void ShouldReassignManager_WhenRemovingCurrentManagerFromHierarchicalCrew()
-    {
-        // Arrange — managed by an agent, with no manager LLM to fall back on
-        var agent1 = AgentId.Create();
-        var agent2 = AgentId.Create();
-        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerAgentId: agent1);
-        crew.AddAgent(agent1);
-        crew.AddAgent(agent2);
-
-        // Pre-condition
-        Assert.Equal(agent1, crew.ManagerAgentId);
-
-        // Act
-        crew.RemoveAgent(agent1, "Rotation");
-
-        // Assert - agent2 should become the new manager
-        Assert.Equal(agent2, crew.ManagerAgentId);
-    }
-
-    [Fact]
-    public void ShouldClearManager_WhenRemovingOnlyAgentFromHierarchicalCrew()
-    {
-        // Arrange — managed by its only agent
-        var agentId = AgentId.Create();
-        var crew = DomainCrew.Create("Hierarchical test", ProcessType.Hierarchical, managerAgentId: agentId);
-        crew.AddAgent(agentId);
-
-        // Act
-        crew.RemoveAgent(agentId, "Shutdown");
-
-        // Assert
-        Assert.Null(crew.ManagerAgentId);
-    }
-
     #endregion
 
     #region Create with Full Options Tests
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldCreateCrewWithPlanningLlm_WhenProvided()
     {
@@ -349,6 +300,7 @@ public class CrewAggregateRootTests
         Assert.NotNull(crew.PlanningLlm);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void ShouldReturnUniqueIds_WhenCreatingMultipleCrews()
     {

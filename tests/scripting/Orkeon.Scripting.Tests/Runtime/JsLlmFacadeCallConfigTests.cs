@@ -40,6 +40,7 @@ public sealed class JsLlmFacadeCallConfigTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task complete_ResponseFormatOverride_KeepsCredentialsAndModel()
     {
         using var engine = new Engine();
@@ -56,6 +57,7 @@ public sealed class JsLlmFacadeCallConfigTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task chat_ModelOverride_ChangesOnlyTheModel()
     {
         using var engine = new Engine();
@@ -72,6 +74,7 @@ public sealed class JsLlmFacadeCallConfigTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task act_ModelOverride_ReachesTheProvider_WithCredentialsIntact()
     {
         // An interactive loop hot-swaps the model per turn by passing
@@ -89,6 +92,7 @@ public sealed class JsLlmFacadeCallConfigTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task act_WithoutModelOverride_KeepsTheBootModel()
     {
         using var engine = new Engine();
@@ -105,6 +109,7 @@ public sealed class JsLlmFacadeCallConfigTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task complete_BothOverrides_ApplyOnTopOfTheSameBase()
     {
         using var engine = new Engine();
@@ -123,6 +128,7 @@ public sealed class JsLlmFacadeCallConfigTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task complete_NoOptions_SendsNoPerCallConfig()
     {
         // Unchanged contract: an empty bag must not manufacture a config at all, otherwise
@@ -138,6 +144,7 @@ public sealed class JsLlmFacadeCallConfigTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task complete_ProviderWithoutBaseConfig_AppliesTheOverrideOnTheProvidersOwnModel()
     {
         // A third-party ILlmProvider that does not expose BaseConfig (the interface default is

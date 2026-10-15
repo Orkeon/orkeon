@@ -70,6 +70,8 @@ public sealed class CallersOnTheProvidersConnectionTests
             return document.RootElement.Clone();
         }
 
+        public async Task<string> RawBodyAsync() => await Sent.Content!.ReadAsStringAsync(Ct);
+
         public void AssertTheProvidersConnection()
         {
             Assert.NotNull(Sent.Headers.Authorization);
@@ -87,6 +89,7 @@ public sealed class CallersOnTheProvidersConnectionTests
     }
 
     [Fact]
+    [Trait("BR", "CH-05")]
     public async Task The_planner_plans_on_the_providers_connection()
     {
         var taskId = TaskId.Create();
@@ -103,10 +106,11 @@ public sealed class CallersOnTheProvidersConnectionTests
 
         vendor.AssertTheProvidersConnection();
         Assert.Equal("1. Plan the work.", created.Plan.InstructionsFor(taskId));
-        Assert.Equal(0.3, (await vendor.SentPayloadAsync()).GetProperty("temperature").GetDouble(), precision: 3);
+        Assert.Matches("\"temperature\":0\\.3[,}]", await vendor.RawBodyAsync());
     }
 
     [Fact]
+    [Trait("BR", "CH-05")]
     public async Task A_cognitive_memory_analysis_runs_on_the_providers_connection()
     {
         using var vendor = new Vendor(
@@ -119,6 +123,7 @@ public sealed class CallersOnTheProvidersConnectionTests
         vendor.AssertTheProvidersConnection();
         // The model's analysis, not the fallback a failed call produces.
         Assert.Equal("decision", analysis.Category);
+        Assert.Matches("\"temperature\":0\\.1[,}]", await vendor.RawBodyAsync());
     }
 
     [Fact]

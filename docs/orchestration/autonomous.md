@@ -287,7 +287,7 @@ agents:
 
 > **Note**: there is no `autonomousBudget` YAML key — the loader does not parse one. In YAML crews the Autonomous mode always runs with `AgentExecutionBudget.Permissive` (50 tool calls, depth 4, 15 min, 64 000 tokens, 10 spawns). In the scripting DSL, `crewBuilder().budget({...})` bounds only the procedural shape (`await crew.run()`); the declarative shape ignores it with a warning.
 
-> **Delegation defaults**: the autonomous strategy delegates through the `IAgentChannel`, not through `ITaskDelegator` — the stub that denies every request (see [Default behaviors](../getting-started/default-behaviors.md)) is not consulted by this mode.
+> **Delegation**: the autonomous strategy delegates through the `IAgentChannel`; there is no task delegator service.
 
 ## Complementarity with the other modes
 

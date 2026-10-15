@@ -19,6 +19,7 @@ and `MaxOutputTokens(n)` merges into them and, on an agent that has none, starts
 that names no model (`LlmConfig.OnProfile()`) — the agent then runs on the host's model, whatever vendor
 the host runs. To pin a model, start from `LlmConfig.Create(model)`; to run on one of the host's
 [named profiles](#one-provider-per-agent-profiles), from `LlmConfig.OnProfile("claude")`.
+A token cap (`max_tokens`, `MaxTokens`) is a positive integer; omit it to keep the inherited cap. YAML loading, `LlmConfig.with` in scripts, `Agent.Create` and `SetLlmOverride` refuse a value of 0 or less.
 
 ## YAML configuration
 

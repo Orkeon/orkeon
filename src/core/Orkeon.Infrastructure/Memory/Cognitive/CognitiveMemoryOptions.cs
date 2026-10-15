@@ -20,7 +20,7 @@ public sealed class CognitiveMemoryOptions
     public string? AnalysisModel { get; set; }
 
     /// <summary>Temperature for LLM analysis calls. Default: 0.1.</summary>
-    public float AnalysisTemperature { get; set; } = 0.1f;
+    public double AnalysisTemperature { get; set; } = 0.1;
 
     /// <summary>Importance threshold below which memories are candidates for pruning. Default: 0.1.</summary>
     public float PruningThreshold { get; set; } = 0.1f;

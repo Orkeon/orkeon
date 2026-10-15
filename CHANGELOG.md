@@ -7,6 +7,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security — System.Security.Cryptography.Pkcs pinned to 10.0.13
+
+Two .NET denial-of-service advisories published on 2026-10-13, GHSA-846f-f764-76mx (high,
+NU1903) and GHSA-2fmv-rv2c-59x7 (moderate, NU1902), cover System.Security.Cryptography.Pkcs
+up to 10.0.12 and 9.0.20. Orkeon took it transitively, 10.0.0 through MimeKit and 9.0.18
+through Microsoft.Data.SqlClient, so every package and installer carrying the e-mail or
+data tools shipped a vulnerable version. It is now pinned to 10.0.13 in
+`Directory.Packages.props`, through a direct reference in `Orkeon.Tools.Data`,
+`Orkeon.Tools.Email` and the `Orkeon.Tools` package.
+
+### Removed — public surfaces nothing called, third pass **[breaking]**
+
+Types and members with no caller left in the framework, the REPL or the examples (GAP-47).
+
+- **Phase 3 services** (decision 1): `Orkeon.Application.Services.ErrorHandling`, `Services.Generic` and
+  `Services.TaskRouting` (`PatternMatchingErrorHandler`, `ErrorClassifier`, `TaskExecutionRouter`,
+  `TaskExecutorFactory`, `ResearchTaskExecutor`, `ResearchFindings`...), `RetryDefaults`, and in Domain
+  `TaskClassificationService`, `TaskCategory`, `ResearchTask`, `AnalysisTask`, `CodeGenerationTask` with their
+  contexts. Migration: none was registered; retries and error handling live in the strategies and the
+  resilience policies, and a task is a `CrewTask`.
+- **Mappers, DTOs and value objects of an absent HTTP API** (decision 2): `CrewMapper`, `TaskMapper`,
+  `ExecutionMapper`, `ToolMapper`, the list overloads and `ToSummaryDto` of `AgentMapper`, `ApiResponse<T>` and the
+  other `ApiDTOs`, `ApiMetadata`, `ToolMetadata`, `ToolDto`, `ExecutionResultDto`, `CollaborationDtos`,
+  `LlmConfigOverrideDto`, `LlmThinkingConfigDto`, `TokenUsageDto`, `TokenModelUsageDto`, `MemorySearchFilter`,
+  the Application `BatchOutput` (not the one of `ICrewOrchestrationService`), `MessageDefaults`,
+  `PaginationDefaults`, and Domain `AgentCapabilities`, `CollaborationContext`, `CommunicationProtocol`,
+  `PerformanceMetrics`, `SecurityContext`, `TaskComplexity`. Migration: define the DTOs of your own API in your
+  host; `AgentMapper.ToDto(agent)` remains. The unused `Orkeon.Application.Common.DTOs.MemoryItemDto` goes too
+  (the `MemoryItemDto` of `SearchMemoryQuery` stays).
+- **Read DTO fields no handler fills** (decision 3): `CrewDto` keeps `Id`, `Name`, `Description`, `ProcessType`,
+  `Status`, `Verbosity`, `CreatedAt`; `AgentDto` loses `Llm`, `Capabilities`, `PerformanceMetrics`, `Metadata`,
+  `WithStatus`, `WithPerformanceMetrics`; `TaskDto` keeps `Id`, `Name`, `Description`, `ExpectedOutput`,
+  `AssignedAgent`, `Status`, `Priority`, `CreatedAt`. `LlmDto`, `AgentCapabilitiesDto`, `PerformanceMetricsDto`,
+  `TaskComplexityDto`, `TaskOutputDto`, `MemoryConfigurationDto`, `CrewDefaults.DefaultEstimatedTaskDuration` and
+  Domain `OrchestrationDefaults` go with them; the REPL no longer prompts for a task context. Migration: read
+  the crew, its agents and its tasks through their own queries.
+- **Interface types nothing used** (decision 8): `IMemoryScopeFactory`, `EncryptionResult`,
+  `DataClassification`. Migration: none.
+- **Template engine** (decision 4): `ITemplateEngine`, `TemplateValidation`, `Infrastructure/Templating/`,
+  `TemplateParameters` and the Domain `Agent/Composition` types `CompositionResult`, `CompositionTypes`,
+  `TemplateParameter`. Migration: remove any registration of `ITemplateEngine`; nothing in a run resolved it.
+- **Task delegator** (decision 5): `ITaskDelegator`, the Domain `Delegation/` types, `DelegationStrategy`,
+  `DelegationParameters`, `DelegationDecision` and `NullTaskDelegator`. Migration: remove any registration of
+  `ITaskDelegator`; delegation goes through the `IAgentChannel` (Autonomous mode) and the
+  `delegate_work_to_coworker` / `ask_question_to_coworker` tools.
+- **Mutators of the aggregates** (decisions 6 and 7): `Agent.SetAgentSelectionStrategy`, `UpdateGoal`,
+  `UpdateBackstory`, `UpdateToolAccessPolicy`, `ExecuteTaskAsync`, `ShouldDelegateAsync`; `Crew.RemoveAgent`,
+  `RemoveTask`, `UpdateGoal`, `ChangeProcessType`, `SetManagerAgent`; `AgentMemoryStore.Restore`,
+  `RetrieveRelevantMemoriesAsync`, `BuildContext`, `UpdateEntityMemory`, `AddEpisodicMemory`,
+  `ClearShortTermMemory`, `UpdateCapacities`, `EntityMemory`, `EpisodicMemory`, with the types `EntityMemory`,
+  `EpisodicMemory`, `MemoryContext`, `EpisodicMemoryMetadata`, `EpisodeEventData` and the seven events
+  `AgentLeftCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewGoalUpdatedEvent`, `CrewProcessTypeChangedEvent`,
+  `EntityMemoryUpdatedEvent`, `EpisodicMemoryAddedEvent`, `MemoryClearedEvent` (30 domain events become 23).
+  Migration: set the process type, the goal and the manager at construction (`CrewBuilder`, YAML); build the agent
+  with its backstory instead of `UpdateBackstory`; a crew no longer loses an agent or a task once built.
+- **Training subsystem** (decision 9): `AddOrkeonTraining`, `TrainingExtensions` and the Application,
+  Infrastructure and Domain `Training/` folders. Migration: remove any call to `AddOrkeonTraining`; Evaluation
+  (`IEvaluationSuite`, the evaluators, the `Evaluation` section, `IBenchmarkRunner`) stays.
+- **Call override of the LLM cascade** (decision 10): the cascade stops at the task. `LlmProviderExtensions`
+  (`GenerateAsync` / `ChatAsync` with a `LlmConfigOverride`), `LlmConfigOverride.ForResponseFormat` and the
+  `callOverride` parameter are removed; `LlmConfigResolver.Resolve` takes two arguments. Migration: a call passes
+  its own `LlmConfig`, starting from `provider.BaseConfig`
+  (`(provider.BaseConfig ?? LlmConfig.OnProfile()) with { ResponseFormat = ... }`); `Resolve(baseConfig, taskOverride)`;
+  `new LlmConfigOverride { ResponseFormat = ... }` instead of `ForResponseFormat(...)`.
+- **`TaskStatus.Blocked`**: the value no transition reached. Migration: use `Pending` for a task that waits on its
+  dependencies.
+
+### Fixed — crews, tasks, tool calls and security events are measured where they happen
+
+The crew, task, tool and security instruments of the meter `Orkeon` are now fed (GAP-46). The run
+registry counts every crew and every task once, at its end, with its outcome (`completed`, `failed`,
+`cancelled`) and its duration in seconds, and keeps `orkeon.crew.active` and `orkeon.task.active`
+balanced, with or without a span listener. The tool pipeline counts every call with its outcome
+(`success`, `failure`, `blocked`, `cancelled`) and its duration, with or without an audit logger. The
+Guardian counts one `orkeon.security.events` per blocked call and per warning, and the tool pipeline
+one per tool result where an injection pattern is detected. No attribute carries an id. The metrics
+dashboard now reads non-zero crew, task and tool figures after a run.
+
+### Fixed — every model call is measured once on the meter `Orkeon` **[breaking]**
+
+Every model call is now measured once on the meter `Orkeon` (`OrkeonMeter`, Application), succeeded,
+failed or streamed, with or without a usage sink (GAP-46). Telemetry exports that meter and the
+dashboard listens to it by name. The crew, task, tool and security instruments are declared there
+with their names, units and kinds; their durations are in seconds (`s`). `orkeon.cost.total_usd` is the process-wide total
+of the USD costs reported since the process started.
+
+- **Breaking**: `OrkeonMetrics` (`Orkeon.Infrastructure.Telemetry`) is removed, with its three DI
+  registrations: nothing fed it.
+- **Migration**: the meter keeps its name `Orkeon`: subscribe by name, or use `OrkeonMeter.Name` and
+  `OrkeonMeter.Meter`.
+
+### Fixed — a `max_tokens` of 0 or less is refused **[breaking]**
+
+A token cap is a positive integer (GAP-48). A `max_tokens` of 0 or less is now refused: at YAML crew
+load (an agent's `llm`, the crew's `llm`, naming the crew, and a task's `llm_override`; it was
+accepted, and 0 meant the documented maximum or was ignored); by `.ork.ts` `LlmConfig.with`,
+`llm.model` and `llm.profile` (`maxTokens` must be an integer from 1 to 2147483647, no more
+truncation); and in C# by `Agent.Create` and `CrewTaskBase.SetLlmOverride`, which throw
+`ArgumentOutOfRangeException`.
+
+- **Breaking**: a cap of 0 or less no longer loads or builds.
+- **Migration**: remove the key to keep the inherited cap, or write a positive integer.
+
+### Fixed — a task's `llm_override` is merged once
+
+`ChatOptionsComposer` no longer merges a task's `llm_override` field by field a second time: the
+configuration `LlmConfigResolver` merges once is translated onto the chat options, and each field
+reaches the provider as written on both loops (GAP-48).
+
+### Fixed — sampling values reach the vendor as written **[breaking]**
+
+A temperature, a `top_p` and penalties written by an agent, a task, the planner (0.3) or the
+cognitive memory analysis (0.1) now reach the vendor's JSON as written (`0.7`, never
+`0.699999988079071`), under any current culture (GAP-48).
+
+- **Breaking**: `PlanningDefaults.Temperature` (Domain) and `CognitiveMemoryOptions.AnalysisTemperature`
+  (Infrastructure) are now `double`.
+- **Migration**: read them as `double`.
+
+### Fixed — a task's `llm_override: cache:` is read, sent and exported
+
+A task's `llm_override: cache:` block was silently dropped at loading and export. It is now read
+and sent (`cache_control` at Anthropic); a block holding no breakpoint turns the agent's cache off
+for that task; the task's cache is exported and read back. A cache-only override reaches a provider
+without base configuration, and the MAF bridge warns about the cache only when it requests a
+breakpoint (GAP-48).
+
 ### Fixed — *Verify what you install* is measured on `v1.0.0-rc.5` and says who signs what
 
 The guide printed `v1.0.0-rc.3` outputs and said GitHub's Sigstore instance signs the build

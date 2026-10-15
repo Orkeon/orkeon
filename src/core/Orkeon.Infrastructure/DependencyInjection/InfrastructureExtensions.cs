@@ -52,7 +52,6 @@ using Orkeon.Tools.Abstractions.Security;
 using Orkeon.Infrastructure.Checkpointing;
 using Orkeon.Infrastructure.DomainEvents;
 using Orkeon.Infrastructure.Orchestration;
-using Orkeon.Infrastructure.Templating;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Constants.Configuration;
 
@@ -164,7 +163,6 @@ public static class InfrastructureExtensions
         services.AddSingleton<ICrewExecutionStateManager, ScopedCrewExecutionStateManager>();
 
         // Template engine (moved from Application — R16)
-        services.AddSingleton<ITemplateEngine, TemplateEngine>();
 
         // Add HTTP client factory
         services.AddHttpClient();
@@ -381,9 +379,6 @@ public static class InfrastructureExtensions
             }
         });
 
-        // ITaskDelegator — stub that denies all delegation requests
-        services.TryAddSingleton<Domain.Delegation.ITaskDelegator, Stubs.NullTaskDelegator>();
-
         // IAgentExecutionService — stub (consumer should override with real implementation)
         services.TryAddScoped<IAgentExecutionService, Stubs.NullAgentExecutionService>();
 
@@ -594,10 +589,6 @@ public static class InfrastructureExtensions
             return new OutputValidationPipeline(validators);
         });
 
-        // === Phase 3: Telemetry (P0-8) ===
-        // Register OrkeonMetrics singleton (always available, even without full OTel pipeline)
-        services.TryAddSingleton<OrkeonMetrics>();
-
         return services;
     }
 
@@ -626,9 +617,6 @@ public static class InfrastructureExtensions
 
         // === Phase 9: Session Checkpointing (S2) ===
         services.AddOrkeonCheckpointing();
-
-        // === Phase 10: Training Framework (N1) ===
-        services.AddOrkeonTraining();
 
         // Opt-in subsystems (R4.9 — MORT-003): DLP (AddOrkeonDlp) and NIST compliance
         // reporting (AddOrkeonNistCompliance) are intentionally NOT registered by

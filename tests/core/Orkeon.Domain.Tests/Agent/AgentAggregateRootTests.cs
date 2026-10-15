@@ -87,48 +87,6 @@ public class AgentAggregateRootTests
         Assert.False(agent.ToolAccessPolicy.IsToolAllowed("ToolC"));
     }
 
-    [Fact]
-    public void ShouldUpdateToolAccessPolicy_WhenAgentIsIdle()
-    {
-        // Arrange
-        var agent = CreateIdleAgent();
-        var newPolicy = ToolAccessPolicy.CreateBlacklist("DangerousTool");
-
-        // Act
-        agent.UpdateToolAccessPolicy(newPolicy);
-
-        // Assert
-        Assert.Equal(newPolicy, agent.ToolAccessPolicy);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenUpdatingToolAccessPolicyWhileBusy()
-    {
-        // Arrange
-        var agent = CreateIdleAgent();
-        var taskId = TaskId.Create();
-        agent.AssignTask(taskId);
-        agent.StartTask(taskId); // Now Busy
-
-        var newPolicy = ToolAccessPolicy.CreateWhitelist("SafeTool");
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => agent.UpdateToolAccessPolicy(newPolicy));
-        Assert.Contains("while agent is working", ex.Message);
-    }
-
-    [Fact]
-    public void ShouldThrow_WhenUpdatingToolAccessPolicyWithNull()
-    {
-        // Arrange
-        var agent = CreateIdleAgent();
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(
-            () => agent.UpdateToolAccessPolicy(null!));
-    }
-
     #endregion
 
     #region Status Transition Tests
@@ -223,64 +181,6 @@ public class AgentAggregateRootTests
         // Assert
         Assert.Equal(AgentStatus.Busy, agent.Status);
         Assert.Equal([taskId2], agent.CurrentTasks);
-    }
-
-    #endregion
-
-    #region Delegation Strategy Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldUseInjectedSelectionStrategy_WhenDelegating()
-    {
-        // Arrange
-        var agent = CreateIdleAgent(allowDelegation: true);
-        var targetAgentId = AgentId.Create();
-        var otherAgentId = AgentId.Create();
-
-        agent.SetAgentSelectionStrategy((task, agents, ct) =>
-            System.Threading.Tasks.Task.FromResult<AgentId?>(targetAgentId));
-
-        var stubTask = new StubCrewTask();
-
-        // Act
-        var decision = await agent.ShouldDelegateAsync(stubTask, [otherAgentId, targetAgentId], TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(decision.ShouldDelegate);
-        Assert.Equal(targetAgentId, decision.DelegateToAgentId);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldFallbackToFirstOtherAgent_WhenNoSelectionStrategy()
-    {
-        // Arrange
-        var agent = CreateIdleAgent(allowDelegation: true);
-        var otherAgentId = AgentId.Create();
-        var stubTask = new StubCrewTask();
-
-        // Act - no strategy set, should use fallback logic
-        var decision = await agent.ShouldDelegateAsync(stubTask, [otherAgentId], TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(decision.ShouldDelegate);
-        Assert.Equal(otherAgentId, decision.DelegateToAgentId);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ShouldReturnNoDelegation_WhenStrategyReturnsNull()
-    {
-        // Arrange
-        var agent = CreateIdleAgent(allowDelegation: true);
-        agent.SetAgentSelectionStrategy((task, agents, ct) =>
-            System.Threading.Tasks.Task.FromResult<AgentId?>(null));
-
-        var stubTask = new StubCrewTask();
-
-        // Act
-        var decision = await agent.ShouldDelegateAsync(stubTask, [AgentId.Create()], TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.False(decision.ShouldDelegate);
     }
 
     #endregion

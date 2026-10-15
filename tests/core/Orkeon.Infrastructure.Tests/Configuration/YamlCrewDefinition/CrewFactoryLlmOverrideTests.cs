@@ -1,4 +1,8 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.DependencyInjection;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Application.Interfaces;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
@@ -78,11 +82,12 @@ public class CrewFactoryLlmOverrideTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task TaskLlmOverride_ResponseFormat_PropagatesToCrewTask()
     {
         var (factory, taskRepo) = BuildFactory();
         var config = BuildConfigWithTaskOverride(
-            LlmConfigOverride.ForResponseFormat(LlmResponseFormat.JsonObject()));
+            new LlmConfigOverride { ResponseFormat = LlmResponseFormat.JsonObject() });
 
         var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
 
@@ -113,6 +118,120 @@ public class CrewFactoryLlmOverrideTests
         Assert.Equal(0.0, task.LlmOverride.Temperature);
         Assert.Equal(256, task.LlmOverride.MaxTokens);
         Assert.Equal(0.5, task.LlmOverride.TopP);
+    }
+
+    private static async Task<LlmConfigOverride?> LoadTaskOverrideAsync(string overrideYaml)
+    {
+        var yaml = $"""
+            name: cache
+            goal: Answer
+            process: sequential
+            agents:
+              writer:
+                role: Writer
+                goal: Write the answer
+            tasks:
+              write:
+                description: Write the answer
+                expected_output: An answer
+                agent: writer
+                llm_override:
+            {overrideYaml}
+            """;
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(
+            new ConfigurationBuilder().Build());
+        services.AddLogging();
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(
+            new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var container = services.BuildServiceProvider();
+        var config = await container.GetRequiredService<ICrewDefinitionLoader>()
+            .LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+        return Assert.Single(config.Tasks).LlmOverride;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldMapTheTaskCache_WhenLlmOverrideWritesACacheBlock()
+    {
+        var mapped = await LoadTaskOverrideAsync("""
+                    cache:
+                      system: true
+                      ttl: 1h
+            """);
+
+        Assert.NotNull(mapped);
+        Assert.NotNull(mapped!.Cache);
+        Assert.True(mapped.Cache!.CacheSystemPrompt);
+        Assert.Equal("1h", mapped.Cache.Ttl);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldReadAnOverrideHoldingOnlyACache_WhenNoOtherKeyIsWritten()
+    {
+        var mapped = await LoadTaskOverrideAsync("""
+                    cache:
+                      system: true
+            """);
+
+        Assert.NotNull(mapped);
+        Assert.NotNull(mapped!.Cache);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldRefuseTheLoadNamingTheTaskAndKey_WhenLlmOverrideMaxTokensIsZero()
+    {
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateCrewFromYamlAsync(
+            agentLlm: "",
+            taskOverride: "max_tokens: 0"));
+
+        Assert.Contains("write", ex.Message);
+        Assert.Contains("max_tokens", ex.Message);
+        Assert.Contains("omit the key to keep the inherited cap", ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldRefuseTheLoadNamingTheAgentAndKey_WhenAgentMaxTokensIsNegative()
+    {
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateCrewFromYamlAsync(
+            agentLlm: "llm:\n      max_tokens: -1",
+            taskOverride: null));
+
+        Assert.Contains("writer", ex.Message);
+        Assert.Contains("max_tokens", ex.Message);
+        Assert.Contains("omit the key to keep the inherited cap", ex.Message);
+    }
+
+    private static async System.Threading.Tasks.Task CreateCrewFromYamlAsync(string agentLlm, string? taskOverride)
+    {
+        var yaml = "name: mt\ngoal: Answer\nprocess: sequential\nagents:\n  writer:\n    role: Writer\n    goal: Write\n"
+            + (agentLlm.Length > 0 ? "    " + agentLlm + "\n" : "")
+            + "tasks:\n  write:\n    description: Write\n    expected_output: An answer\n    agent: writer\n"
+            + (taskOverride is null ? "" : "    llm_override:\n      " + taskOverride + "\n");
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddLogging();
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(
+            new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var container = services.BuildServiceProvider();
+        var loader = container.GetRequiredService<ICrewDefinitionLoader>();
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+        var unitOfWork = new NullUnitOfWork();
+        var factory = new CrewFactory(
+            loader,
+            new MockToolRegistry(),
+            NullLogger<CrewFactory>.Instance,
+            new InMemoryCrewRepository(unitOfWork),
+            new InMemoryAgentRepository(unitOfWork),
+            new InMemoryTaskRepository(unitOfWork));
+        await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
     }
 
     [Fact]

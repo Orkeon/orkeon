@@ -45,6 +45,7 @@ public sealed class LlmConfigInheritFromTests
     };
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void A_call_that_names_nothing_about_the_connection_takes_the_providers()
     {
         var effective = (LlmConfig.OnProfile() with { Temperature = 0.3 }).InheritFrom(Provider());
@@ -82,6 +83,7 @@ public sealed class LlmConfigInheritFromTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void What_the_call_sets_wins()
     {
         var call = LlmConfig.Create("call-model", "sk-call") with
@@ -140,6 +142,7 @@ public sealed class LlmConfigInheritFromTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void The_penalties_and_the_tool_mode_are_the_callers()
     {
         // These settings have no "unset" value — 0 is every vendor's default, and neither a host

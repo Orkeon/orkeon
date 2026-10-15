@@ -288,8 +288,8 @@ public partial class YamlCrewExporter
 
     /// <summary>
     /// A task's <c>llmOverride:</c> block, field by field (GAP-36); null when the task has none.
-    /// The block has no <c>cache</c> key: a cache request set on the override in code has no YAML
-    /// form.
+    /// A cache request without a breakpoint turns the cache off, so it is written
+    /// <c>system: false</c>, <c>tools: false</c> rather than dropped.
     /// </summary>
     private static LlmOverrideYamlConfig? MapLlmOverride(LlmConfigOverride? llmOverride)
     {
@@ -306,6 +306,9 @@ public partial class YamlCrewExporter
             MaxTokens = llmOverride.MaxTokens,
             TopP = llmOverride.TopP,
             Thinking = MapThinking(llmOverride.Thinking),
+            Cache = llmOverride.Cache is { RequestsAnyBreakpoint: false }
+                ? new CacheYamlConfig { System = false, Tools = false }
+                : MapCache(llmOverride.Cache),
         };
     }
 

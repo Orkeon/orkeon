@@ -50,7 +50,6 @@ internal sealed class DemoCommand : IMainMenuCommand
             context.Console.WriteLine("Creating demo task...");
             await taskService.CreateTaskAsync(
                 "Write about AI trends",
-                "Research and write a brief article about AI trends in 2025",
                 "A well-written article about AI trends").ConfigureAwait(false);
 
             context.Console.WriteLine("\nDemo setup complete!");

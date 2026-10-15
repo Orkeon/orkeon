@@ -36,6 +36,7 @@ declare global {
     interface LlmConfigOverrides {
         model?: string;
         temperature?: number;
+        /** A positive integer (1 to 2147483647). Omitted keeps the inherited cap; anything else throws. */
         maxTokens?: number;
         responseFormat?: ResponseFormatType;
     }

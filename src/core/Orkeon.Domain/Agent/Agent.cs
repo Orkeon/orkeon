@@ -25,7 +25,6 @@ public sealed class Agent : AggregateRoot<AgentId>
     private readonly List<TaskId> _currentTasks;
     private readonly List<KnowledgeAttachment> _knowledgeAttachments;
     private readonly AgentToolManager _toolManager;
-    private Func<ICrewTask, IEnumerable<AgentId>, CancellationToken, System.Threading.Tasks.Task<AgentId?>>? _agentSelectionFunc;
 
     /// <summary>
     /// Gets the agent's role.
@@ -178,6 +177,8 @@ public sealed class Agent : AggregateRoot<AgentId>
         if (options.Goal is null) throw new ArgumentNullException(nameof(options), "options.Goal cannot be null.");
         if (OwnProviderRefusal(options) is { } refusal)
             throw new ArgumentException(refusal, nameof(options));
+        if (options.LlmConfig?.MaxTokens is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), options.LlmConfig.MaxTokens, "LlmConfig.MaxTokens must be positive when pinned; leave it null for the model's documented maximum.");
 
         var agent = new Agent(AgentId.Create())
         {
@@ -300,17 +301,6 @@ public sealed class Agent : AggregateRoot<AgentId>
             tools.AddRange(AgentLlmRules.DelegationTools);
 
         return tools.Count == 0 ? null : AgentLlmRules.OwnToolsRefusal(who, llm.Name, tools);
-    }
-
-    /// <summary>
-    /// Injects the agent selection strategy as a delegate.
-    /// This allows the Application layer to provide selection logic without creating a dependency from Domain to Application.
-    /// </summary>
-    public void SetAgentSelectionStrategy(
-        Func<ICrewTask, IEnumerable<AgentId>, CancellationToken, System.Threading.Tasks.Task<AgentId?>> selectionFunc)
-    {
-        ArgumentNullException.ThrowIfNull(selectionFunc);
-        _agentSelectionFunc = selectionFunc;
     }
 
     /// <summary>
@@ -448,109 +438,4 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// </summary>
     public bool HasTool(string toolName) =>
         _toolManager.HasTool(toolName);
-
-    /// <summary>
-    /// Updates the agent's goal.
-    /// </summary>
-    public void UpdateGoal(AgentGoal newGoal)
-    {
-        ArgumentNullException.ThrowIfNull(newGoal);
-
-        if (Status != AgentStatus.Idle)
-            throw new InvalidOperationException("Cannot update goal while agent is working.");
-
-        Goal = newGoal;
-    }
-
-    /// <summary>
-    /// Updates the agent's backstory.
-    /// </summary>
-    public void UpdateBackstory(AgentBackstory? backstory)
-    {
-        Backstory = backstory;
-    }
-
-    /// <summary>
-    /// Updates the agent's tool access policy.
-    /// This controls which tools the agent can access.
-    /// </summary>
-    public void UpdateToolAccessPolicy(ToolAccessPolicy policy)
-    {
-        ArgumentNullException.ThrowIfNull(policy);
-
-        if (Status != AgentStatus.Idle)
-            throw new InvalidOperationException("Cannot update tool access policy while agent is working.");
-
-        ToolAccessPolicy = policy;
-    }
-
-    /// <summary>
-    /// Executes a task with the provided context and tools.
-    /// </summary>
-    /// <remarks>
-    /// This method validates inputs but does not contain execution logic.
-    /// Use <c>ExecutionOrchestrator.ExecuteWithChatClientAsync</c> for actual task execution.
-    /// </remarks>
-    public System.Threading.Tasks.Task<AgentStep> ExecuteTaskAsync(
-        ICrewTask task,
-        ILlmProvider llm,
-        IToolRegistry toolRegistry,
-        CancellationToken cancellationToken = default)
-    {
-        // Null guards
-        ArgumentNullException.ThrowIfNull(llm);
-        ArgumentNullException.ThrowIfNull(toolRegistry);
-
-        // Validation
-        ValidateCanExecute(task);
-
-        throw new NotSupportedException(
-            "Direct task execution on Agent is not supported. " +
-            "Use ExecutionOrchestrator.ExecuteWithChatClientAsync instead.");
-    }
-
-    /// <summary>
-    /// Determines if this agent should delegate a task to another agent.
-    /// </summary>
-    public async System.Threading.Tasks.Task<DelegationDecision> ShouldDelegateAsync(
-        ICrewTask task,
-        IEnumerable<AgentId> availableAgentIds,
-        CancellationToken ct = default)
-    {
-        if (!AllowDelegation)
-            return DelegationDecision.NoDelegation();
-
-        // Delegation decision logic
-        var bestAgentId = await SelectBestAgentForTaskAsync(task, availableAgentIds, ct).ConfigureAwait(false);
-        if (bestAgentId != null && bestAgentId != this.Id)
-        {
-            return DelegationDecision.DelegateTo(bestAgentId);
-        }
-
-        return DelegationDecision.NoDelegation();
-    }
-
-    private void ValidateCanExecute(ICrewTask task)
-    {
-        ArgumentNullException.ThrowIfNull(task);
-
-        if (Status != AgentStatus.Idle)
-            throw new InvalidOperationException($"Agent must be idle to execute task. Current status: {Status}");
-    }
-
-    private async System.Threading.Tasks.Task<AgentId?> SelectBestAgentForTaskAsync(
-        ICrewTask task,
-        IEnumerable<AgentId> availableAgentIds,
-        CancellationToken ct = default)
-    {
-        if (_agentSelectionFunc is not null)
-        {
-            return await _agentSelectionFunc(task, availableAgentIds, ct).ConfigureAwait(false);
-        }
-
-        // Fallback: return the first agent ID that is not this agent.
-        // More sophisticated matching requires the Application layer strategy.
-        return availableAgentIds
-            .FirstOrDefault(id => id != this.Id);
-    }
 }

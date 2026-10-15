@@ -16,21 +16,6 @@ public enum ControlStatus
 }
 
 /// <summary>
-/// Data classification levels for AI-processed information.
-/// </summary>
-public enum DataClassification
-{
-    /// <summary>Publicly available information.</summary>
-    Public,
-    /// <summary>Internal use only.</summary>
-    Internal,
-    /// <summary>Confidential information.</summary>
-    Confidential,
-    /// <summary>Restricted access information.</summary>
-    Restricted
-}
-
-/// <summary>
 /// Represents a single NIST SP 800-53 security control.
 /// </summary>
 public sealed record NistControl(

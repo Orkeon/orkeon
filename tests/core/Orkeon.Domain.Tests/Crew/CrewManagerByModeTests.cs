@@ -25,6 +25,7 @@ public sealed class CrewManagerByModeTests
 
     // ── the builder, in its own words ────────────────────────────────────────────────────
 
+    [Trait("BR", "CH-08")]
     [Theory]
     [MemberData(nameof(ModesWithoutAManagerAgent))]
     public void The_builder_refuses_a_manager_agent_in_a_mode_without_one(string process)
@@ -41,6 +42,7 @@ public sealed class CrewManagerByModeTests
         Assert.Contains(".Consensual()", error.Message, StringComparison.Ordinal);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void The_builder_refuses_a_manager_id_set_before_the_mode_changed()
     {
@@ -52,6 +54,7 @@ public sealed class CrewManagerByModeTests
         Assert.Contains("Graph", error.Message, StringComparison.Ordinal);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void The_builder_tells_an_autonomous_crew_its_manager_is_an_llm()
     {
@@ -64,6 +67,7 @@ public sealed class CrewManagerByModeTests
         Assert.Contains("default profile", error.Message, StringComparison.Ordinal);
     }
 
+    [Trait("BR", "CH-08")]
     [Theory]
     [MemberData(nameof(ModesWithoutAManagerLlm))]
     public void The_builder_refuses_a_manager_llm_in_a_mode_that_never_calls_it(string process)
@@ -77,6 +81,7 @@ public sealed class CrewManagerByModeTests
         Assert.Contains(process, error.Message, StringComparison.Ordinal);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void The_builder_keeps_a_manager_agent_where_the_mode_uses_one()
     {
@@ -89,6 +94,7 @@ public sealed class CrewManagerByModeTests
         Assert.Equal(chair.Id, consensual.ManagerAgentId);
     }
 
+    [Trait("BR", "CH-08")]
     [Fact]
     public void The_builder_keeps_a_manager_llm_where_the_mode_reads_one()
     {
@@ -103,6 +109,7 @@ public sealed class CrewManagerByModeTests
 
     // ── Crew.Create(CrewCreateOptions) ───────────────────────────────────────────────────
 
+    [Trait("BR", "CH-08")]
     [Theory]
     [MemberData(nameof(ModesWithoutAManagerAgent))]
     public void The_options_refuse_a_manager_agent_in_a_mode_without_one(string process)
@@ -119,6 +126,7 @@ public sealed class CrewManagerByModeTests
         Assert.Contains("Consensual", error.Message, StringComparison.Ordinal);
     }
 
+    [Trait("BR", "CH-08")]
     [Theory]
     [MemberData(nameof(ModesWithoutAManagerLlm))]
     public void The_options_refuse_a_manager_llm_in_a_mode_that_never_calls_it(string process)
@@ -134,100 +142,9 @@ public sealed class CrewManagerByModeTests
         Assert.Contains("Autonomous", error.Message, StringComparison.Ordinal);
     }
 
-    // ── SetManagerAgent, ChangeProcessType, Validate, RemoveAgent ───────────────────────
+    // ── Validate ──
 
-    [Fact]
-    public void A_consensual_crew_takes_a_manager_agent_among_its_agents()
-    {
-        var crew = CrewAggregate.Create("Vote", ProcessType.Consensual);
-        var chair = AgentId.Create();
-        crew.AddAgent(AgentId.Create());
-        crew.AddAgent(chair);
-
-        crew.SetManagerAgent(chair);
-
-        Assert.Equal(chair, crew.ManagerAgentId);
-    }
-
-    [Fact]
-    public void A_sequential_crew_takes_no_manager_agent()
-    {
-        var crew = CrewAggregate.Create("Write");
-        var agent = AgentId.Create();
-        crew.AddAgent(agent);
-
-        var error = Assert.Throws<InvalidOperationException>(() => crew.SetManagerAgent(agent));
-
-        Assert.Contains("Sequential", error.Message, StringComparison.Ordinal);
-        Assert.Contains("Hierarchical", error.Message, StringComparison.Ordinal);
-        Assert.Contains("Consensual", error.Message, StringComparison.Ordinal);
-        Assert.Null(crew.ManagerAgentId);
-    }
-
-    [Fact]
-    public void Turning_sequential_drops_the_manager_agent_which_stays_a_member()
-    {
-        var chef = AgentId.Create();
-        var crew = CrewAggregate.Create("Ship", ProcessType.Hierarchical, managerAgentId: chef);
-        crew.AddAgent(chef);
-        crew.AddAgent(AgentId.Create());
-        crew.AddTask(TaskId.Create());
-
-        crew.ChangeProcessType(ProcessType.Sequential);
-
-        Assert.Null(crew.ManagerAgentId);
-        Assert.Contains(chef, crew.Agents);
-        Assert.True(crew.Validate().IsValid);
-    }
-
-    [Fact]
-    public void Turning_sequential_refuses_a_manager_agent_passed_with_it()
-    {
-        var crew = CrewAggregate.Create("Ship");
-        var agent = AgentId.Create();
-        crew.AddAgent(agent);
-
-        Assert.Throws<InvalidOperationException>(() => crew.ChangeProcessType(ProcessType.Sequential, agent));
-        Assert.Null(crew.ManagerAgentId);
-    }
-
-    [Fact]
-    public void Turning_consensual_sets_the_agent_passed_as_the_arbiter()
-    {
-        var crew = CrewAggregate.Create("Vote");
-        var chair = AgentId.Create();
-        crew.AddAgent(AgentId.Create());
-        crew.AddAgent(chair);
-
-        crew.ChangeProcessType(ProcessType.Consensual, chair);
-
-        Assert.Equal(ProcessType.Consensual, crew.ProcessType);
-        Assert.Equal(chair, crew.ManagerAgentId);
-    }
-
-    [Fact]
-    public void Turning_to_a_mode_with_a_manager_refuses_an_agent_outside_the_crew()
-    {
-        var crew = CrewAggregate.Create("Vote");
-        crew.AddAgent(AgentId.Create());
-
-        Assert.Throws<InvalidOperationException>(() => crew.ChangeProcessType(ProcessType.Consensual, AgentId.Create()));
-        Assert.Equal(ProcessType.Sequential, crew.ProcessType);
-    }
-
-    [Theory]
-    [MemberData(nameof(ModesWithoutAManagerLlm))]
-    public void A_crew_with_a_manager_llm_does_not_turn_to_a_mode_that_never_calls_it(string process)
-    {
-        var crew = CrewAggregate.Create("Ship", ProcessType.Autonomous, managerLlm: new StubLlmProvider());
-        crew.AddAgent(AgentId.Create());
-
-        var error = Assert.Throws<InvalidOperationException>(() => crew.ChangeProcessType(ProcessType.From(process)));
-
-        Assert.Contains("WithManagerLlm", error.Message, StringComparison.Ordinal);
-        Assert.Equal(ProcessType.Autonomous, crew.ProcessType);
-    }
-
+    [Trait("BR", "CH-08")]
     [Fact]
     public void A_consensual_manager_outside_the_crew_is_invalid()
     {
@@ -244,19 +161,6 @@ public sealed class CrewManagerByModeTests
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.ErrorMessage.Contains("member", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [Fact]
-    public void A_consensual_crew_whose_manager_leaves_has_no_arbiter_left()
-    {
-        var chair = AgentId.Create();
-        var crew = CrewAggregate.Create("Vote", ProcessType.Consensual, managerAgentId: chair);
-        crew.AddAgent(AgentId.Create());
-        crew.AddAgent(chair);
-
-        crew.RemoveAgent(chair, "left the board");
-
-        Assert.Null(crew.ManagerAgentId);
     }
 
     private sealed class StubLlmProvider : ILlmProvider

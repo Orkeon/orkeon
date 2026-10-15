@@ -41,25 +41,6 @@ internal sealed class CrewMemberManager
     }
 
     /// <summary>
-    /// Removes an agent from the crew. Validates that the agent exists
-    /// and that the crew is not currently executing.
-    /// </summary>
-    public void RemoveAgent(AgentId agentId, string reason, CrewStatus status)
-    {
-        ArgumentNullException.ThrowIfNull(agentId);
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
-
-        if (!_agents.Contains(agentId))
-            throw new InvalidOperationException($"Agent {agentId} is not in this crew.");
-
-        if (status == CrewStatus.Executing)
-            throw new InvalidOperationException("Cannot remove agents while crew is executing.");
-
-        _agents.Remove(agentId);
-    }
-
-    /// <summary>
     /// Gets the first agent in the list, or null if empty.
     /// </summary>
     public AgentId? FirstOrDefault() => _agents.FirstOrDefault();

@@ -89,8 +89,19 @@ public sealed class JsLlmConfig
             provider,
             domain,
             newTemp.IsNumber() ? newTemp.AsNumber() : temperature,
-            newMax.IsNumber() ? (int)newMax.AsNumber() : maxTokens,
+            newMax.IsUndefined() ? maxTokens : RequireMaxTokens(newMax),
             ProfileProvider);
+    }
+
+    private static int RequireMaxTokens(JsValue value)
+    {
+        if (value.IsNumber())
+        {
+            var n = value.AsNumber();
+            if (n >= 1 && n <= int.MaxValue && n == Math.Floor(n)) return (int)n;
+        }
+        throw new InvalidScriptException(
+            "LlmConfig.with(...) maxTokens must be an integer between 1 and 2147483647; omit it to keep the inherited cap.");
     }
 
     internal static string RequireModel(string? value)

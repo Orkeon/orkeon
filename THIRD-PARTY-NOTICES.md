@@ -984,7 +984,7 @@ hand-written section above also covers points to it (§).
 | System.Memory.Data | 10.0.3 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | System.Numerics.Tensors | 10.0.12 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | System.Runtime.Caching | 8.0.0 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | L6, N10 |
-| System.Security.Cryptography.Pkcs | 10.0.0 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
+| System.Security.Cryptography.Pkcs | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | System.Security.Cryptography.ProtectedData | 10.0.12 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | System.ServiceProcess.ServiceController | 10.0.12 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon-host | N2 |
 | System.Threading.RateLimiting | 10.0.12 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
@@ -1772,7 +1772,7 @@ Microsoft.Extensions.Logging.EventLog 10.0.12, Microsoft.Extensions.Logging.Even
 Microsoft.Extensions.Options.ConfigurationExtensions 10.0.12,
 Microsoft.Extensions.Primitives 10.0.12, System.Diagnostics.EventLog 10.0.12,
 System.IO.Hashing 10.0.12, System.IO.Packaging 10.0.2, System.Memory.Data 10.0.3,
-System.Numerics.Tensors 10.0.12, System.Security.Cryptography.Pkcs 10.0.0,
+System.Numerics.Tensors 10.0.12, System.Security.Cryptography.Pkcs 10.0.13,
 System.Security.Cryptography.ProtectedData 10.0.12,
 System.ServiceProcess.ServiceController 10.0.12 and System.Threading.RateLimiting 10.0.12.
 

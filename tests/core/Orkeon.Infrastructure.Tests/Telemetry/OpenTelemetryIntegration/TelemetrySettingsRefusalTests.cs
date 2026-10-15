@@ -63,6 +63,6 @@ public sealed class TelemetrySettingsRefusalTests
             ["Telemetry:OtlpEndpoint"] = "http://localhost:4317",
         });
 
-        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(OrkeonMetrics));
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(OpenTelemetry.Metrics.MeterProvider));
     }
 }

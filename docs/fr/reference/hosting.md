@@ -252,7 +252,7 @@ résolvent par scope.
 
 | Clé | Défaut | Effet |
 |---|---|---|
-| `Enabled` | `true` | `false` n'enregistre que le singleton `OrkeonMetrics` — aucun fournisseur, aucun exportateur. |
+| `Enabled` | `true` | `false` n'enregistre ni fournisseur ni exportateur : le meter `Orkeon` mesure pour personne. |
 | `OtlpEndpoint` | — | Un point de terminaison OTLP explicite ; il l'emporte sur l'environnement. Une adresse `http://` ou `https://` : toute autre valeur est refusée, en nommant la clé. |
 | `MaxMemoryMB` | `2048` | Seuil du contrôle de santé `system_resources`. |
 

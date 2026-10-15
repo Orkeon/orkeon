@@ -42,6 +42,13 @@ public sealed partial class YamlCrewMapper
         RefuseAsyncExecutionTheModeIgnores(process, settings.Process, tasks);
         RefuseManagerTheModeHasNoneOf(process, settings.Process, settings.ManagerAgent);
 
+        if (settings.CrewDefaultLlm?.MaxTokens is <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Crew '{settings.Name}' llm.max_tokens: {settings.CrewDefaultLlm.MaxTokens} - the tokens the model may answer with " +
+                "must be 1 or more; omit the key to keep the inherited cap.");
+        }
+
         var mappedAgents = agents != null
             ? MapAgents(agents, settings.CrewDefaultLlm, out var agentNameMap)
             : MapAgentsEmpty(out agentNameMap);
@@ -448,7 +455,8 @@ public sealed partial class YamlCrewMapper
             && yaml.Temperature is null
             && yaml.MaxTokens is null
             && yaml.TopP is null
-            && yaml.Thinking is null)
+            && yaml.Thinking is null
+            && yaml.Cache is null)
         {
             return null;
         }
@@ -461,6 +469,8 @@ public sealed partial class YamlCrewMapper
             MaxTokens = yaml.MaxTokens,
             TopP = yaml.TopP,
             Thinking = MapThinking(yaml.Thinking),
+            // A present block with no breakpoint stays an empty config: it replaces the agent's cache and turns it off.
+            Cache = yaml.Cache is null ? null : MapCache(yaml.Cache) ?? new LlmCacheConfig(),
         };
     }
 

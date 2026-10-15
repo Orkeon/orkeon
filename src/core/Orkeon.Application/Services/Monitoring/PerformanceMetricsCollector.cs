@@ -13,7 +13,7 @@ namespace Orkeon.Application.Services.Monitoring;
 /// but designed to track metrics across agents, tools, memory, and LLM calls.
 /// Kept in Common/ as a cross-cutting concern; marked obsolete pending OpenTelemetry migration.
 /// </summary>
-[Obsolete("Use OrkeonMetrics with OpenTelemetry instead")]
+[Obsolete("Use the meter Orkeon (OrkeonMeter) with OpenTelemetry instead")]
 public sealed class PerformanceMetricsCollector : IPerformanceMetrics
 {
     private const int MaxEntries = 10000;

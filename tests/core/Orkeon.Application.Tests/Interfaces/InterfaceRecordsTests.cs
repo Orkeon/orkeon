@@ -157,25 +157,6 @@ public class InterfaceRecordsTests
         Assert.Equal(50_000, stats.EstimatedTokensSaved);
     }
 
-    // ══════════════ IEncryptionProvider — EncryptionResult ══════════════
-
-    [Fact]
-    public void ShouldStoreEncryptionResultFields_WhenCreating()
-    {
-        // Arrange
-        var cipher = new byte[] { 1, 2, 3 };
-        var nonce = new byte[] { 4, 5, 6 };
-        var tag = new byte[] { 7, 8, 9 };
-
-        // Act
-        var result = new EncryptionResult(cipher, nonce, tag);
-
-        // Assert
-        Assert.Equal(cipher, result.CipherText);
-        Assert.Equal(nonce, result.Nonce);
-        Assert.Equal(tag, result.Tag);
-    }
-
     // ══════════════ MonitoringTypes ══════════════
 
     [Fact]
@@ -287,32 +268,5 @@ public class InterfaceRecordsTests
         Assert.Null(criteria.To);
         Assert.Null(criteria.Status);
         Assert.Equal(50, criteria.Limit);
-    }
-
-    // ══════════════ ITemplateEngine — TemplateValidation ══════════════
-
-    [Fact]
-    public void ShouldCreateValidTemplate_WhenCallingValidFactory()
-    {
-        // Act
-        var v = TemplateValidation.Valid("param1", "param2");
-
-        // Assert
-        Assert.True(v.IsValid);
-        Assert.Empty(v.Errors);
-        Assert.Equal(2, v.Parameters.Count);
-        Assert.Empty(v.Warnings);
-    }
-
-    [Fact]
-    public void ShouldCreateInvalidTemplate_WhenCallingInvalidFactory()
-    {
-        // Act
-        var v = TemplateValidation.Invalid("Unclosed tag", "Unknown filter");
-
-        // Assert
-        Assert.False(v.IsValid);
-        Assert.Equal(2, v.Errors.Count);
-        Assert.Empty(v.Parameters);
     }
 }

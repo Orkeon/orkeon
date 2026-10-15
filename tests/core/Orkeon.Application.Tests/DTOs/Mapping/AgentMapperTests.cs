@@ -98,8 +98,6 @@ public class AgentMapperTests
         Assert.False(dto.Verbose);
         Assert.False(dto.AllowDelegation); // Domain default is false
         Assert.Empty(dto.Tools);
-        Assert.Null(dto.Llm);
-        Assert.Null(dto.Capabilities);
     }
 
     [Fact]
@@ -129,84 +127,10 @@ public class AgentMapperTests
     }
 
     [Fact]
-    public void ShouldMapAllAgents_WhenUsingToDtoUsingEnumerableAgents()
-    {
-        // Arrange
-        var agents = new List<DomainAgent>
-        {
-            DomainAgent.Create(AgentRole.From(RoleDeveloper), AgentGoal.From(GoalWriteCode)),
-            DomainAgent.Create(AgentRole.From("Designer"), AgentGoal.From("Create designs")),
-            DomainAgent.Create(AgentRole.From(RoleManager), AgentGoal.From("Lead team"))
-        };
-
-        // Act
-        var dtos = AgentMapper.ToDto(agents);
-
-        // Assert
-        Assert.Equal(3, dtos.Count);
-        Assert.Contains(dtos, d => d.Role == RoleDeveloper);
-        Assert.Contains(dtos, d => d.Role == "Designer");
-        Assert.Contains(dtos, d => d.Role == RoleManager);
-    }
-
-    [Fact]
-    public void ShouldCreateSimplifiedDto_WhenUsingToSummaryDto()
-    {
-        // Arrange
-        var agent = DomainAgent.Create(
-            AgentRole.From(RoleAnalyst),
-            AgentGoal.From(GoalAnalyzeData),
-            AgentBackstory.From("Data expert"),
-            allowDelegation: false,
-            verbose: true);
-
-        agent.AddTool(new TestTool("AnalysisTool", "Analysis tool"));
-
-        // Act
-        var dto = AgentMapper.ToSummaryDto(agent);
-
-        // Assert
-        Assert.NotNull(dto);
-        Assert.Equal(agent.Id, dto.Id);
-        Assert.Equal(RoleAnalyst, dto.Role);
-        Assert.Equal(GoalAnalyzeData, dto.Goal);
-        Assert.Equal(agent.Status.ToString(), dto.Status);
-        Assert.True(dto.Verbose);
-        Assert.False(dto.AllowDelegation);
-
-        // Summary DTO now includes backstory (required property on sealed record)
-        Assert.Equal("Data expert", dto.Backstory);
-        Assert.Empty(dto.Tools);
-        Assert.Null(dto.PerformanceMetrics);
-        Assert.Null(dto.Capabilities);
-    }
-
-    [Fact]
     public void ShouldThrowArgumentNullException_WhenUsingToDtoWithNullAgent()
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => AgentMapper.ToDto((DomainAgent)null!));
-    }
-
-    [Fact]
-    public void ShouldReturnEmptyList_WhenUsingToDtoUsingEnumerableAgentsWithEmptyList()
-    {
-        // Arrange
-        var agents = new List<DomainAgent>();
-
-        // Act
-        var dtos = AgentMapper.ToDto(agents);
-
-        // Assert
-        Assert.NotNull(dtos);
-        Assert.Empty(dtos);
-    }
-
-    [Fact]
-    public void ShouldThrowArgumentNullException_WhenUsingToDtoUsingEnumerableAgentsWithNullEnumerable()
-    {
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => AgentMapper.ToDto((IEnumerable<DomainAgent>)null!));
     }
 
     [Fact]
@@ -241,35 +165,6 @@ public class AgentMapperTests
         Assert.NotNull(dto);
         Assert.Equal(agent.CreatedAt, dto.CreatedAt);
         Assert.Equal(agent.UpdatedAt, dto.UpdatedAt);
-    }
-
-    [Fact]
-    public void ShouldNotIncludeDetailedInformation_WhenUsingToSummaryDto()
-    {
-        // Arrange
-        var agent = DomainAgent.Create(
-            AgentRole.From("Security Expert"),
-            AgentGoal.From("Ensure security"),
-            AgentBackstory.From("Former security consultant with extensive experience"));
-
-        agent.AddTool(new TestTool("SecurityScanner", "Scans for vulnerabilities"));
-        agent.AddTool(new TestTool("PenTestTool", "Penetration testing tool"));
-
-        // Act
-        var dto = AgentMapper.ToSummaryDto(agent);
-
-        // Assert
-        Assert.NotNull(dto);
-        Assert.Equal(agent.Id, dto.Id);
-        Assert.Equal("Security Expert", dto.Role);
-        Assert.Equal("Ensure security", dto.Goal);
-        Assert.Equal(agent.Status.ToString(), dto.Status);
-
-        // Backstory is now included (required property on sealed record)
-        Assert.Equal("Former security consultant with extensive experience", dto.Backstory);
-        Assert.Empty(dto.Tools);
-        Assert.Null(dto.PerformanceMetrics);
-        Assert.Null(dto.Capabilities);
     }
 
     [Fact]

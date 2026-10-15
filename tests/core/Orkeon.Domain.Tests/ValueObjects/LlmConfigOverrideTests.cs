@@ -5,6 +5,7 @@ namespace Orkeon.Domain.Tests.ValueObjects;
 public class LlmConfigOverrideTests
 {
     [Fact]
+    [Trait("BR", "CH-08")]
     public void ShouldDefaultAllFieldsToNull_WhenCreatedEmpty()
     {
         var ov = new LlmConfigOverride();
@@ -16,15 +17,7 @@ public class LlmConfigOverrideTests
     }
 
     [Fact]
-    public void ShouldExposeResponseFormat_WhenUsingForResponseFormatFactory()
-    {
-        var ov = LlmConfigOverride.ForResponseFormat(LlmResponseFormat.JsonObject());
-        Assert.NotNull(ov.ResponseFormat);
-        Assert.Equal("json_object", ov.ResponseFormat!.Type);
-        Assert.Null(ov.Temperature);
-    }
-
-    [Fact]
+    [Trait("BR", "CH-08")]
     public void ShouldBeEqualByValue_WhenFieldsMatch()
     {
         var a = new LlmConfigOverride { ResponseFormat = LlmResponseFormat.JsonObject(), Temperature = 0.2 };
@@ -33,6 +26,7 @@ public class LlmConfigOverrideTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void ShouldNotBeEqual_WhenAnyFieldDiffers()
     {
         var a = new LlmConfigOverride { Temperature = 0.2 };
@@ -41,9 +35,10 @@ public class LlmConfigOverrideTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void ShouldSupportWithExpression_PreservingImmutability()
     {
-        var a = LlmConfigOverride.ForResponseFormat(LlmResponseFormat.Text());
+        var a = new LlmConfigOverride { ResponseFormat = LlmResponseFormat.Text() };
         var b = a with { Temperature = 0.5 };
         Assert.Null(a.Temperature);
         Assert.Equal(0.5, b.Temperature);
