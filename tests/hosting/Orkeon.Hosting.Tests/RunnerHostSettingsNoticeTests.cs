@@ -156,13 +156,16 @@ public sealed class RunnerHostSettingsNoticeTests : IDisposable
         Assert.Empty(notices);
     }
 
-    /// <summary>The plugins' section is read at registration, without a declaration: the registry it leaves says it was.</summary>
+    /// <summary>
+    /// The plugins' section is read by <c>orkeon-repl</c>, which loads the plugins it names: a runner is told
+    /// nothing of it, as of any section another shipped binary reads, whether it loaded plugins or not.
+    /// </summary>
     [Fact]
-    public void A_host_that_loaded_plugins_is_told_nothing_of_their_section()
+    public void A_runner_is_told_nothing_of_the_plugins_section_orkeon_repl_reads()
     {
         var settings = Settings(("Plugins:Directory", "/plugins"));
 
-        Assert.Single(Notices(settings));
+        Assert.Empty(Notices(settings));
         Assert.Empty(Notices(settings, (_, services) => services.AddSingleton<IPluginRegistry>(new StubPluginRegistry())));
     }
 

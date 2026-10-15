@@ -96,6 +96,21 @@ call to an operator. `IToolApprovalChannel` (Application) is that port: it takes
 the channel the host registered, if any; without one, nothing changes. `Interactive` now only
 concerns a host that resolves asks itself.
 
+### Added — `orkeon-repl` connects MCP servers and loads plugins; scripts reach their tools
+
+A product built on the REPL could add tools only in TypeScript. `orkeon-repl` now registers
+`MCP:Servers` as the runners do and connects the servers before it loads its commands (a server
+that fails costs one error line), and loads the plugins of a `Plugins` section
+(`AddOrkeonPlugins`; discovery reads the declared mounts behind the registry's checks, since the
+agents' path validator refuses every `.dll`). The scripts' catalogue — a command's `tools`
+namespace, an agent's `.tools([...])`, `ctx.llm.act` — was a snapshot of the container's tools,
+and an MCP server's tools enter the tool registry only: no `.ork.ts` script could name one, under
+`orkeon run` either. `ScriptToolCatalogue` (Orkeon.Scripting) is the container's tools then the
+registry's others, read again for each engine; the REPL, `.ork.ts` crews under `orkeon run` and
+procedural scripts use it, and a procedural script's servers are now connected before it runs.
+The `Plugins` section is now read by a shipped binary, so a runner no longer reports it as read by
+none.
+
 ### Changed — the script's time limit stops while the permission gate decides
 
 `ExecutionTimeout`, the engine's wall-clock limit, counted the time a tool call spent in the

@@ -85,9 +85,14 @@ package, so only the `IOrkeonPlugin` entry point needs the source reference.
 </PropertyGroup>
 ```
 
-The host side carries the same constraint: none of the binaries Orkeon ships calls
-`AddOrkeonPlugins(...)` — no project under `src/` references `Orkeon.Plugins`. The plugin system is activated by a host
-you build yourself, in-tree or against your own clone.
+On the host side, `orkeon-repl` is the one shipped binary that loads plugins: when its settings carry a `Plugins`
+section, it calls `AddOrkeonPlugins(fileSystem, configuration)` while it composes its container, and a plugin's tools
+reach its commands and the crews they run like the built-in ones (a plugin tool named like a built-in one refuses the
+start: the tool registry names both). Discovery reads a file system of its own, built from the declared mounts
+(`Orkeon:FileSystem:Mounts`, and `:InternalMounts` for a folder agents must not see): the registry's checks hold — the
+mount, its rights, no path out of it — but not the agents' path validator, which refuses every `.dll` whatever the
+mount. `orkeon run` and `orkeon-host` load no plugin; another host calls `AddOrkeonPlugins(...)` itself, in-tree or
+against your own clone.
 
 ## Discovery (VFS)
 

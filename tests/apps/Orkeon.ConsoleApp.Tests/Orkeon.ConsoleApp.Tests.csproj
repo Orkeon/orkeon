@@ -33,5 +33,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The stdio MCP server ReplMcpAndPluginsTests starts with node. -->
+    <None Include="Fixtures\mcp-echo-server.mjs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>

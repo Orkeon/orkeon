@@ -1322,8 +1322,9 @@ public static partial class RunnerHost
     /// refuses the start, not the connection step that <c>--list-tools</c> and <c>orkeon-host</c>
     /// take before anything else. Its keys, and those of <c>MCP:Server</c> that <c>orkeon mcp
     /// serve</c> reads, are judged whether servers are declared or not: the section is the host's.
+    /// <c>orkeon-repl</c> registers it the same way and connects the servers before it loads its commands.
     /// </summary>
-    private static void RegisterMcp(HostBuilderContext context, IServiceCollection services)
+    internal static void RegisterMcp(HostBuilderContext context, IServiceCollection services)
     {
         McpStartup.RefuseServerSwitch(context.Configuration);
         services.DeclareSettingsShape(ConfigurationKeys.McpSection, typeof(McpOptions));

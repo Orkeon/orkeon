@@ -733,7 +733,11 @@ internal static partial class RunCommand
         var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
         var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
         var configuration = host.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
-        var tools = host.Services.GetServices<IBaseTool>().ToList();
+        // The declared MCP servers, connected as for a crew: their tools reach the script through
+        // the registry, in the tools namespace, an agent's .tools([...]) and act.
+        await McpStartup.ConnectConfiguredServersAsync(host, linkCts.Token).ConfigureAwait(false);
+        var tools = new Orkeon.Scripting.ScriptToolCatalogue(
+            host.Services.GetServices<IBaseTool>(), host.Services.GetService<IToolRegistry>()).ToList();
         // LLM provider is optional — scripts that never call ctx.llm work without one. The host's
         // provider is limited where the host built it (GAP-38): a dynamic fan-out of ctx.llm.* calls
         // honours the RateLimiting block with every other model call, one lease each.

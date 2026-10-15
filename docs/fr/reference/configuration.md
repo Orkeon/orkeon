@@ -206,7 +206,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-67 sections, 358 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (11) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Plugins`](#plugins), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+67 sections, 358 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1423,7 +1423,7 @@ pas `false` — les serveurs sont connectés avant le chargement de la crew (STU
 [Intégration MCP](../architecture/mcp.md).
 
 <!-- settings:MCP -->
-**Lue par** : `orkeon`, `orkeon-host`.
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
@@ -1441,7 +1441,7 @@ La façon dont le serveur d'`orkeon mcp serve` se présente (il n'expose que des
 `AddOrkeonMcpServer`, qu'appelle `orkeon mcp serve`.
 
 <!-- settings:MCP:Server -->
-**Lue par** : `orkeon`, `orkeon-host`.
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
@@ -1503,11 +1503,12 @@ Validation de la vision et des contenus — aucune image n'est redimensionnée. 
 
 ### `Plugins`
 
-Découverte du répertoire de plugins. Opt-in : `AddOrkeonPlugins(fileSystem, configuration)` —
-voir [Plugins](../architecture/plugins.md).
+Découverte du répertoire de plugins. `orkeon-repl` charge les plugins quand la section est
+présente ; un autre hôte appelle `AddOrkeonPlugins(fileSystem, configuration)` — voir
+[Plugins](../architecture/plugins.md).
 
 <!-- settings:Plugins -->
-**Lue par** : un hôte écrit en C# seulement, par `AddOrkeonPlugins()` — aucun binaire livré ne lit cette section.
+**Lue par** : `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|

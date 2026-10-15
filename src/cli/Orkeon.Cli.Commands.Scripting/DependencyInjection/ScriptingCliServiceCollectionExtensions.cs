@@ -136,7 +136,10 @@ public static class ScriptingCliServiceCollectionExtensions
             return new JsEngineFactory(
                 Options.Create(cliLimits.ToScriptingLimits()),
                 sp.GetService<ILoggerFactory>(),
-                sp.GetServices<Orkeon.Domain.Tools.IBaseTool>().ToArray(),
+                // The container's tools, then those the registry gained since (the MCP servers'),
+                // read again for each engine: a command or a crew reaches every tool of the host.
+                new ScriptToolCatalogue(
+                    sp.GetServices<Orkeon.Domain.Tools.IBaseTool>(), sp.GetService<Orkeon.Domain.Tools.IToolRegistry>()),
                 sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>(),
                 new ScriptingHostPorts
                 {
